@@ -748,30 +748,111 @@ class OpportunitySignal(BaseModel):
    - **Target:** 100% tests passing
    - **NO regression:** Bestaande tests blijven groen
 
-#### 6.6.2. Test-Driven Development Discipline
+#### 6.6.2. Test-Driven Development Discipline with Git Integration
 
-**VERPLICHTE TDD WORKFLOW:**
+**VERPLICHTE TDD + GIT WORKFLOW:**
 
-1. **Red Phase:** Schrijf failing tests EERST
+**0. Feature Branch Setup:**
+   ```powershell
+   # Create feature branch from main
+   git checkout -b feature/size-plan-dto
+   ```
+
+**1. Red Phase:** Schrijf failing tests EERST
    ```python
    def test_new_feature():
        """Test that new feature works correctly."""
        result = my_new_function(input_data)
        assert result == expected_output  # FAILS - function not implemented
    ```
+   ```powershell
+   # Commit failing tests (documents intent)
+   git add tests/unit/dtos/strategy/test_size_plan.py
+   git commit -m "test: add failing tests for SizePlan DTO
 
-2. **Green Phase:** Implementeer minimale code om test groen te maken
+   - Test creation with valid fields
+   - Test validation rules
+   - Test edge cases
+   
+   Status: RED - tests fail (implementation pending)"
+   ```
+
+**2. Green Phase:** Implementeer minimale code om test groen te maken
    ```python
    def my_new_function(data):
        """Implement minimal working solution."""
        return process(data)  # Test now PASSES
    ```
+   ```powershell
+   # Commit working implementation
+   git add backend/dtos/strategy/size_plan.py
+   git commit -m "feat: implement SizePlan DTO
 
-3. **Refactor Phase:** Verbeter code terwijl tests groen blijven
+   - Add quantity, risk_amount, position_value fields
+   - Add validation for positive values
+   - All tests passing (20/20)
+   
+   Status: GREEN"
+   ```
+
+**3. Refactor Phase:** Verbeter code terwijl tests groen blijven
    - Trailing whitespace cleanup
    - Type hints toevoegen
    - Docstrings verbeteren
    - **Verify:** Tests blijven 100% groen
+   ```powershell
+   # Commit refactoring separately
+   git add backend/dtos/strategy/size_plan.py tests/unit/dtos/strategy/test_size_plan.py
+   git commit -m "refactor: improve SizePlan DTO code quality
+
+   - Add comprehensive docstrings
+   - Fix line length violations
+   - Add type hints for all fields
+   - Clean up whitespace
+   
+   Quality gates: All 10/10
+   Status: GREEN (tests still 20/20)"
+   ```
+
+**4. Quality Gates:** Run complete checklist
+   ```powershell
+   # Run all quality checks (see section 6.6.1)
+   # If all pass, commit quality metrics update
+   git add agent.md
+   git commit -m "docs: update Quality Metrics Dashboard for SizePlan
+
+   - Added SizePlan row: 10/10 all gates
+   - Test coverage: 20/20 passing"
+   ```
+
+**5. Merge to Main:**
+   ```powershell
+   # Switch back to main
+   git checkout main
+   
+   # Merge feature (squash or regular based on preference)
+   git merge feature/size-plan-dto
+   
+   # Push to GitHub
+   git push origin main
+   
+   # Delete feature branch
+   git branch -d feature/size-plan-dto
+   ```
+
+**COMMIT MESSAGE CONVENTIONS:**
+- `test:` - Tests only (Red phase)
+- `feat:` - New feature implementation (Green phase)
+- `refactor:` - Code quality improvements (Refactor phase)
+- `docs:` - Documentation updates (agent.md, README)
+- `fix:` - Bug fixes
+- `chore:` - Build/tooling changes
+
+**BRANCHING STRATEGY:**
+- `main` - Always stable, all tests passing, all quality gates met
+- `feature/*` - Development branches for new DTOs/features
+- Commit early, commit often on feature branches
+- Only merge to main when ALL quality gates pass
 
 #### 6.6.3. DTO Implementation Checklist
 
@@ -993,47 +1074,96 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
   - **ACCEPTED:** datetime.tzinfo warnings (Pylance type narrowing limitation)
 
 **Quality workflow checklist per nieuwe module:**
-1. ✅ Tests geschreven (min 20)
-2. ✅ DTO geïmplementeerd (Pydantic v2)
-3. ✅ Gate 1: Whitespace (10.00/10)
-4. ✅ Gate 2: Imports (10.00/10)
-5. ✅ Gate 3: Tests passing (100%)
-6. ✅ Gate 4: Type checking DTO (0 errors)
-7. ✅ Gate 5: Line length (10.00/10)
-8. ✅ Gate 6: Documentation quality (file header + class docstring)
-9. ✅ VS Code Problems: Only accepted warnings (FieldInfo/datetime.tzinfo)
-10. ✅ Update Quality Metrics Dashboard (sectie 6.6.6)
+1. ✅ Create feature branch: `git checkout -b feature/dto-name`
+2. ✅ Tests geschreven (min 20) + commit (RED phase)
+3. ✅ DTO geïmplementeerd (Pydantic v2) + commit (GREEN phase)
+4. ✅ Gate 1: Whitespace (10.00/10)
+5. ✅ Gate 2: Imports (10.00/10)
+6. ✅ Gate 3: Tests passing (100%)
+7. ✅ Gate 4: Type checking DTO (0 errors)
+8. ✅ Gate 5: Line length (10.00/10)
+9. ✅ Gate 6: Documentation quality (file header + class docstring)
+10. ✅ VS Code Problems: Only accepted warnings (FieldInfo/datetime.tzinfo)
+11. ✅ Refactor + commit quality improvements
+12. ✅ Update Quality Metrics Dashboard (sectie 6.6.6) + commit
+13. ✅ Merge to main: `git checkout main && git merge feature/dto-name`
+14. ✅ Push to GitHub: `git push origin main`
 
-#### 6.6.7. Quick Reference: Complete Quality Workflow
+#### 6.6.7. Quick Reference: Complete Quality Workflow with Git
 
 **COPY-PASTE COMMANDO'S VOOR NIEUWE DTO MODULE:**
 
 ```powershell
-# === STAP 1: Auto-cleanup ===
-(Get-Content backend/dtos/strategy/MYdto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content backend/dtos/strategy/MYDT O.py
-(Get-Content tests/unit/dtos/strategy/test_MYDTO.py) | ForEach-Object { $_.TrimEnd() } | Set-Content tests/unit/dtos/strategy/test_MYDTO.py
+# === STAP 0: Create Feature Branch ===
+git checkout -b feature/size-plan-dto
 
-# === STAP 2: DTO Quality Gates (5 checks) ===
-python -m pylint backend/dtos/strategy/MYDTO.py --disable=all --enable=trailing-whitespace,superfluous-parens
-python -m pylint backend/dtos/strategy/MYDTO.py --disable=all --enable=import-outside-toplevel
-python -m pylint backend/dtos/strategy/MYDTO.py --disable=all --enable=line-too-long --max-line-length=100
-python -m mypy backend/dtos/strategy/MYDTO.py --strict --no-error-summary
-pytest tests/unit/dtos/strategy/test_MYDTO.py -q --tb=line
+# === STAP 1: RED Phase - Write Failing Tests ===
+# Create tests/unit/dtos/strategy/test_size_plan.py with 20+ tests
+git add tests/unit/dtos/strategy/test_size_plan.py
+git commit -m "test: add failing tests for SizePlan DTO
 
-# === STAP 3: Test Quality Gates (3 checks) ===
-python -m pylint tests/unit/dtos/strategy/test_MYDTO.py --disable=all --enable=trailing-whitespace,superfluous-parens
-python -m pylint tests/unit/dtos/strategy/test_MYDTO.py --disable=all --enable=import-outside-toplevel
-python -m pylint tests/unit/dtos/strategy/test_MYDTO.py --disable=all --enable=line-too-long --max-line-length=100
+- Test creation with valid fields
+- Test validation rules  
+- Test edge cases
+
+Status: RED - tests fail (implementation pending)"
+
+# === STAP 2: GREEN Phase - Implement DTO ===
+# Create backend/dtos/strategy/size_plan.py
+git add backend/dtos/strategy/size_plan.py
+git commit -m "feat: implement SizePlan DTO
+
+- Add quantity, risk_amount, position_value fields
+- Add validation for positive values
+- All tests passing (20/20)
+
+Status: GREEN"
+
+# === STAP 3: REFACTOR Phase - Quality Gates ===
+
+# Auto-cleanup whitespace
+(Get-Content backend/dtos/strategy/size_plan.py) | ForEach-Object { $_.TrimEnd() } | Set-Content backend/dtos/strategy/size_plan.py
+(Get-Content tests/unit/dtos/strategy/test_size_plan.py) | ForEach-Object { $_.TrimEnd() } | Set-Content tests/unit/dtos/strategy/test_size_plan.py
+
+# DTO Quality Gates (5 checks)
+python -m pylint backend/dtos/strategy/size_plan.py --disable=all --enable=trailing-whitespace,superfluous-parens
+python -m pylint backend/dtos/strategy/size_plan.py --disable=all --enable=import-outside-toplevel
+python -m pylint backend/dtos/strategy/size_plan.py --disable=all --enable=line-too-long --max-line-length=100
+python -m mypy backend/dtos/strategy/size_plan.py --strict --no-error-summary
+pytest tests/unit/dtos/strategy/test_size_plan.py -q --tb=line
+
+# Test Quality Gates (3 checks)
+python -m pylint tests/unit/dtos/strategy/test_size_plan.py --disable=all --enable=trailing-whitespace,superfluous-parens
+python -m pylint tests/unit/dtos/strategy/test_size_plan.py --disable=all --enable=import-outside-toplevel
+python -m pylint tests/unit/dtos/strategy/test_size_plan.py --disable=all --enable=line-too-long --max-line-length=100
+
+# Commit refactoring
+git add backend/dtos/strategy/size_plan.py tests/unit/dtos/strategy/test_size_plan.py
+git commit -m "refactor: improve SizePlan DTO code quality
+
+- Add comprehensive docstrings
+- Fix line length violations
+- Clean up whitespace
+
+Quality gates: All 10/10
+Status: GREEN (tests still 20/20)"
 
 # === STAP 4: Documentation Quality Check ===
 # Manually verify file header and class docstring
 
-# === STAP 5: Final Verification ===
-# Check VS Code Problems panel:
-# Expected: 0-1 warnings (datetime.tzinfo only, if applicable)
+# === STAP 5: Update Quality Metrics Dashboard ===
+# Add row to agent.md section 6.6.6
+git add agent.md
+git commit -m "docs: update Quality Metrics Dashboard for SizePlan
 
-# === STAP 6: Update Quality Metrics Dashboard ===
-# Add nieuwe module to table in sectie 6.6.6 met alle scores
+- Added SizePlan row: 10/10 all gates
+- Test coverage: 20/20 passing"
+
+# === STAP 6: Merge to Main ===
+git checkout main
+git merge feature/size-plan-dto
+git push origin main
+git branch -d feature/size-plan-dto
 ```
 
 **VERWACHTE OUTPUT:**
