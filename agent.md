@@ -756,7 +756,7 @@ class OpportunitySignal(BaseModel):
    - **Target:** 100% tests passing
    - **NO regression:** Bestaande tests blijven groen
 
-#### 6.6.2. Test-Driven Development Discipline with Git Integration
+#### 6.6.3. Test-Driven Development Discipline with Git Integration
 
 **VERPLICHTE TDD + GIT WORKFLOW:**
 
@@ -862,7 +862,95 @@ class OpportunitySignal(BaseModel):
 - Commit early, commit often on feature branches
 - Only merge to main when ALL quality gates pass
 
-#### 6.6.3. DTO Implementation Checklist
+#### 6.6.2. CausalityChain Integration Pattern (VERPLICHT voor Pipeline DTOs)
+
+**WANNEER TE GEBRUIKEN:**
+Alle DTOs die deel uitmaken van de **strategische pipeline** MOETEN `CausalityChain` integreren:
+- ✅ OpportunitySignal, ThreatSignal (SWOT input)
+- ✅ AggregatedContextAssessment (Context output)
+- ✅ StrategyDirective (Strategy output)
+- ✅ EntryPlan, SizePlan, ExitPlan, RoutingPlan (Planning outputs)
+- ✅ ExecutionDirective (Execution input - future)
+- ❌ DispositionEnvelope (flow control, geen pipeline data)
+- ❌ Platform DTOs (niet deel van causality chain)
+
+**IMPLEMENTATIE PATTERN:**
+
+1. **Import toevoegen:**
+   ```python
+   from backend.dtos.causality import CausalityChain
+   from backend.utils.id_generators import generate_tick_id  # Voor tests
+   ```
+
+2. **Field toevoegen (ALTIJD als eerste field na docstring):**
+   ```python
+   class MyPipelineDTO(BaseModel):
+       """Pipeline DTO met causality tracking."""
+       
+       # Causality tracking
+       causality: CausalityChain = Field(
+           description=(
+               "Causality tracking - IDs from birth (tick/news/schedule) "
+               "through worker chain"
+           )
+       )
+       
+       # Rest van fields...
+       dto_id: str = Field(default_factory=generate_my_dto_id)
+   ```
+
+3. **Military Datetime ID Pattern (VERPLICHT):**
+   ```python
+   @field_validator("dto_id")
+   @classmethod
+   def validate_dto_id_format(cls, v: str) -> str:
+       """Validate dto_id follows military datetime format: PREFIX_YYYYMMDD_HHMMSS_hash"""
+       import re
+       pattern = r'^PREFIX_\d{8}_\d{6}_[0-9a-f]{8}$'
+       if not re.match(pattern, v):
+           raise ValueError(
+               f"dto_id must match format PREFIX_YYYYMMDD_HHMMSS_hash, got: {v}"
+           )
+       return v
+   ```
+   
+   **Prefixes:**
+   - Birth IDs: `TCK_` (tick), `NWS_` (news), `SCH_` (schedule)
+   - Worker outputs: `OPP_` (opportunity), `THR_` (threat), `CTX_` (context)
+   - Planning: `STR_` (strategy), `ENT_` (entry), `SZE_` (size), `EXT_` (exit), `RTE_` (routing)
+   - Execution: `EXE_` (execution directive - future)
+
+4. **Tests updaten met causality:**
+   ```python
+   def test_my_dto_creation():
+       dto = MyPipelineDTO(
+           causality=CausalityChain(tick_id=generate_tick_id()),
+           # ... rest van fields
+       )
+       assert dto.causality.tick_id is not None
+   ```
+
+5. **Pyright headers voor test files (suppress FieldInfo warnings):**
+   ```python
+   """
+   Unit tests for MyPipelineDTO.
+   
+   Tests creation, validation, and causality tracking.
+   """
+   # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
+   # Suppress Pydantic FieldInfo false positives for optional fields
+   ```
+
+**WAAROM CAUSALITY CHAIN:**
+- Journal reconstructie: Volledige causality chain van tick → execution
+- Audit trail: Waarom werd deze beslissing gemaakt?
+- Debugging: Traceer welke signals/context tot deze directive leidde
+- ID-only model: Geen nested objects, alleen IDs voor efficient storage
+
+**DESIGN DOC REFERENTIE:**
+Zie `docs/development/design_causality_chain.md` voor volledige architectuur.
+
+#### 6.6.4. DTO Implementation Checklist
 
 **Voor elke nieuwe DTO MOET je:**
 
@@ -924,7 +1012,7 @@ class OpportunitySignal(BaseModel):
    # Check Problems panel - only acceptable warnings should remain
    ```
 
-#### 6.6.4. Code Review Standards
+#### 6.6.5. Code Review Standards
 
 **ELKE pull request/commit MOET:**
 
@@ -947,7 +1035,7 @@ class OpportunitySignal(BaseModel):
 - ❌ Lines > 100 characters
 - ❌ Import grouping violations
 
-#### 6.6.5. Automated Quality Tools
+#### 6.6.6. Automated Quality Tools
 
 **Gebruik PowerShell helpers:**
 
@@ -1062,7 +1150,7 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 
 **Als je meer warnings ziet:** Check de 4-step cleanup workflow hierboven.
 
-#### 6.6.6. Quality Metrics Dashboard
+#### 6.6.7. Quality Metrics Dashboard
 
 **Track per module:**
 
@@ -1102,7 +1190,7 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 13. ✅ Merge to main: `git checkout main && git merge feature/dto-name`
 14. ✅ Push to GitHub: `git push origin main`
 
-#### 6.6.7. Quick Reference: Complete Quality Workflow with Git
+#### 6.6.8. Quick Reference: Complete Quality Workflow with Git
 
 **COPY-PASTE COMMANDO'S VOOR NIEUWE DTO MODULE:**
 
