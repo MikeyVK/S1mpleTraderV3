@@ -9,11 +9,11 @@ entries based on technical analysis patterns.
 Part of SWOT framework:
 - ContextWorkers → BaseContext (Strengths & Weaknesses)
 - OpportunityWorkers → OpportunitySignal (Opportunities)
-- ThreatWorkers → CriticalEvent (Threats)
+- ThreatWorkers → ThreatSignal (Threats)
 - PlanningWorker → Confrontation Matrix (combines quadrants)
 
 @layer: DTO (Strategy)
-@dependencies: [pydantic, datetime, backend.utils.id_generators]
+@dependencies: [pydantic, datetime, backend.utils.id_generators, backend.dtos.causality]
 @responsibilities: [opportunity detection contract, causal tracking, SWOT confidence]
 """
 import re
@@ -23,6 +23,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 from backend.utils.id_generators import generate_opportunity_id
+from backend.dtos.causality import CausalityChain
 
 
 class OpportunitySignal(BaseModel):
@@ -30,7 +31,7 @@ class OpportunitySignal(BaseModel):
     OpportunityWorker output DTO representing a detected trading opportunity.
 
     Fields:
-        initiator_id: Flow initiator ID (TCK_/SCH_/NWS_/MAN_)
+        causality: CausalityChain - IDs from birth (tick/news/schedule)
         opportunity_id: Unique opportunity ID (OPP_ prefix, auto-generated)
         timestamp: When the opportunity was detected (UTC)
         asset: Trading pair (BASE/QUOTE format)
@@ -39,7 +40,7 @@ class OpportunitySignal(BaseModel):
         confidence: Optional confidence [0.0, 1.0] for SWOT confrontation
 
     SWOT Framework:
-        confidence (0.0-1.0) mirrors CriticalEvent.severity for mathematical
+        confidence (0.0-1.0) mirrors ThreatSignal.severity for mathematical
         confrontation in PlanningWorker's matrix analysis. This represents
         how confident the OpportunityWorker is about this opportunity.
 
@@ -47,7 +48,7 @@ class OpportunitySignal(BaseModel):
         Low confidence (e.g., 0.3) = weak or uncertain pattern
 
     Causal Chain:
-        initiator_id → opportunity_id → (PlanningWorker decision)
+        CausalityChain birth ID → opportunity_id → (StrategyPlanner decision)
 
     Pure Signal:
         This is a pattern detection event at a specific time/price.
@@ -55,9 +56,8 @@ class OpportunitySignal(BaseModel):
         No trade_id yet - that's created by PlanningWorker if approved.
 
     Examples:
-        >>> from backend.utils.id_generators import generate_tick_id
         >>> signal = OpportunitySignal(
-        ...     initiator_id=generate_tick_id(),
+        ...     causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
         ...     timestamp=datetime.now(timezone.utc),
         ...     asset="BTC/EUR",
         ...     direction="long",
@@ -66,21 +66,14 @@ class OpportunitySignal(BaseModel):
         ... )
     """
 
-    initiator_id: str = Field(
-        pattern=(
-            r'^(TCK|SCH|NWS|MAN)_[0-9a-f]{8}-[0-9a-f]{4}-'
-            r'[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-        ),
-        description="Typed ID of flow initiator"
+    causality: CausalityChain = Field(
+        description="Causality tracking - IDs from birth (tick/news/schedule)"
     )
 
     opportunity_id: str = Field(
         default_factory=generate_opportunity_id,
-        pattern=(
-            r'^OPP_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-'
-            r'[0-9a-f]{4}-[0-9a-f]{12}$'
-        ),
-        description="Typed opportunity ID"
+        pattern=r'^OPP_\d{8}_\d{6}_[0-9a-f]{8}$',
+        description="Typed opportunity ID (military datetime format)"
     )
 
     timestamp: datetime = Field(

@@ -223,7 +223,7 @@
 **Besluit Datum:** 2025-10-24
 
 **Context:**
-Tijdens de implementatie van System DTOs (OpportunitySignal, CriticalEvent) kwam
+Tijdens de implementatie van System DTOs (OpportunitySignal, ThreatSignal) kwam
 naar voren dat beschrijvende teksten (descriptions) niet in de DTOs thuishoren,
 maar wel essentieel zijn voor begrip van de plugin functionaliteit.
 
@@ -246,7 +246,7 @@ maar wel essentieel zijn voor begrip van de plugin functionaliteit.
   - API documentation generation?
 
 **Gerelateerde Discussie:**
-Uit conversatie over CriticalEvent DTO - beschrijvende teksten horen niet in
+Uit conversatie over ThreatSignal DTO - beschrijvende teksten horen niet in
 System DTOs maar moeten wel ergens gedocumenteerd worden voor developers.
 
 ---
@@ -375,7 +375,7 @@ worker categorieën verschillende rollen vervullen in het decision-making proces
 **SWOT Mapping:**
 - **Strengths & Weaknesses:** ContextWorker → ContextAssessment (via aggregatie)
 - **Opportunities:** OpportunityWorker → OpportunitySignal (confidence 0.0-1.0)
-- **Threats:** ThreatWorker → CriticalEvent (severity 0.0-1.0)
+- **Threats:** ThreatWorker → ThreatSignal (severity 0.0-1.0)
 - **Confrontation Matrix:** PlanningWorker → combineert alle quadranten
 
 **Architecturale Componenten:**
@@ -388,11 +388,11 @@ worker categorieën verschillende rollen vervullen in het decision-making proces
 
 2. **ContextAssessment DTO** (System DTO)
    - Bevat aggregated strength/weakness duiding
-   - Analoog aan OpportunitySignal.confidence en CriticalEvent.severity
+   - Analoog aan OpportunitySignal.confidence en ThreatSignal.severity
    - Symmetrie: alle SWOT quadranten hebben 0.0-1.0 scores
 
 3. **SWOT Confrontation Worker** (PlanningWorker)
-   - Input: ContextAssessment + OpportunitySignal + CriticalEvent
+   - Input: ContextAssessment + OpportunitySignal + ThreatSignal
    - Logic: Mathematische confrontatie matrix
    - Output: TradePlan met execution decisie
 
@@ -407,7 +407,7 @@ worker categorieën verschillende rollen vervullen in het decision-making proces
 
 **Gerelateerde DTOs:**
 - OpportunitySignal (confidence field)
-- CriticalEvent (severity field)
+- ThreatSignal (severity field)
 - ContextAssessment (strength/weakness fields) - pending
 
 ---
@@ -586,7 +586,7 @@ class RoutingDirective(BaseModel):
 
 **Mode 2: SWOT Planning Components** (additional)
 3. **StrategyPlanner** (Worker)
-   - Input: ContextAssessment + OpportunitySignal + CriticalEvent
+   - Input: ContextAssessment + OpportunitySignal + ThreatSignal
    - Logic: SWOT confrontatie
    - Output: StrategyDirective (met sub-directives)
 
@@ -642,7 +642,7 @@ EXECUTION_DIRECTIVE_READY
 ```
 Context → ContextAssessment  ┐
 Opportunity → OpportunitySignal ├→ [StrategyPlanner] → StrategyDirective
-Threat → CriticalEvent       ┘
+Threat → ThreatSignal       ┘
     ↓
 STRATEGY_DIRECTIVE_ISSUED
     ↓
@@ -684,10 +684,10 @@ EXECUTION_DIRECTIVE_READY
   - [ ] `MarketOrderRouter`
 - [ ] End-to-end test: Opportunity → ExecutionDirective
 
-**Phase 3: SWOT Planning DTOs** (optioneel voor complexe strategieën)
-- [ ] `StrategyDirective` + sub-directives (Entry/Size/Exit/Routing)
-- [ ] `TriggerInfo`, `ContributingSignals` (causaliteit)
-- [ ] Unit tests
+**Phase 2: SWOT Planning DTOs** (optioneel voor complexe strategieën)
+- [x] `StrategyDirective` + sub-directives (Entry/Size/Exit/Routing) ✅ COMPLETE
+- [x] `TriggerInfo`, `ContributingSignals` (causaliteit) ✅ COMPLETE
+- [x] Unit tests ✅ 17 tests passing
 
 **Phase 4: SWOT Planning Components** (⭐⭐⭐⭐ Expert features)
 - [ ] `BaseStrategyPlanner` worker
@@ -698,6 +698,48 @@ EXECUTION_DIRECTIVE_READY
 - [ ] Integration tests voor role-based selection
 - [ ] End-to-end test: SWOT → StrategyDirective → Role-based planners → ExecutionDirective
 
+**Phase 5: Platform Execution Components** (CRITICAL - Event-Driven Flow)
+- [ ] `DirectiveAssembler` platform worker (bus-agnostic)
+  - Aggregates 4 plans (Entry, Size, Exit, Routing) → ExecutionDirective
+  - Returns: DispositionEnvelope (PUBLISH "EXECUTION_DIRECTIVE_READY")
+  - Wired via EventAdapter to listen: ENTRY_PLAN_CREATED, SIZE_PLAN_CREATED, etc.
+  - Copies TriggerContext forward, adds execution_directive_id
+- [ ] `ExecutionHandler` interface update
+  - Change return type: void → DispositionEnvelope
+  - Workers return STOP disposition, EventAdapter handles routing
+  - Maintains bus-agnostic pattern (no EventBus dependency)
+  - Copies TriggerContext forward (unchanged)
+- [ ] `FlowTerminator` platform worker (bus-agnostic) **← JOURNAL CAUSALITY ENDPOINT**
+  - Responsibilities: 
+    - **Journal causality reconstruction** (uses TriggerContext to query Journal)
+    - Component cleanup, garbage collection, metrics
+  - Input: ExecutionDirective with complete TriggerContext (all IDs accumulated)
+  - Returns: DispositionEnvelope (PUBLISH "UI_FLOW_TERMINATED")
+  - Wired via EventAdapter to listen: _flow_stop
+  - **THIS IS THE COMPONENT THAT USES TRIGGERCONTEXT FOR JOURNAL RECONSTRUCTION**
+- [ ] Event wiring configuration (wiring_map.yaml)
+  - DirectiveAssembler → 4 plan events
+  - ExecutionHandler → EXECUTION_DIRECTIVE_READY
+  - FlowTerminator → _flow_stop
+- [ ] End-to-end test: 4 Plans → DirectiveAssembler → ExecutionDirective → ExecutionHandler → FlowTerminator
+
+**Phase 6: StrategyPlanner Reference Implementations**
+- [ ] Entry Strategy planners (scope: NEW_TRADE)
+  - [ ] `SWOTMomentumPlanner` (SWOT-driven entry decisions)
+  - [ ] `BreakoutPlanner` (pattern-based entries)
+- [ ] Position Management planners (scope: MODIFY_EXISTING)
+  - [ ] `TrailingStopPlanner` → StrategyDirective (MODIFY_EXISTING)
+  - [ ] `PartialProfitPlanner` → StrategyDirective (MODIFY_EXISTING)
+- [ ] Risk Control planners (scope: CLOSE_EXISTING)
+  - [ ] `EmergencyExitPlanner` → StrategyDirective (CLOSE_EXISTING)
+  - [ ] `DrawdownLimiter` → StrategyDirective (CLOSE_EXISTING)
+- [ ] Scheduled Operation planners (scope: NEW_TRADE)
+  - [ ] `DCAPlanner` → StrategyDirective (NEW_TRADE, trigger: schedule)
+  - [ ] `RebalancingPlanner` → StrategyDirective (MODIFY_EXISTING, trigger: schedule)
+- [ ] Integration tests: StrategyPlanner → StrategyDirective → Planning → Execution
+
+**Note**: All StrategyPlanners have 1-op-1 relationship with strategy. Grouping above is for documentation only (not enforced via subtypes).
+
 **Parkeren:**
 - [ ] Timeout handling (wat bij missing plans?)
 - [ ] Partial plan completion policy
@@ -707,6 +749,137 @@ EXECUTION_DIRECTIVE_READY
 **Referenties:**
 - V2 Architectuur: `docs/system/S1mpleTrader V2 Architectuur.md` (PlanningPhase sub-categorieën)
 - SWOT Framework: `docs/development/decision_framework.md`
+- V2→V3 Analysis (archived): `docs/development/#Archief/v2_to_v3_execution_mapping.md`
+- **TriggerContext Causality**: `backend/dtos/causality.py` (immutable causality chain)
+
+---
+
+### 🔗 Causality Tracking Architecture
+
+**Prioriteit:** CRITICAL - Foundation for Journal Reconstruction  
+**Status:** Implemented  
+**Besluit Datum:** 2025-10-26
+
+#### TriggerContext: The Immutable Causality Chain
+
+**Core Concept:**
+TriggerContext is een immutable DTO die door de **hele pijplijn** vloeit, waarbij elke worker zijn output ID toevoegt. FlowTerminator gebruikt deze IDs om de volledige decision chain in de Strategy Journal te reconstrueren.
+
+**Design Principes:**
+1. **Immutability Pattern**: Workers kopiëren + uitbreiden, nooit muteren
+2. **Flexible Fields**: Verschillende worker types vullen verschillende fields
+3. **Universal Usage**: ALLE pipeline DTOs hebben een `causality: TriggerContext` field
+4. **Journal Reconstruction**: FlowTerminator query't Journal met IDs uit TriggerContext
+
+**Pipeline Flow:**
+```python
+# OpportunityWorker
+ctx = TriggerContext(opportunity_ids=["OPP_123"])
+
+# StrategyPlanner
+ctx = ctx.model_copy(update={"strategy_directive_id": "STR_456"})
+
+# Planners (copy forward, add plan IDs)
+ctx = ctx.model_copy(update={"entry_plan_id": "ENT_789"})
+ctx = ctx.model_copy(update={"size_plan_id": "SIZ_012"})
+ctx = ctx.model_copy(update={"exit_plan_id": "EXT_345"})
+ctx = ctx.model_copy(update={"routing_plan_id": "ROU_678"})
+
+# DirectiveAssembler
+ctx = ctx.model_copy(update={"execution_directive_id": "EXE_901"})
+
+# FlowTerminator reconstructs:
+# OPP_123 → STR_456 → ENT_789/SIZ_012/EXT_345/ROU_678 → EXE_901
+journal.query(opportunity_ids=ctx.opportunity_ids) → OpportunitySignal
+journal.query(directive_id=ctx.strategy_directive_id) → StrategyDirective
+journal.query(plan_id=ctx.entry_plan_id) → EntryPlan
+# Complete decision chain reconstructed!
+```
+
+**Worker Type Field Usage:**
+- **SWOT Entry**: opportunity_ids, threat_ids, context_assessment_id
+- **Position Management**: monitored_position_ids, trigger_tick
+- **Risk Control**: threat_ids, trigger_event
+- **Scheduled Operations**: schedule_trigger
+
+**Implementation Status:**
+- [x] TriggerContext DTO (`backend/dtos/causality.py`) ✅
+- [x] 15 unit tests passing ✅
+- [x] Extracted from StrategyDirective (previously embedded) ✅
+- [ ] Add `causality: TriggerContext` field to all pipeline DTOs:
+  - [ ] OpportunitySignal
+  - [ ] ThreatSignal
+  - [ ] StrategyDirective (already has trigger_context) ✅
+  - [ ] EntryPlan, SizePlan, ExitPlan, RoutingPlan
+  - [ ] ExecutionDirective
+- [ ] FlowTerminator implementation (Journal reconstruction logic)
+
+**Architectural Impact:**
+- **FlowTerminator** is het ENIGE component dat TriggerContext gebruikt voor Journal queries
+- Alle andere workers kopiëren het alleen door (immutability pattern)
+- Journal reconstruction gebeurt centraal in FlowTerminator (single responsibility)
+
+**Zie ook:** `backend/dtos/causality.py` voor volledige documentatie en usage examples.
+
+---
+
+### 🔄 V3 Architecture Decisions - ExecutionWorker Migration
+
+**Prioriteit:** CRITICAL - Architectural Foundation  
+**Status:** Architecture Finalized  
+**Besluit Datum:** 2025-10-26
+
+#### Kernbevindingen
+
+**ExecutionWorker Plugin Category VERDWIJNT**. Reden: Verkeerde scheiding tussen platform orchestratie en quant logic.
+
+**V2 ExecutionWorker Subtypes → V3 Mapping**:
+
+1. **TRADE_INITIATION** → ❌ VERWIJDERD
+   - V2: DefaultPlanExecutor (plugin) - uitvoeren van trade plans
+   - V3: ExecutionHandler (existing interface) + EventAdapter (generic wiring)
+   - ExecutionHandler.execute_plan() returnt DispositionEnvelope (STOP)
+   - EventAdapter routes STOP → _flow_stop event → FlowTerminator
+   
+2. **POSITION_MANAGEMENT/RISK_SAFETY/OPERATIONAL** → ✅ StrategyPlanner
+   - V2: Aparte ExecutionWorker categorie
+   - V3: StrategyPlanner workers (1-op-1 met strategie)
+   - Output: StrategyDirective (scope: MODIFY_EXISTING, CLOSE_EXISTING, NEW_TRADE)
+   - Examples: TrailingStopPlanner, EmergencyExitPlanner, DCAPlanner
+   - **Geen nieuwe plugin categorie** - gebruik bestaande StrategyPlanner
+
+#### Architecturale Principes
+
+**1. Bus-Agnostic Workers**:
+- Workers hebben GEEN EventBus dependency
+- Return DispositionEnvelope (CONTINUE/PUBLISH/STOP)
+- EventAdapter (generic) handles event routing
+
+**2. StrategyPlanner = 1-op-1 Relationship**:
+- Elke strategie heeft precies 1 StrategyPlanner
+- Geen enforced subtypes (documentatie only)
+- TrailingStopPlanner, EmergencyExitPlanner, DCAPlanner = allemaal StrategyPlanners
+- Scope field in StrategyDirective (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
+
+**3. Platform Components (Event-Driven)**:
+- DirectiveAssembler: Aggregates 4 plans → ExecutionDirective
+- ExecutionHandler: Executes directive via Tradable (Portfolio)
+- FlowTerminator: Journaling, cleanup, metrics (uniform flow termination)
+
+**4. Event Flow**:
+```
+StrategyPlanner → StrategyDirective
+    ↓
+4 Sub-Planners → EntryPlan, SizePlan, ExitPlan, RoutingPlan
+    ↓ (via EventAdapter)
+DirectiveAssembler → ExecutionDirective → EXECUTION_DIRECTIVE_READY
+    ↓ (via EventAdapter)
+ExecutionHandler → STOP disposition → _flow_stop
+    ↓ (via EventAdapter)
+FlowTerminator → Journaling + Cleanup
+```
+
+**Zie ook**: `docs/development/#Archief/` voor volledige analyse en verworpen concepten.
 
 ---
 
@@ -719,7 +892,7 @@ EXECUTION_DIRECTIVE_READY
 **System DTOs** (SWOT Framework):
 - [x] DispositionEnvelope (21 tests passing)
 - [x] OpportunitySignal (30 tests passing)
-- [x] CriticalEvent (26 tests passing)
+- [x] ThreatSignal (26 tests passing)
 - [x] ContextFactor (28 tests passing)
 - [x] AggregatedContextAssessment (14 tests passing)
 
@@ -762,7 +935,7 @@ EXECUTION_DIRECTIVE_READY
 - [x] ID Generators: 26/26 tests passing
 - [x] DispositionEnvelope: 21/21 tests passing
 - [x] OpportunitySignal: 30/30 tests passing
-- [x] CriticalEvent: 26/26 tests passing
+- [x] ThreatSignal: 26/26 tests passing
 
 **Total:** 103/103 current tests passing ✅
 

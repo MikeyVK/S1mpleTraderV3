@@ -151,7 +151,7 @@ ExecutionEnvironment → EventBus → EventAdapters → Workers → DispositionE
 
 3. **ThreatWorker - "De Waakhond"**
    - Detecteert risico's en gevaren
-   - Output: `DispositionEnvelope(PUBLISH)` met `CriticalEventDTO` (Systeem DTO)
+   - Output: `DispositionEnvelope(PUBLISH)` met `ThreatSignalDTO` (Systeem DTO)
    - 5 Sub-types: PORTFOLIO_RISK, MARKET_RISK, SYSTEM_HEALTH, etc.
 
 4. **PlanningWorker - "De Strateeg"**
@@ -159,10 +159,18 @@ ExecutionEnvironment → EventBus → EventAdapters → Workers → DispositionE
    - Output: Intermediair: `set_result_dto()` met plan DTOs, Finaal: `DispositionEnvelope(PUBLISH)` met `RoutedTradePlanDTO`
    - 4 Sub-types: ENTRY_PLANNING, EXIT_PLANNING, SIZE_PLANNING, ORDER_ROUTING
 
-5. **ExecutionWorker - "De Uitvoerder"**
-   - Voert plannen uit en beheert posities
-   - Output: Side-effects via `IExecutionProvider`, publiceert status events
-   - 4 Sub-types: TRADE_INITIATION, POSITION_MANAGEMENT, RISK_SAFETY, OPERATIONAL
+5. **StrategyPlanner - "De Beslisser"**
+   - Produceert StrategyDirective op basis van triggers (SWOT, tick, threat, schedule)
+   - Output: `DispositionEnvelope(PUBLISH)` met `StrategyDirective`
+   - **1-op-1 relatie**: Elke strategie heeft precies 1 StrategyPlanner
+   - **Geen enforced subtypes** - categorisatie voor documentatie only:
+     - Entry Strategies (scope: NEW_TRADE, trigger: SWOT/Opportunity)
+     - Position Management (scope: MODIFY_EXISTING, trigger: tick)
+     - Risk Control (scope: CLOSE_EXISTING, trigger: threat)
+     - Scheduled Operations (scope: NEW_TRADE, trigger: schedule)
+   - Examples: SWOTMomentumPlanner, TrailingStopPlanner, EmergencyExitPlanner, DCAPlanner
+
+**Note**: V2 ExecutionWorker category is VERWIJDERD. TRADE_INITIATION is platform orchestration (ExecutionHandler + EventAdapter), andere subtypes zijn StrategyPlanners.
 
 ### 3.2. Point-in-Time Data Model (KRITIEK!)
 
@@ -1060,11 +1068,16 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 
 | Module | Pylint Score | Test Coverage | Line Length | Pylance Warnings | Status |
 |--------|--------------|---------------|-------------|------------------|--------|
+| aggregated_context_assessment.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ |
+| causality.py | 10.00/10 | 25/25 ✅ | 10.00/10 | 0 | ✅ |
 | context_factor.py | 10.00/10 | 28/28 ✅ | 10.00/10 | 0 | ✅ |
 | context_factors.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ |
 | enums.py | 10.00/10 | 13/13 ✅ | 10.00/10 | 0 | ✅ |
 | entry_plan.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 1 (datetime.tzinfo - accepted) | ✅ |
-| strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 8 (FieldInfo - accepted) | ✅ |
+| id_generators.py | 10.00/10 | 37/37 ✅ | 10.00/10 | 0 | ✅ |
+| opportunity_signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ |
+| strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 1 (FieldInfo - accepted) | ✅ |
+| threat_signal.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ |
 
 **Acceptance criteria:** 
 - ✅ ALLE modules: Pylint 10.00/10 (whitespace, imports, line length)
@@ -1383,9 +1396,49 @@ class MyDTO(BaseModel):
 
 **VERPLICHT TDD WORKFLOW:**
 
-1. **Red:** Schrijf test die faalt
-2. **Green:** Schrijf minimale code om test te laten slagen
-3. **Refactor:** Verbeter code, tests blijven groen
+**STAP 0: CONCEPTUEEL ONTWERP (VERPLICHT VOORDAT JE CODE SCHRIJFT)**
+
+Voordat je begint met testen of implementatie, moet je het component **volledig conceptueel ontwerpen**:
+
+1. **Architecturale Positie:**
+   - Waar past dit component in de pipeline?
+   - Welke workers produceren input?
+   - Welke workers consumeren output?
+   - Is dit een DTO, Worker, Platform Component, of Factory?
+
+2. **Verantwoordelijkheden & Contract:**
+   - Wat is de single responsibility?
+   - Welke data komt binnen?
+   - Welke data gaat eruit?
+   - Welke invarianten moeten gehandhaafd worden?
+
+3. **Field Design (voor DTOs):**
+   - Welke fields zijn **absoluut noodzakelijk**?
+   - Welke fields zijn optioneel en waarom?
+   - Welke types maken de intentie duidelijk?
+   - Hoe voorkom je feature creep?
+
+4. **Immutability & Flow Pattern:**
+   - Is dit een immutable DTO (copy + extend)?
+   - Wordt dit doorgegeven door workers?
+   - Wie is de eindbestemming (consumer)?
+
+5. **Design Document (optioneel voor complexe componenten):**
+   - Maak een `docs/development/design_[component].md`
+   - Documenteer: architecturale positie, verantwoordelijkheden, flow, edge cases
+   - Review met gebruiker VOORDAT je test/implementatie start
+
+**WAAROM DEZE STAP KRITIEK IS:**
+- Voorkomt implementatie van verkeerde abstractions
+- Dwingt helderheid over single responsibility
+- Voorkomt feature creep (fields die "misschien handig zijn")
+- Maakt test-driven development effectiever (je weet wat je test)
+
+**ALLEEN NA CONCEPTUELE GOEDKEURING:**
+
+**STAP 1: RED** - Schrijf test die faalt
+**STAP 2: GREEN** - Schrijf minimale code om test te laten slagen  
+**STAP 3: REFACTOR** - Verbeter code, tests blijven groen
 
 ```python
 # test/test_my_worker.py
@@ -1614,7 +1667,7 @@ import_heading_firstparty = Our Application Imports
 | **TickCache** | Tijdelijke DTO opslag per tick | Levensduur: één tick/flow |
 | **ITradingContextProvider** | Data access interface | get_base_context(), get_required_dtos(), set_result_dto() |
 | **EventAdapter** | Component ↔ EventBus interface | Één per component, geconfigureerd via wiring_spec |
-| **Systeem DTO** | Standaard platform DTOs | OpportunitySignalDTO, CriticalEventDTO, etc. |
+| **Systeem DTO** | Standaard platform DTOs | OpportunitySignalDTO, ThreatSignalDTO, etc. |
 | **Plugin DTO** | Worker-specifieke DTOs | Voor TickCache, gedeeld via enrollment |
 | **Wiring Map** | Event routing configuratie | UI-gegenereerd per strategie |
 | **Capability** | Opt-in worker functionaliteit | Gedeclareerd in manifest, geïnjecteerd door factory |

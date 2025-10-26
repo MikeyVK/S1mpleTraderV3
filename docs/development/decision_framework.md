@@ -27,7 +27,7 @@ Het SWOT Decision Framework is de besluitvormingsarchitectuur van SimpleTraderV3
 | **Strengths** | ContextWorker | ContextAssessment | `strength` | 0.0-1.0 |
 | **Weaknesses** | ContextWorker | ContextAssessment | `weakness` | 0.0-1.0 |
 | **Opportunities** | OpportunityWorker | OpportunitySignal | `confidence` | 0.0-1.0 |
-| **Threats** | ThreatWorker | CriticalEvent | `severity` | 0.0-1.0 |
+| **Threats** | ThreatWorker | ThreatSignal | `severity` | 0.0-1.0 |
 
 **Symmetrie:** Alle quadranten produceren 0.0-1.0 scores voor mathematische combinatie.
 
@@ -49,10 +49,10 @@ Het SWOT Decision Framework is de besluitvormingsarchitectuur van SimpleTraderV3
    → FVGDetector → OpportunitySignal(confidence=0.85)
    ↓
 5. ThreatWorkers (PARALLEL)
-   → DrawdownMonitor → CriticalEvent(severity=0.60)
+   → DrawdownMonitor → ThreatSignal(severity=0.60)
    ↓
 6. SWOT Confrontation Worker (PLANNING)
-   → Input: ContextAssessment + OpportunitySignals + CriticalEvents
+   → Input: ContextAssessment + OpportunitySignals + ThreatSignals
    → Logic: Confrontation matrix calculation
    → Output: TradePlan(execute=true/false, reasoning=...)
 ```
@@ -304,7 +304,7 @@ class SWOTConfrontationWorker(StandardWorker):
     Input:
         - ContextAssessment (strength/weakness)
         - OpportunitySignal (confidence)
-        - CriticalEvent (severity)
+        - ThreatSignal (severity)
     
     Output:
         - TradePlan (execute decision + reasoning)
@@ -314,7 +314,7 @@ class SWOTConfrontationWorker(StandardWorker):
         # Haal SWOT inputs op
         context = self.context_provider.get_dto(ContextAssessment)
         opportunities = self.context_provider.get_dtos(OpportunitySignal)
-        threats = self.context_provider.get_dtos(CriticalEvent)
+        threats = self.context_provider.get_dtos(ThreatSignal)
         
         # Bereken confrontatie scores
         confrontation = self._calculate_matrix(
@@ -332,7 +332,7 @@ class SWOTConfrontationWorker(StandardWorker):
         self,
         context: ContextAssessment,
         opportunities: List[OpportunitySignal],
-        threats: List[CriticalEvent]
+        threats: List[ThreatSignal]
     ) -> ConfrontationMatrix:
         """
         Mathematische confrontatie berekening.
@@ -473,7 +473,7 @@ ml_score = trained_model.predict(features)
 ## References
 
 - [OpportunitySignal DTO](../../backend/dtos/strategy/opportunity_signal.py) - Opportunities quadrant
-- [CriticalEvent DTO](../../backend/dtos/execution/critical_event.py) - Threats quadrant
+- [ThreatSignal DTO](../../backend/dtos/strategy/threat_signal.py) - Threats quadrant
 - [DispositionEnvelope](../../backend/dtos/shared/disposition_envelope.py) - Worker output contract
 - [TODO.md](../TODO.md#-swot-decision-framework) - Implementation tracking
 

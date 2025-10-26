@@ -3,7 +3,7 @@ Unit tests for EntryPlan DTO.
 
 Tests creation, validation, and edge cases for entry planning output.
 """
-# pyright: reportCallIssue=false
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives for optional fields
 # type: ignore[union-attr]
 
@@ -14,6 +14,8 @@ import pytest
 from pydantic import ValidationError
 
 from backend.dtos.strategy.entry_plan import EntryPlan
+from backend.dtos.causality import CausalityChain
+from backend.utils.id_generators import generate_tick_id
 
 
 class TestEntryPlanCreation:
@@ -22,6 +24,7 @@ class TestEntryPlanCreation:
     def test_minimal_market_entry(self):
         """Can create minimal market entry plan."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test_planner",
             symbol="BTCUSDT",
             direction="BUY",
@@ -48,6 +51,7 @@ class TestEntryPlanCreation:
         valid_until = now + timedelta(minutes=30)
 
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="layered_entry",
             symbol="ETHUSDT",
             direction="SELL",
@@ -72,6 +76,7 @@ class TestEntryPlanCreation:
     def test_stop_limit_entry(self):
         """Can create stop-limit entry plan."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="breakout_entry",
             symbol="SOLUSDT",
             direction="BUY",
@@ -94,7 +99,8 @@ class TestEntryPlanValidation:
         """planner_id is required."""
         with pytest.raises(ValidationError) as exc_info:
             EntryPlan(
-                symbol="BTCUSDT",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            symbol="BTCUSDT",
                 direction="BUY",
                 order_type="MARKET",
                 timing="IMMEDIATE",
@@ -108,7 +114,8 @@ class TestEntryPlanValidation:
         """symbol is required."""
         with pytest.raises(ValidationError) as exc_info:
             EntryPlan(
-                planner_id="test",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            planner_id="test",
                 direction="BUY",
                 order_type="MARKET",
                 timing="IMMEDIATE",
@@ -122,7 +129,8 @@ class TestEntryPlanValidation:
         """direction is required."""
         with pytest.raises(ValidationError) as exc_info:
             EntryPlan(
-                planner_id="test",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            planner_id="test",
                 symbol="BTCUSDT",
                 order_type="MARKET",
                 timing="IMMEDIATE",
@@ -136,7 +144,8 @@ class TestEntryPlanValidation:
         """direction must be 'BUY' or 'SELL'."""
         with pytest.raises(ValidationError) as exc_info:
             EntryPlan(
-                planner_id="test",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            planner_id="test",
                 symbol="BTCUSDT",
                 direction="HOLD",  # type: ignore[arg-type]  # Invalid direction
                 order_type="MARKET",
@@ -151,7 +160,8 @@ class TestEntryPlanValidation:
         """order_type is required."""
         with pytest.raises(ValidationError) as exc_info:
             EntryPlan(
-                planner_id="test",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            planner_id="test",
                 symbol="BTCUSDT",
                 direction="BUY",
                 timing="IMMEDIATE",
@@ -165,7 +175,8 @@ class TestEntryPlanValidation:
         """timing is required."""
         with pytest.raises(ValidationError) as exc_info:
             EntryPlan(
-                planner_id="test",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            planner_id="test",
                 symbol="BTCUSDT",
                 direction="BUY",
                 order_type="MARKET",
@@ -179,7 +190,8 @@ class TestEntryPlanValidation:
         """rationale is required."""
         with pytest.raises(ValidationError) as exc_info:
             EntryPlan(
-                planner_id="test",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            planner_id="test",
                 symbol="BTCUSDT",
                 direction="BUY",
                 order_type="MARKET",
@@ -194,7 +206,8 @@ class TestEntryPlanValidation:
         # Too high
         with pytest.raises(ValidationError):
             EntryPlan(
-                planner_id="test",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            planner_id="test",
                 symbol="BTCUSDT",
                 direction="BUY",
                 order_type="MARKET",
@@ -206,7 +219,8 @@ class TestEntryPlanValidation:
         # Negative
         with pytest.raises(ValidationError):
             EntryPlan(
-                planner_id="test",
+                causality=CausalityChain(tick_id=generate_tick_id()),
+            planner_id="test",
                 symbol="BTCUSDT",
                 direction="BUY",
                 order_type="MARKET",
@@ -217,6 +231,7 @@ class TestEntryPlanValidation:
 
         # Valid boundaries
         plan_zero = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test",
             symbol="BTCUSDT",
             direction="BUY",
@@ -228,6 +243,7 @@ class TestEntryPlanValidation:
         assert plan_zero.max_slippage_pct == Decimal("0.0")
 
         plan_one = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test",
             symbol="BTCUSDT",
             direction="BUY",
@@ -245,6 +261,7 @@ class TestEntryPlanDefaultValues:
     def test_auto_generates_plan_id(self):
         """plan_id is auto-generated with ENT_ prefix."""
         plan1 = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test",
             symbol="BTCUSDT",
             direction="BUY",
@@ -253,6 +270,7 @@ class TestEntryPlanDefaultValues:
             rationale="Test"
         )
         plan2 = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test",
             symbol="BTCUSDT",
             direction="BUY",
@@ -272,6 +290,7 @@ class TestEntryPlanDefaultValues:
         """created_at is auto-set to current UTC time."""
         before = datetime.now(timezone.utc)
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test",
             symbol="BTCUSDT",
             direction="BUY",
@@ -287,12 +306,13 @@ class TestEntryPlanDefaultValues:
         assert isinstance(created_at, datetime)
         # Pylance limitation: FieldInfo doesn't narrow to datetime after isinstance()
         # Runtime works perfectly. See agent.md section 6.6.5 "Bekende acceptable warnings #2"
-        tzinfo = created_at.tzinfo  # type: ignore[attr-defined]
+        tzinfo = created_at.tzinfo  # pyright: ignore[reportAttributeAccessIssue]
         assert tzinfo is not None
 
     def test_optional_fields_default_to_none(self):
         """Optional fields default to None."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test",
             symbol="BTCUSDT",
             direction="BUY",
@@ -310,6 +330,7 @@ class TestEntryPlanDefaultValues:
     def test_planner_metadata_defaults_to_empty_dict(self):
         """planner_metadata defaults to empty dict."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test",
             symbol="BTCUSDT",
             direction="BUY",
@@ -328,6 +349,7 @@ class TestEntryPlanSerialization:
     def test_can_serialize_to_dict(self):
         """Can serialize EntryPlan to dict."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test_planner",
             symbol="BTCUSDT",
             direction="BUY",
@@ -348,6 +370,7 @@ class TestEntryPlanSerialization:
     def test_can_serialize_to_json(self):
         """Can serialize EntryPlan to JSON."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="test_planner",
             symbol="BTCUSDT",
             direction="BUY",
@@ -364,8 +387,10 @@ class TestEntryPlanSerialization:
 
     def test_can_deserialize_from_dict(self):
         """Can deserialize EntryPlan from dict."""
+        tick_id = generate_tick_id()
         data = {
-            "plan_id": "ENT_test-123",
+            "causality": {"tick_id": tick_id},
+            "plan_id": "ENT_20250125_120000_abc12345",
             "created_at": datetime.now(timezone.utc).isoformat(),
             "planner_id": "test_planner",
             "symbol": "BTCUSDT",
@@ -377,7 +402,7 @@ class TestEntryPlanSerialization:
 
         plan = EntryPlan.model_validate(data)
 
-        assert plan.plan_id == "ENT_test-123"
+        assert plan.plan_id == "ENT_20250125_120000_abc12345"
         assert plan.planner_id == "test_planner"
         assert plan.symbol == "BTCUSDT"
 
@@ -388,6 +413,7 @@ class TestEntryPlanUseCases:
     def test_immediate_market_order_for_urgent_signal(self):
         """Immediate market entry for high urgency signal."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="immediate_market_entry",
             symbol="BTCUSDT",
             direction="BUY",
@@ -405,6 +431,7 @@ class TestEntryPlanUseCases:
     def test_layered_entry_for_large_position(self):
         """Layered limit entry for reducing market impact."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="layered_limit_entry",
             symbol="ETHUSDT",
             direction="BUY",
@@ -428,6 +455,7 @@ class TestEntryPlanUseCases:
         valid_until = datetime.now(timezone.utc) + timedelta(hours=4)
 
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="patient_limit_entry",
             symbol="SOLUSDT",
             direction="SELL",
@@ -449,6 +477,7 @@ class TestEntryPlanUseCases:
     def test_twap_entry_for_time_distributed_execution(self):
         """TWAP entry for time-weighted execution."""
         plan = EntryPlan(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             planner_id="twap_entry",
             symbol="BTCUSDT",
             direction="BUY",

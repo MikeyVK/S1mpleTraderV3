@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 
 # Application imports
+from backend.dtos.causality import CausalityChain
 from backend.utils.id_generators import generate_strategy_directive_id
 
 
@@ -39,30 +40,6 @@ class DirectiveScope(str, Enum):
     NEW_TRADE = "NEW_TRADE"
     MODIFY_EXISTING = "MODIFY_EXISTING"
     CLOSE_EXISTING = "CLOSE_EXISTING"
-
-
-class ContributingSignals(BaseModel):
-    """
-    All SWOT signals contributing to this directive.
-
-    Attributes:
-        opportunity_ids: List of OpportunitySignal IDs
-        threat_ids: List of ThreatSignal IDs
-        context_assessment_id: ID of AggregatedContextAssessment
-    """
-
-    opportunity_ids: list[str] = Field(
-        default_factory=list,
-        description="List of OpportunitySignal IDs contributing to this directive"
-    )
-    threat_ids: list[str] = Field(
-        default_factory=list,
-        description="List of ThreatSignal IDs contributing to this directive"
-    )
-    context_assessment_id: str = Field(
-        ...,
-        description="ID of AggregatedContextAssessment providing market context"
-    )
 
 
 class EntryDirective(BaseModel):
@@ -227,22 +204,28 @@ class RoutingDirective(BaseModel):
 
 class StrategyDirective(BaseModel):
     """
-    High-level strategy directive from SWOT StrategyPlanner to role-based planners.
+    Universal strategy directive from ANY StrategyPlanner to role-based planners.
 
     ARCHITECTURAL POSITION:
-    StrategyDirective is the critical bridge between the SWOT framework (OpportunitySignal,
-    ThreatSignal, CriticalEvent, AggregatedContextAssessment) and the Planning Layer
-    (EntryPlan, SizePlan, ExitPlan, RoutingPlan). It translates strategic analysis into
+    StrategyDirective is the critical bridge between ANY StrategyPlanner type and the Planning
+    Layer (EntryPlan, SizePlan, ExitPlan, RoutingPlan). It translates strategic analysis into
     tactical constraints/hints that guide role-based planners.
 
+    STRATEGYPLANNER TYPES:
+    - **Entry Strategy** (SWOT): OpportunitySignal + Context → NEW_TRADE
+    - **Position Management**: Position monitoring + tick → MODIFY_EXISTING
+    - **Risk Control**: ThreatSignal/ThreatSignal → CLOSE_EXISTING
+    - **Scheduled Operations**: Time trigger → NEW_TRADE
+
     DIRECTIVE FLOW:
-    1. SWOT StrategyPlanner receives: OpportunitySignal/ThreatSignal + AggregatedContextAssessment
-    2. StrategyPlanner analyzes SWOT signals and produces StrategyDirective with:
+    1. StrategyPlanner receives trigger (SWOT signals, tick, threat, schedule)
+    2. StrategyPlanner produces StrategyDirective with:
        - Scope: NEW_TRADE, MODIFY_EXISTING, or CLOSE_EXISTING
+       - TriggerContext: Causality tracking (what caused this directive)
        - Sub-directives: EntryDirective, SizeDirective, ExitDirective, RoutingDirective
     3. Role-based planners (EntryPlanner, SizePlanner, etc.) receive StrategyDirective
     4. Each planner reads its corresponding sub-directive and produces Planning DTO
-    5. ExecutionAggregator combines all Planning DTOs into ExecutionDirective
+    5. DirectiveAssembler combines all Planning DTOs into ExecutionDirective
 
     DIRECTIVE SCOPES:
     - **NEW_TRADE**: Open new position
@@ -284,14 +267,13 @@ class StrategyDirective(BaseModel):
     - Computing stop/target prices (ExitPlanner's job)
     - Choosing specific order types/routes (RoutingPlanner's job)
 
-    USAGE EXAMPLE - NEW TRADE FROM OPPORTUNITY:
+    USAGE EXAMPLE 1 - NEW TRADE FROM SWOT OPPORTUNITY:
     ```python
-    # SWOT StrategyPlanner produces directive
+    # SWOTMomentumPlanner analyzes OpportunitySignal
     directive = StrategyDirective(
         strategy_planner_id="swot_momentum_planner",
-        contributing_signals=ContributingSignals(
+        trigger_context=TriggerContext(
             opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"],
-            threat_ids=[],
             context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
         ),
         scope=DirectiveScope.NEW_TRADE,
@@ -318,52 +300,91 @@ class StrategyDirective(BaseModel):
             max_total_slippage_pct=Decimal("0.002")
         )
     )
-
-    # Role-based planners receive directive and produce Planning DTOs
-    entry_plan = EntryPlanner.plan(directive)  # Reads entry_directive
-    size_plan = SizePlanner.plan(directive)    # Reads size_directive
-    exit_plan = ExitPlanner.plan(directive)    # Reads exit_directive
-    routing_plan = RoutingPlanner.plan(directive)  # Reads routing_directive
-    
-    # Causality tracking: Query Journal using contributing_signals IDs
-    journal_entries = StrategyJournal.query(
-        opportunity_ids=directive.contributing_signals.opportunity_ids,
-        directive_id=directive.directive_id
-    )
     ```
 
-    USAGE EXAMPLE - MODIFY EXISTING FROM THREAT:
+    USAGE EXAMPLE 2 - MODIFY EXISTING FROM TICK (POSITION MANAGEMENT):
     ```python
+    # TrailingStopPlanner monitors position via tick
     directive = StrategyDirective(
-        strategy_planner_id="swot_risk_planner",
-        contributing_signals=ContributingSignals(
-            opportunity_ids=[],
-            threat_ids=["THR_12345678-1234-1234-1234-123456789012"],
-            context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
+        strategy_planner_id="trailing_stop_planner",
+        trigger_context=TriggerContext(
+            monitored_position_ids=["POS_12345678-1234-1234-1234-123456789012"],
+            trigger_tick={"symbol": "BTCUSDT", "price": Decimal("45000"), "timestamp": "..."}
         ),
         scope=DirectiveScope.MODIFY_EXISTING,
         target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
-        confidence=Decimal("0.9"),
-        # Only exit adjustments needed
+        confidence=Decimal("0.95"),
+        # Only exit adjustment needed
         exit_directive=ExitDirective(
             profit_taking_preference=Decimal("0.8"),
-            risk_reward_ratio=Decimal("1.5"),
-            stop_loss_tolerance=Decimal("0.01")
+            risk_reward_ratio=Decimal("2.0"),
+            stop_loss_tolerance=Decimal("0.005")  # Tighter trailing stop
         )
     )
-    # Only ExitPlanner is invoked - produces ExitPlan with adjusted stops/targets
-    
-    # Context reconstruction via Journal:
-    # contributing_signals.threat_ids → ThreatSignal in Journal
-    # ThreatSignal.primary_pattern → "BEARISH_DIVERGENCE"
-    # ThreatSignal.confidence → 0.9
+    ```
+
+    USAGE EXAMPLE 3 - CLOSE EXISTING FROM THREAT (RISK CONTROL):
+    ```python
+    # EmergencyExitPlanner responds to critical threat
+    directive = StrategyDirective(
+        strategy_planner_id="emergency_exit_planner",
+        trigger_context=TriggerContext(
+            threat_ids=["THR_12345678-1234-1234-1234-123456789012"],
+            trigger_event={"type": "FLASH_CRASH", "severity": "CRITICAL"}
+        ),
+        scope=DirectiveScope.CLOSE_EXISTING,
+        target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
+        confidence=Decimal("0.99"),
+        # Only routing urgency needed for emergency exit
+        routing_directive=RoutingDirective(
+            execution_urgency=Decimal("1.0"),  # Immediate market order
+            max_total_slippage_pct=Decimal("0.05")  # Accept high slippage
+        )
+    )
+    ```
+
+    USAGE EXAMPLE 4 - NEW TRADE FROM SCHEDULE (SCHEDULED OPERATIONS):
+    ```python
+    # DCAPlanner executes on schedule
+    directive = StrategyDirective(
+        strategy_planner_id="dca_planner",
+        trigger_context=TriggerContext(
+            schedule_trigger={"frequency": "WEEKLY", "day": "MONDAY", "time": "10:00"}
+        ),
+        scope=DirectiveScope.NEW_TRADE,
+        confidence=Decimal("0.80"),
+        # DCA-specific constraints
+        entry_directive=EntryDirective(
+            symbol="BTCUSDT",
+            direction="BUY",
+            timing_preference=Decimal("0.3")  # Patient entry
+        ),
+        size_directive=SizeDirective(
+            aggressiveness=Decimal("0.5"),
+            max_risk_amount=Decimal("100.00")  # Fixed amount per DCA
+        ),
+        routing_directive=RoutingDirective(
+            execution_urgency=Decimal("0.2")  # Use limit orders
+        )
+    )
+    ```
+
+    CAUSALITY TRACKING VIA JOURNAL:
+    ```python
+    # Query Journal using trigger_context IDs
+    journal_entries = StrategyJournal.query(
+        opportunity_ids=directive.trigger_context.opportunity_ids,
+        directive_id=directive.directive_id
+    )
+    # Reconstruct decision chain:
+    # OpportunitySignal → StrategyDirective → EntryPlan → ExecutionDirective
     ```
 
     Attributes:
         directive_id: Auto-generated unique directive ID (STR_ prefix)
         strategy_planner_id: ID of StrategyPlanner that produced this directive
         decision_timestamp: Auto-set UTC timestamp of directive creation
-        contributing_signals: All SWOT signals contributing to this directive
+        trigger_context: Context of what triggered this directive (causality tracking)
         scope: Directive scope (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
         confidence: Confidence score [0.0-1.0] in this directive
         target_trade_ids: List of existing trade IDs (for MODIFY_EXISTING/CLOSE_EXISTING)
@@ -385,9 +406,12 @@ class StrategyDirective(BaseModel):
         default_factory=lambda: datetime.now(UTC),
         description="Auto-set UTC timestamp of directive creation"
     )
-    contributing_signals: ContributingSignals = Field(
+    causality: CausalityChain = Field(
         ...,
-        description="All SWOT signals contributing to this directive"
+        description=(
+            "Causality tracking - IDs from birth (tick/news/schedule) through "
+            "worker outputs (signals, assessments) to this directive"
+        )
     )
     scope: DirectiveScope = Field(
         ...,
@@ -399,7 +423,7 @@ class StrategyDirective(BaseModel):
         ...,
         description=(
             "Confidence score [0.0-1.0] in this directive "
-            "based on SWOT analysis strength"
+            "based on planner's analysis strength"
         )
     )
     target_trade_ids: list[str] = Field(

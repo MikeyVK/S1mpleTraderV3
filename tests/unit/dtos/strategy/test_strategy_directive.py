@@ -3,7 +3,7 @@ Unit tests for StrategyDirective DTO.
 
 Tests creation, validation, and edge cases for strategy planning directives.
 """
-# pyright: reportAttributeAccessIssue=false
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives - Pylance can't narrow types after isinstance()
 
 from datetime import datetime, timezone
@@ -12,14 +12,14 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
+from backend.dtos.causality import CausalityChain
 from backend.dtos.strategy.strategy_directive import (
     StrategyDirective,
     EntryDirective,
     SizeDirective,
     ExitDirective,
     RoutingDirective,
-    DirectiveScope,
-    ContributingSignals
+    DirectiveScope
 )
 
 
@@ -30,11 +30,7 @@ class TestStrategyDirectiveCreation:
         """Can create minimal new trade directive with only required fields."""
         directive = StrategyDirective(
             strategy_planner_id="swot_planner_v1",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.75")
         )
@@ -51,11 +47,7 @@ class TestStrategyDirectiveCreation:
         """Can create complete directive with all 4 sub-directives."""
         directive = StrategyDirective(
             strategy_planner_id="swot_planner_v1",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.85"),
             entry_directive=EntryDirective(
@@ -89,8 +81,8 @@ class TestStrategyDirectiveCreation:
         size_dir = directive.size_directive
         assert entry_dir is not None
         assert size_dir is not None
-        entry_symbol = str(entry_dir.symbol)
-        size_agg = size_dir.aggressiveness
+        entry_symbol = str(entry_dir.symbol)  # pyright: ignore[reportAttributeAccessIssue]
+        size_agg = size_dir.aggressiveness  # pyright: ignore[reportAttributeAccessIssue]
         assert entry_symbol == "BTCUSDT"
         assert size_agg == Decimal("0.6")
 
@@ -102,11 +94,7 @@ class TestStrategyDirectiveValidation:
         """strategy_planner_id is required."""
         with pytest.raises(ValidationError) as exc_info:
             StrategyDirective(
-                contributing_signals=ContributingSignals(
-                    opportunity_ids=[],
-                    threat_ids=[],
-                    context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-                ),
+                causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
                 scope=DirectiveScope.NEW_TRADE,
                 confidence=Decimal("0.5")
             )
@@ -117,11 +105,7 @@ class TestStrategyDirectiveValidation:
         with pytest.raises(ValidationError):
             StrategyDirective(
                 strategy_planner_id="test_planner",
-                contributing_signals=ContributingSignals(
-                    opportunity_ids=[],
-                    threat_ids=[],
-                    context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-                ),
+                causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
                 scope=DirectiveScope.NEW_TRADE,
                 confidence=Decimal("1.5")  # Invalid: > 1.0
             )
@@ -132,11 +116,7 @@ class TestStrategyDirectiveValidation:
             # Pylance limitation: cannot type narrow string literal for Enum
             StrategyDirective(  # type: ignore[call-overload]
                 strategy_planner_id="test_planner",
-                contributing_signals=ContributingSignals(
-                    opportunity_ids=[],
-                    threat_ids=[],
-                    context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-                ),
+                causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
                 scope="INVALID_SCOPE",  # type: ignore[arg-type]
                 confidence=Decimal("0.5")
             )
@@ -149,21 +129,13 @@ class TestStrategyDirectiveDefaultValues:
         """directive_id is auto-generated with STR_ prefix."""
         directive1 = StrategyDirective(
             strategy_planner_id="test",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=[],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
         directive2 = StrategyDirective(
             strategy_planner_id="test",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=[],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
@@ -180,11 +152,7 @@ class TestStrategyDirectiveDefaultValues:
         before = datetime.now(timezone.utc)
         directive = StrategyDirective(
             strategy_planner_id="test",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=[],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
@@ -195,18 +163,14 @@ class TestStrategyDirectiveDefaultValues:
         assert isinstance(directive.decision_timestamp, datetime)
         # Pylance limitation: FieldInfo doesn't narrow to datetime after isinstance()
         # Runtime works perfectly. See agent.md section 6.6.5 "Bekende acceptable warnings #2"
-        tzinfo = directive.decision_timestamp.tzinfo  # type: ignore[attr-defined]
+        tzinfo = directive.decision_timestamp.tzinfo  # pyright: ignore[reportAttributeAccessIssue]
         assert tzinfo is not None
 
     def test_sub_directives_default_to_none(self):
         """All sub-directives are optional and default to None."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=[],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
@@ -220,39 +184,34 @@ class TestStrategyDirectiveDefaultValues:
         """target_trade_ids defaults to empty list for NEW_TRADE."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=[],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
 
         assert directive.target_trade_ids == []
 
-    def test_contributing_signals_enable_journal_causality(self):
-        """contributing_signals contain all SWOT IDs for Journal causality tracking."""
+    def test_causality_enable_journal_causality(self):
+        """causality contain all SWOT IDs for Journal causality tracking."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=["OPP_123", "OPP_456"],
-                threat_ids=["THR_789"],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
+            causality=CausalityChain(
+                tick_id="TCK_20251026_100000_a1b2c3d4",
+                opportunity_signal_ids=["OPP_20251026_100001_b2c3d4e5",
+                                        "OPP_20251026_100002_c3d4e5f6"],
+                threat_ids=["THR_20251026_100003_d4e5f6a7"],
+                context_assessment_id="CTX_20251026_100004_e5f6a7b8"
             ),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.75")
         )
 
-        # ContributingSignals enable Journal causality reconstruction
-        signals = directive.contributing_signals
-        # Extract to intermediate variables to avoid line-too-long
-        opp_ids = signals.opportunity_ids  # type: ignore[attr-defined]
-        threat_ids = signals.threat_ids  # type: ignore[attr-defined]
-        ctx_id = signals.context_assessment_id  # type: ignore[attr-defined]
-        assert len(opp_ids) == 2
-        assert len(threat_ids) == 1
-        assert ctx_id.startswith("CTX_")
+        # CausalityChain enable Journal causality reconstruction
+        causality = directive.causality
+        # pyright: ignore[reportAttributeAccessIssue] - Pydantic FieldInfo false positive
+        assert len(causality.opportunity_signal_ids) == 2
+        assert len(causality.threat_ids) == 1
+        assert causality.context_assessment_id.startswith("CTX_")
 
 
 class TestStrategyDirectiveSerialization:
@@ -262,11 +221,7 @@ class TestStrategyDirectiveSerialization:
         """Can serialize to dict."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.75")
         )
@@ -281,11 +236,7 @@ class TestStrategyDirectiveSerialization:
         """Can serialize to JSON."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=[],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.MODIFY_EXISTING,
             target_trade_ids=["TRD_001"],
             confidence=Decimal("0.6")
@@ -300,10 +251,10 @@ class TestStrategyDirectiveSerialization:
         """Can deserialize from dict."""
         data: dict[str, object] = {
             "strategy_planner_id": "test",
-            "contributing_signals": {
-                "opportunity_ids": [],
-                "threat_ids": [],
-                "context_assessment_id": "CTX_12345678-1234-1234-1234-123456789012"
+            "causality": {
+                "tick_id": "TCK_20251026_100000_a1b2c3d4",
+                "opportunity_signal_ids": [],
+                "threat_ids": []
             },
             "scope": "NEW_TRADE",
             "confidence": "0.5"
@@ -321,11 +272,7 @@ class TestStrategyDirectiveUseCases:
         """New trade directive from opportunity signal."""
         directive = StrategyDirective(
             strategy_planner_id="swot_momentum_planner",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.85"),
             entry_directive=EntryDirective(
@@ -345,18 +292,14 @@ class TestStrategyDirectiveUseCases:
         # Type narrowing: entry_directive is not None here
         entry_dir = directive.entry_directive
         assert entry_dir is not None
-        assert entry_dir.direction == "BUY"  # type: ignore[attr-defined]
+        assert entry_dir.direction == "BUY"  # pyright: ignore[reportAttributeAccessIssue]
         assert directive.confidence == Decimal("0.85")
 
     def test_modify_existing_trade_on_threat(self):
         """Modify existing trade directive from threat signal."""
         directive = StrategyDirective(
             strategy_planner_id="swot_risk_planner",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=[],
-                threat_ids=["THR_12345678-1234-1234-1234-123456789012"],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.MODIFY_EXISTING,
             target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
             confidence=Decimal("0.9"),
@@ -375,11 +318,7 @@ class TestStrategyDirectiveUseCases:
         """Close existing trade directive."""
         directive = StrategyDirective(
             strategy_planner_id="swot_exit_planner",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=[],
-                threat_ids=["THR_12345678-1234-1234-1234-123456789012"],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.CLOSE_EXISTING,
             target_trade_ids=["TRD_001", "TRD_002"],
             confidence=Decimal("0.95"),
@@ -394,17 +333,13 @@ class TestStrategyDirectiveUseCases:
         # Type narrowing: routing_directive is not None here
         routing_dir = directive.routing_directive
         assert routing_dir is not None
-        assert routing_dir.execution_urgency == Decimal("1.0")  # type: ignore[attr-defined]
+        assert routing_dir.execution_urgency == Decimal("1.0")  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_partial_directive_for_entry_only(self):
         """Directive with only entry sub-directive (other planners inactive)."""
         directive = StrategyDirective(
             strategy_planner_id="simple_entry_planner",
-            contributing_signals=ContributingSignals(
-                opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"],
-                threat_ids=[],
-                context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
-            ),
+            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.6"),
             entry_directive=EntryDirective(

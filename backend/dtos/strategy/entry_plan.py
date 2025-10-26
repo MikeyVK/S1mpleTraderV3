@@ -7,19 +7,21 @@ Defines HOW to enter (timing, price, order type) without specifying HOW MUCH
 (position sizing is the responsibility of SizePlan).
 
 @layer: DTOs (Strategy Planning Output)
-@dependencies: [pydantic, backend.utils.id_generators]
+@dependencies: [pydantic, backend.utils.id_generators, backend.dtos.causality]
 """
 
 # Standard Library Imports
+import re
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Literal
 
 # Third-Party Imports
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Our Application Imports
 from backend.utils.id_generators import generate_entry_plan_id
+from backend.dtos.causality import CausalityChain
 
 
 class EntryPlan(BaseModel):
@@ -74,6 +76,14 @@ class EntryPlan(BaseModel):
         planner_metadata: Additional context from planner (optional)
         rationale: Human-readable explanation of entry strategy (required)
     """
+
+    # Causality tracking
+    causality: CausalityChain = Field(
+        description=(
+            "Causality tracking - IDs from birth (tick/news/schedule) "
+            "through planning chain"
+        )
+    )
 
     # Identiteit
     plan_id: str = Field(
@@ -159,3 +169,14 @@ class EntryPlan(BaseModel):
             }
         }
     }
+
+    @field_validator("plan_id")
+    @classmethod
+    def validate_plan_id_format(cls, v: str) -> str:
+        """Validate plan_id follows military datetime format: ENT_YYYYMMDD_HHMMSS_hash"""
+        pattern = r'^ENT_\d{8}_\d{6}_[0-9a-f]{8}$'
+        if not re.match(pattern, v):
+            raise ValueError(
+                f"plan_id must match format ENT_YYYYMMDD_HHMMSS_hash, got: {v}"
+            )
+        return v

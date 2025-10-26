@@ -19,6 +19,8 @@ import pytest
 # Our Application Imports
 from backend.dtos.strategy.aggregated_context_assessment import AggregatedContextAssessment
 from backend.dtos.strategy.context_factor import ContextFactor
+from backend.dtos.causality import CausalityChain
+from backend.utils.id_generators import generate_tick_id
 from backend.core.enums import ContextType
 from backend.core.context_factors import BaseFactorType
 
@@ -37,6 +39,7 @@ class TestAggregatedContextAssessmentCreation:
         )
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength],
             weaknesses=[]
@@ -44,7 +47,7 @@ class TestAggregatedContextAssessmentCreation:
 
         # Verify auto-generated ID format
         assessment_id = str(assessment.assessment_id)
-        assert assessment_id.startswith("ASS_")
+        assert assessment_id.startswith("CTX_")
         assert len(assessment.strengths) == 1
         assert len(assessment.weaknesses) == 0
         assert assessment.metadata is None
@@ -60,13 +63,14 @@ class TestAggregatedContextAssessmentCreation:
         )
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[],
             weaknesses=[weakness]
         )
 
         assessment_id = str(assessment.assessment_id)
-        assert assessment_id.startswith("ASS_")
+        assert assessment_id.startswith("CTX_")
         assert len(assessment.strengths) == 0
         assert len(assessment.weaknesses) == 1
 
@@ -89,6 +93,7 @@ class TestAggregatedContextAssessmentCreation:
         )
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength],
             weaknesses=[weakness]
@@ -105,6 +110,7 @@ class TestAggregatedContextAssessmentValidation:
         """Test that both empty lists are currently allowed (edge case)."""
         # NOTE: This might be changed to reject empty assessments in future
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[],
             weaknesses=[]
@@ -132,6 +138,7 @@ class TestAggregatedContextAssessmentValidation:
         )
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength1, strength2],
             weaknesses=[]
@@ -160,6 +167,7 @@ class TestAggregatedContextAssessmentValidation:
         )
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[],
             weaknesses=[weakness1, weakness2]
@@ -183,6 +191,7 @@ class TestAggregatedContextAssessmentTimestampValidation:
 
         aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=aware_dt,
             strengths=[strength],
             weaknesses=[]
@@ -207,7 +216,8 @@ class TestAggregatedContextAssessmentTimestampValidation:
 
         with pytest.raises(ValueError) as exc_info:
             AggregatedContextAssessment(
-                timestamp=naive_dt,
+            causality=CausalityChain(tick_id=generate_tick_id()),
+            timestamp=naive_dt,
                 strengths=[strength],
                 weaknesses=[]
             )
@@ -229,13 +239,14 @@ class TestAggregatedContextAssessmentIDGeneration:
         )
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength],
             weaknesses=[]
         )
 
         assessment_id = str(assessment.assessment_id)
-        assert assessment_id.startswith("ASS_")
+        assert assessment_id.startswith("CTX_")
         # ID format: ASS_<UUID>
         assert len(assessment_id) > 4
 
@@ -250,12 +261,14 @@ class TestAggregatedContextAssessmentIDGeneration:
         )
 
         assessment1 = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength],
             weaknesses=[]
         )
 
         assessment2 = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength],
             weaknesses=[]
@@ -278,6 +291,7 @@ class TestAggregatedContextAssessmentImmutability:
         )
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength],
             weaknesses=[]
@@ -298,7 +312,8 @@ class TestAggregatedContextAssessmentImmutability:
 
         with pytest.raises(ValueError) as exc_info:
             AggregatedContextAssessment(
-                timestamp=datetime.now(timezone.utc),
+            causality=CausalityChain(tick_id=generate_tick_id()),
+            timestamp=datetime.now(timezone.utc),
                 strengths=[strength],
                 weaknesses=[],
                 extra_field="not_allowed"  # type: ignore
@@ -321,6 +336,7 @@ class TestAggregatedContextAssessmentMetadata:
         )
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength],
             weaknesses=[]
@@ -345,6 +361,7 @@ class TestAggregatedContextAssessmentMetadata:
         }
 
         assessment = AggregatedContextAssessment(
+            causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             strengths=[strength],
             weaknesses=[],

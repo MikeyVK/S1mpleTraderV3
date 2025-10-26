@@ -6,7 +6,8 @@ Aggregates multiple ContextFactors into strengths and weaknesses quadrants.
 Output of ContextAggregator, input for OpportunityDetector and ThreatDetector.
 
 @layer: DTOs (Strategy Output)
-@dependencies: [pydantic, backend.dtos.strategy.context_factor, backend.utils.id_generators]
+@dependencies: [pydantic, backend.dtos.strategy.context_factor, backend.utils.id_generators,
+                backend.dtos.causality]
 """
 
 # Standard Library Imports
@@ -19,6 +20,7 @@ from pydantic import BaseModel, Field, field_validator
 # Our Application Imports
 from backend.dtos.strategy.context_factor import ContextFactor
 from backend.utils.id_generators import generate_assessment_id
+from backend.dtos.causality import CausalityChain
 
 
 class AggregatedContextAssessment(BaseModel):
@@ -70,6 +72,7 @@ class AggregatedContextAssessment(BaseModel):
     are "smart" - they analyze the factors to identify actionable signals.
 
     Attributes:
+        causality: CausalityChain tracking IDs from birth through workers
         assessment_id: Unique identifier with ASS_ prefix
         timestamp: When this assessment was created (UTC timezone-aware)
         strengths: List of strength factors (can be empty)
@@ -77,9 +80,14 @@ class AggregatedContextAssessment(BaseModel):
         metadata: Optional aggregator-specific additional context
     """
 
+    causality: CausalityChain = Field(
+        description="Causality tracking - IDs from birth (tick/news/schedule)"
+    )
+
     assessment_id: str = Field(
         default_factory=generate_assessment_id,
-        description="Unique assessment identifier with ASS_ prefix"
+        pattern=r'^CTX_\d{8}_\d{6}_[0-9a-f]{8}$',
+        description="Unique assessment identifier (military datetime format)"
     )
 
     timestamp: datetime = Field(
