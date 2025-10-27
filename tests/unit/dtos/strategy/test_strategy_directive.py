@@ -8,6 +8,7 @@ Tests creation, validation, and edge cases for strategy planning directives.
 
 from datetime import datetime, timezone
 from decimal import Decimal
+from typing import cast
 
 import pytest
 from pydantic import ValidationError
@@ -77,12 +78,12 @@ class TestStrategyDirectiveCreation:
         assert directive.exit_directive is not None
         assert directive.routing_directive is not None
         # Extract values to intermediate variables (Pydantic FieldInfo workaround)
-        entry_dir = directive.entry_directive
-        size_dir = directive.size_directive
+        entry_dir = cast(EntryDirective, directive.entry_directive)
+        size_dir = cast(SizeDirective, directive.size_directive)
         assert entry_dir is not None
         assert size_dir is not None
-        entry_symbol = str(entry_dir.symbol)  # pyright: ignore[reportAttributeAccessIssue]
-        size_agg = size_dir.aggressiveness  # pyright: ignore[reportAttributeAccessIssue]
+        entry_symbol = str(getattr(entry_dir, "symbol"))
+        size_agg = getattr(size_dir, "aggressiveness")
         assert entry_symbol == "BTCUSDT"
         assert size_agg == Decimal("0.6")
 
@@ -163,8 +164,8 @@ class TestStrategyDirectiveDefaultValues:
         assert isinstance(directive.decision_timestamp, datetime)
         # Pylance limitation: FieldInfo doesn't narrow to datetime after isinstance()
         # Runtime works perfectly. See agent.md section 6.6.5 "Bekende acceptable warnings #2"
-        tzinfo = directive.decision_timestamp.tzinfo  # pyright: ignore[reportAttributeAccessIssue]
-        assert tzinfo is not None
+        dt = cast(datetime, directive.decision_timestamp)
+        assert getattr(dt, "tzinfo") is not None
 
     def test_sub_directives_default_to_none(self):
         """All sub-directives are optional and default to None."""
@@ -207,11 +208,12 @@ class TestStrategyDirectiveDefaultValues:
         )
 
         # CausalityChain enable Journal causality reconstruction
-        causality = directive.causality
-        # pyright: ignore[reportAttributeAccessIssue] - Pydantic FieldInfo false positive
-        assert len(causality.opportunity_signal_ids) == 2
-        assert len(causality.threat_ids) == 1
-        assert causality.context_assessment_id.startswith("CTX_")
+        causality = cast(CausalityChain, directive.causality)
+        assert len(getattr(causality, "opportunity_signal_ids")) == 2
+        assert len(getattr(causality, "threat_ids")) == 1
+        ctx_id = getattr(causality, "context_assessment_id")
+        assert ctx_id is not None
+        assert ctx_id.startswith("CTX_")
 
 
 class TestStrategyDirectiveSerialization:
@@ -290,9 +292,9 @@ class TestStrategyDirectiveUseCases:
 
         assert directive.scope == DirectiveScope.NEW_TRADE
         # Type narrowing: entry_directive is not None here
-        entry_dir = directive.entry_directive
+        entry_dir = cast(EntryDirective, directive.entry_directive)
         assert entry_dir is not None
-        assert entry_dir.direction == "BUY"  # pyright: ignore[reportAttributeAccessIssue]
+        assert getattr(entry_dir, "direction") == "BUY"
         assert directive.confidence == Decimal("0.85")
 
     def test_modify_existing_trade_on_threat(self):
@@ -331,9 +333,9 @@ class TestStrategyDirectiveUseCases:
         assert directive.scope == DirectiveScope.CLOSE_EXISTING
         assert len(directive.target_trade_ids) == 2
         # Type narrowing: routing_directive is not None here
-        routing_dir = directive.routing_directive
+        routing_dir = cast(RoutingDirective, directive.routing_directive)
         assert routing_dir is not None
-        assert routing_dir.execution_urgency == Decimal("1.0")
+        assert getattr(routing_dir, "execution_urgency") == Decimal("1.0")
 
     def test_partial_directive_for_entry_only(self):
         """Directive with only entry sub-directive (other planners inactive)."""

@@ -31,8 +31,7 @@ class TestExitPlanCreation:
             take_profit_price=Decimal("105000.00")
         )
 
-        # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
-        assert plan.plan_id.startswith("EXT_")
+        assert getattr(plan, "plan_id").startswith("EXT_")
         assert plan.stop_loss_price == Decimal("95000.00")
         assert plan.take_profit_price == Decimal("105000.00")
 
@@ -42,8 +41,7 @@ class TestExitPlanCreation:
             stop_loss_price=Decimal("95000.00")
         )
 
-        # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
-        assert plan.plan_id.startswith("EXT_")
+        assert getattr(plan, "plan_id").startswith("EXT_")
         assert plan.stop_loss_price == Decimal("95000.00")
         assert plan.take_profit_price is None
 
@@ -54,9 +52,8 @@ class TestExitPlanCreation:
         )
 
         # EXT_YYYYMMDD_HHMMSS_hash format
-        # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
-        assert plan.plan_id.startswith("EXT_")
-        assert len(plan.plan_id) == 28  # EXT_ + 8 + _ + 6 + _ + 8
+        assert getattr(plan, "plan_id").startswith("EXT_")
+        assert len(getattr(plan, "plan_id")) == 28  # EXT_ + 8 + _ + 6 + _ + 8
 
 
 class TestExitPlanValidation:

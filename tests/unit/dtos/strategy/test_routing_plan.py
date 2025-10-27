@@ -34,8 +34,7 @@ class TestRoutingPlanCreation:
             iceberg_preference=False
         )
 
-        # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
-        assert plan.plan_id.startswith("ROU_")
+        assert getattr(plan, "plan_id").startswith("ROU_")
         assert plan.timing == "IMMEDIATE"
         assert plan.time_in_force == "GTC"
         assert plan.max_slippage_pct == Decimal("0.5")
@@ -78,9 +77,8 @@ class TestRoutingPlanCreation:
         )
 
         # ROU_YYYYMMDD_HHMMSS_hash format
-        # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
-        assert plan.plan_id.startswith("ROU_")
-        assert len(plan.plan_id) == 28  # ROU_ + 8 + _ + 6 + _ + 8
+        assert getattr(plan, "plan_id").startswith("ROU_")
+        assert len(getattr(plan, "plan_id")) == 28  # ROU_ + 8 + _ + 6 + _ + 8
 
 
 class TestRoutingPlanValidation:

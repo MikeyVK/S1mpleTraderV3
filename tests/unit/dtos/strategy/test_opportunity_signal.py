@@ -14,6 +14,7 @@ foundation of the causal traceability chain.
 
 # Standard Library Imports
 from datetime import datetime, timezone
+from typing import cast
 
 # Third-Party Imports
 import pytest
@@ -40,8 +41,9 @@ class TestOpportunitySignalCreation:
 
         # Verify ID formats (cast to avoid Pylance FieldInfo warnings)
         # Verify causality chain
-        assert signal.causality.tick_id is not None  # type: ignore[attr-defined]
-        assert signal.causality.tick_id.startswith("TCK_")  # type: ignore[attr-defined]
+        causality = cast(CausalityChain, signal.causality)
+        assert getattr(causality, "tick_id") is not None
+        assert getattr(causality, "tick_id").startswith("TCK_")
         # Verify ID formats
         opportunity_id = str(signal.opportunity_id)
         assert opportunity_id.startswith("OPP_")
