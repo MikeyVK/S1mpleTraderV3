@@ -6,12 +6,6 @@
             "packageManager": "ms-python.python:pip"
         }
     ],
-    "python.analysis.diagnosticSeverityOverrides": {
-        "reportAttributeAccessIssue": "none",
-        "reportCallIssue": "none",
-        "reportArgumentType": "none"
-    },
-    "python.analysis.typeCheckingMode": "basic",
     "python.analysis.enablePytestSupport": true,
     "python.analysis.inlayHints.pytestParameters": true,
     "python.analysis.autoImportCompletions": true,
