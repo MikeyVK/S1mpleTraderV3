@@ -101,5 +101,28 @@ class ExitPlan(BaseModel):
 
     model_config = {
         "frozen": True,
-        "extra": "forbid"
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "SL and TP exit plan (standard risk/reward)",
+                    "plan_id": "EXT_20251027_100530_a1b2c3d4",
+                    "stop_loss_price": "95000.00",
+                    "take_profit_price": "105000.00"
+                },
+                {
+                    "description": "SL only exit plan (let winners run strategy)",
+                    "plan_id": "EXT_20251027_143000_e5f6g7h8",
+                    "stop_loss_price": "98500.00"
+                },
+                {
+                    "description": (
+                        "Tight SL exit plan (scalping or high volatility)"
+                    ),
+                    "plan_id": "EXT_20251027_150500_i9j0k1l2",
+                    "stop_loss_price": "99800.00",
+                    "take_profit_price": "100500.00"
+                }
+            ]
+        }
     }
