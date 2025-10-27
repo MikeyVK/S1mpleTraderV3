@@ -1233,31 +1233,33 @@ Project heeft `pyrightconfig.json` voor consistente type checking:
    - **Fix:** `# type: ignore[valid-type]` inline comment in DTO
 
 2. **Pydantic FieldInfo in tests:** `assessment.field.method()` triggers "no member 'method'"
-   - **Fix:** Intermediate variabele: `value = str(assessment.field)` then assert on `value`
+   - **Fix:** Use `getattr()` to bypass Pylance type narrowing limitation
    - **Pattern:**
      ```python
      # Instead of: assert signal.initiator_id.startswith("TCK_")
-     # Use:
+     # Use getattr() - cleanest solution:
+     assert getattr(signal, "initiator_id").startswith("TCK_")
+     
+     # Or intermediate variable (legacy pattern, still valid):
      initiator_id = str(signal.initiator_id)
      assert initiator_id.startswith("TCK_")
      ```
-   - **Exception:** Datetime attributes like `.tzinfo` CANNOT be suppressed
-     - Pylance ignores ALL inline suppressions: `# type: ignore`, `# pyright: ignore`
-     - Global pyrightconfig suppressions (reportAttributeAccessIssue: false) also ineffective
-     - Runtime werkt perfect, tests slagen
-     - **Workaround:** Add explanatory comment boven de regel:
+   - **Exception:** Datetime attributes like `.tzinfo` may need casting
+     - For complex nested attributes, use `typing.cast()` + `getattr()`:
        ```python
-       # Pylance limitation: FieldInfo doesn't narrow to datetime after isinstance()
-       # Runtime works perfectly. See agent.md section 6.6.5 "Bekende acceptable warnings #2"
-       tzinfo = created_at.tzinfo  # type: ignore[attr-defined]
-       assert tzinfo is not None
+       from typing import cast
+       from datetime import datetime
+       
+       # Pylance limitation: FieldInfo doesn't narrow after isinstance()
+       dt = cast(datetime, directive.decision_timestamp)
+       assert getattr(dt, "tzinfo") is not None
        ```
-     - **Status:** ACCEPTED - 1 warning per DTO acceptabel voor datetime.tzinfo checks
+     - **Status:** Runtime werkt perfect, tests slagen - `getattr()` is preferred workaround
 
 3. **Pydantic optional fields:** `Field(None, ...)` → Pylance "missing parameter" warnings
    - **Root cause:** Pylance doesn't recognize `Field(None, default=None)` pattern for optionality
    - **Evidence:** All tests pass, runtime behavior correct
-   - **Global suppressie:** pyrightconfig.json heeft deze settings:
+   - **Global suppressie:** `pyrightconfig.json` heeft deze settings:
      ```json
      {
        "reportCallIssue": false,
@@ -1265,16 +1267,8 @@ Project heeft `pyrightconfig.json` voor consistente type checking:
        "reportAttributeAccessIssue": false
      }
      ```
-   - **Fix in test files:** Add header comment:
-     ```python
-     """
-     Unit tests for MyDTO.
-     """
-     # pyright: reportCallIssue=false
-     # Suppress Pydantic FieldInfo false positives for optional fields
-     ```
-   - **Best practice:** Add explanatory comment in test file explaining Pydantic limitation
-   - **Status:** Systematically suppressed globally - 0 warnings verwacht voor "missing arguments"
+   - **Status:** Systematically suppressed globally via pyrightconfig.json
+   - **No action needed:** Warnings zijn al onderdrukt op workspace level
 
 4. **Line length voor comments:** Comments met inline code kunnen >100 chars zijn
    - **Fix:** Split op meerdere regels of verkort comment
@@ -1400,6 +1394,26 @@ Status: GREEN (tests still 20/20)"
 
 # === STAP 4: Documentation Quality Check ===
 # Manually verify file header and class docstring
+
+# === STAP 4.5: Test Assertion Patterns (Pydantic DTOs) ===
+# Fix Pylance FieldInfo false positives in tests
+
+# Pattern 1: Auto-generated ID fields (plan_id, directive_id, etc.)
+# ❌ AVOID: assert plan.plan_id.startswith("ENT_")  # Pylance error!
+# ✅ USE:    assert getattr(plan, "plan_id").startswith("ENT_")
+
+# Pattern 2: Nested DTO attributes
+# ❌ AVOID: assert directive.causality.tick_id == "TCK_123"  # Pylance error!
+# ✅ USE:    causality = cast(CausalityChain, directive.causality)
+#           assert getattr(causality, "tick_id") == "TCK_123"
+
+# Pattern 3: Complex attribute chains
+# ❌ AVOID: assert entry_dir.symbol == "BTCUSDT"  # Pylance error!
+# ✅ USE:    entry_dir = cast(EntryDirective, directive.entry_directive)
+#           assert getattr(entry_dir, "symbol") == "BTCUSDT"
+
+# Note: Import typing.cast at top of test file if using Pattern 2/3:
+# from typing import cast
 
 # === STAP 5: Update Quality Metrics Dashboard ===
 # Add row to agent.md section 6.6.6
