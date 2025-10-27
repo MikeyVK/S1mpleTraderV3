@@ -756,6 +756,117 @@ class OpportunitySignal(BaseModel):
    - **Target:** 100% tests passing
    - **NO regression:** Bestaande tests blijven groen
 
+#### 6.6.2. Self-Documenting DTOs via json_schema_extra (VERPLICHT!)
+
+**PRINCIPE:** Alle Pydantic DTOs MOETEN voorzien worden van `json_schema_extra` met realistische voorbeelden voor self-documenting code.
+
+**WAAROM VERPLICHT:**
+- **OpenAPI/Swagger**: Auto-gegenereerde API docs tonen voorbeelden in FastAPI endpoints
+- **JSON Schema**: Externe consumers krijgen concrete voorbeelden via `.model_json_schema()`
+- **Developer Experience**: Nieuwe developers zien meteen hoe een valide DTO eruit ziet
+- **Living Documentation**: Code = documentatie, altijd in sync
+
+**TEMPLATE PATTERN:**
+```python
+from pydantic import BaseModel, Field
+
+class EntryPlan(BaseModel):
+    """Entry plan DTO (WHAT/WHERE only)."""
+    
+    plan_id: str = Field(default_factory=generate_entry_plan_id)
+    symbol: str
+    direction: Literal["BUY", "SELL"]
+    order_type: Literal["MARKET", "LIMIT", "STOP_LIMIT"]
+    limit_price: Decimal | None = None
+    stop_price: Decimal | None = None
+    
+    model_config = {
+        "frozen": False,
+        "str_strip_whitespace": True,
+        "validate_assignment": True,
+        "json_schema_extra": {
+            "examples": [  # MEERVOUD! Meerdere use cases
+                {
+                    "description": "Market entry (WHAT/WHERE only)",
+                    "plan_id": "ENT_20251027_143052_a1b2c3d4",
+                    "symbol": "BTCUSDT",
+                    "direction": "BUY",
+                    "order_type": "MARKET"
+                },
+                {
+                    "description": "Limit entry at specific price",
+                    "plan_id": "ENT_20251027_143053_e5f6g7h8",
+                    "symbol": "ETHUSDT",
+                    "direction": "SELL",
+                    "order_type": "LIMIT",
+                    "limit_price": "3510.00"
+                },
+                {
+                    "description": "Stop-limit for breakout",
+                    "plan_id": "ENT_20251027_143054_i9j0k1l2",
+                    "symbol": "SOLUSDT",
+                    "direction": "BUY",
+                    "order_type": "STOP_LIMIT",
+                    "stop_price": "125.00",
+                    "limit_price": "125.50"
+                }
+            ]
+        }
+    }
+```
+
+**BEST PRACTICES:**
+
+1. **Meerdere voorbeelden** (`examples` array):
+   - Minimaal 2-3 voorbeelden per DTO
+   - Cover verschillende use cases (MARKET, LIMIT, STOP_LIMIT)
+   - Toon optionele velden in actie
+
+2. **Descriptions per voorbeeld**:
+   - Leg uit WAT dit voorbeeld demonstreert
+   - Verwijs naar architectuur concepten (WHAT/WHERE, HOW MUCH, etc.)
+   - Maak duidelijk wat NIET in dit DTO zit (maar wel in andere DTOs)
+
+3. **Realistische data**:
+   - Echte symbolen (BTCUSDT, ETHUSDT, SOLUSDT)
+   - Realistische prijzen (95500.00 voor BTC, 3510.00 voor ETH)
+   - Correcte ID formaten (ENT_YYYYMMDD_HHMMSS_hash)
+   - Valide Decimals als strings ("125.00" niet 125.00)
+
+4. **Alleen bestaande velden**:
+   - ❌ Toon GEEN velden die verwijderd zijn (created_at, planner_id, rationale)
+   - ✅ Toon ALLEEN velden die in de huidige DTO zitten
+   - ✅ Update voorbeelden na refactoring
+
+5. **Consistent formaat**:
+   - Zelfde structuur voor alle DTOs
+   - Zelfde `model_config` basis settings
+   - Zelfde comment stijl
+
+**VERPLICHT IN TDD WORKFLOW:**
+
+Tijdens **Refactor Phase** (na GREEN):
+```powershell
+# 3. Refactor Phase: Add json_schema_extra
+git add backend/dtos/strategy/entry_plan.py
+git commit -m "docs: add json_schema_extra examples to EntryPlan
+
+- 3 examples: MARKET, LIMIT, STOP_LIMIT
+- Realistic data with descriptions
+- Shows WHAT/WHERE philosophy
+- Self-documenting for OpenAPI/Swagger"
+```
+
+**VOORBEELDEN REFERENTIE:**
+
+Zie `backend/dtos/strategy/entry_plan.py` en `backend/dtos/strategy/size_plan.py` voor complete voorbeelden.
+
+**WANNEER NIET TOEPASSEN:**
+
+- Internal helper classes (niet geëxporteerd via API)
+- Abstract base classes zonder instanties
+- Config classes die alleen YAML hebben
+
 #### 6.6.3. Test-Driven Development Discipline with Git Integration
 
 **VERPLICHTE TDD + GIT WORKFLOW:**
@@ -862,19 +973,36 @@ class OpportunitySignal(BaseModel):
 - Commit early, commit often on feature branches
 - Only merge to main when ALL quality gates pass
 
-#### 6.6.2. CausalityChain Integration Pattern (VERPLICHT voor Pipeline DTOs)
+**⚠️ WAARSCHUWING: NALEVING VERPLICHT!**
 
-**WANNEER TE GEBRUIKEN:**
-Alle DTOs die deel uitmaken van de **strategische pipeline** MOETEN `CausalityChain` integreren:
+Deze workflow is **NIET OPTIONEEL**. Recente commits (1d4258a, d3418dd, 7b62902) hebben zich NIET aan deze workflow gehouden:
+- ❌ Geen feature branch gebruikt (direct op main)
+- ❌ Tests + implementatie in één commit (zou RED → GREEN → REFACTOR zijn)
+- ❌ Geen aparte test commits voor RED phase
+
+**CORRECTIE:** Vanaf nu STRIKTE naleving van TDD + Git workflow. Geen uitzonderingen.
+
+#### 6.6.4. CausalityChain Integration Pattern (SUB-PLANNERS NIET!)
+
+**⚠️ BELANGRIJK: SUB-PLANNERS HEBBEN GEEN CAUSALITY!**
+
+Per STRATEGY_PIPELINE_ARCHITECTURE.md:
+- ✅ **StrategyDirective** - HAS causality (top-level directive)
+- ❌ **EntryPlan, SizePlan, ExitPlan, RoutingPlan** - NO causality (sub-planners ontvangen StrategyDirective als input)
+- ✅ **ExecutionDirective** - HAS causality (PlanningAggregator voegt toe)
+
+**WANNEER WEL CAUSALITY:**
 - ✅ OpportunitySignal, ThreatSignal (SWOT input)
 - ✅ AggregatedContextAssessment (Context output)
 - ✅ StrategyDirective (Strategy output)
-- ✅ EntryPlan, SizePlan, ExitPlan, RoutingPlan (Planning outputs)
-- ✅ ExecutionDirective (Execution input - future)
+- ✅ ExecutionDirective (Execution input - aggregated)
+
+**WANNEER GEEN CAUSALITY:**
+- ❌ EntryPlan, SizePlan, ExitPlan, RoutingPlan (pure execution params, geen context tracking)
 - ❌ DispositionEnvelope (flow control, geen pipeline data)
 - ❌ Platform DTOs (niet deel van causality chain)
 
-**IMPLEMENTATIE PATTERN:**
+**IMPLEMENTATIE PATTERN (alleen voor DTOs MET causality):**
 
 1. **Import toevoegen:**
    ```python
@@ -950,7 +1078,7 @@ Alle DTOs die deel uitmaken van de **strategische pipeline** MOETEN `CausalityCh
 **DESIGN DOC REFERENTIE:**
 Zie `docs/development/design_causality_chain.md` voor volledige architectuur.
 
-#### 6.6.4. DTO Implementation Checklist
+#### 6.6.5. DTO Implementation Checklist
 
 **Voor elke nieuwe DTO MOET je:**
 
@@ -966,7 +1094,28 @@ Zie `docs/development/design_causality_chain.md` voor volledige architectuur.
    - Implementeer validators één voor één (Green)
    - Refactor voor leesbaarheid (Refactor)
 
-3. **Quality gates VOOR merge:**
+3. **json_schema_extra toevoegen** (VERPLICHT - zie 6.6.2):
+   ```python
+   model_config = {
+       "frozen": False,
+       "str_strip_whitespace": True,
+       "validate_assignment": True,
+       "json_schema_extra": {
+           "examples": [
+               {
+                   "description": "Use case 1",
+                   # ... realistic example data
+               },
+               {
+                   "description": "Use case 2",
+                   # ... realistic example data
+               }
+           ]
+       }
+   }
+   ```
+
+4. **Quality gates VOOR merge:**
    ```powershell
    # Gate 1: Pylint whitespace check
    python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
@@ -982,7 +1131,7 @@ Zie `docs/development/design_causality_chain.md` voor volledige architectuur.
 
    # Gate 4: Type checking (DTO only)
    python -m mypy backend/dtos/strategy/my_dto.py --strict --no-error-summary
-   # Expected: 0 errors (tests may have Pydantic false positives - see section 6.6.5)
+   # Expected: 0 errors (tests may have Pydantic false positives - see section 6.6.6)
 
    # Gate 5: Line length check
    python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=line-too-long --max-line-length=100
@@ -990,7 +1139,7 @@ Zie `docs/development/design_causality_chain.md` voor volledige architectuur.
    # Expected: 10.00/10 for both files
    ```
 
-4. **Post-implementation cleanup workflow:**
+5. **Post-implementation cleanup workflow:**
    ```powershell
    # Step 1: Auto-fix trailing whitespace (DTO + tests)
    (Get-Content backend/dtos/strategy/my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content backend/dtos/strategy/my_dto.py
@@ -1008,11 +1157,11 @@ Zie `docs/development/design_causality_chain.md` voor volledige architectuur.
    python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=line-too-long --max-line-length=100
    pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
 
-   # Step 4: Verify 0 problems in VS Code (except accepted Pydantic warnings - see 6.6.5)
+   # Step 4: Verify 0 problems in VS Code (except accepted Pydantic warnings - see 6.6.6)
    # Check Problems panel - only acceptable warnings should remain
    ```
 
-#### 6.6.5. Code Review Standards
+#### 6.6.6. Code Review Standards
 
 **ELKE pull request/commit MOET:**
 
@@ -1035,7 +1184,7 @@ Zie `docs/development/design_causality_chain.md` voor volledige architectuur.
 - ❌ Lines > 100 characters
 - ❌ Import grouping violations
 
-#### 6.6.6. Automated Quality Tools
+#### 6.6.7. Automated Quality Tools
 
 **Gebruik PowerShell helpers:**
 
@@ -1150,7 +1299,7 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 
 **Als je meer warnings ziet:** Check de 4-step cleanup workflow hierboven.
 
-#### 6.6.7. Quality Metrics Dashboard
+#### 6.6.8. Quality Metrics Dashboard
 
 **Track per module:**
 
@@ -1190,7 +1339,7 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 13. ✅ Merge to main: `git checkout main && git merge feature/dto-name`
 14. ✅ Push to GitHub: `git push origin main`
 
-#### 6.6.8. Quick Reference: Complete Quality Workflow with Git
+#### 6.6.9. Quick Reference: Complete Quality Workflow with Git
 
 **COPY-PASTE COMMANDO'S VOOR NIEUWE DTO MODULE:**
 
