@@ -14,6 +14,7 @@ Tests the lean ExitPlan DTO which specifies WHERE to exit a position
 @dependencies: [pytest, decimal, backend.dtos.strategy.exit_plan]
 """
 
+import re
 from decimal import Decimal
 import pytest
 
@@ -135,7 +136,6 @@ class TestExitPlanPlanIdFormat:
         )
 
         # Should match: EXT_YYYYMMDD_HHMMSS_hash
-        import re
         pattern = r'^EXT_\d{8}_\d{6}_[0-9a-f]{8}$'
         assert re.match(pattern, plan.plan_id)
 

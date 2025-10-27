@@ -14,6 +14,7 @@ orders (timing strategy, urgency, slippage tolerance).
 @dependencies: [pytest, decimal, backend.dtos.strategy.routing_plan]
 """
 
+import re
 from decimal import Decimal
 import pytest
 
@@ -206,7 +207,6 @@ class TestRoutingPlanPlanIdFormat:
         )
 
         # Should match: ROU_YYYYMMDD_HHMMSS_hash
-        import re
         pattern = r'^ROU_\d{8}_\d{6}_[0-9a-f]{8}$'
         assert re.match(pattern, plan.plan_id)
 
