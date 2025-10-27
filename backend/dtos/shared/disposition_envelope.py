@@ -143,12 +143,13 @@ class DispositionEnvelope(BaseModel):
                     "disposition": "CONTINUE"
                 },
                 {
-                    "description": "Opportunity worker publishes signal (no payload - event only)",
+                    "description": "Opportunity worker publishes signal with DTO payload (OpportunitySignal instance)",
                     "disposition": "PUBLISH",
-                    "event_name": "OPPORTUNITY_DETECTED"
+                    "event_name": "OPPORTUNITY_DETECTED",
+                    "event_payload": "OpportunitySignal(opportunity_id='OPP_20251027_100530_a1b2c3d4', ...)"
                 },
                 {
-                    "description": "Emergency halt (pure signal event)",
+                    "description": "Emergency halt (pure signal event, no payload)",
                     "disposition": "PUBLISH",
                     "event_name": "EMERGENCY_HALT"
                 },
