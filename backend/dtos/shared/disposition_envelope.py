@@ -135,5 +135,33 @@ class DispositionEnvelope(BaseModel):
 
     model_config = {
         "frozen": True,  # Immutable after creation
-        "extra": "forbid"  # No additional fields allowed
+        "extra": "forbid",  # No additional fields allowed
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "Context worker continues flow (data to TickCache)",
+                    "disposition": "CONTINUE"
+                },
+                {
+                    "description": "Opportunity worker publishes signal with payload",
+                    "disposition": "PUBLISH",
+                    "event_name": "OPPORTUNITY_DETECTED",
+                    "event_payload": {
+                        "opportunity_id": "OPP_20251027_100530_a1b2c3d4",
+                        "timestamp": "2025-10-27T10:05:30Z",
+                        "opportunity_type": "FVG_BREAKOUT",
+                        "confidence": 0.85
+                    }
+                },
+                {
+                    "description": "Emergency halt (pure signal event, no payload)",
+                    "disposition": "PUBLISH",
+                    "event_name": "EMERGENCY_HALT"
+                },
+                {
+                    "description": "Regime filter stops flow (conditions not met)",
+                    "disposition": "STOP"
+                }
+            ]
+        }
     }
