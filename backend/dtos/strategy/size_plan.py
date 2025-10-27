@@ -102,5 +102,25 @@ class SizePlan(BaseModel):
     model_config = {
         "frozen": False,  # Mutable for updates
         "str_strip_whitespace": True,
-        "validate_assignment": True
+        "validate_assignment": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "Fixed 1% risk sizing (HOW MUCH only)",
+                    "plan_id": "SIZ_20251027_143052_a1b2c3d4",
+                    "position_size": "0.25",
+                    "position_value": "25000.00",
+                    "risk_amount": "1000.00",
+                    "leverage": "1.0"
+                },
+                {
+                    "description": "Leveraged position (2x)",
+                    "plan_id": "SIZ_20251027_143053_e5f6g7h8",
+                    "position_size": "1.0",
+                    "position_value": "100000.00",
+                    "risk_amount": "2000.00",
+                    "leverage": "2.0"
+                }
+            ]
+        }
     }

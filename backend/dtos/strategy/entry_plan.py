@@ -105,14 +105,36 @@ class EntryPlan(BaseModel):
     )
 
     model_config = {
+        "frozen": False,  # Mutable for updates
+        "str_strip_whitespace": True,
+        "validate_assignment": True,
         "json_schema_extra": {
-            "example": {
-                "plan_id": "ENT_20251027_120000_abc12345",
-                "symbol": "BTCUSDT",
-                "direction": "BUY",
-                "order_type": "LIMIT",
-                "limit_price": "95500.00"
-            }
+            "examples": [
+                {
+                    "description": "Market entry (WHAT/WHERE only)",
+                    "plan_id": "ENT_20251027_143052_a1b2c3d4",
+                    "symbol": "BTCUSDT",
+                    "direction": "BUY",
+                    "order_type": "MARKET"
+                },
+                {
+                    "description": "Limit entry at specific price",
+                    "plan_id": "ENT_20251027_143053_e5f6g7h8",
+                    "symbol": "ETHUSDT",
+                    "direction": "SELL",
+                    "order_type": "LIMIT",
+                    "limit_price": "3510.00"
+                },
+                {
+                    "description": "Stop-limit for breakout",
+                    "plan_id": "ENT_20251027_143054_i9j0k1l2",
+                    "symbol": "SOLUSDT",
+                    "direction": "BUY",
+                    "order_type": "STOP_LIMIT",
+                    "stop_price": "125.00",
+                    "limit_price": "125.50"
+                }
+            ]
         }
     }
 
