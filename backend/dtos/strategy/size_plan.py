@@ -10,6 +10,9 @@ Per STRATEGY_PIPELINE_ARCHITECTURE.md:
 - SizePlan = pure execution parameters (HOW MUCH)
 - Account constraints → SizePlanner worker input, not DTO
 - Confidence-driven sizing → worker logic, not DTO fields
+
+@layer: DTOs (Strategy Planning Output)
+@dependencies: [pydantic, decimal, backend.utils.id_generators]
 """
 
 # Standard Library Imports
