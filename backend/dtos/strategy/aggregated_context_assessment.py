@@ -113,7 +113,72 @@ class AggregatedContextAssessment(BaseModel):
     model_config = {
         "frozen": True,
         "extra": "forbid",
-        "str_strip_whitespace": True
+        "str_strip_whitespace": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "Balanced SWOT assessment (strengths + weaknesses)",
+                    "assessment_id": "CTX_20251027_100001_a1b2c3d4",
+                    "timestamp": "2025-10-27T10:00:01Z",
+                    "strengths": [
+                        {
+                            "factor_type": "TREND_ALIGNMENT",
+                            "strength": 0.85,
+                            "source_plugin": "trend_analyzer",
+                            "source_context_type": "TECHNICAL"
+                        },
+                        {
+                            "factor_type": "MOMENTUM_CONFIRMATION",
+                            "strength": 0.78,
+                            "source_plugin": "momentum_tracker",
+                            "source_context_type": "TECHNICAL"
+                        }
+                    ],
+                    "weaknesses": [
+                        {
+                            "factor_type": "LIQUIDITY_RISK",
+                            "weakness": 0.45,
+                            "source_plugin": "risk_monitor",
+                            "source_context_type": "RISK"
+                        }
+                    ]
+                },
+                {
+                    "description": "Strengths-only assessment (strong setup)",
+                    "assessment_id": "CTX_20251027_143000_e5f6g7h8",
+                    "timestamp": "2025-10-27T14:30:00Z",
+                    "strengths": [
+                        {
+                            "factor_type": "VOLUME_SURGE",
+                            "strength": 0.92,
+                            "source_plugin": "volume_analyzer",
+                            "source_context_type": "TECHNICAL"
+                        }
+                    ],
+                    "weaknesses": []
+                },
+                {
+                    "description": "Weaknesses-only assessment (threat scenario)",
+                    "assessment_id": "CTX_20251027_150500_i9j0k1l2",
+                    "timestamp": "2025-10-27T15:05:00Z",
+                    "strengths": [],
+                    "weaknesses": [
+                        {
+                            "factor_type": "MARKET_VOLATILITY",
+                            "weakness": 0.88,
+                            "source_plugin": "volatility_monitor",
+                            "source_context_type": "RISK"
+                        },
+                        {
+                            "factor_type": "CORRELATION_BREAKDOWN",
+                            "weakness": 0.72,
+                            "source_plugin": "correlation_tracker",
+                            "source_context_type": "RISK"
+                        }
+                    ]
+                }
+            ]
+        }
     }
 
     @field_validator("timestamp")

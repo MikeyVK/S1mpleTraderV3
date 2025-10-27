@@ -484,3 +484,74 @@ class StrategyDirective(BaseModel):
                     "target_trade_ids must be empty for NEW_TRADE scope"
                 )
         return v
+
+    model_config = {
+        "frozen": False,  # Mutable for updates
+        "str_strip_whitespace": True,
+        "validate_assignment": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "New trade directive (full planning pipeline)",
+                    "directive_id": "STR_20251027_100002_a1b2c3d4",
+                    "decision_timestamp": "2025-10-27T10:00:02Z",
+                    "strategy_planner_id": "opportunity_based_planner",
+                    "scope": "NEW_TRADE",
+                    "confidence": 0.85,
+                    "causality": {
+                        "tick_id": "TCK_20251027_100000_x1y2z3a4",
+                        "opportunity_signal_ids": ["OPP_20251027_100001_b5c6d7e8"],
+                        "context_assessment_id": "CTX_20251027_100001_f9g0h1i2",
+                        "strategy_directive_id": "STR_20251027_100002_a1b2c3d4"
+                    },
+                    "entry_directive": {
+                        "symbol": "BTCUSDT",
+                        "direction": "BUY",
+                        "order_preference": "LIMIT"
+                    },
+                    "size_directive": {
+                        "account_risk_pct": 0.01
+                    },
+                    "exit_directive": {
+                        "risk_reward_ratio": 2.0
+                    },
+                    "routing_directive": {
+                        "execution_urgency": 0.75,
+                        "max_slippage_pct": 0.002
+                    }
+                },
+                {
+                    "description": "Modify existing trade directive (threat response)",
+                    "directive_id": "STR_20251027_143002_j3k4l5m6",
+                    "decision_timestamp": "2025-10-27T14:30:02Z",
+                    "strategy_planner_id": "threat_response_planner",
+                    "scope": "MODIFY_EXISTING",
+                    "confidence": 0.92,
+                    "target_trade_ids": ["TRD_20251027_100010_n7o8p9q0"],
+                    "causality": {
+                        "news_id": "NWS_20251027_143000_r1s2t3u4",
+                        "threat_ids": ["THR_20251027_143001_v5w6x7y8"],
+                        "context_assessment_id": "CTX_20251027_143001_z9a0b1c2",
+                        "strategy_directive_id": "STR_20251027_143002_j3k4l5m6"
+                    },
+                    "exit_directive": {
+                        "stop_loss_price": "95000.00"
+                    }
+                },
+                {
+                    "description": "Close existing trade directive (exit signal)",
+                    "directive_id": "STR_20251027_150003_d3e4f5g6",
+                    "decision_timestamp": "2025-10-27T15:00:03Z",
+                    "strategy_planner_id": "exit_signal_planner",
+                    "scope": "CLOSE_EXISTING",
+                    "confidence": 0.78,
+                    "target_trade_ids": ["TRD_20251027_100010_h7i8j9k0"],
+                    "causality": {
+                        "tick_id": "TCK_20251027_150000_l1m2n3o4",
+                        "context_assessment_id": "CTX_20251027_150002_p5q6r7s8",
+                        "strategy_directive_id": "STR_20251027_150003_d3e4f5g6"
+                    }
+                }
+            ]
+        }
+    }

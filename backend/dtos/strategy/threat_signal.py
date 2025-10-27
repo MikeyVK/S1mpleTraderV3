@@ -102,6 +102,33 @@ class ThreatSignal(BaseModel):
     model_config = {
         "frozen": True,
         "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "Market-wide threat (no specific asset)",
+                    "threat_id": "THR_20251027_100001_a1b2c3d4",
+                    "timestamp": "2025-10-27T10:00:01Z",
+                    "threat_type": "FLASH_CRASH",
+                    "severity": 0.95
+                },
+                {
+                    "description": "Asset-specific liquidity crisis",
+                    "threat_id": "THR_20251027_143000_e5f6g7h8",
+                    "timestamp": "2025-10-27T14:30:00Z",
+                    "threat_type": "LIQUIDITY_CRISIS",
+                    "severity": 0.82,
+                    "affected_asset": "BTCUSDT"
+                },
+                {
+                    "description": "Regulatory news event (medium severity)",
+                    "threat_id": "THR_20251027_150500_i9j0k1l2",
+                    "timestamp": "2025-10-27T15:05:00Z",
+                    "threat_type": "REGULATORY_NEWS",
+                    "severity": 0.65,
+                    "affected_asset": "ETHUSDT"
+                }
+            ]
+        }
     }
 
     @field_validator("timestamp", mode="before")

@@ -135,5 +135,35 @@ class OpportunitySignal(BaseModel):
 
     model_config = {
         "frozen": True,
-        "extra": "forbid"
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "FVG breakout signal (LONG opportunity)",
+                    "opportunity_id": "OPP_20251027_100001_a1b2c3d4",
+                    "timestamp": "2025-10-27T10:00:01Z",
+                    "asset": "BTCUSDT",
+                    "direction": "LONG",
+                    "signal_type": "FVG_BREAKOUT",
+                    "confidence": 0.85
+                },
+                {
+                    "description": "MSS reversal signal (SHORT opportunity)",
+                    "opportunity_id": "OPP_20251027_143000_e5f6g7h8",
+                    "timestamp": "2025-10-27T14:30:00Z",
+                    "asset": "ETHUSDT",
+                    "direction": "SHORT",
+                    "signal_type": "MSS_REVERSAL",
+                    "confidence": 0.72
+                },
+                {
+                    "description": "High confidence breakout (no confidence defaults to None)",
+                    "opportunity_id": "OPP_20251027_150500_i9j0k1l2",
+                    "timestamp": "2025-10-27T15:05:00Z",
+                    "asset": "SOLUSDT",
+                    "direction": "LONG",
+                    "signal_type": "TREND_CONTINUATION"
+                }
+            ]
+        }
     }

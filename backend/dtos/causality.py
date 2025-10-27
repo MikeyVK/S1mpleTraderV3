@@ -134,3 +134,52 @@ class CausalityChain(BaseModel):
                 "(tick_id, news_id, or schedule_id)"
             )
         return self
+
+    model_config = {
+        "frozen": False,  # Mutable - workers extend via model_copy(update={...})
+        "str_strip_whitespace": True,
+        "validate_assignment": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "Tick-based SWOT flow (birth → opportunity → strategy)",
+                    "tick_id": "TCK_20251027_100000_a1b2c3d4",
+                    "opportunity_signal_ids": ["OPP_20251027_100001_e5f6g7h8"],
+                    "context_assessment_id": "CTX_20251027_100001_i9j0k1l2",
+                    "strategy_directive_id": "STR_20251027_100002_m3n4o5p6"
+                },
+                {
+                    "description": "Scheduled DCA flow (schedule → entry → size → execution)",
+                    "schedule_id": "SCH_20251027_120000_q7r8s9t0",
+                    "strategy_directive_id": "STR_20251027_120001_u1v2w3x4",
+                    "entry_plan_id": "ENT_20251027_120002_y5z6a7b8",
+                    "size_plan_id": "SIZ_20251027_120003_c9d0e1f2",
+                    "execution_directive_id": "EXE_20251027_120010_g3h4i5j6"
+                },
+                {
+                    "description": "Threat-based exit (news → threat → modify directive)",
+                    "news_id": "NWS_20251027_143000_k7l8m9n0",
+                    "threat_ids": ["THR_20251027_143001_o1p2q3r4"],
+                    "context_assessment_id": "CTX_20251027_143001_s5t6u7v8",
+                    "strategy_directive_id": "STR_20251027_143002_w9x0y1z2",
+                    "exit_plan_id": "EXT_20251027_143003_a3b4c5d6"
+                },
+                {
+                    "description": "Multiple signals confluence (confluence → planning)",
+                    "tick_id": "TCK_20251027_150000_e7f8g9h0",
+                    "opportunity_signal_ids": [
+                        "OPP_20251027_150001_i1j2k3l4",
+                        "OPP_20251027_150001_m5n6o7p8",
+                        "OPP_20251027_150002_q9r0s1t2"
+                    ],
+                    "context_assessment_id": "CTX_20251027_150002_u3v4w5x6",
+                    "strategy_directive_id": "STR_20251027_150003_y7z8a9b0",
+                    "entry_plan_id": "ENT_20251027_150004_c1d2e3f4",
+                    "size_plan_id": "SIZ_20251027_150004_g5h6i7j8",
+                    "exit_plan_id": "EXT_20251027_150005_k9l0m1n2",
+                    "routing_plan_id": "ROU_20251027_150005_o3p4q5r6",
+                    "execution_directive_id": "EXE_20251027_150010_s7t8u9v0"
+                }
+            ]
+        }
+    }

@@ -109,7 +109,34 @@ class ContextFactor(BaseModel):
     model_config = {
         "frozen": True,  # Immutable after creation
         "extra": "forbid",  # No extra fields allowed
-        "str_strip_whitespace": True
+        "str_strip_whitespace": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "Strength factor - strong trend confirmation",
+                    "factor_type": "TREND_ALIGNMENT",
+                    "strength": 0.85,
+                    "source_plugin": "trend_analyzer",
+                    "source_context_type": "TECHNICAL"
+                },
+                {
+                    "description": "Weakness factor - low liquidity risk",
+                    "factor_type": "LIQUIDITY_RISK",
+                    "weakness": 0.65,
+                    "source_plugin": "risk_monitor",
+                    "source_context_type": "RISK",
+                    "metadata": {"bid_ask_spread": "0.05%", "depth": "weak"}
+                },
+                {
+                    "description": "Fundamental strength - positive news sentiment",
+                    "factor_type": "NEWS_SENTIMENT",
+                    "strength": 0.72,
+                    "source_plugin": "news_analyzer",
+                    "source_context_type": "FUNDAMENTAL",
+                    "metadata": {"articles_analyzed": 15, "sentiment_score": 0.72}
+                }
+            ]
+        }
     }
 
     @field_validator("factor_type")
