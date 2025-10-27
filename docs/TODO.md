@@ -747,7 +747,9 @@ EXECUTION_DIRECTIVE_READY
 - [ ] Performance monitoring
 
 **Referenties:**
-- V2 Architectuur: `docs/system/S1mpleTrader V2 Architectuur.md` (PlanningPhase sub-categorieën)
+- **STRATEGY PIPELINE ARCHITECTURE**: `docs/development/STRATEGY_PIPELINE_ARCHITECTURE.md` ⭐ **LEIDEND DOCUMENT**
+- **ROUTING PLANNER DEEP DIVE**: `docs/development/ROUTING_PLANNER_DEEP_DIVE.md` (execution tactics explained)
+- V2 Architectuur: `ST2/docs/system/S1mpleTrader V2 Architectuur.md` (PlanningPhase sub-categorieën)
 - SWOT Framework: `docs/development/decision_framework.md`
 - V2→V3 Analysis (archived): `docs/development/#Archief/v2_to_v3_execution_mapping.md`
 - **TriggerContext Causality**: `backend/dtos/causality.py` (immutable causality chain)
