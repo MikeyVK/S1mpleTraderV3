@@ -1304,18 +1304,19 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 | context_factor.py | 10.00/10 | 28/28 ✅ | 10.00/10 | 0 | ✅ |
 | context_factors.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ |
 | enums.py | 10.00/10 | 13/13 ✅ | 10.00/10 | 0 | ✅ |
-| entry_plan.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 1 (datetime.tzinfo - accepted) | ✅ |
+| entry_plan.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ |
+| execution_directive.py | 10.00/10 | 11/11 ✅ | 10.00/10 | 0 | ✅ |
+| exit_plan.py | 10.00/10 | 11/11 ✅ | 10.00/10 | 0 | ✅ |
 | id_generators.py | 10.00/10 | 37/37 ✅ | 10.00/10 | 0 | ✅ |
 | opportunity_signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ |
-| strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 1 (FieldInfo - accepted) | ✅ |
+| routing_plan.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ |
+| strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ |
 | threat_signal.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ |
 
 **Acceptance criteria:** 
 - ✅ ALLE modules: Pylint 10.00/10 (whitespace, imports, line length)
 - ✅ ALLE modules: 100% tests passing
-- ✅ ALLE modules: 0 actionable Pylance warnings
-  - **ACCEPTED:** Pydantic FieldInfo warnings (Pylance limitation, runtime correct)
-  - **ACCEPTED:** datetime.tzinfo warnings (Pylance type narrowing limitation)
+- ✅ ALLE modules: 0 Pylance warnings (gebruik getattr() voor FieldInfo toegang)
 
 **Quality workflow checklist per nieuwe module:**
 1. ✅ Create feature branch: `git checkout -b feature/dto-name`
@@ -1329,7 +1330,7 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 9. ✅ Gate 6: Documentation quality (file header + class docstring)
 10. ✅ VS Code Problems: Only accepted warnings (FieldInfo/datetime.tzinfo)
 11. ✅ Refactor + commit quality improvements
-12. ✅ Update Quality Metrics Dashboard (sectie 6.6.6) + commit
+12. ✅ Update Quality Metrics Dashboard (sectie 6.6.8) + commit
 13. ✅ Merge to main: `git checkout main && git merge feature/dto-name`
 14. ✅ Push to GitHub: `git push origin main`
 
