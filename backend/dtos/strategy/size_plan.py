@@ -1,3 +1,4 @@
+# backend/dtos/strategy/size_plan.py
 """
 SizePlan DTO - Position Sizing Output.
 
