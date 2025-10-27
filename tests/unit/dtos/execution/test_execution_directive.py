@@ -37,7 +37,7 @@ class TestExecutionDirectiveCreation:
         
         entry = EntryPlan(
             symbol="BTCUSDT",
-            direction="LONG",
+            direction="BUY",
             order_type="LIMIT",
             limit_price=Decimal("100000.00")
         )
@@ -99,7 +99,7 @@ class TestExecutionDirectiveCreation:
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
         entry = EntryPlan(
             symbol="BTCUSDT",
-            direction="LONG",
+            direction="BUY",
             order_type="MARKET"
         )
         
@@ -128,7 +128,7 @@ class TestExecutionDirectiveValidation:
         """Test that causality is required."""
         entry = EntryPlan(
             symbol="BTCUSDT",
-            direction="LONG",
+            direction="BUY",
             order_type="MARKET"
         )
         
@@ -139,7 +139,7 @@ class TestExecutionDirectiveValidation:
         """Test various valid plan combinations."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
         
-        entry = EntryPlan(symbol="BTCUSDT", direction="LONG", order_type="MARKET")
+        entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
         size = SizePlan(position_size=Decimal("0.5"), position_value=Decimal("50000"), risk_amount=Decimal("500"))
         
         # Entry + Size only
@@ -157,7 +157,7 @@ class TestExecutionDirectiveImmutability:
     def test_directive_is_frozen(self):
         """Test that ExecutionDirective is immutable after creation."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
-        entry = EntryPlan(symbol="BTCUSDT", direction="LONG", order_type="MARKET")
+        entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
         
         directive = ExecutionDirective(causality=causality, entry_plan=entry)
         
@@ -167,7 +167,7 @@ class TestExecutionDirectiveImmutability:
     def test_no_extra_fields_allowed(self):
         """Test that extra fields are rejected."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
-        entry = EntryPlan(symbol="BTCUSDT", direction="LONG", order_type="MARKET")
+        entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
         
         with pytest.raises(ValueError):
             ExecutionDirective(
@@ -183,7 +183,7 @@ class TestExecutionDirectiveIdFormat:
     def test_directive_id_matches_pattern(self):
         """Test that generated directive_id matches EXE_ pattern."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
-        entry = EntryPlan(symbol="BTCUSDT", direction="LONG", order_type="MARKET")
+        entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
         
         directive = ExecutionDirective(causality=causality, entry_plan=entry)
         
@@ -194,7 +194,7 @@ class TestExecutionDirectiveIdFormat:
     def test_directive_id_uniqueness(self):
         """Test that directive_ids are unique across instances."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
-        entry = EntryPlan(symbol="BTCUSDT", direction="LONG", order_type="MARKET")
+        entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
         
         directive1 = ExecutionDirective(causality=causality, entry_plan=entry)
         directive2 = ExecutionDirective(causality=causality, entry_plan=entry)
@@ -213,7 +213,7 @@ class TestExecutionDirectiveCausalityChain:
             opportunity_signal_ids=["OPP_20251027_100001_def456"],
             strategy_directive_id="STR_20251027_100002_ghi789"
         )
-        entry = EntryPlan(symbol="BTCUSDT", direction="LONG", order_type="MARKET")
+        entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
         
         directive = ExecutionDirective(causality=causality, entry_plan=entry)
         

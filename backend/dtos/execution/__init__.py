@@ -1,2 +1,8 @@
 # backend/dtos/execution/__init__.py
-"""Execution layer DTOs (TradePlan, RoutedTradePlan, CriticalEvent)."""
+"""Execution DTOs - Final execution instructions."""
+
+from backend.dtos.execution.execution_directive import ExecutionDirective
+
+__all__ = [
+    'ExecutionDirective',
+]
