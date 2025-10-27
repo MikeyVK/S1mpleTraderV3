@@ -68,8 +68,7 @@ class TestExecutionDirectiveCreation:
             routing_plan=routing
         )
 
-        # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
-        assert directive.directive_id.startswith("EXE_")
+        assert getattr(directive, "directive_id").startswith("EXE_")
         assert directive.causality == causality
         assert directive.entry_plan == entry
         assert directive.size_plan == size
@@ -90,8 +89,7 @@ class TestExecutionDirectiveCreation:
             exit_plan=exit_plan
         )
 
-        # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
-        assert directive.directive_id.startswith("EXE_")
+        assert getattr(directive, "directive_id").startswith("EXE_")
         assert directive.entry_plan is None
         assert directive.size_plan is None
         assert directive.exit_plan == exit_plan
@@ -112,9 +110,8 @@ class TestExecutionDirectiveCreation:
         )
 
         # EXE_YYYYMMDD_HHMMSS_hash format
-        # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
-        assert directive.directive_id.startswith("EXE_")
-        assert len(directive.directive_id) == 28
+        assert getattr(directive, "directive_id").startswith("EXE_")
+        assert len(getattr(directive, "directive_id")) == 28
 
 
 class TestExecutionDirectiveValidation:
