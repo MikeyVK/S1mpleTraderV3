@@ -333,7 +333,7 @@ class TestStrategyDirectiveUseCases:
         # Type narrowing: routing_directive is not None here
         routing_dir = directive.routing_directive
         assert routing_dir is not None
-        assert routing_dir.execution_urgency == Decimal("1.0")  # pyright: ignore[reportAttributeAccessIssue]
+        assert routing_dir.execution_urgency == Decimal("1.0")
 
     def test_partial_directive_for_entry_only(self):
         """Directive with only entry sub-directive (other planners inactive)."""
