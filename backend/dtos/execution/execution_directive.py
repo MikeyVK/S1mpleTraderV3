@@ -12,7 +12,10 @@ executable directive for the ExecutionHandler.
 - All plans Optional (enables partial updates like trailing stops)
 
 @layer: DTOs (Execution)
-@dependencies: [pydantic, backend.dtos.causality, backend.dtos.strategy.*, backend.utils.id_generator]
+@dependencies: [
+    pydantic, backend.dtos.causality, backend.dtos.strategy.*,
+    backend.utils.id_generator
+]
 """
 
 # Standard library imports
@@ -55,7 +58,7 @@ class ExecutionDirective(BaseModel):
     - MODIFY_EXISTING: Partial plans (e.g., only exit_plan for trailing stop)
     - ADD_TO_POSITION: entry_plan + size_plan only
     """
-    
+
     directive_id: str = Field(
         default_factory=generate_execution_directive_id,
         description="Auto-generated unique execution directive ID (EXE_YYYYMMDD_HHMMSS_hash)"
@@ -65,7 +68,7 @@ class ExecutionDirective(BaseModel):
     size_plan: SizePlan | None = None
     exit_plan: ExitPlan | None = None
     routing_plan: RoutingPlan | None = None
-    
+
     model_config = {
         "frozen": True,
         "extra": "forbid",
@@ -148,7 +151,7 @@ class ExecutionDirective(BaseModel):
             ]
         }
     }
-    
+
     @model_validator(mode="after")
     def validate_at_least_one_plan(self) -> "Self":
         """Validate that at least one plan is present."""

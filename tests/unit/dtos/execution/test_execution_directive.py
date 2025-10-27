@@ -11,7 +11,10 @@ Tests the ExecutionDirective DTO which aggregates all planning outputs
 - At least 1 plan required (validation)
 
 @layer: Tests (Unit - Execution DTOs)
-@dependencies: [pytest, backend.dtos.execution.execution_directive, backend.dtos.strategy.*, backend.dtos.causality]
+@dependencies: [
+    pytest, backend.dtos.execution.execution_directive,
+    backend.dtos.strategy.*, backend.dtos.causality
+]
 """
 
 import re
@@ -34,7 +37,7 @@ class TestExecutionDirectiveCreation:
     def test_create_directive_all_plans(self):
         """Test creating directive with all 4 plans (NEW_TRADE scenario)."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
-        
+
         entry = EntryPlan(
             symbol="BTCUSDT",
             direction="BUY",
@@ -46,7 +49,7 @@ class TestExecutionDirectiveCreation:
             position_value=Decimal("50000.00"),
             risk_amount=Decimal("500.00")
         )
-        exit = ExitPlan(
+        exit_plan = ExitPlan(
             stop_loss_price=Decimal("95000.00"),
             take_profit_price=Decimal("105000.00")
         )
@@ -56,42 +59,42 @@ class TestExecutionDirectiveCreation:
             max_slippage_pct=Decimal("0.5"),
             execution_urgency=Decimal("0.8")
         )
-        
+
         directive = ExecutionDirective(
             causality=causality,
             entry_plan=entry,
             size_plan=size,
-            exit_plan=exit,
+            exit_plan=exit_plan,
             routing_plan=routing
         )
-        
+
         # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
         assert directive.directive_id.startswith("EXE_")
         assert directive.causality == causality
         assert directive.entry_plan == entry
         assert directive.size_plan == size
-        assert directive.exit_plan == exit
+        assert directive.exit_plan == exit_plan
         assert directive.routing_plan == routing
 
     def test_create_directive_partial_plans_modify_scenario(self):
         """Test creating directive with partial plans (MODIFY_EXISTING - trailing stop)."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
-        
+
         # Only exit plan - trailing stop adjustment
-        exit = ExitPlan(
+        exit_plan = ExitPlan(
             stop_loss_price=Decimal("98000.00")
         )
-        
+
         directive = ExecutionDirective(
             causality=causality,
-            exit_plan=exit
+            exit_plan=exit_plan
         )
-        
+
         # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
         assert directive.directive_id.startswith("EXE_")
         assert directive.entry_plan is None
         assert directive.size_plan is None
-        assert directive.exit_plan == exit
+        assert directive.exit_plan == exit_plan
         assert directive.routing_plan is None
 
     def test_directive_id_auto_generated(self):
@@ -102,12 +105,12 @@ class TestExecutionDirectiveCreation:
             direction="BUY",
             order_type="MARKET"
         )
-        
+
         directive = ExecutionDirective(
             causality=causality,
             entry_plan=entry
         )
-        
+
         # EXE_YYYYMMDD_HHMMSS_hash format
         # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
         assert directive.directive_id.startswith("EXE_")
@@ -120,7 +123,7 @@ class TestExecutionDirectiveValidation:
     def test_at_least_one_plan_required(self):
         """Test that at least one plan is required."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
-        
+
         with pytest.raises(ValueError, match="at least one plan"):
             ExecutionDirective(causality=causality)
 
@@ -131,21 +134,25 @@ class TestExecutionDirectiveValidation:
             direction="BUY",
             order_type="MARKET"
         )
-        
+
         with pytest.raises(ValueError):
             ExecutionDirective(entry_plan=entry)  # Missing causality
 
     def test_multiple_plans_combinations_valid(self):
         """Test various valid plan combinations."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
-        
+
         entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
-        size = SizePlan(position_size=Decimal("0.5"), position_value=Decimal("50000"), risk_amount=Decimal("500"))
-        
+        size = SizePlan(
+            position_size=Decimal("0.5"),
+            position_value=Decimal("50000"),
+            risk_amount=Decimal("500")
+        )
+
         # Entry + Size only
         directive1 = ExecutionDirective(causality=causality, entry_plan=entry, size_plan=size)
         assert directive1.exit_plan is None
-        
+
         # Entry only
         directive2 = ExecutionDirective(causality=causality, entry_plan=entry)
         assert directive2.size_plan is None
@@ -158,9 +165,9 @@ class TestExecutionDirectiveImmutability:
         """Test that ExecutionDirective is immutable after creation."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
         entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
-        
+
         directive = ExecutionDirective(causality=causality, entry_plan=entry)
-        
+
         with pytest.raises(ValueError, match="frozen"):
             directive.entry_plan = None  # type: ignore
 
@@ -168,7 +175,7 @@ class TestExecutionDirectiveImmutability:
         """Test that extra fields are rejected."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
         entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
-        
+
         with pytest.raises(ValueError):
             ExecutionDirective(
                 causality=causality,
@@ -184,9 +191,9 @@ class TestExecutionDirectiveIdFormat:
         """Test that generated directive_id matches EXE_ pattern."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
         entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
-        
+
         directive = ExecutionDirective(causality=causality, entry_plan=entry)
-        
+
         # Should match: EXE_YYYYMMDD_HHMMSS_hash
         pattern = r'^EXE_\d{8}_\d{6}_[0-9a-f]{8}$'
         assert re.match(pattern, directive.directive_id)
@@ -195,10 +202,10 @@ class TestExecutionDirectiveIdFormat:
         """Test that directive_ids are unique across instances."""
         causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
         entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
-        
+
         directive1 = ExecutionDirective(causality=causality, entry_plan=entry)
         directive2 = ExecutionDirective(causality=causality, entry_plan=entry)
-        
+
         # Same data, but different IDs (hash ensures uniqueness)
         assert directive1.directive_id != directive2.directive_id
 
@@ -214,9 +221,9 @@ class TestExecutionDirectiveCausalityChain:
             strategy_directive_id="STR_20251027_100002_ghi789"
         )
         entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
-        
+
         directive = ExecutionDirective(causality=causality, entry_plan=entry)
-        
+
         # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
         assert directive.causality.tick_id == "TCK_20251027_100000_abc123"
         assert len(directive.causality.opportunity_signal_ids) == 1
