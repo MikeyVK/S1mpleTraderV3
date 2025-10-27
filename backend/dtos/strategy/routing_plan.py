@@ -139,5 +139,42 @@ class RoutingPlan(BaseModel):
 
     model_config = {
         "frozen": True,
-        "extra": "forbid"
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": (
+                        "Urgent market entry (high urgency, IOC)"
+                    ),
+                    "plan_id": "ROU_20251027_100530_a1b2c3d4",
+                    "timing": "IMMEDIATE",
+                    "time_in_force": "IOC",
+                    "max_slippage_pct": "1.0",
+                    "execution_urgency": "0.9",
+                    "iceberg_preference": False
+                },
+                {
+                    "description": (
+                        "Patient TWAP accumulation (low urgency, iceberg)"
+                    ),
+                    "plan_id": "ROU_20251027_143000_e5f6g7h8",
+                    "timing": "TWAP",
+                    "time_in_force": "GTC",
+                    "max_slippage_pct": "0.2",
+                    "execution_urgency": "0.2",
+                    "iceberg_preference": True
+                },
+                {
+                    "description": (
+                        "Layered limit orders (medium urgency, tight slippage)"
+                    ),
+                    "plan_id": "ROU_20251027_150500_i9j0k1l2",
+                    "timing": "LAYERED",
+                    "time_in_force": "GTC",
+                    "max_slippage_pct": "0.1",
+                    "execution_urgency": "0.5",
+                    "iceberg_preference": False
+                }
+            ]
+        }
     }
