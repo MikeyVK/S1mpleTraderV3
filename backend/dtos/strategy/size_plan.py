@@ -10,10 +10,14 @@ Per STRATEGY_PIPELINE_ARCHITECTURE.md:
 - Account constraints → SizePlanner worker input, not DTO
 - Confidence-driven sizing → worker logic, not DTO fields
 """
+
+# Standard Library Imports
 from decimal import Decimal
 
+# Third-Party Imports
 from pydantic import BaseModel, Field, field_validator
 
+# Our Application Imports
 from backend.utils.id_generators import generate_size_plan_id
 
 
