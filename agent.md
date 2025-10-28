@@ -1310,6 +1310,7 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 | id_generators.py | 10.00/10 | 37/37 ✅ | 10.00/10 | 0 | ✅ |
 | opportunity_signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ |
 | routing_plan.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ |
+| routing_request.py | 10.00/10 | 11/11 ✅ | 10.00/10 | 0 | ✅ |
 | strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ |
 | threat_signal.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ |
 
