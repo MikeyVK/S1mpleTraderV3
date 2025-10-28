@@ -13,6 +13,7 @@ import pytest
 
 from backend.dtos.causality import CausalityChain
 from backend.dtos.strategy import (
+    DirectiveScope,
     EntryPlan,
     ExitPlan,
     RoutingRequest,
@@ -35,10 +36,12 @@ def test_create_routing_request_with_all_fields():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100000_abc123")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.75"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(),
+        size_directive=SizeDirective(max_risk_amount=Decimal("1000.00")),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(),
     )
@@ -71,10 +74,14 @@ def test_create_routing_request_with_market_order():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100100_def456")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.90"),
         entry_directive=EntryDirective(symbol="ETHUSDT", direction="SELL"),
-        size_directive=SizeDirective(aggressiveness=Decimal("0.8")),
+        size_directive=SizeDirective(
+            aggressiveness=Decimal("0.8"), max_risk_amount=Decimal("1000.00")
+        ),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(execution_urgency=Decimal("0.95")),
     )
@@ -103,10 +110,14 @@ def test_create_routing_request_with_large_position():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100200_ghi789")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.65"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(aggressiveness=Decimal("0.4")),
+        size_directive=SizeDirective(
+            aggressiveness=Decimal("0.4"), max_risk_amount=Decimal("15000.00")
+        ),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(execution_urgency=Decimal("0.3")),
     )
@@ -161,10 +172,12 @@ def test_routing_request_requires_entry_plan():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100300_jkl012")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.75"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(),
+        size_directive=SizeDirective(max_risk_amount=Decimal("1000.00")),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(),
     )
@@ -187,10 +200,12 @@ def test_routing_request_requires_size_plan():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100400_mno345")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.75"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(),
+        size_directive=SizeDirective(max_risk_amount=Decimal("1000.00")),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(),
     )
@@ -209,10 +224,12 @@ def test_routing_request_requires_exit_plan():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100500_pqr678")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.75"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(),
+        size_directive=SizeDirective(max_risk_amount=Decimal("1000.00")),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(),
     )
@@ -238,10 +255,12 @@ def test_routing_request_is_frozen():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100600_stu901")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.75"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(),
+        size_directive=SizeDirective(max_risk_amount=Decimal("1000.00")),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(),
     )
@@ -266,10 +285,12 @@ def test_routing_request_no_extra_fields():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100700_vwx234")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.75"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(),
+        size_directive=SizeDirective(max_risk_amount=Decimal("1000.00")),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(),
     )
@@ -300,10 +321,12 @@ def test_routing_request_supports_profit_margin_calculation():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100800_yzab567")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.80"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(),
+        size_directive=SizeDirective(max_risk_amount=Decimal("1000.00")),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(),
     )
@@ -340,10 +363,12 @@ def test_routing_request_supports_leverage_routing():
     # Arrange
     causality = CausalityChain(tick_id="TCK_20251028_100900_cdef890")
     directive = StrategyDirective(
+        strategy_planner_id="test_planner",
+        scope=DirectiveScope.NEW_TRADE,
         causality=causality,
         confidence=Decimal("0.70"),
         entry_directive=EntryDirective(symbol="BTCUSDT", direction="BUY"),
-        size_directive=SizeDirective(),
+        size_directive=SizeDirective(max_risk_amount=Decimal("1000.00")),
         exit_directive=ExitDirective(),
         routing_directive=RoutingDirective(),
     )
