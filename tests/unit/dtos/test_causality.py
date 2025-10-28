@@ -65,7 +65,7 @@ class TestCausalityChainCreation:
         assert chain.entry_plan_id is None
         assert chain.size_plan_id is None
         assert chain.exit_plan_id is None
-        assert chain.routing_plan_id is None
+        assert chain.execution_plan_id is None
         assert chain.execution_directive_id is None
 
 
@@ -181,13 +181,13 @@ class TestCausalityChainWorkerIDs:
             entry_plan_id="ENT_20251026_100003_abc1d2e3",
             size_plan_id="SIZ_20251026_100004_def5e6f7",
             exit_plan_id="EXT_20251026_100005_abc1d2e3",
-            routing_plan_id="ROU_20251026_100006_def5e6f7"
+            execution_plan_id="EXP_20251026_100006_def5e6f7"
         )
 
         assert chain.entry_plan_id == "ENT_20251026_100003_abc1d2e3"
         assert chain.size_plan_id == "SIZ_20251026_100004_def5e6f7"
         assert chain.exit_plan_id == "EXT_20251026_100005_abc1d2e3"
-        assert chain.routing_plan_id == "ROU_20251026_100006_def5e6f7"
+        assert chain.execution_plan_id == "EXP_20251026_100006_def5e6f7"
 
     def test_add_execution_directive_id(self):
         """Test adding execution directive ID (final stage)."""
@@ -284,7 +284,7 @@ class TestCausalityChainSerialization:
         assert "entry_plan_id" in data
         assert "size_plan_id" in data
         assert "exit_plan_id" in data
-        assert "routing_plan_id" in data
+        assert "execution_plan_id" in data
         assert "execution_directive_id" in data
 
     def test_model_dump_json_serializable(self):
@@ -313,7 +313,7 @@ class TestCausalityChainSerialization:
             "entry_plan_id": None,
             "size_plan_id": None,
             "exit_plan_id": None,
-            "routing_plan_id": None,
+            "execution_plan_id": None,
             "execution_directive_id": None
         }
 
@@ -354,7 +354,7 @@ class TestCausalityChainEdgeCases:
             entry_plan_id=None,
             size_plan_id=None,
             exit_plan_id=None,
-            routing_plan_id=None,
+            execution_plan_id=None,
             execution_directive_id=None
         )
 
@@ -373,7 +373,7 @@ class TestCausalityChainEdgeCases:
             entry_plan_id="ENT_20251026_100005_def5e6f7",
             size_plan_id="SIZ_20251026_100006_abc1d2e3",
             exit_plan_id="EXT_20251026_100007_def5e6f7",
-            routing_plan_id="ROU_20251026_100008_abc1d2e3",
+            execution_plan_id="EXP_20251026_100008_abc1d2e3",
             execution_directive_id="EXE_20251026_100009_def5e6f7"
         )
 
@@ -386,5 +386,5 @@ class TestCausalityChainEdgeCases:
         assert chain.entry_plan_id is not None
         assert chain.size_plan_id is not None
         assert chain.exit_plan_id is not None
-        assert chain.routing_plan_id is not None
+        assert chain.execution_plan_id is not None
         assert chain.execution_directive_id is not None

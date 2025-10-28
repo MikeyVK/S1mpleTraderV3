@@ -7,8 +7,8 @@ Pure execution parameters without timing/routing/metadata.
 
 **Refactored to Lean Spec (2025-10-27):**
 - Removed: created_at, planner_id (moved to worker context)
-- Removed: timing (moved to RoutingPlan - execution tactics)
-- Removed: reference_price, max_slippage_pct (moved to RoutingPlan)
+- Removed: timing (moved to ExecutionPlan - execution tactics)
+- Removed: reference_price, max_slippage_pct (moved to ExecutionPlan)
 - Removed: valid_until, planner_metadata, rationale (unnecessary)
 - Removed: causality (sub-planners don't track causality)
 
@@ -49,8 +49,8 @@ class EntryPlan(BaseModel):
     - Price levels (limit_price, stop_price)
 
     **NOT Responsible For:**
-    - Timing/urgency (→ RoutingPlan)
-    - Slippage tolerance (→ RoutingPlan)
+    - Timing/urgency (→ ExecutionPlan)
+    - Slippage tolerance (→ ExecutionPlan)
     - Position sizing (→ SizePlan)
     - Exit strategy (→ ExitPlan)
     - Metadata/rationale (worker context only)

@@ -3,7 +3,7 @@
 Unit tests for ExecutionDirective DTO - Final execution instruction.
 
 Tests the ExecutionDirective DTO which aggregates all planning outputs
-(Entry, Size, Exit, Routing) into single executable directive.
+(Entry, Size, Exit, Execution) into single executable directive.
 
 **Clean Execution Contract:**
 - No strategy metadata (clean separation)
@@ -26,7 +26,8 @@ from backend.dtos.strategy import (
     EntryPlan,
     SizePlan,
     ExitPlan,
-    RoutingPlan
+    ExecutionPlan,
+    ExecutionAction
 )
 from backend.dtos.execution.execution_directive import ExecutionDirective
 
@@ -53,19 +54,15 @@ class TestExecutionDirectiveCreation:
             stop_loss_price=Decimal("95000.00"),
             take_profit_price=Decimal("105000.00")
         )
-        routing = RoutingPlan(
-            timing="IMMEDIATE",
-            time_in_force="GTC",
-            max_slippage_pct=Decimal("0.5"),
-            execution_urgency=Decimal("0.8")
-        )
+        # ExecutionPlan optional - can be None for basic test
+        execution_plan = None
 
         directive = ExecutionDirective(
             causality=causality,
             entry_plan=entry,
             size_plan=size,
             exit_plan=exit_plan,
-            routing_plan=routing
+            execution_plan=execution_plan
         )
 
         assert getattr(directive, "directive_id").startswith("EXE_")
@@ -73,7 +70,7 @@ class TestExecutionDirectiveCreation:
         assert directive.entry_plan == entry
         assert directive.size_plan == size
         assert directive.exit_plan == exit_plan
-        assert directive.routing_plan == routing
+        assert directive.execution_plan == execution_plan
 
     def test_create_directive_partial_plans_modify_scenario(self):
         """Test creating directive with partial plans (MODIFY_EXISTING - trailing stop)."""
@@ -93,7 +90,7 @@ class TestExecutionDirectiveCreation:
         assert directive.entry_plan is None
         assert directive.size_plan is None
         assert directive.exit_plan == exit_plan
-        assert directive.routing_plan is None
+        assert directive.execution_plan is None
 
     def test_directive_id_auto_generated(self):
         """Test that directive_id is auto-generated with correct format."""
@@ -225,3 +222,4 @@ class TestExecutionDirectiveCausalityChain:
         assert directive.causality.tick_id == "TCK_20251027_100000_abc123"
         assert len(directive.causality.opportunity_signal_ids) == 1
         assert directive.causality.strategy_directive_id == "STR_20251027_100002_ghi789"
+

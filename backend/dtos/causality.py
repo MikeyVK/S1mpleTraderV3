@@ -62,7 +62,7 @@ class CausalityChain(BaseModel):
             entry_plan_id: EntryPlan ID
             size_plan_id: SizePlan ID
             exit_plan_id: ExitPlan ID
-            routing_plan_id: RoutingPlan ID
+            execution_plan_id: ExecutionPlan ID (execution trade-offs)
             execution_directive_id: ExecutionDirective ID (final stage)
     """
 
@@ -109,9 +109,9 @@ class CausalityChain(BaseModel):
         default=None,
         description="ExitPlan ID - exit/stop management plan"
     )
-    routing_plan_id: str | None = Field(
+    execution_plan_id: str | None = Field(
         default=None,
-        description="RoutingPlan ID - broker routing plan"
+        description="ExecutionPlan ID - execution trade-offs (HOW/WHEN)"
     )
     execution_directive_id: str | None = Field(
         default=None,
@@ -177,7 +177,7 @@ class CausalityChain(BaseModel):
                     "entry_plan_id": "ENT_20251027_150004_c1d2e3f4",
                     "size_plan_id": "SIZ_20251027_150004_g5h6i7j8",
                     "exit_plan_id": "EXT_20251027_150005_k9l0m1n2",
-                    "routing_plan_id": "ROU_20251027_150005_o3p4q5r6",
+                    "execution_plan_id": "EXP_20251027_150005_o3p4q5r6",
                     "execution_directive_id": "EXE_20251027_150010_s7t8u9v0"
                 }
             ]

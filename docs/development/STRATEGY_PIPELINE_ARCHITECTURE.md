@@ -1,8 +1,39 @@
 # Strategy Pipeline Architecture - S1mpleTraderV3
 
 **Status:** Definitief - Leidend Document  
-**Versie:** 3.0  
-**Laatst Bijgewerkt:** 2025-10-27
+**Versie:** 4.0 (ExecutionIntent Architecture)  
+**Laatst Bijgewerkt:** 2025-10-28
+
+---
+
+## 🔄 Version History
+
+### v4.0 (2025-10-28) - ExecutionIntent Architecture
+**Breaking Changes:**
+- RoutingPlan → ExecutionIntent (connector-agnostic universal trade-offs)
+- Nieuwe ExecutionTranslator layer (CEX/DEX/Backtest translation)
+- ExecutionGroup tracking (multi-order relationships)
+- IStrategyLedger dual-level API (groups vs orders)
+- Event renames: ROUTING_* → EXECUTION_INTENT_*
+
+**New Components:**
+- ExecutionIntent DTO (urgency, visibility, slippage)
+- ExecutionTranslator (platform layer, niet plugin)
+- ExecutionGroup DTO (order relationship tracking)
+- ExecutionDirectiveBatch (atomic multi-modifications)
+- ConnectorExecutionSpec (CEX/DEX/Backtest specifiek)
+
+**Core Principle Reinforcement:**
+- Plugin-First: Execution strategy keuze blijft in plugins
+- Connector-Agnostic: Strategy layer gebruikt universele concepten
+- Strategy Control: Emergency scenarios - strategy specificeert EXACT wat
+- Type Safety: Compiler prevents connector-specific leakage
+
+### v3.0 (2025-10-27) - Original Architecture
+- Confidence-Driven Specialization
+- Plugin-First principe
+- Bus-Agnostic Workers
+- SRP overal
 
 ---
 
@@ -78,7 +109,7 @@ Dit document beschrijft de **volledige strategie pipeline** van S1mpleTraderV3 -
 │ └─ ExitPlanner    → ExitPlan    (WHERE OUT)                    │
 │                                                                  │
 │ SEQUENTIAL PHASE: (krijgt context van eerdere plannen)          │
-│ └─ RoutingPlanner → RoutingPlan (HOW/WHEN execute)             │
+│ └─ ExecutionIntentPlanner → ExecutionIntent (HOW/WHEN)         │
 │                                                                  │
 │ Config-driven filtering: Quant definieert confidence ranges     │
 │ - AggressiveMarketEntry: confidence [0.8-1.0]                   │
@@ -88,9 +119,17 @@ Dit document beschrijft de **volledige strategie pipeline** van S1mpleTraderV3 -
 ┌─────────────────────────────────────────────────────────────────┐
 │ Fase 4b: TRADE PLAN AGGREGATIE (Platform Component)             │
 │ Component: PlanningAggregator                                    │
-│ Input: 4 Plan DTOs (Entry, Size, Exit, Routing)                │
+│ Input: 4 Plan DTOs (Entry, Size, Exit, ExecutionIntent)        │
 │ Output: ExecutionDirective (complete execution package)         │
 │ Event: EXECUTION_DIRECTIVE_READY                                │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│ Fase 4c: EXECUTION TRANSLATION (Platform Layer)                 │
+│ Component: ExecutionTranslator (connector-specific factory)     │
+│ Input: ExecutionDirective (with ExecutionIntent)                │
+│ Process: Translate universal trade-offs → connector spec        │
+│ Output: ConnectorExecutionSpec (CEX/DEX/Backtest specific)      │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -381,7 +420,7 @@ class AdaptiveMomentumPlanner(BaseStrategyPlanner):
                 aggressiveness=confidence * 0.8,  # Hint: sizing strategie
                 max_risk_amount=Decimal("1000")   # Constraint: hard limit
             ),
-            # ... exit & routing hints
+            # ... exit & execution intent hints
         )
 ```
 
@@ -411,8 +450,8 @@ StrategyDirective(
         risk_reward_ratio=Decimal("2.5"),          # HINT: RR target
         stop_loss_tolerance=Decimal("0.015")       # CONSTRAINT: max SL distance
     ),
-    routing_directive=RoutingDirective(
-        execution_urgency=Decimal("0.82"),         # HINT: routing urgency
+    execution_intent_directive=ExecutionIntentDirective(
+        execution_urgency=Decimal("0.82"),         # HINT: execution urgency
         max_total_slippage_pct=Decimal("0.002")    # CONSTRAINT: hard limit
     ),
     
@@ -428,6 +467,473 @@ StrategyDirective(
 - **Scheduled triggers:** DCAPlanner luistert naar `WEEKLY_DCA_TICK`
 - **Position updates:** TrailingStopPlanner luistert naar `POSITION_UPDATE`
 - **Output:** Allemaal StrategyDirective (zelfde DTO, andere scope)
+
+---
+
+## 🏗️ Execution Architecture - Connector-Agnostic Design
+
+### Architectureel Probleem: Connector-Specificity Leakage
+
+**Historische Situatie (DEPRECATED):**
+```python
+# ❌ OUDE RoutingPlan - Connector-specifiek!
+RoutingPlan(
+    timing="TWAP",
+    time_in_force="GTC",     # ← CEX-only (DEX heeft dit niet)
+    iceberg_preference=0.5,  # ← CEX-only (blockchain is transparant)
+    twap_duration_minutes=30 # ← Implementatie detail
+)
+```
+
+**Probleem:** RoutingPlan lekt connector-specifieke concepten naar Strategy layer:
+- `time_in_force="GTC"` bestaat niet op DEX (geen order book persistentie)
+- `iceberg_preference` is CEX-concept (DEX heeft transparante mempool)
+- TWAP implementaties verschillen fundamenteel (CEX=order splitting, DEX=batched swaps)
+
+**Gevolg:** Strategy plugins worden **connector-aware** → Violatie van Plugin-First principe!
+
+### Nieuwe Architectuur: ExecutionIntent + Translator Pattern
+
+**Kernidee:** Strategy layer spreekt in **universele trade-offs**, platform vertaalt naar **connector-specifieke specs**.
+
+```mermaid
+graph TB
+    subgraph "Strategy Layer (Plugin Domain)"
+        SP[StrategyPlanner] --> SD[StrategyDirective]
+        SD --> PP[Parallel Planners]
+        PP --> EIP[ExecutionIntentPlanner]
+    end
+    
+    subgraph "Connector-Agnostic Layer"
+        EIP --> EI[ExecutionIntent<br/>Universal Trade-offs]
+        EI --> |urgency: 0.9<br/>visibility: LOW<br/>slippage: 0.01| ED[ExecutionDirective]
+    end
+    
+    subgraph "Platform Translation Layer"
+        ED --> ET[ExecutionTranslator<br/>Factory]
+        ET --> |CEX| CEXT[CEXExecutionTranslator]
+        ET --> |DEX| DEXT[DEXExecutionTranslator]
+        ET --> |Backtest| BT[BacktestExecutionTranslator]
+    end
+    
+    subgraph "Connector-Specific Layer"
+        CEXT --> CEXS[CEXExecutionSpec<br/>time_in_force: GTC<br/>iceberg: true<br/>TWAP: 5 chunks]
+        DEXT --> DEXS[DEXExecutionSpec<br/>gas_strategy: FAST<br/>slippage_tolerance: 1%<br/>MEV_protection: true]
+        BT --> BTS[BacktestExecutionSpec<br/>fill_model: MARKET_IMPACT<br/>latency_ms: 50]
+    end
+    
+    subgraph "Execution Layer"
+        CEXS --> CEXH[CEXExecutionHandler]
+        DEXS --> DEXH[DEXExecutionHandler]
+        BTS --> BTH[BacktestExecutionHandler]
+    end
+    
+    style EI fill:#90EE90
+    style ET fill:#FFD700
+    style CEXS fill:#FFB6C1
+    style DEXS fill:#FFB6C1
+    style BTS fill:#FFB6C1
+```
+
+### ExecutionIntent - Universal Trade-Offs
+
+**Concept:** Strategy layer specificeert **wat** bereikt moet worden (trade-offs), niet **hoe** (implementatie).
+
+```python
+@dataclass(frozen=True)
+class ExecutionIntent:
+    """
+    Connector-agnostic execution trade-offs.
+    
+    Strategy layer spreekt in universele concepten:
+    - Urgency (hoe snel?)
+    - Visibility (mag markt zien?)
+    - Slippage (hoeveel prijs impact?)
+    
+    ExecutionTranslator vertaalt naar connector-specifieke spec.
+    """
+    intent_id: str
+    action: ExecutionAction  # EXECUTE_TRADE, CANCEL_ORDER, MODIFY_ORDER
+    
+    # === UNIVERSAL TRADE-OFFS (alle connectors begrijpen dit) ===
+    execution_urgency: Decimal       # 0.0-1.0 (patience vs speed)
+    visibility_preference: Decimal   # 0.0-1.0 (stealth vs transparency)
+    max_slippage_pct: Decimal        # Hard limit (universal concept)
+    
+    # Time constraints (optional)
+    must_complete_immediately: bool = False
+    max_execution_window_minutes: Optional[int] = None
+    
+    # === OPTIONAL HINTS (niet binding, connector kan interpreteren) ===
+    preferred_execution_style: Optional[str] = None  # "TWAP", "VWAP", "ICEBERG"
+    chunk_count_hint: Optional[int] = None           # Suggested chunking
+    chunk_distribution: Optional[str] = None         # "UNIFORM", "FRONT_LOADED"
+    min_fill_ratio: Optional[Decimal] = None         # Partial fill acceptance
+```
+
+**Universele Trade-Offs Uitgelegd:**
+
+1. **execution_urgency (0.0-1.0)**
+   - `0.0` = Maximum patience (kan dagen duren)
+   - `0.5` = Balanced (uren tot dag)
+   - `1.0` = Immediate (seconden)
+   - **CEX interpretatie:** urgency > 0.8 → MARKET order, < 0.3 → LIMIT + TWAP
+   - **DEX interpretatie:** urgency > 0.8 → Max gas + MEV protection, < 0.3 → Patient routing
+   - **Backtest interpretatie:** urgency bepaalt fill latency model
+
+2. **visibility_preference (0.0-1.0)**
+   - `0.0` = Maximum stealth (verberg intentie)
+   - `0.5` = Neutral
+   - `1.0` = Full visibility (transparant)
+   - **CEX interpretatie:** visibility < 0.3 → iceberg orders, > 0.7 → regular orders
+   - **DEX interpretatie:** visibility < 0.3 → private mempool, > 0.7 → public broadcast
+   - **Backtest interpretatie:** visibility bepaalt market impact model
+
+3. **max_slippage_pct**
+   - Hard limit op prijs afwijking
+   - **CEX:** Limit price range voor TWAP chunks
+   - **DEX:** Slippage tolerance in swap contract
+   - **Backtest:** Rejects trades die model boundary overschrijden
+
+**Hints vs Constraints:**
+
+```python
+# ✅ HINT (suggestie - connector kan negeren)
+ExecutionIntent(
+    preferred_execution_style="TWAP",  # Hint: "als mogelijk, gebruik TWAP"
+    chunk_count_hint=5                 # Hint: "probeer 5 chunks"
+)
+
+# ✅ CONSTRAINT (hard requirement)
+ExecutionIntent(
+    max_slippage_pct=Decimal("0.01"),         # MUST: max 1% slippage
+    must_complete_immediately=True,            # MUST: nu of fail
+    max_execution_window_minutes=30            # MUST: binnen 30 min
+)
+```
+
+### ExecutionTranslator - Platform Translation Layer
+
+**Verantwoordelijkheid:** Vertaal universele ExecutionIntent → connector-specifieke execution spec.
+
+```python
+class ExecutionTranslator(ABC):
+    """
+    Abstract base voor connector-specifieke translators.
+    
+    NIET een plugin - dit is platform infrastructuur!
+    Quant configureert ExecutionIntent, platform kiest translator.
+    """
+    
+    @abstractmethod
+    def translate(
+        self,
+        intent: ExecutionIntent,
+        entry_plan: EntryPlan,
+        size_plan: SizePlan,
+        exit_plan: ExitPlan
+    ) -> ConnectorExecutionSpec:
+        """
+        Vertaal universele intent + trade plans → connector spec.
+        
+        Args:
+            intent: Universal trade-offs
+            entry/size/exit: Trade karakteristieken (voor context)
+        
+        Returns:
+            Connector-specifieke execution spec (CEX/DEX/Backtest)
+        """
+        pass
+```
+
+**Voorbeeld: CEX Translator**
+
+```python
+class CEXExecutionTranslator(ExecutionTranslator):
+    def translate(
+        self,
+        intent: ExecutionIntent,
+        entry_plan: EntryPlan,
+        size_plan: SizePlan,
+        exit_plan: ExitPlan
+    ) -> CEXExecutionSpec:
+        # Decision 1: Order Type (urgency + entry plan)
+        if intent.execution_urgency > Decimal("0.8"):
+            order_type = "MARKET"
+            time_in_force = "IOC"
+        elif entry_plan.order_type == "LIMIT":
+            order_type = "LIMIT"
+            time_in_force = "GTC"
+        else:
+            order_type = entry_plan.order_type
+            time_in_force = "FOK"
+        
+        # Decision 2: TWAP Chunking (urgency + size + hint)
+        use_twap = (
+            intent.execution_urgency < Decimal("0.3") and
+            size_plan.position_size > Decimal("1.0")
+        )
+        if use_twap:
+            chunk_count = intent.chunk_count_hint or self._calculate_chunks(
+                size_plan.position_size,
+                intent.max_execution_window_minutes
+            )
+        else:
+            chunk_count = 1
+        
+        # Decision 3: Iceberg (visibility + size)
+        use_iceberg = (
+            intent.visibility_preference < Decimal("0.3") and
+            size_plan.position_size > Decimal("5.0")
+        )
+        
+        return CEXExecutionSpec(
+            order_type=order_type,
+            time_in_force=time_in_force,
+            chunk_count=chunk_count,
+            chunk_distribution=intent.chunk_distribution or "UNIFORM",
+            iceberg_enabled=use_iceberg,
+            iceberg_visible_ratio=Decimal("0.1") if use_iceberg else None,
+            max_slippage_bps=int(intent.max_slippage_pct * 10000)
+        )
+```
+
+**Voorbeeld: DEX Translator**
+
+```python
+class DEXExecutionTranslator(ExecutionTranslator):
+    def translate(
+        self,
+        intent: ExecutionIntent,
+        entry_plan: EntryPlan,
+        size_plan: SizePlan,
+        exit_plan: ExitPlan
+    ) -> DEXExecutionSpec:
+        # Decision 1: Gas Strategy (urgency)
+        if intent.execution_urgency > Decimal("0.8"):
+            gas_strategy = "FAST"  # Max gas, frontrun protection
+        elif intent.execution_urgency < Decimal("0.3"):
+            gas_strategy = "SLOW"  # Patient, low gas
+        else:
+            gas_strategy = "STANDARD"
+        
+        # Decision 2: MEV Protection (visibility + size)
+        use_mev_protection = (
+            intent.visibility_preference < Decimal("0.5") or
+            size_plan.position_value > Decimal("10000")  # > $10k
+        )
+        
+        # Decision 3: Router Path (size determines DEX aggregation)
+        if size_plan.position_size > Decimal("10.0"):
+            router_strategy = "MULTI_DEX"  # Split across Uniswap + Sushiswap
+        else:
+            router_strategy = "SINGLE_DEX"
+        
+        return DEXExecutionSpec(
+            gas_strategy=gas_strategy,
+            slippage_tolerance_bps=int(intent.max_slippage_pct * 10000),
+            mev_protection_enabled=use_mev_protection,
+            private_mempool=intent.visibility_preference < Decimal("0.3"),
+            router_strategy=router_strategy,
+            deadline_minutes=intent.max_execution_window_minutes or 20
+        )
+```
+
+### ExecutionGroup - Order Relationship Tracking
+
+**Probleem:** TWAP genereert 5 orders - hoe track je dat dit bij elkaar hoort?
+
+**Oplossing:** ExecutionGroup - abstract orders in logische groepen.
+
+```python
+@dataclass(frozen=True)
+class ExecutionGroup:
+    """
+    Tracks related orders from same ExecutionDirective.
+    
+    Example: TWAP generates 5 orders → 1 ExecutionGroup
+    Enables: "Cancel entire TWAP" (group-level operation)
+    """
+    group_id: str                      # "EXG_20251027_143045_k3d2f"
+    parent_directive_id: str           # Which ExecutionDirective created this
+    execution_strategy: str            # "TWAP", "ICEBERG", "SINGLE_ORDER"
+    
+    order_ids: List[str]               # ["ORD_001", "ORD_002", "ORD_003"]
+    status: ExecutionGroupStatus       # PENDING, PARTIALLY_FILLED, COMPLETED, CANCELLED
+    
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+```
+
+**Flow Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant SP as StrategyPlanner
+    participant EIP as ExecutionIntentPlanner
+    participant AGG as PlanningAggregator
+    participant TR as ExecutionTranslator
+    participant EH as ExecutionHandler
+    participant LDG as StrategyLedger
+    
+    SP->>EIP: StrategyDirective (urgency=0.2)
+    EIP->>AGG: ExecutionIntent (urgency=0.2, visibility=0.1)
+    AGG->>AGG: Collect Entry+Size+Exit plans
+    AGG->>TR: translate(ExecutionIntent + 3 plans)
+    
+    alt CEX Connector
+        TR->>TR: urgency < 0.3 → use_twap=true
+        TR->>TR: size > 1.0 BTC → chunk_count=5
+        TR->>EH: CEXExecutionSpec (TWAP, 5 chunks)
+        EH->>LDG: create_execution_group("TWAP")
+        EH->>LDG: create_order(chunk_1)
+        EH->>LDG: create_order(chunk_2)
+        EH->>LDG: create_order(chunk_3)
+        EH->>LDG: create_order(chunk_4)
+        EH->>LDG: create_order(chunk_5)
+        LDG-->>SP: ExecutionGroup(order_ids=[ORD_1..5])
+    else DEX Connector
+        TR->>TR: urgency < 0.3 → gas_strategy=SLOW
+        TR->>TR: visibility < 0.3 → private_mempool=true
+        TR->>EH: DEXExecutionSpec (SLOW gas, private)
+        EH->>LDG: create_execution_group("SINGLE_SWAP")
+        EH->>LDG: create_order(swap_tx)
+        LDG-->>SP: ExecutionGroup(order_ids=[TX_HASH])
+    end
+```
+
+### IStrategyLedger - Dual-Level API
+
+**Spanningsveld:** Strategy wil connector-agnostisch blijven, maar heeft soms low-level control nodig (emergency).
+
+**Oplossing:** Dual-level API - hoog niveau (groups) + laag niveau (orders).
+
+```python
+class IStrategyLedger(ABC):
+    """
+    Portfolio state queries met dual-level abstractie.
+    
+    HIGH-LEVEL (connector-agnostic):
+    - get_execution_groups() → Logical order groups
+    - cancel_execution_group() → Cancel related orders
+    
+    LOW-LEVEL (connector-aware):
+    - get_open_orders() → Individual orders/TXs
+    - cancel_order() → Cancel specific order
+    """
+    
+    # === HIGH-LEVEL API (connector-agnostic) ===
+    @abstractmethod
+    def get_open_positions(self) -> List[Position]:
+        """Get all open positions."""
+        pass
+    
+    @abstractmethod
+    def get_execution_groups(
+        self,
+        status: Optional[ExecutionGroupStatus] = None
+    ) -> List[ExecutionGroup]:
+        """
+        Get logical execution groups (abstracts orders).
+        
+        Use case: "Show me all active TWAP executions"
+        """
+        pass
+    
+    @abstractmethod
+    def cancel_execution_group(self, group_id: str) -> bool:
+        """
+        Cancel entire execution group (all related orders).
+        
+        Connector-agnostic: Works on CEX (cancel 5 orders) and 
+        DEX (cancel 1 transaction).
+        """
+        pass
+    
+    # === LOW-LEVEL API (connector-aware) ===
+    @abstractmethod
+    def get_open_orders(self) -> List[Order]:
+        """
+        Get individual orders/transactions.
+        
+        Use case: Fine-grained control (cancel specific TWAP chunk)
+        Warning: Connector-specific details exposed!
+        """
+        pass
+    
+    @abstractmethod
+    def cancel_order(self, order_id: str) -> bool:
+        """
+        Cancel specific order/transaction.
+        
+        Connector-aware: order_id format depends on connector
+        (CEX: exchange order ID, DEX: transaction hash)
+        """
+        pass
+```
+
+**Emergency Scenario - Flash Crash:**
+
+```mermaid
+sequenceDiagram
+    participant TS as ThreatWorker<br/>(Flash Crash)
+    participant SP as StrategyPlanner
+    participant LDG as IStrategyLedger
+    participant EH as ExecutionHandler
+    
+    TS->>SP: ThreatSignal (FLASH_CRASH, severity=0.95)
+    SP->>LDG: get_open_positions()
+    LDG-->>SP: [Position(BTC, 2.5), Position(ETH, 10)]
+    
+    SP->>LDG: get_execution_groups()
+    LDG-->>SP: [ExecutionGroup(TWAP_BTC, 5 orders)]
+    
+    Note over SP: Strategy DECIDES (full control):<br/>1. Close position BTC (2.5 units)<br/>2. Cancel TWAP group<br/>3. Close position ETH (10 units)
+    
+    SP->>SP: Create StrategyDirective(CLOSE_EXISTING)
+    SP->>SP: Create ExitDirective(action=CLOSE_POSITION, pos_id=BTC)
+    SP->>SP: Create RoutingDirective(action=CANCEL_GROUP, group_id=TWAP)
+    SP->>SP: Create ExitDirective(action=CLOSE_POSITION, pos_id=ETH)
+    
+    SP->>EH: ExecutionDirective (3 actions)
+    EH->>LDG: close_position(BTC, 2.5)
+    EH->>LDG: cancel_execution_group(TWAP_BTC)
+    EH->>LDG: close_position(ETH, 10)
+    
+    Note over EH: Handler is AGNOSTIC executor<br/>(zero interpretation)
+```
+
+**Kernprincipe:** Strategy specificeert EXACT wat gedaan moet worden - Handler voert uit zonder interpretatie.
+
+### ExecutionDirectiveBatch - Atomic Multi-Modifications
+
+**Use Case:** Sluit 3 posities ALL-OR-NOTHING (flash crash scenario).
+
+```python
+@dataclass(frozen=True)
+class ExecutionDirectiveBatch:
+    """
+    Atomic execution van meerdere directives.
+    
+    Use case: Emergency scenario - sluit meerdere posities tegelijk
+    met rollback ondersteuning.
+    """
+    batch_id: str
+    directives: List[ExecutionDirective]
+    execution_mode: ExecutionMode  # SEQUENTIAL, PARALLEL, ATOMIC
+    rollback_on_failure: bool = True
+    
+    created_at: datetime
+```
+
+**Execution Modes:**
+
+```python
+class ExecutionMode(str, Enum):
+    SEQUENTIAL = "SEQUENTIAL"  # Execute 1-by-1, stop on first failure
+    PARALLEL = "PARALLEL"      # Execute all simultaneously
+    ATOMIC = "ATOMIC"          # All succeed or all rollback
+```
 
 ---
 
@@ -486,11 +992,11 @@ class BaseEntryPlanner:
 
 **Execution Model:** Hybrid
 - **Parallel:** Entry, Size, Exit (EventAdapters fire simultaan)
-- **Sequential:** Routing (EventAdapter wacht op 3 plannen → fires Routing)
+- **Sequential:** ExecutionIntent (EventAdapter wacht op 3 plannen → fires ExecutionIntent)
 
-**Rationale:** Routing kan afhankelijk zijn van size (bijv. iceberg voor grote orders)
+**Rationale:** ExecutionIntent beslissingen vereisen complete trade context (entry + size + exit)
 
-**Orchestration:** PlanningAggregator (platform worker) detecteert completion van parallel phase, triggert routing phase
+**Orchestration:** PlanningAggregator (platform worker) detecteert completion van parallel phase, triggert execution intent phase
 
 #### 1. EntryPlanner → EntryPlan (WHAT/WHERE)
 
@@ -512,8 +1018,8 @@ EntryPlan(
 
 **GEEN:**
 - `created_at` (redundant - timestamp in plan_id)
-- `timing` (→ RoutingPlan)
-- `max_slippage_pct` (→ RoutingPlan)
+- `timing` (→ ExecutionIntent.execution_urgency)
+- `max_slippage_pct` (→ ExecutionIntent.max_slippage_pct)
 - `planner_id`, `rationale` (→ StrategyJournal)
 
 **Specialisten:**
@@ -568,35 +1074,41 @@ ExitPlan(
 - `StructureBasedExit` - SL onder structure, TP op liquidity
 - `AggressiveExitPlanner` - confidence [0.8-1.0] → 3:1 RR
 
-#### 4. RoutingPlanner → RoutingPlan (HOW/WHEN)
+#### 4. ExecutionIntentPlanner → ExecutionIntent (HOW/WHEN)
 
 **Output:**
 ```python
-RoutingPlan(
-    plan_id="ROU_20251027_143038_g4c1d",
+ExecutionIntent(
+    intent_id="EXI_20251027_143038_g4c1d",
+    action=ExecutionAction.EXECUTE_TRADE,
     
-    # Execution tactics (statisch)
-    timing="IMMEDIATE",  # of TWAP, LAYERED, PATIENT
-    time_in_force="GTC",
+    # Universal trade-offs (connector-agnostic)
+    execution_urgency=Decimal("0.82"),      # 0.0-1.0 (patience vs speed)
+    visibility_preference=Decimal("0.20"),  # 0.0-1.0 (stealth vs transparency)
+    max_slippage_pct=Decimal("0.01"),      # 1% hard limit
     
-    # Risk controls
-    max_slippage_pct=Decimal("0.01"),  # 1% hard limit
+    # Time constraints
+    must_complete_immediately=False,
+    max_execution_window_minutes=30,
     
-    # Preferences (hints voor execution)
-    execution_urgency=Decimal("0.82"),     # 0.0-1.0
-    iceberg_preference=Decimal("0.5")      # Of None
+    # Optional hints (connector kan interpreteren)
+    preferred_execution_style="TWAP",  # Hint, niet binding
+    chunk_count_hint=5,                # Suggested chunking
+    chunk_distribution="UNIFORM"       # Distribution strategy
 )
 ```
 
-**GEEN:**
-- `twap_duration_minutes` - Platform config (uniform algorithm)
-- `exchange_preference` - Platform config
-- `post_only_flag` - Platform config
+**GEEN connector-specifieke velden:**
+- ❌ `time_in_force` - CEX concept (naar CEXExecutionSpec)
+- ❌ `iceberg_preference` - CEX concept (naar CEXExecutionSpec)
+- ❌ `twap_duration_minutes` - Implementatie detail (translator beslist)
+- ❌ `post_only_flag` - Connector config
+- ❌ `gas_strategy` - DEX concept (naar DEXExecutionSpec)
 
 **Specialisten:**
-- `MarketOrderRouter` - confidence [0.8-1.0] → IMMEDIATE
-- `TWAPRouter` - grote orders, lage urgency
-- `IcebergRouter` - position_size > threshold
+- `HighUrgencyIntentPlanner` - confidence [0.8-1.0] → urgency=0.9
+- `TWAPIntentPlanner` - grote orders → urgency=0.2, chunk_hint=5
+- `StealthIntentPlanner` - visibility=0.1 (iceberg/private mempool hint)
 
 ---
 
@@ -607,61 +1119,67 @@ RoutingPlan(
 **Verantwoordelijkheid:**
 - Track welke plannen verwacht worden (3 parallel + 1 sequential)
 - Wacht tot parallel phase compleet is (Entry, Size, Exit)
-- Trigger Routing phase met **alle 3 plans** als input
-- Wacht tot Routing klaar is
+- Trigger ExecutionIntent phase met **alle 3 plans** als input
+- Wacht tot ExecutionIntent klaar is
 - Aggregeer alle 4 plans → ExecutionDirective
 - Wired via EventAdapter: luistert naar ENTRY_PLAN_CREATED, SIZE_PLAN_CREATED, etc.
 
-**Rationale Waarom Router ALLE 3 Plans Nodig Heeft:**
+**Rationale Waarom ExecutionIntentPlanner ALLE 3 Plans Nodig Heeft:**
 
-Routing beslissingen zijn **multi-dimensional optimizations** gebaseerd op:
+ExecutionIntent beslissingen zijn **multi-dimensional trade-offs** gebaseerd op:
 
 1. **Entry Plan Dependencies:**
-   - `order_type` → Bepaalt time_in_force (MARKET=IOC, LIMIT=GTC, STOP_LIMIT=FOK)
-   - `limit_price` → Bepaalt spread-based slippage tolerance
-   - Voorbeeld: MARKET orders vereisen IMMEDIATE timing, LIMIT orders kunnen TWAP gebruiken
+   - `order_type` → Beïnvloedt urgency (MARKET=hoge urgency, LIMIT=lage urgency)
+   - `limit_price` → Beïnvloedt slippage tolerance
+   - Voorbeeld: MARKET orders krijgen urgency=0.9, LIMIT orders urgency=0.3
 
 2. **Size Plan Dependencies:**
-   - `position_size` → Bepaalt TWAP chunking (grote orders splitsen)
-   - `position_value` → Bepaalt venue capacity checks (kan broker deze waarde aan?)
-   - `leverage` → Bepaalt margin route selection (spot vs futures)
-   - Voorbeeld: Position > 10 BTC → TWAP + iceberg, < 1 BTC → single order
+   - `position_size` → Beïnvloedt chunk_count_hint (grote orders splitsen)
+   - `position_value` → Beïnvloedt visibility (grote trades willen stealth)
+   - Voorbeeld: Position > 10 BTC → chunk_hint=10, visibility=0.1
 
 3. **Exit Plan Dependencies:**
-   - `take_profit_price - entry_plan.limit_price` → Bepaalt profit margin urgency
-   - `stop_loss_price` → Bepaalt risk per unit voor iceberg visibility
-   - Voorbeeld: Scalping (< 0.5% margin) → tight slippage (0.05%), swing (> 5% margin) → loose slippage (0.5%)
-
-**Academische Fundering:**
-- Almgren-Chriss Market Impact Model (2000): Optimale execution afweging tussen execution cost en opportunity cost **vereist** entry price, exit target, én position size
-- Industry Practice (Bloomberg EMSX, Goldman REDI): Smart order routing gebruikt order type, size, én price levels voor venue selection
+   - `take_profit_price - entry_plan.limit_price` → Beïnvloedt slippage budget
+   - `stop_loss_price` → Beïnvloedt urgency bij tight stops
+   - Voorbeeld: Scalping (< 0.5% margin) → max_slippage=0.05%, swing (> 5% margin) → max_slippage=0.5%
 
 **Mode Detection:**
-- Direct Planning: OpportunitySignal → 3 parallel plannen → routing
-- SWOT Planning: StrategyDirective → 3 parallel plannen → routing
+- Direct Planning: OpportunitySignal → 3 parallel plannen → execution intent
+- SWOT Planning: StrategyDirective → 3 parallel plannen → execution intent
 
 **Process:**
-```
-ENTRY_PLAN_CREATED  ┐
-SIZE_PLAN_CREATED   ├─→ [Parallel phase complete]
-EXIT_PLAN_CREATED   ┘         ↓
-                    ROUTING_PLANNING_REQUESTED
-                    (payload: RoutingRequest met Entry+Size+Exit plans)
-                              ↓
-                    ROUTING_PLAN_CREATED
-                    (router gebruikt ALLE 3 plans voor beslissing)
-                              ↓
-                    [All 4 plans ready] → Aggregate
+
+```mermaid
+graph TB
+    subgraph "Parallel Phase"
+        EP[ENTRY_PLAN_CREATED]
+        SP[SIZE_PLAN_CREATED]
+        XP[EXIT_PLAN_CREATED]
+    end
+    
+    EP --> AGG[PlanningAggregator<br/>Detects all 3 ready]
+    SP --> AGG
+    XP --> AGG
+    
+    AGG --> REQ[EXECUTION_INTENT_REQUESTED<br/>payload: ExecutionRequest]
+    
+    REQ --> EIP[ExecutionIntentPlanner]
+    EIP --> EI[EXECUTION_INTENT_CREATED<br/>payload: ExecutionIntent]
+    
+    EI --> AGG2[PlanningAggregator<br/>All 4 plans ready]
+    AGG2 --> ED[ExecutionDirective<br/>entry+size+exit+execution_intent]
+    
+    ED --> EVT[EXECUTION_DIRECTIVE_READY]
 ```
 
-**RoutingRequest DTO:**
+**ExecutionRequest DTO:**
 ```python
 @dataclass
-class RoutingRequest:
+class ExecutionRequest:
     """
-    Aggregated input voor RoutingPlanner.
+    Aggregated input voor ExecutionIntentPlanner.
     
-    Router MOET alle 3 plans hebben voor optimale routing beslissing.
+    Planner MOET alle 3 plans hebben voor optimale trade-off beslissing.
     Zie rationale hierboven voor dependencies.
     """
     strategy_directive: StrategyDirective  # Context + hints
@@ -670,30 +1188,55 @@ class RoutingRequest:
     exit_plan: ExitPlan                    # WHERE OUT
 ```
 
-**Voorbeeld Router Logic:**
+**Voorbeeld ExecutionIntentPlanner Logic:**
 ```python
-class BaseTWAPRouter(BaseRoutingPlanner):
-    def plan(self, request: RoutingRequest) -> RoutingPlan:
-        # Decision 1: Timing (van Entry.order_type)
+class BaseBalancedIntentPlanner(BaseExecutionIntentPlanner):
+    """
+    General-purpose intent planner - maps trade characteristics to universal trade-offs.
+    
+    NO feature creep - alleen universele concepten (urgency, visibility, slippage).
+    """
+    def plan(self, request: ExecutionRequest) -> ExecutionIntent:
+        # Decision 1: Urgency (van Entry.order_type + Size)
         if request.entry_plan.order_type == "MARKET":
-            timing = "IMMEDIATE"
+            urgency = Decimal("0.90")  # High urgency
         elif request.size_plan.position_size > Decimal("1.0"):
-            timing = "TWAP"  # Large LIMIT orders
+            urgency = Decimal("0.20")  # Low urgency for large orders
+        else:
+            urgency = Decimal("0.50")  # Balanced
         
-        # Decision 2: Slippage (van profit margin)
+        # Decision 2: Slippage tolerance (van profit margin)
         profit_margin = (
             request.exit_plan.take_profit_price - 
             request.entry_plan.limit_price
         )
         max_slippage = (
-            Decimal("0.05") if profit_margin < threshold 
-            else Decimal("0.5")
+            Decimal("0.0005")  # 0.05% tight voor scalping
+            if profit_margin < Decimal("0.005") 
+            else Decimal("0.005")  # 0.5% loose voor swing
         )
         
-        # Decision 3: Iceberg (van Size)
-        iceberg = request.size_plan.position_size > Decimal("5.0")
+        # Decision 3: Visibility (van Size - grote orders willen stealth)
+        visibility = (
+            Decimal("0.10")  # Low visibility
+            if request.size_plan.position_size > Decimal("5.0")
+            else Decimal("0.70")  # Normal visibility
+        )
         
-        return RoutingPlan(timing, ..., max_slippage, iceberg)
+        # Decision 4: Time constraints (van urgency)
+        must_complete_immediately = urgency > Decimal("0.8")
+        max_window = None if must_complete_immediately else 30  # 30 min window
+        
+        return ExecutionIntent(
+            action=ExecutionAction.EXECUTE_TRADE,
+            execution_urgency=urgency,
+            visibility_preference=visibility,
+            max_slippage_pct=max_slippage,
+            must_complete_immediately=must_complete_immediately,
+            max_execution_window_minutes=max_window
+            # NO preferred_execution_style - dat is translator's domein!
+            # NO chunk_count_hint - translator beslist chunking
+        )
 ```
 
 **Output:**
@@ -706,16 +1249,116 @@ ExecutionDirective(
     entry_plan=EntryPlan(...),
     size_plan=SizePlan(...),
     exit_plan=ExitPlan(...),
-    routing_plan=RoutingPlan(...)   # Gebruikt data van alle 3 voorgaande plans
+    execution_intent=ExecutionIntent(...)  # Universal trade-offs
 )
 ```
 
 **Event:** `EXECUTION_DIRECTIVE_READY`
 
 **Architectureel Principe:**
-> "Router is GEEN gelijkwaardige parallel planner, maar een ÉN-functie die 
-> ALLE trade characteristics (Entry + Size + Exit) combineert tot optimale 
-> execution strategie (HOW/WHEN)."
+> "ExecutionIntentPlanner is GEEN gelijkwaardige parallel planner, maar een ÉN-functie die 
+> ALLE trade characteristics (Entry + Size + Exit) combineert tot universele trade-off specificatie."
+
+---
+
+## Fase 4c: Execution Translation
+
+**Component:** `ExecutionTranslator` (Platform layer, connector-specific factory)
+
+**Verantwoordelijkheid:**
+- Ontvang ExecutionDirective (met ExecutionIntent)
+- Vertaal universal trade-offs → connector-specific execution spec
+- Creëer ExecutionGroup voor order tracking
+- Implementaties: CEXExecutionTranslator, DEXExecutionTranslator, BacktestExecutionTranslator
+
+**Input:** ExecutionDirective (complete package met ExecutionIntent)
+
+**Translation Flow:**
+
+```mermaid
+graph LR
+    ED[ExecutionDirective] --> TF[TranslatorFactory]
+    TF --> |connector=CEX| CEXT[CEXExecutionTranslator]
+    TF --> |connector=DEX| DEXT[DEXExecutionTranslator]
+    TF --> |connector=Backtest| BT[BacktestExecutionTranslator]
+    
+    CEXT --> CEXS[CEXExecutionSpec<br/>time_in_force<br/>iceberg<br/>TWAP chunks]
+    DEXT --> DEXS[DEXExecutionSpec<br/>gas_strategy<br/>slippage_tolerance<br/>MEV_protection]
+    BT --> BTS[BacktestExecutionSpec<br/>fill_model<br/>latency_ms]
+    
+    CEXS --> EG[ExecutionGroup<br/>+ Order IDs]
+    DEXS --> EG
+    BTS --> EG
+```
+
+**Process:**
+```python
+class ExecutionTranslator(ABC):
+    @abstractmethod
+    def translate(
+        self,
+        directive: ExecutionDirective
+    ) -> Tuple[ConnectorExecutionSpec, ExecutionGroup]:
+        """
+        Vertaal ExecutionIntent → connector spec + track execution group.
+        
+        Returns:
+            (ConnectorExecutionSpec, ExecutionGroup)
+        """
+        pass
+
+class CEXExecutionTranslator(ExecutionTranslator):
+    def translate(
+        self,
+        directive: ExecutionDirective
+    ) -> Tuple[CEXExecutionSpec, ExecutionGroup]:
+        intent = directive.execution_intent
+        
+        # Translate urgency → order type + time_in_force
+        if intent.execution_urgency > Decimal("0.8"):
+            order_type = "MARKET"
+            tif = "IOC"
+        else:
+            order_type = directive.entry_plan.order_type
+            tif = "GTC"
+        
+        # Translate visibility + size → iceberg
+        use_iceberg = (
+            intent.visibility_preference < Decimal("0.3") and
+            directive.size_plan.position_size > Decimal("5.0")
+        )
+        
+        # Translate urgency + hint → TWAP chunking
+        if intent.chunk_count_hint:
+            chunk_count = intent.chunk_count_hint
+        elif intent.execution_urgency < Decimal("0.3"):
+            chunk_count = self._calculate_chunks(directive.size_plan.position_size)
+        else:
+            chunk_count = 1
+        
+        spec = CEXExecutionSpec(
+            order_type=order_type,
+            time_in_force=tif,
+            chunk_count=chunk_count,
+            iceberg_enabled=use_iceberg,
+            max_slippage_bps=int(intent.max_slippage_pct * 10000)
+        )
+        
+        # Create execution group for tracking
+        group = ExecutionGroup(
+            group_id=f"EXG_{generate_id()}",
+            parent_directive_id=directive.directive_id,
+            execution_strategy="TWAP" if chunk_count > 1 else "SINGLE_ORDER",
+            order_ids=[],  # Filled by handler
+            status=ExecutionGroupStatus.PENDING
+        )
+        
+        return spec, group
+```
+
+**Output:**
+- Connector-specific execution spec (CEXExecutionSpec/DEXExecutionSpec/etc)
+- ExecutionGroup (voor order tracking)
 
 ---
 
@@ -726,21 +1369,36 @@ ExecutionDirective(
 **Implementations:**
 - `BacktestHandler` - Direct ledger registration
 - `PaperHandler` - Paper trading simulation
-- `LiveHandler` - Exchange API connector
+- `LiveHandler` - Exchange API connector (gebruikt ConnectorExecutionSpec)
 
-**Input:** ExecutionDirective (complete package)
+**Input:** 
+- ExecutionDirective (complete package)
+- ConnectorExecutionSpec (van Translator)
+- ExecutionGroup (voor tracking)
 
 **Process:**
 ```python
 class BacktestHandler(ExecutionHandler):
-    def execute(self, directive: ExecutionDirective) -> DispositionEnvelope:
-        # Valideer order
+    def execute(
+        self,
+        directive: ExecutionDirective,
+        spec: BacktestExecutionSpec,
+        group: ExecutionGroup
+    ) -> DispositionEnvelope:
+        # Gebruik spec voor connector-specifieke execution
+        orders = self._create_orders(directive, spec)
+        
+        # Update execution group met order IDs
+        group = group.with_order_ids([o.order_id for o in orders])
+        
         # Registreer in StrategyLedger
-        # Update portfolio state
+        self.ledger.register_execution_group(group)
+        for order in orders:
+            self.ledger.register_order(order)
         
         return DispositionEnvelope(
-            disposition=Disposition.STOP,  # Stop flow
-            metadata={"trade_id": "TRD_..."}
+            disposition=Disposition.STOP,
+            metadata={"group_id": group.group_id}
         )
 ```
 
@@ -750,7 +1408,7 @@ class BacktestHandler(ExecutionHandler):
 - FlowTerminator luistert naar `_flow_stop`
 
 **Output:**
-- Trade geregistreerd in StrategyLedger
+- ExecutionGroup + Orders geregistreerd in StrategyLedger
 - DispositionEnvelope (STOP)
 - Event: `_flow_stop` (via EventAdapter)
 
@@ -780,7 +1438,7 @@ class FlowTerminator:
         entry = journal.query(plan_id=ctx.entry_plan_id)
         size = journal.query(plan_id=ctx.size_plan_id)
         exit = journal.query(plan_id=ctx.exit_plan_id)
-        routing = journal.query(plan_id=ctx.routing_plan_id)
+        execution_intent = journal.query(plan_id=ctx.execution_intent_id)
         
         # Log complete chain
         journal.write_decision_chain(...)
@@ -801,37 +1459,53 @@ class FlowTerminator:
 
 **Executie Architectuur: Event-Driven Wiring (Platgeslagen Orkestratie)**
 
+```mermaid
+graph TD
+    TR[TICK_RECEIVED] --> CR[CONTEXT_READY]
+    CR --> CAR[CONTEXT_ASSESSMENT_READY]
+    
+    CAR --> OD[OPPORTUNITY_DETECTED]
+    CAR --> TD[THREAT_DETECTED]
+    
+    OD --> SDI[STRATEGY_DIRECTIVE_ISSUED]
+    TD --> SDI
+    
+    SDI --> |Parallel Split| EPC[ENTRY_PLAN_CREATED]
+    SDI --> |Parallel Split| SPC[SIZE_PLAN_CREATED]
+    SDI --> |Parallel Split| XPC[EXIT_PLAN_CREATED]
+    
+    EPC --> PA1[PlanningAggregator<br/>Parallel Phase Complete]
+    SPC --> PA1
+    XPC --> PA1
+    
+    PA1 --> EIR[EXECUTION_INTENT_REQUESTED<br/>payload: ExecutionRequest]
+    
+    EIR --> EIC[EXECUTION_INTENT_CREATED]
+    
+    EIC --> PA2[PlanningAggregator<br/>All 4 Plans Ready]
+    
+    PA2 --> EDR[EXECUTION_DIRECTIVE_READY<br/>payload: ExecutionDirective]
+    
+    EDR --> TR_TRANS[TRANSLATION_REQUESTED<br/>payload: ExecutionDirective]
+    
+    TR_TRANS --> TR_COMP[TRANSLATION_COMPLETE<br/>payload: ConnectorExecutionSpec]
+    
+    TR_COMP --> FS[_flow_stop]
+    FS --> UFT[UI_FLOW_TERMINATED]
+    
+    style EIR fill:#90EE90
+    style TR_TRANS fill:#FFD700
+    style TR_COMP fill:#FFB6C1
 ```
-TICK_RECEIVED
-    ↓
-CONTEXT_READY
-    ↓
-CONTEXT_ASSESSMENT_READY
-    ↓ (parallel split - EventAdapter fires multiple workers)
-    ├─→ OPPORTUNITY_DETECTED
-    └─→ THREAT_DETECTED
-         ↓ (merge - StrategyPlanner luistert naar beide)
-STRATEGY_DIRECTIVE_ISSUED
-    ↓ (parallel split - EventAdapter fires 3 planners simultaan)
-    ├─→ ENTRY_PLAN_CREATED ──────┐
-    ├─→ SIZE_PLAN_CREATED  ──────┤
-    └─→ EXIT_PLAN_CREATED  ──────┤
-                                 │
-         [PlanningAggregator detecteert completion van parallel phase]
-                                 │
-                                 ↓
-         ROUTING_PLANNING_REQUESTED (payload: Entry+Size+Exit plans)
-                                 ↓
-         ROUTING_PLAN_CREATED (router gebruikt alle 3 plans)
-                                 ↓
-         [PlanningAggregator aggregeert alle 4 plans]
-                                 ↓
-EXECUTION_DIRECTIVE_READY
-    ↓
-_flow_stop (internal EventAdapter event)
-    ↓
-UI_FLOW_TERMINATED
-```
+
+**Event Renamings (Breaking Changes):**
+
+| **OLD Event** | **NEW Event** | **Reason** |
+|--------------|--------------|-----------|
+| `ROUTING_PLANNING_REQUESTED` | `EXECUTION_INTENT_REQUESTED` | RoutingPlan → ExecutionIntent (connector-agnostic) |
+| `ROUTING_PLAN_CREATED` | `EXECUTION_INTENT_CREATED` | RoutingPlan → ExecutionIntent |
+| _(new)_ | `TRANSLATION_REQUESTED` | New: Trigger ExecutionTranslator |
+| _(new)_ | `TRANSLATION_COMPLETE` | New: ConnectorExecutionSpec ready |
 
 **Trigger Mechanisme: Wie Triggert Wie?**
 
@@ -848,17 +1522,27 @@ UI_FLOW_TERMINATED
    - PlanningAggregator luistert naar alle 3 events
    - Intern state tracking: wacht tot alle 3 parallel plans binnen zijn
 
-3. **PlanningAggregator → RoutingPlanner:**
+3. **PlanningAggregator → ExecutionIntentPlanner:**
    - PlanningAggregator detecteert parallel phase completion
-   - Publiceert `ROUTING_PLANNING_REQUESTED` event met `RoutingRequest` payload
-   - RoutingRequest bevat: StrategyDirective + Entry + Size + Exit plans
-   - EventAdapter fire routing planners (opnieuw met config-driven filtering)
+   - Publiceert `EXECUTION_INTENT_REQUESTED` event met `ExecutionRequest` payload
+   - ExecutionRequest bevat: StrategyDirective + Entry + Size + Exit plans
+   - EventAdapter fire execution intent planners (opnieuw met config-driven filtering)
 
-4. **RoutingPlanner → PlanningAggregator:**
-   - RoutingPlanner publiceert `ROUTING_PLAN_CREATED` event
+4. **ExecutionIntentPlanner → PlanningAggregator:**
+   - ExecutionIntentPlanner publiceert `EXECUTION_INTENT_CREATED` event
    - PlanningAggregator luistert naar event
    - Aggregeert alle 4 plans → ExecutionDirective
    - Publiceert `EXECUTION_DIRECTIVE_READY` event
+
+5. **PlanningAggregator → ExecutionTranslator:**
+   - PlanningAggregator publiceert `TRANSLATION_REQUESTED` event
+   - ExecutionTranslator (platform component) translates ExecutionIntent → ConnectorExecutionSpec
+   - Publiceert `TRANSLATION_COMPLETE` event met spec + ExecutionGroup
+
+6. **ExecutionTranslator → ExecutionHandler:**
+   - ExecutionHandler luistert naar `TRANSLATION_COMPLETE`
+   - Executes trade using connector-specific spec
+   - Returns `_flow_stop` disposition
 
 **Event Wiring Configuration:**
 ```yaml
@@ -892,25 +1576,31 @@ event_wirings:
       - worker: "planning_aggregator"
         method: "on_exit_plan"
   
-  # Aggregator triggers routing (sequential phase)
-  - event: "ROUTING_PLANNING_REQUESTED"
+  # Aggregator triggers execution intent (sequential phase)
+  - event: "EXECUTION_INTENT_REQUESTED"
     subscribers:
-      - worker: "twap_router"
-        method: "on_routing_request"
-      - worker: "iceberg_router"
-        method: "on_routing_request"
+      - worker: "balanced_intent_planner"
+        method: "on_execution_request"
+      - worker: "high_urgency_intent_planner"
+        method: "on_execution_request"
   
-  # Router reports back to aggregator
-  - event: "ROUTING_PLAN_CREATED"
+  # ExecutionIntentPlanner reports back to aggregator
+  - event: "EXECUTION_INTENT_CREATED"
     subscribers:
       - worker: "planning_aggregator"
-        method: "on_routing_plan"
+        method: "on_execution_intent"
   
-  # Final aggregation triggers execution
-  - event: "EXECUTION_DIRECTIVE_READY"
+  # Aggregator triggers translation (platform phase)
+  - event: "TRANSLATION_REQUESTED"
+    subscribers:
+      - worker: "execution_translator_factory"
+        method: "on_translation_request"
+  
+  # Translation complete triggers execution
+  - event: "TRANSLATION_COMPLETE"
     subscribers:
       - worker: "backtest_handler"
-        method: "on_execution_directive"
+        method: "on_translation_complete"
 ```
 
 **Architecturele Principes:**
@@ -927,7 +1617,7 @@ event_wirings:
 
 3. **PlanningAggregator = Coordinator (GEEN Orchestrator):**
    - Detecteert completion van phases (state tracking)
-   - Triggert next phase via events (ROUTING_PLANNING_REQUESTED)
+   - Triggert next phase via events (EXECUTION_INTENT_REQUESTED)
    - Aggregeert resultaten → ExecutionDirective
    - GEEN planner selectie logica (config doet dit!)
    - GEEN business logic (pure coordination)
@@ -951,10 +1641,14 @@ StrategyDirective (confidence + 4 sub-directives)
     ├─→ SizePlan
     └─→ ExitPlan
          ↓ (sequential)
-         └─→ RoutingPlan
+         └─→ ExecutionIntent (universal trade-offs)
               ↓
-ExecutionDirective (aggregated)
-    ↓
+              └─→ ExecutionDirective (aggregated)
+                   ↓ (platform translation)
+                   └─→ ConnectorExecutionSpec (CEX/DEX/Backtest)
+                        ↓
+                        └─→ ExecutionGroup + Orders
+                             ↓
 Trade (in StrategyLedger)
 ```
 
@@ -984,7 +1678,7 @@ strategy_blueprint.yaml (per strategie)
     │       ├─ entry: [{plugin, triggers}, ...]
     │       ├─ size: [{plugin, triggers}, ...]
     │       ├─ exit: [{plugin, triggers}, ...]
-    │       └─ routing: [{plugin, triggers}, ...]
+    │       └─ execution_intent: [{plugin, triggers}, ...]
     └─ wiring (event connections)
         ↓
 plugin_manifest.yaml (per worker)
@@ -998,28 +1692,28 @@ plugin_manifest.yaml (per worker)
 
 ## Architectural Patterns
 
-### 0. Router Dependency Architecture - Waarom Sequential Na Parallel?
+### 0. ExecutionIntent Dependency Architecture - Waarom Sequential Na Parallel?
 
-**Architecturele Beslissing:** RoutingPlanner MOET wachten op Entry+Size+Exit plans.
+**Architecturele Beslissing:** ExecutionIntentPlanner MOET wachten op Entry+Size+Exit plans.
 
 **Rationale:**
 
 1. **Inhoudelijke Dependency (Kwantitatieve Fundering):**
    
-   Router beslissingen zijn **multi-dimensional optimizations** die ALLE 3 trade characteristics nodig hebben:
+   ExecutionIntent beslissingen zijn **multi-dimensional trade-offs** die ALLE 3 trade characteristics nodig hebben:
    
-   - **Entry.order_type** → TIF selectie (MARKET=IOC, LIMIT=GTC, STOP_LIMIT=FOK)
-   - **Entry.limit_price + Exit.take_profit_price** → Profit margin urgency (scalp vs swing)
-   - **Size.position_size** → TWAP chunking, iceberg visibility, venue capacity
+   - **Entry.order_type** → Urgency mapping (MARKET=0.9, LIMIT=0.3)
+   - **Entry.limit_price + Exit.take_profit_price** → Slippage tolerance (tight voor scalp, loose voor swing)
+   - **Size.position_size** → Visibility preference (grote orders willen stealth)
    
-   **Academisch bewijs:** Almgren-Chriss Market Impact Model (2000) toont dat optimale execution strategie **simultaan** afhangt van entry price, exit target, én position size.
+   **Universele trade-offs** (connector-agnostic) vereisen **complete trade context**.
 
 2. **Executie Dependency (Event-Driven Wiring):**
    
    ```python
-   # RoutingPlanner krijgt RoutingRequest als input
+   # ExecutionIntentPlanner krijgt ExecutionRequest als input
    @dataclass
-   class RoutingRequest:
+   class ExecutionRequest:
        strategy_directive: StrategyDirective  # Context
        entry_plan: EntryPlan                  # REQUIRED
        size_plan: SizePlan                    # REQUIRED
@@ -1035,25 +1729,27 @@ plugin_manifest.yaml (per worker)
                     ↓           ↓           ↓
    AGGREGATION:  PlanningAggregator (wacht tot 3 plans binnen)
                                      ↓
-   SEQUENTIAL:              RoutingPlanner (gebruikt alle 3 plans)
+   SEQUENTIAL:         ExecutionIntentPlanner (gebruikt alle 3 plans)
                                      ↓
-   OUTPUT:                  ExecutionDirective (compleet)
+   TRANSLATION:         ExecutionTranslator (connector-specific)
+                                     ↓
+   OUTPUT:                  ExecutionGroup + Orders (compleet)
    ```
 
 4. **Waarom GEEN 4-Parallel?**
    
-   ❌ **Verkeerd:** `[Entry | Size | Exit | Routing]` parallel
+   ❌ **Verkeerd:** `[Entry | Size | Exit | ExecutionIntent]` parallel
    
    **Problemen:**
-   - Router zou moeten "raden" zonder complete info
-   - Race conditions (routing beslissing voor size bekend is)
-   - Sub-optimale execution (router kan niet optimaliseren over alle dimensions)
+   - ExecutionIntent zou moeten "raden" zonder complete info
+   - Race conditions (intent beslissing voor size bekend is)
+   - Sub-optimale trade-offs (kan niet optimaliseren over alle dimensions)
    
-   ✅ **Correct:** `[Entry | Size | Exit]` parallel → `Routing` sequential
+   ✅ **Correct:** `[Entry | Size | Exit]` parallel → `ExecutionIntent` sequential
    
    **Voordelen:**
-   - Router heeft complete trade picture
-   - Optimale execution strategie mogelijk (Almgren-Chriss compliant)
+   - ExecutionIntent heeft complete trade picture
+   - Optimale universele trade-offs mogelijk
    - Type-safe: compiler dwingt correcte flow af
 
 5. **Bevrijdend Inzicht:**
@@ -1064,16 +1760,16 @@ plugin_manifest.yaml (per worker)
    
    **Wat NIET configureerbaar is (en dat is goed!):**
    - Parallel → Sequential volgorde (inhoudelijk noodzakelijk)
-   - Router dependency op 3 plans (type-safe enforcement)
+   - ExecutionIntent dependency op 3 plans (type-safe enforcement)
    - PlanningAggregator coordination logic (platform verantwoordelijkheid)
    
    **Wat WEL configureerbaar is:**
    - Welke planners draaien (confidence filtering)
-   - Planner-specifieke parameters (TWAP duration, RR ratio)
+   - Planner-specifieke parameters (urgency thresholds, visibility preferences)
    - Event wiring details (welke events, welke methods)
 
 **Conclusie:**
-Router is **GEEN** gelijkwaardige parallel planner, maar een **ÉN-functie** die ALLE trade characteristics combineert tot optimale execution strategie. De sequential phase na parallel is **inhoudelijk noodzakelijk** en type-safe enforced.
+ExecutionIntentPlanner is **GEEN** gelijkwaardige parallel planner, maar een **ÉN-functie** die ALLE trade characteristics combineert tot universele trade-off specificatie. De sequential phase na parallel is **inhoudelijk noodzakelijk** en type-safe enforced.
 
 ---
 
@@ -1144,7 +1840,7 @@ EventAdapter (generic) handles event routing.
 
 ### 5. Hybrid Execution (Parallel + Sequential)
 
-**Probleem:** Routing is afhankelijk van ALLE 3 trade characteristics (entry, size, exit).
+**Probleem:** ExecutionIntent is afhankelijk van ALLE 3 trade characteristics (entry, size, exit).
 
 **Oplossing:**
 - **Parallel Phase:** Entry, Size, Exit planners (EventAdapters fire simultaan)
@@ -1152,10 +1848,10 @@ EventAdapter (generic) handles event routing.
   - Maximale throughput
   - Config-driven filtering (confidence ranges)
 
-- **Sequential Phase:** Routing planner (na aggregation van 3 plans)
-  - **Input:** RoutingRequest met Entry + Size + Exit plans
-  - **Rationale:** Multi-dimensional optimization vereist complete trade picture
-  - **Type-safe:** Compiler dwingt af dat router ALLE 3 plans heeft
+- **Sequential Phase:** ExecutionIntent planner (na aggregation van 3 plans)
+  - **Input:** ExecutionRequest met Entry + Size + Exit plans
+  - **Rationale:** Multi-dimensional trade-offs vereisen complete trade picture
+  - **Type-safe:** Compiler dwingt af dat intent planner ALLE 3 plans heeft
 
 **PlanningAggregator Coordination:**
 ```python
@@ -1170,8 +1866,8 @@ class PlanningAggregator:
             # Trigger sequential phase
             return DispositionEnvelope(
                 disposition=Disposition.PUBLISH,
-                event_name="ROUTING_PLANNING_REQUESTED",
-                payload=RoutingRequest(
+                event_name="EXECUTION_INTENT_REQUESTED",
+                payload=ExecutionRequest(
                     strategy_directive=self.strategy_directive,
                     entry_plan=self.pending_plans["entry"],
                     size_plan=self.pending_plans["size"],
@@ -1211,12 +1907,21 @@ class PlanningAggregator:
 
 ## Changelog
 
-**2025-10-28 - v3.1 (Router Dependencies)**
-- Toegevoegd: Pattern 0 - Router Dependency Architecture met kwantitatieve fundering
+**2025-10-28 - v4.0 (ExecutionIntent Architecture)**
+- ExecutionIntent replaces RoutingPlan (connector-agnostic)
+- ExecutionTranslator layer added (CEX/DEX/Backtest translation)
+- ExecutionGroup tracking for multi-order relationships
+- IStrategyLedger dual-level API (high-level groups, low-level orders)
+- Emergency scenario architecture validated (flash crash example)
+- Breaking changes: RoutingPlan → ExecutionIntent, event renames
+- Updated: All routing/router terminology → execution intent terminology
+
+**2025-10-28 - v3.1 (ExecutionIntent Dependencies)**
+- Toegevoegd: Pattern 0 - ExecutionIntent Dependency Architecture met kwantitatieve fundering
 - Uitgebreid: Fase 3 - StrategyDirective rol (pure data container, GEEN orchestrator)
-- Uitgebreid: Fase 4b - PlanningAggregator met RoutingRequest DTO en rationale
+- Uitgebreid: Fase 4b - PlanningAggregator met ExecutionRequest DTO en rationale
 - Uitgebreid: Event Flow Summary met trigger mechanisme en wiring examples
-- Toegevoegd: Academische referenties (Almgren-Chriss, industry practice)
+- Toegevoegd: Academische referenties (universele trade-offs, industry practice)
 - Verheldering: "Configurability niet altijd exposed" principe
 
 **2025-10-27 - v3.0 (Definitief)**
@@ -1225,6 +1930,123 @@ class PlanningAggregator:
 - Hybrid execution model (parallel + sequential) gedocumenteerd
 - Bus-agnostic worker pattern formalized
 - Dit is nu het leidende document (agent.md verwijst hiernaar)
+
+---
+
+## 📚 Quick Reference - ExecutionIntent Architecture
+
+### Key Components Summary
+
+```mermaid
+graph LR
+    subgraph "Strategy Layer"
+        EIP[ExecutionIntentPlanner]
+    end
+    
+    subgraph "Connector-Agnostic"
+        EI[ExecutionIntent<br/>urgency, visibility, slippage]
+    end
+    
+    subgraph "Platform Layer"
+        ET[ExecutionTranslator<br/>Factory]
+    end
+    
+    subgraph "Connector-Specific"
+        CEXS[CEXExecutionSpec]
+        DEXS[DEXExecutionSpec]
+        BTS[BacktestExecutionSpec]
+    end
+    
+    EIP --> EI
+    EI --> ET
+    ET --> CEXS
+    ET --> DEXS
+    ET --> BTS
+    
+    style EI fill:#90EE90
+    style ET fill:#FFD700
+```
+
+### DTO Cheat Sheet
+
+| **DTO** | **Purpose** | **Layer** | **Key Fields** |
+|---------|-------------|-----------|----------------|
+| `ExecutionIntent` | Universal trade-offs | Strategy (connector-agnostic) | urgency, visibility, max_slippage |
+| `ExecutionRequest` | Aggregated planning input | Platform | entry_plan, size_plan, exit_plan |
+| `ExecutionGroup` | Multi-order tracking | Platform | group_id, order_ids[], execution_strategy |
+| `ExecutionDirectiveBatch` | Atomic multi-modifications | Platform | directives[], execution_mode, rollback |
+| `CEXExecutionSpec` | CEX execution details | Platform (CEX) | time_in_force, iceberg, chunk_count |
+| `DEXExecutionSpec` | DEX execution details | Platform (DEX) | gas_strategy, slippage_tolerance, MEV |
+| `BacktestExecutionSpec` | Backtest fill model | Platform (Backtest) | fill_model, latency_ms |
+
+### Event Flow Cheat Sheet
+
+| **OLD Event (v3.0)** | **NEW Event (v4.0)** | **Payload** |
+|---------------------|---------------------|-------------|
+| `ROUTING_PLANNING_REQUESTED` | `EXECUTION_INTENT_REQUESTED` | ExecutionRequest |
+| `ROUTING_PLAN_CREATED` | `EXECUTION_INTENT_CREATED` | ExecutionIntent |
+| _(new)_ | `TRANSLATION_REQUESTED` | ExecutionDirective |
+| _(new)_ | `TRANSLATION_COMPLETE` | ConnectorExecutionSpec + ExecutionGroup |
+
+### Worker Renames
+
+| **OLD Worker (v3.0)** | **NEW Worker (v4.0)** | **Responsibility** |
+|----------------------|----------------------|-------------------|
+| `BaseRoutingPlanner` | `BaseExecutionIntentPlanner` | Generate universal trade-offs |
+| _(new)_ | `ExecutionTranslator` | Translate intent → connector spec |
+| _(new)_ | `CEXExecutionTranslator` | CEX-specific translation |
+| _(new)_ | `DEXExecutionTranslator` | DEX-specific translation |
+| _(new)_ | `BacktestExecutionTranslator` | Backtest-specific translation |
+
+### Emergency Scenario Pattern
+
+```python
+# Flash crash detection
+threat_signal = ThreatSignal(
+    threat_type="FLASH_CRASH",
+    severity=Decimal("0.95")
+)
+
+# Strategy queries ledger (full control)
+positions = ledger.get_open_positions()
+groups = ledger.get_execution_groups()
+
+# Strategy creates EXACT directives
+for position in positions:
+    directive = create_close_directive(position.position_id)
+    
+for group in groups:
+    directive = create_cancel_directive(group.group_id)
+
+# Handler executes (zero interpretation)
+handler.execute_batch(directives)
+```
+
+### Connector Translation Examples
+
+**CEX Translation:**
+```python
+# Universal → CEX-specific
+urgency=0.9 → order_type="MARKET", time_in_force="IOC"
+urgency=0.2 → use_twap=True, chunk_count=5
+visibility=0.1 → iceberg_enabled=True
+```
+
+**DEX Translation:**
+```python
+# Universal → DEX-specific
+urgency=0.9 → gas_strategy="FAST", MEV_protection=True
+urgency=0.2 → gas_strategy="SLOW", patient_routing=True
+visibility=0.1 → private_mempool=True
+```
+
+**Backtest Translation:**
+```python
+# Universal → Backtest-specific
+urgency=0.9 → fill_model="IMMEDIATE", latency_ms=10
+urgency=0.2 → fill_model="MARKET_IMPACT", latency_ms=500
+visibility=0.1 → impact_multiplier=0.5
+```
 
 ---
 

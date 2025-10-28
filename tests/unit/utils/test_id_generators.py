@@ -28,7 +28,6 @@ from backend.utils.id_generators import (
     generate_entry_plan_id,
     generate_size_plan_id,
     generate_exit_plan_id,
-    generate_routing_plan_id,
     generate_execution_directive_id,
     extract_id_type,
     extract_id_timestamp,
@@ -164,11 +163,6 @@ class TestWorkerOutputIDGeneration:
         """Test that exit plan IDs start with EXT_ prefix."""
         plan_id = generate_exit_plan_id()
         assert plan_id.startswith("EXT_")
-
-    def test_generate_routing_plan_id_has_correct_prefix(self):
-        """Test that routing plan IDs start with ROU_ prefix."""
-        plan_id = generate_routing_plan_id()
-        assert plan_id.startswith("ROU_")
 
     def test_generate_execution_directive_id_has_correct_prefix(self):
         """Test that execution directive IDs start with EXE_ prefix."""

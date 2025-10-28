@@ -6,7 +6,7 @@ StrategyDirective and sub-directive DTOs for SWOT-driven trade planning.
 @dependencies: backend.utils.id_generators
 @responsibilities:
     - Bridge SWOT framework (OpportunitySignal, ThreatSignal, AggregatedContextAssessment)
-      and Planning Layer (EntryPlan, SizePlan, ExitPlan, RoutingPlan)
+      and Planning Layer (EntryPlan, SizePlan, ExitPlan, ExecutionPlan)
     - Contain 4 sub-directives (Entry, Size, Exit, Routing) with constraints/hints
     - Enable SWOT-driven position management (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
     - Provide causality tracking from SWOT analysis to execution planning
@@ -161,9 +161,9 @@ class ExitDirective(BaseModel):
     )
 
 
-class RoutingDirective(BaseModel):
+class ExecutionDirective(BaseModel):
     """
-    Routing/execution constraints and hints for RoutingPlanner.
+    Routing/execution constraints and hints for ExecutionPlanner.
 
     Attributes:
         execution_urgency: Execution urgency [0.0-1.0],
@@ -208,7 +208,7 @@ class StrategyDirective(BaseModel):
 
     ARCHITECTURAL POSITION:
     StrategyDirective is the critical bridge between ANY StrategyPlanner type and the Planning
-    Layer (EntryPlan, SizePlan, ExitPlan, RoutingPlan). It translates strategic analysis into
+    Layer (EntryPlan, SizePlan, ExitPlan, ExecutionPlan). It translates strategic analysis into
     tactical constraints/hints that guide role-based planners.
 
     STRATEGYPLANNER TYPES:
@@ -222,7 +222,7 @@ class StrategyDirective(BaseModel):
     2. StrategyPlanner produces StrategyDirective with:
        - Scope: NEW_TRADE, MODIFY_EXISTING, or CLOSE_EXISTING
        - TriggerContext: Causality tracking (what caused this directive)
-       - Sub-directives: EntryDirective, SizeDirective, ExitDirective, RoutingDirective
+       - Sub-directives: EntryDirective, SizeDirective, ExitDirective, ExecutionDirective
     3. Role-based planners (EntryPlanner, SizePlanner, etc.) receive StrategyDirective
     4. Each planner reads its corresponding sub-directive and produces Planning DTO
     5. DirectiveAssembler combines all Planning DTOs into ExecutionDirective
@@ -230,7 +230,7 @@ class StrategyDirective(BaseModel):
     DIRECTIVE SCOPES:
     - **NEW_TRADE**: Open new position
       - Required fields: scope=NEW_TRADE, target_trade_ids=[]
-      - Typical sub-directives: EntryDirective, SizeDirective, ExitDirective, RoutingDirective
+      - Typical sub-directives: EntryDirective, SizeDirective, ExitDirective, ExecutionDirective
       - All sub-directives are OPTIONAL - planners use defaults if missing
 
     - **MODIFY_EXISTING**: Adjust existing position or open order
@@ -239,13 +239,13 @@ class StrategyDirective(BaseModel):
         - EntryDirective: Modify open limit order (price, timing)
         - SizeDirective: Increase/decrease position size
         - ExitDirective: Adjust stops/targets
-        - RoutingDirective: Change routing strategy
+        - ExecutionDirective: Change routing strategy
       - All sub-directives are OPTIONAL - only provided sub-directives trigger changes
 
     - **CLOSE_EXISTING**: Close existing position(s)
       - Required fields: scope=CLOSE_EXISTING, target_trade_ids=[...] (not empty)
       - Typical sub-directives:
-        - RoutingDirective: Execution urgency for emergency exits
+        - ExecutionDirective: Execution urgency for emergency exits
         - ExitDirective: Partial close targets
       - All sub-directives are OPTIONAL
 
@@ -259,13 +259,13 @@ class StrategyDirective(BaseModel):
     - **EntryDirective** → EntryPlanner: "Use this symbol, direction, timing preference"
     - **SizeDirective** → SizePlanner: "Use this aggressiveness, max risk"
     - **ExitDirective** → ExitPlanner: "Use this risk-reward ratio, stop tolerance"
-    - **RoutingDirective** → RoutingPlanner: "Use this execution urgency, slippage limits"
+    - **ExecutionDirective** → ExecutionPlanner: "Use this execution urgency, slippage limits"
 
     NOT RESPONSIBLE FOR:
     - Calculating exact entry prices (EntryPlanner's job)
     - Determining exact position sizes (SizePlanner's job)
     - Computing stop/target prices (ExitPlanner's job)
-    - Choosing specific order types/routes (RoutingPlanner's job)
+    - Choosing specific order types/routes (ExecutionPlanner's job)
 
     USAGE EXAMPLE 1 - NEW TRADE FROM SWOT OPPORTUNITY:
     ```python
@@ -295,7 +295,7 @@ class StrategyDirective(BaseModel):
             risk_reward_ratio=Decimal("3.0"),
             stop_loss_tolerance=Decimal("0.015")
         ),
-        routing_directive=RoutingDirective(
+        routing_directive=ExecutionDirective(
             execution_urgency=Decimal("0.8"),
             max_total_slippage_pct=Decimal("0.002")
         )
@@ -336,7 +336,7 @@ class StrategyDirective(BaseModel):
         target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
         confidence=Decimal("0.99"),
         # Only routing urgency needed for emergency exit
-        routing_directive=RoutingDirective(
+        routing_directive=ExecutionDirective(
             execution_urgency=Decimal("1.0"),  # Immediate market order
             max_total_slippage_pct=Decimal("0.05")  # Accept high slippage
         )
@@ -363,7 +363,7 @@ class StrategyDirective(BaseModel):
             aggressiveness=Decimal("0.5"),
             max_risk_amount=Decimal("100.00")  # Fixed amount per DCA
         ),
-        routing_directive=RoutingDirective(
+        routing_directive=ExecutionDirective(
             execution_urgency=Decimal("0.2")  # Use limit orders
         )
     )
@@ -391,7 +391,7 @@ class StrategyDirective(BaseModel):
         entry_directive: Optional entry constraints for EntryPlanner
         size_directive: Optional sizing constraints for SizePlanner
         exit_directive: Optional exit constraints for ExitPlanner
-        routing_directive: Optional routing constraints for RoutingPlanner
+        routing_directive: Optional routing constraints for ExecutionPlanner
     """
 
     directive_id: str = Field(
@@ -453,10 +453,10 @@ class StrategyDirective(BaseModel):
             "(used for NEW_TRADE/MODIFY_EXISTING)"
         )
     )
-    routing_directive: RoutingDirective | None = Field(
+    routing_directive: ExecutionDirective | None = Field(
         default=None,
         description=(
-            "Optional routing constraints for RoutingPlanner "
+            "Optional routing constraints for ExecutionPlanner "
             "(used for all scopes)"
         )
     )

@@ -2,7 +2,7 @@
 """
 ExecutionDirective - Final aggregated execution instruction.
 
-Aggregates all planning outputs (Entry, Size, Exit, Routing) into a single
+Aggregates all planning outputs (Entry, Size, Exit, Execution) into a single
 executable directive for the ExecutionHandler.
 
 **Clean Execution Contract:**
@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field, model_validator
 
 # Application imports
 from backend.dtos.causality import CausalityChain
-from backend.dtos.strategy import EntryPlan, SizePlan, ExitPlan, RoutingPlan
+from backend.dtos.strategy import EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 from backend.utils.id_generators import generate_execution_directive_id
 
 if TYPE_CHECKING:
@@ -47,7 +47,7 @@ class ExecutionDirective(BaseModel):
     - entry_plan: WHERE IN specification (optional - for new trades or additions)
     - size_plan: HOW MUCH specification (optional - for new trades or scaling)
     - exit_plan: WHERE OUT specification (optional - for new trades or adjustments)
-    - routing_plan: HOW/WHEN specification (optional - for execution control)
+    - execution_plan: HOW/WHEN specification (optional - execution trade-offs)
     
     **Validation:**
     - At least 1 plan required (cannot be empty directive)
@@ -67,7 +67,7 @@ class ExecutionDirective(BaseModel):
     entry_plan: EntryPlan | None = None
     size_plan: SizePlan | None = None
     exit_plan: ExitPlan | None = None
-    routing_plan: RoutingPlan | None = None
+    execution_plan: ExecutionPlan | None = None
 
     model_config = {
         "frozen": True,
@@ -101,12 +101,13 @@ class ExecutionDirective(BaseModel):
                         "stop_loss_price": "95000.00",
                         "take_profit_price": "105000.00"
                     },
-                    "routing_plan": {
-                        "plan_id": "ROU_20251027_143450_pqr901",
-                        "timing": "IMMEDIATE",
-                        "time_in_force": "GTC",
-                        "max_slippage_pct": "0.5",
-                        "execution_urgency": "0.8"
+                    "execution_plan": {
+                        "plan_id": "EXP_20251027_143450_pqr901",
+                        "action": "EXECUTE_TRADE",
+                        "execution_urgency": "0.80",
+                        "visibility_preference": "0.50",
+                        "max_slippage_pct": "0.0050",
+                        "must_complete_immediately": False
                     }
                 },
                 {
@@ -123,7 +124,7 @@ class ExecutionDirective(BaseModel):
                         "stop_loss_price": "98000.00",
                         "take_profit_price": None
                     },
-                    "routing_plan": None
+                    "execution_plan": None
                 },
                 {
                     "description": "ADD_TO_POSITION - Scale in (entry + size only)",
@@ -146,7 +147,7 @@ class ExecutionDirective(BaseModel):
                         "risk_amount": "70.00"
                     },
                     "exit_plan": None,
-                    "routing_plan": None
+                    "execution_plan": None
                 }
             ]
         }
@@ -159,10 +160,10 @@ class ExecutionDirective(BaseModel):
             self.entry_plan,
             self.size_plan,
             self.exit_plan,
-            self.routing_plan
+            self.execution_plan
         ]):
             raise ValueError(
                 "ExecutionDirective must contain at least one plan "
-                "(entry_plan, size_plan, exit_plan, or routing_plan)"
+                "(entry_plan, size_plan, exit_plan, or execution_plan)"
             )
         return self

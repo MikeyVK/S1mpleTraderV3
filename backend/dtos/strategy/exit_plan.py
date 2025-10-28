@@ -16,7 +16,7 @@ Pure exit execution parameters without dynamic behavior logic.
 
 **What This Is NOT:**
 - Dynamic exit logic (trailing, breakeven) → PositionMonitor
-- Execution timing/routing → RoutingPlan
+- Execution timing/routing → ExecutionPlan
 - Metadata/causality tracking → StrategyDirective has causality
 
 **Causality Propagation:**
@@ -52,7 +52,7 @@ class ExitPlan(BaseModel):
 
     **NOT Responsible For:**
     - Trailing stops, breakeven logic (PositionMonitor handles)
-    - Execution timing (RoutingPlan handles)
+    - Execution timing (ExecutionPlan handles)
     - Causality tracking (parent StrategyDirective has it)
 
     Fields:

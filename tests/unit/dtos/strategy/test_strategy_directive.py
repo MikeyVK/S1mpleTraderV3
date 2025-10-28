@@ -19,7 +19,7 @@ from backend.dtos.strategy.strategy_directive import (
     EntryDirective,
     SizeDirective,
     ExitDirective,
-    RoutingDirective,
+    ExecutionDirective,
     DirectiveScope
 )
 
@@ -67,7 +67,7 @@ class TestStrategyDirectiveCreation:
                 risk_reward_ratio=Decimal("2.5"),
                 stop_loss_tolerance=Decimal("0.015")
             ),
-            routing_directive=RoutingDirective(
+            routing_directive=ExecutionDirective(
                 execution_urgency=Decimal("0.9"),
                 max_total_slippage_pct=Decimal("0.002")
             )
@@ -324,7 +324,7 @@ class TestStrategyDirectiveUseCases:
             scope=DirectiveScope.CLOSE_EXISTING,
             target_trade_ids=["TRD_001", "TRD_002"],
             confidence=Decimal("0.95"),
-            routing_directive=RoutingDirective(
+            routing_directive=ExecutionDirective(
                 execution_urgency=Decimal("1.0"),
                 max_total_slippage_pct=Decimal("0.005")
             )
@@ -333,7 +333,7 @@ class TestStrategyDirectiveUseCases:
         assert directive.scope == DirectiveScope.CLOSE_EXISTING
         assert len(directive.target_trade_ids) == 2
         # Type narrowing: routing_directive is not None here
-        routing_dir = cast(RoutingDirective, directive.routing_directive)
+        routing_dir = cast(ExecutionDirective, directive.routing_directive)
         assert routing_dir is not None
         assert getattr(routing_dir, "execution_urgency") == Decimal("1.0")
 

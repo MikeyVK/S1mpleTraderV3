@@ -3,7 +3,7 @@ Unit tests for EntryPlan DTO.
 
 Tests creation, validation, and edge cases for lean entry planning output.
 EntryPlan represents WHAT/WHERE for entry (order specification only).
-Timing/urgency/slippage belong in RoutingPlan (HOW/WHEN).
+Timing/urgency/slippage belong in ExecutionPlan (HOW/WHEN).
 """
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives for optional fields
@@ -226,7 +226,7 @@ class TestEntryPlanUseCases:
 
         assert plan.order_type == "MARKET"
         assert plan.limit_price is None
-        # Note: Timing/urgency/slippage belong in RoutingPlan
+        # Note: Timing/urgency/slippage belong in ExecutionPlan
 
     def test_limit_entry_at_specific_price(self):
         """Limit entry at specific price level."""
@@ -239,7 +239,7 @@ class TestEntryPlanUseCases:
 
         assert plan.order_type == "LIMIT"
         assert plan.limit_price == Decimal("3495.00")
-        # Note: Layering/TWAP params belong in RoutingPlan
+        # Note: Layering/TWAP params belong in ExecutionPlan
 
     def test_stop_limit_for_breakout(self):
         """Stop-limit entry for breakout scenario."""
@@ -254,4 +254,4 @@ class TestEntryPlanUseCases:
         assert plan.order_type == "STOP_LIMIT"
         assert plan.stop_price == Decimal("125.00")
         assert plan.limit_price == Decimal("125.50")
-        # Note: Valid_until belongs in RoutingPlan
+        # Note: Valid_until belongs in ExecutionPlan

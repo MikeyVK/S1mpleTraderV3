@@ -36,7 +36,7 @@ Prefix Convention:
         ENT_ - EntryPlan (EntryPlanner output)
         SIZ_ - SizePlan (SizePlanner output)
         EXT_ - ExitPlan (ExitPlanner output)
-        ROU_ - RoutingPlan (RoutingPlanner output)
+        EXP_ - ExecutionPlan (FlowTerminator output)
         EXE_ - ExecutionDirective (DirectiveAssembler output)
 
 Causal Traceability Examples:
@@ -79,8 +79,10 @@ __all__ = [
     'generate_entry_plan_id',
     'generate_size_plan_id',
     'generate_exit_plan_id',
-    'generate_routing_plan_id',
+    'generate_execution_plan_id',
     'generate_execution_directive_id',
+    'generate_execution_group_id',
+    'generate_batch_id',
     'extract_id_type',
     'extract_id_timestamp',
 ]
@@ -169,14 +171,24 @@ def generate_exit_plan_id() -> str:
     return _generate_id('EXT')
 
 
-def generate_routing_plan_id() -> str:
-    """Generate RoutingPlan ID."""
-    return _generate_id('ROU')
+def generate_execution_plan_id() -> str:
+    """Generate ExecutionPlan ID."""
+    return _generate_id('EXP')
 
 
 def generate_execution_directive_id() -> str:
     """Generate ExecutionDirective ID."""
     return _generate_id('EXE')
+
+
+def generate_execution_group_id() -> str:
+    """Generate ExecutionGroup ID."""
+    return _generate_id('EXG')
+
+
+def generate_batch_id() -> str:
+    """Generate ExecutionDirectiveBatch ID."""
+    return _generate_id('BAT')
 
 
 # === ID Utilities ===
@@ -208,7 +220,7 @@ def extract_id_type(typed_id: str) -> str:
         'TCK', 'SCH', 'NWS',        # Birth IDs
         'OPP', 'THR', 'CTX',        # SWOT worker outputs
         'STR',                      # StrategyPlanner output
-        'ENT', 'SIZ', 'EXT', 'ROU', 'EXE'  # Planning pipeline outputs
+        'ENT', 'SIZ', 'EXT', 'EXP', 'EXE', 'EXG', 'BAT'  # Planning pipeline outputs
     ]
 
     if prefix not in valid_prefixes:
