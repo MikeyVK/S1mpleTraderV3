@@ -4,15 +4,51 @@
 
 ### Phase 1: Contracten & Interfaces (Foundation)
 
-**Status:** Planning  
-**Prioriteit:** CRITICAL - Blocking voor alle verdere werk
+**Status:** In Progress (Data Contracts: 14/14 Complete ✅, IStrategyCache: 1/3 Complete ✅)
+**Prioriteit:** CRITICAL - Blocking voor alle verdere werk#### 1.1 Data Contracts (DTOs) - ✅ COMPLETE
 
-#### 1.1 Base Contracts & Protocols
-- [ ] **ITradingContextProvider** (protocol)
-  - `get_current_cache() -> TickCache`
-  - `get_required_dtos(worker, dto_types) -> list[BaseModel]`
+**Shared Layer:**
+- [x] **DispositionEnvelope** - 16/16 tests ✅
+- [x] **CausalityChain** - 13/13 tests ✅
+
+**Strategy SWOT Layer:**
+- [x] **ContextFactor** - 12/12 tests ✅
+- [x] **AggregatedContextAssessment** - 12/12 tests ✅
+- [x] **OpportunitySignal** - 37/37 tests ✅
+- [x] **ThreatSignal** - 38/38 tests ✅
+
+**Strategy Planning Layer:**
+- [x] **StrategyDirective** - 7/7 tests ✅
+- [x] **EntryPlan** - 13/13 tests ✅
+- [x] **SizePlan** - 20/20 tests ✅
+- [x] **ExitPlan** - 15/15 tests ✅
+- [x] **ExecutionPlan** - 19/19 tests ✅ (universal trade-offs, replaces RoutingPlan)
+
+**Execution Layer:**
+- [x] **ExecutionDirective** - 11/11 tests ✅
+- [x] **ExecutionDirectiveBatch** - 15/15 tests ✅
+- [x] **ExecutionGroup** - 25/25 tests ✅
+
+**Total:** 252 tests passing across 14 DTOs ✅
+
+**Build Specs Layer** (Pending - niet blocking voor Fase 1):
+- [ ] ConnectorExecutionSpec (base ABC)
+- [ ] CEXExecutionSpec
+- [ ] DEXExecutionSpec  
+- [ ] BacktestExecutionSpec
+
+> **Note:** Build Specs zijn output van ExecutionTranslator (Fase 4c) en niet nodig voor worker contracts.
+
+#### 1.2 Interface Protocols (PARTIAL - StrategyCache DONE)
+- [x] **IStrategyCache** (protocol) ✅ COMPLETE
+  - `start_new_strategy_run(cache, timestamp) -> None`
+  - `get_run_anchor() -> RunAnchor`
+  - `get_required_dtos(worker) -> Dict[Type[BaseModel], BaseModel]`
   - `set_result_dto(worker, dto) -> None`
-  - Tests: Mock implementatie + contract verification
+  - `has_dto(dto_type) -> bool`
+  - `clear_cache() -> None`
+  - Tests: 20/20 passing ✅
+  - Implementation: `backend/core/strategy_cache.py` ✅
 
 - [ ] **IEventBus** (protocol)
   - `publish(event_name: str, payload: BaseModel) -> None`
@@ -21,25 +57,58 @@
   - Tests: Mock implementatie + pub/sub scenarios
 
 - [ ] **IWorkerLifecycle** (protocol)
-  - `initialize(context_provider, event_bus) -> None`
+  - `initialize(strategy_cache, event_bus) -> None`
   - `shutdown() -> None`
   - Tests: Lifecycle state verification
 
-- [ ] **Base Worker Classes** (abstract)
-  - `BaseWorker` (foundation voor alle workers)
-  - `ContextWorker` (extends BaseWorker)
-  - `SignalWorker` (extends BaseWorker)
+#### 1.3 Base Worker Classes (TODO)
+- [ ] **BaseWorker** (abstract foundation)
+  - Implements: IWorkerLifecycle
+  - Dependencies: ITradingContextProvider, IEventBus (via constructor)
+  - Methods: `process()`, `validate_inputs()`, `handle_error()`
   - Tests: Abstract class instantiation prevention + contract validation
 
-#### 1.2 Data Structures
-- [ ] **TickCache** (concrete class)
-  - Opslag per tick: `dict[type[BaseModel], BaseModel]`
-  - Methods: `add_dto()`, `get_dto()`, `has_dto()`, `clear()`
-  - Tests: Add/retrieve/clear operations + type safety
+- [ ] **ContextWorker** (extends BaseWorker)
+  - Input: TradingContext (raw OHLCV + enriched_df)
+  - Output: ContextFactor DTO
+  - Tests: Input validation, DTO production
 
-- [ ] **DispositionEnvelope** (reeds geïmplementeerd ✅)
-  - 21 tests passing
-  - Ready for use
+- [ ] **OpportunityWorker** (extends BaseWorker)
+  - Input: AggregatedContextAssessment
+  - Output: OpportunitySignal DTO
+  - Tests: Confidence ranges, signal_type validation
+
+- [ ] **ThreatWorker** (extends BaseWorker)
+  - Input: AggregatedContextAssessment
+  - Output: ThreatSignal DTO
+  - Tests: Severity ranges, threat_type validation
+
+- [ ] **StrategyPlanner** (extends BaseWorker)
+  - Input: AggregatedContextAssessment + OpportunitySignal + ThreatSignal
+  - Output: StrategyDirective DTO
+  - Tests: SWOT confrontation, scope validation
+
+- [ ] **PlanningWorker** (extends BaseWorker)
+  - Subtypes: EntryPlanner, SizePlanner, ExitPlanner, ExecutionPlanner
+  - Input: StrategyDirective (SWOT mode) OR OpportunitySignal (direct mode)
+  - Output: EntryPlan/SizePlan/ExitPlan/ExecutionPlan DTOs
+  - Tests: Mode-agnostic processing, role-based filtering
+
+#### 1.4 Platform Data Structures (PARTIAL - RunAnchor DONE)
+- [x] **RunAnchor** (Pydantic model) ✅ COMPLETE
+  - Frozen timestamp for point-in-time validation
+  - Part of IStrategyCache interface
+  - Located: `backend/core/interfaces/strategy_cache.py`
+
+- [x] **StrategyCacheType** (type alias) ✅ COMPLETE
+  - Type alias: `Dict[Type[BaseModel], BaseModel]`
+  - Used by IStrategyCache protocol
+  - Located: `backend/core/interfaces/strategy_cache.py`
+
+- [ ] **TickCacheManager** (singleton) - TODO
+  - Orchestrates strategy run lifecycle
+  - Methods: `start_run()`, `end_run()`, event listeners
+  - Tests: Multi-run management, cleanup
 
 ### Phase 2: Pydantic Config Schemas
 
@@ -96,10 +165,11 @@
 **Prioriteit:** HIGH - Core infrastructure
 
 #### 3.1 Core Singletons
-- [ ] **TradingContextProvider** (implements ITradingContextProvider)
-  - Manages current TickCache
-  - DTO dependency resolution
-  - Tests: Multi-worker access, thread safety
+- [x] **StrategyCache** (implements IStrategyCache) ✅ COMPLETE
+  - Manages current TickCache per strategy run
+  - DTO storage and retrieval
+  - Tests: 20/20 passing
+  - Location: `backend/core/strategy_cache.py`
 
 - [ ] **EventBus** (implements IEventBus)
   - N-to-N broadcast semantics
@@ -116,7 +186,7 @@
 - [ ] **WorkerFactory**
   - Input: WorkerManifestDTO + runtime config
   - Output: Instantiated worker (BaseWorker subclass)
-  - Dependency injection: context_provider, event_bus
+  - Dependency injection: strategy_cache, event_bus
   - Tests: Worker instantiation, capability injection
 
 - [ ] **EventWiringFactory**
@@ -182,11 +252,13 @@
 
 ## 📐 IMPLEMENTATIE VOLGORDE
 
-### Week 1: Foundation (Phase 1)
-1. Protocols: ITradingContextProvider, IEventBus, IWorkerLifecycle
-2. TickCache implementation
-3. BaseWorker + ContextWorker/SignalWorker abstracts
-4. **Milestone:** Contract tests passing
+### Week 1: Foundation (Phase 1) - Interface Contracts
+1. **Data Contracts:** ✅ COMPLETE (14 DTOs, 252 tests passing)
+2. **IStrategyCache Protocol + Implementation:** ✅ COMPLETE (20 tests passing)
+3. **Next:** IEventBus protocol + tests
+4. **Then:** IWorkerLifecycle protocol + tests
+5. BaseWorker + subclasses (ContextWorker, OpportunityWorker, ThreatWorker, StrategyPlanner, PlanningWorker)
+6. **Milestone:** All interface contracts + tests passing
 
 ### Week 2: Configuration (Phase 2)
 1. WorkerManifestDTO + tests

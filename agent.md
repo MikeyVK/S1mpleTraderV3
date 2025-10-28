@@ -23,7 +23,7 @@ Mijn primaire doel is om je te helpen bij het bouwen en onderhouden van een unif
 
 #### **Verschuiving 2: Point-in-Time Data Model**
 - **Was:** Een groeiende `enriched_df` werd doorgegeven tussen workers
-- **Nu:** **DTO-Centric** model met `TickCache` voor één tick en `ITradingContextProvider`
+- **Nu:** **DTO-Centric** model met `TickCache` voor één tick en `IStrategyCache`
 - **Impact:** Workers vragen data expliciet op en produceren specifieke DTOs
 - **Communicatie:** Twee gescheiden paden - TickCache (sync flow) en EventBus (async signals)
 
@@ -131,6 +131,107 @@ ExecutionEnvironment → EventBus → EventAdapters → Workers → DispositionE
 - Wiring wordt gedefinieerd in `strategy_wiring_map.yaml` (UI-gegenereerd)
 - Geen operator-logica meer - pure event-gedreven communicatie
 
+### 2.4. StrategyCache: Point-in-Time DTO Container
+
+**Status:** ✅ IMPLEMENTED (20 tests passing)
+
+De `StrategyCache` is het centrale geheugen voor één strategy run volgens het Point-in-Time data model.
+
+**Interface: `IStrategyCache` (Protocol)**
+```python
+# backend/core/interfaces/strategy_cache.py
+
+class RunAnchor(BaseModel):
+    """Point-in-time validation anchor."""
+    timestamp: datetime
+
+class IStrategyCache(Protocol):
+    """Point-in-time DTO container for one strategy run."""
+
+    def start_new_strategy_run(
+        self,
+        strategy_cache: StrategyCacheType,  # Dict[Type[BaseModel], BaseModel]
+        timestamp: datetime
+    ) -> None:
+        """Configure cache for new run."""
+
+    def get_run_anchor(self) -> RunAnchor:
+        """Get point-in-time timestamp for validation."""
+
+    def get_required_dtos(
+        self,
+        requesting_worker: IWorker
+    ) -> Dict[Type[BaseModel], BaseModel]:
+        """Retrieve worker-required DTOs from cache."""
+
+    def set_result_dto(
+        self,
+        producing_worker: IWorker,
+        result_dto: BaseModel
+    ) -> None:
+        """Add worker-produced DTO to cache."""
+
+    def has_dto(self, dto_type: Type[BaseModel]) -> bool:
+        """Check if DTO type present."""
+
+    def clear_cache(self) -> None:
+        """Clear cache after run completion."""
+```
+
+**Concrete Implementatie: `StrategyCache`**
+```python
+# backend/core/strategy_cache.py
+
+class StrategyCache:
+    """Singleton service, reconfigured per strategy run."""
+
+    def __init__(self):
+        self._current_cache: StrategyCacheType | None = None
+        self._current_anchor: RunAnchor | None = None
+```
+
+**Kernprincipes:**
+- **Dumb Container**: Geen validatie, orchestratie of business logic
+- **Pre-filled Support**: Cache kan pre-filled zijn met platform capability data
+- **Type-based Storage**: DTO type is cache key (last-write-wins)
+- **Run Lifecycle**: start_new_strategy_run() → workers populate → clear_cache()
+
+**Test Coverage:**
+- Initialization: 2 tests
+- start_new_strategy_run: 3 tests (empty, prefilled, replacement)
+- get_run_anchor: 3 tests (incl. immutability verification)
+- set_result_dto: 3 tests (store, overwrite, error handling)
+- get_required_dtos: 3 tests
+- has_dto: 3 tests
+- clear_cache: 2 tests
+- Integration: 1 complete workflow test
+- **Total: 20/20 passing** ✅
+
+**Exceptions:**
+- `NoActiveRunError`: Cache operation zonder active run
+- `MissingContextDataError`: Required DTO niet in cache (bootstrap bug)
+- `UnexpectedDTOTypeError`: Worker produceert DTO niet in manifest
+
+**Usage in Workers:**
+```python
+class MyWorker(StandardWorker):
+    strategy_cache: IStrategyCache  # Injected by WorkerFactory
+
+    def process(self) -> DispositionEnvelope:
+        # 1. Get timestamp anchor
+        anchor = self.strategy_cache.get_run_anchor()
+
+        # 2. Get required DTOs
+        dtos = self.strategy_cache.get_required_dtos(self)
+        input_dto = dtos[InputDTO]
+
+        # 3. Produce output DTO
+        result = MyOutputDTO(value=calculate(input_dto))
+        self.strategy_cache.set_result_dto(self, result)
+
+        return DispositionEnvelope(disposition="CONTINUE")
+```
+
 ## 3. Worker Taxonomie & Data Model
 
 ### 3.1. De 5 Worker Categorieën
@@ -179,7 +280,7 @@ ExecutionEnvironment → EventBus → EventAdapters → Workers → DispositionE
 #### 3.2.1. De Twee Communicatiepaden
 
 1. **TickCache (Sync, Flow-Data)**
-   - Via `ITradingContextProvider`
+   - Via `IStrategyCache`
    - Voor directe worker-naar-worker data doorgifte
    - Bevat **alleen plugin-specifieke DTOs**
    - Levensduur: één tick/flow
@@ -196,28 +297,28 @@ ExecutionEnvironment → EventBus → EventAdapters → Workers → DispositionE
 ```python
 class MyWorker(StandardWorker):
     # Providers worden geïnjecteerd door WorkerFactory
-    context_provider: ITradingContextProvider
+    strategy_cache: IStrategyCache
     ohlcv_provider: IOhlcvProvider
     state_provider: Optional[IStateProvider]
-    
+
     def process(self) -> DispositionEnvelope:
         # 1. Haal basis context
-        base_ctx = self.context_provider.get_base_context()  # timestamp, price
-        
+        run_anchor = self.strategy_cache.get_run_anchor()  # timestamp validation
+
         # 2. Haal benodigde DTOs uit TickCache
-        required_dtos = self.context_provider.get_required_dtos(self)
+        required_dtos = self.strategy_cache.get_required_dtos(self)
         ema_dto = required_dtos[EMAOutputDTO]  # Type-safe lookup
-        
+
         # 3. Haal platform data
-        df = self.ohlcv_provider.get_window(base_ctx.timestamp, lookback=100)
-        
+        df = self.ohlcv_provider.get_window(run_anchor.timestamp, lookback=100)
+
         # 4. Bereken
         result = my_calculation(ema_dto, df)
-        
+
         # 5A. Voor flow: Plaats in TickCache
-        self.context_provider.set_result_dto(self, MyOutputDTO(value=result))
+        self.strategy_cache.set_result_dto(self, MyOutputDTO(value=result))
         return DispositionEnvelope(disposition="CONTINUE")
-        
+
         # 5B. OF voor signaal: Publiceer event
         return DispositionEnvelope(
             disposition="PUBLISH",
@@ -263,8 +364,8 @@ Workers vragen capabilities aan via `manifest.yaml`:
 capabilities:
   # Standaard (altijd beschikbaar)
   context_access:
-    enabled: true  # ITradingContextProvider (NIET configureerbaar)
-  
+    enabled: true  # IStrategyCache (NIET configureerbaar)
+
   # Opt-in capabilities
   ohlcv_window:
     enabled: true  # IOhlcvProvider
@@ -416,9 +517,7 @@ class DCAExecutor(EventDrivenWorker):
 
 ### 4.4. CAPABILITIES (Manifest-Gedreven Model)
 
-1. **STANDAARD CAPABILITIE**:
-   - ITradingContextProvider
-2. **CAPABILITIES** (aangevraagd in manifest):
+**1. CAPABILITIES** (aangevraagd in manifest):
    - `state_persistence`: Krijgt `self.state_provider`
    - `events`: Krijgt event wiring via adapter
    - `journaling`: Krijgt `self.journal_writer`
@@ -531,12 +630,12 @@ wiring_rules:
 
 2. **Bij ontvangst:**
    - Creëert nieuwe TickCache: `cache = {}`
-   - Configureert ITradingContextProvider: `provider.start_new_tick(cache, timestamp, price)`
+   - Configureert IStrategyCache: `strategy_cache.start_new_strategy_run(cache, timestamp)`
    - Publiceert `TICK_FLOW_START` event
 
 3. **Workers starten:**
    - Eerste workers in chain luisteren naar `TICK_FLOW_START`
-   - Gebruiken ITradingContextProvider voor data access
+   - Gebruiken IStrategyCache voor data access
    - Flow verloopt via wiring_map
 
 4. **Cleanup:**
@@ -1715,39 +1814,37 @@ Voordat je begint met testen of implementatie, moet je het component **volledig 
 ```python
 # test/test_my_worker.py
 from unittest.mock import MagicMock
-from backend.core.interfaces.context_provider import ITradingContextProvider
+from backend.core.interfaces.strategy_cache import IStrategyCache
 from backend.dto_reg.s1mple.input_worker.v1_0_0.input_dto import InputDTO
 
 def test_my_worker_calculation():
     # Arrange
-    mock_provider = MagicMock(spec=ITradingContextProvider)
+    mock_cache = MagicMock(spec=IStrategyCache)
     test_input = InputDTO(value=100)
-    mock_provider.get_required_dtos.return_value = {InputDTO: test_input}
-    
+    mock_cache.get_required_dtos.return_value = {InputDTO: test_input}
+
     worker = MyWorker(params={})
-    worker.context_provider = mock_provider
-    
+    worker.strategy_cache = mock_cache
+
     # Act
     result = worker.process()
-    
+
     # Assert
     assert result.disposition == "CONTINUE"
-    mock_provider.set_result_dto.assert_called_once()
-```
-
-### 6.7. Dependency Injection Pattern
+    mock_cache.set_result_dto.assert_called_once()
+```### 6.7. Dependency Injection Pattern
 
 **ALLE dependencies via injectie, NOOIT hardcoded:**
 
 ```python
 # ✅ GOED - Via injectie
 class MyWorker(StandardWorker):
-    context_provider: ITradingContextProvider
+    strategy_cache: IStrategyCache
     ohlcv_provider: IOhlcvProvider
-    
+
     def __init__(self, params, **kwargs):
         super().__init__(params)
-        self.context_provider = kwargs['context_provider']
+        self.strategy_cache = kwargs['strategy_cache']
         self.ohlcv_provider = kwargs['ohlcv_provider']
 
 # ❌ FOUT - Hardcoded dependencies
@@ -1793,7 +1890,7 @@ def validate_strategy_config(strategy: StrategyConfig, operation: OperationConfi
    - ConfigValidator voor config consistency
 
 5. **Test met mocks:**
-   - Mock alle providers (ITradingContextProvider, IOhlcvProvider, etc.)
+   - Mock alle providers (IStrategyCache, IOhlcvProvider, etc.)
    - Import DTOs van centrale locatie voor tests
 
 ### ❌ DON'Ts
@@ -1905,7 +2002,7 @@ import_heading_firstparty = Our Application Imports
 3. **Addendum 5.1: Data Landschap & Point-in-Time** (KRITIEK!)
    - DTO-Centric model
    - TickCache vs EventBus
-   - ITradingContextProvider
+   - IStrategyCache
    - DispositionEnvelope
 
 4. **Addendum 5.1: Expliciet Bedraad Netwerk** (KRITIEK!)
@@ -1937,7 +2034,7 @@ import_heading_firstparty = Our Application Imports
 | **BuildSpecs** | Machine-instructies voor factories | Gegenereerd door ConfigTranslator uit YAML |
 | **DispositionEnvelope** | Worker output contract | CONTINUE, PUBLISH of STOP |
 | **TickCache** | Tijdelijke DTO opslag per tick | Levensduur: één tick/flow |
-| **ITradingContextProvider** | Data access interface | get_base_context(), get_required_dtos(), set_result_dto() |
+| **IStrategyCache** | Data access interface | get_run_anchor(), get_required_dtos(), set_result_dto() |
 | **EventAdapter** | Component ↔ EventBus interface | Één per component, geconfigureerd via wiring_spec |
 | **Systeem DTO** | Standaard platform DTOs | OpportunitySignalDTO, ThreatSignalDTO, etc. |
 | **Plugin DTO** | Worker-specifieke DTOs | Voor TickCache, gedeeld via enrollment |
