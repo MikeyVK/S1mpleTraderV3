@@ -30,12 +30,13 @@ multi-dimensional execution optimization.
 @dependencies: [pydantic, backend.dtos.strategy.*]
 """
 
+# Standard library imports
+from typing import TYPE_CHECKING
+
 # Third-party imports
 from pydantic import BaseModel, Field
 
 # Application imports - avoid circular imports with TYPE_CHECKING
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from backend.dtos.strategy import (
         EntryPlan,
@@ -130,4 +131,110 @@ class RoutingRequest(BaseModel):
         "frozen": True,  # Immutable - routing decision snapshot
         "extra": "forbid",  # No additional fields
         "str_strip_whitespace": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "description": "Standard LIMIT order with medium size (retail scenario)",
+                    "strategy_directive": {
+                        "strategy_planner_id": "swot_planner_v1",
+                        "scope": "NEW_TRADE",
+                        "causality": {"tick_id": "TCK_20251028_100000_abc123"},
+                        "confidence": "0.75",
+                        "entry_directive": {"symbol": "BTCUSDT", "direction": "BUY"},
+                        "size_directive": {"max_risk_amount": "1000.00"},
+                        "exit_directive": {},
+                        "routing_directive": {},
+                    },
+                    "entry_plan": {
+                        "symbol": "BTCUSDT",
+                        "direction": "BUY",
+                        "order_type": "LIMIT",
+                        "limit_price": "100000.00",
+                    },
+                    "size_plan": {
+                        "position_size": "0.5",
+                        "position_value": "50000.00",
+                        "risk_amount": "500.00",
+                    },
+                    "exit_plan": {
+                        "stop_loss_price": "95000.00",
+                        "take_profit_price": "105000.00",
+                    },
+                    "routing_decision": {
+                        "time_in_force": "GTC",  # LIMIT order → wait for fill
+                        "twap": False,  # Medium size → single order
+                        "slippage_tolerance": "0.002",  # 5% profit margin → moderate tolerance
+                    },
+                },
+                {
+                    "description": "Large position MARKET order (institutional TWAP + iceberg)",
+                    "strategy_directive": {
+                        "strategy_planner_id": "swot_planner_v1",
+                        "scope": "NEW_TRADE",
+                        "causality": {"tick_id": "TCK_20251028_100100_def456"},
+                        "confidence": "0.90",
+                        "entry_directive": {"symbol": "ETHUSDT", "direction": "SELL"},
+                        "size_directive": {
+                            "aggressiveness": "0.8",
+                            "max_risk_amount": "1000.00",
+                        },
+                        "exit_directive": {},
+                        "routing_directive": {"execution_urgency": "0.95"},
+                    },
+                    "entry_plan": {
+                        "symbol": "ETHUSDT",
+                        "direction": "SELL",
+                        "order_type": "MARKET",
+                    },
+                    "size_plan": {
+                        "position_size": "15.0",
+                        "position_value": "52500.00",
+                        "risk_amount": "1050.00",
+                    },
+                    "exit_plan": {"stop_loss_price": "3600.00"},
+                    "routing_decision": {
+                        "time_in_force": "IOC",  # MARKET → immediate or cancel
+                        "twap": True,  # Large size → split into chunks
+                        "iceberg": True,  # Hide full position size
+                        "slippage_tolerance": "0.005",  # High urgency → willing to pay spread
+                    },
+                },
+                {
+                    "description": "Scalping with tight profit margin (strict slippage control)",
+                    "strategy_directive": {
+                        "strategy_planner_id": "swot_planner_v1",
+                        "scope": "NEW_TRADE",
+                        "causality": {"tick_id": "TCK_20251028_100200_ghi789"},
+                        "confidence": "0.85",
+                        "entry_directive": {"symbol": "SOLUSDT", "direction": "BUY"},
+                        "size_directive": {"max_risk_amount": "1000.00"},
+                        "exit_directive": {},
+                        "routing_directive": {
+                            "max_slippage_pct": "0.001"
+                        },  # 0.1% max slippage
+                    },
+                    "entry_plan": {
+                        "symbol": "SOLUSDT",
+                        "direction": "BUY",
+                        "order_type": "LIMIT",
+                        "limit_price": "200.00",
+                    },
+                    "size_plan": {
+                        "position_size": "100.0",
+                        "position_value": "20000.00",
+                        "risk_amount": "200.00",
+                    },
+                    "exit_plan": {
+                        "stop_loss_price": "198.00",
+                        "take_profit_price": "202.00",
+                    },
+                    "routing_decision": {
+                        "time_in_force": "GTC",
+                        "twap": False,
+                        "slippage_tolerance": "0.001",  # 1% profit margin → very strict
+                        "post_only": True,  # Scalping → maker fees only
+                    },
+                },
+            ]
+        },
     }
