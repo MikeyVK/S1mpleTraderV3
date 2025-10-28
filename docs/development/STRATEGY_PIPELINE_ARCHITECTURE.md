@@ -309,7 +309,27 @@ ThreatSignal(
 **Verantwoordelijkheid:**
 - **SWOT Confrontatie** - Combineer alle 4 quadranten
 - Produceer **confidence score** voor trade planners
+- Genereer **hints & constraints** (GEEN execution orders!)
 - **Knooppunt** voor iteratieve strategieën (scheduled, position management)
+
+**StrategyDirective = Pure Data Container (GEEN Orchestrator):**
+
+**WAT STRATEGYDIRECTIVE IS:**
+- ✅ SWOT aggregator (Strength + Weakness + Opportunity + Threat)
+- ✅ Confidence score producer (0.0-1.0 voor planner filtering)
+- ✅ Hints/constraints container (via sub-directives)
+- ✅ Causality tracker (welke SWOT IDs → deze directive)
+
+**WAT STRATEGYDIRECTIVE NIET IS:**
+- ❌ Orchestrator (triggert geen planners, beslist niet welke planner draait)
+- ❌ Event publisher (weet niets van event wiring)
+- ❌ Execution order (sub-directives zijn hints, geen concrete orders)
+- ❌ Flow controller (PlanningAggregator doet flow coordination)
+
+**Architectureel Principe:**
+> "StrategyDirective is een pure data DTO die SWOT analyse aggregeert en 
+> hints/constraints produceert voor downstream planners. Event-driven wiring 
+> (niet de directive zelf) bepaalt welke planners worden getriggerd."
 
 **Worker Type:** `StrategyPlanner` (1-op-1 met strategie)
 
@@ -330,26 +350,38 @@ threat_signals: list[ThreatSignal]               # T
 **Confrontatie Logica (quant-specifiek):**
 ```python
 class AdaptiveMomentumPlanner(BaseStrategyPlanner):
+    """
+    StrategyPlanner = ENIGE plaats voor strategic decision making.
+    
+    Verantwoordelijk voor:
+    - SWOT confrontatie (combine alle 4 quadranten)
+    - Confidence score berekening
+    - Hints/constraints generatie (GEEN execution orders!)
+    """
     def confront(self, swot: SWOTInputs) -> StrategyDirective:
-        # Voorbeeld SWOT formule
+        # SWOT formule (quant-specifiek)
         confidence = (
-            swot.context.strength * 0.3 +
-            swot.opportunity.confidence * 0.5 -
-            swot.threat.severity * 0.2
+            swot.context.strength * 0.3 +        # Strength
+            swot.opportunity.confidence * 0.5 -  # Opportunity
+            swot.threat.severity * 0.2           # Threat (negatief)
+            # Weakness implicit in context.strength
         )
         
+        # Produceer HINTS (niet execution orders!)
         return StrategyDirective(
-            confidence=confidence,  # ← Kern output!
+            confidence=confidence,  # ← Voor planner filtering (config-driven)
+            
+            # Sub-directives = HINTS/CONSTRAINTS voor planners
             entry_directive=EntryDirective(
-                timing_preference=confidence,  # High conf = urgent
-                symbol="BTCUSDT",
-                direction="BUY"
+                timing_preference=confidence,  # Hint: higher conf = urgent
+                symbol="BTCUSDT",              # Info: wat te handelen
+                direction="BUY"                # Info: welke richting
             ),
             size_directive=SizeDirective(
-                aggressiveness=confidence * 0.8,
-                max_risk_amount=Decimal("1000.00")
+                aggressiveness=confidence * 0.8,  # Hint: sizing strategie
+                max_risk_amount=Decimal("1000")   # Constraint: hard limit
             ),
-            # ... exit & routing directives
+            # ... exit & routing hints
         )
 ```
 
@@ -359,24 +391,29 @@ StrategyDirective(
     directive_id="STR_20251027_143030_c8e6f",
     causality=CausalityChain(...),  # All SWOT IDs
     
-    # De kern: Confidence score voor planners
+    # De kern: Confidence score voor config-driven planner filtering
     confidence=Decimal("0.82"),
     
-    # Hints (geen orders!) voor trade planners
+    # Sub-directives = Hints/Constraints (GEEN concrete execution orders!)
     entry_directive=EntryDirective(
-        timing_preference=Decimal("0.82"),
-        preferred_price_zone=PriceZone(...)
+        timing_preference=Decimal("0.82"),     # HINT: urgency level
+        symbol="BTCUSDT",                      # INFO: trading pair
+        direction="BUY",                       # INFO: trade direction
+        preferred_price_zone=PriceZone(...)    # HINT: price preference
     ),
     size_directive=SizeDirective(
-        aggressiveness=Decimal("0.66"),
-        max_risk_amount=Decimal("1000")
+        aggressiveness=Decimal("0.66"),        # HINT: sizing strategy
+        max_risk_amount=Decimal("1000"),       # CONSTRAINT: hard limit
+        account_risk_pct=Decimal("0.02")       # CONSTRAINT: max account risk
     ),
     exit_directive=ExitDirective(
-        profit_taking_preference=Decimal("0.75"),
-        risk_reward_ratio=Decimal("2.5")
+        profit_taking_preference=Decimal("0.75"),  # HINT: exit strategy
+        risk_reward_ratio=Decimal("2.5"),          # HINT: RR target
+        stop_loss_tolerance=Decimal("0.015")       # CONSTRAINT: max SL distance
     ),
     routing_directive=RoutingDirective(
-        execution_urgency=Decimal("0.82")
+        execution_urgency=Decimal("0.82"),         # HINT: routing urgency
+        max_total_slippage_pct=Decimal("0.002")    # CONSTRAINT: hard limit
     ),
     
     # Scope (voor position management planners)
@@ -568,15 +605,40 @@ RoutingPlan(
 **Component:** `PlanningAggregator` (Platform worker, bus-agnostic)
 
 **Verantwoordelijkheid:**
-- Track welke plannen verwacht worden (4 stuks)
-- Wacht tot alle plannen binnen zijn
-- Aggregeer → ExecutionDirective
-- Trigger Routing phase (sequential)
+- Track welke plannen verwacht worden (3 parallel + 1 sequential)
+- Wacht tot parallel phase compleet is (Entry, Size, Exit)
+- Trigger Routing phase met **alle 3 plans** als input
+- Wacht tot Routing klaar is
+- Aggregeer alle 4 plans → ExecutionDirective
 - Wired via EventAdapter: luistert naar ENTRY_PLAN_CREATED, SIZE_PLAN_CREATED, etc.
 
+**Rationale Waarom Router ALLE 3 Plans Nodig Heeft:**
+
+Routing beslissingen zijn **multi-dimensional optimizations** gebaseerd op:
+
+1. **Entry Plan Dependencies:**
+   - `order_type` → Bepaalt time_in_force (MARKET=IOC, LIMIT=GTC, STOP_LIMIT=FOK)
+   - `limit_price` → Bepaalt spread-based slippage tolerance
+   - Voorbeeld: MARKET orders vereisen IMMEDIATE timing, LIMIT orders kunnen TWAP gebruiken
+
+2. **Size Plan Dependencies:**
+   - `position_size` → Bepaalt TWAP chunking (grote orders splitsen)
+   - `position_value` → Bepaalt venue capacity checks (kan broker deze waarde aan?)
+   - `leverage` → Bepaalt margin route selection (spot vs futures)
+   - Voorbeeld: Position > 10 BTC → TWAP + iceberg, < 1 BTC → single order
+
+3. **Exit Plan Dependencies:**
+   - `take_profit_price - entry_plan.limit_price` → Bepaalt profit margin urgency
+   - `stop_loss_price` → Bepaalt risk per unit voor iceberg visibility
+   - Voorbeeld: Scalping (< 0.5% margin) → tight slippage (0.05%), swing (> 5% margin) → loose slippage (0.5%)
+
+**Academische Fundering:**
+- Almgren-Chriss Market Impact Model (2000): Optimale execution afweging tussen execution cost en opportunity cost **vereist** entry price, exit target, én position size
+- Industry Practice (Bloomberg EMSX, Goldman REDI): Smart order routing gebruikt order type, size, én price levels voor venue selection
+
 **Mode Detection:**
-- Direct Planning: OpportunitySignal → 4 plannen
-- SWOT Planning: StrategyDirective → 4 plannen
+- Direct Planning: OpportunitySignal → 3 parallel plannen → routing
+- SWOT Planning: StrategyDirective → 3 parallel plannen → routing
 
 **Process:**
 ```
@@ -584,10 +646,54 @@ ENTRY_PLAN_CREATED  ┐
 SIZE_PLAN_CREATED   ├─→ [Parallel phase complete]
 EXIT_PLAN_CREATED   ┘         ↓
                     ROUTING_PLANNING_REQUESTED
+                    (payload: RoutingRequest met Entry+Size+Exit plans)
                               ↓
                     ROUTING_PLAN_CREATED
+                    (router gebruikt ALLE 3 plans voor beslissing)
                               ↓
                     [All 4 plans ready] → Aggregate
+```
+
+**RoutingRequest DTO:**
+```python
+@dataclass
+class RoutingRequest:
+    """
+    Aggregated input voor RoutingPlanner.
+    
+    Router MOET alle 3 plans hebben voor optimale routing beslissing.
+    Zie rationale hierboven voor dependencies.
+    """
+    strategy_directive: StrategyDirective  # Context + hints
+    entry_plan: EntryPlan                  # WHAT/WHERE
+    size_plan: SizePlan                    # HOW MUCH
+    exit_plan: ExitPlan                    # WHERE OUT
+```
+
+**Voorbeeld Router Logic:**
+```python
+class BaseTWAPRouter(BaseRoutingPlanner):
+    def plan(self, request: RoutingRequest) -> RoutingPlan:
+        # Decision 1: Timing (van Entry.order_type)
+        if request.entry_plan.order_type == "MARKET":
+            timing = "IMMEDIATE"
+        elif request.size_plan.position_size > Decimal("1.0"):
+            timing = "TWAP"  # Large LIMIT orders
+        
+        # Decision 2: Slippage (van profit margin)
+        profit_margin = (
+            request.exit_plan.take_profit_price - 
+            request.entry_plan.limit_price
+        )
+        max_slippage = (
+            Decimal("0.05") if profit_margin < threshold 
+            else Decimal("0.5")
+        )
+        
+        # Decision 3: Iceberg (van Size)
+        iceberg = request.size_plan.position_size > Decimal("5.0")
+        
+        return RoutingPlan(timing, ..., max_slippage, iceberg)
 ```
 
 **Output:**
@@ -600,11 +706,16 @@ ExecutionDirective(
     entry_plan=EntryPlan(...),
     size_plan=SizePlan(...),
     exit_plan=ExitPlan(...),
-    routing_plan=RoutingPlan(...)
+    routing_plan=RoutingPlan(...)   # Gebruikt data van alle 3 voorgaande plans
 )
 ```
 
 **Event:** `EXECUTION_DIRECTIVE_READY`
+
+**Architectureel Principe:**
+> "Router is GEEN gelijkwaardige parallel planner, maar een ÉN-functie die 
+> ALLE trade characteristics (Entry + Size + Exit) combineert tot optimale 
+> execution strategie (HOW/WHEN)."
 
 ---
 
@@ -688,32 +799,138 @@ class FlowTerminator:
 
 ## Event Flow Summary
 
+**Executie Architectuur: Event-Driven Wiring (Platgeslagen Orkestratie)**
+
 ```
 TICK_RECEIVED
     ↓
 CONTEXT_READY
     ↓
 CONTEXT_ASSESSMENT_READY
-    ↓ (parallel split)
+    ↓ (parallel split - EventAdapter fires multiple workers)
     ├─→ OPPORTUNITY_DETECTED
     └─→ THREAT_DETECTED
-         ↓ (merge)
+         ↓ (merge - StrategyPlanner luistert naar beide)
 STRATEGY_DIRECTIVE_ISSUED
-    ↓ (parallel split)
-    ├─→ ENTRY_PLAN_CREATED
-    ├─→ SIZE_PLAN_CREATED
-    └─→ EXIT_PLAN_CREATED
-         ↓ (merge)
-ROUTING_PLANNING_REQUESTED
-    ↓
-ROUTING_PLAN_CREATED
-    ↓
+    ↓ (parallel split - EventAdapter fires 3 planners simultaan)
+    ├─→ ENTRY_PLAN_CREATED ──────┐
+    ├─→ SIZE_PLAN_CREATED  ──────┤
+    └─→ EXIT_PLAN_CREATED  ──────┤
+                                 │
+         [PlanningAggregator detecteert completion van parallel phase]
+                                 │
+                                 ↓
+         ROUTING_PLANNING_REQUESTED (payload: Entry+Size+Exit plans)
+                                 ↓
+         ROUTING_PLAN_CREATED (router gebruikt alle 3 plans)
+                                 ↓
+         [PlanningAggregator aggregeert alle 4 plans]
+                                 ↓
 EXECUTION_DIRECTIVE_READY
     ↓
-_flow_stop (internal)
+_flow_stop (internal EventAdapter event)
     ↓
 UI_FLOW_TERMINATED
 ```
+
+**Trigger Mechanisme: Wie Triggert Wie?**
+
+**NIEMAND triggert direct - alles via event-driven wiring:**
+
+1. **StrategyPlanner → Trade Planners:**
+   - StrategyPlanner publiceert `STRATEGY_DIRECTIVE_ISSUED` event
+   - EventAdapter fire **ALLE** entry/size/exit planners parallel
+   - Config-driven filtering: planners checken `should_handle(directive)` met confidence ranges
+   - Voorbeeld: `AggressiveEntry` luistert naar event MAAR handelt alleen als `confidence ∈ [0.8, 1.0]`
+
+2. **Trade Planners → PlanningAggregator:**
+   - Elke planner publiceert `{ENTRY|SIZE|EXIT}_PLAN_CREATED` event
+   - PlanningAggregator luistert naar alle 3 events
+   - Intern state tracking: wacht tot alle 3 parallel plans binnen zijn
+
+3. **PlanningAggregator → RoutingPlanner:**
+   - PlanningAggregator detecteert parallel phase completion
+   - Publiceert `ROUTING_PLANNING_REQUESTED` event met `RoutingRequest` payload
+   - RoutingRequest bevat: StrategyDirective + Entry + Size + Exit plans
+   - EventAdapter fire routing planners (opnieuw met config-driven filtering)
+
+4. **RoutingPlanner → PlanningAggregator:**
+   - RoutingPlanner publiceert `ROUTING_PLAN_CREATED` event
+   - PlanningAggregator luistert naar event
+   - Aggregeert alle 4 plans → ExecutionDirective
+   - Publiceert `EXECUTION_DIRECTIVE_READY` event
+
+**Event Wiring Configuration:**
+```yaml
+# wiring_map.yaml (generated during bootstrap)
+event_wirings:
+  # StrategyDirective triggers parallel planning
+  - event: "STRATEGY_DIRECTIVE_ISSUED"
+    subscribers:
+      - worker: "aggressive_entry_planner"
+        method: "on_strategy_directive"
+      - worker: "patient_entry_planner"
+        method: "on_strategy_directive"
+      - worker: "fixed_risk_sizer"
+        method: "on_strategy_directive"
+      - worker: "structure_exit_planner"
+        method: "on_strategy_directive"
+  
+  # Planners report to aggregator
+  - event: "ENTRY_PLAN_CREATED"
+    subscribers:
+      - worker: "planning_aggregator"
+        method: "on_entry_plan"
+  
+  - event: "SIZE_PLAN_CREATED"
+    subscribers:
+      - worker: "planning_aggregator"
+        method: "on_size_plan"
+  
+  - event: "EXIT_PLAN_CREATED"
+    subscribers:
+      - worker: "planning_aggregator"
+        method: "on_exit_plan"
+  
+  # Aggregator triggers routing (sequential phase)
+  - event: "ROUTING_PLANNING_REQUESTED"
+    subscribers:
+      - worker: "twap_router"
+        method: "on_routing_request"
+      - worker: "iceberg_router"
+        method: "on_routing_request"
+  
+  # Router reports back to aggregator
+  - event: "ROUTING_PLAN_CREATED"
+    subscribers:
+      - worker: "planning_aggregator"
+        method: "on_routing_plan"
+  
+  # Final aggregation triggers execution
+  - event: "EXECUTION_DIRECTIVE_READY"
+    subscribers:
+      - worker: "backtest_handler"
+        method: "on_execution_directive"
+```
+
+**Architecturele Principes:**
+
+1. **Geen Directe Coupling:**
+   - Workers kennen elkaar niet, weten niet wie luistert
+   - Communicatie ALLEEN via events + DTOs
+   - Event wiring bepaald door config, niet door code
+
+2. **Config-Driven Filtering:**
+   - Alle planners luisteren naar hetzelfde event
+   - PlannerMatcher (injected door WorkerFactory) checkt `should_handle()`
+   - Voorbeeld: 3 entry planners luisteren, maar alleen 1 handelt af (op basis van confidence)
+
+3. **PlanningAggregator = Coordinator (GEEN Orchestrator):**
+   - Detecteert completion van phases (state tracking)
+   - Triggert next phase via events (ROUTING_PLANNING_REQUESTED)
+   - Aggregeert resultaten → ExecutionDirective
+   - GEEN planner selectie logica (config doet dit!)
+   - GEEN business logic (pure coordination)
 
 ---
 
@@ -781,6 +998,85 @@ plugin_manifest.yaml (per worker)
 
 ## Architectural Patterns
 
+### 0. Router Dependency Architecture - Waarom Sequential Na Parallel?
+
+**Architecturele Beslissing:** RoutingPlanner MOET wachten op Entry+Size+Exit plans.
+
+**Rationale:**
+
+1. **Inhoudelijke Dependency (Kwantitatieve Fundering):**
+   
+   Router beslissingen zijn **multi-dimensional optimizations** die ALLE 3 trade characteristics nodig hebben:
+   
+   - **Entry.order_type** → TIF selectie (MARKET=IOC, LIMIT=GTC, STOP_LIMIT=FOK)
+   - **Entry.limit_price + Exit.take_profit_price** → Profit margin urgency (scalp vs swing)
+   - **Size.position_size** → TWAP chunking, iceberg visibility, venue capacity
+   
+   **Academisch bewijs:** Almgren-Chriss Market Impact Model (2000) toont dat optimale execution strategie **simultaan** afhangt van entry price, exit target, én position size.
+
+2. **Executie Dependency (Event-Driven Wiring):**
+   
+   ```python
+   # RoutingPlanner krijgt RoutingRequest als input
+   @dataclass
+   class RoutingRequest:
+       strategy_directive: StrategyDirective  # Context
+       entry_plan: EntryPlan                  # REQUIRED
+       size_plan: SizePlan                    # REQUIRED
+       exit_plan: ExitPlan                    # REQUIRED
+   ```
+   
+   **Type-safe enforcement:** Router KAN NIET draaien zonder alle 3 plans (compiler error!).
+
+3. **Flow Architectuur:**
+   
+   ```
+   PARALLEL:  [EntryPlanner | SizePlanner | ExitPlanner]
+                    ↓           ↓           ↓
+   AGGREGATION:  PlanningAggregator (wacht tot 3 plans binnen)
+                                     ↓
+   SEQUENTIAL:              RoutingPlanner (gebruikt alle 3 plans)
+                                     ↓
+   OUTPUT:                  ExecutionDirective (compleet)
+   ```
+
+4. **Waarom GEEN 4-Parallel?**
+   
+   ❌ **Verkeerd:** `[Entry | Size | Exit | Routing]` parallel
+   
+   **Problemen:**
+   - Router zou moeten "raden" zonder complete info
+   - Race conditions (routing beslissing voor size bekend is)
+   - Sub-optimale execution (router kan niet optimaliseren over alle dimensions)
+   
+   ✅ **Correct:** `[Entry | Size | Exit]` parallel → `Routing` sequential
+   
+   **Voordelen:**
+   - Router heeft complete trade picture
+   - Optimale execution strategie mogelijk (Almgren-Chriss compliant)
+   - Type-safe: compiler dwingt correcte flow af
+
+5. **Bevrijdend Inzicht:**
+   
+   > "Configurability and flexibility, hoewel geboden door event-driven architectuur,
+   > moeten NIET altijd exposed worden. De 'lijm' (data contracts/DTOs) dwingt 
+   > correctheid af en maakt verkeerde wiring onmogelijk."
+   
+   **Wat NIET configureerbaar is (en dat is goed!):**
+   - Parallel → Sequential volgorde (inhoudelijk noodzakelijk)
+   - Router dependency op 3 plans (type-safe enforcement)
+   - PlanningAggregator coordination logic (platform verantwoordelijkheid)
+   
+   **Wat WEL configureerbaar is:**
+   - Welke planners draaien (confidence filtering)
+   - Planner-specifieke parameters (TWAP duration, RR ratio)
+   - Event wiring details (welke events, welke methods)
+
+**Conclusie:**
+Router is **GEEN** gelijkwaardige parallel planner, maar een **ÉN-functie** die ALLE trade characteristics combineert tot optimale execution strategie. De sequential phase na parallel is **inhoudelijk noodzakelijk** en type-safe enforced.
+
+---
+
 ### 1. Confidence-Driven Specialization
 
 **Probleem:** Hoe kunnen quants meerdere entry strategieën pluggen zonder code wijzigingen?
@@ -796,7 +1092,7 @@ entry:
 
 WorkerFactory injecteert `PlannerMatcher` tijdens assembly, workers blijven dom.
 
-### 0. Platgeslagen Orkestratie (Event-Driven)
+### 2. Platgeslagen Orkestratie (Event-Driven)
 
 **Architectuur:** Geen Operators - alleen EventAdapters + explicit wiring
 
@@ -819,7 +1115,7 @@ event_wirings:
 
 **Geen orkestratie laag** - workers communiceren direct via events (bedraad door EventAdapters).
 
-### 2. Bus-Agnostic Workers
+### 3. Bus-Agnostic Workers
 
 **Probleem:** Workers moeten testbaar zijn zonder EventBus dependency.
 
@@ -835,7 +1131,7 @@ return DispositionEnvelope(
 
 EventAdapter (generic) handles event routing.
 
-### 3. Statische Plan DTOs
+### 4. Statische Plan DTOs
 
 **Probleem:** Trailing stops, breakeven rules - waar hoort dynamiek?
 
@@ -846,15 +1142,48 @@ EventAdapter (generic) handles event routing.
 
 **SRP:** Plan DTOs = snapshots, Workers = dynamiek
 
-### 4. Hybrid Execution (Parallel + Sequential)
+### 5. Hybrid Execution (Parallel + Sequential)
 
-**Probleem:** Routing kan afhankelijk zijn van size (iceberg voor grote orders).
+**Probleem:** Routing is afhankelijk van ALLE 3 trade characteristics (entry, size, exit).
 
 **Oplossing:**
-- Parallel: Entry, Size, Exit (EventAdapters fire simultaan)
-- Sequential: Routing (PlanningAggregator wacht op 3 plannen, triggert Routing)
+- **Parallel Phase:** Entry, Size, Exit planners (EventAdapters fire simultaan)
+  - Geen onderlinge dependencies
+  - Maximale throughput
+  - Config-driven filtering (confidence ranges)
 
-PlanningAggregator (platform worker) detecteert completion, publiceert `ROUTING_PLANNING_REQUESTED` event.
+- **Sequential Phase:** Routing planner (na aggregation van 3 plans)
+  - **Input:** RoutingRequest met Entry + Size + Exit plans
+  - **Rationale:** Multi-dimensional optimization vereist complete trade picture
+  - **Type-safe:** Compiler dwingt af dat router ALLE 3 plans heeft
+
+**PlanningAggregator Coordination:**
+```python
+class PlanningAggregator:
+    def _check_parallel_completion(self):
+        """Detecteer wanneer alle 3 parallel plans binnen zijn."""
+        if all([
+            self.pending_plans["entry"],
+            self.pending_plans["size"],
+            self.pending_plans["exit"]
+        ]):
+            # Trigger sequential phase
+            return DispositionEnvelope(
+                disposition=Disposition.PUBLISH,
+                event_name="ROUTING_PLANNING_REQUESTED",
+                payload=RoutingRequest(
+                    strategy_directive=self.strategy_directive,
+                    entry_plan=self.pending_plans["entry"],
+                    size_plan=self.pending_plans["size"],
+                    exit_plan=self.pending_plans["exit"]
+                )
+            )
+```
+
+**Architectural Enforcement:**
+- DTOs maken verkeerde flow onmogelijk (type system)
+- Event wiring enforceert sequential dependency (config)
+- PlanningAggregator coordination (platform logic, niet configureerbaar)
 
 ---
 
@@ -874,9 +1203,21 @@ PlanningAggregator (platform worker) detecteert completion, publiceert `ROUTING_
 - Addendum 3.8 - Configuratie en Vertaal Filosofie
 - Point-in-Time Data Model - DTO-Centric met TickCache
 
+**Kwantitatieve Fundering:**
+- Almgren-Chriss Market Impact Model (2000): Optimale execution vereist entry, exit, en size
+- Industry Practice: Bloomberg EMSX, Goldman REDI, Morgan Stanley AES smart order routing
+
 ---
 
 ## Changelog
+
+**2025-10-28 - v3.1 (Router Dependencies)**
+- Toegevoegd: Pattern 0 - Router Dependency Architecture met kwantitatieve fundering
+- Uitgebreid: Fase 3 - StrategyDirective rol (pure data container, GEEN orchestrator)
+- Uitgebreid: Fase 4b - PlanningAggregator met RoutingRequest DTO en rationale
+- Uitgebreid: Event Flow Summary met trigger mechanisme en wiring examples
+- Toegevoegd: Academische referenties (Almgren-Chriss, industry practice)
+- Verheldering: "Configurability niet altijd exposed" principe
 
 **2025-10-27 - v3.0 (Definitief)**
 - Complete pipeline architectuur gedefinieerd
