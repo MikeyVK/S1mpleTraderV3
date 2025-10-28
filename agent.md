@@ -1302,22 +1302,41 @@ Na volledige quality workflow moet VS Code Problems panel ALLEEN tonen:
 | aggregated_context_assessment.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ |
 | causality.py | 10.00/10 | 25/25 ✅ | 10.00/10 | 0 | ✅ |
 | context_factor.py | 10.00/10 | 28/28 ✅ | 10.00/10 | 0 | ✅ |
-| context_factors.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ |
-| enums.py | 10.00/10 | 13/13 ✅ | 10.00/10 | 0 | ✅ |
-| entry_plan.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ |
+| disposition_envelope.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ |
+| entry_plan.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ |
+| **execution_plan.py** | **10.00/10** | **19/19 ✅** | **10.00/10** | **0** | **✅ RENAMED (was ExecutionIntent)** |
+| **execution_group.py** | **10.00/10** | **25/25 ✅** | **10.00/10** | **0** | **✅ NEW** |
+| **execution_directive_batch.py** | **10.00/10** | **15/15 ✅** | **10.00/10** | **0** | **✅ NEW** |
 | execution_directive.py | 10.00/10 | 11/11 ✅ | 10.00/10 | 0 | ✅ |
 | exit_plan.py | 10.00/10 | 11/11 ✅ | 10.00/10 | 0 | ✅ |
-| id_generators.py | 10.00/10 | 37/37 ✅ | 10.00/10 | 0 | ✅ |
-| opportunity_signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ |
-| routing_plan.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ |
-| routing_request.py | 10.00/10 | 11/11 ✅ | 10.00/10 | 0 | ✅ |
-| strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ |
-| threat_signal.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ |
+| id_generators.py | 10.00/10 | 32/32 ✅ | 10.00/10 | 0 | ✅ (ROU_ removed, EXP_ added) |
+| opportunity_signal.py | 10.00/10 | 27/27 ✅ | 10.00/10 | 0 | ✅ |
+| size_plan.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ |
+| strategy_directive.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ |
+| threat_signal.py | 10.00/10 | 19/19 ✅ | 10.00/10 | 0 | ✅ |
+| ~~routing_plan.py~~ | - | - | - | - | ❌ **DELETED (replaced by ExecutionPlan)** |
+| ~~routing_request.py~~ | - | - | - | - | ❌ **DELETED** |
 
 **Acceptance criteria:** 
 - ✅ ALLE modules: Pylint 10.00/10 (whitespace, imports, line length)
 - ✅ ALLE modules: 100% tests passing
 - ✅ ALLE modules: 0 Pylance warnings (gebruik getattr() voor FieldInfo toegang)
+
+**Recent Updates (2025-10-28):**
+- ✅ **ExecutionPlan**: Renamed from ExecutionIntent, EXI_ → EXP_ prefix migration
+- ✅ **ExecutionDirectiveBatch**: New DTO for batch processing (TDD complete)
+- ✅ **ExecutionGroup**: New DTO for multi-order tracking (25/25 tests)
+- ✅ **Routing Cleanup**: routing_plan.py, routing_request.py deleted
+- ✅ **ID Generators**: generate_routing_plan_id() removed, ROU_ prefix purged
+- ✅ **Causality**: routing_plan_id → execution_plan_id field rename
+- ✅ **All Tests**: 267/267 DTO tests passing across all layers
+
+**Total DTO Coverage:**
+- Execution Layer: 51 tests (ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup)
+- Strategy Planning: 60 tests (EntryPlan, SizePlan, ExitPlan, ExecutionPlan)
+- Strategy SWOT: 99 tests (OpportunitySignal, ThreatSignal, ContextFactor, AggregatedContext, StrategyDirective)
+- Shared Layer: 42 tests (CausalityChain, DispositionEnvelope)
+- **TOTAL: 252 tests passing** ✅
 
 **Quality workflow checklist per nieuwe module:**
 1. ✅ Create feature branch: `git checkout -b feature/dto-name`
