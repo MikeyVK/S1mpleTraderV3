@@ -134,7 +134,10 @@ class RoutingRequest(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "description": "Standard LIMIT order with medium size (retail scenario)",
+                    "description": (
+                        "Standard LIMIT order - Router: GTC TIF, "
+                        "no TWAP, moderate slippage"
+                    ),
                     "strategy_directive": {
                         "strategy_planner_id": "swot_planner_v1",
                         "scope": "NEW_TRADE",
@@ -160,14 +163,12 @@ class RoutingRequest(BaseModel):
                         "stop_loss_price": "95000.00",
                         "take_profit_price": "105000.00",
                     },
-                    "routing_decision": {
-                        "time_in_force": "GTC",  # LIMIT order → wait for fill
-                        "twap": False,  # Medium size → single order
-                        "slippage_tolerance": "0.002",  # 5% profit margin → moderate tolerance
-                    },
                 },
                 {
-                    "description": "Large position MARKET order (institutional TWAP + iceberg)",
+                    "description": (
+                        "Large MARKET order - Router: IOC TIF, "
+                        "TWAP+iceberg chunking"
+                    ),
                     "strategy_directive": {
                         "strategy_planner_id": "swot_planner_v1",
                         "scope": "NEW_TRADE",
@@ -192,15 +193,12 @@ class RoutingRequest(BaseModel):
                         "risk_amount": "1050.00",
                     },
                     "exit_plan": {"stop_loss_price": "3600.00"},
-                    "routing_decision": {
-                        "time_in_force": "IOC",  # MARKET → immediate or cancel
-                        "twap": True,  # Large size → split into chunks
-                        "iceberg": True,  # Hide full position size
-                        "slippage_tolerance": "0.005",  # High urgency → willing to pay spread
-                    },
                 },
                 {
-                    "description": "Scalping with tight profit margin (strict slippage control)",
+                    "description": (
+                        "Scalping - Router: strict slippage control, "
+                        "post-only for maker fees"
+                    ),
                     "strategy_directive": {
                         "strategy_planner_id": "swot_planner_v1",
                         "scope": "NEW_TRADE",
@@ -209,9 +207,7 @@ class RoutingRequest(BaseModel):
                         "entry_directive": {"symbol": "SOLUSDT", "direction": "BUY"},
                         "size_directive": {"max_risk_amount": "1000.00"},
                         "exit_directive": {},
-                        "routing_directive": {
-                            "max_slippage_pct": "0.001"
-                        },  # 0.1% max slippage
+                        "routing_directive": {"max_slippage_pct": "0.001"},
                     },
                     "entry_plan": {
                         "symbol": "SOLUSDT",
@@ -227,12 +223,6 @@ class RoutingRequest(BaseModel):
                     "exit_plan": {
                         "stop_loss_price": "198.00",
                         "take_profit_price": "202.00",
-                    },
-                    "routing_decision": {
-                        "time_in_force": "GTC",
-                        "twap": False,
-                        "slippage_tolerance": "0.001",  # 1% profit margin → very strict
-                        "post_only": True,  # Scalping → maker fees only
                     },
                 },
             ]
