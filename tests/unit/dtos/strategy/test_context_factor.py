@@ -71,6 +71,7 @@ class TestContextFactorCreation:
         )
 
         assert factor.metadata == metadata
+        assert factor.metadata is not None  # Type narrowing for Pylance
         assert factor.metadata["regime_duration_bars"] == 42
 
 
