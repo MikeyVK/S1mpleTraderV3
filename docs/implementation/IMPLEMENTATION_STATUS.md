@@ -5,7 +5,7 @@
 This document tracks the **quality metrics and test coverage** for all S1mpleTrader V3 components. All modules must meet strict quality gates before merging to main.
 
 **Last Updated:** 2025-10-29  
-**Total Tests Passing:** 350 (304 DTO tests + 20 StrategyCache tests + 33 EventBus tests + 13 IWorkerLifecycle tests)
+**Total Tests Passing:** 404 (304 DTO tests + 20 StrategyCache + 33 EventBus + 13 Worker + 34 Core Infrastructure)
 
 ## Quality Gates
 
@@ -96,6 +96,19 @@ Every module must pass **5 mandatory gates** before merge:
 - ✅ IEventBus protocol + EventBus implementation (33 tests)
 - ✅ IWorkerLifecycle protocol (13 tests)
 
+### Core Infrastructure (34 tests)
+
+| Module | Pylint | Tests | Line Length | Pylance | Status |
+|--------|--------|-------|-------------|---------|--------|
+| context_factors.py | 10.00/10 | 20/20 ✅ | 10.00/10 | 0 | ✅ FactorRegistry Complete |
+| enums.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Core Enums Complete |
+
+**Coverage:** 34/34 tests passing (100%)
+
+**Core Infrastructure:**
+- ✅ FactorRegistry: BaseFactorType registration and validation (20 tests)
+- ✅ Core Enums: ContextType, OpportunityType, ThreatType, PlanningPhase, ExecutionType (14 tests)
+
 ## Utilities Status
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
@@ -117,8 +130,9 @@ Every module must pass **5 mandatory gates** before merge:
 | **Platform (Cache)** | 20/20 ✅ | 100% |
 | **Platform (EventBus)** | 33/33 ✅ | 100% |
 | **Platform (Worker)** | 13/13 ✅ | 100% |
+| **Core Infrastructure** | 34/34 ✅ | 100% |
 | **Utilities** | 32/32 ✅ | 100% |
-| **TOTAL** | **350/350 ✅** | **100%** |
+| **TOTAL** | **404/404 ✅** | **100%** |
 
 ### By Phase (Roadmap)
 
@@ -275,8 +289,8 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ### Overall Statistics
 
-- **Total Modules:** 21 (14 DTOs + 5 protocols + 2 services)
-- **Total Tests:** 350
+- **Total Modules:** 23 (14 DTOs + 5 protocols + 2 services + 2 infrastructure)
+- **Total Tests:** 404
 - **Test Coverage:** 100%
 - **Pylint Score:** 10.00/10 (all modules)
 - **Mypy Errors:** 0 (all DTOs)
@@ -284,8 +298,8 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ### Code Quality Trends
 
-- **Lines of Code:** ~2,700 (DTOs + tests + services + protocols)
-- **Average Tests per DTO:** 18
+- **Lines of Code:** ~3,000 (DTOs + tests + services + protocols + infrastructure)
+- **Average Tests per Module:** 17.6
 - **Documentation Coverage:** 100% (file headers, docstrings)
 - **Quality Gate Pass Rate:** 100%
 
