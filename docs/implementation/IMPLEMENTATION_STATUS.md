@@ -5,7 +5,7 @@
 This document tracks the **quality metrics and test coverage** for all S1mpleTrader V3 components. All modules must meet strict quality gates before merging to main.
 
 **Last Updated:** 2025-10-28  
-**Total Tests Passing:** 272 (252 DTO tests + 20 StrategyCache tests)
+**Total Tests Passing:** 305 (252 DTO tests + 20 StrategyCache tests + 33 EventBus tests)
 
 ## Quality Gates
 
@@ -79,20 +79,21 @@ Every module must pass **5 mandatory gates** before merge:
 
 ## Platform Services Status
 
-### Core Services (20 tests)
+### Core Services (53 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
 | strategy_cache.py | 10.00/10 | 20/20 ✅ | 10.00/10 | 0 | ✅ Phase 3.1 Complete |
 | interfaces/strategy_cache.py | 10.00/10 | - | 10.00/10 | 0 | ✅ IStrategyCache protocol |
+| eventbus.py | 10.00/10 | 18/18 ✅ | 10.00/10 | 3* | ✅ Phase 3.2 Complete |
+| interfaces/eventbus.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ IEventBus protocol |
 
-**Coverage:** 20/20 tests passing (100%)
+**Coverage:** 53/53 tests passing (100%)
+
+*Pylance warnings acceptable: catching Exception (handler isolation), f-string logging
 
 **Pending Platform Services:**
-- ❌ IEventBus protocol (Phase 1.2)
-- ❌ EventBus implementation (Phase 3.2)
 - ❌ IWorkerLifecycle protocol (Phase 1.2)
-- ❌ TickCacheManager (Phase 3.3)
 
 ## Utilities Status
 
