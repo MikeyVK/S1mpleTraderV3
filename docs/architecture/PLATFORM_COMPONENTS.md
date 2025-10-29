@@ -108,7 +108,7 @@ class EventAdapter:
 - `context.*` - Context updates (trend_shift, volatility_spike, etc.)
 - `execution.*` - Execution events (order_filled, order_rejected, etc.)
 
-**See:** [EVENTBUS_DESIGN.md](../development/EVENTBUS_DESIGN.md) for detailed design.
+**See:** [EVENTBUS_DESIGN.md](../development/#Archief/EVENTBUS_DESIGN.md) for detailed design (archived - fully implemented).
 
 ---
 
@@ -457,8 +457,8 @@ graph TB
 
 ## Related Documentation
 
-- **EventBus Design:** [EVENTBUS_DESIGN.md](../development/EVENTBUS_DESIGN.md) - Detailed protocol design
-- **IWorkerLifecycle Design:** [IWORKERLIFECYCLE_DESIGN.md](../development/IWORKERLIFECYCLE_DESIGN.md) - Two-phase initialization
+- **EventBus Design:** [EVENTBUS_DESIGN.md](../development/#Archief/EVENTBUS_DESIGN.md) - Archived (fully implemented + tested)
+- **IWorkerLifecycle Design:** [IWORKERLIFECYCLE_DESIGN.md](../development/#Archief/IWORKERLIFECYCLE_DESIGN.md) - Archived (fully implemented + tested)
 - **Point-in-Time Model:** [POINT_IN_TIME_MODEL.md](POINT_IN_TIME_MODEL.md) - StrategyCache data flows
 - **Architectural Shifts:** [ARCHITECTURAL_SHIFTS.md](ARCHITECTURAL_SHIFTS.md) - V2 → V3 changes
 - **Implementation Status:** [../implementation/IMPLEMENTATION_STATUS.md](../implementation/IMPLEMENTATION_STATUS.md) - Current progress
@@ -466,4 +466,4 @@ graph TB
 ---
 
 **Last Updated:** 2025-10-29  
-**Status:** EventBus + StrategyCache complete, IWorkerLifecycle in progress
+**Status:** EventBus + StrategyCache + IWorkerLifecycle complete (all tested)

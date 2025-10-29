@@ -52,6 +52,7 @@
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
 | [Platform Components](PLATFORM_COMPONENTS.md) | Core Singletons | StrategyCache, EventBus, TickCacheManager, PluginRegistry |
+| [LogEnricher Design](LOGENRICHER_DESIGN.md) | **PRELIMINARY** - Structured Logging | LogFormatter, LogEnricher, Translator, i18n compliance |
 
 ## Critical Path for New Developers
 
