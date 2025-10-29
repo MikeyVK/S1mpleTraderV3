@@ -300,8 +300,12 @@ class BaseWorker(Generic[WorkerInput, WorkerOutput], IWorkerLifecycle, ABC):
         
         Examples:
         - BaseContextWorker → False (sub-component output)
-        - BaseContextAggregatorWorker → True (aggregator output)
         - BaseOpportunityWorker → True (extends chain)
+        - BaseThreatWorker → True (extends chain)
+        - BaseStrategyPlannerWorker → True (extends chain)
+        
+        Note: Platform aggregators (ContextAggregator, PlanningAggregator)
+        are NOT BaseWorker subclasses - they're platform components.
         """
         ...
     
@@ -401,19 +405,22 @@ class AggregatedContextAssessment(BaseModel):
 - Individual factors don't need causality (aggregator handles it)
 
 **Implication for BaseWorker:**
-- BaseContextWorker does NOT extend causality chain
-- BaseContextAggregatorWorker DOES extend chain (different category!)
+- BaseContextWorker does NOT extend causality chain (sub-component output)
+- Platform aggregators (ContextAggregator, PlanningAggregator) DO extend chain
+- Plugin workers (Opportunity, Threat, StrategyPlanner) extend chain
 
 **Updated Causality Field Mapping:**
 
-| Worker Category | Output DTO | Extends Causality? | Field Name |
+| Component Type | Output DTO | Extends Causality? | Field Name |
 |----------------|------------|-------------------|------------|
-| **ContextWorker** | ContextFactor | ❌ NO | (none - sub-component) |
-| **ContextAggregatorWorker** | AggregatedContextAssessment | ✅ YES | `context_assessment_id` |
-| **OpportunityWorker** | OpportunitySignal | ✅ YES | `opportunity_signal_ids` (list) |
-| **ThreatWorker** | ThreatSignal | ✅ YES | `threat_ids` (list) |
-| **StrategyPlannerWorker** | StrategyDirective | ✅ YES | `strategy_directive_id` |
-| **ExecutionTranslatorWorker** | ExecutionDirective | ✅ YES | `execution_directive_id` |
+| **ContextWorker** (plugin) | ContextFactor | ❌ NO | (none - sub-component) |
+| **ContextAggregator** (platform) | AggregatedContextAssessment | ✅ YES | `context_assessment_id` |
+| **OpportunityWorker** (plugin) | OpportunitySignal | ✅ YES | `opportunity_signal_ids` (list) |
+| **ThreatWorker** (plugin) | ThreatSignal | ✅ YES | `threat_ids` (list) |
+| **StrategyPlannerWorker** (plugin) | StrategyDirective | ✅ YES | `strategy_directive_id` |
+| **PlanningAggregator** (platform) | ExecutionDirective | ✅ YES | `execution_directive_id` |
+
+**Note:** Aggregators (ContextAggregator, PlanningAggregator) are **platform components**, not plugin workers.
 
 **Decision:** NO change needed to CausalityChain. Pattern is consistent and correct.
 
@@ -462,7 +469,7 @@ def execute(self, input_dto) -> DispositionEnvelope:
    - ContextFactor follows sub-component pattern (NO causality field)
    - Consistent with EntryPlan/SizePlan/ExitPlan
    - BaseContextWorker does NOT extend causality
-   - BaseContextAggregatorWorker DOES extend chain (separate category)
+   - Platform aggregators (ContextAggregator, PlanningAggregator) are NOT BaseWorker subclasses
 
 2. **Prototype BaseOpportunityWorker** (NEXT STEP)
    - Small, focused ABC
@@ -494,8 +501,9 @@ def execute(self, input_dto) -> DispositionEnvelope:
 6. **Complete BaseWorker Categories**
    - BaseThreatWorker
    - BaseStrategyPlannerWorker
-   - BaseExecutionTranslatorWorker
-   - BaseContextWorker (pending causality decision)
+   - BaseContextWorker (no causality extension)
+   
+**Note:** Platform aggregators (ContextAggregator, PlanningAggregator) are NOT BaseWorker subclasses - they are platform components with different architecture.
 
 ---
 
