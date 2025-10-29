@@ -23,7 +23,7 @@ from backend.core.eventbus import EventBus, CriticalEventHandlerError
 from backend.core.interfaces.eventbus import SubscriptionScope, ScopeLevel
 
 
-class TestPayloadDTO(BaseModel):
+class EventPayloadDTO(BaseModel):
     """Test DTO for event payloads."""
 
     message: str
@@ -44,7 +44,7 @@ class TestEventBusInitialization:
         # Should publish without errors (no subscribers)
         bus.publish(
             "TEST_EVENT",
-            TestPayloadDTO(message="test", value=1),
+            EventPayloadDTO(message="test", value=1),
             ScopeLevel.PLATFORM
         )
 
@@ -73,7 +73,7 @@ class TestBasicPublishSubscribe:
         assert sub_id is not None
 
         # Publish
-        payload = TestPayloadDTO(message="test", value=42)
+        payload = EventPayloadDTO(message="test", value=42)
         bus.publish("TEST_EVENT", payload, ScopeLevel.PLATFORM)
 
         # Verify received
@@ -99,7 +99,7 @@ class TestBasicPublishSubscribe:
         # Publish after unsubscribe
         bus.publish(
             "TEST_EVENT",
-            TestPayloadDTO(message="test", value=1),
+            EventPayloadDTO(message="test", value=1),
             ScopeLevel.PLATFORM
         )
 
@@ -123,7 +123,7 @@ class TestBasicPublishSubscribe:
             SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
         )
 
-        payload = TestPayloadDTO(message="test", value=1)
+        payload = EventPayloadDTO(message="test", value=1)
         bus.publish("TEST_EVENT", payload, ScopeLevel.PLATFORM)
 
         # Both should receive
@@ -150,7 +150,7 @@ class TestBasicPublishSubscribe:
         # Publish to EVENT_A
         bus.publish(
             "EVENT_A",
-            TestPayloadDTO(message="a", value=1),
+            EventPayloadDTO(message="a", value=1),
             ScopeLevel.PLATFORM
         )
 
@@ -179,7 +179,7 @@ class TestStrategyScoping:
         # Publish from STR_A
         bus.publish(
             "TICK",
-            TestPayloadDTO(message="tick", value=1),
+            EventPayloadDTO(message="tick", value=1),
             ScopeLevel.STRATEGY,
             strategy_instance_id="STR_A"
         )
@@ -203,7 +203,7 @@ class TestStrategyScoping:
         # Publish from STR_B
         bus.publish(
             "TICK",
-            TestPayloadDTO(message="tick", value=1),
+            EventPayloadDTO(message="tick", value=1),
             ScopeLevel.STRATEGY,
             strategy_instance_id="STR_B"
         )
@@ -228,7 +228,7 @@ class TestStrategyScoping:
         # Publish platform event
         bus.publish(
             "RISK_ALERT",
-            TestPayloadDTO(message="risk", value=1),
+            EventPayloadDTO(message="risk", value=1),
             ScopeLevel.PLATFORM
         )
 
@@ -256,13 +256,13 @@ class TestPlatformScoping:
         # Publish from multiple strategies
         bus.publish(
             "LEDGER_UPDATE",
-            TestPayloadDTO(message="a", value=1),
+            EventPayloadDTO(message="a", value=1),
             ScopeLevel.STRATEGY,
             strategy_instance_id="STR_A"
         )
         bus.publish(
             "LEDGER_UPDATE",
-            TestPayloadDTO(message="b", value=2),
+            EventPayloadDTO(message="b", value=2),
             ScopeLevel.STRATEGY,
             strategy_instance_id="STR_B"
         )
@@ -287,19 +287,19 @@ class TestPlatformScoping:
         # Publish from multiple strategies
         bus.publish(
             "DEBUG_EVENT",
-            TestPayloadDTO(message="a", value=1),
+            EventPayloadDTO(message="a", value=1),
             ScopeLevel.STRATEGY,
             strategy_instance_id="STR_A"
         )
         bus.publish(
             "DEBUG_EVENT",
-            TestPayloadDTO(message="b", value=2),
+            EventPayloadDTO(message="b", value=2),
             ScopeLevel.STRATEGY,
             strategy_instance_id="STR_B"  # Not in target set
         )
         bus.publish(
             "DEBUG_EVENT",
-            TestPayloadDTO(message="c", value=3),
+            EventPayloadDTO(message="c", value=3),
             ScopeLevel.STRATEGY,
             strategy_instance_id="STR_C"
         )
@@ -341,7 +341,7 @@ class TestErrorHandling:
         # Publish should not crash
         bus.publish(
             "TEST_EVENT",
-            TestPayloadDTO(message="test", value=1),
+            EventPayloadDTO(message="test", value=1),
             ScopeLevel.PLATFORM
         )
 
@@ -366,7 +366,7 @@ class TestErrorHandling:
         with pytest.raises(CriticalEventHandlerError):
             bus.publish(
                 "TEST_EVENT",
-                TestPayloadDTO(message="test", value=1),
+                EventPayloadDTO(message="test", value=1),
                 ScopeLevel.PLATFORM
             )
 
@@ -395,7 +395,7 @@ class TestThreadSafety:
             for i in range(10):
                 bus.publish(
                     "TEST_EVENT",
-                    TestPayloadDTO(message=f"thread_{thread_id}", value=i),
+                    EventPayloadDTO(message=f"thread_{thread_id}", value=i),
                     ScopeLevel.PLATFORM
                 )
 
@@ -477,7 +477,7 @@ class TestInvalidOperations:
         with pytest.raises(ValueError):
             bus.publish(
                 "TEST_EVENT",
-                TestPayloadDTO(message="test", value=1),
+                EventPayloadDTO(message="test", value=1),
                 ScopeLevel.STRATEGY,
                 strategy_instance_id=None  # Missing required ID!
             )
