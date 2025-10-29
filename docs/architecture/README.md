@@ -106,6 +106,6 @@ StrategyConfig (per strategy, JIT loaded)
 
 ---
 
-**Last Updated:** 2025-10-28
+**Last Updated:** 2025-10-29
 **Maintained By:** Development Team
 **For Questions:** See relevant detailed document or TODO.md for current work
