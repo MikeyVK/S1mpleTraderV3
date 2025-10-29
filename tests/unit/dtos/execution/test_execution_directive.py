@@ -27,7 +27,6 @@ from backend.dtos.strategy import (
     SizePlan,
     ExitPlan,
     ExecutionPlan,
-    ExecutionAction
 )
 from backend.dtos.execution.execution_directive import ExecutionDirective
 
@@ -54,8 +53,12 @@ class TestExecutionDirectiveCreation:
             stop_loss_price=Decimal("95000.00"),
             take_profit_price=Decimal("105000.00")
         )
-        # ExecutionPlan optional - can be None for basic test
-        execution_plan = None
+        execution_plan = ExecutionPlan(
+            execution_urgency=Decimal("0.80"),
+            visibility_preference=Decimal("0.50"),
+            max_slippage_pct=Decimal("0.0050"),
+            must_complete_immediately=False
+        )
 
         directive = ExecutionDirective(
             causality=causality,
@@ -71,6 +74,12 @@ class TestExecutionDirectiveCreation:
         assert directive.size_plan == size
         assert directive.exit_plan == exit_plan
         assert directive.execution_plan == execution_plan
+        # Verify ExecutionPlan fields are preserved
+        assert directive.execution_plan is not None  # Type narrowing for type checker
+        assert directive.execution_plan.execution_urgency == Decimal("0.80")
+        assert directive.execution_plan.visibility_preference == Decimal("0.50")
+        assert directive.execution_plan.max_slippage_pct == Decimal("0.0050")
+        assert directive.execution_plan.must_complete_immediately is False
 
     def test_create_directive_partial_plans_modify_scenario(self):
         """Test creating directive with partial plans (MODIFY_EXISTING - trailing stop)."""
@@ -91,6 +100,33 @@ class TestExecutionDirectiveCreation:
         assert directive.size_plan is None
         assert directive.exit_plan == exit_plan
         assert directive.execution_plan is None
+
+    def test_create_directive_execution_plan_only(self):
+        """Test creating directive with ExecutionPlan only (CANCEL_ORDER scenario)."""
+        causality = CausalityChain(tick_id="TCK_20251027_100000_abc123")
+
+        # Only execution plan - for non-trade actions like CANCEL_ORDER
+        execution_plan = ExecutionPlan(
+            action="CANCEL_ORDER",
+            execution_urgency=Decimal("1.0"),
+            visibility_preference=Decimal("0.50"),
+            max_slippage_pct=Decimal("0.0"),
+            must_complete_immediately=True
+        )
+
+        directive = ExecutionDirective(
+            causality=causality,
+            execution_plan=execution_plan
+        )
+
+        assert getattr(directive, "directive_id").startswith("EXE_")
+        assert directive.entry_plan is None
+        assert directive.size_plan is None
+        assert directive.exit_plan is None
+        assert directive.execution_plan == execution_plan
+        assert directive.execution_plan is not None  # Type narrowing
+        assert directive.execution_plan.action == "CANCEL_ORDER"
+        assert directive.execution_plan.must_complete_immediately is True
 
     def test_directive_id_auto_generated(self):
         """Test that directive_id is auto-generated with correct format."""
@@ -222,4 +258,3 @@ class TestExecutionDirectiveCausalityChain:
         assert directive.causality.tick_id == "TCK_20251027_100000_abc123"
         assert len(directive.causality.opportunity_signal_ids) == 1
         assert directive.causality.strategy_directive_id == "STR_20251027_100002_ghi789"
-
