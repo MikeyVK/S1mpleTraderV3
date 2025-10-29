@@ -81,13 +81,24 @@ Enhance code while keeping all tests green:
 
 **REFACTOR Checklist (MANDATORY):**
 
-1. **Run Pylance error check** (VS Code Problems panel or `get_errors` tool)
+1. **Run Pylance error check on ALL files** (VS Code Problems panel or `get_errors` tool)
+   - ✅ Check **both implementation AND test files**
    - ✅ Fix all errors
    - ✅ Address warnings OR add explicit `# pylint: disable=<rule>` with comment explaining why
    - ❌ Never ignore warnings silently
+   
+   ```powershell
+   # Check implementation files
+   get_errors backend/dtos/strategy/size_plan.py
+   
+   # Check test files (ALSO MANDATORY!)
+   get_errors tests/unit/dtos/strategy/test_size_plan.py
+   ```
 
-2. **Code quality improvements:**
+2. **Code quality improvements (implementation AND tests):**
    - Fix trailing whitespace
+   - Remove unused imports
+   - Replace unnecessary lambdas with method references
    - Add/improve type hints
    - Enhance docstrings
    - Split long lines (<100 chars)
@@ -116,21 +127,38 @@ Enhance code while keeping all tests green:
 git add backend/dtos/strategy/size_plan.py tests/unit/dtos/strategy/test_size_plan.py
 git commit -m "refactor: improve SizePlan DTO code quality
 
+Implementation improvements:
 - Add comprehensive docstrings
 - Fix line length violations
 - Add type hints for all fields
 - Clean up whitespace
 - Add json_schema_extra examples
+
+Test improvements:
+- Remove unused imports
+- Replace unnecessary lambdas with method references
 - Fix Pylance warnings (added explicit pylint disables with justification)
 
 Quality gates: All 10/10
-Pylance: 0 errors, 0 warnings
+Pylance: 0 errors, 0 warnings (implementation + tests)
 Status: GREEN (tests still 20/20)"
 ```
 
-**Common Pylance suppressions with justification:**
+**Common Pylance issues and fixes:**
 
 ```python
+# ❌ BAD: Unnecessary lambda in tests
+bus.subscribe("EVENT", lambda p: received.append(p), scope)
+
+# ✅ GOOD: Direct method reference
+bus.subscribe("EVENT", received.append, scope)
+
+# ❌ BAD: Unused import
+from unittest.mock import Mock  # Not used anywhere
+
+# ✅ GOOD: Remove unused imports
+# (just delete the line)
+
 # Catching broad exceptions for handler isolation
 except Exception as e:  # pylint: disable=broad-exception-caught
     # Justification: We don't know what exceptions handlers throw

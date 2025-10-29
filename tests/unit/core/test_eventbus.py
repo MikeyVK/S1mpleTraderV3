@@ -12,7 +12,6 @@ publishing, subscription management, filtering, and error handling.
 # Standard Library Imports
 import threading
 import time
-from unittest.mock import Mock
 
 # Third-Party Imports
 import pytest
@@ -114,12 +113,12 @@ class TestBasicPublishSubscribe:
 
         bus.subscribe(
             "TEST_EVENT",
-            lambda p: received_a.append(p),
+            received_a.append,
             SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
         )
         bus.subscribe(
             "TEST_EVENT",
-            lambda p: received_b.append(p),
+            received_b.append,
             SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
         )
 
@@ -138,12 +137,12 @@ class TestBasicPublishSubscribe:
 
         bus.subscribe(
             "EVENT_A",
-            lambda p: received_a.append(p),
+            received_a.append,
             SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
         )
         bus.subscribe(
             "EVENT_B",
-            lambda p: received_b.append(p),
+            received_b.append,
             SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
         )
 
@@ -169,7 +168,7 @@ class TestStrategyScoping:
 
         bus.subscribe(
             "TICK",
-            lambda p: received.append(p),
+            received.append,
             SubscriptionScope(
                 level=ScopeLevel.STRATEGY,
                 strategy_instance_id="STR_A"
@@ -193,7 +192,7 @@ class TestStrategyScoping:
 
         bus.subscribe(
             "TICK",
-            lambda p: received.append(p),
+            received.append,
             SubscriptionScope(
                 level=ScopeLevel.STRATEGY,
                 strategy_instance_id="STR_A"
@@ -218,7 +217,7 @@ class TestStrategyScoping:
 
         bus.subscribe(
             "RISK_ALERT",
-            lambda p: received.append(p),
+            received.append,
             SubscriptionScope(
                 level=ScopeLevel.STRATEGY,
                 strategy_instance_id="STR_A"
@@ -246,7 +245,7 @@ class TestPlatformScoping:
 
         bus.subscribe(
             "LEDGER_UPDATE",
-            lambda p: received.append(p),
+            received.append,
             SubscriptionScope(
                 level=ScopeLevel.PLATFORM,
                 target_strategy_ids=None  # Unrestricted
@@ -277,7 +276,7 @@ class TestPlatformScoping:
 
         bus.subscribe(
             "DEBUG_EVENT",
-            lambda p: received.append(p),
+            received.append,
             SubscriptionScope(
                 level=ScopeLevel.PLATFORM,
                 target_strategy_ids={"STR_A", "STR_C"}
