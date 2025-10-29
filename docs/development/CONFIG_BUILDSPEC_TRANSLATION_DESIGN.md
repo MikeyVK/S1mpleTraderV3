@@ -123,28 +123,79 @@ worker = EMAWorker(config_params={'fast_period': 12})  # ❌ No type checking!
 
 ### Option 1: Plugin Schema Validation (Current Implicit Approach)
 
-**Strategy:** Each worker plugin has `schema.py` defining Pydantic model for params
+**Strategy:** Each worker plugin defines its own `schema.py` with Pydantic model for params validation
 
+**Plugin Structure:**
+```
+plugins/ema_context/
+├── manifest.yaml           # Plugin metadata + capabilities
+├── worker.py               # Business logic (EMAWorker class)
+├── schema.py               # ✅ WORKER DEFINES ITS OWN PARAM SCHEMA!
+└── test/
+    └── test_worker.py      # Unit tests
+```
+
+**Worker Schema Definition:**
 ```python
 # plugins/ema_context/schema.py
+from pydantic import BaseModel, Field
+
 class EMAContextParams(BaseModel):
-    fast_period: int = Field(gt=0, le=200)
-    slow_period: int = Field(gt=0, le=200)
+    """
+    Parameter schema for EMA Context Worker.
+    
+    This schema is OWNED by the plugin and defines:
+    - Parameter types
+    - Validation constraints
+    - Default values
+    - Custom validators
+    """
+    fast_period: int = Field(gt=0, le=200, description="Fast EMA period")
+    slow_period: int = Field(gt=0, le=200, description="Slow EMA period")
     
     @model_validator(mode='after')
     def validate_period_order(self) -> 'EMAContextParams':
         if self.fast_period >= self.slow_period:
             raise ValueError("fast_period must be < slow_period")
         return self
+```
 
-# ConfigTranslator uses schema for validation
+**Manifest References Schema:**
+```yaml
+# plugins/ema_context/manifest.yaml
+identification:
+  name: "ema_context"
+  type: "context_worker"
+  version: "1.0.0"
+
+schema:
+  path: "schema.py"  # ✅ Manifest points to worker's schema
+  class: "EMAContextParams"
+
+capabilities:
+  requires_persistence: false
+  requires_strategy_ledger: false
+```
+
+**ConfigTranslator Uses Worker Schema:**
+```python
+# ConfigTranslator validates using WORKER'S schema
 def translate_worker_config(entry: WorkerConfigEntry) -> WorkerBuildSpec:
-    manifest = load_manifest(entry.type)
-    schema_class = load_schema_class(manifest.schema_path)  # EMAContextParams
+    # 1. Load manifest
+    manifest = load_manifest(entry.type)  # "ema_context"
     
-    # ✅ Pydantic validation HAPPENS HERE
+    # 2. Load WORKER'S schema class (defined by plugin!)
+    schema_path = manifest.schema.path  # "schema.py"
+    schema_class = load_schema_class(
+        plugin_dir=f"plugins/{entry.type}",
+        schema_path=schema_path,
+        class_name=manifest.schema.class_name  # "EMAContextParams"
+    )
+    
+    # 3. ✅ Validate params using WORKER'S Pydantic schema
     validated_params = schema_class.model_validate(entry.params)
     
+    # 4. Create BuildSpec with validated dict
     return WorkerBuildSpec(
         worker_class=get_worker_class(entry.type),
         config_params=validated_params.model_dump(),  # Validated dict
@@ -155,32 +206,67 @@ def translate_worker_config(entry: WorkerConfigEntry) -> WorkerBuildSpec:
 
 **Pros:**
 - ✅ Full Pydantic validation (types, constraints, custom validators)
-- ✅ Worker plugins own their schema (separation of concerns)
+- ✅ **Worker OWNS its parameter schema** - plugin defines validation rules
 - ✅ ConfigTranslator validates at translation time (fail-fast)
 - ✅ BuildSpec remains factory-agnostic (just validated dict)
+- ✅ Separation of concerns: plugin controls its contract
+- ✅ UI can generate forms from worker's schema.py (dynamic configuration)
 
 **Cons:**
 - ⚠️ Validation happens at runtime (translation time), not compile time
 - ⚠️ Worker constructor still receives `dict[str, Any]` (no type hints in constructor signature)
-- ⚠️ Plugin schema must be loaded dynamically (manifest.schema_path)
+- ⚠️ Plugin schema must be loaded dynamically from manifest reference
 
 **Example Flow:**
 ```python
-# 1. YAML
-fast_period: 12
+# 1. YAML (user configuration)
+# config/strategies/my_strategy.yaml
+workforce:
+  - plugin_name: "ema_context"
+    instance_id: "ema_1"
+    params:
+      fast_period: 12
+      slow_period: 26
 
-# 2. ConfigLoader (generic)
-params = {'fast_period': 12}
+# 2. ConfigLoader (generic Pydantic - structure validation only)
+class WorkerConfigEntry(BaseModel):
+    plugin_name: str
+    instance_id: str
+    params: dict[str, Any]  # Generic dict, NOT worker-specific!
 
-# 3. ConfigTranslator (plugin schema validation)
-EMAContextParams.model_validate(params)  # ✅ Validates types, constraints
-validated_dict = {'fast_period': 12}
+entry = WorkerConfigEntry.model_validate(yaml_data)
+# ✅ Validates: plugin_name is str, params exists
+# ❌ Does NOT validate: fast_period type/constraints
 
-# 4. BuildSpec (validated dict)
-WorkerBuildSpec(config_params=validated_dict)
+# 3. ConfigTranslator (WORKER schema validation)
+manifest = load_manifest("ema_context")
+# manifest.schema.path = "schema.py"
+# manifest.schema.class_name = "EMAContextParams"
+
+schema_class = load_schema_class(
+    plugin_dir="plugins/ema_context",
+    schema_path=manifest.schema.path,
+    class_name=manifest.schema.class_name
+)
+# schema_class = EMAContextParams (worker's Pydantic model)
+
+validated_params = schema_class.model_validate(entry.params)
+# ✅ WORKER's schema validates: fast_period is int, 0 < fast_period <= 200
+# ✅ WORKER's custom validator: fast_period < slow_period
+
+validated_dict = validated_params.model_dump()
+# {'fast_period': 12, 'slow_period': 26}
+
+# 4. BuildSpec (validated dict - factory-agnostic)
+WorkerBuildSpec(
+    worker_class=EMAWorker,
+    config_params=validated_dict,  # Pre-validated by worker's schema
+    manifest=manifest
+)
 
 # 5. Factory → Worker
-worker = EMAWorker(config_params=validated_dict)  # Dict is pre-validated
+worker = EMAWorker(spec=spec)
+# Worker constructor receives pre-validated dict
 ```
 
 ---
@@ -317,28 +403,31 @@ def build_worker(spec: WorkerBuildSpec) -> IWorker:
 
 **Why Option 1:**
 - ✅ Simplest implementation (no generics complexity)
-- ✅ Plugin schemas already enforce validation
+- ✅ **Worker OWNS parameter validation** - plugin defines its contract via schema.py
+- ✅ ConfigTranslator enforces validation using worker's schema (fail-fast)
 - ✅ BuildSpec stays uniform (factory-friendly)
 - ✅ Validation happens once (fail-fast at translation)
+- ✅ **Matches V2 architecture**: Workers define schema.py, manifest references it
 
 **Enhancement: Worker Constructor Pattern**
 
 Instead of losing typing at worker constructor, enforce this pattern:
 
 ```python
-# Worker constructor takes BuildSpec + extracts params internally
+# Worker constructor takes BuildSpec + uses its own schema internally
 class EMAWorker:
     def __init__(self, spec: WorkerBuildSpec):
-        # Worker validates + types params internally using its schema
+        # Worker validates params using ITS OWN schema (defense in depth)
         from .schema import EMAContextParams
         
         self._params = EMAContextParams.model_validate(spec.config_params)
-        self._fast_period = self._params.fast_period  # Typed access
-        self._slow_period = self._params.slow_period
+        self._fast_period = self._params.fast_period  # ✅ Typed access
+        self._slow_period = self._params.slow_period  # ✅ Typed access
     
     # Alternative: @classmethod builder pattern
     @classmethod
     def from_spec(cls, spec: WorkerBuildSpec) -> 'EMAWorker':
+        """Factory method using worker's schema."""
         from .schema import EMAContextParams
         params = EMAContextParams.model_validate(spec.config_params)
         return cls._create(params)
@@ -347,22 +436,112 @@ class EMAWorker:
     def _create(cls, params: EMAContextParams) -> 'EMAWorker':
         """Internal typed constructor."""
         instance = cls.__new__(cls)
-        instance._fast_period = params.fast_period
-        instance._slow_period = params.slow_period
+        instance._fast_period = params.fast_period  # ✅ Typed!
+        instance._slow_period = params.slow_period  # ✅ Typed!
         return instance
 ```
 
+**Complete Validation Flow:**
+
+```
+User YAML
+  ↓
+ConfigLoader (structure validation: plugin_name, instance_id exist)
+  ↓
+ConfigTranslator loads WORKER's schema.py via manifest reference
+  ↓
+ConfigTranslator validates params using WORKER's Pydantic schema (fail-fast)
+  ↓
+BuildSpec (validated dict[str, Any])
+  ↓
+WorkerFactory creates worker from BuildSpec
+  ↓
+Worker constructor re-validates using ITS OWN schema.py (defense in depth)
+  ↓
+Worker internals fully typed (self._params.fast_period)
+```
+
 **Benefits:**
-- ✅ ConfigTranslator validates once (fail-fast)
-- ✅ Worker constructor validates again (defense in depth)
+- ✅ **Worker owns its validation contract** via schema.py (separation of concerns)
+- ✅ ConfigTranslator validates once using worker's schema (fail-fast bootstrap)
+- ✅ Worker constructor validates again using same schema (defense in depth)
 - ✅ Worker internal code is fully typed (self._params.fast_period)
-- ✅ BuildSpec remains simple dict[str, Any]
+- ✅ BuildSpec remains simple dict[str, Any] (factory-agnostic)
 - ✅ No generics complexity
+- ✅ **UI can auto-generate forms from worker's schema.py** (dynamic configuration)
+- ✅ Matches V2 architecture pattern (workers define schema, manifest references it)
 
 **Trade-off:**
 - ⚠️ Double validation (translation + constructor)
 - ✅ BUT: Second validation is free (Pydantic caches on identical input)
 - ✅ AND: Defense in depth prevents factory bypassing validation
+- ✅ AND: Worker controls its own contract (plugin autonomy)
+
+---
+
+## V2 Architecture Pattern: Worker-Owned Schemas
+
+**Key Principle:** Workers define and own their parameter validation contract via `schema.py`
+
+### V2 Plugin Structure
+
+```
+plugins/ema_context/
+├── manifest.yaml           # References schema.py
+├── worker.py               # Business logic
+├── schema.py               # ✅ WORKER OWNS VALIDATION!
+├── context_schema.py       # (optional) UI visualization schema
+└── test/
+    └── test_worker.py
+```
+
+### V2 Manifest Format
+
+```yaml
+# plugins/ema_context/manifest.yaml
+identification:
+  name: "ema_context"
+  type: "context_worker"
+  version: "1.0.0"
+
+schema:
+  path: "schema.py"           # ✅ Path to schema file
+  class: "EMAContextParams"   # ✅ Pydantic class name
+```
+
+### V2 Validation Flow
+
+```
+1. User creates strategy in UI
+   ↓
+2. UI loads worker's schema.py → generates form
+   ↓
+3. User fills form → params validated client-side (Pydantic)
+   ↓
+4. Strategy saved to YAML with validated params
+   ↓
+5. ConfigTranslator loads worker's schema via manifest
+   ↓
+6. ConfigTranslator re-validates params (server-side)
+   ↓
+7. BuildSpec created with validated dict
+   ↓
+8. Worker constructor re-validates (defense in depth)
+```
+
+**Benefits of V2 Pattern:**
+- ✅ Worker autonomy: plugin controls its contract
+- ✅ UI auto-generation: forms from schema.py
+- ✅ Client + server validation: fail-fast at multiple levels
+- ✅ Type safety: Pydantic throughout entire pipeline
+- ✅ Separation of concerns: config structure ≠ worker params
+
+**V3 Preserves This Pattern:**
+We maintain the V2 worker-owned schema approach because it:
+- Enables plugin autonomy (workers define contracts)
+- Supports dynamic UI generation (schema.py → forms)
+- Provides multi-level validation (UI → ConfigTranslator → Worker)
+- Decouples YAML structure from worker implementation
 
 ---
 
@@ -379,9 +558,10 @@ class EMAWorker:
    - Recommendation: **Option A** - worker owns schema validation
 
 3. **How to handle plugin schema loading?**
-   - Dynamic import from manifest.schema_path?
-   - Pre-register schemas in PluginRegistry?
-   - Decision: DEFER to Plugin Architecture design phase
+   - Dynamic import from manifest.schema reference (path + class_name)?
+   - Pre-register schemas in PluginRegistry at startup?
+   - **V2 Pattern**: Manifest contains `schema.path` and `schema.class`, ConfigTranslator loads dynamically
+   - Decision: DEFER to Plugin Architecture design phase, but likely **dynamic loading** (matches V2)
 
 4. **Should ConfigTranslator validate ALL params or trust plugins?**
    - Trust plugins: Faster bootstrap, plugins own validation
@@ -412,19 +592,22 @@ class EMAWorker:
 
 ## Related Design Decisions
 
-- **Plugin Manifest Schema:** Must include `schema_path` field
-- **Worker Constructor Contract:** Must accept `WorkerBuildSpec` or typed params
-- **ConfigTranslator Responsibility:** Validate ALL params before BuildSpec creation
-- **Factory Responsibility:** Trust BuildSpec params are pre-validated (no re-validation)
+- **Plugin Manifest Schema:** Must include `schema.path` and `schema.class` fields (V2 pattern)
+- **Worker Schema Ownership:** Each worker plugin MUST define schema.py with Pydantic model
+- **Worker Constructor Contract:** Must accept `WorkerBuildSpec` and re-validate using own schema
+- **ConfigTranslator Responsibility:** Validate ALL params using worker schemas before BuildSpec creation
+- **Factory Responsibility:** Trust BuildSpec params are pre-validated (no re-validation at factory level)
+- **UI Form Generation:** Can dynamically generate configuration forms from worker's schema.py
 
 ---
 
 ## Next Steps
 
-1. **Document in PLUGIN_ANATOMY.md**: Worker schema.py requirements
-2. **Design PluginRegistry**: Schema loading and caching strategy
-3. **Update ConfigTranslator design**: Validation flow with plugin schemas
-4. **Test with example plugin**: EMA worker with EMAContextParams schema
+1. **Document in PLUGIN_ANATOMY.md**: Worker schema.py requirements + manifest reference format
+2. **Design PluginRegistry**: Schema loading from manifest.schema reference (path + class)
+3. **Update ConfigTranslator design**: Validation flow with worker-owned schemas
+4. **Test with example plugin**: EMA worker with EMAContextParams schema (V2 pattern)
+5. **UI Schema Integration**: Document how UI generates forms from worker's schema.py
 
 ---
 
