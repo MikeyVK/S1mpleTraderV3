@@ -317,7 +317,9 @@ graph LR
     A3 --> Bus
     
     style Bus fill:#ccffcc
-```**Improvements:**
+```
+
+**Improvements:**
 - **No Operators**: Direct wiring via EventAdapters
 - **Flexibility**: Workers wired via `wiring_map.yaml` (not hardcoded)
 - **Bus-Agnostic Workers**: Workers don't know about EventBus

@@ -131,17 +131,17 @@ class DispositionEnvelope:
 ```mermaid
 stateDiagram-v2
     [*] --> Worker: process()
-    Worker --> CONTINUE: No signal,<br/>continue flow
-    Worker --> PUBLISH: Signal detected,<br/>broadcast event
-    Worker --> STOP: Flow complete,<br/>cleanup
+    Worker --> CONTINUE: No signal, continue flow
+    Worker --> PUBLISH: Signal detected, broadcast event
+    Worker --> STOP: Flow complete, cleanup
     
     CONTINUE --> EventAdapter: Return envelope
     PUBLISH --> EventAdapter: Return envelope
     STOP --> EventAdapter: Return envelope
     
-    EventAdapter --> NextWorker: CONTINUE:<br/>trigger next worker(s)
-    EventAdapter --> EventBus: PUBLISH:<br/>broadcast event
-    EventAdapter --> FlowTerminator: STOP:<br/>cleanup TickCache
+    EventAdapter --> NextWorker: CONTINUE: trigger next workers
+    EventAdapter --> EventBus: PUBLISH: broadcast event
+    EventAdapter --> FlowTerminator: STOP: cleanup TickCache
     
     NextWorker --> [*]
     EventBus --> [*]
