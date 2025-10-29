@@ -9,6 +9,7 @@
 - **✨ Coding Standards:** [coding_standards/README.md](coding_standards/README.md) - TDD, quality gates, Git workflow
 - **📋 Reference:** [reference/README.md](reference/README.md) - Templates and examples
 - **📊 Implementation:** [implementation/IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md) - Quality metrics
+- **🔧 Maintenance:** [DOCUMENTATION_MAINTENANCE.md](DOCUMENTATION_MAINTENANCE.md) - Keep docs organized (read this!)
 
 **Legacy documentation:**
 - [../agent_OLD.md](../agent_OLD.md) - Original comprehensive guide (1657 lines, archived)

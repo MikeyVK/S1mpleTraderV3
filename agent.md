@@ -53,6 +53,16 @@ docs/
 └── TODO.md               # Project roadmap
 ```
 
+### Keeping Documentation Organized
+
+**Read this!** [Documentation Maintenance Guide](docs/DOCUMENTATION_MAINTENANCE.md)
+
+- 📏 Max 300 lines per document (prevents bloat)
+- 🔗 Single source of truth (link, don't duplicate)
+- 📋 Index-driven navigation (every directory needs README)
+- 🤖 AI-assisted workflows (iterative documentation)
+- 🗓️ Maintenance schedules (weekly/monthly/quarterly)
+
 ## The 4 Core Principles (Never Violate!)
 
 1. **Plugin First** - All strategy logic in plugins, not platform
