@@ -248,13 +248,25 @@
 #### 5.1 Configuration Loading
 - [ ] **ConfigLoader**
   - Loads: platform.yaml, operation.yaml, strategy_blueprint.yaml
-  - YAML parsing + Pydantic validation
+  - YAML parsing → Generic Pydantic models (structure validation only)
   - Tests: Valid/invalid configs, missing files
 
+- [ ] **ConfigValidator**
+  - **SRP:** Validates params using worker-owned schemas
+  - Reads strategy_blueprint → loads worker manifests → validates params against worker's schema.py
+  - Worker schemas define validation contract (Pydantic models in plugin's schema.py)
+  - Manifest references schema via `schema.path` + `schema.class`
+  - Tests: Valid/invalid worker params, missing schemas
+  - **Design Question:** Does YAML→BuildSpec decoupling lose Pydantic typing benefits?
+    - See: [development/CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md](development/CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md)
+    - Answer: NO - workers own schema.py, ConfigValidator validates using worker schemas
+    - Pattern: Loader loads → Validator validates (worker schemas) → Translator translates
+
 - [ ] **ConfigTranslator**
-  - YAML → Pydantic DTOs (BuildSpecs)
-  - Validation layer
-  - Tests: Translation accuracy, error handling
+  - **SRP:** Translates validated config → BuildSpecs (factory machine instructions)
+  - YAML → BuildSpecs (worker construction instructions)
+  - No validation (already done by ConfigValidator)
+  - Tests: Translation accuracy, BuildSpec format
 
 #### 5.2 Bootstrap Orchestration
 - [ ] **OperationService**

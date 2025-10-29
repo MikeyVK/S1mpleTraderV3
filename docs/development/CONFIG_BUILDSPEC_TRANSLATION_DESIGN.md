@@ -24,67 +24,112 @@ YAML Files → ConfigLoader → Pydantic Models → ConfigValidator → ConfigTr
 ### Step-by-Step Breakdown
 
 **Step 1: YAML → Pydantic Models (ConfigLoader)**
+
+**Responsibility:** Load YAML and parse into generic Pydantic models (structure validation only)
+
 ```python
 # config/strategy/ema_crossover.yaml
 strategy:
   name: "EMA Crossover"
   workers:
-    - type: "ema_context"
+    - plugin_name: "ema_context"
+      instance_id: "ema_1"
       params:
         fast_period: 12
         slow_period: 26
 
-# Loaded into Pydantic model
+# ConfigLoader loads into generic structure
 class StrategyConfig(BaseModel):
     name: str
     workers: list[WorkerConfigEntry]
 
 class WorkerConfigEntry(BaseModel):
-    type: str
-    params: dict[str, Any]  # Untyped dict!
+    plugin_name: str
+    instance_id: str
+    params: dict[str, Any]  # Generic dict - NOT worker-specific yet!
+
+config = StrategyConfig.model_validate(yaml_data)
+# ✅ Validates: strategy.name is str, workers is list, params exists
+# ❌ Does NOT validate: fast_period type/constraints (not ConfigLoader's job!)
 ```
 
 **Step 2: Pydantic Validation (ConfigValidator)**
+
+**Responsibility:** Validate worker params using worker-owned schemas (fail-fast)
+
 ```python
-# Validates structure, NOT worker-specific params
-config = StrategyConfig.model_validate(yaml_data)
-# ✅ Validates: strategy.name is str
-# ✅ Validates: workers is list
-# ❌ Does NOT validate: fast_period is int (params is just dict!)
+# ConfigValidator reads strategy config and validates worker params
+class ConfigValidator:
+    def validate_strategy(self, config: StrategyConfig) -> None:
+        """Validate all worker params against their schemas."""
+        for worker_entry in config.workers:
+            self._validate_worker_params(worker_entry)
+    
+    def _validate_worker_params(self, entry: WorkerConfigEntry) -> None:
+        """Validate worker params using worker's schema.py."""
+        # 1. Load worker manifest
+        manifest = load_manifest(entry.plugin_name)  # "ema_context"
+        
+        # 2. Load WORKER'S schema class (worker owns validation!)
+        schema_class = load_schema_class(
+            plugin_dir=f"plugins/{entry.plugin_name}",
+            schema_path=manifest.schema.path,  # "schema.py"
+            class_name=manifest.schema.class_name  # "EMAContextParams"
+        )
+        
+        # 3. Validate params using WORKER'S Pydantic schema
+        try:
+            schema_class.model_validate(entry.params)
+            # ✅ Validates: fast_period is int, constraints, custom validators
+        except ValidationError as e:
+            raise ConfigValidationError(
+                f"Invalid params for {entry.plugin_name}: {e}"
+            )
+        
+        # Params are now validated - ConfigValidator's job is done!
 ```
 
 **Step 3: Translation to BuildSpecs (ConfigTranslator)**
-```python
-# ConfigTranslator converts to factory instructions
-class WorkerBuildSpec(BaseModel):
-    worker_class: type  # Actual class reference
-    config_params: dict[str, Any]  # Still untyped dict!
-    capabilities: WorkerCapabilities
-    manifest: WorkerManifest
 
-# Translation
-def translate_worker_config(entry: WorkerConfigEntry) -> WorkerBuildSpec:
-    # Load worker manifest to get schema
-    manifest = load_manifest(entry.type)
+**Responsibility:** Translate validated config to factory machine instructions (NO validation!)
+
+```python
+# ConfigTranslator converts validated config to BuildSpecs
+class ConfigTranslator:
+    def translate_strategy(self, config: StrategyConfig) -> StrategyBuildSpec:
+        """Translate validated config to BuildSpecs."""
+        # Config is ALREADY validated by ConfigValidator - no validation here!
+        worker_specs = [
+            self._translate_worker(entry)
+            for entry in config.workers
+        ]
+        return StrategyBuildSpec(workers=worker_specs)
     
-    # Validate params against manifest schema
-    validate_params(entry.params, manifest.schema)
-    
-    return WorkerBuildSpec(
-        worker_class=get_worker_class(entry.type),
-        config_params=entry.params,  # Pass through as dict
-        capabilities=parse_capabilities(manifest),
-        manifest=manifest
-    )
+    def _translate_worker(self, entry: WorkerConfigEntry) -> WorkerBuildSpec:
+        """Translate worker config to BuildSpec (factory instructions)."""
+        manifest = load_manifest(entry.plugin_name)
+        
+        # NO validation - just translation to factory format
+        return WorkerBuildSpec(
+            worker_class=get_worker_class(entry.plugin_name),
+            config_params=entry.params,  # Pass through validated dict
+            capabilities=parse_capabilities(manifest),
+            manifest=manifest
+        )
 ```
 
 **Step 4: Factory Construction**
+
+**Responsibility:** Build worker from BuildSpec (trust pre-validation)
+
 ```python
 # WorkerFactory builds from BuildSpec
 class WorkerFactory:
     def build_worker(self, spec: WorkerBuildSpec) -> IWorker:
-        # BuildSpec.config_params is still dict[str, Any]
-        worker = spec.worker_class(config_params=spec.config_params)
+        """Build worker from BuildSpec (params already validated)."""
+        # BuildSpec.config_params is pre-validated by ConfigValidator
+        # Factory trusts validation and just builds
+        worker = spec.worker_class(spec)
         return worker
 ```
 
@@ -92,9 +137,9 @@ class WorkerFactory:
 
 ## The Core Problem: Type Safety Gap
 
-### Where Pydantic Typing Gets Lost
+### Where Pydantic Typing Gets Lost (And How ConfigValidator Fixes It)
 
-**Current Flow:**
+**Without ConfigValidator (WRONG):**
 ```python
 # 1. YAML (untyped text)
 fast_period: 12
@@ -108,14 +153,35 @@ class WorkerBuildSpec(BaseModel):
     config_params: dict[str, Any]  # ❌ Still untyped!
 
 # 4. Factory → Worker Constructor
-worker = EMAWorker(config_params={'fast_period': 12})  # ❌ No type checking!
+worker = EMAWorker(spec)  # ❌ No validation happened!
 ```
 
-**The Gap:**
-- **YAML structure** is user-friendly: `workers[].params.fast_period`
-- **Pydantic ConfigLoader** is generic: `dict[str, Any]` (no worker-specific typing)
-- **BuildSpec** is factory-focused: `dict[str, Any]` (params pass-through)
-- **Worker Constructor** expects typed params but has no compile-time validation
+**With ConfigValidator (CORRECT SRP):**
+```python
+# 1. YAML (untyped text)
+fast_period: 12
+
+# 2. ConfigLoader → Generic model (structure only)
+entry = WorkerConfigEntry(params={'fast_period': 12})
+# ✅ Structure validated, params NOT validated yet
+
+# 3. ConfigValidator → Worker schema validation
+manifest = load_manifest("ema_context")
+schema_class = load_schema_class(manifest.schema)  # EMAContextParams
+schema_class.model_validate(entry.params)  # ✅ VALIDATED!
+
+# 4. ConfigTranslator → BuildSpec (translation only)
+spec = WorkerBuildSpec(config_params=entry.params)  # Pre-validated dict
+
+# 5. Factory → Worker
+worker = EMAWorker(spec)  # ✅ Params already validated by ConfigValidator
+```
+
+**SRP Responsibilities:**
+- **ConfigLoader**: Load YAML → generic Pydantic models (structure)
+- **ConfigValidator**: Validate params using worker schemas (fail-fast)
+- **ConfigTranslator**: Translate validated config → BuildSpecs (machine instructions)
+- **WorkerFactory**: Build workers from BuildSpecs (trust pre-validation)
 
 ---
 
@@ -520,14 +586,24 @@ schema:
    ↓
 4. Strategy saved to YAML with validated params
    ↓
-5. ConfigTranslator loads worker's schema via manifest
+5. ConfigLoader loads YAML → generic Pydantic models
    ↓
-6. ConfigTranslator re-validates params (server-side)
+6. ConfigValidator loads worker's schema via manifest
    ↓
-7. BuildSpec created with validated dict
+7. ConfigValidator validates params using worker's schema (server-side, fail-fast)
    ↓
-8. Worker constructor re-validates (defense in depth)
+8. ConfigTranslator translates validated config → BuildSpecs
+   ↓
+9. WorkerFactory builds workers from BuildSpecs
+   ↓
+10. Worker constructor re-validates using own schema (defense in depth)
 ```
+
+**SRP in Action:**
+- **ConfigLoader**: Load (YAML → Pydantic models)
+- **ConfigValidator**: Validate (params → worker schemas)
+- **ConfigTranslator**: Translate (config → BuildSpecs)
+- **WorkerFactory**: Build (BuildSpecs → workers)
 
 **Benefits of V2 Pattern:**
 - ✅ Worker autonomy: plugin controls its contract
