@@ -1,15 +1,25 @@
+# backend/core/interfaces/worker.py
 """
 Worker Interface - Base protocol for all worker types.
 
 This module defines the minimal interface that all workers must implement.
 It includes the two-phase initialization pattern via IWorkerLifecycle.
 
-@layer: Platform
-@component: Worker Protocols
+@layer: Backend (Core Protocols)
+@dependencies: [typing]
+@responsibilities:
+    - Define IWorker protocol (minimal name property)
+    - Define IWorkerLifecycle protocol (two-phase initialization)
+    - Provide WorkerInitializationError exception
 """
 
+# Standard library
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+# Third-party
+# (none)
+
+# Project modules
 if TYPE_CHECKING:
     from backend.core.interfaces.strategy_cache import IStrategyCache
 

@@ -1,16 +1,21 @@
+# tests/unit/core/interfaces/test_worker.py
 """
 Tests for IWorker and IWorkerLifecycle protocol definitions.
 
 This module contains protocol structure tests for worker interfaces.
 These tests validate protocol compliance via structural typing (duck typing).
 
-@layer: Platform
-@component: Worker Protocols
+@layer: Tests (Unit)
+@dependencies: [pytest, unittest.mock, backend.core.interfaces]
 """
 
+# Standard library
 from unittest.mock import Mock
 
+# Third-party
 import pytest
+
+# Project modules
 from backend.core.interfaces.strategy_cache import IStrategyCache
 from backend.core.interfaces.worker import (
     IWorker,
