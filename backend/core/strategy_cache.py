@@ -1,17 +1,31 @@
+# backend/core/strategy_cache.py
 """
 Strategy Cache Implementation - Concrete point-in-time DTO container.
 
-This module provides the concrete implementation of IStrategyCache.
+This module provides the concrete implementation of IStrategyCache for managing
+strategy run state and DTO caching with RunAnchor validation.
+
+@layer: Backend (Core Services)
+@dependencies: [typing, datetime, pydantic, backend.core.interfaces.strategy_cache]
+@responsibilities:
+    - Implement IStrategyCache protocol
+    - Manage strategy run lifecycle (start/clear)
+    - Store and retrieve DTOs with type safety
+    - Validate RunAnchor consistency
 """
 
-from typing import Dict, Type
+# Standard library
 from datetime import datetime
+from typing import Dict, Type
+
+# Third-party
 from pydantic import BaseModel
 
+# Project modules
 from backend.core.interfaces.strategy_cache import (
-    StrategyCacheType,
-    RunAnchor,
     NoActiveRunError,
+    RunAnchor,
+    StrategyCacheType,
 )
 
 

@@ -9,14 +9,17 @@ and protocol compliance.
 @dependencies: [pytest, backend.core.interfaces.eventbus]
 """
 
-# Third-Party Imports
+# Standard library
+# (none)
+
+# Third-party
 import pytest
 
-# Our Application Imports
+# Project modules
 from backend.core.interfaces.eventbus import (
     IEventBus,
+    ScopeLevel,
     SubscriptionScope,
-    ScopeLevel
 )
 
 

@@ -6,20 +6,20 @@ Tests the concrete thread-safe event bus implementation including
 publishing, subscription management, filtering, and error handling.
 
 @layer: Tests (Unit)
-@dependencies: [pytest, backend.core.eventbus, backend.core.interfaces.eventbus]
+@dependencies: [pytest, threading, time, pydantic, backend.core.eventbus]
 """
 
-# Standard Library Imports
+# Standard library
 import threading
 import time
 
-# Third-Party Imports
+# Third-party
 import pytest
 from pydantic import BaseModel
 
-# Our Application Imports
-from backend.core.eventbus import EventBus, CriticalEventHandlerError
-from backend.core.interfaces.eventbus import SubscriptionScope, ScopeLevel
+# Project modules
+from backend.core.eventbus import CriticalEventHandlerError, EventBus
+from backend.core.interfaces.eventbus import ScopeLevel, SubscriptionScope
 
 
 class EventPayloadDTO(BaseModel):

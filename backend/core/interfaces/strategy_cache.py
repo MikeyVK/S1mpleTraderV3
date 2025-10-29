@@ -1,14 +1,27 @@
+# backend/core/interfaces/strategy_cache.py
 """
 Strategy Cache Interface - Point-in-Time DTO Container for Strategy Runs.
 
 This module defines the IStrategyCache protocol, which serves as a simple,
 SRP-focused container for DTOs during a single strategy run.
+
+@layer: Backend (Core Protocols)
+@dependencies: [typing, datetime, pydantic, backend.core.interfaces.worker]
+@responsibilities:
+    - Define IStrategyCache protocol
+    - Define RunAnchor for timestamp validation
+    - Define StrategyCacheType alias
+    - Provide NoActiveRunError exception
 """
 
-from typing import Protocol, Dict, Type
+# Standard library
 from datetime import datetime
+from typing import Dict, Protocol, Type
+
+# Third-party
 from pydantic import BaseModel, ConfigDict
 
+# Project modules
 from backend.core.interfaces.worker import IWorker
 
 

@@ -1,19 +1,28 @@
+# tests/unit/core/test_strategy_cache.py
 """
 Tests for StrategyCache implementation.
 
-Tests the core functionality of the point-in-time DTO container.
+Tests the core functionality of the point-in-time DTO container including
+run lifecycle, DTO storage/retrieval, and RunAnchor validation.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, datetime, pydantic, backend.core.strategy_cache]
 """
 
-import pytest
+# Standard library
 from datetime import datetime, timezone
+
+# Third-party
+import pytest
 from pydantic import BaseModel
 
-from backend.core.strategy_cache import StrategyCache
+# Project modules
 from backend.core.interfaces.strategy_cache import (
-    RunAnchor,
     NoActiveRunError,
+    RunAnchor,
     StrategyCacheType,
 )
+from backend.core.strategy_cache import StrategyCache
 
 
 # Mock DTOs for testing
