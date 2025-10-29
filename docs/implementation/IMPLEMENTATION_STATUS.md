@@ -4,8 +4,8 @@
 
 This document tracks the **quality metrics and test coverage** for all S1mpleTrader V3 components. All modules must meet strict quality gates before merging to main.
 
-**Last Updated:** 2025-10-28  
-**Total Tests Passing:** 305 (252 DTO tests + 20 StrategyCache tests + 33 EventBus tests)
+**Last Updated:** 2025-10-29  
+**Total Tests Passing:** 337 (304 DTO tests + 20 StrategyCache tests + 33 EventBus tests)
 
 ## Quality Gates
 
@@ -83,14 +83,12 @@ Every module must pass **5 mandatory gates** before merge:
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| strategy_cache.py | 10.00/10 | 20/20 ✅ | 10.00/10 | 0 | ✅ Phase 3.1 Complete |
+| strategy_cache.py | 10.00/10 | 20/20 ✅ | 10.00/10 | 0 | ✅ Phase 1.2 Complete |
 | interfaces/strategy_cache.py | 10.00/10 | - | 10.00/10 | 0 | ✅ IStrategyCache protocol |
-| eventbus.py | 10.00/10 | 18/18 ✅ | 10.00/10 | 3* | ✅ Phase 3.2 Complete |
+| eventbus.py | 10.00/10 | 18/18 ✅ | 10.00/10 | 0 | ✅ Phase 1.2 Complete |
 | interfaces/eventbus.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ IEventBus protocol |
 
 **Coverage:** 53/53 tests passing (100%)
-
-*Pylance warnings acceptable: catching Exception (handler isolation), f-string logging
 
 **Pending Platform Services:**
 - ❌ IWorkerLifecycle protocol (Phase 1.2)
@@ -113,22 +111,36 @@ Every module must pass **5 mandatory gates** before merge:
 | **Strategy Planning** | 60/60 ✅ | 100% |
 | **Execution** | 51/51 ✅ | 100% |
 | **Shared** | 42/42 ✅ | 100% |
-| **Platform (StrategyCache)** | 20/20 ✅ | 100% |
+| **Platform (Cache)** | 20/20 ✅ | 100% |
+| **Platform (EventBus)** | 33/33 ✅ | 100% |
 | **Utilities** | 32/32 ✅ | 100% |
-| **TOTAL** | **304/304 ✅** | **100%** |
+| **TOTAL** | **337/337 ✅** | **100%** |
 
 ### By Phase (Roadmap)
 
 | Phase | Component | Tests | Status |
 |-------|-----------|-------|--------|
-| **1.1** | Data Contracts (14 DTOs) | 252/252 ✅ | Complete |
-| **1.2** | IStrategyCache Protocol | - | Complete |
-| **1.2** | IEventBus Protocol | - | ❌ Pending |
+| **1.1** | Data Contracts (14 DTOs) | 304/304 ✅ | Complete |
+| **1.2** | IStrategyCache Protocol | 20/20 ✅ | Complete |
+| **1.2** | IEventBus Protocol | 33/33 ✅ | Complete |
 | **1.2** | IWorkerLifecycle Protocol | - | ❌ Pending |
 | **1.4** | RunAnchor + StrategyCacheType | - | Complete |
-| **3.1** | StrategyCache Singleton | 20/20 ✅ | Complete |
-| **3.2** | EventBus Implementation | - | ❌ Pending |
-| **3.3** | TickCacheManager | - | ❌ Pending |
+
+## Recent Updates (2025-10-29)
+
+### EventBus Implementation (Phase 1.2)
+- ✅ **IEventBus Protocol**: Defined in `backend/core/interfaces/eventbus.py` (282 lines)
+- ✅ **EventBus Singleton**: Implemented in `backend/core/eventbus.py` (286 lines)
+- ✅ **Protocol Tests**: 15 comprehensive tests (type checking, method signatures)
+- ✅ **Implementation Tests**: 18 behavioral tests (subscribe, publish, unsubscribe, isolation)
+- ✅ **Quality**: Pylint 10/10, Pylance 0 errors/warnings
+- ✅ **Features**: Topic isolation, wildcard subscriptions, error isolation, subscription management
+
+### Architecture Decisions
+- ✅ **IWorkerLifecycle Design**: Two-phase initialization pattern defined
+- ✅ **TDD Workflow Update**: Mandatory Pylance checks for tests AND implementation
+- ✅ **Event Wiring Strategy**: EventAdapter handles worker↔bus connections (Phase 3)
+- ✅ **Worker Bus-Agnostic**: Workers stay decoupled from EventBus until runtime
 
 ## Recent Updates (2025-10-28)
 
@@ -214,11 +226,13 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ## Next Milestones
 
-### Phase 1.2: Core Protocols (In Progress)
+### Phase 1.2: Core Protocols (2/3 Complete)
 
 - ✅ IStrategyCache protocol + implementation (20 tests)
-- ❌ IEventBus protocol (pending)
+- ✅ IEventBus protocol + implementation (33 tests)
 - ❌ IWorkerLifecycle protocol (pending)
+
+**Status:** EventBus complete with pub/sub, topic isolation, wildcard support. IWorkerLifecycle next.
 
 **Target:** Complete interface definitions for event-driven architecture
 
@@ -232,7 +246,6 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ### Phase 3.2-3.3: Core Services
 
-- ❌ EventBus singleton implementation
 - ❌ TickCacheManager flow orchestration
 - ❌ Integration tests (end-to-end flow)
 
@@ -242,12 +255,12 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ### Overall Statistics
 
-- **Total Modules:** 18 (14 DTOs + 2 protocols + 2 services)
-- **Total Tests:** 304
+- **Total Modules:** 20 (14 DTOs + 4 protocols + 2 services)
+- **Total Tests:** 337
 - **Test Coverage:** 100%
 - **Pylint Score:** 10.00/10 (all modules)
 - **Mypy Errors:** 0 (all DTOs)
-- **Pylance Warnings:** 0 (except accepted FieldInfo patterns)
+- **Pylance Warnings:** 0
 
 ### Code Quality Trends
 
