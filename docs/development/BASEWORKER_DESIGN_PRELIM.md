@@ -175,19 +175,30 @@ class MyOpportunityWorker:
 
 ## Recommended Approach: Option 1 with Clarifications
 
-### Causality Field Mapping Per Worker Category
+### Causality Extension Mapping
 
-Each worker category extends the causality chain with its specific field:
+**Plugin Workers** extend causality chain:
 
 | Worker Category | Input DTO | Output DTO | Causality Field Extended |
 |----------------|-----------|------------|-------------------------|
-| **ContextWorker** | TradingContext | ContextFactor | `context_factor_ids` (list) |
 | **OpportunityWorker** | AggregatedContextAssessment | OpportunitySignal | `opportunity_signal_ids` (list) |
 | **ThreatWorker** | AggregatedContextAssessment | ThreatSignal | `threat_ids` (list) |
 | **StrategyPlannerWorker** | Assessment + Signals | StrategyDirective | `strategy_directive_id` (single) |
-| **ExecutionTranslatorWorker** | StrategyDirective | ExecutionDirective | `execution_directive_id` (single) |
 
-**Note:** Lists support confluence (multiple signals), single IDs for unique planning decisions.
+**Platform Components** extend causality chain:
+
+| Component | Input | Output | Causality Field Extended |
+|-----------|-------|--------|-------------------------|
+| **ContextAggregator** | list[ContextFactor] | AggregatedContextAssessment | `context_assessment_id` (single) |
+| **PlanningAggregator** | 4 Plans + ExecutionIntent | ExecutionDirective | `execution_directive_id` (single) |
+
+**Sub-Component Workers** do NOT extend causality:
+
+| Worker Category | Input DTO | Output DTO | Extends Causality? |
+|----------------|-----------|------------|-------------------|
+| **ContextWorker** | TradingContext | ContextFactor | ❌ NO (sub-component) |
+
+**Note:** Lists support confluence (multiple signals), single IDs for unique aggregation/planning decisions.
 
 ### Implementation Strategy
 
@@ -463,7 +474,7 @@ def execute(self, input_dto) -> DispositionEnvelope:
 
 ## Next Steps
 
-### Immediate (Phase 1.3)
+### Design Completion (Before Implementation)
 
 1. ✅ **Validate ContextFactor Causality** - RESOLVED
    - ContextFactor follows sub-component pattern (NO causality field)
@@ -471,34 +482,42 @@ def execute(self, input_dto) -> DispositionEnvelope:
    - BaseContextWorker does NOT extend causality
    - Platform aggregators (ContextAggregator, PlanningAggregator) are NOT BaseWorker subclasses
 
-2. **Prototype BaseOpportunityWorker** (NEXT STEP)
+2. **Finalize Causality Mapping Consistency** - IN PROGRESS
+   - Ensure all tables reflect correct platform vs plugin responsibilities
+   - Document which components extend causality (plugins + platform aggregators)
+   - Document which components DON'T extend (sub-component workers)
+
+3. **Resolve Open Questions** (as platform components are designed)
+   - WorkerBuildSpec structure (pending WorkerFactory design)
+   - DispositionEnvelope wrapping (pending EventAdapter design)
+   - Error handling patterns (pending platform error architecture)
+
+### Later (When Design is Complete)
+
+4. **Prototype BaseOpportunityWorker**
    - Small, focused ABC
    - Clear I/O contract (AggregatedContextAssessment → OpportunitySignal)
    - Test automatic causality propagation (_extends_causality = True)
    - Validate _extend_causality() method for list append pattern
 
-3. **Prototype BaseContextWorker** (VALIDATE SUB-COMPONENT)
-   - I/O contract (OpportunitySignal → ContextFactor)
+5. **Prototype BaseContextWorker**
+   - I/O contract (TradingContext → ContextFactor)
    - Verify _extends_causality = False works correctly
    - Test that NO causality propagation happens
 
-4. **Document Deferred Decisions** (TRACK DEBT)
-   - Keep list of platform-dependent decisions
-   - Update as platform components are designed
+### Phase 2+ (Platform Integration)
 
-### Later (Phase 2+)
-
-4. **WorkerFactory Integration**
+6. **WorkerFactory Integration**
    - Finalize BuildSpec structure
    - Implement worker construction pattern
    - Test with concrete workers
 
-5. **EventAdapter Integration**
+7. **EventAdapter Integration**
    - Clarify DispositionEnvelope wrapping
    - Define event routing patterns
    - Implement worker↔bus decoupling
 
-6. **Complete BaseWorker Categories**
+8. **Complete BaseWorker Categories**
    - BaseThreatWorker
    - BaseStrategyPlannerWorker
    - BaseContextWorker (no causality extension)
