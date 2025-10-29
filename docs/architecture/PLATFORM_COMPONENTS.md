@@ -295,16 +295,25 @@ class EventBus:
 
 Platform components have defined lifecycle:
 
-```
-1. Construction (once)
-   ↓
-2. Initialization (once)
-   ↓
-3. Reconfiguration (per strategy/run) - OPTIONAL
-   ↓
-4. Active Use (concurrent)
-   ↓
-5. Shutdown (once)
+```mermaid
+stateDiagram-v2
+    [*] --> Construction: Instantiate singletons
+    Construction --> Initialization: Configure globals
+    Initialization --> Reconfiguration: Per strategy/run<br/>(StrategyCache only)
+    Reconfiguration --> ActiveUse: Workers execute
+    ActiveUse --> Reconfiguration: Next run
+    ActiveUse --> Shutdown: Operation complete
+    Shutdown --> [*]
+    
+    note right of Reconfiguration
+        Only StrategyCache
+        reconfigures per run
+    end note
+    
+    note right of ActiveUse
+        Concurrent access
+        Thread-safe operations
+    end note
 ```
 
 **Example:**
@@ -382,23 +391,44 @@ class MyWorker:
 
 ## Component Interaction Diagram
 
+```mermaid
+graph TB
+    subgraph Platform["PLATFORM COMPONENTS (Singletons)"]
+        Bus[EventBus<br/>publish, subscribe]
+        Cache[StrategyCache<br/>set_dto, get_dto, store_*]
+        TCM[TickCacheManager<br/>init tick flow]
+        Reg[PluginRegistry<br/>enroll, metadata]
+    end
+    
+    subgraph Adapters["EventAdapters (per component)"]
+        A1[EventAdapter1]
+        A2[EventAdapter2]
+    end
+    
+    subgraph Workers["Workers (plugins)"]
+        W1[Worker1]
+        W2[Worker2]
+    end
+    
+    A1 <-->|pub/sub| Bus
+    A2 <-->|pub/sub| Bus
+    
+    A1 <--> W1
+    A2 <--> W2
+    
+    W1 -.IStrategyCache.-> Cache
+    W2 -.IStrategyCache.-> Cache
+    
+    TCM -->|flow start| Bus
+    
+    Reg -.metadata.-> W1
+    Reg -.metadata.-> W2
+    
+    style Bus fill:#ccffcc
+    style Cache fill:#e1f5ff
+    style TCM fill:#fff4e1
+    style Reg fill:#ffe1e1
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    PLATFORM COMPONENTS                       │
-│                       (Singletons)                           │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌──────────────┐      ┌──────────────┐                    │
-│  │   EventBus   │      │ StrategyCache│                    │
-│  │              │      │              │                    │
-│  │ - publish()  │      │ - set_dto()  │                    │
-│  │ - subscribe()│      │ - get_dto()  │                    │
-│  │              │      │ - store_*()  │                    │
-│  └──────┬───────┘      └──────┬───────┘                    │
-│         │                     │                             │
-└─────────┼─────────────────────┼─────────────────────────────┘
-          │                     │
-          │                     │
           │ ┌───────────────────┘
           │ │
           │ │

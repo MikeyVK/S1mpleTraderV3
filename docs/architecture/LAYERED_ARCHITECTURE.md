@@ -19,31 +19,35 @@ S1mpleTraderV3 follows a **strict layered architecture** with unidirectional dep
 
 ## The Three Layers
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  FRONTEND LAYER                                              │
-│  (Presentation & User Interaction)                           │
-│  - CLI, Web API, Web UI                                      │
-│  - User commands, visualization, monitoring                  │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│  SERVICE LAYER                                               │
-│  (Orchestration & Business Workflows)                        │
-│  - OperationService (lifecycle manager)                      │
-│  - OptimizationService, ParallelRunService                   │
-│  - ConfigLoader, ConfigValidator, ConfigTranslator           │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│  BACKEND LAYER                                               │
-│  (Engine & Core Logic)                                       │
-│  - Factories (BuildSpec → Components)                        │
-│  - Workers, Singletons, EventBus                             │
-│  - Platform components (StrategyCache, EventBus, etc.)       │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph FRONTEND["FRONTEND LAYER<br/>(Presentation & User Interaction)"]
+        CLI[CLI]
+        WebAPI[Web API]
+        WebUI[Web UI]
+    end
+    
+    subgraph SERVICE["SERVICE LAYER<br/>(Orchestration & Business Workflows)"]
+        OpSvc[OperationService<br/>lifecycle manager]
+        OptSvc[OptimizationService]
+        ParSvc[ParallelRunService]
+    end
+    
+    subgraph BACKEND["BACKEND LAYER<br/>(Engine & Core Logic)"]
+        CfgLoader[ConfigLoader]
+        CfgValidator[ConfigValidator]
+        CfgTranslator[ConfigTranslator]
+        Factories[Factories<br/>BuildSpec → Components]
+        Workers[Workers, Singletons]
+        Platform[Platform Components<br/>StrategyCache, EventBus, etc.]
+    end
+    
+    FRONTEND --> SERVICE
+    SERVICE --> BACKEND
+    
+    style FRONTEND fill:#e1f5ff
+    style SERVICE fill:#fff4e1
+    style BACKEND fill:#ffe1e1
 ```
 
 ---
@@ -82,39 +86,27 @@ S1mpleTraderV3 follows a **strict layered architecture** with unidirectional dep
 #### OperationService (Lifecycle Manager)
 - **Role:** Manages strategy lifecycle (start, stop, restart)
 - **Responsibilities:**
-  - Load and validate configurations (3-layer hierarchy)
-  - Trigger ConfigTranslator for BuildSpec generation
+  - Coordinate ConfigLoader/ConfigValidator/ConfigTranslator (backend components)
   - Coordinate Factory chain execution
   - Register strategy instances
   - Handle shutdown and cleanup
 
-#### ConfigLoader
-- **Role:** Load configuration files from disk/database
+#### OptimizationService
+- **Role:** Parameter optimization workflows
 - **Responsibilities:**
-  - Load PlatformConfig (once at startup)
-  - Load OperationConfig (per operation)
-  - Load StrategyConfig (per strategy, just-in-time)
-  - Merge configurations respecting hierarchy
+  - Coordinate multiple strategy runs with different parameters
+  - Collect and compare results
+  - Report optimal parameter sets
 
-#### ConfigValidator
-- **Role:** Validate configurations against schemas
+#### ParallelRunService
+- **Role:** Parallel strategy execution
 - **Responsibilities:**
-  - Schema validation (Pydantic models)
-  - Cross-layer dependency validation
-  - Plugin manifest validation
-  - Fail-fast on invalid configuration
-
-#### ConfigTranslator
-- **Role:** Translate YAML → BuildSpecs
-- **Responsibilities:**
-  - Generate `connector_spec` from connector YAML
-  - Generate `environment_spec` from environment YAML
-  - Generate `workforce_spec` from workforce YAML
-  - Generate `wiring_spec` from wiring YAML
-  - **KEY:** ConfigTranslator is the ONLY "thinker" - Factories are pure builders
+  - Run multiple strategies concurrently
+  - Aggregate results across strategies
+  - Monitor resource utilization
 
 **Communication:**
-- **Downward:** Calls Factories to build components
+- **Downward:** Calls Backend components (ConfigLoader, Factories)
 - **Upward:** Exposes API to Frontend
 - **Horizontal:** Orchestrates multiple strategies in parallel
 
@@ -125,6 +117,33 @@ S1mpleTraderV3 follows a **strict layered architecture** with unidirectional dep
 **Purpose:** Trading engine and core logic
 
 **Components:**
+
+#### Configuration Components
+
+##### ConfigLoader
+- **Role:** Load configuration files from disk/database
+- **Responsibilities:**
+  - Load PlatformConfig (once at startup)
+  - Load OperationConfig (per operation)
+  - Load StrategyConfig (per strategy, just-in-time)
+  - Merge configurations respecting hierarchy
+
+##### ConfigValidator
+- **Role:** Validate configurations against schemas
+- **Responsibilities:**
+  - Schema validation (Pydantic models)
+  - Cross-layer dependency validation
+  - Plugin manifest validation
+  - Fail-fast on invalid configuration
+
+##### ConfigTranslator
+- **Role:** Translate YAML → BuildSpecs
+- **Responsibilities:**
+  - Generate `connector_spec` from connector YAML
+  - Generate `environment_spec` from environment YAML
+  - Generate `workforce_spec` from workforce YAML
+  - Generate `wiring_spec` from wiring YAML
+  - **KEY:** ConfigTranslator is the ONLY "thinker" - Factories are pure builders
 
 #### Factories (BuildSpec → Components)
 - **ConnectorFactory** - Builds data connectors (CEX, DEX, Backtest)
@@ -156,66 +175,49 @@ S1mpleTraderV3 follows a **strict layered architecture** with unidirectional dep
 
 ### Complete Bootstrap Sequence
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 1. USER START COMMAND                                        │
-│    $ python -m simpletrader start --operation my_operation   │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│ 2. OperationService.start_all_strategies()                   │
-│    For each strategy_link in operation.yaml:                 │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│ 3. ConfigLoader                                              │
-│    a. Load PlatformConfig (platform.yaml)                    │
-│    b. Load OperationConfig (operation.yaml + refs)           │
-│    c. Load StrategyConfig (strategy_blueprint.yaml)          │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│ 4. ConfigValidator                                           │
-│    a. Validate PlatformConfig schema                         │
-│    b. Validate OperationConfig schema                        │
-│    c. Validate StrategyConfig schema                         │
-│    d. Validate cross-layer dependencies                      │
-│    e. FAIL-FAST if any errors                                │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│ 5. ConfigTranslator (THE "THINKER")                          │
-│    Translate YAML → BuildSpecs:                              │
-│    a. connector_spec      (data connectors)                  │
-│    b. data_source_spec    (OHLCV providers)                  │
-│    c. environment_spec    (execution environment)            │
-│    d. workforce_spec      (worker instances)                 │
-│    e. wiring_spec         (EventAdapter wiring)              │
-│    f. persistor_spec      (state persistence)                │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│ 6. FACTORY CHAIN (IN ORDER)                                  │
-│    a. ConnectorFactory.build_from_spec(connector_spec)       │
-│    b. DataSourceFactory.build_from_spec(data_source_spec)    │
-│    c. EnvironmentFactory.build_from_spec(environment_spec)   │
-│    d. PersistorFactory.build_from_spec(persistor_spec)       │
-│    e. WorkerFactory.build_from_spec(workforce_spec)          │
-│    f. EventWiringFactory.wire_all_from_spec(wiring_spec) ←!  │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│ 7. Environment.start()                                       │
-│    - Initialize data feeds                                   │
-│    - Start tick flow                                         │
-│    - Begin event processing                                  │
-└──────────────────────────┬──────────────────────────────────┘
-                           ↓
-┌──────────────────────────┴──────────────────────────────────┐
-│ 8. OperationService.register_strategy_instance()             │
-│    - Track running strategy                                  │
-│    - Enable monitoring/control                               │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    actor User
+    participant OpSvc as OperationService<br/>(Service Layer)
+    participant CfgLoader as ConfigLoader<br/>(Backend)
+    participant CfgValidator as ConfigValidator<br/>(Backend)
+    participant CfgTranslator as ConfigTranslator<br/>(Backend)
+    participant Factories as Factory Chain<br/>(Backend)
+    participant Env as ExecutionEnvironment<br/>(Backend)
+    
+    User->>OpSvc: start --operation my_operation
+    
+    loop For each strategy_link
+        OpSvc->>CfgLoader: load_platform_config()
+        CfgLoader-->>OpSvc: PlatformConfig
+        
+        OpSvc->>CfgLoader: load_operation_config()
+        CfgLoader-->>OpSvc: OperationConfig
+        
+        OpSvc->>CfgLoader: load_strategy_config()
+        CfgLoader-->>OpSvc: StrategyConfig
+        
+        OpSvc->>CfgValidator: validate_all_configs()
+        alt Invalid
+            CfgValidator-->>OpSvc: ValidationError
+            OpSvc-->>User: FAIL-FAST: Config errors
+        else Valid
+            CfgValidator-->>OpSvc: ✓ Valid
+        end
+        
+        OpSvc->>CfgTranslator: translate_to_buildspecs()
+        CfgTranslator-->>OpSvc: BuildSpecs bundle
+        
+        OpSvc->>Factories: build_all_from_specs()
+        Factories-->>OpSvc: Assembled components
+        
+        OpSvc->>Env: start()
+        Env-->>OpSvc: Running
+        
+        OpSvc->>OpSvc: register_strategy_instance()
+    end
+    
+    OpSvc-->>User: All strategies started
 ```
 
 ### Key Bootstrap Concepts
@@ -255,14 +257,32 @@ S1mpleTraderV3 follows a **strict layered architecture** with unidirectional dep
 
 ### Old Architecture (V2 - Deprecated)
 
-```
-ExecutionEnvironment
-    ↓
-Operator (ContextOperator, OpportunityOperator, etc.)
-    ↓
-Workers (grouped by operator)
-    ↓
-Output
+```mermaid
+graph TD
+    Env[ExecutionEnvironment]
+    CtxOp[ContextOperator]
+    OppOp[OpportunityOperator]
+    PlanOp[PlanningOperator]
+    CW1[ContextWorker1]
+    CW2[ContextWorker2]
+    OW1[OpportunityWorker1]
+    OW2[OpportunityWorker2]
+    PW[PlanningWorker]
+    
+    Env --> CtxOp
+    CtxOp --> CW1
+    CtxOp --> CW2
+    CW1 --> OppOp
+    CW2 --> OppOp
+    OppOp --> OW1
+    OppOp --> OW2
+    OW1 --> PlanOp
+    OW2 --> PlanOp
+    PlanOp --> PW
+    
+    style CtxOp fill:#ffcccc
+    style OppOp fill:#ffcccc
+    style PlanOp fill:#ffcccc
 ```
 
 **Problem:** Operators created unnecessary abstraction layer, hardcoded groupings
@@ -271,23 +291,33 @@ Output
 
 ### New Architecture (V3 - Current)
 
-```
-ExecutionEnvironment
-    ↓
-EventBus (N-to-N broadcast)
-    ↓
-EventAdapters (1 per component)
-    ↓
-Workers (bus-agnostic)
-    ↓
-DispositionEnvelope
-    ↓
-EventAdapters (publish to EventBus)
-    ↓
-EventBus
-```
-
-**Improvements:**
+```mermaid
+graph LR
+    Env[ExecutionEnvironment]
+    Bus[EventBus<br/>N-to-N Broadcast]
+    A1[EventAdapter1]
+    A2[EventAdapter2]
+    A3[EventAdapter3]
+    W1[ContextWorker1]
+    W2[OpportunityWorker1]
+    W3[PlanningWorker]
+    
+    Env --> Bus
+    Bus --> A1
+    Bus --> A2
+    Bus --> A3
+    A1 <--> W1
+    A2 <--> W2
+    A3 <--> W3
+    W1 -.DispositionEnvelope.-> A1
+    W2 -.DispositionEnvelope.-> A2
+    W3 -.DispositionEnvelope.-> A3
+    A1 --> Bus
+    A2 --> Bus
+    A3 --> Bus
+    
+    style Bus fill:#ccffcc
+```**Improvements:**
 - **No Operators**: Direct wiring via EventAdapters
 - **Flexibility**: Workers wired via `wiring_map.yaml` (not hardcoded)
 - **Bus-Agnostic Workers**: Workers don't know about EventBus
@@ -300,6 +330,20 @@ EventBus
 ## Configuration Layers (Quick Reference)
 
 See [Configuration Layers](CONFIGURATION_LAYERS.md) for details.
+
+```mermaid
+graph TD
+    P[PlatformConfig<br/>platform.yaml<br/>Global, Static]
+    O[OperationConfig<br/>operation.yaml<br/>Per Workspace/Campaign]
+    S[StrategyConfig<br/>strategy_blueprint.yaml<br/>Per Strategy, JIT]
+    
+    P --> O
+    O --> S
+    
+    style P fill:#e1f5ff
+    style O fill:#fff4e1
+    style S fill:#ffe1e1
+```
 
 ### 1. PlatformConfig
 - **Scope:** Global, static

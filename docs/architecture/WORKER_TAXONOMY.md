@@ -9,6 +9,40 @@
 
 S1mpleTraderV3 organizes all strategy logic into **5 worker categories**, each with distinct responsibilities in the trading pipeline. Workers are plugin-first components that process data through a **point-in-time model** without maintaining state across ticks.
 
+```mermaid
+graph LR
+    subgraph Input
+        Tick[Market Tick]
+    end
+    
+    subgraph Workers
+        CW[1. ContextWorker<br/>Cartographer]
+        OW[2. OpportunityWorker<br/>Scout]
+        TW[3. ThreatWorker<br/>Watchdog]
+        PW[4. PlanningWorker<br/>Tactician]
+        SP[5. StrategyPlanner<br/>Commander]
+    end
+    
+    subgraph Output
+        Dir[StrategyDirective<br/>SWOT-driven decision]
+    end
+    
+    Tick --> CW
+    CW -.TickCache.-> OW
+    CW -.TickCache.-> TW
+    CW -.TickCache.-> PW
+    OW -.EventBus.-> SP
+    TW -.EventBus.-> SP
+    PW -.TickCache.-> SP
+    SP --> Dir
+    
+    style CW fill:#e1f5ff
+    style OW fill:#fff4e1
+    style TW fill:#ffe1e1
+    style PW fill:#e1ffe1
+    style SP fill:#f5e1ff
+```
+
 **Key Principles:**
 - **No Operators**: Workers are wired directly via EventAdapters (not grouped under operators)
 - **Single Responsibility**: Each worker category has one clear purpose

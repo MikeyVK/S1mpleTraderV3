@@ -18,13 +18,22 @@ S1mpleTrader V3 is een **plugin-gedreven, event-driven** trading platform dat de
 - ✅ Plugins kunnen geïsoleerd getest worden (unit tests zonder platform)
 
 **Voorbeeld:**
-```
-plugins/context_workers/ema_detector/
-├── manifest.yaml          # Declaratie
-├── worker.py              # Businesslogic
-├── schema.py              # Config model
-└── test/
-    └── test_worker.py     # Isolated tests
+```mermaid
+graph TD
+    subgraph Plugin["Plugin Package"]
+        M[manifest.yaml<br/>Declaratie]
+        W[worker.py<br/>Businesslogic]
+        S[schema.py<br/>Config model]
+        T[test/test_worker.py<br/>Isolated tests]
+    end
+    
+    M -.defines.-> W
+    W -.validates.-> S
+    T -.tests.-> W
+    
+    style M fill:#e1f5ff
+    style W fill:#ffe1e1
+    style T fill:#ffe1ff
 ```
 
 ### 2. Separation of Concerns

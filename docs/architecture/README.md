@@ -80,6 +80,16 @@
 ## Quick Reference
 
 ### Data Flow Paths
+
+```mermaid
+graph LR
+    W1[Worker] -.Sync Flow.-> TC[TickCache<br/>IStrategyCache]
+    W2[Worker] -.Async Signals.-> Bus[EventBus<br/>DispositionEnvelope]
+    
+    style TC fill:#e1f5ff
+    style Bus fill:#ffe1e1
+```
+
 - **Sync Flow** (worker → worker): TickCache via `IStrategyCache.set_result_dto()`
 - **Async Signals** (worker → platform): EventBus via `DispositionEnvelope(PUBLISH)`
 
@@ -89,12 +99,19 @@
 - **STOP**: End flow, trigger cleanup
 
 ### Configuration Hierarchy
-```
-PlatformConfig (global, static)
-    ↓
-OperationConfig (per workspace/campaign)
-    ↓
-StrategyConfig (per strategy, JIT loaded)
+
+```mermaid
+graph TD
+    P[PlatformConfig<br/>global, static]
+    O[OperationConfig<br/>per workspace/campaign]
+    S[StrategyConfig<br/>per strategy, JIT loaded]
+    
+    P --> O
+    O --> S
+    
+    style P fill:#e1f5ff
+    style O fill:#fff4e1
+    style S fill:#ffe1e1
 ```
 
 ## Related Documentation

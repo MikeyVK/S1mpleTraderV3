@@ -9,6 +9,30 @@
 
 S1mpleTraderV3 uses a **point-in-time data model** where all data exchange is based on a specific moment (tick), not accumulated datasets. Workers communicate through two distinct paths: **TickCache** (synchronous flow) and **EventBus** (asynchronous signals).
 
+```mermaid
+graph TB
+    subgraph "Synchronous Path: TickCache"
+        TC[TickCache<br/>Plugin-Specific DTOs]
+        ISC[IStrategyCache Interface]
+        CW1[ContextWorker1] -.set_result_dto.-> TC
+        CW2[ContextWorker2] -.get_required_dtos.-> TC
+        PW[PlanningWorker] -.get_required_dtos.-> TC
+    end
+    
+    subgraph "Asynchronous Path: EventBus"
+        Bus[EventBus<br/>System DTOs]
+        OW[OpportunityWorker] -.PUBLISH.-> Bus
+        TW[ThreatWorker] -.PUBLISH.-> Bus
+        SP[StrategyPlanner] -.subscribe.-> Bus
+    end
+    
+    TC -.lifetime: 1 tick.-> TC
+    Bus -.persistent.-> Bus
+    
+    style TC fill:#e1f5ff
+    style Bus fill:#ffe1e1
+```
+
 **Key Principles:**
 - **Point-in-Time**: No growing DataFrames, only DTOs for current tick
 - **Two Paths**: TickCache for flow data, EventBus for signals
@@ -102,6 +126,26 @@ class DispositionEnvelope:
     disposition: Literal["CONTINUE", "PUBLISH", "STOP"]
     event_name: Optional[str] = None          # Required for PUBLISH
     event_payload: Optional[BaseModel] = None # Required for PUBLISH (system DTO!)
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Worker: process()
+    Worker --> CONTINUE: No signal,<br/>continue flow
+    Worker --> PUBLISH: Signal detected,<br/>broadcast event
+    Worker --> STOP: Flow complete,<br/>cleanup
+    
+    CONTINUE --> EventAdapter: Return envelope
+    PUBLISH --> EventAdapter: Return envelope
+    STOP --> EventAdapter: Return envelope
+    
+    EventAdapter --> NextWorker: CONTINUE:<br/>trigger next worker(s)
+    EventAdapter --> EventBus: PUBLISH:<br/>broadcast event
+    EventAdapter --> FlowTerminator: STOP:<br/>cleanup TickCache
+    
+    NextWorker --> [*]
+    EventBus --> [*]
+    FlowTerminator --> [*]
 ```
 
 ### Disposition Types

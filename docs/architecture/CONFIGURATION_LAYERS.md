@@ -9,6 +9,38 @@
 
 S1mpleTraderV3 uses a **3-layer configuration hierarchy** that strictly separates platform settings, operation/campaign settings, and strategy-specific configuration. This separation enables reusability, clarity, and maintainability.
 
+```mermaid
+graph TD
+    subgraph Layer1["LAYER 1: PlatformConfig"]
+        P[platform.yaml<br/>Global, Static<br/>Logging, Paths, Locale]
+    end
+    
+    subgraph Layer2["LAYER 2: OperationConfig"]
+        O[operation.yaml<br/>Per Workspace/Campaign<br/>Connectors, Environments]
+        C[connectors/*.yaml]
+        D[data_sources/*.yaml]
+        E[environments/*.yaml]
+        Sched[schedules/*.yaml]
+    end
+    
+    subgraph Layer3["LAYER 3: StrategyConfig"]
+        S1[strategy_blueprint.yaml<br/>Per Strategy<br/>Workforce, Wiring]
+        S2[another_strategy.yaml]
+    end
+    
+    P --> O
+    O --> C
+    O --> D
+    O --> E
+    O --> Sched
+    O -.strategy_links.-> S1
+    O -.strategy_links.-> S2
+    
+    style Layer1 fill:#e1f5ff
+    style Layer2 fill:#fff4e1
+    style Layer3 fill:#ffe1e1
+```
+
 **Key Principles:**
 - **Strict Separation**: Each layer has distinct scope and lifetime
 - **Hierarchical Loading**: Platform → Operation → Strategy (just-in-time)
@@ -19,30 +51,18 @@ S1mpleTraderV3 uses a **3-layer configuration hierarchy** that strictly separate
 
 ## The Three Layers
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ LAYER 1: PlatformConfig                                      │
-│ Scope: Global, Static                                        │
-│ Lifetime: Application                                        │
-│ File: platform.yaml                                          │
-│ Loaded: Once at OperationService start                       │
-└─────────────────────────────────────────────────────────────┘
-                           ↓ references
-┌─────────────────────────────────────────────────────────────┐
-│ LAYER 2: OperationConfig                                     │
-│ Scope: Workspace/Campaign                                    │
-│ Lifetime: Operation run                                      │
-│ File: operation.yaml + referenced files                      │
-│ Loaded: Per operation                                        │
-└─────────────────────────────────────────────────────────────┘
-                           ↓ references (strategy_links)
-┌─────────────────────────────────────────────────────────────┐
-│ LAYER 3: StrategyConfig                                      │
-│ Scope: Single strategy                                       │
-│ Lifetime: Strategy instance                                  │
-│ File: strategy_blueprint.yaml                                │
-│ Loaded: Just-in-time per strategy_link                       │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph LR
+    P[PlatformConfig<br/>Global, Static]
+    O[OperationConfig<br/>Per Campaign]
+    S[StrategyConfig<br/>Per Strategy]
+    
+    P -->|references| O
+    O -->|strategy_links| S
+    
+    style P fill:#e1f5ff
+    style O fill:#fff4e1
+    style S fill:#ffe1e1
 ```
 
 ---

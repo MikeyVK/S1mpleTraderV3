@@ -21,6 +21,34 @@ Plugins are self-contained Python packages that encapsulate strategy logic. Each
 
 ### Basic Plugin Structure
 
+```mermaid
+graph TD
+    subgraph "Plugin Package"
+        M[manifest.yaml<br/>ID card + capabilities]
+        W[worker.py<br/>Business logic]
+        S[schema.py<br/>Pydantic config model]
+        CS[context_schema.py<br/>Visualization contract]
+        
+        subgraph "dtos/ (optional)"
+            DTO1[my_output_dto.py]
+        end
+        
+        subgraph "test/"
+            T[test_worker.py<br/>MANDATORY]
+        end
+    end
+    
+    M -.declares.-> W
+    W -.uses.-> S
+    W -.produces.-> DTO1
+    T -.tests.-> W
+    
+    style M fill:#e1f5ff
+    style W fill:#ffe1e1
+    style T fill:#ffe1ff
+```
+
+**Directory Layout:**
 ```
 plugins/[category]/[plugin_name]/
 ├── manifest.yaml           # Plugin ID card + capability declarations

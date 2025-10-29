@@ -9,6 +9,36 @@
 
 S1mpleTraderV3 uses an **event-driven architecture** where components (workers, singletons) communicate via EventBus and EventAdapters. This **flattened orchestration** replaces V2's operator-based model with direct, flexible wiring configured via YAML.
 
+```mermaid
+graph LR
+    subgraph Components
+        W1[Worker 1]
+        W2[Worker 2]
+        W3[Worker 3]
+    end
+    
+    subgraph Adapters
+        A1[EventAdapter 1]
+        A2[EventAdapter 2]
+        A3[EventAdapter 3]
+    end
+    
+    Bus[EventBus<br/>N-to-N Broadcast]
+    
+    W1 <-.DispositionEnvelope.-> A1
+    W2 <-.DispositionEnvelope.-> A2
+    W3 <-.DispositionEnvelope.-> A3
+    
+    A1 <--> Bus
+    A2 <--> Bus
+    A3 <--> Bus
+    
+    style Bus fill:#ccffcc
+    style A1 fill:#ffffcc
+    style A2 fill:#ffffcc
+    style A3 fill:#ffffcc
+```
+
 **Key Principles:**
 - **No Operators**: Workers wired directly via EventAdapters (not grouped)
 - **EventBus = N-to-N Broadcast**: Pure publish-subscribe, not point-to-point routing
@@ -132,14 +162,14 @@ adapter_config = {
     
     # Subscriptions (which events to listen to)
     'subscriptions': [
-        'TICK_FLOW_START',
-        '_regime_classifier_output_abc123'
+        '_tick_flow_start_abc123',  # System event from TickCacheManager
+        '_regime_classifier_output_def456'  # System event from previous worker
     ],
     
     # Handler mapping (event → method)
     'handler_mapping': {
-        'TICK_FLOW_START': 'process',
-        '_regime_classifier_output_abc123': 'process'
+        '_tick_flow_start_abc123': 'process',
+        '_regime_classifier_output_def456': 'process'
     },
     
     # Publication configuration
@@ -147,7 +177,7 @@ adapter_config = {
         # System events (CONTINUE disposition)
         'system_events': {
             'CONTINUE': {
-                'event_name': '_ema_detector_output_xyz789',
+                'event_name': '_ema_detector_output_xyz789',  # UUID-based name
                 'payload_dto_type': 'EMAOutputDTO'
             }
         },
@@ -160,7 +190,6 @@ adapter_config = {
     }
 }
 ```
-
 ---
 
 ## Wiring Configuration
@@ -323,74 +352,44 @@ def on_flow_complete(self, event_name, payload):
 ### Scenario
 BTC momentum strategy with EMA → Regime → Opportunity → Planner
 
-### Step 1: Tick Arrives
-```
-TickCacheManager receives RAW_TICK
-    ↓
-Publishes TICK_FLOW_START
-```
-
-### Step 2: Context Phase
-```
-EventAdapter_EMA listens to TICK_FLOW_START
-    ↓
-Calls ema_detector.process()
-    ↓
-Worker returns DispositionEnvelope(disposition="CONTINUE")
-    ↓
-EventAdapter_EMA publishes _ema_detector_output_abc123
-```
-
-### Step 3: Context Chain
-```
-EventAdapter_Regime listens to _ema_detector_output_abc123
-    ↓
-Calls regime_classifier.process()
-    ↓
-Worker returns DispositionEnvelope(disposition="CONTINUE")
-    ↓
-EventAdapter_Regime publishes _regime_classifier_output_def456
-```
-
-### Step 4: Opportunity Phase
-```
-EventAdapter_Momentum listens to _regime_classifier_output_def456
-    ↓
-Calls momentum_scout.process()
-    ↓
-Worker detects opportunity, returns:
-    DispositionEnvelope(
-        disposition="PUBLISH",
-        event_name="MOMENTUM_OPPORTUNITY",
-        event_payload=OpportunitySignal(...)
-    )
-    ↓
-EventAdapter_Momentum publishes MOMENTUM_OPPORTUNITY (custom event)
-```
-
-### Step 5: Planning Phase
-```
-EventAdapter_Planner listens to MOMENTUM_OPPORTUNITY
-    ↓
-Calls momentum_planner.on_opportunity(payload)
-    ↓
-Planner decides to trade, returns:
-    DispositionEnvelope(
-        disposition="PUBLISH",
-        event_name="STRATEGY_DIRECTIVE_READY",
-        event_payload=StrategyDirective(...)
-    )
-    ↓
-EventAdapter_Planner publishes STRATEGY_DIRECTIVE_READY
-```
-
-### Step 6: Flow Complete
-```
-FlowTerminator listens to STRATEGY_DIRECTIVE_READY
-    ↓
-Publishes TICK_FLOW_COMPLETE
-    ↓
-TickCacheManager cleans up TickCache
+```mermaid
+sequenceDiagram
+    participant TCM as TickCacheManager
+    participant Bus as EventBus
+    participant A_EMA as EventAdapter<br/>(EMA)
+    participant EMA as EMA Worker
+    participant A_Regime as EventAdapter<br/>(Regime)
+    participant Regime as Regime Worker
+    participant A_Mom as EventAdapter<br/>(Momentum)
+    participant Mom as Momentum Worker
+    participant A_Plan as EventAdapter<br/>(Planner)
+    participant Plan as Planner Worker
+    
+    Note over TCM: Tick arrives
+    TCM->>Bus: publish("_tick_flow_start_abc123")
+    
+    Bus->>A_EMA: notify("_tick_flow_start_abc123")
+    A_EMA->>EMA: process()
+    EMA-->>A_EMA: DispositionEnvelope(CONTINUE)
+    A_EMA->>Bus: publish("_ema_output_def456", EMAOutputDTO)
+    
+    Bus->>A_Regime: notify("_ema_output_def456")
+    A_Regime->>Regime: process()
+    Regime-->>A_Regime: DispositionEnvelope(CONTINUE)
+    A_Regime->>Bus: publish("_regime_output_ghi789", RegimeDTO)
+    
+    Bus->>A_Mom: notify("_regime_output_ghi789")
+    A_Mom->>Mom: process()
+    Mom-->>A_Mom: DispositionEnvelope(PUBLISH, "MOMENTUM_OPPORTUNITY")
+    A_Mom->>Bus: publish("MOMENTUM_OPPORTUNITY", OpportunitySignal)
+    
+    Bus->>A_Plan: notify("MOMENTUM_OPPORTUNITY")
+    A_Plan->>Plan: on_opportunity(OpportunitySignal)
+    Plan-->>A_Plan: DispositionEnvelope(PUBLISH, "STRATEGY_DIRECTIVE_READY")
+    A_Plan->>Bus: publish("STRATEGY_DIRECTIVE_READY", StrategyDirective)
+    
+    Bus->>TCM: notify("STRATEGY_DIRECTIVE_READY")
+    TCM->>TCM: cleanup TickCache
 ```
 
 ---
@@ -399,20 +398,32 @@ TickCacheManager cleans up TickCache
 
 ### V2 (Deprecated): Operator-Based
 
-```
-ExecutionEnvironment
-    ↓
-ContextOperator (hardcoded)
-    ├─> ContextWorker1
-    ├─> ContextWorker2
-    └─> ContextWorker3
-    ↓
-OpportunityOperator (hardcoded)
-    ├─> OpportunityWorker1
-    └─> OpportunityWorker2
-    ↓
-PlanningOperator (hardcoded)
-    └─> PlanningWorkers
+```mermaid
+graph TD
+    Env[ExecutionEnvironment]
+    CtxOp[ContextOperator<br/>hardcoded]
+    OppOp[OpportunityOperator<br/>hardcoded]
+    PlanOp[PlanningOperator<br/>hardcoded]
+    CW1[ContextWorker1]
+    CW2[ContextWorker2]
+    CW3[ContextWorker3]
+    OW1[OpportunityWorker1]
+    OW2[OpportunityWorker2]
+    PW[PlanningWorker]
+    
+    Env --> CtxOp
+    CtxOp --> CW1
+    CtxOp --> CW2
+    CtxOp --> CW3
+    CtxOp --> OppOp
+    OppOp --> OW1
+    OppOp --> OW2
+    OppOp --> PlanOp
+    PlanOp --> PW
+    
+    style CtxOp fill:#ffcccc
+    style OppOp fill:#ffcccc
+    style PlanOp fill:#ffcccc
 ```
 
 **Problems:**
@@ -424,16 +435,36 @@ PlanningOperator (hardcoded)
 
 ### V3 (Current): Flattened Orchestration
 
-```
-ExecutionEnvironment
-    ↓
-EventBus (N-to-N broadcast)
-    ↓
-EventAdapters (1 per component)
-    ├─> ContextWorker1 → EventAdapter → EventBus
-    ├─> ContextWorker2 → EventAdapter → EventBus
-    ├─> OpportunityWorker1 → EventAdapter → EventBus
-    └─> StrategyPlanner → EventAdapter → EventBus
+```mermaid
+graph LR
+    Env[ExecutionEnvironment]
+    Bus[EventBus<br/>N-to-N]
+    
+    subgraph Workers
+        CW1[ContextWorker1]
+        CW2[ContextWorker2]
+        OW1[OpportunityWorker1]
+        SP[StrategyPlanner]
+    end
+    
+    subgraph Adapters
+        A1[EventAdapter1]
+        A2[EventAdapter2]
+        A3[EventAdapter3]
+        A4[EventAdapter4]
+    end
+    
+    Env --> Bus
+    Bus <--> A1
+    Bus <--> A2
+    Bus <--> A3
+    Bus <--> A4
+    A1 <--> CW1
+    A2 <--> CW2
+    A3 <--> OW1
+    A4 <--> SP
+    
+    style Bus fill:#ccffcc
 ```
 
 **Improvements:**

@@ -102,10 +102,16 @@ class MyWorker(StandardWorker):
 - ✅ Accessed via `IStrategyCache`
 
 **Flow:**
-```
-Worker A → set_result_dto(EMAOutputDTO) → TickCache
-    ↓
-TickCache → get_required_dtos() → Worker B
+
+```mermaid
+sequenceDiagram
+    participant WA as Worker A
+    participant TC as TickCache
+    participant WB as Worker B
+    
+    WA->>TC: set_result_dto(EMAOutputDTO)
+    WB->>TC: get_required_dtos()
+    TC-->>WB: {EMAOutputDTO: instance}
 ```
 
 **Example DTOs:**
@@ -125,10 +131,20 @@ TickCache → get_required_dtos() → Worker B
 - ✅ Published via `DispositionEnvelope(PUBLISH)`
 
 **Flow:**
-```
-Worker → DispositionEnvelope(PUBLISH, event_payload=OpportunitySignal) → EventBus
-    ↓
-EventBus → broadcast → [Journal, UI, Notifier, ...]
+
+```mermaid
+sequenceDiagram
+    participant W as Worker
+    participant Bus as EventBus
+    participant Sub1 as Journal
+    participant Sub2 as UI
+    participant Sub3 as Notifier
+    
+    W->>W: DetectDispositionEnvelope(PUBLISH)
+    W->>Bus: publish(OpportunitySignal)
+    Bus->>Sub1: notify(event)
+    Bus->>Sub2: notify(event)
+    Bus->>Sub3: notify(event)
 ```
 
 **Example DTOs:**
