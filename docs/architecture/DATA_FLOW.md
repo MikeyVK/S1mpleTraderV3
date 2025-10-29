@@ -139,9 +139,9 @@ stateDiagram-v2
     PUBLISH --> EventAdapter: Return envelope
     STOP --> EventAdapter: Return envelope
     
-    EventAdapter --> NextWorker: CONTINUE: trigger next workers
-    EventAdapter --> EventBus: PUBLISH: broadcast event
-    EventAdapter --> FlowTerminator: STOP: cleanup TickCache
+    EventAdapter --> NextWorker: trigger next workers
+    EventAdapter --> EventBus: broadcast event
+    EventAdapter --> FlowTerminator: cleanup TickCache
     
     NextWorker --> [*]
     EventBus --> [*]
