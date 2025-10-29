@@ -252,10 +252,11 @@ class EventBus(IEventBus):
         """
         try:
             subscription.handler(payload)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            # We catch all exceptions for handler isolation - we don't know what handlers throw
             if subscription.is_critical:
                 # Platform singleton failure = STOP EVERYTHING
-                logger.critical(
+                logger.critical(  # pylint: disable=logging-fstring-interpolation
                     f"Critical handler failed for event {subscription.event_name}",
                     exc_info=e,
                     extra={
@@ -272,7 +273,7 @@ class EventBus(IEventBus):
             else:
                 # Strategy worker failure = LOG + CONTINUE
                 strategy_id = subscription.scope.strategy_instance_id
-                logger.error(
+                logger.error(  # pylint: disable=logging-fstring-interpolation
                     f"Handler failed for strategy {strategy_id}",
                     exc_info=e,
                     extra={

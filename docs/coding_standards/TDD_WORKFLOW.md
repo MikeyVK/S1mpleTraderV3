@@ -79,13 +79,38 @@ Status: GREEN"
 
 Enhance code while keeping all tests green:
 
-- Fix trailing whitespace
-- Add/improve type hints
-- Enhance docstrings
-- Split long lines (<100 chars)
-- Add `json_schema_extra` examples (see [CODE_STYLE.md](CODE_STYLE.md))
+**REFACTOR Checklist (MANDATORY):**
 
-**Verify:** Tests remain 100% passing during refactoring!
+1. **Run Pylance error check** (VS Code Problems panel or `get_errors` tool)
+   - ✅ Fix all errors
+   - ✅ Address warnings OR add explicit `# pylint: disable=<rule>` with comment explaining why
+   - ❌ Never ignore warnings silently
+
+2. **Code quality improvements:**
+   - Fix trailing whitespace
+   - Add/improve type hints
+   - Enhance docstrings
+   - Split long lines (<100 chars)
+   - Add `json_schema_extra` examples (see [CODE_STYLE.md](CODE_STYLE.md))
+
+3. **Run quality gates** (see [QUALITY_GATES.md](QUALITY_GATES.md))
+   ```powershell
+   # Whitespace & formatting
+   pylint --enable=trailing-whitespace,superfluous-parens
+   
+   # Import placement
+   pylint --enable=import-outside-toplevel
+   
+   # Line length
+   pylint --enable=line-too-long --max-line-length=100
+   ```
+
+4. **Verify tests still pass:**
+   ```powershell
+   pytest tests/unit/<module>/ -v --tb=line
+   ```
+
+**Commit REFACTOR improvements:**
 
 ```powershell
 git add backend/dtos/strategy/size_plan.py tests/unit/dtos/strategy/test_size_plan.py
@@ -96,9 +121,25 @@ git commit -m "refactor: improve SizePlan DTO code quality
 - Add type hints for all fields
 - Clean up whitespace
 - Add json_schema_extra examples
+- Fix Pylance warnings (added explicit pylint disables with justification)
 
 Quality gates: All 10/10
+Pylance: 0 errors, 0 warnings
 Status: GREEN (tests still 20/20)"
+```
+
+**Common Pylance suppressions with justification:**
+
+```python
+# Catching broad exceptions for handler isolation
+except Exception as e:  # pylint: disable=broad-exception-caught
+    # Justification: We don't know what exceptions handlers throw
+
+# Using f-strings in logging (modern Python convention)
+logger.error(  # pylint: disable=logging-fstring-interpolation
+    f"Error: {detail}",  # Modern Python, no performance issue on error path
+    exc_info=e
+)
 ```
 
 ### 4. Quality Gates Verification
