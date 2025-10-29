@@ -8,7 +8,6 @@ These tests validate protocol compliance via structural typing (duck typing).
 @component: Worker Protocols
 """
 
-from typing import Protocol, runtime_checkable
 import pytest
 from backend.core.interfaces.strategy_cache import IStrategyCache
 from backend.core.interfaces.worker import (
@@ -79,26 +78,30 @@ class TestIWorkerLifecycleProtocol:
 
     def test_iworkerlifecycle_initialize_signature(self) -> None:
         """Initialize method has correct signature with kwargs for capabilities."""
-        
+
         class ValidWorker:
+            def __init__(self) -> None:
+                self.cache = None
+                self.capabilities = {}
+
             def initialize(
                 self,
                 strategy_cache: IStrategyCache,
                 **capabilities
             ) -> None:
-                self._cache = strategy_cache
-                self._capabilities = capabilities
-        
+                self.cache = strategy_cache
+                self.capabilities = capabilities
+
         worker: IWorkerLifecycle = ValidWorker()  # type: ignore[assignment]
-        
+
         # Should accept strategy_cache + optional capabilities
         from unittest.mock import Mock
         cache = Mock(spec=IStrategyCache)
         persistence = Mock()
-        
+
         worker.initialize(strategy_cache=cache, persistence=persistence)
-        assert worker._cache is cache  # type: ignore[attr-defined]
-        assert worker._capabilities == {'persistence': persistence}  # type: ignore[attr-defined]
+        assert worker.cache is cache
+        assert worker.capabilities == {'persistence': persistence}
 
     def test_iworkerlifecycle_shutdown_signature(self) -> None:
         """Shutdown method has correct signature (no parameters)."""
@@ -200,20 +203,23 @@ class TestProtocolCompliance:
 
     def test_protocol_type_hints_are_enforced(self) -> None:
         """Protocol enforces method signatures via type checking."""
-        
+
         class ValidWorker:
+            def __init__(self) -> None:
+                self.cache = None
+
             def initialize(
                 self,
                 strategy_cache: IStrategyCache,
                 **capabilities
             ) -> None:
-                self._cache = strategy_cache
-            
+                self.cache = strategy_cache
+
             def shutdown(self) -> None:
-                self._cache = None  # type: ignore[assignment]
-        
+                self.cache = None
+
         worker: IWorkerLifecycle = ValidWorker()  # type: ignore[assignment]
-        
+
         # Type checker validates this at compile time
         # Runtime test confirms protocol compliance
         assert hasattr(worker, 'initialize')
