@@ -1,5 +1,18 @@
 # SimpleTraderV3 - TODO List
 
+## 📚 Documentation Quick Links
+
+**New modular documentation structure (October 2025):**
+
+- **📖 Agent Instructions:** [../agent.md](../agent.md) - Compact AI assistant guide (195 lines)
+- **🏛️ Architecture:** [architecture/README.md](architecture/README.md) - System design principles
+- **✨ Coding Standards:** [coding_standards/README.md](coding_standards/README.md) - TDD, quality gates, Git workflow
+- **📋 Reference:** [reference/README.md](reference/README.md) - Templates and examples
+- **📊 Implementation:** [implementation/IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md) - Quality metrics
+
+**Legacy documentation:**
+- [../agent_OLD.md](../agent_OLD.md) - Original comprehensive guide (1657 lines, archived)
+
 ## 🏗️ PLATFORM IMPLEMENTATIE ROADMAP (PRIORITEIT)
 
 ### Phase 1: Contracten & Interfaces (Foundation)
