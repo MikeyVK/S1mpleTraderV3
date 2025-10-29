@@ -275,20 +275,35 @@ class BaseWorker(Generic[WorkerInput, WorkerOutput], IWorkerLifecycle, ABC):
         
         Framework method - DO NOT OVERRIDE.
         Plugin developers implement process() instead.
+        
+        Note: Sub-component workers (ContextWorker) don't extend causality.
+        Only aggregator workers extend the chain.
         """
-        # 1. Extract causality from input
+        # 1. Extract causality from input (if present)
         causality = self._extract_causality(input_dto)
         
-        # 2. Call worker-specific logic
+        # 2. Call worker-specific logic (causality-unaware)
         output_dto = self.process(input_dto)
         
-        # 3. Extend causality with output ID
-        extended_causality = self._extend_causality(causality, output_dto)
-        
-        # 4. Propagate to output
-        output_dto.causality = extended_causality
+        # 3. Extend causality if worker category requires it
+        if causality and self._extends_causality:
+            extended_causality = self._extend_causality(causality, output_dto)
+            output_dto = output_dto.model_copy(update={"causality": extended_causality})
         
         return output_dto
+    
+    @property
+    @abstractmethod
+    def _extends_causality(self) -> bool:
+        """
+        Override in category base classes.
+        
+        Examples:
+        - BaseContextWorker → False (sub-component output)
+        - BaseContextAggregatorWorker → True (aggregator output)
+        - BaseOpportunityWorker → True (extends chain)
+        """
+        ...
     
     @abstractmethod
     def process(self, input_dto: WorkerInput) -> WorkerOutput:
@@ -300,12 +315,21 @@ class BaseWorker(Generic[WorkerInput, WorkerOutput], IWorkerLifecycle, ABC):
         """
         ...
     
-    def _extract_causality(self, input_dto: WorkerInput) -> CausalityChain:
-        """Extract causality from input DTO."""
+    def _extract_causality(self, input_dto: WorkerInput) -> CausalityChain | None:
+        """
+        Extract causality from input DTO.
+        
+        Returns None if:
+        - DTO doesn't have causality field (e.g., ContextFactor)
+        - Worker doesn't extend causality (_extends_causality = False)
+        """
+        if not self._extends_causality:
+            return None
+        
         if not hasattr(input_dto, 'causality'):
             raise ValueError(
                 f"{self.name}: Input DTO {type(input_dto).__name__} "
-                f"missing causality field"
+                f"missing causality field (worker requires it)"
             )
         return input_dto.causality
     
@@ -347,26 +371,51 @@ class WorkerBuildSpec:
     requires_aggregated_ledger: bool
 ```
 
-### 2. ContextFactor Causality Field
+### 2. ContextFactor Causality Field ✅ RESOLVED
 
 **Question:** CausalityChain has `context_assessment_id` but no `context_factor_ids` (list)
 
-**Current State:**
+**Resolution:** ContextFactor follows **sub-component pattern** (same as EntryPlan/SizePlan/ExitPlan)
+
+**Pattern Confirmed:**
 ```python
-class CausalityChain(BaseModel):
-    # ...
-    context_assessment_id: str | None  # AggregatedContextAssessment
-    # MISSING: context_factor_ids: list[str] ???
+# ContextFactor = NO causality (sub-component)
+class ContextFactor(BaseModel):
+    factor_type: str
+    strength: float | None
+    weakness: float | None
+    # NO causality field!
+
+# AggregatedContextAssessment = HAS causality (aggregator output)
+class AggregatedContextAssessment(BaseModel):
+    causality: CausalityChain  # ← Tracks from birth
+    assessment_id: str
+    strengths: list[ContextFactor]
+    weaknesses: list[ContextFactor]
 ```
 
-**Issue:** ContextWorkers produce ContextFactor DTOs, but causality chain doesn't track individual factors.
+**Rationale:**
+- ContextFactors are produced by ContextWorkers
+- ContextAggregator collects factors → AggregatedContextAssessment
+- AggregatedContextAssessment extends causality chain with `context_assessment_id`
+- Individual factors don't need causality (aggregator handles it)
 
-**Potential Solutions:**
-1. Add `context_factor_ids: list[str]` to CausalityChain
-2. ContextWorkers DON'T extend chain (AggregatedContextAssessment does)
-3. ContextFactor has NO causality field (sub-component pattern like Plans)
+**Implication for BaseWorker:**
+- BaseContextWorker does NOT extend causality chain
+- BaseContextAggregatorWorker DOES extend chain (different category!)
 
-**Decision Required:** Need to review ContextFactor DTO design and worker flow.
+**Updated Causality Field Mapping:**
+
+| Worker Category | Output DTO | Extends Causality? | Field Name |
+|----------------|------------|-------------------|------------|
+| **ContextWorker** | ContextFactor | ❌ NO | (none - sub-component) |
+| **ContextAggregatorWorker** | AggregatedContextAssessment | ✅ YES | `context_assessment_id` |
+| **OpportunityWorker** | OpportunitySignal | ✅ YES | `opportunity_signal_ids` (list) |
+| **ThreatWorker** | ThreatSignal | ✅ YES | `threat_ids` (list) |
+| **StrategyPlannerWorker** | StrategyDirective | ✅ YES | `strategy_directive_id` |
+| **ExecutionTranslatorWorker** | ExecutionDirective | ✅ YES | `execution_directive_id` |
+
+**Decision:** NO change needed to CausalityChain. Pattern is consistent and correct.
 
 ### 3. DispositionEnvelope Integration
 
@@ -409,17 +458,24 @@ def execute(self, input_dto) -> DispositionEnvelope:
 
 ### Immediate (Phase 1.3)
 
-1. **Validate ContextFactor Causality** (CRITICAL)
-   - Review ContextFactor DTO structure
-   - Determine if causality field needed
-   - Update CausalityChain if necessary
+1. ✅ **Validate ContextFactor Causality** - RESOLVED
+   - ContextFactor follows sub-component pattern (NO causality field)
+   - Consistent with EntryPlan/SizePlan/ExitPlan
+   - BaseContextWorker does NOT extend causality
+   - BaseContextAggregatorWorker DOES extend chain (separate category)
 
-2. **Prototype BaseOpportunityWorker** (LOW RISK)
+2. **Prototype BaseOpportunityWorker** (NEXT STEP)
    - Small, focused ABC
    - Clear I/O contract (AggregatedContextAssessment → OpportunitySignal)
-   - Test automatic causality propagation
+   - Test automatic causality propagation (_extends_causality = True)
+   - Validate _extend_causality() method for list append pattern
 
-3. **Document Deferred Decisions** (TRACK DEBT)
+3. **Prototype BaseContextWorker** (VALIDATE SUB-COMPONENT)
+   - I/O contract (OpportunitySignal → ContextFactor)
+   - Verify _extends_causality = False works correctly
+   - Test that NO causality propagation happens
+
+4. **Document Deferred Decisions** (TRACK DEBT)
    - Keep list of platform-dependent decisions
    - Update as platform components are designed
 
@@ -469,10 +525,12 @@ This design document is intentionally **incomplete** because:
 ---
 
 **Status Summary:**
-- ✅ Causality propagation pattern DEFINED (Option 1 - BaseWorker auto-propagation)
-- ⚠️ ContextFactor causality NEEDS VALIDATION
+- ✅ Causality propagation pattern DEFINED (Option 1 - BaseWorker template method)
+- ✅ ContextFactor causality VALIDATED (sub-component = NO causality field)
+- ✅ Worker categories identified (context/aggregator/opportunity/threat/planner/translator)
+- ✅ _extends_causality property pattern defined
 - 🚧 WorkerBuildSpec DEFERRED (pending WorkerFactory)
 - 🚧 DispositionEnvelope wrapping DEFERRED (pending EventAdapter)
 - 🚧 Error handling DEFERRED (pending platform design)
 
-**Recommendation:** Proceed with BaseOpportunityWorker prototype to validate causality pattern before expanding to other categories.
+**Recommendation:** Proceed with BaseOpportunityWorker + BaseContextWorker prototypes to validate both causality patterns (extends + sub-component) before expanding to other categories.
