@@ -23,18 +23,18 @@ Plugins are self-contained Python packages that encapsulate strategy logic. Each
 
 ```mermaid
 graph TD
-    subgraph "Plugin Package"
-        M[manifest.yaml<br/>ID card + capabilities]
-        W[worker.py<br/>Business logic]
-        S[schema.py<br/>Pydantic config model]
-        CS[context_schema.py<br/>Visualization contract]
+    subgraph PluginPackage["Plugin Package"]
+        M[manifest.yaml]
+        W[worker.py]
+        S[schema.py]
+        CS[context_schema.py]
         
-        subgraph "dtos/ (optional)"
+        subgraph DTOs["dtos folder optional"]
             DTO1[my_output_dto.py]
         end
         
-        subgraph "test/"
-            T[test_worker.py<br/>MANDATORY]
+        subgraph Tests["test folder"]
+            T[test_worker.py]
         end
     end
     

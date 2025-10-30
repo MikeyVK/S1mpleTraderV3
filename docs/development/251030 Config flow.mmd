@@ -1,0 +1,56 @@
+graph TD
+    subgraph Platform["PLATFORM LAYER"]
+        P1[platform.yaml]
+        P2[base_wiring.yaml<br/>TEMPLATE]
+    end
+    
+    subgraph Operation["OPERATION LAYER"]
+        O1[operation.yaml]
+        O2[connectors/*.yaml]
+        O3[data_sources/*.yaml]
+        O4[environments/*.yaml]
+        O5[schedules/*.yaml]
+        O6[platform_wiring_map.yaml]
+    end
+    
+    subgraph Strategy["STRATEGY LAYER"]
+        S1[strategy_blueprint.yaml<br/>WORKFORCE]
+        S2[strategy_wiring_map.yaml<br/>UI-GENERATED]
+        S3[manifest.yaml<br/>PER PLUGIN]
+    end
+    
+    subgraph UI["UI STRATEGY BUILDER"]
+        UI1[Reads: base_wiring<br/>+ manifests]
+        UI2[User: Visual positioning]
+        UI3[Generates:<br/>strategy_wiring_map.yaml]
+    end
+    
+    subgraph Bootstrap["BOOTSTRAP PIPELINE"]
+        B1[ConfigLoader]
+        B2[ConfigValidator]
+        B3[ConfigTranslator]
+        B4[BuildSpecs]
+    end
+    
+    P1 --> B1
+    P2 --> UI1
+    O1 --> B1
+    O2 --> B1
+    O3 --> B1
+    O4 --> B1
+    O5 --> B1
+    O6 --> B1
+    
+    S1 --> UI1
+    S3 --> UI1
+    UI1 --> UI2
+    UI2 --> UI3
+    UI3 --> S2
+    
+    S1 --> B1
+    S2 --> B1
+    S3 --> B2
+    
+    B1 --> B2
+    B2 --> B3
+    B3 --> B4

@@ -10,38 +10,59 @@
 S1mpleTraderV3 organizes all strategy logic into **5 worker categories**, each with distinct responsibilities in the trading pipeline. Workers are plugin-first components that process data through a **point-in-time model** without maintaining state across ticks.
 
 ```mermaid
-graph LR
-    subgraph Input
-        Tick[Market Tick]
+graph TB
+    Tick[Market Tick]
+    
+    subgraph TickCache["TickCache (Sync Flow)"]
+        TC[Plugin DTOs]
     end
     
-    subgraph Workers
-        CW[1. ContextWorker<br/>Cartographer]
-        OW[2. OpportunityWorker<br/>Scout]
-        TW[3. ThreatWorker<br/>Watchdog]
-        PW[4. PlanningWorker<br/>Tactician]
-        SP[5. StrategyPlanner<br/>Commander]
+    subgraph EventBus["EventBus (Async Signals)"]
+        EB[System DTOs]
     end
     
-    subgraph Output
-        Dir[StrategyDirective<br/>SWOT-driven decision]
-    end
+    CW[ContextWorker]
+    OW[OpportunityWorker]
+    TW[ThreatWorker]
+    PW[PlanningWorker]
+    PA[PlanningAggregator<br/>Platform Component]
+    SP[StrategyPlanner]
     
     Tick --> CW
-    CW -.TickCache.-> OW
-    CW -.TickCache.-> TW
-    CW -.TickCache.-> PW
-    OW -.EventBus.-> SP
-    TW -.EventBus.-> SP
-    PW -.TickCache.-> SP
-    SP --> Dir
+    CW -->|set_result_dto| TC
+    
+    TC -->|get_required_dtos| OW
+    TC -->|get_required_dtos| TW
+    TC -->|get_required_dtos| PW
+    
+    OW -->|PUBLISH OpportunitySignal| EB
+    TW -->|PUBLISH ThreatSignal| EB
+    PW -->|PUBLISH EntryPlan/SizePlan/ExitPlan| EB
+    
+    EB -->|subscribe plans| PA
+    PA -->|PUBLISH ExecutionDirective| EB
+    
+    EB -->|subscribe signals| SP
+    TC -->|get_required_dtos| SP
+    SP -->|PUBLISH StrategyDirective| EB
     
     style CW fill:#e1f5ff
     style OW fill:#fff4e1
     style TW fill:#ffe1e1
     style PW fill:#e1ffe1
+    style PA fill:#d4edda
     style SP fill:#f5e1ff
+    style TC fill:#e8f4f8
+    style EB fill:#f8e8e8
 ```
+
+**Key Flow Principles:**
+- **ContextWorker**: Writes to TickCache only (NEVER EventBus)
+- **OpportunityWorker**: Reads TickCache → Publishes OpportunitySignal to EventBus
+- **ThreatWorker**: Reads TickCache → Publishes ThreatSignal to EventBus
+- **PlanningWorker**: Reads TickCache → Publishes Plans (EntryPlan, SizePlan, ExitPlan) to EventBus
+- **PlanningAggregator** (platform): Subscribes to plan events → Combines into ExecutionDirective → Publishes to EventBus
+- **StrategyPlanner**: Subscribes to EventBus signals + Reads TickCache → Publishes StrategyDirective
 
 **Key Principles:**
 - **No Operators**: Workers are wired directly via EventAdapters (not grouped under operators)
