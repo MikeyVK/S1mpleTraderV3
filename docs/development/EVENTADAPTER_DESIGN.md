@@ -1411,35 +1411,38 @@ from backend.dtos.shared.disposition_envelope import DispositionEnvelope
 **Question:** Should system event names (UUID-based) be persisted across runs?
 
 **Options:**
-- **A. Generate new UUIDs each run** (current design)
+- **A. Generate new UUIDs each run**
   - Pros: Simple, no state management
   - Cons: Can't replay exact event sequence
   
-- **B. Persist event names in wiring_map.yaml**
+- **B. Persist event names in wiring_map.yaml** ← **CURRENT DESIGN**
   - Pros: Deterministic event names, replay-friendly
   - Cons: UI must manage UUID generation
 
-**Recommendation:** Start with Option A (generate fresh), revisit if replay becomes critical.
+**Decision:** Option B - UI generates ALL event names, persisted in strategy_wiring_map.yaml
 
-### 2. Handler Method Validation
+### 2. Handler Method Validation ✅ RESOLVED
 
 **Question:** Should EventAdapter validate handler method exists at construction time?
 
-**Current:** Validation happens when event is received (runtime)
+**Resolution:** NO - EventAdapter does NOT validate. **ConfigValidator validates** (Phase 5).
 
-**Alternative:** Validate during adapter creation (fail-fast)
-
-```python
-def __init__(self, ...):
-    # Validate all handler methods exist
-    for event_name, method_name in handler_mapping.items():
-        if not hasattr(self._worker, method_name):
-            raise ValueError(f"Worker missing handler method: {method_name}")
+**Rationale:**
+```
+ConfigValidator (Bootstrap)
+    ↓ Validates handler methods exist on worker class
+    ↓ Validates event names consistent
+    ↓ Fail-fast during bootstrap
+BuildSpecs (pre-validated)
+    ↓
+EventWiringFactory (trusts BuildSpecs)
+    ↓
+EventAdapter (pure execution, NO validation)
 ```
 
-**Recommendation:** Add fail-fast validation (better developer experience).
+**EventAdapter assumes BuildSpecs are valid** - separation of concerns.
 
-### 3. Multi-Handler Support
+### 3. Multi-Handler Support ✅ KEEP FLEXIBLE
 
 **Question:** Should workers support multiple handler methods, or just `process()`?
 
@@ -1460,6 +1463,7 @@ handler_mapping = {
 
 ## Implementation Checklist
 
+### EventAdapter Class
 - [ ] Implement `EventAdapter` class
   - [ ] `__init__` with subscription setup
   - [ ] `_on_event_received` event handler
@@ -1467,16 +1471,20 @@ handler_mapping = {
   - [ ] `_handle_continue_disposition`
   - [ ] `_handle_publish_disposition`
   - [ ] `_handle_stop_disposition`
-  - [ ] `_generate_system_event_name`
-  - [ ] `_generate_stop_event_name`
   - [ ] `_validate_custom_event`
   - [ ] `shutdown` cleanup
 
+**Note:** EventAdapter does NOT validate handler methods - ConfigValidator does this during bootstrap.
+
+### EventWiringFactory (Phase 5 - After BuildSpecs)
 - [ ] Implement `EventWiringFactory`
   - [ ] `create_adapters` main factory method
   - [ ] `_build_subscription_map`
   - [ ] `_build_handler_mapping`
   - [ ] `_build_publications_map`
+  - [ ] `_build_system_publications_map`
+
+**Blocker:** Requires BuildSpecs (output of ConfigTranslator) - implement in Phase 5.
 
 - [ ] Unit Tests (EventAdapter)
   - [ ] Subscription on init

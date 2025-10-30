@@ -2,27 +2,12 @@
 
 ## Overview
 
-This document tracks the **quality metrics and test coverage** for all S1mpleTrader V3 components. All modules must meet strict quality gates before merging to main.
+This document tracks the **quality metrics and test coverage** for all S1mpleTrader V3 components.
 
-**Last Updated:** 2025-10-29  
+> **Quality Gates & TDD Workflow:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) and [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
+
+**Last Updated:** 2025-10-30  
 **Total Tests Passing:** 404 (304 DTO tests + 20 StrategyCache + 33 EventBus + 13 Worker + 34 Core Infrastructure)
-
-## Quality Gates
-
-Every module must pass **5 mandatory gates** before merge:
-
-| Gate | Check | Target | Command |
-|------|-------|--------|---------|
-| 1 | Whitespace & Parens | 10/10 | `pylint --enable=trailing-whitespace,superfluous-parens` |
-| 2 | Import Placement | 10/10 | `pylint --enable=import-outside-toplevel` |
-| 3 | Line Length | 10/10 | `pylint --enable=line-too-long --max-line-length=100` |
-| 4 | Type Checking | 0 errors | `mypy --strict` (DTOs only) |
-| 5 | Tests Passing | 100% | `pytest -q --tb=line` |
-
-**Acceptance Criteria:**
-- ✅ ALL modules: Pylint 10.00/10 (whitespace, imports, line length)
-- ✅ ALL modules: 100% tests passing
-- ✅ ALL modules: 0 Pylance warnings (use `getattr()` for FieldInfo access)
 
 ## DTO Layer Status
 
@@ -199,28 +184,9 @@ Every module must pass **5 mandatory gates** before merge:
 - ✅ **Reference**: Templates and examples (DTO template, test template, StrategyCache example)
 - ✅ **agent_NEW.md**: Compact version (195 lines vs 1657 original - 88% reduction)
 
-## Quality Workflow Checklist
-
-For each new module, follow these steps:
-
-1. ✅ Create feature branch: `git checkout -b feature/dto-name`
-2. ✅ Write tests (min 20) + commit (RED phase)
-3. ✅ Implement DTO (Pydantic v2) + commit (GREEN phase)
-4. ✅ Gate 1: Trailing whitespace (10.00/10)
-5. ✅ Gate 2: Import placement (10.00/10)
-6. ✅ Gate 3: Line length (10.00/10)
-7. ✅ Gate 4: Type checking DTO (0 errors)
-8. ✅ Gate 5: Tests passing (100%)
-9. ✅ Documentation quality (file header + class docstring)
-10. ✅ VS Code Problems: Only accepted warnings (FieldInfo/datetime.tzinfo)
-11. ✅ Refactor + commit quality improvements
-12. ✅ Update this IMPLEMENTATION_STATUS.md + commit
-13. ✅ Merge to main: `git checkout main && git merge feature/dto-name`
-14. ✅ Push to GitHub: `git push origin main`
-
-**See:** [TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) for detailed workflow.
-
 ## Known Acceptable Warnings
+
+> **For TDD workflow and quality gates:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md)
 
 ### Pydantic FieldInfo Limitations
 

@@ -48,12 +48,33 @@ config/                # Configuration templates
 docs/                  # Documentation
 ```
 
+## Installatie
+
+Werk altijd binnen een virtuele omgeving (bijv. `.venv`). Activeer de omgeving en gebruik vervolgens een van de onderstaande profielen:
+
+### Platform (runtime) afhankelijkheden
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### Ontwikkeltooling
+
+```powershell
+python -m pip install -r requirements-dev.txt
+```
+
+`requirements-dev.txt` includeert automatisch `requirements.txt`, zodat één installatiestap op een nieuwe machine volstaat.
+
+Voorkeur voor een editable install? Gebruik dan:
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
 ## Development Setup
 
-```bash
-# Install dependencies
-pip install -e ".[dev]"
-
+```powershell
 # Run tests
 pytest
 
@@ -62,6 +83,12 @@ mypy backend
 
 # Linting
 ruff check backend
+
+# Static analysis
+pylint backend
+
+# Pyright CLI (alternatief voor Pylance)
+pyright
 ```
 
 ## Testing Philosophy
