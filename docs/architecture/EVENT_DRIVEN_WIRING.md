@@ -97,7 +97,7 @@ eventbus.publish(
 # Worker publishes custom event
 return DispositionEnvelope(
     disposition="PUBLISH",
-    event_name="BREAKOUT_OPPORTUNITY",
+    event_name="BREAKOUT_SIGNAL",
     event_payload=Signal(...)  # Payload goes to TickCache, not event!
 )
 ```

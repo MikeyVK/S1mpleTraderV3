@@ -158,7 +158,7 @@ class MyWorker:
         self._cache.set_result_dto(self, MyOutputDTO(...))
         
         # Store signal (persistent)
-        self._cache.store_opportunity_signal(signal)
+        self._cache.store_signal(signal)
         
         return DispositionEnvelope(disposition="CONTINUE")
 ```
@@ -172,7 +172,7 @@ class MyWorker:
    - Cleared after run completes
 
 2. **Signal Storage (Persistent)**
-   - Via `store_opportunity_signal()` / `get_opportunity_signal()`
+   - Via `store_signal()` / `get_signal()`
    - System DTOs (Signal, Risk, ContextFactor)
    - Lifespan: Persistent (database-backed)
    - Used for analytics, journaling, UI
@@ -193,7 +193,7 @@ cache.reconfigure(strategy_id="STRAT_001", run_anchor=anchor)
 
 # 3. Workers interact (during run)
 cache.set_result_dto(worker, dto)
-cache.store_opportunity_signal(signal)
+cache.store_signal(signal)
 
 # 4. Clear TickCache (after run)
 cache.clear_tick_cache()

@@ -621,7 +621,7 @@ logging:
 ## 11. Open Questions (V3 Design)
 
 1. **Causality Tracking:**
-   - V2 had `opportunity_id`, `trade_id`, `threat_id` in DTOs
+   - V2 had `signal_id`, `trade_id`, `risk_id` in DTOs
    - Should LogEnricher auto-inject these from TradingContext?
    - **Decision needed:** Explicit binding vs automatic context extraction
 

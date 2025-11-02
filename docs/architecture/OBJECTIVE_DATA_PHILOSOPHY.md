@@ -68,7 +68,7 @@ The EMA detector has **no opinion** about whether `ema_20=50100.50` is good or b
 
 **Example 1: Trend-Following Strategy**
 ```python
-class TrendFollowingOpportunity(StandardWorker):
+class TrendFollowingSignal(StandardWorker):
     def process(self) -> DispositionEnvelope:
         # 1. Get OBJECTIVE facts
         dtos = self.strategy_cache.get_required_dtos(self)
@@ -88,7 +88,7 @@ class TrendFollowingOpportunity(StandardWorker):
 
 **Example 2: Mean-Reversion Strategy (Contradictory!)**
 ```python
-class MeanReversionOpportunity(StandardWorker):
+class MeanReversionSignal(StandardWorker):
     def process(self) -> DispositionEnvelope:
         # 1. Get SAME objective facts
         dtos = self.strategy_cache.get_required_dtos(self)

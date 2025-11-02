@@ -265,8 +265,8 @@ graph TD
     PlanOp[PlanningOperator]
     CW1[ContextWorker1]
     CW2[ContextWorker2]
-    OW1[OpportunityWorker1]
-    OW2[OpportunityWorker2]
+    OW1[SignalDetector1]
+    OW2[SignalDetector2]
     PW[PlanningWorker]
     
     Env --> CtxOp
@@ -299,7 +299,7 @@ graph LR
     A2[EventAdapter2]
     A3[EventAdapter3]
     W1[ContextWorker1]
-    W2[OpportunityWorker1]
+    W2[SignalDetector1]
     W3[PlanningWorker]
     
     Env --> Bus

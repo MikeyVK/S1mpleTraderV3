@@ -189,7 +189,7 @@ return DispositionEnvelope(disposition="CONTINUE")
 # SignalDetector publishes signal
 return DispositionEnvelope(
     disposition="PUBLISH",
-    event_name="MOMENTUM_OPPORTUNITY",
+    event_name="MOMENTUM_SIGNAL",
     event_payload=Signal(
         signal_type="MOMENTUM_BREAKOUT",
         confidence=0.92,
@@ -254,7 +254,7 @@ class MySignalDetector(StandardWorker):
             last_signal = self.state_provider.get("last_signal_time")
         
         # Step 5: Detect signal
-        if self._is_opportunity(ema_dto, regime_dto, df):
+        if self._is_signal(ema_dto, regime_dto, df):
             # Step 6A: Publish signal
             return DispositionEnvelope(
                 disposition="PUBLISH",
@@ -382,7 +382,7 @@ def process(self):
     if ema_dto.ema_20 > resistance_level:
         return DispositionEnvelope(
             disposition="PUBLISH",  # ← Publishes to EventBus
-            event_name="BREAKOUT_OPPORTUNITY",
+            event_name="BREAKOUT_SIGNAL",
             event_payload=Signal(...)
         )
 ```
@@ -390,7 +390,7 @@ def process(self):
 ### Planning Phase
 ```python
 # LimitEntryPlanner (PlanningWorker)
-# Triggered by BREAKOUT_OPPORTUNITY event
+# Triggered by BREAKOUT_SIGNAL event
 def process(self):
     entry_plan = EntryPlan(entry_type="LIMIT", price=...)
     self.strategy_cache.set_result_dto(self, entry_plan)  # ← Sub-component
