@@ -469,7 +469,7 @@ class EventAdapter:
     def _handle_disposition(self, envelope: DispositionEnvelope):
         if envelope.disposition == Disposition.CONTINUE:
             # Publish system event (no payload)
-            publication = self._config.get_system_publication()
+            publication = self._config.get_publication_for_connector(envelope.connector_id)
             self._bus.publish(
                 publication.event_name,
                 publication.scope,
@@ -477,12 +477,12 @@ class EventAdapter:
             )
         
         elif envelope.disposition == Disposition.PUBLISH:
-            # Publish custom event (WITH System DTO payload)
-            publication = self._config.get_custom_publication(envelope.event_name)
+            # Publish event WITH payload (System DTO or Custom DTO)
+            publication = self._config.get_publication_for_connector(envelope.connector_id)
             self._bus.publish(
                 publication.event_name,
                 publication.scope,
-                payload=envelope.event_payload  # System DTO travels in event
+                payload=envelope.payload  # DTO travels in event
             )
 ```
 
@@ -496,21 +496,22 @@ Two separate transport mechanisms with different purposes:
 
 **Purpose:** Flow control signals (Signal, Risk, StrategyDirective, EntryPlan, etc.)
 
-**Transport:** DispositionEnvelope.event_payload → EventBus
+**Transport:** DispositionEnvelope.payload → EventBus
 
 ```python
 # Worker publishes Signal via PUBLISH disposition
 return DispositionEnvelope(
     disposition=Disposition.PUBLISH,
-    event_name="MOMENTUM_SIGNAL",
-    event_payload=Signal(...)  # ← Travels in event payload
+    connector_id="signal_detected",  # From manifest
+    payload=Signal(...)              # ← Travels in event payload
 )
 
-# EventAdapter publishes to EventBus
+# EventAdapter translates connector_id → event_name (from wiring config)
+# Then publishes to EventBus
 self._bus.publish(
-    event_name="MOMENTUM_SIGNAL",
+    event_name="SIGNAL_XYZ",  # From wiring config, NOT from worker
     scope=ScopeLevel.STRATEGY,
-    payload=envelope.event_payload  # ← Signal in event
+    payload=envelope.payload  # ← Signal in event
 )
 
 # Consumer receives via handler
@@ -524,7 +525,6 @@ def on_signal(self, signal: Signal):
 outputs:
   - connector_id: "signal_detected"
     disposition: "PUBLISH"
-    event_name: "MOMENTUM_SIGNAL"
     payload_type: "Signal"
     payload_source: "backend.dtos.strategy.signal.Signal"
 ```
@@ -622,7 +622,21 @@ class EventBus:
 
 ---
 
-### **Complete Flow Example**
+**Decision:** ✅ **APPROVED - Event-Centric Connector Architecture**
+
+**Impact:**
+- ⚠️ PLUGIN_ANATOMY.md - Update manifest schema (inputs/outputs with connector_id, NO event_name)
+- ⚠️ DispositionEnvelope - Change event_name field to connector_id
+- ⚠️ EVENT_DRIVEN_WIRING.md - Document event-centric wiring
+- ⚠️ ConfigTranslator - Parse wiring_rules
+- ⚠️ EventWiringFactory - Implement bootstrap validation
+- ⚠️ EventAdapter - Uniform implementation (no platform vs strategy types)
+- ⚠️ EventBus - Scope filtering (PLATFORM/STRATEGY)
+- ✅ Workers - Remain 100% bus-agnostic (no changes needed)
+
+---
+
+### GAP-003: PUBLISH Disposition - Payload Location Ambiguity
 
 **Scenario:** EMADetector → MomentumScout → StrategyPlanner
 
