@@ -103,7 +103,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 # Project modules
-from backend.utils.id_generators import generate_opportunity_id
+from backend.utils.id_generators import generate_signal_id
 from backend.dtos.causality import CausalityChain
 ```
 
@@ -310,7 +310,7 @@ class Signal(BaseModel):
     )
     
     # 2. Primary identifier
-    signal_id: str = Field(default_factory=generate_opportunity_id)
+    signal_id: str = Field(default_factory=generate_signal_id)
     
     # 3. Core data fields
     symbol: str
