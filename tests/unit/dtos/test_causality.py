@@ -227,7 +227,7 @@ class TestCausalityChainModelCopyPattern:
             tick_id="TCK_20251026_100000_a1b2c3d4"
         )
 
-        # OpportunityWorker
+        # SignalDetector
         after_opp = birth.model_copy(update={
             "signal_ids": ["SIG_20251026_100001_def5e6f7"]
         })

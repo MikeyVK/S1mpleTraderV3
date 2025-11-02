@@ -158,11 +158,11 @@ class TestRiskTimestampValidation:
         assert event.timestamp == aware_dt
 
 
-class TestRiskThreatTypeValidation:
+class TestRiskTypeValidation:
     """Test suite for risk_type field validation."""
 
     def test_valid_risk_types(self):
-        """Test that valid UPPER_SNAKE_CASE threat types are accepted."""
+        """Test that valid UPPER_SNAKE_CASE risk types are accepted."""
         valid_types = [
             "MAX_DRAWDOWN_APPROACHING",
             "UNUSUAL_VOLATILITY",
