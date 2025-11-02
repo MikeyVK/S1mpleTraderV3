@@ -93,8 +93,8 @@ class TestSignalType:
 class TestRiskType:
     """Test suite for RiskType enum."""
 
-    def test_all_threat_types_present(self):
-        """Test that all expected threat types are defined."""
+    def test_all_risk_types_present(self):
+        """Test that all expected risk types are defined."""
         expected = {
             "RISK_LIMIT_MONITORING",
             "DRAWDOWN_MONITORING",
@@ -110,10 +110,10 @@ class TestRiskType:
             f"Removed: {expected - actual}"
         )
 
-    def test_threat_type_is_string_enum(self):
+    def test_risk_type_is_string_enum(self):
         """Test that RiskType values are strings."""
-        for threat_type in RiskType:
-            assert isinstance(threat_type.value, str)
+        for risk_type in RiskType:
+            assert isinstance(risk_type.value, str)
 
 
 class TestPlanningPhase:

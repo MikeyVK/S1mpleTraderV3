@@ -293,8 +293,8 @@ class TestStrategyDirectiveUseCases:
         assert getattr(entry_dir, "direction") == "BUY"
         assert directive.confidence == Decimal("0.85")
 
-    def test_modify_existing_trade_on_threat(self):
-        """Modify existing trade directive from threat signal."""
+    def test_modify_existing_trade_on_risk(self):
+        """Modify existing trade directive from risk signal."""
         directive = StrategyDirective(
             strategy_planner_id="swot_risk_planner",
             causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),

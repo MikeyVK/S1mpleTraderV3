@@ -519,7 +519,7 @@ class StrategyDirective(BaseModel):
                     }
                 },
                 {
-                    "description": "Modify existing trade directive (threat response)",
+                    "description": "Modify existing trade directive (risk response)",
                     "directive_id": "STR_20251027_143002_j3k4l5m6",
                     "decision_timestamp": "2025-10-27T14:30:02Z",
                     "strategy_planner_id": "risk_response_planner",
