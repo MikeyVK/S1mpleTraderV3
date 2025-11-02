@@ -12,6 +12,8 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 - **Core Infrastructure:** 79 tests (StrategyCache: 20, EventBus: 33, Worker Protocol: 13, Enums: 13)
 - **Utils:** 32 tests (ID Generators: 32)
 
+> **Note:** SWOT terminology fully replaced with quant terminology (2024-11-02). See [../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md](../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md) for complete refactoring details.
+
 ## DTO Layer Status
 
 ### Strategy DTOs - Signal/Risk Detection (65 tests)
