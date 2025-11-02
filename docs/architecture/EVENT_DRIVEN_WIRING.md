@@ -205,11 +205,11 @@ base_wiring_id: "standard_trading_flow_v1"
 description: "Standard trading pipeline: Context → Opportunity → Planning → Strategy"
 
 wiring_rules:
-  # Context → Opportunity
-  - wiring_id: "ctx_to_opp"
+  # Indicator → Opportunity
+  - wiring_id: "ind_to_opp"
     source:
       component_category: "ContextWorker"  # Category, not instance
-      event_pattern: "ContextOutput"
+      event_pattern: "IndicatorOutput"
       event_type: "SystemEvent"
     target:
       component_category: "OpportunityWorker"

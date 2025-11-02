@@ -23,7 +23,6 @@ from backend.utils.id_generators import (
     generate_news_id,
     generate_opportunity_id,
     generate_threat_id,
-    generate_assessment_id,
     generate_strategy_directive_id,
     generate_entry_plan_id,
     generate_size_plan_id,
@@ -119,24 +118,6 @@ class TestWorkerOutputIDGeneration:
         id2 = generate_threat_id()
         assert id1 != id2
 
-    def test_generate_assessment_id_has_correct_prefix(self):
-        """Test that assessment IDs start with CTX_ prefix."""
-        assessment_id = generate_assessment_id()
-        assert assessment_id.startswith("CTX_")
-
-    def test_generate_assessment_id_has_valid_datetime_format(self):
-        """Test that assessment IDs contain valid datetime format."""
-        assessment_id = generate_assessment_id()
-        # Format: CTX_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^CTX_\d{8}_\d{6}_[0-9a-f]{8}$'
-        assert re.match(pattern, assessment_id), f"Invalid format: {assessment_id}"
-
-    def test_generate_assessment_id_is_unique(self):
-        """Test that consecutive assessment IDs are unique."""
-        id1 = generate_assessment_id()
-        id2 = generate_assessment_id()
-        assert id1 != id2
-
     def test_generate_directive_id_has_correct_prefix(self):
         """Test that directive IDs start with STR_ prefix."""
         directive_id = generate_strategy_directive_id()
@@ -197,11 +178,6 @@ class TestIDTypeExtraction:
         """Test extracting type from threat ID."""
         threat_id = generate_threat_id()
         assert extract_id_type(threat_id) == "THR"
-
-    def test_extract_type_from_assessment_id(self):
-        """Test extracting type from assessment ID."""
-        assessment_id = generate_assessment_id()
-        assert extract_id_type(assessment_id) == "CTX"
 
     def test_extract_type_from_directive_id(self):
         """Test extracting type from directive ID."""

@@ -60,7 +60,6 @@ class TestCausalityChainCreation:
 
         assert chain.opportunity_signal_ids == []
         assert chain.threat_ids == []
-        assert chain.context_assessment_id is None
         assert chain.strategy_directive_id is None
         assert chain.entry_plan_id is None
         assert chain.size_plan_id is None
@@ -155,15 +154,6 @@ class TestCausalityChainWorkerIDs:
 
         assert len(chain.threat_ids) == 1
         assert chain.threat_ids[0] == "THR_20251026_100001_b2c3d4e5"
-
-    def test_add_context_assessment_id(self):
-        """Test adding context assessment ID (SWOT)."""
-        chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
-            context_assessment_id="CTX_20251026_100001_abc1d2e3"
-        )
-
-        assert chain.context_assessment_id == "CTX_20251026_100001_abc1d2e3"
 
     def test_add_strategy_directive_id(self):
         """Test adding strategy directive ID."""
@@ -279,7 +269,6 @@ class TestCausalityChainSerialization:
         # Worker output IDs
         assert "opportunity_signal_ids" in data
         assert "threat_ids" in data
-        assert "context_assessment_id" in data
         assert "strategy_directive_id" in data
         assert "entry_plan_id" in data
         assert "size_plan_id" in data
@@ -308,7 +297,6 @@ class TestCausalityChainSerialization:
             "schedule_id": None,
             "opportunity_signal_ids": ["OPP_20251026_100001_def5e6f7"],
             "threat_ids": [],
-            "context_assessment_id": None,
             "strategy_directive_id": "STR_20251026_100002_abc1d2e3",
             "entry_plan_id": None,
             "size_plan_id": None,
@@ -349,7 +337,6 @@ class TestCausalityChainEdgeCases:
         """Test that None is valid for all optional worker IDs."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            context_assessment_id=None,
             strategy_directive_id=None,
             entry_plan_id=None,
             size_plan_id=None,
@@ -358,7 +345,6 @@ class TestCausalityChainEdgeCases:
             execution_directive_id=None
         )
 
-        assert chain.context_assessment_id is None
         assert chain.strategy_directive_id is None
         assert chain.entry_plan_id is None
 
@@ -368,7 +354,6 @@ class TestCausalityChainEdgeCases:
             tick_id="TCK_20251026_100000_a1b2c3d4",
             opportunity_signal_ids=["OPP_20251026_100001_def5e6f7"],
             threat_ids=["THR_20251026_100002_abc1d2e3"],
-            context_assessment_id="CTX_20251026_100003_def5e6f7",
             strategy_directive_id="STR_20251026_100004_abc1d2e3",
             entry_plan_id="ENT_20251026_100005_def5e6f7",
             size_plan_id="SIZ_20251026_100006_abc1d2e3",
@@ -377,11 +362,10 @@ class TestCausalityChainEdgeCases:
             execution_directive_id="EXE_20251026_100009_def5e6f7"
         )
 
-        # Verify all 12 fields populated
+        # Verify all fields populated
         assert chain.tick_id is not None
         assert len(chain.opportunity_signal_ids) == 1
         assert len(chain.threat_ids) == 1
-        assert chain.context_assessment_id is not None
         assert chain.strategy_directive_id is not None
         assert chain.entry_plan_id is not None
         assert chain.size_plan_id is not None

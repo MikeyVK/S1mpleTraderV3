@@ -72,7 +72,6 @@ __all__ = [
     'generate_news_id',
     'generate_opportunity_id',
     'generate_threat_id',
-    'generate_assessment_id',
     'generate_strategy_directive_id',
     'generate_entry_plan_id',
     'generate_size_plan_id',
@@ -140,11 +139,6 @@ def generate_opportunity_id() -> str:
 def generate_threat_id() -> str:
     """Generate ThreatSignal.threat_id."""
     return _generate_id('THR')
-
-
-def generate_assessment_id() -> str:
-    """Generate AggregatedContextAssessment ID."""
-    return _generate_id('CTX')
 
 
 # === Worker Output IDs (Planning Pipeline) ===

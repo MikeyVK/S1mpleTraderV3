@@ -169,7 +169,7 @@ def set_dto(self, key: str, dto: BaseModel) -> None
 **Purpose:** Store DTO in current run's cache
 
 **Parameters:**
-- `key` - DTO key (e.g., "opportunity_signals", "context_factors")
+- `key` - DTO key (e.g., "opportunity_signals", "indicator_data")
 - `dto` - Pydantic BaseModel DTO to store
 
 **Raises:**
@@ -377,7 +377,7 @@ PlanningWorker aggregates signals from cache:
 ```python
 # backend/workers/planning_worker.py
 class PlanningWorker:
-    def process(self, context: AggregatedContextAssessment):
+    def process(self, input_dto):
         # Get all opportunity signals from current run
         opportunities = strategy_cache.get_dtos(
             "opportunity_signals",
@@ -390,9 +390,8 @@ class PlanningWorker:
             ThreatSignal
         )
         
-        # SWOT confrontation matrix
+        # Decision matrix
         directive = self._create_strategy_directive(
-            context,
             opportunities,
             threats
         )

@@ -145,7 +145,6 @@ Track which components have reference documentation:
 | **Strategy DTOs** |
 | OpportunitySignal | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | ✅ [Example](dtos/opportunity_signal.md) | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Complete |
 | ThreatSignal | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
-| AggregatedContextAssessment | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
 | StrategyDirective | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
 | EntryPlan | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
 | SizePlan | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
