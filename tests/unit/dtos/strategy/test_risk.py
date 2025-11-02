@@ -36,17 +36,18 @@ class TestRiskCreation:
 
     def test_create_minimal_event(self):
         """Test creating event with required fields only."""
+        tick_id = generate_tick_id()
+        causality = CausalityChain(tick_id=tick_id)
         event = Risk(  # type: ignore[call-arg]
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=causality,
             timestamp=datetime.now(timezone.utc),
             risk_type="MAX_DRAWDOWN_APPROACHING",
             severity=0.75
         )
 
-        # Verify ID formats (cast to avoid Pylance FieldInfo warnings)
         # Verify causality chain
-        assert event.causality.tick_id is not None
-        assert event.causality.tick_id.startswith("TCK_")
+        assert tick_id.startswith("TCK_")
+        assert event.causality.tick_id == tick_id
         # Verify ID formats
         risk_id = str(event.risk_id)
         assert risk_id.startswith("RSK_")
@@ -94,7 +95,7 @@ class TestRiskCreation:
 
 
 
-class TestRiskThreatIDValidation:
+class TestRiskIDValidation:
     """Test suite for risk_id validation."""
 
     def test_valid_risk_id_format(self):
