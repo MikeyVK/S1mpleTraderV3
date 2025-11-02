@@ -29,7 +29,6 @@ Prefix Convention:
     Worker Output IDs (SWOT framework):
         OPP_ - OpportunitySignal (OpportunityWorker output)
         THR_ - ThreatSignal.threat_id (ThreatWorker output)
-        CTX_ - AggregatedContextAssessment (ContextAggregator output)
 
     Worker Output IDs (Planning pipeline):
         STR_ - StrategyDirective (StrategyPlanner output)
@@ -43,7 +42,6 @@ Causal Traceability Examples:
     Tick-based SWOT flow:
         TCK_20251026_100000_abc123 (birth)
           → OPP_20251026_100001_def456 (OpportunityWorker)
-          → CTX_20251026_100001_ghi789 (ContextAggregator)
           → STR_20251026_100002_jkl012 (StrategyPlanner)
           → ENT_20251026_100003_mno345 (EntryPlanner)
           → EXE_20251026_100010_pqr678 (DirectiveAssembler)

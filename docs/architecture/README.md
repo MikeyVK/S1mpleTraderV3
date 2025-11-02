@@ -7,8 +7,9 @@
 **New to the project?** Read in this order:
 1. [Core Principles](CORE_PRINCIPLES.md) - Vision + 4 fundamental principles
 2. [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) - **CRITICAL**: 3 major changes from V2
-3. [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - DTO-Centric data flow
-4. [Worker Taxonomy](WORKER_TAXONOMY.md) - 5 worker categories
+3. [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) - **NEW**: The "Quant Leap" explained
+4. [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - DTO-Centric data flow
+5. [Worker Taxonomy](WORKER_TAXONOMY.md) - 5 worker categories
 
 **Implementing a feature?** Jump to:
 - **Workers**: [Worker Taxonomy](WORKER_TAXONOMY.md) → [Plugin Anatomy](PLUGIN_ANATOMY.md)
@@ -23,6 +24,7 @@
 |----------|---------|------------|
 | [Core Principles](CORE_PRINCIPLES.md) | Vision + Design Philosophy | Plugin First, Separation of Concerns, Config-Driven, Contract-Driven |
 | [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) | **CRITICAL READING** | Platgeslagen Orkestratie, Point-in-Time Model, BuildSpec Bootstrap |
+| [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) | **Quant Leap Philosophy** | Objective ContextWorkers, Subjective Consumers, No SWOT Aggregation |
 | [Layered Architecture](LAYERED_ARCHITECTURE.md) | System Layers | Frontend → Service → Backend, Dependency flow |
 
 ### Configuration & Bootstrap
@@ -58,8 +60,9 @@
 
 ### Phase 1: Understanding the Model
 1. ✅ Read [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) - **NON-NEGOTIABLE**
-2. ✅ Read [Point-in-Time Model](POINT_IN_TIME_MODEL.md)
-3. ✅ Skim [Worker Taxonomy](WORKER_TAXONOMY.md)
+2. ✅ Read [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) - **Quant Leap explained**
+3. ✅ Read [Point-in-Time Model](POINT_IN_TIME_MODEL.md)
+4. ✅ Skim [Worker Taxonomy](WORKER_TAXONOMY.md)
 
 ### Phase 2: Implementation Patterns
 1. ✅ Study [Plugin Anatomy](PLUGIN_ANATOMY.md)
@@ -74,6 +77,7 @@
 ## Architecture Decisions
 
 **Key Design Choices:**
+- **No SWOT Aggregation**: ContextWorkers produce objective facts, consumers interpret (zie [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md))
 - **No Operators**: Workers bedraad via EventAdapters (zie [Architectural Shifts](ARCHITECTURAL_SHIFTS.md#verschuiving-1))
 - **No Growing DataFrames**: Point-in-Time DTOs only (zie [Point-in-Time Model](POINT_IN_TIME_MODEL.md))
 - **Fail-Fast Bootstrap**: Validation during assembly, not runtime (zie [Layered Architecture](LAYERED_ARCHITECTURE.md#bootstrap-workflow))
@@ -124,6 +128,6 @@ graph TD
 
 ---
 
-**Last Updated:** 2025-10-29
-**Maintained By:** Development Team
+**Last Updated:** 2025-11-02  
+**Maintained By:** Development Team  
 **For Questions:** See relevant detailed document or TODO.md for current work

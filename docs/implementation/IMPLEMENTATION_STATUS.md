@@ -6,22 +6,24 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 > **Quality Gates & TDD Workflow:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) and [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
 
-**Last Updated:** 2025-10-30  
-**Total Tests Passing:** 404 (304 DTO tests + 20 StrategyCache + 33 EventBus + 13 Worker + 34 Core Infrastructure)
+**Last Updated:** 2025-11-02  
+**Total Tests Passing:** 362 (262 DTO tests + 20 StrategyCache + 33 EventBus + 13 Worker + 34 Core Infrastructure)
 
 ## DTO Layer Status
 
-### Strategy DTOs - SWOT Signals (99 tests)
+### Strategy DTOs - SWOT Signals (57 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
 | opportunity_signal.py | 10.00/10 | 27/27 ✅ | 10.00/10 | 0 | ✅ Complete |
 | threat_signal.py | 10.00/10 | 19/19 ✅ | 10.00/10 | 0 | ✅ Complete |
-| context_factor.py | 10.00/10 | 28/28 ✅ | 10.00/10 | 0 | ✅ Complete |
-| aggregated_context_assessment.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Complete |
 | strategy_directive.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ Complete |
 
-**Coverage:** 99/99 tests passing (100%)
+**Coverage:** 57/57 tests passing (100%)
+
+**Removed (Quant Leap Architecture):**
+- ~~context_factor.py~~ - ContextWorkers now produce objective DTOs only
+- ~~aggregated_context_assessment.py~~ - No SWOT aggregation layer
 
 ### Strategy DTOs - Planning (60 tests)
 
@@ -81,17 +83,18 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 - ✅ IEventBus protocol + EventBus implementation (33 tests)
 - ✅ IWorkerLifecycle protocol (13 tests)
 
-### Core Infrastructure (34 tests)
+### Core Infrastructure (14 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| context_factors.py | 10.00/10 | 20/20 ✅ | 10.00/10 | 0 | ✅ FactorRegistry Complete |
 | enums.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Core Enums Complete |
 
-**Coverage:** 34/34 tests passing (100%)
+**Coverage:** 14/14 tests passing (100%)
+
+**Removed (Quant Leap Architecture):**
+- ~~context_factors.py~~ - FactorRegistry no longer needed (no SWOT aggregation)
 
 **Core Infrastructure:**
-- ✅ FactorRegistry: BaseFactorType registration and validation (20 tests)
 - ✅ Core Enums: ContextType, OpportunityType, ThreatType, PlanningPhase, ExecutionType (14 tests)
 
 ## Utilities Status
@@ -108,26 +111,42 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 | Layer | Tests | Status |
 |-------|-------|--------|
-| **Strategy SWOT** | 99/99 ✅ | 100% |
+| **Strategy SWOT** | 57/57 ✅ | 100% |
 | **Strategy Planning** | 60/60 ✅ | 100% |
 | **Execution** | 51/51 ✅ | 100% |
 | **Shared** | 42/42 ✅ | 100% |
 | **Platform (Cache)** | 20/20 ✅ | 100% |
 | **Platform (EventBus)** | 33/33 ✅ | 100% |
 | **Platform (Worker)** | 13/13 ✅ | 100% |
-| **Core Infrastructure** | 34/34 ✅ | 100% |
+| **Core Infrastructure** | 14/14 ✅ | 100% |
 | **Utilities** | 32/32 ✅ | 100% |
-| **TOTAL** | **404/404 ✅** | **100%** |
+| **TOTAL** | **362/362 ✅** | **100%** |
 
 ### By Phase (Roadmap)
 
 | Phase | Component | Tests | Status |
 |-------|-----------|-------|--------|
-| **1.1** | Data Contracts (14 DTOs) | 304/304 ✅ | Complete |
+| **1.1** | Data Contracts (12 DTOs) | 262/262 ✅ | Complete |
 | **1.2** | IStrategyCache Protocol | 20/20 ✅ | Complete |
 | **1.2** | IEventBus Protocol | 33/33 ✅ | Complete |
 | **1.2** | IWorkerLifecycle Protocol | 13/13 ✅ | Complete |
 | **1.4** | RunAnchor + StrategyCacheType | - | Complete |
+
+## Recent Updates (2025-11-02)
+
+### Quant Leap Architecture - SWOT Aggregation Removal
+- ❌ **Removed DTOs**: `context_factor.py` (28 tests), `aggregated_context_assessment.py` (14 tests)
+- ❌ **Removed Infrastructure**: `context_factors.py` (FactorRegistry, 20 tests)
+- ✅ **Philosophy**: ContextWorkers produce objective DTOs only, no subjective SWOT aggregation
+- ✅ **Impact**: Consumers (OpportunityWorkers, StrategyPlanners) apply their own interpretation
+- ✅ **Test Reduction**: 404 → 362 tests (-42 tests, architecture simplification)
+- ✅ **Updated References**: 
+  - `causality.py` - Removed `context_assessment_id` field
+  - `id_generators.py` - Removed CTX_ prefix documentation
+  - `strategy_directive.py` - Updated responsibilities
+  - `backend/dtos/strategy/__init__.py` - Removed obsolete imports
+
+**Architecture Decision**: Workers now share objective facts via TickCache. Subjective interpretation happens at consumption point, enabling contradictory strategies to coexist (e.g., trend-following vs mean-reversion using same EMA data).
 
 ## Recent Updates (2025-10-29)
 
@@ -255,8 +274,8 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ### Overall Statistics
 
-- **Total Modules:** 23 (14 DTOs + 5 protocols + 2 services + 2 infrastructure)
-- **Total Tests:** 404
+- **Total Modules:** 21 (12 DTOs + 5 protocols + 2 services + 2 infrastructure)
+- **Total Tests:** 362
 - **Test Coverage:** 100%
 - **Pylint Score:** 10.00/10 (all modules)
 - **Mypy Errors:** 0 (all DTOs)
@@ -264,8 +283,8 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ### Code Quality Trends
 
-- **Lines of Code:** ~3,000 (DTOs + tests + services + protocols + infrastructure)
-- **Average Tests per Module:** 17.6
+- **Lines of Code:** ~2,500 (DTOs + tests + services + protocols + infrastructure)
+- **Average Tests per Module:** 17.2
 - **Documentation Coverage:** 100% (file headers, docstrings)
 - **Quality Gate Pass Rate:** 100%
 

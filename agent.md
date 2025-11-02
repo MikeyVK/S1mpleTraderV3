@@ -13,9 +13,10 @@ Je bent een AI-assistent voor **S1mpleTrader V3** development. Je helpt met:
 
 1. ⭐ **START**: [Architecture - Core Principles](docs/architecture/CORE_PRINCIPLES.md)
 2. ⭐ **CRITICAL**: [Architecture - Architectural Shifts](docs/architecture/ARCHITECTURAL_SHIFTS.md)
-3. ⭐ **DATA MODEL**: [Architecture - Point-in-Time Model](docs/architecture/POINT_IN_TIME_MODEL.md)
-4. 📋 **WORKFLOW**: [Coding Standards - TDD Workflow](docs/coding_standards/TDD_WORKFLOW.md)
-5. 📊 **STATUS**: [Implementation Status](docs/implementation/IMPLEMENTATION_STATUS.md)
+3. ⭐ **QUANT LEAP**: [Architecture - Objective Data Philosophy](docs/architecture/OBJECTIVE_DATA_PHILOSOPHY.md)
+4. ⭐ **DATA MODEL**: [Architecture - Point-in-Time Model](docs/architecture/POINT_IN_TIME_MODEL.md)
+5. 📋 **WORKFLOW**: [Coding Standards - TDD Workflow](docs/coding_standards/TDD_WORKFLOW.md)
+6. 📊 **STATUS**: [Implementation Status](docs/implementation/IMPLEMENTATION_STATUS.md)
 
 **Voor specifieke taken:**
 - **Workers?** → [Architecture - Worker Taxonomy](docs/architecture/WORKER_TAXONOMY.md)
@@ -69,8 +70,9 @@ docs/
 2. **Separation of Concerns** - Workers/Environment/Factories/EventBus strictly separated
 3. **Config-Driven** - Behavior controlled by YAML, not hardcoded
 4. **Contract-Driven** - All data exchange via Pydantic DTOs
+5. **Objective Data** - ContextWorkers produce facts, consumers interpret
 
-**Details:** [Core Principles](docs/architecture/CORE_PRINCIPLES.md)
+**Details:** [Core Principles](docs/architecture/CORE_PRINCIPLES.md) + [Objective Data Philosophy](docs/architecture/OBJECTIVE_DATA_PHILOSOPHY.md)
 
 ## The 3 Critical Shifts (Must Understand!)
 
@@ -131,6 +133,7 @@ pytest <test_file> -v
 ❌ **NO trailing whitespace** - Auto-fix: `(Get-Content <file>) | ForEach-Object { $_.TrimEnd() } | Set-Content <file>`
 ❌ **NO imports in functions** - Always top-level
 ❌ **NO code without tests** - TDD is mandatory
+❌ **NO subjective ContextWorkers** - ContextWorkers produce objective facts only (no "bullish", "strong", etc.)
 
 ## Quick Reference Card
 
@@ -241,6 +244,7 @@ git branch -d feature/my-feature
 
 - [ ] Gelezen: CORE_PRINCIPLES.md
 - [ ] Gelezen: ARCHITECTURAL_SHIFTS.md (3 shifts duidelijk?)
+- [ ] Gelezen: OBJECTIVE_DATA_PHILOSOPHY.md (ContextWorkers = facts, consumers = interpretation?)
 - [ ] Gelezen: POINT_IN_TIME_MODEL.md (IStrategyCache begrip?)
 - [ ] Gelezen: Relevante worker/DTO/platform doc
 - [ ] Ontwerp gemaakt (architecturale positie, verantwoordelijkheden)
@@ -252,7 +256,7 @@ git branch -d feature/my-feature
 
 ---
 
-**Documentation maintained by:** Development Team
-**Last major update:** 2025-10-28
-**Version:** V3
+**Documentation maintained by:** Development Team  
+**Last major update:** 2025-11-02  
+**Version:** V3  
 **For detailed docs:** See `docs/` folders above
