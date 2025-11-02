@@ -1,20 +1,19 @@
-# backend/dtos/strategy/opportunity_signal.py
+# backend/dtos/strategy/signal.py
 """
-OpportunitySignal DTO: OpportunityWorker output contract.
+Signal DTO: SignalDetector output contract.
 
-Represents a detected trading opportunity in the SWOT analysis framework.
-OpportunityWorkers emit OpportunitySignals to signal potential long/short
-entries based on technical analysis patterns.
+Represents a detected trading signal based on technical analysis patterns.
+SignalDetectors emit Signals to indicate potential long/short entry opportunities.
 
-Part of SWOT framework:
-- ContextWorkers → BaseContext (Strengths & Weaknesses)
-- OpportunityWorkers → OpportunitySignal (Opportunities)
-- ThreatWorkers → ThreatSignal (Threats)
-- PlanningWorker → Confrontation Matrix (combines quadrants)
+Signal Framework:
+- ContextWorkers → Objective market context (indicators, regime, volatility)
+- SignalDetectors → Signal (Entry/exit patterns)
+- RiskMonitors → Risk (Portfolio/position risks)
+- StrategyPlanners → Decision making (combines signals, risk, context)
 
 @layer: DTO (Strategy)
 @dependencies: [pydantic, datetime, backend.utils.id_generators, backend.dtos.causality]
-@responsibilities: [opportunity detection contract, causal tracking, SWOT confidence]
+@responsibilities: [signal detection contract, causal tracking, confidence scoring]
 """
 import re
 
@@ -22,7 +21,7 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
-from backend.utils.id_generators import generate_opportunity_id
+from backend.utils.id_generators import generate_signal_id
 from backend.dtos.causality import CausalityChain
 
 
@@ -70,14 +69,14 @@ class OpportunitySignal(BaseModel):
         description="Causality tracking - IDs from birth (tick/news/schedule)"
     )
 
-    opportunity_id: str = Field(
-        default_factory=generate_opportunity_id,
-        pattern=r'^OPP_\d{8}_\d{6}_[0-9a-f]{8}$',
-        description="Typed opportunity ID (military datetime format)"
+    signal_id: str = Field(
+        default_factory=generate_signal_id,
+        pattern=r'^SIG_\d{8}_\d{6}_[0-9a-f]{8}$',
+        description="Typed signal ID (military datetime format)"
     )
 
     timestamp: datetime = Field(
-        description="When the opportunity was detected (UTC)"
+        description="When the signal was detected (UTC)"
     )
 
     asset: str = Field(
@@ -101,7 +100,7 @@ class OpportunitySignal(BaseModel):
         default=None,
         ge=0.0,
         le=1.0,
-        description="Opportunity confidence [0.0, 1.0] for SWOT confrontation",
+        description="Signal confidence [0.0, 1.0] for decision making",
     )
 
     @field_validator('signal_type')
@@ -139,8 +138,8 @@ class OpportunitySignal(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "description": "FVG breakout signal (LONG opportunity)",
-                    "opportunity_id": "OPP_20251027_100001_a1b2c3d4",
+                    "description": "FVG breakout signal (LONG)",
+                    "signal_id": "SIG_20251027_100001_a1b2c3d4",
                     "timestamp": "2025-10-27T10:00:01Z",
                     "asset": "BTCUSDT",
                     "direction": "LONG",
@@ -148,8 +147,8 @@ class OpportunitySignal(BaseModel):
                     "confidence": 0.85
                 },
                 {
-                    "description": "MSS reversal signal (SHORT opportunity)",
-                    "opportunity_id": "OPP_20251027_143000_e5f6g7h8",
+                    "description": "MSS reversal signal (SHORT)",
+                    "signal_id": "SIG_20251027_143000_e5f6g7h8",
                     "timestamp": "2025-10-27T14:30:00Z",
                     "asset": "ETHUSDT",
                     "direction": "SHORT",
@@ -158,7 +157,7 @@ class OpportunitySignal(BaseModel):
                 },
                 {
                     "description": "High confidence breakout (no confidence defaults to None)",
-                    "opportunity_id": "OPP_20251027_150500_i9j0k1l2",
+                    "signal_id": "SIG_20251027_150500_i9j0k1l2",
                     "timestamp": "2025-10-27T15:05:00Z",
                     "asset": "SOLUSDT",
                     "direction": "LONG",

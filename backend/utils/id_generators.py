@@ -26,9 +26,9 @@ Prefix Convention:
         SCH_ - Scheduled event (DCA, rebalancing, etc.)
         NWS_ - News/external event
 
-    Worker Output IDs (SWOT framework):
-        OPP_ - OpportunitySignal (OpportunityWorker output)
-        THR_ - ThreatSignal.threat_id (ThreatWorker output)
+    Worker Output IDs (Quant Framework):
+        SIG_ - Signal (SignalDetector output)
+        RSK_ - Risk (RiskMonitor output)
 
     Worker Output IDs (Planning pipeline):
         STR_ - StrategyDirective (StrategyPlanner output)
@@ -39,9 +39,9 @@ Prefix Convention:
         EXE_ - ExecutionDirective (DirectiveAssembler output)
 
 Causal Traceability Examples:
-    Tick-based SWOT flow:
+    Tick-based quant flow:
         TCK_20251026_100000_abc123 (birth)
-          → OPP_20251026_100001_def456 (OpportunityWorker)
+          → SIG_20251026_100001_def456 (SignalDetector)
           → STR_20251026_100002_jkl012 (StrategyPlanner)
           → ENT_20251026_100003_mno345 (EntryPlanner)
           → EXE_20251026_100010_pqr678 (DirectiveAssembler)
@@ -70,8 +70,8 @@ __all__ = [
     'generate_tick_id',
     'generate_schedule_id',
     'generate_news_id',
-    'generate_opportunity_id',
-    'generate_threat_id',
+    'generate_signal_id',
+    'generate_risk_id',
     'generate_strategy_directive_id',
     'generate_entry_plan_id',
     'generate_size_plan_id',
@@ -129,16 +129,16 @@ def generate_news_id() -> str:
     return _generate_id('NWS')
 
 
-# === Worker Output IDs (SWOT Framework) ===
+# === Worker Output IDs (Quant Framework) ===
 
-def generate_opportunity_id() -> str:
-    """Generate OpportunitySignal ID."""
-    return _generate_id('OPP')
+def generate_signal_id() -> str:
+    """Generate Signal ID."""
+    return _generate_id('SIG')
 
 
-def generate_threat_id() -> str:
-    """Generate ThreatSignal.threat_id."""
-    return _generate_id('THR')
+def generate_risk_id() -> str:
+    """Generate Risk ID."""
+    return _generate_id('RSK')
 
 
 # === Worker Output IDs (Planning Pipeline) ===
@@ -199,8 +199,8 @@ def extract_id_type(typed_id: str) -> str:
         ValueError: If ID format is invalid or prefix is unknown
 
     Examples:
-        >>> extract_id_type("OPP_20251026_100000_abc123")
-        'OPP'
+        >>> extract_id_type("SIG_20251026_100000_abc123")
+        'SIG'
         >>> extract_id_type("TCK_20251026_143052_a1b2c3d4")
         'TCK'
     """
@@ -210,7 +210,7 @@ def extract_id_type(typed_id: str) -> str:
     prefix = typed_id.split('_')[0]
     valid_prefixes = [
         'TCK', 'SCH', 'NWS',        # Birth IDs
-        'OPP', 'THR', 'CTX',        # SWOT worker outputs
+        'SIG', 'RSK', 'CTX',        # Quant worker outputs
         'STR',                      # StrategyPlanner output
         'ENT', 'SIZ', 'EXT', 'EXP', 'EXE', 'EXG', 'BAT'  # Planning pipeline outputs
     ]
@@ -235,7 +235,7 @@ def extract_id_timestamp(typed_id: str) -> datetime:
         ValueError: If ID format is invalid or timestamp cannot be parsed
 
     Examples:
-        >>> extract_id_timestamp("OPP_20251026_100000_abc123")
+        >>> extract_id_timestamp("SIG_20251026_100000_abc123")
         datetime.datetime(2025, 10, 26, 10, 0, 0, tzinfo=timezone.utc)
     """
     parts = typed_id.split('_')

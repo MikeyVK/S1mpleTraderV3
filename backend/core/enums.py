@@ -28,8 +28,8 @@ class ContextType(str, Enum):
     SENTIMENT_ENRICHMENT = "SENTIMENT_ENRICHMENT"
     FUNDAMENTAL_ENRICHMENT = "FUNDAMENTAL_ENRICHMENT"
 
-class OpportunityType(str, Enum):
-    """Opportunity worker categorization by strategic approach."""
+class SignalType(str, Enum):
+    """Signal detector categorization by pattern type."""
     BREAKOUT_DETECTION = "BREAKOUT_DETECTION"
     PULLBACK_DETECTION = "PULLBACK_DETECTION"
     REVERSAL_DETECTION = "REVERSAL_DETECTION"
@@ -39,8 +39,8 @@ class OpportunityType(str, Enum):
     SENTIMENT_EXTREME = "SENTIMENT_EXTREME"
 
 
-class ThreatType(str, Enum):
-    """Threat worker categorization by risk domain."""
+class RiskType(str, Enum):
+    """Risk monitor categorization by risk domain."""
     RISK_LIMIT_MONITORING = "RISK_LIMIT_MONITORING"
     DRAWDOWN_MONITORING = "DRAWDOWN_MONITORING"
     VOLATILITY_MONITORING = "VOLATILITY_MONITORING"
