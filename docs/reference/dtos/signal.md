@@ -1,18 +1,18 @@
-# OpportunitySignal DTO - Reference Implementation
+# Signal DTO - Reference Implementation
 
 ## Overview
 
-**File:** `backend/dtos/strategy/opportunity_signal.py`
-**Tests:** `tests/unit/dtos/strategy/test_opportunity_signal.py`
+**File:** `backend/dtos/strategy/signal.py`
+**Tests:** `tests/unit/dtos/strategy/test_signal.py`
 
-OpportunitySignal is the **reference implementation** for Strategy DTOs with causality tracking. Use this as a template when creating new SWOT signal DTOs.
+Signal is the **reference implementation** for Strategy DTOs with causality tracking. Use this as a template when creating new signal DTOs.
 
 ## Quick Facts
 
 | Attribute | Value |
 |-----------|-------|
 | **Layer** | DTO (Strategy) |
-| **Purpose** | OpportunityWorker output contract |
+| **Purpose** | SignalDetector output contract |
 | **Causality** | ✅ Has CausalityChain |
 | **Frozen** | ✅ Immutable |
 | **Tests** | 22 comprehensive tests |
@@ -20,15 +20,15 @@ OpportunitySignal is the **reference implementation** for Strategy DTOs with cau
 
 ## Architecture Context
 
-**SWOT Framework Position:**
+**Signal Framework Position:**
 - ContextWorkers → BaseContext (Strengths & Weaknesses)
-- **OpportunityWorkers → OpportunitySignal (Opportunities)** ← This DTO
-- ThreatWorkers → ThreatSignal (Threats)
+- **SignalDetectors → Signal (Opportunities)** ← This DTO
+- RiskMonitors → Risk (Threats)
 - PlanningWorker → StrategyDirective (combines quadrants)
 
 **Causal Chain:**
 ```
-TickID → OpportunitySignal.opportunity_id → StrategyDirective.strategy_id
+TickID → Signal.signal_id → StrategyDirective.strategy_id
 ```
 
 ## Implementation Highlights
@@ -36,23 +36,23 @@ TickID → OpportunitySignal.opportunity_id → StrategyDirective.strategy_id
 ### 1. File Header (EXEMPLARY)
 
 ```python
-# backend/dtos/strategy/opportunity_signal.py
+# backend/dtos/strategy/signal.py
 """
-OpportunitySignal DTO: OpportunityWorker output contract.
+Signal DTO: SignalDetector output contract.
 
-Represents a detected trading opportunity in the SWOT analysis framework.
-OpportunityWorkers emit OpportunitySignals to signal potential long/short
+Represents a detected trading signal in the quant framework.
+SignalDetectors emit Signals to signal potential long/short
 entries based on technical analysis patterns.
 
-Part of SWOT framework:
+Part of signal framework:
 - ContextWorkers → BaseContext (Strengths & Weaknesses)
-- OpportunityWorkers → OpportunitySignal (Opportunities)
-- ThreatWorkers → ThreatSignal (Threats)
+- SignalDetectors → Signal (Opportunities)
+- RiskMonitors → Risk (Threats)
 - PlanningWorker → Confrontation Matrix (combines quadrants)
 
 @layer: DTO (Strategy)
 @dependencies: [pydantic, datetime, backend.utils.id_generators, backend.dtos.causality]
-@responsibilities: [opportunity detection contract, causal tracking, SWOT confidence]
+@responsibilities: [signal detection contract, causal tracking, confidence scoring]
 """
 ```
 
@@ -65,8 +65,8 @@ Part of SWOT framework:
 ### 2. Field Organization (PERFECT)
 
 ```python
-class OpportunitySignal(BaseModel):
-    """OpportunityWorker output DTO representing a detected trading opportunity."""
+class Signal(BaseModel):
+    """SignalDetector output DTO representing a detected trading signal."""
     
     # 1. Causality tracking (FIRST)
     causality: CausalityChain = Field(
@@ -74,15 +74,15 @@ class OpportunitySignal(BaseModel):
     )
 
     # 2. Primary identifier (SECOND)
-    opportunity_id: str = Field(
-        default_factory=generate_opportunity_id,
-        pattern=r'^OPP_\d{8}_\d{6}_[0-9a-f]{8}$',
-        description="Typed opportunity ID (military datetime format)"
+    signal_id: str = Field(
+        default_factory=generate_signal_id,
+        pattern=r'^SIG_\d{8}_\d{6}_[0-9a-f]{8}$',
+        description="Typed signal ID (military datetime format)"
     )
 
     # 3. Timestamp (THIRD)
     timestamp: datetime = Field(
-        description="When the opportunity was detected (UTC)"
+        description="When the signal was detected (UTC)"
     )
 
     # 4. Core data fields (logical grouping)
@@ -104,15 +104,15 @@ class OpportunitySignal(BaseModel):
 ### 3. Military Datetime ID Validation (REFERENCE)
 
 ```python
-opportunity_id: str = Field(
-    default_factory=generate_opportunity_id,
-    pattern=r'^OPP_\d{8}_\d{6}_[0-9a-f]{8}$',
-    description="Typed opportunity ID (military datetime format)"
+signal_id: str = Field(
+    default_factory=generate_signal_id,
+    pattern=r'^SIG_\d{8}_\d{6}_[0-9a-f]{8}$',
+    description="Typed signal ID (military datetime format)"
 )
 ```
 
 **Pattern breakdown:**
-- `OPP_` - Typed prefix (Opportunity)
+- `SIG_` - Typed prefix (Signal)
 - `\d{8}` - Date (YYYYMMDD)
 - `\d{6}` - Time (HHMMSS)
 - `[0-9a-f]{8}` - 8-char hex hash
@@ -190,8 +190,8 @@ model_config = {
     "json_schema_extra": {
         "examples": [
             {
-                "description": "FVG breakout signal (LONG opportunity)",
-                "opportunity_id": "OPP_20251027_100001_a1b2c3d4",
+                "description": "FVG breakout signal (LONG signal)",
+                "signal_id": "SIG_20251027_100001_a1b2c3d4",
                 "timestamp": "2025-10-27T10:00:01Z",
                 "asset": "BTCUSDT",
                 "direction": "LONG",
@@ -199,8 +199,8 @@ model_config = {
                 "confidence": 0.85
             },
             {
-                "description": "MSS reversal signal (SHORT opportunity)",
-                "opportunity_id": "OPP_20251027_143000_e5f6g7h8",
+                "description": "MSS reversal signal (SHORT signal)",
+                "signal_id": "SIG_20251027_143000_e5f6g7h8",
                 "timestamp": "2025-10-27T14:30:00Z",
                 "asset": "ETHUSDT",
                 "direction": "SHORT",
@@ -209,7 +209,7 @@ model_config = {
             },
             {
                 "description": "High confidence breakout (no confidence defaults to None)",
-                "opportunity_id": "OPP_20251027_150500_i9j0k1l2",
+                "signal_id": "SIG_20251027_150500_i9j0k1l2",
                 "timestamp": "2025-10-27T15:05:00Z",
                 "asset": "SOLUSDT",
                 "direction": "LONG",
@@ -230,37 +230,37 @@ model_config = {
 
 ## Test Structure (REFERENCE)
 
-**File:** `tests/unit/dtos/strategy/test_opportunity_signal.py`
+**File:** `tests/unit/dtos/strategy/test_signal.py`
 
 **Test organization:**
 
 ```python
-class TestOpportunitySignalCreation:
-    """Test suite for OpportunitySignal instantiation."""
+class TestSignalCreation:
+    """Test suite for Signal instantiation."""
     # 4 tests: minimal, with confidence, ID auto-gen, custom ID
 
-class TestOpportunitySignalOpportunityIDValidation:
-    """Test suite for opportunity_id validation."""
+class TestSignalIDValidation:
+    """Test suite for signal_id validation."""
     # 2 tests: valid format, invalid prefix
 
-class TestOpportunitySignalTimestampValidation:
+class TestSignalTimestampValidation:
     """Test suite for timestamp validation."""
     # 3 tests: naive, aware UTC, non-UTC conversion
 
-class TestOpportunitySignalAssetValidation:
+class TestSignalAssetValidation:
     """Test suite for asset validation."""
     # 4 tests: valid format, missing slash, too short, too long
 
-class TestOpportunitySignalSignalTypeValidation:
+class TestSignalSignalTypeValidation:
     """Test suite for signal_type validation."""
     # 5 tests: valid, lowercase, reserved SYSTEM_, reserved INTERNAL_, invalid chars
 
-class TestOpportunitySignalConfidenceValidation:
+class TestSignalConfidenceValidation:
     """Test suite for confidence validation."""
     # 3 tests: valid range, below 0.0, above 1.0
 
-class TestOpportunitySignalImmutability:
-    """Test suite for OpportunitySignal immutability."""
+class TestSignalImmutability:
+    """Test suite for Signal immutability."""
     # 2 tests: frozen fields, no extra fields
 ```
 
@@ -288,7 +288,7 @@ causality: CausalityChain = Field(
 # In tests
 from backend.utils.id_generators import generate_tick_id
 
-signal = OpportunitySignal(
+signal = Signal(
     causality=CausalityChain(tick_id=generate_tick_id()),
     # ... other fields
 )
@@ -303,8 +303,8 @@ assert getattr(causality, "tick_id") is not None
 assert getattr(causality, "tick_id").startswith("TCK_")
 
 # ✅ ACCEPTABLE - Intermediate variable
-opportunity_id = str(signal.opportunity_id)
-assert opportunity_id.startswith("OPP_")
+signal_id = str(signal.signal_id)
+assert signal_id.startswith("SIG_")
 ```
 
 ### 3. Validator Error Testing
@@ -313,7 +313,7 @@ assert opportunity_id.startswith("OPP_")
 def test_invalid_value_rejected(self):
     """Test that invalid value is rejected."""
     with pytest.raises(ValidationError) as exc_info:
-        OpportunitySignal(
+        Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             field="invalid"
         )
@@ -325,19 +325,19 @@ def test_invalid_value_rejected(self):
 ## Usage Example
 
 ```python
-# Worker emitting OpportunitySignal
+# Worker emitting Signal
 from backend.core.strategy_cache import strategy_cache
-from backend.dtos.strategy.opportunity_signal import OpportunitySignal
+from backend.dtos.strategy.signal import Signal
 from backend.dtos.causality import CausalityChain
 
-class FVGOpportunityWorker:
+class FVGSignalDetector:
     def process(self, tick: RawTick) -> DispositionEnvelope:
         # Get run anchor from cache
         anchor = strategy_cache.get_run_anchor()
         
         # Detect FVG pattern
         if self._detect_fvg(tick):
-            signal = OpportunitySignal(
+            signal = Signal(
                 causality=CausalityChain(tick_id=tick.tick_id),
                 timestamp=anchor.timestamp,
                 asset=tick.symbol,
@@ -347,11 +347,11 @@ class FVGOpportunityWorker:
             )
             
             # Store in cache
-            strategy_cache.set_dto("opportunity_signals", signal)
+            strategy_cache.set_dto("signals", signal)
             
             return DispositionEnvelope(
                 disposition=Disposition.PUBLISH,
-                event_name="OPPORTUNITY_DETECTED",
+                event_name="SIGNAL_DETECTED",
                 payload=signal
             )
         
@@ -375,12 +375,12 @@ class FVGOpportunityWorker:
 
 Use this checklist when creating new Strategy DTOs:
 
-- [ ] File header with @layer/@dependencies/@responsibilities (see OpportunitySignal)
+- [ ] File header with @layer/@dependencies/@responsibilities (see Signal)
 - [ ] Imports in 3 groups with comments
 - [ ] Causality field first (if applicable - check decision tree)
 - [ ] Primary ID with military datetime pattern
 - [ ] Timestamp with UTC validator (if applicable)
-- [ ] All validators follow OpportunitySignal patterns
+- [ ] All validators follow Signal patterns
 - [ ] json_schema_extra with 2-3 realistic examples
 - [ ] Test file with pyright suppressions
 - [ ] Test classes organized by aspect (Creation, Validation, etc.)
@@ -394,5 +394,5 @@ Use this checklist when creating new Strategy DTOs:
 - **Test Template:** [DTO_TEST_TEMPLATE.md](../testing/DTO_TEST_TEMPLATE.md)
 - **Code Style:** [../../coding_standards/CODE_STYLE.md](../../coding_standards/CODE_STYLE.md)
 - **Architecture:** [Point-in-Time Model](../../architecture/POINT_IN_TIME_MODEL.md)
-- **Source:** `backend/dtos/strategy/opportunity_signal.py`
-- **Tests:** `tests/unit/dtos/strategy/test_opportunity_signal.py`
+- **Source:** `backend/dtos/strategy/signal.py`
+- **Tests:** `tests/unit/dtos/strategy/test_signal.py`

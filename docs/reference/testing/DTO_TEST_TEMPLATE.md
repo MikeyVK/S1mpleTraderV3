@@ -570,4 +570,4 @@ Status: GREEN (tests still 23/23)"
 - [STRATEGY_DTO_TEMPLATE.md](../dtos/STRATEGY_DTO_TEMPLATE.md) - DTO template
 - [../../coding_standards/TDD_WORKFLOW.md](../../coding_standards/TDD_WORKFLOW.md) - TDD workflow
 - [../../coding_standards/QUALITY_GATES.md](../../coding_standards/QUALITY_GATES.md) - Quality gates
-- [opportunity_signal.md](../platform/opportunity_signal.md) - Reference example tests
+- [signal.md](../platform/signal.md) - Reference example tests

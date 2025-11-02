@@ -301,7 +301,7 @@ Is this a pipeline DTO?
 ## Complete Example
 
 See these reference implementations:
-- [opportunity_signal.md](./opportunity_signal.md) - Signal DTO with causality
+- [signal.md](./signal.md) - Signal DTO with causality
 - [entry_plan.md](./entry_plan.md) - Plan DTO without causality (lean spec)
 
 ## Checklist
@@ -323,7 +323,7 @@ Before committing new DTO:
 ## Related Documentation
 
 - [DTO_TEST_TEMPLATE.md](../testing/DTO_TEST_TEMPLATE.md) - Test template
-- [opportunity_signal.md](./opportunity_signal.md) - Reference example
+- [signal.md](./signal.md) - Reference example
 - [entry_plan.md](./entry_plan.md) - Lean spec example
 - [../../coding_standards/CODE_STYLE.md](../../coding_standards/CODE_STYLE.md) - Code style guide
 - [../../architecture/POINT_IN_TIME_MODEL.md](../../architecture/POINT_IN_TIME_MODEL.md) - DTO philosophy

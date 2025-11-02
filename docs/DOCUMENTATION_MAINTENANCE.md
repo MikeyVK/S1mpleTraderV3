@@ -84,7 +84,7 @@ docs/
     ├── README.md                   # Navigation + status matrix
     ├── dtos/
     │   ├── STRATEGY_DTO_TEMPLATE.md     # Copy-paste boilerplate
-    │   └── opportunity_signal.md        # Reference implementation
+    │   └── signal.md        # Reference implementation
     ├── testing/
     │   └── DTO_TEST_TEMPLATE.md         # Test boilerplate
     └── platform/
@@ -408,7 +408,7 @@ This directory contains reference docs.
 
 - STRATEGY_DTO_TEMPLATE.md
 - DTO_TEST_TEMPLATE.md
-- opportunity_signal.md
+- signal.md
 - strategy_cache.md
 ```
 
@@ -424,14 +424,14 @@ This directory contains reference docs.
 - [DTO_TEST_TEMPLATE.md](testing/DTO_TEST_TEMPLATE.md) - Test boilerplate
 
 📚 **Examples:**
-- [opportunity_signal.md](dtos/opportunity_signal.md) - Signal DTO with causality
+- [signal.md](dtos/signal.md) - Signal DTO with causality
 - [strategy_cache.md](platform/strategy_cache.md) - StrategyCache service
 
 ## Common Workflows
 
 ### Creating a New DTO
 1. Copy [STRATEGY_DTO_TEMPLATE.md](dtos/STRATEGY_DTO_TEMPLATE.md)
-2. Check [opportunity_signal.md](dtos/opportunity_signal.md) example
+2. Check [signal.md](dtos/signal.md) example
 3. Follow [TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md)
 ```
 
@@ -466,7 +466,7 @@ This directory contains reference docs.
 
 **2. Ask AI to Expand (AI + Human Review):**
 ```
-Prompt: "Convert these notes into a section for opportunity_signal.md 
+Prompt: "Convert these notes into a section for signal.md 
 reference documentation. Include:
 - Field description
 - Validation rules
@@ -488,7 +488,7 @@ confidence: Optional[float] = Field(
 
 **4. Integrate + Link (Human):**
 ```markdown
-# Add to opportunity_signal.md
+# Add to signal.md
 # Update cross-references to threat_signal.md
 # Update IMPLEMENTATION_STATUS.md test count
 # Commit together with code

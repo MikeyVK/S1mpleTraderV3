@@ -11,7 +11,7 @@ This directory contains **templates, examples, and reference implementations** f
 - [DTO_TEST_TEMPLATE.md](testing/DTO_TEST_TEMPLATE.md) - Test boilerplate
 
 📚 **Examples:**
-- [opportunity_signal.md](dtos/opportunity_signal.md) - Signal DTO with causality
+- [signal.md](dtos/signal.md) - Signal DTO with causality
 - [strategy_cache.md](platform/strategy_cache.md) - StrategyCache service
 
 ## Directory Structure
@@ -21,7 +21,7 @@ reference/
 ├── README.md                           # This file
 ├── dtos/
 │   ├── STRATEGY_DTO_TEMPLATE.md       # Copy-paste DTO template
-│   └── opportunity_signal.md          # Reference DTO implementation
+│   └── signal.md          # Reference DTO implementation
 ├── testing/
 │   └── DTO_TEST_TEMPLATE.md           # Copy-paste test template
 └── platform/
@@ -50,7 +50,7 @@ reference/
 - Need structure for DTO with causality tracking
 
 **Related:**
-- [opportunity_signal.md](dtos/opportunity_signal.md) - Filled-in example
+- [signal.md](dtos/signal.md) - Filled-in example
 - [CODE_STYLE.md](../coding_standards/CODE_STYLE.md) - Style guide
 - [POINT_IN_TIME_MODEL.md](../architecture/POINT_IN_TIME_MODEL.md) - Architecture
 
@@ -78,7 +78,7 @@ reference/
 
 ## Examples
 
-### 1. [opportunity_signal.md](dtos/opportunity_signal.md)
+### 1. [signal.md](dtos/signal.md)
 
 **Type:** Strategy DTO with Causality
 
@@ -143,7 +143,7 @@ Track which components have reference documentation:
 | Component | Template | Example | Tests | Status |
 |-----------|----------|---------|-------|--------|
 | **Strategy DTOs** |
-| Signal | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | ✅ [Example](dtos/opportunity_signal.md) | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Complete |
+| Signal | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | ✅ [Example](dtos/signal.md) | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Complete |
 | Risk | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
 | StrategyDirective | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
 | EntryPlan | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
@@ -167,10 +167,10 @@ Track which components have reference documentation:
 ### Creating a New Strategy DTO
 
 1. **Read template:** [STRATEGY_DTO_TEMPLATE.md](dtos/STRATEGY_DTO_TEMPLATE.md)
-2. **Check example:** [opportunity_signal.md](dtos/opportunity_signal.md)
+2. **Check example:** [signal.md](dtos/signal.md)
 3. **RED Phase:** Copy [DTO_TEST_TEMPLATE.md](testing/DTO_TEST_TEMPLATE.md), write failing tests
 4. **GREEN Phase:** Copy [STRATEGY_DTO_TEMPLATE.md](dtos/STRATEGY_DTO_TEMPLATE.md), implement DTO
-5. **REFACTOR Phase:** Compare with [opportunity_signal.md](dtos/opportunity_signal.md) for quality
+5. **REFACTOR Phase:** Compare with [signal.md](dtos/signal.md) for quality
 6. **Verify:** Run quality gates (see [QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md))
 
 ### Understanding Platform Services
@@ -184,7 +184,7 @@ Track which components have reference documentation:
 ### Writing Comprehensive Tests
 
 1. **Copy template:** [DTO_TEST_TEMPLATE.md](testing/DTO_TEST_TEMPLATE.md)
-2. **Check example:** [opportunity_signal.md](dtos/opportunity_signal.md) → Test Structure section
+2. **Check example:** [signal.md](dtos/signal.md) → Test Structure section
 3. **Use patterns:** Common validation patterns in template
 4. **Apply workarounds:** getattr() for Pydantic FieldInfo
 5. **Verify coverage:** 20-30 tests typical for DTOs
