@@ -176,9 +176,9 @@ Bulk Replacements Applied:
 
 Git Commit: Phase 3 test suite refactoring committed
 
-### Phase 4: Documentation Refactoring 🔄
-**Status:** IN PROGRESS  
-**Started:** 2024-11-02
+### Phase 4: Documentation Refactoring ✅
+**Status:** COMPLETE  
+**Completed:** 2024-11-02
 
 Documentation Files Updated:
 - IMPLEMENTATION_STATUS.md:
@@ -195,23 +195,31 @@ Documentation Files Updated:
 - WORKER_TAXONOMY.md:
   * OpportunityWorker → SignalDetector ("The Scout")
   * ThreatWorker → RiskMonitor ("The Watchdog")
-  * OpportunitySignal → Signal, ThreatSignal → Risk
+  * All diagrams and examples updated
 
 - reference/README.md, STRATEGY_DTO_TEMPLATE.md, strategy_cache.md:
   * OpportunitySignal → Signal, ThreatSignal → Risk
   * OPP_ → SIG_, THR_ → RSK_ prefixes
   * Updated all code examples
 
+- Docstring cleanup (backend files):
+  * id_generators.py: OPP_ → SIG_ in examples
+  * causality.py: OpportunitySignal/ThreatSignal → Signal/Risk
+  * eventbus.py: OPPORTUNITY_DETECTED → SIGNAL_DETECTED
+  * disposition_envelope.py: Updated all examples
+  * execution_directive.py: opportunity_signal_ids → signal_ids
+
 **Note:** S1mpleTrader V2 Architectuur.md intentionally SKIPPED (per user request)
 
 Git Commits:
 - Commit 1: IMPLEMENTATION_STATUS, TODO, WORKER_TAXONOMY  
-- Commit 2: Reference documentation complete
+- Commit 2: Reference documentation  
+- Commit 3: Docstring cleanup (all backend)
 
-**Status:** Core documentation complete, moving to verification
+**Status:** ✅ All core documentation and docstrings updated
 
-### Phase 5: Verification
-**Status:** NEXT
+### Phase 5: Verification & Quality Gates 🔄
+**Status:** IN PROGRESS
 
 Checklist:
 - [ ] All tests passing (336/336) ✅ Already verified

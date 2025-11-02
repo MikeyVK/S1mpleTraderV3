@@ -28,7 +28,6 @@ from backend.dtos.causality import CausalityChain
 from backend.utils.id_generators import (
     generate_tick_id,
     generate_risk_id,
-    generate_schedule_id,
 )
 
 

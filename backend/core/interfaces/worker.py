@@ -33,7 +33,7 @@ class IWorker(Protocol):  # pylint: disable=too-few-public-methods
     Base protocol for all worker types.
 
     This is a minimal interface that defines the contract all workers
-    must fulfill. Specific worker types (OpportunityWorker, ContextWorker,
+    must fulfill. Specific worker types (SignalDetector, ContextWorker,
     etc.) will extend this with additional methods.
     """
 
@@ -64,7 +64,7 @@ class IWorkerLifecycle(Protocol):
     Example:
         ```python
         # Construction phase
-        worker = OpportunityWorker(build_spec)
+        worker = SignalDetector(build_spec)
 
         # Runtime initialization
         worker.initialize(
