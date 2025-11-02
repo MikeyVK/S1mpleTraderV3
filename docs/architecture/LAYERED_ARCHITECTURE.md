@@ -261,7 +261,7 @@ sequenceDiagram
 graph TD
     Env[ExecutionEnvironment]
     CtxOp[ContextOperator]
-    OppOp[OpportunityOperator]
+    OppOp[SignalOperator]
     PlanOp[PlanningOperator]
     CW1[ContextWorker1]
     CW2[ContextWorker2]

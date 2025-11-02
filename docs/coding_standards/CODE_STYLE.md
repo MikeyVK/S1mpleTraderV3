@@ -140,17 +140,17 @@ def my_function():
 **Concise** one-line summary:
 
 ```python
-class OpportunitySignal(BaseModel):
+class Signal(BaseModel):
     """System DTO for signal detection output."""
 ```
 
 **Not this:**
 ```python
-class OpportunitySignal(BaseModel):
+class Signal(BaseModel):
     """
-    This is the OpportunitySignal class which represents
+    This is the Signal class which represents
     a trading signal that has been detected by the
-    OpportunityWorker and needs to be processed by...
+    SignalDetector and needs to be processed by...
     """  # TOO VERBOSE - details belong in module docstring
 ```
 
@@ -282,12 +282,12 @@ def calculate_position_size(account_balance, risk_percent, stop_distance):
 **Use modern type hints (Python 3.10+):**
 ```python
 # ✅ CORRECT - modern syntax
-def process_signals(signals: list[OpportunitySignal]) -> dict[str, Any]:
+def process_signals(signals: list[Signal]) -> dict[str, Any]:
     ...
 
 # ❌ OLD STYLE - avoid (but still works)
 from typing import List, Dict, Any
-def process_signals(signals: List[OpportunitySignal]) -> Dict[str, Any]:
+def process_signals(signals: List[Signal]) -> Dict[str, Any]:
     ...
 ```
 
@@ -301,7 +301,7 @@ def process_signals(signals: List[OpportunitySignal]) -> Dict[str, Any]:
 4. **Optional fields** (at end)
 
 ```python
-class OpportunitySignal(BaseModel):
+class Signal(BaseModel):
     """System DTO for signal detection output."""
     
     # 1. Causality tracking

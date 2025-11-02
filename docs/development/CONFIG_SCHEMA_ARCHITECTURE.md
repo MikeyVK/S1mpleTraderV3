@@ -96,8 +96,8 @@ graph TD
 ```mermaid
 graph LR
     CW[ContextWorker]
-    OW[OpportunityWorker]
-    TW[ThreatWorker]
+    OW[SignalDetector]
+    TW[RiskMonitor]
     PW[PlanningWorker]
     SP[StrategyPlanner]
     
@@ -112,8 +112,8 @@ graph LR
 ```
 plugins/
 ├── context_workers/        # ContextWorker plugins
-├── opportunity_workers/    # OpportunityWorker plugins
-├── threat_workers/         # ThreatWorker plugins
+├── opportunity_workers/    # SignalDetector plugins
+├── threat_workers/         # RiskMonitor plugins
 ├── planning_workers/       # PlanningWorker plugins
 └── strategy_planners/      # StrategyPlanner plugins
 ```
@@ -123,13 +123,13 @@ plugins/
 - Communication: TickCache only (NEVER EventBus)
 - Subtypes: 7 (regime_classification, indicator_calculation, etc.)
 
-**2. OpportunityWorker** - Signal Detection (Breakouts, Momentum)
-- Output: `DispositionEnvelope(PUBLISH, OpportunitySignal)`
+**2. SignalDetector** - Signal Detection (Breakouts, Momentum)
+- Output: `DispositionEnvelope(PUBLISH, Signal)`
 - Communication: EventBus (async signals)
 - Subtypes: 7 (technical_pattern, momentum_signal, etc.)
 
-**3. ThreatWorker** - Risk Monitoring (Drawdown, Volatility Spikes)
-- Output: `DispositionEnvelope(PUBLISH, ThreatSignal)`
+**3. RiskMonitor** - Risk Monitoring (Drawdown, Volatility Spikes)
+- Output: `DispositionEnvelope(PUBLISH, Risk)`
 - Communication: EventBus (async signals)
 - Subtypes: 5 (portfolio_risk, market_risk, etc.)
 

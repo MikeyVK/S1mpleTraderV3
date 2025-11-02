@@ -118,7 +118,7 @@ wiring:
 **Voorbeeld:**
 ```python
 # ✅ GOED - Expliciete DTO contract
-class OpportunitySignal(BaseModel):
+class Signal(BaseModel):
     signal_id: str
     confidence: Decimal
     signal_type: str
@@ -132,7 +132,7 @@ class OpportunitySignal(BaseModel):
 
 # Worker output is validated
 def process(self) -> DispositionEnvelope:
-    signal = OpportunitySignal(  # Type-safe + validated
+    signal = Signal(  # Type-safe + validated
         signal_id=generate_id(),
         confidence=Decimal("0.85"),
         signal_type="BREAKOUT"
@@ -175,7 +175,7 @@ class EMAOutputDTO(BaseModel):
     ema_20: Decimal
 
 # Separation of Concerns (Worker knows nothing about wiring)
-class MomentumSignalWorker(OpportunityWorker):
+class MomentumSignalWorker(SignalDetector):
     def process(self):
         dtos = self.strategy_cache.get_required_dtos(self)
         ema_dto = dtos[EMAOutputDTO]  # Type-safe!

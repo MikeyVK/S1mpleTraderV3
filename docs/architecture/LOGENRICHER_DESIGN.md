@@ -29,7 +29,7 @@ The **LogEnricher** is a structured logging wrapper that provides context inject
 - `LogLevel` enum (backend.core.enums)
 
 **Injected Into:**
-- All workers (ContextWorker, OpportunityWorker, ThreatWorker, PlanningWorker, StrategyPlanner)
+- All workers (ContextWorker, SignalDetector, RiskMonitor, PlanningWorker, StrategyPlanner)
 - Assembly layer components (PluginEventAdapter, WorkerBuilder, OperatorFactory)
 - Service layer components (OperationService, SchedulerService)
 

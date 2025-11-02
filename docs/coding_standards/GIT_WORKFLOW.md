@@ -246,7 +246,7 @@ git commit -m "Add SizePlan DTO with tests and also fix ExecutionPlan bug"
 
 **Good:**
 ```
-feat: implement OpportunitySignal DTO
+feat: implement Signal DTO
 
 - Add signal_id, symbol, direction fields
 - Implement causality tracking

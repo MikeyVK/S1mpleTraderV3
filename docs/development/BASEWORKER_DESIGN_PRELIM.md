@@ -29,15 +29,15 @@ Every worker output DTO contains a `causality: CausalityChain` field that must b
 
 **Example from docs:**
 ```python
-# OpportunityWorker produces OpportunitySignal
-signal = OpportunitySignal(
+# SignalDetector produces Signal
+signal = Signal(
     causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
     opportunity_id="OPP_20251026_100001_def5e6f7"
 )
 
 # StrategyPlanner extends chain
 directive_causality = signal.causality.model_copy(update={
-    "opportunity_signal_ids": ["OPP_20251026_100001_def5e6f7"],
+    "signal_ids": ["OPP_20251026_100001_def5e6f7"],
     "strategy_directive_id": "STR_20251026_100002_abc1d2e3"
 })
 ```
@@ -84,34 +84,34 @@ class BaseWorker(ABC):
         causality: CausalityChain, 
         output_dto: WorkerOutput
     ) -> CausalityChain:
-        """Category-specific causality extension (e.g., opportunity_signal_ids)."""
+        """Category-specific causality extension (e.g., signal_ids)."""
         ...
 ```
 
 **Concrete Example:**
 ```python
-class BaseOpportunityWorker(BaseWorker):
+class BaseSignalDetector(BaseWorker):
     """Signal detection workers."""
     
     def _extend_causality(
         self, 
         causality: CausalityChain, 
-        output_dto: OpportunitySignal
+        output_dto: Signal
     ) -> CausalityChain:
         """Add opportunity_signal_id to chain."""
-        # Note: opportunity_signal_ids is a LIST (confluence support)
-        existing_ids = causality.opportunity_signal_ids or []
+        # Note: signal_ids is a LIST (confluence support)
+        existing_ids = causality.signal_ids or []
         return causality.model_copy(update={
-            "opportunity_signal_ids": existing_ids + [output_dto.opportunity_id]
+            "signal_ids": existing_ids + [output_dto.opportunity_id]
         })
 ```
 
 **Plugin Developer Code (causality-free):**
 ```python
-class FVGOpportunityWorker(BaseOpportunityWorker):
-    def process(self, assessment: AggregatedContextAssessment) -> OpportunitySignal:
+class FVGSignalDetector(BaseSignalDetector):
+    def process(self, assessment: AggregatedContextAssessment) -> Signal:
         # NO causality management - BaseWorker handles it!
-        return OpportunitySignal(
+        return Signal(
             opportunity_id=generate_opportunity_id(),
             timestamp=datetime.now(UTC),
             asset="BTC/USDT",
@@ -148,15 +148,15 @@ class IWorker(Protocol):
 
 **Workers handle causality manually:**
 ```python
-class MyOpportunityWorker:
-    def process(self, assessment: AggregatedContextAssessment) -> OpportunitySignal:
+class MySignalDetector:
+    def process(self, assessment: AggregatedContextAssessment) -> Signal:
         # Manual causality extension
         signal_id = generate_opportunity_id()
         extended_causality = assessment.causality.model_copy(update={
-            "opportunity_signal_ids": [signal_id]
+            "signal_ids": [signal_id]
         })
         
-        return OpportunitySignal(
+        return Signal(
             causality=extended_causality,
             opportunity_id=signal_id,
             # ...
@@ -181,8 +181,8 @@ class MyOpportunityWorker:
 
 | Worker Category | Input DTO | Output DTO | Causality Field Extended |
 |----------------|-----------|------------|-------------------------|
-| **OpportunityWorker** | AggregatedContextAssessment | OpportunitySignal | `opportunity_signal_ids` (list) |
-| **ThreatWorker** | AggregatedContextAssessment | ThreatSignal | `threat_ids` (list) |
+| **SignalDetector** | AggregatedContextAssessment | Signal | `signal_ids` (list) |
+| **RiskMonitor** | AggregatedContextAssessment | Risk | `risk_ids` (list) |
 | **StrategyPlannerWorker** | Assessment + Signals | StrategyDirective | `strategy_directive_id` (single) |
 
 **Platform Components** extend causality chain:
@@ -227,8 +227,8 @@ class BaseWorker(Generic[WorkerInput, WorkerOutput], IWorkerLifecycle, ABC):
     - Error handling patterns
     
     Plugin developers extend category-specific ABCs:
-    - BaseOpportunityWorker
-    - BaseThreatWorker
+    - BaseSignalDetector
+    - BaseRiskMonitor
     - BaseStrategyPlannerWorker
     - etc.
     """
@@ -311,8 +311,8 @@ class BaseWorker(Generic[WorkerInput, WorkerOutput], IWorkerLifecycle, ABC):
         
         Examples:
         - BaseContextWorker → False (sub-component output)
-        - BaseOpportunityWorker → True (extends chain)
-        - BaseThreatWorker → True (extends chain)
+        - BaseSignalDetector → True (extends chain)
+        - BaseRiskMonitor → True (extends chain)
         - BaseStrategyPlannerWorker → True (extends chain)
         
         Note: Platform aggregators (ContextAggregator, PlanningAggregator)
@@ -426,8 +426,8 @@ class AggregatedContextAssessment(BaseModel):
 |----------------|------------|-------------------|------------|
 | **ContextWorker** (plugin) | ContextFactor | ❌ NO | (none - sub-component) |
 | **ContextAggregator** (platform) | AggregatedContextAssessment | ✅ YES | `context_assessment_id` |
-| **OpportunityWorker** (plugin) | OpportunitySignal | ✅ YES | `opportunity_signal_ids` (list) |
-| **ThreatWorker** (plugin) | ThreatSignal | ✅ YES | `threat_ids` (list) |
+| **SignalDetector** (plugin) | Signal | ✅ YES | `signal_ids` (list) |
+| **RiskMonitor** (plugin) | Risk | ✅ YES | `risk_ids` (list) |
 | **StrategyPlannerWorker** (plugin) | StrategyDirective | ✅ YES | `strategy_directive_id` |
 | **PlanningAggregator** (platform) | ExecutionDirective | ✅ YES | `execution_directive_id` |
 
@@ -494,9 +494,9 @@ def execute(self, input_dto) -> DispositionEnvelope:
 
 ### Later (When Design is Complete)
 
-4. **Prototype BaseOpportunityWorker**
+4. **Prototype BaseSignalDetector**
    - Small, focused ABC
-   - Clear I/O contract (AggregatedContextAssessment → OpportunitySignal)
+   - Clear I/O contract (AggregatedContextAssessment → Signal)
    - Test automatic causality propagation (_extends_causality = True)
    - Validate _extend_causality() method for list append pattern
 
@@ -518,7 +518,7 @@ def execute(self, input_dto) -> DispositionEnvelope:
    - Implement worker↔bus decoupling
 
 8. **Complete BaseWorker Categories**
-   - BaseThreatWorker
+   - BaseRiskMonitor
    - BaseStrategyPlannerWorker
    - BaseContextWorker (no causality extension)
    
@@ -560,4 +560,4 @@ This design document is intentionally **incomplete** because:
 - 🚧 DispositionEnvelope wrapping DEFERRED (pending EventAdapter)
 - 🚧 Error handling DEFERRED (pending platform design)
 
-**Recommendation:** Proceed with BaseOpportunityWorker + BaseContextWorker prototypes to validate both causality patterns (extends + sub-component) before expanding to other categories.
+**Recommendation:** Proceed with BaseSignalDetector + BaseContextWorker prototypes to validate both causality patterns (extends + sub-component) before expanding to other categories.

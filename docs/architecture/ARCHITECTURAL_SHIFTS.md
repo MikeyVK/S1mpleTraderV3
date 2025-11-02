@@ -17,9 +17,9 @@ De V3 architectuur heeft **drie fundamentele verschuivingen** ondergaan die het 
 ExecutionEnvironment → Operator → Workers → Output
 ```
 
-**Operators** (ContextOperator, OpportunityOperator) orkestreerden workers:
+**Operators** (ContextOperator, SignalOperator) orkestreerden workers:
 - ContextOperator verzamelde ContextWorker outputs
-- OpportunityOperator aggregeerde OpportunityWorker outputs
+- SignalOperator aggregeerde SignalDetector outputs
 - Operator-laag bevatte orchestratie-logica
 
 ### Nu (V3 - ACTUEEL)
@@ -118,7 +118,7 @@ class ContextWorker:
 2. **EventBus (Async, Signals)**
    - Via `DispositionEnvelope(PUBLISH, event_payload=...)`
    - Voor platform signals
-   - Systeem DTOs (OpportunitySignal, ThreatSignal)
+   - Systeem DTOs (Signal, Risk)
    - Persisteren via EventBus subscribers
 
 **Zie:** [POINT_IN_TIME_MODEL.md](POINT_IN_TIME_MODEL.md) voor details.
@@ -170,7 +170,7 @@ YAML → ConfigTranslator → BuildSpecs → Factories → Components
 # Bootstrap-time DTO dependency check
 validator = DependencyValidator()
 validator.validate_dto_dependencies(workforce_spec)
-# Raises error if OpportunityWorker requires ContextDTO but no ContextWorker produces it
+# Raises error if SignalDetector requires ContextDTO but no ContextWorker produces it
 ```
 
 **EventChainValidator:**

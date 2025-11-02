@@ -84,11 +84,11 @@ plugins/
 │   ├── ema_detector/
 │   ├── regime_classifier/
 │   └── support_resistance/
-├── signal_detectors/    # OpportunityWorker plugins
+├── signal_detectors/    # SignalDetector plugins
 │   ├── breakout_scout/
 │   ├── momentum_signal/
 │   └── mean_reversion/
-├── risk_monitors/         # ThreatWorker plugins
+├── risk_monitors/         # RiskMonitor plugins
 │   ├── drawdown_monitor/
 │   └── volatility_spike/
 ├── planning_workers/       # PlanningWorker plugins

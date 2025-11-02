@@ -72,7 +72,7 @@ class EventAdapter:
    return DispositionEnvelope(
        disposition="PUBLISH",
        event_topic="signal.ema_crossover",
-       event_payload=OpportunitySignal(...)
+       event_payload=Signal(...)
    )
    
    # EventAdapter publishes to EventBus
@@ -173,7 +173,7 @@ class MyWorker:
 
 2. **Signal Storage (Persistent)**
    - Via `store_opportunity_signal()` / `get_opportunity_signal()`
-   - System DTOs (OpportunitySignal, ThreatSignal, ContextFactor)
+   - System DTOs (Signal, Risk, ContextFactor)
    - Lifespan: Persistent (database-backed)
    - Used for analytics, journaling, UI
 

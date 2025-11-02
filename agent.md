@@ -148,7 +148,7 @@ pytest <test_file> -v
 
 ### DTO Types
 - **Plugin DTOs**: Worker-specific, shared via dto_reg/, in TickCache
-- **System DTOs**: Platform-defined (OpportunitySignal, ThreatSignal, etc.), on EventBus
+- **System DTOs**: Platform-defined (Signal, Risk, etc.), on EventBus
 
 ### Configuration Hierarchy
 ```

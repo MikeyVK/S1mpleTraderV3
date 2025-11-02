@@ -213,12 +213,12 @@ wiring_rules:
       event_name: "ContextOutput"        # Logical event
       event_type: "SystemEvent"
     target:
-      component_id: "OpportunityWorker"
+      component_id: "SignalDetector"
       handler_method: "process"          # Default handler
 ```
 
 **Key Characteristics:**
-- Uses **category names** (ContextWorker, OpportunityWorker)
+- Uses **category names** (ContextWorker, SignalDetector)
 - Defines **logical transitions**
 - Never used directly at runtime
 - Input for UI Strategy Builder
@@ -236,7 +236,7 @@ User drags: [EMA_Fast] → [EMA_Slow] in ContextWorker slot
 UI Generates:
 - ContextReady → ema_fast_instance_1
 - ema_fast_OUTPUT → ema_slow_instance_1  # UI-generated event name
-- ema_slow_OUTPUT → OpportunityWorker
+- ema_slow_OUTPUT → SignalDetector
 ```
 
 **Parallel Positioning:**
@@ -246,8 +246,8 @@ User drags: [EMA_Fast] ∥ [EMA_Slow] in ContextWorker slot
 UI Generates:
 - ContextReady → ema_fast_instance_1
 - ContextReady → ema_slow_instance_1    # Fan-out
-- ema_fast_OUTPUT → OpportunityWorker
-- ema_slow_OUTPUT → OpportunityWorker
+- ema_fast_OUTPUT → SignalDetector
+- ema_slow_OUTPUT → SignalDetector
 ```
 
 **Custom Event Wiring:**
@@ -1099,7 +1099,7 @@ sequenceDiagram
     W3->>W3: Read EMA+Regime from TickCache<br/>Detect momentum
     W3-->>A3: DispositionEnvelope(PUBLISH, "MOMENTUM_OPPORTUNITY", signal)
     A3->>A3: Validate "MOMENTUM_OPPORTUNITY" in manifest
-    A3->>Bus: publish("MOMENTUM_OPPORTUNITY", OpportunitySignal)
+    A3->>Bus: publish("MOMENTUM_OPPORTUNITY", Signal)
     
     Note over Bus: Strategy Planner receives signal
 ```

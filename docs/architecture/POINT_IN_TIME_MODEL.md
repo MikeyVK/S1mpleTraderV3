@@ -125,7 +125,7 @@ sequenceDiagram
 
 **Characteristics:**
 - ✅ Asynchronous broadcast
-- ✅ System DTOs only (OpportunitySignal, ThreatSignal, etc.)
+- ✅ System DTOs only (Signal, Risk, etc.)
 - ✅ N-to-N communication
 - ✅ Persisted via EventBus subscribers
 - ✅ Published via `DispositionEnvelope(PUBLISH)`
@@ -141,15 +141,15 @@ sequenceDiagram
     participant Sub3 as Notifier
     
     W->>W: DetectDispositionEnvelope(PUBLISH)
-    W->>Bus: publish(OpportunitySignal)
+    W->>Bus: publish(Signal)
     Bus->>Sub1: notify(event)
     Bus->>Sub2: notify(event)
     Bus->>Sub3: notify(event)
 ```
 
 **Example DTOs:**
-- `OpportunitySignal` (confidence-based signal)
-- `ThreatSignal` (severity-based warning)
+- `Signal` (confidence-based signal)
+- `Risk` (severity-based warning)
 - `StrategyDirective` (SWOT-driven decision)
 - `ExecutionDirective` (ready-to-execute plan)
 

@@ -641,7 +641,7 @@ workforce:
 
 3. **Workers toevoegen (met satisfied dependencies)**
    - Extra ContextWorker zonder consumers
-   - Extra OpportunityWorker met alle required DTOs aanwezig
+   - Extra SignalDetector met alle required DTOs aanwezig
 
 4. **Workers vervangen (zelfde DTO contract)**
    - EMADetector v1 → v2 (produces EMAOutputDTO)
