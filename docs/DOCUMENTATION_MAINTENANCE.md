@@ -359,7 +359,7 @@ New architecture doc > 300 lines?
 # ✅ GOOD - Update status WITH code changes
 # Same commit that adds 5 new tests → updates IMPLEMENTATION_STATUS.md
 git add backend/dtos/strategy/signal.py
-git add tests/unit/dtos/strategy/test_opportunity_signal.py
+git add tests/unit/dtos/strategy/test_signal.py
 git add docs/implementation/IMPLEMENTATION_STATUS.md  # ← Don't forget!
 git commit -m "feat: add confidence validation to Signal
 
@@ -489,7 +489,7 @@ confidence: Optional[float] = Field(
 **4. Integrate + Link (Human):**
 ```markdown
 # Add to signal.md
-# Update cross-references to threat_signal.md
+# Update cross-references to risk.md
 # Update IMPLEMENTATION_STATUS.md test count
 # Commit together with code
 ```
