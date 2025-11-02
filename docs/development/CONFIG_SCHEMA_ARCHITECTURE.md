@@ -112,8 +112,8 @@ graph LR
 ```
 plugins/
 ├── context_workers/        # ContextWorker plugins
-├── opportunity_workers/    # SignalDetector plugins
-├── threat_workers/         # RiskMonitor plugins
+├── signal_detectors/       # SignalDetector plugins
+├── risk_monitors/          # RiskMonitor plugins
 ├── planning_workers/       # PlanningWorker plugins
 └── strategy_planners/      # StrategyPlanner plugins
 ```
