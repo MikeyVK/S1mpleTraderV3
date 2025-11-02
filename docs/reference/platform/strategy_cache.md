@@ -324,7 +324,7 @@ def clear(self) -> None:
 Workers should **inject `IStrategyCache`** via dependency injection (future), or import module singleton for now.
 
 ```python
-# backend/workers/opportunity_worker.py
+# backend/workers/signal_detector.py
 from backend.core.strategy_cache import strategy_cache
 from backend.dtos.strategy.signal import Signal
 
@@ -379,7 +379,7 @@ PlanningWorker aggregates signals from cache:
 class PlanningWorker:
     def process(self, input_dto):
         # Get all signals from current run
-        opportunities = strategy_cache.get_dtos(
+        signals = strategy_cache.get_dtos(
             "signals",
             Signal
         )
@@ -392,8 +392,8 @@ class PlanningWorker:
         
         # Decision matrix
         directive = self._create_strategy_directive(
-            opportunities,
-            threats
+            signals,
+            risks
         )
         
         return DispositionEnvelope(
