@@ -58,7 +58,7 @@ Part of signal framework:
 
 **Why exemplary:**
 - Clear purpose statement
-- Architecture context (SWOT framework)
+- Architecture context (Signal/Risk analysis framework)
 - Explicit responsibilities
 - Complete @layer/@dependencies/@responsibilities
 

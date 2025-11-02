@@ -808,7 +808,7 @@ class WorkerManifest(BaseModel):
                 raise ValueError(f"identification.{field} is required")
         
         # Validate worker type
-        valid_types = ['context_worker', 'opportunity_worker', 'threat_worker', 
+        valid_types = ['context_worker', 'signal_detector', 'risk_monitor', 
                        'planning_worker', 'strategy_planner']
         if v['type'] not in valid_types:
             raise ValueError(f"identification.type must be one of {valid_types}")

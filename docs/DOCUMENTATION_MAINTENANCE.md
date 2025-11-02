@@ -460,7 +460,7 @@ This directory contains reference docs.
 # Quick notes while coding:
 - Signal now has confidence field (0.0-1.0)
 - Added 5 tests for edge cases
-- SWOT confrontation uses this for weighting
+- Signal/Risk confrontation uses this for weighting
 - Similar to Risk.severity pattern
 ```
 
