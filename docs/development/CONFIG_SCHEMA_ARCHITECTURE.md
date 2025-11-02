@@ -581,7 +581,7 @@ strategy:
           fast_period: 20
           slow_period: 50
     
-    opportunity_workers:
+    signal_detectors:
       - worker_id: "momentum_scout_1"
         plugin: "s1mple/momentum_signal/v1.0.0"
         config:
@@ -616,8 +616,8 @@ class WorkerConfig(BaseModel):
 class Workforce(BaseModel):
     """Complete workforce for a strategy."""
     context_workers: List[WorkerConfig] = Field(default_factory=list)
-    opportunity_workers: List[WorkerConfig] = Field(default_factory=list)
-    threat_workers: List[WorkerConfig] = Field(default_factory=list)
+    signal_detectors: List[WorkerConfig] = Field(default_factory=list)
+    risk_monitors: List[WorkerConfig] = Field(default_factory=list)
     planning_workers: List[WorkerConfig] = Field(default_factory=list)
     strategy_planner: WorkerConfig  # EXACTLY 1 required
     
