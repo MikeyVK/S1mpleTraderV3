@@ -600,9 +600,9 @@ strategy:
     
     strategy_planner:  # EXACTLY 1 required!
       - worker_id: "momentum_planner_1"
-        plugin: "s1mple/swot_momentum_planner/v1.0.0"
+        plugin: "s1mple/signal_risk_momentum_planner/v1.0.0"
         config:
-          min_swot_score: 0.70
+          min_analysis_score: 0.70
 ```
 
 **Schema:** `strategy_blueprint_schema.py`
