@@ -237,7 +237,7 @@ class TestRiskTypeValidation:
 
 
 class TestRiskSeverityValidation:
-    """Test suite for severity field validation (SWOT framework)."""
+    """Test suite for severity field validation (risk framework)."""
 
     def test_valid_severity_range(self):
         """Test that severity values in [0.0, 1.0] are accepted."""

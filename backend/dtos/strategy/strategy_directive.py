@@ -218,7 +218,7 @@ class StrategyDirective(BaseModel):
     - **Scheduled Operations**: Time trigger → NEW_TRADE
 
     DIRECTIVE FLOW:
-    1. StrategyPlanner receives trigger (SWOT signals, tick, threat, schedule)
+    1. StrategyPlanner receives trigger (signals, tick, risk, schedule)
     2. StrategyPlanner produces StrategyDirective with:
        - Scope: NEW_TRADE, MODIFY_EXISTING, or CLOSE_EXISTING
        - TriggerContext: Causality tracking (what caused this directive)
