@@ -39,7 +39,7 @@ Referenced in `docs/architecture/README.md`:
    - Referenced 5+ times in README.md
    - Referenced in agent.md Quick Navigation
    - **Source material:** `agent_OLD.md` Section 3.1 (5 worker categories - lines 235-276)
-   - **Content available:** ContextWorker, OpportunityWorker, ThreatWorker, PlanningWorker, StrategyPlanner
+   - **Content available:** ContextWorker, SignalDetector, RiskMonitor, PlanningWorker, StrategyPlanner
    - **Priority:** HIGH (blocking onboarding flow)
 
 2. **`PLUGIN_ANATOMY.md`**

@@ -21,8 +21,8 @@ graph TB
     
     subgraph "Asynchronous Path: EventBus"
         Bus[EventBus<br/>System DTOs]
-        OW[OpportunityWorker] -.PUBLISH.-> Bus
-        TW[ThreatWorker] -.PUBLISH.-> Bus
+        OW[SignalDetector] -.PUBLISH.-> Bus
+        TW[RiskMonitor] -.PUBLISH.-> Bus
         SP[StrategyPlanner] -.subscribe.-> Bus
     end
     
@@ -105,7 +105,7 @@ class BreakoutScout(StandardWorker):
             # 2. Publish signal to EventBus
             return DispositionEnvelope(
                 disposition="PUBLISH",
-                event_name="OPPORTUNITY_DETECTED",
+                event_name="SIGNAL_DETECTED",
                 event_payload=Signal(  # System DTO!
                     signal_type="BREAKOUT",
                     confidence=0.85,
@@ -186,7 +186,7 @@ return DispositionEnvelope(disposition="CONTINUE")
 
 **Example:**
 ```python
-# OpportunityWorker publishes signal
+# SignalDetector publishes signal
 return DispositionEnvelope(
     disposition="PUBLISH",
     event_name="MOMENTUM_OPPORTUNITY",
@@ -230,7 +230,7 @@ if not should_trade:
 ### Complete Example
 
 ```python
-class MyOpportunityWorker(StandardWorker):
+class MySignalDetector(StandardWorker):
     # Dependencies injected by WorkerFactory
     strategy_cache: IStrategyCache
     ohlcv_provider: IOhlcvProvider
@@ -258,7 +258,7 @@ class MyOpportunityWorker(StandardWorker):
             # Step 6A: Publish signal
             return DispositionEnvelope(
                 disposition="PUBLISH",
-                event_name="OPPORTUNITY_DETECTED",
+                event_name="SIGNAL_DETECTED",
                 event_payload=Signal(...)
             )
         else:
@@ -374,7 +374,7 @@ def process(self):
 
 ### Signal Phase
 ```python
-# BreakoutScout (OpportunityWorker)
+# BreakoutScout (SignalDetector)
 def process(self):
     required_dtos = self.strategy_cache.get_required_dtos(self)
     ema_dto = required_dtos[EMAOutputDTO]  # ← Retrieved from TickCache

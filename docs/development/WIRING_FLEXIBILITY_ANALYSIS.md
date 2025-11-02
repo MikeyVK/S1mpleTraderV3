@@ -30,7 +30,7 @@
 # Wiring Variant A
 wiring:
   - source: 
-      event: "OPPORTUNITY_DETECTED"
+      event: "SIGNAL_DETECTED"
     target:
       worker_id: "momentum_planner_1"
       method: "process"
@@ -99,9 +99,9 @@ dependencies:
 | **Wijzig event names** | ✅ JA | Geen | `TICK_FLOW_START` → `CUSTOM_TRIGGER` |
 | **Wijzig execution order (event-driven)** | ✅ JA | Geen | Worker A eerst → Worker B eerst |
 | **Wijzig execution order (DTO-driven)** | ⚠️ SOMS | Dependency graph moet respected worden | ❌ momentum_scout vóór ema_detector |
-| **Voeg extra worker toe (no deps)** | ✅ JA | Geen | Extra ThreatWorker zonder requires_dtos |
+| **Voeg extra worker toe (no deps)** | ✅ JA | Geen | Extra RiskMonitor zonder requires_dtos |
 | **Voeg extra worker toe (with deps)** | ⚠️ SOMS | Dependencies MOETEN satisfied zijn | ❌ Zonder producers in workforce |
-| **Verwijder worker (no consumers)** | ✅ JA | Geen | Verwijder ThreatWorker die niemand nodig heeft |
+| **Verwijder worker (no consumers)** | ✅ JA | Geen | Verwijder RiskMonitor die niemand nodig heeft |
 | **Verwijder worker (has consumers)** | ❌ NEE | Dependency violation | ❌ Verwijder ema_detector terwijl momentum_scout het nodig heeft |
 | **Vervang worker (zelfde DTO)** | ✅ JA | Nieuwe worker MOET zelfde DTO produceren | EMADetector v1 → EMADetector v2 |
 | **Vervang worker (andere DTO)** | ❌ NEE | DTO contract breuk | EMAOutputDTO → SMAOutputDTO breaks consumers |
@@ -123,7 +123,7 @@ workforce:
       plugin: "s1mple/regime_classifier/v1.0.0"
       # produces: RegimeOutputDTO
   
-  opportunity_workers:
+  signal_detectors:
     - worker_id: "momentum_scout_1"
       plugin: "s1mple/momentum_signal/v1.0.0"
       # requires: EMAOutputDTO, RegimeOutputDTO
@@ -241,7 +241,7 @@ context_workers:
   - worker_id: "ema_detector_1"  # Produces EMAOutputDTO
   - worker_id: "regime_classifier_1"  # Produces RegimeOutputDTO
 
-opportunity_workers:
+signal_detectors:
   - worker_id: "momentum_scout_1"  # Requires: EMAOutputDTO, RegimeOutputDTO
 ```
 
@@ -251,7 +251,7 @@ context_workers:
   - worker_id: "regime_classifier_1"  # Produces RegimeOutputDTO
   # ema_detector REMOVED ❌
 
-opportunity_workers:
+signal_detectors:
   - worker_id: "momentum_scout_1"  # Requires: EMAOutputDTO ← MISSING!
 ```
 
@@ -389,7 +389,7 @@ context_workers:
   - worker_id: "regime_classifier_1"  # Produces RegimeOutputDTO
   # NO volatility_analyzer
 
-opportunity_workers:
+signal_detectors:
   - worker_id: "momentum_scout_1"  # Requires: EMAOutputDTO, RegimeOutputDTO (OK!)
 ```
 
@@ -400,7 +400,7 @@ context_workers:
   - worker_id: "regime_classifier_1"  # Produces RegimeOutputDTO
   - worker_id: "volatility_analyzer_1"  # Produces VolatilityDTO (EXTRA!)
 
-opportunity_workers:
+signal_detectors:
   - worker_id: "momentum_scout_1"  # Requires: EMAOutputDTO, RegimeOutputDTO
   - worker_id: "high_vol_breakout_scout_1"  # Requires: VolatilityDTO (EXTRA!)
 ```
@@ -424,7 +424,7 @@ context_workers:
   - worker_id: "ema_detector_1"
   - worker_id: "regime_classifier_1"  # Produces RegimeOutputDTO
 
-opportunity_workers:
+signal_detectors:
   - worker_id: "momentum_scout_1"  # Requires: RegimeOutputDTO
 ```
 
@@ -434,7 +434,7 @@ context_workers:
   - worker_id: "ema_detector_1"
   # regime_classifier REMOVED ❌
 
-opportunity_workers:
+signal_detectors:
   - worker_id: "momentum_scout_1"  # Requires: RegimeOutputDTO ← MISSING!
 ```
 
@@ -447,7 +447,7 @@ context_workers:
   - worker_id: "ema_detector_1"
   - worker_id: "simple_regime_classifier_1"  # Produces RegimeOutputDTO (lighter impl)
 
-opportunity_workers:
+signal_detectors:
   - worker_id: "momentum_scout_1"  # Requires: RegimeOutputDTO ← SATISFIED!
 ```
 
@@ -555,7 +555,7 @@ workforce:
   context_workers:
     - worker_id: "ema_detector"  # EMAOutputDTO
   
-  opportunity_workers:
+  signal_detectors:
     - worker_id: "simple_breakout_scout"  # Requires: EMAOutputDTO
 ```
 
@@ -567,7 +567,7 @@ workforce:
     - worker_id: "order_flow_analyzer"  # OrderFlowDTO (EXTRA!)
     - worker_id: "sentiment_tracker"  # SentimentDTO (EXTRA!)
   
-  opportunity_workers:
+  signal_detectors:
     - worker_id: "simple_breakout_scout"  # Requires: EMAOutputDTO
     - worker_id: "dark_pool_scout"  # Requires: OrderFlowDTO (EXTRA!)
     - worker_id: "sentiment_reversal_scout"  # Requires: SentimentDTO (EXTRA!)
@@ -588,7 +588,7 @@ workforce:
   context_workers:
     - worker_id: "ema_detector"  # Produces: EMAOutputDTO
   
-  opportunity_workers:
+  signal_detectors:
     - worker_id: "ema_cross_scout"  # Requires: EMAOutputDTO
 ```
 
@@ -598,7 +598,7 @@ workforce:
   context_workers:
     - worker_id: "sma_detector"  # Produces: SMAOutputDTO ❌
   
-  opportunity_workers:
+  signal_detectors:
     - worker_id: "ema_cross_scout"  # Requires: EMAOutputDTO ← MISSING!
 ```
 
@@ -618,7 +618,7 @@ workforce:
   context_workers:
     - worker_id: "ma_detector_adaptive"  # Produces: EMAOutputDTO (SMA impl internally)
   
-  opportunity_workers:
+  signal_detectors:
     - worker_id: "ema_cross_scout"  # Requires: EMAOutputDTO ← SATISFIED!
 ```
 

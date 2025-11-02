@@ -23,7 +23,7 @@ Signal is the **reference implementation** for Strategy DTOs with causality trac
 **Signal Framework Position:**
 - ContextWorkers → BaseContext (Strengths & Weaknesses)
 - **SignalDetectors → Signal (Opportunities)** ← This DTO
-- RiskMonitors → Risk (Threats)
+- RiskMonitors → Risk (Risks)
 - PlanningWorker → StrategyDirective (combines quadrants)
 
 **Causal Chain:**
@@ -47,7 +47,7 @@ entries based on technical analysis patterns.
 Part of signal framework:
 - ContextWorkers → BaseContext (Strengths & Weaknesses)
 - SignalDetectors → Signal (Opportunities)
-- RiskMonitors → Risk (Threats)
+- RiskMonitors → Risk (Risks)
 - PlanningWorker → Confrontation Matrix (combines quadrants)
 
 @layer: DTO (Strategy)

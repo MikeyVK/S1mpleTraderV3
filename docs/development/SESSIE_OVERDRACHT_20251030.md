@@ -30,7 +30,7 @@
 
 **Rationale:**
 - Config schemas zijn validation contracts, niet runtime data DTOs
-- DTO suffix gereserveerd voor runtime data flow (OpportunitySignal, ExecutionDirective, etc.)
+- DTO suffix gereserveerd voor runtime data flow (Signal, ExecutionDirective, etc.)
 - Duidelijke scheiding tussen bootstrap schemas en runtime DTOs
 
 **Location:**
@@ -93,7 +93,7 @@ docs/development/#Archief/
 ### Week 0: Foundation - ✅ COMPLETE
 **Data Contracts (14 DTOs):**
 - ✅ Shared Layer: DispositionEnvelope, CausalityChain
-- ✅ SWOT Layer: ContextFactor, AggregatedContextAssessment, OpportunitySignal, ThreatSignal
+- ✅ SWOT Layer: ContextFactor, AggregatedContextAssessment, Signal, Risk
 - ✅ Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 - ✅ Execution Layer: ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
 

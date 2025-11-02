@@ -89,7 +89,7 @@ eventbus.publish(
 **Characteristics:**
 - Declared in worker manifest (`publishes` section)
 - Published via `PUBLISH` disposition
-- Human-readable names: `OPPORTUNITY_DETECTED`, `EMERGENCY_HALT`
+- Human-readable names: `SIGNAL_DETECTED`, `EMERGENCY_HALT`
 - **No payload** (data retrieved from TickCache by subscribers)
 
 **Example:**
@@ -98,7 +98,7 @@ eventbus.publish(
 return DispositionEnvelope(
     disposition="PUBLISH",
     event_name="BREAKOUT_OPPORTUNITY",
-    event_payload=OpportunitySignal(...)  # Payload goes to TickCache, not event!
+    event_payload=Signal(...)  # Payload goes to TickCache, not event!
 )
 ```
 
@@ -277,14 +277,14 @@ wiring_rules:
   - wiring_id: "momentum_to_planner"
     source:
       component_id: "momentum_scout_instance_1"
-      event_name: "MOMENTUM_OPPORTUNITY"
+      event_name: "MOMENTUM_SIGNAL"
       event_type: "CustomEvent"
     target:
       component_id: "momentum_planner_instance_1"
-      handler_method: "on_opportunity"
+      handler_method: "on_signal"
   
   # Emergency halt (custom event example)
-  - wiring_id: "threat_to_emergency"
+  - wiring_id: "risk_to_emergency"
     source:
       component_id: "drawdown_monitor_instance_1"
       event_name: "EMERGENCY_HALT"
@@ -380,11 +380,11 @@ sequenceDiagram
     
     Bus->>A_Mom: notify("_regime_output_ghi789")
     A_Mom->>Mom: process()
-    Mom-->>A_Mom: DispositionEnvelope(PUBLISH, "MOMENTUM_OPPORTUNITY")
-    A_Mom->>Bus: publish("MOMENTUM_OPPORTUNITY", OpportunitySignal)
+    Mom-->>A_Mom: DispositionEnvelope(PUBLISH, "MOMENTUM_SIGNAL")
+    A_Mom->>Bus: publish("MOMENTUM_SIGNAL", Signal)
     
-    Bus->>A_Plan: notify("MOMENTUM_OPPORTUNITY")
-    A_Plan->>Plan: on_opportunity(OpportunitySignal)
+    Bus->>A_Plan: notify("MOMENTUM_SIGNAL")
+    A_Plan->>Plan: on_signal(Signal)
     Plan-->>A_Plan: DispositionEnvelope(PUBLISH, "STRATEGY_DIRECTIVE_READY")
     A_Plan->>Bus: publish("STRATEGY_DIRECTIVE_READY", StrategyDirective)
     
@@ -402,13 +402,13 @@ sequenceDiagram
 graph TD
     Env[ExecutionEnvironment]
     CtxOp[ContextOperator<br/>hardcoded]
-    OppOp[OpportunityOperator<br/>hardcoded]
+    OppOp[SignalOperator<br/>hardcoded]
     PlanOp[PlanningOperator<br/>hardcoded]
     CW1[ContextWorker1]
     CW2[ContextWorker2]
     CW3[ContextWorker3]
-    OW1[OpportunityWorker1]
-    OW2[OpportunityWorker2]
+    OW1[SignalDetector1]
+    OW2[SignalDetector2]
     PW[PlanningWorker]
     
     Env --> CtxOp
@@ -443,7 +443,7 @@ graph LR
     subgraph Workers
         CW1[ContextWorker1]
         CW2[ContextWorker2]
-        OW1[OpportunityWorker1]
+        OW1[SignalDetector1]
         SP[StrategyPlanner]
     end
     

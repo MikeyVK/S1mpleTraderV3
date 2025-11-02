@@ -350,7 +350,7 @@ New architecture doc > 300 lines?
 
 **Example:**
 ```markdown
-# ❌ BAD - OpportunitySignal shows 22/22 tests, but now 27/27
+# ❌ BAD - Signal shows 22/22 tests, but now 27/27
 # Status not updated after refactor
 ```
 
@@ -361,7 +361,7 @@ New architecture doc > 300 lines?
 git add backend/dtos/strategy/signal.py
 git add tests/unit/dtos/strategy/test_opportunity_signal.py
 git add docs/implementation/IMPLEMENTATION_STATUS.md  # ← Don't forget!
-git commit -m "feat: add confidence validation to OpportunitySignal
+git commit -m "feat: add confidence validation to Signal
 
 - Added confidence range validator (0.0-1.0)
 - Added 5 new tests for confidence edge cases
@@ -458,10 +458,10 @@ This directory contains reference docs.
 **1. Capture Intent First (Human):**
 ```markdown
 # Quick notes while coding:
-- OpportunitySignal now has confidence field (0.0-1.0)
+- Signal now has confidence field (0.0-1.0)
 - Added 5 tests for edge cases
 - SWOT confrontation uses this for weighting
-- Similar to ThreatSignal.severity pattern
+- Similar to Risk.severity pattern
 ```
 
 **2. Ask AI to Expand (AI + Human Review):**
@@ -471,7 +471,7 @@ reference documentation. Include:
 - Field description
 - Validation rules
 - Usage example
-- Link to similar ThreatSignal pattern"
+- Link to similar Risk pattern"
 ```
 
 **3. Verify Against Code (Human):**

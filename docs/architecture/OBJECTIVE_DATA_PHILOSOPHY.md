@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-S1mpleTraderV3 implements a **pure objective data model** where ContextWorkers produce facts without interpretation, and consumers (SignalDetectors, ThreatWorkers, StrategyPlanners) apply their own subjective logic. This enables contradictory strategies to coexist using the same objective data.
+S1mpleTraderV3 implements a **pure objective data model** where ContextWorkers produce facts without interpretation, and consumers (SignalDetectors, RiskMonitors, StrategyPlanners) apply their own subjective logic. This enables contradictory strategies to coexist using the same objective data.
 
 **The Core Principle:**
 > ContextWorkers are **objective data providers**, not opinion givers. The full responsibility for interpretation lies with the consuming workers.
@@ -58,7 +58,7 @@ The EMA detector has **no opinion** about whether `ema_20=50100.50` is good or b
 
 **Who consumes:**
 - SignalDetectors
-- ThreatWorkers
+- RiskMonitors
 - StrategyPlanners
 
 **What they do:**
@@ -80,7 +80,7 @@ class TrendFollowingOpportunity(StandardWorker):
             # MY logic: price above EMA = signal
             return DispositionEnvelope(
                 disposition="PUBLISH",
-                event_payload=OpportunitySignal(confidence=0.7)
+                event_payload=Signal(confidence=0.7)
             )
         
         return DispositionEnvelope(disposition="CONTINUE")
@@ -102,7 +102,7 @@ class MeanReversionOpportunity(StandardWorker):
             # MY logic: price too far above EMA = overbought = signal to short
             return DispositionEnvelope(
                 disposition="PUBLISH",
-                event_payload=OpportunitySignal(
+                event_payload=Signal(
                     direction="short",
                     confidence=0.8
                 )
@@ -184,12 +184,12 @@ Different strategies look at this **same objective reality** and make different 
 **Trend Follower:**
 - Sees: `price > ema_20` and `structure_type="BULLISH_BOS"`
 - Interprets: "Bullish trend confirmed, signal to long"
-- Action: Publishes `OpportunitySignal(direction="long")`
+- Action: Publishes `Signal(direction="long")`
 
 **Mean Reverter:**
 - Sees: `rsi=65.3` and `price 5% above ema_20`
 - Interprets: "Overbought, likely pullback, signal to short"
-- Action: Publishes `OpportunitySignal(direction="short")`
+- Action: Publishes `Signal(direction="short")`
 
 **Volatility Trader:**
 - Sees: `volume_at_price` distribution and `high-low range`
@@ -301,7 +301,7 @@ When creating a new ContextWorker:
 - [ ] Uses `set_result_dto()` to store to TickCache
 - [ ] **NEVER** publishes to EventBus
 
-When creating a new SignalDetector/ThreatWorker:
+When creating a new SignalDetector/RiskMonitor:
 
 - [ ] Reads objective facts from TickCache via `get_required_dtos()`
 - [ ] Applies own interpretation logic (documented in worker)

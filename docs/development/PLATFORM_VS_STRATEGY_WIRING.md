@@ -44,8 +44,8 @@ graph LR
     
     subgraph Strategy["STRATEGY WIRING (Workers - Per Strategy)"]
         direction LR
-        CW[ContextWorkers] --> OW[OpportunityWorkers]
-        CW --> TW[ThreatWorkers]
+        CW[ContextWorkers] --> OW[SignalDetectors]
+        CW --> TW[RiskMonitors]
         OW --> SP[StrategyPlanner]
         TW --> SP
         SP --> PW[PlanningWorkers]
@@ -914,8 +914,8 @@ Is component een singleton?
 | ExecutionIntentPlanner | PlanningAggregator | **Platform** | Strategy → Singleton (exit) |
 | PlanningAggregator | ExecutionTranslator | **Platform** | Singleton → Singleton (infra) |
 | EMA Detector | Regime Classifier | **Strategy** | Worker → Worker (binnen strategy) |
-| OpportunityWorker | PlanningWorker | **Strategy** | Worker → Worker (binnen strategy) |
-| ThreatWorker | EmergencyExecutor | **Platform** | Strategy → Singleton (platform safety) |
+| SignalDetector | PlanningWorker | **Strategy** | Worker → Worker (binnen strategy) |
+| RiskMonitor | EmergencyExecutor | **Platform** | Strategy → Singleton (platform safety) |
 | EventBus | StrategyCache | **Platform** | Singleton → Singleton (infrastructure) |
 
 ---
@@ -1077,8 +1077,8 @@ wiring_rules:
 
 **Components:**
 - ContextWorkers
-- OpportunityWorkers
-- ThreatWorkers
+- SignalDetectors
+- RiskMonitors
 - PlanningWorkers
 - StrategyPlanner
 
@@ -1269,11 +1269,11 @@ class BroadcastPatternValidator:
 ├─────────┼────────────────────────────────────────┤
 │  [EXIT: Last ContextWorker] → ContextAggregator  │
 │         ↓                                        │
-│  [ENTRY: Context Assessment] → OpportunityWorker │
+│  [ENTRY: Context Assessment] → SignalDetector │
 │         ↓                                        │
 ├─────────┼────────────────────────────────────────┤
 │         ↓        STRATEGY WIRING                 │
-│   OpportunityWorker1 → OpportunityWorker2        │
+│   SignalDetector1 → SignalDetector2        │
 │         ↓                                        │
 │   PlanningWorker1 → PlanningWorker2              │
 │         ↓                                        │
@@ -1319,7 +1319,7 @@ graph TB
     
     subgraph "Flow Workers"
         CW[ContextWorkers<br/>Event Adapters]
-        OW[OpportunityWorkers<br/>Event Adapters]
+        OW[SignalDetectors<br/>Event Adapters]
         SP[StrategyPlanner<br/>Event Adapter]
         PP[PlanningWorkers<br/>Event Adapters]
     end

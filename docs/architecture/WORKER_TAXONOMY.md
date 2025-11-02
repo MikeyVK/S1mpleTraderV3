@@ -183,12 +183,12 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 ### 3. RiskMonitor - "The Watchdog"
 
-**Purpose:** Detect risks and threats to positions/portfolio
+**Purpose:** Detect risks and risks to positions/portfolio
 
 **Responsibilities:**
 - Portfolio risk monitoring (drawdown, concentration)
 - Market risk detection (black swan events, liquidity crises)
-- Position-specific threats (stop loss triggers, adverse moves)
+- Position-specific risks (stop loss triggers, adverse moves)
 - System health monitoring (connection, data quality)
 
 **Output Pattern:**

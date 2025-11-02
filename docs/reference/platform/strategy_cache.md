@@ -328,7 +328,7 @@ Workers should **inject `IStrategyCache`** via dependency injection (future), or
 from backend.core.strategy_cache import strategy_cache
 from backend.dtos.strategy.signal import Signal
 
-class OpportunityWorker:
+class SignalDetector:
     def process(self, tick: RawTick) -> DispositionEnvelope:
         # Get run anchor
         anchor = strategy_cache.get_run_anchor()
@@ -341,7 +341,7 @@ class OpportunityWorker:
         
         return DispositionEnvelope(
             disposition=Disposition.PUBLISH,
-            event_name="OPPORTUNITY_DETECTED",
+            event_name="SIGNAL_DETECTED",
             payload=signal
         )
 ```
@@ -385,8 +385,8 @@ class PlanningWorker:
         )
         
         # Get all risk signals
-        threats = strategy_cache.get_dtos(
-            "threat_signals",
+        risks = strategy_cache.get_dtos(
+            "risk_signals",
             Risk
         )
         
@@ -475,7 +475,7 @@ strategy_cache.set_dto("signals", "not_a_dto")  # ❌ Raises TypeError
 **4. Wrong DTO type retrieval:**
 ```python
 # Cache has Signal, but requesting Risk
-threats = strategy_cache.get_dtos("signals", Risk)
+risks = strategy_cache.get_dtos("signals", Risk)
 # ❌ Raises InvalidDTOTypeError
 ```
 
@@ -517,7 +517,7 @@ threats = strategy_cache.get_dtos("signals", Risk)
 
 **Phase 2: Dependency Injection**
 ```python
-class OpportunityWorker:
+class SignalDetector:
     def __init__(self, cache: IStrategyCache):
         self._cache = cache  # Injected, not imported
 ```
