@@ -93,7 +93,7 @@ docs/development/#Archief/
 ### Week 0: Foundation - ✅ COMPLETE
 **Data Contracts (14 DTOs):**
 - ✅ Shared Layer: DispositionEnvelope, CausalityChain
-- ✅ SWOT Layer: ContextFactor, AggregatedContextAssessment, Signal, Risk
+- ✅ Analysis Layer: ContextFactor, AggregatedContextAssessment, Signal, Risk
 - ✅ Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 - ✅ Execution Layer: ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
 

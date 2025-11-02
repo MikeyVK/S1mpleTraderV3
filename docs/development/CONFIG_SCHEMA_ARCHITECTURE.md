@@ -139,7 +139,7 @@ plugins/
 - Subtypes: 4 (entry_planning, size_planning, etc.)
 - **Note:** PlanningAggregator (platform component) combines into ExecutionDirective
 
-**5. StrategyPlanner** - Decision Making (SWOT-based decisions)
+**5. StrategyPlanner** - Decision Making (signal/risk-based decisions)
 - Output: `DispositionEnvelope(PUBLISH, StrategyDirective)`
 - Communication: EventBus (strategy decisions)
 - Cardinality: **Exactly 1 per strategy** (1-to-1 relationship)
