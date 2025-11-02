@@ -278,7 +278,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
    - For direct worker-to-worker data transfer
    - Contains **plugin-specific DTOs only**
    - Lifetime: Single tick/flow
-   - Used by: ContextWorker, intermediate outputs from Opportunity/Planning
+   - Used by: ContextWorker, intermediate outputs from PlanningWorker
 
 2. **EventBus (Asynchronous, Signals)**
    - Via `DispositionEnvelope(PUBLISH, event_name, event_payload)`

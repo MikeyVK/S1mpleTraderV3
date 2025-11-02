@@ -176,7 +176,7 @@ class IEventBus(Protocol):
         returns True for the given publish scope and strategy ID.
 
         Args:
-            event_name: Event identifier (e.g., "OPPORTUNITY_DETECTED")
+            event_name: Event identifier (e.g., "SIGNAL_DETECTED")
             payload: Pydantic DTO (validated contract)
             scope: PLATFORM (all) or STRATEGY (scoped)
             strategy_instance_id: Required if scope=STRATEGY

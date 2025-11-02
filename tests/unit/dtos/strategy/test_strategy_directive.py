@@ -266,8 +266,8 @@ class TestStrategyDirectiveSerialization:
 class TestStrategyDirectiveUseCases:
     """Test StrategyDirective real-world use cases."""
 
-    def test_new_trade_opportunity(self):
-        """New trade directive from opportunity signal."""
+    def test_new_trade_signal(self):
+        """New trade directive from signal detection."""
         directive = StrategyDirective(
             strategy_planner_id="swot_momentum_planner",
             causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),

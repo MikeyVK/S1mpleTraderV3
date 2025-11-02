@@ -95,7 +95,7 @@ class TestSignalCreation:
 
 
 
-class TestSignalOpportunityIDValidation:
+class TestSignalIDValidation:
     """Test suite for signal_id validation."""
 
     def test_valid_signal_id_format(self):

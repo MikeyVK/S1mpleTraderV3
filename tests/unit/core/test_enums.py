@@ -65,8 +65,8 @@ class TestContextType:
 class TestSignalType:
     """Test suite for SignalType enum."""
 
-    def test_all_opportunity_types_present(self):
-        """Test that all expected opportunity types are defined."""
+    def test_all_signal_types_present(self):
+        """Test that all expected signal types are defined."""
         expected = {
             "BREAKOUT_DETECTION",
             "PULLBACK_DETECTION",
@@ -84,7 +84,7 @@ class TestSignalType:
             f"Removed: {expected - actual}"
         )
 
-    def test_opportunity_type_is_string_enum(self):
+    def test_signal_type_is_string_enum(self):
         """Test that SignalType values are strings."""
         for opp_type in SignalType:
             assert isinstance(opp_type.value, str)
