@@ -1,13 +1,13 @@
-# tests/unit/dtos/strategy/test_opportunity_signal.py
+# tests/unit/dtos/strategy/test_signal.py
 """
-Unit tests for OpportunitySignal DTO.
+Unit tests for Signal DTO.
 
-Tests the opportunity detection output contract according to TDD principles.
-OpportunitySignal represents a detected trading opportunity and is the
-foundation of the causal traceability chain.
+Tests the signal detection output contract according to TDD principles.
+Signal represents a detected trading signal and is the foundation
+of the causal traceability chain.
 
 @layer: Tests (Unit)
-@dependencies: [pytest, pydantic, backend.dtos.strategy.opportunity_signal]
+@dependencies: [pytest, pydantic, backend.dtos.strategy.signal]
 """
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives for optional fields
@@ -21,17 +21,17 @@ import pytest
 from pydantic import ValidationError
 
 # Our Application Imports
-from backend.dtos.strategy.opportunity_signal import OpportunitySignal
+from backend.dtos.strategy.signal import Signal
 from backend.dtos.causality import CausalityChain
-from backend.utils.id_generators import generate_tick_id, generate_opportunity_id
+from backend.utils.id_generators import generate_tick_id, generate_signal_id
 
 
-class TestOpportunitySignalCreation:
-    """Test suite for OpportunitySignal instantiation."""
+class TestSignalCreation:
+    """Test suite for Signal instantiation."""
 
     def test_create_minimal_signal(self):
         """Test creating signal with required fields only."""
-        signal = OpportunitySignal(
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
@@ -45,8 +45,8 @@ class TestOpportunitySignalCreation:
         assert getattr(causality, "tick_id") is not None
         assert getattr(causality, "tick_id").startswith("TCK_")
         # Verify ID formats
-        opportunity_id = str(signal.opportunity_id)
-        assert opportunity_id.startswith("OPP_")
+        signal_id = str(signal.signal_id)
+        assert signal_id.startswith("SIG_")
         assert signal.asset == "BTC/EUR"
         assert signal.direction == "long"
         assert signal.signal_type == "FVG_ENTRY"
@@ -54,7 +54,7 @@ class TestOpportunitySignalCreation:
 
     def test_create_signal_with_confidence(self):
         """Test creating signal with optional confidence score."""
-        signal = OpportunitySignal(
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             asset="ETH/USDT",
@@ -65,9 +65,9 @@ class TestOpportunitySignalCreation:
 
         assert signal.confidence == 0.85
 
-    def test_opportunity_id_auto_generated(self):
-        """Test that opportunity_id is auto-generated if not provided."""
-        signal = OpportunitySignal(
+    def test_signal_id_auto_generated(self):
+        """Test that signal_id is auto-generated if not provided."""
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
@@ -75,65 +75,65 @@ class TestOpportunitySignalCreation:
             signal_type="FVG_ENTRY"
         )
 
-        opportunity_id = str(signal.opportunity_id)
-        assert opportunity_id.startswith("OPP_")
+        signal_id = str(signal.signal_id)
+        assert signal_id.startswith("SIG_")
 
-    def test_custom_opportunity_id_accepted(self):
-        """Test that custom opportunity_id can be provided."""
-        custom_id = generate_opportunity_id()
-        signal = OpportunitySignal(
+    def test_custom_signal_id_accepted(self):
+        """Test that custom signal_id can be provided."""
+        custom_id = generate_signal_id()
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
-            opportunity_id=custom_id,
+            signal_id=custom_id,
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
             direction="long",
             signal_type="FVG_ENTRY"
         )
 
-        assert signal.opportunity_id == custom_id
+        assert signal.signal_id == custom_id
 
 
 
 
-class TestOpportunitySignalOpportunityIDValidation:
-    """Test suite for opportunity_id validation."""
+class TestSignalOpportunityIDValidation:
+    """Test suite for signal_id validation."""
 
-    def test_valid_opportunity_id_format(self):
-        """Test that OPP_ prefix with UUID is valid."""
-        signal = OpportunitySignal(
+    def test_valid_signal_id_format(self):
+        """Test that SIG_ prefix with UUID is valid."""
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
-            opportunity_id=generate_opportunity_id(),
+            signal_id=generate_signal_id(),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
             direction="long",
             signal_type="TEST"
         )
 
-        opportunity_id = str(signal.opportunity_id)
-        assert opportunity_id.startswith("OPP_")
+        signal_id = str(signal.signal_id)
+        assert signal_id.startswith("SIG_")
 
-    def test_invalid_opportunity_id_prefix_rejected(self):
-        """Test that non-OPP_ prefix is rejected."""
+    def test_invalid_signal_id_prefix_rejected(self):
+        """Test that non-SIG_ prefix is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
-                opportunity_id="TCK_550e8400-e29b-41d4-a716-446655440000",
+                signal_id="TCK_550e8400-e29b-41d4-a716-446655440000",
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="long",
                 signal_type="TEST"
             )
 
-        assert "opportunity_id" in str(exc_info.value)
+        assert "signal_id" in str(exc_info.value)
 
 
-class TestOpportunitySignalTimestampValidation:
+class TestSignalTimestampValidation:
     """Test suite for timestamp validation."""
 
     def test_naive_datetime_converted_to_utc(self):
         """Test that naive datetime is assumed to be UTC."""
         naive_dt = datetime(2025, 1, 15, 10, 30, 0)
-        signal = OpportunitySignal(
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=naive_dt,
             asset="BTC/EUR",
@@ -150,7 +150,7 @@ class TestOpportunitySignalTimestampValidation:
     def test_aware_datetime_preserved(self):
         """Test that timezone-aware datetime is preserved."""
         aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
-        signal = OpportunitySignal(
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=aware_dt,
             asset="BTC/EUR",
@@ -161,7 +161,7 @@ class TestOpportunitySignalTimestampValidation:
         assert signal.timestamp == aware_dt
 
 
-class TestOpportunitySignalAssetValidation:
+class TestSignalAssetValidation:
     """Test suite for asset field validation."""
 
     def test_valid_asset_formats(self):
@@ -175,7 +175,7 @@ class TestOpportunitySignalAssetValidation:
         ]
 
         for asset in valid_assets:
-            signal = OpportunitySignal(
+            signal = Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset=asset,
@@ -187,7 +187,7 @@ class TestOpportunitySignalAssetValidation:
     def test_asset_too_short_rejected(self):
         """Test that too short asset is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="A/B",
@@ -201,7 +201,7 @@ class TestOpportunitySignalAssetValidation:
         """Test that too long asset is rejected."""
         long_asset = "A" * 15 + "/" + "B" * 15
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset=long_asset,
@@ -222,7 +222,7 @@ class TestOpportunitySignalAssetValidation:
 
         for invalid_asset in invalid_assets:
             with pytest.raises(ValidationError):
-                OpportunitySignal(
+                Signal(
                     causality=CausalityChain(tick_id=generate_tick_id()),
                     timestamp=datetime.now(timezone.utc),
                     asset=invalid_asset,
@@ -231,12 +231,12 @@ class TestOpportunitySignalAssetValidation:
                 )
 
 
-class TestOpportunitySignalDirectionValidation:
+class TestSignalDirectionValidation:
     """Test suite for direction field validation."""
 
     def test_long_direction_accepted(self):
         """Test that 'long' direction is accepted."""
-        signal = OpportunitySignal(
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
@@ -248,7 +248,7 @@ class TestOpportunitySignalDirectionValidation:
 
     def test_short_direction_accepted(self):
         """Test that 'short' direction is accepted."""
-        signal = OpportunitySignal(
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
@@ -261,7 +261,7 @@ class TestOpportunitySignalDirectionValidation:
     def test_invalid_direction_rejected(self):
         """Test that invalid direction is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
@@ -272,7 +272,7 @@ class TestOpportunitySignalDirectionValidation:
         assert "direction" in str(exc_info.value)
 
 
-class TestOpportunitySignalTypeValidation:
+class TestSignalTypeValidation:
     """Test suite for signal_type field validation."""
 
     def test_valid_signal_types(self):
@@ -288,7 +288,7 @@ class TestOpportunitySignalTypeValidation:
 
         for signal_type in valid_types:
             if len(signal_type) >= 3:  # Skip single letter for this test
-                signal = OpportunitySignal(
+                signal = Signal(
                     causality=CausalityChain(tick_id=generate_tick_id()),
                     timestamp=datetime.now(timezone.utc),
                     asset="BTC/EUR",
@@ -300,7 +300,7 @@ class TestOpportunitySignalTypeValidation:
     def test_signal_type_too_short_rejected(self):
         """Test that signal_type < 3 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
@@ -313,7 +313,7 @@ class TestOpportunitySignalTypeValidation:
     def test_signal_type_too_long_rejected(self):
         """Test that signal_type > 25 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
@@ -326,7 +326,7 @@ class TestOpportunitySignalTypeValidation:
     def test_signal_type_lowercase_rejected(self):
         """Test that lowercase signal_type is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
@@ -346,7 +346,7 @@ class TestOpportunitySignalTypeValidation:
 
         for reserved_type in reserved_types:
             with pytest.raises(ValidationError) as exc_info:
-                OpportunitySignal(
+                Signal(
                     causality=CausalityChain(tick_id=generate_tick_id()),
                     timestamp=datetime.now(timezone.utc),
                     asset="BTC/EUR",
@@ -357,12 +357,12 @@ class TestOpportunitySignalTypeValidation:
             assert "reserved prefix" in str(exc_info.value).lower()
 
 
-class TestOpportunitySignalConfidenceValidation:
+class TestSignalConfidenceValidation:
     """Test suite for confidence field validation."""
 
     def test_confidence_none_by_default(self):
         """Test that confidence is None if not provided."""
-        signal = OpportunitySignal(
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
@@ -377,7 +377,7 @@ class TestOpportunitySignalConfidenceValidation:
         valid_values = [0.0, 0.25, 0.5, 0.75, 1.0]
 
         for conf in valid_values:
-            signal = OpportunitySignal(
+            signal = Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
@@ -390,7 +390,7 @@ class TestOpportunitySignalConfidenceValidation:
     def test_confidence_below_zero_rejected(self):
         """Test that confidence < 0.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
@@ -404,7 +404,7 @@ class TestOpportunitySignalConfidenceValidation:
     def test_confidence_above_one_rejected(self):
         """Test that confidence > 1.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
@@ -416,12 +416,12 @@ class TestOpportunitySignalConfidenceValidation:
         assert "confidence" in str(exc_info.value)
 
 
-class TestOpportunitySignalImmutability:
-    """Test suite for OpportunitySignal immutability."""
+class TestSignalImmutability:
+    """Test suite for Signal immutability."""
 
     def test_signal_is_frozen(self):
-        """Test that OpportunitySignal is immutable after creation."""
-        signal = OpportunitySignal(
+        """Test that Signal is immutable after creation."""
+        signal = Signal(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
@@ -435,7 +435,7 @@ class TestOpportunitySignalImmutability:
     def test_no_extra_fields_allowed(self):
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError) as exc_info:
-            OpportunitySignal(
+            Signal(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",

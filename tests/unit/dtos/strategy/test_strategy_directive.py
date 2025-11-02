@@ -198,9 +198,9 @@ class TestStrategyDirectiveDefaultValues:
             strategy_planner_id="test",
             causality=CausalityChain(
                 tick_id="TCK_20251026_100000_a1b2c3d4",
-                opportunity_signal_ids=["OPP_20251026_100001_b2c3d4e5",
-                                        "OPP_20251026_100002_c3d4e5f6"],
-                threat_ids=["THR_20251026_100003_d4e5f6a7"]
+                signal_ids=["SIG_20251026_100001_b2c3d4e5",
+                                        "SIG_20251026_100002_c3d4e5f6"],
+                risk_ids=["RSK_20251026_100003_d4e5f6a7"]
             ),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.75")
@@ -208,8 +208,8 @@ class TestStrategyDirectiveDefaultValues:
 
         # CausalityChain enable Journal causality reconstruction
         causality = cast(CausalityChain, directive.causality)
-        assert len(getattr(causality, "opportunity_signal_ids")) == 2
-        assert len(getattr(causality, "threat_ids")) == 1
+        assert len(getattr(causality, "signal_ids")) == 2
+        assert len(getattr(causality, "risk_ids")) == 1
 
 
 class TestStrategyDirectiveSerialization:
@@ -251,8 +251,8 @@ class TestStrategyDirectiveSerialization:
             "strategy_planner_id": "test",
             "causality": {
                 "tick_id": "TCK_20251026_100000_a1b2c3d4",
-                "opportunity_signal_ids": [],
-                "threat_ids": []
+                "signal_ids": [],
+                "risk_ids": []
             },
             "scope": "NEW_TRADE",
             "confidence": "0.5"

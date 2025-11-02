@@ -58,8 +58,8 @@ class TestCausalityChainCreation:
             tick_id="TCK_20251026_100000_a1b2c3d4"
         )
 
-        assert chain.opportunity_signal_ids == []
-        assert chain.threat_ids == []
+        assert chain.signal_ids == []
+        assert chain.risk_ids == []
         assert chain.strategy_directive_id is None
         assert chain.entry_plan_id is None
         assert chain.size_plan_id is None
@@ -121,39 +121,39 @@ class TestCausalityChainBirthValidation:
 class TestCausalityChainWorkerIDs:
     """Test suite for worker output ID accumulation."""
 
-    def test_add_single_opportunity_signal_id(self):
-        """Test adding single opportunity signal ID."""
+    def test_add_single_signal_id(self):
+        """Test adding single signal ID."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            opportunity_signal_ids=["OPP_20251026_100001_def5e6f7"]
+            signal_ids=["SIG_20251026_100001_def5e6f7"]
         )
 
-        assert len(chain.opportunity_signal_ids) == 1
-        assert chain.opportunity_signal_ids[0] == "OPP_20251026_100001_def5e6f7"
+        assert len(chain.signal_ids) == 1
+        assert chain.signal_ids[0] == "SIG_20251026_100001_def5e6f7"
 
-    def test_add_multiple_opportunity_signal_ids(self):
-        """Test adding multiple opportunity signal IDs (confluence)."""
+    def test_add_multiple_signal_ids(self):
+        """Test adding multiple signal IDs (confluence)."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            opportunity_signal_ids=[
-                "OPP_20251026_100001_def5e6f7",
-                "OPP_20251026_100002_abc1d2e3"
+            signal_ids=[
+                "SIG_20251026_100001_def5e6f7",
+                "SIG_20251026_100002_abc1d2e3"
             ]
         )
 
-        assert len(chain.opportunity_signal_ids) == 2
-        assert "OPP_20251026_100001_def5e6f7" in chain.opportunity_signal_ids
-        assert "OPP_20251026_100002_abc1d2e3" in chain.opportunity_signal_ids
+        assert len(chain.signal_ids) == 2
+        assert "SIG_20251026_100001_def5e6f7" in chain.signal_ids
+        assert "SIG_20251026_100002_abc1d2e3" in chain.signal_ids
 
-    def test_add_threat_ids(self):
-        """Test adding threat IDs (CriticalEvent)."""
+    def test_add_risk_ids(self):
+        """Test adding risk IDs (critical risk events)."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            threat_ids=["THR_20251026_100001_b2c3d4e5"]
+            risk_ids=["RSK_20251026_100001_b2c3d4e5"]
         )
 
-        assert len(chain.threat_ids) == 1
-        assert chain.threat_ids[0] == "THR_20251026_100001_b2c3d4e5"
+        assert len(chain.risk_ids) == 1
+        assert chain.risk_ids[0] == "RSK_20251026_100001_b2c3d4e5"
 
     def test_add_strategy_directive_id(self):
         """Test adding strategy directive ID."""
@@ -199,17 +199,17 @@ class TestCausalityChainModelCopyPattern:
         )
 
         copy = original.model_copy(update={
-            "opportunity_signal_ids": ["OPP_20251026_100001_def5e6f7"]
+            "signal_ids": ["SIG_20251026_100001_def5e6f7"]
         })
 
         assert copy.tick_id == "TCK_20251026_100000_a1b2c3d4"
-        assert copy.opportunity_signal_ids == ["OPP_20251026_100001_def5e6f7"]
+        assert copy.signal_ids == ["SIG_20251026_100001_def5e6f7"]
 
     def test_model_copy_extends_worker_ids(self):
         """Test that model_copy can extend worker IDs."""
         original = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            opportunity_signal_ids=["OPP_20251026_100001_def5e6f7"]
+            signal_ids=["SIG_20251026_100001_def5e6f7"]
         )
 
         extended = original.model_copy(update={
@@ -217,7 +217,7 @@ class TestCausalityChainModelCopyPattern:
         })
 
         assert extended.tick_id == "TCK_20251026_100000_a1b2c3d4"
-        assert extended.opportunity_signal_ids == ["OPP_20251026_100001_def5e6f7"]
+        assert extended.signal_ids == ["SIG_20251026_100001_def5e6f7"]
         assert extended.strategy_directive_id == "STR_20251026_100002_abc1d2e3"
 
     def test_model_copy_chain_accumulation(self):
@@ -229,7 +229,7 @@ class TestCausalityChainModelCopyPattern:
 
         # OpportunityWorker
         after_opp = birth.model_copy(update={
-            "opportunity_signal_ids": ["OPP_20251026_100001_def5e6f7"]
+            "signal_ids": ["SIG_20251026_100001_def5e6f7"]
         })
 
         # StrategyPlanner
@@ -244,7 +244,7 @@ class TestCausalityChainModelCopyPattern:
 
         # Verify full chain
         assert after_entry.tick_id == "TCK_20251026_100000_a1b2c3d4"
-        assert after_entry.opportunity_signal_ids == ["OPP_20251026_100001_def5e6f7"]
+        assert after_entry.signal_ids == ["SIG_20251026_100001_def5e6f7"]
         assert after_entry.strategy_directive_id == "STR_20251026_100002_abc1d2e3"
         assert after_entry.entry_plan_id == "ENT_20251026_100003_def5e6f7"
 
@@ -256,7 +256,7 @@ class TestCausalityChainSerialization:
         """Test that model_dump includes all 12 fields."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            opportunity_signal_ids=["OPP_20251026_100001_def5e6f7"]
+            signal_ids=["SIG_20251026_100001_def5e6f7"]
         )
 
         data = chain.model_dump()
@@ -267,8 +267,8 @@ class TestCausalityChainSerialization:
         assert "schedule_id" in data
 
         # Worker output IDs
-        assert "opportunity_signal_ids" in data
-        assert "threat_ids" in data
+        assert "signal_ids" in data
+        assert "risk_ids" in data
         assert "strategy_directive_id" in data
         assert "entry_plan_id" in data
         assert "size_plan_id" in data
@@ -280,7 +280,7 @@ class TestCausalityChainSerialization:
         """Test that model_dump produces JSON-serializable dict."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            opportunity_signal_ids=["OPP_20251026_100001_def5e6f7"],
+            signal_ids=["SIG_20251026_100001_def5e6f7"],
             strategy_directive_id="STR_20251026_100002_abc1d2e3"
         )
 
@@ -295,8 +295,8 @@ class TestCausalityChainSerialization:
             "tick_id": "TCK_20251026_100000_a1b2c3d4",
             "news_id": None,
             "schedule_id": None,
-            "opportunity_signal_ids": ["OPP_20251026_100001_def5e6f7"],
-            "threat_ids": [],
+            "signal_ids": ["SIG_20251026_100001_def5e6f7"],
+            "risk_ids": [],
             "strategy_directive_id": "STR_20251026_100002_abc1d2e3",
             "entry_plan_id": None,
             "size_plan_id": None,
@@ -308,30 +308,30 @@ class TestCausalityChainSerialization:
         chain = CausalityChain.model_validate(data)
 
         assert chain.tick_id == "TCK_20251026_100000_a1b2c3d4"
-        assert chain.opportunity_signal_ids == ["OPP_20251026_100001_def5e6f7"]
+        assert chain.signal_ids == ["SIG_20251026_100001_def5e6f7"]
         assert chain.strategy_directive_id == "STR_20251026_100002_abc1d2e3"
 
 
 class TestCausalityChainEdgeCases:
     """Test suite for edge cases and error conditions."""
 
-    def test_empty_opportunity_signal_ids_list(self):
-        """Test that empty list is valid for opportunity_signal_ids."""
+    def test_empty_signal_ids_list(self):
+        """Test that empty list is valid for signal_ids."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            opportunity_signal_ids=[]
+            signal_ids=[]
         )
 
-        assert chain.opportunity_signal_ids == []
+        assert chain.signal_ids == []
 
-    def test_empty_threat_ids_list(self):
-        """Test that empty list is valid for threat_ids."""
+    def test_empty_risk_ids_list(self):
+        """Test that empty list is valid for risk_ids."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            threat_ids=[]
+            risk_ids=[]
         )
 
-        assert chain.threat_ids == []
+        assert chain.risk_ids == []
 
     def test_none_values_for_optional_ids(self):
         """Test that None is valid for all optional worker IDs."""
@@ -352,8 +352,8 @@ class TestCausalityChainEdgeCases:
         """Test full chain with all IDs populated."""
         chain = CausalityChain(
             tick_id="TCK_20251026_100000_a1b2c3d4",
-            opportunity_signal_ids=["OPP_20251026_100001_def5e6f7"],
-            threat_ids=["THR_20251026_100002_abc1d2e3"],
+            signal_ids=["SIG_20251026_100001_def5e6f7"],
+            risk_ids=["RSK_20251026_100002_abc1d2e3"],
             strategy_directive_id="STR_20251026_100004_abc1d2e3",
             entry_plan_id="ENT_20251026_100005_def5e6f7",
             size_plan_id="SIZ_20251026_100006_abc1d2e3",
@@ -364,8 +364,8 @@ class TestCausalityChainEdgeCases:
 
         # Verify all fields populated
         assert chain.tick_id is not None
-        assert len(chain.opportunity_signal_ids) == 1
-        assert len(chain.threat_ids) == 1
+        assert len(chain.signal_ids) == 1
+        assert len(chain.risk_ids) == 1
         assert chain.strategy_directive_id is not None
         assert chain.entry_plan_id is not None
         assert chain.size_plan_id is not None

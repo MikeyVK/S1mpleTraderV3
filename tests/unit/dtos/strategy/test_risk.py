@@ -1,18 +1,18 @@
-# tests/unit/dtos/execution/test_threat_signal.py
+# tests/unit/dtos/strategy/test_risk.py
 """
-Unit tests for ThreatSignal DTO.
+Unit tests for Risk DTO.
 
-Tests the threat/risk detection output contract according to TDD principles.
-ThreatSignal represents a detected threat and forms part of the SWOT
+Tests the risk detection output contract according to TDD principles.
+Risk represents a detected risk and forms part of the quant
 analysis framework.
 
-NOTE: Pylance shows "missing affected_asset" warnings on ThreatSignal() calls.
+NOTE: Pylance shows "missing affected_asset" warnings on Risk() calls.
 This is a known Pylance/Pydantic v2 limitation where Field(None, default=None)
 isn't recognized as making a parameter optional. All tests pass - the field IS
 optional. Warnings suppressed with # type: ignore[call-arg].
 
 @layer: Tests (Unit)
-@dependencies: [pytest, pydantic, backend.dtos.execution.threat_signal]
+@dependencies: [pytest, pydantic, backend.dtos.strategy.risk]
 """
 
 # Standard Library Imports
@@ -23,24 +23,24 @@ import pytest
 from pydantic import ValidationError
 
 # Our Application Imports
-from backend.dtos.strategy.threat_signal import ThreatSignal
+from backend.dtos.strategy.risk import Risk
 from backend.dtos.causality import CausalityChain
 from backend.utils.id_generators import (
     generate_tick_id,
-    generate_threat_id,
+    generate_risk_id,
     generate_schedule_id,
 )
 
 
-class TestThreatSignalCreation:
-    """Test suite for ThreatSignal instantiation."""
+class TestRiskCreation:
+    """Test suite for Risk instantiation."""
 
     def test_create_minimal_event(self):
         """Test creating event with required fields only."""
-        event = ThreatSignal(  # type: ignore[call-arg]
+        event = Risk(  # type: ignore[call-arg]
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
-            threat_type="MAX_DRAWDOWN_APPROACHING",
+            risk_type="MAX_DRAWDOWN_APPROACHING",
             severity=0.75
         )
 
@@ -49,92 +49,92 @@ class TestThreatSignalCreation:
         assert event.causality.tick_id is not None
         assert event.causality.tick_id.startswith("TCK_")
         # Verify ID formats
-        threat_id = str(event.threat_id)
-        assert threat_id.startswith("THR_")
-        assert event.threat_type == "MAX_DRAWDOWN_APPROACHING"
+        risk_id = str(event.risk_id)
+        assert risk_id.startswith("RSK_")
+        assert event.risk_type == "MAX_DRAWDOWN_APPROACHING"
         assert event.severity == 0.75
         assert event.affected_asset is None
 
     def test_create_event_with_affected_asset(self):
         """Test creating event with affected asset specified."""
-        event = ThreatSignal(
+        event = Risk(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
-            threat_type="UNUSUAL_VOLATILITY",
+            risk_type="UNUSUAL_VOLATILITY",
             severity=0.60,
             affected_asset="BTC/EUR"
         )
 
         assert event.affected_asset == "BTC/EUR"
 
-    def test_threat_id_auto_generated(self):
-        """Test that threat_id is auto-generated if not provided."""
-        event = ThreatSignal(  # type: ignore[call-arg]
+    def test_risk_id_auto_generated(self):
+        """Test that risk_id is auto-generated if not provided."""
+        event = Risk(  # type: ignore[call-arg]
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
-            threat_type="HEALTH_DEGRADED",
+            risk_type="HEALTH_DEGRADED",
             severity=0.50
         )
 
-        threat_id = str(event.threat_id)
-        assert threat_id.startswith("THR_")
+        risk_id = str(event.risk_id)
+        assert risk_id.startswith("RSK_")
 
-    def test_custom_threat_id_accepted(self):
-        """Test that custom threat_id can be provided."""
-        custom_id = generate_threat_id()
-        event = ThreatSignal(  # type: ignore[call-arg]
+    def test_custom_risk_id_accepted(self):
+        """Test that custom risk_id can be provided."""
+        custom_id = generate_risk_id()
+        event = Risk(  # type: ignore[call-arg]
             causality=CausalityChain(tick_id=generate_tick_id()),
-            threat_id=custom_id,
+            risk_id=custom_id,
             timestamp=datetime.now(timezone.utc),
-            threat_type="EMERGENCY_HALT",
+            risk_type="EMERGENCY_HALT",
             severity=1.0
         )
 
-        assert event.threat_id == custom_id
+        assert event.risk_id == custom_id
 
 
 
 
-class TestThreatSignalThreatIDValidation:
-    """Test suite for threat_id validation."""
+class TestRiskThreatIDValidation:
+    """Test suite for risk_id validation."""
 
-    def test_valid_threat_id_format(self):
-        """Test that THR_ prefix with UUID is valid."""
-        event = ThreatSignal(  # type: ignore[call-arg]
+    def test_valid_risk_id_format(self):
+        """Test that RSK_ prefix with UUID is valid."""
+        event = Risk(  # type: ignore[call-arg]
             causality=CausalityChain(tick_id=generate_tick_id()),
-            threat_id=generate_threat_id(),
+            risk_id=generate_risk_id(),
             timestamp=datetime.now(timezone.utc),
-            threat_type="TEST",
+            risk_type="TEST",
             severity=0.5
         )
 
-        threat_id = str(event.threat_id)
-        assert threat_id.startswith("THR_")
+        risk_id = str(event.risk_id)
+        assert risk_id.startswith("RSK_")
 
-    def test_invalid_threat_id_prefix_rejected(self):
-        """Test that non-THR_ prefix is rejected."""
+    def test_invalid_risk_id_prefix_rejected(self):
+        """Test that non-RSK_ prefix is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            ThreatSignal(  # type: ignore[call-arg]
+            Risk(  # type: ignore[call-arg]
                 causality=CausalityChain(tick_id=generate_tick_id()),
-                threat_id="OPP_550e8400-e29b-41d4-a716-446655440000",
+                risk_id="OPP_550e8400-e29b-41d4-a716-446655440000",
                 timestamp=datetime.now(timezone.utc),
-                threat_type="TEST",
+                risk_type="TEST",
                 severity=0.5
             )
 
-        assert "threat_id" in str(exc_info.value)
+        assert "risk_id" in str(exc_info.value)
 
 
-class TestThreatSignalTimestampValidation:
+class TestRiskTimestampValidation:
     """Test suite for timestamp validation."""
 
     def test_naive_datetime_converted_to_utc(self):
         """Test that naive datetime is converted to UTC."""
         naive_dt = datetime(2025, 1, 15, 10, 30, 0)
-        event = ThreatSignal(  # type: ignore[call-arg]
+        event = Risk(  # type: ignore[call-arg]
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=naive_dt,
-            threat_type="TEST",
+            risk_type="TEST",
             severity=0.5
         )
 
@@ -149,20 +149,20 @@ class TestThreatSignalTimestampValidation:
     def test_aware_datetime_preserved(self):
         """Test that timezone-aware datetime is preserved."""
         aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
-        event = ThreatSignal(  # type: ignore[call-arg]
+        event = Risk(  # type: ignore[call-arg]
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=aware_dt,
-            threat_type="TEST",
+            risk_type="TEST",
             severity=0.5
         )
 
         assert event.timestamp == aware_dt
 
 
-class TestThreatSignalThreatTypeValidation:
-    """Test suite for threat_type field validation."""
+class TestRiskThreatTypeValidation:
+    """Test suite for risk_type field validation."""
 
-    def test_valid_threat_types(self):
+    def test_valid_risk_types(self):
         """Test that valid UPPER_SNAKE_CASE threat types are accepted."""
         valid_types = [
             "MAX_DRAWDOWN_APPROACHING",
@@ -172,52 +172,52 @@ class TestThreatSignalThreatTypeValidation:
             "RISK_LIMIT_BREACHED",
         ]
 
-        for threat_type in valid_types:
-            event = ThreatSignal(  # type: ignore[call-arg]
+        for risk_type in valid_types:
+            event = Risk(  # type: ignore[call-arg]
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type=threat_type,
+                risk_type=risk_type,
                 severity=0.5
             )
-            assert event.threat_type == threat_type
+            assert event.risk_type == risk_type
 
-    def test_threat_type_too_short_rejected(self):
-        """Test that threat_type < 3 chars is rejected."""
+    def test_risk_type_too_short_rejected(self):
+        """Test that risk_type < 3 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            ThreatSignal(  # type: ignore[call-arg]
+            Risk(  # type: ignore[call-arg]
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="AB",
+                risk_type="AB",
                 severity=0.5
             )
 
-        assert "threat_type" in str(exc_info.value)
+        assert "risk_type" in str(exc_info.value)
 
-    def test_threat_type_too_long_rejected(self):
-        """Test that threat_type > 25 chars is rejected."""
+    def test_risk_type_too_long_rejected(self):
+        """Test that risk_type > 25 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            ThreatSignal(  # type: ignore[call-arg]
+            Risk(  # type: ignore[call-arg]
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="A" * 26,
+                risk_type="A" * 26,
                 severity=0.5
             )
 
-        assert "threat_type" in str(exc_info.value)
+        assert "risk_type" in str(exc_info.value)
 
-    def test_threat_type_lowercase_rejected(self):
-        """Test that lowercase threat_type is rejected."""
+    def test_risk_type_lowercase_rejected(self):
+        """Test that lowercase risk_type is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            ThreatSignal(  # type: ignore[call-arg]
+            Risk(  # type: ignore[call-arg]
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="max_drawdown",
+                risk_type="max_drawdown",
                 severity=0.5
             )
 
-        assert "threat_type" in str(exc_info.value)
+        assert "risk_type" in str(exc_info.value)
 
-    def test_threat_type_reserved_prefix_rejected(self):
+    def test_risk_type_reserved_prefix_rejected(self):
         """Test that reserved prefixes are rejected."""
         reserved_types = [
             "SYSTEM_EVENT",
@@ -227,17 +227,17 @@ class TestThreatSignalThreatTypeValidation:
 
         for reserved_type in reserved_types:
             with pytest.raises(ValidationError) as exc_info:
-                ThreatSignal(  # type: ignore[call-arg]
+                Risk(  # type: ignore[call-arg]
                     causality=CausalityChain(tick_id=generate_tick_id()),
                     timestamp=datetime.now(timezone.utc),
-                    threat_type=reserved_type,
+                    risk_type=reserved_type,
                     severity=0.5
                 )
 
             assert "reserved prefix" in str(exc_info.value).lower()
 
 
-class TestThreatSignalSeverityValidation:
+class TestRiskSeverityValidation:
     """Test suite for severity field validation (SWOT framework)."""
 
     def test_valid_severity_range(self):
@@ -245,10 +245,10 @@ class TestThreatSignalSeverityValidation:
         valid_values = [0.0, 0.25, 0.5, 0.75, 1.0]
 
         for sev in valid_values:
-            event = ThreatSignal(  # type: ignore[call-arg]
+            event = Risk(  # type: ignore[call-arg]
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="TEST",
+                risk_type="TEST",
                 severity=sev
             )
             assert event.severity == sev
@@ -256,10 +256,10 @@ class TestThreatSignalSeverityValidation:
     def test_severity_below_zero_rejected(self):
         """Test that severity < 0.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            ThreatSignal(  # type: ignore[call-arg]
+            Risk(  # type: ignore[call-arg]
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="TEST",
+                risk_type="TEST",
                 severity=-0.1
             )
 
@@ -268,25 +268,25 @@ class TestThreatSignalSeverityValidation:
     def test_severity_above_one_rejected(self):
         """Test that severity > 1.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            ThreatSignal(  # type: ignore[call-arg]
+            Risk(  # type: ignore[call-arg]
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="TEST",
+                risk_type="TEST",
                 severity=1.1
             )
 
         assert "severity" in str(exc_info.value)
 
 
-class TestThreatSignalAffectedAssetValidation:
+class TestRiskAffectedAssetValidation:
     """Test suite for affected_asset field validation."""
 
     def test_system_wide_threat_no_asset(self):
         """Test that system-wide threats can have no affected_asset."""
-        event = ThreatSignal(
+        event = Risk(
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
-            threat_type="EXCHANGE_DOWNTIME",
+            risk_type="EXCHANGE_DOWNTIME",
             severity=0.9,
             affected_asset=None
         )
@@ -303,10 +303,10 @@ class TestThreatSignalAffectedAssetValidation:
         ]
 
         for asset in valid_assets:
-            event = ThreatSignal(
+            event = Risk(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="UNUSUAL_VOLATILITY",
+                risk_type="UNUSUAL_VOLATILITY",
                 severity=0.6,
                 affected_asset=asset
             )
@@ -315,10 +315,10 @@ class TestThreatSignalAffectedAssetValidation:
     def test_asset_too_short_rejected(self):
         """Test that too short asset is rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            ThreatSignal(
+            Risk(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="TEST",
+                risk_type="TEST",
                 severity=0.5,
                 affected_asset="A/B"
             )
@@ -335,24 +335,24 @@ class TestThreatSignalAffectedAssetValidation:
 
         for invalid_asset in invalid_assets:
             with pytest.raises(ValidationError):
-                ThreatSignal(
+                Risk(
                     causality=CausalityChain(tick_id=generate_tick_id()),
                     timestamp=datetime.now(timezone.utc),
-                    threat_type="TEST",
+                    risk_type="TEST",
                     severity=0.5,
                     affected_asset=invalid_asset
                 )
 
 
-class TestThreatSignalImmutability:
-    """Test suite for ThreatSignal immutability."""
+class TestRiskImmutability:
+    """Test suite for Risk immutability."""
 
     def test_event_is_frozen(self):
-        """Test that ThreatSignal is immutable after creation."""
-        event = ThreatSignal(  # type: ignore[call-arg]
+        """Test that Risk is immutable after creation."""
+        event = Risk(  # type: ignore[call-arg]
             causality=CausalityChain(tick_id=generate_tick_id()),
             timestamp=datetime.now(timezone.utc),
-            threat_type="TEST",
+            risk_type="TEST",
             severity=0.5
         )
 
@@ -362,10 +362,10 @@ class TestThreatSignalImmutability:
     def test_no_extra_fields_allowed(self):
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError) as exc_info:
-            ThreatSignal(
+            Risk(
                 causality=CausalityChain(tick_id=generate_tick_id()),
                 timestamp=datetime.now(timezone.utc),
-                threat_type="TEST",
+                risk_type="TEST",
                 severity=0.5,
                 extra_field="not allowed"  # type: ignore
             )

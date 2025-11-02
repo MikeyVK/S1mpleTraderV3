@@ -25,37 +25,37 @@ from backend.utils.id_generators import generate_signal_id
 from backend.dtos.causality import CausalityChain
 
 
-class OpportunitySignal(BaseModel):
+class Signal(BaseModel):
     """
-    OpportunityWorker output DTO representing a detected trading opportunity.
+    SignalDetector output DTO representing a detected trading signal.
 
     Fields:
         causality: CausalityChain - IDs from birth (tick/news/schedule)
-        opportunity_id: Unique opportunity ID (OPP_ prefix, auto-generated)
-        timestamp: When the opportunity was detected (UTC)
+        signal_id: Unique signal ID (SIG_ prefix, auto-generated)
+        timestamp: When the signal was detected (UTC)
         asset: Trading pair (BASE/QUOTE format)
         direction: Trading direction (long/short)
         signal_type: Type of signal (UPPER_SNAKE_CASE, 3-25 chars)
-        confidence: Optional confidence [0.0, 1.0] for SWOT confrontation
+        confidence: Optional confidence [0.0, 1.0] for decision making
 
-    SWOT Framework:
-        confidence (0.0-1.0) mirrors ThreatSignal.severity for mathematical
-        confrontation in PlanningWorker's matrix analysis. This represents
-        how confident the OpportunityWorker is about this opportunity.
+    Signal Framework:
+        confidence (0.0-1.0) mirrors Risk.severity for balanced decision
+        making in StrategyPlanner analysis. This represents how confident
+        the SignalDetector is about this signal.
 
         High confidence (e.g., 0.9) = strong technical setup
         Low confidence (e.g., 0.3) = weak or uncertain pattern
 
     Causal Chain:
-        CausalityChain birth ID → opportunity_id → (StrategyPlanner decision)
+        CausalityChain birth ID → signal_id → (StrategyPlanner decision)
 
     Pure Signal:
         This is a pattern detection event at a specific time/price.
         Entry planning (price, stops, sizing) happens in later stages.
-        No trade_id yet - that's created by PlanningWorker if approved.
+        No trade_id yet - that's created by StrategyPlanner if approved.
 
     Examples:
-        >>> signal = OpportunitySignal(
+        >>> signal = Signal(
         ...     causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
         ...     timestamp=datetime.now(timezone.utc),
         ...     asset="BTC/EUR",

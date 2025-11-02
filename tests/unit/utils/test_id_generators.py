@@ -21,8 +21,8 @@ from backend.utils.id_generators import (
     generate_tick_id,
     generate_schedule_id,
     generate_news_id,
-    generate_opportunity_id,
-    generate_threat_id,
+    generate_signal_id,
+    generate_risk_id,
     generate_strategy_directive_id,
     generate_entry_plan_id,
     generate_size_plan_id,
@@ -82,40 +82,40 @@ class TestBirthIDGeneration:
 class TestWorkerOutputIDGeneration:
     """Test suite for worker output ID generators."""
 
-    def test_generate_opportunity_id_has_correct_prefix(self):
-        """Test that opportunity IDs start with OPP_ prefix."""
-        opp_id = generate_opportunity_id()
-        assert opp_id.startswith("OPP_")
+    def test_generate_signal_id_has_correct_prefix(self):
+        """Test that signal IDs start with SIG_ prefix."""
+        sig_id = generate_signal_id()
+        assert sig_id.startswith("SIG_")
 
-    def test_generate_opportunity_id_has_valid_datetime_format(self):
-        """Test that opportunity IDs contain valid datetime format."""
-        opp_id = generate_opportunity_id()
-        # Format: OPP_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^OPP_\d{8}_\d{6}_[0-9a-f]{8}$'
-        assert re.match(pattern, opp_id), f"Invalid format: {opp_id}"
+    def test_generate_signal_id_has_valid_datetime_format(self):
+        """Test that signal IDs contain valid datetime format."""
+        sig_id = generate_signal_id()
+        # Format: SIG_YYYYMMDD_HHMMSS_8charhash
+        pattern = r'^SIG_\d{8}_\d{6}_[0-9a-f]{8}$'
+        assert re.match(pattern, sig_id), f"Invalid format: {sig_id}"
 
-    def test_generate_opportunity_id_is_unique(self):
-        """Test that consecutive opportunity IDs are unique."""
-        id1 = generate_opportunity_id()
-        id2 = generate_opportunity_id()
+    def test_generate_signal_id_is_unique(self):
+        """Test that consecutive signal IDs are unique."""
+        id1 = generate_signal_id()
+        id2 = generate_signal_id()
         assert id1 != id2
 
-    def test_generate_threat_id_has_correct_prefix(self):
-        """Test that threat IDs start with THR_ prefix."""
-        threat_id = generate_threat_id()
-        assert threat_id.startswith("THR_")
+    def test_generate_risk_id_has_correct_prefix(self):
+        """Test that risk IDs start with RSK_ prefix."""
+        risk_id = generate_risk_id()
+        assert risk_id.startswith("RSK_")
 
-    def test_generate_threat_id_has_valid_datetime_format(self):
-        """Test that threat IDs contain valid datetime format."""
-        threat_id = generate_threat_id()
-        # Format: THR_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^THR_\d{8}_\d{6}_[0-9a-f]{8}$'
-        assert re.match(pattern, threat_id), f"Invalid format: {threat_id}"
+    def test_generate_risk_id_has_valid_datetime_format(self):
+        """Test that risk IDs contain valid datetime format."""
+        risk_id = generate_risk_id()
+        # Format: RSK_YYYYMMDD_HHMMSS_8charhash
+        pattern = r'^RSK_\d{8}_\d{6}_[0-9a-f]{8}$'
+        assert re.match(pattern, risk_id), f"Invalid format: {risk_id}"
 
-    def test_generate_threat_id_is_unique(self):
-        """Test that consecutive threat IDs are unique."""
-        id1 = generate_threat_id()
-        id2 = generate_threat_id()
+    def test_generate_risk_id_is_unique(self):
+        """Test that consecutive risk IDs are unique."""
+        id1 = generate_risk_id()
+        id2 = generate_risk_id()
         assert id1 != id2
 
     def test_generate_directive_id_has_correct_prefix(self):
@@ -169,15 +169,15 @@ class TestIDTypeExtraction:
         news_id = generate_news_id()
         assert extract_id_type(news_id) == "NWS"
 
-    def test_extract_type_from_opportunity_id(self):
-        """Test extracting type from opportunity ID."""
-        opp_id = generate_opportunity_id()
-        assert extract_id_type(opp_id) == "OPP"
+    def test_extract_type_from_signal_id(self):
+        """Test extracting 'SIG' from signal ID."""
+        sig_id = generate_signal_id()
+        assert extract_id_type(sig_id) == "SIG"
 
-    def test_extract_type_from_threat_id(self):
-        """Test extracting type from threat ID."""
-        threat_id = generate_threat_id()
-        assert extract_id_type(threat_id) == "THR"
+    def test_extract_type_from_risk_id(self):
+        """Test extracting 'RSK' from risk ID."""
+        risk_id = generate_risk_id()
+        assert extract_id_type(risk_id) == "RSK"
 
     def test_extract_type_from_directive_id(self):
         """Test extracting type from directive ID."""
@@ -200,8 +200,8 @@ class TestIDTypeExtraction:
 
     def test_extract_type_handles_multiple_underscores(self):
         """Test that only first underscore is used for prefix."""
-        custom_id = "OPP_20251026_100000_a1b2c3d4"
-        assert extract_id_type(custom_id) == "OPP"
+        custom_id = "SIG_20251026_100000_a1b2c3d4"
+        assert extract_id_type(custom_id) == "SIG"
 
 
 class TestIDTimestampExtraction:
@@ -216,10 +216,10 @@ class TestIDTimestampExtraction:
         now = datetime.now(timezone.utc)
         assert (now - timestamp).total_seconds() < 60
 
-    def test_extract_timestamp_from_opportunity_id(self):
-        """Test extracting timestamp from opportunity ID."""
-        opp_id = generate_opportunity_id()
-        timestamp = extract_id_timestamp(opp_id)
+    def test_extract_timestamp_from_signal_id(self):
+        """Test extracting timestamp from signal ID."""
+        sig_id = generate_signal_id()
+        timestamp = extract_id_timestamp(sig_id)
 
         # Should be recent (within last minute)
         now = datetime.now(timezone.utc)
