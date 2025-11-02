@@ -96,7 +96,7 @@ plugins/
 │   ├── kelly_sizer/
 │   └── trailing_stop_planner/
 └── strategy_planners/      # StrategyPlanner plugins
-    ├── swot_momentum/
+    ├── signal_risk_momentum/
     ├── trailing_manager/
     └── dca_scheduler/
 ```
