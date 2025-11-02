@@ -619,14 +619,533 @@ adapters = factory.create_adapters(
    - Custom: Declared/immutable (business logic)
    - Data: Explicit DTO flow (visualization only)
 
-**Decision:** ✅ **APPROVED - Connector-Based Architecture**
+---
+
+### **Event-Centric Wiring Model (Refined)**
+
+**Critical Insight:** Wiring rules configure **individual EventAdapters**, NOT worker-to-worker connections.
+
+**Incorrect Mental Model (Connection-Based):**
+```yaml
+# ❌ This suggests direct worker-to-worker connections
+wiring_rules:
+  - source: worker_a.output_connector
+    target: worker_b.input_connector
+```
+
+**Correct Mental Model (Event-Centric, Adapter-Based):**
+```yaml
+# ✅ Each rule configures ONE adapter's subscriptions/publications
+adapter_configurations:
+  worker_a_adapter:
+    publications:
+      - connector_id: "completion"
+        event_name: "WORKER_A_DONE"
+        scope: "strategy"
+  
+  worker_b_adapter:
+    subscriptions:
+      - event_name: "WORKER_A_DONE"
+        connector_id: "default_trigger"
+        handler_method: "process"
+```
+
+**Key Distinction:**
+- **Event names are the interface** (not worker references)
+- **Adapters don't know sources or targets** (loose coupling)
+- **EventBus routes events by name** (workers remain decoupled)
+
+**Why This Matters:**
+```python
+# worker_b_adapter receives "WORKER_A_DONE" event
+# Adapter does NOT know:
+# - Which worker published it (worker_a? worker_x? platform singleton?)
+# - Why it was published
+# - Who else subscribed to it
+
+# Adapter ONLY knows:
+# - Event name matched subscription: "WORKER_A_DONE"
+# - Which connector to trigger: "default_trigger"
+# - Which handler to call: worker_b.process()
+```
+
+**Architecture Benefit:**
+- Worker A can be replaced without touching worker B
+- Multiple workers can publish same event name
+- Multiple workers can subscribe to same event name
+- Platform components and strategy workers use identical pattern
+
+---
+
+### **Uniform EventAdapter Pattern**
+
+**Principle:** ALL components use the SAME EventAdapter, WITHOUT special cases.
+
+**Components Using EventAdapter:**
+- ✅ Strategy workers (SignalDetectors, ContextWorkers, etc.)
+- ✅ Platform singletons (PositionManager, OrderRouter, etc.)
+- ✅ FlowInitiators (per-strategy tick entry points)
+- ✅ Any future component types
+
+**NO Platform vs Strategy Distinction in EventAdapter:**
+```python
+# ❌ WRONG - Platform adapter with special logic
+class PlatformEventAdapter(EventAdapter):
+    def _publish_event(self, event_name: str, payload: Any):
+        # Special platform logic here...
+        self.bus.publish(event_name, ScopeLevel.PLATFORM, payload)
+
+# ✅ CORRECT - Uniform adapter for ALL components
+class EventAdapter:
+    def __init__(self, component: IWorker, bus: EventBus, config: AdapterConfig):
+        self._component = component
+        self._bus = bus
+        self._config = config  # Contains scope info
+    
+    def _publish_event(self, connector_id: str, payload: Any):
+        # Scope determined by configuration, not adapter type
+        publication = self._config.get_publication(connector_id)
+        self._bus.publish(
+            publication.event_name,
+            publication.scope,  # PLATFORM or STRATEGY from config
+            payload
+        )
+```
+
+**How Platform/Strategy Separation Works:**
+```yaml
+# Platform singleton adapter config
+adapter_configurations:
+  position_manager_adapter:
+    strategy_id: null  # ← Platform scope indicator
+    publications:
+      - connector_id: "position_updated"
+        event_name: "POSITION_UPDATED"
+        scope: "platform"  # ← EventBus will broadcast to ALL strategies
+
+# Strategy worker adapter config
+adapter_configurations:
+  signal_detector_adapter:
+    strategy_id: "STRAT_001"  # ← Strategy scope indicator
+    publications:
+      - connector_id: "signal_detected"
+        event_name: "MOMENTUM_SIGNAL"
+        scope: "strategy"  # ← EventBus will filter to STRAT_001 only
+```
+
+**EventBus Filtering (Automatic):**
+```python
+# EventBus implementation (simplified)
+class EventBus:
+    def publish(self, event_name: str, scope: ScopeLevel, payload: Any, strategy_id: str = None):
+        if scope == ScopeLevel.PLATFORM:
+            # Broadcast to all strategy scopes + platform subscribers
+            self._publish_to_all_scopes(event_name, payload)
+        elif scope == ScopeLevel.STRATEGY:
+            # Publish only to specified strategy scope
+            self._publish_to_strategy(event_name, payload, strategy_id)
+    
+    def subscribe(self, event_name: str, handler: Callable, strategy_id: str = None):
+        # Subscribe to events in specific strategy scope
+        # Platform components subscribe with strategy_id=None
+        # Strategy components subscribe with their strategy_id
+```
+
+**Result:**
+- EventAdapter code is IDENTICAL for platform and strategy components
+- Scope filtering happens in EventBus (not adapter)
+- Configuration determines behavior (not code)
+
+---
+
+### **Bootstrap Validation Strategy**
+
+**Principle:** Fail-fast during bootstrap, trust configuration at runtime.
+
+**Validation Timing:**
+```
+Configuration Load → Bootstrap Validation → Runtime (No Validation)
+                           ↑
+                    (Fail-fast here!)
+```
+
+**What Gets Validated at Bootstrap:**
+1. **Connector existence** - Do declared connectors exist in manifest?
+2. **Event name matching** - Do custom event connectors match across workers?
+3. **Handler methods** - Do target workers have declared handler methods?
+4. **Payload types** - Do source/target payload types match?
+5. **Dependency completeness** - Are all required DTOs available?
+6. **Scope validity** - Are scope declarations (PLATFORM/STRATEGY) valid?
+
+**Bootstrap Validation Example:**
+```python
+# EventWiringFactory.create_adapters() - Runs ONCE at bootstrap
+class EventWiringFactory:
+    def create_adapters(
+        self,
+        strategy_id: str,
+        workers: Dict[str, IWorker],
+        wiring_spec: WiringSpec
+    ) -> Dict[str, EventAdapter]:
+        
+        for rule in wiring_spec.adapter_configurations:
+            # ✅ Validate connector exists in manifest
+            if not self._connector_exists(rule.connector_id, worker.manifest):
+                raise ConfigurationError(f"Connector {rule.connector_id} not in manifest")
+            
+            # ✅ Validate handler method exists
+            if not hasattr(worker, rule.handler_method):
+                raise ConfigurationError(f"Handler {rule.handler_method} not found")
+            
+            # ✅ Validate payload type compatibility
+            if not self._payload_types_match(source_type, target_type):
+                raise ConfigurationError(f"Payload type mismatch: {source_type} vs {target_type}")
+        
+        # If we reach here: Configuration is VALID
+        return adapters
+```
+
+**What Does NOT Get Validated at Runtime:**
+```python
+# EventAdapter.handle_event() - Runs MANY times per second
+class EventAdapter:
+    def handle_event(self, event: Event):
+        # ❌ NO validation here (performance critical!)
+        # Trust that bootstrap validated everything
+        
+        subscription = self._config.get_subscription(event.name)
+        handler = getattr(self._component, subscription.handler_method)
+        result = handler(event.payload)
+        
+        # ❌ NO payload type checks
+        # ❌ NO connector existence checks
+        # ❌ NO event name validation
+        # Trust bootstrap validation!
+```
+
+**Performance Impact:**
+- Bootstrap: ~100ms one-time validation cost
+- Runtime: ZERO validation overhead (thousands of events/second)
+- Result: Fail-fast safety without performance penalty
+
+---
+
+### **Payload Type Declaration in Manifest**
+
+**Problem Solved:** How does adapter know which payload type to expect/produce?
+
+**Solution:** Declare payload types explicitly in manifest inputs/outputs.
+
+**Enhanced Manifest Schema:**
+```yaml
+# plugins/signal_detectors/momentum_scout/manifest.yaml
+plugin_id: "s1mple/momentum_scout/v1.0.0"
+
+inputs:
+  - connector_id: "default_trigger"
+    type: "system"
+    required: true
+    payload_type: null  # System connectors typically no payload
+  
+  - connector_id: "context_ready"
+    type: "custom_event"
+    event_name: "CONTEXT_ASSESSMENT_READY"
+    handler_method: "on_context_ready"
+    payload_type: "ContextAssessment"  # ← Declares expected type
+    payload_source: "backend.dtos.strategy.context_assessment.ContextAssessment"
+    required: false
+
+outputs:
+  - connector_id: "completion"
+    type: "system"
+    payload_type: null
+  
+  - connector_id: "signal_detected"
+    type: "custom_event"
+    event_name: "MOMENTUM_SIGNAL"
+    payload_type: "Signal"  # ← Declares produced type
+    payload_source: "backend.dtos.strategy.signal.Signal"
+```
+
+**Bootstrap Validation Uses This:**
+```python
+# EventWiringFactory validates type compatibility
+class EventWiringFactory:
+    def _validate_payload_compatibility(
+        self,
+        source_connector: ConnectorSpec,
+        target_connector: ConnectorSpec
+    ):
+        if source_connector.payload_type != target_connector.payload_type:
+            raise ConfigurationError(
+                f"Payload type mismatch: "
+                f"{source_connector.connector_id} produces {source_connector.payload_type}, "
+                f"{target_connector.connector_id} expects {target_connector.payload_type}"
+            )
+        
+        # Also validate source can be imported
+        try:
+            import_class(source_connector.payload_source)
+        except ImportError as e:
+            raise ConfigurationError(f"Cannot import {source_connector.payload_source}: {e}")
+```
+
+**Adapter Uses This at Runtime:**
+```python
+# EventAdapter knows what to expect (no runtime checks needed!)
+class EventAdapter:
+    def __init__(self, component: IWorker, config: AdapterConfig):
+        self._subscriptions = {
+            "CONTEXT_ASSESSMENT_READY": SubscriptionInfo(
+                connector_id="context_ready",
+                handler_method="on_context_ready",
+                payload_type=ContextAssessment  # ← Known at bootstrap
+            )
+        }
+    
+    def handle_event(self, event: Event):
+        sub = self._subscriptions[event.name]
+        # No type check needed - bootstrap validated this!
+        handler = getattr(self._component, sub.handler_method)
+        handler(event.payload)  # Trust it's correct type
+```
+
+---
+
+### **System DTOs vs TickCache DTOs (Clarified)**
+
+**Two Separate Transport Mechanisms:**
+
+#### **1. System DTOs (Transported via Events)**
+
+**Purpose:** Flow control signals (Signal, Risk, StrategyDirective, etc.)
+
+**Transport:** EventBus with DispositionEnvelope
+```python
+# SignalDetector publishes Signal via event
+return DispositionEnvelope(
+    disposition=Disposition.PUBLISH,
+    event_name="MOMENTUM_SIGNAL",
+    event_payload=Signal(confidence=0.85, ...)  # ← In event payload
+)
+
+# EventAdapter publishes to EventBus
+self._bus.publish(
+    "MOMENTUM_SIGNAL",
+    scope=ScopeLevel.STRATEGY,
+    payload=envelope.event_payload  # ← Signal travels in event
+)
+
+# StrategyPlanner receives via event
+def on_signal(self, signal: Signal):
+    # Signal came from event payload
+    self.plan_entry(signal)
+```
+
+**Manifest Declaration:**
+```yaml
+outputs:
+  - connector_id: "signal_detected"
+    type: "custom_event"
+    payload_type: "Signal"  # ← Declares event payload type
+    payload_source: "backend.dtos.strategy.signal.Signal"
+```
+
+#### **2. TickCache DTOs (Transported via StrategyCache)**
+
+**Purpose:** Worker calculation results (EMAOutputDTO, MarketStructureDTO, etc.)
+
+**Transport:** StrategyCache.set_result_dto() / get_required_dtos()
+```python
+# EMADetector stores result in TickCache
+result = EMAOutputDTO(fast=50.2, slow=51.1, ...)
+self.strategy_cache.set_result_dto(result)
+
+return DispositionEnvelope(
+    disposition=Disposition.CONTINUE
+    # ← NO event_payload! Result is in TickCache
+)
+
+# Consumer retrieves from TickCache
+class MomentumScout:
+    def process(self):
+        # Get DTO from cache
+        ema_data = self.strategy_cache.get_required_dtos()[EMAOutputDTO]
+        
+        # Use in calculation
+        if ema_data.fast > ema_data.slow:
+            return self._publish_signal()
+```
+
+**Manifest Declaration:**
+```yaml
+# Producer manifest
+dependencies:
+  produces_dtos:
+    - source: "backend.dto_reg.s1mple.ema_detector.v1_0_0.ema_output_dto"
+      dto_class: "EMAOutputDTO"
+
+# Consumer manifest
+dependencies:
+  requires_dtos:
+    - source: "backend.dto_reg.s1mple.ema_detector.v1_0_0.ema_output_dto"
+      dto_class: "EMAOutputDTO"
+```
+
+**Key Difference:**
+- **System DTOs:** Event-driven triggers (Signal → Plan → Execute)
+- **TickCache DTOs:** Dependency resolution (EMA data available for MomentumScout)
+
+---
+
+### **Complete Architecture Flow Example**
+
+**Scenario:** EMADetector → MomentumScout → StrategyPlanner
+
+#### **1. Manifests**
+
+```yaml
+# plugins/context_workers/ema_detector/manifest.yaml
+outputs:
+  - connector_id: "completion"
+    type: "system"
+    payload_type: null
+  - connector_id: "ema_data"
+    type: "data"
+    dto_class: "EMAOutputDTO"
+
+dependencies:
+  produces_dtos:
+    - source: "backend.dto_reg.s1mple.ema_detector.v1_0_0.ema_output_dto"
+      dto_class: "EMAOutputDTO"
+```
+
+```yaml
+# plugins/signal_detectors/momentum_scout/manifest.yaml
+inputs:
+  - connector_id: "default_trigger"
+    type: "system"
+    payload_type: null
+
+outputs:
+  - connector_id: "signal_detected"
+    type: "custom_event"
+    event_name: "MOMENTUM_SIGNAL"
+    payload_type: "Signal"
+    payload_source: "backend.dtos.strategy.signal.Signal"
+
+dependencies:
+  requires_dtos:
+    - source: "backend.dto_reg.s1mple.ema_detector.v1_0_0.ema_output_dto"
+      dto_class: "EMAOutputDTO"
+```
+
+```yaml
+# plugins/strategy_workers/strategy_planner/manifest.yaml
+inputs:
+  - connector_id: "signal_input"
+    type: "custom_event"
+    event_name: "MOMENTUM_SIGNAL"
+    handler_method: "on_signal"
+    payload_type: "Signal"
+    payload_source: "backend.dtos.strategy.signal.Signal"
+```
+
+#### **2. Wiring Map (Event-Centric)**
+
+```yaml
+# strategy_wiring_map.yaml
+adapter_configurations:
+  ema_detector_adapter:
+    strategy_id: "STRAT_001"
+    publications:
+      - connector_id: "completion"
+        event_name: "_EMA_READY"
+        scope: "strategy"
+  
+  momentum_scout_adapter:
+    strategy_id: "STRAT_001"
+    subscriptions:
+      - event_name: "_EMA_READY"
+        connector_id: "default_trigger"
+        handler_method: "process"
+    publications:
+      - connector_id: "signal_detected"
+        event_name: "MOMENTUM_SIGNAL"
+        scope: "strategy"
+  
+  strategy_planner_adapter:
+    strategy_id: "STRAT_001"
+    subscriptions:
+      - event_name: "MOMENTUM_SIGNAL"
+        connector_id: "signal_input"
+        handler_method: "on_signal"
+```
+
+#### **3. Bootstrap Validation**
+
+```python
+# EventWiringFactory.create_adapters()
+# ✅ Validates:
+# - "completion" connector exists in ema_detector manifest
+# - "default_trigger" connector exists in momentum_scout manifest
+# - "process" method exists on MomentumScout worker
+# - "signal_detected" connector exists in momentum_scout manifest
+# - "MOMENTUM_SIGNAL" payload types match (Signal → Signal)
+# - "on_signal" method exists on StrategyPlanner worker
+# - EMAOutputDTO dependency available (requires_dtos satisfied)
+
+# If ANY validation fails → ConfigurationError (fail-fast!)
+# If ALL validations pass → Create adapters (trust at runtime)
+```
+
+#### **4. Runtime Execution**
+
+```python
+# Step 1: EMADetector processes
+ema_detector.process()
+# - Calculates EMA
+# - Stores to TickCache: strategy_cache.set_result_dto(EMAOutputDTO(...))
+# - Returns DispositionEnvelope(CONTINUE)
+# - EventAdapter publishes "_EMA_READY" event (no payload)
+
+# Step 2: EventBus routes "_EMA_READY" → momentum_scout_adapter
+momentum_scout_adapter.handle_event(Event("_EMA_READY", None))
+# - Looks up subscription: "_EMA_READY" → connector "default_trigger"
+# - Calls momentum_scout.process()
+
+# Step 3: MomentumScout processes
+momentum_scout.process()
+# - Retrieves EMAOutputDTO from TickCache
+# - Detects momentum condition
+# - Returns DispositionEnvelope(PUBLISH, "MOMENTUM_SIGNAL", Signal(...))
+# - EventAdapter publishes "MOMENTUM_SIGNAL" event with Signal payload
+
+# Step 4: EventBus routes "MOMENTUM_SIGNAL" → strategy_planner_adapter
+strategy_planner_adapter.handle_event(Event("MOMENTUM_SIGNAL", Signal(...)))
+# - Looks up subscription: "MOMENTUM_SIGNAL" → connector "signal_input"
+# - Calls strategy_planner.on_signal(Signal(...))
+
+# Step 5: StrategyPlanner processes
+strategy_planner.on_signal(signal: Signal)
+# - Receives Signal from event payload
+# - Creates EntryPlan
+# - Returns DispositionEnvelope(PUBLISH, "ENTRY_PLAN_READY", EntryPlan(...))
+```
+
+---
+
+**Decision:** ✅ **APPROVED - Unified Event-Centric Connector Architecture**
 
 **Impact:**
-- ⚠️ PLUGIN_ANATOMY.md - Add connector declaration schema
-- ⚠️ EVENT_DRIVEN_WIRING.md - Replace with connector-based model
-- ⚠️ Strategy Builder UI - Implement connector visualization + wiring
-- ⚠️ ConfigTranslator - Parse connector_id fields from wiring_map
-- ⚠️ EventWiringFactory - Build adapter config from connector wiring
+- ⚠️ PLUGIN_ANATOMY.md - Add payload_type, payload_source fields to connector schema
+- ⚠️ EVENT_DRIVEN_WIRING.md - Document event-centric wiring model (not connection-based)
+- ⚠️ ConfigTranslator - Parse adapter_configurations from wiring_map
+- ⚠️ EventWiringFactory - Implement bootstrap validation (fail-fast)
+- ⚠️ EventAdapter - Remove any platform vs strategy distinctions (uniform implementation)
+- ⚠️ AdapterConfig - Store scope (PLATFORM/STRATEGY) from wiring_map
+- ⚠️ EventBus - Ensure scope filtering works correctly
+- ⚠️ Strategy Builder UI - Generate event-centric wiring (not connection-based)
 - ✅ Workers remain 100% event-agnostic (no changes needed)
 
 ---
