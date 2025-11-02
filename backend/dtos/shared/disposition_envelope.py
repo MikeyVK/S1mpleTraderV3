@@ -49,9 +49,9 @@ class DispositionEnvelope(BaseModel):
         >>> # Context worker continues flow
         >>> DispositionEnvelope(disposition="CONTINUE")
 
-        >>> # Opportunity worker publishes signal with payload
-        >>> from backend.dtos.strategy.opportunity_signal import OpportunitySignal
-        >>> signal = OpportunitySignal(...)
+        >>> # Signal detector publishes signal with payload
+        >>> from backend.dtos.strategy.signal import Signal
+        >>> signal = Signal(...)
         >>> DispositionEnvelope(
         ...     disposition="PUBLISH",
         ...     event_name="SIGNAL_GENERATED",
@@ -144,12 +144,12 @@ class DispositionEnvelope(BaseModel):
                 },
                 {
                     "description": (
-                        "Opportunity worker publishes signal with DTO payload"
+                        "Signal detector publishes signal with DTO payload"
                     ),
                     "disposition": "PUBLISH",
-                    "event_name": "OPPORTUNITY_DETECTED",
+                    "event_name": "SIGNAL_DETECTED",
                     "event_payload": (
-                        "OpportunitySignal(opportunity_id='OPP_...')"
+                        "Signal(signal_id='SIG_...')"
                     )
                 },
                 {

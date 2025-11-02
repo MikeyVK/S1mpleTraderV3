@@ -79,9 +79,9 @@ class ExecutionDirective(BaseModel):
                     "description": "NEW_TRADE - Complete setup with all 4 plans",
                     "directive_id": "EXE_20251027_143500_a1b2c3d4",
                     "causality": {
-                        "tick_id": "TCK_20251027_143000_xyz123",
-                        "opportunity_signal_ids": ["OPP_20251027_143100_abc456"],
-                        "strategy_directive_id": "STR_20251027_143200_def789"
+                        "tick_id": "TCK_20251027_143000_abc123",
+                        "signal_ids": ["SIG_20251027_143100_abc456"],
+                        "strategy_directive_id": "STR_20251027_143110_def789",
                     },
                     "entry_plan": {
                         "plan_id": "ENT_20251027_143300_ghi012",
@@ -130,9 +130,9 @@ class ExecutionDirective(BaseModel):
                     "description": "ADD_TO_POSITION - Scale in (entry + size only)",
                     "directive_id": "EXE_20251027_152000_c3d4e5f6",
                     "causality": {
-                        "tick_id": "TCK_20251027_151900_xyz456",
-                        "opportunity_signal_ids": ["OPP_20251027_151920_ghi678"],
-                        "strategy_directive_id": "STR_20251027_151950_jkl901"
+                        "tick_id": "TCK_20251027_151800_def123",
+                        "signal_ids": ["SIG_20251027_151920_ghi678"],
+                        "strategy_directive_id": "STR_20251027_151925_jkl012",
                     },
                     "entry_plan": {
                         "plan_id": "ENT_20251027_151955_mno234",

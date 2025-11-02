@@ -176,26 +176,42 @@ Bulk Replacements Applied:
 
 Git Commit: Phase 3 test suite refactoring committed
 
-### Phase 4: Documentation Refactoring
-**Status:** PENDING  
-**Next Step:** Update 15+ documentation files
+### Phase 4: Documentation Refactoring 🔄
+**Status:** IN PROGRESS  
+**Started:** 2024-11-02
 
-Planned Updates:
-- Architecture docs: Remove SWOT framework references
-- Reference docs: Update DTO names and examples
-- Implementation guides: Update terminology
-- Worker taxonomy: SignalDetector/RiskMonitor naming
-- All examples: SIG_/RSK_ prefixes
+Documentation Files Updated:
+- IMPLEMENTATION_STATUS.md:
+  * "Strategy SWOT" → "Signal/Risk Detection"
+  * OpportunityType/ThreatType → SignalType/RiskType
+  * opportunity_signal.py/threat_signal.py → signal.py/risk.py
+  * OpportunityWorkers → SignalDetectors
 
-Files to Update:
-- docs/architecture/*.md (~8 files)
-- docs/reference/dtos/*.md (~5 files)
-- docs/implementation/*.md (~3 files)
-- docs/development/*.md (~2 files)
-- README.md, agent.md
+- TODO.md:
+  * "SWOT Layer" → "Signal/Risk Layer"
+  * OpportunityWorker → SignalDetector
+  * ThreatWorker → RiskMonitor
+
+- WORKER_TAXONOMY.md:
+  * OpportunityWorker → SignalDetector ("The Scout")
+  * ThreatWorker → RiskMonitor ("The Watchdog")
+  * OpportunitySignal → Signal, ThreatSignal → Risk
+
+- reference/README.md, STRATEGY_DTO_TEMPLATE.md, strategy_cache.md:
+  * OpportunitySignal → Signal, ThreatSignal → Risk
+  * OPP_ → SIG_, THR_ → RSK_ prefixes
+  * Updated all code examples
+
+**Note:** S1mpleTrader V2 Architectuur.md intentionally SKIPPED (per user request)
+
+Git Commits:
+- Commit 1: IMPLEMENTATION_STATUS, TODO, WORKER_TAXONOMY  
+- Commit 2: Reference documentation complete
+
+**Status:** Core documentation complete, moving to verification
 
 ### Phase 5: Verification
-**Status:** PENDING
+**Status:** NEXT
 
 Checklist:
 - [ ] All tests passing (336/336) ✅ Already verified

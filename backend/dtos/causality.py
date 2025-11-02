@@ -28,8 +28,8 @@ class CausalityChain(BaseModel):
     **NOT responsible for:**
     - Business data (symbol, price, direction - those live in DTOs)
     - Timestamps (each DTO has own timestamp)
-    - Confidence scores (OpportunitySignal/StrategyDirective have that)
-    - Event metadata (ThreatSignal/CriticalEvent have that)
+    - Confidence scores (Signal/StrategyDirective have that)
+    - Event metadata (Risk/CriticalEvent have that)
 
     **Design Pattern:**
     Workers use model_copy(update={...}) to extend chain:

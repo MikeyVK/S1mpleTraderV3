@@ -190,10 +190,10 @@ def extract_id_type(typed_id: str) -> str:
     Extract type prefix from typed ID.
 
     Args:
-        typed_id: Typed ID string (e.g., "OPP_20251026_100000_abc123")
+        typed_id: Typed ID string (e.g., "SIG_20251026_100000_abc123")
 
     Returns:
-        Type prefix (e.g., "OPP")
+        Type prefix (e.g., "SIG")
 
     Raises:
         ValueError: If ID format is invalid or prefix is unknown
@@ -226,7 +226,7 @@ def extract_id_timestamp(typed_id: str) -> datetime:
     Extract UTC timestamp from typed ID.
 
     Args:
-        typed_id: Typed ID string (e.g., "OPP_20251026_100000_abc123")
+        typed_id: Typed ID string (e.g., "SIG_20251026_100000_abc123")
 
     Returns:
         UTC datetime of when ID was created
