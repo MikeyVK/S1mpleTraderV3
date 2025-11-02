@@ -32,12 +32,12 @@ Every worker output DTO contains a `causality: CausalityChain` field that must b
 # SignalDetector produces Signal
 signal = Signal(
     causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
-    opportunity_id="OPP_20251026_100001_def5e6f7"
+    signal_id="SIG_20251026_100001_def5e6f7"
 )
 
 # StrategyPlanner extends chain
 directive_causality = signal.causality.model_copy(update={
-    "signal_ids": ["OPP_20251026_100001_def5e6f7"],
+    "signal_ids": ["SIG_20251026_100001_def5e6f7"],
     "strategy_directive_id": "STR_20251026_100002_abc1d2e3"
 })
 ```
@@ -98,11 +98,11 @@ class BaseSignalDetector(BaseWorker):
         causality: CausalityChain, 
         output_dto: Signal
     ) -> CausalityChain:
-        """Add opportunity_signal_id to chain."""
+        """Add signal_id to chain."""
         # Note: signal_ids is a LIST (confluence support)
         existing_ids = causality.signal_ids or []
         return causality.model_copy(update={
-            "signal_ids": existing_ids + [output_dto.opportunity_id]
+            "signal_ids": existing_ids + [output_dto.signal_id]
         })
 ```
 
@@ -112,7 +112,7 @@ class FVGSignalDetector(BaseSignalDetector):
     def process(self, assessment: AggregatedContextAssessment) -> Signal:
         # NO causality management - BaseWorker handles it!
         return Signal(
-            opportunity_id=generate_opportunity_id(),
+            signal_id=generate_signal_id(),
             timestamp=datetime.now(UTC),
             asset="BTC/USDT",
             direction="long",
@@ -151,14 +151,14 @@ class IWorker(Protocol):
 class MySignalDetector:
     def process(self, assessment: AggregatedContextAssessment) -> Signal:
         # Manual causality extension
-        signal_id = generate_opportunity_id()
+        signal_id = generate_signal_id()
         extended_causality = assessment.causality.model_copy(update={
             "signal_ids": [signal_id]
         })
         
         return Signal(
             causality=extended_causality,
-            opportunity_id=signal_id,
+            signal_id=signal_id,
             # ...
         )
 ```
