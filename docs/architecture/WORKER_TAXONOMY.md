@@ -14,7 +14,7 @@ graph TB
     Tick[Market Tick]
     
     subgraph TickCache["TickCache (Sync Flow)"]
-        TC[Plugin DTOs]
+        TC[Plugin DTOs<br/>Objective Facts]
     end
     
     subgraph EventBus["EventBus (Async Signals)"]
@@ -29,10 +29,10 @@ graph TB
     SP[StrategyPlanner]
     
     Tick --> CW
-    CW -->|set_result_dto| TC
+    CW -->|set_result_dto<br/>Objective Facts| TC
     
-    TC -->|get_required_dtos| OW
-    TC -->|get_required_dtos| TW
+    TC -->|get_required_dtos<br/>Subjective Interpretation| OW
+    TC -->|get_required_dtos<br/>Subjective Interpretation| TW
     TC -->|get_required_dtos| PW
     
     OW -->|PUBLISH OpportunitySignal| EB
@@ -43,7 +43,7 @@ graph TB
     PA -->|PUBLISH ExecutionDirective| EB
     
     EB -->|subscribe signals| SP
-    TC -->|get_required_dtos| SP
+    TC -->|get_required_dtos<br/>Subjective Interpretation| SP
     SP -->|PUBLISH StrategyDirective| EB
     
     style CW fill:#e1f5ff
@@ -57,18 +57,58 @@ graph TB
 ```
 
 **Key Flow Principles:**
-- **ContextWorker**: Writes to TickCache only (NEVER EventBus)
-- **OpportunityWorker**: Reads TickCache → Publishes OpportunitySignal to EventBus
-- **ThreatWorker**: Reads TickCache → Publishes ThreatSignal to EventBus
+- **ContextWorker**: Writes **objective facts** to TickCache only (NEVER EventBus)
+- **OpportunityWorker**: Reads TickCache → Applies **subjective interpretation** → Publishes OpportunitySignal to EventBus
+- **ThreatWorker**: Reads TickCache → Applies **subjective interpretation** → Publishes ThreatSignal to EventBus
 - **PlanningWorker**: Reads TickCache → Publishes Plans (EntryPlan, SizePlan, ExitPlan) to EventBus
 - **PlanningAggregator** (platform): Subscribes to plan events → Combines into ExecutionDirective → Publishes to EventBus
-- **StrategyPlanner**: Subscribes to EventBus signals + Reads TickCache → Publishes StrategyDirective
+- **StrategyPlanner**: Subscribes to EventBus signals + Reads TickCache → Applies **subjective interpretation** → Publishes StrategyDirective
 
 **Key Principles:**
 - **No Operators**: Workers are wired directly via EventAdapters (not grouped under operators)
 - **Single Responsibility**: Each worker category has one clear purpose
 - **Event-Driven**: Workers communicate via EventBus (async signals) or TickCache (sync flow)
 - **Plugin-First**: All workers are loaded from plugins, configured via YAML
+- **Objective Context**: ContextWorkers produce facts, consumers apply interpretation
+
+---
+
+## Worker Categories: Type vs Subtype
+
+### Type (Architectural Role) - ENFORCED
+
+The **`type`** field in `manifest.yaml` defines the worker's **architectural role** and determines:
+- ✅ **Output contracts** - What the worker may produce
+- ✅ **Communication paths** - TickCache vs EventBus
+- ✅ **Interface requirements** - Which methods must be implemented
+- ✅ **Platform validation** - Bootstrap checks enforce type contracts
+
+**5 Valid Types:**
+- `context_worker` - Stores DTOs to TickCache via `set_result_dto()` (NEVER EventBus)
+- `opportunity_worker` - May publish `OpportunitySignal` to EventBus
+- `threat_worker` - May publish `ThreatSignal` to EventBus  
+- `planning_worker` - Produces plan DTOs (EntryPlan, SizePlan, etc.)
+- `strategy_planner` - Publishes `StrategyDirective` to EventBus
+
+### Subtype (Descriptive Label) - NOT ENFORCED
+
+The **`subtype`** field is a **descriptive tag** used for:
+- ✅ **Documentation** - Helps developers understand plugin purpose
+- ✅ **UI Filtering** - Strategy Builder can group by subtype
+- ✅ **Discovery** - Easier to find relevant plugins
+- ❌ **NOT validated** - No architectural impact
+- ❌ **NOT enforced** - Platform ignores subtypes during execution
+
+**Example:**
+```yaml
+identification:
+  type: "context_worker"      # ENFORCED - Defines output contracts
+  subtype: "indicator_calculation"  # DESCRIPTIVE - Just a label
+```
+
+A `context_worker` with `subtype: "indicator_calculation"` is **architecturally identical** to a `context_worker` with `subtype: "structural_analysis"`. Both store DTOs to TickCache, neither can publish to EventBus.
+
+**27+ Subtypes Available:** See individual worker category sections below for suggested subtypes per type.
 
 ---
 
@@ -76,7 +116,7 @@ graph TB
 
 ### 1. ContextWorker - "The Cartographer"
 
-**Purpose:** Enrich market data with objective context analysis
+**Purpose:** Produce objective, factual market data without interpretation
 
 **Responsibilities:**
 - Technical indicator calculation (EMA, RSI, Bollinger Bands)
@@ -84,12 +124,18 @@ graph TB
 - Structural analysis (support/resistance, chart patterns)
 - Statistical transformations (z-scores, percentiles)
 
+**Critical Philosophy - Objective Facts Only:**
+- ✅ ContextWorkers produce **objective DTOs** (e.g., `EMAOutputDTO(ema_20=50100.50)`)
+- ✅ **NO subjective interpretation** (no "bullish", "strong", "weakness" labels)
+- ✅ **NO aggregation** - Each worker produces its own discrete DTO
+- ✅ Consumers (OpportunityWorkers, StrategyPlanners) apply their own interpretation
+
 **Output Pattern:**
 - Stores plugin-specific DTOs to `TickCache` via `set_result_dto()`
 - **NEVER** publishes events to EventBus
 - Output consumed by downstream workers (Opportunity, Threat, Planning)
 
-**7 Subtypes:**
+**7 Subtypes (Descriptive Tags):**
 1. `REGIME_CLASSIFICATION` - Market state identification
 2. `STRUCTURAL_ANALYSIS` - Support/resistance, pivots
 3. `INDICATOR_CALCULATION` - Technical indicators
@@ -261,19 +307,14 @@ class DispositionEnvelope:
 
 ## Platform Aggregators (NOT Workers)
 
-**Important:** The following components are **platform components**, not plugin workers:
+**Important:** The following component is a **platform component**, not a plugin worker:
 
-1. **ContextAggregator**
-   - Input: `list[ContextFactor]` (from ContextWorkers)
-   - Output: `AggregatedContextAssessment` (system DTO)
-   - Extends causality chain with `context_assessment_id`
-
-2. **PlanningAggregator**
-   - Input: 4 plan DTOs (`EntryPlan`, `SizePlan`, `ExitPlan`, `ExecutionIntent`)
+1. **PlanningAggregator**
+   - Input: 4 plan DTOs (`EntryPlan`, `SizePlan`, `ExitPlan`, `ExecutionPlan`)
    - Output: `ExecutionDirective` (system DTO)
    - Extends causality chain with `execution_directive_id`
 
-These aggregators are part of the platform orchestration, not part of the worker taxonomy.
+This aggregator is part of the platform orchestration, not part of the worker taxonomy.
 
 ---
 

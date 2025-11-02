@@ -7,7 +7,7 @@
 
 ## Overview
 
-S1mpleTraderV3 uses a **point-in-time data model** where all data exchange is based on a specific moment (tick), not accumulated datasets. Workers communicate through two distinct paths: **TickCache** (synchronous flow) and **EventBus** (asynchronous signals).
+S1mpleTraderV3 uses a **point-in-time data model** where all data exchange is based on a specific moment (tick), not accumulated datasets. Workers communicate through two distinct paths: **TickCache** (synchronous flow, objective facts) and **EventBus** (asynchronous signals, subjective interpretations).
 
 ```mermaid
 graph TB
@@ -51,9 +51,11 @@ graph TB
 
 **Characteristics:**
 - **Content:** Plugin-specific DTOs only (e.g., `EMAOutputDTO`, `RegimeOutputDTO`)
+- **Nature:** Objective facts without interpretation (e.g., ema_20=50100.50, NOT "bullish")
 - **Lifetime:** Single tick/flow (cleared after tick completes)
 - **Access:** Via `IStrategyCache` (injected into workers)
 - **Usage:** Context enrichment, intermediate calculations, planning sub-components
+- **Philosophy:** ContextWorkers produce facts, consumers apply interpretation
 
 **Worker Pattern:**
 ```python
@@ -64,10 +66,10 @@ class EMADetector(StandardWorker):
         # 1. Get run anchor (timestamp validation)
         run_anchor = self.strategy_cache.get_run_anchor()
         
-        # 2. Calculate EMA
+        # 2. Calculate EMA (OBJECTIVE FACT)
         ema_value = calculate_ema(...)
         
-        # 3. Store to TickCache
+        # 3. Store OBJECTIVE DTO to TickCache (NO interpretation!)
         output_dto = EMAOutputDTO(ema_20=ema_value, timestamp=run_anchor.timestamp)
         self.strategy_cache.set_result_dto(self, output_dto)
         

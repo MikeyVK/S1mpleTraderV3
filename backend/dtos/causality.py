@@ -57,7 +57,6 @@ class CausalityChain(BaseModel):
         Worker Output IDs (added during pipeline flow):
             opportunity_signal_ids: OpportunitySignal IDs (list - multiple signals possible)
             threat_ids: ThreatSignal IDs (list - includes CriticalEvent)
-            context_assessment_id: AggregatedContextAssessment ID (SWOT context)
             strategy_directive_id: StrategyDirective ID (SWOT planning bridge)
             entry_plan_id: EntryPlan ID
             size_plan_id: SizePlan ID
@@ -88,10 +87,6 @@ class CausalityChain(BaseModel):
     threat_ids: list[str] = Field(
         default_factory=list,
         description="ThreatSignal IDs (CriticalEvent = ThreatSignal in causality)"
-    )
-    context_assessment_id: str | None = Field(
-        default=None,
-        description="AggregatedContextAssessment ID (SWOT context)"
     )
     strategy_directive_id: str | None = Field(
         default=None,

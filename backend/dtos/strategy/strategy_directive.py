@@ -5,7 +5,7 @@ StrategyDirective and sub-directive DTOs for SWOT-driven trade planning.
 @layer: Strategy
 @dependencies: backend.utils.id_generators
 @responsibilities:
-    - Bridge SWOT framework (OpportunitySignal, ThreatSignal, AggregatedContextAssessment)
+    - Bridge SWOT framework (OpportunitySignal, ThreatSignal)
       and Planning Layer (EntryPlan, SizePlan, ExitPlan, ExecutionPlan)
     - Contain 4 sub-directives (Entry, Size, Exit, Routing) with constraints/hints
     - Enable SWOT-driven position management (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)

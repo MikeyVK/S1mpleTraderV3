@@ -151,21 +151,41 @@ capabilities:
 identification:
   name: "my_worker"            # Unique identifier (snake_case)
   display_name: "My Worker"   # Human-readable name
-  type: "context_worker"       # Worker category (see taxonomy)
-  subtype: "indicator_calculation"  # Worker subtype
+  type: "context_worker"       # Worker category (ENFORCED - defines contracts)
+  subtype: "indicator_calculation"  # Descriptive label (NOT enforced)
   version: "1.0.0"             # Semantic versioning
   description: "Short description of functionality"
   author: "Developer Name"
 ```
 
-**Valid Worker Types:**
-- `context_worker`
-- `opportunity_worker`
-- `threat_worker`
-- `planning_worker`
-- `strategy_planner`
+**Valid Worker Types (ENFORCED):**
+- `context_worker` - Objective fact producer (TickCache only)
+- `opportunity_worker` - Subjective opportunity detector (OpportunitySignal)
+- `threat_worker` - Risk/threat detector (ThreatSignal)
+- `planning_worker` - Plan producer (EntryPlan, SizePlan, etc.)
+- `strategy_planner` - Decision maker (StrategyDirective)
 
-**Subtypes:** See [Worker Taxonomy](WORKER_TAXONOMY.md) for valid subtypes per category.
+**Subtypes (Descriptive Labels - NOT ENFORCED):**
+- The `subtype` field is a **tag** for documentation, filtering, and UI grouping
+- Platform does **NOT validate** or enforce subtypes
+- Two workers with different subtypes but same type are **architecturally identical**
+- See [Worker Taxonomy](WORKER_TAXONOMY.md) for suggested subtypes per category
+
+**Example - Type vs Subtype:**
+```yaml
+# Worker A
+identification:
+  type: "context_worker"  # ENFORCED: Can only write to TickCache
+  subtype: "indicator_calculation"  # LABEL: For documentation
+
+# Worker B  
+identification:
+  type: "context_worker"  # ENFORCED: Can only write to TickCache
+  subtype: "structural_analysis"  # LABEL: For documentation
+
+# Both workers are IDENTICAL architecturally - both write DTOs to TickCache
+# The subtype just helps humans categorize and find plugins
+```
 
 ---
 
