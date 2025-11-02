@@ -7,49 +7,56 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 > **Quality Gates & TDD Workflow:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) and [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
 
 **Last Updated:** 2025-11-02  
-**Total Tests Passing:** 362 (262 DTO tests + 20 StrategyCache + 33 EventBus + 13 Worker + 34 Core Infrastructure)
+**Total Tests Passing:** 336 tests (100% coverage)
+- **DTOs:** 225 tests (Strategy SWOT: 65, Planning: 63, Execution: 52, Shared: 45)
+- **Core Infrastructure:** 79 tests (StrategyCache: 20, EventBus: 33, Worker Protocol: 13, Enums: 13)
+- **Utils:** 32 tests (ID Generators: 32)
 
 ## DTO Layer Status
 
-### Strategy DTOs - SWOT Signals (57 tests)
+### Strategy DTOs - SWOT Signals (65 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| opportunity_signal.py | 10.00/10 | 27/27 ✅ | 10.00/10 | 0 | ✅ Complete |
-| threat_signal.py | 10.00/10 | 19/19 ✅ | 10.00/10 | 0 | ✅ Complete |
-| strategy_directive.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ Complete |
+| opportunity_signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ Complete |
+| threat_signal.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ Complete |
+| strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ Complete |
 
-**Coverage:** 57/57 tests passing (100%)
+**Coverage:** 65/65 tests passing (100%)
 
 **Removed (Quant Leap Architecture):**
 - ~~context_factor.py~~ - ContextWorkers now produce objective DTOs only
 - ~~aggregated_context_assessment.py~~ - No SWOT aggregation layer
 
-### Strategy DTOs - Planning (60 tests)
+### Strategy DTOs - Planning (63 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| entry_plan.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ Complete |
-| size_plan.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ Complete |
+| entry_plan.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ Complete |
+| size_plan.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ Complete |
 | exit_plan.py | 10.00/10 | 11/11 ✅ | 10.00/10 | 0 | ✅ Complete |
 | execution_plan.py | 10.00/10 | 19/19 ✅ | 10.00/10 | 0 | ✅ Complete (renamed from ExecutionIntent) |
 
-**Coverage:** 60/60 tests passing (100%)
+**Coverage:** 63/63 tests passing (100%)
 
-### Execution DTOs (51 tests)
+### Execution DTOs (52 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| execution_directive.py | 10.00/10 | 11/11 ✅ | 10.00/10 | 0 | ✅ Complete |
+| execution_directive.py | 10.00/10 | 12/12 ✅ | 10.00/10 | 0 | ✅ Complete |
 | execution_directive_batch.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ Complete (new) |
 | execution_group.py | 10.00/10 | 25/25 ✅ | 10.00/10 | 0 | ✅ Complete (new) |
 
-**Coverage:** 51/51 tests passing (100%)
+**Coverage:** 52/52 tests passing (100%)
 
-### Shared DTOs (42 tests)
+### Shared DTOs (45 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
+| disposition_envelope.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ Complete |
+| causality.py | 10.00/10 | 24/24 ✅ | 10.00/10 | 0 | ✅ Complete |
+
+**Coverage:** 45/45 tests passing (100%)
 | causality.py | 10.00/10 | 25/25 ✅ | 10.00/10 | 0 | ✅ Complete |
 | disposition_envelope.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ Complete |
 
@@ -111,22 +118,22 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 | Layer | Tests | Status |
 |-------|-------|--------|
-| **Strategy SWOT** | 57/57 ✅ | 100% |
-| **Strategy Planning** | 60/60 ✅ | 100% |
-| **Execution** | 51/51 ✅ | 100% |
-| **Shared** | 42/42 ✅ | 100% |
+| **Strategy SWOT** | 65/65 ✅ | 100% |
+| **Strategy Planning** | 63/63 ✅ | 100% |
+| **Execution** | 52/52 ✅ | 100% |
+| **Shared** | 45/45 ✅ | 100% |
 | **Platform (Cache)** | 20/20 ✅ | 100% |
 | **Platform (EventBus)** | 33/33 ✅ | 100% |
 | **Platform (Worker)** | 13/13 ✅ | 100% |
-| **Core Infrastructure** | 14/14 ✅ | 100% |
+| **Core Infrastructure** | 13/13 ✅ | 100% |
 | **Utilities** | 32/32 ✅ | 100% |
-| **TOTAL** | **362/362 ✅** | **100%** |
+| **TOTAL** | **336/336 ✅** | **100%** |
 
 ### By Phase (Roadmap)
 
 | Phase | Component | Tests | Status |
 |-------|-----------|-------|--------|
-| **1.1** | Data Contracts (12 DTOs) | 262/262 ✅ | Complete |
+| **1.1** | Data Contracts (12 DTOs) | 225/225 ✅ | Complete |
 | **1.2** | IStrategyCache Protocol | 20/20 ✅ | Complete |
 | **1.2** | IEventBus Protocol | 33/33 ✅ | Complete |
 | **1.2** | IWorkerLifecycle Protocol | 13/13 ✅ | Complete |
@@ -137,14 +144,19 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 ### Quant Leap Architecture - SWOT Aggregation Removal
 - ❌ **Removed DTOs**: `context_factor.py` (28 tests), `aggregated_context_assessment.py` (14 tests)
 - ❌ **Removed Infrastructure**: `context_factors.py` (FactorRegistry, 20 tests)
+- ❌ **Removed ID Generation**: `generate_assessment_id()` function (4 tests)
+- ❌ **Removed Causality Tests**: `test_add_context_assessment_id()` (1 test)
 - ✅ **Philosophy**: ContextWorkers produce objective DTOs only, no subjective SWOT aggregation
 - ✅ **Impact**: Consumers (OpportunityWorkers, StrategyPlanners) apply their own interpretation
-- ✅ **Test Reduction**: 404 → 362 tests (-42 tests, architecture simplification)
+- ✅ **Test Reduction**: 404 → 336 tests (-68 tests total, architecture simplification)
+  - Phase 1: Removed components (context_factor, aggregated_context_assessment, FactorRegistry) → 362 tests (-42)
+  - Phase 2: Cleaned all CTX_ remnants (id_generators, causality, examples) → 336 tests (-26)
 - ✅ **Updated References**: 
-  - `causality.py` - Removed `context_assessment_id` field
-  - `id_generators.py` - Removed CTX_ prefix documentation
-  - `strategy_directive.py` - Updated responsibilities
+  - `causality.py` - Removed `context_assessment_id` field + cleaned examples
+  - `id_generators.py` - Removed `generate_assessment_id()` function + CTX_ prefix
+  - `strategy_directive.py` - Updated responsibilities + cleaned examples
   - `backend/dtos/strategy/__init__.py` - Removed obsolete imports
+  - Documentation - Cleaned all CTX_ references from templates and examples
 
 **Architecture Decision**: Workers now share objective facts via TickCache. Subjective interpretation happens at consumption point, enabling contradictory strategies to coexist (e.g., trend-following vs mean-reversion using same EMA data).
 
