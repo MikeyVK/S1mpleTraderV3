@@ -192,8 +192,8 @@ class IEventBus(Protocol):
         Examples:
             >>> # Strategy worker publishes scoped event
             >>> event_bus.publish(
-            ...     "OPPORTUNITY_DETECTED",
-            ...     OpportunitySignal(...),
+            ...     "SIGNAL_DETECTED",
+            ...     Signal(...),
             ...     ScopeLevel.STRATEGY,
             ...     strategy_instance_id="STR_A"
             ... )

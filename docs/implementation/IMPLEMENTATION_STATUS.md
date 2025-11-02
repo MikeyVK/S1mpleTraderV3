@@ -8,25 +8,25 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 **Last Updated:** 2025-11-02  
 **Total Tests Passing:** 336 tests (100% coverage)
-- **DTOs:** 225 tests (Strategy SWOT: 65, Planning: 63, Execution: 52, Shared: 45)
+- **DTOs:** 225 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 45)
 - **Core Infrastructure:** 79 tests (StrategyCache: 20, EventBus: 33, Worker Protocol: 13, Enums: 13)
 - **Utils:** 32 tests (ID Generators: 32)
 
 ## DTO Layer Status
 
-### Strategy DTOs - SWOT Signals (65 tests)
+### Strategy DTOs - Signal/Risk Detection (65 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| opportunity_signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ Complete |
-| threat_signal.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ Complete |
+| signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ Complete |
+| risk.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ Complete |
 | strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ Complete |
 
 **Coverage:** 65/65 tests passing (100%)
 
 **Removed (Quant Leap Architecture):**
 - ~~context_factor.py~~ - ContextWorkers now produce objective DTOs only
-- ~~aggregated_context_assessment.py~~ - No SWOT aggregation layer
+- ~~aggregated_context_assessment.py~~ - No context aggregation layer
 
 ### Strategy DTOs - Planning (63 tests)
 
@@ -102,7 +102,7 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 - ~~context_factors.py~~ - FactorRegistry no longer needed (no SWOT aggregation)
 
 **Core Infrastructure:**
-- ✅ Core Enums: ContextType, OpportunityType, ThreatType, PlanningPhase, ExecutionType (14 tests)
+- ✅ Core Enums: ContextType, SignalType, RiskType, PlanningPhase, ExecutionType (14 tests)
 
 ## Utilities Status
 
@@ -118,7 +118,7 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 | Layer | Tests | Status |
 |-------|-------|--------|
-| **Strategy SWOT** | 65/65 ✅ | 100% |
+| **Signal/Risk Detection** | 65/65 ✅ | 100% |
 | **Strategy Planning** | 63/63 ✅ | 100% |
 | **Execution** | 52/52 ✅ | 100% |
 | **Shared** | 45/45 ✅ | 100% |
@@ -141,13 +141,13 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 ## Recent Updates (2025-11-02)
 
-### Quant Leap Architecture - SWOT Aggregation Removal
+### Quant Leap Architecture - Context Aggregation Removal
 - ❌ **Removed DTOs**: `context_factor.py` (28 tests), `aggregated_context_assessment.py` (14 tests)
 - ❌ **Removed Infrastructure**: `context_factors.py` (FactorRegistry, 20 tests)
 - ❌ **Removed ID Generation**: `generate_assessment_id()` function (4 tests)
 - ❌ **Removed Causality Tests**: `test_add_context_assessment_id()` (1 test)
-- ✅ **Philosophy**: ContextWorkers produce objective DTOs only, no subjective SWOT aggregation
-- ✅ **Impact**: Consumers (OpportunityWorkers, StrategyPlanners) apply their own interpretation
+- ✅ **Philosophy**: ContextWorkers produce objective DTOs only, no subjective context aggregation
+- ✅ **Impact**: Consumers (SignalDetectors, StrategyPlanners) apply their own interpretation
 - ✅ **Test Reduction**: 404 → 336 tests (-68 tests total, architecture simplification)
   - Phase 1: Removed components (context_factor, aggregated_context_assessment, FactorRegistry) → 362 tests (-42)
   - Phase 2: Cleaned all CTX_ remnants (id_generators, causality, examples) → 336 tests (-26)
@@ -270,8 +270,8 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 ### Phase 1.3: Base Workers
 
 - ❌ BaseWorker abstract class
-- ❌ OpportunityWorker example
-- ❌ ThreatWorker example
+- ❌ SignalDetector example
+- ❌ RiskMonitor example
 
 **Target:** Worker foundation with DispositionEnvelope integration
 

@@ -1,20 +1,20 @@
-# backend/dtos/strategy/threat_signal.py
+# backend/dtos/strategy/risk.py
 """
-ThreatSignal DTO: ThreatWorker output contract.
+Risk DTO: RiskMonitor output contract.
 
-Represents a detected threat/risk event in the SWOT analysis framework.
-ThreatWorkers emit ThreatSignals to signal conditions requiring defensive
-action or system-wide awareness.
+Represents a detected risk event requiring defensive action or awareness.
+RiskMonitors emit Risk signals to indicate conditions that may threaten
+portfolio health, position safety, or system stability.
 
-Part of SWOT framework:
-- ContextWorkers → BaseContext (Strengths & Weaknesses)
-- OpportunityWorkers → OpportunitySignal (Opportunities)
-- ThreatWorkers → ThreatSignal (Threats)
-- PlanningWorker → Confrontation Matrix (combines quadrants)
+Risk Framework:
+- ContextWorkers → Objective market context (indicators, regime, volatility)
+- SignalDetectors → Signal (Entry/exit patterns)
+- RiskMonitors → Risk (Portfolio/position risks)
+- StrategyPlanners → Decision making (combines signals, risk, context)
 
 @layer: DTO (Strategy)
 @dependencies: [pydantic, datetime, re, backend.utils.id_generators, backend.dtos.causality]
-@responsibilities: [threat detection contract, causal tracking, SWOT severity]
+@responsibilities: [risk detection contract, causal tracking, severity scoring]
 """
 
 from datetime import datetime, timezone
@@ -23,42 +23,41 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from backend.utils.id_generators import generate_threat_id
+from backend.utils.id_generators import generate_risk_id
 from backend.dtos.causality import CausalityChain
 
 
-class ThreatSignal(BaseModel):
+class Risk(BaseModel):
     """
-    ThreatWorker output DTO representing a detected threat.
+    RiskMonitor output DTO representing a detected risk.
 
     Fields:
         causality: CausalityChain - IDs from birth (tick/news/schedule)
-        threat_id: Unique threat ID (THR_ prefix, auto-generated)
-        timestamp: When the threat was detected (UTC)
-        threat_type: Type of threat (UPPER_SNAKE_CASE, 3-25 chars)
-        severity: Threat severity [0.0, 1.0] for SWOT confrontation
+        risk_id: Unique risk ID (RSK_ prefix, auto-generated)
+        timestamp: When the risk was detected (UTC)
+        risk_type: Type of risk (UPPER_SNAKE_CASE, 3-25 chars)
+        severity: Risk severity [0.0, 1.0] for decision making
         affected_asset: Optional asset identifier (None = system-wide)
 
-    SWOT Framework:
-        severity (0.0-1.0) mirrors OpportunitySignal.confidence for
-        mathematical confrontation in PlanningWorker's matrix analysis.
-        This represents how severe the threat is.
+    Risk Framework:
+        severity (0.0-1.0) mirrors Signal.confidence for balanced decision making
+        in StrategyPlanner analysis. This represents how severe the risk is.
 
-        High severity (e.g., 0.9) = critical threat requiring immediate action
+        High severity (e.g., 0.9) = critical risk requiring immediate action
         Low severity (e.g., 0.3) = minor concern or warning signal
 
     Causal Chain:
-        CausalityChain birth ID → threat_id → (StrategyPlanner decision)
+        CausalityChain birth ID → risk_id → (StrategyPlanner decision)
 
     System-Wide Scope:
-        No trade_id reference - threats are system-level events.
+        No trade_id reference - risks are system-level events.
         affected_asset=None signals system-wide impact (e.g., exchange down).
 
     Examples:
-        >>> signal = ThreatSignal(
+        >>> risk = Risk(
         ...     causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
         ...     timestamp=datetime.now(timezone.utc),
-        ...     threat_type="STOP_LOSS_HIT",
+        ...     risk_type="STOP_LOSS_HIT",
         ...     severity=0.9,
         ...     affected_asset="BTC/EUR"
         ... )
@@ -68,32 +67,32 @@ class ThreatSignal(BaseModel):
         description="Causality tracking - IDs from birth (tick/news/schedule)"
     )
 
-    threat_id: str = Field(
-        default_factory=generate_threat_id,
-        pattern=r'^THR_\d{8}_\d{6}_[0-9a-f]{8}$',
-        description="Unique threat ID (military datetime format)",
+    risk_id: str = Field(
+        default_factory=generate_risk_id,
+        pattern=r'^RSK_\d{8}_\d{6}_[0-9a-f]{8}$',
+        description="Unique risk ID (military datetime format)",
     )
 
     timestamp: datetime = Field(
-        description="Threat detection time (UTC)",
+        description="Risk detection time (UTC)",
     )
 
-    threat_type: str = Field(
-        description="Threat type identifier (UPPER_SNAKE_CASE, 3-25 chars)",
+    risk_type: str = Field(
+        description="Risk type identifier (UPPER_SNAKE_CASE, 3-25 chars)",
         min_length=3,
         max_length=25,
     )
 
     severity: float = Field(
-        description="Threat severity [0.0, 1.0] for SWOT confrontation",
+        description="Risk severity [0.0, 1.0] for decision making",
         ge=0.0,
         le=1.0,
     )
 
-    # Optional field - None indicates system-wide threat (not asset-specific)
+    # Optional field - None indicates system-wide risk (not asset-specific)
     affected_asset: Optional[str] = Field(
         None,
-        description="Affected asset (None = system-wide threat)",
+        description="Affected asset (None = system-wide risk)",
         min_length=5,
         max_length=20,
         pattern=r'^[A-Z0-9_]+/[A-Z0-9_]+$',
@@ -105,25 +104,25 @@ class ThreatSignal(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "description": "Market-wide threat (no specific asset)",
-                    "threat_id": "THR_20251027_100001_a1b2c3d4",
+                    "description": "Market-wide risk (no specific asset)",
+                    "risk_id": "RSK_20251027_100001_a1b2c3d4",
                     "timestamp": "2025-10-27T10:00:01Z",
-                    "threat_type": "FLASH_CRASH",
+                    "risk_type": "FLASH_CRASH",
                     "severity": 0.95
                 },
                 {
                     "description": "Asset-specific liquidity crisis",
-                    "threat_id": "THR_20251027_143000_e5f6g7h8",
+                    "risk_id": "RSK_20251027_143000_e5f6g7h8",
                     "timestamp": "2025-10-27T14:30:00Z",
-                    "threat_type": "LIQUIDITY_CRISIS",
+                    "risk_type": "LIQUIDITY_CRISIS",
                     "severity": 0.82,
                     "affected_asset": "BTCUSDT"
                 },
                 {
                     "description": "Regulatory news event (medium severity)",
-                    "threat_id": "THR_20251027_150500_i9j0k1l2",
+                    "risk_id": "RSK_20251027_150500_i9j0k1l2",
                     "timestamp": "2025-10-27T15:05:00Z",
-                    "threat_type": "REGULATORY_NEWS",
+                    "risk_type": "REGULATORY_NEWS",
                     "severity": 0.65,
                     "affected_asset": "ETHUSDT"
                 }
@@ -139,23 +138,23 @@ class ThreatSignal(BaseModel):
             return value.replace(tzinfo=timezone.utc)
         return value
 
-    @field_validator("threat_type")
+    @field_validator("risk_type")
     @classmethod
-    def validate_threat_type_format(cls, v: str) -> str:
+    def validate_risk_type_format(cls, v: str) -> str:
         """Validate UPPER_SNAKE_CASE format and reserved prefixes."""
 
         # Check reserved prefixes first
         reserved_prefixes = ['SYSTEM_', 'INTERNAL_', '_']
         if any(v.startswith(prefix) for prefix in reserved_prefixes):
             raise ValueError(
-                f"threat_type cannot start with reserved prefix: {v}"
+                f"risk_type cannot start with reserved prefix: {v}"
             )
 
         # Check UPPER_SNAKE_CASE pattern
         pattern = r'^[A-Z][A-Z0-9_]*$'
         if not re.match(pattern, v):
             raise ValueError(
-                f"threat_type must follow UPPER_SNAKE_CASE: {v}"
+                f"risk_type must follow UPPER_SNAKE_CASE: {v}"
             )
 
         return v

@@ -28,8 +28,8 @@ class CausalityChain(BaseModel):
     **NOT responsible for:**
     - Business data (symbol, price, direction - those live in DTOs)
     - Timestamps (each DTO has own timestamp)
-    - Confidence scores (OpportunitySignal/StrategyDirective have that)
-    - Event metadata (ThreatSignal/CriticalEvent have that)
+    - Confidence scores (Signal/StrategyDirective have that)
+    - Event metadata (Risk/CriticalEvent have that)
 
     **Design Pattern:**
     Workers use model_copy(update={...}) to extend chain:
@@ -55,9 +55,9 @@ class CausalityChain(BaseModel):
             schedule_id: Schedule event ID - strategy run born from DCA/rebalancing
 
         Worker Output IDs (added during pipeline flow):
-            opportunity_signal_ids: OpportunitySignal IDs (list - multiple signals possible)
-            threat_ids: ThreatSignal IDs (list - includes CriticalEvent)
-            strategy_directive_id: StrategyDirective ID (SWOT planning bridge)
+            signal_ids: Signal IDs (list - multiple signals possible)
+            risk_ids: Risk IDs (list - includes critical risk events)
+            strategy_directive_id: StrategyDirective ID (planning bridge)
             entry_plan_id: EntryPlan ID
             size_plan_id: SizePlan ID
             exit_plan_id: ExitPlan ID
@@ -80,17 +80,17 @@ class CausalityChain(BaseModel):
     )
 
     # === Worker Output IDs (Toegevoegd tijdens pipeline flow) ===
-    opportunity_signal_ids: list[str] = Field(
+    signal_ids: list[str] = Field(
         default_factory=list,
-        description="OpportunitySignal IDs - multiple signals mogelijk (confluence)"
+        description="Signal IDs - multiple signals mogelijk (confluence)"
     )
-    threat_ids: list[str] = Field(
+    risk_ids: list[str] = Field(
         default_factory=list,
-        description="ThreatSignal IDs (CriticalEvent = ThreatSignal in causality)"
+        description="Risk IDs (critical risk events)"
     )
     strategy_directive_id: str | None = Field(
         default=None,
-        description="StrategyDirective ID - SWOT planning bridge"
+        description="StrategyDirective ID - planning bridge"
     )
     entry_plan_id: str | None = Field(
         default=None,
@@ -137,9 +137,9 @@ class CausalityChain(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "description": "Tick-based flow (birth → opportunity → strategy)",
+                    "description": "Tick-based flow (birth → signal → strategy)",
                     "tick_id": "TCK_20251027_100000_a1b2c3d4",
-                    "opportunity_signal_ids": ["OPP_20251027_100001_e5f6g7h8"],
+                    "signal_ids": ["SIG_20251027_100001_e5f6g7h8"],
                     "strategy_directive_id": "STR_20251027_100002_m3n4o5p6"
                 },
                 {
@@ -151,19 +151,19 @@ class CausalityChain(BaseModel):
                     "execution_directive_id": "EXE_20251027_120010_g3h4i5j6"
                 },
                 {
-                    "description": "Threat-based exit (news → threat → modify directive)",
+                    "description": "Risk-based exit (news → risk → modify directive)",
                     "news_id": "NWS_20251027_143000_k7l8m9n0",
-                    "threat_ids": ["THR_20251027_143001_o1p2q3r4"],
+                    "risk_ids": ["RSK_20251027_143001_o1p2q3r4"],
                     "strategy_directive_id": "STR_20251027_143002_w9x0y1z2",
                     "exit_plan_id": "EXT_20251027_143003_a3b4c5d6"
                 },
                 {
                     "description": "Multiple signals confluence (confluence → planning)",
                     "tick_id": "TCK_20251027_150000_e7f8g9h0",
-                    "opportunity_signal_ids": [
-                        "OPP_20251027_150001_i1j2k3l4",
-                        "OPP_20251027_150001_m5n6o7p8",
-                        "OPP_20251027_150002_q9r0s1t2"
+                    "signal_ids": [
+                        "SIG_20251027_150001_i1j2k3l4",
+                        "SIG_20251027_150001_m5n6o7p8",
+                        "SIG_20251027_150002_q9r0s1t2"
                     ],
                     "strategy_directive_id": "STR_20251027_150003_y7z8a9b0",
                     "entry_plan_id": "ENT_20251027_150004_c1d2e3f4",

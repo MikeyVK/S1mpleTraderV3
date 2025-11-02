@@ -22,8 +22,8 @@ graph TB
     end
     
     CW[ContextWorker]
-    OW[OpportunityWorker]
-    TW[ThreatWorker]
+    OW[SignalDetector]
+    TW[RiskMonitor]
     PW[PlanningWorker]
     PA[PlanningAggregator<br/>Platform Component]
     SP[StrategyPlanner]
@@ -35,8 +35,8 @@ graph TB
     TC -->|get_required_dtos<br/>Subjective Interpretation| TW
     TC -->|get_required_dtos| PW
     
-    OW -->|PUBLISH OpportunitySignal| EB
-    TW -->|PUBLISH ThreatSignal| EB
+    OW -->|PUBLISH Signal| EB
+    TW -->|PUBLISH Risk| EB
     PW -->|PUBLISH EntryPlan/SizePlan/ExitPlan| EB
     
     EB -->|subscribe plans| PA
@@ -58,8 +58,8 @@ graph TB
 
 **Key Flow Principles:**
 - **ContextWorker**: Writes **objective facts** to TickCache only (NEVER EventBus)
-- **OpportunityWorker**: Reads TickCache → Applies **subjective interpretation** → Publishes OpportunitySignal to EventBus
-- **ThreatWorker**: Reads TickCache → Applies **subjective interpretation** → Publishes ThreatSignal to EventBus
+- **SignalDetector**: Reads TickCache → Applies **subjective interpretation** → Publishes Signal to EventBus
+- **RiskMonitor**: Reads TickCache → Applies **subjective interpretation** → Publishes Risk to EventBus
 - **PlanningWorker**: Reads TickCache → Publishes Plans (EntryPlan, SizePlan, ExitPlan) to EventBus
 - **PlanningAggregator** (platform): Subscribes to plan events → Combines into ExecutionDirective → Publishes to EventBus
 - **StrategyPlanner**: Subscribes to EventBus signals + Reads TickCache → Applies **subjective interpretation** → Publishes StrategyDirective
@@ -85,8 +85,8 @@ The **`type`** field in `manifest.yaml` defines the worker's **architectural rol
 
 **5 Valid Types:**
 - `context_worker` - Stores DTOs to TickCache via `set_result_dto()` (NEVER EventBus)
-- `opportunity_worker` - May publish `OpportunitySignal` to EventBus
-- `threat_worker` - May publish `ThreatSignal` to EventBus  
+- `signal_detector` - May publish `Signal` to EventBus
+- `risk_monitor` - May publish `Risk` to EventBus  
 - `planning_worker` - Produces plan DTOs (EntryPlan, SizePlan, etc.)
 - `strategy_planner` - Publishes `StrategyDirective` to EventBus
 
@@ -128,12 +128,12 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 - ✅ ContextWorkers produce **objective DTOs** (e.g., `EMAOutputDTO(ema_20=50100.50)`)
 - ✅ **NO subjective interpretation** (no "bullish", "strong", "weakness" labels)
 - ✅ **NO aggregation** - Each worker produces its own discrete DTO
-- ✅ Consumers (OpportunityWorkers, StrategyPlanners) apply their own interpretation
+- ✅ Consumers (SignalDetectors, StrategyPlanners) apply their own interpretation
 
 **Output Pattern:**
 - Stores plugin-specific DTOs to `TickCache` via `set_result_dto()`
 - **NEVER** publishes events to EventBus
-- Output consumed by downstream workers (Opportunity, Threat, Planning)
+- Output consumed by downstream workers (SignalDetector, RiskMonitor, Planning)
 
 **7 Subtypes (Descriptive Tags):**
 1. `REGIME_CLASSIFICATION` - Market state identification
@@ -151,18 +151,18 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 ---
 
-### 2. OpportunityWorker - "The Scout"
+### 2. SignalDetector - "The Scout"
 
-**Purpose:** Detect subjective trading opportunities based on context
+**Purpose:** Detect subjective trading signals based on context
 
 **Responsibilities:**
 - Pattern-based entry signals (breakouts, reversals)
-- Momentum opportunity detection
+- Momentum signal detection
 - Mean reversion setups
-- Cross-asset opportunities (correlation plays)
+- Cross-asset signals (correlation plays)
 
 **Output Pattern:**
-- Primary: `DispositionEnvelope(PUBLISH)` with `OpportunitySignal` (system DTO)
+- Primary: `DispositionEnvelope(PUBLISH)` with `Signal` (system DTO)
 - Secondary: Can store intermediate scores to `TickCache`
 
 **7 Subtypes:**
@@ -181,7 +181,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 ---
 
-### 3. ThreatWorker - "The Watchdog"
+### 3. RiskMonitor - "The Watchdog"
 
 **Purpose:** Detect risks and threats to positions/portfolio
 
@@ -192,7 +192,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 - System health monitoring (connection, data quality)
 
 **Output Pattern:**
-- `DispositionEnvelope(PUBLISH)` with `ThreatSignal` (system DTO)
+- `DispositionEnvelope(PUBLISH)` with `Risk` (system DTO)
 - Triggers defensive strategies (emergency exits, risk reduction)
 
 **5 Subtypes:**
@@ -241,7 +241,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 ### 5. StrategyPlanner - "The Decision Maker"
 
-**Purpose:** Produce `StrategyDirective` based on triggers (SWOT, tick, threat, schedule)
+**Purpose:** Produce `StrategyDirective` based on triggers (signals, tick, risk, schedule)
 
 **Responsibilities:**
 - Entry strategy decisions (new trade opportunities)
@@ -254,15 +254,15 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 - **1-to-1 relationship**: Each strategy has exactly 1 StrategyPlanner
 
 **4 Logical Categories** (documentation only, not enforced):
-1. **Entry Strategies** - Scope: `NEW_TRADE`, Trigger: SWOT/Opportunity
+1. **Entry Strategies** - Scope: `NEW_TRADE`, Trigger: Signal detection
 2. **Position Management** - Scope: `MODIFY_EXISTING`, Trigger: tick/periodic
-3. **Risk Control** - Scope: `CLOSE_EXISTING`, Trigger: threat/drawdown
+3. **Risk Control** - Scope: `CLOSE_EXISTING`, Trigger: risk/drawdown
 4. **Scheduled Operations** - Scope: `NEW_TRADE`, Trigger: schedule
 
 **Example Workers:**
-- `SWOTMomentumPlanner` - SWOT-based momentum entry strategy
+- `MomentumEntryPlanner` - Signal-based momentum entry strategy
 - `TrailingStopManager` - Trailing stop position management
-- `EmergencyExitPlanner` - Threat-triggered emergency exit
+- `EmergencyExitPlanner` - Risk-triggered emergency exit
 - `DCAScheduler` - Scheduled dollar-cost averaging
 
 **Causality:** StrategyPlanner extends causality chain with `strategy_directive_id`.
@@ -283,8 +283,8 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 2. **EventBus (Asynchronous, Signals)**
    - Via `DispositionEnvelope(PUBLISH, event_name, event_payload)`
    - For external signals, alerts, decisions
-   - Contains **system DTOs only** (OpportunitySignal, ThreatSignal, StrategyDirective)
-   - Used by: OpportunityWorker, ThreatWorker, StrategyPlanner
+   - Contains **system DTOs only** (Signal, Risk, StrategyDirective)
+   - Used by: SignalDetector, RiskMonitor, StrategyPlanner
 
 ### DispositionEnvelope Contract
 

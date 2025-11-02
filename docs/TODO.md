@@ -25,7 +25,7 @@
 
 **Data Contracts (DTOs):**
 - [x] Shared Layer: DispositionEnvelope, CausalityChain
-- [x] SWOT Layer: ContextFactor, AggregatedContextAssessment, OpportunitySignal, ThreatSignal
+- [x] Signal/Risk Layer: Signal, Risk
 - [x] Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 - [x] Execution Layer: ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
 
@@ -90,7 +90,6 @@
 **Components:**
 - [ ] EventAdapter (bus-agnostic worker wrapper)
 - [ ] TickCacheManager (run lifecycle orchestration)
-- [ ] ContextAggregator (SWOT strength/weakness aggregation)
 - [ ] PlanningAggregator (4-plan coordinator, mode-aware)
 
 **Deliverable:** Core platform components implemented & integrated (target: 60+ tests)
@@ -104,7 +103,7 @@
 
 **Workers:**
 - [ ] BaseWorker (abstract foundation, IWorkerLifecycle implementation)
-- [ ] ContextWorker, OpportunityWorker, ThreatWorker
+- [ ] ContextWorker, SignalDetector, RiskMonitor
 - [ ] StrategyPlanner, PlanningWorker (Entry/Size/Exit/Execution)
 
 **Deliverable:** Worker foundation with DispositionEnvelope integration (target: 40+ tests)

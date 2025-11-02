@@ -17,8 +17,8 @@ from typing import Type
 # Our Application Imports
 from backend.core.enums import (
     ContextType,
-    OpportunityType,
-    ThreatType,
+    SignalType,
+    RiskType,
     PlanningPhase,
     ExecutionType
 )
@@ -62,8 +62,8 @@ class TestContextType:
         assert ContextType.FUNDAMENTAL_ENRICHMENT
 
 
-class TestOpportunityType:
-    """Test suite for OpportunityType enum."""
+class TestSignalType:
+    """Test suite for SignalType enum."""
 
     def test_all_opportunity_types_present(self):
         """Test that all expected opportunity types are defined."""
@@ -77,21 +77,21 @@ class TestOpportunityType:
             "SENTIMENT_EXTREME"
         }
 
-        actual = {ot.value for ot in OpportunityType}
+        actual = {ot.value for ot in SignalType}
         assert actual == expected, (
-            f"OpportunityType enum changed! "
+            f"SignalType enum changed! "
             f"Added: {actual - expected}, "
             f"Removed: {expected - actual}"
         )
 
     def test_opportunity_type_is_string_enum(self):
-        """Test that OpportunityType values are strings."""
-        for opp_type in OpportunityType:
+        """Test that SignalType values are strings."""
+        for opp_type in SignalType:
             assert isinstance(opp_type.value, str)
 
 
-class TestThreatType:
-    """Test suite for ThreatType enum."""
+class TestRiskType:
+    """Test suite for RiskType enum."""
 
     def test_all_threat_types_present(self):
         """Test that all expected threat types are defined."""
@@ -103,16 +103,16 @@ class TestThreatType:
             "SYSTEMIC_RISK_DETECTION"
         }
 
-        actual = {tt.value for tt in ThreatType}
+        actual = {tt.value for tt in RiskType}
         assert actual == expected, (
-            f"ThreatType enum changed! "
+            f"RiskType enum changed! "
             f"Added: {actual - expected}, "
             f"Removed: {expected - actual}"
         )
 
     def test_threat_type_is_string_enum(self):
-        """Test that ThreatType values are strings."""
-        for threat_type in ThreatType:
+        """Test that RiskType values are strings."""
+        for threat_type in RiskType:
             assert isinstance(threat_type.value, str)
 
 
@@ -173,8 +173,8 @@ class TestEnumCrossCutting:
         """Test that each enum has unique values."""
         enums_to_test: list[Type[Enum]] = [
             ContextType,
-            OpportunityType,
-            ThreatType,
+            SignalType,
+            RiskType,
             PlanningPhase,
             ExecutionType
         ]
@@ -191,8 +191,8 @@ class TestEnumCrossCutting:
 
         enums_to_test: list[Type[Enum]] = [
             ContextType,
-            OpportunityType,
-            ThreatType,
+            SignalType,
+            RiskType,
             PlanningPhase,
             ExecutionType
         ]

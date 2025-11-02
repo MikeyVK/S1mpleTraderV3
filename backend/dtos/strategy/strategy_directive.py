@@ -1,15 +1,15 @@
 # backend/dtos/strategy/strategy_directive.py
 """
-StrategyDirective and sub-directive DTOs for SWOT-driven trade planning.
+StrategyDirective and sub-directive DTOs for quant-driven trade planning.
 
 @layer: Strategy
 @dependencies: backend.utils.id_generators
 @responsibilities:
-    - Bridge SWOT framework (OpportunitySignal, ThreatSignal)
+    - Bridge detection framework (Signal, Risk)
       and Planning Layer (EntryPlan, SizePlan, ExitPlan, ExecutionPlan)
     - Contain 4 sub-directives (Entry, Size, Exit, Routing) with constraints/hints
-    - Enable SWOT-driven position management (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
-    - Provide causality tracking from SWOT analysis to execution planning
+    - Enable signal-driven position management (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
+    - Provide causality tracking from analysis to execution planning
 """
 
 # Standard library imports
@@ -212,9 +212,9 @@ class StrategyDirective(BaseModel):
     tactical constraints/hints that guide role-based planners.
 
     STRATEGYPLANNER TYPES:
-    - **Entry Strategy** (SWOT): OpportunitySignal + Context → NEW_TRADE
+    - **Entry Strategy**: Signal + Context → NEW_TRADE
     - **Position Management**: Position monitoring + tick → MODIFY_EXISTING
-    - **Risk Control**: ThreatSignal/ThreatSignal → CLOSE_EXISTING
+    - **Risk Control**: Risk events → CLOSE_EXISTING
     - **Scheduled Operations**: Time trigger → NEW_TRADE
 
     DIRECTIVE FLOW:
@@ -267,13 +267,13 @@ class StrategyDirective(BaseModel):
     - Computing stop/target prices (ExitPlanner's job)
     - Choosing specific order types/routes (ExecutionPlanner's job)
 
-    USAGE EXAMPLE 1 - NEW TRADE FROM OPPORTUNITY:
+    USAGE EXAMPLE 1 - NEW TRADE FROM SIGNAL:
     ```python
-    # MomentumPlanner analyzes OpportunitySignal
+    # MomentumPlanner analyzes Signal
     directive = StrategyDirective(
         strategy_planner_id="momentum_planner",
         trigger_context=TriggerContext(
-            opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"]
+            signal_ids=["SIG_20251027_100001_a1b2c3d4"]
         ),
         scope=DirectiveScope.NEW_TRADE,
         confidence=Decimal("0.85"),
@@ -322,13 +322,13 @@ class StrategyDirective(BaseModel):
     )
     ```
 
-    USAGE EXAMPLE 3 - CLOSE EXISTING FROM THREAT (RISK CONTROL):
+    USAGE EXAMPLE 3 - CLOSE EXISTING FROM RISK (RISK CONTROL):
     ```python
-    # EmergencyExitPlanner responds to critical threat
+    # EmergencyExitPlanner responds to critical risk
     directive = StrategyDirective(
         strategy_planner_id="emergency_exit_planner",
         trigger_context=TriggerContext(
-            threat_ids=["THR_12345678-1234-1234-1234-123456789012"],
+            risk_ids=["RSK_20251027_143001_v5w6x7y8"],
             trigger_event={"type": "FLASH_CRASH", "severity": "CRITICAL"}
         ),
         scope=DirectiveScope.CLOSE_EXISTING,
@@ -372,11 +372,11 @@ class StrategyDirective(BaseModel):
     ```python
     # Query Journal using trigger_context IDs
     journal_entries = StrategyJournal.query(
-        opportunity_ids=directive.trigger_context.opportunity_ids,
+        signal_ids=directive.trigger_context.signal_ids,
         directive_id=directive.directive_id
     )
     # Reconstruct decision chain:
-    # OpportunitySignal → StrategyDirective → EntryPlan → ExecutionDirective
+    # Signal → StrategyDirective → EntryPlan → ExecutionDirective
     ```
 
     Attributes:
@@ -494,12 +494,12 @@ class StrategyDirective(BaseModel):
                     "description": "New trade directive (full planning pipeline)",
                     "directive_id": "STR_20251027_100002_a1b2c3d4",
                     "decision_timestamp": "2025-10-27T10:00:02Z",
-                    "strategy_planner_id": "opportunity_based_planner",
+                    "strategy_planner_id": "signal_based_planner",
                     "scope": "NEW_TRADE",
                     "confidence": 0.85,
                     "causality": {
                         "tick_id": "TCK_20251027_100000_x1y2z3a4",
-                        "opportunity_signal_ids": ["OPP_20251027_100001_b5c6d7e8"],
+                        "signal_ids": ["SIG_20251027_100001_b5c6d7e8"],
                         "strategy_directive_id": "STR_20251027_100002_a1b2c3d4"
                     },
                     "entry_directive": {
@@ -522,13 +522,13 @@ class StrategyDirective(BaseModel):
                     "description": "Modify existing trade directive (threat response)",
                     "directive_id": "STR_20251027_143002_j3k4l5m6",
                     "decision_timestamp": "2025-10-27T14:30:02Z",
-                    "strategy_planner_id": "threat_response_planner",
+                    "strategy_planner_id": "risk_response_planner",
                     "scope": "MODIFY_EXISTING",
                     "confidence": 0.92,
                     "target_trade_ids": ["TRD_20251027_100010_n7o8p9q0"],
                     "causality": {
                         "news_id": "NWS_20251027_143000_r1s2t3u4",
-                        "threat_ids": ["THR_20251027_143001_v5w6x7y8"],
+                        "risk_ids": ["RSK_20251027_143001_v5w6x7y8"],
                         "strategy_directive_id": "STR_20251027_143002_j3k4l5m6"
                     },
                     "exit_directive": {

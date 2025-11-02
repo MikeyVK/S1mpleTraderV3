@@ -247,7 +247,7 @@ class TestExecutionDirectiveCausalityChain:
         """Test that causality chain is preserved in directive."""
         causality = CausalityChain(
             tick_id="TCK_20251027_100000_abc123",
-            opportunity_signal_ids=["OPP_20251027_100001_def456"],
+            signal_ids=["SIG_20251027_100001_def456"],
             strategy_directive_id="STR_20251027_100002_ghi789"
         )
         entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
@@ -256,5 +256,5 @@ class TestExecutionDirectiveCausalityChain:
 
         # pyright: ignore[reportAttributeAccessIssue] - Pylance false positive
         assert directive.causality.tick_id == "TCK_20251027_100000_abc123"
-        assert len(directive.causality.opportunity_signal_ids) == 1
+        assert len(directive.causality.signal_ids) == 1
         assert directive.causality.strategy_directive_id == "STR_20251027_100002_ghi789"
