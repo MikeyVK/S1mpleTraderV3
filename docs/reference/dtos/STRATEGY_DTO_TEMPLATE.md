@@ -251,7 +251,6 @@ Use these prefixes for typed IDs:
 | `SCH_` | N/A | Schedule birth ID (from Scheduler) |
 | `OPP_` | OpportunitySignal | Opportunity detection |
 | `THR_` | ThreatSignal | Threat detection |
-| `CTX_` | AggregatedContextAssessment | Context aggregation |
 | `STR_` | StrategyDirective | Strategy decision |
 | `ENT_` | EntryPlan | Entry planning |
 | `SZE_` | SizePlan | Size planning |
@@ -276,8 +275,7 @@ Is this a pipeline DTO?
 ```
 
 **DTOs WITH causality:**
-- ✅ OpportunitySignal, ThreatSignal (SWOT inputs)
-- ✅ AggregatedContextAssessment (Context output)
+- ✅ OpportunitySignal, ThreatSignal
 - ✅ StrategyDirective (Strategy output)
 - ✅ ExecutionDirective (Execution input - aggregated)
 

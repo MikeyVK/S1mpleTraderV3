@@ -267,14 +267,13 @@ class StrategyDirective(BaseModel):
     - Computing stop/target prices (ExitPlanner's job)
     - Choosing specific order types/routes (ExecutionPlanner's job)
 
-    USAGE EXAMPLE 1 - NEW TRADE FROM SWOT OPPORTUNITY:
+    USAGE EXAMPLE 1 - NEW TRADE FROM OPPORTUNITY:
     ```python
-    # SWOTMomentumPlanner analyzes OpportunitySignal
+    # MomentumPlanner analyzes OpportunitySignal
     directive = StrategyDirective(
-        strategy_planner_id="swot_momentum_planner",
+        strategy_planner_id="momentum_planner",
         trigger_context=TriggerContext(
-            opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"],
-            context_assessment_id="CTX_12345678-1234-1234-1234-123456789012"
+            opportunity_ids=["OPP_12345678-1234-1234-1234-123456789012"]
         ),
         scope=DirectiveScope.NEW_TRADE,
         confidence=Decimal("0.85"),
@@ -501,7 +500,6 @@ class StrategyDirective(BaseModel):
                     "causality": {
                         "tick_id": "TCK_20251027_100000_x1y2z3a4",
                         "opportunity_signal_ids": ["OPP_20251027_100001_b5c6d7e8"],
-                        "context_assessment_id": "CTX_20251027_100001_f9g0h1i2",
                         "strategy_directive_id": "STR_20251027_100002_a1b2c3d4"
                     },
                     "entry_directive": {
@@ -531,7 +529,6 @@ class StrategyDirective(BaseModel):
                     "causality": {
                         "news_id": "NWS_20251027_143000_r1s2t3u4",
                         "threat_ids": ["THR_20251027_143001_v5w6x7y8"],
-                        "context_assessment_id": "CTX_20251027_143001_z9a0b1c2",
                         "strategy_directive_id": "STR_20251027_143002_j3k4l5m6"
                     },
                     "exit_directive": {
@@ -548,7 +545,6 @@ class StrategyDirective(BaseModel):
                     "target_trade_ids": ["TRD_20251027_100010_h7i8j9k0"],
                     "causality": {
                         "tick_id": "TCK_20251027_150000_l1m2n3o4",
-                        "context_assessment_id": "CTX_20251027_150002_p5q6r7s8",
                         "strategy_directive_id": "STR_20251027_150003_d3e4f5g6"
                     }
                 }

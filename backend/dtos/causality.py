@@ -137,10 +137,9 @@ class CausalityChain(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "description": "Tick-based SWOT flow (birth → opportunity → strategy)",
+                    "description": "Tick-based flow (birth → opportunity → strategy)",
                     "tick_id": "TCK_20251027_100000_a1b2c3d4",
                     "opportunity_signal_ids": ["OPP_20251027_100001_e5f6g7h8"],
-                    "context_assessment_id": "CTX_20251027_100001_i9j0k1l2",
                     "strategy_directive_id": "STR_20251027_100002_m3n4o5p6"
                 },
                 {
@@ -155,7 +154,6 @@ class CausalityChain(BaseModel):
                     "description": "Threat-based exit (news → threat → modify directive)",
                     "news_id": "NWS_20251027_143000_k7l8m9n0",
                     "threat_ids": ["THR_20251027_143001_o1p2q3r4"],
-                    "context_assessment_id": "CTX_20251027_143001_s5t6u7v8",
                     "strategy_directive_id": "STR_20251027_143002_w9x0y1z2",
                     "exit_plan_id": "EXT_20251027_143003_a3b4c5d6"
                 },
@@ -167,7 +165,6 @@ class CausalityChain(BaseModel):
                         "OPP_20251027_150001_m5n6o7p8",
                         "OPP_20251027_150002_q9r0s1t2"
                     ],
-                    "context_assessment_id": "CTX_20251027_150002_u3v4w5x6",
                     "strategy_directive_id": "STR_20251027_150003_y7z8a9b0",
                     "entry_plan_id": "ENT_20251027_150004_c1d2e3f4",
                     "size_plan_id": "SIZ_20251027_150004_g5h6i7j8",

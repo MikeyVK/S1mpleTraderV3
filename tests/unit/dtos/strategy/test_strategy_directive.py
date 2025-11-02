@@ -193,15 +193,14 @@ class TestStrategyDirectiveDefaultValues:
         assert directive.target_trade_ids == []
 
     def test_causality_enable_journal_causality(self):
-        """causality contain all SWOT IDs for Journal causality tracking."""
+        """causality contain all IDs for Journal causality tracking."""
         directive = StrategyDirective(
             strategy_planner_id="test",
             causality=CausalityChain(
                 tick_id="TCK_20251026_100000_a1b2c3d4",
                 opportunity_signal_ids=["OPP_20251026_100001_b2c3d4e5",
                                         "OPP_20251026_100002_c3d4e5f6"],
-                threat_ids=["THR_20251026_100003_d4e5f6a7"],
-                context_assessment_id="CTX_20251026_100004_e5f6a7b8"
+                threat_ids=["THR_20251026_100003_d4e5f6a7"]
             ),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.75")
@@ -211,9 +210,6 @@ class TestStrategyDirectiveDefaultValues:
         causality = cast(CausalityChain, directive.causality)
         assert len(getattr(causality, "opportunity_signal_ids")) == 2
         assert len(getattr(causality, "threat_ids")) == 1
-        ctx_id = getattr(causality, "context_assessment_id")
-        assert ctx_id is not None
-        assert ctx_id.startswith("CTX_")
 
 
 class TestStrategyDirectiveSerialization:

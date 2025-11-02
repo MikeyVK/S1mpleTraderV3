@@ -164,7 +164,7 @@ stateDiagram-v2
 **Example:**
 ```python
 # ContextWorker stores intermediate data
-self.strategy_cache.set_result_dto(self, ContextFactorDTO(...))
+self.strategy_cache.set_result_dto(self, IndicatorSignalDTO(...))
 return DispositionEnvelope(disposition="CONTINUE")
 ```
 
