@@ -30,13 +30,13 @@ class TestStrategyDirectiveCreation:
     def test_minimal_new_trade_directive(self):
         """Can create minimal new trade directive with only required fields."""
         directive = StrategyDirective(
-            strategy_planner_id="swot_planner_v1",
+            strategy_planner_id="signal_risk_planner_v1",
             causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.75")
         )
 
-        assert directive.strategy_planner_id == "swot_planner_v1"
+        assert directive.strategy_planner_id == "signal_risk_planner_v1"
         assert directive.scope == DirectiveScope.NEW_TRADE
         assert directive.confidence == Decimal("0.75")
         # Auto-generated fields
@@ -47,7 +47,7 @@ class TestStrategyDirectiveCreation:
     def test_complete_directive_with_all_sub_directives(self):
         """Can create complete directive with all 4 sub-directives."""
         directive = StrategyDirective(
-            strategy_planner_id="swot_planner_v1",
+            strategy_planner_id="signal_risk_planner_v1",
             causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.85"),
@@ -269,7 +269,7 @@ class TestStrategyDirectiveUseCases:
     def test_new_trade_signal(self):
         """New trade directive from signal detection."""
         directive = StrategyDirective(
-            strategy_planner_id="swot_momentum_planner",
+            strategy_planner_id="signal_risk_momentum_planner",
             causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.85"),
@@ -296,7 +296,7 @@ class TestStrategyDirectiveUseCases:
     def test_modify_existing_trade_on_risk(self):
         """Modify existing trade directive from risk signal."""
         directive = StrategyDirective(
-            strategy_planner_id="swot_risk_planner",
+            strategy_planner_id="signal_risk_planner",
             causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.MODIFY_EXISTING,
             target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
@@ -315,7 +315,7 @@ class TestStrategyDirectiveUseCases:
     def test_close_existing_trade(self):
         """Close existing trade directive."""
         directive = StrategyDirective(
-            strategy_planner_id="swot_exit_planner",
+            strategy_planner_id="signal_risk_exit_planner",
             causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
             scope=DirectiveScope.CLOSE_EXISTING,
             target_trade_ids=["TRD_001", "TRD_002"],

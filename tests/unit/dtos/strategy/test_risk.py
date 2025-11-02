@@ -47,9 +47,9 @@ class TestRiskCreation:
 
         # Verify causality chain
         assert tick_id.startswith("TCK_")
-        assert event.causality.tick_id == tick_id
+        assert getattr(event.causality, "tick_id") == tick_id
         # Verify ID formats
-        risk_id = str(event.risk_id)
+        risk_id = str(getattr(event, "risk_id"))
         assert risk_id.startswith("RSK_")
         assert event.risk_type == "MAX_DRAWDOWN_APPROACHING"
         assert event.severity == 0.75
@@ -76,7 +76,7 @@ class TestRiskCreation:
             severity=0.50
         )
 
-        risk_id = str(event.risk_id)
+        risk_id = str(getattr(event, "risk_id"))
         assert risk_id.startswith("RSK_")
 
     def test_custom_risk_id_accepted(self):
@@ -108,7 +108,7 @@ class TestRiskIDValidation:
             severity=0.5
         )
 
-        risk_id = str(event.risk_id)
+        risk_id = str(getattr(event, "risk_id"))
         assert risk_id.startswith("RSK_")
 
     def test_invalid_risk_id_prefix_rejected(self):

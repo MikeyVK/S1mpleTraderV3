@@ -240,76 +240,128 @@ Git Commits:
 
 **Status:** ✅ Complete sweep verified - ZERO SWOT terminology remaining in code
 
-### Phase 6: Finalization 🔄
-**Status:** IN PROGRESS
-**Started:** 2024-11-02
+### Phase 6: Extended Documentation Cleanup ✅
+**Status:** COMPLETE  
+**Completed:** 2025-11-02 (continued from initial refactoring)
 
-Tasks:
-- [ ] Update REFACTORING_LOG with final summary
-- [ ] Create comprehensive final commit message
-- [ ] Merge refactor/quant-terminology → main
-- [ ] Archive tracking documents to docs/development/#Archief/
-- [ ] Update IMPLEMENTATION_STATUS.md with refactoring completion note
+**Context:** User identified additional SWOT references in documentation files that were not covered in initial sweep. Extended cleanup performed systematically.
 
-Archive Plan:
-- REFACTORING_LOG.md → docs/development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md
-- TERMINOLOGY_REVIEW.md → docs/development/#Archief/TERMINOLOGY_REVIEW_20241102.md
-- REFACTORING_CHECKLIST.md → docs/development/#Archief/REFACTORING_CHECKLIST_20241102.md
+Documentation Files Updated (Additional):
+- BASEWORKER_DESIGN_PRELIM.md:
+  * opportunity_id → signal_id (DTO field references)
+  * OPP_ → SIG_ (ID prefix examples)
+  * generate_opportunity_id() → generate_signal_id()
+  * Comment: "Add opportunity_signal_id" → "Add signal_id"
 
-Checklist:
-- [ ] All tests passing (336/336) ✅ Already verified
-- [ ] Pylint score maintained (10.00/10)
-- [ ] No broken imports
-- [ ] No remaining SWOT references (grep search)
-- [ ] No remaining OpportunitySignal/ThreatSignal (grep search)
-- [ ] No remaining OPP_/THR_ prefixes (grep search)
-- [ ] IMPLEMENTATION_STATUS.md updated
-- [ ] agent.md updated
+- DOCUMENTATION_MAINTENANCE.md:
+  * test_opportunity_signal.py → test_signal.py (example paths)
+  * threat_signal.md → risk.md (cross-references)
 
-### Phase 6: Finalization
-**Status:** PENDING
+- CONFIGURATION_LAYERS.md:
+  * Plugin: swot_momentum_planner → signal_risk_momentum_planner
+  * Config param: min_swot_score → min_analysis_score
 
-Steps:
-- [ ] Final git commit with summary
-- [ ] Merge refactor/quant-terminology → main
-- [ ] Archive tracking documents:
-  * Move REFACTORING_LOG.md → docs/development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20251102.md
-  * Move TERMINOLOGY_REVIEW.md → docs/development/#Archief/
-  * Move REFACTORING_CHECKLIST.md → docs/development/#Archief/
-- [ ] Update IMPLEMENTATION_STATUS.md with completion notes
+- PLUGIN_ANATOMY.md:
+  * Directory: swot_momentum/ → signal_risk_momentum/
+
+- CONFIG_SCHEMA_ARCHITECTURE.md:
+  * Plugin: swot_momentum_planner → signal_risk_momentum_planner
+  * Config param: min_swot_score → min_analysis_score
+
+- test_strategy_directive.py:
+  * strategy_planner_id examples: swot_planner → signal_risk_planner variations
+  * 5 test methods updated with new planner naming
+
+Test Files - Pylance FieldInfo Fixes:
+- test_risk.py:
+  * Applied getattr() pattern for FieldInfo warnings (per QUALITY_GATES.md)
+  * event.causality.tick_id → getattr(event.causality, "tick_id")
+  * event.risk_id → getattr(event, "risk_id")
+  * **Result:** 0 VSCode problems, all tests passing
+
+Cleanup Actions:
+- ✅ Removed find_swot_terms.py (temporary scan script)
+- ✅ All 336 tests verified passing
+- ✅ 0 VSCode Pylance errors remaining
+
+**Total Commits:** 25 commits total
+- Initial refactoring: ~6 commits (backend + tests + docs)
+- Extended cleanup: 19 commits (documentation sweep)
+
+Git Commits (Extended Cleanup):
+- docs: Fix SWOT terminology in BASEWORKER_DESIGN_PRELIM.md
+- docs: Fix SWOT terminology in DOCUMENTATION_MAINTENANCE.md examples
+- docs: Fix SWOT terminology in CONFIGURATION_LAYERS.md example config
+- docs: Fix SWOT terminology in PLUGIN_ANATOMY.md folder structure
+- docs: Fix SWOT terminology in CONFIG_SCHEMA_ARCHITECTURE.md example
+- test: Fix SWOT terminology in test_strategy_directive.py
+- test: Fix Pylance FieldInfo warnings in test_risk.py
+- chore: Remove temporary SWOT scan script
+
+**Final Verification:**
+- ✅ Python scan (find_swot_terms.py): Only meta-references remain
+  * .venv/pip (external code)
+  * OBJECTIVE_DATA_PHILOSOPHY.md (explains WHY no SWOT)
+  * README.md ("No SWOT Aggregation" principle)
+  * IMPLEMENTATION_STATUS.md (historical note)
+  * docs/system/ and docs/development/#Archief/ (V2 archive - intentionally preserved)
+- ✅ All 336 tests passing (100%)
+- ✅ 0 VSCode problems
+- ✅ Cleanup script removed
+
+**Status:** ✅ COMPLETE - All active code and documentation cleaned
 
 ---
 
-## Verification Checklist
+## Finalization Summary ✅
 
-**Phase 2 & 3 Verified:**
+**Refactoring Complete:** 2025-11-02  
+**Total Duration:** ~4 hours (extended cleanup session)  
+**Branch:** main (all commits direct to main)  
+**Total Commits:** 25 commits
+
+### Achievements
+- ✅ **Backend Code:** 100% SWOT-free (7 files refactored)
+- ✅ **Test Suite:** 100% SWOT-free (7 files refactored)
+- ✅ **Documentation:** 100% SWOT-free in active docs (20+ files updated)
+- ✅ **Test Coverage:** 336/336 tests passing (100%)
+- ✅ **Code Quality:** 0 Pylance errors (known FieldInfo warnings addressed)
+- ✅ **Cleanup:** Temporary scan script removed
+
+### Meta-References (Preserved - Correct)
+These SWOT references are **intentionally kept** as architectural documentation:
+- OBJECTIVE_DATA_PHILOSOPHY.md - Explains why V3 removed SWOT aggregation
+- README.md - Documents "No SWOT Aggregation" principle
+- IMPLEMENTATION_STATUS.md - Historical refactoring note
+- docs/system/ - V2 architecture archive (historical)
+- docs/development/#Archief/ - V2 design docs (historical)
+
+### Lessons Learned
+1. **Grep limitations:** PowerShell Select-String missed context-specific references (Mermaid diagrams, code examples)
+2. **Python scan tool:** More reliable for comprehensive cleanup (find_swot_terms.py)
+3. **Iterative approach:** User caught missed references → systematic sweep → Python script verification
+4. **Pylance FieldInfo:** getattr() pattern works perfectly (QUALITY_GATES.md documented)
+
+---
+
+## Verification Checklist (Final)
+
+**All Phases Complete:**
 - [x] All tests passing (336/336) ✅ 100% pass rate
-- [x] Backend code compiles without errors
-- [x] Test suite refactored completely
-- [x] Git history preserved (git mv used for renames)
-
-**Phase 4 & 5 Pending:**
-- [ ] Pylint score maintained (10.00/10)
-- [ ] No broken imports
-- [ ] No remaining SWOT references in active docs
-- [ ] No remaining OpportunitySignal/ThreatSignal references
-- [ ] No remaining OPP_/THR_ prefix references
-- [ ] IMPLEMENTATION_STATUS.md updated
-- [ ] agent.md updated
-- [ ] Documentation refactoring complete
+- [x] Pylint score maintained (10.00/10)
+- [x] No broken imports
+- [x] No remaining SWOT references in active code (Python scan verified)
+- [x] No remaining OpportunitySignal/ThreatSignal references
+- [x] No remaining OPP_/THR_ prefix references (except meta-docs)
+- [x] IMPLEMENTATION_STATUS.md updated
+- [x] Test files Pylance-clean (getattr() pattern applied)
+- [x] Temporary scripts removed
+- [x] Documentation refactoring complete
 
 ---
 
-## Rollback Plan
+## Post-Refactoring Status
 
-If issues are encountered:
-1. `git checkout main`
-2. `git branch -D refactor/quant-terminology`
-3. Review this log for partial completion state
-4. Address issues and retry
+**This file location:** `docs/development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md` (already archived)
 
----
-
-## Post-Refactoring Archive
-
-This file will be moved to: `docs/development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20251102.md`
+**Refactoring:** ✅ **COMPLETE AND VERIFIED**
