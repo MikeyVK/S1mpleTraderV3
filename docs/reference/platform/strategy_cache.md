@@ -169,7 +169,7 @@ def set_dto(self, key: str, dto: BaseModel) -> None
 **Purpose:** Store DTO in current run's cache
 
 **Parameters:**
-- `key` - DTO key (e.g., "opportunity_signals", "indicator_data")
+- `key` - DTO key (e.g., "signals", "indicator_data")
 - `dto` - Pydantic BaseModel DTO to store
 
 **Raises:**
@@ -178,10 +178,10 @@ def set_dto(self, key: str, dto: BaseModel) -> None
 
 **Example:**
 ```python
-from backend.dtos.strategy.opportunity_signal import OpportunitySignal
+from backend.dtos.strategy.opportunity_signal import Signal
 
-signal = OpportunitySignal(...)
-strategy_cache.set_dto("opportunity_signals", signal)
+signal = Signal(...)
+strategy_cache.set_dto("signals", signal)
 ```
 
 **Implementation:**
@@ -227,8 +227,8 @@ def get_dtos(self, key: str, dto_type: type[T]) -> list[T]
 **Example:**
 ```python
 signals = strategy_cache.get_dtos(
-    "opportunity_signals",
-    OpportunitySignal
+    "signals",
+    Signal
 )
 
 for signal in signals:
@@ -277,8 +277,8 @@ def has_dto(self, key: str) -> bool
 
 **Example:**
 ```python
-if strategy_cache.has_dto("opportunity_signals"):
-    signals = strategy_cache.get_dtos("opportunity_signals", OpportunitySignal)
+if strategy_cache.has_dto("signals"):
+    signals = strategy_cache.get_dtos("signals", Signal)
 ```
 
 **Implementation:**
@@ -326,7 +326,7 @@ Workers should **inject `IStrategyCache`** via dependency injection (future), or
 ```python
 # backend/workers/opportunity_worker.py
 from backend.core.strategy_cache import strategy_cache
-from backend.dtos.strategy.opportunity_signal import OpportunitySignal
+from backend.dtos.strategy.opportunity_signal import Signal
 
 class OpportunityWorker:
     def process(self, tick: RawTick) -> DispositionEnvelope:
@@ -334,10 +334,10 @@ class OpportunityWorker:
         anchor = strategy_cache.get_run_anchor()
         
         # Detect opportunity
-        signal = OpportunitySignal(...)
+        signal = Signal(...)
         
         # Store in cache
-        strategy_cache.set_dto("opportunity_signals", signal)
+        strategy_cache.set_dto("signals", signal)
         
         return DispositionEnvelope(
             disposition=Disposition.PUBLISH,
@@ -380,14 +380,14 @@ class PlanningWorker:
     def process(self, input_dto):
         # Get all opportunity signals from current run
         opportunities = strategy_cache.get_dtos(
-            "opportunity_signals",
-            OpportunitySignal
+            "signals",
+            Signal
         )
         
         # Get all threat signals
         threats = strategy_cache.get_dtos(
             "threat_signals",
-            ThreatSignal
+            Risk
         )
         
         # Decision matrix
@@ -474,8 +474,8 @@ strategy_cache.set_dto("signals", "not_a_dto")  # ❌ Raises TypeError
 
 **4. Wrong DTO type retrieval:**
 ```python
-# Cache has OpportunitySignal, but requesting ThreatSignal
-threats = strategy_cache.get_dtos("opportunity_signals", ThreatSignal)
+# Cache has Signal, but requesting Risk
+threats = strategy_cache.get_dtos("signals", Risk)
 # ❌ Raises InvalidDTOTypeError
 ```
 

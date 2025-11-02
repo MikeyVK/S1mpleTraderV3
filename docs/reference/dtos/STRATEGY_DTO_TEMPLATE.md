@@ -249,8 +249,8 @@ Use these prefixes for typed IDs:
 | `TCK_` | N/A | Tick birth ID (from TickCacheManager) |
 | `NWS_` | N/A | News birth ID (from NewsAdapter) |
 | `SCH_` | N/A | Schedule birth ID (from Scheduler) |
-| `OPP_` | OpportunitySignal | Opportunity detection |
-| `THR_` | ThreatSignal | Threat detection |
+| `SIG_` | Signal | Signal detection |
+| `RSK_` | Risk | Risk detection |
 | `STR_` | StrategyDirective | Strategy decision |
 | `ENT_` | EntryPlan | Entry planning |
 | `SZE_` | SizePlan | Size planning |
@@ -267,7 +267,7 @@ Is this a pipeline DTO?
 ├─ YES → Is it a sub-planner output (EntryPlan, SizePlan, ExitPlan)?
 │   ├─ YES → ❌ NO causality (receives StrategyDirective with causality)
 │   └─ NO → Is it a top-level worker output or aggregation?
-│       ├─ YES → ✅ HAS causality (OpportunitySignal, ThreatSignal, StrategyDirective)
+│       ├─ YES → ✅ HAS causality (Signal, Risk, StrategyDirective)
 │       └─ NO → Is it an execution DTO (ExecutionDirective)?
 │           ├─ YES → ✅ HAS causality (PlanningAggregator adds plan IDs)
 │           └─ NO → ❌ NO causality (flow control, platform DTOs)
@@ -275,7 +275,7 @@ Is this a pipeline DTO?
 ```
 
 **DTOs WITH causality:**
-- ✅ OpportunitySignal, ThreatSignal
+- ✅ Signal, Risk
 - ✅ StrategyDirective (Strategy output)
 - ✅ ExecutionDirective (Execution input - aggregated)
 

@@ -45,8 +45,8 @@ reference/
 - Complete checklist
 
 **When to use:**
-- Creating new OpportunitySignal, ThreatSignal, etc.
-- Creating any Strategy DTO (SWOT signals, plans, directives)
+- Creating new Signal, Risk DTOs
+- Creating any Strategy DTO (signals, plans, directives)
 - Need structure for DTO with causality tracking
 
 **Related:**
@@ -82,7 +82,7 @@ reference/
 
 **Type:** Strategy DTO with Causality
 
-**Purpose:** Reference implementation for SWOT signal DTOs
+**Purpose:** Reference implementation for signal detection DTOs
 
 **Highlights:**
 - Exemplary file header
@@ -96,7 +96,7 @@ reference/
 **Quality:** 10/10 all gates, 100% test coverage
 
 **Use as reference when:**
-- Creating new OpportunitySignal, ThreatSignal DTOs
+- Creating new Signal, Risk DTOs
 - Need example of causality integration
 - Implementing custom validators
 - Writing json_schema_extra examples
@@ -104,8 +104,8 @@ reference/
 
 **Related:**
 - [STRATEGY_DTO_TEMPLATE.md](dtos/STRATEGY_DTO_TEMPLATE.md) - Template this fills
-- Source: `backend/dtos/strategy/opportunity_signal.py`
-- Tests: `tests/unit/dtos/strategy/test_opportunity_signal.py`
+- Source: `backend/dtos/strategy/signal.py`
+- Tests: `tests/unit/dtos/strategy/test_signal.py`
 
 ### 2. [strategy_cache.md](platform/strategy_cache.md)
 
@@ -143,8 +143,8 @@ Track which components have reference documentation:
 | Component | Template | Example | Tests | Status |
 |-----------|----------|---------|-------|--------|
 | **Strategy DTOs** |
-| OpportunitySignal | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | ✅ [Example](dtos/opportunity_signal.md) | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Complete |
-| ThreatSignal | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
+| Signal | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | ✅ [Example](dtos/opportunity_signal.md) | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Complete |
+| Risk | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
 | StrategyDirective | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
 | EntryPlan | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
 | SizePlan | ✅ [DTO Template](dtos/STRATEGY_DTO_TEMPLATE.md) | 🚧 Pending | ✅ [Test Template](testing/DTO_TEST_TEMPLATE.md) | Partial |
@@ -155,7 +155,7 @@ Track which components have reference documentation:
 | TickCacheManager | ❌ Missing | 🚧 Future | ❌ Missing | Not Started |
 | **Workers** |
 | BaseWorker | ❌ Missing | 🚧 Future | ❌ Missing | Not Started |
-| OpportunityWorker | ❌ Missing | 🚧 Future | ❌ Missing | Not Started |
+| SignalDetector | ❌ Missing | 🚧 Future | ❌ Missing | Not Started |
 
 **Legend:**
 - ✅ Complete - Template/example available
