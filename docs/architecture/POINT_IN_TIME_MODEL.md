@@ -150,7 +150,7 @@ sequenceDiagram
 **Example DTOs:**
 - `Signal` (confidence-based signal)
 - `Risk` (severity-based warning)
-- `StrategyDirective` (SWOT-driven decision)
+- `StrategyDirective` (Signal/Risk-driven decision)
 - `ExecutionDirective` (ready-to-execute plan)
 
 ## DTO Dependency Resolution

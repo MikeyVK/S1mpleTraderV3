@@ -126,7 +126,7 @@ Provides thread-safe, strategy-isolated data access for workers via TickCache an
 - ✅ **Multi-tenant isolation**: Each strategy has isolated data
 - ✅ **RunAnchor validation**: Ensures point-in-time consistency
 - ✅ **TickCache lifecycle**: Clear/reconfigure per tick
-- ✅ **Signal/Plan storage**: Persistent storage for SWOT outputs
+- ✅ **Signal/Plan storage**: Persistent storage for Signal/Risk outputs
 - ✅ **Type-safe access**: Generic methods for DTO retrieval
 
 **Architecture:**
