@@ -46,7 +46,7 @@
 
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
-| [Worker Taxonomy](WORKER_TAXONOMY.md) | 5 Worker Categories | Context, Opportunity, Threat, Planning, StrategyPlanner |
+| [Worker Taxonomy](WORKER_TAXONOMY.md) | 5 Worker Categories | Context, Signal, Risk, Planning, StrategyPlanner |
 | [Plugin Anatomy](PLUGIN_ANATOMY.md) | Plugin Structure | manifest.yaml, worker.py, schema.py, DTOs |
 
 ### Platform Infrastructure

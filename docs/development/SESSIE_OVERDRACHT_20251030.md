@@ -196,7 +196,7 @@ docs/development/#Archief/
 
 ### Config Schema Fields (WorkerManifest)
 **Must include:**
-- `worker_id`, `worker_type` (context/signal/threat/planning/execution)
+- `worker_id`, `worker_type` (context/signal/risk/planning/execution)
 - `produces_dtos`, `requires_dtos` (DTO dependencies)
 - `capabilities` (state_persistence, events, journaling)
 - `publishes` (event names), `invokes` (handler methods)

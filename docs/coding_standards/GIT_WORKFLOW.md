@@ -25,7 +25,7 @@ S1mpleTrader V3 uses a **feature branch workflow** with strict quality gates. Al
 
 **Naming conventions:**
 - `feature/size-plan-dto` - New DTOs
-- `feature/opportunity-worker` - New workers
+- `feature/signal-detector` - New workers
 - `feature/event-adapter` - New adapters
 - `feature/multi-strategy-cache` - Architectural changes
 

@@ -161,7 +161,7 @@ graph TD
 - **PluginRegistry** - Plugin enrollment and metadata
 
 #### Workers (Plugin Logic)
-- Context, Opportunity, Threat, Planning, StrategyPlanner workers
+- Context, Signal, Risk, Planning, StrategyPlanner workers
 - Loaded from plugins via WorkerFactory
 - Bus-agnostic (communicate via EventAdapters)
 

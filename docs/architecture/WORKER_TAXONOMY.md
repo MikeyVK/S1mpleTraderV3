@@ -203,7 +203,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 5. `LIQUIDITY_RISK` - Slippage, market depth degradation
 
 **Example Workers:**
-- `DrawdownMonitor` - Portfolio drawdown threat detection
+- `DrawdownMonitor` - Portfolio drawdown risk detection
 - `VolatilitySpike` - Abnormal volatility event detection
 - `LiquidityCrisis` - Market depth degradation alerts
 

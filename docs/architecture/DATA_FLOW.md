@@ -91,10 +91,10 @@ class EMADetector(StandardWorker):
 **Interface:** `DispositionEnvelope` return value
 
 **Characteristics:**
-- **Content:** System DTOs only (e.g., `OpportunitySignal`, `ThreatSignal`, `StrategyDirective`)
+- **Content:** System DTOs only (e.g., `Signal`, `Risk`, `StrategyDirective`)
 - **Lifetime:** Persistent until consumed by subscribers
 - **Access:** Via `DispositionEnvelope(PUBLISH, ...)`
-- **Usage:** Opportunity/threat signals, strategy decisions, execution directives
+- **Usage:** Signal/risk signals, strategy decisions, execution directives
 
 **Worker Pattern:**
 ```python
@@ -106,7 +106,7 @@ class BreakoutScout(StandardWorker):
             return DispositionEnvelope(
                 disposition="PUBLISH",
                 event_name="OPPORTUNITY_DETECTED",
-                event_payload=OpportunitySignal(  # System DTO!
+                event_payload=Signal(  # System DTO!
                     signal_type="BREAKOUT",
                     confidence=0.85,
                     causality=...
@@ -176,7 +176,7 @@ return DispositionEnvelope(disposition="CONTINUE")
 
 **Requirements:**
 - `event_name` must be specified (custom event name)
-- `event_payload` must be a **system DTO** (OpportunitySignal, ThreatSignal, StrategyDirective, etc.)
+- `event_payload` must be a **system DTO** (Signal, Risk, StrategyDirective, etc.)
 
 **Behavior:**
 - Adapter validates payload is system DTO
@@ -190,7 +190,7 @@ return DispositionEnvelope(disposition="CONTINUE")
 return DispositionEnvelope(
     disposition="PUBLISH",
     event_name="MOMENTUM_OPPORTUNITY",
-    event_payload=OpportunitySignal(
+    event_payload=Signal(
         signal_type="MOMENTUM_BREAKOUT",
         confidence=0.92,
         causality=self._build_causality()
@@ -199,8 +199,8 @@ return DispositionEnvelope(
 ```
 
 **Valid System DTOs:**
-- `OpportunitySignal` - Trading opportunity detected
-- `ThreatSignal` - Risk/threat detected
+- `Signal` - Trading signal detected
+- `Risk` - Risk detected
 - `StrategyDirective` - Strategy decision made
 - `ExecutionDirective` - Execution plan ready (from platform aggregator)
 
@@ -253,13 +253,13 @@ class MyOpportunityWorker(StandardWorker):
         if self.state_provider:
             last_signal = self.state_provider.get("last_signal_time")
         
-        # Step 5: Detect opportunity
+        # Step 5: Detect signal
         if self._is_opportunity(ema_dto, regime_dto, df):
             # Step 6A: Publish signal
             return DispositionEnvelope(
                 disposition="PUBLISH",
                 event_name="OPPORTUNITY_DETECTED",
-                event_payload=OpportunitySignal(...)
+                event_payload=Signal(...)
             )
         else:
             # Step 6B: Continue without signal
@@ -372,7 +372,7 @@ def process(self):
     return DispositionEnvelope(disposition="CONTINUE")  # ← Triggers next worker
 ```
 
-### Opportunity Phase
+### Signal Phase
 ```python
 # BreakoutScout (OpportunityWorker)
 def process(self):
@@ -383,7 +383,7 @@ def process(self):
         return DispositionEnvelope(
             disposition="PUBLISH",  # ← Publishes to EventBus
             event_name="BREAKOUT_OPPORTUNITY",
-            event_payload=OpportunitySignal(...)
+            event_payload=Signal(...)
         )
 ```
 

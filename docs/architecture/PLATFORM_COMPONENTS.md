@@ -27,7 +27,7 @@ Enables asynchronous, decoupled communication between strategies and platform se
 - ✅ **Topic-based routing**: Subscribe to specific topics or wildcards
 - ✅ **Thread-safe**: Concurrent publish/subscribe operations
 - ✅ **Error isolation**: Handler failures don't affect other subscribers
-- ✅ **Wildcard support**: `opportunity.*` matches all opportunity topics
+- ✅ **Wildcard support**: `signal.*` matches all signal topics
 - ✅ **Subscription management**: Subscribe/unsubscribe dynamically
 
 **Architecture:**
@@ -71,13 +71,13 @@ class EventAdapter:
    # Worker produces signal
    return DispositionEnvelope(
        disposition="PUBLISH",
-       event_topic="opportunity.ema_crossover",
+       event_topic="signal.ema_crossover",
        event_payload=OpportunitySignal(...)
    )
    
    # EventAdapter publishes to EventBus
    adapter._event_bus.publish(
-       topic="opportunity.ema_crossover",
+       topic="signal.ema_crossover",
        payload=signal
    )
    ```
@@ -94,17 +94,17 @@ class EventAdapter:
 3. **Platform → Platform Communication**
    ```python
    # Journal subscribes to signals
-   event_bus.subscribe("opportunity.*", journal.log_opportunity)
-   event_bus.subscribe("threat.*", journal.log_threat)
+   event_bus.subscribe("signal.*", journal.log_signal)
+   event_bus.subscribe("risk.*", journal.log_risk)
    
    # Notifier subscribes to signals
-   event_bus.subscribe("opportunity.high_confidence", notifier.send_alert)
+   event_bus.subscribe("signal.high_confidence", notifier.send_alert)
    ```
 
 **Topic Conventions:**
 - `tick.received` - New tick data available
-- `opportunity.*` - Opportunity signals (ema_crossover, rsi_oversold, etc.)
-- `threat.*` - Threat signals (stop_loss_breach, portfolio_risk_high, etc.)
+- `signal.*` - Signals (ema_crossover, rsi_oversold, etc.)
+- `risk.*` - Risk signals (stop_loss_breach, portfolio_risk_high, etc.)
 - `context.*` - Context updates (trend_shift, volatility_spike, etc.)
 - `execution.*` - Execution events (order_filled, order_rejected, etc.)
 

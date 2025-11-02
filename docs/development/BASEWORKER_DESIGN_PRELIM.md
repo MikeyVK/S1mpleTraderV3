@@ -91,7 +91,7 @@ class BaseWorker(ABC):
 **Concrete Example:**
 ```python
 class BaseOpportunityWorker(BaseWorker):
-    """Opportunity detection workers."""
+    """Signal detection workers."""
     
     def _extend_causality(
         self, 
@@ -418,7 +418,7 @@ class AggregatedContextAssessment(BaseModel):
 **Implication for BaseWorker:**
 - BaseContextWorker does NOT extend causality chain (sub-component output)
 - Platform aggregators (ContextAggregator, PlanningAggregator) DO extend chain
-- Plugin workers (Opportunity, Threat, StrategyPlanner) extend chain
+- Plugin workers (SignalDetector, RiskMonitor, StrategyPlanner) extend chain
 
 **Updated Causality Field Mapping:**
 
@@ -554,7 +554,7 @@ This design document is intentionally **incomplete** because:
 **Status Summary:**
 - ✅ Causality propagation pattern DEFINED (Option 1 - BaseWorker template method)
 - ✅ ContextFactor causality VALIDATED (sub-component = NO causality field)
-- ✅ Worker categories identified (context/aggregator/opportunity/threat/planner/translator)
+- ✅ Worker categories identified (context/aggregator/signal/risk/planner/translator)
 - ✅ _extends_causality property pattern defined
 - 🚧 WorkerBuildSpec DEFERRED (pending WorkerFactory)
 - 🚧 DispositionEnvelope wrapping DEFERRED (pending EventAdapter)

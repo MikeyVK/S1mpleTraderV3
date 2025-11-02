@@ -273,7 +273,7 @@ wiring_rules:
       component_id: "momentum_scout_instance_1"
       handler_method: "process"
   
-  # Opportunity signal → Strategy Planner
+  # Signal → Strategy Planner
   - wiring_id: "momentum_to_planner"
     source:
       component_id: "momentum_scout_instance_1"

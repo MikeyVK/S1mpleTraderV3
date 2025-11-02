@@ -145,7 +145,7 @@ These are blocking the standard onboarding flow in `docs/architecture/README.md`
 
 **STRATEGY_PIPELINE_ARCHITECTURE.md** is in `#Archief/` but should be in `docs/architecture/`:
 - Status: "Definitief - Leidend Document" (v4.0)
-- Content: Complete 6-phase pipeline (Bootstrapping → Context → Opportunity/Threat → Planning → Execution → Cleanup)
+- Content: Complete 6-phase pipeline (Bootstrapping → Context → Signal/Risk → Planning → Execution → Cleanup)
 - Components: ContextAggregator, PlanningAggregator (platform components)
 - **Action needed:** Promote from archive OR extract essential content to new architecture doc
 

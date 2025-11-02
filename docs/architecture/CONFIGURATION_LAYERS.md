@@ -261,7 +261,7 @@ strategy:
         lookback_periods: 50
         volatility_threshold: 0.02
     
-    # Opportunity Workers
+    # SignalDetectors
     - worker_id: "momentum_scout"
       plugin: "s1mple/momentum_signal/v1.0.0"
       config:

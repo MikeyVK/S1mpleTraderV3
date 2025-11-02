@@ -141,7 +141,7 @@ def my_function():
 
 ```python
 class OpportunitySignal(BaseModel):
-    """System DTO for opportunity detection output."""
+    """System DTO for signal detection output."""
 ```
 
 **Not this:**
@@ -149,7 +149,7 @@ class OpportunitySignal(BaseModel):
 class OpportunitySignal(BaseModel):
     """
     This is the OpportunitySignal class which represents
-    a trading opportunity that has been detected by the
+    a trading signal that has been detected by the
     OpportunityWorker and needs to be processed by...
     """  # TOO VERBOSE - details belong in module docstring
 ```
@@ -302,7 +302,7 @@ def process_signals(signals: List[OpportunitySignal]) -> Dict[str, Any]:
 
 ```python
 class OpportunitySignal(BaseModel):
-    """System DTO for opportunity detection output."""
+    """System DTO for signal detection output."""
     
     # 1. Causality tracking
     causality: CausalityChain = Field(
@@ -413,8 +413,8 @@ Primary log: `run.log.json` for analysis
 - `TCK_*` - Tick ID (birth)
 - `NWS_*` - News ID (birth)
 - `SCH_*` - Schedule ID (birth)
-- `OPP_*` - Opportunity ID
-- `THR_*` - Threat ID
+- `SIG_*` - Signal ID
+- `RSK_*` - Risk ID
 - `STR_*` - Strategy directive ID
 - `ENT_*` - Entry plan ID
 - `SZE_*` - Size plan ID
@@ -427,7 +427,7 @@ For significant events only, **NOT** for flow-data.
 
 **Use for:**
 - Trade lifecycle events (opened, closed)
-- Strategy decisions (opportunity detected, threat assessed)
+- Strategy decisions (signal detected, risk assessed)
 - Risk events (limit breached, emergency halt)
 
 **Don't use for:**

@@ -68,7 +68,7 @@ Subscribe to events specified in wiring configuration:
 subscriptions = [
     "_tick_flow_start_abc123",      # System event from TickCacheManager
     "_ema_detector_output_def456",  # System event from previous worker
-    "EMERGENCY_HALT"                # Custom event from threat worker
+    "EMERGENCY_HALT"                # Custom event from risk monitor
 ]
 
 for event_name in subscriptions:
@@ -943,7 +943,7 @@ wiring_rules:
       component_id: "regime_classifier_instance_1"
       handler_method: "process"
   
-  # Opportunity signal → Strategy Planner
+  # Signal → Strategy Planner
   - wiring_id: "momentum_to_planner"
     source:
       component_id: "momentum_scout_instance_1"

@@ -333,7 +333,7 @@ class OpportunityWorker:
         # Get run anchor
         anchor = strategy_cache.get_run_anchor()
         
-        # Detect opportunity
+        # Detect signal
         signal = Signal(...)
         
         # Store in cache
@@ -378,13 +378,13 @@ PlanningWorker aggregates signals from cache:
 # backend/workers/planning_worker.py
 class PlanningWorker:
     def process(self, input_dto):
-        # Get all opportunity signals from current run
+        # Get all signals from current run
         opportunities = strategy_cache.get_dtos(
             "signals",
             Signal
         )
         
-        # Get all threat signals
+        # Get all risk signals
         threats = strategy_cache.get_dtos(
             "threat_signals",
             Risk

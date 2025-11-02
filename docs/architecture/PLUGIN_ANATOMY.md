@@ -69,7 +69,7 @@ plugins/[category]/[plugin_name]/
 - DTOs need to be consumed by other workers
 
 **Do NOT include `dtos/` folder if:**
-- Plugin only publishes system DTOs (OpportunitySignal, ThreatSignal, StrategyDirective)
+- Plugin only publishes system DTOs (Signal, Risk, StrategyDirective)
 - Plugin is pure consumer (only reads from TickCache)
 
 **Note:** ~95% of plugins do NOT have a `dtos/` folder.
@@ -84,11 +84,11 @@ plugins/
 │   ├── ema_detector/
 │   ├── regime_classifier/
 │   └── support_resistance/
-├── opportunity_workers/    # OpportunityWorker plugins
+├── signal_detectors/    # OpportunityWorker plugins
 │   ├── breakout_scout/
 │   ├── momentum_signal/
 │   └── mean_reversion/
-├── threat_workers/         # ThreatWorker plugins
+├── risk_monitors/         # ThreatWorker plugins
 │   ├── drawdown_monitor/
 │   └── volatility_spike/
 ├── planning_workers/       # PlanningWorker plugins
@@ -160,8 +160,8 @@ identification:
 
 **Valid Worker Types (ENFORCED):**
 - `context_worker` - Objective fact producer (TickCache only)
-- `opportunity_worker` - Subjective opportunity detector (OpportunitySignal)
-- `threat_worker` - Risk/threat detector (ThreatSignal)
+- `signal_detector` - Subjective signal detector (Signal)
+- `risk_monitor` - Risk detector (Risk)
 - `planning_worker` - Plan producer (EntryPlan, SizePlan, etc.)
 - `strategy_planner` - Decision maker (StrategyDirective)
 
@@ -283,7 +283,7 @@ capabilities:
 
 ### 1. StandardWorker (90% of Plugins)
 
-**Use for:** Synchronous, single-method processing (context, opportunity detection, planning)
+**Use for:** Synchronous, single-method processing (context, signal detection, planning)
 
 ```python
 # plugins/context_workers/ema_detector/worker.py

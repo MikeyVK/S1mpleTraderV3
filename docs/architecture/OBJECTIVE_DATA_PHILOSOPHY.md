@@ -7,7 +7,7 @@
 
 ## Executive Summary
 
-S1mpleTraderV3 implements a **pure objective data model** where ContextWorkers produce facts without interpretation, and consumers (OpportunityWorkers, ThreatWorkers, StrategyPlanners) apply their own subjective logic. This enables contradictory strategies to coexist using the same objective data.
+S1mpleTraderV3 implements a **pure objective data model** where ContextWorkers produce facts without interpretation, and consumers (SignalDetectors, ThreatWorkers, StrategyPlanners) apply their own subjective logic. This enables contradictory strategies to coexist using the same objective data.
 
 **The Core Principle:**
 > ContextWorkers are **objective data providers**, not opinion givers. The full responsibility for interpretation lies with the consuming workers.
@@ -57,7 +57,7 @@ The EMA detector has **no opinion** about whether `ema_20=50100.50` is good or b
 ### 2. Consumers = Subjective Interpreters
 
 **Who consumes:**
-- OpportunityWorkers
+- SignalDetectors
 - ThreatWorkers
 - StrategyPlanners
 
@@ -77,7 +77,7 @@ class TrendFollowingOpportunity(StandardWorker):
         
         # 2. Apply SUBJECTIVE interpretation
         if price > ema_data.ema_20:
-            # MY logic: price above EMA = opportunity
+            # MY logic: price above EMA = signal
             return DispositionEnvelope(
                 disposition="PUBLISH",
                 event_payload=OpportunitySignal(confidence=0.7)
@@ -99,7 +99,7 @@ class MeanReversionOpportunity(StandardWorker):
         
         # 2. Apply OPPOSITE subjective interpretation
         if distance > 0.05:  # 5% above EMA
-            # MY logic: price too far above EMA = overbought = opportunity to short
+            # MY logic: price too far above EMA = overbought = signal to short
             return DispositionEnvelope(
                 disposition="PUBLISH",
                 event_payload=OpportunitySignal(
@@ -183,12 +183,12 @@ Different strategies look at this **same objective reality** and make different 
 
 **Trend Follower:**
 - Sees: `price > ema_20` and `structure_type="BULLISH_BOS"`
-- Interprets: "Bullish trend confirmed, opportunity to long"
+- Interprets: "Bullish trend confirmed, signal to long"
 - Action: Publishes `OpportunitySignal(direction="long")`
 
 **Mean Reverter:**
 - Sees: `rsi=65.3` and `price 5% above ema_20`
-- Interprets: "Overbought, likely pullback, opportunity to short"
+- Interprets: "Overbought, likely pullback, signal to short"
 - Action: Publishes `OpportunitySignal(direction="short")`
 
 **Volatility Trader:**
@@ -232,14 +232,14 @@ ContextWorker → ContextFactor("TRENDING_REGIME", polarity="strength")
    ↓
 ContextAggregator → AggregatedContextAssessment(strengths=[...], weaknesses=[...])
    ↓
-OpportunityWorker → Reads aggregated assessment
+SignalDetector → Reads aggregated assessment
 ```
 
 **After (V3 Objective model):**
 ```
 ContextWorker → RegimeOutputDTO(regime="TRENDING")
    ↓
-OpportunityWorker → Reads TickCache, interprets regime as opportunity
+SignalDetector → Reads TickCache, interprets regime as signal
 ```
 
 **Eliminated:** 2 DTOs, 1 platform component, 62 tests, entire aggregation layer.
@@ -280,7 +280,7 @@ OpportunityWorker → Reads TickCache, interprets regime as opportunity
 | Aspect | SWOT Model (V2) | Objective Model (V3) |
 |--------|----------------|---------------------|
 | **ContextWorker Output** | `ContextFactor(type="TRENDING", polarity="strength")` | `RegimeOutputDTO(regime="TRENDING")` |
-| **Interpretation** | Platform (ContextAggregator) | Consumer (OpportunityWorker) |
+| **Interpretation** | Platform (ContextAggregator) | Consumer (SignalDetector) |
 | **Aggregation** | Platform component required | None - direct TickCache access |
 | **Flexibility** | Limited (platform defines SWOT) | Unlimited (consumers define logic) |
 | **Contradictory Strategies** | Difficult (fight over SWOT labels) | Easy (different interpretations coexist) |
@@ -296,12 +296,12 @@ When creating a new ContextWorker:
 
 - [ ] Produces objective DTOs only (e.g., `EMAOutputDTO(ema_20=value)`)
 - [ ] No subjective labels ("bullish", "strong", etc.)
-- [ ] No interpretation in docstrings ("signals buying opportunity")
+- [ ] No interpretation in docstrings ("signals potential entry")
 - [ ] DTO fields are measurements, not opinions
 - [ ] Uses `set_result_dto()` to store to TickCache
 - [ ] **NEVER** publishes to EventBus
 
-When creating a new OpportunityWorker/ThreatWorker:
+When creating a new SignalDetector/ThreatWorker:
 
 - [ ] Reads objective facts from TickCache via `get_required_dtos()`
 - [ ] Applies own interpretation logic (documented in worker)

@@ -54,7 +54,7 @@ graph TB
     end
     
     subgraph "Workers - IWorker Implementations"
-        WORKERS[Context/Opportunity/Strategy/Planning<br/>All Bus-Agnostic]
+        WORKERS[Context/Signal/Strategy/Planning<br/>All Bus-Agnostic]
     end
     
     subgraph "Flow Terminator"
@@ -118,7 +118,7 @@ from enum import IntEnum
 class EventPriority(IntEnum):
     """Priority levels voor event queue."""
     CRITICAL = 0  # User STOP actions
-    HIGH = 1      # Threat signals, risk events
+    HIGH = 1      # Risk signals, risk events
     NORMAL = 2    # Market ticks, opportunities
     LOW = 3       # Scheduled tasks, housekeeping
 

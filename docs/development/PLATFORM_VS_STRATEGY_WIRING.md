@@ -126,7 +126,7 @@ platform_entry_wiring:
       component_id: "ema_detector_instance_1"  # First in chain
       handler_method: "process"
   
-  # 2. ContextAggregator → Opportunity Workers
+  # 2. ContextAggregator → SignalDetectors
   - wiring_id: "context_agg_to_momentum_scout"
     source:
       component_id: "context_aggregator"
@@ -136,7 +136,7 @@ platform_entry_wiring:
       component_id: "momentum_scout_instance_1"
       handler_method: "process"
   
-  # 3. ContextAggregator → Threat Workers
+  # 3. ContextAggregator → RiskMonitors
   - wiring_id: "context_agg_to_drawdown_monitor"
     source:
       component_id: "context_aggregator"
@@ -317,7 +317,7 @@ wiring_rules:
       component_id: "limit_entry_planner_instance_1"
       handler_method: "on_opportunity"
   
-  # 5. Momentum Scout → Kelly Sizer (Same opportunity, different planner)
+  # 5. Momentum Scout → Kelly Sizer (Same signal, different planner)
   - wiring_id: "momentum_to_sizer"
     source:
       component_id: "momentum_scout_instance_1"
@@ -364,7 +364,7 @@ graph TB
             A_CW1 --> A_CW2
         end
         
-        subgraph A_Opp["Opportunity Workers"]
+        subgraph A_Opp["SignalDetectors"]
             A_OW[Momentum Scout]
         end
         
@@ -396,7 +396,7 @@ graph TB
             B_CW1[RSI Detector]
         end
         
-        subgraph B_Opp["Opportunity Workers"]
+        subgraph B_Opp["SignalDetectors"]
             B_OW[Mean Reversion]
         end
         
@@ -482,7 +482,7 @@ graph TB
 
 **2. Context Assessment Ready**
 ```yaml
-# Multiple wiring rules (one per opportunity worker)
+# Multiple wiring rules (one per signal detector)
 - wiring_id: "context_agg_to_breakout_scout_A"
   source:
     component_id: "context_aggregator"
@@ -658,9 +658,9 @@ graph TB
 
 ---
 
-**5. Emergency Halt (Global Threat)**
+**5. Emergency Halt (Global Risk)**
 ```yaml
-# Multiple wiring rules (one per threat worker across all strategies)
+# Multiple wiring rules (one per risk monitor across all strategies)
 - wiring_id: "drawdown_monitor_emergency_A"
   source:
     component_id: "drawdown_monitor_A1"
@@ -681,7 +681,7 @@ graph TB
 ```
 
 **Resultaat:**
-- ANY threat worker (any strategy) → `emergency_executor` shuts down ALL strategies
+- ANY risk monitor (any strategy) → `emergency_executor` shuts down ALL strategies
 
 ---
 
@@ -969,7 +969,7 @@ wiring_rules:
       component_id: "context_aggregator"
       handler_method: "on_context_output"
   
-  # Platform Entry Point: ContextAggregator → Opportunity Workers
+  # Platform Entry Point: ContextAggregator → SignalDetectors
   - wiring_id: "context_agg_to_momentum"
     source:
       component_id: "context_aggregator"
