@@ -202,24 +202,24 @@ adapter_config = {
 
 ```yaml
 base_wiring_id: "standard_trading_flow_v1"
-description: "Standard trading pipeline: Context → Opportunity → Planning → Strategy"
+description: "Standard trading pipeline: Context → Signal → Planning → Strategy"
 
 wiring_rules:
-  # Indicator → Opportunity
-  - wiring_id: "ind_to_opp"
+  # Indicator → SignalDetector
+  - wiring_id: "ind_to_sig"
     source:
       component_category: "ContextWorker"  # Category, not instance
       event_pattern: "IndicatorOutput"
       event_type: "SystemEvent"
     target:
-      component_category: "OpportunityWorker"
+      component_category: "SignalDetector"
       handler_method: "process"
   
-  # Opportunity → StrategyPlanner
-  - wiring_id: "opp_to_planner"
+  # Signal → StrategyPlanner
+  - wiring_id: "sig_to_planner"
     source:
-      component_category: "OpportunityWorker"
-      event_pattern: "OpportunitySignal"
+      component_category: "SignalDetector"
+      event_pattern: "Signal"
       event_type: "SystemEvent"
     target:
       component_category: "StrategyPlanner"
@@ -263,7 +263,7 @@ wiring_rules:
       component_id: "regime_classifier_instance_1"
       handler_method: "process"
   
-  # Regime → Opportunity (category transition)
+  # Regime → SignalDetector (category transition)
   - wiring_id: "regime_to_momentum"
     source:
       component_id: "regime_classifier_instance_1"
@@ -350,7 +350,7 @@ def on_flow_complete(self, event_name, payload):
 ## Wiring Example: Complete Flow
 
 ### Scenario
-BTC momentum strategy with EMA → Regime → Opportunity → Planner
+BTC momentum strategy with EMA → Regime → SignalDetector → Planner
 
 ```mermaid
 sequenceDiagram

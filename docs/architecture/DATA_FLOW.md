@@ -354,7 +354,7 @@ capabilities:
 
 ---
 
-## Flow Example: Context → Opportunity → Planning
+## Flow Example: Context → Signal → Planning
 
 ### Tick Start
 ```

@@ -297,7 +297,7 @@ wiring_rules:
       component_id: "volatility_analyzer_instance_1"
       handler_method: "process"
   
-  # 3. Volatility → Momentum Scout (Context → Opportunity Transition)
+  # 3. Volatility → Momentum Scout (Context → Signal Transition)
   - wiring_id: "volatility_to_momentum"
     source:
       component_id: "volatility_analyzer_instance_1"
@@ -740,7 +740,7 @@ config/
 **Content:**
 - Worker ↔ Worker connections (specific instance IDs)
 - Custom event routing (worker-specific)
-- Business logic flow (context → opportunity → planning)
+- Business logic flow (context → signal → planning)
 
 **Generated:** Door UI based on strategy_blueprint.yaml + base_wiring_template.yaml
 
@@ -979,7 +979,7 @@ wiring_rules:
       component_id: "momentum_scout_instance_1"
       handler_method: "process"
   
-  # Opportunity → Planning (Custom Event - Strategy Internal)
+  # Signal → Planning (Custom Event - Strategy Internal)
   - wiring_id: "momentum_to_entry_planner"
     source:
       component_id: "momentum_scout_instance_1"
