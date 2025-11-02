@@ -178,7 +178,7 @@ def set_dto(self, key: str, dto: BaseModel) -> None
 
 **Example:**
 ```python
-from backend.dtos.strategy.opportunity_signal import Signal
+from backend.dtos.strategy.signal import Signal
 
 signal = Signal(...)
 strategy_cache.set_dto("signals", signal)
@@ -326,7 +326,7 @@ Workers should **inject `IStrategyCache`** via dependency injection (future), or
 ```python
 # backend/workers/opportunity_worker.py
 from backend.core.strategy_cache import strategy_cache
-from backend.dtos.strategy.opportunity_signal import Signal
+from backend.dtos.strategy.signal import Signal
 
 class OpportunityWorker:
     def process(self, tick: RawTick) -> DispositionEnvelope:

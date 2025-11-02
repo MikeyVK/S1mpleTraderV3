@@ -358,7 +358,7 @@ New architecture doc > 300 lines?
 ```markdown
 # ✅ GOOD - Update status WITH code changes
 # Same commit that adds 5 new tests → updates IMPLEMENTATION_STATUS.md
-git add backend/dtos/strategy/opportunity_signal.py
+git add backend/dtos/strategy/signal.py
 git add tests/unit/dtos/strategy/test_opportunity_signal.py
 git add docs/implementation/IMPLEMENTATION_STATUS.md  # ← Don't forget!
 git commit -m "feat: add confidence validation to OpportunitySignal
@@ -477,7 +477,7 @@ reference documentation. Include:
 **3. Verify Against Code (Human):**
 ```python
 # Check AI output matches actual implementation
-# backend/dtos/strategy/opportunity_signal.py
+# backend/dtos/strategy/signal.py
 confidence: Optional[float] = Field(
     default=None,
     ge=0.0,  # ✅ Matches doc
