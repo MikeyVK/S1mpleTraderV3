@@ -790,6 +790,135 @@ strategies:
 
 ---
 
+#### **Publication Scope Determination**
+
+**Design Principle:**
+> "Alle code moet zo uitvoerend mogelijk zijn en zo min mogelijk afleiden. Iedere code component voert een zo eenduidig mogelijke taak uit die uit de naam van de component af te leiden is."
+
+Publication scope is **niet afgeleid** uit wiring analysis, maar **expliciet gedeclareerd** volgens vaste regels:
+
+**Rule 1: Platform Components (Explicit Declaration)**
+
+Platform components declare their publication scope in their manifest:
+
+```yaml
+# backend/core/flow_initiator/manifest.yaml
+plugin_id: "platform/flow_initiator/v1.0.0"
+category: "platform_component"
+
+outputs:
+  - connector_id: run_started
+    disposition: CONTINUE
+    payload_type: null
+    publication_scope: strategy  # ← EXPLICIT: Strategy-scoped event
+```
+
+```yaml
+# backend/platform/market_data_adapter/manifest.yaml
+plugin_id: "platform/market_data_adapter/v1.0.0"
+category: "platform_component"
+
+outputs:
+  - connector_id: tick_processed
+    disposition: PUBLISH
+    payload_type: TickData
+    payload_source: "backend.dtos.market.tick_data.TickData"
+    publication_scope: platform  # ← EXPLICIT: Platform-wide event
+```
+
+**Rule 2: Strategy Plugins (Fixed Rule)**
+
+Strategy plugins (signal detectors, planners, etc.) **always** publish with strategy scope. This is a fixed rule, not configurable:
+
+```yaml
+# plugins/signal_detectors/momentum_scout/manifest.yaml
+plugin_id: "s1mple/momentum_scout/v1.0.0"
+category: "signal_detector"
+
+outputs:
+  - connector_id: signal_detected
+    disposition: PUBLISH
+    payload_type: Signal
+    payload_source: "backend.dtos.strategy.signal.Signal"
+    # NO publication_scope field - implicitly strategy (fixed rule)
+```
+
+**EventWiringFactory Implementation:**
+
+```python
+class EventWiringFactory:
+    def _create_publication_config(
+        self,
+        buildspec: WorkerBuildSpec,  # Contains manifest data via BuildSpec
+        wiring_rules: List[WiringRule]
+    ) -> Dict[str, PublicationConfig]:
+        
+        publications = {}
+        
+        for output in buildspec.manifest_outputs:
+            # Find event_name from wiring_rules
+            event_name = self._find_event_name(output.connector_id, wiring_rules)
+            
+            # Determine scope (NO inference - explicit rules only)
+            if buildspec.category == "platform_component":
+                # Platform components: Read from manifest
+                scope = output.publication_scope  # Explicitly declared
+            else:
+                # Strategy plugins: Fixed rule
+                scope = ScopeLevel.STRATEGY  # Always strategy-scoped
+            
+            publications[output.connector_id] = PublicationConfig(
+                connector_id=output.connector_id,
+                event_name=event_name,
+                scope=scope,  # Determined by explicit rules, not inferred
+                payload_type=output.payload_type,
+                payload_source=output.payload_source
+            )
+        
+        return publications
+```
+
+**Strategy Wiring Map (No Scope Field):**
+
+```yaml
+# strategy_wiring_map.yaml
+adapter_configurations:
+  momentum_scout:
+    subscriptions:
+      - event_name: REGIME_CLASSIFIED
+        connector_id: default_trigger
+    publications:
+      - connector_id: signal_detected
+        event_name: MOMENTUM_SIGNAL
+        # No scope field - determined by fixed rule (strategy plugins = strategy scope)
+```
+
+**Rationale:**
+
+1. **Platform Components:**
+   - May need flexibility (platform-wide broadcasts or strategy-scoped coordination)
+   - Explicitly declare scope in manifest
+   - Examples: MarketDataAdapter (platform), FlowInitiator (strategy)
+
+2. **Strategy Plugins:**
+   - Always part of strategy execution flow
+   - Outputs consumed within strategy boundary
+   - Fixed strategy scope eliminates configuration complexity
+   - If platform component needs strategy events → uses `platform_unrestricted` subscription
+
+3. **No Inference:**
+   - EventWiringFactory does NOT analyze wiring to determine scope
+   - Scope determined by: category + manifest declaration (platform) OR fixed rule (plugins)
+   - Simple, predictable, no surprises
+
+**Benefits:**
+- ✅ Clear responsibility: Platform components declare, plugins follow fixed rule
+- ✅ No UI complexity for scope selection during strategy building
+- ✅ No configuration errors (can't accidentally publish platform-wide from strategy plugin)
+- ✅ Predictable behavior (category determines scope mechanism)
+
+---
+
 ### **Bootstrap Validation: Fail-Fast**
 
 EventWiringFactory validates configuration ONCE at bootstrap:
