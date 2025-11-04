@@ -1103,36 +1103,27 @@ class TestFlowInitiatorConfigService:
 
 ---
 
-## Implementation Checklist
+## Implementation Components
 
-### Phase 1: Core Implementation
-- [ ] FlowInitiator class (backend/core/flow_initiator.py)
-- [ ] FlowInitiatorBuildSpec (backend/assembly/build_specs/)
-- [ ] FlowInitiatorConfigService (backend/assembly/services/)
-- [ ] Unit tests (20+ tests)
+### Core Components
+- FlowInitiator class (backend/core/flow_initiator.py)
+- FlowInitiatorBuildSpec (backend/assembly/build_specs/)
+- FlowInitiatorConfigService (backend/assembly/services/)
 
-### Phase 2: Config Integration
-- [ ] ConfigTranslator FlowInitiator support
-- [ ] WorkerFactory FlowInitiator creation
-- [ ] EventWiringFactory adapter creation
-- [ ] Integration tests
+### Config Integration
+- ConfigTranslator FlowInitiator support
+- WorkerFactory FlowInitiator creation
+- EventWiringFactory adapter creation
 
-### Phase 3: Backend API
-- [ ] API endpoints (add_trigger, remove_trigger, get_outputs)
-- [ ] Request/Response DTOs
-- [ ] API tests
+### Backend API
+- API endpoints (add_trigger, remove_trigger, get_outputs)
+- Request/Response DTOs
 
-### Phase 4: UI Integration
-- [ ] Canvas FlowInitiator node (always present)
-- [ ] Data connector selection UI
-- [ ] Auto-wiring to FlowInitiator
-- [ ] Output port rendering
-
-### Phase 5: Documentation
-- [ ] Update PLATFORM_COMPONENTS.md
-- [ ] Update EVENT_DRIVEN_WIRING.md
-- [ ] API documentation
-- [ ] User guide for Strategy Builder
+### UI Integration
+- Canvas FlowInitiator node (always present)
+- Data connector selection UI
+- Auto-wiring to FlowInitiator
+- Output port rendering
 
 ---
 
@@ -1140,51 +1131,6 @@ class TestFlowInitiatorConfigService:
 
 - **Architecture:** [Platform Components](../../../architecture/PLATFORM_COMPONENTS.md)
 - **Architecture:** [Event-Driven Wiring](../../../architecture/EVENT_DRIVEN_WIRING.md)
-- **Design:** [FlowTerminator Design](./flow_terminator_design.md) (to be created)
-- **Design:** [StrategyCache Lifecycle](./strategy_cache_lifecycle.md) (to be created)
 - **Reference:** [StrategyCache](../../../reference/platform/strategy_cache.md)
 
----
 
-## Future Enhancements
-
-### Phase 2: Advanced Filtering
-
-```python
-class FlowInitiator:
-    def should_start_flow(self, event: ExternalEvent) -> bool:
-        """
-        Optional filtering hook.
-        
-        Example: Skip flow if market is closed, or if event is duplicate.
-        """
-        # Future: Configurable filters from BuildSpec
-        return True
-```
-
-### Phase 3: Payload Transformation
-
-```python
-class FlowInitiator:
-    def transform_payload(self, event: ExternalEvent) -> Any:
-        """
-        Optional payload transformation.
-        
-        Example: Enrich event with additional context before passing to workers.
-        """
-        # Future: Configurable transformers
-        return event.payload
-```
-
-### Phase 4: Multi-Strategy Optimization
-
-```python
-# Optimization: Batch initialize multiple strategies on same event
-class FlowInitiatorCoordinator:
-    def on_platform_event(self, event: PlatformEvent):
-        """Coordinate FlowInitiators for multiple strategies."""
-        for strategy in self.strategies:
-            strategy.flow_initiator.on_external_event(event)
-        
-        # Batch publish READY events (EventBus optimization)
-```
