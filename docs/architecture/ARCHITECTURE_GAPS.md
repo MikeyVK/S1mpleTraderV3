@@ -2,6 +2,7 @@
 
 **Status:** OPEN ISSUES - Requires Decisions  
 **Created:** 2025-11-02  
+**Last Updated:** 2025-11-03  
 **Priority:** CRITICAL - Must Resolve Before Implementation (Week 1)
 
 ---
@@ -10,12 +11,104 @@
 
 This document identifies **architectural design flaws and inconsistencies** in the S1mpleTraderV3 design. These are NOT implementation gaps (missing code), but conceptual issues in the architecture itself that must be resolved before implementation begins.
 
+**Document Evolution:**
+This document contains both the **original gap analysis** (initial problem identification) and the **revised analysis** based on architectural discussions. The original analysis is preserved to maintain context and reasoning history.
+
 **How to use this document:**
-1. Review each gap individually
-2. Discuss trade-offs of proposed solutions
-3. Make explicit design decisions
+1. Review original gap analysis to understand initial problem identification
+2. Read revised analysis to see how understanding evolved through discussion
+3. Review final design decisions
 4. Update relevant architecture docs with decisions
 5. Archive this document when all gaps are resolved
+
+---
+
+## 📋 Original Gap Analysis (2025-11-02)
+
+> **Note:** This section preserves the initial gap analysis that triggered architectural discussions. Some conclusions here have been superseded by revised analysis below. Read this first to understand the original problem space.
+
+<details>
+<summary><strong>Click to expand original GAP-001 and GAP-002 analysis</strong></summary>
+
+### GAP-001: StrategyCache Singleton vs Multi-Strategy Execution (ORIGINAL)
+
+**Location:** `POINT_IN_TIME_MODEL.md`, `PLATFORM_COMPONENTS.md`
+
+**Problem:**
+StrategyCache was conceptualized as a singleton with reconfigure() method, creating race conditions in concurrent multi-strategy execution.
+
+**Root Cause Analysis:**
+The conflict arose from three architectural insights:
+
+1. **EventBus Scope Filtering:** Platform-scoped events (e.g., market tick) can trigger MULTIPLE strategies simultaneously via scope filtering
+2. **Point-in-Time Model:** Cache must be stateless - fresh dict per tick, cleared after run completion
+3. **Bus-Agnostic Architecture:** ALL components (including FlowInitiator) are bus-agnostic and communicate via EventAdapters
+
+**Key Realization:**
+FlowInitiator (tick flow coordinator) CANNOT be singleton because:
+- One RAW_TICK event (ScopeLevel.PLATFORM) triggers multiple strategies
+- Each strategy needs isolated FlowInitiator + StrategyCache pair
+- EventBus scope filtering (SubscriptionScope.should_receive_event) enables multi-strategy triggering
+
+**DECISION: Per-Strategy Instances**
+
+**Rationale:**
+1. ✅ Perfect isolation - Each strategy has dedicated cache + FlowInitiator
+2. ✅ Simpler API - Workers don't need strategy_id parameter
+3. ✅ Clear lifecycle - Cache created per strategy, injected via DI
+4. ✅ Bus-agnostic consistency - FlowInitiator treated like any Worker (EventAdapter pattern)
+5. ✅ Platte orkestratie - No StrategyFactory hierarchy, direct assembly in OperationService
+6. ✅ YAGNI - No premature abstraction, readable top-to-bottom flow
+
+### GAP-002: System Event Naming - UUID vs Static Wiring (ORIGINAL)
+
+**Location:** `EVENT_DRIVEN_WIRING.md`
+
+**Initial Problem:**
+Documentation initially suggested system events use **runtime-generated UUIDs**, creating an impossible situation where static `strategy_wiring_map.yaml` would need to contain event names that don't exist yet.
+
+**Root Cause Analysis:**
+This was a **misunderstanding** of the V3 architecture. After reviewing the Strategy Builder UI documentation and addenda, the actual design is:
+
+**DECISION: UI-Generated Event Names at Configuration Time**
+
+**How It Actually Works:**
+
+**Phase 1: Strategy Building (UI Session)**
+
+The **Strategy Builder UI** generates unique event names **during the configuration phase** (NOT runtime):
+
+```typescript
+// Strategy Builder UI (TypeScript)
+function onWorkerPlaced(worker: WorkerInstance, slot: Slot, position: number) {
+    // Generate unique event name DURING UI SESSION
+    const eventName = `_${worker.instance_id}_OUTPUT_${generateUID()}`;
+    
+    // Store in strategy_wiring_map.yaml
+    addWiringRule({
+        source: {
+            component_id: worker.instance_id,
+            event_name: eventName,  // Generated NOW, not at runtime
+            event_type: "SystemEvent"
+        },
+        target: {
+            component_id: nextWorker.instance_id,
+            handler_method: "process"
+        }
+    });
+}
+```
+
+**Why This Works:**
+- ✅ Static Configuration: All event names exist in `strategy_wiring_map.yaml` before runtime
+- ✅ UI Responsibility: Strategy Builder generates unique names during configuration
+- ✅ No Runtime Generation: EventAdapter uses pre-configured names from BuildSpecs
+- ✅ Predictable Wiring: Subscribers know exact event names at bootstrap time
+
+**Architectural Principle:**
+> "The Strategy Builder UI is the **event name authority**. It generates all system event names during strategy construction, ensuring the `strategy_wiring_map.yaml` is a complete, static specification that requires NO runtime name generation."
+
+</details>
 
 ---
 
