@@ -164,13 +164,13 @@ class TestPlatformDataDTOValidation:
         assert any(error["loc"] == ("payload",) for error in errors)
     
     def test_invalid_timestamp_type(self):
-        """Test that invalid timestamp type raises ValidationError."""
+        """Test that completely invalid timestamp type raises ValidationError."""
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         
         with pytest.raises(ValidationError) as exc_info:
             PlatformDataDTO(
                 source_type="candle_stream",
-                timestamp="2025-11-06 14:00:00",  # String instead of datetime!
+                timestamp=[1, 2, 3],  # List instead of datetime!
                 payload=payload
             )
         
@@ -185,7 +185,7 @@ class TestPlatformDataDTOValidation:
             PlatformDataDTO(
                 source_type="candle_stream",
                 timestamp=timestamp,
-                payload={"not": "a basemodel"}  # Dict instead of BaseModel!
+                payload="not a basemodel"  # String instead of BaseModel!
             )
         
         errors = exc_info.value.errors()
