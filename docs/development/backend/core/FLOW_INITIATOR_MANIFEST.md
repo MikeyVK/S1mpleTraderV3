@@ -1,8 +1,8 @@
 # FlowInitiator Manifest Design
 
-**Onderdeel van:** [FlowInitiator Design](flow_initiator_design.md)  
+**Onderdeel van:** [FlowInitiator Design](FLOW_INITIATOR_DESIGN.md)  
 **Status:** Design  
-**Laatst Bijgewerkt:** 2025-11-04
+**Laatst Bijgewerkt:** 2025-11-06
 
 ---
 
@@ -33,7 +33,7 @@ category: "platform_component"
 
 metadata:
   name: "Flow Initiator"
-  description: "Platform component managing strategy initialization and external event coordination"
+  description: "Per-strategy data ingestion and cache initialization component"
   author: "S1mpleTrader Platform"
   version: "1.0.0"
 
@@ -45,18 +45,24 @@ capabilities:
   io:
     multi_input: true
     broadcast_output: true
-    dynamic_outputs: true    # 🔥 KEY FLAG: Outputs from strategy_blueprint, not manifest
+    dynamic_outputs: false    # 🔥 Changed: Outputs are EMPTY, no dynamic generation
 
 dependencies:
   requires_system_resources:
     strategy_cache: true
 
 inputs:
-  - connector_id: "external_trigger"
-    handler_method: "on_external_event"
+  - connector_id: "data_input"
+    handler_method: "on_data_ready"    # 🔥 Changed: Single handler for all data types
 
-outputs: []  # Empty - populated at runtime from strategy_blueprint.yaml
+outputs: []  # Empty - EventAdapter publication_on_continue handles routing
 ```
+
+**Key Changes from V1:**
+- ✅ Handler method: `on_data_ready` (not `on_external_event`)
+- ✅ Connector: `data_input` (generic, not `external_trigger`)
+- ✅ `dynamic_outputs: false` - No runtime output generation
+- ✅ Empty `outputs` - EventAdapter `publication_on_continue` handles routing
 
 ---
 
@@ -71,18 +77,19 @@ Marks this as platform component, not user plugin:
 
 ### Capabilities
 
-**`dynamic_outputs: true`** - **Critical for UI behavior:**
-- UI knows: "Don't read outputs from manifest"
-- UI knows: "Read outputs from strategy_blueprint.platform_components.flow_initiator.config"
-- Canvas refresh pulls outputs from in-memory strategy_blueprint
+**`dynamic_outputs: false`** - **No runtime output generation:**
+- FlowInitiator has NO outputs in manifest (empty list)
+- EventAdapter uses `publication_on_continue` for routing
+- See [EventAdapter Design](../EVENTADAPTER_DESIGN.md#publication_on_continue) for details
 
 **`multi_input: true`:**
-- Accepts multiple different APL_* event types on same connector
-- FlowInitiator can handle different events via single `external_trigger` connector
+- Accepts multiple different data types on same connector
+- FlowInitiator can handle candles, news, orderbook, etc. via single `data_input` connector
+- Single handler method (`on_data_ready`) processes all types
 
 **`broadcast_output: true`:**
-- Outputs available to all workers in strategy
-- No isolation - any worker can subscribe to FlowInitiator outputs
+- Events published via `publication_on_continue` available to all workers
+- No isolation - any worker can subscribe to data events
 
 ### Dependencies
 
@@ -92,69 +99,91 @@ Marks this as platform component, not user plugin:
 
 ### Inputs
 
-**Single connector: `external_trigger`:**
-- No `event_type` in manifest (that's runtime info from strategy_blueprint)
-- Handler: `on_external_event()` method
-- Accepts all APL_* events configured in strategy_blueprint
+**Single connector: `data_input`:**
+- Generic handler for ALL data types (candles, news, orderbook, etc.)
+- Handler: `on_data_ready()` method
+- Receives PlatformDataDTO from DataProviders
+- See [DataProvider Design](DATA_PROVIDER_DESIGN.md) for PlatformDataDTO structure
 
 ### Outputs
 
 **Empty list in manifest:**
-- Runtime outputs come from `strategy_blueprint.yaml`:
+- FlowInitiator has NO outputs declared in manifest
+- Event routing handled by EventAdapter `publication_on_continue` mechanism
+- Wiring map example:
   ```yaml
-  platform_components:
-    flow_initiator:
-      config:
-        outputs:
-          - connector_id: candle_1h_ready
-            event_name: CANDLE_CLOSE_1H          # No APL_ prefix, no _READY suffix
-          - connector_id: signal_detected
-            event_name: SIGNAL_DETECTED          # No APL_ prefix, no _READY suffix
+  flow_initiator:
+    subscriptions:
+      - event_name: "_candle_btc_eth_ready_strategy_abc"
+        connector_id: "data_input"
+        handler_method: "on_data_ready"  # From manifest
+        publication_on_continue: "candle_stream_ready"  # EventAdapter routes here
+    
+    publications:
+      - connector_id: "candle_stream_ready"
+        event_name: "CANDLE_STREAM_DATA_READY"
   ```
+- See [FlowInitiator Design](FLOW_INITIATOR_DESIGN.md#eventadapter-wiring) for complete wiring pattern
 
 ---
 
 ## Event Naming Convention
 
-### Input Events (APL_* prefix)
+### Input Events (Provider Events)
 
-**Application/Platform events** have `APL_` prefix:
+**DataProvider events** have provider-specific naming with strategy_id suffix:
 ```
-APL_CANDLE_CLOSE_1H
-APL_WEEKLY_SCHEDULE
-APL_SIGNAL_DETECTED
-APL_RISK_EVENT
+_candle_btc_eth_ready_{strategy_id}
+_orderbook_binance_ready_{strategy_id}
+_bloomberg_news_ready_{strategy_id}
 ```
+
+**Pattern:** `_{provider_id}_ready_{strategy_id}`
 
 **Purpose:**
-- Immediately distinguishable as application-level events
-- Clear boundary between platform and strategy scopes
-- Prevents naming collisions
+- Strategy-scoped delivery (only relevant strategy receives event)
+- Multiple strategies can share same DataProvider (singleton)
+- Provider ID identifies data source
 
-### Output Events (no prefix, no suffix)
+### Output Events (Worker Events)
 
-**Strategy-internal events** have no APL_ prefix and no _READY suffix:
+**Worker-facing events** are uppercase strategy-internal events:
 ```
-CANDLE_CLOSE_1H
-WEEKLY_SCHEDULE
-SIGNAL_DETECTED
-RISK_EVENT
+CANDLE_STREAM_DATA_READY
+ORDERBOOK_SNAPSHOT_READY
+NEWS_FEED_DATA_READY
 ```
 
-**Pattern:** Strip `APL_` prefix (no additional suffix)
+**Pattern:** `{DATA_TYPE}_READY` (uppercase, descriptive)
 
-**Transformation:**
+**Purpose:**
+- Clear boundary: external provider events → internal worker events
+- Workers don't know about provider IDs
+- Clean abstraction layer
+
+**Transformation Flow:**
 ```
-APL_CANDLE_CLOSE_1H  →  CANDLE_CLOSE_1H
-APL_WEEKLY_SCHEDULE  →  WEEKLY_SCHEDULE
-APL_SIGNAL_DETECTED  →  SIGNAL_DETECTED
+DataProvider publishes:  _candle_btc_eth_ready_strategy_abc
+                           ↓
+EventAdapter routes to:   flow_initiator.on_data_ready()
+                           ↓
+FlowInitiator returns:    CONTINUE disposition
+                           ↓
+EventAdapter publishes:   CANDLE_STREAM_DATA_READY
+  (via publication_on_continue)
+                           ↓
+Workers receive:          CANDLE_STREAM_DATA_READY
 ```
+
+**See Also:**
+- [DataProvider Design](DATA_PROVIDER_DESIGN.md#event-naming-conventions) - Provider event naming
+- [EventAdapter Design](../EVENTADAPTER_DESIGN.md) - `publication_on_continue` mechanism
 
 ---
 
 ## Manifest vs Normal Plugin
 
-### Normal Plugin (Static Outputs)
+### Normal Plugin (Static Inputs/Outputs)
 
 ```yaml
 # plugins/workers/signal_detector_manifest.yaml
@@ -173,11 +202,11 @@ outputs:  # ✅ Static - always the same
 ```
 
 **Characteristics:**
-- Outputs are **static** (defined in manifest)
-- UI reads outputs from manifest
-- Outputs never change based on configuration
+- Inputs and outputs are **static** (defined in manifest)
+- UI reads directly from manifest
+- Never changes based on configuration
 
-### FlowInitiator (Dynamic Outputs)
+### FlowInitiator (Fixed Input, No Outputs)
 
 ```yaml
 # backend/config/manifests/flow_initiator_manifest.yaml
@@ -187,18 +216,20 @@ category: "platform_component"
 
 capabilities:
   io:
-    dynamic_outputs: true  # 🔥 Flag for UI
+    dynamic_outputs: false  # No output generation
 
 inputs:
-  - connector_id: "external_trigger"
+  - connector_id: "data_input"
+    handler_method: "on_data_ready"
 
-outputs: []  # 🔥 Empty - runtime generated
+outputs: []  # 🔥 Empty - EventAdapter handles routing
 ```
 
 **Characteristics:**
-- Outputs are **dynamic** (generated based on inputs)
-- UI reads outputs from strategy_blueprint
-- Outputs change when user configures different inputs
+- Single fixed input connector (`data_input`)
+- Handler method declared in manifest (`on_data_ready`)
+- No outputs - EventAdapter `publication_on_continue` handles routing
+- Wiring map provides event routing logic
 
 ---
 
@@ -210,20 +241,19 @@ outputs: []  # 🔥 Empty - runtime generated
 1. UI loads FlowInitiator manifest
    GET /api/strategy-builder/flow-initiator/manifest
    
-2. UI checks: capabilities.io.dynamic_outputs === true
-   → Knows to read outputs from strategy_blueprint
+2. UI checks: capabilities.io.dynamic_outputs === false
+   → Knows FlowInitiator has no outputs to display
    
-3. User configures inputs in Platform Components step
-   Input: APL_CANDLE_CLOSE_1H
+3. UI reads worker manifests with requires_capability
+   → Auto-generates FlowInitiator wiring based on capability requirements
    
-4. UI auto-generates output in strategy_blueprint
-   Output: CANDLE_CLOSE_1H (connector: candle_1h_ready)
-   
-5. Canvas refreshes FlowInitiator node
-   → Reads outputs from strategy_blueprint.platform_components.flow_initiator.config
-   → Shows output connector: candle_1h_ready
-   
-6. User wires FlowInitiator.candle_1h_ready → SignalDetector.market_trigger
+4. Example: SignalDetector requires "candle_stream"
+   → UI generates:
+     flow_initiator subscription: _candle_btc_eth_ready_{strategy_id}
+     flow_initiator publication:  CANDLE_STREAM_DATA_READY
+     
+5. Canvas shows auto-generated wiring
+   DataProvider → FlowInitiator → Workers
 ```
 
 ### Runtime (Bootstrap)
@@ -231,30 +261,40 @@ outputs: []  # 🔥 Empty - runtime generated
 ```
 1. ConfigTranslator reads strategy_blueprint.yaml
    
-2. ConfigTranslator generates IN-MEMORY WorkerBuildSpec:
+2. ConfigTranslator generates WorkerBuildSpec:
    WorkerBuildSpec(
      worker_id="flow_initiator",
+     worker_type="FlowInitiator",
      config={
-       "outputs": [
-         {"event_name": "APL_CANDLE_CLOSE_1H", "connector_id": "candle_1h_ready"}
-       ]
+       "dto_types": {
+         "candle_stream": CandleWindow,  # Resolved Python class!
+         "orderbook_snapshot": OrderBookSnapshot
+       }
      }
    )
    
-3. WorkerFactory validates BuildSpec against schema
-   backend/config/schemas/buildspecs/worker_build_spec_schema.py
-   
-4. WorkerFactory instantiates FlowInitiator
+3. WorkerFactory instantiates FlowInitiator:
+   flow_initiator = FlowInitiator("flow_initiator_strategy_abc")
    flow_initiator.configure(config, strategy_cache)
    
-5. FlowInitiator builds internal mapping:
-   self._output_map["APL_CANDLE_CLOSE_1H"] = "candle_1h_ready"
+4. EventAdapter reads wiring map:
+   subscription_config = [{
+     "event_name": "_candle_btc_eth_ready_strategy_abc",
+     "connector_id": "data_input",
+     "handler_method": "on_data_ready",  # From manifest!
+     "publication_on_continue": "candle_stream_ready"
+   }]
    
-6. Runtime: APL_CANDLE_CLOSE_1H event arrives
-   → FlowInitiator.on_external_event()
-   → Returns PUBLISH(connector_id="candle_1h_ready")
-   → EventAdapter publishes CANDLE_CLOSE_1H (no APL_ prefix, no _READY suffix)
+5. Runtime: Provider event arrives
+   → EventAdapter calls: flow_initiator.on_data_ready(platform_dto)
+   → FlowInitiator returns: CONTINUE disposition
+   → EventAdapter publishes: CANDLE_STREAM_DATA_READY
+   → Workers receive event and pull data from StrategyCache
 ```
+
+**See Also:**
+- [FlowInitiator Design](FLOW_INITIATOR_DESIGN.md#architecture-overview) - Complete data flow
+- [ConfigTranslator Design](../CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md) - DTO type resolution
 
 ---
 
@@ -262,11 +302,11 @@ outputs: []  # 🔥 Empty - runtime generated
 
 | Component | Uses Manifest? | Purpose |
 |-----------|---------------|---------|
-| Strategy Builder UI | ✅ YES | Check `dynamic_outputs` flag, show platform component |
+| Strategy Builder UI | ✅ YES | Check handler_method, show platform component, auto-wire capabilities |
 | FlowInitiatorConfigService | ✅ YES | Serve manifest to BFF API |
-| WorkerFactory | ❌ NO | Uses WorkerBuildSpec from ConfigTranslator |
-| EventWiringFactory | ❌ NO | Uses WiringBuildSpecs from strategy_wiring_map |
-| ConfigTranslator | ✅ YES (optional) | Read manifest for metadata |
+| WorkerFactory | ✅ YES (indirectly) | Reads handler_method from manifest during EventAdapter setup |
+| EventWiringFactory | ✅ YES | Uses handler_method for subscription configuration |
+| ConfigTranslator | ✅ YES | Reads metadata, generates BuildSpec with DTO types |
 | FlowInitiator (worker) | ❌ NO | Receives config via WorkerBuildSpec |
 
 ---
@@ -275,14 +315,24 @@ outputs: []  # 🔥 Empty - runtime generated
 
 **✅ Design Time:**
 - UI queries manifest to build Strategy Builder interface
-- UI checks `dynamic_outputs` flag
-- UI shows platform component in correct section
+- UI reads `handler_method` from inputs
+- UI checks `dynamic_outputs: false` (no output generation)
+- UI auto-generates wiring based on worker capability requirements
 
-**❌ Runtime:**
-- Bootstrap uses WorkerBuildSpecs, NOT manifests
-- EventWiringFactory uses WiringBuildSpecs
-- Workers receive config via BuildSpec, not manifest
+**✅ Runtime:**
+- EventAdapter reads `handler_method` from manifest
+- WiringFactory uses handler_method in subscription config
+- ConfigTranslator uses manifest metadata (optional)
 
 ---
 
-**Last Updated:** 2025-11-04
+## Related Documentation
+
+- **[FlowInitiator Design](FLOW_INITIATOR_DESIGN.md)** - Complete implementation design
+- **[DataProvider Design](DATA_PROVIDER_DESIGN.md)** - PlatformDataDTO producer
+- **[EventAdapter Design](../EVENTADAPTER_DESIGN.md)** - `publication_on_continue` mechanism
+- **[ConfigTranslator Design](../CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md)** - DTO type resolution
+
+---
+
+**Last Updated:** 2025-11-06

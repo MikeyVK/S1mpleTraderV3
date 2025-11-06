@@ -12,7 +12,6 @@ regardless of payload type.
 
 # Standard Library Imports
 from datetime import datetime
-from typing import Any, Dict, Optional
 
 # Third-Party Imports
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -20,63 +19,42 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class PlatformDataDTO(BaseModel):
     """
-    Data envelope for platform-to-strategy communication.
-    
-    DataProviders wrap their output in this envelope before publishing
-    to FlowInitiator. The envelope provides consistent metadata while
-    allowing flexible payload types.
-    
+    Minimal data envelope for DataProvider → FlowInitiator communication.
+
+    Wraps provider DTOs (CandleWindow, OrderBookSnapshot, etc.) with minimal
+    metadata needed for cache initialization and type routing.
+
     Attributes:
-        source_type: Provider type identifier (e.g., "candle_stream", "orderbook_snapshot")
-        timestamp: Point-in-time timestamp for this data (used as RunAnchor)
-        payload: Actual data object (any BaseModel subtype)
-        symbol: Optional symbol identifier (e.g., "BTC", "ETH")
-        timeframe: Optional timeframe identifier (e.g., "1h", "4h")
-        metadata: Optional additional context (latency, exchange, etc.)
-    
+        source_type: Provider type identifier for DTO type lookup (e.g., "candle_stream")
+        timestamp: Point-in-time timestamp for RunAnchor initialization
+        payload: Actual provider DTO (immutable BaseModel subtype)
+
     Example:
         >>> from datetime import datetime, timezone
         >>> candle_window = CandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         >>> platform_dto = PlatformDataDTO(
         ...     source_type="candle_stream",
         ...     timestamp=datetime.now(timezone.utc),
-        ...     payload=candle_window,
-        ...     symbol="BTC",
-        ...     timeframe="1h"
+        ...     payload=candle_window
         ... )
     """
-    
+
     source_type: str = Field(
         ...,
-        description="Provider type identifier (e.g., 'candle_stream', 'orderbook_snapshot')",
+        description="Provider type identifier for DTO type lookup in ConfigTranslator",
         min_length=1
     )
-    
+
     timestamp: datetime = Field(
         ...,
-        description="Point-in-time timestamp for this data (becomes RunAnchor)"
+        description="Point-in-time timestamp used for cache.start_new_run(timestamp)"
     )
-    
+
     payload: BaseModel = Field(
         ...,
-        description="Actual data object (must be BaseModel subtype)"
+        description="Provider DTO instance (CandleWindow, OrderBookSnapshot, etc.)"
     )
-    
-    symbol: Optional[str] = Field(
-        default=None,
-        description="Optional symbol identifier (e.g., 'BTC', 'ETH')"
-    )
-    
-    timeframe: Optional[str] = Field(
-        default=None,
-        description="Optional timeframe identifier (e.g., '1h', '4h')"
-    )
-    
-    metadata: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Optional additional context (latency, exchange, etc.)"
-    )
-    
+
     @field_validator("source_type")
     @classmethod
     def validate_source_type_not_empty(cls, value: str) -> str:
@@ -84,9 +62,9 @@ class PlatformDataDTO(BaseModel):
         if not value or not value.strip():
             raise ValueError("source_type cannot be empty")
         return value
-    
+
     model_config = ConfigDict(
-        frozen=True,  # Immutable after creation
+        frozen=True,
         json_schema_extra={
             "examples": [
                 {
@@ -96,22 +74,6 @@ class PlatformDataDTO(BaseModel):
                         "symbol": "BTC",
                         "timeframe": "1h",
                         "close": 50000.0
-                    },
-                    "symbol": "BTC",
-                    "timeframe": "1h"
-                },
-                {
-                    "source_type": "orderbook_snapshot",
-                    "timestamp": "2025-11-06T14:00:00Z",
-                    "payload": {
-                        "symbol": "ETH",
-                        "bid_price": 3000.0,
-                        "ask_price": 3001.0
-                    },
-                    "symbol": "ETH",
-                    "metadata": {
-                        "exchange": "binance",
-                        "latency_ms": 12
                     }
                 }
             ]

@@ -45,12 +45,21 @@ git commit -m "test: add failing tests for SizePlan DTO
 Status: RED - tests fail (implementation pending)"
 ```
 
-**Typical test count:** 20-30 tests per DTO covering:
-- Creation tests (valid instantiation)
-- Field validation tests (ranges, formats, types)
-- Edge cases (boundaries, None handling)
-- Immutability tests (frozen models)
-- Cross-field validation (XOR, dependencies)
+**Test Coverage Criteria:**
+
+Write tests until you have **complete coverage** of behavior, not arbitrary quantity targets.
+Focus on **meaningful tests** that validate actual requirements:
+
+- ✅ **Creation tests** - Valid instantiation with required/optional fields
+- ✅ **Validation tests** - Each validation rule (min/max, format, type constraints)
+- ✅ **Immutability tests** - frozen=True enforcement (if applicable)
+- ✅ **Edge cases** - Boundary values, None handling, special characters
+- ✅ **Cross-field validation** - Field dependencies, XOR constraints (if applicable)
+
+**Example:** A minimal DTO with 3 required fields might need only 8-10 tests.
+A complex DTO with many optional fields and validation rules might need 20+ tests.
+
+**Quality over quantity:** 14 meaningful tests > 30 redundant tests.
 
 ### 2. GREEN Phase: Minimal Implementation
 
