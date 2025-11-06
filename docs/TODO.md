@@ -26,6 +26,11 @@
 - [x] Shared Layer: DispositionEnvelope, CausalityChain, PlatformDataDTO
 - [x] Signal/Risk Layer: Signal, Risk
 - [x] Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
+- [ ] **ExecutionRequest DTO** - Payload for EXECUTION_INTENT_REQUESTED event
+  - **Purpose:** Aggregated input for ExecutionIntentPlanner (3 parallel plans → execution plan)
+  - **Fields:** trade_id, strategy_directive, entry_plan, size_plan, exit_plan, causality
+  - **Location:** `backend/dtos/strategy/execution_request.py`
+  - **Note:** Referenced in PIPELINE_FLOW.md but not yet implemented
 - [x] Execution Layer: ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
 
 **Interface Protocols:**
@@ -98,12 +103,28 @@
 - [ ] EventAdapter (bus-agnostic worker wrapper)
 - [ ] TickCacheManager (run lifecycle orchestration)
 - [ ] PlanningAggregator (4-plan coordinator, mode-aware)
+  - **Design doc:** `docs/development/backend/core/PLANNING_AGGREGATOR_DESIGN.md`
+  - **Purpose:** Multi-input aggregator for Entry/Size/Exit/Execution plans
+  - **Pattern:** Fan-in coordination (5 event handlers → 2 output events)
+  - **State:** Per-trade tracking matrix with RunAnchor reentry guard
+  - **Output:** EXECUTION_INTENT_REQUESTED, EXECUTION_DIRECTIVE_BATCH_READY
 - [ ] **StrategyCache Runtime Validation** (optional defense-in-depth)
   - **Purpose:** Validate worker DTO contracts at runtime (catch implementation bugs)
   - **Dependencies:** WorkerMetadataRegistry (Week 3)
   - **Implementation:** Update `set_result_dto()` / `get_required_dtos()` with optional validation
   - **Strategy:** Fail-fast in dev, silent/logging in production
   - **Validation checks:** Worker produces expected DTOs, requests only declared DTOs
+
+**Open Design Issues:**
+- [ ] **Issue #5: Trade ID Propagation & Causality** (BLOCKER for PlanningAggregator)
+  - **Question:** How to track which plans belong to which trade?
+  - **Options:** 
+    - A) Embed trade_id in directive_id ("EXE_..._TRD123_...")
+    - B) Add trade_id field to ExecutionDirective
+    - C) Extend CausalityChain with trade_id field
+  - **Related:** How to represent ExecutionDirectiveBatch in CausalityChain?
+  - **Decision needed:** Before PlanningAggregator implementation
+  - **Note:** CausalityChain currently lacks trade/batch tracking mechanism
 
 **Deliverable:** Core platform components implemented & integrated (target: 70+ tests)
 
