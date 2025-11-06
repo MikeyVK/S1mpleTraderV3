@@ -22,8 +22,8 @@ from pydantic import BaseModel, ConfigDict
 # Project modules
 from backend.core.flow_initiator import FlowInitiator
 from backend.core.interfaces.strategy_cache import IStrategyCache
-from backend.core.interfaces.worker import IWorker, IWorkerLifecycle
-from backend.dtos.shared.disposition_envelope import Disposition, DispositionEnvelope
+from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInitializationError
+from backend.dtos.shared.disposition_envelope import DispositionEnvelope
 from backend.dtos.shared.platform_data import PlatformDataDTO
 
 
@@ -31,7 +31,7 @@ from backend.dtos.shared.platform_data import PlatformDataDTO
 class MockCandleWindow(BaseModel):
     """Mock CandleWindow DTO."""
     model_config = ConfigDict(frozen=True)
-    
+
     symbol: str
     data: str
 
@@ -39,7 +39,7 @@ class MockCandleWindow(BaseModel):
 class MockNewsEvent(BaseModel):
     """Mock NewsEvent DTO."""
     model_config = ConfigDict(frozen=True)
-    
+
     headline: str
     sentiment: float
 
@@ -50,14 +50,14 @@ class TestFlowInitiatorProtocols:
     def test_flow_initiator_implements_iworker(self) -> None:
         """FlowInitiator implements IWorker protocol."""
         flow_initiator = FlowInitiator(name="test_flow_initiator")
-        
+
         assert isinstance(flow_initiator, IWorker)
         assert hasattr(flow_initiator, 'name')
 
     def test_flow_initiator_implements_iworkerlifecycle(self) -> None:
         """FlowInitiator implements IWorkerLifecycle protocol."""
         flow_initiator = FlowInitiator(name="test_flow_initiator")
-        
+
         assert isinstance(flow_initiator, IWorkerLifecycle)
         assert hasattr(flow_initiator, 'initialize')
         assert hasattr(flow_initiator, 'shutdown')
@@ -65,7 +65,7 @@ class TestFlowInitiatorProtocols:
     def test_flow_initiator_name_property(self) -> None:
         """FlowInitiator has name property (IWorker requirement)."""
         flow_initiator = FlowInitiator(name="flow_init_abc")
-        
+
         assert flow_initiator.name == "flow_init_abc"
 
 
@@ -89,26 +89,24 @@ class TestFlowInitiatorLifecycle:
     ) -> None:
         """FlowInitiator initializes with strategy_cache (Platform-within-Strategy)."""
         dto_types = {"candle_stream": MockCandleWindow}
-        
+
         flow_initiator.initialize(
             strategy_cache=cache_mock,
             dto_types=dto_types
         )
-        
-        # Should store cache and dto_types
-        assert flow_initiator._cache is cache_mock
-        assert flow_initiator._dto_types == dto_types
+
+        # Should store cache and dto_types (internal state check)
+        assert flow_initiator._cache is cache_mock  # type: ignore[reportPrivateUsage]
+        assert flow_initiator._dto_types == dto_types  # type: ignore[reportPrivateUsage]
 
     def test_initialize_validates_strategy_cache_not_none(
         self,
         flow_initiator: FlowInitiator
     ) -> None:
         """FlowInitiator requires strategy_cache (not a Platform worker)."""
-        from backend.core.interfaces.worker import WorkerInitializationError
-        
         with pytest.raises(WorkerInitializationError) as exc_info:
             flow_initiator.initialize(strategy_cache=None)
-        
+
         assert "strategy_cache required" in str(exc_info.value).lower()
 
     def test_initialize_validates_dto_types_capability(
@@ -117,11 +115,9 @@ class TestFlowInitiatorLifecycle:
         cache_mock: Mock
     ) -> None:
         """FlowInitiator requires dto_types capability."""
-        from backend.core.interfaces.worker import WorkerInitializationError
-        
         with pytest.raises(WorkerInitializationError) as exc_info:
             flow_initiator.initialize(strategy_cache=cache_mock)
-        
+
         assert "dto_types" in str(exc_info.value).lower()
 
     def test_shutdown_is_idempotent(self, flow_initiator: FlowInitiator) -> None:
@@ -163,20 +159,21 @@ class TestFlowInitiatorDataHandling:
         cache_mock: Mock,
         test_timestamp: datetime
     ) -> None:
-        """on_data_ready calls cache.start_new_run with timestamp."""
+        """on_data_ready calls cache.start_new_strategy_run with timestamp."""
         candle_payload = MockCandleWindow(symbol="BTC_EUR", data="test")
         platform_dto = PlatformDataDTO(
             source_type="candle_stream",
             timestamp=test_timestamp,
             payload=candle_payload
         )
-        
+
         flow_initiator.on_data_ready(platform_dto)
-        
-        # Should initialize cache with timestamp
-        cache_mock.start_new_run.assert_called_once()
-        call_args = cache_mock.start_new_run.call_args
-        assert call_args[0][0] == test_timestamp  # First arg is timestamp
+
+        # Should initialize cache with empty dict and timestamp
+        cache_mock.start_new_strategy_run.assert_called_once()
+        call_args = cache_mock.start_new_strategy_run.call_args
+        assert call_args[0][0] == {}  # Empty strategy_cache dict
+        assert call_args[0][1] == test_timestamp  # Timestamp
 
     def test_on_data_ready_stores_payload_in_cache(
         self,
@@ -191,9 +188,9 @@ class TestFlowInitiatorDataHandling:
             timestamp=test_timestamp,
             payload=candle_payload
         )
-        
+
         flow_initiator.on_data_ready(platform_dto)
-        
+
         # Should store payload (not PlatformDataDTO wrapper!)
         cache_mock.set_result_dto.assert_called_once()
         stored_dto = cache_mock.set_result_dto.call_args[0][0]
@@ -211,11 +208,11 @@ class TestFlowInitiatorDataHandling:
             timestamp=test_timestamp,
             payload=MockCandleWindow(symbol="BTC_EUR", data="test")
         )
-        
+
         result = flow_initiator.on_data_ready(platform_dto)
-        
+
         assert isinstance(result, DispositionEnvelope)
-        assert result.disposition == Disposition.CONTINUE
+        assert result.disposition == "CONTINUE"
 
     def test_on_data_ready_call_order(
         self,
@@ -223,18 +220,18 @@ class TestFlowInitiatorDataHandling:
         cache_mock: Mock,
         test_timestamp: datetime
     ) -> None:
-        """on_data_ready calls start_new_run BEFORE set_result_dto."""
+        """on_data_ready calls start_new_strategy_run BEFORE set_result_dto."""
         platform_dto = PlatformDataDTO(
             source_type="candle_stream",
             timestamp=test_timestamp,
             payload=MockCandleWindow(symbol="BTC_EUR", data="test")
         )
-        
+
         flow_initiator.on_data_ready(platform_dto)
-        
-        # Verify call order: start_new_run → set_result_dto
+
+        # Verify call order: start_new_strategy_run → set_result_dto
         assert cache_mock.method_calls == [
-            call.start_new_run(test_timestamp),
+            call.start_new_strategy_run({}, test_timestamp),
             call.set_result_dto(platform_dto.payload)
         ]
 
@@ -252,7 +249,7 @@ class TestFlowInitiatorDataHandling:
             payload=MockCandleWindow(symbol="BTC_EUR", data="candles")
         )
         flow_initiator.on_data_ready(candle_dto)
-        
+
         # Test news_feed
         news_dto = PlatformDataDTO(
             source_type="news_feed",
@@ -260,10 +257,10 @@ class TestFlowInitiatorDataHandling:
             payload=MockNewsEvent(headline="Breaking News", sentiment=0.8)
         )
         flow_initiator.on_data_ready(news_dto)
-        
+
         # Both should be stored
         assert cache_mock.set_result_dto.call_count == 2
-        assert cache_mock.start_new_run.call_count == 2
+        assert cache_mock.start_new_strategy_run.call_count == 2
 
 
 class TestFlowInitiatorErrorHandling:
@@ -300,10 +297,10 @@ class TestFlowInitiatorErrorHandling:
             timestamp=test_timestamp,
             payload=MockCandleWindow(symbol="BTC_EUR", data="test")
         )
-        
+
         with pytest.raises(ValueError) as exc_info:
             flow_initiator.on_data_ready(platform_dto)
-        
+
         error_msg = str(exc_info.value).lower()
         assert "no dto type mapping" in error_msg or "unknown_type" in error_msg
 
@@ -318,9 +315,9 @@ class TestFlowInitiatorErrorHandling:
             timestamp=test_timestamp,
             payload=MockCandleWindow(symbol="BTC_EUR", data="test")
         )
-        
+
         with pytest.raises(ValueError) as exc_info:
             flow_initiator.on_data_ready(platform_dto)
-        
+
         error_msg = str(exc_info.value)
         assert "candle_stream" in error_msg  # Should show available type
