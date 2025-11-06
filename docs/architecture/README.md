@@ -41,6 +41,8 @@
 | [Point-in-Time Model](POINT_IN_TIME_MODEL.md) | **CORE DATA MODEL** | TickCache, IStrategyCache, RunAnchor, DTO flow |
 | [Data Flow](DATA_FLOW.md) | Worker Communication | DispositionEnvelope, CONTINUE/PUBLISH/STOP |
 | [Event-Driven Wiring](EVENT_DRIVEN_WIRING.md) | Event Architecture | EventBus, EventAdapter, wiring_map.yaml |
+| [AsyncIO Architecture](ASYNC_IO_ARCHITECTURE.md) | **ASYNC & TIMING** | AsyncIO patterns, Timing separation, Event-driven state |
+| [Event Architecture](EVENT_ARCHITECTURE.md) | Complete Event System | Event producers, EventStore, EventQueue, Delivery guarantees |
 
 ### Workers & Plugins
 

@@ -62,9 +62,9 @@ Workers zijn **bus-agnostic** en kennen geen event namen, alleen connector IDs.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ External Events (Platform Scope)                            │
-│ - CANDLE_CLOSE_1H (market data)                            │
-│ - WEEKLY_SCHEDULE (scheduler)                               │
-│ - NEWS_EVENT (news feed)                                    │
+│ - APL_CANDLE_CLOSE_1H (market data)                        │
+│ - APL_WEEKLY_SCHEDULE (scheduler)                           │
+│ - APL_NEWS_EVENT (news feed)                                │
 └────────────────────┬────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -73,15 +73,15 @@ Workers zijn **bus-agnostic** en kennen geen event namen, alleen connector IDs.
 │ Responsibilities:                                            │
 │ 1. Initialize StrategyCache (start_new_run)                 │
 │ 2. Filter events (should_start_flow)                        │
-│ 3. Transform payload (external → internal)                  │
+│ 3. Transform payload (APL_* → internal event)               │
 │ 4. Publish READY events (via connector mapping)            │
 └────────────────────┬────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ Internal Events (Strategy Scope)                            │
-│ - CANDLE_CLOSE_1H_READY                                     │
-│ - WEEKLY_SCHEDULE_READY                                     │
-│ - NEWS_EVENT_READY                                          │
+│ - CANDLE_CLOSE_1H (no APL_ prefix)                          │
+│ - WEEKLY_SCHEDULE (no APL_ prefix)                          │
+│ - NEWS_EVENT (no APL_ prefix)                               │
 └────────────────────┬────────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -95,7 +95,7 @@ Workers zijn **bus-agnostic** en kennen geen event namen, alleen connector IDs.
 
 **Fase 1: External Event → FlowInitiator**
 ```
-CANDLE_CLOSE_1H event
+APL_CANDLE_CLOSE_1H event
     ↓
 FlowInitiator.on_external_event()
     ├─ cache.start_new_run(timestamp)  ✅ RunAnchor created
@@ -106,11 +106,15 @@ FlowInitiator.on_external_event()
 ```
 EventAdapter translates connector_id → event_name
     ↓
-CANDLE_CLOSE_1H_READY event
+CANDLE_CLOSE_1H event (no APL_ prefix)
     ↓
 SignalDetector.on_market_trigger()
     └─ cache.get_run_anchor() ✅ Exists!
 ```
+
+**Event Naming Convention:**
+- **Input events** (from application/platform): `APL_*` prefix (e.g., `APL_CANDLE_CLOSE_1H`)
+- **Output events** (to strategy workers): No prefix, no suffix (e.g., `CANDLE_CLOSE_1H`)
 
 ---
 
@@ -148,21 +152,29 @@ class FlowInitiator(IWorker):
         """Initialize with worker ID."""
         self._worker_id = worker_id
         self._cache: IStrategyCache | None = None
-        self._trigger_mappings: dict[str, str] = {}
+        self._output_map: dict[str, str] = {}  # APL_* event_name → connector_id
     
-    def initialize(self, build_spec: FlowInitiatorBuildSpec) -> None:
+    def configure(self, config: dict[str, Any], cache: IStrategyCache) -> None:
         """
-        Initialize from BuildSpec (uniform pattern for all workers).
-        
-        BuildSpec contains:
-        - strategy_cache: Injected StrategyCache instance
-        - trigger_mappings: event_name → connector_id mapping
+        Configure with runtime config from WorkerBuildSpec.
         
         Args:
-            build_spec: FlowInitiator configuration from strategy_blueprint
+            config: Output mapping configuration
+                {
+                    "outputs": [
+                        {"event_name": "APL_CANDLE_CLOSE_1H", "connector_id": "candle_1h_ready"},
+                        {"event_name": "APL_SIGNAL_DETECTED", "connector_id": "signal_detected"}
+                    ]
+                }
+            cache: StrategyCache instance
         """
-        self._cache = build_spec.strategy_cache
-        self._trigger_mappings = build_spec.config["trigger_mappings"]
+        self._cache = cache
+        
+        # Build reverse mapping: APL_* event_name → connector_id
+        for output in config.get("outputs", []):
+            event_name = output["event_name"]
+            connector_id = output["connector_id"]
+            self._output_map[event_name] = connector_id
     
     def get_worker_id(self) -> str:
         """Return worker ID."""
@@ -170,7 +182,7 @@ class FlowInitiator(IWorker):
     
     def on_external_event(self, event: ExternalEvent) -> DispositionEnvelope:
         """
-        Handle external trigger event.
+        Handle external trigger event (APL_* events).
         
         Flow:
         1. Initialize strategy run (side effect on cache)
@@ -178,7 +190,7 @@ class FlowInitiator(IWorker):
         3. Return PUBLISH disposition with mapped connector
         
         Args:
-            event: External event with event_name, timestamp, payload
+            event: External event with APL_* event_name, timestamp, payload
         
         Returns:
             DispositionEnvelope with PUBLISH disposition
@@ -192,17 +204,17 @@ class FlowInitiator(IWorker):
             timestamp=event.timestamp
         )
         
-        # 2. Lookup output connector from BuildSpec config
-        output_connector = self._trigger_mappings.get(event.event_name)
+        # 2. Lookup output connector from WorkerBuildSpec config
+        output_connector = self._output_map.get(event.event_name)
         
         if output_connector is None:
             raise ValueError(
                 f"FlowInitiator: No output mapping for event '{event.event_name}'. "
-                f"Available mappings: {list(self._trigger_mappings.keys())}. "
+                f"Available mappings: {list(self._output_map.keys())}. "
                 f"Check platform_components.flow_initiator.config in strategy_blueprint.yaml"
             )
         
-        # 3. Return PUBLISH disposition (EventAdapter translates to event name)
+        # 3. Return PUBLISH disposition (EventAdapter translates to event name without APL_ prefix)
         return DispositionEnvelope(
             disposition=Disposition.PUBLISH,
             connector_id=output_connector,
@@ -214,30 +226,35 @@ class FlowInitiator(IWorker):
         pass
 ```
 
-### BuildSpec Structure
+### BuildSpec Structure (IN-MEMORY)
+
+FlowInitiator gebruikt de standaard **WorkerBuildSpec** Pydantic model (in-memory, niet on-disk):
 
 ```python
-# backend/assembly/build_specs/flow_initiator_build_spec.py
+# IN-MEMORY BuildSpec generated by ConfigTranslator
+# Validated against: backend/config/schemas/buildspecs/worker_build_spec_schema.py
 
-from dataclasses import dataclass
-from backend.core.interfaces.strategy_cache import IStrategyCache
+WorkerBuildSpec(
+    worker_id="flow_initiator",
+    worker_type="FlowInitiator",
+    config={
+        "outputs": [
+            {
+                "event_name": "APL_CANDLE_CLOSE_1H",  # Input event (APL_ prefix)
+                "connector_id": "candle_1h_ready"
+            },
+            {
+                "event_name": "APL_WEEKLY_SCHEDULE",  # Input event (APL_ prefix)
+                "connector_id": "weekly_ready"
+            }
+        ]
+    }
+)
 
-@dataclass
-class FlowInitiatorBuildSpec:
-    """
-    BuildSpec for FlowInitiator configuration.
-    
-    Generated by ConfigTranslator from strategy_blueprint.yaml
-    """
-    component_id: str  # "platform/flow_initiator/v1.0.0"
-    worker_id: str     # "flow_initiator_STR_ABC123"
-    strategy_cache: IStrategyCache
-    
-    config: dict  # FlowInitiator-specific config
-    # config contains:
-    # - trigger_mappings: dict[str, str]  # event_name → connector_id
-    # - inputs: list[ConnectorSpec]
-    # - outputs: list[ConnectorSpec]
+# WorkerFactory receives this BuildSpec and:
+# 1. Validates against worker_build_spec_schema.py
+# 2. Instantiates FlowInitiator
+# 3. Calls configure(config=buildspec.config, cache=strategy_cache)
 ```
 
 ---
@@ -248,7 +265,7 @@ class FlowInitiatorBuildSpec:
 
 ```yaml
 # strategy_blueprint.yaml
-# Generated by Strategy Builder UI
+# Generated by Strategy Builder UI Canvas
 
 metadata:
   strategy_id: "smart_dca_v1"
@@ -260,23 +277,24 @@ platform_components:
     component_id: "platform/flow_initiator/v1.0.0"
     
     config:
-      # Generated by FlowInitiatorConfigService (backend)
-      trigger_mappings:
-        CANDLE_CLOSE_1H: candle_1h_ready
-        WEEKLY_SCHEDULE: weekly_ready
-      
+      # Auto-generated by UI when user configures inputs
       inputs:
-        - connector_id: external_trigger
-          event_types:
-            - CANDLE_CLOSE_1H
-            - WEEKLY_SCHEDULE
+        - event_name: APL_CANDLE_CLOSE_1H    # Application event
+          connector_id: candle_1h_ready
+        - event_name: APL_WEEKLY_SCHEDULE    # Application event
+          connector_id: weekly_ready
       
+      # Auto-generated outputs (UI creates these when inputs are configured)
       outputs:
         - connector_id: candle_1h_ready
-          event_name: CANDLE_CLOSE_1H_READY
+          event_name: CANDLE_CLOSE_1H      # No APL_ prefix, no _READY suffix
         - connector_id: weekly_ready
-          event_name: WEEKLY_SCHEDULE_READY
+          event_name: WEEKLY_SCHEDULE      # No APL_ prefix, no _READY suffix
 ```
+
+**Event Naming:**
+- **Inputs**: `APL_*` prefix (application/platform events)
+- **Outputs**: No prefix, no suffix (strategy-internal events)
 
 ### Strategy Wiring Map (Event Routing)
 
@@ -287,210 +305,190 @@ platform_components:
 adapter_configurations:
   flow_initiator:
     subscriptions:
-      - event_name: CANDLE_CLOSE_1H
+      - event_name: APL_CANDLE_CLOSE_1H       # Subscribe to platform event
         connector_id: external_trigger
-      - event_name: WEEKLY_SCHEDULE
+      - event_name: APL_WEEKLY_SCHEDULE       # Subscribe to platform event
         connector_id: external_trigger
     
     publications:
       - connector_id: candle_1h_ready
-        event_name: CANDLE_CLOSE_1H_READY
+        event_name: CANDLE_CLOSE_1H         # Publish without APL_ prefix
       - connector_id: weekly_ready
-        event_name: WEEKLY_SCHEDULE_READY
+        event_name: WEEKLY_SCHEDULE         # Publish without APL_ prefix
 
   signal_detector_1:
     subscriptions:
-      - event_name: CANDLE_CLOSE_1H_READY
+      - event_name: CANDLE_CLOSE_1H         # Subscribe to FlowInitiator output
         connector_id: market_trigger
-      - event_name: WEEKLY_SCHEDULE_READY
+      - event_name: WEEKLY_SCHEDULE         # Subscribe to FlowInitiator output
         connector_id: schedule_trigger
 ```
 
 ---
 
-## Backend Services
+## API Service Layer
 
 ### FlowInitiatorConfigService
 
-Domain service voor FlowInitiator configuratie management.
+API service voor FlowInitiator metadata queries (read-only operations).
 
 ```python
-# backend/assembly/services/flow_initiator_config_service.py
+# services/api_services/flow_initiator_config_service.py
+
+from typing import List
+from backend.config.manifest_loader import ManifestLoader
 
 class FlowInitiatorConfigService:
     """
-    Domain service for FlowInitiator configuration.
+    API service providing FlowInitiator metadata to Strategy Builder UI.
     
     Responsibilities:
-    - Generate connector mappings for triggers
-    - Apply naming conventions
-    - Validate trigger compatibility
-    - Provide query methods for UI
+    - Query available platform event types (APL_* events)
+    - Serve FlowInitiator manifest to UI
+    - Basic validation of output configuration structure
     
-    Command/Query Pattern:
-    - Commands: add_trigger, remove_trigger (modify config)
-    - Queries: get_available_outputs (read config)
+    NOT responsible for:
+    - BuildSpec generation (ConfigTranslator's job)
+    - Schema validation (ConfigValidator's job)
+    - Decision logic (ConfigTranslator's job)
+    
+    Layer: Service Layer (api_services subgroup)
+    Consumers: BFF API endpoints (frontends/web/api/strategy_builder/)
     """
     
-    def add_trigger(
-        self,
-        current_config: dict,
-        trigger_event: str
-    ) -> dict:
+    def __init__(self):
+        """Initialize service with manifest loader."""
+        self._manifest_loader = ManifestLoader()
+    
+    def get_available_event_types(self) -> List[str]:
         """
-        Command: Add new trigger to FlowInitiator.
+        Query available platform event types for FlowInitiator inputs.
         
-        Applies naming convention and generates connector mappings.
-        
-        Args:
-            current_config: Current FlowInitiator config
-            trigger_event: Event name (e.g., "CANDLE_CLOSE_1H")
+        Returns list of APL_* event names that can be configured.
         
         Returns:
-            Updated config with new trigger mapping
+            List of event names: ["APL_CANDLE_CLOSE_1H", "APL_SIGNAL_DETECTED", ...]
         """
-        # Apply naming convention (backend logic!)
-        output_connector = self._derive_output_connector(trigger_event)
-        output_event = self._derive_output_event(trigger_event)
-        
-        # Update trigger mappings
-        updated_config = current_config.copy()
-        updated_config["trigger_mappings"][trigger_event] = output_connector
-        
-        # Add input connector
-        if "inputs" not in updated_config:
-            updated_config["inputs"] = []
-        
-        # Check if external_trigger already exists
-        external_trigger = next(
-            (inp for inp in updated_config["inputs"] if inp["connector_id"] == "external_trigger"),
-            None
-        )
-        
-        if external_trigger:
-            external_trigger["event_types"].append(trigger_event)
-        else:
-            updated_config["inputs"].append({
-                "connector_id": "external_trigger",
-                "event_types": [trigger_event]
-            })
-        
-        # Add output connector
-        if "outputs" not in updated_config:
-            updated_config["outputs"] = []
-        
-        updated_config["outputs"].append({
-            "connector_id": output_connector,
-            "event_name": output_event
-        })
-        
-        return updated_config
-    
-    def _derive_output_connector(self, event_name: str) -> str:
-        """
-        Naming convention: CANDLE_CLOSE_1H → candle_1h_ready
-        
-        Pattern: lowercase(event_name) + "_ready"
-        """
-        return event_name.lower() + "_ready"
-    
-    def _derive_output_event(self, event_name: str) -> str:
-        """
-        Naming convention: CANDLE_CLOSE_1H → CANDLE_CLOSE_1H_READY
-        
-        Pattern: event_name + "_READY"
-        """
-        return event_name + "_READY"
-    
-    def remove_trigger(
-        self,
-        current_config: dict,
-        trigger_event: str
-    ) -> dict:
-        """
-        Command: Remove trigger from FlowInitiator.
-        
-        Args:
-            current_config: Current FlowInitiator config
-            trigger_event: Event name to remove
-        
-        Returns:
-            Updated config without trigger
-        """
-        updated_config = current_config.copy()
-        
-        # Remove from trigger_mappings
-        if trigger_event in updated_config.get("trigger_mappings", {}):
-            output_connector = updated_config["trigger_mappings"][trigger_event]
-            del updated_config["trigger_mappings"][trigger_event]
-            
-            # Remove from inputs
-            for inp in updated_config.get("inputs", []):
-                if trigger_event in inp.get("event_types", []):
-                    inp["event_types"].remove(trigger_event)
-            
-            # Remove from outputs
-            updated_config["outputs"] = [
-                out for out in updated_config.get("outputs", [])
-                if out["connector_id"] != output_connector
-            ]
-        
-        return updated_config
-    
-    def get_available_outputs(self, config: dict) -> list[dict]:
-        """
-        Query: Get available output connectors for UI.
-        
-        Args:
-            config: FlowInitiator config
-        
-        Returns:
-            List of output connector info
-        """
+        # Query from platform event registry or manifest
         return [
-            {
-                "connector_id": out["connector_id"],
-                "event_name": out["event_name"],
-                "display_name": self._format_display_name(out["event_name"])
-            }
-            for out in config.get("outputs", [])
+            "APL_CANDLE_CLOSE_1H",
+            "APL_CANDLE_CLOSE_4H",
+            "APL_CANDLE_CLOSE_1D",
+            "APL_WEEKLY_SCHEDULE",
+            "APL_DAILY_SCHEDULE",
+            "APL_SIGNAL_DETECTED",
+            "APL_RISK_EVENT",
+            "APL_NEWS_EVENT"
         ]
     
-    def _format_display_name(self, event_name: str) -> str:
-        """Format event name for UI display."""
-        # CANDLE_CLOSE_1H_READY → "Candle Close 1H Ready"
-        return event_name.replace("_", " ").title()
+    def get_manifest(self) -> dict:
+        """
+        Return FlowInitiator manifest for UI.
+        
+        UI uses manifest to:
+        - Check capabilities.io.dynamic_outputs flag
+        - Show platform component in UI
+        - Understand dependencies
+        
+        Returns:
+            Manifest dictionary with dynamic_outputs flag
+        """
+        return self._manifest_loader.load_manifest(
+            "backend/config/manifests/flow_initiator_manifest.yaml"
+        )
+    
+    def validate_output_config(self, outputs: List[dict]) -> bool:
+        """
+        Basic validation of output configuration structure.
+        
+        Simple validation only - complex validation in ConfigValidator.
+        
+        Args:
+            outputs: List of output configurations
+                [
+                    {"event_name": "APL_CANDLE_CLOSE_1H", "connector_id": "candle_1h_ready"},
+                    ...
+                ]
+        
+        Returns:
+            True if structure is valid
+        
+        Raises:
+            ValueError: If structure is invalid
+        """
+        for output in outputs:
+            if "event_name" not in output or "connector_id" not in output:
+                raise ValueError("Output must have 'event_name' and 'connector_id'")
+            
+            # Check APL_ prefix
+            if not output["event_name"].startswith("APL_"):
+                raise ValueError(
+                    f"Input event must have APL_ prefix: {output['event_name']}"
+                )
+        
+        return True
 ```
 
-### Backend API Endpoints
+---
+
+## BFF API Layer
+
+### FlowInitiator Endpoints
+
+Backend-for-Frontend API endpoints voor Strategy Builder UI.
 
 ```python
-# backend/api/strategy_builder/flow_initiator_endpoints.py
+# frontends/web/api/strategy_builder/flow_initiator_endpoints.py
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import List
+from services.api_services.flow_initiator_config_service import FlowInitiatorConfigService
 
-router = APIRouter(prefix="/strategy-builder/flow-initiator", tags=["strategy-builder"])
+router = APIRouter(
+    prefix="/api/strategy-builder/flow-initiator",
+    tags=["strategy-builder"]
+)
 
-class AddTriggerRequest(BaseModel):
-    strategy_id: str
-    trigger_event: str
+# Initialize API service
+config_service = FlowInitiatorConfigService()
 
-class RemoveTriggerRequest(BaseModel):
-    strategy_id: str
-    trigger_event: str
+class AvailableEventsResponse(BaseModel):
+    """Response model for available platform events."""
+    events: List[str]
 
-@router.post("/add-trigger")
-def add_trigger_to_flow_initiator(request: AddTriggerRequest):
+class ManifestResponse(BaseModel):
+    """Response model for FlowInitiator manifest."""
+    manifest: dict
+
+@router.get("/available-events", response_model=AvailableEventsResponse)
+def get_available_platform_events():
     """
-    Command: Add trigger to FlowInitiator configuration.
+    Query: Get available platform event types (APL_* events).
     
-    Business logic in backend service, not UI!
+    Used by Strategy Builder UI to populate dropdown in Platform Components step.
+    
+    Returns:
+        List of APL_* event names that can be configured as FlowInitiator inputs
     """
-    # Load current blueprint
-    blueprint = load_strategy_blueprint(request.strategy_id)
+    events = config_service.get_available_event_types()
+    return AvailableEventsResponse(events=events)
+
+@router.get("/manifest", response_model=ManifestResponse)
+def get_flow_initiator_manifest():
+    """
+    Query: Get FlowInitiator manifest.
     
-    # Use domain service
+    Used by Strategy Builder UI to:
+    - Check capabilities.io.dynamic_outputs flag
+    - Show platform component metadata
+    - Understand dependencies
+    
+    Returns:
+        FlowInitiator manifest dictionary
+    """
+    manifest = config_service.get_manifest()
+    return ManifestResponse(manifest=manifest)
     service = FlowInitiatorConfigService()
     current_config = blueprint["platform_components"]["flow_initiator"]["config"]
     
@@ -1103,32 +1101,124 @@ class TestFlowInitiatorConfigService:
 
 ---
 
+## Platform Component Manifest
+
+**Complete manifest design:** See [FlowInitiator Manifest Design](FLOW_INITIATOR_MANIFEST.md)
+
+### Key Manifest Properties
+
+```yaml
+# backend/config/manifests/flow_initiator_manifest.yaml
+
+plugin_id: "platform/flow_initiator/v1.0.0"
+category: "platform_component"
+
+capabilities:
+  io:
+    dynamic_outputs: true    # 🔥 Outputs from strategy_blueprint, not manifest
+
+dependencies:
+  requires_system_resources:
+    strategy_cache: true
+
+inputs:
+  - connector_id: "external_trigger"
+    handler_method: "on_external_event"
+
+outputs: []  # Empty - runtime generated
+```
+
+**Event Naming Convention:**
+- **Inputs:** `APL_*` prefix (e.g., `APL_CANDLE_CLOSE_1H`)
+- **Outputs:** No prefix, no suffix (e.g., `CANDLE_CLOSE_1H`)
+
+**Manifest Location:**
+- Platform manifests: `backend/config/manifests/`
+- Plugin manifests: `plugins/workers/{category}/{name}/manifest.yaml`
+
+---
+
+## Component Positioning (3-Layer Architecture)
+
+### Backend Layer (Layer 3: Engine)
+```
+backend/
+├── core/
+│   └── flow_initiator.py                    # FlowInitiator implementation
+├── assembly/
+│   ├── config_translator.py                 # IN-MEMORY BuildSpec generation
+│   ├── worker_factory.py                    # Worker instantiation
+│   └── event_wiring_factory.py              # EventAdapter wiring
+├── config/
+│   ├── manifests/
+│   │   └── flow_initiator_manifest.yaml     # Platform manifest
+│   └── schemas/
+│       └── buildspecs/
+│           ├── worker_build_spec_schema.py  # BuildSpec validation schema
+│           └── wiring_build_spec_schema.py  # WiringBuildSpec validation schema
+└── dtos/
+```
+
+### Service Layer (Layer 2: Orchestration)
+```
+services/
+├── operation_service.py                     # Domain service: lifecycle
+├── optimization_service.py                  # Domain service: workflows
+└── api_services/
+    └── flow_initiator_config_service.py     # API service: metadata queries
+```
+
+### Frontend Layer (Layer 1: Presentation)
+```
+frontends/
+└── web/
+    ├── api/ (BFF - Backend-for-Frontend)
+    │   └── strategy_builder/
+    │       └── flow_initiator_endpoints.py  # REST endpoints
+    └── ui/
+        └── components/
+            └── PlatformComponentsStep.tsx   # UI component
+```
+
+**Key Principles:**
+- **ConfigTranslator** = "THE THINKER" (all decision logic)
+- **Factories** = "PURE BUILDERS" (no decisions, only assembly)
+- **BuildSpecs** = IN-MEMORY only (validated against schemas, not stored on disk)
+- **API Services** = Read-only metadata queries for UI
+- **BFF API** = Backend-for-Frontend REST endpoints
+
+---
+
 ## Implementation Components
 
-### Core Components
-- FlowInitiator class (backend/core/flow_initiator.py)
-- FlowInitiatorBuildSpec (backend/assembly/build_specs/)
-- FlowInitiatorConfigService (backend/assembly/services/)
+### Core Components (Backend Layer)
+- `backend/core/flow_initiator.py` - FlowInitiator implementation
+- `backend/config/manifests/flow_initiator_manifest.yaml` - Platform manifest
+- `backend/config/schemas/buildspecs/worker_build_spec_schema.py` - Validation schema
 
-### Config Integration
-- ConfigTranslator FlowInitiator support
-- WorkerFactory FlowInitiator creation
-- EventWiringFactory adapter creation
+### Service Components (Service Layer)
+- `services/api_services/flow_initiator_config_service.py` - API service for metadata
 
-### Backend API
-- API endpoints (add_trigger, remove_trigger, get_outputs)
+### Config Integration (Backend Layer)
+- ConfigTranslator FlowInitiator support (IN-MEMORY WorkerBuildSpec generation)
+- WorkerFactory FlowInitiator instantiation
+- EventWiringFactory adapter creation (IN-MEMORY WiringBuildSpecs)
+
+### Frontend API (Frontend Layer)
+- `frontends/web/api/strategy_builder/flow_initiator_endpoints.py` - BFF REST endpoints
 - Request/Response DTOs
 
-### UI Integration
-- Canvas FlowInitiator node (always present)
-- Data connector selection UI
-- Auto-wiring to FlowInitiator
-- Output port rendering
+### UI Integration (Frontend Layer)
+- Canvas FlowInitiator node (dynamic outputs from strategy_blueprint)
+- Platform Components configuration UI
+- Auto-generated outputs when inputs configured
+- Output connector rendering
 
 ---
 
 ## Related Documentation
 
+- **Manifest Design:** [FlowInitiator Manifest](FLOW_INITIATOR_MANIFEST.md)
 - **Architecture:** [Platform Components](../../../architecture/PLATFORM_COMPONENTS.md)
 - **Architecture:** [Event-Driven Wiring](../../../architecture/EVENT_DRIVEN_WIRING.md)
 - **Reference:** [StrategyCache](../../../reference/platform/strategy_cache.md)
