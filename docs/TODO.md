@@ -1,8 +1,7 @@
 # SimpleTraderV3 - TODO List
 
-**Huidige Focus (2025-10-30):** Week 1 - Configuration Schemas (CRITICAL PATH)
-> **Besluit:** Config schemas hebben te veel afhankelijkheden - NU eerst aanpakken!
-> Alles anders (Bootstrap, Factories, EventAdapter, Workers) komt daarna.
+**Huidige Focus (2025-11-06):** FlowInitiator & DataProvider Implementation
+> **Status:** PlatformDataDTO complete (minimal design), proceeding with FlowInitiator TDD cycle
 
 ## 📚 Documentation Quick Links
 
@@ -24,7 +23,7 @@
 ### Week 0: Foundation - ✅ COMPLETE
 
 **Data Contracts (DTOs):**
-- [x] Shared Layer: DispositionEnvelope, CausalityChain
+- [x] Shared Layer: DispositionEnvelope, CausalityChain, PlatformDataDTO
 - [x] Signal/Risk Layer: Signal, Risk
 - [x] Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 - [x] Execution Layer: ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
@@ -34,7 +33,9 @@
 - [x] IEventBus (protocol + implementation)
 - [x] IWorkerLifecycle (protocol)
 
-**Metrics:** 404 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+**Metrics:** 350 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+
+**Recent:** PlatformDataDTO refactored to minimal design (3 fields: source_type, timestamp, payload)
 
 ---
 
