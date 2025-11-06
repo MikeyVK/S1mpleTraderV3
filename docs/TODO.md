@@ -78,8 +78,14 @@
 - [ ] WorkerFactory (worker instantiation from BuildSpecs)
 - [ ] EventWiringFactory (EventAdapter assembly from BuildSpecs)
 - [ ] StrategyFactory (complete strategy orchestration)
+- [ ] **WorkerMetadataRegistry** (runtime registry for manifest metadata)
+  - **Purpose:** Enable StrategyCache DTO validation without manifest parsing at runtime
+  - **Built during bootstrap:** PluginRegistry → ConfigTranslator → Factory → Registry
+  - **Contains:** WorkerMetadata (produces_dtos, requires_dtos, scope) per worker
+  - **Usage:** O(1) lookups for runtime validation (defense-in-depth)
+  - **Design doc:** `docs/development/backend/core/WORKER_METADATA_REGISTRY_DESIGN.md`
 
-**Deliverable:** Complete strategy assembly from BuildSpecs (target: 60+ tests)
+**Deliverable:** Complete strategy assembly from BuildSpecs + runtime metadata registry (target: 70+ tests)
 
 ---
 
@@ -92,8 +98,14 @@
 - [ ] EventAdapter (bus-agnostic worker wrapper)
 - [ ] TickCacheManager (run lifecycle orchestration)
 - [ ] PlanningAggregator (4-plan coordinator, mode-aware)
+- [ ] **StrategyCache Runtime Validation** (optional defense-in-depth)
+  - **Purpose:** Validate worker DTO contracts at runtime (catch implementation bugs)
+  - **Dependencies:** WorkerMetadataRegistry (Week 3)
+  - **Implementation:** Update `set_result_dto()` / `get_required_dtos()` with optional validation
+  - **Strategy:** Fail-fast in dev, silent/logging in production
+  - **Validation checks:** Worker produces expected DTOs, requests only declared DTOs
 
-**Deliverable:** Core platform components implemented & integrated (target: 60+ tests)
+**Deliverable:** Core platform components implemented & integrated (target: 70+ tests)
 
 ---
 
@@ -165,6 +177,9 @@
 - [EVENTADAPTER_DESIGN.md](development/EVENTADAPTER_DESIGN.md) - EventAdapter architecture
 - [CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md](development/CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md) - Config pipeline
 - [BASEWORKER_DESIGN_PRELIM.md](development/BASEWORKER_DESIGN_PRELIM.md) - Worker foundation
+- [DATA_PROVIDER_DESIGN.md](development/backend/core/DATA_PROVIDER_DESIGN.md) - DataProvider architecture
+- [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md) - FlowInitiator implementation
+- **[WORKER_METADATA_REGISTRY_DESIGN.md](development/backend/core/WORKER_METADATA_REGISTRY_DESIGN.md)** - Runtime metadata registry (PENDING)
 
 **Architecture Guides:**
 - [LAYERED_ARCHITECTURE.md](architecture/LAYERED_ARCHITECTURE.md) - System layers
