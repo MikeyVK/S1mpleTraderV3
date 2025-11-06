@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 # Third-Party Imports
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PlatformDataDTO(BaseModel):
@@ -85,12 +85,9 @@ class PlatformDataDTO(BaseModel):
             raise ValueError("source_type cannot be empty")
         return value
     
-    class Config:
-        """Pydantic configuration."""
-        
-        frozen = True  # Immutable after creation
-        
-        json_schema_extra = {
+    model_config = ConfigDict(
+        frozen=True,  # Immutable after creation
+        json_schema_extra={
             "examples": [
                 {
                     "source_type": "candle_stream",
@@ -119,3 +116,4 @@ class PlatformDataDTO(BaseModel):
                 }
             ]
         }
+    )

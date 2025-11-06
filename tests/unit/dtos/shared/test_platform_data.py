@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 # Third-Party Imports
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 # Our Application Imports
 from backend.dtos.shared.platform_data import PlatformDataDTO
@@ -27,23 +27,21 @@ from backend.dtos.shared.platform_data import PlatformDataDTO
 class MockCandleWindow(BaseModel):
     """Mock CandleWindow DTO for testing payloads."""
     
+    model_config = ConfigDict(frozen=True)
+    
     symbol: str
     timeframe: str
     close: float
-    
-    class Config:
-        frozen = True
 
 
 class MockOrderBookSnapshot(BaseModel):
     """Mock OrderBook DTO for testing payloads."""
     
+    model_config = ConfigDict(frozen=True)
+    
     symbol: str
     bid_price: float
     ask_price: float
-    
-    class Config:
-        frozen = True
 
 
 class TestPlatformDataDTOCreation:
@@ -88,6 +86,7 @@ class TestPlatformDataDTOCreation:
         assert dto.timeframe == "1h"
         assert dto.payload == payload
         assert dto.metadata == metadata
+        assert dto.metadata is not None  # Type narrowing for Pylance
         assert dto.metadata["exchange"] == "binance"
     
     def test_create_with_different_payload_types(self):
