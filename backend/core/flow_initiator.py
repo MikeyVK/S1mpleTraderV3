@@ -120,6 +120,9 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
         Raises:
             ValueError: If source_type has no DTO type mapping
         """
+        # Type narrowing: cache is guaranteed non-None after initialize()
+        assert self._cache is not None, "FlowInitiator not initialized (call initialize() first)"
+
         # 1. Initialize StrategyCache with timestamp
         self._cache.start_new_strategy_run({}, data.timestamp)
 
