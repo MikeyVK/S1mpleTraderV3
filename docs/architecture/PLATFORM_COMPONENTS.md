@@ -206,7 +206,137 @@ cache.reconfigure(strategy_id="STRAT_002", run_anchor=new_anchor)
 
 ---
 
-### 3. TickCacheManager - Flow Orchestration (Pending)
+### 3. FlowInitiator - Per-Strategy Data Ingestion
+
+**Status:** ✅ Implemented (Phase 1.3)  
+**Location:** `backend/core/flow_initiator.py`  
+**Protocol:** `backend/core/interfaces/worker.py` (IWorker + IWorkerLifecycle)  
+**Tests:** 14/14 passing (100% coverage)  
+**Design:** [FLOW_INITIATOR_DESIGN.md](../development/backend/core/FLOW_INITIATOR_DESIGN.md)
+
+**Purpose:**
+Initializes StrategyCache and stores provider data before workers execute. **Critical race condition prevention**: ensures cache is ready before workers access it.
+
+**Key Features:**
+- ✅ **Per-Strategy Instance**: One instance per strategy (not singleton like EventBus)
+- ✅ **Platform-within-Strategy**: Singleton worker but requires strategy_cache
+- ✅ **Cache Initialization**: Calls `start_new_strategy_run()` before workers
+- ✅ **Type-Safe Storage**: DTO types injected via ConfigTranslator
+- ✅ **EventAdapter-Compliant**: Standard IWorker + IWorkerLifecycle pattern
+
+**Architecture:**
+```python
+# FlowInitiator is per-strategy worker
+flow_initiator = FlowInitiator(name="flow_init_strat_abc")
+
+# Initialize with strategy_cache and dto_types
+flow_initiator.initialize(
+    strategy_cache=strategy_cache,
+    dto_types={
+        "candle_stream": CandleWindow,
+        "orderbook_snapshot": OrderBookSnapshot
+    }
+)
+
+# EventAdapter wires to DataProvider events
+adapter.subscribe("_candle_btc_eth_ready_strat_abc", flow_initiator.on_data_ready)
+
+# Runtime: DataProvider publishes event
+# EventAdapter → FlowInitiator.on_data_ready(PlatformDataDTO)
+```
+
+**Data Flow:**
+```
+DataProvider → EventBus → FlowInitiator → StrategyCache → Workers
+             (PlatformDataDTO)  ↓
+                         1. start_new_strategy_run(timestamp)
+                         2. set_result_dto(dto_type, payload)
+                         3. return CONTINUE
+                                ↓
+                         EventAdapter publishes continuation
+                                ↓
+                         Workers retrieve from cache
+```
+
+**Usage Pattern:**
+```python
+class FlowInitiator(IWorker, IWorkerLifecycle):
+    def on_data_ready(self, data: PlatformDataDTO) -> DispositionEnvelope:
+        """
+        Handle data from DataProvider.
+        
+        Flow:
+        1. Initialize cache (start_new_strategy_run)
+        2. Validate DTO type mapping
+        3. Store payload in cache by TYPE
+        4. Return CONTINUE for worker triggering
+        """
+        # 1. Initialize StrategyCache
+        self._cache.start_new_strategy_run({}, data.timestamp)
+        
+        # 2. Validate source_type has mapping
+        if data.source_type not in self._dto_types:
+            raise ValueError(f"Unknown source_type: {data.source_type}")
+        
+        # 3. Store by TYPE (not source_type string!)
+        dto_type = self._dto_types[data.source_type]
+        self._cache.set_result_dto(dto_type, data.payload)
+        
+        # 4. Return CONTINUE → EventAdapter publishes continuation
+        return DispositionEnvelope(disposition=Disposition.CONTINUE)
+```
+
+**Configuration (via ConfigTranslator):**
+```python
+# ConfigTranslator generates WorkerBuildSpec:
+buildspec = WorkerBuildSpec(
+    worker_id="flow_initiator_strat_abc",
+    worker_type="FlowInitiator",
+    config={
+        "dto_types": {
+            "candle_stream": CandleWindow,      # Already resolved!
+            "sentiment": SentimentDTO
+        }
+    }
+)
+
+# EventAdapter wiring:
+wiring = WiringBuildSpec(
+    subscriptions=[{
+        "event_name": "_candle_btc_eth_ready_strat_abc",
+        "connector_id": "data_input",
+        "handler_method": "on_data_ready",
+        "publication_on_continue": "candle_stream_ready"
+    }]
+)
+```
+
+**Race Condition Prevention:**
+```python
+# ❌ WITHOUT FlowInitiator:
+class SignalDetector:
+    def on_candle_close(self, candle):
+        anchor = self._cache.get_run_anchor()  # 💥 NoActiveRunError!
+
+# ✅ WITH FlowInitiator:
+# 1. EventBus publishes "_candle_btc_eth_ready_strat_abc"
+# 2. FlowInitiator.on_data_ready() → cache.start_new_strategy_run() ✅
+# 3. FlowInitiator returns CONTINUE
+# 4. EventAdapter publishes "candle_stream_ready"
+# 5. SignalDetector.on_candle_close() → cache.get_run_anchor() ✅ Exists!
+```
+
+**Design Principles:**
+1. **Single Responsibility**: ONLY initialize cache and store data
+2. **EventAdapter Compliance**: Standard IWorker pattern (no special treatment)
+3. **Type Safety**: ConfigTranslator resolves DTO types (no runtime type checking)
+4. **Bus Agnostic**: Uses DispositionEnvelope, not EventBus directly
+
+**See:** [FLOW_INITIATOR_DESIGN.md](../development/backend/core/FLOW_INITIATOR_DESIGN.md) for detailed design.
+
+---
+
+### 4. TickCacheManager - Flow Orchestration (Pending)
 
 **Status:** ❌ Phase 3.3 (Not Yet Implemented)  
 **Location:** `backend/core/tick_cache_manager.py` (future)
@@ -229,7 +359,7 @@ Orchestrates tick-by-tick flow execution: EventBus events → Worker chains → 
 
 ---
 
-### 4. PluginRegistry - Plugin Discovery (Future)
+### 5. PluginRegistry - Plugin Discovery (Future)
 
 **Status:** ❌ Phase 2 (Not Yet Designed)  
 **Location:** `backend/core/plugin_registry.py` (future)
@@ -447,7 +577,8 @@ graph TB
 |-----------|----------|----------------|-------|--------|
 | **EventBus** | IEventBus | EventBus | 33/33 ✅ | Phase 1.2 Complete |
 | **StrategyCache** | IStrategyCache | StrategyCache | 20/20 ✅ | Phase 1.2 Complete |
-| **IWorkerLifecycle** | IWorkerLifecycle | - | 0/~10 | Phase 1.2 In Progress |
+| **FlowInitiator** | IWorker + IWorkerLifecycle | FlowInitiator | 14/14 ✅ | Phase 1.3 Complete |
+| **IWorkerLifecycle** | IWorkerLifecycle | - | 13/13 ✅ | Phase 1.2 Complete |
 | **TickCacheManager** | - | - | - | Phase 3.3 Pending |
 | **PluginRegistry** | - | - | - | Phase 2 Pending |
 
@@ -459,11 +590,12 @@ graph TB
 
 - **EventBus Design:** [EVENTBUS_DESIGN.md](../development/#Archief/EVENTBUS_DESIGN.md) - Archived (fully implemented + tested)
 - **IWorkerLifecycle Design:** [IWORKERLIFECYCLE_DESIGN.md](../development/#Archief/IWORKERLIFECYCLE_DESIGN.md) - Archived (fully implemented + tested)
+- **FlowInitiator Design:** [FLOW_INITIATOR_DESIGN.md](../development/backend/core/FLOW_INITIATOR_DESIGN.md) - Per-strategy data ingestion
 - **Point-in-Time Model:** [POINT_IN_TIME_MODEL.md](POINT_IN_TIME_MODEL.md) - StrategyCache data flows
 - **Architectural Shifts:** [ARCHITECTURAL_SHIFTS.md](ARCHITECTURAL_SHIFTS.md) - V2 → V3 changes
 - **Implementation Status:** [../implementation/IMPLEMENTATION_STATUS.md](../implementation/IMPLEMENTATION_STATUS.md) - Current progress
 
 ---
 
-**Last Updated:** 2025-10-29  
-**Status:** EventBus + StrategyCache + IWorkerLifecycle complete (all tested)
+**Last Updated:** 2025-11-09  
+**Status:** EventBus + StrategyCache + FlowInitiator + IWorkerLifecycle complete (all tested)

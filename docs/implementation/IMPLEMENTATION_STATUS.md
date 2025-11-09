@@ -6,10 +6,10 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 > **Quality Gates & TDD Workflow:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) and [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
 
-**Last Updated:** 2025-11-06
-**Total Tests Passing:** 350 tests (100% coverage)
+**Last Updated:** 2025-11-09
+**Total Tests Passing:** 364 tests (100% coverage)
 - **DTOs:** 239 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 59)
-- **Core Infrastructure:** 79 tests (StrategyCache: 20, EventBus: 33, Worker Protocol: 13, Enums: 13)
+- **Core Infrastructure:** 93 tests (StrategyCache: 20, EventBus: 33, Worker Protocol: 13, FlowInitiator: 14, Enums: 13)
 - **Utils:** 32 tests (ID Generators: 32)
 
 > **Note:** SWOT terminology fully replaced with quant terminology (2024-11-02). See [../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md](../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md) for complete refactoring details.
@@ -77,7 +77,7 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 ## Platform Services Status
 
-### Core Services (66 tests)
+### Core Services (80 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
@@ -86,13 +86,15 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 | eventbus.py | 10.00/10 | 18/18 ✅ | 10.00/10 | 0 | ✅ Phase 1.2 Complete |
 | interfaces/eventbus.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ IEventBus protocol |
 | interfaces/worker.py | 10.00/10 | 13/13 ✅ | 10.00/10 | 0 | ✅ Phase 1.2 Complete |
+| flow_initiator.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Phase 1.3 Complete |
 
-**Coverage:** 66/66 tests passing (100%)
+**Coverage:** 80/80 tests passing (100%)
 
 **Platform Services Complete:**
 - ✅ IStrategyCache protocol + StrategyCache implementation (20 tests)
 - ✅ IEventBus protocol + EventBus implementation (33 tests)
 - ✅ IWorkerLifecycle protocol (13 tests)
+- ✅ FlowInitiator - per-strategy data ingestion and cache initialization (14 tests)
 
 ### Core Infrastructure (14 tests)
 
@@ -129,9 +131,10 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 | **Platform (Cache)** | 20/20 ✅ | 100% |
 | **Platform (EventBus)** | 33/33 ✅ | 100% |
 | **Platform (Worker)** | 13/13 ✅ | 100% |
+| **Platform (FlowInitiator)** | 14/14 ✅ | 100% |
 | **Core Infrastructure** | 13/13 ✅ | 100% |
 | **Utilities** | 32/32 ✅ | 100% |
-| **TOTAL** | **350/350 ✅** | **100%** |
+| **TOTAL** | **364/364 ✅** | **100%** |
 
 ### By Phase (Roadmap)
 
@@ -141,11 +144,20 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 | **1.2** | IStrategyCache Protocol | 20/20 ✅ | Complete |
 | **1.2** | IEventBus Protocol | 33/33 ✅ | Complete |
 | **1.2** | IWorkerLifecycle Protocol | 13/13 ✅ | Complete |
+| **1.3** | FlowInitiator | 14/14 ✅ | Complete |
 | **1.4** | RunAnchor + StrategyCacheType | - | Complete |
 
-## Recent Updates (2025-11-06)
+## Recent Updates (2025-11-09)
 
-### PlatformDataDTO - Minimal Design Refactor
+### FlowInitiator - Complete Implementation
+- ✅ **FlowInitiator**: Per-strategy data ingestion and cache initialization (14/14 tests, 100% coverage)
+- ✅ **Platform-within-Strategy**: Singleton worker but requires strategy_cache (not global Platform)
+- ✅ **Type-Safe**: DTO types injected via ConfigTranslator (dto_types capability)
+- ✅ **Cache Initialization**: Calls start_new_strategy_run() before workers execute
+- ✅ **Quality Gates**: Pylint 10/10, 100% test coverage, all tests passing
+- ✅ **Documentation**: FLOW_INITIATOR_DESIGN.md exists, needs integration into PLATFORM_COMPONENTS.md
+
+### PlatformDataDTO - Minimal Design Refactor (2025-11-06)
 - ✅ **PlatformDataDTO**: Stripped to 3 essential fields (source_type, timestamp, payload)
 - ❌ **Removed Fields**: symbol, timeframe, metadata (YAGNI - data duplicated from payload)
 - ✅ **Rationale**: FlowInitiator only uses source_type (type lookup), timestamp (RunAnchor), payload (cache storage)
