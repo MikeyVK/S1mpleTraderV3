@@ -48,9 +48,10 @@ class TestSignalCreation:
         # Verify ID formats (cast to avoid Pylance FieldInfo warnings)
         # Verify causality chain
         causality = cast(CausalityChain, signal.causality)
-        assert causality.origin.id is not None
-        assert causality.origin.id.startswith("TCK_")
-        assert causality.origin.type == OriginType.TICK
+        # type: ignore[union-attr] on next lines - Pylance/Pydantic v2 FieldInfo false positive
+        assert causality.origin.id is not None  # type: ignore[union-attr]
+        assert causality.origin.id.startswith("TCK_")  # type: ignore[union-attr]
+        assert causality.origin.type == OriginType.TICK  # type: ignore[union-attr]
         # Verify ID formats
         signal_id = str(signal.signal_id)
         assert signal_id.startswith("SIG_")
