@@ -7,8 +7,8 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 > **Quality Gates & TDD Workflow:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) and [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
 
 **Last Updated:** 2025-11-09
-**Total Tests Passing:** 368 tests (100% coverage)
-- **DTOs:** 243 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 63)
+**Total Tests Passing:** 384 tests (100% coverage)
+- **DTOs:** 259 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 79)
 - **Core Infrastructure:** 93 tests (StrategyCache: 20, EventBus: 33, FlowInitiator: 14, Worker Protocol: 13, Enums: 13)
 - **Utils:** 32 tests (ID Generators: 32)
 
@@ -51,15 +51,16 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 **Coverage:** 52/52 tests passing (100%)
 
-### Shared DTOs (63 tests)
+### Shared DTOs (79 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
 | platform_data.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Complete (minimal design) |
+| origin.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ Complete |
 | causality.py | 10.00/10 | 28/28 ✅ | 10.00/10 | 0 | ✅ Complete (order_ids + fill_ids added) |
 | disposition_envelope.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ Complete |
 
-**Coverage:** 63/63 tests passing (100%)
+**Coverage:** 79/79 tests passing (100%)
 
 **Recent Changes:**
 - PlatformDataDTO stripped to 3 essential fields (source_type, timestamp, payload)
@@ -128,20 +129,20 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 | **Signal/Risk Detection** | 65/65 ✅ | 100% |
 | **Strategy Planning** | 63/63 ✅ | 100% |
 | **Execution** | 52/52 ✅ | 100% |
-| **Shared** | 59/59 ✅ | 100% |
+| **Shared** | 79/79 ✅ | 100% |
 | **Platform (Cache)** | 20/20 ✅ | 100% |
 | **Platform (EventBus)** | 33/33 ✅ | 100% |
 | **Platform (Worker)** | 13/13 ✅ | 100% |
 | **Platform (FlowInitiator)** | 14/14 ✅ | 100% |
 | **Core Infrastructure** | 13/13 ✅ | 100% |
 | **Utilities** | 32/32 ✅ | 100% |
-| **TOTAL** | **364/364 ✅** | **100%** |
+| **TOTAL** | **384/384 ✅** | **100%** |
 
 ### By Phase (Roadmap)
 
 | Phase | Component | Tests | Status |
 |-------|-----------|-------|--------|
-| **1.1** | Data Contracts (13 DTOs) | 239/239 ✅ | Complete |
+| **1.1** | Data Contracts (14 DTOs) | 259/259 ✅ | Complete |
 | **1.2** | IStrategyCache Protocol | 20/20 ✅ | Complete |
 | **1.2** | IEventBus Protocol | 33/33 ✅ | Complete |
 | **1.2** | IWorkerLifecycle Protocol | 13/13 ✅ | Complete |
@@ -171,6 +172,26 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 - ✅ **Architecture**: Single Responsibility Principle - container exists only between DataProvider and FlowInitiator
 
 **Breaking Change**: Removed 3 optional fields. Consumers must extract symbol/timeframe from payload.
+
+## Recent Updates (2025-11-09)
+
+### Origin DTO - Platform Data Origin Tracking (2025-11-09)
+- ✅ **Origin DTO**: Type-safe platform data origin reference
+  - **OriginType enum**: TICK, NEWS, SCHEDULE
+  - **ID prefix validation**: TCK_/NWS_/SCH_ must match type
+  - **Immutability**: Frozen model prevents modification
+- ✅ **Tests**: 16/16 passing (100% coverage)
+  - Creation: 3 tests (one per origin type)
+  - Enum validation: 2 tests
+  - Prefix validation: 4 tests (including invalid format)
+  - Immutability: 1 test
+  - Equality: 3 tests
+  - Edge cases: 3 tests (multiple underscores, min/max length)
+- ✅ **Quality Gates**: Pylint 10/10 (implementation + tests)
+- ✅ **json_schema_extra**: 3 examples added (best practice)
+- ✅ **Module exports**: Added to backend/dtos/shared/__init__.py
+
+**Total Tests**: 368 → 384 (+16 Origin tests)
 
 ### CausalityChain - Execution Tracking Enhancement (2025-11-09)
 - ✅ **CausalityChain Enhancement**: Added execution tracking fields for intent vs reality tracking
