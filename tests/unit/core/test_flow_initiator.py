@@ -171,7 +171,7 @@ class TestFlowInitiatorDataHandling:
     ) -> None:
         """on_data_ready calls cache.start_new_strategy_run with timestamp."""
         candle_payload = MockCandleWindow(symbol="BTC_EUR", data="test")
-        platform_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK), 
+        platform_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK),
             timestamp=test_timestamp,
             payload=candle_payload
         )
@@ -192,7 +192,7 @@ class TestFlowInitiatorDataHandling:
     ) -> None:
         """on_data_ready stores payload DTO in cache via set_result_dto."""
         candle_payload = MockCandleWindow(symbol="BTC_EUR", data="test_data")
-        platform_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK), 
+        platform_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK),
             timestamp=test_timestamp,
             payload=candle_payload
         )
@@ -211,7 +211,7 @@ class TestFlowInitiatorDataHandling:
         test_timestamp: datetime
     ) -> None:
         """on_data_ready returns CONTINUE disposition for EventAdapter."""
-        platform_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK), 
+        platform_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK),
             timestamp=test_timestamp,
             payload=MockCandleWindow(symbol="BTC_EUR", data="test")
         )
@@ -228,7 +228,7 @@ class TestFlowInitiatorDataHandling:
         test_timestamp: datetime
     ) -> None:
         """on_data_ready calls start_new_strategy_run BEFORE set_result_dto."""
-        platform_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK), 
+        platform_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK),
             timestamp=test_timestamp,
             payload=MockCandleWindow(symbol="BTC_EUR", data="test")
         )
@@ -249,14 +249,14 @@ class TestFlowInitiatorDataHandling:
     ) -> None:
         """on_data_ready handles multiple DTO types via source_type lookup."""
         # Test candle_stream
-        candle_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK), 
+        candle_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK),
             timestamp=test_timestamp,
             payload=MockCandleWindow(symbol="BTC_EUR", data="candles")
         )
         flow_initiator.on_data_ready(candle_dto)
 
         # Test news_feed
-        news_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK), 
+        news_dto = PlatformDataDTO(origin=create_test_origin(OriginType.TICK),
             timestamp=test_timestamp,
             payload=MockNewsEvent(headline="Breaking News", sentiment=0.8)
         )
