@@ -23,13 +23,7 @@
 ### Week 0: Foundation - ✅ COMPLETE
 
 **Data Contracts (DTOs):**
-- [x] Shared Layer: DispositionEnvelope, CausalityChain (enhanced with order_ids/fill_ids), PlatformDataDTO
-- [ ] **Origin DTO** - Platform data origin tracking
-  - **Purpose:** Type-safe platform data origin reference (TICK/NEWS/SCHEDULE)
-  - **Fields:** id (with type prefix), type (OriginType enum)
-  - **Location:** `backend/dtos/shared/origin.py`
-  - **Design:** [ORIGIN_DTO_DESIGN.md](development/backend/dtos/ORIGIN_DTO_DESIGN.md)
-  - **Note:** Used in PlatformDataDTO and CausalityChain for type-safe origin tracking
+- [x] Shared Layer: DispositionEnvelope, CausalityChain (enhanced with order_ids/fill_ids), PlatformDataDTO, Origin
 - [x] Signal/Risk Layer: Signal, Risk
 - [x] Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 - [ ] **ExecutionRequest DTO** - Payload for EXECUTION_INTENT_REQUESTED event
@@ -52,14 +46,13 @@
   - **Design:** [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md)
   - **Purpose:** Initialize StrategyCache before workers execute (race condition prevention)
 
-**Metrics:** 368 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+**Metrics:** 384 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
 
-**Recent:** 
+**Recent:**
+- Origin DTO complete (16/16 tests, type-safe platform data origin tracking) (2025-11-09)
 - CausalityChain execution tracking (order_ids/fill_ids) complete (2025-11-09)
 - FlowInitiator implementation complete (2025-11-09)
-- PlatformDataDTO refactored to minimal design (3 fields: source_type, timestamp, payload)
-
----
+- PlatformDataDTO refactored to minimal design (3 fields: source_type, timestamp, payload)---
 
 ### Week 1: Configuration Schemas - 🔥 IN PROGRESS (CRITICAL PATH)
 
