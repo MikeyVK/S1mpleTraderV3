@@ -151,31 +151,7 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 ## Recent Updates (2025-11-09)
 
-### FlowInitiator - Complete Implementation
-- ✅ **FlowInitiator**: Per-strategy data ingestion and cache initialization (14/14 tests, 100% coverage)
-- ✅ **Platform-within-Strategy**: Singleton worker but requires strategy_cache (not global Platform)
-- ✅ **Type-Safe**: DTO types injected via ConfigTranslator (dto_types capability)
-- ✅ **Cache Initialization**: Calls start_new_strategy_run() before workers execute
-- ✅ **Quality Gates**: Pylint 10/10, 100% test coverage, all tests passing
-- ✅ **Documentation**: FLOW_INITIATOR_DESIGN.md exists, needs integration into PLATFORM_COMPONENTS.md
-
-### PlatformDataDTO - Minimal Design Refactor (2025-11-06)
-- ✅ **PlatformDataDTO**: Stripped to 3 essential fields (source_type, timestamp, payload)
-- ❌ **Removed Fields**: symbol, timeframe, metadata (YAGNI - data duplicated from payload)
-- ✅ **Rationale**: FlowInitiator only uses source_type (type lookup), timestamp (RunAnchor), payload (cache storage)
-- ✅ **Test Quality**: Reduced from 20 quantity-driven tests to 14 meaningful tests
-- ✅ **Documentation Updates**:
-  - TDD_WORKFLOW.md: Replaced "20-30 tests typical" with completeness criteria
-  - QUALITY_GATES.md: Removed arbitrary quantity targets
-  - DATA_PROVIDER_DESIGN.md: Updated spec to match minimal implementation
-- ✅ **Quality**: Pylint 10/10, Pylance 0 errors, mypy strict passing
-- ✅ **Architecture**: Single Responsibility Principle - container exists only between DataProvider and FlowInitiator
-
-**Breaking Change**: Removed 3 optional fields. Consumers must extract symbol/timeframe from payload.
-
-## Recent Updates (2025-11-09)
-
-### Origin DTO - Platform Data Origin Tracking (2025-11-09)
+### Origin DTO - Platform Data Origin Tracking
 - ✅ **Origin DTO**: Type-safe platform data origin reference
   - **OriginType enum**: TICK, NEWS, SCHEDULE
   - **ID prefix validation**: TCK_/NWS_/SCH_ must match type
@@ -191,9 +167,7 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 - ✅ **json_schema_extra**: 3 examples added (best practice)
 - ✅ **Module exports**: Added to backend/dtos/shared/__init__.py
 
-**Total Tests**: 368 → 384 (+16 Origin tests)
-
-### CausalityChain - Execution Tracking Enhancement (2025-11-09)
+### CausalityChain - Execution Tracking Enhancement
 - ✅ **CausalityChain Enhancement**: Added execution tracking fields for intent vs reality tracking
   - `order_ids: list[str]` - Tracks submitted orders (intent from ExecutionHandler)
   - `fill_ids: list[str]` - Tracks filled orders (reality from ExchangeConnector)
@@ -214,7 +188,29 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
   - StrategyPlanner uses BOTH for balanced decision-making (confluence pattern)
   - Validated via git history (commit 8571457) - original implementation was correct
 
-**Total Tests**: 364 → 368 (+4 causality tests)
+### FlowInitiator - Complete Implementation
+- ✅ **FlowInitiator**: Per-strategy data ingestion and cache initialization (14/14 tests, 100% coverage)
+- ✅ **Platform-within-Strategy**: Singleton worker but requires strategy_cache (not global Platform)
+- ✅ **Type-Safe**: DTO types injected via ConfigTranslator (dto_types capability)
+- ✅ **Cache Initialization**: Calls start_new_strategy_run() before workers execute
+- ✅ **Quality Gates**: Pylint 10/10, 100% test coverage, all tests passing
+- ✅ **Documentation**: FLOW_INITIATOR_DESIGN.md complete, integrated into PLATFORM_COMPONENTS.md
+
+**Total Tests Today**: 364 → 384 (+20 tests: +16 Origin, +4 CausalityChain)
+
+### PlatformDataDTO - Minimal Design Refactor (2025-11-06)
+- ✅ **PlatformDataDTO**: Stripped to 3 essential fields (source_type, timestamp, payload)
+- ❌ **Removed Fields**: symbol, timeframe, metadata (YAGNI - data duplicated from payload)
+- ✅ **Rationale**: FlowInitiator only uses source_type (type lookup), timestamp (RunAnchor), payload (cache storage)
+- ✅ **Test Quality**: Reduced from 20 quantity-driven tests to 14 meaningful tests
+- ✅ **Documentation Updates**:
+  - TDD_WORKFLOW.md: Replaced "20-30 tests typical" with completeness criteria
+  - QUALITY_GATES.md: Removed arbitrary quantity targets
+  - DATA_PROVIDER_DESIGN.md: Updated spec to match minimal implementation
+- ✅ **Quality**: Pylint 10/10, Pylance 0 errors, mypy strict passing
+- ✅ **Architecture**: Single Responsibility Principle - container exists only between DataProvider and FlowInitiator
+
+**Breaking Change**: Removed 3 optional fields. Consumers must extract symbol/timeframe from payload.
 
 ## Recent Updates (2025-11-02)
 
