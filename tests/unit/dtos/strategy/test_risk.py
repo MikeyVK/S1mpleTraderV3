@@ -50,10 +50,10 @@ class TestRiskCreation:
             severity=0.75
         )
 
-        # Verify causality chain has origin
-        # type: ignore on next lines - Pylance/Pydantic v2 FieldInfo false positive
-        assert event.causality.origin.id.startswith("TCK_")  # type: ignore[union-attr]
-        assert event.causality.origin.type == OriginType.TICK  # type: ignore[union-attr]
+        # Verify causality chain has origin - use getattr to avoid Pylance FieldInfo false positives
+        origin_id = getattr(getattr(event.causality, "origin"), "id")
+        assert origin_id.startswith("TCK_")
+        assert getattr(getattr(event.causality, "origin"), "type") == OriginType.TICK
         # Verify ID formats
         risk_id = str(getattr(event, "risk_id"))
         assert risk_id.startswith("RSK_")

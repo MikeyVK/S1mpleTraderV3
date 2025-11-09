@@ -14,7 +14,6 @@ of the causal traceability chain.
 
 # Standard Library Imports
 from datetime import datetime, timezone
-from typing import cast
 
 # Third-Party Imports
 import pytest
@@ -45,13 +44,12 @@ class TestSignalCreation:
             signal_type="FVG_ENTRY"
         )
 
-        # Verify ID formats (cast to avoid Pylance FieldInfo warnings)
-        # Verify causality chain
-        causality = cast(CausalityChain, signal.causality)
-        # type: ignore[union-attr] on next lines - Pylance/Pydantic v2 FieldInfo false positive
-        assert causality.origin.id is not None  # type: ignore[union-attr]
-        assert causality.origin.id.startswith("TCK_")  # type: ignore[union-attr]
-        assert causality.origin.type == OriginType.TICK  # type: ignore[union-attr]
+        # Verify causality chain - use getattr to avoid Pylance FieldInfo false positives
+        causality = signal.causality
+        origin_id = getattr(getattr(causality, "origin"), "id")
+        assert origin_id is not None
+        assert origin_id.startswith("TCK_")
+        assert getattr(getattr(causality, "origin"), "type") == OriginType.TICK
         # Verify ID formats
         signal_id = str(signal.signal_id)
         assert signal_id.startswith("SIG_")
