@@ -311,19 +311,6 @@ Signal is pure detection output - no decisions, no planning, no execution detail
 
 ---
 
-## Analysis DTOs (Continued)
-
-**Status:** TODO - Next sections to document
-
-Planned coverage:
-- Signal (opportunity detection)
-- Risk (threat detection)
-- StrategyDirective (planning decision)
-
----
-
-## Analysis DTOs (Continued)
-
 ### Risk
 
 **Purpose:** Threat detection output from RiskMonitors
@@ -430,6 +417,168 @@ StrategyPlanner → Decision (combine signals + risks → StrategyDirective or r
 ```
 
 Risk is pure threat detection output - no decisions, no mitigation plans, no execution details.
+
+---
+## Analysis DTOs (Continued)
+
+**Status:** TODO - Next sections to document
+
+Planned coverage:
+- StrategyDirective (planning decision)
+
+---
+
+## Analysis DTOs (Continued)
+
+### StrategyDirective
+
+**Purpose:** Strategy planning decision output from StrategyPlanner to role-based planners
+
+**WHY this DTO exists:**
+- StrategyPlanner produces high-level trade decisions (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
+- Separates "strategic decision" from "tactical planning" (SRP - planners handle execution details)
+- Contains 4 sub-directives (Entry, Size, Exit, Execution) as constraints/hints for specialized planners
+- Scope field discriminates directive type (new position vs modify vs close)
+- Confidence scoring enables directive prioritization/rejection
+- Causality tracking from signals/risks through directive to execution
+- Bridge between Analysis DTOs (Signal/Risk) and Planning DTOs (EntryPlan/SizePlan/etc)
+- Mutable (not frozen) for downstream enrichment (order_ids tracking after execution)
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | StrategyPlanner | Combines Signal + Risk + Context → trade decision with constraints |
+| **Consumers** | EntryPlanner | Reads entry_directive for entry constraints |
+| | SizePlanner | Reads size_directive for sizing constraints |
+| | ExitPlanner | Reads exit_directive for exit constraints |
+| | ExecutionPlanner | Reads routing_directive for execution constraints |
+| | Journal | Persistence (decision audit trail) |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `directive_id` | str | Yes (auto) | Unique directive identifier (STR_ prefix). Added to causality chain. Enables correlation: signal → directive → execution → orders. |
+| `strategy_planner_id` | str | Yes | Identifies which StrategyPlanner produced directive. Enables planner-specific analysis (which planners perform best?). |
+| `decision_timestamp` | datetime | Yes (auto) | Exact moment of decision (UTC). Point-in-time model. Enables temporal analysis (decision latency, clustering). |
+| `causality` | CausalityChain | Yes | Complete ID chain from origin through signals/risks to this directive. Enables journal reconstruction: "Why this decision?". Foundation for causal analysis. |
+| `scope` | DirectiveScope | Yes | Decision type: NEW_TRADE, MODIFY_EXISTING, or CLOSE_EXISTING. Discriminates directive semantics. Type-safe routing. |
+| `confidence` | Decimal | Yes | Decision confidence [0.0-1.0]. Enables directive prioritization/rejection. Low confidence = skip or reduce size. |
+| `target_trade_ids` | list[str] | No | Existing trade IDs for MODIFY_EXISTING/CLOSE_EXISTING. Empty for NEW_TRADE. Validated consistency with scope. |
+| `entry_directive` | EntryDirective \| None | No | Entry constraints for EntryPlanner. Optional - planner uses defaults if missing. NEW_TRADE typically includes this. |
+| `size_directive` | SizeDirective \| None | No | Sizing constraints for SizePlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_EXISTING typically includes this. |
+| `exit_directive` | ExitDirective \| None | No | Exit constraints for ExitPlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_EXISTING typically includes this. |
+| `routing_directive` | ExecutionDirective \| None | No | Execution constraints for ExecutionPlanner. Optional - planner uses defaults if missing. All scopes may include this. |
+
+**WHY NOT frozen:**
+- StrategyDirective is enriched post-execution (order_ids added after orders placed)
+- Mutable enables downstream tracking without creating new DTO versions
+- Causality chain extended as directive flows through pipeline
+
+**WHY NOT included:**
+- ❌ `entry_price` - EntryPlanner calculates this (tactical detail, not strategic constraint)
+- ❌ `position_size` - SizePlanner calculates this (tactical detail, not strategic constraint)
+- ❌ `stop_loss_price` - ExitPlanner calculates this (tactical detail, not strategic constraint)
+- ❌ `order_type` - ExecutionPlanner decides this (tactical detail, not strategic constraint)
+- ❌ `approved` - Directive IS the approval (StrategyPlanner already decided to act)
+- ❌ `rejected_reason` - If rejected, no directive emitted (rejection = absence of directive)
+
+**Lifecycle:**
+```
+Created:    StrategyPlanner (combines Signal + Risk + Context → decision)
+Extended:   causality.strategy_directive_id = directive_id by StrategyPlanner
+Consumed:   Role-based planners (EntryPlanner, SizePlanner, ExitPlanner, ExecutionPlanner)
+            → Each planner reads its corresponding sub-directive
+Enriched:   order_ids added after ExecutionHandler places orders
+Persisted:  StrategyJournal (complete decision audit trail)
+Referenced: Throughout execution pipeline via causality.strategy_directive_id
+Modified:   Post-creation (order_ids tracking, not frozen)
+```
+
+**Design Decisions:**
+- **Decision 1:** Scope enum (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
+  - Rationale: Type-safe directive discrimination. Clear semantics. Compiler-enforced correctness.
+  - Alternative rejected: String literals (error-prone, no type safety)
+
+- **Decision 2:** 4 optional sub-directives (not required)
+  - Rationale: Flexibility - not all directives need all constraints. Planners have defaults. CLOSE_EXISTING may only need routing_directive.
+  - Alternative rejected: All sub-directives required (rigid, forces dummy values)
+
+- **Decision 3:** Sub-directives as constraints (not tactical plans)
+  - Rationale: SRP - StrategyPlanner sets strategic constraints, specialized planners calculate tactical details
+  - Alternative rejected: Rich directive with exact prices/sizes (violates SRP, tight coupling, no planner specialization)
+
+- **Decision 4:** Mutable (not frozen)
+  - Rationale: Enriched downstream (order_ids tracking). Avoids creating new DTO versions.
+  - Alternative rejected: Frozen + separate tracking DTO (complexity, indirection)
+
+- **Decision 5:** target_trade_ids validated with scope
+  - Rationale: Prevents invalid states (NEW_TRADE with trade IDs, MODIFY_EXISTING without IDs)
+  - Alternative rejected: No validation (runtime errors, invalid directives)
+
+- **Decision 6:** Confidence required (unlike Signal/Risk optional confidence)
+  - Rationale: StrategyPlanner ALWAYS quantifies decision confidence. Enables prioritization/rejection.
+  - Alternative rejected: Optional confidence (conceptually invalid - no decision without confidence assessment)
+
+- **Decision 7:** Causality chain continues from Signal/Risk
+  - Rationale: StrategyPlanner extends causal chain (signal_id/risk_id → strategy_directive_id). Enables complete audit trail.
+  - Alternative rejected: New causality chain (breaks causal continuity, no signal → directive link)
+
+**Validation Strategy:**
+- directive_id format: `STR_YYYYMMDD_HHMMSS_hash` (military datetime)
+- scope vs target_trade_ids consistency:
+  - NEW_TRADE: target_trade_ids must be empty
+  - MODIFY_EXISTING/CLOSE_EXISTING: target_trade_ids must not be empty
+- confidence: [0.0, 1.0] required
+- decision_timestamp: UTC-enforced (timezone-aware)
+- Sub-directives validated internally (decimal ranges, format checks)
+
+**Scope Semantics:**
+
+| Scope | target_trade_ids | Typical Sub-directives | Purpose |
+|-------|------------------|------------------------|---------|
+| NEW_TRADE | Empty (new position) | entry, size, exit, routing | Open new position from signal |
+| MODIFY_EXISTING | Not empty (existing trades) | size, exit, routing | Adjust stops, scale position, change routing |
+| CLOSE_EXISTING | Not empty (existing trades) | routing (exit urgency) | Close position from exit signal or risk |
+
+**Sub-Directive Semantics:**
+
+| Sub-Directive | Planner | Constraint Examples |
+|---------------|---------|---------------------|
+| EntryDirective | EntryPlanner | symbol, direction, timing_preference, preferred_price_zone, max_slippage |
+| SizeDirective | SizePlanner | aggressiveness, max_risk_amount, account_risk_pct |
+| ExitDirective | ExitPlanner | profit_taking_preference, risk_reward_ratio, stop_loss_tolerance |
+| ExecutionDirective | ExecutionPlanner | execution_urgency, iceberg_preference, max_total_slippage_pct |
+
+**StrategyPlanner Types & Directive Patterns:**
+
+| StrategyPlanner Type | Trigger | Scope | Typical Sub-directives |
+|---------------------|---------|-------|------------------------|
+| Entry Strategy | Signal + Context | NEW_TRADE | entry, size, exit, routing |
+| Position Management | Tick + Position | MODIFY_EXISTING | size, exit (trailing stops) |
+| Risk Control | Risk event | CLOSE_EXISTING | routing (urgency) |
+| Scheduled Operations | Schedule | NEW_TRADE | entry, size (DCA patterns) |
+
+**Directive Flow Example:**
+```
+Signal (FVG detected, confidence 0.85)
+  → StrategyPlanner combines Signal + Risk + Context
+    → Decision: NEW_TRADE with confidence 0.80
+      → StrategyDirective created:
+        - scope=NEW_TRADE
+        - entry_directive: BUY BTCUSDT, timing=0.9
+        - size_directive: aggressiveness=0.7, risk=2%
+        - exit_directive: RR=3.0, stop=1.5%
+        - routing_directive: urgency=0.8
+          → EntryPlanner → EntryPlan (exact entry price)
+          → SizePlanner → SizePlan (exact position size)
+          → ExitPlanner → ExitPlan (exact stop/target prices)
+          → ExecutionPlanner → ExecutionPlan (order routing)
+            → ExecutionDirective (aggregated execution instruction)
+```
+
+StrategyDirective is the strategic decision - planners handle tactical execution.
 
 ---
 

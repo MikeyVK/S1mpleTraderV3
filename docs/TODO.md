@@ -64,6 +64,15 @@
   - **Impact:** BREAKING CHANGE - affects Signal constructor, all tests, SignalDetector implementations
   - **Scope:** backend/dtos/strategy/signal.py, tests/unit/dtos/strategy/test_signal.py, all SignalDetector plugins
   - **Priority:** High (architectural correctness - causality timing semantics)
+  - **Documentation:** DTO_ARCHITECTURE.md already updated (Signal is pre-causality)
+
+- [ ] **Risk DTO: Remove causality field** (2025-11-09)
+  - **Issue:** Risk currently has causality field, but CausalityChain should only start at StrategyPlanner decision
+  - **Rationale:** RiskMonitor emits pure detection facts (pre-causality). StrategyPlanner creates first causal link (risk_id → strategy_directive_id)
+  - **Impact:** BREAKING CHANGE - affects Risk constructor, all tests, RiskMonitor implementations
+  - **Scope:** backend/dtos/strategy/risk.py, tests/unit/dtos/strategy/test_risk.py, all RiskMonitor plugins
+  - **Priority:** High (architectural correctness - causality timing semantics)
+  - **Documentation:** DTO_ARCHITECTURE.md already updated (Risk is pre-causality)
 
 - [ ] **Asset format: BASE/QUOTE → BASE_QUOTE** (2025-11-09)
   - **Issue:** Current BASE/QUOTE format with slash is problematic in filesystem paths, URLs, logs, database keys
@@ -71,6 +80,7 @@
   - **Impact:** BREAKING CHANGE - affects Signal, Risk, StrategyDirective validation + all tests
   - **Scope:** All DTOs with asset field, validation patterns, test fixtures
   - **Priority:** High (before production - filesystem safety)
+  - **Documentation:** DTO_ARCHITECTURE.md already updated (BASE_QUOTE format)
 
 - [ ] **Enums Centralisatie** (2025-11-09)
   - **Issue:** Enums currently embedded in DTOs (e.g., OriginType in origin.py, DirectiveScope in strategy_directive.py)
