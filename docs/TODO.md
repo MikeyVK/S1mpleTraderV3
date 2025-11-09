@@ -58,6 +58,20 @@
 - PlatformDataDTO refactored to minimal design (3 fields)
 
 **Technical Debt:**
+- [ ] **Signal DTO: Remove causality field** (2025-11-09)
+  - **Issue:** Signal currently has causality field, but CausalityChain should only start at StrategyPlanner decision
+  - **Rationale:** SignalDetector emits pure detection facts (pre-causality). StrategyPlanner creates first causal link (signal_id → strategy_directive_id)
+  - **Impact:** BREAKING CHANGE - affects Signal constructor, all tests, SignalDetector implementations
+  - **Scope:** backend/dtos/strategy/signal.py, tests/unit/dtos/strategy/test_signal.py, all SignalDetector plugins
+  - **Priority:** High (architectural correctness - causality timing semantics)
+
+- [ ] **Asset format: BASE/QUOTE → BASE_QUOTE** (2025-11-09)
+  - **Issue:** Current BASE/QUOTE format with slash is problematic in filesystem paths, URLs, logs, database keys
+  - **Solution:** Change to BASE_QUOTE with underscore separator (e.g., BTC_USD instead of BTC/USD)
+  - **Impact:** BREAKING CHANGE - affects Signal, Risk, StrategyDirective validation + all tests
+  - **Scope:** All DTOs with asset field, validation patterns, test fixtures
+  - **Priority:** High (before production - filesystem safety)
+
 - [ ] **Enums Centralisatie** (2025-11-09)
   - **Issue:** Enums currently embedded in DTOs (e.g., OriginType in origin.py, DirectiveScope in strategy_directive.py)
   - **Impact:** Hard to discover all enums, tight coupling, difficult to add new implementations

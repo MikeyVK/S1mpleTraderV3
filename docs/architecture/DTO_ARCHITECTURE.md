@@ -193,20 +193,28 @@ Never:      Stored long-term (only payload persists in StrategyCache)
 - SignalDetectors produce objective pattern detection events (entry/exit opportunities)
 - Separates "pattern detected" from "trade decision" (SRP - StrategyPlanner decides)
 - Confidence scoring enables multi-signal confluence analysis
-- Causality tracking enables complete decision audit trail
 - Time-stamped events enable historical pattern analysis
 - Immutable snapshots prevent accidental signal mutation during pipeline
+- Pure detection facts - no causality yet (causality starts at StrategyPlanner decision)
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | SignalDetector (any subtype) | Emits Signal when pattern detected (FVG, MSS, breakout, etc.) |
+| **Consumers** | StrategyPlanner | Decision input (combines Signal + Risk + Context) |
+| | Journal | Persistence (historical pattern analysis) |
+| | BacktestEngine | Strategy validation (signal quality metrics) |
 
 **Field Rationale:**
 
 | Field | Type | Required | WHY it exists |
 |-------|------|----------|---------------|
-| `causality` | CausalityChain | Yes | Complete ID chain from origin (TICK/NEWS/SCHEDULE) through detection. Enables journal reconstruction: "Why did we detect this signal?". Foundation for causal analysis. |
-| `signal_id` | str | Yes (auto) | Unique signal identifier (SIG_ prefix). Added to causality chain by downstream workers. Enables correlation: signal → strategy decision → execution → orders. |
+| `signal_id` | str | Yes (auto) | Unique signal identifier (SIG_ prefix). Foundation for causality chain created by StrategyPlanner. Enables correlation: signal → strategy decision → execution → orders. |
 | `timestamp` | datetime | Yes | Exact moment of pattern detection (UTC). Point-in-time model enforcement. Enables temporal analysis (signal clustering, timing patterns). |
-| `asset` | str | Yes | Trading pair (BASE/QUOTE format). Identifies which market signal applies to. Validated format prevents typos (BTC/EUR not BTCEUR). |
+| `asset` | str | Yes | Trading pair (BASE_QUOTE format). Identifies which market signal applies to. Validated format prevents typos (BTC_USD not BTCUSD). |
 | `direction` | Literal["long", "short"] | Yes | Intended trading direction. Discriminates entry vs exit signals. Type-safe (no "buy"/"sell" confusion). |
-| `signal_type` | str | Yes | Pattern identifier (UPPER_SNAKE_CASE). Plugin-specific classification (FVG_ENTRY, MSS_REVERSAL, etc). Enables signal taxonomy analysis. |
+| `signal_type` | str | Yes | Pattern identifier (UPPER_SNAKE_CASE). Plugin-specific classification (FVG_ENTRY, MSS_REVERSAL, etc). Enables signal taxonomy analysis. Runtime flexibility for plugin-based detectors. |
 | `confidence` | float \| None | No | Signal strength [0.0-1.0]. Optional because not all detectors quantify confidence. Enables weighted confluence analysis. Mirrors Risk.severity for balanced decision-making. |
 
 **WHY frozen:**
@@ -216,6 +224,7 @@ Never:      Stored long-term (only payload persists in StrategyCache)
 - Enables caching without defensive copying
 
 **WHY NOT included:**
+- ❌ `causality` - Signal is pre-causality (pure detection fact). CausalityChain only starts when StrategyPlanner makes decision (signal_id → strategy_directive_id). No causal chain exists yet at signal emission.
 - ❌ `entry_price` - Planning concern, not detection concern (handled by EntryPlanner)
 - ❌ `stop_loss` - Risk management concern, not signal concern (handled by ExitPlanner)
 - ❌ `position_size` - Sizing concern, not detection concern (handled by SizePlanner)
@@ -226,11 +235,12 @@ Never:      Stored long-term (only payload persists in StrategyCache)
 **Lifecycle:**
 ```
 Created:    SignalDetector (pattern recognition worker)
-Extended:   causality.signal_ids.append(signal_id) by SignalDetector
 Consumed:   StrategyPlanner (combines with Risk + Context for decision)
-Persisted:  StrategyJournal (complete causality chain)
-Referenced: Throughout pipeline via causality.signal_ids
+            → StrategyPlanner creates FIRST causal link (signal_id → strategy_directive_id)
+Persisted:  StrategyJournal (signal as standalone detection fact)
+Referenced: Via CausalityChain after StrategyPlanner decision
 Never:      Modified after creation (frozen)
+            Contains causality field (Signal is pre-causality)
 ```
 
 **Design Decisions:**
@@ -242,22 +252,30 @@ Never:      Modified after creation (frozen)
   - Rationale: Not all pattern detectors quantify confidence (some are binary: detected or not)
   - Alternative rejected: Required with default 1.0 (misleading - implies certainty when undefined)
 
-- **Decision 3:** UPPER_SNAKE_CASE signal_type
-  - Rationale: Consistent naming convention, prevents typos, enables taxonomy
+- **Decision 3:** signal_type as Literal[str] (not enum)
+  - Rationale: Runtime flexibility for plugin-based SignalDetectors. New detector = no core code change.
+  - Alternative rejected: Enum in backend/core/enums.py (forces code change per new detector, defeats plugin architecture)
+
+- **Decision 4:** UPPER_SNAKE_CASE signal_type convention
+  - Rationale: Consistent naming prevents typos, enables taxonomy, grep-friendly
   - Alternative rejected: Free-form strings (inconsistent, error-prone)
 
-- **Decision 4:** No entry/exit planning fields
+- **Decision 5:** No entry/exit planning fields
   - Rationale: SRP - signal detects pattern, planners decide execution details
   - Alternative rejected: Rich signal with price/stops (violates SRP, tight coupling)
 
-- **Decision 5:** Confidence mirrors Risk.severity scale
+- **Decision 6:** Confidence mirrors Risk.severity scale
   - Rationale: Symmetric scoring (high signal confidence vs high risk severity) enables balanced decision algebra
   - Alternative rejected: Asymmetric scales (complex decision logic)
 
+- **Decision 7:** No causality field (pre-causality)
+  - Rationale: Signal is pure detection fact. CausalityChain starts at StrategyPlanner decision point (signal_id → strategy_directive_id first link)
+  - Alternative rejected: Signal contains causality (premature - no decision made yet, violates causality semantics)
+
 **Validation Strategy:**
 - signal_id format: `SIG_YYYYMMDD_HHMMSS_hash` (military datetime)
-- signal_type: UPPER_SNAKE_CASE, no reserved prefixes (SYSTEM_, INTERNAL_, _)
-- asset: BASE/QUOTE format (e.g., BTC/EUR, not BTCEUR)
+- signal_type: UPPER_SNAKE_CASE, 3-25 chars, no reserved prefixes (SYSTEM_, INTERNAL_, _)
+- asset: BASE_QUOTE format (e.g., BTC_USD, not BTCUSD or BTC/USD)
 - timestamp: UTC-enforced (timezone-aware)
 - confidence: [0.0, 1.0] if provided
 - Reserved prefix prevention: Avoids namespace pollution
