@@ -322,6 +322,117 @@ Planned coverage:
 
 ---
 
+## Analysis DTOs (Continued)
+
+### Risk
+
+**Purpose:** Threat detection output from RiskMonitors
+
+**WHY this DTO exists:**
+- RiskMonitors produce objective threat detection events (portfolio/position/systemic risks)
+- Separates "threat detected" from "risk decision" (SRP - StrategyPlanner decides action)
+- Severity scoring enables risk-weighted decision making
+- Time-stamped events enable risk timeline analysis
+- Immutable snapshots prevent accidental risk mutation during pipeline
+- Pure detection facts - no causality yet (causality starts at StrategyPlanner decision)
+- System-wide scope (no trade_id) - risks are portfolio-level or market-level concerns
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | RiskMonitor (any subtype) | Emits Risk when threat detected (drawdown, volatility spike, correlation break, etc.) |
+| **Consumers** | StrategyPlanner | Decision input (combines Signal + Risk + Context) |
+| | Journal | Persistence (historical risk analysis) |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `risk_id` | str | Yes (auto) | Unique risk identifier (RSK_ prefix). Foundation for causality chain created by StrategyPlanner. Enables correlation: risk → strategy decision → defensive action. |
+| `timestamp` | datetime | Yes | Exact moment of threat detection (UTC). Point-in-time model enforcement. Enables temporal analysis (risk clustering, timing patterns). |
+| `risk_type` | str | Yes | Threat identifier (UPPER_SNAKE_CASE). Plugin-specific classification (STOP_LOSS_HIT, DRAWDOWN_BREACH, etc). Enables risk taxonomy analysis. Runtime flexibility for plugin-based monitors. |
+| `severity` | float | Yes | Risk severity [0.0-1.0]. Always required (all risks quantify threat level). Enables weighted decision analysis. Mirrors Signal.confidence for balanced decision-making. |
+| `affected_asset` | str \| None | No | Asset identifier (BASE_QUOTE format) or None for system-wide risks. Discriminates asset-specific vs portfolio-wide threats. None = exchange down, flash crash, etc. |
+
+**WHY frozen:**
+- Risks are immutable facts ("threat detected at T") - cannot retroactively change
+- Prevents accidental mutation during multi-worker pipeline flow
+- Safe concurrent access across workers
+- Enables caching without defensive copying
+
+**WHY NOT included:**
+- ❌ `causality` - Risk is pre-causality (pure detection fact). CausalityChain only starts when StrategyPlanner makes decision (risk_id → strategy_directive_id). No causal chain exists yet at risk emission.
+- ❌ `mitigation_plan` - Planning concern, not detection concern (handled by StrategyPlanner/ExitPlanner)
+- ❌ `stop_loss` - Execution concern, not detection concern (handled by ExitPlanner)
+- ❌ `trade_id` - Trade is post-hoc quant concept, not runtime entity (no trade exists yet at risk stage)
+- ❌ `strategy_id` - Routing metadata, not risk data (handled by EventAdapter)
+- ❌ `acknowledged` - Decision concern, not detection concern (StrategyPlanner decides)
+- ❌ `action_taken` - Outcome tracking, not detection data (handled by execution layer)
+
+**Lifecycle:**
+```
+Created:    RiskMonitor (threat recognition worker)
+Consumed:   StrategyPlanner (combines with Signal + Context for decision)
+            → StrategyPlanner creates FIRST causal link (risk_id → strategy_directive_id)
+Persisted:  StrategyJournal (risk as standalone detection fact)
+Referenced: Via CausalityChain after StrategyPlanner decision
+Never:      Modified after creation (frozen)
+            Contains causality field (Risk is pre-causality)
+```
+
+**Design Decisions:**
+- **Decision 1:** risk_type as Literal[str] (not enum)
+  - Rationale: Runtime flexibility for plugin-based RiskMonitors. New monitor = no core code change.
+  - Alternative rejected: Enum in backend/core/enums.py (forces code change per new monitor, defeats plugin architecture)
+
+- **Decision 2:** UPPER_SNAKE_CASE risk_type convention
+  - Rationale: Consistent naming prevents typos, enables taxonomy, grep-friendly
+  - Alternative rejected: Free-form strings (inconsistent, error-prone)
+
+- **Decision 3:** Required severity field (unlike Signal.confidence which is optional)
+  - Rationale: All risks quantify threat level. Risk without severity is meaningless (how bad is it?).
+  - Alternative rejected: Optional severity (conceptually invalid - risk = threat + magnitude)
+
+- **Decision 4:** Optional affected_asset for system-wide risks
+  - Rationale: Some risks are portfolio-wide (flash crash, exchange down). None = system-level threat.
+  - Alternative rejected: Required asset (cannot express system-wide risks)
+
+- **Decision 5:** Severity mirrors Signal.confidence scale
+  - Rationale: Symmetric scoring (high signal confidence vs high risk severity) enables balanced decision algebra
+  - Alternative rejected: Asymmetric scales (complex decision logic, different scales for opportunity vs threat)
+
+- **Decision 6:** No mitigation/action fields
+  - Rationale: SRP - risk detects threat, planners decide response
+  - Alternative rejected: Rich risk with mitigation plan (violates SRP, tight coupling)
+
+- **Decision 7:** No causality field (pre-causality)
+  - Rationale: Risk is pure detection fact. CausalityChain starts at StrategyPlanner decision point (risk_id → strategy_directive_id first link)
+  - Alternative rejected: Risk contains causality (premature - no decision made yet, violates causality semantics)
+
+**Validation Strategy:**
+- risk_id format: `RSK_YYYYMMDD_HHMMSS_hash` (military datetime)
+- risk_type: UPPER_SNAKE_CASE, 3-25 chars, no reserved prefixes (SYSTEM_, INTERNAL_, _)
+- affected_asset: BASE_QUOTE format (e.g., BTC_USD, not BTCUSD or BTC/USD) if provided
+- timestamp: UTC-enforced (timezone-aware)
+- severity: [0.0, 1.0] required
+- Reserved prefix prevention: Avoids namespace pollution
+
+**Risk Framework Context:**
+```
+ContextWorkers → Objective facts (volatility=0.45, correlation=0.92)
+       ↓
+SignalDetectors → Opportunities (FVG detected, confidence 0.85)
+       ↓
+RiskMonitors → Threats (drawdown approaching, severity 0.75)
+       ↓
+StrategyPlanner → Decision (combine signals + risks → StrategyDirective or reject)
+```
+
+Risk is pure threat detection output - no decisions, no mitigation plans, no execution details.
+
+---
+
 ## Planning DTOs
 
 **Status:** TODO

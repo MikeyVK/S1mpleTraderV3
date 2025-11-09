@@ -336,4 +336,3 @@ class TestFlowInitiatorErrorHandling:
 
         error_msg = str(exc_info.value)
         assert "MockCandleWindow" in error_msg  # Should show available type
-
