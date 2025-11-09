@@ -399,6 +399,91 @@ def process(self):
 
 ---
 
+## Causality Tracking - Decision Lineage
+
+**Purpose:** Every DTO carries a `causality: CausalityChain` field to track the complete decision lineage from data origin through execution reality.
+
+**Design:** Pure ID-only tracking for quant analysis and audit trails.
+
+```python
+@dataclass(frozen=True)
+class CausalityChain:
+    """Pure ID-only decision lineage tracker."""
+    origin: Origin                              # Data source (tick/news/schedule)
+    signal_ids: list[str] = []                 # Multiple signals (confluence)
+    risk_ids: list[str] = []                   # Multiple risks
+    strategy_directive_id: str | None = None   # Strategy decision
+    # Planning phase IDs
+    entry_plan_id: str | None = None
+    size_plan_id: str | None = None
+    exit_plan_id: str | None = None
+    execution_plan_id: str | None = None
+    execution_directive_id: str | None = None
+    # Execution phase IDs (intent vs reality)
+    order_ids: list[str] = []                  # Intent (submitted orders)
+    fill_ids: list[str] = []                   # Reality (actual fills)
+```
+
+**Key Patterns:**
+
+1. **Confluence** - Multiple signals strengthen conviction:
+```python
+# RSI + MACD + Volume all confirm → high confidence
+causality = CausalityChain(
+    origin=Origin(id="TCK_20251109_100000_abc", type=OriginType.TICK),
+    signal_ids=[
+        "SIG_20251109_100001_rsi",    # RSI oversold
+        "SIG_20251109_100001_macd",   # MACD cross
+        "SIG_20251109_100002_volume"  # Volume spike
+    ]
+)
+```
+
+2. **Balanced Decision** - StrategyPlanner uses BOTH signals AND risks:
+```python
+# Signals suggest entry, but risks moderate sizing
+causality = CausalityChain(
+    origin=Origin(id="TCK_20251109_100000_xyz", type=OriginType.TICK),
+    signal_ids=["SIG_20251109_100001_breakout"],
+    risk_ids=["RSK_20251109_100001_volatility"],  # High vol → smaller size
+    strategy_directive_id="STR_20251109_100002_conservative"
+)
+```
+
+3. **Intent vs Reality** - Orders may partially fill:
+```python
+# 2 orders submitted, 3 partial fills received
+causality = CausalityChain(
+    origin=Origin(id="TCK_20251109_100000_def", type=OriginType.TICK),
+    # ... (signals, planning omitted)
+    order_ids=["ORD_20251109_100011_abc", "ORD_20251109_100011_def"],
+    fill_ids=[
+        "FIL_20251109_100012_p1",  # Partial fill 1
+        "FIL_20251109_100012_p2",  # Partial fill 2
+        "FIL_20251109_100013_p3"   # Partial fill 3
+    ]
+)
+```
+
+**Extension Pattern:**
+```python
+# Workers extend immutably
+extended = causality.model_copy(update={
+    "signal_ids": [*causality.signal_ids, new_signal_id]
+})
+```
+
+**Responsibilities:**
+- ✅ Track WHY decisions happened (causality)
+- ✅ Enable quant analysis (correlate decisions with outcomes)
+- ✅ Provide audit trail for compliance
+- ❌ NOT responsible for business data (symbol, price, direction)
+- ❌ NOT responsible for timestamps (DTOs have their own)
+
+**Design Details:** See [CausalityChain Implementation](../development/backend/dtos/CAUSALITY_CHAIN_DESIGN.md)
+
+---
+
 ## Related Documentation
 
 - **[Worker Taxonomy](WORKER_TAXONOMY.md)** - Worker categories and responsibilities

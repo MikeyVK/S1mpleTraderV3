@@ -1,7 +1,7 @@
 # SimpleTraderV3 - TODO List
 
 **Huidige Focus (2025-11-09):** Configuration Schemas (Week 1 - Critical Path)
-> **Status:** FlowInitiator complete (Phase 1.3), ready for Config Schema implementation
+> **Status:** FlowInitiator complete & merged (Phase 1.3, 14/14 tests), CausalityChain enhanced (order_ids/fill_ids added, 28/28 tests), proceeding with Configuration Schemas (Week 1)
 
 ## 📚 Documentation Quick Links
 
@@ -23,7 +23,7 @@
 ### Week 0: Foundation - ✅ COMPLETE
 
 **Data Contracts (DTOs):**
-- [x] Shared Layer: DispositionEnvelope, CausalityChain, PlatformDataDTO
+- [x] Shared Layer: DispositionEnvelope, CausalityChain (enhanced with order_ids/fill_ids), PlatformDataDTO
 - [x] Signal/Risk Layer: Signal, Risk
 - [x] Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 - [ ] **ExecutionRequest DTO** - Payload for EXECUTION_INTENT_REQUESTED event
@@ -46,9 +46,10 @@
   - **Design:** [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md)
   - **Purpose:** Initialize StrategyCache before workers execute (race condition prevention)
 
-**Metrics:** 364 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+**Metrics:** 368 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
 
 **Recent:** 
+- CausalityChain execution tracking (order_ids/fill_ids) complete (2025-11-09)
 - FlowInitiator implementation complete (2025-11-09)
 - PlatformDataDTO refactored to minimal design (3 fields: source_type, timestamp, payload)
 
