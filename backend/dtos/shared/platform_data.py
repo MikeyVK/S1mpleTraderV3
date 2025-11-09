@@ -7,14 +7,17 @@ before delivery to FlowInitiator. It provides a consistent envelope structure
 regardless of payload type.
 
 @layer: DTOs (Shared)
-@dependencies: [pydantic, datetime]
+@dependencies: [pydantic, datetime, backend.dtos.shared.origin]
 """
 
 # Standard Library Imports
 from datetime import datetime
 
 # Third-Party Imports
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
+
+# Our Application Imports
+from backend.dtos.shared.origin import Origin
 
 
 class PlatformDataDTO(BaseModel):
@@ -25,24 +28,25 @@ class PlatformDataDTO(BaseModel):
     metadata needed for cache initialization and type routing.
 
     Attributes:
-        source_type: Provider type identifier for DTO type lookup (e.g., "candle_stream")
+        origin: Type-safe platform data origin (TICK/NEWS/SCHEDULE)
         timestamp: Point-in-time timestamp for RunAnchor initialization
         payload: Actual provider DTO (immutable BaseModel subtype)
 
     Example:
         >>> from datetime import datetime, timezone
+        >>> from backend.dtos.shared.origin import Origin, OriginType
         >>> candle_window = CandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        >>> origin = Origin(id="TCK_20251109_143000_abc123", type=OriginType.TICK)
         >>> platform_dto = PlatformDataDTO(
-        ...     source_type="candle_stream",
+        ...     origin=origin,
         ...     timestamp=datetime.now(timezone.utc),
         ...     payload=candle_window
         ... )
     """
 
-    source_type: str = Field(
+    origin: Origin = Field(
         ...,
-        description="Provider type identifier for DTO type lookup in ConfigTranslator",
-        min_length=1
+        description="Type-safe platform data origin (TICK/NEWS/SCHEDULE)"
     )
 
     timestamp: datetime = Field(
@@ -55,25 +59,31 @@ class PlatformDataDTO(BaseModel):
         description="Provider DTO instance (CandleWindow, OrderBookSnapshot, etc.)"
     )
 
-    @field_validator("source_type")
-    @classmethod
-    def validate_source_type_not_empty(cls, value: str) -> str:
-        """Validate that source_type is not empty string."""
-        if not value or not value.strip():
-            raise ValueError("source_type cannot be empty")
-        return value
-
     model_config = ConfigDict(
         frozen=True,
         json_schema_extra={
             "examples": [
                 {
-                    "source_type": "candle_stream",
-                    "timestamp": "2025-11-06T14:00:00Z",
+                    "origin": {
+                        "id": "TCK_20251109_143000_abc123",
+                        "type": "TICK"
+                    },
+                    "timestamp": "2025-11-09T14:30:00Z",
                     "payload": {
                         "symbol": "BTC",
                         "timeframe": "1h",
                         "close": 50000.0
+                    }
+                },
+                {
+                    "origin": {
+                        "id": "NWS_20251109_150000_def456",
+                        "type": "NEWS"
+                    },
+                    "timestamp": "2025-11-09T15:00:00Z",
+                    "payload": {
+                        "headline": "Fed announces rate decision",
+                        "sentiment": "neutral"
                     }
                 }
             ]

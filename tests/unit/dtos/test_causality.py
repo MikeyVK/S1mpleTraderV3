@@ -17,46 +17,50 @@ import pytest
 
 # Our Application Imports
 from backend.dtos.causality import CausalityChain
+from backend.dtos.shared import Origin, OriginType
+
+
+def create_test_origin(origin_type: OriginType = OriginType.TICK) -> Origin:
+    """Helper function to create test Origin instances."""
+    type_map = {
+        OriginType.TICK: "TCK_20251109_143000_abc123",
+        OriginType.NEWS: "NWS_20251109_143000_def456",
+        OriginType.SCHEDULE: "SCH_20251109_143000_ghi789"
+    }
+    return Origin(id=type_map[origin_type], type=origin_type)
 
 
 class TestCausalityChainCreation:
     """Test suite for CausalityChain instantiation."""
 
     def test_create_with_tick_birth(self):
-        """Test creating CausalityChain with tick birth ID."""
-        chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4"
-        )
+        """Test creating CausalityChain with tick origin."""
+        origin = create_test_origin(OriginType.TICK)
+        chain = CausalityChain(origin=origin)
 
-        assert chain.tick_id == "TCK_20251026_100000_a1b2c3d4"
-        assert chain.news_id is None
-        assert chain.schedule_id is None
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.TICK
 
     def test_create_with_news_birth(self):
-        """Test creating CausalityChain with news birth ID."""
-        chain = CausalityChain(
-            news_id="NWS_20251026_100000_b2c3d4e5"
-        )
+        """Test creating CausalityChain with news origin."""
+        origin = create_test_origin(OriginType.NEWS)
+        chain = CausalityChain(origin=origin)
 
-        assert chain.tick_id is None
-        assert chain.news_id == "NWS_20251026_100000_b2c3d4e5"
-        assert chain.schedule_id is None
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.NEWS
 
     def test_create_with_schedule_birth(self):
-        """Test creating CausalityChain with schedule birth ID."""
-        chain = CausalityChain(
-            schedule_id="SCH_20251026_100000_abc1d2e3"
-        )
+        """Test creating CausalityChain with schedule origin."""
+        origin = create_test_origin(OriginType.SCHEDULE)
+        chain = CausalityChain(origin=origin)
 
-        assert chain.tick_id is None
-        assert chain.news_id is None
-        assert chain.schedule_id == "SCH_20251026_100000_abc1d2e3"
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.SCHEDULE
 
     def test_create_with_all_worker_ids_empty(self):
         """Test that worker output IDs default to empty."""
-        chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4"
-        )
+        origin = create_test_origin(OriginType.TICK)
+        chain = CausalityChain(origin=origin)
 
         assert chain.signal_ids == []
         assert chain.risk_ids == []
@@ -71,53 +75,37 @@ class TestCausalityChainCreation:
 
 
 class TestCausalityChainBirthValidation:
-    """Test suite for birth ID validation (at least 1 required)."""
+    """Test suite for origin validation (required field)."""
 
     def test_empty_chain_raises_validation_error(self):
-        """Test that chain without birth ID raises ValueError."""
+        """Test that chain without origin raises ValidationError."""
         with pytest.raises(ValueError) as exc_info:
             CausalityChain()
 
         error_msg = str(exc_info.value).lower()
-        assert "causalitychain" in error_msg
-        assert "birth id" in error_msg
+        assert "origin" in error_msg or "required" in error_msg
 
-    def test_all_birth_ids_none_raises_validation_error(self):
-        """Test that explicit None for all birth IDs raises ValueError."""
+    def test_origin_field_required(self):
+        """Test that origin field is required."""
         with pytest.raises(ValueError) as exc_info:
-            CausalityChain(
-                tick_id=None,
-                news_id=None,
-                schedule_id=None
-            )
+            CausalityChain()
 
         error_msg = str(exc_info.value).lower()
-        assert "causalitychain" in error_msg
-        assert "birth id" in error_msg
+        assert "origin" in error_msg or "required" in error_msg
 
-    def test_single_birth_id_is_valid(self):
-        """Test that single birth ID passes validation."""
-        # Tick birth
-        chain1 = CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4")
-        assert chain1.tick_id is not None
+    def test_single_origin_is_valid(self):
+        """Test that single origin passes validation."""
+        # TICK origin
+        chain1 = CausalityChain(origin=create_test_origin(OriginType.TICK))
+        assert chain1.origin is not None
 
-        # News birth
-        chain2 = CausalityChain(news_id="NWS_20251026_100000_b2c3d4e5")
-        assert chain2.news_id is not None
+        # NEWS origin
+        chain2 = CausalityChain(origin=create_test_origin(OriginType.NEWS))
+        assert chain2.origin is not None
 
-        # Schedule birth
-        chain3 = CausalityChain(schedule_id="SCH_20251026_100000_abc1d2e3")
-        assert chain3.schedule_id is not None
-
-    def test_multiple_birth_ids_is_valid(self):
-        """Test that multiple birth IDs are allowed (edge case)."""
-        chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
-            news_id="NWS_20251026_100000_b2c3d4e5"
-        )
-
-        assert chain.tick_id == "TCK_20251026_100000_a1b2c3d4"
-        assert chain.news_id == "NWS_20251026_100000_b2c3d4e5"
+        # SCHEDULE origin
+        chain3 = CausalityChain(origin=create_test_origin(OriginType.SCHEDULE))
+        assert chain3.origin is not None
 
 
 class TestCausalityChainWorkerIDs:
@@ -125,8 +113,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_single_signal_id(self):
         """Test adding single signal ID."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             signal_ids=["SIG_20251026_100001_def5e6f7"]
         )
 
@@ -135,8 +124,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_multiple_signal_ids(self):
         """Test adding multiple signal IDs (confluence)."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             signal_ids=[
                 "SIG_20251026_100001_def5e6f7",
                 "SIG_20251026_100002_abc1d2e3"
@@ -149,8 +139,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_risk_ids(self):
         """Test adding risk IDs (critical risk events)."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             risk_ids=["RSK_20251026_100001_b2c3d4e5"]
         )
 
@@ -159,8 +150,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_strategy_directive_id(self):
         """Test adding strategy directive ID."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             strategy_directive_id="STR_20251026_100002_def5e6f7"
         )
 
@@ -168,8 +160,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_all_plan_ids(self):
         """Test adding all planning stage IDs."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             entry_plan_id="ENT_20251026_100003_abc1d2e3",
             size_plan_id="SIZ_20251026_100004_def5e6f7",
             exit_plan_id="EXT_20251026_100005_abc1d2e3",
@@ -183,8 +176,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_execution_directive_id(self):
         """Test adding execution directive ID (final stage)."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             execution_directive_id="EXE_20251026_100007_abc1d2e3"
         )
 
@@ -192,8 +186,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_order_ids(self):
         """Test adding order IDs (execution intent)."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             order_ids=["ORD_20251026_100008_abc1d2e3"]
         )
 
@@ -202,8 +197,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_multiple_order_ids(self):
         """Test adding multiple order IDs (batch orders)."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             order_ids=[
                 "ORD_20251026_100008_abc1d2e3",
                 "ORD_20251026_100008_def5e6f7"
@@ -216,8 +212,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_fill_ids(self):
         """Test adding fill IDs (execution reality)."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             fill_ids=["FIL_20251026_100009_abc1d2e3"]
         )
 
@@ -226,8 +223,9 @@ class TestCausalityChainWorkerIDs:
 
     def test_add_multiple_fill_ids_partial_fills(self):
         """Test adding multiple fill IDs (partial fills scenario)."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             fill_ids=[
                 "FIL_20251026_100009_abc1d2e3",
                 "FIL_20251026_100010_def5e6f7"
@@ -242,23 +240,23 @@ class TestCausalityChainWorkerIDs:
 class TestCausalityChainModelCopyPattern:
     """Test suite for immutability and model_copy() pattern."""
 
-    def test_model_copy_preserves_birth_ids(self):
-        """Test that model_copy preserves birth IDs."""
-        original = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4"
-        )
+    def test_model_copy_preserves_origin(self):
+        """Test that model_copy preserves origin."""
+        origin = create_test_origin(OriginType.TICK)
+        original = CausalityChain(origin=origin)
 
         copy = original.model_copy(update={
             "signal_ids": ["SIG_20251026_100001_def5e6f7"]
         })
 
-        assert copy.tick_id == "TCK_20251026_100000_a1b2c3d4"
+        assert copy.origin == origin
         assert copy.signal_ids == ["SIG_20251026_100001_def5e6f7"]
 
     def test_model_copy_extends_worker_ids(self):
         """Test that model_copy can extend worker IDs."""
+        origin = create_test_origin(OriginType.TICK)
         original = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             signal_ids=["SIG_20251026_100001_def5e6f7"]
         )
 
@@ -266,16 +264,16 @@ class TestCausalityChainModelCopyPattern:
             "strategy_directive_id": "STR_20251026_100002_abc1d2e3"
         })
 
-        assert extended.tick_id == "TCK_20251026_100000_a1b2c3d4"
+        assert extended.origin == origin
         assert extended.signal_ids == ["SIG_20251026_100001_def5e6f7"]
         assert extended.strategy_directive_id == "STR_20251026_100002_abc1d2e3"
 
     def test_model_copy_chain_accumulation(self):
         """Test full pipeline chain accumulation via model_copy."""
+        origin = create_test_origin(OriginType.TICK)
+
         # Birth
-        birth = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4"
-        )
+        birth = CausalityChain(origin=origin)
 
         # SignalDetector
         after_opp = birth.model_copy(update={
@@ -293,7 +291,7 @@ class TestCausalityChainModelCopyPattern:
         })
 
         # Verify full chain
-        assert after_entry.tick_id == "TCK_20251026_100000_a1b2c3d4"
+        assert after_entry.origin == origin
         assert after_entry.signal_ids == ["SIG_20251026_100001_def5e6f7"]
         assert after_entry.strategy_directive_id == "STR_20251026_100002_abc1d2e3"
         assert after_entry.entry_plan_id == "ENT_20251026_100003_def5e6f7"
@@ -303,18 +301,17 @@ class TestCausalityChainSerialization:
     """Test suite for JSON/dict serialization."""
 
     def test_model_dump_includes_all_fields(self):
-        """Test that model_dump includes all 12 fields."""
+        """Test that model_dump includes all fields."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             signal_ids=["SIG_20251026_100001_def5e6f7"]
         )
 
         data = chain.model_dump()
 
-        # Birth IDs
-        assert "tick_id" in data
-        assert "news_id" in data
-        assert "schedule_id" in data
+        # Origin
+        assert "origin" in data
 
         # Worker output IDs
         assert "signal_ids" in data
@@ -328,8 +325,9 @@ class TestCausalityChainSerialization:
 
     def test_model_dump_json_serializable(self):
         """Test that model_dump produces JSON-serializable dict."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             signal_ids=["SIG_20251026_100001_def5e6f7"],
             strategy_directive_id="STR_20251026_100002_abc1d2e3"
         )
@@ -342,9 +340,7 @@ class TestCausalityChainSerialization:
     def test_model_validate_from_dict(self):
         """Test creating CausalityChain from dict."""
         data = {
-            "tick_id": "TCK_20251026_100000_a1b2c3d4",
-            "news_id": None,
-            "schedule_id": None,
+            "origin": {"id": "TCK_20251109_100000_a1b2c3d4", "type": "TICK"},
             "signal_ids": ["SIG_20251026_100001_def5e6f7"],
             "risk_ids": [],
             "strategy_directive_id": "STR_20251026_100002_abc1d2e3",
@@ -357,7 +353,7 @@ class TestCausalityChainSerialization:
 
         chain = CausalityChain.model_validate(data)
 
-        assert chain.tick_id == "TCK_20251026_100000_a1b2c3d4"
+        assert chain.origin.type == OriginType.TICK
         assert chain.signal_ids == ["SIG_20251026_100001_def5e6f7"]
         assert chain.strategy_directive_id == "STR_20251026_100002_abc1d2e3"
 
@@ -367,8 +363,9 @@ class TestCausalityChainEdgeCases:
 
     def test_empty_signal_ids_list(self):
         """Test that empty list is valid for signal_ids."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             signal_ids=[]
         )
 
@@ -376,8 +373,9 @@ class TestCausalityChainEdgeCases:
 
     def test_empty_risk_ids_list(self):
         """Test that empty list is valid for risk_ids."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             risk_ids=[]
         )
 
@@ -385,8 +383,9 @@ class TestCausalityChainEdgeCases:
 
     def test_none_values_for_optional_ids(self):
         """Test that None is valid for all optional worker IDs."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             strategy_directive_id=None,
             entry_plan_id=None,
             size_plan_id=None,
@@ -400,8 +399,9 @@ class TestCausalityChainEdgeCases:
 
     def test_full_chain_all_ids_populated(self):
         """Test full chain with all IDs populated."""
+        origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            tick_id="TCK_20251026_100000_a1b2c3d4",
+            origin=origin,
             signal_ids=["SIG_20251026_100001_def5e6f7"],
             risk_ids=["RSK_20251026_100002_abc1d2e3"],
             strategy_directive_id="STR_20251026_100004_abc1d2e3",
@@ -413,7 +413,7 @@ class TestCausalityChainEdgeCases:
         )
 
         # Verify all fields populated
-        assert chain.tick_id is not None
+        assert chain.origin is not None
         assert len(chain.signal_ids) == 1
         assert len(chain.risk_ids) == 1
         assert chain.strategy_directive_id is not None
@@ -422,3 +422,60 @@ class TestCausalityChainEdgeCases:
         assert chain.exit_plan_id is not None
         assert chain.execution_plan_id is not None
         assert chain.execution_directive_id is not None
+
+
+class TestCausalityChainOriginIntegration:
+    """Test suite for Origin integration (RED phase - breaking change)."""
+
+    def test_create_with_tick_origin(self):
+        """Test creating CausalityChain with TICK origin."""
+        origin = create_test_origin(OriginType.TICK)
+        chain = CausalityChain(origin=origin)
+
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.TICK
+
+    def test_create_with_news_origin(self):
+        """Test creating CausalityChain with NEWS origin."""
+        origin = create_test_origin(OriginType.NEWS)
+        chain = CausalityChain(origin=origin)
+
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.NEWS
+
+    def test_create_with_schedule_origin(self):
+        """Test creating CausalityChain with SCHEDULE origin."""
+        origin = create_test_origin(OriginType.SCHEDULE)
+        chain = CausalityChain(origin=origin)
+
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.SCHEDULE
+
+    def test_origin_field_required(self):
+        """Test that origin field is required."""
+        with pytest.raises(ValueError) as exc_info:
+            CausalityChain()
+
+        error_msg = str(exc_info.value).lower()
+        assert "origin" in error_msg or "required" in error_msg
+
+    def test_origin_with_worker_ids(self):
+        """Test origin combined with worker output IDs."""
+        origin = create_test_origin(OriginType.TICK)
+        chain = CausalityChain(
+            origin=origin,
+            signal_ids=["SIG_20251109_143001_xyz789"],
+            strategy_directive_id="STR_20251109_143002_abc456"
+        )
+
+        assert chain.origin == origin
+        assert len(chain.signal_ids) == 1
+        assert chain.strategy_directive_id == "STR_20251109_143002_abc456"
+
+    def test_origin_immutability(self):
+        """Test that origin field cannot be modified after creation."""
+        origin = create_test_origin(OriginType.TICK)
+        chain = CausalityChain(origin=origin)
+
+        with pytest.raises((ValueError, TypeError, AttributeError)):
+            chain.origin = create_test_origin(OriginType.NEWS)

@@ -7,12 +7,50 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 > **Quality Gates & TDD Workflow:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) and [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
 
 **Last Updated:** 2025-11-09
-**Total Tests Passing:** 384 tests (100% coverage)
-- **DTOs:** 259 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 79)
+**Total Tests Passing:** 403 tests (100% coverage)
+- **DTOs:** 278 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 98)
 - **Core Infrastructure:** 93 tests (StrategyCache: 20, EventBus: 33, FlowInitiator: 14, Worker Protocol: 13, Enums: 13)
 - **Utils:** 32 tests (ID Generators: 32)
 
 > **Note:** SWOT terminology fully replaced with quant terminology (2024-11-02). See [../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md](../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md) for complete refactoring details.
+
+## Recent Updates (2025-11-09)
+
+### Origin DTO Integration (Breaking Changes)
+
+**Origin DTO Standalone (16 tests, Merged to Main):**
+- New type-safe origin tracking: `Origin(id, type)` with OriginType enum (TICK/NEWS/SCHEDULE)
+- ID prefix validation (TCK_/NWS_/SCH_) via model_validator
+- Frozen model, json_schema_extra with 3 examples
+- Test helper: `create_test_origin()` for reusable test fixtures
+- Pylint 10/10, Pylance 0 errors
+
+**PlatformDataDTO Breaking Change (19 tests, +5 tests):**
+- **Removed:** `source_type: str` field (string-based, not scalable)
+- **Added:** `origin: Origin` field (type-safe TICK/NEWS/SCHEDULE with validation)
+- Updated all 14 existing tests to use Origin instead of source_type
+- Added 6 new Origin integration tests (creation, validation, immutability)
+- Removed 1 duplicate test from RED phase
+- Updated docstring with Origin import example
+- Pylint 10/10, Pylance 0 errors
+
+**CausalityChain Breaking Change (33 tests, +5 tests):**
+- **Removed:** `tick_id`, `news_id`, `schedule_id` fields (3 birth IDs)
+- **Removed:** `validate_birth_id` model_validator (no longer needed)
+- **Added:** `origin: Origin` field (single required, frozen field)
+- **Updated:** `model_config.frozen = True` (was False, now immutable)
+- Updated all 28 existing tests to use origin instead of birth IDs
+- Added 6 new Origin integration tests
+- Removed 1 duplicate test validation (replaced with origin_field_required)
+- Updated json_schema_extra with 3 Origin examples
+- model_copy() pattern preserved (workers extend chain with worker IDs)
+- Pylint 10/10, Pylance 0 errors
+
+**Total Impact:**
+- +19 new tests (16 Origin + 5 PlatformDataDTO - 1 duplicate + 5 CausalityChain - 1 duplicate)
+- 2 breaking changes (PlatformDataDTO, CausalityChain) - consumers need updates
+- Type-safe origin tracking replaces string-based source_type and birth IDs
+- Zero technical debt maintained (all quality gates passed)
 
 ## DTO Layer Status
 
@@ -51,22 +89,23 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 **Coverage:** 52/52 tests passing (100%)
 
-### Shared DTOs (79 tests)
+### Shared DTOs (98 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| platform_data.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Complete (minimal design) |
-| origin.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ Complete |
-| causality.py | 10.00/10 | 28/28 ✅ | 10.00/10 | 0 | ✅ Complete (order_ids + fill_ids added) |
+| platform_data.py | 10.00/10 | 19/19 ✅ | 10.00/10 | 0 | ✅ Complete (Origin integration) |
+| origin.py | 10.00/10 | 16/16 ✅ | 10.00/10 | 0 | ✅ Complete (new) |
+| causality.py | 10.00/10 | 33/33 ✅ | 10.00/10 | 0 | ✅ Complete (Origin integration) |
 | disposition_envelope.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ Complete |
+| worker_manifest.py | 10.00/10 | 9/9 ✅ | 10.00/10 | 0 | ✅ Complete |
 
-**Coverage:** 79/79 tests passing (100%)
+**Coverage:** 98/98 tests passing (100%)
 
-**Recent Changes:**
-- PlatformDataDTO stripped to 3 essential fields (source_type, timestamp, payload)
-- Removed symbol, timeframe, metadata (YAGNI - data exists in payload)
-- Tests reduced from 20 to 14 (quality over quantity)
-- CausalityChain: Added order_ids and fill_ids fields (execution tracking)
+**Recent Breaking Changes (2025-11-09):**
+- **PlatformDataDTO:** Replaced `source_type: str` with `origin: Origin` (type-safe origin tracking)
+- **CausalityChain:** Replaced `tick_id/news_id/schedule_id` with `origin: Origin` (single origin field)
+- **CausalityChain:** Changed to frozen model (`model_config.frozen = True`, was False)
+- **Origin DTO:** New type-safe origin reference (TICK/NEWS/SCHEDULE with ID prefix validation)
 
 ### Deleted/Replaced Modules
 

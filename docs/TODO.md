@@ -1,7 +1,7 @@
 # SimpleTraderV3 - TODO List
 
-**Huidige Focus (2025-11-09):** Configuration Schemas (Week 1 - Critical Path)
-> **Status:** FlowInitiator complete & merged (Phase 1.3, 14/14 tests), CausalityChain enhanced (order_ids/fill_ids added, 28/28 tests), proceeding with Configuration Schemas (Week 1)
+**Huidige Focus (2025-11-09):** Origin DTO Integration Complete ✅
+> **Status:** Origin DTO (16 tests), PlatformDataDTO Origin integration (19 tests), CausalityChain Origin integration (33 tests) - All complete. Ready for next phase.
 
 ## 📚 Documentation Quick Links
 
@@ -23,7 +23,7 @@
 ### Week 0: Foundation - ✅ COMPLETE
 
 **Data Contracts (DTOs):**
-- [x] Shared Layer: DispositionEnvelope, CausalityChain (enhanced with order_ids/fill_ids), PlatformDataDTO, Origin
+- [x] Shared Layer: DispositionEnvelope, CausalityChain (Origin integration complete), PlatformDataDTO (Origin integration complete), Origin (NEW - type-safe origin tracking)
 - [x] Signal/Risk Layer: Signal, Risk
 - [x] Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 - [ ] **ExecutionRequest DTO** - Payload for EXECUTION_INTENT_REQUESTED event
@@ -46,13 +46,16 @@
   - **Design:** [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md)
   - **Purpose:** Initialize StrategyCache before workers execute (race condition prevention)
 
-**Metrics:** 384 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+**Metrics:** 403 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
 
-**Recent:**
-- Origin DTO complete (16/16 tests, type-safe platform data origin tracking) (2025-11-09)
-- CausalityChain execution tracking (order_ids/fill_ids) complete (2025-11-09)
-- FlowInitiator implementation complete (2025-11-09)
-- PlatformDataDTO refactored to minimal design (3 fields: source_type, timestamp, payload)---
+**Recent (2025-11-09):**
+- **Origin DTO complete** (16/16 tests) - Type-safe platform data origin tracking (TICK/NEWS/SCHEDULE)
+- **PlatformDataDTO Origin integration** (19/19 tests, +5 tests) - Replaced source_type with origin field
+- **CausalityChain Origin integration** (33/33 tests, +5 tests) - Replaced tick_id/news_id/schedule_id with origin field
+- **Breaking changes:** PlatformDataDTO and CausalityChain consumers need updates
+- CausalityChain execution tracking (order_ids/fill_ids) complete
+- FlowInitiator implementation complete
+- PlatformDataDTO refactored to minimal design (3 fields)---
 
 ### Week 1: Configuration Schemas - 🔥 IN PROGRESS (CRITICAL PATH)
 
