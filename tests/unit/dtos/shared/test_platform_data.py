@@ -349,4 +349,3 @@ class TestPlatformDataDTOOriginIntegration:
                 timestamp=timestamp,
                 payload=payload
             )
-

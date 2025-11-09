@@ -17,7 +17,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 # Our Application Imports
-from backend.dtos.shared.origin import Origin, OriginType
+from backend.dtos.shared.origin import Origin
 
 
 class PlatformDataDTO(BaseModel):
