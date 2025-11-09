@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 # Our Application Imports
 from backend.dtos.shared.platform_data import PlatformDataDTO
+from backend.dtos.shared.origin import Origin, OriginType
 
 
 class MockCandleWindow(BaseModel):
@@ -246,3 +247,95 @@ class TestPlatformDataDTOEdgeCases:
 
         assert dto1.source_type != dto2.source_type
         assert dto1.payload != dto2.payload
+
+
+class TestPlatformDataDTOOriginIntegration:
+    """Test Origin DTO integration for type-safe origin tracking."""
+
+    def test_create_with_tick_origin(self):
+        """Test PlatformDataDTO with TICK origin."""
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        origin = Origin(id="TCK_20251109_143000_abc123", type=OriginType.TICK)
+
+        dto = PlatformDataDTO(
+            origin=origin,
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        assert dto.origin == origin
+        assert dto.origin.type == OriginType.TICK
+        assert dto.origin.id == "TCK_20251109_143000_abc123"
+
+    def test_create_with_news_origin(self):
+        """Test PlatformDataDTO with NEWS origin."""
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        origin = Origin(id="NWS_20251109_143000_def456", type=OriginType.NEWS)
+
+        dto = PlatformDataDTO(
+            origin=origin,
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        assert dto.origin == origin
+        assert dto.origin.type == OriginType.NEWS
+
+    def test_create_with_schedule_origin(self):
+        """Test PlatformDataDTO with SCHEDULE origin."""
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        origin = Origin(id="SCH_20251109_143000_ghi789", type=OriginType.SCHEDULE)
+
+        dto = PlatformDataDTO(
+            origin=origin,
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        assert dto.origin == origin
+        assert dto.origin.type == OriginType.SCHEDULE
+
+    def test_origin_is_required(self):
+        """Test that origin field is required (cannot be None)."""
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        with pytest.raises(ValidationError, match="origin"):
+            PlatformDataDTO(
+                timestamp=timestamp,
+                payload=payload
+            )
+
+    def test_origin_immutability(self):
+        """Test that origin cannot be modified after creation."""
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        origin = Origin(id="TCK_20251109_143000_abc123", type=OriginType.TICK)
+
+        dto = PlatformDataDTO(
+            origin=origin,
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        new_origin = Origin(id="NWS_20251109_143000_def456", type=OriginType.NEWS)
+        with pytest.raises((ValidationError, AttributeError)):
+            dto.origin = new_origin  # type: ignore
+
+    def test_origin_validation_enforced(self):
+        """Test that Origin validation rules are enforced."""
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        # Invalid: wrong prefix for type
+        with pytest.raises(ValidationError):
+            origin = Origin(id="NWS_20251109_143000_abc123", type=OriginType.TICK)
+            PlatformDataDTO(
+                origin=origin,
+                timestamp=timestamp,
+                payload=payload
+            )
+
