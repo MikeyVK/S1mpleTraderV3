@@ -23,7 +23,13 @@ from pydantic import ValidationError
 # Our Application Imports
 from backend.dtos.strategy.signal import Signal
 from backend.dtos.causality import CausalityChain
+from backend.dtos.shared import Origin, OriginType
 from backend.utils.id_generators import generate_tick_id, generate_signal_id
+
+
+def create_test_origin() -> Origin:
+    """Helper to create test Origin instance."""
+    return Origin(id=generate_tick_id(), type=OriginType.TICK)
 
 
 class TestSignalCreation:
@@ -32,7 +38,7 @@ class TestSignalCreation:
     def test_create_minimal_signal(self):
         """Test creating signal with required fields only."""
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
             direction="long",
@@ -42,8 +48,9 @@ class TestSignalCreation:
         # Verify ID formats (cast to avoid Pylance FieldInfo warnings)
         # Verify causality chain
         causality = cast(CausalityChain, signal.causality)
-        assert getattr(causality, "tick_id") is not None
-        assert getattr(causality, "tick_id").startswith("TCK_")
+        assert causality.origin.id is not None
+        assert causality.origin.id.startswith("TCK_")
+        assert causality.origin.type == OriginType.TICK
         # Verify ID formats
         signal_id = str(signal.signal_id)
         assert signal_id.startswith("SIG_")
@@ -55,7 +62,7 @@ class TestSignalCreation:
     def test_create_signal_with_confidence(self):
         """Test creating signal with optional confidence score."""
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             asset="ETH/USDT",
             direction="short",
@@ -68,7 +75,7 @@ class TestSignalCreation:
     def test_signal_id_auto_generated(self):
         """Test that signal_id is auto-generated if not provided."""
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
             direction="long",
@@ -82,7 +89,7 @@ class TestSignalCreation:
         """Test that custom signal_id can be provided."""
         custom_id = generate_signal_id()
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             signal_id=custom_id,
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
@@ -101,7 +108,7 @@ class TestSignalIDValidation:
     def test_valid_signal_id_format(self):
         """Test that SIG_ prefix with UUID is valid."""
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             signal_id=generate_signal_id(),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
@@ -116,7 +123,7 @@ class TestSignalIDValidation:
         """Test that non-SIG_ prefix is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 signal_id="TCK_550e8400-e29b-41d4-a716-446655440000",
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
@@ -134,7 +141,7 @@ class TestSignalTimestampValidation:
         """Test that naive datetime is assumed to be UTC."""
         naive_dt = datetime(2025, 1, 15, 10, 30, 0)
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=naive_dt,
             asset="BTC/EUR",
             direction="long",
@@ -151,7 +158,7 @@ class TestSignalTimestampValidation:
         """Test that timezone-aware datetime is preserved."""
         aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=aware_dt,
             asset="BTC/EUR",
             direction="long",
@@ -176,7 +183,7 @@ class TestSignalAssetValidation:
 
         for asset in valid_assets:
             signal = Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset=asset,
                 direction="long",
@@ -188,7 +195,7 @@ class TestSignalAssetValidation:
         """Test that too short asset is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="A/B",
                 direction="long",
@@ -202,7 +209,7 @@ class TestSignalAssetValidation:
         long_asset = "A" * 15 + "/" + "B" * 15
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset=long_asset,
                 direction="long",
@@ -223,7 +230,7 @@ class TestSignalAssetValidation:
         for invalid_asset in invalid_assets:
             with pytest.raises(ValidationError):
                 Signal(
-                    causality=CausalityChain(tick_id=generate_tick_id()),
+                    causality=CausalityChain(origin=create_test_origin()),
                     timestamp=datetime.now(timezone.utc),
                     asset=invalid_asset,
                     direction="long",
@@ -237,7 +244,7 @@ class TestSignalDirectionValidation:
     def test_long_direction_accepted(self):
         """Test that 'long' direction is accepted."""
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
             direction="long",
@@ -249,7 +256,7 @@ class TestSignalDirectionValidation:
     def test_short_direction_accepted(self):
         """Test that 'short' direction is accepted."""
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
             direction="short",
@@ -262,7 +269,7 @@ class TestSignalDirectionValidation:
         """Test that invalid direction is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="neutral",  # type: ignore
@@ -289,7 +296,7 @@ class TestSignalTypeValidation:
         for signal_type in valid_types:
             if len(signal_type) >= 3:  # Skip single letter for this test
                 signal = Signal(
-                    causality=CausalityChain(tick_id=generate_tick_id()),
+                    causality=CausalityChain(origin=create_test_origin()),
                     timestamp=datetime.now(timezone.utc),
                     asset="BTC/EUR",
                     direction="long",
@@ -301,7 +308,7 @@ class TestSignalTypeValidation:
         """Test that signal_type < 3 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="long",
@@ -314,7 +321,7 @@ class TestSignalTypeValidation:
         """Test that signal_type > 25 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="long",
@@ -327,7 +334,7 @@ class TestSignalTypeValidation:
         """Test that lowercase signal_type is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="long",
@@ -347,7 +354,7 @@ class TestSignalTypeValidation:
         for reserved_type in reserved_types:
             with pytest.raises(ValidationError) as exc_info:
                 Signal(
-                    causality=CausalityChain(tick_id=generate_tick_id()),
+                    causality=CausalityChain(origin=create_test_origin()),
                     timestamp=datetime.now(timezone.utc),
                     asset="BTC/EUR",
                     direction="long",
@@ -363,7 +370,7 @@ class TestSignalConfidenceValidation:
     def test_confidence_none_by_default(self):
         """Test that confidence is None if not provided."""
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
             direction="long",
@@ -378,7 +385,7 @@ class TestSignalConfidenceValidation:
 
         for conf in valid_values:
             signal = Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="long",
@@ -391,7 +398,7 @@ class TestSignalConfidenceValidation:
         """Test that confidence < 0.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="long",
@@ -405,7 +412,7 @@ class TestSignalConfidenceValidation:
         """Test that confidence > 1.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="long",
@@ -422,7 +429,7 @@ class TestSignalImmutability:
     def test_signal_is_frozen(self):
         """Test that Signal is immutable after creation."""
         signal = Signal(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             asset="BTC/EUR",
             direction="long",
@@ -436,7 +443,7 @@ class TestSignalImmutability:
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 asset="BTC/EUR",
                 direction="long",

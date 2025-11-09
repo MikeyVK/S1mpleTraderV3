@@ -14,6 +14,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.dtos.causality import CausalityChain
+from backend.dtos.shared import Origin, OriginType
 from backend.dtos.strategy.strategy_directive import (
     StrategyDirective,
     EntryDirective,
@@ -24,6 +25,11 @@ from backend.dtos.strategy.strategy_directive import (
 )
 
 
+def create_test_origin() -> Origin:
+    """Helper to create test Origin instance."""
+    return Origin(id="TCK_20251026_100000_a1b2c3d4", type=OriginType.TICK)
+
+
 class TestStrategyDirectiveCreation:
     """Test StrategyDirective instantiation."""
 
@@ -31,7 +37,7 @@ class TestStrategyDirectiveCreation:
         """Can create minimal new trade directive with only required fields."""
         directive = StrategyDirective(
             strategy_planner_id="signal_risk_planner_v1",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.75")
         )
@@ -48,7 +54,7 @@ class TestStrategyDirectiveCreation:
         """Can create complete directive with all 4 sub-directives."""
         directive = StrategyDirective(
             strategy_planner_id="signal_risk_planner_v1",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.85"),
             entry_directive=EntryDirective(
@@ -95,7 +101,7 @@ class TestStrategyDirectiveValidation:
         """strategy_planner_id is required."""
         with pytest.raises(ValidationError) as exc_info:
             StrategyDirective(
-                causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+                causality=CausalityChain(origin=create_test_origin()),
                 scope=DirectiveScope.NEW_TRADE,
                 confidence=Decimal("0.5")
             )
@@ -106,7 +112,7 @@ class TestStrategyDirectiveValidation:
         with pytest.raises(ValidationError):
             StrategyDirective(
                 strategy_planner_id="test_planner",
-                causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+                causality=CausalityChain(origin=create_test_origin()),
                 scope=DirectiveScope.NEW_TRADE,
                 confidence=Decimal("1.5")  # Invalid: > 1.0
             )
@@ -117,7 +123,7 @@ class TestStrategyDirectiveValidation:
             # Pylance limitation: cannot type narrow string literal for Enum
             StrategyDirective(  # type: ignore[call-overload]
                 strategy_planner_id="test_planner",
-                causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+                causality=CausalityChain(origin=create_test_origin()),
                 scope="INVALID_SCOPE",  # type: ignore[arg-type]
                 confidence=Decimal("0.5")
             )
@@ -130,13 +136,13 @@ class TestStrategyDirectiveDefaultValues:
         """directive_id is auto-generated with STR_ prefix."""
         directive1 = StrategyDirective(
             strategy_planner_id="test",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
         directive2 = StrategyDirective(
             strategy_planner_id="test",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
@@ -153,7 +159,7 @@ class TestStrategyDirectiveDefaultValues:
         before = datetime.now(timezone.utc)
         directive = StrategyDirective(
             strategy_planner_id="test",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
@@ -171,7 +177,7 @@ class TestStrategyDirectiveDefaultValues:
         """All sub-directives are optional and default to None."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
@@ -185,7 +191,7 @@ class TestStrategyDirectiveDefaultValues:
         """target_trade_ids defaults to empty list for NEW_TRADE."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
@@ -197,7 +203,7 @@ class TestStrategyDirectiveDefaultValues:
         directive = StrategyDirective(
             strategy_planner_id="test",
             causality=CausalityChain(
-                tick_id="TCK_20251026_100000_a1b2c3d4",
+                origin=create_test_origin(),
                 signal_ids=["SIG_20251026_100001_b2c3d4e5",
                                         "SIG_20251026_100002_c3d4e5f6"],
                 risk_ids=["RSK_20251026_100003_d4e5f6a7"]
@@ -219,7 +225,7 @@ class TestStrategyDirectiveSerialization:
         """Can serialize to dict."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.75")
         )
@@ -234,7 +240,7 @@ class TestStrategyDirectiveSerialization:
         """Can serialize to JSON."""
         directive = StrategyDirective(
             strategy_planner_id="test",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.MODIFY_EXISTING,
             target_trade_ids=["TRD_001"],
             confidence=Decimal("0.6")
@@ -250,7 +256,10 @@ class TestStrategyDirectiveSerialization:
         data: dict[str, object] = {
             "strategy_planner_id": "test",
             "causality": {
-                "tick_id": "TCK_20251026_100000_a1b2c3d4",
+                "origin": {
+                    "id": "TCK_20251026_100000_a1b2c3d4",
+                    "type": "TICK"
+                },
                 "signal_ids": [],
                 "risk_ids": []
             },
@@ -270,7 +279,7 @@ class TestStrategyDirectiveUseCases:
         """New trade directive from signal detection."""
         directive = StrategyDirective(
             strategy_planner_id="signal_risk_momentum_planner",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.85"),
             entry_directive=EntryDirective(
@@ -297,7 +306,7 @@ class TestStrategyDirectiveUseCases:
         """Modify existing trade directive from risk signal."""
         directive = StrategyDirective(
             strategy_planner_id="signal_risk_planner",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.MODIFY_EXISTING,
             target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
             confidence=Decimal("0.9"),
@@ -316,7 +325,7 @@ class TestStrategyDirectiveUseCases:
         """Close existing trade directive."""
         directive = StrategyDirective(
             strategy_planner_id="signal_risk_exit_planner",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.CLOSE_EXISTING,
             target_trade_ids=["TRD_001", "TRD_002"],
             confidence=Decimal("0.95"),
@@ -337,7 +346,7 @@ class TestStrategyDirectiveUseCases:
         """Directive with only entry sub-directive (other planners inactive)."""
         directive = StrategyDirective(
             strategy_planner_id="simple_entry_planner",
-            causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
+            causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.6"),
             entry_directive=EntryDirective(

@@ -20,6 +20,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.dtos.causality import CausalityChain
+from backend.dtos.shared import Origin, OriginType
 from backend.dtos.execution.execution_directive import ExecutionDirective
 from backend.dtos.execution.execution_directive_batch import (
     ExecutionDirectiveBatch,
@@ -28,11 +29,16 @@ from backend.dtos.execution.execution_directive_batch import (
 from backend.dtos.strategy.entry_plan import EntryPlan
 
 
+def create_test_origin() -> Origin:
+    """Helper to create test Origin instance."""
+    return Origin(id="TCK_20251028_143000_test", type=OriginType.TICK)
+
+
 # Helper function to create minimal ExecutionDirective for testing
 def create_test_directive(directive_id: str) -> ExecutionDirective:
     """Create ExecutionDirective with minimal valid fields for testing."""
     causality = CausalityChain(
-        tick_id="TCK_20251028_143000_test",  # Birth ID required
+        origin=create_test_origin(),
         strategy_directive_id="STR_20251028_143010_test"
     )
     # Create minimal EntryPlan (at least 1 plan required)

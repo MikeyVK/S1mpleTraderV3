@@ -107,7 +107,7 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
         
         Flow:
         1. Initialize StrategyCache with RunAnchor (start_new_strategy_run)
-        2. Validate source_type has DTO type mapping
+        2. Validate payload type has DTO type mapping
         3. Store payload in cache by TYPE (set_result_dto)
         4. Return CONTINUE disposition for EventAdapter
         
@@ -118,7 +118,7 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
             DispositionEnvelope with CONTINUE disposition
         
         Raises:
-            ValueError: If source_type has no DTO type mapping
+            ValueError: If payload type has no DTO type mapping
         """
         # Type narrowing: cache is guaranteed non-None after initialize()
         assert self._cache is not None, "FlowInitiator not initialized (call initialize() first)"
@@ -127,11 +127,12 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
         self._cache.start_new_strategy_run({}, data.timestamp)
 
         # 2. Validate DTO type mapping exists
-        if data.source_type not in self._dto_types:
-            available_types = list(self._dto_types.keys())
+        payload_type = type(data.payload)
+        if payload_type not in self._dto_types.values():
+            available_types = list(self._dto_types.values())
             raise ValueError(
-                f"No DTO type mapping for source_type: {data.source_type}. "
-                f"Available types: {available_types}. "
+                f"No DTO type mapping for payload type: {payload_type.__name__}. "
+                f"Available types: {[t.__name__ for t in available_types]}. "
                 f"Check ExecutionEnvironment provider configuration."
             )
 

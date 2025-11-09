@@ -25,10 +25,16 @@ from pydantic import ValidationError
 # Our Application Imports
 from backend.dtos.strategy.risk import Risk
 from backend.dtos.causality import CausalityChain
+from backend.dtos.shared import Origin, OriginType
 from backend.utils.id_generators import (
     generate_tick_id,
     generate_risk_id,
 )
+
+
+def create_test_origin() -> Origin:
+    """Helper to create test Origin instance."""
+    return Origin(id=generate_tick_id(), type=OriginType.TICK)
 
 
 class TestRiskCreation:
@@ -36,8 +42,7 @@ class TestRiskCreation:
 
     def test_create_minimal_event(self):
         """Test creating event with required fields only."""
-        tick_id = generate_tick_id()
-        causality = CausalityChain(tick_id=tick_id)
+        causality = CausalityChain(origin=create_test_origin())
         event = Risk(  # type: ignore[call-arg]
             causality=causality,
             timestamp=datetime.now(timezone.utc),
@@ -45,9 +50,9 @@ class TestRiskCreation:
             severity=0.75
         )
 
-        # Verify causality chain
-        assert tick_id.startswith("TCK_")
-        assert getattr(event.causality, "tick_id") == tick_id
+        # Verify causality chain has origin
+        assert event.causality.origin.id.startswith("TCK_")
+        assert event.causality.origin.type == OriginType.TICK
         # Verify ID formats
         risk_id = str(getattr(event, "risk_id"))
         assert risk_id.startswith("RSK_")
@@ -58,7 +63,7 @@ class TestRiskCreation:
     def test_create_event_with_affected_asset(self):
         """Test creating event with affected asset specified."""
         event = Risk(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             risk_type="UNUSUAL_VOLATILITY",
             severity=0.60,
@@ -70,7 +75,7 @@ class TestRiskCreation:
     def test_risk_id_auto_generated(self):
         """Test that risk_id is auto-generated if not provided."""
         event = Risk(  # type: ignore[call-arg]
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             risk_type="HEALTH_DEGRADED",
             severity=0.50
@@ -83,7 +88,7 @@ class TestRiskCreation:
         """Test that custom risk_id can be provided."""
         custom_id = generate_risk_id()
         event = Risk(  # type: ignore[call-arg]
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             risk_id=custom_id,
             timestamp=datetime.now(timezone.utc),
             risk_type="EMERGENCY_HALT",
@@ -101,7 +106,7 @@ class TestRiskIDValidation:
     def test_valid_risk_id_format(self):
         """Test that RSK_ prefix with UUID is valid."""
         event = Risk(  # type: ignore[call-arg]
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             risk_id=generate_risk_id(),
             timestamp=datetime.now(timezone.utc),
             risk_type="TEST",
@@ -115,7 +120,7 @@ class TestRiskIDValidation:
         """Test that non-RSK_ prefix is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(  # type: ignore[call-arg]
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 risk_id="OPP_550e8400-e29b-41d4-a716-446655440000",
                 timestamp=datetime.now(timezone.utc),
                 risk_type="TEST",
@@ -132,7 +137,7 @@ class TestRiskTimestampValidation:
         """Test that naive datetime is converted to UTC."""
         naive_dt = datetime(2025, 1, 15, 10, 30, 0)
         event = Risk(  # type: ignore[call-arg]
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=naive_dt,
             risk_type="TEST",
             severity=0.5
@@ -150,7 +155,7 @@ class TestRiskTimestampValidation:
         """Test that timezone-aware datetime is preserved."""
         aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
         event = Risk(  # type: ignore[call-arg]
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=aware_dt,
             risk_type="TEST",
             severity=0.5
@@ -174,7 +179,7 @@ class TestRiskTypeValidation:
 
         for risk_type in valid_types:
             event = Risk(  # type: ignore[call-arg]
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type=risk_type,
                 severity=0.5
@@ -185,7 +190,7 @@ class TestRiskTypeValidation:
         """Test that risk_type < 3 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(  # type: ignore[call-arg]
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="AB",
                 severity=0.5
@@ -197,7 +202,7 @@ class TestRiskTypeValidation:
         """Test that risk_type > 25 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(  # type: ignore[call-arg]
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="A" * 26,
                 severity=0.5
@@ -209,7 +214,7 @@ class TestRiskTypeValidation:
         """Test that lowercase risk_type is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(  # type: ignore[call-arg]
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="max_drawdown",
                 severity=0.5
@@ -228,7 +233,7 @@ class TestRiskTypeValidation:
         for reserved_type in reserved_types:
             with pytest.raises(ValidationError) as exc_info:
                 Risk(  # type: ignore[call-arg]
-                    causality=CausalityChain(tick_id=generate_tick_id()),
+                    causality=CausalityChain(origin=create_test_origin()),
                     timestamp=datetime.now(timezone.utc),
                     risk_type=reserved_type,
                     severity=0.5
@@ -246,7 +251,7 @@ class TestRiskSeverityValidation:
 
         for sev in valid_values:
             event = Risk(  # type: ignore[call-arg]
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="TEST",
                 severity=sev
@@ -257,7 +262,7 @@ class TestRiskSeverityValidation:
         """Test that severity < 0.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(  # type: ignore[call-arg]
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="TEST",
                 severity=-0.1
@@ -269,7 +274,7 @@ class TestRiskSeverityValidation:
         """Test that severity > 1.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(  # type: ignore[call-arg]
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="TEST",
                 severity=1.1
@@ -284,7 +289,7 @@ class TestRiskAffectedAssetValidation:
     def test_system_wide_threat_no_asset(self):
         """Test that system-wide threats can have no affected_asset."""
         event = Risk(
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             risk_type="EXCHANGE_DOWNTIME",
             severity=0.9,
@@ -304,7 +309,7 @@ class TestRiskAffectedAssetValidation:
 
         for asset in valid_assets:
             event = Risk(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="UNUSUAL_VOLATILITY",
                 severity=0.6,
@@ -316,7 +321,7 @@ class TestRiskAffectedAssetValidation:
         """Test that too short asset is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="TEST",
                 severity=0.5,
@@ -336,7 +341,7 @@ class TestRiskAffectedAssetValidation:
         for invalid_asset in invalid_assets:
             with pytest.raises(ValidationError):
                 Risk(
-                    causality=CausalityChain(tick_id=generate_tick_id()),
+                    causality=CausalityChain(origin=create_test_origin()),
                     timestamp=datetime.now(timezone.utc),
                     risk_type="TEST",
                     severity=0.5,
@@ -350,7 +355,7 @@ class TestRiskImmutability:
     def test_event_is_frozen(self):
         """Test that Risk is immutable after creation."""
         event = Risk(  # type: ignore[call-arg]
-            causality=CausalityChain(tick_id=generate_tick_id()),
+            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
             risk_type="TEST",
             severity=0.5
@@ -363,7 +368,7 @@ class TestRiskImmutability:
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                causality=CausalityChain(tick_id=generate_tick_id()),
+                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
                 risk_type="TEST",
                 severity=0.5,
