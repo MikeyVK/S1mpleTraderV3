@@ -1,6 +1,8 @@
-# CausalityChain Lifecycle - Pure Decision Lineage Tracking
+# CausalityChain Design - Pure Decision Lineage Tracking
 
-**Status:** Architectural Contract - Definitive  
+**Status:** ✅ Implemented  
+**Implementation:** `backend/dtos/causality.py`  
+**Tests:** 28/28 passing (100% coverage)  
 **Versie:** 4.1 (Confluence + Balanced Decision Making - Signal/Risk Lists)  
 **Datum:** 2025-11-09  
 **Owner:** Platform Architecture Team
@@ -9,7 +11,9 @@
 
 ## Executive Summary
 
-Dit document definieert de **scope en lifecycle** van CausalityChain als **pure ID-only decision lineage tracker** voor quant analysis.
+Dit document definieert de **implementation details en lifecycle** van CausalityChain als **pure ID-only decision lineage tracker** voor quant analysis.
+
+> **Architecture Overview:** See [DATA_FLOW.md](../../../architecture/DATA_FLOW.md#causality-tracking---decision-lineage) for high-level causality tracking patterns.
 
 **Kernprincipe:**
 > "CausalityChain tracks WHY decisions happened (causality), NOT WHAT outcomes were (reality)."
