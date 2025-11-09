@@ -185,7 +185,101 @@ Never:      Stored long-term (only payload persists in StrategyCache)
 
 ## Analysis DTOs
 
-**Status:** TODO - Next section to document
+### Signal
+
+**Purpose:** Trading opportunity detection output from SignalDetectors
+
+**WHY this DTO exists:**
+- SignalDetectors produce objective pattern detection events (entry/exit opportunities)
+- Separates "pattern detected" from "trade decision" (SRP - StrategyPlanner decides)
+- Confidence scoring enables multi-signal confluence analysis
+- Causality tracking enables complete decision audit trail
+- Time-stamped events enable historical pattern analysis
+- Immutable snapshots prevent accidental signal mutation during pipeline
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `causality` | CausalityChain | Yes | Complete ID chain from origin (TICK/NEWS/SCHEDULE) through detection. Enables journal reconstruction: "Why did we detect this signal?". Foundation for causal analysis. |
+| `signal_id` | str | Yes (auto) | Unique signal identifier (SIG_ prefix). Added to causality chain by downstream workers. Enables correlation: signal → strategy decision → execution → orders. |
+| `timestamp` | datetime | Yes | Exact moment of pattern detection (UTC). Point-in-time model enforcement. Enables temporal analysis (signal clustering, timing patterns). |
+| `asset` | str | Yes | Trading pair (BASE/QUOTE format). Identifies which market signal applies to. Validated format prevents typos (BTC/EUR not BTCEUR). |
+| `direction` | Literal["long", "short"] | Yes | Intended trading direction. Discriminates entry vs exit signals. Type-safe (no "buy"/"sell" confusion). |
+| `signal_type` | str | Yes | Pattern identifier (UPPER_SNAKE_CASE). Plugin-specific classification (FVG_ENTRY, MSS_REVERSAL, etc). Enables signal taxonomy analysis. |
+| `confidence` | float \| None | No | Signal strength [0.0-1.0]. Optional because not all detectors quantify confidence. Enables weighted confluence analysis. Mirrors Risk.severity for balanced decision-making. |
+
+**WHY frozen:**
+- Signals are immutable facts ("pattern detected at T") - cannot retroactively change
+- Prevents accidental mutation during multi-worker pipeline flow
+- Safe concurrent access across workers
+- Enables caching without defensive copying
+
+**WHY NOT included:**
+- ❌ `entry_price` - Planning concern, not detection concern (handled by EntryPlanner)
+- ❌ `stop_loss` - Risk management concern, not signal concern (handled by ExitPlanner)
+- ❌ `position_size` - Sizing concern, not detection concern (handled by SizePlanner)
+- ❌ `trade_id` - Trade is post-hoc quant concept, not runtime entity (no trade exists yet at signal stage)
+- ❌ `strategy_id` - Routing metadata, not signal data (handled by EventAdapter)
+- ❌ `approved` - Decision concern, not detection concern (StrategyPlanner decides)
+
+**Lifecycle:**
+```
+Created:    SignalDetector (pattern recognition worker)
+Extended:   causality.signal_ids.append(signal_id) by SignalDetector
+Consumed:   StrategyPlanner (combines with Risk + Context for decision)
+Persisted:  StrategyJournal (complete causality chain)
+Referenced: Throughout pipeline via causality.signal_ids
+Never:      Modified after creation (frozen)
+```
+
+**Design Decisions:**
+- **Decision 1:** Literal["long", "short"] over enum
+  - Rationale: Simple two-value discriminator, enum overhead unnecessary
+  - Alternative rejected: Enum (overkill for binary choice)
+
+- **Decision 2:** Optional confidence field
+  - Rationale: Not all pattern detectors quantify confidence (some are binary: detected or not)
+  - Alternative rejected: Required with default 1.0 (misleading - implies certainty when undefined)
+
+- **Decision 3:** UPPER_SNAKE_CASE signal_type
+  - Rationale: Consistent naming convention, prevents typos, enables taxonomy
+  - Alternative rejected: Free-form strings (inconsistent, error-prone)
+
+- **Decision 4:** No entry/exit planning fields
+  - Rationale: SRP - signal detects pattern, planners decide execution details
+  - Alternative rejected: Rich signal with price/stops (violates SRP, tight coupling)
+
+- **Decision 5:** Confidence mirrors Risk.severity scale
+  - Rationale: Symmetric scoring (high signal confidence vs high risk severity) enables balanced decision algebra
+  - Alternative rejected: Asymmetric scales (complex decision logic)
+
+**Validation Strategy:**
+- signal_id format: `SIG_YYYYMMDD_HHMMSS_hash` (military datetime)
+- signal_type: UPPER_SNAKE_CASE, no reserved prefixes (SYSTEM_, INTERNAL_, _)
+- asset: BASE/QUOTE format (e.g., BTC/EUR, not BTCEUR)
+- timestamp: UTC-enforced (timezone-aware)
+- confidence: [0.0, 1.0] if provided
+- Reserved prefix prevention: Avoids namespace pollution
+
+**Signal Framework Context:**
+```
+ContextWorkers → Objective facts (EMA=50100, regime=BULLISH)
+       ↓
+SignalDetectors → Patterns (FVG detected at 50000, confidence 0.85)
+       ↓
+RiskMonitors → Threats (drawdown approaching, severity 0.7)
+       ↓
+StrategyPlanner → Decision (combine signals + risks → StrategyDirective)
+```
+
+Signal is pure detection output - no decisions, no planning, no execution details.
+
+---
+
+## Analysis DTOs (Continued)
+
+**Status:** TODO - Next sections to document
 
 Planned coverage:
 - Signal (opportunity detection)
