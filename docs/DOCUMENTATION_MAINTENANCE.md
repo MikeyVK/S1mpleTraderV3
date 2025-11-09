@@ -303,6 +303,74 @@ New architecture doc > 300 lines?
    git checkout main && git merge docs/monthly-cleanup
    ```
 
+## Writing Guidelines
+
+### Content Style (Pre-Production Documentation)
+
+**Rule:** Documentation must be written as **first version** - no references to previous implementations.
+
+**WHY:** Project not yet in production. Documentation should be clean, authoritative, and timeless.
+
+**✅ GOOD - First version framing:**
+```markdown
+# Origin DTO
+
+**Purpose:** Type-safe platform data source identification
+
+**WHY this DTO exists:**
+- Platform data arrives from 3 sources (TICK/NEWS/SCHEDULE)
+- Type-safe discrimination prevents category errors
+```
+
+**❌ BAD - Implementation history in content:**
+```markdown
+# Origin DTO
+
+**Purpose:** Type-safe platform data source identification
+
+Previously we used source_type strings, but in 2025-11-09 we replaced
+this with Origin DTO because...
+
+**Field Rationale:**
+| id | Replaced the old tick_id/news_id pattern from V2...
+```
+
+**Version History Placement:**
+
+- ✅ **Acceptable:** Version history at END of document (Appendix or Version History section)
+- ❌ **Not acceptable:** Implementation history scattered through content sections
+- ✅ **Acceptable:** Design decisions section (documenting WHY we chose A over B)
+- ❌ **Not acceptable:** "Previously we did X, now we do Y" in field rationale
+
+**Example - Acceptable pattern:**
+```markdown
+# My Document
+
+## Content sections here...
+(Pure first-version framing, no "previously" references)
+
+---
+
+## Version History
+
+**v1.0 (2025-11-09):** Initial design
+- Rationale: Type safety over strings
+- Breaking change from V2: source_type removed
+
+**v1.1 (2025-11-15):** Added validation
+- Rationale: Prevent ID pollution
+```
+
+**Example - Design decisions (acceptable):**
+```markdown
+**Design Decisions:**
+- **Decision 1:** Enum over string for `type`
+  - Rationale: Compiler-enforced correctness
+  - Alternative rejected: String literals (error-prone)
+```
+
+**Key principle:** Write docs as if this IS the first version. History goes in appendix, not content.
+
 ## Anti-Patterns to Avoid
 
 ### ❌ Anti-Pattern 1: Copy-Paste Documentation

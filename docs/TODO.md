@@ -46,7 +46,7 @@
   - **Design:** [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md)
   - **Purpose:** Initialize StrategyCache before workers execute (race condition prevention)
 
-**Metrics:** 403 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+**Metrics:** 395 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
 
 **Recent (2025-11-09):**
 - **Origin DTO complete** (16/16 tests) - Type-safe platform data origin tracking (TICK/NEWS/SCHEDULE)
@@ -55,7 +55,18 @@
 - **Breaking changes:** PlatformDataDTO and CausalityChain consumers need updates
 - CausalityChain execution tracking (order_ids/fill_ids) complete
 - FlowInitiator implementation complete
-- PlatformDataDTO refactored to minimal design (3 fields)---
+- PlatformDataDTO refactored to minimal design (3 fields)
+
+**Technical Debt:**
+- [ ] **Enums Centralisatie** (2025-11-09)
+  - **Issue:** Enums currently embedded in DTOs (e.g., OriginType in origin.py, DirectiveScope in strategy_directive.py)
+  - **Impact:** Hard to discover all enums, tight coupling, difficult to add new implementations
+  - **Solution:** Move all enums to `backend/core/enums.py` (centralized registry)
+  - **Benefits:** Single source of truth, easy discovery, loose coupling, no DTO diving needed
+  - **Scope:** OriginType, DirectiveScope, ExecutionMode, DispositionType, and all future enums
+  - **Priority:** Medium (before Week 1 Config Schemas - config may reference enums)
+
+---
 
 ### Week 1: Configuration Schemas - 🔥 IN PROGRESS (CRITICAL PATH)
 
