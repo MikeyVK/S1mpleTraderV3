@@ -8,8 +8,9 @@
 1. [Core Principles](CORE_PRINCIPLES.md) - Vision + 4 fundamental principles
 2. [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) - **CRITICAL**: 3 major changes from V2
 3. [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) - **NEW**: The "Quant Leap" explained
-4. [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - DTO-Centric data flow
-5. [Worker Taxonomy](WORKER_TAXONOMY.md) - 5 worker categories
+4. [Pipeline Flow](PIPELINE_FLOW.md) - **COMPLETE PIPELINE**: 6+1 phases from tick to execution
+5. [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - DTO-Centric data flow
+6. [Worker Taxonomy](WORKER_TAXONOMY.md) - 5 worker categories
 
 **Implementing a feature?** Jump to:
 - **Workers**: [Worker Taxonomy](WORKER_TAXONOMY.md) → [Plugin Anatomy](PLUGIN_ANATOMY.md)
@@ -25,6 +26,7 @@
 | [Core Principles](CORE_PRINCIPLES.md) | Vision + Design Philosophy | Plugin First, Separation of Concerns, Config-Driven, Contract-Driven |
 | [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) | **CRITICAL READING** | Platgeslagen Orkestratie, Point-in-Time Model, BuildSpec Bootstrap |
 | [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) | **Quant Leap Philosophy** | Objective ContextWorkers, Subjective Consumers, No SWOT Aggregation |
+| [Pipeline Flow](PIPELINE_FLOW.md) | **COMPLETE PIPELINE** | 6+1 Phases: Bootstrapping → Context → Opportunity/Threat → Strategy → Planning → Translation → Execution |
 | [Layered Architecture](LAYERED_ARCHITECTURE.md) | System Layers | Frontend → Service → Backend, Dependency flow |
 
 ### Configuration & Bootstrap
@@ -41,6 +43,8 @@
 | [Point-in-Time Model](POINT_IN_TIME_MODEL.md) | **CORE DATA MODEL** | TickCache, IStrategyCache, RunAnchor, DTO flow |
 | [Data Flow](DATA_FLOW.md) | Worker Communication | DispositionEnvelope, CONTINUE/PUBLISH/STOP |
 | [Event-Driven Wiring](EVENT_DRIVEN_WIRING.md) | Event Architecture | EventBus, EventAdapter, wiring_map.yaml |
+| [AsyncIO Architecture](ASYNC_IO_ARCHITECTURE.md) | **ASYNC & TIMING** | AsyncIO patterns, Timing separation, Event-driven state |
+| [Event Architecture](EVENT_ARCHITECTURE.md) | Complete Event System | Event producers, EventStore, EventQueue, Delivery guarantees |
 
 ### Workers & Plugins
 
@@ -61,8 +65,9 @@
 ### Phase 1: Understanding the Model
 1. ✅ Read [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) - **NON-NEGOTIABLE**
 2. ✅ Read [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) - **Quant Leap explained**
-3. ✅ Read [Point-in-Time Model](POINT_IN_TIME_MODEL.md)
-4. ✅ Skim [Worker Taxonomy](WORKER_TAXONOMY.md)
+3. ✅ Read [Pipeline Flow](PIPELINE_FLOW.md) - **Complete 6+1 phase pipeline**
+4. ✅ Read [Point-in-Time Model](POINT_IN_TIME_MODEL.md)
+5. ✅ Skim [Worker Taxonomy](WORKER_TAXONOMY.md)
 
 ### Phase 2: Implementation Patterns
 1. ✅ Study [Plugin Anatomy](PLUGIN_ANATOMY.md)

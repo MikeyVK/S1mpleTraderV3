@@ -6,10 +6,10 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 > **Quality Gates & TDD Workflow:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) and [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
 
-**Last Updated:** 2025-11-02  
-**Total Tests Passing:** 336 tests (100% coverage)
-- **DTOs:** 225 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 45)
-- **Core Infrastructure:** 79 tests (StrategyCache: 20, EventBus: 33, Worker Protocol: 13, Enums: 13)
+**Last Updated:** 2025-11-09
+**Total Tests Passing:** 364 tests (100% coverage)
+- **DTOs:** 239 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 59)
+- **Core Infrastructure:** 93 tests (StrategyCache: 20, EventBus: 33, Worker Protocol: 13, FlowInitiator: 14, Enums: 13)
 - **Utils:** 32 tests (ID Generators: 32)
 
 > **Note:** SWOT terminology fully replaced with quant terminology (2024-11-02). See [../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md](../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md) for complete refactoring details.
@@ -51,18 +51,20 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 **Coverage:** 52/52 tests passing (100%)
 
-### Shared DTOs (45 tests)
+### Shared DTOs (59 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| disposition_envelope.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ Complete |
+| platform_data.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Complete (minimal design) |
 | causality.py | 10.00/10 | 24/24 ✅ | 10.00/10 | 0 | ✅ Complete |
+| disposition_envelope.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ Complete |
 
-**Coverage:** 45/45 tests passing (100%)
-| causality.py | 10.00/10 | 25/25 ✅ | 10.00/10 | 0 | ✅ Complete |
-| disposition_envelope.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ Complete |
+**Coverage:** 59/59 tests passing (100%)
 
-**Coverage:** 42/42 tests passing (100%)
+**Recent Changes:**
+- PlatformDataDTO stripped to 3 essential fields (source_type, timestamp, payload)
+- Removed symbol, timeframe, metadata (YAGNI - data exists in payload)
+- Tests reduced from 20 to 14 (quality over quantity)
 
 ### Deleted/Replaced Modules
 
@@ -75,7 +77,7 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 ## Platform Services Status
 
-### Core Services (66 tests)
+### Core Services (80 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
@@ -84,13 +86,15 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 | eventbus.py | 10.00/10 | 18/18 ✅ | 10.00/10 | 0 | ✅ Phase 1.2 Complete |
 | interfaces/eventbus.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ IEventBus protocol |
 | interfaces/worker.py | 10.00/10 | 13/13 ✅ | 10.00/10 | 0 | ✅ Phase 1.2 Complete |
+| flow_initiator.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Phase 1.3 Complete |
 
-**Coverage:** 66/66 tests passing (100%)
+**Coverage:** 80/80 tests passing (100%)
 
 **Platform Services Complete:**
 - ✅ IStrategyCache protocol + StrategyCache implementation (20 tests)
 - ✅ IEventBus protocol + EventBus implementation (33 tests)
 - ✅ IWorkerLifecycle protocol (13 tests)
+- ✅ FlowInitiator - per-strategy data ingestion and cache initialization (14 tests)
 
 ### Core Infrastructure (14 tests)
 
@@ -123,23 +127,49 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 | **Signal/Risk Detection** | 65/65 ✅ | 100% |
 | **Strategy Planning** | 63/63 ✅ | 100% |
 | **Execution** | 52/52 ✅ | 100% |
-| **Shared** | 45/45 ✅ | 100% |
+| **Shared** | 59/59 ✅ | 100% |
 | **Platform (Cache)** | 20/20 ✅ | 100% |
 | **Platform (EventBus)** | 33/33 ✅ | 100% |
 | **Platform (Worker)** | 13/13 ✅ | 100% |
+| **Platform (FlowInitiator)** | 14/14 ✅ | 100% |
 | **Core Infrastructure** | 13/13 ✅ | 100% |
 | **Utilities** | 32/32 ✅ | 100% |
-| **TOTAL** | **336/336 ✅** | **100%** |
+| **TOTAL** | **364/364 ✅** | **100%** |
 
 ### By Phase (Roadmap)
 
 | Phase | Component | Tests | Status |
 |-------|-----------|-------|--------|
-| **1.1** | Data Contracts (12 DTOs) | 225/225 ✅ | Complete |
+| **1.1** | Data Contracts (13 DTOs) | 239/239 ✅ | Complete |
 | **1.2** | IStrategyCache Protocol | 20/20 ✅ | Complete |
 | **1.2** | IEventBus Protocol | 33/33 ✅ | Complete |
 | **1.2** | IWorkerLifecycle Protocol | 13/13 ✅ | Complete |
+| **1.3** | FlowInitiator | 14/14 ✅ | Complete |
 | **1.4** | RunAnchor + StrategyCacheType | - | Complete |
+
+## Recent Updates (2025-11-09)
+
+### FlowInitiator - Complete Implementation
+- ✅ **FlowInitiator**: Per-strategy data ingestion and cache initialization (14/14 tests, 100% coverage)
+- ✅ **Platform-within-Strategy**: Singleton worker but requires strategy_cache (not global Platform)
+- ✅ **Type-Safe**: DTO types injected via ConfigTranslator (dto_types capability)
+- ✅ **Cache Initialization**: Calls start_new_strategy_run() before workers execute
+- ✅ **Quality Gates**: Pylint 10/10, 100% test coverage, all tests passing
+- ✅ **Documentation**: FLOW_INITIATOR_DESIGN.md exists, needs integration into PLATFORM_COMPONENTS.md
+
+### PlatformDataDTO - Minimal Design Refactor (2025-11-06)
+- ✅ **PlatformDataDTO**: Stripped to 3 essential fields (source_type, timestamp, payload)
+- ❌ **Removed Fields**: symbol, timeframe, metadata (YAGNI - data duplicated from payload)
+- ✅ **Rationale**: FlowInitiator only uses source_type (type lookup), timestamp (RunAnchor), payload (cache storage)
+- ✅ **Test Quality**: Reduced from 20 quantity-driven tests to 14 meaningful tests
+- ✅ **Documentation Updates**:
+  - TDD_WORKFLOW.md: Replaced "20-30 tests typical" with completeness criteria
+  - QUALITY_GATES.md: Removed arbitrary quantity targets
+  - DATA_PROVIDER_DESIGN.md: Updated spec to match minimal implementation
+- ✅ **Quality**: Pylint 10/10, Pylance 0 errors, mypy strict passing
+- ✅ **Architecture**: Single Responsibility Principle - container exists only between DataProvider and FlowInitiator
+
+**Breaking Change**: Removed 3 optional fields. Consumers must extract symbol/timeframe from payload.
 
 ## Recent Updates (2025-11-02)
 
@@ -288,8 +318,8 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ### Overall Statistics
 
-- **Total Modules:** 21 (12 DTOs + 5 protocols + 2 services + 2 infrastructure)
-- **Total Tests:** 362
+- **Total Modules:** 22 (13 DTOs + 5 protocols + 2 services + 2 infrastructure)
+- **Total Tests:** 350
 - **Test Coverage:** 100%
 - **Pylint Score:** 10.00/10 (all modules)
 - **Mypy Errors:** 0 (all DTOs)
@@ -297,8 +327,8 @@ assert getattr(entry_dir, "symbol") == "BTCUSDT"
 
 ### Code Quality Trends
 
-- **Lines of Code:** ~2,500 (DTOs + tests + services + protocols + infrastructure)
-- **Average Tests per Module:** 17.2
+- **Lines of Code:** ~2,700 (DTOs + tests + services + protocols + infrastructure)
+- **Average Tests per Module:** 15.9
 - **Documentation Coverage:** 100% (file headers, docstrings)
 - **Quality Gate Pass Rate:** 100%
 

@@ -105,7 +105,7 @@ python -m mypy backend/dtos/strategy/my_dto.py --strict --no-error-summary
 pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
 ```
 
-**Expected:** All tests passing (20-30 tests typical)
+**Expected:** All tests passing (complete coverage, not arbitrary quantity targets)
 
 ## Post-Implementation Workflow
 

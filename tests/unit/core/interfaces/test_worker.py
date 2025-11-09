@@ -72,7 +72,7 @@ class TestIWorkerLifecycleProtocol:
 
             def initialize(
                 self,
-                strategy_cache: IStrategyCache,
+                strategy_cache: IStrategyCache | None = None,
                 **capabilities
             ) -> None:
                 """Initialize worker."""
@@ -106,7 +106,7 @@ class TestIWorkerLifecycleProtocol:
 
             def initialize(
                 self,
-                strategy_cache: IStrategyCache,
+                strategy_cache: IStrategyCache | None = None,
                 **capabilities
             ) -> None:
                 """Initialize with dependencies."""
@@ -122,6 +122,38 @@ class TestIWorkerLifecycleProtocol:
         worker.initialize(strategy_cache=cache, persistence=persistence)
         assert worker.cache is cache
         assert worker.capabilities == {'persistence': persistence}
+
+    def test_iworkerlifecycle_initialize_with_none_cache(self) -> None:
+        """Platform workers can initialize with strategy_cache=None."""
+
+        class PlatformWorker:  # pylint: disable=too-few-public-methods
+            """Test platform worker (no strategy context)."""
+
+            def __init__(self) -> None:
+                """Initialize test worker."""
+                self.cache = None
+                self.capabilities = {}
+
+            def initialize(
+                self,
+                strategy_cache: IStrategyCache | None = None,
+                **capabilities
+            ) -> None:
+                """Initialize without strategy cache."""
+                self.cache = strategy_cache
+                self.capabilities = capabilities
+
+            def shutdown(self) -> None:
+                """Shutdown worker."""
+
+        worker: IWorkerLifecycle = PlatformWorker()  # type: ignore[assignment]
+
+        # Platform workers don't need strategy_cache
+        market_connection = Mock()
+        worker.initialize(strategy_cache=None, market_connection=market_connection)
+
+        assert worker.cache is None
+        assert worker.capabilities == {'market_connection': market_connection}
 
     def test_iworkerlifecycle_shutdown_signature(self) -> None:
         """Shutdown method has correct signature (no parameters)."""
@@ -145,7 +177,7 @@ class TestIWorkerLifecycleProtocol:
 
             def initialize(
                 self,
-                strategy_cache: IStrategyCache,
+                strategy_cache: IStrategyCache | None = None,
                 **capabilities
             ) -> None:
                 """Initialize worker."""
@@ -169,7 +201,7 @@ class TestIWorkerLifecycleProtocol:
 
             def initialize(
                 self,
-                strategy_cache: IStrategyCache,
+                strategy_cache: IStrategyCache | None = None,
                 **capabilities
             ) -> None:
                 """Initialize worker."""
@@ -220,7 +252,7 @@ class TestProtocolCompliance:
 
             def initialize(
                 self,
-                strategy_cache: IStrategyCache,
+                strategy_cache: IStrategyCache | None = None,
                 **capabilities
             ) -> None:
                 """Initialize worker."""
@@ -243,7 +275,7 @@ class TestProtocolCompliance:
 
             def initialize(
                 self,
-                strategy_cache: IStrategyCache,
+                strategy_cache: IStrategyCache | None = None,
                 **capabilities
             ) -> None:
                 """Initialize with dependencies."""

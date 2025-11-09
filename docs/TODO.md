@@ -1,8 +1,7 @@
 # SimpleTraderV3 - TODO List
 
-**Huidige Focus (2025-10-30):** Week 1 - Configuration Schemas (CRITICAL PATH)
-> **Besluit:** Config schemas hebben te veel afhankelijkheden - NU eerst aanpakken!
-> Alles anders (Bootstrap, Factories, EventAdapter, Workers) komt daarna.
+**Huidige Focus (2025-11-09):** Configuration Schemas (Week 1 - Critical Path)
+> **Status:** FlowInitiator complete (Phase 1.3), ready for Config Schema implementation
 
 ## 📚 Documentation Quick Links
 
@@ -24,9 +23,14 @@
 ### Week 0: Foundation - ✅ COMPLETE
 
 **Data Contracts (DTOs):**
-- [x] Shared Layer: DispositionEnvelope, CausalityChain
+- [x] Shared Layer: DispositionEnvelope, CausalityChain, PlatformDataDTO
 - [x] Signal/Risk Layer: Signal, Risk
 - [x] Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
+- [ ] **ExecutionRequest DTO** - Payload for EXECUTION_INTENT_REQUESTED event
+  - **Purpose:** Aggregated input for ExecutionIntentPlanner (3 parallel plans → execution plan)
+  - **Fields:** trade_id, strategy_directive, entry_plan, size_plan, exit_plan, causality
+  - **Location:** `backend/dtos/strategy/execution_request.py`
+  - **Note:** Referenced in PIPELINE_FLOW.md but not yet implemented
 - [x] Execution Layer: ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
 
 **Interface Protocols:**
@@ -34,7 +38,19 @@
 - [x] IEventBus (protocol + implementation)
 - [x] IWorkerLifecycle (protocol)
 
-**Metrics:** 404 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+**Platform Components:**
+- [x] FlowInitiator - Per-strategy data ingestion and cache initialization (Phase 1.3)
+  - **Implementation:** `backend/core/flow_initiator.py`
+  - **Tests:** 14/14 passing (100% coverage)
+  - **Quality:** Pylint 10/10
+  - **Design:** [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md)
+  - **Purpose:** Initialize StrategyCache before workers execute (race condition prevention)
+
+**Metrics:** 364 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+
+**Recent:** 
+- FlowInitiator implementation complete (2025-11-09)
+- PlatformDataDTO refactored to minimal design (3 fields: source_type, timestamp, payload)
 
 ---
 
@@ -77,8 +93,14 @@
 - [ ] WorkerFactory (worker instantiation from BuildSpecs)
 - [ ] EventWiringFactory (EventAdapter assembly from BuildSpecs)
 - [ ] StrategyFactory (complete strategy orchestration)
+- [ ] **WorkerMetadataRegistry** (runtime registry for manifest metadata)
+  - **Purpose:** Enable StrategyCache DTO validation without manifest parsing at runtime
+  - **Built during bootstrap:** PluginRegistry → ConfigTranslator → Factory → Registry
+  - **Contains:** WorkerMetadata (produces_dtos, requires_dtos, scope) per worker
+  - **Usage:** O(1) lookups for runtime validation (defense-in-depth)
+  - **Design doc:** `docs/development/backend/core/WORKER_METADATA_REGISTRY_DESIGN.md`
 
-**Deliverable:** Complete strategy assembly from BuildSpecs (target: 60+ tests)
+**Deliverable:** Complete strategy assembly from BuildSpecs + runtime metadata registry (target: 70+ tests)
 
 ---
 
@@ -91,8 +113,30 @@
 - [ ] EventAdapter (bus-agnostic worker wrapper)
 - [ ] TickCacheManager (run lifecycle orchestration)
 - [ ] PlanningAggregator (4-plan coordinator, mode-aware)
+  - **Design doc:** `docs/development/backend/core/PLANNING_AGGREGATOR_DESIGN.md`
+  - **Purpose:** Multi-input aggregator for Entry/Size/Exit/Execution plans
+  - **Pattern:** Fan-in coordination (5 event handlers → 2 output events)
+  - **State:** Per-trade tracking matrix with RunAnchor reentry guard
+  - **Output:** EXECUTION_INTENT_REQUESTED, EXECUTION_DIRECTIVE_BATCH_READY
+- [ ] **StrategyCache Runtime Validation** (optional defense-in-depth)
+  - **Purpose:** Validate worker DTO contracts at runtime (catch implementation bugs)
+  - **Dependencies:** WorkerMetadataRegistry (Week 3)
+  - **Implementation:** Update `set_result_dto()` / `get_required_dtos()` with optional validation
+  - **Strategy:** Fail-fast in dev, silent/logging in production
+  - **Validation checks:** Worker produces expected DTOs, requests only declared DTOs
 
-**Deliverable:** Core platform components implemented & integrated (target: 60+ tests)
+**Open Design Issues:**
+- [ ] **Issue #5: Trade ID Propagation & Causality** (BLOCKER for PlanningAggregator)
+  - **Question:** How to track which plans belong to which trade?
+  - **Options:** 
+    - A) Embed trade_id in directive_id ("EXE_..._TRD123_...")
+    - B) Add trade_id field to ExecutionDirective
+    - C) Extend CausalityChain with trade_id field
+  - **Related:** How to represent ExecutionDirectiveBatch in CausalityChain?
+  - **Decision needed:** Before PlanningAggregator implementation
+  - **Note:** CausalityChain currently lacks trade/batch tracking mechanism
+
+**Deliverable:** Core platform components implemented & integrated (target: 70+ tests)
 
 ---
 
@@ -164,6 +208,9 @@
 - [EVENTADAPTER_DESIGN.md](development/EVENTADAPTER_DESIGN.md) - EventAdapter architecture
 - [CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md](development/CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md) - Config pipeline
 - [BASEWORKER_DESIGN_PRELIM.md](development/BASEWORKER_DESIGN_PRELIM.md) - Worker foundation
+- [DATA_PROVIDER_DESIGN.md](development/backend/core/DATA_PROVIDER_DESIGN.md) - DataProvider architecture
+- [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md) - ✅ FlowInitiator implementation (Phase 1.3 Complete)
+- **[WORKER_METADATA_REGISTRY_DESIGN.md](development/backend/core/WORKER_METADATA_REGISTRY_DESIGN.md)** - Runtime metadata registry (PENDING)
 
 **Architecture Guides:**
 - [LAYERED_ARCHITECTURE.md](architecture/LAYERED_ARCHITECTURE.md) - System layers
@@ -188,6 +235,6 @@
 
 ---
 
-**Last Updated:** 2025-10-30  
+**Last Updated:** 2025-11-09  
 **Maintained By:** Development Team  
 **Review Frequency:** Weekly

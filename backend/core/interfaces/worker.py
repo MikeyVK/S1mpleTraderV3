@@ -61,7 +61,17 @@ class IWorkerLifecycle(Protocol):
     services (StrategyCache, capabilities). Workers remain testable in
     isolation without platform singletons.
 
-    Example:
+    Worker Scopes (strategy_cache usage):
+        - Platform Workers: Don't use strategy_cache (pass None)
+          Examples: DataProvider (singleton, no strategy context)
+        
+        - Strategy Workers: Require strategy_cache (per-strategy instance)
+          Examples: SignalDetector, RiskMonitor, PlanningWorker
+        
+        - Platform-within-Strategy: Singleton but strategy-aware
+          Examples: FlowInitiator (singleton, routes to strategies)
+
+    Example (Strategy Worker):
         ```python
         # Construction phase
         worker = SignalDetector(build_spec)
@@ -80,6 +90,18 @@ class IWorkerLifecycle(Protocol):
         worker.shutdown()
         ```
 
+    Example (Platform Worker):
+        ```python
+        # Construction phase
+        data_provider = DataProvider(build_spec)
+
+        # Runtime initialization (no strategy_cache needed)
+        data_provider.initialize(
+            strategy_cache=None,
+            market_connection=connection_service
+        )
+        ```
+
     Capabilities:
         - persistence: IPersistenceService (optional)
         - strategy_ledger: IStrategyLedger (optional)
@@ -90,7 +112,7 @@ class IWorkerLifecycle(Protocol):
 
     def initialize(
         self,
-        strategy_cache: "IStrategyCache",
+        strategy_cache: "IStrategyCache | None" = None,
         **capabilities
     ) -> None:
         """
@@ -102,7 +124,10 @@ class IWorkerLifecycle(Protocol):
         Phase Transition: Constructed → Active
 
         Args:
-            strategy_cache: Platform singleton for strategy state management
+            strategy_cache: Platform singleton for strategy state management.
+                - Required for Strategy Workers (per-strategy instances)
+                - Required for Platform-within-Strategy Workers (routing)
+                - None for Platform Workers (no strategy context)
             **capabilities: Optional runtime capabilities:
                 - persistence: IPersistenceService (for state persistence)
                 - strategy_ledger: IStrategyLedger (for strategy analytics)
@@ -113,7 +138,8 @@ class IWorkerLifecycle(Protocol):
                 (dependencies invalid, resources unavailable, etc.)
 
         Note:
-            Workers MUST store strategy_cache reference.
+            Strategy Workers MUST validate strategy_cache is not None.
+            Platform Workers MUST NOT use strategy_cache (ignore if provided).
             Workers MAY store capability references if needed.
             Workers MUST validate required capabilities are present.
         """

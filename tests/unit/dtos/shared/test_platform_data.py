@@ -1,0 +1,248 @@
+# tests/unit/dtos/shared/test_platform_data.py
+"""
+Unit tests for PlatformDataDTO.
+
+Tests the minimal data envelope contract between DataProviders and FlowInitiator.
+Focus on essential behavior: structure, immutability, validation.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pydantic, backend.dtos.shared.platform_data]
+"""
+
+# Standard Library Imports
+from datetime import datetime, timezone
+
+# Third-Party Imports
+import pytest
+from pydantic import BaseModel, ConfigDict, ValidationError
+
+# Our Application Imports
+from backend.dtos.shared.platform_data import PlatformDataDTO
+
+
+class MockCandleWindow(BaseModel):
+    """Mock CandleWindow DTO for testing payloads."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    timeframe: str
+    close: float
+
+
+class MockOrderBookSnapshot(BaseModel):
+    """Mock OrderBook DTO for testing payloads."""
+
+    model_config = ConfigDict(frozen=True)
+
+    symbol: str
+    bid_price: float
+    ask_price: float
+
+
+class TestPlatformDataDTOStructure:
+    """Test DTO structure with required fields only."""
+
+    def test_create_with_all_required_fields(self):
+        """Test successful creation with source_type, timestamp, payload."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        dto = PlatformDataDTO(
+            source_type="candle_stream",
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        assert dto.source_type == "candle_stream"
+        assert dto.timestamp == timestamp
+        assert dto.payload == payload
+
+    def test_different_payload_types(self):
+        """Test payload accepts any BaseModel subtype."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+
+        # CandleWindow payload
+        candle_dto = PlatformDataDTO(
+            source_type="candle_stream",
+            timestamp=timestamp,
+            payload=MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        )
+        assert isinstance(candle_dto.payload, MockCandleWindow)
+
+        # OrderBook payload
+        orderbook_dto = PlatformDataDTO(
+            source_type="orderbook_snapshot",
+            timestamp=timestamp,
+            payload=MockOrderBookSnapshot(symbol="ETH", bid_price=3000.0, ask_price=3001.0)
+        )
+        assert isinstance(orderbook_dto.payload, MockOrderBookSnapshot)
+
+
+class TestPlatformDataDTOValidation:
+    """Test field validation for required fields."""
+
+    def test_missing_source_type(self):
+        """Test that missing source_type raises ValidationError."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        with pytest.raises(ValidationError) as exc_info:
+            PlatformDataDTO(timestamp=timestamp, payload=payload)
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"] == ("source_type",) for error in errors)
+
+    def test_missing_timestamp(self):
+        """Test that missing timestamp raises ValidationError."""
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        with pytest.raises(ValidationError) as exc_info:
+            PlatformDataDTO(source_type="candle_stream", payload=payload)
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"] == ("timestamp",) for error in errors)
+
+    def test_missing_payload(self):
+        """Test that missing payload raises ValidationError."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+
+        with pytest.raises(ValidationError) as exc_info:
+            PlatformDataDTO(source_type="candle_stream", timestamp=timestamp)
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"] == ("payload",) for error in errors)
+
+    def test_empty_source_type(self):
+        """Test that empty string source_type raises ValidationError."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        with pytest.raises(ValidationError) as exc_info:
+            PlatformDataDTO(source_type="", timestamp=timestamp, payload=payload)
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"] == ("source_type",) for error in errors)
+
+    def test_invalid_timestamp_type(self):
+        """Test that invalid timestamp type raises ValidationError."""
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        with pytest.raises(ValidationError) as exc_info:
+            PlatformDataDTO(
+                source_type="candle_stream",
+                timestamp=[1, 2, 3],
+                payload=payload
+            )
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"] == ("timestamp",) for error in errors)
+
+    def test_invalid_payload_type(self):
+        """Test that non-BaseModel payload raises ValidationError."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+
+        with pytest.raises(ValidationError) as exc_info:
+            PlatformDataDTO(
+                source_type="candle_stream",
+                timestamp=timestamp,
+                payload="not_a_basemodel"
+            )
+
+        errors = exc_info.value.errors()
+        assert any(error["loc"] == ("payload",) for error in errors)
+
+
+class TestPlatformDataDTOImmutability:
+    """Test frozen=True enforcement."""
+
+    def test_cannot_modify_source_type(self):
+        """Test that source_type cannot be modified after creation."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        dto = PlatformDataDTO(
+            source_type="candle_stream",
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        with pytest.raises(ValidationError, match="frozen"):
+            dto.source_type = "orderbook_snapshot"
+
+    def test_cannot_modify_timestamp(self):
+        """Test that timestamp cannot be modified after creation."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        dto = PlatformDataDTO(
+            source_type="candle_stream",
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        new_timestamp = datetime(2025, 11, 6, 15, 0, 0, tzinfo=timezone.utc)
+        with pytest.raises(ValidationError, match="frozen"):
+            dto.timestamp = new_timestamp
+
+    def test_cannot_modify_payload(self):
+        """Test that payload cannot be modified after creation."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        dto = PlatformDataDTO(
+            source_type="candle_stream",
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        new_payload = MockCandleWindow(symbol="ETH", timeframe="4h", close=3000.0)
+        with pytest.raises(ValidationError, match="frozen"):
+            dto.payload = new_payload
+
+
+class TestPlatformDataDTOEdgeCases:
+    """Test edge cases and boundary conditions."""
+
+    def test_source_type_with_special_characters(self):
+        """Test source_type accepts special characters (underscores, hyphens)."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        dto = PlatformDataDTO(
+            source_type="candle_stream_btc-eth_v2",
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        assert dto.source_type == "candle_stream_btc-eth_v2"
+
+    def test_timestamp_with_microseconds(self):
+        """Test timestamp preserves microsecond precision."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, 123456, tzinfo=timezone.utc)
+        payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+
+        dto = PlatformDataDTO(
+            source_type="candle_stream",
+            timestamp=timestamp,
+            payload=payload
+        )
+
+        assert dto.timestamp.microsecond == 123456
+
+    def test_multiple_instances_independent(self):
+        """Test multiple DTO instances are independent (frozen enforcement)."""
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        payload1 = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+        payload2 = MockCandleWindow(symbol="ETH", timeframe="4h", close=3000.0)
+
+        dto1 = PlatformDataDTO(
+            source_type="candle_stream",
+            timestamp=timestamp,
+            payload=payload1
+        )
+        dto2 = PlatformDataDTO(
+            source_type="orderbook_snapshot",
+            timestamp=timestamp,
+            payload=payload2
+        )
+
+        assert dto1.source_type != dto2.source_type
+        assert dto1.payload != dto2.payload
