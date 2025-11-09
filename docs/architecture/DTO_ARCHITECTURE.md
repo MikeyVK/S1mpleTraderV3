@@ -579,13 +579,375 @@ StrategyDirective is the strategic decision - planners handle tactical execution
 
 ## Planning DTOs
 
-**Status:** TODO
+Planning DTOs represent tactical execution plans created by specialized planners.
+Each DTO translates strategic constraints from StrategyDirective into concrete execution parameters.
 
-Planned coverage:
-- EntryPlan
-- SizePlan
-- ExitPlan
-- ExecutionPlan
+**Architectural Pattern:**
+```
+StrategyDirective (strategic constraints)
+  → EntryPlanner → EntryPlan (WHAT/WHERE to enter)
+  → SizePlanner → SizePlan (HOW MUCH)
+  → ExitPlanner → ExitPlan (WHERE OUT)
+  → RoutingPlanner → ExecutionPlan (HOW/WHEN - trade-offs)
+    → PlanningAggregator → ExecutionDirective (aggregated)
+```
+
+**Key Design Principles:**
+- **Lean Specs:** Only execution-critical parameters (no metadata/timestamps)
+- **No Causality:** Sub-planners receive StrategyDirective (has causality), plans inherit via aggregation
+- **Immutable (mostly):** EntryPlan/SizePlan mutable for updates, ExitPlan/ExecutionPlan frozen
+- **Universal:** Connector-agnostic (translation happens downstream)
+
+---
+
+### EntryPlan
+
+**Purpose:** Entry execution specification (WHAT/WHERE to enter)
+
+**WHY this DTO exists:**
+- EntryPlanner translates entry constraints into concrete order specifications
+- Separates "entry decision" from "entry execution" (SRP)
+- Defines WHAT order type and WHERE (price levels)
+- Pure execution parameters without timing/routing (those → ExecutionPlan)
+- Lean spec - no metadata, timestamps, or causality (parent StrategyDirective has those)
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | EntryPlanner | Translates StrategyDirective.entry_directive → concrete order spec |
+| **Consumers** | PlanningAggregator | Combines with Size/Exit/ExecutionPlan → ExecutionDirective |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `plan_id` | str | Yes (auto) | Unique entry plan identifier (ENT_ prefix). Enables tracking entry plan → order correlation. |
+| `symbol` | str | Yes | Trading pair (BASE_QUOTE format). Identifies which market to enter. |
+| `direction` | Literal["BUY", "SELL"] | Yes | Trade direction. Type-safe (BUY/SELL, not long/short). Explicit execution instruction. |
+| `order_type` | Literal["MARKET", "LIMIT", "STOP_LIMIT"] | Yes | Order execution type. Determines how entry executes. MARKET=immediate, LIMIT=patient, STOP_LIMIT=breakout. |
+| `limit_price` | Decimal \| None | No | Limit price for LIMIT/STOP_LIMIT orders. WHERE to enter. Optional (only for non-MARKET orders). |
+| `stop_price` | Decimal \| None | No | Stop trigger price for STOP_LIMIT orders. Breakout entry trigger. Optional (only for STOP_LIMIT). |
+
+**WHY NOT frozen:**
+- EntryPlan may be updated pre-execution (price adjustments, order type changes)
+- Mutable enables plan refinement without creating new versions
+- Frozen after execution starts (immutability via external control)
+
+**WHY NOT included:**
+- ❌ `timing` - Execution timing → ExecutionPlan (execution_urgency)
+- ❌ `slippage_tolerance` - Slippage → ExecutionPlan (max_slippage_pct)
+- ❌ `position_size` - Sizing → SizePlan (separate concern)
+- ❌ `created_at`/`planner_id` - Metadata → worker context (not execution params)
+- ❌ `causality` - Parent StrategyDirective has causality, inherited via aggregation
+- ❌ `valid_until` - Execution window → ExecutionPlan (max_execution_window_minutes)
+
+**Lifecycle:**
+```
+Created:    EntryPlanner (from StrategyDirective.entry_directive constraints)
+Validated:  PlanningAggregator (checks order_type vs price consistency)
+Consumed:   ExecutionHandler (places order based on plan)
+Aggregated: PlanningAggregator adds plan_id to ExecutionDirective
+Never:      Modified after execution starts
+```
+
+**Design Decisions:**
+- **Decision 1:** BUY/SELL over long/short
+  - Rationale: Execution-layer terminology. Clear direction for order placement.
+  - Alternative rejected: long/short (signal-layer terminology, confusing at execution)
+
+- **Decision 2:** Three order types (MARKET, LIMIT, STOP_LIMIT)
+  - Rationale: Covers 90% of entry strategies. Simple spec, complex strategies via combinations.
+  - Alternative rejected: Rich order types (POST_ONLY, IOC, FOK) - connector-specific, defeats universal design
+
+- **Decision 3:** Optional limit_price/stop_price
+  - Rationale: MARKET orders don't need prices. Type-safe (can't provide limit_price for MARKET).
+  - Alternative rejected: Required prices with sentinel values (misleading, null object pattern overkill)
+
+- **Decision 4:** No causality field
+  - Rationale: Sub-planners receive StrategyDirective (has causality). PlanningAggregator inherits causality when creating ExecutionDirective.
+  - Alternative rejected: Duplicate causality in every plan (redundant, violates DRY)
+
+- **Decision 5:** Mutable (not frozen)
+  - Rationale: Pre-execution adjustments common (market conditions change). Frozen after execution starts.
+  - Alternative rejected: Frozen (forces new plan versions for minor adjustments, complexity)
+
+**Validation Strategy:**
+- plan_id format: `ENT_YYYYMMDD_HHMMSS_hash` (military datetime)
+- symbol: BASE_QUOTE format (e.g., BTC_USD)
+- order_type consistency:
+  - MARKET: limit_price/stop_price should be None
+  - LIMIT: limit_price required, stop_price None
+  - STOP_LIMIT: both limit_price and stop_price required
+- direction: BUY or SELL only
+
+---
+
+### SizePlan
+
+**Purpose:** Position sizing specification (HOW MUCH)
+
+**WHY this DTO exists:**
+- SizePlanner translates sizing constraints into absolute position size
+- Separates "sizing decision" from "sizing execution" (SRP)
+- Defines HOW MUCH to trade (absolute values)
+- Lean spec - only execution parameters (no account percentages or constraints)
+- Account risk % → SizePlanner input, absolute size → SizePlan output
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | SizePlanner | Translates StrategyDirective.size_directive + account constraints → absolute size |
+| **Consumers** | PlanningAggregator | Combines with Entry/Exit/ExecutionPlan → ExecutionDirective |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `plan_id` | str | Yes (auto) | Unique sizing plan identifier (SIZ_ prefix). Enables tracking size plan → order correlation. |
+| `position_size` | Decimal | Yes | Absolute position size in base asset (e.g., 0.5 BTC). WHAT quantity to trade. Must be > 0. |
+| `position_value` | Decimal | Yes | Position value in quote asset (e.g., 50000 USDT). Total position cost. Enables risk calculations. Must be > 0. |
+| `risk_amount` | Decimal | Yes | Absolute risk in quote asset (e.g., 1000 USDT). Stop loss distance × position size. Enables R-multiple tracking. Must be > 0. |
+| `leverage` | Decimal | Yes | Leverage multiplier (1.0 = no leverage, 2.0 = 2x). Enables leveraged position sizing. Default 1.0. Must be >= 1.0. |
+
+**WHY NOT frozen:**
+- SizePlan may be adjusted pre-execution (risk recalculations, leverage changes)
+- Mutable enables size refinement based on entry price updates
+- Frozen after execution starts
+
+**WHY NOT included:**
+- ❌ `account_risk_pct` - Input constraint (e.g., 2%), not execution parameter. SizePlanner uses this to CALCULATE position_size.
+- ❌ `max_position_value` - Planner constraint, not execution output. SizePlanner uses this as limit.
+- ❌ `confidence_multiplier` - Worker logic (confidence-driven sizing), not DTO field.
+- ❌ `causality` - Inherited from StrategyDirective via aggregation.
+- ❌ `created_at`/`planner_id` - Metadata → worker context.
+
+**Lifecycle:**
+```
+Created:    SizePlanner (from StrategyDirective.size_directive + account state)
+Validated:  RiskManager (checks against account limits)
+Consumed:   ExecutionHandler (places order with position_size)
+Aggregated: PlanningAggregator adds plan_id to ExecutionDirective
+Never:      Modified after execution starts
+```
+
+**Design Decisions:**
+- **Decision 1:** Absolute values only (no percentages)
+  - Rationale: DTOs = execution parameters. SizePlanner calculates absolutes from percentages. Clean separation.
+  - Alternative rejected: Include account_risk_pct (blurs input vs output, violates SRP)
+
+- **Decision 2:** position_value explicit field
+  - Rationale: Enables risk calculations without knowing current price. Pre-calculated by SizePlanner.
+  - Alternative rejected: Calculate on-the-fly (forces price lookup, coupling to market data)
+
+- **Decision 3:** risk_amount explicit field
+  - Rationale: Pre-calculates R-multiple for trade. Stop loss distance × position size. Enables simple risk tracking.
+  - Alternative rejected: Calculate from exit plan (coupling between plans, violates independence)
+
+- **Decision 4:** Mutable (not frozen)
+  - Rationale: Size adjustments common (entry price changes → position_size recalculated). Frozen after execution.
+  - Alternative rejected: Frozen (forces new plan for recalculations)
+
+- **Decision 5:** Leverage field included
+  - Rationale: Leveraged position sizing common in crypto/futures. Explicit field prevents implicit calculations.
+  - Alternative rejected: Embed in position_size (ambiguous, requires external leverage tracking)
+
+**Validation Strategy:**
+- plan_id format: `SIZ_YYYYMMDD_HHMMSS_hash` (military datetime)
+- position_size: Must be > 0
+- position_value: Must be > 0
+- risk_amount: Must be > 0
+- leverage: Must be >= 1.0
+- Consistency: position_value ≈ position_size × entry_price (validated at aggregation)
+
+---
+
+### ExitPlan
+
+**Purpose:** Exit execution specification (WHERE OUT)
+
+**WHY this DTO exists:**
+- ExitPlanner translates exit constraints into price levels
+- Separates "exit decision" from "exit execution" (SRP)
+- Defines WHERE to exit (stop loss, take profit)
+- Static price targets - NO dynamic logic (trailing stops → PositionMonitor)
+- Lean spec - only price levels (no execution timing or metadata)
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | ExitPlanner | Translates StrategyDirective.exit_directive + risk/reward → price levels |
+| **Consumers** | PlanningAggregator | Combines with Entry/Size/ExecutionPlan → ExecutionDirective |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `plan_id` | str | Yes (auto) | Unique exit plan identifier (EXT_ prefix). Enables tracking exit plan → order correlation. |
+| `stop_loss_price` | Decimal | Yes | Stop loss price level. WHERE to cut losses. Required (risk protection). Must be > 0. |
+| `take_profit_price` | Decimal \| None | No | Take profit price level. WHERE to take profits. Optional (let winners run strategy). Must be > 0 if provided. |
+
+**WHY frozen:**
+- ExitPlan is immutable after creation (static price targets)
+- Dynamic exit logic creates new Signal → StrategyDirective → ExitPlan (not direct ExitPlan updates)
+- Frozen enables safe concurrent access and audit trail
+
+**WHY NOT included:**
+- ❌ `trailing_stop_distance` - Dynamic logic → PositionMonitor emits Signal → new StrategyDirective → new ExitPlan
+- ❌ `breakeven_trigger` - Dynamic logic → PositionMonitor (adjusts stop_loss_price)
+- ❌ `exit_strategy` - Execution timing → ExecutionPlan (how/when to exit)
+- ❌ `causality` - Inherited from StrategyDirective via aggregation
+- ❌ `created_at`/`planner_id` - Metadata → worker context
+- ❌ `risk_reward_ratio` - Input constraint (ExitPlanner calculates prices FROM ratio), not output
+
+**Lifecycle:**
+```
+Created:    ExitPlanner (from StrategyDirective.exit_directive + entry price + risk tolerance)
+Validated:  PlanningAggregator (checks stop_loss_price vs entry_price consistency)
+Aggregated: PlanningAggregator adds plan_id to ExecutionDirective
+Consumed:   ExecutionDirective → ExecutionHandler (places stop loss/take profit orders)
+Finalized:  ExitPlan "dies" when exit orders are created (immutable, no updates)
+Never:      Modified after creation (frozen - dynamic logic creates new StrategyDirective)
+```
+
+**Design Decisions:**
+- **Decision 1:** stop_loss_price required
+  - Rationale: Risk protection mandatory. No position without stop loss.
+  - Alternative rejected: Optional stop_loss (violates risk management principles)
+
+- **Decision 2:** take_profit_price optional
+  - Rationale: "Let winners run" strategy valid. Not all exits target fixed profit.
+  - Alternative rejected: Required take_profit (forces artificial targets)
+
+- **Decision 3:** No trailing stop fields
+  - Rationale: Trailing stops = dynamic behavior (PositionMonitor emits new Signal → new StrategyDirective → new ExitPlan). ExitPlan = static snapshot.
+  - Alternative rejected: Include trailing_distance (blurs static vs dynamic, violates SRP)
+
+- **Decision 4:** Frozen (immutable)
+  - Rationale: Exit levels are facts at plan creation. Dynamic adjustments = new plan (audit trail).
+  - Alternative rejected: Mutable (loses audit trail, concurrent access issues)
+
+- **Decision 5:** Price-only (no percentage offsets)
+  - Rationale: Absolute prices clear and unambiguous. ExitPlanner calculates from percentages.
+  - Alternative rejected: Store percentage offset (requires entry price lookup, coupling)
+
+**Validation Strategy:**
+- plan_id format: `EXT_YYYYMMDD_HHMMSS_hash` (military datetime)
+- stop_loss_price: Must be > 0
+- take_profit_price: Must be > 0 if provided
+- Consistency (validated at aggregation):
+  - Long: stop_loss_price < entry_price < take_profit_price
+  - Short: take_profit_price < entry_price < stop_loss_price
+
+---
+
+### ExecutionPlan
+
+**Purpose:** Execution trade-offs specification (HOW/WHEN - universal)
+
+**WHY this DTO exists:**
+- RoutingPlanner translates routing constraints into universal trade-offs
+- Connector-agnostic execution preferences (not CEX/DEX/Backtest-specific)
+- Expresses WHAT strategy wants (urgency, visibility, slippage) not HOW to execute
+- Translation layer converts ExecutionPlan → connector-specific execution specs
+- Replaces old RoutingPlan with universal trade-off model
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | RoutingPlanner | Translates StrategyDirective.routing_directive → universal trade-offs |
+| **Consumers** | PlanningAggregator | Combines with Entry/Size/ExitPlan → ExecutionDirective |
+| | ExecutionTranslator | Converts ExecutionPlan trade-offs → connector-specific params (CEX/DEX/Backtest) |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `plan_id` | str | Yes (auto) | Unique execution plan identifier (EXP_ prefix). Enables tracking execution plan → execution correlation. |
+| `action` | ExecutionAction | Yes | Action type: EXECUTE_TRADE, CANCEL_ORDER, MODIFY_ORDER, CANCEL_GROUP. Discriminates execution vs order management. Default EXECUTE_TRADE. |
+| `execution_urgency` | Decimal | Yes | Patience vs speed (0.0=patient, 1.0=urgent). Universal trade-off. Translator maps to connector-specific (LIMIT vs MARKET, TWAP duration, etc). |
+| `visibility_preference` | Decimal | Yes | Stealth vs transparency (0.0=stealth, 1.0=visible). Universal trade-off. Translator maps to iceberg, dark pools, private mempool, etc. |
+| `max_slippage_pct` | Decimal | Yes | Hard price limit (0.0-1.0 = 0-100%). Constraint (MUST respect). Execution fails if exceeded. |
+| `must_complete_immediately` | bool | No | Force immediate execution. Constraint (MUST respect). Overrides execution_urgency. Default False. |
+| `max_execution_window_minutes` | int \| None | No | Maximum time window for completion. Constraint (MUST respect). Enables TWAP duration limits. |
+| `preferred_execution_style` | str \| None | No | Hint for execution style (e.g., "TWAP", "VWAP", "ICEBERG"). Hint (MAY interpret). Translator decides if feasible. |
+| `chunk_count_hint` | int \| None | No | Hint for number of execution chunks. Hint (MAY interpret). TWAP chunking suggestion. |
+| `chunk_distribution` | str \| None | No | Hint for chunk distribution (e.g., "UNIFORM", "WEIGHTED"). Hint (MAY interpret). Influences TWAP strategy. |
+| `min_fill_ratio` | Decimal \| None | No | Minimum fill ratio to accept (0.0-1.0). Constraint (MUST respect). Partial fill handling. |
+
+**WHY frozen:**
+- ExecutionPlan is immutable after creation (trade-off decisions frozen)
+- Audit trail integrity - execution decisions preserved
+- Safe concurrent access for execution translation
+
+**WHY NOT included:**
+- ❌ `time_in_force` - Connector-specific (GTC, IOC, FOK). Translator maps from urgency/window.
+- ❌ `iceberg_preference` - Connector-specific. Translator maps from visibility_preference.
+- ❌ `twap_duration`/`twap_intervals` - Connector/platform-specific. Translator calculates from execution_urgency + max_execution_window.
+- ❌ `routing_venue` - Platform decision (CEX/DEX selection). Not strategy concern.
+- ❌ `causality` - Inherited from StrategyDirective via aggregation.
+- ❌ `created_at`/`planner_id` - Metadata → worker context.
+
+**Lifecycle:**
+```
+Created:    RoutingPlanner (from StrategyDirective.routing_directive)
+Validated:  PlanningAggregator (checks trade-off consistency)
+Translated: ExecutionTranslator (universal → connector-specific)
+Consumed:   ExecutionHandler (executes based on translated spec)
+Aggregated: PlanningAggregator adds plan_id to ExecutionDirective
+Never:      Modified after creation (frozen)
+```
+
+**Design Decisions:**
+- **Decision 1:** Universal trade-offs (not connector-specific)
+  - Rationale: Strategy layer connector-agnostic. Translator handles CEX/DEX/Backtest specifics.
+  - Alternative rejected: CEX-specific params (time_in_force, iceberg) - tight coupling, no DEX/backtest support
+
+- **Decision 2:** Decimal 0.0-1.0 range for trade-offs
+  - Rationale: Normalized scale. Clear semantics (0=min, 1=max). Easy interpolation.
+  - Alternative rejected: Enum levels (LOW/MEDIUM/HIGH) - loses granularity, hard to interpolate
+
+- **Decision 3:** Constraints (MUST) vs Hints (MAY)
+  - Rationale: Clear contract. Constraints fail execution if violated. Hints guide but don't force.
+  - Alternative rejected: All fields as hints (unclear which are hard limits)
+
+- **Decision 4:** action field for order management
+  - Rationale: ExecutionPlan not just for trades. Cancel/modify operations also need execution specs.
+  - Alternative rejected: Separate CancelPlan/ModifyPlan DTOs (proliferation, shared fields)
+
+- **Decision 5:** Frozen (immutable)
+  - Rationale: Execution decisions frozen at plan creation. New plan for changes. Audit trail.
+  - Alternative rejected: Mutable (loses decision audit trail)
+
+- **Decision 6:** preferred_execution_style as hint
+  - Rationale: Strategy suggests, platform decides feasibility (TWAP may not be available).
+  - Alternative rejected: Required style (forces platform to support all styles)
+
+- **Decision 7:** WHY "ExecutionPlan" (not "RoutingPlan")?
+  - Rationale: Plans **execution trade-offs** (urgency, visibility, slippage). RoutingPlanner determines routing logic → outputs **ExecutionPlan** (HOW/WHEN to execute). Execution **planning** (strategy layer) vs execution **doing** (execution layer). Action field = ExecutionAction (planned actions: EXECUTE_TRADE, CANCEL_ORDER).
+  - Alternative rejected: RoutingPlan (confuses routing logic with execution plan output)
+
+**Validation Strategy:**
+- plan_id format: `EXP_YYYYMMDD_HHMMSS_xxxxx` (military datetime, 5-char hash)
+- execution_urgency: 0.0-1.0 range, 2 decimal places
+- visibility_preference: 0.0-1.0 range, 2 decimal places
+- max_slippage_pct: 0.0-1.0 range (0-100%), 4 decimal places
+- Trade-off consistency:
+  - urgency=1.0 + visibility=1.0 + must_complete_immediately → likely MARKET order
+  - urgency=0.2 + max_execution_window=30 → likely TWAP
+- Action-specific validation:
+  - CANCEL/MODIFY: may have reduced field requirements
+
+**Universal → Connector Translation Examples:**
+
+| Universal Trade-Offs | CEX Translation | DEX Translation | Backtest Translation |
+|---------------------|-----------------|-----------------|----------------------|
+| urgency=0.9, visibility=0.7, slippage=0.01 | MARKET order, visible | MEV-protected swap, public mempool | Instant fill, realistic slippage |
+| urgency=0.2, visibility=0.1, window=30min | TWAP 30min, 6 chunks, LIMIT orders | Private mempool, 5min intervals | Simulated TWAP, spread fills |
+| urgency=0.5, visibility=0.3, style="ICEBERG" | ICEBERG order, 20% visible | Split orders, randomized timing | Single fill, average price |
 
 ---
 

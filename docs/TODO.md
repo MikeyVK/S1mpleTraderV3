@@ -105,14 +105,16 @@
   - **Documentation:** DTO_ARCHITECTURE.md will be updated
 
 - [ ] **StrategyDirective sub-directive: ExecutionDirective → RoutingDirective** (2025-11-09)
-  - **Issue:** ExecutionDirective name conflicts with Execution DTO layer (execution/execution_directive.py)
-  - **Solution:** Rename sub-directive class `ExecutionDirective` → `RoutingDirective`
+  - **Issue:** TWO classes named `ExecutionDirective` (naming conflict):
+    1. `backend/dtos/strategy/strategy_directive.py` line 164 - Sub-directive (routing constraints for RoutingPlanner)
+    2. `backend/dtos/execution/execution_directive.py` line 36 - Execution layer DTO (aggregated final instruction)
+  - **Solution:** Rename strategy sub-directive class `ExecutionDirective` → `RoutingDirective`
     - Field name `routing_directive` already correct (no change)
     - Class docstring/descriptions: "Execution constraints" → "Routing constraints"
   - **Impact:** BREAKING CHANGE - affects class name, imports, all StrategyPlanner implementations that create this sub-directive
-  - **Scope:** backend/dtos/strategy/strategy_directive.py (class rename), all imports, tests
-  - **Priority:** High (naming conflict prevention, clarity)
-  - **Documentation:** DTO_ARCHITECTURE.md will be updated
+  - **Scope:** backend/dtos/strategy/strategy_directive.py (class rename line 164), all imports, tests
+  - **Priority:** High (naming conflict resolution, clarity)
+  - **Documentation:** DTO_ARCHITECTURE.md already updated (uses RoutingDirective)
 
 - [ ] **Asset format: BASE/QUOTE → BASE_QUOTE** (2025-11-09)
   - **Issue:** Current BASE/QUOTE format with slash is problematic in filesystem paths, URLs, logs, database keys
