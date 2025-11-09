@@ -63,6 +63,8 @@ class CausalityChain(BaseModel):
             exit_plan_id: ExitPlan ID
             execution_plan_id: ExecutionPlan ID (execution trade-offs)
             execution_directive_id: ExecutionDirective ID (final stage)
+            order_ids: Order IDs (list - execution intent added by ExecutionHandler)
+            fill_ids: Fill IDs (list - execution reality added by ExchangeConnector)
     """
 
     # === Birth IDs (Strategy Run Initiators) ===
@@ -111,6 +113,17 @@ class CausalityChain(BaseModel):
     execution_directive_id: str | None = Field(
         default=None,
         description="ExecutionDirective ID - final execution command"
+    )
+    order_ids: list[str] = Field(
+        default_factory=list,
+        description="Order IDs - execution intent (toegevoegd door ExecutionHandler)"
+    )
+    fill_ids: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Fill IDs - execution reality (toegevoegd door ExchangeConnector, "
+            "kan verschillen van orders bij partial fills)"
+        )
     )
 
     @model_validator(mode='after')
@@ -171,6 +184,25 @@ class CausalityChain(BaseModel):
                     "exit_plan_id": "EXT_20251027_150005_k9l0m1n2",
                     "execution_plan_id": "EXP_20251027_150005_o3p4q5r6",
                     "execution_directive_id": "EXE_20251027_150010_s7t8u9v0"
+                },
+                {
+                    "description": "Complete execution flow with partial fills",
+                    "tick_id": "TCK_20251027_160000_a1b2c3d4",
+                    "signal_ids": ["SIG_20251027_160001_e5f6g7h8"],
+                    "strategy_directive_id": "STR_20251027_160002_i9j0k1l2",
+                    "entry_plan_id": "ENT_20251027_160003_m3n4o5p6",
+                    "size_plan_id": "SIZ_20251027_160003_q7r8s9t0",
+                    "execution_plan_id": "EXP_20251027_160004_u1v2w3x4",
+                    "execution_directive_id": "EXE_20251027_160010_y5z6a7b8",
+                    "order_ids": [
+                        "ORD_20251027_160011_c9d0e1f2",
+                        "ORD_20251027_160011_g3h4i5j6"
+                    ],
+                    "fill_ids": [
+                        "FIL_20251027_160012_k7l8m9n0",
+                        "FIL_20251027_160012_o1p2q3r4",
+                        "FIL_20251027_160013_s5t6u7v8"
+                    ]
                 }
             ]
         }

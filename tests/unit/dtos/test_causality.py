@@ -66,6 +66,8 @@ class TestCausalityChainCreation:
         assert chain.exit_plan_id is None
         assert chain.execution_plan_id is None
         assert chain.execution_directive_id is None
+        assert chain.order_ids == []
+        assert chain.fill_ids == []
 
 
 class TestCausalityChainBirthValidation:
@@ -187,6 +189,54 @@ class TestCausalityChainWorkerIDs:
         )
 
         assert chain.execution_directive_id == "EXE_20251026_100007_abc1d2e3"
+
+    def test_add_order_ids(self):
+        """Test adding order IDs (execution intent)."""
+        chain = CausalityChain(
+            tick_id="TCK_20251026_100000_a1b2c3d4",
+            order_ids=["ORD_20251026_100008_abc1d2e3"]
+        )
+
+        assert len(chain.order_ids) == 1
+        assert chain.order_ids[0] == "ORD_20251026_100008_abc1d2e3"
+
+    def test_add_multiple_order_ids(self):
+        """Test adding multiple order IDs (batch orders)."""
+        chain = CausalityChain(
+            tick_id="TCK_20251026_100000_a1b2c3d4",
+            order_ids=[
+                "ORD_20251026_100008_abc1d2e3",
+                "ORD_20251026_100008_def5e6f7"
+            ]
+        )
+
+        assert len(chain.order_ids) == 2
+        assert "ORD_20251026_100008_abc1d2e3" in chain.order_ids
+        assert "ORD_20251026_100008_def5e6f7" in chain.order_ids
+
+    def test_add_fill_ids(self):
+        """Test adding fill IDs (execution reality)."""
+        chain = CausalityChain(
+            tick_id="TCK_20251026_100000_a1b2c3d4",
+            fill_ids=["FIL_20251026_100009_abc1d2e3"]
+        )
+
+        assert len(chain.fill_ids) == 1
+        assert chain.fill_ids[0] == "FIL_20251026_100009_abc1d2e3"
+
+    def test_add_multiple_fill_ids_partial_fills(self):
+        """Test adding multiple fill IDs (partial fills scenario)."""
+        chain = CausalityChain(
+            tick_id="TCK_20251026_100000_a1b2c3d4",
+            fill_ids=[
+                "FIL_20251026_100009_abc1d2e3",
+                "FIL_20251026_100010_def5e6f7"
+            ]
+        )
+
+        assert len(chain.fill_ids) == 2
+        assert "FIL_20251026_100009_abc1d2e3" in chain.fill_ids
+        assert "FIL_20251026_100010_def5e6f7" in chain.fill_ids
 
 
 class TestCausalityChainModelCopyPattern:
