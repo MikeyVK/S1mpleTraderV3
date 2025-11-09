@@ -17,6 +17,17 @@ import pytest
 
 # Our Application Imports
 from backend.dtos.causality import CausalityChain
+from backend.dtos.shared import Origin, OriginType
+
+
+def create_test_origin(origin_type: OriginType = OriginType.TICK) -> Origin:
+    """Helper function to create test Origin instances."""
+    type_map = {
+        OriginType.TICK: "TCK_20251109_143000_abc123",
+        OriginType.NEWS: "NWS_20251109_143000_def456",
+        OriginType.SCHEDULE: "SCH_20251109_143000_ghi789"
+    }
+    return Origin(id=type_map[origin_type], type=origin_type)
 
 
 class TestCausalityChainCreation:
@@ -422,3 +433,60 @@ class TestCausalityChainEdgeCases:
         assert chain.exit_plan_id is not None
         assert chain.execution_plan_id is not None
         assert chain.execution_directive_id is not None
+
+
+class TestCausalityChainOriginIntegration:
+    """Test suite for Origin integration (RED phase - breaking change)."""
+
+    def test_create_with_tick_origin(self):
+        """Test creating CausalityChain with TICK origin."""
+        origin = create_test_origin(OriginType.TICK)
+        chain = CausalityChain(origin=origin)
+
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.TICK
+
+    def test_create_with_news_origin(self):
+        """Test creating CausalityChain with NEWS origin."""
+        origin = create_test_origin(OriginType.NEWS)
+        chain = CausalityChain(origin=origin)
+
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.NEWS
+
+    def test_create_with_schedule_origin(self):
+        """Test creating CausalityChain with SCHEDULE origin."""
+        origin = create_test_origin(OriginType.SCHEDULE)
+        chain = CausalityChain(origin=origin)
+
+        assert chain.origin == origin
+        assert chain.origin.type == OriginType.SCHEDULE
+
+    def test_origin_field_required(self):
+        """Test that origin field is required."""
+        with pytest.raises(ValueError) as exc_info:
+            CausalityChain()
+
+        error_msg = str(exc_info.value).lower()
+        assert "origin" in error_msg or "required" in error_msg
+
+    def test_origin_with_worker_ids(self):
+        """Test origin combined with worker output IDs."""
+        origin = create_test_origin(OriginType.TICK)
+        chain = CausalityChain(
+            origin=origin,
+            signal_ids=["SIG_20251109_143001_xyz789"],
+            strategy_directive_id="STR_20251109_143002_abc456"
+        )
+
+        assert chain.origin == origin
+        assert len(chain.signal_ids) == 1
+        assert chain.strategy_directive_id == "STR_20251109_143002_abc456"
+
+    def test_origin_immutability(self):
+        """Test that origin field cannot be modified after creation."""
+        origin = create_test_origin(OriginType.TICK)
+        chain = CausalityChain(origin=origin)
+
+        with pytest.raises((ValueError, TypeError, AttributeError)):
+            chain.origin = create_test_origin(OriginType.NEWS)
