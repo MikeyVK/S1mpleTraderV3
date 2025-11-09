@@ -6,10 +6,10 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 > **Quality Gates & TDD Workflow:** See [../coding_standards/TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) and [../coding_standards/QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md)
 
-**Last Updated:** 2025-11-06
-**Total Tests Passing:** 350 tests (100% coverage)
-- **DTOs:** 239 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 59)
-- **Core Infrastructure:** 79 tests (StrategyCache: 20, EventBus: 33, Worker Protocol: 13, Enums: 13)
+**Last Updated:** 2025-11-09
+**Total Tests Passing:** 368 tests (100% coverage)
+- **DTOs:** 243 tests (Signal/Risk Detection: 65, Planning: 63, Execution: 52, Shared: 63)
+- **Core Infrastructure:** 93 tests (StrategyCache: 20, EventBus: 33, FlowInitiator: 14, Worker Protocol: 13, Enums: 13)
 - **Utils:** 32 tests (ID Generators: 32)
 
 > **Note:** SWOT terminology fully replaced with quant terminology (2024-11-02). See [../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md](../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md) for complete refactoring details.
@@ -51,20 +51,21 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 **Coverage:** 52/52 tests passing (100%)
 
-### Shared DTOs (59 tests)
+### Shared DTOs (63 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
 | platform_data.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Complete (minimal design) |
-| causality.py | 10.00/10 | 24/24 ✅ | 10.00/10 | 0 | ✅ Complete |
+| causality.py | 10.00/10 | 28/28 ✅ | 10.00/10 | 0 | ✅ Complete (order_ids + fill_ids added) |
 | disposition_envelope.py | 10.00/10 | 21/21 ✅ | 10.00/10 | 0 | ✅ Complete |
 
-**Coverage:** 59/59 tests passing (100%)
+**Coverage:** 63/63 tests passing (100%)
 
 **Recent Changes:**
 - PlatformDataDTO stripped to 3 essential fields (source_type, timestamp, payload)
 - Removed symbol, timeframe, metadata (YAGNI - data exists in payload)
 - Tests reduced from 20 to 14 (quality over quantity)
+- CausalityChain: Added order_ids and fill_ids fields (execution tracking)
 
 ### Deleted/Replaced Modules
 
