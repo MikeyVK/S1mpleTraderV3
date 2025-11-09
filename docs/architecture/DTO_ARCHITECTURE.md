@@ -73,6 +73,15 @@ This document describes **WHY each DTO exists** and **WHY each field exists**.
 - Immutable origin provides audit trail foundation
 - Prefix validation (TCK_/NWS_/SCH_) enforces ID discipline
 
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | DataProvider | Creates Origin from exchange ticks, news feeds, or scheduler events |
+| **Consumers** | PlatformDataDTO | Embeds origin for envelope routing |
+| | CausalityChain | Foundation for causal ID chain (origin → signal_id → ...) |
+| | FlowInitiator | Validates origin type matches payload structure |
+
 **Field Rationale:**
 
 | Field | Type | Required | WHY it exists |
@@ -126,6 +135,14 @@ Never:      Modified (frozen model)
 - Enables type-safe routing based on origin WITHOUT payload inspection
 - Minimal coupling principle (only 3 fields - KISS)
 - Point-in-time model enforcement (every data snapshot has explicit timestamp)
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | DataProvider | Wraps platform-specific payloads (CandleWindow, NewsEvent, etc.) with origin + timestamp |
+| **Consumers** | FlowInitiator | Unwraps envelope, validates origin, stores payload in StrategyCache |
+| | CausalityChain | Copies origin field as causal chain foundation |
 
 **Field Rationale:**
 
@@ -204,7 +221,6 @@ Never:      Stored long-term (only payload persists in StrategyCache)
 | **Producer** | SignalDetector (any subtype) | Emits Signal when pattern detected (FVG, MSS, breakout, etc.) |
 | **Consumers** | StrategyPlanner | Decision input (combines Signal + Risk + Context) |
 | | Journal | Persistence (historical pattern analysis) |
-| | BacktestEngine | Strategy validation (signal quality metrics) |
 
 **Field Rationale:**
 
