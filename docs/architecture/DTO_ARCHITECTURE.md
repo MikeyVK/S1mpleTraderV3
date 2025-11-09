@@ -442,7 +442,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 | **Consumers** | EntryPlanner | Reads entry_directive for entry constraints |
 | | ExitPlanner | Reads exit_directive for exit constraints |
 | | SizePlanner | Reads size_directive for sizing constraints |
-| | ExecutionPlanner | Reads routing_directive for routing constraints |
+| | RoutingPlanner | Reads routing_directive for routing constraints |
 | | Journal | Persistence (decision audit trail) |
 
 **Field Rationale:**
@@ -459,7 +459,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 | `entry_directive` | EntryDirective \| None | No | Entry constraints for EntryPlanner. Optional - planner uses defaults if missing. NEW_TRADE typically includes this. |
 | `size_directive` | SizeDirective \| None | No | Sizing constraints for SizePlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_ORDER typically includes this. |
 | `exit_directive` | ExitDirective \| None | No | Exit constraints for ExitPlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_ORDER typically includes this. |
-| `routing_directive` | RoutingDirective \| None | No | Routing constraints for ExecutionPlanner. Optional - planner uses defaults if missing. All scopes may include this. |
+| `routing_directive` | RoutingDirective \| None | No | Routing constraints for RoutingPlanner. Optional - planner uses defaults if missing. All scopes may include this. |
 
 **WHY NOT frozen:**
 - StrategyDirective is enriched post-execution (order_ids added after orders placed)
@@ -470,7 +470,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 - ❌ `entry_price` - EntryPlanner calculates this (tactical detail, not strategic constraint)
 - ❌ `position_size` - SizePlanner calculates this (tactical detail, not strategic constraint)
 - ❌ `stop_loss_price` - ExitPlanner calculates this (tactical detail, not strategic constraint)
-- ❌ `order_type` - ExecutionPlanner decides this (tactical detail, not strategic constraint)
+- ❌ `order_type` - RoutingPlanner decides this (tactical detail, not strategic constraint)
 - ❌ `approved` - Directive IS the approval (StrategyPlanner already decided to act)
 - ❌ `rejected_reason` - If rejected, no directive emitted (rejection = absence of directive)
 
@@ -478,7 +478,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 ```
 Created:    StrategyPlanner (combines Signal + Risk + Context → decision)
 Extended:   causality.strategy_directive_id = directive_id by StrategyPlanner
-Consumed:   Role-based planners (EntryPlanner, SizePlanner, ExitPlanner, ExecutionPlanner)
+Consumed:   Role-based planners (EntryPlanner, SizePlanner, ExitPlanner, RoutingPlanner)
             → Each planner reads its corresponding sub-directive
 Enriched:   order_ids added after ExecutionHandler places orders
 Persisted:  StrategyJournal (complete decision audit trail)
@@ -544,7 +544,7 @@ Modified:   Post-creation (order_ids tracking, not frozen)
 | EntryDirective | EntryPlanner | symbol, direction, timing_preference, preferred_price_zone, max_slippage |
 | SizeDirective | SizePlanner | aggressiveness, max_risk_amount, account_risk_pct |
 | ExitDirective | ExitPlanner | profit_taking_preference, risk_reward_ratio, stop_loss_tolerance |
-| RoutingDirective | ExecutionPlanner | execution_urgency, iceberg_preference, max_total_slippage_pct |
+| RoutingDirective | RoutingPlanner | execution_urgency, iceberg_preference, max_total_slippage_pct |
 
 **StrategyPlanner Types & Directive Patterns:**
 
@@ -569,7 +569,7 @@ Signal (FVG detected, confidence 0.85)
           → EntryPlanner → EntryPlan (exact entry price)
           → SizePlanner → SizePlan (exact position size)
           → ExitPlanner → ExitPlan (exact stop/target prices)
-          → ExecutionPlanner → ExecutionPlan (order routing)
+          → RoutingPlanner → ExecutionPlan (order routing)
             → ExecutionDirective (aggregated execution instruction)
 ```
 
