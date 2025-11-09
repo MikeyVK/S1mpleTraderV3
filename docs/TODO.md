@@ -216,6 +216,37 @@
   - **Decision needed:** Before PlanningAggregator implementation
   - **Note:** CausalityChain currently lacks trade/batch tracking mechanism
 
+- [ ] **Issue #6: ExecutionDirectiveBatch execution_mode Decision Logic** (2025-11-09)
+  - **Problem:** PlanningAggregator currently hardcodes execution_mode=ATOMIC for ALL batches (SRP violation)
+  - **Current State:** 
+    - PlanningAggregator sets execution_mode, timeout_seconds, rollback_on_failure with hardcoded defaults
+    - StrategyDirective contains execution signals (scope, confidence, routing_directive.execution_urgency)
+    - No documented algorithm for WHEN to use SEQUENTIAL vs PARALLEL vs ATOMIC
+  - **Field Duplication Issue:**
+    - ExecutionPlan.max_execution_window_minutes (per-directive, from RoutingPlanner)
+    - ExecutionDirectiveBatch.timeout_seconds (batch-level, from PlanningAggregator)
+    - Potential conflict: directive wants 60min, batch allows 30s
+  - **Use Cases Identified (from DTO examples):**
+    - ATOMIC: Flash crash emergency exit (scope=CLOSE_EXISTING, urgency=1.0, rollback=True)
+    - SEQUENTIAL: Hedged exit with ordering (close hedge FIRST, then main position, count=2)
+    - PARALLEL: Bulk order modifications (scope=MODIFY_EXISTING, independent operations, best-effort)
+  - **Research Questions:**
+    1. WHO determines execution_mode? (StrategyPlanner vs PlanningAggregator vs derived from inputs)
+    2. WHEN to use each mode? (document decision algorithm/triggers)
+    3. Should StrategyDirective have execution_policy field? (batch coordination strategy)
+    4. Field ownership: Keep both timeouts or consolidate? (relationship between plan and batch timeouts)
+  - **Potential Solution:** Derive execution_mode from StrategyDirective fields:
+    - `scope` (NEW_TRADE / MODIFY_EXISTING / CLOSE_EXISTING)
+    - `confidence` [0.0-1.0]
+    - `routing_directive.execution_urgency` [0.0-1.0]
+    - Directive count (1 vs multiple)
+  - **Impact:** Affects PlanningAggregator implementation, ExecutionDirectiveBatch field rationale
+  - **Priority:** High (architectural correctness - SRP, field ownership clarity)
+  - **Related Docs:** 
+    - `docs/architecture/DTO_ARCHITECTURE.md` (ExecutionDirectiveBatch documentation)
+    - `docs/development/backend/core/PLANNING_AGGREGATOR_DESIGN.md` (line 389: hardcoded defaults)
+  - **Next Steps:** Research and document decision algorithm before PlanningAggregator implementation
+
 **Deliverable:** Core platform components implemented & integrated (target: 70+ tests)
 
 ---
