@@ -7,6 +7,8 @@ Tests creation, validation, and type-safe origin reference functionality.
 @layer: Tests
 @dependencies: [pytest, backend.dtos.shared.origin]
 """
+# pylint: disable=too-few-public-methods
+# Justification: Test classes group related tests, no minimum method requirement
 
 import pytest
 from backend.dtos.shared.origin import Origin, OriginType

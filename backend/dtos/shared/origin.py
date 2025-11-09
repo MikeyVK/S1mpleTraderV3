@@ -24,30 +24,51 @@ class OriginType(str, Enum):
 class Origin(BaseModel):
     """
     Platform data origin - type-safe reference.
-    
+
     Attributes:
         id: Origin ID with type prefix (TCK_/NWS_/SCH_...)
         type: Origin type enum (TICK/NEWS/SCHEDULE)
-        
+
     Examples:
         >>> # Tick data origin
         >>> origin = Origin(
         ...     id="TCK_20251109_143022_abc123",
         ...     type=OriginType.TICK
         ... )
-        
+
         >>> # News data origin
         >>> origin = Origin(
         ...     id="NWS_20251109_143022_def456",
         ...     type=OriginType.NEWS
         ... )
     """
-    
+
     id: str
     type: OriginType
-    
-    model_config = {"frozen": True}
-    
+
+    model_config = {
+        "frozen": True,
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "id": "TCK_20251109_143022_abc123",
+                    "type": "TICK",
+                    "description": "Market tick data origin"
+                },
+                {
+                    "id": "NWS_20251109_150000_def456",
+                    "type": "NEWS",
+                    "description": "News feed origin"
+                },
+                {
+                    "id": "SCH_20251109_160000_ghi789",
+                    "type": "SCHEDULE",
+                    "description": "Scheduled event origin"
+                }
+            ]
+        }
+    }
+
     @model_validator(mode='after')
     def validate_id_prefix(self) -> 'Origin':
         """Validate ID prefix matches type."""
