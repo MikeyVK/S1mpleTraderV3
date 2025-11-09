@@ -133,7 +133,9 @@ class CausalityChain(BaseModel):
                     "strategy_directive_id": "STR_20251109_100002_m3n4o5p6"
                 },
                 {
-                    "description": "Scheduled DCA flow (origin SCHEDULE → entry → size → execution)",
+                    "description": (
+                        "Scheduled DCA flow (origin SCHEDULE → entry → size → execution)"
+                    ),
                     "origin": {"id": "SCH_20251109_120000_q7r8s9t0", "type": "SCHEDULE"},
                     "strategy_directive_id": "STR_20251109_120001_u1v2w3x4",
                     "entry_plan_id": "ENT_20251109_120002_y5z6a7b8",

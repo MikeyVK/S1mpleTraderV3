@@ -271,7 +271,7 @@ class TestCausalityChainModelCopyPattern:
     def test_model_copy_chain_accumulation(self):
         """Test full pipeline chain accumulation via model_copy."""
         origin = create_test_origin(OriginType.TICK)
-        
+
         # Birth
         birth = CausalityChain(origin=origin)
 
