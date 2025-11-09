@@ -74,11 +74,51 @@
   - **Priority:** High (architectural correctness - causality timing semantics)
   - **Documentation:** DTO_ARCHITECTURE.md already updated (Risk is pre-causality)
 
+- [ ] **Symbol field naming consistency** (2025-11-09)
+  - **Issue:** Inconsistent naming across DTOs (asset vs affected_asset vs symbol)
+  - **Solution:** Standardize on `symbol` (trading domain standard)
+    - Signal: `asset` → `symbol`
+    - Risk: `affected_asset` → `affected_symbol` (None = system-wide)
+    - StrategyDirective.EntryDirective: `symbol` (already correct)
+  - **Impact:** BREAKING CHANGE - affects Signal, Risk field names + all tests
+  - **Scope:** backend/dtos/strategy/signal.py, backend/dtos/strategy/risk.py, all tests
+  - **Priority:** High (consistency, before production)
+  - **Documentation:** DTO_ARCHITECTURE.md will be updated
+
+- [ ] **DirectiveScope: Align terminology with order-level operations** (2025-11-09)
+  - **Issue:** MODIFY_EXISTING/CLOSE_EXISTING suggest position-level, but operations are order-level
+  - **Solution:** Rename enum values to reflect order-level semantics:
+    - `NEW_TRADE` → keep (correct - new position from signal)
+    - `MODIFY_EXISTING` → `MODIFY_ORDER` (order-level adjustment)
+    - `CLOSE_EXISTING` → `CLOSE_ORDER` (order-level closure)
+  - **Impact:** BREAKING CHANGE - affects DirectiveScope enum, StrategyDirective validation, all StrategyPlanner implementations
+  - **Scope:** backend/dtos/strategy/strategy_directive.py, tests, all StrategyPlanner plugins
+  - **Priority:** High (terminological correctness)
+  - **Documentation:** DTO_ARCHITECTURE.md will be updated
+
+- [ ] **StrategyDirective: target_trade_ids → target_order_ids** (2025-11-09)
+  - **Issue:** Field name uses "trade" but tracks order IDs (terminological confusion)
+  - **Solution:** Rename `target_trade_ids` → `target_order_ids`
+  - **Impact:** BREAKING CHANGE - affects StrategyDirective field name, validation logic, all consumers
+  - **Scope:** backend/dtos/strategy/strategy_directive.py, tests, StrategyPlanner/PlanningWorker implementations
+  - **Priority:** High (follows DirectiveScope terminology alignment)
+  - **Documentation:** DTO_ARCHITECTURE.md will be updated
+
+- [ ] **StrategyDirective sub-directive: ExecutionDirective → RoutingDirective** (2025-11-09)
+  - **Issue:** ExecutionDirective name conflicts with Execution DTO layer (execution/execution_directive.py)
+  - **Solution:** Rename sub-directive class `ExecutionDirective` → `RoutingDirective`
+    - Field name `routing_directive` already correct (no change)
+    - Class docstring/descriptions: "Execution constraints" → "Routing constraints"
+  - **Impact:** BREAKING CHANGE - affects class name, imports, all StrategyPlanner implementations that create this sub-directive
+  - **Scope:** backend/dtos/strategy/strategy_directive.py (class rename), all imports, tests
+  - **Priority:** High (naming conflict prevention, clarity)
+  - **Documentation:** DTO_ARCHITECTURE.md will be updated
+
 - [ ] **Asset format: BASE/QUOTE → BASE_QUOTE** (2025-11-09)
   - **Issue:** Current BASE/QUOTE format with slash is problematic in filesystem paths, URLs, logs, database keys
   - **Solution:** Change to BASE_QUOTE with underscore separator (e.g., BTC_USD instead of BTC/USD)
   - **Impact:** BREAKING CHANGE - affects Signal, Risk, StrategyDirective validation + all tests
-  - **Scope:** All DTOs with asset field, validation patterns, test fixtures
+  - **Scope:** All DTOs with symbol field, validation patterns, test fixtures
   - **Priority:** High (before production - filesystem safety)
   - **Documentation:** DTO_ARCHITECTURE.md already updated (BASE_QUOTE format)
 

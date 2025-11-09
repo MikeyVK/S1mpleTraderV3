@@ -228,7 +228,7 @@ Never:      Stored long-term (only payload persists in StrategyCache)
 |-------|------|----------|---------------|
 | `signal_id` | str | Yes (auto) | Unique signal identifier (SIG_ prefix). Foundation for causality chain created by StrategyPlanner. Enables correlation: signal → strategy decision → execution → orders. |
 | `timestamp` | datetime | Yes | Exact moment of pattern detection (UTC). Point-in-time model enforcement. Enables temporal analysis (signal clustering, timing patterns). |
-| `asset` | str | Yes | Trading pair (BASE_QUOTE format). Identifies which market signal applies to. Validated format prevents typos (BTC_USD not BTCUSD). |
+| `symbol` | str | Yes | Trading pair (BASE_QUOTE format). Identifies which market signal applies to. Validated format prevents typos (BTC_USD not BTCUSD). |
 | `direction` | Literal["long", "short"] | Yes | Intended trading direction. Discriminates entry vs exit signals. Type-safe (no "buy"/"sell" confusion). |
 | `signal_type` | str | Yes | Pattern identifier (UPPER_SNAKE_CASE). Plugin-specific classification (FVG_ENTRY, MSS_REVERSAL, etc). Enables signal taxonomy analysis. Runtime flexibility for plugin-based detectors. |
 | `confidence` | float \| None | No | Signal strength [0.0-1.0]. Optional because not all detectors quantify confidence. Enables weighted confluence analysis. Mirrors Risk.severity for balanced decision-making. |
@@ -291,7 +291,7 @@ Never:      Modified after creation (frozen)
 **Validation Strategy:**
 - signal_id format: `SIG_YYYYMMDD_HHMMSS_hash` (military datetime)
 - signal_type: UPPER_SNAKE_CASE, 3-25 chars, no reserved prefixes (SYSTEM_, INTERNAL_, _)
-- asset: BASE_QUOTE format (e.g., BTC_USD, not BTCUSD or BTC/USD)
+- symbol: BASE_QUOTE format (e.g., BTC_USD, not BTCUSD or BTC/USD)
 - timestamp: UTC-enforced (timezone-aware)
 - confidence: [0.0, 1.0] if provided
 - Reserved prefix prevention: Avoids namespace pollution
@@ -340,7 +340,7 @@ Signal is pure detection output - no decisions, no planning, no execution detail
 | `timestamp` | datetime | Yes | Exact moment of threat detection (UTC). Point-in-time model enforcement. Enables temporal analysis (risk clustering, timing patterns). |
 | `risk_type` | str | Yes | Threat identifier (UPPER_SNAKE_CASE). Plugin-specific classification (STOP_LOSS_HIT, DRAWDOWN_BREACH, etc). Enables risk taxonomy analysis. Runtime flexibility for plugin-based monitors. |
 | `severity` | float | Yes | Risk severity [0.0-1.0]. Always required (all risks quantify threat level). Enables weighted decision analysis. Mirrors Signal.confidence for balanced decision-making. |
-| `affected_asset` | str \| None | No | Asset identifier (BASE_QUOTE format) or None for system-wide risks. Discriminates asset-specific vs portfolio-wide threats. None = exchange down, flash crash, etc. |
+| `affected_symbol` | str \| None | No | Asset identifier (BASE_QUOTE format) or None for system-wide risks. Discriminates asset-specific vs portfolio-wide threats. None = exchange down, flash crash, etc. |
 
 **WHY frozen:**
 - Risks are immutable facts ("threat detected at T") - cannot retroactively change
@@ -381,9 +381,9 @@ Never:      Modified after creation (frozen)
   - Rationale: All risks quantify threat level. Risk without severity is meaningless (how bad is it?).
   - Alternative rejected: Optional severity (conceptually invalid - risk = threat + magnitude)
 
-- **Decision 4:** Optional affected_asset for system-wide risks
+- **Decision 4:** Optional affected_symbol for system-wide risks
   - Rationale: Some risks are portfolio-wide (flash crash, exchange down). None = system-level threat.
-  - Alternative rejected: Required asset (cannot express system-wide risks)
+  - Alternative rejected: Required symbol (cannot express system-wide risks)
 
 - **Decision 5:** Severity mirrors Signal.confidence scale
   - Rationale: Symmetric scoring (high signal confidence vs high risk severity) enables balanced decision algebra
@@ -400,7 +400,7 @@ Never:      Modified after creation (frozen)
 **Validation Strategy:**
 - risk_id format: `RSK_YYYYMMDD_HHMMSS_hash` (military datetime)
 - risk_type: UPPER_SNAKE_CASE, 3-25 chars, no reserved prefixes (SYSTEM_, INTERNAL_, _)
-- affected_asset: BASE_QUOTE format (e.g., BTC_USD, not BTCUSD or BTC/USD) if provided
+- affected_symbol: BASE_QUOTE format (e.g., BTC_USD, not BTCUSD or BTC/USD) if provided
 - timestamp: UTC-enforced (timezone-aware)
 - severity: [0.0, 1.0] required
 - Reserved prefix prevention: Avoids namespace pollution
@@ -419,16 +419,6 @@ StrategyPlanner → Decision (combine signals + risks → StrategyDirective or r
 Risk is pure threat detection output - no decisions, no mitigation plans, no execution details.
 
 ---
-## Analysis DTOs (Continued)
-
-**Status:** TODO - Next sections to document
-
-Planned coverage:
-- StrategyDirective (planning decision)
-
----
-
-## Analysis DTOs (Continued)
 
 ### StrategyDirective
 
@@ -437,8 +427,8 @@ Planned coverage:
 **WHY this DTO exists:**
 - StrategyPlanner produces high-level trade decisions (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
 - Separates "strategic decision" from "tactical planning" (SRP - planners handle execution details)
-- Contains 4 sub-directives (Entry, Size, Exit, Execution) as constraints/hints for specialized planners
-- Scope field discriminates directive type (new position vs modify vs close)
+- Contains 4 sub-directives (Entry, Size, Exit, Routing) as constraints/hints for specialized planners
+- Scope field discriminates directive type (NEW_TRADE vs MODIFY_ORDER vs CLOSE_ORDER)
 - Confidence scoring enables directive prioritization/rejection
 - Causality tracking from signals/risks through directive to execution
 - Bridge between Analysis DTOs (Signal/Risk) and Planning DTOs (EntryPlan/SizePlan/etc)
@@ -450,9 +440,9 @@ Planned coverage:
 |------|-----------|---------|
 | **Producer** | StrategyPlanner | Combines Signal + Risk + Context → trade decision with constraints |
 | **Consumers** | EntryPlanner | Reads entry_directive for entry constraints |
-| | SizePlanner | Reads size_directive for sizing constraints |
 | | ExitPlanner | Reads exit_directive for exit constraints |
-| | ExecutionPlanner | Reads routing_directive for execution constraints |
+| | SizePlanner | Reads size_directive for sizing constraints |
+| | ExecutionPlanner | Reads routing_directive for routing constraints |
 | | Journal | Persistence (decision audit trail) |
 
 **Field Rationale:**
@@ -463,13 +453,13 @@ Planned coverage:
 | `strategy_planner_id` | str | Yes | Identifies which StrategyPlanner produced directive. Enables planner-specific analysis (which planners perform best?). |
 | `decision_timestamp` | datetime | Yes (auto) | Exact moment of decision (UTC). Point-in-time model. Enables temporal analysis (decision latency, clustering). |
 | `causality` | CausalityChain | Yes | Complete ID chain from origin through signals/risks to this directive. Enables journal reconstruction: "Why this decision?". Foundation for causal analysis. |
-| `scope` | DirectiveScope | Yes | Decision type: NEW_TRADE, MODIFY_EXISTING, or CLOSE_EXISTING. Discriminates directive semantics. Type-safe routing. |
+| `scope` | DirectiveScope | Yes | Decision type: NEW_TRADE, MODIFY_ORDER, or CLOSE_ORDER. Discriminates directive semantics. Type-safe routing. |
 | `confidence` | Decimal | Yes | Decision confidence [0.0-1.0]. Enables directive prioritization/rejection. Low confidence = skip or reduce size. |
-| `target_trade_ids` | list[str] | No | Existing trade IDs for MODIFY_EXISTING/CLOSE_EXISTING. Empty for NEW_TRADE. Validated consistency with scope. |
+| `target_order_ids` | list[str] | No | Existing order IDs for MODIFY_ORDER/CLOSE_ORDER. Empty for NEW_TRADE. Validated consistency with scope. |
 | `entry_directive` | EntryDirective \| None | No | Entry constraints for EntryPlanner. Optional - planner uses defaults if missing. NEW_TRADE typically includes this. |
-| `size_directive` | SizeDirective \| None | No | Sizing constraints for SizePlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_EXISTING typically includes this. |
-| `exit_directive` | ExitDirective \| None | No | Exit constraints for ExitPlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_EXISTING typically includes this. |
-| `routing_directive` | ExecutionDirective \| None | No | Execution constraints for ExecutionPlanner. Optional - planner uses defaults if missing. All scopes may include this. |
+| `size_directive` | SizeDirective \| None | No | Sizing constraints for SizePlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_ORDER typically includes this. |
+| `exit_directive` | ExitDirective \| None | No | Exit constraints for ExitPlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_ORDER typically includes this. |
+| `routing_directive` | RoutingDirective \| None | No | Routing constraints for ExecutionPlanner. Optional - planner uses defaults if missing. All scopes may include this. |
 
 **WHY NOT frozen:**
 - StrategyDirective is enriched post-execution (order_ids added after orders placed)
@@ -497,12 +487,13 @@ Modified:   Post-creation (order_ids tracking, not frozen)
 ```
 
 **Design Decisions:**
-- **Decision 1:** Scope enum (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
-  - Rationale: Type-safe directive discrimination. Clear semantics. Compiler-enforced correctness.
+- **Decision 1:** Scope enum (NEW_TRADE, MODIFY_ORDER, CLOSE_ORDER)
+  - Rationale: Type-safe directive discrimination. Order-level semantics (not position-level). Compiler-enforced correctness.
   - Alternative rejected: String literals (error-prone, no type safety)
+  - Alternative rejected: MODIFY_EXISTING/CLOSE_EXISTING (position-level naming, but operations are order-level)
 
 - **Decision 2:** 4 optional sub-directives (not required)
-  - Rationale: Flexibility - not all directives need all constraints. Planners have defaults. CLOSE_EXISTING may only need routing_directive.
+  - Rationale: Flexibility - not all directives need all constraints. Planners have defaults. CLOSE_ORDER may only need routing_directive.
   - Alternative rejected: All sub-directives required (rigid, forces dummy values)
 
 - **Decision 3:** Sub-directives as constraints (not tactical plans)
@@ -513,8 +504,8 @@ Modified:   Post-creation (order_ids tracking, not frozen)
   - Rationale: Enriched downstream (order_ids tracking). Avoids creating new DTO versions.
   - Alternative rejected: Frozen + separate tracking DTO (complexity, indirection)
 
-- **Decision 5:** target_trade_ids validated with scope
-  - Rationale: Prevents invalid states (NEW_TRADE with trade IDs, MODIFY_EXISTING without IDs)
+- **Decision 5:** target_order_ids validated with scope
+  - Rationale: Prevents invalid states (NEW_TRADE with order IDs, MODIFY_ORDER without IDs)
   - Alternative rejected: No validation (runtime errors, invalid directives)
 
 - **Decision 6:** Confidence required (unlike Signal/Risk optional confidence)
@@ -525,22 +516,26 @@ Modified:   Post-creation (order_ids tracking, not frozen)
   - Rationale: StrategyPlanner extends causal chain (signal_id/risk_id → strategy_directive_id). Enables complete audit trail.
   - Alternative rejected: New causality chain (breaks causal continuity, no signal → directive link)
 
+- **Decision 8:** RoutingDirective name (not ExecutionDirective)
+  - Rationale: Avoids naming conflict with Execution layer DTO (execution/execution_directive.py). Clarifies purpose (routing constraints, not execution commands).
+  - Alternative rejected: Keep ExecutionDirective name (confusing, two DTOs with same name in different layers)
+
 **Validation Strategy:**
 - directive_id format: `STR_YYYYMMDD_HHMMSS_hash` (military datetime)
-- scope vs target_trade_ids consistency:
-  - NEW_TRADE: target_trade_ids must be empty
-  - MODIFY_EXISTING/CLOSE_EXISTING: target_trade_ids must not be empty
+- scope vs target_order_ids consistency:
+  - NEW_TRADE: target_order_ids must be empty
+  - MODIFY_ORDER/CLOSE_ORDER: target_order_ids must not be empty
 - confidence: [0.0, 1.0] required
 - decision_timestamp: UTC-enforced (timezone-aware)
 - Sub-directives validated internally (decimal ranges, format checks)
 
 **Scope Semantics:**
 
-| Scope | target_trade_ids | Typical Sub-directives | Purpose |
+| Scope | target_order_ids | Typical Sub-directives | Purpose |
 |-------|------------------|------------------------|---------|
 | NEW_TRADE | Empty (new position) | entry, size, exit, routing | Open new position from signal |
-| MODIFY_EXISTING | Not empty (existing trades) | size, exit, routing | Adjust stops, scale position, change routing |
-| CLOSE_EXISTING | Not empty (existing trades) | routing (exit urgency) | Close position from exit signal or risk |
+| MODIFY_ORDER | Not empty (existing orders) | size, exit, routing | Adjust stops, scale position, change routing |
+| CLOSE_ORDER | Not empty (existing orders) | routing (exit urgency) | Close position from exit signal or risk |
 
 **Sub-Directive Semantics:**
 
@@ -549,7 +544,7 @@ Modified:   Post-creation (order_ids tracking, not frozen)
 | EntryDirective | EntryPlanner | symbol, direction, timing_preference, preferred_price_zone, max_slippage |
 | SizeDirective | SizePlanner | aggressiveness, max_risk_amount, account_risk_pct |
 | ExitDirective | ExitPlanner | profit_taking_preference, risk_reward_ratio, stop_loss_tolerance |
-| ExecutionDirective | ExecutionPlanner | execution_urgency, iceberg_preference, max_total_slippage_pct |
+| RoutingDirective | ExecutionPlanner | execution_urgency, iceberg_preference, max_total_slippage_pct |
 
 **StrategyPlanner Types & Directive Patterns:**
 
