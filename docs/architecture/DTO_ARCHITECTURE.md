@@ -953,12 +953,365 @@ Never:      Modified after creation (frozen)
 
 ## Execution DTOs
 
-**Status:** TODO
+Execution DTOs represent final executable instructions and execution tracking.
+These DTOs bridge the Strategy layer (planning) and Execution layer (doing).
 
-Planned coverage:
-- ExecutionDirective
-- ExecutionDirectiveBatch
-- ExecutionGroup
+**Architectural Pattern:**
+```
+PlanningAggregator
+  → ExecutionDirective (single executable instruction)
+    → ExecutionDirectiveBatch (atomic multi-directive coordination)
+      → ExecutionGroup (multi-order execution tracking)
+```
+
+**Key Design Principles:**
+- **Clean Layer Separation:** No strategy metadata (causality only for traceability)
+- **Flexible Composition:** All plans optional (supports partial updates)
+- **Atomic Coordination:** Batch enables transaction-like execution
+- **Mutable Tracking:** ExecutionGroup evolves during execution lifecycle
+
+---
+
+### ExecutionDirective
+
+**Purpose:** Final aggregated execution instruction (single trade setup)
+
+**WHY this DTO exists:**
+- PlanningAggregator combines 4 plans → single executable instruction
+- Clean separation: Strategy planning → Execution doing
+- Supports partial updates (NEW_TRADE vs MODIFY_ORDER vs ADD_TO_POSITION)
+- Complete causality chain for full traceability
+- All plans optional enables flexibility (trailing stop = only exit_plan)
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | PlanningAggregator | Aggregates Entry/Size/Exit/ExecutionPlan → ExecutionDirective |
+| **Consumers** | ExecutionDirectiveBatch | Groups multiple directives for atomic execution |
+| | ExecutionTranslator | Translates ExecutionPlan → connector-specific params |
+| | ExecutionHandler | Executes single directive (places orders) |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `directive_id` | str | Yes (auto) | Unique execution directive identifier (EXE_ prefix). Enables tracking directive → orders. |
+| `causality` | CausalityChain | Yes | Complete ID chain from origin through strategy decision. Full traceability for auditing and debugging. |
+| `entry_plan` | EntryPlan \| None | No | WHERE IN specification. Optional (only for new trades or scaling in). |
+| `size_plan` | SizePlan \| None | No | HOW MUCH specification. Optional (only for new trades or scaling). |
+| `exit_plan` | ExitPlan \| None | No | WHERE OUT specification. Optional (only for new trades or exit adjustments like trailing stops). |
+| `execution_plan` | ExecutionPlan \| None | No | HOW/WHEN specification. Optional (execution trade-offs, may use defaults). |
+
+**WHY frozen:**
+- ExecutionDirective is immutable after creation (instruction snapshot)
+- Execution layer consumes immutable facts
+- Frozen enables safe concurrent access and audit trail
+- Changes require new directive (not mutations)
+
+**WHY NOT included:**
+- ❌ `strategy_id` - Not execution concern (causality provides traceability without strategy metadata)
+- ❌ `planner_metadata` - Strategy layer metadata, not execution parameters
+- ❌ `priority` - ExecutionDirectiveBatch handles priority via ordering
+- ❌ `created_at` - Auto-captured from directive_id timestamp (military datetime)
+- ❌ `status` - Execution state tracking → separate tracking system (not DTO field)
+
+**Lifecycle:**
+```
+Created:    PlanningAggregator (aggregates 4 plans + causality)
+Validated:  At least 1 plan required (cannot be empty directive)
+Nested in:  Always nested in ExecutionDirectiveBatch
+Consumed:   ExecutionHandler translates → connector orders
+Grouped:    ExecutionDirectiveBatch coordinates atomic execution
+Tracked:    ExecutionGroup tracks multi-order execution progress
+Modified:   Never modified after creation (frozen - new directive for changes)
+```
+
+**Design Decisions:**
+- **Decision 1:** All plans optional
+  - Rationale: Enables partial updates (trailing stop = only exit_plan, scale in = entry+size only). Flexibility without proliferation.
+  - Alternative rejected: Required plans (forces full trade spec even for adjustments)
+
+- **Decision 2:** At least 1 plan required
+  - Rationale: Empty directive is meaningless (validation prevents accidents).
+  - Alternative rejected: Allow empty (dangerous - silent no-ops)
+
+- **Decision 3:** No strategy metadata
+  - Rationale: Clean layer separation. Execution layer doesn't need strategy_id, confidence, etc. Causality provides traceability.
+  - Alternative rejected: Include strategy_id (couples layers, violates separation)
+
+- **Decision 4:** Frozen (immutable)
+  - Rationale: Execution instructions are facts at creation time. Mutations violate audit trail. New directive for changes.
+  - Alternative rejected: Mutable (loses audit trail, concurrent access issues)
+
+- **Decision 5:** CausalityChain required
+  - Rationale: Full traceability mandatory (debugging, auditing, regulatory). Every execution traces back to origin.
+  - Alternative rejected: Optional causality (loses traceability, regulatory risk)
+
+**Validation Strategy:**
+- directive_id format: `EXE_YYYYMMDD_HHMMSS_hash` (military datetime)
+- At least 1 plan: entry_plan OR size_plan OR exit_plan OR execution_plan
+- causality: Complete chain validation (all required IDs present)
+- Plan consistency: Validated by ExecutionHandler (entry+size for new trade, etc)
+
+**Use Cases:**
+
+| Use Case | Plans Present | Description |
+|----------|---------------|-------------|
+| NEW_TRADE | Entry + Size + Exit + Execution | Complete new trade setup (all 4 plans) |
+| MODIFY_ORDER (trailing stop) | Exit only | Trailing stop adjustment (only exit_plan) |
+| MODIFY_ORDER (urgency change) | Execution only | Change execution urgency (only execution_plan) |
+| MODIFY_ORDER (size adjust) | Size + Execution | Adjust position size with urgency |
+| ADD_TO_POSITION | Entry + Size | Scale in (add to existing position) |
+| CLOSE_POSITION | Exit + Execution | Close position with urgency (exit_plan + execution urgency) |
+
+---
+
+### ExecutionDirectiveBatch
+
+**Purpose:** Atomic multi-directive execution coordination
+
+**WHY this DTO exists:**
+- PlanningAggregator ALWAYS produces ExecutionDirectiveBatch (even for single directive)
+- Coordinates execution of 1-N ExecutionDirectives as single unit
+- Enables atomic transactions (all succeed or all rollback)
+- Supports execution modes (SEQUENTIAL, PARALLEL, ATOMIC)
+- Batch-level timeout and rollback control
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | PlanningAggregator | ONLY producer - bundles 1-N directives + sets execution_mode/timeout/etc |
+| **Consumers** | ExecutionHandler | Executes batch according to execution_mode |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `batch_id` | str | Yes | Unique batch identifier (BAT_ prefix). PlanningAggregator generates. Enables tracking batch → directives → orders. |
+| `directives` | List[ExecutionDirective] | Yes | ExecutionDirectives to execute (min 1). PlanningAggregator bundles 1-N directives. Atomic coordination unit. |
+| `execution_mode` | ExecutionMode | Yes | Execution mode: SEQUENTIAL (1-by-1), PARALLEL (all at once), ATOMIC (transaction). PlanningAggregator sets based on StrategyDirective scope/count. |
+| `created_at` | datetime | Yes | Batch creation timestamp (UTC). PlanningAggregator sets. Audit trail and timeout calculation. |
+| `rollback_on_failure` | bool | Yes | Rollback all on any failure. PlanningAggregator sets (default True, MUST True for ATOMIC). MUST be True for ATOMIC mode. |
+| `timeout_seconds` | int \| None | No | Max execution time (None = no timeout). PlanningAggregator sets (default 30s). Prevents hanging batch execution. |
+| `metadata` | Dict \| None | No | Batch context (strategy_directive_id, trade_count). PlanningAggregator sets for debugging/analysis. Optional. |
+
+**WHY frozen:**
+- ExecutionDirectiveBatch is immutable after creation (coordination contract frozen)
+- Execution mode cannot change mid-execution (violates contract)
+- Frozen enables safe concurrent access
+- Changes require new batch (not mutations)
+
+**WHY NOT included:**
+- ❌ `status` - Runtime state tracking → separate tracking system (not DTO field)
+- ❌ `progress` - Execution progress → tracking system (not coordination spec)
+- ❌ `results` - Execution outcomes → tracking system (not input spec)
+- ❌ `priority` - Directive ordering within batch determines priority
+- ❌ `strategy_id` - In metadata if needed for debugging (not execution parameter)
+
+**Lifecycle:**
+```
+Created:    PlanningAggregator (when all plans per trade complete)
+            - Sets batch_id, execution_mode, created_at, rollback_on_failure, timeout_seconds
+            - Bundles 1-N ExecutionDirectives
+            - Adds metadata (strategy_directive_id, trade_count)
+Validated:  Min 1 directive, unique directive IDs, ATOMIC → rollback_on_failure=True
+Consumed:   ExecutionHandler executes directives per execution_mode
+Coordinated: ExecutionHandler manages execution coordination (SEQUENTIAL/PARALLEL/ATOMIC)
+Finalized:  Batch completes (all succeed) or rolls back (any fail + rollback_on_failure)
+Never:      Modified after creation (frozen)
+```
+
+**Design Decisions:**
+- **Decision 1:** Three execution modes
+  - Rationale: Covers 90% use cases. SEQUENTIAL=simple, PARALLEL=fast, ATOMIC=safe. Clear semantics.
+  - Alternative rejected: Single mode (loses flexibility), 10+ modes (complexity overkill)
+
+- **Decision 2:** rollback_on_failure required for ATOMIC
+  - Rationale: ATOMIC without rollback is misleading (violates transaction semantics).
+  - Alternative rejected: Optional rollback for ATOMIC (confusing, violates expectations)
+
+- **Decision 3:** Min 1 directive
+  - Rationale: Empty batch is meaningless (validation prevents accidents).
+  - Alternative rejected: Allow empty (dangerous - silent no-ops)
+
+- **Decision 4:** Frozen (immutable)
+  - Rationale: Batch coordination contract frozen at creation. Changes require new batch.
+  - Alternative rejected: Mutable (loses coordination integrity, concurrent issues)
+
+- **Decision 5:** Unique directive IDs
+  - Rationale: Duplicate directives dangerous (double execution). Validation prevents accidents.
+  - Alternative rejected: Allow duplicates (risk of unintended double orders)
+
+- **Decision 6:** PlanningAggregator fills ALL fields
+  - Rationale: Clear responsibility. PlanningAggregator knows StrategyDirective scope → determines execution_mode. Sets sensible defaults (timeout=30s, rollback=True).
+  - Alternative rejected: ExecutionHandler decides (duplicates logic, violates SRP)
+
+- **Decision 7:** metadata field
+  - Rationale: Debugging aid (strategy_directive_id, trade_count). Minimal (not full strategy context). Optional.
+  - Alternative rejected: No metadata (loses debugging context), Rich metadata (couples layers)
+
+**Validation Strategy:**
+- batch_id format: `BAT_YYYYMMDD_HHMMSS_xxxxx` (military datetime)
+- directives: Min 1, all directive_ids unique
+- execution_mode: ATOMIC → rollback_on_failure must be True
+- timeout_seconds: Must be positive if provided
+- Directive uniqueness: No duplicate directive_ids within batch
+
+**Execution Mode Semantics:**
+
+| Mode | Behavior | Use Case | Rollback |
+|------|----------|----------|----------|
+| SEQUENTIAL | Execute 1-by-1, stop on first failure | Ordered operations (hedge → main) | Optional |
+| PARALLEL | Execute all simultaneously | Independent operations (multiple symbols) | Optional |
+| ATOMIC | All succeed or all rollback | Critical coordination (entry+exits together) | Required |
+
+---
+
+### ExecutionGroup
+
+**Purpose:** Multi-order execution tracking for advanced strategies
+
+**WHY this DTO exists:**
+- Tracks lifecycle of multi-order strategies (TWAP, ICEBERG, DCA, LAYERED, POV)
+- Groups orders spawned from single ExecutionDirective
+- Mutable status tracking (PENDING → ACTIVE → COMPLETED/CANCELLED/FAILED/PARTIAL)
+- Progress monitoring (filled_quantity vs target_quantity)
+- Enables atomic group operations (cancel all TWAP chunks, modify entire group)
+- Causal traceability (parent_directive_id → order_ids chain)
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | ExecutionHandler | Creates group when spawning multi-order strategy (TWAP, ICEBERG, etc) |
+| **Consumers** | ExecutionHandler | Updates group as orders spawn, fill, complete |
+| | (Future) PositionTracker | Aggregates fills across group orders |
+| | (Future) RiskMonitor | Monitors group exposure and cancels if risk threshold breached |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `group_id` | str | Yes | Unique execution group identifier (EXG_ prefix). ExecutionHandler generates. Enables tracking group → orders. |
+| `parent_directive_id` | str | Yes | ExecutionDirective that spawned this group. Links group to originating directive. Causal traceability. |
+| `execution_strategy` | ExecutionStrategyType | Yes | Strategy type: SINGLE, TWAP, VWAP, ICEBERG, DCA, LAYERED, POV. Determines coordination logic. ExecutionHandler sets based on ExecutionPlan hints. |
+| `order_ids` | List[str] | Yes | Connector order IDs in this group (unique values). ExecutionHandler appends as orders spawn. Tracks all spawned orders. Empty initially. |
+| `status` | GroupStatus | Yes | Lifecycle status: PENDING, ACTIVE, COMPLETED, CANCELLED, FAILED, PARTIAL. ExecutionHandler updates as execution progresses. |
+| `created_at` | datetime | Yes | Group creation timestamp (UTC). ExecutionHandler sets. Audit trail. |
+| `updated_at` | datetime | Yes | Last update timestamp (UTC). ExecutionHandler refreshes on each update. Tracks freshness. |
+| `target_quantity` | Decimal \| None | No | Planned total quantity. From SizePlan. Enables progress calculation (filled/target ratio). Optional (not all strategies have fixed target). |
+| `filled_quantity` | Decimal \| None | No | Actual filled quantity so far. ExecutionHandler aggregates from fill events. Tracks execution progress. |
+| `cancelled_at` | datetime \| None | No | Cancellation timestamp (mutually exclusive with completed_at). ExecutionHandler sets on cancel. Audit trail. |
+| `completed_at` | datetime \| None | No | Completion timestamp (mutually exclusive with cancelled_at). ExecutionHandler sets on completion. Audit trail. |
+| `metadata` | Dict \| None | No | Strategy-specific parameters (e.g., TWAP: chunk_size, interval_seconds, chunks_total). ExecutionHandler extracts from ExecutionPlan hints. Debugging and analysis. |
+
+**WHY NOT frozen:**
+- ExecutionGroup is mutable during execution lifecycle (tracking entity, not specification)
+- status evolves: PENDING → ACTIVE → COMPLETED/CANCELLED/FAILED/PARTIAL
+- order_ids list grows as ExecutionHandler spawns orders
+- filled_quantity increases as orders fill
+- updated_at refreshed on each state change
+- Timestamps set when transitions occur (cancelled_at, completed_at)
+
+**WHY NOT included:**
+- ❌ `individual_order_status` - Order-level tracking → separate Order DTO or connector state
+- ❌ `slippage` - Analytics concern (computed post-execution from fills)
+- ❌ `average_fill_price` - Analytics concern (computed from fills)
+- ❌ `remaining_quantity` - Computed field (target_quantity - filled_quantity)
+- ❌ `strategy_id` - Not execution concern (parent_directive_id provides traceability)
+
+**Lifecycle:**
+```
+Created:    ExecutionHandler (when spawning multi-order strategy)
+            - Status: PENDING, order_ids=[], created_at/updated_at set
+            - Based on ExecutionPlan hints (preferred_execution_style, chunk_count_hint)
+Spawning:   ExecutionHandler appends order_ids as orders created
+            - Status: PENDING → ACTIVE (first order placed)
+            - updated_at refreshed
+Progress:   ExecutionHandler updates filled_quantity as fill events arrive
+            - updated_at refreshed on each update
+Finalized:  ExecutionHandler transitions status
+            - ACTIVE → COMPLETED (all orders filled)
+            - ACTIVE → CANCELLED (group cancelled, cancelled_at set)
+            - ACTIVE → FAILED (execution error)
+            - ACTIVE → PARTIAL (some filled, execution stopped)
+```
+
+**Design Decisions:**
+- **Decision 1:** Mutable (not frozen)
+  - Rationale: Tracking entity (not specification). Status, order_ids, filled_quantity evolve. Real-time updates essential.
+  - Alternative rejected: Frozen (requires new group for every update, impractical for tracking)
+
+- **Decision 2:** Seven execution strategy types
+  - Rationale: Covers common advanced strategies. SINGLE for simple cases. Enables strategy-specific coordination.
+  - Alternative rejected: Generic "MULTI_ORDER" (loses semantic information for debugging/analysis)
+
+- **Decision 3:** Six group statuses
+  - Rationale: Clear lifecycle semantics. PARTIAL status critical (some filled, execution stopped). FAILED vs CANCELLED distinction important.
+  - Alternative rejected: Binary complete/incomplete (loses nuance for debugging)
+
+- **Decision 4:** cancelled_at XOR completed_at
+  - Rationale: Mutually exclusive final states. Validation prevents impossible states.
+  - Alternative rejected: Allow both (confusing, violates state machine)
+
+- **Decision 5:** Unique order_ids
+  - Rationale: Duplicate order IDs indicate bug (double spawn). Validation prevents tracking corruption.
+  - Alternative rejected: Allow duplicates (risk of incorrect fill aggregation)
+
+- **Decision 6:** filled_quantity <= target_quantity
+  - Rationale: Cannot fill more than target (validation prevents data corruption). Over-fills indicate bug.
+  - Alternative rejected: No validation (allows impossible states, silent bugs)
+
+- **Decision 7:** ExecutionHandler owns lifecycle
+  - Rationale: Single owner prevents race conditions. ExecutionHandler creates, updates, finalizes groups.
+  - Alternative rejected: Multiple writers (race conditions, state corruption)
+
+**Validation Strategy:**
+- group_id format: `EXG_YYYYMMDD_HHMMSS_xxxxx` (military datetime)
+- parent_directive_id format: `EXE_YYYYMMDD_HHMMSS_xxxxx`
+- order_ids: All unique (no duplicates)
+- target_quantity: Must be positive if provided
+- filled_quantity: Must be <= target_quantity (if both present)
+- cancelled_at XOR completed_at: Mutually exclusive (validation enforced)
+
+**Execution Strategy Types:**
+
+| Strategy | Description | Typical Order Count | Use Case |
+|----------|-------------|---------------------|----------|
+| SINGLE | Single order (no grouping) | 1 | Simple execution (market/limit order) |
+| TWAP | Time-Weighted Average Price | 5-20 | Spread execution over time, minimize market impact |
+| VWAP | Volume-Weighted Average Price | Variable | Match market volume profile |
+| ICEBERG | Iceberg orders (visible/hidden) | 2-10 | Hide large order intent, prevent front-running |
+| DCA | Dollar-Cost Averaging | 10-50 | Systematic accumulation, reduce timing risk |
+| LAYERED | Layered limit orders | 3-10 | Capture range-bound moves, multiple entry points |
+| POV | Percentage of Volume | Variable | Maintain fixed % of market volume, minimize impact |
+
+**Group Status Transitions:**
+
+```
+PENDING ────→ ACTIVE ────→ COMPLETED (all orders filled)
+                │
+                ├──────→ CANCELLED (emergency cancel / user request)
+                │
+                ├──────→ FAILED (execution error / connector issue)
+                │
+                └──────→ PARTIAL (some filled, stopped early)
+
+State Machine Rules:
+- PENDING: No orders placed yet (order_ids=[])
+- ACTIVE: At least 1 order placed (order_ids not empty)
+- COMPLETED: filled_quantity == target_quantity (all orders filled)
+- CANCELLED: User/system requested cancellation (cancelled_at set)
+- FAILED: Execution error prevented completion
+- PARTIAL: filled_quantity < target_quantity, execution stopped
+
+Transition Guards:
+- PENDING → ACTIVE: First order placed
+- ACTIVE → COMPLETED: All orders filled
+- ANY → CANCELLED: Cancel request accepted (atomic group operation)
+```
 
 ---
 
