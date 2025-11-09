@@ -24,6 +24,12 @@
 
 **Data Contracts (DTOs):**
 - [x] Shared Layer: DispositionEnvelope, CausalityChain (enhanced with order_ids/fill_ids), PlatformDataDTO
+- [ ] **Origin DTO** - Platform data origin tracking
+  - **Purpose:** Type-safe platform data origin reference (TICK/NEWS/SCHEDULE)
+  - **Fields:** id (with type prefix), type (OriginType enum)
+  - **Location:** `backend/dtos/shared/origin.py`
+  - **Design:** [ORIGIN_DTO_DESIGN.md](development/backend/dtos/ORIGIN_DTO_DESIGN.md)
+  - **Note:** Used in PlatformDataDTO and CausalityChain for type-safe origin tracking
 - [x] Signal/Risk Layer: Signal, Risk
 - [x] Planning Layer: StrategyDirective, EntryPlan, SizePlan, ExitPlan, ExecutionPlan
 - [ ] **ExecutionRequest DTO** - Payload for EXECUTION_INTENT_REQUESTED event

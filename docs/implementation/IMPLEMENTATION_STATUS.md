@@ -172,6 +172,29 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 **Breaking Change**: Removed 3 optional fields. Consumers must extract symbol/timeframe from payload.
 
+### CausalityChain - Execution Tracking Enhancement (2025-11-09)
+- ✅ **CausalityChain Enhancement**: Added execution tracking fields for intent vs reality tracking
+  - `order_ids: list[str]` - Tracks submitted orders (intent from ExecutionHandler)
+  - `fill_ids: list[str]` - Tracks filled orders (reality from ExchangeConnector)
+  - **Use Case**: Partial fills - submitted orders may differ from executed fills
+- ✅ **Tests**: 24 → 28 tests (+4 new tests, 100% coverage maintained)
+  - `test_add_order_ids()` - Single order ID tracking
+  - `test_add_multiple_order_ids()` - Batch order tracking
+  - `test_add_fill_ids()` - Single fill ID tracking
+  - `test_add_multiple_fill_ids_partial_fills()` - Partial fill scenarios
+- ✅ **Quality Gates**: Pylint 10/10, all tests passing
+- ✅ **Documentation Reorganization**:
+  - Moved `CAUSALITY_CHAIN_LIFECYCLE.md` → `development/backend/dtos/CAUSALITY_CHAIN_DESIGN.md`
+  - Added high-level overview to `architecture/DATA_FLOW.md` (Causality Tracking section)
+  - Updated 6 cross-references across development docs (EXECUTION_FLOW, STRATEGY_LEDGER_DESIGN, etc.)
+  - **Rationale**: Proper separation - architecture/ = patterns, development/ = implementation details
+- ✅ **Architecture Correction**: Removed incorrect XOR constraint documentation
+  - `signal_ids` and `risk_ids` are lists (NOT mutually exclusive)
+  - StrategyPlanner uses BOTH for balanced decision-making (confluence pattern)
+  - Validated via git history (commit 8571457) - original implementation was correct
+
+**Total Tests**: 364 → 368 (+4 causality tests)
+
 ## Recent Updates (2025-11-02)
 
 ### Quant Leap Architecture - Context Aggregation Removal
