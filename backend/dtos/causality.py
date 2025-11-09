@@ -12,7 +12,10 @@ Design: Single Responsibility - NO business data, NO timestamps, ONLY IDs.
 """
 
 # Third-Party Imports
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
+
+# Our Application Imports
+from backend.dtos.shared import Origin
 
 
 class CausalityChain(BaseModel):
@@ -34,25 +37,25 @@ class CausalityChain(BaseModel):
     **Design Pattern:**
     Workers use model_copy(update={...}) to extend chain:
     ```python
+    from backend.dtos.shared import Origin, OriginType
+    
+    # Origin copied from PlatformDataDTO
     extended = input_dto.causality.model_copy(update={
         "strategy_directive_id": "STR_20251026_100002_abc1d2e3"
     })
     output_dto.causality = extended
     ```
 
-    **Birth Concept:**
-    Every strategy run "is born" at one of three events:
-    - Market tick (tick_id)
-    - News event (news_id)
-    - Schedule event (schedule_id)
+    **Origin Concept:**
+    Every strategy run originates from platform data (copied from PlatformDataDTO):
+    - TICK: Market tick data
+    - NEWS: News event data
+    - SCHEDULE: Scheduled event data
 
-    At least one birth ID is required (enforced by validator).
+    Origin field is required and immutable (frozen).
 
     Attributes:
-        Birth IDs (at least 1 required):
-            tick_id: Market tick ID - strategy run born from market data
-            news_id: News event ID - strategy run born from news
-            schedule_id: Schedule event ID - strategy run born from DCA/rebalancing
+        origin: Origin reference copied from PlatformDataDTO (required, frozen)
 
         Worker Output IDs (added during pipeline flow):
             signal_ids: Signal IDs (list - multiple signals possible)
@@ -67,18 +70,9 @@ class CausalityChain(BaseModel):
             fill_ids: Fill IDs (list - execution reality added by ExchangeConnector)
     """
 
-    # === Birth IDs (Strategy Run Initiators) ===
-    tick_id: str | None = Field(
-        default=None,
-        description="Market tick ID - strategy run geboren bij market data event"
-    )
-    news_id: str | None = Field(
-        default=None,
-        description="News event ID - strategy run geboren bij news event"
-    )
-    schedule_id: str | None = Field(
-        default=None,
-        description="Schedule event ID - strategy run geboren bij DCA/rebalancing schedule"
+    # === Origin (Platform Data Birth) ===
+    origin: Origin = Field(
+        description="Origin reference copied from PlatformDataDTO (TICK/NEWS/SCHEDULE)"
     )
 
     # === Worker Output IDs (Toegevoegd tijdens pipeline flow) ===
@@ -126,83 +120,32 @@ class CausalityChain(BaseModel):
         )
     )
 
-    @model_validator(mode='after')
-    def validate_birth_id(self) -> 'CausalityChain':
-        """
-        Validate that at least one birth ID is present.
-
-        Every strategy run must "be born" at tick/news/schedule event.
-
-        Raises:
-            ValueError: If all birth IDs are None
-        """
-        if not any([self.tick_id, self.news_id, self.schedule_id]):
-            raise ValueError(
-                "CausalityChain requires at least one birth ID "
-                "(tick_id, news_id, or schedule_id)"
-            )
-        return self
-
     model_config = {
-        "frozen": False,  # Mutable - workers extend via model_copy(update={...})
+        "frozen": True,  # Immutable - origin field cannot be changed after creation
         "str_strip_whitespace": True,
         "validate_assignment": True,
         "json_schema_extra": {
             "examples": [
                 {
-                    "description": "Tick-based flow (birth → signal → strategy)",
-                    "tick_id": "TCK_20251027_100000_a1b2c3d4",
-                    "signal_ids": ["SIG_20251027_100001_e5f6g7h8"],
-                    "strategy_directive_id": "STR_20251027_100002_m3n4o5p6"
+                    "description": "Tick-based flow (origin TICK → signal → strategy)",
+                    "origin": {"id": "TCK_20251109_100000_a1b2c3d4", "type": "TICK"},
+                    "signal_ids": ["SIG_20251109_100001_e5f6g7h8"],
+                    "strategy_directive_id": "STR_20251109_100002_m3n4o5p6"
                 },
                 {
-                    "description": "Scheduled DCA flow (schedule → entry → size → execution)",
-                    "schedule_id": "SCH_20251027_120000_q7r8s9t0",
-                    "strategy_directive_id": "STR_20251027_120001_u1v2w3x4",
-                    "entry_plan_id": "ENT_20251027_120002_y5z6a7b8",
-                    "size_plan_id": "SIZ_20251027_120003_c9d0e1f2",
-                    "execution_directive_id": "EXE_20251027_120010_g3h4i5j6"
+                    "description": "Scheduled DCA flow (origin SCHEDULE → entry → size → execution)",
+                    "origin": {"id": "SCH_20251109_120000_q7r8s9t0", "type": "SCHEDULE"},
+                    "strategy_directive_id": "STR_20251109_120001_u1v2w3x4",
+                    "entry_plan_id": "ENT_20251109_120002_y5z6a7b8",
+                    "size_plan_id": "SIZ_20251109_120003_c9d0e1f2",
+                    "execution_directive_id": "EXE_20251109_120010_g3h4i5j6"
                 },
                 {
-                    "description": "Risk-based exit (news → risk → modify directive)",
-                    "news_id": "NWS_20251027_143000_k7l8m9n0",
-                    "risk_ids": ["RSK_20251027_143001_o1p2q3r4"],
-                    "strategy_directive_id": "STR_20251027_143002_w9x0y1z2",
-                    "exit_plan_id": "EXT_20251027_143003_a3b4c5d6"
-                },
-                {
-                    "description": "Multiple signals confluence (confluence → planning)",
-                    "tick_id": "TCK_20251027_150000_e7f8g9h0",
-                    "signal_ids": [
-                        "SIG_20251027_150001_i1j2k3l4",
-                        "SIG_20251027_150001_m5n6o7p8",
-                        "SIG_20251027_150002_q9r0s1t2"
-                    ],
-                    "strategy_directive_id": "STR_20251027_150003_y7z8a9b0",
-                    "entry_plan_id": "ENT_20251027_150004_c1d2e3f4",
-                    "size_plan_id": "SIZ_20251027_150004_g5h6i7j8",
-                    "exit_plan_id": "EXT_20251027_150005_k9l0m1n2",
-                    "execution_plan_id": "EXP_20251027_150005_o3p4q5r6",
-                    "execution_directive_id": "EXE_20251027_150010_s7t8u9v0"
-                },
-                {
-                    "description": "Complete execution flow with partial fills",
-                    "tick_id": "TCK_20251027_160000_a1b2c3d4",
-                    "signal_ids": ["SIG_20251027_160001_e5f6g7h8"],
-                    "strategy_directive_id": "STR_20251027_160002_i9j0k1l2",
-                    "entry_plan_id": "ENT_20251027_160003_m3n4o5p6",
-                    "size_plan_id": "SIZ_20251027_160003_q7r8s9t0",
-                    "execution_plan_id": "EXP_20251027_160004_u1v2w3x4",
-                    "execution_directive_id": "EXE_20251027_160010_y5z6a7b8",
-                    "order_ids": [
-                        "ORD_20251027_160011_c9d0e1f2",
-                        "ORD_20251027_160011_g3h4i5j6"
-                    ],
-                    "fill_ids": [
-                        "FIL_20251027_160012_k7l8m9n0",
-                        "FIL_20251027_160012_o1p2q3r4",
-                        "FIL_20251027_160013_s5t6u7v8"
-                    ]
+                    "description": "Risk-based exit (origin NEWS → risk → modify directive)",
+                    "origin": {"id": "NWS_20251109_143000_k7l8m9n0", "type": "NEWS"},
+                    "risk_ids": ["RSK_20251109_143001_o1p2q3r4"],
+                    "strategy_directive_id": "STR_20251109_143002_w9x0y1z2",
+                    "exit_plan_id": "EXT_20251109_143003_a3b4c5d6"
                 }
             ]
         }
