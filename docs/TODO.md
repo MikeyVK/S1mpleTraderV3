@@ -1,7 +1,7 @@
 # SimpleTraderV3 - TODO List
 
-**Huidige Focus (2025-11-06):** FlowInitiator & DataProvider Implementation
-> **Status:** PlatformDataDTO complete (minimal design), proceeding with FlowInitiator TDD cycle
+**Huidige Focus (2025-11-09):** Configuration Schemas (Week 1 - Critical Path)
+> **Status:** FlowInitiator complete (Phase 1.3), ready for Config Schema implementation
 
 ## 📚 Documentation Quick Links
 
@@ -38,9 +38,19 @@
 - [x] IEventBus (protocol + implementation)
 - [x] IWorkerLifecycle (protocol)
 
-**Metrics:** 350 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+**Platform Components:**
+- [x] FlowInitiator - Per-strategy data ingestion and cache initialization (Phase 1.3)
+  - **Implementation:** `backend/core/flow_initiator.py`
+  - **Tests:** 14/14 passing (100% coverage)
+  - **Quality:** Pylint 10/10
+  - **Design:** [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md)
+  - **Purpose:** Initialize StrategyCache before workers execute (race condition prevention)
 
-**Recent:** PlatformDataDTO refactored to minimal design (3 fields: source_type, timestamp, payload)
+**Metrics:** 364 tests passing (100% coverage) - See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+
+**Recent:** 
+- FlowInitiator implementation complete (2025-11-09)
+- PlatformDataDTO refactored to minimal design (3 fields: source_type, timestamp, payload)
 
 ---
 
@@ -199,7 +209,7 @@
 - [CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md](development/CONFIG_BUILDSPEC_TRANSLATION_DESIGN.md) - Config pipeline
 - [BASEWORKER_DESIGN_PRELIM.md](development/BASEWORKER_DESIGN_PRELIM.md) - Worker foundation
 - [DATA_PROVIDER_DESIGN.md](development/backend/core/DATA_PROVIDER_DESIGN.md) - DataProvider architecture
-- [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md) - FlowInitiator implementation
+- [FLOW_INITIATOR_DESIGN.md](development/backend/core/FLOW_INITIATOR_DESIGN.md) - ✅ FlowInitiator implementation (Phase 1.3 Complete)
 - **[WORKER_METADATA_REGISTRY_DESIGN.md](development/backend/core/WORKER_METADATA_REGISTRY_DESIGN.md)** - Runtime metadata registry (PENDING)
 
 **Architecture Guides:**
@@ -225,6 +235,6 @@
 
 ---
 
-**Last Updated:** 2025-10-30  
+**Last Updated:** 2025-11-09  
 **Maintained By:** Development Team  
 **Review Frequency:** Weekly
