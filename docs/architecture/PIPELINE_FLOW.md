@@ -57,6 +57,7 @@ Dit document beschrijft de **volledige strategie pipeline** van S1mpleTraderV3 -
 │ Fase 0: BOOTSTRAPPING                                           │
 │ - Build rolling window voor alle timeframes                     │
 │ - Initialiseer workers en event wirings                         │
+│ - Setup FlowInitiator (per-strategy cache initialization)       │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -173,6 +174,12 @@ Dit document beschrijft de **volledige strategie pipeline** van S1mpleTraderV3 -
    - Assembleer EventAdapters volgens wiring_map.yaml
    - Koppel event listeners aan publishers
    - Valideer event chain (geen circulaire refs)
+
+4. **FlowInitiator Setup**
+   - Instantieer FlowInitiator per strategy
+   - Wire to DataProvider events (PlatformDataDTO)
+   - Ensures StrategyCache initialization before workers execute
+   - See: [FlowInitiator Design](../development/backend/core/FLOW_INITIATOR_DESIGN.md)
 
 **Output:** Klaar-voor-tick systeem
 
