@@ -73,6 +73,7 @@ __all__ = [
     'generate_signal_id',
     'generate_risk_id',
     'generate_strategy_directive_id',
+    'generate_trade_plan_id',
     'generate_entry_plan_id',
     'generate_size_plan_id',
     'generate_exit_plan_id',
@@ -148,6 +149,11 @@ def generate_strategy_directive_id() -> str:
     return _generate_id('STR')
 
 
+def generate_trade_plan_id() -> str:
+    """Generate TradePlan ID."""
+    return _generate_id('TPL')
+
+
 def generate_entry_plan_id() -> str:
     """Generate EntryPlan ID."""
     return _generate_id('ENT')
@@ -212,6 +218,7 @@ def extract_id_type(typed_id: str) -> str:
         'TCK', 'SCH', 'NWS',        # Birth IDs
         'SIG', 'RSK', 'CTX',        # Quant worker outputs
         'STR',                      # StrategyPlanner output
+        'TPL',                      # TradePlan (Execution Anchor)
         'ENT', 'SIZ', 'EXT', 'EXP', 'EXE', 'EXG', 'BAT'  # Planning pipeline outputs
     ]
 

@@ -61,6 +61,7 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 | signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ Complete |
 | risk.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ Complete |
 | strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ Complete |
+| trade_plan.py | 10.00/10 | 4/4 ✅ | 10.00/10 | 0 | ✅ Complete (Execution Anchor) |
 
 **Coverage:** 65/65 tests passing (100%)
 
@@ -155,7 +156,7 @@ This document tracks the **quality metrics and test coverage** for all S1mpleTra
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| id_generators.py | 10.00/10 | 32/32 ✅ | 10.00/10 | 0 | ✅ Complete (ROU_ removed, EXP_ added) |
+| id_generators.py | 10.00/10 | 34/34 ✅ | 10.00/10 | 0 | ✅ Complete (ROU_ removed, EXP_ added, TPL_ added) |
 
 **Coverage:** 32/32 tests passing (100%)
 

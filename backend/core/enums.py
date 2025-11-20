@@ -62,3 +62,13 @@ class ExecutionType(str, Enum):
     ORDER_MANAGEMENT = "ORDER_MANAGEMENT"
     POSITION_MANAGEMENT = "POSITION_MANAGEMENT"
     REPORTING = "REPORTING"
+
+
+class TradeStatus(str, Enum):
+    """
+    Lifecycle status of a TradePlan.
+    
+    Defines the high-level state of the strategic container.
+    """
+    ACTIVE = "ACTIVE"
+    CLOSED = "CLOSED"

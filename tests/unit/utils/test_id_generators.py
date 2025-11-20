@@ -28,6 +28,7 @@ from backend.utils.id_generators import (
     generate_size_plan_id,
     generate_exit_plan_id,
     generate_execution_directive_id,
+    generate_trade_plan_id,
     extract_id_type,
     extract_id_timestamp,
 )
@@ -118,6 +119,11 @@ class TestWorkerOutputIDGeneration:
         id2 = generate_risk_id()
         assert id1 != id2
 
+    def test_generate_trade_plan_id_has_correct_prefix(self):
+        """Test that trade plan IDs start with TPL_ prefix."""
+        plan_id = generate_trade_plan_id()
+        assert plan_id.startswith("TPL_")
+
     def test_generate_directive_id_has_correct_prefix(self):
         """Test that directive IDs start with STR_ prefix."""
         directive_id = generate_strategy_directive_id()
@@ -178,6 +184,11 @@ class TestIDTypeExtraction:
         """Test extracting 'RSK' from risk ID."""
         risk_id = generate_risk_id()
         assert extract_id_type(risk_id) == "RSK"
+
+    def test_extract_type_from_trade_plan_id(self):
+        """Test extracting type from trade plan ID."""
+        plan_id = generate_trade_plan_id()
+        assert extract_id_type(plan_id) == "TPL"
 
     def test_extract_type_from_directive_id(self):
         """Test extracting type from directive ID."""
