@@ -20,7 +20,7 @@ erDiagram
     Order ||--o{ Fill : "Results in (0-to-N)"
 
     TradePlan {  
-        string plan_id "TP_..."  
+        string plan_id "TPL_..."  
         string strategy_instance_id "ID of StrategyPlanner (plugin) instance"  
         string asset_symbol "BTC/USDT"  
         string status "ACTIVE | CLOSED"  

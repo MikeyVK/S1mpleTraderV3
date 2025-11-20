@@ -1,8 +1,8 @@
 # DTO Architecture - S1mpleTraderV3
 
-**Status:** Architectural Foundation  
-**Last Updated:** 2025-11-09  
-**Version:** 1.0
+**Status:** Architectural Foundation - TradePlan DTO added
+**Last Updated:** 2025-11-20  
+**Version:** 1.1
 
 ---
 
@@ -40,20 +40,23 @@ This document describes **WHY each DTO exists** and **WHY each field exists**.
 4. **Risk** - Threat/risk detection output  
 5. **StrategyDirective** - Strategy planning decision output
 
+### Strategic DTOs (Lifecycle Container)
+6. **TradePlan** - Execution Anchor & State Container
+
 ### Planning DTOs (Decision → Execution Intent)
-6. **EntryPlan** - Entry execution specifications
-7. **SizePlan** - Position sizing specifications
-8. **ExitPlan** - Exit/stop-loss specifications
-9. **ExecutionPlan** - Execution trade-offs (urgency, slippage, visibility)
+7. **EntryPlan** - Entry execution specifications
+8. **SizePlan** - Position sizing specifications
+9. **ExitPlan** - Exit/stop-loss specifications
+10. **ExecutionPlan** - Execution trade-offs (urgency, slippage, visibility)
 
 ### Execution DTOs (Orders & Coordination)
-10. **ExecutionDirective** - Aggregated execution instruction
-11. **ExecutionDirectiveBatch** - Multi-directive atomic coordination
-12. **ExecutionGroup** - Multi-order relationship tracking
+11. **ExecutionDirective** - Aggregated execution instruction
+12. **ExecutionDirectiveBatch** - Multi-directive atomic coordination
+13. **ExecutionGroup** - Multi-order relationship tracking
 
 ### Cross-Cutting DTOs (Infrastructure)
-13. **CausalityChain** - ID-only causality tracking
-14. **DispositionEnvelope** - Worker output routing control
+14. **CausalityChain** - ID-only causality tracking
+15. **DispositionEnvelope** - Worker output routing control
 
 ---
 
@@ -576,6 +579,68 @@ Signal (FVG detected, confidence 0.85)
 StrategyDirective is the strategic decision - planners handle tactical execution.
 
 ---
+
+## Strategic DTOs
+
+### TradePlan
+
+**Purpose:** Execution Anchor and state container for the entire trade lifecycle.
+
+**WHY this DTO exists:**
+- Serves as the **Root Entity** for a trade's lifecycle (Entry → Execution → Exit).
+- **Execution Anchor:** All tactical plans (EntryPlan, ExitPlan) and orders link back to this ID.
+- **State Container:** Tracks the high-level status (`ACTIVE`, `CLOSED`) of the strategic intent.
+- **Ledger Integration:** The primary entity managed by `StrategyLedger`.
+- **Minimalist Design:** Contains ONLY identity, linkage, and status. No metadata, no history (that belongs to `StrategyJournal`).
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | StrategyPlanner | Creates `TradePlan` when `NEW_TRADE` directive is issued. |
+| **Consumers** | StrategyLedger | Persists and updates status (`ACTIVE` → `CLOSED`). |
+| | ExecutionHandler | Uses `plan_id` to tag orders and track execution progress. |
+| | StrategyJournal | Uses `plan_id` to correlate events in the history log. |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `plan_id` | str | Yes | Unique identifier (`TPL_` prefix). The "Anchor" for all downstream artifacts (orders, fills, logs). |
+| `strategy_instance_id` | str | Yes | Links the trade to the specific strategy instance that spawned it. |
+| `status` | TradeStatus | Yes | Lifecycle state (`ACTIVE`, `CLOSED`). Mutable field to track progress. |
+| `created_at` | datetime | Yes | Creation timestamp (UTC). Ledger housekeeping. |
+
+**WHY NOT frozen:**
+- `status` field MUST be mutable to reflect lifecycle changes (Active → Closed).
+- However, `plan_id` and `strategy_instance_id` should effectively be immutable.
+
+**WHY NOT included:**
+- ❌ `asset_symbol` - Belongs to the specific plans (EntryPlan) or StrategyDirective. `TradePlan` is a generic container.
+- ❌ `metadata` - Strategic context and history belong to `StrategyJournal`.
+- ❌ `updated_at` - Ledger concern, not DTO concern.
+- ❌ `child_lists` (orders, fills) - Children point to Parent (`plan_id`), Parent does not hold lists of Children (scalability/complexity).
+
+**Lifecycle:**
+```
+Created:    StrategyPlanner (on NEW_TRADE decision)
+Persisted:  StrategyLedger (immediately upon creation)
+Referenced: EntryPlan, ExitPlan, ExecutionDirective (all link to plan_id)
+Updated:    StrategyLedger (status changes to CLOSED when exit completes)
+Archived:   StrategyLedger (historical retention)
+```
+
+**Design Decisions:**
+- **Decision 1:** "Execution Anchor" pattern
+  - Rationale: Decouples the "concept of a trade" from the "execution of orders". Orders are transient; the Plan is the persistent intent.
+  - Alternative rejected: Orders as root entities (fragmented view of a strategy).
+
+- **Decision 2:** Minimalist fields
+  - Rationale: SRP. `TradePlan` holds State/Identity. `StrategyJournal` holds History/Context. `EntryPlan`/`ExitPlan` hold Mechanics.
+  - Alternative rejected: Rich "Trade" object with lists of orders, logs, and metrics (God Object anti-pattern).
+
+---
+
 
 ## Planning DTOs
 
