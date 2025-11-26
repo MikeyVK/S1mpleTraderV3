@@ -53,81 +53,99 @@ erDiagram
 
 ### 1.2. Ownership Matrix
 
-| Level | Entity | Owner (Write/Manage) | Consumer (Read) | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| **Strategic** | **TradePlan** | StrategyPlanner (indirect) / StrategyLedger | StrategyPlanner (Self) | The long-lived container encompassing the *entire* strategy (e.g., Grid, DCA). Created by the Ledger upon the *first* ExecutionGroup. |
-| **Tactical** | **ExecutionGroup** | ExecutionTranslator | StrategyPlanner (Read-only Ref), StrategyLedger | A logical set of 1-N orders resulting from **one** StrategyDirective. This is the atomic unit of tactical execution (e.g., "one TWAP run"). |
-| **Operational** | **Order** | ExecutionHandler | ExchangeConnector | The actual, concrete instruction to the exchange. Contains no strategic context. |
-| **Result** | **Fill** | ExchangeConnector (via Async Flow) | StrategyLedger | The immutable, hard reality (truth) from the market. [cite: Async Exchange Reply Flow] |
+| Level | Entity | Creator | Manager (State Updates) | Consumer (Read) | Description |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Strategic** | **TradePlan** | StrategyLedger | StrategyPlanner (indirect) | StrategyPlanner (Self) | The long-lived container for the *entire* strategy (e.g., Grid, DCA). Created by Ledger upon first ExecutionGroup registration. |
+| **Tactical** | **ExecutionGroup** | ExecutionPlanner | ExecutionWorker | StrategyPlanner (read-only) | State Container for 1-N orders from one ExecutionDirective. Atomic tactical execution unit (e.g., "one TWAP run"). **Design:** [EXECUTION_GROUP_DESIGN.md](../development/EXECUTION_GROUP_DESIGN.md) |
+| **Operational** | **Order** | ExecutionWorker | ExecutionWorker | ExchangeConnector | Concrete exchange instruction. No strategic context. Environment-agnostic placement via IExecutionConnector. |
+| **Result** | **Fill** | ExchangeConnector | N/A (Immutable) | StrategyLedger | Immutable market reality. [cite: Async Exchange Reply Flow] |
+
+
 
 ---
 
-## 2. Access Levels & StrategyLedger API
+## 2. Access Levels & StrategyLedger Interaction
 
-The `StrategyLedger` is a **"dumb" gateway** to the ledger and ensures SRP. Intelligence resides *outside* the Ledger. Components are granted access based on their role.
+The `StrategyLedger` enforces access control based on worker role. Intelligence resides in workers, not the Ledger (SRP).
 
-### Level 1: High-Level Access (Strategy Domain)
+### Level 1: Strategy Domain (High-Level)
 
-*   **User:** StrategyPlanner (Plugin, the "General").
-*   **Rights:** May read *abstract* `TradePlan` and `ExecutionGroup` data.
-*   **Forbidden:** Must **never** directly write or modify individual `Order` objects.
-*   **Example Methods:**
-    *   `ledger.get_active_trade_plan(strategy_instance_id)`: Retrieves the "container".
-    *   `ledger.get_execution_groups(plan_id)`: Returns a list of `ExecutionGroup` DTOs (ID, status).
-    *   `ledger.get_net_position(plan_id)`: Calculates the *current* exposure for this plan.
+**User:** StrategyPlanner
+**Rights:** Read `TradePlan` and `ExecutionGroup` summaries
+**Forbidden:** Direct Order/Fill manipulation
 
-### Level 2: Mid-Level Access (Translation Domain)
+### Level 2: Execution Planning Domain (Mid-Level)
 
-*   **User:** ExecutionTranslator (Platform, the "Unpacker").
-*   **Rights:** Bridges the gap between abstract groups and concrete orders.
-*   **Task:** Must know which Order IDs belong to ExecutionGroup X to build a `CANCEL_GROUP` command. [cite: Phase 4c: EXECUTION TRANSLATION]
-*   **Example Methods:**
-    *   `ledger.get_open_order_ids(group_id)`: Returns list `["ORD_A", "ORD_B"]`.
-    *   `ledger.register_execution_group(group_dto)`
+**User:** ExecutionPlanner
+**Rights:** Read TradePlan/ExecutionGroup data for planning decisions; **Creates** ExecutionGroup entities
+**Key Responsibility:** Registers new ExecutionGroup in Ledger when generating ExecutionDirective
 
-### Level 3: Low-Level Access (Execution Domain)
+### Level 3: Execution Domain (Low-Level)
 
-*   **User:** ExecutionHandler (Platform, the "Executor").
-*   **Rights:** Writes the *actual* `Order` and `Fill` data.
-*   **Example Methods:**
-    *   `ledger.register_order(order_dto)`
-    *   `ledger.update_order_status(order_id, status)`
-    *   `ledger.register_fill(fill_dto)`
+**User:** ExecutionWorker
+**Rights:** Full ExecutionGroup state management (read/update); Order/Fill registration via IExecutionConnector
+**Key Responsibility:** Updates ExecutionGroup state as execution progresses
+
+> **Note:** Detailed Ledger API design is ongoing. See [TODO.md](../TODO.md) for StrategyLedger interface design tasks.
 
 ---
 
-## 3. ExecutionIntent Command List
+## 3. ExecutionPlanner & ExecutionDirective
 
-The `ExecutionIntent` (DTO) contains **operational commands**, not strategic logic. It is the output of the RoutingPlanner (Plugin) and the input for the ExecutionTranslator (Platform). [cite: ExecutionIntent - Universal Trade-Offs]
+The **ExecutionPlanner** (Plugin Worker, Phase 5) aggregates all four trade plans and creates the ExecutionDirective.
 
-A "Grid" is strategy (and thus unknown to the Translator). `EXECUTE_TRADE` is an operation.
+### 3.1. ExecutionPlanner Role
 
-### Exhaustive List of ExecutionAction (Enum)
+**Input:** `EntryPlan`, `SizePlan`, `ExitPlan`, `ExecutionPlan`, `StrategyDirective` (from StrategyCache)
+
+**Process:**
+*   Inherits from `BaseExecutionPlanner` (handles aggregation boilerplate for all 4 plans)
+*   Creates ExecutionGroup entity and registers it in StrategyLedger
+*   Determines execution strategy based on ExecutionPlan hints
+*   Applies config-driven filtering (confidence ranges)
+
+**Output:** `ExecutionDirective` (contains ExecutionGroup reference) via `Disposition.CONTINUE`
+
+> **Design:** See [EXECUTION_PLANNER_DESIGN.md](../development/EXECUTION_PLANNER_DESIGN.md) *(TODO)*
+
+### 3.2. ExecutionDirective Structure
+
+See DTO: [execution_directive.py](../../backend/dtos/execution/execution_directive.py)
+
+**Key Fields:**
+*   `directive_id`: Unique execution identifier
+*   `causality`: Full traceability chain
+*   4 Optional plans: `entry_plan`, `size_plan`, `exit_plan`, `execution_plan`
+*   Validation: At least 1 plan required
+
+### 3.3. ExecutionAction (Enum)
+
+The `ExecutionPlan.action` field (part of the 4th plan) defines the operational command:
 
 #### A. Creation Commands
 
 *   **EXECUTE_TRADE**
     *   **Meaning:** "Place new orders according to the attached Entry/Size/Exit plans."
     *   **Context:** Used with `scope=NEW_TRADE` (new entry) or `scope=CLOSE_EXISTING` (new close order).
-    *   **Consequence:** Translator creates 1-to-N `ConnectorExecutionSpec(s)` (e.g., for a TWAP).
+    *   **Consequence:** ExecutionWorker creates 1-to-N orders via IExecutionConnector (e.g., for a TWAP sequence).
 
 #### B. Cancellation Commands
 
 *   **CANCEL_GROUP**
     *   **Meaning:** "Cancel all open (unfilled) orders belonging to this TargetGroupID."
     *   **Context:** Used with `scope=MODIFY_EXISTING`. E.g., StrategyPlanner retracts a specific set of grid orders.
-    *   **Consequence:** Translator calls `ledger.get_open_order_ids(group_id)` and builds a `ConnectorExecutionSpec` with cancellation requests.
+    *   **Consequence:** ExecutionWorker calls `ledger.get_open_order_ids(group_id)` and cancels via IExecutionConnector.
 *   **CANCEL_ALL_IN_PLAN**
     *   **Meaning:** "Emergency Stop. Cancel *all* open orders within the TargetPlanID."
     *   **Context:** Used with `scope=CLOSE_EXISTING` (Panic/Crash).
-    *   **Consequence:** Translator calls `ledger.get_open_order_ids` for *every active group* in the plan.
+    *   **Consequence:** ExecutionWorker calls `ledger.get_open_order_ids` for *every active group* in the plan and cancels via IExecutionConnector.
 
 #### C. Modification Commands
 
 *   **MODIFY_ORDERS**
     *   **Meaning:** "Adjust parameters (e.g., price, quantity) of existing, open orders in TargetGroupID."
     *   **Context:** Used with `scope=MODIFY_EXISTING` (e.g., Trailing Stop). Requires the ExitPlan (or EntryPlan) to provide the new parameters.
-    *   **Consequence:** Translator generates cancel-replace or modify API calls.
+    *   **Consequence:** ExecutionWorker generates cancel-replace or modify calls via IExecutionConnector.
 
 ---
 
@@ -214,3 +232,99 @@ class BaseEntryPlanner(ABC):
         """
         return EntryPlan(order_type="MARKET", direction=...) # Determine 'direction' based on size
 ```
+
+---
+
+## 6. ExecutionWorker Architecture
+
+### 6.1. Core Responsibilities
+
+The **ExecutionWorker** (Plugin Worker, Phase 6) executes the `ExecutionDirective`.
+
+**Key Characteristics:**
+*   **Stateless in Memory:** No instance variables for execution state
+*   **Stateful via Ledger:** Retrieves/updates `ExecutionGroup` state container
+*   **Environment Agnostic:** Identical behavior across Backtest/Paper/Live via `IExecutionConnector`
+*   **Exchange-Native Protection:** Places SL/TP directly on exchange (zero platform latency)
+
+### 6.2. State Container Pattern
+
+See DTO: [execution_group.py](../../backend/dtos/execution/execution_group.py)
+
+The `ExecutionGroup` is a **pure data container** holding:
+*   Core state: `target_size`, `filled_size`, `active_order_ids`
+*   Lifecycle: `status` (PENDING → ACTIVE → COMPLETED/CANCELLED)
+*   Algorithm metadata: `metadata` dict for algorithm-specific state (e.g., TWAP slicing)
+
+**Interaction:** Worker retrieves state → applies logic → persists updates
+
+### 6.3. Environment Agnosticism
+
+Workers interact with markets via `IExecutionConnector` (dependency injection):
+*   `BacktestExecutionConnector`: Simulated fills
+*   `PaperExecutionConnector`: Paper trading
+*   `LiveExecutionConnector`: Real exchange API
+
+Worker code is identical across all environments.
+
+> **Design:** See [EXECUTION_WORKER_DESIGN.md](../development/EXECUTION_WORKER_DESIGN.md) *(TODO)*
+
+### 6.4. Integrated Protection
+
+SL/TP orders are placed **directly on exchange** (not platform-side triggers):
+*   ExitPlanner specifies levels → ExecutionWorker places exchange-native orders
+*   Exchange handles trigger (zero latency, guaranteed execution)
+*   Worker only updates parameters (trailing stop adjustments)
+
+---
+
+## 7. Event-Driven Wiring
+
+The connection between ExecutionPlanner and ExecutionWorker follows standard Event-Driven Wiring as described in **[EVENT_DRIVEN_WIRING.md](EVENT_DRIVEN_WIRING.md)**.
+
+### Wiring Generation via StrategyBuilder
+
+Wiring is realized in the **StrategyBuilder** (Web UI) based on the **dependencies pattern** declared in worker manifests:
+
+1. **Plugin Manifests** declare inputs/outputs and dependencies:
+   ```yaml
+   # ExecutionPlanner manifest
+   inputs:
+     - event_name: "TRADE_PLANS_READY"
+   outputs:
+     - event_name: "_EXECUTION_DIRECTIVE_READY"  # System event pattern
+   dependencies:
+     - "./ExecutionWorker"  # Downstream worker
+   ```
+
+2. **StrategyBuilder UI** reads manifests and generates `strategy_wiring_map.yaml`:
+   ```yaml
+   wiring_rules:
+     - source:
+         component_id: "twap_planner_inst_1"
+         event_pattern: "_twap_planner_inst_1_output_*"
+       target:
+         component_id: "twap_worker_inst_1"
+         handler_method: "process_directive"
+   ```
+
+3. **EventAdapter** uses wiring map to route events at runtime (no filtering logic needed)
+
+**Key Benefits:**
+*   ExecutionPlanner returns `Disposition.CONTINUE` with `ExecutionDirective`
+*   EventAdapter generates unique System Event based on component instance
+*   EventBus broadcasts to explicitly wired ExecutionWorker (no runtime filtering)
+*   Worker receives **only** directives intended for it
+
+**See:**
+*   [EVENTADAPTER_DESIGN.md](../development/EVENTADAPTER_DESIGN.md) - EventAdapter architecture
+*   [FLOW_INITIATOR_MANIFEST.md](../development/backend/core/FLOW_INITIATOR_MANIFEST.md) - Manifest structure
+
+---
+
+## 8. Related Documentation
+
+*   **[PIPELINE_FLOW.md](PIPELINE_FLOW.md)** - Complete 7-phase pipeline overview
+*   **[EXECUTION_FLOW.md](EXECUTION_FLOW.md)** - Detailed Sync/Async execution flows
+*   **[WORKER_TAXONOMY.md](WORKER_TAXONOMY.md)** - Worker categories and patterns
+*   **[EVENT_DRIVEN_WIRING.md](EVENT_DRIVEN_WIRING.md)** - EventAdapter configuration

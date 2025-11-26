@@ -100,6 +100,9 @@
   - **Scope:** backend/dtos/strategy/strategy_directive.py, tests, all StrategyPlanner plugins
   - **Priority:** High (terminological correctness)
   - **Documentation:** DTO_ARCHITECTURE.md will be updated
+  - **UPDATE (2025-11-20):** **REJECTED**. StrategyPlanner operates on `TradePlan` level (Level 1), not Order level (Level 3). `MODIFY_EXISTING` is correct abstraction. See Issue #7.
+
+  - **Documentation:** DTO_ARCHITECTURE.md will be updated
 
 - [ ] **StrategyDirective: target_trade_ids → target_order_ids** (2025-11-09)
   - **Issue:** Field name uses "trade" but tracks order IDs (terminological confusion)
@@ -108,12 +111,15 @@
   - **Scope:** backend/dtos/strategy/strategy_directive.py, tests, StrategyPlanner/PlanningWorker implementations
   - **Priority:** High (follows DirectiveScope terminology alignment)
   - **Documentation:** DTO_ARCHITECTURE.md will be updated
+  - **UPDATE (2025-11-20):** **REJECTED**. StrategyPlanner operates on `TradePlan` level. Rename to `target_plan_ids` instead. See Issue #7.
 
 - [ ] **StrategyDirective sub-directive: ExecutionDirective → RoutingDirective** (2025-11-09)
   - **Issue:** TWO classes named `ExecutionDirective` (naming conflict):
     1. `backend/dtos/strategy/strategy_directive.py` line 164 - Sub-directive (routing constraints for RoutingPlanner)
     2. `backend/dtos/execution/execution_directive.py` line 36 - Execution layer DTO (aggregated final instruction)
   - **Solution:** Rename strategy sub-directive class `ExecutionDirective` → `RoutingDirective`
+
+
     - Field name `routing_directive` already correct (no change)
     - Class docstring/descriptions: "Execution constraints" → "Routing constraints"
   - **Impact:** BREAKING CHANGE - affects class name, imports, all StrategyPlanner implementations that create this sub-directive
@@ -211,14 +217,10 @@
   - **Validation checks:** Worker produces expected DTOs, requests only declared DTOs
 
 **Open Design Issues:**
-- [ ] **Issue #5: Trade ID Propagation & Causality** (BLOCKER for PlanningAggregator)
-  - **Question:** How to track which plans belong to which trade?
-  - **Options:** 
-    - A) Embed trade_id in directive_id ("EXE_..._TRD123_...")
-    - B) Add trade_id field to ExecutionDirective
-    - C) Extend CausalityChain with trade_id field
-  - **Related:** How to represent ExecutionDirectiveBatch in CausalityChain?
-  - **Decision needed:** Before PlanningAggregator implementation
+- [ ] **Issue #5: TradePlan in CausalityChain** (BLOCKER for PlanningAggregator)
+  - **Question:** How and when is the TradePlan included in the CausalityChain?
+  - **Context:** With `target_plan_ids` in StrategyDirective, we know which plans are targeted. But we need to track the *creation* and *lifecycle* of plans in the chain.
+  - **Status:** Open question. Defer decision until PlanningAggregator implementation.
   - **Note:** CausalityChain currently lacks trade/batch tracking mechanism
 
 - [ ] **Issue #6: ExecutionDirectiveBatch execution_mode Decision Logic** (2025-11-09)
@@ -251,6 +253,21 @@
     - `docs/architecture/DTO_ARCHITECTURE.md` (ExecutionDirectiveBatch documentation)
     - `docs/development/backend/core/PLANNING_AGGREGATOR_DESIGN.md` (line 389: hardcoded defaults)
   - **Next Steps:** Research and document decision algorithm before PlanningAggregator implementation
+
+- [ ] **Issue #7: StrategyDirective Architecture Refactor** (2025-11-20)
+  - **Context:** Deep dive into StrategyPlanner role revealed architectural misalignment in previous TODOs.
+  - **Core Principle:** StrategyPlanner (Level 1) operates on `TradePlan` (Intent), not `Order` (Implementation).
+  - **Changes Required:**
+    1.  **Rename `target_trade_ids` → `target_plan_ids`** (Fixes abstraction leak).
+    2.  **Rename `ExecutionDirective` (sub-directive) → `RoutingDirective`** (Fixes naming conflict).
+    3.  **Rename `position_size` → `target_position_size`** (Enforces absolute target semantics).
+    4.  **Reject `MODIFY_ORDER` rename** (Keep `MODIFY_EXISTING` to respect Level 1 abstraction).
+  - **Impact:** BREAKING CHANGE - affects StrategyDirective, SizeDirective, SizePlan, and all StrategyPlanners.
+  - **Validation:** Validated via:
+    - `docs/development/design_validations/SCENARIO_MODIFICATION_FLOWS.md`
+    - `docs/development/design_validations/SCENARIO_TRAILING_STOP.md`
+    - `docs/development/design_validations/LONG_SHORT_TARGET_SIZE_VALIDATION.md`
+    - `docs/development/design_validations/STRATEGY_CARDINALITY_ANALYSIS.md`
 
 **Deliverable:** Core platform components implemented & integrated (target: 70+ tests)
 
