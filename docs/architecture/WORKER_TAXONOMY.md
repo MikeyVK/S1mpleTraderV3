@@ -1,13 +1,14 @@
 # Worker Taxonomy
 
 **Status:** Architecture Foundation  
-**Last Updated:** 2025-10-29
+**Version:** 2.0  
+**Last Updated:** 2025-11-27
 
 ---
 
 ## Overview
 
-S1mpleTraderV3 organizes all strategy logic into **5 worker categories**, each with distinct responsibilities in the trading pipeline. Workers are plugin-first components that process data through a **point-in-time model** without maintaining state across ticks.
+S1mpleTraderV3 organizes all strategy logic into **6 worker categories**, each with distinct responsibilities in the trading pipeline. Workers are plugin-first components that process data through a **point-in-time model** without maintaining state across ticks.
 
 ```mermaid
 graph TB
@@ -21,12 +22,16 @@ graph TB
         EB[System DTOs]
     end
     
+    subgraph Ledger["StrategyLedger"]
+        SL[Trade State<br/>Containers]
+    end
+    
     CW[ContextWorker]
     OW[SignalDetector]
     TW[RiskMonitor]
     PW[PlanningWorker]
-    PA[PlanningAggregator<br/>Platform Component]
     SP[StrategyPlanner]
+    EW[ExecutionWorker]
     
     Tick --> CW
     CW -->|set_result_dto<br/>Objective Facts| TC
@@ -37,32 +42,34 @@ graph TB
     
     OW -->|PUBLISH Signal| EB
     TW -->|PUBLISH Risk| EB
-    PW -->|PUBLISH EntryPlan/SizePlan/ExitPlan| EB
-    
-    EB -->|subscribe plans| PA
-    PA -->|PUBLISH ExecutionDirective| EB
+    PW -->|PUBLISH Plans| EB
     
     EB -->|subscribe signals| SP
     TC -->|get_required_dtos<br/>Subjective Interpretation| SP
     SP -->|PUBLISH StrategyDirective| EB
     
+    EB -->|subscribe ExecutionDirective| EW
+    EW -->|read/write state| SL
+    EW -->|place/modify/cancel| Connector[IExecutionConnector]
+    
     style CW fill:#e1f5ff
     style OW fill:#fff4e1
     style TW fill:#ffe1e1
     style PW fill:#e1ffe1
-    style PA fill:#d4edda
     style SP fill:#f5e1ff
+    style EW fill:#e1ffff
     style TC fill:#e8f4f8
     style EB fill:#f8e8e8
+    style SL fill:#f0f0f0
 ```
 
 **Key Flow Principles:**
 - **ContextWorker**: Writes **objective facts** to TickCache only (NEVER EventBus)
 - **SignalDetector**: Reads TickCache → Applies **subjective interpretation** → Publishes Signal to EventBus
 - **RiskMonitor**: Reads TickCache → Applies **subjective interpretation** → Publishes Risk to EventBus
-- **PlanningWorker**: Reads TickCache → Publishes Plans (EntryPlan, SizePlan, ExitPlan) to EventBus
-- **PlanningAggregator** (platform): Subscribes to plan events → Combines into ExecutionDirective → Publishes to EventBus
+- **PlanningWorker**: Reads TickCache + Ledger → Publishes Plans (EntryPlan, SizePlan, ExitPlan, ExecutionDirective) to EventBus
 - **StrategyPlanner**: Subscribes to EventBus signals + Reads TickCache → Applies **subjective interpretation** → Publishes StrategyDirective
+- **ExecutionWorker**: Subscribes to ExecutionDirective → Reads/writes StrategyLedger → Executes via IExecutionConnector
 
 **Key Principles:**
 - **No Operators**: Workers are wired directly via EventAdapters (not grouped under operators)
@@ -83,12 +90,13 @@ The **`type`** field in `manifest.yaml` defines the worker's **architectural rol
 - ✅ **Interface requirements** - Which methods must be implemented
 - ✅ **Platform validation** - Bootstrap checks enforce type contracts
 
-**5 Valid Types:**
+**6 Valid Types:**
 - `context_worker` - Stores DTOs to TickCache via `set_result_dto()` (NEVER EventBus)
 - `signal_detector` - May publish `Signal` to EventBus
 - `risk_monitor` - May publish `Risk` to EventBus  
-- `planning_worker` - Produces plan DTOs (EntryPlan, SizePlan, etc.)
+- `planning_worker` - Produces plan DTOs (EntryPlan, SizePlan, ExitPlan, ExecutionDirective)
 - `strategy_planner` - Publishes `StrategyDirective` to EventBus
+- `execution_worker` - Executes trades via Ledger + Connector (read/write access)
 
 ### Subtype (Descriptive Label) - NOT ENFORCED
 
@@ -112,7 +120,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 ---
 
-## The 5 Worker Categories
+## The 6 Worker Categories
 
 ### 1. ContextWorker - "The Cartographer"
 
@@ -217,25 +225,30 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 - Entry planning (price levels, order types, timing)
 - Exit planning (profit targets, stop losses, trailing)
 - Position sizing (risk-based, kelly criterion, fixed)
-- Execution intent planning (urgency, visibility, slippage tolerance)
+- Execution planning (algorithm selection, urgency, slippage tolerance)
+
+**Ledger Access:** Read-only (for MODIFY/CLOSE scopes)
+- SizePlanner reads current position size
+- ExitPlanner reads current exit levels
+- ExecutionPlanner reads plan metadata for algorithm selection
 
 **Output Pattern:**
-- Intermediate: `set_result_dto()` with plan DTOs (`EntryPlan`, `SizePlan`, `ExitPlan`, `ExecutionIntent`)
-- Final: Platform aggregator (`PlanningAggregator`) combines into `ExecutionDirective`
+- TradePlanners (Entry, Size, Exit): `set_result_dto()` with plan DTOs
+- ExecutionPlanner: Aggregates 3 plans → `ExecutionDirective` via EventBus
 
-**4 Subtypes:**
+**4 Subtypes (The 4 TradePlanners):**
 1. `ENTRY_PLANNING` - Where/when to enter (limit, market, stop)
-2. `EXIT_PLANNING` - Profit targets, stop losses, trailing
-3. `SIZE_PLANNING` - Position size calculation (risk %, kelly, fixed)
-4. `EXECUTION_INTENT_PLANNING` - Urgency, visibility, slippage tolerance
+2. `SIZE_PLANNING` - Position size calculation (risk %, kelly, fixed)
+3. `EXIT_PLANNING` - Profit targets, stop losses, trailing
+4. `EXECUTION_PLANNING` - Algorithm selection, urgency, slippage tolerance
 
 **Example Workers:**
 - `LimitEntryPlanner` - Limit order entry at optimal price
-- `TrailingStopPlanner` - Dynamic stop loss adjustment
 - `KellySizer` - Kelly criterion position sizing
-- `StealthExecutionPlanner` - Low-visibility TWAP execution
+- `TrailingStopPlanner` - Dynamic stop loss adjustment
+- `TWAPExecutionPlanner` - TWAP algorithm selection with parameters
 
-**Note:** Planning workers produce **sub-component DTOs** (EntryPlan, SizePlan, ExitPlan, ExecutionIntent) that do NOT extend the causality chain. The platform's `PlanningAggregator` combines these into `ExecutionDirective` which DOES extend causality.
+**Note:** The ExecutionPlanner is the 4th TradePlanner. It aggregates the other 3 plans and selects the execution algorithm. It does NOT write to Ledger - container creation happens in ExecutionWorker.
 
 ---
 
@@ -266,6 +279,54 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 - `DCAScheduler` - Scheduled dollar-cost averaging
 
 **Causality:** StrategyPlanner extends causality chain with `strategy_directive_id`.
+
+---
+
+### 6. ExecutionWorker - "The Executor"
+
+**Purpose:** Execute trade actions via StrategyLedger and IExecutionConnector
+
+**Responsibilities:**
+- Order placement (new orders via Connector)
+- Order modification (trailing stops, price adjustments)
+- Order cancellation (group cancel, emergency flatten)
+- State management (register orders, record fills in Ledger)
+- Operational lookups (find existing orders for modifications)
+
+**Ledger Access:** Full read/write
+- Creates ExecutionGroup and Order containers
+- Updates container state as execution progresses
+- Queries existing orders for MODIFY/CLOSE operations
+- Records fills from Connector callbacks
+
+**Input Pattern:**
+- Receives `ExecutionDirective` via EventBus wiring
+- Directive specifies: action (EXECUTE/MODIFY/CANCEL), plans, target IDs
+
+**Output Pattern:**
+- No EventBus output (terminal worker)
+- State changes persisted to StrategyLedger
+- Orders executed via IExecutionConnector
+
+**Key Characteristics:**
+- **Stateless in Memory:** No instance variables for execution state
+- **Stateful via Ledger:** All state in StrategyLedger containers
+- **Environment Agnostic:** Same code for Backtest/Paper/Live (via IExecutionConnector)
+- **Exchange-Native Protection:** SL/TP placed directly on exchange
+
+**4 Subtypes:**
+1. `MARKET_EXECUTION` - Simple market order execution
+2. `ALGORITHMIC_EXECUTION` - TWAP, VWAP, Iceberg algorithms
+3. `BRACKET_EXECUTION` - Entry + SL + TP as atomic unit
+4. `SMART_ROUTING` - Multi-venue order routing
+
+**Example Workers:**
+- `MarketExecutor` - Simple market order placement
+- `TWAPWorker` - Time-weighted average price execution
+- `IcebergWorker` - Hidden size iceberg orders
+- `BracketWorker` - Entry with exchange-native SL/TP
+
+**SRP:** ExecutionWorker executes HOW (operational details), while Planners decide WHAT (trade intent). See [TRADE_LIFECYCLE.md](TRADE_LIFECYCLE.md) for detailed responsibility split.
 
 ---
 
@@ -305,34 +366,28 @@ class DispositionEnvelope:
 
 ---
 
-## Platform Aggregators (NOT Workers)
+## Platform Components (NOT Workers)
 
-**Important:** The following component is a **platform component**, not a plugin worker:
+The following are **platform components**, not plugin workers. They are part of core orchestration:
 
-1. **PlanningAggregator**
-   - Input: 4 plan DTOs (`EntryPlan`, `SizePlan`, `ExitPlan`, `ExecutionPlan`)
-   - Output: `ExecutionDirective` (system DTO)
-   - Extends causality chain with `execution_directive_id`
-
-This aggregator is part of the platform orchestration, not part of the worker taxonomy.
-
----
-
-## Historical Note: Removed Categories
-
-**ExecutionWorker** (V2) has been **removed**:
-- `TRADE_INITIATION` → Now platform orchestration (ExecutionHandler + EventAdapter)
-- Other subtypes → Migrated to StrategyPlanner category
+1. **FlowInitiator** - Bootstraps strategy flows, manages worker lifecycle
+2. **EventAdapter** - Routes events between workers based on wiring_map
+3. **StrategyLedger** - Owns all trade state containers (TradePlan, ExecutionGroup, Order, Fill)
 
 ---
 
 ## Related Documentation
 
+- **[Trade Lifecycle](TRADE_LIFECYCLE.md)** - Container ownership, Ledger access patterns
 - **[Data Flow](DATA_FLOW.md)** - Detailed communication patterns
 - **[Plugin Anatomy](PLUGIN_ANATOMY.md)** - How to implement workers
 - **[Event-Driven Wiring](EVENT_DRIVEN_WIRING.md)** - EventAdapter configuration
-- **[Strategy Pipeline](../development/#Archief/STRATEGY_PIPELINE_ARCHITECTURE.md)** - Complete 6-phase pipeline
 
 ---
 
-**Last Updated:** 2025-10-29
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| v1.0 | 2025-10-29 | Initial document with 5 worker categories |
+| v2.0 | 2025-11-27 | Added ExecutionWorker as 6th category, updated PlanningWorker (ExecutionPlanner is 4th TradePlanner), removed PlanningAggregator (aggregation now in ExecutionPlanner), added Ledger access descriptions |
