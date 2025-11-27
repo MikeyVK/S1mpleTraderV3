@@ -139,23 +139,38 @@ These non-negotiable principles guide all revisions:
    - ExecutionService references
    - ExecutionHandler terminology
 
-2. **Update Phase 4 (Trade Planning):**
+2. **SWOT Terminology Cleanup** (align with commit `73bc71f`):
+   - Opportunity → Signal
+   - OpportunityWorker → SignalDetector
+   - OpportunitySignal → Signal
+   - OPPORTUNITY_DETECTED → SIGNAL_DETECTED
+   - opportunity_workers → signal_detectors
+   - Threat → Risk
+   - ThreatWorker → RiskMonitor
+   - ThreatSignal → Risk
+   - THREAT_DETECTED → RISK_DETECTED
+   - threat_workers → risk_monitors
+   - SWOT Quadranten → Signal/Risk Analysis
+   - SWOT Confrontatie → Signal/Risk Confrontation
+
+3. **Update Phase 4 (Trade Planning):**
    - 4 TradePlanners: Entry, Size, Exit, Execution
    - ExecutionPlanner aggregates 3 plans + chooses algorithm
    - Output: ExecutionDirective with concrete algorithm config
 
-3. **Update Phase 5 (Execution):**
+4. **Update Phase 5 (Execution):**
    - ExecutionWorker receives ExecutionDirective via EventBus wiring
    - Worker does operational lookups (existing orders, groups)
    - Worker interacts with Ledger for state management
    - Worker uses Connector for exchange interaction
 
-4. **Keep language English**
+5. **Keep language English**
    - Convert any remaining Dutch sections to English
 
-5. **Simplify diagrams**
+6. **Simplify diagrams**
    - Remove Translator/Intent layers
    - Show: Planners → ExecutionDirective → ExecutionWorker → Ledger/Connector
+   - Update all Mermaid diagrams with Signal/Risk terminology
 
 ### D. `EXECUTION_FLOW.md` - Diagram Updates
 
@@ -202,6 +217,8 @@ After all revisions, verify:
 - [ ] No mentions of `ExecutionService` (deprecated)
 - [ ] No mentions of `ExecutionTranslator` (removed)
 - [ ] No mentions of `ExecutionIntent` abstraction (removed)
+- [ ] No mentions of SWOT terminology: Opportunity, Threat, OpportunityWorker, ThreatWorker
+- [ ] Signal/Risk terminology used consistently throughout
 - [ ] ExecutionWorker is defined as 6th worker category
 - [ ] ExecutionPlanner is defined as 4th TradePlanner
 - [ ] Ledger access is described, not specified with method names
