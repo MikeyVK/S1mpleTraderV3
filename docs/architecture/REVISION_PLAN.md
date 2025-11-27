@@ -1,8 +1,22 @@
 # Documentation Revision Plan: SRP & Container-Based Architecture
 
-**Status:** Ready for Execution  
+**Status:** ✅ Phase 1 Complete (3/4 documents revised)  
 **Last Updated:** 2025-11-27  
 **Goal:** Revise 4 architecture documents to align with SRP, Container-Based Architecture, and the finalized ExecutionWorker design.
+
+---
+
+## Execution Progress
+
+| Document | Status | Commit | Notes |
+|----------|--------|--------|-------|
+| `TRADE_LIFECYCLE.md` | ✅ Complete | `6588acb` | v2.0 - Container hierarchy, Ledger access patterns |
+| `WORKER_TAXONOMY.md` | ✅ Complete | `d1f9aa5` | v2.0 - 6 worker categories, ExecutionWorker reinstated |
+| `EXECUTION_FLOW.md` | ✅ Complete | `9943edd` | v2.0 - ExecutionHandler→ExecutionWorker, diagrams updated |
+| `PIPELINE_FLOW.md` | ⏳ Deferred | — | Requires separate session (1778 lines, complete rewrite, SWOT cleanup) |
+
+**Branch:** `docs/architecture-revision`  
+**PR Ready:** Yes (for 3 completed documents)
 
 ---
 
