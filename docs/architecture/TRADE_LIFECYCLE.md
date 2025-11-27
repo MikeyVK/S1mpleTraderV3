@@ -115,7 +115,7 @@ Workers interact with the StrategyLedger based on their responsibilities. The Le
 - Execute via Connector (place/modify/cancel)
 - Update state after execution
 
-> **Note:** Detailed Ledger API design is ongoing. See [TODO.md](../TODO.md) for StrategyLedger interface design tasks.
+> **Note:** Detailed Ledger API design is ongoing. See [TODO.md][todo] for StrategyLedger interface design tasks.
 
 ---
 
@@ -139,7 +139,7 @@ The **ExecutionPlanner** is the 4th TradePlanner (Phase 4). It aggregates the th
 
 ### 3.2. ExecutionDirective Structure
 
-See DTO: [execution_directive.py](../../backend/dtos/execution/execution_directive.py)
+See DTO: [execution_directive.py][dto-execution-directive]
 
 **Key Fields:**
 *   `directive_id`: Unique execution identifier
@@ -210,57 +210,17 @@ The `StrategyDirective.scope` is the **imperative command** (the "WHAT") from th
 
 ## 5. Reusability (The Base Class Pattern)
 
-To prevent an "explosion of specialists" (e.g., NewEntryPlanner, ModifyEntryPlanner, CloseEntryPlanner), reusability is enforced via **Abstract Base Classes** in the platform.
+Om een explosie van specialisten te voorkomen (NewEntryPlanner, ModifyEntryPlanner, CloseEntryPlanner), biedt het platform **Abstract Base Classes** voor TradePlanners.
 
-The `TradePlanner` (Specialist Plugin) inherits from a base class and implements only the logic relevant to its specialization.
+Plugins implementeren alleen scope-specifieke methods:
 
-```python
-# Example: Base Class for an EntryPlanner
-class BaseEntryPlanner(ABC):
+*   `on_new_trade()`: Core business logic (verplicht)
+*   `on_modify_trade()`: Override voor modificatie-scenarios (optioneel, default: None)
+*   `on_close_trade()`: Override voor close-scenarios (optioneel, default: MARKET order)
 
-    def plan(self, directive: StrategyDirective) -> Optional[EntryPlan]:
-        """
-        The Master Method called by the pipeline.
-        This logic resides in the platform, NOT in the plugin.
-        """
-        if directive.scope == StrategyScope.NEW_TRADE:
-            # Quant's logic is called
-            return self.on_new_trade(directive)
-            
-        elif directive.scope == StrategyScope.MODIFY_EXISTING:
-            # Default: do nothing on 'modify'
-            return self.on_modify_trade(directive)
-            
-        elif directive.scope == StrategyScope.CLOSE_EXISTING:
-            # Default: generate a 'Market Sell' plan
-            return self.on_close_trade(directive)
-            
-        return None
+De base class routeert automatisch naar de juiste method op basis van `directive.scope`.
 
-    # --- Methods for the Quant to implement ---
-
-    @abstractmethod
-    def on_new_trade(self, directive: StrategyDirective) -> EntryPlan:
-        """
-        Quant implements THIS (Core Business).
-        E.g., "Calculate RSI and return a Limit order plan."
-        """
-        pass
-
-    def on_modify_trade(self, directive: StrategyDirective) -> Optional[EntryPlan]:
-        """
-        Quant can override this.
-        Default (in Base Class): return None
-        """
-        return None
-        
-    def on_close_trade(self, directive: StrategyDirective) -> EntryPlan:
-        """
-        Quant can override this (e.g., for a 'Limit' close).
-        Default (in Base Class): return EntryPlan(order_type="MARKET")
-        """
-        return EntryPlan(order_type="MARKET", direction=...) # Determine 'direction' based on size
-```
+**Zie:** [BASEWORKER_DESIGN_PRELIM.md][baseworker-design] voor implementatiedetails.
 
 ---
 
@@ -279,12 +239,12 @@ The **ExecutionWorker** (Plugin Worker, Phase 5) executes the `ExecutionDirectiv
 
 ### 6.2. State Container Pattern
 
-See DTO: [execution_group.py](../../backend/dtos/execution/execution_group.py)
+See DTO: [execution_group.py][dto-execution-group]
 
-The `ExecutionGroup` is a **pure data container** holding:
-*   Core state: `target_size`, `filled_size`, `active_order_ids`
-*   Lifecycle: `status` (PENDING → ACTIVE → COMPLETED/CANCELLED)
-*   Algorithm metadata: `metadata` dict for algorithm-specific state (e.g., TWAP slicing)
+The `ExecutionGroup` is a **mutable state container** holding:
+*   Execution strategy: which algorithm (TWAP, SINGLE, etc.)
+*   Execution progress: quantity tracking (target vs filled), associated order IDs
+*   Lifecycle state: status progression (PENDING → ACTIVE → terminal state)
 
 **Interaction:** Worker retrieves state → applies logic → persists updates → executes via Connector
 
@@ -317,54 +277,35 @@ SL/TP orders are placed **directly on exchange** (not platform-side triggers):
 
 ## 7. Event-Driven Wiring
 
-The connection between ExecutionPlanner and ExecutionWorker follows standard Event-Driven Wiring as described in **[EVENT_DRIVEN_WIRING.md](EVENT_DRIVEN_WIRING.md)**.
+ExecutionPlanner en ExecutionWorker communiceren via het standaard Event-Driven Wiring patroon:
 
-### Wiring Generation via StrategyBuilder
+*   **Manifest-based:** Plugins declareren inputs/outputs in manifests
+*   **Build-time wiring:** StrategyBuilder genereert routing configuratie
+*   **Runtime isolation:** Elke worker ontvangt alleen voor hem bestemde events
 
-Wiring is realized in the **StrategyBuilder** (Web UI) based on the **dependencies pattern** declared in worker manifests:
+Deze architectuur zorgt voor loose coupling tussen planners en workers.
 
-1. **Plugin Manifests** declare inputs/outputs and dependencies:
-   ```yaml
-   # ExecutionPlanner manifest
-   inputs:
-     - event_name: "TRADE_PLANS_READY"
-   outputs:
-     - event_name: "_EXECUTION_DIRECTIVE_READY"  # System event pattern
-   dependencies:
-     - "./ExecutionWorker"  # Downstream worker
-   ```
-
-2. **StrategyBuilder UI** reads manifests and generates `strategy_wiring_map.yaml`:
-   ```yaml
-   wiring_rules:
-     - source:
-         component_id: "twap_planner_inst_1"
-         event_pattern: "_twap_planner_inst_1_output_*"
-       target:
-         component_id: "twap_worker_inst_1"
-         handler_method: "process_directive"
-   ```
-
-3. **EventAdapter** uses wiring map to route events at runtime (no filtering logic needed)
-
-**Key Benefits:**
-*   ExecutionPlanner returns `Disposition.CONTINUE` with `ExecutionDirective`
-*   EventAdapter generates unique System Event based on component instance
-*   EventBus broadcasts to explicitly wired ExecutionWorker (no runtime filtering)
-*   Worker receives **only** directives intended for it
-
-**See:**
-*   [EVENTADAPTER_DESIGN.md](../development/EVENTADAPTER_DESIGN.md) - EventAdapter architecture
-*   [FLOW_INITIATOR_MANIFEST.md](../development/backend/core/FLOW_INITIATOR_MANIFEST.md) - Manifest structure
+**Zie:** [EVENT_DRIVEN_WIRING.md][event-wiring] voor wiring configuratie en manifest structuur.
 
 ---
 
 ## 8. Related Documentation
 
-*   **[PIPELINE_FLOW.md](PIPELINE_FLOW.md)** - Complete pipeline overview
-*   **[EXECUTION_FLOW.md](EXECUTION_FLOW.md)** - Detailed Sync/Async execution flows
-*   **[WORKER_TAXONOMY.md](WORKER_TAXONOMY.md)** - Worker categories and patterns
-*   **[EVENT_DRIVEN_WIRING.md](EVENT_DRIVEN_WIRING.md)** - EventAdapter configuration
+*   **[PIPELINE_FLOW.md][pipeline-flow]** - Complete pipeline overview
+*   **[EXECUTION_FLOW.md][execution-flow]** - Detailed Sync/Async execution flows
+*   **[WORKER_TAXONOMY.md][worker-taxonomy]** - Worker categories and patterns
+*   **[EVENT_DRIVEN_WIRING.md][event-wiring]** - EventAdapter configuration
+
+<!-- Link definitions (automatically hidden in rendered output) -->
+
+[pipeline-flow]: ./PIPELINE_FLOW.md "Complete pipeline overview"
+[execution-flow]: ./EXECUTION_FLOW.md "Detailed Sync/Async execution flows"
+[worker-taxonomy]: ./WORKER_TAXONOMY.md "Worker categories and patterns"
+[event-wiring]: ./EVENT_DRIVEN_WIRING.md "EventAdapter configuration"
+[baseworker-design]: ../development/BASEWORKER_DESIGN_PRELIM.md "Base class pattern implementation"
+[todo]: ../TODO.md "Project roadmap and technical debt"
+[dto-execution-directive]: ../../backend/dtos/execution/execution_directive.py "ExecutionDirective DTO"
+[dto-execution-group]: ../../backend/dtos/execution/execution_group.py "ExecutionGroup DTO"
 
 ---
 
