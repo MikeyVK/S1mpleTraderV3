@@ -1,86 +1,218 @@
 # Documentation Revision Plan: SRP & Container-Based Architecture
 
-**Goal:** Refine `TRADE_LIFECYCLE.md`, `PIPELINE_FLOW.md`, and `EXECUTION_FLOW.md` to strictly adhere to SRP, defining `TradePlan`, `ExecutionGroup`, and `Order` as data containers owned by `StrategyLedger`, with Workers acting solely as stateless logic units ("Users").
+**Status:** Ready for Execution  
+**Last Updated:** 2025-11-27  
+**Goal:** Revise 4 architecture documents to align with SRP, Container-Based Architecture, and the finalized ExecutionWorker design.
+
+---
 
 ## 1. Core Architectural Concepts (The "North Star")
 
-To ensure consistency, we define these non-negotiable principles:
+These non-negotiable principles guide all revisions:
 
-1.  **The Ledger is the Bank:** `StrategyLedger` is the *only* component that owns, creates, and updates the lifecycle state of `TradePlan`, `ExecutionGroup`, and `Order`.
-2.  **Workers are Account Holders:** Workers (`StrategyPlanner`, `ExecutionWorker`) contain *logic*. They do not "own" the data. They *request* transactions (create plan, update order) from the Ledger.
-3.  **Containers vs. Logic:**
-    *   **Container:** `TradePlan` (Strategic Intent), `ExecutionGroup` (Tactical Progress), `Order` (Atomic Action).
-    *   **Logic:** `StrategyPlanner` (Decides Strategy), `ExecutionPlanner` (Decides Tactics), `ExecutionWorker` (Executes Action).
-4.  **Standardized Terminology:**
-    *   **ExecutionWorker:** The plugin component containing specific execution logic (e.g., TWAPWorker, IcebergWorker).
-    *   **IExecutionConnector:** The interface injected into ExecutionWorkers to interact with the environment (Live/Paper/Backtest).
-    *   **ExecutionPlanner:** The specific planner that decides *which* ExecutionWorker to use and configures it.
-
----
-
-## 2. Revision Strategy per Document
-
-### A. `TRADE_LIFECYCLE.md` (The Data & Ownership Model)
-
-**Current Issues:**
-*   Ownership Matrix conflates "Logical Owner" (Decider) with "Technical Creator" (Ledger).
-*   "Chicken-and-Egg" confusion regarding who creates `ExecutionGroup`.
-
-**Proposed Changes:**
-1.  **Rename "Ownership Matrix" to "Responsibility Matrix":**
-    *   **Columns:** `Entity`, `Logical Owner (Decider)`, `State Owner (Ledger)`, `Operator (Worker)`.
-    *   **Example:** `TradePlan` | Decider: `StrategyPlanner` | Owner: `StrategyLedger` | Operator: `StrategyPlanner`.
-2.  **Define "Container Hierarchy" (Section 1):**
-    *   Explicitly state that these are *Ledger Entities*.
-    *   Diagram: `StrategyLedger` wrapping all three entities.
-3.  **Clarify Creation Flow (Section 2):**
-    *   Describe the "Request-Response" pattern.
-    *   *Example:* `ExecutionPlanner` emits `ExecutionDirective` -> Platform/Ledger creates `ExecutionGroup` -> `ExecutionWorker` receives ID.
-
-### B. `PIPELINE_FLOW.md` (The Logic Flow)
-
-**Current Issues:**
-*   Phase 5/6 descriptions might still reference deprecated `ExecutionHandler` or old patterns.
-*   Needs to explicitly link `ExecutionIntent` to the *creation* of `ExecutionGroup` in the Ledger.
-
-**Proposed Changes:**
-1.  **Update Phase 5 (Execution Planning):**
-    *   Clarify that `ExecutionPlanner` outputs `ExecutionDirective` (containing concrete `ExecutionPlan`).
-    *   **Direct Wiring:** The `ExecutionDirective` is routed directly to the specific `ExecutionWorker` (e.g., `TWAPWorker`) via EventBus wiring.
-2.  **Update Phase 6 (Execution):**
-    *   **Creation:** The `ExecutionWorker` receives the directive and **initializes** the `ExecutionGroup` in the `StrategyLedger`.
-    *   **State Access:** The Worker queries `ExecutionGroup` state from the `StrategyLedger` (via injected `IStrategyLedger` capability).
-    *   **Execution:** The Worker executes logic using the injected `IExecutionConnector`.
-3.  **Refine "ExecutionIntent" Section:**
-    *   **Remove** `ExecutionTranslator` and `ExecutionIntent` concepts entirely.
-    *   **Rationale:** Avoid abstracting away "quant magic". Planners should explicitly configure specific execution algorithms.
-    *   Describe how `ExecutionPlanner` maps strategy directly to specific Worker configurations.
-
-### C. `EXECUTION_FLOW.md` (The Technical Sequence)
-
-**Current Issues:**
-*   Diagrams show `ExecutionHandler` "creating" OrderIDs and "recording" them.
-*   Needs to emphasize the *Ledger* as the authority.
-
-**Proposed Changes:**
-1.  **Replace `ExecutionHandler` with `ExecutionWorker`:**
-    *   Standardize on `ExecutionWorker` as the active component.
-2.  **Update Sequence Diagrams:**
-    *   **Sync Flow:** `ExecutionWorker` (via injected Connector) -> `StrategyLedger.create_order()` -> `Order` (Created) -> `Connector.place_order()`.
-    *   **Async Flow:** `Connector` (Fill) -> `ExecutionWorker` -> `StrategyLedger.update_order()` -> `Fill` (Recorded).
-3.  **Remove "Causality vs Reality" ambiguity:**
-    *   Reaffirm: Ledger = Reality (What happened). Journal = Causality (Why it happened).
+1.  **The Ledger is the Bank:** `StrategyLedger` is the *only* component that owns, creates, and updates the lifecycle state of `TradePlan`, `ExecutionGroup`, `Order`, and `Fill`.
+2.  **Workers are Account Holders:** Workers contain *logic*. They do not "own" data. They *request* transactions from the Ledger.
+3.  **Planners decide WHAT, Workers execute HOW:**
+    *   **Planner:** Determines trade intent (what we want to achieve)
+    *   **Worker:** Executes trade actions (how to achieve it, including operational lookups)
+4.  **On-Demand Container Creation:** Containers are created lazily:
+    *   Order creation triggers ExecutionGroup creation (if needed)
+    *   ExecutionGroup creation triggers TradePlan creation (if needed)
+5.  **Standardized Terminology:**
+    *   **ExecutionWorker:** Plugin component with execution logic (e.g., TWAPWorker)
+    *   **ExecutionPlanner:** 4th TradePlanner, aggregates 3 plans + chooses algorithm
+    *   **IExecutionConnector:** Interface for environment interaction (Live/Paper/Backtest)
+    *   **DEPRECATED:** ExecutionHandler, ExecutionService, ExecutionTranslator, ExecutionIntent
 
 ---
 
-## 3. Implementation Steps
+## 2. SRP: Planner vs Worker Responsibilities
 
-1.  **Step 1:** Update `TRADE_LIFECYCLE.md` to establish the new "Responsibility Matrix" and Container definitions.
-2.  **Step 2:** Update `PIPELINE_FLOW.md` to align Phase 5/6 with the Ledger-centric model.
-3.  **Step 3:** Update `EXECUTION_FLOW.md` diagrams and text to reflect `ExecutionWorker` + `StrategyLedger` interaction.
-4.  **Step 4:** (Optional) Update `WORKER_TAXONOMY.md` to formally reinstate `ExecutionWorker` and deprecate `ExecutionHandler` if confirmed.
+### Planner Responsibility (WHAT)
 
-## 4. Verification
+| TradePlanner | Decision | Ledger Access |
+|--------------|----------|---------------|
+| EntryPlanner | "Limit order @ $95k" | Reads plan direction (long/short) for close scenarios |
+| SizePlanner | "Target size: 1.5 BTC" | Reads current position size for delta calculation |
+| ExitPlanner | "SL @ $90k, TP @ $105k" | Reads current exit levels for comparison |
+| ExecutionPlanner | "Use TWAP, 12 slices, 60 min" | Reads plan metadata for algo selection |
 
-*   **Review:** User to review this plan.
-*   **Consistency Check:** Ensure all 3 documents tell the same story about who creates an Order and where it lives.
+### Worker Responsibility (HOW)
+
+| ExecutionWorker Task | Description |
+|---------------------|-------------|
+| Lookup existing orders | "Which SL orders exist for this plan?" |
+| Register new containers | Create ExecutionGroup, register Orders |
+| Execute via Connector | Place/modify/cancel orders |
+| Update state | Record fills, update group progress |
+
+**Key Insight:** The lookup for existing orders belongs to ExecutionWorker (HOW), not ExecutionPlanner (WHAT).
+
+---
+
+## 3. Ledger Access Patterns (Descriptive, No Method Names)
+
+| Component | Ledger Interaction (descriptive) |
+|-----------|----------------------------------|
+| **StrategyPlanner** | Reads active plans and their status to make strategic decisions |
+| **EntryPlanner** | Reads plan direction (long/short) when handling close scenarios |
+| **SizePlanner** | Reads current position size to calculate required delta |
+| **ExitPlanner** | Reads current exit levels to determine if modification is needed |
+| **ExecutionPlanner** | Reads plan metadata to select appropriate execution algorithm |
+| **ExecutionWorker** | Full read/write access: creates containers, registers orders, records fills, queries existing orders for modifications |
+
+### Scope-Specific Access
+
+| Scope | StrategyPlanner | Entry | Size | Exit | Execution |
+|-------|-----------------|-------|------|------|-----------|
+| **NEW_TRADE** | Read: check duplicates | — | — | — | — |
+| **MODIFY_EXISTING** | Read: plan status | Read: direction | Read: current_size | Read: exit levels | Read: active groups |
+| **CLOSE_EXISTING** | Read: all active plans | Read: direction | Read: full size | Read: all orders | Read: all groups |
+
+---
+
+## 4. Revision Instructions per Document
+
+### A. `TRADE_LIFECYCLE.md` - Foundation Document
+
+**Order:** Revise FIRST (establishes terminology for other docs)
+
+**Changes:**
+
+1. **Remove "Ownership Matrix"** (Section 1.2)
+   - The container hierarchy is already clear from the mermaid diagram
+   - No replacement matrix needed
+
+2. **Add "Ledger Access Patterns" section**
+   - Use descriptive language (no method names)
+   - Include the scope-specific access table above
+
+3. **Clarify On-Demand Creation**
+   - Containers created lazily when needed
+   - Order → ExecutionGroup → TradePlan (bottom-up trigger)
+
+4. **Update Section 6 (ExecutionWorker)**
+   - Remove any ExecutionHandler references
+   - Emphasize: Worker does operational lookups (HOW), not Planner
+
+5. **Remove ExecutionService references**
+   - This component is deprecated (unnecessary complexity)
+
+### B. `WORKER_TAXONOMY.md` - Worker Definitions
+
+**Order:** Revise SECOND (defines ExecutionWorker before pipeline uses it)
+
+**Changes:**
+
+1. **Reinstate ExecutionWorker as 6th Worker Category**
+   - Remove "Historical Note: Removed Categories" section
+   - Add full ExecutionWorker section with:
+     - Purpose: Execute trade actions via Connector
+     - Responsibilities: Order placement, modification, cancellation
+     - Ledger Access: Full read/write
+     - Output: Order state updates
+
+2. **Clarify ExecutionPlanner position**
+   - ExecutionPlanner = 4th TradePlanner (not a separate category)
+   - Aggregates 3 plans + StrategyDirective
+   - Decides WHICH algorithm, not HOW to execute
+
+3. **Add Ledger Access Requirements per Worker Type**
+   - Descriptive (no method names)
+   - Reference the access patterns from Section 3 above
+
+4. **Update PlanningWorker section**
+   - Clarify 4 subtypes: Entry, Size, Exit, Execution
+   - ExecutionPlanner aggregates and selects algorithm
+
+### C. `PIPELINE_FLOW.md` - Complete Rewrite
+
+**Order:** Revise THIRD (uses terminology from A and B)
+
+**CRITICAL: This is a COMPLETE REWRITE, not incremental update.**
+
+**Changes:**
+
+1. **Remove entirely:**
+   - ExecutionTranslator concept
+   - ExecutionIntent abstraction
+   - ExecutionService references
+   - ExecutionHandler terminology
+
+2. **Update Phase 4 (Trade Planning):**
+   - 4 TradePlanners: Entry, Size, Exit, Execution
+   - ExecutionPlanner aggregates 3 plans + chooses algorithm
+   - Output: ExecutionDirective with concrete algorithm config
+
+3. **Update Phase 5 (Execution):**
+   - ExecutionWorker receives ExecutionDirective via EventBus wiring
+   - Worker does operational lookups (existing orders, groups)
+   - Worker interacts with Ledger for state management
+   - Worker uses Connector for exchange interaction
+
+4. **Keep language English**
+   - Convert any remaining Dutch sections to English
+
+5. **Simplify diagrams**
+   - Remove Translator/Intent layers
+   - Show: Planners → ExecutionDirective → ExecutionWorker → Ledger/Connector
+
+### D. `EXECUTION_FLOW.md` - Diagram Updates
+
+**Order:** Revise FOURTH (final consistency check)
+
+**Changes:**
+
+1. **Replace ExecutionHandler with ExecutionWorker**
+   - All diagrams and text
+   - Consistent terminology
+
+2. **Update Sequence Diagrams:**
+   - Sync Flow: ExecutionWorker → Ledger (register) → Connector (place)
+   - Async Flow: Connector (fill) → ExecutionWorker → Ledger (record)
+
+3. **Emphasize Ledger as State Owner**
+   - All containers live in Ledger
+   - Worker queries Ledger for existing orders during modifications
+
+4. **Remove ExecutionService references**
+   - Deprecated concept
+
+---
+
+## 5. Source Materials
+
+Reference these documents during revision:
+
+| Document | Location | Use For |
+|----------|----------|---------|
+| Trailing Stop Scenario | `docs/development/design_validations/SCENARIO_TRAILING_STOP.md` | MODIFY_EXISTING flow example |
+| Modification Flows | `docs/development/design_validations/SCENARIO_MODIFICATION_FLOWS.md` | Scale In/Out, Emergency Exit |
+| Long/Short Validation | `docs/development/design_validations/LONG_SHORT_TARGET_SIZE_VALIDATION.md` | target_position_size semantics |
+| Concrete TWAP Scenario | `docs/archive/execution_refactor_v4/CONCRETE_EXECUTION_SCENARIO.md` | Integrated protection pattern |
+| Pipeline Refinement | `docs/archive/execution_refactor_v4/EXECUTION_PIPELINE_REFINEMENT.md` | EventAdapter wiring pattern |
+
+---
+
+## 6. Verification Checklist
+
+After all revisions, verify:
+
+- [ ] No mentions of `ExecutionHandler` (replaced by ExecutionWorker)
+- [ ] No mentions of `ExecutionService` (deprecated)
+- [ ] No mentions of `ExecutionTranslator` (removed)
+- [ ] No mentions of `ExecutionIntent` abstraction (removed)
+- [ ] ExecutionWorker is defined as 6th worker category
+- [ ] ExecutionPlanner is defined as 4th TradePlanner
+- [ ] Ledger access is described, not specified with method names
+- [ ] All 4 documents tell consistent story about container ownership
+- [ ] All documentation is in English
+
+---
+
+## 7. Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| v1.0 | 2025-11-15 | Initial revision plan |
+| v2.0 | 2025-11-27 | Complete rewrite based on SRP/Planner-Worker analysis, added detailed instructions per document, source materials, verification checklist |

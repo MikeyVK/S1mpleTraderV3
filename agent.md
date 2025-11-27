@@ -256,7 +256,22 @@ git branch -d feature/my-feature
 
 ---
 
+## Interaction Guidelines
+
+### Language Policy
+
+| Context | Language | Rationale |
+|---------|----------|-----------|
+| **Documentation** (all `.md` files) | English | Broader accessibility, industry standard |
+| **Code comments & docstrings** | English | Consistency with documentation |
+| **Conversation with AI assistant** | Dutch | Native language for precision and nuance |
+| **Commit messages** | English | Git log readability |
+
+**Rule:** All written artifacts (documentation, code, commits) are in English. Verbal/chat interaction with the AI assistant is in Dutch.
+
+---
+
 **Documentation maintained by:** Development Team  
-**Last major update:** 2025-11-02  
-**Version:** V3  
+**Last major update:** 2025-11-27  
+**Version:** V3.1  
 **For detailed docs:** See `docs/` folders above

@@ -11,13 +11,13 @@ This guide ensures S1mpleTrader V3 documentation **stays modular, focused, and A
 
 ### 1. Modular Over Monolithic
 
-**Rule:** No single document should exceed **300 lines** (except templates/references with code examples).
+**Rule:** No single document should exceed **300 lines** (except templates/references with code examples, and architecture documents which may extend to **1000 lines**).
 
-**Why:** AI context windows work better with focused documents. Developers can find information faster.
+**Why:** AI context windows work better with focused documents. Developers can find information faster. Architecture documents may require more space to capture complete system designs.
 
 **Action when exceeded:**
 ```
-Document > 300 lines → Split into focused sub-documents + create/update index
+Document > 300 lines (or > 1000 for architecture) → Split into focused sub-documents + create/update index
 ```
 
 **Example:** agent.md grew to 1657 lines → Split into architecture/, coding_standards/, reference/, implementation/
@@ -97,12 +97,23 @@ docs/
 
 | Directory | Purpose | Max File Size | Update Trigger |
 |-----------|---------|---------------|----------------|
-| `architecture/` | System design decisions | 300 lines | New architectural pattern |
+| `architecture/` | System design decisions | 1000 lines | New architectural pattern |
 | `coding_standards/` | Development rules | 300 lines | New quality requirement |
 | `implementation/` | Progress tracking | 500 lines | Module completion (tests passing) |
 | `reference/` | Templates & examples | 600 lines* | New component type implemented |
 
 *Templates may exceed 300 lines due to code examples - this is acceptable.
+
+### 5. Documentation Language
+
+**Rule:** All documentation must be written in **English**.
+
+**Why:** English ensures broader accessibility for future collaborators and aligns with industry standards. Conversation with AI assistants may be in Dutch (native language) for precision, but all written documentation remains English.
+
+**Action:**
+- ✅ Write all `.md` files in English
+- ✅ Use English for code comments and docstrings
+- ✅ Conversation with AI assistant: Dutch is acceptable
 
 ## Update Workflows
 
