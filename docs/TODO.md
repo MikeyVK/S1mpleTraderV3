@@ -143,6 +143,17 @@
   - **Scope:** OriginType, DirectiveScope, ExecutionMode, DispositionType, and all future enums
   - **Priority:** Medium (before Week 1 Config Schemas - config may reference enums)
 
+- [ ] **TickCache → StrategyCache Rename** (2025-11-27)
+  - **Issue:** `TickCache` terminology is outdated and confusing - suggests only tick data storage
+  - **Solution:** Rename all references to `StrategyCache` throughout codebase
+  - **Scope:**
+    - `TickCacheManager` → `StrategyCacheManager`
+    - All documentation references
+    - All code imports and usages
+  - **Rationale:** StrategyCache stores much more than ticks: context factors, signals, risks, causality chains, order contexts
+  - **Priority:** Medium (terminology consistency - before production)
+  - **Note:** Interface `IStrategyCache` already uses correct naming
+
 ---
 
 ### Week 1: Configuration Schemas - 🔥 IN PROGRESS (CRITICAL PATH)
