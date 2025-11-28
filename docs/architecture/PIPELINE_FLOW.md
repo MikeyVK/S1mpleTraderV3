@@ -1,7 +1,7 @@
 # Strategy Pipeline Architecture
 
 **Status:** DEFINITIVE  
-**Version:** 3.1  
+**Version:** 3.2  
 **Last Updated:** 2025-11-28
 
 ---
@@ -431,13 +431,9 @@ ExecutionPlanner decisions require **complete trade context**:
 
 ### 6.3 ExecutionDirective Assembly
 
-**Component:** `PlanningAggregator` (Platform worker)
+**Aggregation in ExecutionPlanner:**
 
-**Responsibility:**
-- Track which plans are expected (3 parallel + 1 sequential)
-- Wait for parallel phase completion (Entry, Size, Exit)
-- Trigger ExecutionPlanner with all 3 plans
-- Aggregate all 4 plans → ExecutionDirective
+ExecutionPlanner waits for all 3 parallel plans (Entry, Size, Exit) before executing. The platform's event wiring ensures ExecutionPlanner receives all plan events and aggregates them into the final ExecutionDirective.
 
 **Output:**
 ```python
@@ -457,7 +453,7 @@ ExecutionDirective(
 
 **Event:** `EXECUTION_DIRECTIVE_READY`
 
-**Cross-reference:** [TRADE_LIFECYCLE.md - ExecutionPlanner][trade-lifecycle]
+**Cross-reference:** [EXECUTION_FLOW.md][execution-flow] (source of truth for execution mechanics)
 
 ---
 
@@ -539,13 +535,11 @@ graph TD
     SDI -->|parallel| SPC[SIZE_PLAN_CREATED]
     SDI -->|parallel| XPC[EXIT_PLAN_CREATED]
     
-    EPC --> PA[PlanningAggregator]
-    SPC --> PA
-    XPC --> PA
+    EPC --> EP[ExecutionPlanner]
+    SPC --> EP
+    XPC --> EP
     
-    PA --> EPL[EXECUTION_PLAN_CREATED]
-    
-    EPL --> EDR[EXECUTION_DIRECTIVE_READY]
+    EP --> EDR[EXECUTION_DIRECTIVE_READY]
     
     EDR --> EW[ExecutionWorker]
     EW --> SJW[StrategyJournalWriter]
@@ -566,7 +560,15 @@ event_wirings:
   
   - event: "ENTRY_PLAN_CREATED"
     subscribers:
-      - worker: "planning_aggregator"
+      - worker: "execution_planner"  # Aggregates all 3 plans
+  
+  - event: "SIZE_PLAN_CREATED"
+    subscribers:
+      - worker: "execution_planner"
+  
+  - event: "EXIT_PLAN_CREATED"
+    subscribers:
+      - worker: "execution_planner"
   
   - event: "EXECUTION_DIRECTIVE_READY"
     subscribers:
@@ -585,11 +587,10 @@ event_wirings:
    - PlannerMatcher checks `should_handle()`
    - Example: 3 entry planners listen, 1 handles (based on confidence)
 
-3. **PlanningAggregator = Coordinator (NOT Orchestrator):**
-   - Detects phase completion (state tracking)
-   - Triggers next phase via events
-   - Aggregates results → ExecutionDirective
-   - No planner selection logic (config does this!)
+3. **ExecutionPlanner = Aggregator + Algorithm Selector:**
+   - Waits for all 3 parallel plans (Entry, Size, Exit)
+   - Selects execution algorithm based on complete context
+   - Produces ExecutionDirective for ExecutionWorker
 
 ---
 
@@ -650,6 +651,7 @@ plugin_manifest.yaml (per worker)
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.2 | 2025-11-28 | AI | Removed PlanningAggregator (ExecutionPlanner does aggregation per EXECUTION_FLOW.md) |
 | 3.1 | 2025-11-28 | AI | Gap fixes: Phase 0→Trigger Layer, TickCache→StrategyCache, added Ledger/Connector to Phase 5, StrategyJournalWriter to Phase 6, link to TRIGGER_ARCHITECTURE.md |
 | 3.0 | 2025-11-28 | AI | Major revision: removed ExecutionIntent/Translator pattern, aligned with Signal/Risk terminology, ARCHITECTURE_TEMPLATE format |
 | 2.0 | 2025-10-28 | AI | ExecutionIntent architecture (deprecated) |

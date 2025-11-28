@@ -14,7 +14,7 @@ S1mpleTraderV3 organizes all strategy logic into **6 worker categories**, each w
 graph TB
     Tick[Market Tick]
     
-    subgraph TickCache["TickCache (Sync Flow)"]
+    subgraph StrategyCache["StrategyCache (Sync Flow)"]
         TC[Plugin DTOs<br/>Objective Facts]
     end
     
@@ -390,4 +390,5 @@ The following are **platform components**, not plugin workers. They are part of 
 | Version | Date | Changes |
 |---------|------|---------|
 | v1.0 | 2025-10-29 | Initial document with 5 worker categories |
-| v2.0 | 2025-11-27 | Added ExecutionWorker as 6th category, updated PlanningWorker (ExecutionPlanner is 4th TradePlanner), removed PlanningAggregator (aggregation now in ExecutionPlanner), added Ledger access descriptions |
+| v2.0 | 2025-11-27 | Added ExecutionWorker as 6th category, updated PlanningWorker (ExecutionPlanner is 4th TradePlanner), added Ledger access descriptions |
+| v2.1 | 2025-11-28 | Fixed TickCache→StrategyCache terminology |
