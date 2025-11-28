@@ -33,56 +33,43 @@ This document describes the Trigger Layer architecture that initiates pipeline r
 
 ### 2.1 Trigger Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              TRIGGER LAYER                                       │
-│                                                                                  │
-│  ┌────────────────────────────────────────────────────────────────────────────┐ │
-│  │                         Trigger Sources                                     │ │
-│  │                                                                             │ │
-│  │   ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐        │ │
-│  │   │  DataConnector   │  │  DataConnector   │  │    Scheduler     │        │ │
-│  │   │   (Market Data)  │  │   (News Feed)    │  │    (Cron-like)   │        │ │
-│  │   └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘        │ │
-│  │            │                     │                      │                  │ │
-│  └────────────┼─────────────────────┼──────────────────────┼──────────────────┘ │
-│               │                     │                      │                    │
-│               ▼                     ▼                      │                    │
-│  ┌────────────────────────────────────────────────────────────────────────────┐ │
-│  │                         DataProviders                                       │ │
-│  │                                                                             │ │
-│  │   ┌──────────────────┐  ┌──────────────────┐            │                  │ │
-│  │   │  TickDataProvider │ │  NewsDataProvider │           │                  │ │
-│  │   │                  │  │                   │            │                  │ │
-│  │   │ - Normalize data │  │ - Normalize data  │           │                  │ │
-│  │   │ - Rolling window │  │ - Parse content   │           │                  │ │
-│  │   │ - PlatformDataDTO│  │ - PlatformDataDTO │           │                  │ │
-│  │   └────────┬─────────┘  └────────┬──────────┘           │                  │ │
-│  │            │                     │                      │                  │ │
-│  └────────────┼─────────────────────┼──────────────────────┼──────────────────┘ │
-│               │ TICK                │ NEWS                 │ SCHEDULE           │
-│               ▼                     ▼                      ▼                    │
-│  ┌────────────────────────────────────────────────────────────────────────────┐ │
-│  │                     FlowInitiators (per strategy)                           │ │
-│  │                                                                             │ │
-│  │   ┌──────────────────────────────────────────────────────────────────────┐ │ │
-│  │   │  FlowInitiator                                                        │ │ │
-│  │   │                                                                       │ │ │
-│  │   │  1. Receive trigger with Origin (TICK/NEWS/SCHEDULE)                 │ │ │
-│  │   │  2. Initialize StrategyCache (start_new_run)                         │ │ │
-│  │   │  3. Store PlatformDataDTO in cache                                   │ │ │
-│  │   │  4. Emit event → Phase 1 ContextWorkers                              │ │ │
-│  │   │                                                                       │ │ │
-│  │   └──────────────────────────────────────────────────────────────────────┘ │ │
-│  │                                                                             │ │
-│  └─────────────────────────────────────┬───────────────────────────────────────┘ │
-│                                        │                                         │
-└────────────────────────────────────────┼─────────────────────────────────────────┘
-                                         ▼
-                              ┌──────────────────────┐
-                              │  Phase 1: Context    │
-                              │    ContextWorkers    │
-                              └──────────────────────┘
+```mermaid
+graph TB
+    subgraph "Trigger Sources"
+        DC1[DataConnector<br/>Market Data]
+        DC2[DataConnector<br/>News Feed]
+        SCH[Scheduler<br/>Cron-like]
+    end
+    
+    subgraph "DataProviders"
+        TDP[TickDataProvider<br/>Normalize + Rolling Window]
+        NDP[NewsDataProvider<br/>Normalize + Parse]
+    end
+    
+    subgraph "FlowInitiators (per strategy)"
+        FI[FlowInitiator<br/>1. Receive Origin<br/>2. Init StrategyCache<br/>3. Store PlatformDataDTO<br/>4. Emit to Phase 1]
+        SC[StrategyCache]
+        FI --> SC
+    end
+    
+    subgraph "Phase 1: Context"
+        CW[ContextWorkers]
+    end
+    
+    %% Connections
+    DC1 --> TDP
+    DC2 --> NDP
+    TDP -->|TICK| FI
+    NDP -->|NEWS| FI
+    SCH -->|SCHEDULE| FI
+    SC --> CW
+    
+    %% Styling consistent with PIPELINE_FLOW
+    style DC1 fill:#f0f0f0
+    style DC2 fill:#f0f0f0
+    style SCH fill:#f0f0f0
+    style FI fill:#e8f5e9
+    style SC fill:#e8f5e9
 ```
 
 ### 2.2 Origin Types
