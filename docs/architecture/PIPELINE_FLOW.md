@@ -1,7 +1,7 @@
 # Strategy Pipeline Architecture
 
 **Status:** DEFINITIVE  
-**Version:** 3.0  
+**Version:** 3.1  
 **Last Updated:** 2025-11-28
 
 ---
@@ -24,6 +24,7 @@ This document describes the **complete strategy pipeline** of S1mpleTraderV3 - f
 - Worker implementation details → See [WORKER_TAXONOMY.md][worker-taxonomy]
 - Execution mechanics → See [EXECUTION_FLOW.md][execution-flow]
 - Container lifecycle → See [TRADE_LIFECYCLE.md][trade-lifecycle]
+- Trigger layer details → See [TRIGGER_ARCHITECTURE.md][trigger-arch]
 - DTO specifications → See source files in `backend/dtos/`
 
 ## Prerequisites
@@ -40,11 +41,13 @@ Read these first:
 
 ```mermaid
 graph TB
-    subgraph "Phase 0: Bootstrapping"
-        P0[Rolling Window + Worker Init + Event Wiring]
+    subgraph "Phase 0: Trigger Layer"
+        P0a[DataConnectors / Scheduler]
+        P0b[DataProviders]
+        P0c[FlowInitiator]
+        P0d[StrategyCache]
+        P0a --> P0b --> P0c --> P0d
     end
-    
-    P0 --> P1
     
     subgraph "Phase 1: Context Analysis"
         P1a[ContextWorkers]
@@ -52,21 +55,14 @@ graph TB
         P1a -->|sequential chain| P1b
     end
     
-    P1b --> P2
-    
     subgraph "Phase 2: Signal & Risk Detection"
         P2a[SignalDetectors]
         P2b[RiskMonitors]
     end
     
-    P2a --> P3
-    P2b --> P3
-    
     subgraph "Phase 3: Strategy Planning"
         P3[StrategyPlanner]
     end
-    
-    P3 --> P4
     
     subgraph "Phase 4: Trade Planning"
         P4a[EntryPlanner]
@@ -78,29 +74,46 @@ graph TB
         P4c --> P4d
     end
     
-    P4d --> P5
-    
     subgraph "Phase 5: Execution"
-        P5[ExecutionWorker]
+        P5a[ExecutionWorker]
+        P5b[StrategyLedger]
+        P5c[IExecutionConnector]
+        P5a --> P5b
+        P5a --> P5c
     end
-    
-    P5 --> P6
     
     subgraph "Phase 6: Flow Termination"
-        P6[FlowTerminator]
+        P6a[StrategyJournalWriter]
+        P6b[FlowTerminator]
+        P6a --> P6b
     end
     
-    style P0 fill:#f0f0f0
+    %% Inter-phase connections
+    P0d --> P1a
+    P1b --> P2a
+    P1b --> P2b
+    P2a --> P3
+    P2b --> P3
+    P3 --> P4a
+    P3 --> P4b
+    P3 --> P4c
+    P4d --> P5a
+    P5a --> P6a
+    
+    style P0a fill:#f0f0f0
+    style P0c fill:#e8f5e9
     style P3 fill:#f5e1ff
-    style P5 fill:#e1ffff
+    style P5a fill:#e1ffff
 ```
 
 ### 1.2 Data Flow Summary
 
 ```
-Market Tick
+Trigger (DataConnector / Scheduler)
     ↓
-TickCache (objective facts from ContextWorkers)
+DataProvider → FlowInitiator → StrategyCache
+    ↓
+StrategyCache (objective facts from ContextWorkers)
     ↓
 EventBus (Signal + Risk DTOs)
     ↓
@@ -110,7 +123,9 @@ EntryPlan + SizePlan + ExitPlan (parallel)
     ↓
 ExecutionDirective (aggregated)
     ↓
-StrategyLedger (containers: TradePlan → ExecutionGroup → Order → Fill)
+ExecutionWorker → StrategyLedger + IExecutionConnector
+    ↓
+StrategyJournalWriter → FlowTerminator
 ```
 
 ### 1.3 Key Principles
@@ -123,37 +138,34 @@ StrategyLedger (containers: TradePlan → ExecutionGroup → Order → Fill)
 
 ---
 
-## 2. Phase 0: Bootstrapping
+## 2. Phase 0: Trigger Layer
 
-**Goal:** Prepare the pipeline for the first "real" tick.
+**Goal:** Initiate pipeline run from external trigger.
 
-### 2.1 Rolling Window Setup
+### 2.1 Trigger Sources
 
-- Collect historical data for all configured timeframes
-- Fill indicators for correct initialization
-- Wait until minimum window size is reached
+| Source | Component | Origin Type |
+|--------|-----------|-------------|
+| Market Data | DataConnector → DataProvider | `TICK` |
+| News Feed | DataConnector → DataProvider | `NEWS` |
+| Scheduled | Scheduler | `SCHEDULE` |
 
-### 2.2 Worker Initialization
+### 2.2 DataProviders
 
-- Instantiate all workers according to workforce config
-- Inject capabilities (state, events, journaling)
-- Validate dependencies between workers
+- Normalize raw data → `PlatformDataDTO`
+- Maintain rolling windows (shared across strategies)
+- Publish to registered FlowInitiators
 
-### 2.3 Event Wiring
+### 2.3 FlowInitiator
 
-- Assemble EventAdapters according to `wiring_map.yaml`
-- Connect event listeners to publishers
-- Validate event chain (no circular references)
+- Receive trigger with `Origin` (TICK/NEWS/SCHEDULE)
+- Initialize StrategyCache (`start_new_run`)
+- Store `PlatformDataDTO` in cache
+- Emit event to start Phase 1
 
-### 2.4 FlowInitiator Setup
+**Output:** StrategyCache initialized, workers ready to process
 
-- Instantiate FlowInitiator per strategy
-- Wire to DataProvider events (`PlatformDataDTO`)
-- Ensures StrategyCache initialization before workers execute
-
-**Output:** System ready to process ticks
-
-**Cross-reference:** [FlowInitiator Design][flow-initiator-design]
+**Cross-reference:** [TRIGGER_ARCHITECTURE.md][trigger-arch] (details), [FlowInitiator Design][flow-initiator-design]
 
 ---
 
@@ -171,7 +183,7 @@ StrategyLedger (containers: TradePlan → ExecutionGroup → Order → Fill)
 **Input:** Raw OHLCV data (current tick + historical window)
 
 **Output:** 
-- Plugin-specific DTOs stored in TickCache via `set_result_dto()`
+- Plugin-specific DTOs stored in StrategyCache via `set_result_dto()`
 - **Never** publishes to EventBus
 
 **Worker Type:** `context_worker` (7 subtypes available)
@@ -210,7 +222,7 @@ StrategyLedger (containers: TradePlan → ExecutionGroup → Order → Fill)
 
 **Worker Type:** `signal_detector` (7 subtypes available)
 
-**Input:** TickCache DTOs (objective facts from Phase 1)
+**Input:** StrategyCache DTOs (objective facts from Phase 1)
 
 **Output:**
 ```python
@@ -236,7 +248,7 @@ Signal(
 **Worker Type:** `risk_monitor` (5 subtypes available)
 
 **Input:** 
-- TickCache (market data)
+- StrategyCache (market data)
 - StrategyLedger (open positions, P&L)
 
 **Output:**
@@ -453,6 +465,8 @@ ExecutionDirective(
 
 **Goal:** Execute trades via Ledger + Connector.
 
+### 7.1 ExecutionWorker
+
 **Component:** `ExecutionWorker` (6th worker category)
 
 **Responsibility:**
@@ -461,6 +475,18 @@ ExecutionDirective(
 - Register containers (ExecutionGroup, Order)
 - Execute via IExecutionConnector (place/modify/cancel)
 - Update StrategyLedger with results
+
+### 7.2 StrategyLedger
+
+- Persists container hierarchy: TradePlan → ExecutionGroup → Order → Fill
+- Owns all container lifecycle (create, update, close)
+- NO causality storage (SRP separation)
+
+### 7.3 IExecutionConnector
+
+- Interface for environment interaction
+- Implementations: LiveConnector, PaperConnector, BacktestConnector
+- Handles order placement, modification, cancellation
 
 **SRP: Planners decide WHAT, Workers execute HOW**
 
@@ -472,18 +498,18 @@ The operational lookup for existing orders belongs to ExecutionWorker (HOW), not
 
 ## 8. Phase 6: Flow Termination
 
-**Goal:** Clean up and persist causality.
+**Goal:** Persist causality and clean up.
 
-**Component:** `FlowTerminator` (Platform worker)
+### 8.1 StrategyJournalWriter
 
-### 8.1 Causality Reconstruction
+**Before FlowTerminator:**
+- Retrieves CausalityChain from StrategyCache (via OrderID)
+- Writes journal entry: causality + order_id + context
+- Enables quant analysis: WHY → WHAT → HOW → OUTCOME
 
-- Query StrategyJournal with TriggerContext IDs
-- Reconstruct complete decision chain
-- Persist for quant analysis
+### 8.2 FlowTerminator
 
-### 8.2 Cleanup
-
+**Cleanup responsibilities:**
 - Log metrics
 - Garbage collection
 - Component reset
@@ -522,7 +548,8 @@ graph TD
     EPL --> EDR[EXECUTION_DIRECTIVE_READY]
     
     EDR --> EW[ExecutionWorker]
-    EW --> FS[FLOW_TERMINATED]
+    EW --> SJW[StrategyJournalWriter]
+    SJW --> FS[FLOW_TERMINATED]
 ```
 
 ### Event Wiring Pattern
@@ -606,6 +633,7 @@ plugin_manifest.yaml (per worker)
 - **[EXECUTION_FLOW.md][execution-flow]** - Sync/async execution mechanics
 - **[TRADE_LIFECYCLE.md][trade-lifecycle]** - Container hierarchy and Ledger access
 - **[ARCHITECTURAL_SHIFTS.md][arch-shifts]** - 3 critical architectural shifts
+- **[TRIGGER_ARCHITECTURE.md][trigger-arch]** - Trigger layer details (DataConnectors, Scheduler, FlowInitiator)
 
 <!-- Link definitions -->
 [core-principles]: ./CORE_PRINCIPLES.md "Core design principles"
@@ -613,6 +641,7 @@ plugin_manifest.yaml (per worker)
 [execution-flow]: ./EXECUTION_FLOW.md "Execution mechanics"
 [trade-lifecycle]: ./TRADE_LIFECYCLE.md "Trade lifecycle"
 [arch-shifts]: ./ARCHITECTURAL_SHIFTS.md "Architectural shifts"
+[trigger-arch]: ./TRIGGER_ARCHITECTURE.md "Trigger layer architecture"
 [flow-initiator-design]: ../development/backend/core/FLOW_INITIATOR_DESIGN.md "FlowInitiator design"
 
 ---
@@ -621,6 +650,7 @@ plugin_manifest.yaml (per worker)
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 3.1 | 2025-11-28 | AI | Gap fixes: Phase 0→Trigger Layer, TickCache→StrategyCache, added Ledger/Connector to Phase 5, StrategyJournalWriter to Phase 6, link to TRIGGER_ARCHITECTURE.md |
 | 3.0 | 2025-11-28 | AI | Major revision: removed ExecutionIntent/Translator pattern, aligned with Signal/Risk terminology, ARCHITECTURE_TEMPLATE format |
 | 2.0 | 2025-10-28 | AI | ExecutionIntent architecture (deprecated) |
 | 1.0 | 2025-10-27 | AI | Initial pipeline documentation |
