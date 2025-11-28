@@ -334,7 +334,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 ### Data Flow Paths
 
-1. **TickCache (Synchronous, Flow Data)**
+1. **StrategyCache (Synchronous, Flow Data)**
    - Via `IStrategyCache.set_result_dto(worker, dto)`
    - For direct worker-to-worker data transfer
    - Contains **plugin-specific DTOs only**
@@ -366,29 +366,32 @@ class DispositionEnvelope:
 
 ---
 
-## Platform Components (NOT Workers)
+## Platform Components
 
-The following are **platform components**, not plugin workers. They are part of core orchestration:
+Platform infrastructure (EventBus, StrategyCache, FlowInitiator, StrategyLedger, etc.) is documented separately.
 
-1. **FlowInitiator** - Bootstraps strategy flows, manages worker lifecycle
-2. **EventAdapter** - Routes events between workers based on wiring_map
-3. **StrategyLedger** - Owns all trade state containers (TradePlan, ExecutionGroup, Order, Fill)
+**See:** [PLATFORM_COMPONENTS.md][platform-components] for core infrastructure.
 
 ---
 
 ## Related Documentation
 
 - **[Trade Lifecycle](TRADE_LIFECYCLE.md)** - Container ownership, Ledger access patterns
+- **[Platform Components](PLATFORM_COMPONENTS.md)** - Core infrastructure (EventBus, StrategyCache, etc.)
 - **[Data Flow](DATA_FLOW.md)** - Detailed communication patterns
 - **[Plugin Anatomy](PLUGIN_ANATOMY.md)** - How to implement workers
 - **[Event-Driven Wiring](EVENT_DRIVEN_WIRING.md)** - EventAdapter configuration
+
+<!-- Link definitions -->
+[platform-components]: ./PLATFORM_COMPONENTS.md "Platform infrastructure"
 
 ---
 
 ## Version History
 
 | Version | Date | Changes |
-|---------|------|---------|
+|---------|------|--------|
 | v1.0 | 2025-10-29 | Initial document with 5 worker categories |
 | v2.0 | 2025-11-27 | Added ExecutionWorker as 6th category, updated PlanningWorker (ExecutionPlanner is 4th TradePlanner), added Ledger access descriptions |
 | v2.1 | 2025-11-28 | Fixed TickCache→StrategyCache terminology |
+| v2.2 | 2025-11-28 | SRP cleanup: Platform Components moved to PLATFORM_COMPONENTS.md |
