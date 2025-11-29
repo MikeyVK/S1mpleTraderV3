@@ -1,7 +1,7 @@
 # Documentation Alignment Plan
 
 **Status:** ACTIVE
-**Version:** 1.0
+**Version:** 1.1
 **Created:** 2025-11-29
 **Last Updated:** 2025-11-29
 
@@ -27,11 +27,11 @@ This plan defines the phased approach to align all architecture documentation wi
 |----------|-------|----------|--------|
 | `ARCHITECTURAL_SHIFTS.md` | 248 | ❌ | V2→V3 migration doc - **TO ARCHIVE** |
 | `ARCHITECTURE_GAPS.md` | 3134 | ❌ | Over limit - **TO TRIAGE** |
-| `ASYNC_IO_ARCHITECTURE.md` | 997 | ⚠️ | Near limit, needs review |
+| `ASYNC_IO_ARCHITECTURE.md` | 997 | ⚠️ | NL doc, pre-design - **SPECIAL TREATMENT** |
 | `CONFIGURATION_LAYERS.md` | 416 | ❌ | Pre-template (2025-10-29) |
 | `CORE_PRINCIPLES.md` | 222 | ❌ | Pre-template, minor update |
 | `DATA_FLOW.md` | 496 | ❌ | Pre-template, TickCache terminology |
-| `DTO_ARCHITECTURE.md` | 1423 | ❌ | **Over limit** - TO SPLIT |
+| `DTO_ARCHITECTURE.md` | 1423 | ❌ | **Over limit** - DEDICATED PHASE |
 | `EVENT_ARCHITECTURE.md` | 1163 | ⚠️ | Over limit |
 | `EVENT_DRIVEN_WIRING.md` | 487 | ❌ | Pre-template, TickCache terminology |
 | `EXECUTION_FLOW.md` | 385 | ✅ | Recently revised |
@@ -57,6 +57,8 @@ This plan defines the phased approach to align all architecture documentation wi
 | Over Line Limit | `ARCHITECTURE_GAPS.md`, `DTO_ARCHITECTURE.md`, `EVENT_ARCHITECTURE.md` | >1000 lines |
 | Pre-Template Format | 10 documents | Missing Status, Version, numbered sections |
 | Stale Terminology | `DATA_FLOW.md`, `POINT_IN_TIME_MODEL.md`, `EVENT_DRIVEN_WIRING.md` | TickCache instead of StrategyCache |
+| Special Cases | `ASYNC_IO_ARCHITECTURE.md` | NL language, pre-design status |
+| DTO Technical Debt | `DTO_ARCHITECTURE.md` | Content out of sync with TODO.md items |
 
 ---
 
@@ -100,21 +102,34 @@ This plan defines the phased approach to align all architecture documentation wi
 
 ---
 
-### Phase 3: Split Over-Limit Documents
-**Goal:** Bring all docs under 1000 line limit
-**Effort:** 2-3 hours
-**Commits:** One per document
+### Phase 3: ASYNC_IO_ARCHITECTURE.md - Special Treatment
+**Goal:** Relocate pre-design document and translate to English
+**Effort:** 1-2 hours
+**Commit:** Single commit
 
-#### 3.1 DTO_ARCHITECTURE.md (1423 lines)
+**Issues:**
+1. Written in Dutch (violates DOCUMENTATION_MAINTENANCE.md language rule)
+2. Status is "Design" but content is preliminary/exploratory
+3. Not yet validated architecture
 
-| New Document | Content |
-|--------------|---------|
-| `DTO_ARCHITECTURE.md` | Index + Core DTOs (Origin, RunAnchor) |
-| `DTO_CONTEXT.md` | Context-related DTOs |
-| `DTO_EXECUTION.md` | Execution-related DTOs (TradePlan, ExecutionGroup, Order) |
-| `DTO_STATE.md` | State/Ledger DTOs |
+| Task | Action |
+|------|--------|
+| 3.1 | Evaluate content - is this validated architecture or exploration? |
+| 3.2 | If exploration → Move to `docs/development/ASYNC_IO_DESIGN.md` |
+| 3.3 | If architecture → Translate to English, apply template |
+| 3.4 | Update any cross-references |
 
-#### 3.2 EVENT_ARCHITECTURE.md (1163 lines)
+**Completion Criteria:**
+- [ ] Document in correct location (architecture/ or development/)
+- [ ] Content in English
+- [ ] Status reflects actual maturity
+
+---
+
+### Phase 4: EVENT_ARCHITECTURE.md Split
+**Goal:** Bring EVENT_ARCHITECTURE.md under 1000 line limit
+**Effort:** 1-2 hours
+**Commit:** Single commit
 
 | New Document | Content |
 |--------------|---------|
@@ -122,13 +137,61 @@ This plan defines the phased approach to align all architecture documentation wi
 | `EVENT_PERSISTENCE.md` | EventStore, durability, replay |
 
 **Completion Criteria:**
-- [ ] All docs under 1000 lines
-- [ ] Each split doc has proper cross-references
-- [ ] README.md updated with new docs
+- [ ] Both docs under 1000 lines
+- [ ] Proper cross-references between docs
+- [ ] README.md updated
 
 ---
 
-### Phase 4: Template Compliance
+### Phase 5: DTO Architecture Revision
+**Goal:** Comprehensive DTO documentation aligned with TODO.md technical debt
+**Effort:** 3-4 hours (dedicated attention)
+**Commit:** Single commit
+**Dependencies:** Aligns with Week 0 Technical Debt items in TODO.md
+
+**Context:**
+The DTO documentation has significant technical debt that must be addressed alongside code changes. This phase synchronizes documentation with the planned DTO refactoring from TODO.md.
+
+**TODO.md Technical Debt Items (DTO-related):**
+| Item | Status | Impact on Docs |
+|------|--------|----------------|
+| Signal DTO: Remove causality field | Pending | Update Signal section |
+| Risk DTO: Remove causality field | Pending | Update Risk section |
+| Symbol field naming consistency | Pending | Update all DTOs with symbol fields |
+| DirectiveScope terminology | Rejected | Document rejection rationale |
+| StrategyDirective: target_trade_ids → target_plan_ids | Pending | Update StrategyDirective section |
+| ExecutionGroup: metadata field review | Pending | Update ExecutionGroup section |
+| ExecutionStrategyType: Remove DCA | Pending | Update enum documentation |
+| ExecutionDirective → RoutingDirective rename | Pending | Update naming throughout |
+| Asset format: BASE/QUOTE → BASE_QUOTE | Pending | Update validation patterns |
+
+**Approach:**
+1. **Review current DTO_ARCHITECTURE.md** against TODO.md items
+2. **Split by pipeline phase** (aligns with PIPELINE_FLOW.md):
+   - Core DTOs (Origin, RunAnchor, CausalityChain)
+   - Context & Detection DTOs (PlatformDataDTO, Signal, Risk)
+   - Planning DTOs (StrategyDirective, Plans)
+   - Execution DTOs (TradePlan, ExecutionGroup, ExecutionDirective)
+3. **Apply pending terminology changes** where documentation leads code
+4. **Mark "PENDING CODE CHANGE"** for items awaiting implementation
+
+| New Document | Content | Lines (est) |
+|--------------|---------|-------------|
+| `DTO_ARCHITECTURE.md` | Index, design principles, DTO categories | ~200 |
+| `DTO_CORE.md` | Origin, RunAnchor, CausalityChain, DispositionEnvelope | ~300 |
+| `DTO_PIPELINE.md` | PlatformDataDTO, Signal, Risk, StrategyDirective, Plans | ~400 |
+| `DTO_EXECUTION.md` | TradePlan, ExecutionGroup, ExecutionDirective, Order, Fill | ~400 |
+
+**Completion Criteria:**
+- [ ] All DTO docs under 1000 lines
+- [ ] Each TODO.md item reflected in documentation (or marked PENDING)
+- [ ] Consistent terminology (symbol, RoutingDirective, target_plan_ids)
+- [ ] Cross-references to TODO.md for pending changes
+- [ ] Aligned with PIPELINE_FLOW.md phase structure
+
+---
+
+### Phase 6: Template Compliance
 **Goal:** Update all pre-template docs to ARCHITECTURE_TEMPLATE format
 **Effort:** 3-4 hours
 **Commits:** Batch by priority
@@ -152,7 +215,6 @@ This plan defines the phased approach to align all architecture documentation wi
 |----------|-------|----------------|
 | `LAYERED_ARCHITECTURE.md` | 379 | Add template structure |
 | `PLUGIN_ANATOMY.md` | 538 | Add template structure |
-| `ASYNC_IO_ARCHITECTURE.md` | 997 | Review, ensure under limit |
 
 #### Priority 4: Preliminary/Design
 | Document | Lines | Updates Needed |
@@ -167,18 +229,18 @@ This plan defines the phased approach to align all architecture documentation wi
 
 ---
 
-### Phase 5: README & Navigation Update
+### Phase 7: README & Navigation Update
 **Goal:** Clean navigation reflecting new structure
 **Effort:** 1 hour
 **Commit:** Single commit
 
 | Task | Action |
 |------|--------|
-| 5.1 | Update "Quick Start" reading order (no V2 references) |
-| 5.2 | Update document tables with new/split docs |
-| 5.3 | Update "Critical Path for New Developers" |
-| 5.4 | Remove "Key Design Choices" V2 references |
-| 5.5 | Verify all links work |
+| 7.1 | Update "Quick Start" reading order (no V2 references) |
+| 7.2 | Update document tables with new/split docs |
+| 7.3 | Update "Critical Path for New Developers" |
+| 7.4 | Remove "Key Design Choices" V2 references |
+| 7.5 | Verify all links work |
 
 **New Reading Order (proposed):**
 1. `CORE_PRINCIPLES.md` - Vision & Design Philosophy
@@ -202,19 +264,21 @@ This plan defines the phased approach to align all architecture documentation wi
 |-------|--------|---------|-----------|-----------|
 | Phase 1: Archive Migration Docs | ⏳ Not Started | - | - | - |
 | Phase 2: Triage ARCHITECTURE_GAPS | ⏳ Not Started | - | - | - |
-| Phase 3: Split Over-Limit Docs | ⏳ Not Started | - | - | - |
-| Phase 4: Template Compliance | ⏳ Not Started | - | - | - |
-| Phase 5: README Update | ⏳ Not Started | - | - | - |
+| Phase 3: ASYNC_IO Special Treatment | ⏳ Not Started | - | - | - |
+| Phase 4: EVENT_ARCHITECTURE Split | ⏳ Not Started | - | - | - |
+| Phase 5: DTO Architecture Revision | ⏳ Not Started | - | - | - |
+| Phase 6: Template Compliance | ⏳ Not Started | - | - | - |
+| Phase 7: README Update | ⏳ Not Started | - | - | - |
 
 ### Metrics
 
-| Metric | Before | After Phase 1 | After Phase 2 | After Phase 3 | After Phase 4 | After Phase 5 |
-|--------|--------|---------------|---------------|---------------|---------------|---------------|
-| Total Docs | 22 | - | - | - | - | - |
-| Archived Docs | 0 | - | - | - | - | - |
-| Over Limit (>1000) | 3 | - | - | - | - | - |
-| Template Compliant | 6 | - | - | - | - | - |
-| V2 References | ~50 | - | - | - | - | - |
+| Metric | Before | P1 | P2 | P3 | P4 | P5 | P6 | P7 |
+|--------|--------|----|----|----|----|----|----|----| 
+| Total Docs | 22 | - | - | - | - | - | - | - |
+| Archived Docs | 0 | - | - | - | - | - | - | - |
+| Over Limit (>1000) | 3 | - | - | - | - | - | - | - |
+| Template Compliant | 6 | - | - | - | - | - | - | - |
+| V2 References | ~50 | - | - | - | - | - | - | - |
 
 ---
 
@@ -224,7 +288,9 @@ This plan defines the phased approach to align all architecture documentation wi
 |------|----------|-----------|
 | 2025-11-29 | Archive ARCHITECTURAL_SHIFTS.md | V3 is first version, no migration history needed |
 | 2025-11-29 | Archive REVISION_PLAN.md | Meta-tracking, not architecture content |
-| 2025-11-29 | Split DTO_ARCHITECTURE.md | 1423 lines > 1000 limit |
+| 2025-11-29 | ASYNC_IO_ARCHITECTURE.md special treatment | NL language + pre-design status requires evaluation |
+| 2025-11-29 | DTO Architecture as dedicated phase | Significant technical debt, align with TODO.md items |
+| 2025-11-29 | Split by pipeline phase | Aligns DTO docs with PIPELINE_FLOW.md structure |
 
 ---
 
@@ -232,7 +298,7 @@ This plan defines the phased approach to align all architecture documentation wi
 
 - [DOCUMENTATION_MAINTENANCE.md](../DOCUMENTATION_MAINTENANCE.md) - Maintenance guidelines
 - [ARCHITECTURE_TEMPLATE.md](../reference/templates/ARCHITECTURE_TEMPLATE.md) - Template to follow
-- [TODO.md](../TODO.md) - Project roadmap (will receive open gaps)
+- [TODO.md](../TODO.md) - Project roadmap (DTO technical debt items)
 
 ---
 
@@ -241,3 +307,4 @@ This plan defines the phased approach to align all architecture documentation wi
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2025-11-29 | AI Assistant | Initial plan based on documentation analysis |
+| 1.1 | 2025-11-29 | AI Assistant | ASYNC_IO special treatment, DTO dedicated phase with TODO.md alignment |
