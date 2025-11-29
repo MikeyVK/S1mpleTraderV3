@@ -3,7 +3,9 @@
 
 **Status:** APPROVED
 **Version:** 1.0
-**Last Updated:** 2025-11-02---
+**Last Updated:** 2025-11-02
+
+---
 
 ## Purpose
 
@@ -340,6 +342,8 @@ When creating a new SignalDetector/RiskMonitor:
 
 ---
 
-**Last Updated:** 2025-11-02  
-**Document Status:** Architecture Foundation  
-**Related Decision:** Sessie Overdracht - De "Quant Leap" Architectuur (2025-11-01)
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|--------|
+| 1.0 | 2025-11-02 | Team | Initial document - Quant Leap architecture |

@@ -3,7 +3,9 @@
 
 **Status:** APPROVED
 **Version:** 1.0
-**Last Updated:** 2025-11-29---
+**Last Updated:** 2025-11-29
+
+---
 
 ## Purpose
 
@@ -379,4 +381,11 @@ def test_my_worker():
 
 - [Platform Components](PLATFORM_COMPONENTS.md) - StrategyCache implementation
 - [Worker Taxonomy](WORKER_TAXONOMY.md) - Worker data access patterns
-- [Core Principles](CORE_PRINCIPLES.md) - Design philosophy behind this model
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|--------|
+| 1.0 | 2025-10-29 | Team | Initial document |
+| 1.1 | 2025-11-29 | AI | English translation |

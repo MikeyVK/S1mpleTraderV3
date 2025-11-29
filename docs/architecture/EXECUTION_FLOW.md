@@ -3,7 +3,9 @@
 
 **Status:** DEFINITIVE
 **Version:** 2.0
-**Last Updated:** 2025-11-27---
+**Last Updated:** 2025-11-27
+
+---
 
 ## Purpose
 
@@ -402,3 +404,12 @@ story = {
 7. **Origin DTO**: Type-safe origin reference replaces tick_id/news_id/schedule_id
 8. **ExecutionPlanner as 4th TradePlanner**: Aggregates Entry/Size/Exit plans + selects execution algorithm
 9. **ExecutionWorker Container Ownership**: Full CRUD access to StrategyLedger, registers containers on-demand
+
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 | 2025-11-20 | Team | Initial document |
+| 2.0 | 2025-11-27 | AI | Major revision - dual flow architecture, SRP separation |

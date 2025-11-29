@@ -3,7 +3,9 @@
 
 **Status:** APPROVED
 **Version:** 1.0
-**Last Updated:** 2025-11-29---
+**Last Updated:** 2025-11-29
+
+---
 
 ## Purpose
 
@@ -247,4 +249,11 @@ For every new feature, ask:
 - [Plugin Anatomy](PLUGIN_ANATOMY.md) - Plugin First in practice
 - [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - Contract-Driven data flow
 - [Configuration Layers](CONFIGURATION_LAYERS.md) - Configuration-Driven in detail
-- [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) - Separation of facts and interpretation
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|--------|
+| 1.0 | 2025-10-29 | Team | Initial document |
+| 1.1 | 2025-11-29 | AI | English translation |
