@@ -1,8 +1,9 @@
+# docs/architecture/TRADE_LIFECYCLE.md
 # Trade Lifecycle & Architecture - S1mpleTraderV3
 
-**Status:** Definitive  
-**Version:** 2.0  
-**Last Updated:** 2025-11-27  
+**Status:** DEFINITIVE
+**Version:** 2.0
+**Last Updated:** 2025-11-27
 **Goal:** This document complements `PIPELINE_FLOW.md` and `EXECUTION_FLOW.md`. It defines the data hierarchy, lifecycle scopes, and interaction patterns between strategic plugins and platform components.
 
 ---

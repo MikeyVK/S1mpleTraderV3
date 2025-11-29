@@ -1,10 +1,9 @@
-# Strategy Pipeline Architecture
+# docs/architecture/PIPELINE_FLOW.md
+# Strategy Pipeline Architecture - S1mpleTraderV3
 
-**Status:** DEFINITIVE  
-**Version:** 3.2  
-**Last Updated:** 2025-11-28
-
----
+**Status:** DEFINITIVE
+**Version:** 3.2
+**Last Updated:** 2025-11-28---
 
 ## Purpose
 

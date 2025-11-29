@@ -1,10 +1,9 @@
+# docs/architecture/EXECUTION_FLOW.md
 # Execution Flow Architecture - S1mpleTraderV3
 
-**Status:** Architectural Contract - Definitive  
-**Version:** 2.0  
-**Last Updated:** 2025-11-27
-
----
+**Status:** DEFINITIVE
+**Version:** 2.0
+**Last Updated:** 2025-11-27---
 
 ## Executive Summary
 

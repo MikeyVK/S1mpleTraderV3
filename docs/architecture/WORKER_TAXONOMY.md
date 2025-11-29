@@ -1,10 +1,9 @@
-# Worker Taxonomy
+# docs/architecture/WORKER_TAXONOMY.md
+# Worker Taxonomy - S1mpleTraderV3
 
-**Status:** Architecture Foundation  
-**Version:** 2.0  
-**Last Updated:** 2025-11-27
-
----
+**Status:** APPROVED
+**Version:** 2.0
+**Last Updated:** 2025-11-27---
 
 ## Overview
 

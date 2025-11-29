@@ -1,9 +1,9 @@
-# Core Principles - Vision & Design Philosophy
+# docs/architecture/CORE_PRINCIPLES.md
+# Core Principles - S1mpleTraderV3
 
-**Status:** Architecture Foundation  
-**Last Updated:** 2025-11-29
-
----
+**Status:** APPROVED
+**Version:** 1.0
+**Last Updated:** 2025-11-29---
 
 ## Vision
 

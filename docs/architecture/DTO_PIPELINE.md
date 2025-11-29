@@ -1,10 +1,9 @@
-# DTO Pipeline - Analysis & Strategic DTOs
+# docs/architecture/DTO_PIPELINE.md
+# DTO Pipeline - S1mpleTraderV3
 
-**Status:** Design  
-**Version:** 1.0  
-**Last Updated:** 2025-11-29
-
----
+**Status:** PRELIMINARY
+**Version:** 1.0
+**Last Updated:** 2025-11-29---
 
 ## 1. Purpose
 

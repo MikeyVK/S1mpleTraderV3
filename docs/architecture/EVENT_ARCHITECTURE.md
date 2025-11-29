@@ -1,10 +1,9 @@
-# Event Architecture - Conceptual Model
+# docs/architecture/EVENT_ARCHITECTURE.md
+# Event Architecture - S1mpleTraderV3
 
-**Status:** Design  
-**Version:** 2.0  
-**Last Updated:** 2025-11-29
-
----
+**Status:** PRELIMINARY
+**Version:** 2.0
+**Last Updated:** 2025-11-29---
 
 ## 1. Executive Summary
 

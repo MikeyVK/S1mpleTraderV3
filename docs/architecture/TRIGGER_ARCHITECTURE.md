@@ -1,10 +1,9 @@
-# Trigger Architecture
+# docs/architecture/TRIGGER_ARCHITECTURE.md
+# Trigger Architecture - S1mpleTraderV3
 
-**Status:** DRAFT  
-**Version:** 0.1  
-**Last Updated:** 2025-11-28
-
----
+**Status:** DRAFT
+**Version:** 0.1
+**Last Updated:** 2025-11-28---
 
 ## 1. Document Purpose
 

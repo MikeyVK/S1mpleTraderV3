@@ -1,9 +1,9 @@
-# Layered Architecture
+# docs/architecture/LAYERED_ARCHITECTURE.md
+# Layered Architecture - S1mpleTraderV3
 
-**Status:** Architecture Foundation  
-**Last Updated:** 2025-10-29
-
----
+**Status:** APPROVED
+**Version:** 1.0
+**Last Updated:** 2025-10-29---
 
 ## Overview
 

@@ -1,5 +1,5 @@
 # docs/architecture/DOCUMENTATION_ALIGNMENT_PLAN.md
-# Documentation Alignment Plan v2 - S1mpleTraderV3
+# Documentation Alignment Plan - S1mpleTraderV3
 
 **Status:** DRAFT
 **Version:** 2.0

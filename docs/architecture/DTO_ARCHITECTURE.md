@@ -1,10 +1,9 @@
-# DTO Architecture - Overview
+# docs/architecture/DTO_ARCHITECTURE.md
+# DTO Architecture - S1mpleTraderV3
 
-**Status:** Design  
-**Version:** 2.0  
-**Last Updated:** 2025-11-29
-
----
+**Status:** PRELIMINARY
+**Version:** 2.0
+**Last Updated:** 2025-11-29---
 
 ## 1. Purpose
 

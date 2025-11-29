@@ -1,9 +1,9 @@
-# Point-in-Time Data Model - DTO-Centric Architecture
+# docs/architecture/POINT_IN_TIME_MODEL.md
+# Point-in-Time Data Model - S1mpleTraderV3
 
-**Status:** Architecture Foundation  
-**Last Updated:** 2025-11-29
-
----
+**Status:** APPROVED
+**Version:** 1.0
+**Last Updated:** 2025-11-29---
 
 **Core Concept:** All data exchange is based on **one specific moment** (tick), NOT on a growing dataset.
 
