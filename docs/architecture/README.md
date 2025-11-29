@@ -44,6 +44,15 @@
 | [Event Architecture](EVENT_ARCHITECTURE.md) | Conceptual Event Model | Event producers/consumers, scoping, naming conventions |
 | [Event Persistence](EVENT_PERSISTENCE.md) | Event Durability | EventStore, EventQueue, delivery guarantees, recovery |
 
+### DTO Architecture
+
+| Document | Purpose | Key Topics |
+|----------|---------|------------|
+| [DTO Architecture](DTO_ARCHITECTURE.md) | **DTO OVERVIEW** | Taxonomy, design principles, validation conventions |
+| [DTO Core](DTO_CORE.md) | Platform DTOs | Origin, PlatformDataDTO, CausalityChain, DispositionEnvelope |
+| [DTO Pipeline](DTO_PIPELINE.md) | Analysis & Strategic | Signal, Risk, StrategyDirective, TradePlan |
+| [DTO Execution](DTO_EXECUTION.md) | Planning & Execution | EntryPlan, SizePlan, ExitPlan, ExecutionDirective, ExecutionGroup |
+
 **Design Documents (pre-architecture):**
 - [AsyncIO Design](../development/ASYNC_IO_DESIGN.md) - AsyncIO patterns, Timing separation (NL, pending translation)
 

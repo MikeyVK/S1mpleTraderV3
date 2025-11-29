@@ -296,8 +296,8 @@ The DTO documentation has significant technical debt that must be addressed alon
 | Phase 1: Archive Migration Docs | ✅ Complete | 2025-11-29 | 2025-11-29 | 7a73b40 |
 | Phase 2: Triage ARCHITECTURE_GAPS | ✅ Complete | 2025-11-29 | 2025-11-29 | b03574a |
 | Phase 3: ASYNC_IO Special Treatment | ✅ Complete | 2025-11-29 | 2025-11-29 | f259aef |
-| Phase 4: EVENT_ARCHITECTURE Split | ✅ Complete | 2025-11-29 | 2025-11-29 | TBD |
-| Phase 5: DTO Architecture Revision | ⏳ Not Started | - | - | - |
+| Phase 4: EVENT_ARCHITECTURE Split | ✅ Complete | 2025-11-29 | 2025-11-29 | d02bc47 |
+| Phase 5: DTO Architecture Revision | ✅ Complete | 2025-11-29 | 2025-11-29 | TBD |
 | Phase 6: Template Compliance | ⏳ Not Started | - | - | - |
 | Phase 7: README Update | ⏳ Not Started | - | - | - |
 
@@ -305,11 +305,11 @@ The DTO documentation has significant technical debt that must be addressed alon
 
 | Metric | Before | P1 | P2 | P3 | P4 | P5 | P6 | P7 |
 |--------|--------|----|----|----|----|----|----|----| 
-| Total Docs | 22 | 20 | 19 | 18 | 19 | - | - | - |
-| Archived Docs | 0 | 2 | 3 | 3 | 3 | - | - | - |
-| Over Limit (>1000) | 3 | 3 | 2 | 2 | 1 | - | - | - |
-| Template Compliant | 6 | 6 | 6 | 6 | 8 | - | - | - |
-| V2 References | ~50 | ~10 | ~10 | ~10 | ~10 | - | - | - |
+| Total Docs | 22 | 20 | 19 | 18 | 19 | 22 | - | - |
+| Archived Docs | 0 | 2 | 3 | 3 | 3 | 3 | - | - |
+| Over Limit (>1000) | 3 | 3 | 2 | 2 | 1 | 0 | - | - |
+| Template Compliant | 6 | 6 | 6 | 6 | 8 | 12 | - | - |
+| V2 References | ~50 | ~10 | ~10 | ~10 | ~10 | ~10 | - | - |
 
 ---
 
@@ -325,6 +325,7 @@ The DTO documentation has significant technical debt that must be addressed alon
 | 2025-11-29 | Split by pipeline phase | Aligns DTO docs with PIPELINE_FLOW.md structure |
 | 2025-11-29 | Move ASYNC_IO to development/ | Document is Status=Design (pre-architecture), in Dutch, exploratory content - not validated architecture |
 | 2025-11-29 | Split EVENT_ARCHITECTURE by concern | 1163 lines split into: EVENT_ARCHITECTURE.md (conceptual ~480 lines) + EVENT_PERSISTENCE.md (durability ~420 lines), translated to English |
+| 2025-11-29 | Split DTO_ARCHITECTURE by pipeline | 1424 lines split into: DTO_ARCHITECTURE.md (index ~200), DTO_CORE.md (~200), DTO_PIPELINE.md (~280), DTO_EXECUTION.md (~340) | |
 
 ---
 
