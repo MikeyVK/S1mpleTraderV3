@@ -1,7 +1,7 @@
 # Documentation Alignment Plan
 
-**Status:** ACTIVE
-**Version:** 1.1
+**Status:** COMPLETE
+**Version:** 1.2
 **Created:** 2025-11-29
 **Last Updated:** 2025-11-29
 
@@ -298,18 +298,18 @@ The DTO documentation has significant technical debt that must be addressed alon
 | Phase 3: ASYNC_IO Special Treatment | ✅ Complete | 2025-11-29 | 2025-11-29 | f259aef |
 | Phase 4: EVENT_ARCHITECTURE Split | ✅ Complete | 2025-11-29 | 2025-11-29 | d02bc47 |
 | Phase 5: DTO Architecture Revision | ✅ Complete | 2025-11-29 | 2025-11-29 | 3f30aad |
-| Phase 6: Template Compliance | ✅ Complete | 2025-11-29 | 2025-11-29 | TBD |
-| Phase 7: README Update | ⏳ Not Started | - | - | - |
+| Phase 6: Template Compliance | ✅ Complete | 2025-11-29 | 2025-11-29 | f93cc4c |
+| Phase 7: README Update | ✅ Complete | 2025-11-29 | 2025-11-29 | TBD |
 
 ### Metrics
 
 | Metric | Before | P1 | P2 | P3 | P4 | P5 | P6 | P7 |
 |--------|--------|----|----|----|----|----|----|----| 
-| Total Docs | 22 | 20 | 19 | 18 | 19 | 22 | 22 | - |
-| Archived Docs | 0 | 2 | 3 | 3 | 3 | 3 | 3 | - |
-| Over Limit (>1000) | 3 | 3 | 2 | 2 | 1 | 0 | 0 | - |
-| Template Compliant | 6 | 6 | 6 | 6 | 8 | 12 | 20 | - |
-| V2 References | ~50 | ~10 | ~10 | ~10 | ~10 | ~10 | ~5 | - |
+| Total Docs | 22 | 20 | 19 | 18 | 19 | 22 | 22 | 22 |
+| Archived Docs | 0 | 2 | 3 | 3 | 3 | 3 | 3 | 3 |
+| Over Limit (>1000) | 3 | 3 | 2 | 2 | 1 | 0 | 0 | 0 |
+| Template Compliant | 6 | 6 | 6 | 6 | 8 | 12 | 20 | 22 |
+| V2 References | ~50 | ~10 | ~10 | ~10 | ~10 | ~10 | ~5 | 0 |
 
 ---
 
@@ -327,6 +327,7 @@ The DTO documentation has significant technical debt that must be addressed alon
 | 2025-11-29 | Split EVENT_ARCHITECTURE by concern | 1163 lines split into: EVENT_ARCHITECTURE.md (conceptual ~480 lines) + EVENT_PERSISTENCE.md (durability ~420 lines), translated to English |
 | 2025-11-29 | Split DTO_ARCHITECTURE by pipeline | 1424 lines split into: DTO_ARCHITECTURE.md (index ~200), DTO_CORE.md (~200), DTO_PIPELINE.md (~280), DTO_EXECUTION.md (~340) |
 | 2025-11-29 | Phase 6 Template Compliance | Translated CORE_PRINCIPLES.md to English, added headers to POINT_IN_TIME_MODEL.md, moved LOGENRICHER_DESIGN.md to development/, all pre-template docs now have Status/Last Updated |
+| 2025-11-29 | Phase 7 README Update | Fixed TickCache→StrategyCache terminology, updated worker count to 6, removed remaining V2 references, verified all links |
 
 ---
 

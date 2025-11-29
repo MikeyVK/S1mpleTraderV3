@@ -38,7 +38,7 @@
 
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
-| [Point-in-Time Model](POINT_IN_TIME_MODEL.md) | **CORE DATA MODEL** | TickCache, IStrategyCache, RunAnchor, DTO flow |
+| [Point-in-Time Model](POINT_IN_TIME_MODEL.md) | **CORE DATA MODEL** | StrategyCache, IStrategyCache, RunAnchor, DTO flow |
 | [Data Flow](DATA_FLOW.md) | Worker Communication | DispositionEnvelope, CONTINUE/PUBLISH/STOP |
 | [Event-Driven Wiring](EVENT_DRIVEN_WIRING.md) | Event Architecture | EventBus, EventAdapter, wiring_map.yaml |
 | [Event Architecture](EVENT_ARCHITECTURE.md) | Conceptual Event Model | Event producers/consumers, scoping, naming conventions |
@@ -60,17 +60,17 @@
 
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
-| [Worker Taxonomy](WORKER_TAXONOMY.md) | 5 Worker Categories | Context, Signal, Risk, Planning, StrategyPlanner |
+| [Worker Taxonomy](WORKER_TAXONOMY.md) | 6 Worker Categories | Context, Signal, Risk, Planning, StrategyPlanner, Execution |
 | [Plugin Anatomy](PLUGIN_ANATOMY.md) | Plugin Structure | manifest.yaml, worker.py, schema.py, DTOs |
 
 ### Platform Infrastructure
 
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
-| [Platform Components](PLATFORM_COMPONENTS.md) | Core Singletons | StrategyCache, EventBus, TickCacheManager, PluginRegistry |
+| [Platform Components](PLATFORM_COMPONENTS.md) | Core Singletons | StrategyCache, EventBus, StrategyCacheManager, PluginRegistry |
 
 **Preliminary Designs (in development/):**
-- [LogEnricher Design](../development/LOGENRICHER_DESIGN.md) - Structured Logging (preliminary V2→V3 translation)
+- [LogEnricher Design](../development/LOGENRICHER_DESIGN.md) - Structured Logging (preliminary design)
 
 ## Critical Path for New Developers
 
@@ -105,14 +105,14 @@
 
 ```mermaid
 graph LR
-    W1[Worker] -.Sync Flow.-> TC[TickCache<br/>IStrategyCache]
+    W1[Worker] -.Sync Flow.-> SC[StrategyCache<br/>IStrategyCache]
     W2[Worker] -.Async Signals.-> Bus[EventBus<br/>DispositionEnvelope]
     
-    style TC fill:#e1f5ff
+    style SC fill:#e1f5ff
     style Bus fill:#ffe1e1
 ```
 
-- **Sync Flow** (worker → worker): TickCache via `IStrategyCache.set_result_dto()`
+- **Sync Flow** (worker → worker): StrategyCache via `IStrategyCache.set_result_dto()`
 - **Async Signals** (worker → platform): EventBus via `DispositionEnvelope(PUBLISH)`
 
 ### Worker Output Types
