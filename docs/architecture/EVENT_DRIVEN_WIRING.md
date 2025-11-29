@@ -112,7 +112,7 @@ eventbus.publish(
 - Declared in worker manifest (`publishes` section)
 - Published via `PUBLISH` disposition
 - Human-readable names: `SIGNAL_DETECTED`, `EMERGENCY_HALT`
-- **No payload** (data retrieved from TickCache by subscribers)
+- **No payload** (data retrieved from StrategyCache by subscribers)
 
 **Example:**
 ```python
@@ -120,7 +120,7 @@ eventbus.publish(
 return DispositionEnvelope(
     disposition="PUBLISH",
     event_name="BREAKOUT_SIGNAL",
-    event_payload=Signal(...)  # Payload goes to TickCache, not event!
+    event_payload=Signal(...)  # Payload goes to StrategyCache, not event!
 )
 ```
 

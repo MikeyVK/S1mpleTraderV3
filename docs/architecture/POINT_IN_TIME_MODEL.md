@@ -107,7 +107,7 @@ class MyWorker(StandardWorker):
         # 4. Calculate
         result = my_calculation(ema_dto, df)
         
-        # 5. Produce output DTO (stored in TickCache)
+        # 5. Produce output DTO (stored in StrategyCache)
         self.strategy_cache.set_result_dto(
             self,
             MyOutputDTO(value=result, timestamp=anchor.timestamp)
@@ -368,7 +368,7 @@ def test_my_worker():
 
 ## Benefits Summary
 
-✅ **Memory Efficient**: TickCache cleared after each run
+✅ **Memory Efficient**: StrategyCache cleared after each run
 ✅ **Type-Safe**: Pydantic validation + Pylance type checking
 ✅ **Testable**: Mock IStrategyCache, inject test DTOs
 ✅ **Debuggable**: Explicit dependencies, no hidden state

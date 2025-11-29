@@ -12,9 +12,9 @@ Je bent een AI-assistent voor **S1mpleTrader V3** development. Je helpt met:
 **Voordat je IETS implementeert:**
 
 1. ⭐ **START**: [Architecture - Core Principles](docs/architecture/CORE_PRINCIPLES.md)
-2. ⭐ **CRITICAL**: [Architecture - Architectural Shifts](docs/architecture/ARCHITECTURAL_SHIFTS.md)
-3. ⭐ **QUANT LEAP**: [Architecture - Objective Data Philosophy](docs/architecture/OBJECTIVE_DATA_PHILOSOPHY.md)
-4. ⭐ **DATA MODEL**: [Architecture - Point-in-Time Model](docs/architecture/POINT_IN_TIME_MODEL.md)
+2. ⭐ **QUANT LEAP**: [Architecture - Objective Data Philosophy](docs/architecture/OBJECTIVE_DATA_PHILOSOPHY.md)
+3. ⭐ **DATA MODEL**: [Architecture - Point-in-Time Model](docs/architecture/POINT_IN_TIME_MODEL.md)
+4. ⭐ **PIPELINE**: [Architecture - Pipeline Flow](docs/architecture/PIPELINE_FLOW.md)
 5. 📋 **WORKFLOW**: [Coding Standards - TDD Workflow](docs/coding_standards/TDD_WORKFLOW.md)
 6. 📊 **STATUS**: [Implementation Status](docs/implementation/IMPLEMENTATION_STATUS.md)
 
@@ -34,8 +34,8 @@ docs/
 ├── architecture/          # System design, patterns, principles
 │   ├── README.md         # Architecture index (start here!)
 │   ├── CORE_PRINCIPLES.md
-│   ├── ARCHITECTURAL_SHIFTS.md    # CRITICAL!
-│   └── POINT_IN_TIME_MODEL.md     # CRITICAL!
+│   ├── OBJECTIVE_DATA_PHILOSOPHY.md   # Quant Leap!
+│   └── POINT_IN_TIME_MODEL.md         # CRITICAL!
 │
 ├── coding_standards/      # TDD, quality gates, code style
 │   ├── TDD_WORKFLOW.md
@@ -79,11 +79,9 @@ docs/
 
 ## The 3 Critical Shifts (Must Understand!)
 
-1. **No Operators** - Workers bedraad via EventAdapters + wiring_map.yaml
-2. **No Growing DataFrames** - Point-in-Time DTOs via IStrategyCache
-3. **No Runtime YAML** - BuildSpec-driven bootstrap with fail-fast validation
-
-**Details:** [Architectural Shifts](docs/architecture/ARCHITECTURAL_SHIFTS.md)
+1. **No Operators** - Workers wired via EventAdapters + wiring_map.yaml → See [Event-Driven Wiring](docs/architecture/EVENT_DRIVEN_WIRING.md)
+2. **No Growing DataFrames** - Point-in-Time DTOs via IStrategyCache → See [Point-in-Time Model](docs/architecture/POINT_IN_TIME_MODEL.md)
+3. **No Runtime YAML** - BuildSpec-driven bootstrap with fail-fast validation → See [Configuration Layers](docs/architecture/CONFIGURATION_LAYERS.md)
 
 ## Standard Implementation Workflow
 
@@ -213,7 +211,7 @@ git branch -d feature/my-feature
 
 ## Critical Success Factors
 
-✅ **Read Architectural Shifts FIRST** - Non-negotiable
+✅ **Read Core Principles + Objective Data Philosophy FIRST** - Non-negotiable
 ✅ **Follow TDD** - RED → GREEN → REFACTOR
 ✅ **All quality gates 10/10** - No exceptions
 ✅ **Feature branches** - Never commit directly to main
@@ -232,10 +230,10 @@ git branch -d feature/my-feature
 
 ## Your Checklist Before ANY Implementation
 
-- [ ] Gelezen: CORE_PRINCIPLES.md
-- [ ] Gelezen: ARCHITECTURAL_SHIFTS.md (3 shifts duidelijk?)
+- [ ] Gelezen: CORE_PRINCIPLES.md (4 principles duidelijk?)
 - [ ] Gelezen: OBJECTIVE_DATA_PHILOSOPHY.md (ContextWorkers = facts, consumers = interpretation?)
 - [ ] Gelezen: POINT_IN_TIME_MODEL.md (IStrategyCache begrip?)
+- [ ] Gelezen: PIPELINE_FLOW.md (6+1 phases duidelijk?)
 - [ ] Gelezen: Relevante worker/DTO/platform doc
 - [ ] Ontwerp gemaakt (architecturale positie, verantwoordelijkheden)
 - [ ] Template gevonden (docs/reference/)

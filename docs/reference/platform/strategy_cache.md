@@ -543,6 +543,6 @@ class RunAnchor:
 
 - **Protocol:** [IStrategyCache Protocol](../../architecture/POINT_IN_TIME_MODEL.md#istrategycache-protocol)
 - **Architecture:** [Point-in-Time Model](../../architecture/POINT_IN_TIME_MODEL.md)
-- **Architecture:** [No Growing DataFrames Shift](../../architecture/ARCHITECTURAL_SHIFTS.md#shift-2-no-growing-dataframes)
+- **Architecture:** [Point-in-Time Model](../../architecture/POINT_IN_TIME_MODEL.md)
 - **Tests:** `tests/unit/core/test_strategy_cache.py`
 - **Implementation Status:** [Phase 3.1 Complete](../../implementation/IMPLEMENTATION_STATUS.md)

@@ -44,11 +44,18 @@ Documentation gap analysis - tracking missing architecture docs and broken links
 
 ## Architecture Documentation (docs/architecture/)
 
-### ✅ Completed (4)
-1. `CORE_PRINCIPLES.md` - ✅ EXISTS
-2. `ARCHITECTURAL_SHIFTS.md` - ✅ EXISTS
-3. `POINT_IN_TIME_MODEL.md` - ✅ EXISTS
-4. `PLATFORM_COMPONENTS.md` - ✅ EXISTS
+### ✅ Completed (20+)
+
+All architecture docs now exist. See `docs/architecture/README.md` for full list.
+
+Key docs:
+- `CORE_PRINCIPLES.md` - 4 fundamental principles
+- `POINT_IN_TIME_MODEL.md` - StrategyCache data model
+- `PIPELINE_FLOW.md` - 6+1 phase pipeline
+- `WORKER_TAXONOMY.md` - 6 worker categories
+- `OBJECTIVE_DATA_PHILOSOPHY.md` - Quant Leap philosophy
+
+**Note:** `ARCHITECTURAL_SHIFTS.md` was a V2→V3 migration doc and has been **deprecated**. The 3 shifts are now documented in their respective architecture docs.
 
 ### 🔴 Missing Files (5)
 

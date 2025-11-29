@@ -88,12 +88,12 @@ plugins/[category]/[plugin_name]/
 ### When to Include `dtos/` Folder
 
 **Include `dtos/` folder ONLY if:**
-- Plugin produces DTOs for TickCache (context enrichment, intermediate data)
+- Plugin produces DTOs for StrategyCache (context enrichment, intermediate data)
 - DTOs need to be consumed by other workers
 
 **Do NOT include `dtos/` folder if:**
 - Plugin only publishes system DTOs (Signal, Risk, StrategyDirective)
-- Plugin is pure consumer (only reads from TickCache)
+- Plugin is pure consumer (only reads from StrategyCache)
 
 **Note:** ~95% of plugins do NOT have a `dtos/` folder.
 
@@ -182,7 +182,7 @@ identification:
 ```
 
 **Valid Worker Types (ENFORCED):**
-- `context_worker` - Objective fact producer (TickCache only)
+- `context_worker` - Objective fact producer (StrategyCache only)
 - `signal_detector` - Subjective signal detector (Signal)
 - `risk_monitor` - Risk detector (Risk)
 - `planning_worker` - Plan producer (EntryPlan, SizePlan, etc.)
@@ -198,15 +198,15 @@ identification:
 ```yaml
 # Worker A
 identification:
-  type: "context_worker"  # ENFORCED: Can only write to TickCache
+  type: "context_worker"  # ENFORCED: Can only write to StrategyCache
   subtype: "indicator_calculation"  # LABEL: For documentation
 
 # Worker B  
 identification:
-  type: "context_worker"  # ENFORCED: Can only write to TickCache
+  type: "context_worker"  # ENFORCED: Can only write to StrategyCache
   subtype: "structural_analysis"  # LABEL: For documentation
 
-# Both workers are IDENTICAL architecturally - both write DTOs to TickCache
+# Both workers are IDENTICAL architecturally - both write DTOs to StrategyCache
 # The subtype just helps humans categorize and find plugins
 ```
 
@@ -242,8 +242,8 @@ dependencies:
 ```
 
 **Notes:**
-- `requires_dtos`: DTOs this worker consumes from TickCache
-- `produces_dtos`: DTOs this worker stores to TickCache
+- `requires_dtos`: DTOs this worker consumes from StrategyCache
+- `produces_dtos`: DTOs this worker stores to StrategyCache
 - `source`: Fully qualified path in `dto_reg` (enrolled location)
 - `local_path`: Relative path within plugin folder
 

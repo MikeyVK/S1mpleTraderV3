@@ -12,8 +12,8 @@
 
 **⚠️ VERPLICHT:** Dit document veronderstelt begrip van de V3 architectuur. Lees eerst:
 
-1. ✅ [ARCHITECTURAL_SHIFTS.md](../architecture/ARCHITECTURAL_SHIFTS.md) - **NON-NEGOTIABLE**
-2. ✅ [WORKER_TAXONOMY.md](../architecture/WORKER_TAXONOMY.md) - 5 worker categories
+1. ✅ [CORE_PRINCIPLES.md](../architecture/CORE_PRINCIPLES.md) - 4 fundamental principles
+2. ✅ [WORKER_TAXONOMY.md](../architecture/WORKER_TAXONOMY.md) - 6 worker categories
 3. ✅ [CONFIGURATION_LAYERS.md](../architecture/CONFIGURATION_LAYERS.md) - 3-layer config hierarchy
 4. ✅ [PLUGIN_ANATOMY.md](../architecture/PLUGIN_ANATOMY.md) - Manifest structure
 

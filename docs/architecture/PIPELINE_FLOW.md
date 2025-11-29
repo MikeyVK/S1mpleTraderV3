@@ -215,7 +215,7 @@ StrategyJournalWriter → FlowTerminator
 **Role:** Probabilistic and creative - "I see a possibility"
 
 **Execution:** Parallel
-- All detectors receive same context from TickCache
+- All detectors receive same context from StrategyCache
 - EventAdapters fire workers simultaneously
 - Generate independent signals
 

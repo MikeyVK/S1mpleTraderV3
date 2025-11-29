@@ -690,7 +690,7 @@ We maintain the V2 worker-owned schema approach because it:
 ## Related Documentation
 
 - **IWorkerLifecycle Design:** [IWORKERLIFECYCLE_DESIGN.md](IWORKERLIFECYCLE_DESIGN.md) - Worker initialization
-- **Architectural Shifts:** [ARCHITECTURAL_SHIFTS.md](../architecture/ARCHITECTURAL_SHIFTS.md) - BuildSpec rationale
+- **Configuration Layers:** [CONFIGURATION_LAYERS.md](../architecture/CONFIGURATION_LAYERS.md) - BuildSpec rationale
 - **Configuration Layers:** Future doc on 3-layer config system
 - **Plugin Anatomy:** Future doc on worker plugin structure
 
