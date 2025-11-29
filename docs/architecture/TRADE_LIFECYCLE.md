@@ -3,14 +3,29 @@
 
 **Status:** DEFINITIVE
 **Version:** 2.0
-**Last Updated:** 2025-11-27
-**Goal:** This document complements `PIPELINE_FLOW.md` and `EXECUTION_FLOW.md`. It defines the data hierarchy, lifecycle scopes, and interaction patterns between strategic plugins and platform components.
+---
+
+## Purpose
+
+This document defines the **data hierarchy and lifecycle scopes** for trade management. It complements PIPELINE_FLOW.md and EXECUTION_FLOW.md by defining the interaction patterns between strategic plugins and platform components.
+
+**Target audience:** Developers implementing planning or execution workers.
+
+## Scope
+
+**In Scope:**
+- Data hierarchy (TradePlan → ExecutionGroup → Order → Fill)
+- Lifecycle scopes (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
+- StrategyLedger ownership
+- Container state transitions
+
+**Out of Scope:**
+- Execution flow details → See [EXECUTION_FLOW.md](EXECUTION_FLOW.md)
+- Pipeline phases → See [PIPELINE_FLOW.md](PIPELINE_FLOW.md)
 
 ---
 
-## 1. Data Hierarchy (Nesting)
-
-The lifecycle of a strategy is not managed by a single "Trade DTO" traveling through the pipeline, but by a strict hierarchy of **Persisted Entities** in the `StrategyLedger`. This ensures a clear separation of concerns.
+## 1. Data Hierarchy (Nesting)The lifecycle of a strategy is not managed by a single "Trade DTO" traveling through the pipeline, but by a strict hierarchy of **Persisted Entities** in the `StrategyLedger`. This ensures a clear separation of concerns.
 
 **Core Principle:** The StrategyLedger is the **single source of truth** for all trade state. All containers (TradePlan, ExecutionGroup, Order, Fill) are owned exclusively by the Ledger.
 

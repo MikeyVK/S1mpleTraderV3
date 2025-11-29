@@ -5,7 +5,27 @@
 **Version:** 1.0
 **Last Updated:** 2025-10-29---
 
-## Overview
+## Purpose
+
+This document defines the **3-layer configuration hierarchy** that separates platform settings, operation/campaign settings, and strategy-specific configuration. This separation enables reusability, clarity, and maintainability.
+
+**Target audience:** Developers configuring strategies or extending platform configuration.
+
+## Scope
+
+**In Scope:**
+- PlatformConfig (Layer 1) - global, static settings
+- OperationConfig (Layer 2) - per workspace/campaign settings
+- StrategyConfig (Layer 3) - per strategy settings
+- Configuration loading sequence
+
+**Out of Scope:**
+- Bootstrap implementation details → See [LAYERED_ARCHITECTURE.md](LAYERED_ARCHITECTURE.md)
+- Plugin configuration schema → See [PLUGIN_ANATOMY.md](PLUGIN_ANATOMY.md)
+
+---
+
+## 1. Overview
 
 S1mpleTraderV3 uses a **3-layer configuration hierarchy** that strictly separates platform settings, operation/campaign settings, and strategy-specific configuration. This separation enables reusability, clarity, and maintainability.
 

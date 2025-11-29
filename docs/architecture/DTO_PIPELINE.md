@@ -3,23 +3,32 @@
 
 **Status:** PRELIMINARY
 **Version:** 1.0
-**Last Updated:** 2025-11-29---
-
-## 1. Purpose
-
-This document defines the **analysis and strategic DTOs** that flow through the detection-to-decision pipeline.
-
-**Covered DTOs:**
-- **Signal** - Trading opportunity detection output
-- **Risk** - Threat/risk detection output
-- **StrategyDirective** - Strategy planning decision output
-- **TradePlan** - Execution Anchor & State Container
-
-**Related:** See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md) for the complete DTO taxonomy and design principles.
+**Last Updated:** 2025-11-29
 
 ---
 
-## 2. Analysis DTOs
+## Purpose
+
+This document defines the **analysis and strategic DTOs** that flow through the detection-to-decision pipeline.
+
+**Target audience:** Developers implementing Detectors or StrategyPlanner.
+
+## Scope
+
+**In Scope:**
+- Signal - Trading opportunity detection output
+- Risk - Threat/risk detection output
+- StrategyDirective - Strategy planning decision output
+- TradePlan - Execution Anchor & State Container
+
+**Out of Scope:**
+- DTO taxonomy overview → See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md)
+- Core DTOs → See [DTO_CORE.md](DTO_CORE.md)
+- Execution DTOs → See [DTO_EXECUTION.md](DTO_EXECUTION.md)
+
+---
+
+## 1. Analysis DTOs
 
 ### Signal
 

@@ -5,7 +5,27 @@
 **Version:** 1.0
 **Last Updated:** 2025-10-29---
 
-## Overview
+## Purpose
+
+This document describes the **3-layer system architecture** (Frontend, Service, Backend) with strict unidirectional dependency flow. It defines layer responsibilities and the BuildSpec-driven bootstrap process.
+
+**Target audience:** Developers understanding system structure or implementing cross-layer features.
+
+## Scope
+
+**In Scope:**
+- Frontend, Service, and Backend layer responsibilities
+- Unidirectional dependency flow
+- Bootstrap workflow (ConfigLoader → Validator → Translator → Factories)
+- Flattened orchestration (no operators)
+
+**Out of Scope:**
+- Configuration details → See [CONFIGURATION_LAYERS.md](CONFIGURATION_LAYERS.md)
+- Platform components → See [PLATFORM_COMPONENTS.md](PLATFORM_COMPONENTS.md)
+
+---
+
+## 1. Overview
 
 S1mpleTraderV3 follows a **strict layered architecture** with unidirectional dependency flow. Each layer has distinct responsibilities and communicates through well-defined interfaces.
 

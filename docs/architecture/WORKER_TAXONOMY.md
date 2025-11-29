@@ -5,7 +5,27 @@
 **Version:** 2.0
 **Last Updated:** 2025-11-27---
 
-## Overview
+## Purpose
+
+This document defines the **6 worker categories** that organize all strategy logic in S1mpleTrader V3. Each category has distinct responsibilities, output patterns, and communication paths.
+
+**Target audience:** Developers implementing workers or understanding the pipeline.
+
+## Scope
+
+**In Scope:**
+- 6 worker categories: Context, Signal, Risk, Planning, StrategyPlanner, Execution
+- Type vs Subtype distinction
+- Worker communication patterns (StrategyCache vs EventBus)
+- DispositionEnvelope contract
+
+**Out of Scope:**
+- Plugin implementation → See [PLUGIN_ANATOMY.md](PLUGIN_ANATOMY.md)
+- Pipeline phases → See [PIPELINE_FLOW.md](PIPELINE_FLOW.md)
+
+---
+
+## 1. Overview
 
 S1mpleTraderV3 organizes all strategy logic into **6 worker categories**, each with distinct responsibilities in the trading pipeline. Workers are plugin-first components that process data through a **point-in-time model** without maintaining state across ticks.
 

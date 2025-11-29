@@ -5,7 +5,28 @@
 **Version:** 1.0
 **Last Updated:** 2025-11-29---
 
-## Vision
+## Purpose
+
+This document defines the **4 fundamental design principles** that guide all architectural decisions in S1mpleTrader V3. Every feature, component, and design choice must align with these principles.
+
+**Target audience:** All developers working on the platform.
+
+## Scope
+
+**In Scope:**
+- Plugin First principle
+- Separation of Concerns principle
+- Configuration-Driven principle
+- Contract-Driven principle
+- Principle interactions and violation consequences
+
+**Out of Scope:**
+- Implementation details → See specific architecture docs
+- Coding standards → See [CODE_STYLE.md](../coding_standards/CODE_STYLE.md)
+
+---
+
+## 1. Vision
 
 S1mpleTrader V3 is a **plugin-driven, event-driven** trading platform that supports the complete lifecycle of trading strategies. The system is designed for **modularity, testability, and configuration-driven behavior**.
 

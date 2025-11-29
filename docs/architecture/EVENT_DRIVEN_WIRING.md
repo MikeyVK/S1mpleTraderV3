@@ -5,7 +5,27 @@
 **Version:** 1.0
 **Last Updated:** 2025-10-29---
 
-## Overview
+## Purpose
+
+This document describes the **event-driven wiring architecture** that connects workers via EventBus and EventAdapters. It defines how components communicate without direct coupling.
+
+**Target audience:** Developers configuring worker wiring or implementing EventAdapters.
+
+## Scope
+
+**In Scope:**
+- EventBus N-to-N broadcast model
+- EventAdapter responsibilities
+- Wiring configuration (base_wiring.yaml, strategy_wiring_map.yaml)
+- System events vs custom events
+
+**Out of Scope:**
+- Event persistence → See [EVENT_PERSISTENCE.md](EVENT_PERSISTENCE.md)
+- Worker implementation → See [PLUGIN_ANATOMY.md](PLUGIN_ANATOMY.md)
+
+---
+
+## 1. Overview
 
 S1mpleTraderV3 uses an **event-driven architecture** where components (workers, singletons) communicate via EventBus and EventAdapters. This **flattened orchestration** replaces V2's operator-based model with direct, flexible wiring configured via YAML.
 

@@ -5,7 +5,27 @@
 **Version:** 1.0
 **Last Updated:** 2025-11-02---
 
-## Executive Summary
+## Purpose
+
+This document defines the **Objective Data Philosophy** ("Quant Leap") - the principle that ContextWorkers produce objective facts without interpretation, while consumers apply their own subjective logic. This enables contradictory strategies to coexist.
+
+**Target audience:** Developers implementing ContextWorkers or SignalDetectors.
+
+## Scope
+
+**In Scope:**
+- Objective fact production by ContextWorkers
+- Subjective interpretation by consumers
+- Removed SWOT aggregation components
+- Implementation checklist
+
+**Out of Scope:**
+- Worker implementation → See [PLUGIN_ANATOMY.md](PLUGIN_ANATOMY.md)
+- DTO definitions → See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md)
+
+---
+
+## 1. Executive Summary
 
 S1mpleTraderV3 implements a **pure objective data model** where ContextWorkers produce facts without interpretation, and consumers (SignalDetectors, RiskMonitors, StrategyPlanners) apply their own subjective logic. This enables contradictory strategies to coexist using the same objective data.
 

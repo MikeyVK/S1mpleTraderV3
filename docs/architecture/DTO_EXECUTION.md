@@ -3,21 +3,30 @@
 
 **Status:** PRELIMINARY
 **Version:** 1.0
-**Last Updated:** 2025-11-29---
-
-## 1. Purpose
-
-This document defines the **planning and execution DTOs** that translate strategic decisions into executable instructions.
-
-**Covered DTOs:**
-- **Planning DTOs:** EntryPlan, SizePlan, ExitPlan, ExecutionPlan
-- **Execution DTOs:** ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
-
-**Related:** See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md) for the complete DTO taxonomy and design principles.
+**Last Updated:** 2025-11-29
 
 ---
 
-## 2. Planning DTOs
+## Purpose
+
+This document defines the **planning and execution DTOs** that translate strategic decisions into executable instructions.
+
+**Target audience:** Developers implementing Planners or ExecutionBridge.
+
+## Scope
+
+**In Scope:**
+- Planning DTOs: EntryPlan, SizePlan, ExitPlan, ExecutionPlan
+- Execution DTOs: ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
+
+**Out of Scope:**
+- DTO taxonomy overview → See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md)
+- Core DTOs → See [DTO_CORE.md](DTO_CORE.md)
+- Pipeline DTOs → See [DTO_PIPELINE.md](DTO_PIPELINE.md)
+
+---
+
+## 1. Planning DTOs
 
 Planning DTOs represent tactical execution plans created by specialized planners.
 Each DTO translates strategic constraints from StrategyDirective into concrete execution parameters.

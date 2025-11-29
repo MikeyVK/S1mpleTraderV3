@@ -5,6 +5,27 @@
 **Version:** 2.0
 **Last Updated:** 2025-11-29---
 
+## Purpose
+
+This document describes the **conceptual event-driven architecture** of the platform. It defines event producers, consumers, scoping (PLATFORM vs STRATEGY), and naming conventions.
+
+**Target audience:** Developers implementing event-driven components or extending the event system.
+
+## Scope
+
+**In Scope:**
+- Event producers (A-F categories)
+- Event consumers
+- Event scoping (PLATFORM vs STRATEGY)
+- Event naming conventions
+- Design principles
+
+**Out of Scope:**
+- Event persistence → See [EVENT_PERSISTENCE.md](EVENT_PERSISTENCE.md)
+- Wiring configuration → See [EVENT_DRIVEN_WIRING.md](EVENT_DRIVEN_WIRING.md)
+
+---
+
 ## 1. Executive Summary
 
 This document describes the **conceptual event-driven architecture** of the platform, from external data sources to platform monitoring. It defines:

@@ -3,23 +3,32 @@
 
 **Status:** PRELIMINARY
 **Version:** 1.0
-**Last Updated:** 2025-11-29---
-
-## 1. Purpose
-
-This document defines the **platform and infrastructure DTOs** that form the foundation of data flow.
-
-**Covered DTOs:**
-- **Origin** - Type-safe platform data source identification
-- **PlatformDataDTO** - Minimal envelope for platform data ingestion
-- **CausalityChain** - ID-only causality tracking
-- **DispositionEnvelope** - Worker output routing control
-
-**Related:** See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md) for the complete DTO taxonomy and design principles.
+**Last Updated:** 2025-11-29
 
 ---
 
-## 2. Platform DTOs
+## Purpose
+
+This document defines the **platform and infrastructure DTOs** that form the foundation of data flow.
+
+**Target audience:** Developers implementing or consuming core platform DTOs.
+
+## Scope
+
+**In Scope:**
+- Origin - Type-safe platform data source identification
+- PlatformDataDTO - Minimal envelope for platform data ingestion
+- CausalityChain - ID-only causality tracking
+- DispositionEnvelope - Worker output routing control
+
+**Out of Scope:**
+- DTO taxonomy overview → See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md)
+- Pipeline DTOs → See [DTO_PIPELINE.md](DTO_PIPELINE.md)
+- Execution DTOs → See [DTO_EXECUTION.md](DTO_EXECUTION.md)
+
+---
+
+## 1. Platform DTOs
 
 ### Origin
 

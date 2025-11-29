@@ -5,7 +5,27 @@
 **Version:** 2.0
 **Last Updated:** 2025-11-27---
 
-## Executive Summary
+## Purpose
+
+This document describes the **complete execution flow** within a strategy - two parallel flows that start via DataProvider → FlowInitiator. It is event bus agnostic and focuses on technical data flow.
+
+**Target audience:** Developers implementing execution components or debugging flow issues.
+
+## Scope
+
+**In Scope:**
+- Flow 1: Sync Strategy Flow (Market Data → Order Placement)
+- Flow 2: Async Execution Flow (Order Updates → State Management)
+- DataProvider and FlowInitiator responsibilities
+- Order lifecycle states
+
+**Out of Scope:**
+- Trade lifecycle containers → See [TRADE_LIFECYCLE.md](TRADE_LIFECYCLE.md)
+- Pipeline phases → See [PIPELINE_FLOW.md](PIPELINE_FLOW.md)
+
+---
+
+## 1. Executive Summary
 
 This document describes the **complete execution flow** within a strategy - two parallel flows that both start via DataProvider → FlowInitiator. This document is **event bus agnostic** and focuses on technical data flow.
 

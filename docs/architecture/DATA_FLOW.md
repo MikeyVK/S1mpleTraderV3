@@ -5,7 +5,28 @@
 **Version:** 1.0
 **Last Updated:** 2025-10-29---
 
-## Overview
+## Purpose
+
+This document describes the **data communication patterns** between workers in S1mpleTrader V3. It defines the two communication paths (StrategyCache and EventBus) and the DispositionEnvelope contract.
+
+**Target audience:** Developers implementing workers or platform components.
+
+## Scope
+
+**In Scope:**
+- StrategyCache (synchronous flow data)
+- EventBus (asynchronous signals)
+- DispositionEnvelope contract (CONTINUE/PUBLISH/STOP)
+- Worker data access patterns
+- DTO sharing via enrollment
+
+**Out of Scope:**
+- DTO definitions → See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md)
+- Event wiring configuration → See [EVENT_DRIVEN_WIRING.md](EVENT_DRIVEN_WIRING.md)
+
+---
+
+## 1. Overview
 
 S1mpleTraderV3 uses a **point-in-time data model** where all data exchange is based on a specific moment (tick), not accumulated datasets. Workers communicate through two distinct paths: **TickCache** (synchronous flow, objective facts) and **EventBus** (asynchronous signals, subjective interpretations).
 

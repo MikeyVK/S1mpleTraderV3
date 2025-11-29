@@ -5,7 +5,28 @@
 **Version:** 1.0
 **Last Updated:** 2025-10-29---
 
-## Overview
+## Purpose
+
+This document defines the **plugin package structure** - how workers are packaged as self-contained Python packages with manifest, schema, and optional DTOs. It covers the manifest.yaml format and capability declarations.
+
+**Target audience:** Developers creating new worker plugins.
+
+## Scope
+
+**In Scope:**
+- Plugin folder structure
+- manifest.yaml structure (identification, dependencies, capabilities)
+- Worker implementation patterns (StandardWorker, EventDrivenWorker)
+- Configuration schema (schema.py)
+- Testing requirements
+
+**Out of Scope:**
+- Worker categories → See [WORKER_TAXONOMY.md](WORKER_TAXONOMY.md)
+- Data flow patterns → See [DATA_FLOW.md](DATA_FLOW.md)
+
+---
+
+## 1. Overview
 
 Plugins are self-contained Python packages that encapsulate strategy logic. Each plugin defines a worker, its configuration schema, dependencies, and capabilities. The platform loads and wires plugins based on YAML configuration.
 

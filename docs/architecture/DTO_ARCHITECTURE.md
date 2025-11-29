@@ -3,34 +3,40 @@
 
 **Status:** PRELIMINARY
 **Version:** 2.0
-**Last Updated:** 2025-11-29---
-
-## 1. Purpose
-
-This document provides the **overview and design principles** for the DTO (Data Transfer Object) architecture.
-
-**Purpose:**
-- DTO taxonomy and categorization
-- Design principles and conventions
-- Cross-references to detailed DTO documentation
-
-**Detailed DTO documentation:**
-- [DTO Core](DTO_CORE.md) - Platform DTOs (Origin, PlatformDataDTO) and infrastructure (CausalityChain)
-- [DTO Pipeline](DTO_PIPELINE.md) - Analysis DTOs (Signal, Risk) and Strategic DTOs (StrategyDirective, TradePlan)
-- [DTO Execution](DTO_EXECUTION.md) - Planning DTOs and Execution DTOs
+**Last Updated:** 2025-11-29
 
 ---
 
-## 2. DTO Taxonomy
+## Purpose
 
-### 2.1 Platform DTOs (Origin Tracking & Data Ingestion)
+This document provides the **overview and design principles** for the DTO (Data Transfer Object) architecture.
+
+**Target audience:** Developers implementing DTOs or understanding data contracts.
+
+## Scope
+
+**In Scope:**
+- DTO taxonomy (4 categories)
+- Design principles and conventions
+- Cross-references to detailed DTO documentation
+
+**Out of Scope:**
+- Core DTOs → See [DTO_CORE.md](DTO_CORE.md)
+- Pipeline DTOs → See [DTO_PIPELINE.md](DTO_PIPELINE.md)
+- Execution DTOs → See [DTO_EXECUTION.md](DTO_EXECUTION.md)
+
+---
+
+## 1. DTO Taxonomy
+
+### 1.1 Platform DTOs (Origin Tracking & Data Ingestion)
 
 | DTO | Purpose | Documentation |
 |-----|---------|---------------|
 | **Origin** | Type-safe platform data source identification | [DTO_CORE.md](DTO_CORE.md#origin) |
 | **PlatformDataDTO** | Minimal envelope for platform data ingestion | [DTO_CORE.md](DTO_CORE.md#platformdatadto) |
 
-### 2.2 Analysis DTOs (Detection → Decision)
+### 1.2 Analysis DTOs (Detection → Decision)
 
 | DTO | Purpose | Documentation |
 |-----|---------|---------------|
@@ -38,13 +44,13 @@ This document provides the **overview and design principles** for the DTO (Data 
 | **Risk** | Threat/risk detection output | [DTO_PIPELINE.md](DTO_PIPELINE.md#risk) |
 | **StrategyDirective** | Strategy planning decision output | [DTO_PIPELINE.md](DTO_PIPELINE.md#strategydirective) |
 
-### 2.3 Strategic DTOs (Lifecycle Container)
+### 1.3 Strategic DTOs (Lifecycle Container)
 
 | DTO | Purpose | Documentation |
 |-----|---------|---------------|
 | **TradePlan** | Execution Anchor & State Container | [DTO_PIPELINE.md](DTO_PIPELINE.md#tradeplan) |
 
-### 2.4 Planning DTOs (Decision → Execution Intent)
+### 1.4 Planning DTOs (Decision → Execution Intent)
 
 | DTO | Purpose | Documentation |
 |-----|---------|---------------|
@@ -53,7 +59,7 @@ This document provides the **overview and design principles** for the DTO (Data 
 | **ExitPlan** | Exit/stop-loss specifications | [DTO_EXECUTION.md](DTO_EXECUTION.md#exitplan) |
 | **ExecutionPlan** | Execution trade-offs (urgency, slippage, visibility) | [DTO_EXECUTION.md](DTO_EXECUTION.md#executionplan) |
 
-### 2.5 Execution DTOs (Orders & Coordination)
+### 1.5 Execution DTOs (Orders & Coordination)
 
 | DTO | Purpose | Documentation |
 |-----|---------|---------------|
@@ -61,7 +67,7 @@ This document provides the **overview and design principles** for the DTO (Data 
 | **ExecutionDirectiveBatch** | Multi-directive atomic coordination | [DTO_EXECUTION.md](DTO_EXECUTION.md#executiondirectivebatch) |
 | **ExecutionGroup** | Multi-order relationship tracking | [DTO_EXECUTION.md](DTO_EXECUTION.md#executiongroup) |
 
-### 2.6 Cross-Cutting DTOs (Infrastructure)
+### 1.6 Cross-Cutting DTOs (Infrastructure)
 
 | DTO | Purpose | Documentation |
 |-----|---------|---------------|
@@ -70,9 +76,9 @@ This document provides the **overview and design principles** for the DTO (Data 
 
 ---
 
-## 3. Design Principles
+## 2. Design Principles
 
-### 3.1 Immutability by Default
+### 2.1 Immutability by Default
 
 **Frozen Models:** Most DTOs are frozen (immutable) after creation.
 - Platform data is immutable snapshot of reality
@@ -84,7 +90,7 @@ This document provides the **overview and design principles** for the DTO (Data 
 - `TradePlan` - Status field evolves (ACTIVE → CLOSED)
 - `ExecutionGroup` - Tracking entity during execution lifecycle
 
-### 3.2 Causality Chain
+### 2.2 Causality Chain
 
 **Principle:** Every execution traces back to origin.
 
@@ -98,7 +104,7 @@ Origin (platform source)
 
 **CausalityChain** carries ID-only references through the pipeline.
 
-### 3.3 Lean Specifications
+### 2.3 Lean Specifications
 
 **Principle:** DTOs contain only execution-critical parameters.
 
@@ -106,7 +112,7 @@ Origin (platform source)
 - ❌ No computed fields (remaining_quantity) - calculate when needed
 - ❌ No cross-references (strategy_id in execution) - causality provides traceability
 
-### 3.4 Layer Separation
+### 2.4 Layer Separation
 
 | Layer | DTOs | Concern |
 |-------|------|---------|
@@ -115,7 +121,7 @@ Origin (platform source)
 | Planning | StrategyDirective, *Plan DTOs | Strategic decisions, tactical plans |
 | Execution | ExecutionDirective, ExecutionGroup | Execution instructions, tracking |
 
-### 3.5 Validation Conventions
+### 2.5 Validation Conventions
 
 **ID Formats:** `PREFIX_YYYYMMDD_HHMMSS_hash`
 
@@ -137,7 +143,7 @@ Origin (platform source)
 
 ---
 
-## 4. DTO Flow Diagram
+## 3. DTO Flow Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -213,7 +219,7 @@ Origin (platform source)
 
 ---
 
-## 5. Related Documents
+## 4. Related Documents
 
 - [DTO Core](DTO_CORE.md) - Platform and infrastructure DTOs
 - [DTO Pipeline](DTO_PIPELINE.md) - Analysis and strategic DTOs
@@ -224,7 +230,7 @@ Origin (platform source)
 
 ---
 
-## 6. Document Maintenance
+## 5. Document Maintenance
 
 **Update triggers:**
 - New DTO created (add to taxonomy before implementation)

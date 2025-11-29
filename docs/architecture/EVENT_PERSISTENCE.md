@@ -3,23 +3,32 @@
 
 **Status:** PRELIMINARY
 **Version:** 1.0
-**Last Updated:** 2025-11-29---
-
-## 1. Purpose
-
-This document defines the **persistence and durability layer** for the event-driven architecture. It covers:
-
-- **EventStore** - Persistent storage for all platform events
-- **EventQueue** - Per-strategy async buffering with backpressure handling
-- **Delivery Guarantees** - At-least-once delivery, ordering, idempotency
-- **Recovery Mechanism** - Strategy restart and event replay
-- **Dead Letter Queue** - Failed event handling
-
-**Related:** See [EVENT_ARCHITECTURE.md](EVENT_ARCHITECTURE.md) for the conceptual event model, producers, consumers, and scoping.
+**Last Updated:** 2025-11-29
 
 ---
 
-## 2. The "Missed Events" Problem
+## Purpose
+
+This document defines the **persistence and durability layer** for the event-driven architecture.
+
+**Target audience:** Developers implementing event storage or recovery mechanisms.
+
+## Scope
+
+**In Scope:**
+- EventStore - Persistent storage for all platform events
+- EventQueue - Per-strategy async buffering with backpressure handling
+- Delivery Guarantees - At-least-once delivery, ordering, idempotency
+- Recovery Mechanism - Strategy restart and event replay
+- Dead Letter Queue - Failed event handling
+
+**Out of Scope:**
+- Event model concepts → See [EVENT_ARCHITECTURE.md](EVENT_ARCHITECTURE.md)
+- Event-driven wiring → See [EVENT_DRIVEN_WIRING.md](EVENT_DRIVEN_WIRING.md)
+
+---
+
+## 1. The "Missed Events" Problem
 
 ### Scenario 1: Strategy Offline
 ```

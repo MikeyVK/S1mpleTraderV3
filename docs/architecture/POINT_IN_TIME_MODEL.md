@@ -5,6 +5,27 @@
 **Version:** 1.0
 **Last Updated:** 2025-11-29---
 
+## Purpose
+
+This document defines the **point-in-time data model** where all data exchange is based on a single moment (tick), not accumulated datasets. It describes the IStrategyCache interface and DTO-centric architecture.
+
+**Target audience:** Developers implementing workers or understanding data flow.
+
+## Scope
+
+**In Scope:**
+- IStrategyCache interface and usage patterns
+- RunAnchor (timestamp validation)
+- Two communication paths (StrategyCache vs EventBus)
+- DTO dependency resolution
+- StrategyCacheManager lifecycle
+
+**Out of Scope:**
+- DTO definitions → See [DTO_ARCHITECTURE.md](DTO_ARCHITECTURE.md)
+- Event wiring → See [EVENT_DRIVEN_WIRING.md](EVENT_DRIVEN_WIRING.md)
+
+---
+
 **Core Concept:** All data exchange is based on **one specific moment** (tick), NOT on a growing dataset.
 
 ## Core Principles
