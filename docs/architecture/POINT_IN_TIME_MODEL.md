@@ -1,17 +1,22 @@
 # Point-in-Time Data Model - DTO-Centric Architecture
 
-**Core Concept:** Alle data-uitwisseling is gebaseerd op **één specifiek moment** (tick), NIET op een groeiende dataset.
+**Status:** Architecture Foundation  
+**Last Updated:** 2025-11-29
 
-## Kernprincipes
+---
+
+**Core Concept:** All data exchange is based on **one specific moment** (tick), NOT on a growing dataset.
+
+## Core Principles
 
 ### 1. Immutability per Tick
-- ✅ Elke tick = nieuwe TickCache
-- ✅ Workers lezen/schrijven DTOs, muteren nooit
-- ✅ TickCache cleared na run completion
+- ✅ Each tick = new StrategyCache
+- ✅ Workers read/write DTOs, never mutate
+- ✅ StrategyCache cleared after run completion
 
 ### 2. Type-Safe DTO Contracts
-- ✅ Alle data via Pydantic BaseModel
-- ✅ Workers declareren requires_dtos in manifest
+- ✅ All data via Pydantic BaseModel
+- ✅ Workers declare requires_dtos in manifest
 - ✅ Bootstrap validates DTO dependencies
 
 ### 3. Explicit Dependencies
@@ -90,7 +95,7 @@ class MyWorker(StandardWorker):
 
 ## Two Communication Paths
 
-### Path 1: TickCache (Sync, Flow-Data)
+### Path 1: StrategyCache (Sync, Flow-Data)
 
 **Purpose:** Worker-to-worker data passing within one strategy run.
 
@@ -106,12 +111,12 @@ class MyWorker(StandardWorker):
 ```mermaid
 sequenceDiagram
     participant WA as Worker A
-    participant TC as TickCache
+    participant SC as StrategyCache
     participant WB as Worker B
     
-    WA->>TC: set_result_dto(EMAOutputDTO)
-    WB->>TC: get_required_dtos()
-    TC-->>WB: {EMAOutputDTO: instance}
+    WA->>SC: set_result_dto(EMAOutputDTO)
+    WB->>SC: get_required_dtos()
+    SC-->>WB: {EMAOutputDTO: instance}
 ```
 
 **Example DTOs:**
@@ -220,9 +225,9 @@ backend/dto_reg/s1mple/ema_detector/v1_0_0/
 from backend.dto_reg.s1mple.ema_detector.v1_0_0.ema_output_dto import EMAOutputDTO
 ```
 
-## TickCacheManager - Flow Lifecycle
+## StrategyCacheManager - Flow Lifecycle
 
-**Singleton** die strategy run lifecycle beheert:
+**Singleton** that manages strategy run lifecycle:
 
 ### 1. Flow Initiation
 ```python
@@ -232,7 +237,7 @@ from backend.dto_reg.s1mple.ema_detector.v1_0_0.ema_output_dto import EMAOutputD
 # - NEWS_RECEIVED (from NewsAdapter)
 
 def on_tick_event(self, event):
-    # 1. Create new TickCache
+    # 1. Create new StrategyCache
     cache = {}
     
     # 2. Configure StrategyCache singleton
@@ -263,9 +268,9 @@ def on_flow_complete(self):
     self.strategy_cache.clear_cache()
 ```
 
-## Pre-Filled TickCache
+## Pre-Filled StrategyCache
 
-Platform capability providers kunnen TickCache **pre-populaten**:
+Platform capability providers can **pre-populate** the StrategyCache:
 
 ```python
 # Platform fills cache before worker chain starts
@@ -347,9 +352,10 @@ def test_my_worker():
 ✅ **Concurrent-Safe**: Immutable DTOs, no shared mutable state
 ✅ **Performance**: Type-based O(1) lookup, no DataFrame overhead
 
-## Zie Ook
+---
+
+## See Also
 
 - [Platform Components](PLATFORM_COMPONENTS.md) - StrategyCache implementation
 - [Worker Taxonomy](WORKER_TAXONOMY.md) - Worker data access patterns
 - [Core Principles](CORE_PRINCIPLES.md) - Design philosophy behind this model
-- [Reference: StrategyCache](../reference/platform/strategy_cache.md) - Implementation details

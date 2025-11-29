@@ -1,28 +1,33 @@
 # Core Principles - Vision & Design Philosophy
 
-## Visie
+**Status:** Architecture Foundation  
+**Last Updated:** 2025-11-29
 
-S1mpleTrader V3 is een **plugin-gedreven, event-driven** trading platform dat de volledige levenscyclus van handelsstrategieën ondersteunt. Het systeem is ontworpen voor **modulariteit, testbaarheid en configuratie-gedreven gedrag**.
+---
 
-## De 4 Fundamentele Principes
+## Vision
+
+S1mpleTrader V3 is a **plugin-driven, event-driven** trading platform that supports the complete lifecycle of trading strategies. The system is designed for **modularity, testability, and configuration-driven behavior**.
+
+## The 4 Fundamental Principles
 
 ### 1. Plugin First
 
-**Kernidee:** Alle strategische logica is ingekapseld in **zelfstandige, onafhankelijk testbare plugins**.
+**Core Idea:** All strategic logic is encapsulated in **self-contained, independently testable plugins**.
 
-**Implicaties:**
-- ✅ Workers zijn plugins (geen hardcoded business logic in platform)
-- ✅ Elke plugin is een volledige Python package
-- ✅ Plugins declareren dependencies via `manifest.yaml`
-- ✅ Platform valideert plugin compatibility tijdens bootstrap
-- ✅ Plugins kunnen geïsoleerd getest worden (unit tests zonder platform)
+**Implications:**
+- ✅ Workers are plugins (no hardcoded business logic in platform)
+- ✅ Each plugin is a complete Python package
+- ✅ Plugins declare dependencies via `manifest.yaml`
+- ✅ Platform validates plugin compatibility during bootstrap
+- ✅ Plugins can be tested in isolation (unit tests without platform)
 
-**Voorbeeld:**
+**Example:**
 ```mermaid
 graph TD
     subgraph Plugin["Plugin Package"]
-        M[manifest.yaml<br/>Declaratie]
-        W[worker.py<br/>Businesslogic]
+        M[manifest.yaml<br/>Declaration]
+        W[worker.py<br/>Business logic]
         S[schema.py<br/>Config model]
         T[test/test_worker.py<br/>Isolated tests]
     end
@@ -38,23 +43,23 @@ graph TD
 
 ### 2. Separation of Concerns
 
-**Kernidee:** **Strikte scheiding** tussen wat, waar, hoe en waarmee.
+**Core Idea:** **Strict separation** between what, where, how, and with what.
 
-**Componenten:**
-- **Workers** (de "wat"): Businesslogic - context, signals, planning
-- **ExecutionEnvironment** (de "waar"): Backtest vs Live vs Paper trading
-- **Factories** (de "hoe"): Assembly van workers + dependencies
-- **EventBus** (de "waarmee"): Communicatie tussen componenten
+**Components:**
+- **Workers** (the "what"): Business logic - context, signals, planning
+- **ExecutionEnvironment** (the "where"): Backtest vs Live vs Paper trading
+- **Factories** (the "how"): Assembly of workers + dependencies
+- **EventBus** (the "with what"): Communication between components
 
-**Implicaties:**
-- ✅ Workers weten NIETS van ExecutionEnvironment
-- ✅ ExecutionEnvironment weet NIETS van worker businesslogic
-- ✅ Factories orkestreren assembly, workers blijven pure logic
-- ✅ EventBus is pure N-N broadcast (geen routing logic)
+**Implications:**
+- ✅ Workers know NOTHING about ExecutionEnvironment
+- ✅ ExecutionEnvironment knows NOTHING about worker business logic
+- ✅ Factories orchestrate assembly, workers remain pure logic
+- ✅ EventBus is pure N-N broadcast (no routing logic)
 
-**Voorbeeld Violation:**
+**Example Violation:**
 ```python
-# ❌ FOUT - Worker weet van ExecutionEnvironment
+# ❌ WRONG - Worker knows about ExecutionEnvironment
 class MyWorker:
     def process(self):
         if self.env.is_backtest():  # VIOLATION!
@@ -63,26 +68,26 @@ class MyWorker:
 
 **Correct:**
 ```python
-# ✅ GOED - Worker krijgt config via dependency injection
+# ✅ GOOD - Worker receives config via dependency injection
 class MyWorker:
     def __init__(self, config):
         self.risk_pct = config.risk_percentage
 ```
 
-### 3. Configuratie-Gedreven
+### 3. Configuration-Driven
 
-**Kernidee:** Het **gedrag** van de applicatie wordt volledig bestuurd door **mens-leesbare YAML-bestanden**.
+**Core Idea:** The **behavior** of the application is fully controlled by **human-readable YAML files**.
 
-**Metafoor:** De code is de motor, de configuratie is de bestuurder.
+**Metaphor:** The code is the engine, the configuration is the driver.
 
-**Implicaties:**
-- ✅ YAML definieert welke workers draaien
-- ✅ YAML definieert worker parameters
-- ✅ YAML definieert event wiring (worker A → worker B)
-- ✅ YAML definieert execution environment
-- ✅ Code bevat GEEN hardcoded strategy logic
+**Implications:**
+- ✅ YAML defines which workers run
+- ✅ YAML defines worker parameters
+- ✅ YAML defines event wiring (worker A → worker B)
+- ✅ YAML defines execution environment
+- ✅ Code contains NO hardcoded strategy logic
 
-**Voorbeeld:**
+**Example:**
 ```yaml
 # strategy_blueprint.yaml
 workforce:
@@ -102,22 +107,22 @@ wiring:
     target: "ema_cross_detector"
 ```
 
-**Voordeel:** Strategieën aanpassen = YAML wijzigen, GEEN code changes.
+**Advantage:** Adjusting strategies = modifying YAML, NO code changes.
 
-### 4. Contract-Gedreven
+### 4. Contract-Driven
 
-**Kernidee:** Alle data-uitwisseling wordt **gevalideerd** door strikte **Pydantic-schema's** (backend) en **TypeScript-interfaces** (frontend).
+**Core Idea:** All data exchange is **validated** by strict **Pydantic schemas** (backend) and **TypeScript interfaces** (frontend).
 
-**Implicaties:**
-- ✅ Workers produceren/consumeren Pydantic DTOs
-- ✅ Type safety op compile-time (Pylance/mypy)
-- ✅ Runtime validatie (Pydantic validators)
+**Implications:**
+- ✅ Workers produce/consume Pydantic DTOs
+- ✅ Type safety at compile-time (Pylance/mypy)
+- ✅ Runtime validation (Pydantic validators)
 - ✅ Auto-generated API docs (OpenAPI/Swagger)
 - ✅ Frontend-backend contract enforcement
 
-**Voorbeeld:**
+**Example:**
 ```python
-# ✅ GOED - Expliciete DTO contract
+# ✅ GOOD - Explicit DTO contract
 class Signal(BaseModel):
     signal_id: str
     confidence: Decimal
@@ -145,7 +150,7 @@ def process(self) -> DispositionEnvelope:
 
 **Anti-Pattern:**
 ```python
-# ❌ FOUT - Ongevalideerde dicts
+# ❌ WRONG - Unvalidated dicts
 def bad_process(self):
     return {
         "confidence": 1.5,  # Runtime error! Not caught at compile time
@@ -153,24 +158,24 @@ def bad_process(self):
     }
 ```
 
-## Interactie Tussen Principes
+## Interaction Between Principles
 
-Deze 4 principes **versterken elkaar**:
+These 4 principles **reinforce each other**:
 
-1. **Plugin First** + **Contract-Gedreven** = Type-safe plugin ecosystem
-2. **Separation of Concerns** + **Configuratie-Gedreven** = Flexibele orchestratie zonder coupling
-3. **Contract-Gedreven** + **Separation of Concerns** = Testbare interfaces
+1. **Plugin First** + **Contract-Driven** = Type-safe plugin ecosystem
+2. **Separation of Concerns** + **Configuration-Driven** = Flexible orchestration without coupling
+3. **Contract-Driven** + **Separation of Concerns** = Testable interfaces
 
-**Voorbeeld Synergie:**
+**Example Synergy:**
 ```yaml
-# Config-Gedreven (YAML)
+# Configuration-Driven (YAML)
 wiring:
   - source: "ema_detector"
     target: "momentum_signal"
 ```
 
 ```python
-# Contract-Gedreven (DTO validation)
+# Contract-Driven (DTO validation)
 class EMAOutputDTO(BaseModel):
     ema_20: Decimal
 
@@ -192,31 +197,33 @@ def test_momentum_signal():
     assert result.disposition == "PUBLISH"
 ```
 
-## Consequenties van Violaties
+## Consequences of Violations
 
-**Principe geschonden → Gevolg:**
+**Principle violated → Consequence:**
 
-| Principe | Violation | Consequentie |
-|----------|-----------|--------------|
-| Plugin First | Hardcoded strategy logic in platform | Niet testbaar, niet herbruikbaar |
-| Separation of Concerns | Worker roept EventBus.publish() direct | Tight coupling, moeilijk testen |
-| Configuratie-Gedreven | Worker leest environment variable | Niet reproduceerbaar, configuratie chaos |
-| Contract-Gedreven | Dict-based data exchange | Runtime errors, geen type safety |
+| Principle | Violation | Consequence |
+|----------|-----------|-------------|
+| Plugin First | Hardcoded strategy logic in platform | Not testable, not reusable |
+| Separation of Concerns | Worker calls EventBus.publish() directly | Tight coupling, hard to test |
+| Configuration-Driven | Worker reads environment variable | Not reproducible, configuration chaos |
+| Contract-Driven | Dict-based data exchange | Runtime errors, no type safety |
 
-## Ontwerp Checklist
+## Design Checklist
 
-Bij elke nieuwe feature vraag je:
+For every new feature, ask:
 
-- [ ] Is dit een plugin of platform component? (Plugin First)
-- [ ] Welke component is verantwoordelijk? (Separation of Concerns)
-- [ ] Kan dit via YAML geconfigureerd worden? (Configuratie-Gedreven)
-- [ ] Is er een Pydantic DTO voor deze data? (Contract-Gedreven)
+- [ ] Is this a plugin or platform component? (Plugin First)
+- [ ] Which component is responsible? (Separation of Concerns)
+- [ ] Can this be configured via YAML? (Configuration-Driven)
+- [ ] Is there a Pydantic DTO for this data? (Contract-Driven)
 
-**Als één van deze vragen "nee" is, heroverweeg het ontwerp.**
+**If any of these questions is "no", reconsider the design.**
 
-## Zie Ook
+---
 
-- [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) - Hoe deze principes zich manifesteren in V3
-- [Plugin Anatomy](PLUGIN_ANATOMY.md) - Plugin First in de praktijk
-- [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - Contract-Gedreven data flow
-- [Configuration Layers](CONFIGURATION_LAYERS.md) - Configuratie-Gedreven in detail
+## See Also
+
+- [Plugin Anatomy](PLUGIN_ANATOMY.md) - Plugin First in practice
+- [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - Contract-Driven data flow
+- [Configuration Layers](CONFIGURATION_LAYERS.md) - Configuration-Driven in detail
+- [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) - Separation of facts and interpretation
