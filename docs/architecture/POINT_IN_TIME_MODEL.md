@@ -351,5 +351,5 @@ def test_my_worker():
 
 - [Platform Components](PLATFORM_COMPONENTS.md) - StrategyCache implementation
 - [Worker Taxonomy](WORKER_TAXONOMY.md) - Worker data access patterns
-- [Architectural Shifts](ARCHITECTURAL_SHIFTS.md#verschuiving-2) - Why this model?
+- [Core Principles](CORE_PRINCIPLES.md) - Design philosophy behind this model
 - [Reference: StrategyCache](../reference/platform/strategy_cache.md) - Implementation details

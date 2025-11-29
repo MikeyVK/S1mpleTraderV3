@@ -6,11 +6,10 @@
 
 **New to the project?** Read in this order:
 1. [Core Principles](CORE_PRINCIPLES.md) - Vision + 4 fundamental principles
-2. [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) - **CRITICAL**: 3 major changes from V2
-3. [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) - **NEW**: The "Quant Leap" explained
-4. [Pipeline Flow](PIPELINE_FLOW.md) - **COMPLETE PIPELINE**: 6+1 phases from tick to execution
-5. [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - DTO-Centric data flow
-6. [Worker Taxonomy](WORKER_TAXONOMY.md) - 5 worker categories
+2. [Pipeline Flow](PIPELINE_FLOW.md) - Complete 6+1 phase pipeline from tick to execution
+3. [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - DTO-Centric data flow
+4. [Worker Taxonomy](WORKER_TAXONOMY.md) - 6 worker categories
+5. [Platform Components](PLATFORM_COMPONENTS.md) - Core infrastructure
 
 **Implementing a feature?** Jump to:
 - **Workers**: [Worker Taxonomy](WORKER_TAXONOMY.md) → [Plugin Anatomy](PLUGIN_ANATOMY.md)
@@ -24,7 +23,6 @@
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
 | [Core Principles](CORE_PRINCIPLES.md) | Vision + Design Philosophy | Plugin First, Separation of Concerns, Config-Driven, Contract-Driven |
-| [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) | **CRITICAL READING** | Platgeslagen Orkestratie, Point-in-Time Model, BuildSpec Bootstrap |
 | [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) | **Quant Leap Philosophy** | Objective ContextWorkers, Subjective Consumers, No SWOT Aggregation |
 | [Pipeline Flow](PIPELINE_FLOW.md) | **COMPLETE PIPELINE** | 6+1 Phases: Bootstrapping → Context → Opportunity/Threat → Strategy → Planning → Translation → Execution |
 | [Layered Architecture](LAYERED_ARCHITECTURE.md) | System Layers | Frontend → Service → Backend, Dependency flow |
@@ -63,11 +61,11 @@
 ## Critical Path for New Developers
 
 ### Phase 1: Understanding the Model
-1. ✅ Read [Architectural Shifts](ARCHITECTURAL_SHIFTS.md) - **NON-NEGOTIABLE**
-2. ✅ Read [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md) - **Quant Leap explained**
-3. ✅ Read [Pipeline Flow](PIPELINE_FLOW.md) - **Complete 6+1 phase pipeline**
-4. ✅ Read [Point-in-Time Model](POINT_IN_TIME_MODEL.md)
-5. ✅ Skim [Worker Taxonomy](WORKER_TAXONOMY.md)
+1. ✅ Read [Core Principles](CORE_PRINCIPLES.md) - Design philosophy
+2. ✅ Read [Pipeline Flow](PIPELINE_FLOW.md) - Complete 6+1 phase pipeline
+3. ✅ Read [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - DTO-centric data flow
+4. ✅ Read [Worker Taxonomy](WORKER_TAXONOMY.md) - 6 worker categories
+5. ✅ Skim [Platform Components](PLATFORM_COMPONENTS.md) - Core infrastructure
 
 ### Phase 2: Implementation Patterns
 1. ✅ Study [Plugin Anatomy](PLUGIN_ANATOMY.md)
@@ -82,10 +80,10 @@
 ## Architecture Decisions
 
 **Key Design Choices:**
-- **No SWOT Aggregation**: ContextWorkers produce objective facts, consumers interpret (zie [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md))
-- **No Operators**: Workers bedraad via EventAdapters (zie [Architectural Shifts](ARCHITECTURAL_SHIFTS.md#verschuiving-1))
-- **No Growing DataFrames**: Point-in-Time DTOs only (zie [Point-in-Time Model](POINT_IN_TIME_MODEL.md))
-- **Fail-Fast Bootstrap**: Validation during assembly, not runtime (zie [Layered Architecture](LAYERED_ARCHITECTURE.md#bootstrap-workflow))
+- **No SWOT Aggregation**: ContextWorkers produce objective facts, consumers interpret (see [Objective Data Philosophy](OBJECTIVE_DATA_PHILOSOPHY.md))
+- **No Operators**: Workers wired via EventAdapters (see [Event-Driven Wiring](EVENT_DRIVEN_WIRING.md))
+- **No Growing DataFrames**: Point-in-Time DTOs only (see [Point-in-Time Model](POINT_IN_TIME_MODEL.md))
+- **Fail-Fast Bootstrap**: Validation during assembly, not runtime (see [Layered Architecture](LAYERED_ARCHITECTURE.md#bootstrap-workflow))
 
 ## Quick Reference
 

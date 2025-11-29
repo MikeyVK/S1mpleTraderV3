@@ -633,16 +633,16 @@ plugin_manifest.yaml (per worker)
 - **[WORKER_TAXONOMY.md][worker-taxonomy]** - 6 worker categories and responsibilities
 - **[EXECUTION_FLOW.md][execution-flow]** - Sync/async execution mechanics
 - **[TRADE_LIFECYCLE.md][trade-lifecycle]** - Container hierarchy and Ledger access
-- **[ARCHITECTURAL_SHIFTS.md][arch-shifts]** - 3 critical architectural shifts
 - **[TRIGGER_ARCHITECTURE.md][trigger-arch]** - Trigger layer details (DataConnectors, Scheduler, FlowInitiator)
+- **[PLATFORM_COMPONENTS.md][platform-components]** - Core infrastructure components
 
 <!-- Link definitions -->
 [core-principles]: ./CORE_PRINCIPLES.md "Core design principles"
 [worker-taxonomy]: ./WORKER_TAXONOMY.md "Worker categories"
 [execution-flow]: ./EXECUTION_FLOW.md "Execution mechanics"
 [trade-lifecycle]: ./TRADE_LIFECYCLE.md "Trade lifecycle"
-[arch-shifts]: ./ARCHITECTURAL_SHIFTS.md "Architectural shifts"
 [trigger-arch]: ./TRIGGER_ARCHITECTURE.md "Trigger layer architecture"
+[platform-components]: ./PLATFORM_COMPONENTS.md "Platform components"
 [flow-initiator-design]: ../development/backend/core/FLOW_INITIATOR_DESIGN.md "FlowInitiator design"
 
 ---

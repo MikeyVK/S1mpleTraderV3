@@ -370,9 +370,9 @@ graph TD
 ## Related Documentation
 
 - **[Configuration Layers](CONFIGURATION_LAYERS.md)** - Detailed 3-layer config system
-- **[Architectural Shifts](ARCHITECTURAL_SHIFTS.md)** - Critical V2 → V3 changes
 - **[Event-Driven Wiring](EVENT_DRIVEN_WIRING.md)** - EventAdapter and wiring_map.yaml
 - **[Platform Components](PLATFORM_COMPONENTS.md)** - Core singletons
+- **[Pipeline Flow](PIPELINE_FLOW.md)** - Complete strategy pipeline
 
 ---
 

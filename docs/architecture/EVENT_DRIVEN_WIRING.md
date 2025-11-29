@@ -480,7 +480,7 @@ graph LR
 - **[Data Flow](DATA_FLOW.md)** - DispositionEnvelope and communication patterns
 - **[Worker Taxonomy](WORKER_TAXONOMY.md)** - Worker categories and event patterns
 - **[Layered Architecture](LAYERED_ARCHITECTURE.md)** - EventWiringFactory role in bootstrap
-- **[Architectural Shifts](ARCHITECTURAL_SHIFTS.md)** - Platgeslagen Orkestratie (Shift #1)
+- **[Platform Components](PLATFORM_COMPONENTS.md)** - EventBus, EventAdapter infrastructure
 
 ---
 

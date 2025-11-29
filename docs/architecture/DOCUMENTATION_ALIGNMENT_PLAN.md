@@ -293,7 +293,7 @@ The DTO documentation has significant technical debt that must be addressed alon
 
 | Phase | Status | Started | Completed | Commit(s) |
 |-------|--------|---------|-----------|-----------|
-| Phase 1: Archive Migration Docs | ⏳ Not Started | - | - | - |
+| Phase 1: Archive Migration Docs | ✅ Complete | 2025-11-29 | 2025-11-29 | TBD |
 | Phase 2: Triage ARCHITECTURE_GAPS | ⏳ Not Started | - | - | - |
 | Phase 3: ASYNC_IO Special Treatment | ⏳ Not Started | - | - | - |
 | Phase 4: EVENT_ARCHITECTURE Split | ⏳ Not Started | - | - | - |
@@ -305,11 +305,11 @@ The DTO documentation has significant technical debt that must be addressed alon
 
 | Metric | Before | P1 | P2 | P3 | P4 | P5 | P6 | P7 |
 |--------|--------|----|----|----|----|----|----|----| 
-| Total Docs | 22 | - | - | - | - | - | - | - |
-| Archived Docs | 0 | - | - | - | - | - | - | - |
-| Over Limit (>1000) | 3 | - | - | - | - | - | - | - |
-| Template Compliant | 6 | - | - | - | - | - | - | - |
-| V2 References | ~50 | - | - | - | - | - | - | - |
+| Total Docs | 22 | 20 | - | - | - | - | - | - |
+| Archived Docs | 0 | 2 | - | - | - | - | - | - |
+| Over Limit (>1000) | 3 | 3 | - | - | - | - | - | - |
+| Template Compliant | 6 | 6 | - | - | - | - | - | - |
+| V2 References | ~50 | ~10 | - | - | - | - | - | - |
 
 ---
 
