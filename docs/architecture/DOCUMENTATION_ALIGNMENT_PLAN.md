@@ -126,20 +126,51 @@ This plan defines the phased approach to align all architecture documentation wi
 
 ---
 
-### Phase 4: EVENT_ARCHITECTURE.md Split
-**Goal:** Bring EVENT_ARCHITECTURE.md under 1000 line limit
-**Effort:** 1-2 hours
+### Phase 4: EVENT_ARCHITECTURE.md Revision
+**Goal:** Split by concern, not just size
+**Effort:** 2-3 hours
 **Commit:** Single commit
 
-| New Document | Content |
-|--------------|---------|
-| `EVENT_ARCHITECTURE.md` | Core event system (scoping, producers/consumers) |
-| `EVENT_PERSISTENCE.md` | EventStore, durability, replay |
+**Current Issues:**
+1. 1163 lines - over limit
+2. Mixes conceptual architecture with implementation details
+3. Contains both "what/why" and "how" content
+
+**Analysis of Current Sections:**
+| Section | Lines (est) | Type | Destination |
+|---------|-------------|------|-------------|
+| Executive Summary | 20 | Architecture | EVENT_ARCHITECTURE.md |
+| Event Producers/Consumers (A-F) | 300 | Architecture | EVENT_ARCHITECTURE.md |
+| Event Scoping & Naming | 100 | Architecture | EVENT_ARCHITECTURE.md |
+| Design Principles | 80 | Architecture | EVENT_ARCHITECTURE.md |
+| EventStore Design | 150 | Implementation | EVENT_PERSISTENCE.md |
+| EventQueue Design | 100 | Implementation | EVENT_PERSISTENCE.md |
+| Delivery Guarantees | 80 | Implementation | EVENT_PERSISTENCE.md |
+| Recovery Mechanism | 60 | Implementation | EVENT_PERSISTENCE.md |
+| Dead Letter Queue | 80 | Implementation | EVENT_PERSISTENCE.md |
+| Event Adapter Mapping | 80 | Reference | Move to PLATFORM_COMPONENTS.md or separate |
+| Event Versioning | 100 | Implementation | EVENT_PERSISTENCE.md or DTO docs |
+| Testing Strategy | 80 | Implementation | Remove (belongs in code/tests) |
+| Implementation Components | 60 | Roadmap | Remove (belongs in TODO.md) |
+
+**Proposed Split:**
+
+| New Document | Purpose | Content | Lines (est) |
+|--------------|---------|---------|-------------|
+| `EVENT_ARCHITECTURE.md` | Conceptual model | Scoping, naming, producers/consumers, design principles | ~500 |
+| `EVENT_PERSISTENCE.md` | Durability layer | EventStore, EventQueue, recovery, DLQ, delivery guarantees, versioning | ~450 |
+
+**What to Remove/Relocate:**
+- Testing Strategy → Remove (tests document themselves)
+- Implementation Components → TODO.md (roadmap, not architecture)
+- Event Adapter Mapping table → PLATFORM_COMPONENTS.md (component reference)
 
 **Completion Criteria:**
 - [ ] Both docs under 1000 lines
-- [ ] Proper cross-references between docs
-- [ ] README.md updated
+- [ ] Clear separation: architecture vs implementation
+- [ ] No duplicate content
+- [ ] Proper cross-references
+- [ ] Template compliance (English, headers, version history)
 
 ---
 
