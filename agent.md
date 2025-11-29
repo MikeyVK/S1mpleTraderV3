@@ -67,15 +67,20 @@ docs/
 - 🤖 AI-assisted workflows (iterative documentation)
 - 🗓️ Maintenance schedules (weekly/monthly/quarterly)
 
-## The 5 Core Principles (Never Violate!)
+## The 4 Core Principles (Never Violate!)
 
 1. **Plugin First** - All strategy logic in plugins, not platform
 2. **Separation of Concerns** - Workers/Environment/Factories/EventBus strictly separated
 3. **Config-Driven** - Behavior controlled by YAML, not hardcoded
 4. **Contract-Driven** - All data exchange via Pydantic DTOs
-5. **Objective Data** - ContextWorkers produce facts, consumers interpret
 
-**Details:** [Core Principles](docs/architecture/CORE_PRINCIPLES.md) + [Objective Data Philosophy](docs/architecture/OBJECTIVE_DATA_PHILOSOPHY.md)
+**Details:** [Core Principles](docs/architecture/CORE_PRINCIPLES.md)
+
+### + The Quant Leap Philosophy
+
+🎯 **Objective Data** - ContextWorkers produce facts, consumers interpret (no SWOT aggregation)
+
+**Details:** [Objective Data Philosophy](docs/architecture/OBJECTIVE_DATA_PHILOSOPHY.md)
 
 ## The 3 Critical Shifts (Must Understand!)
 
@@ -126,7 +131,7 @@ All 5 gates must pass with 10.00/10 + 100% tests passing.
 ## Quick Reference Card
 
 ### Data Flow Paths
-- **Sync (worker→worker)**: TickCache via `IStrategyCache.set_result_dto()`
+- **Sync (worker→worker)**: StrategyCache via `IStrategyCache.set_result_dto()`
 - **Async (worker→platform)**: EventBus via `DispositionEnvelope(PUBLISH)`
 
 ### Worker Output Types
