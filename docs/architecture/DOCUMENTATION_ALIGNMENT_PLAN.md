@@ -294,8 +294,8 @@ The DTO documentation has significant technical debt that must be addressed alon
 | Phase | Status | Started | Completed | Commit(s) |
 |-------|--------|---------|-----------|-----------|
 | Phase 1: Archive Migration Docs | ✅ Complete | 2025-11-29 | 2025-11-29 | 7a73b40 |
-| Phase 2: Triage ARCHITECTURE_GAPS | ✅ Complete | 2025-11-29 | 2025-11-29 | TBD |
-| Phase 3: ASYNC_IO Special Treatment | ⏳ Not Started | - | - | - |
+| Phase 2: Triage ARCHITECTURE_GAPS | ✅ Complete | 2025-11-29 | 2025-11-29 | b03574a |
+| Phase 3: ASYNC_IO Special Treatment | ✅ Complete | 2025-11-29 | 2025-11-29 | TBD |
 | Phase 4: EVENT_ARCHITECTURE Split | ⏳ Not Started | - | - | - |
 | Phase 5: DTO Architecture Revision | ⏳ Not Started | - | - | - |
 | Phase 6: Template Compliance | ⏳ Not Started | - | - | - |
@@ -305,11 +305,11 @@ The DTO documentation has significant technical debt that must be addressed alon
 
 | Metric | Before | P1 | P2 | P3 | P4 | P5 | P6 | P7 |
 |--------|--------|----|----|----|----|----|----|----| 
-| Total Docs | 22 | 20 | 19 | - | - | - | - | - |
-| Archived Docs | 0 | 2 | 3 | - | - | - | - | - |
-| Over Limit (>1000) | 3 | 3 | 2 | - | - | - | - | - |
-| Template Compliant | 6 | 6 | 6 | - | - | - | - | - |
-| V2 References | ~50 | ~10 | ~10 | - | - | - | - | - |
+| Total Docs | 22 | 20 | 19 | 18 | - | - | - | - |
+| Archived Docs | 0 | 2 | 3 | 3 | - | - | - | - |
+| Over Limit (>1000) | 3 | 3 | 2 | 2 | - | - | - | - |
+| Template Compliant | 6 | 6 | 6 | 6 | - | - | - | - |
+| V2 References | ~50 | ~10 | ~10 | ~10 | - | - | - | - |
 
 ---
 
@@ -323,6 +323,7 @@ The DTO documentation has significant technical debt that must be addressed alon
 | 2025-11-29 | ASYNC_IO_ARCHITECTURE.md special treatment | NL language + pre-design status requires evaluation |
 | 2025-11-29 | DTO Architecture as dedicated phase | Significant technical debt, align with TODO.md items |
 | 2025-11-29 | Split by pipeline phase | Aligns DTO docs with PIPELINE_FLOW.md structure |
+| 2025-11-29 | Move ASYNC_IO to development/ | Document is Status=Design (pre-architecture), in Dutch, exploratory content - not validated architecture |
 
 ---
 
