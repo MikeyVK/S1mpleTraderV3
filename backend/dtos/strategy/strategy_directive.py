@@ -31,7 +31,7 @@ class EntryDirective(BaseModel):
     Entry constraints and hints for EntryPlanner.
 
     Attributes:
-        symbol: Trading symbol (e.g., "BTCUSDT")
+        symbol: Trading symbol (e.g., "BTC_USDT")
         direction: Trade direction (BUY or SELL)
         timing_preference: Urgency [0.0-1.0], 1.0 = immediate, 0.0 = patient
         preferred_price_zone: Optional preferred price zone (min, max)
@@ -40,7 +40,7 @@ class EntryDirective(BaseModel):
 
     symbol: str = Field(
         ...,
-        description="Trading symbol (e.g., 'BTCUSDT')"
+        description="Trading symbol (e.g., 'BTC_USDT')"
     )
     direction: str = Field(
         ...,
@@ -263,7 +263,7 @@ class StrategyDirective(BaseModel):
         confidence=Decimal("0.85"),
         # Sub-directives provide constraints to planners
         entry_directive=EntryDirective(
-            symbol="BTCUSDT",
+            symbol="BTC_USDT",
             direction="BUY",
             timing_preference=Decimal("0.9"),
             max_acceptable_slippage=Decimal("0.001")
@@ -292,10 +292,10 @@ class StrategyDirective(BaseModel):
         strategy_planner_id="trailing_stop_planner",
         trigger_context=TriggerContext(
             monitored_position_ids=["POS_12345678-1234-1234-1234-123456789012"],
-            trigger_tick={"symbol": "BTCUSDT", "price": Decimal("45000"), "timestamp": "..."}
+            trigger_tick={"symbol": "BTC_USDT", "price": Decimal("45000"), "timestamp": "..."}
         ),
         scope=DirectiveScope.MODIFY_EXISTING,
-        target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
+        target_plan_ids=["TPL_12345678-1234-1234-1234-123456789012"],
         confidence=Decimal("0.95"),
         # Only exit adjustment needed
         exit_directive=ExitDirective(
@@ -316,7 +316,7 @@ class StrategyDirective(BaseModel):
             trigger_event={"type": "FLASH_CRASH", "severity": "CRITICAL"}
         ),
         scope=DirectiveScope.CLOSE_EXISTING,
-        target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
+        target_plan_ids=["TPL_12345678-1234-1234-1234-123456789012"],
         confidence=Decimal("0.99"),
         # Only routing urgency needed for emergency exit
         routing_directive=ExecutionDirective(
@@ -338,7 +338,7 @@ class StrategyDirective(BaseModel):
         confidence=Decimal("0.80"),
         # DCA-specific constraints
         entry_directive=EntryDirective(
-            symbol="BTCUSDT",
+            symbol="BTC_USDT",
             direction="BUY",
             timing_preference=Decimal("0.3")  # Patient entry
         ),
@@ -487,7 +487,7 @@ class StrategyDirective(BaseModel):
                         "strategy_directive_id": "STR_20251027_100002_a1b2c3d4"
                     },
                     "entry_directive": {
-                        "symbol": "BTCUSDT",
+                        "symbol": "BTC_USDT",
                         "direction": "BUY",
                         "order_preference": "LIMIT"
                     },

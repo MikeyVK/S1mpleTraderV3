@@ -59,7 +59,7 @@ class EntryPlan(BaseModel):
     ```python
     # Limit order entry at specific price
     plan = EntryPlan(
-        symbol="BTCUSDT",
+        symbol="BTC_USDT",
         direction="BUY",
         order_type="LIMIT",
         limit_price=Decimal("95500.00")
@@ -68,7 +68,7 @@ class EntryPlan(BaseModel):
 
     **Attributes:**
         plan_id: Auto-generated unique identifier (ENT_YYYYMMDD_HHMMSS_hash)
-        symbol: Trading pair (e.g., 'BTCUSDT')
+        symbol: Trading pair (e.g., 'BTC_USDT')
         direction: Trade direction (BUY or SELL)
         order_type: Order execution type (MARKET, LIMIT, STOP_LIMIT)
         limit_price: Limit price for LIMIT orders (optional)
@@ -83,7 +83,7 @@ class EntryPlan(BaseModel):
 
     # Trade basics
     symbol: str = Field(
-        description="Trading pair symbol (e.g., 'BTCUSDT')"
+        description="Trading pair symbol (e.g., 'BTC_USDT')"
     )
     direction: Literal["BUY", "SELL"] = Field(
         description="Trade direction"
@@ -113,14 +113,14 @@ class EntryPlan(BaseModel):
                 {
                     "description": "Market entry (WHAT/WHERE only)",
                     "plan_id": "ENT_20251027_143052_a1b2c3d4",
-                    "symbol": "BTCUSDT",
+                    "symbol": "BTC_USDT",
                     "direction": "BUY",
                     "order_type": "MARKET"
                 },
                 {
                     "description": "Limit entry at specific price",
                     "plan_id": "ENT_20251027_143053_e5f6g7h8",
-                    "symbol": "ETHUSDT",
+                    "symbol": "ETH_USDT",
                     "direction": "SELL",
                     "order_type": "LIMIT",
                     "limit_price": "3510.00"
@@ -128,7 +128,7 @@ class EntryPlan(BaseModel):
                 {
                     "description": "Stop-limit for breakout",
                     "plan_id": "ENT_20251027_143054_i9j0k1l2",
-                    "symbol": "SOLUSDT",
+                    "symbol": "SOL_USDT",
                     "direction": "BUY",
                     "order_type": "STOP_LIMIT",
                     "stop_price": "125.00",

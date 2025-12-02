@@ -11,7 +11,6 @@ Following TDD workflow - these tests define the expected behavior.
 
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Literal
 
 import pytest
 from pydantic import ValidationError

@@ -25,7 +25,7 @@ from decimal import Decimal
 from re import match
 from typing import Literal
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from backend.core.enums import OrderStatus, OrderType
 from backend.utils.id_generators import generate_order_id

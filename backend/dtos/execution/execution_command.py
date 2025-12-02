@@ -1,9 +1,11 @@
 # backend/dtos/execution/execution_command.py
 """
-ExecutionCommand - Final aggregated execution instruction.
+ExecutionCommand and ExecutionCommandBatch - Final execution instructions.
 
-Aggregates all planning outputs (Entry, Size, Exit, Execution) into a single
-executable command for the ExecutionWorker.
+DESIGN DECISION: Combined in single file because:
+1. Batch is ALWAYS used (even for n=1) - per DTO_ARCHITECTURE.md
+2. ExecutionCommand exists only as batch member
+3. Single import: `from backend.dtos.execution import ExecutionCommandBatch`
 
 **Clean Execution Contract:**
 - No strategy metadata (clean separation between Strategy and Execution layers)
@@ -14,16 +16,19 @@ executable command for the ExecutionWorker.
 @layer: DTOs (Execution)
 @dependencies: [
     pydantic, backend.dtos.causality, backend.dtos.strategy.*,
-    backend.utils.id_generators
+    backend.utils.id_generators, backend.core.enums
 ]
 """
-from typing import TYPE_CHECKING
+from datetime import datetime
+from re import match
+from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
+from backend.core.enums import ExecutionMode
 from backend.dtos.causality import CausalityChain
 from backend.dtos.strategy import EntryPlan, ExecutionPlan, ExitPlan, SizePlan
-from backend.utils.id_generators import generate_execution_command_id
+from backend.utils.id_generators import generate_batch_id, generate_execution_command_id
 
 if TYPE_CHECKING:
     from typing import Self
@@ -31,11 +36,13 @@ if TYPE_CHECKING:
 
 class ExecutionCommand(BaseModel):
     """
-    Final aggregated execution instruction for ExecutionWorker.
+    Final aggregated execution instruction - always nested in ExecutionCommandBatch.
 
     Aggregates all planning outputs into single executable command.
     Supports both NEW_TRADE (all plans) and MODIFY_EXISTING (partial plans)
     scenarios.
+
+    **NOT intended for standalone use. Always wrap in ExecutionCommandBatch.**
 
     **Fields:**
     - command_id: Auto-generated unique identifier (EXC_YYYYMMDD_HHMMSS_hash)
@@ -163,3 +170,198 @@ class ExecutionCommand(BaseModel):
                 "(entry_plan, size_plan, exit_plan, or execution_plan)"
             )
         return self
+
+
+class ExecutionCommandBatch(BaseModel):
+    """Atomic execution batch - THE interface to ExecutionWorker.
+
+    ALWAYS USE THIS DTO - even for single command (n=1).
+    PlanningAggregator is the ONLY producer.
+
+    IMMUTABILITY CONTRACT:
+    - frozen=True (batch integrity during execution)
+    - Once created, fields CANNOT be modified
+    - If changes needed: Create new batch (don't modify existing)
+
+    Fields:
+        batch_id: Unique batch identifier (BAT_YYYYMMDD_HHMMSS_xxxxx)
+        commands: List of ExecutionCommands to execute (min 1)
+        execution_mode: Execution mode (SEQUENTIAL, PARALLEL, ATOMIC)
+        created_at: Batch creation timestamp (UTC)
+        rollback_on_failure: Rollback all on any failure (default: True)
+        timeout_seconds: Max execution time (None = no timeout)
+        metadata: Batch-specific metadata (optional)
+
+    Example:
+        >>> batch = ExecutionCommandBatch(
+        ...     batch_id="BAT_20251028_143022_a8f3c",
+        ...     commands=[command1, command2, command3],
+        ...     execution_mode=ExecutionMode.ATOMIC,
+        ...     created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
+        ...     rollback_on_failure=True,
+        ...     timeout_seconds=30
+        ... )
+    """
+
+    model_config = {
+        "frozen": True,  # IMMUTABLE - batch integrity during execution
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "batch_id": "BAT_20251028_143022_a8f3c",
+                    "commands": [
+                        {"command_id": "EXC_20251028_143020_1a2b3c4d", "causality": {"origin": {"id": "TCK_20251028_143000_abc123", "type": "TICK"}}},
+                        {"command_id": "EXC_20251028_143021_2b3c4d5e", "causality": {"origin": {"id": "TCK_20251028_143001_def456", "type": "TICK"}}},
+                        {"command_id": "EXC_20251028_143022_3c4d5e6f", "causality": {"origin": {"id": "TCK_20251028_143002_ghi789", "type": "TICK"}}}
+                    ],
+                    "execution_mode": "ATOMIC",
+                    "created_at": "2025-10-28T14:30:22Z",
+                    "rollback_on_failure": True,
+                    "timeout_seconds": 30,
+                    "metadata": {
+                        "reason": "FLASH_CRASH",
+                        "trigger_price": 45000,
+                        "risk_threshold": 0.05
+                    }
+                },
+                {
+                    "batch_id": "BAT_20251028_150000_e3f4g",
+                    "commands": [
+                        {"command_id": "EXC_20251028_150001_4d5e6f7g", "causality": {"origin": {"id": "TCK_20251028_150000_jkl012", "type": "TICK"}}}
+                    ],
+                    "execution_mode": "PARALLEL",
+                    "created_at": "2025-10-28T15:00:00Z",
+                    "rollback_on_failure": False,
+                    "timeout_seconds": 10,
+                    "metadata": {"action": "BULK_CANCEL", "count": 20}
+                },
+                {
+                    "batch_id": "BAT_20251028_160000_h9i0j",
+                    "commands": [
+                        {"command_id": "EXC_20251028_160001_5e6f7g8h", "causality": {"origin": {"id": "TCK_20251028_160000_mno345", "type": "TICK"}}},
+                        {"command_id": "EXC_20251028_160002_6f7g8h9i", "causality": {"origin": {"id": "TCK_20251028_160001_pqr678", "type": "TICK"}}}
+                    ],
+                    "execution_mode": "SEQUENTIAL",
+                    "created_at": "2025-10-28T16:00:00Z",
+                    "rollback_on_failure": False,
+                    "timeout_seconds": None,
+                    "metadata": {"strategy": "HEDGED_EXIT"}
+                }
+            ]
+        }
+    }
+
+    batch_id: str = Field(
+        default_factory=generate_batch_id,
+        description="Unique batch identifier (BAT_YYYYMMDD_HHMMSS_xxxxx)"
+    )
+    commands: list[ExecutionCommand] = Field(min_length=1)
+    execution_mode: ExecutionMode
+    created_at: datetime
+    rollback_on_failure: bool = True
+    timeout_seconds: int | None = None
+    metadata: dict[str, Any] | None = None
+
+    @field_validator("batch_id")
+    @classmethod
+    def validate_batch_id_format(cls, v: str) -> str:
+        """Ensure batch_id matches BAT_YYYYMMDD_HHMMSS_xxxxx format.
+
+        Args:
+            v: Batch ID string
+
+        Returns:
+            Validated batch ID
+
+        Raises:
+            ValueError: If format is invalid
+        """
+        pattern = r"^BAT_\d{8}_\d{6}_[0-9a-z]{5,8}$"
+        if not match(pattern, v):
+            raise ValueError(
+                f"batch_id must match pattern BAT_YYYYMMDD_HHMMSS_xxxxx, got: {v}"
+            )
+        return v
+
+    @field_validator("commands")
+    @classmethod
+    def validate_non_empty_commands(cls, v: list[ExecutionCommand]) -> list[ExecutionCommand]:
+        """Ensure commands list is not empty.
+
+        Args:
+            v: List of commands
+
+        Returns:
+            Validated commands list
+
+        Raises:
+            ValueError: If list is empty
+        """
+        if len(v) == 0:
+            raise ValueError(
+                "commands list cannot be empty (minimum 1 command required)"
+            )
+        return v
+
+    @field_validator("commands")
+    @classmethod
+    def validate_unique_command_ids(
+        cls, v: list[ExecutionCommand]
+    ) -> list[ExecutionCommand]:
+        """Ensure all command IDs are unique within batch.
+
+        Args:
+            v: List of commands
+
+        Returns:
+            Validated commands list
+
+        Raises:
+            ValueError: If duplicate command IDs found
+        """
+        command_ids = [c.command_id for c in v]
+        if len(command_ids) != len(set(command_ids)):
+            raise ValueError(
+                "All command_ids must be unique within batch (duplicates found)"
+            )
+        return v
+
+    @field_validator("rollback_on_failure")
+    @classmethod
+    def validate_atomic_rollback(cls, v: bool, info: ValidationInfo) -> bool:
+        """Ensure rollback_on_failure=True for ATOMIC mode.
+
+        Args:
+            v: rollback_on_failure value
+            info: Validation info (contains other field values)
+
+        Returns:
+            Validated rollback_on_failure value
+
+        Raises:
+            ValueError: If ATOMIC mode with rollback_on_failure=False
+        """
+        execution_mode: ExecutionMode | None = info.data.get("execution_mode")
+        if execution_mode == ExecutionMode.ATOMIC and not v:
+            raise ValueError(
+                "rollback_on_failure must be True for ExecutionMode.ATOMIC"
+            )
+        return v
+
+    @field_validator("timeout_seconds")
+    @classmethod
+    def validate_timeout_positive(cls, v: int | None) -> int | None:
+        """Ensure timeout_seconds is positive if provided.
+
+        Args:
+            v: Timeout in seconds
+
+        Returns:
+            Validated timeout value
+
+        Raises:
+            ValueError: If timeout <= 0
+        """
+        if v is not None and v <= 0:
+            raise ValueError(f"timeout_seconds must be positive, got: {v}")
+        return v
