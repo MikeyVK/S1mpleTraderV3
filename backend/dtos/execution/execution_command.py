@@ -210,9 +210,24 @@ class ExecutionCommandBatch(BaseModel):
                 {
                     "batch_id": "BAT_20251028_143022_a8f3c",
                     "commands": [
-                        {"command_id": "EXC_20251028_143020_1a2b3c4d", "causality": {"origin": {"id": "TCK_20251028_143000_abc123", "type": "TICK"}}},
-                        {"command_id": "EXC_20251028_143021_2b3c4d5e", "causality": {"origin": {"id": "TCK_20251028_143001_def456", "type": "TICK"}}},
-                        {"command_id": "EXC_20251028_143022_3c4d5e6f", "causality": {"origin": {"id": "TCK_20251028_143002_ghi789", "type": "TICK"}}}
+                        {
+                            "command_id": "EXC_20251028_143020_1a2b3c4d",
+                            "causality": {
+                                "origin": {"id": "TCK_20251028_143000_abc123", "type": "TICK"}
+                            }
+                        },
+                        {
+                            "command_id": "EXC_20251028_143021_2b3c4d5e",
+                            "causality": {
+                                "origin": {"id": "TCK_20251028_143001_def456", "type": "TICK"}
+                            }
+                        },
+                        {
+                            "command_id": "EXC_20251028_143022_3c4d5e6f",
+                            "causality": {
+                                "origin": {"id": "TCK_20251028_143002_ghi789", "type": "TICK"}
+                            }
+                        }
                     ],
                     "execution_mode": "ATOMIC",
                     "created_at": "2025-10-28T14:30:22Z",
@@ -227,7 +242,12 @@ class ExecutionCommandBatch(BaseModel):
                 {
                     "batch_id": "BAT_20251028_150000_e3f4g",
                     "commands": [
-                        {"command_id": "EXC_20251028_150001_4d5e6f7g", "causality": {"origin": {"id": "TCK_20251028_150000_jkl012", "type": "TICK"}}}
+                        {
+                            "command_id": "EXC_20251028_150001_4d5e6f7g",
+                            "causality": {
+                                "origin": {"id": "TCK_20251028_150000_jkl012", "type": "TICK"}
+                            }
+                        }
                     ],
                     "execution_mode": "PARALLEL",
                     "created_at": "2025-10-28T15:00:00Z",
@@ -238,8 +258,18 @@ class ExecutionCommandBatch(BaseModel):
                 {
                     "batch_id": "BAT_20251028_160000_h9i0j",
                     "commands": [
-                        {"command_id": "EXC_20251028_160001_5e6f7g8h", "causality": {"origin": {"id": "TCK_20251028_160000_mno345", "type": "TICK"}}},
-                        {"command_id": "EXC_20251028_160002_6f7g8h9i", "causality": {"origin": {"id": "TCK_20251028_160001_pqr678", "type": "TICK"}}}
+                        {
+                            "command_id": "EXC_20251028_160001_5e6f7g8h",
+                            "causality": {
+                                "origin": {"id": "TCK_20251028_160000_mno345", "type": "TICK"}
+                            }
+                        },
+                        {
+                            "command_id": "EXC_20251028_160002_6f7g8h9i",
+                            "causality": {
+                                "origin": {"id": "TCK_20251028_160001_pqr678", "type": "TICK"}
+                            }
+                        }
                     ],
                     "execution_mode": "SEQUENTIAL",
                     "created_at": "2025-10-28T16:00:00Z",

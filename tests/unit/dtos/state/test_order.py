@@ -310,4 +310,3 @@ class TestOrderExamples:
             example_data = {k: v for k, v in example.items() if k != "description"}
             # This should not raise
             Order.model_validate(example_data)
-

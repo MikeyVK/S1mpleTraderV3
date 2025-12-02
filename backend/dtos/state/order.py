@@ -215,4 +215,3 @@ class Order(BaseModel):
                 raise ValueError("STOP_LIMIT orders require stop_price to be set")
 
         return self
-
