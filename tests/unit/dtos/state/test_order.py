@@ -69,7 +69,7 @@ class TestOrderCreation:
         """Should create limit Order with required fields."""
         order = Order(**valid_order_data)
 
-        assert order.order_id.startswith("ORD_")
+        assert getattr(order, "order_id").startswith("ORD_")
         assert order.parent_group_id == "EXG_20251201_145955_xyz789"
         assert order.symbol == "BTC_USDT"
         assert order.side == "BUY"
@@ -93,9 +93,10 @@ class TestOrderCreation:
     ) -> None:
         """Should auto-generate ID with ORD_ prefix."""
         order = Order(**valid_order_data)
-        assert order.order_id.startswith("ORD_")
+        order_id = getattr(order, "order_id")
+        assert order_id.startswith("ORD_")
         # Format: ORD_YYYYMMDD_HHMMSS_hash
-        parts = order.order_id.split("_")
+        parts = order_id.split("_")
         assert len(parts) == 4
         assert parts[0] == "ORD"
 

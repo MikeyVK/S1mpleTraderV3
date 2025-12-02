@@ -94,3 +94,7 @@ ignore = [
     "ANN",  # No type annotations required in tests
     "ARG",  # Unused arguments OK in fixtures
 ]
+
+[tool.pyright]
+# Pydantic v2 integration - prevents FieldInfo type inference issues
+reportFunctionMemberAccess = false

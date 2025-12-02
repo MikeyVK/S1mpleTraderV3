@@ -3,4 +3,5 @@
 init-hook='import sys; sys.path.insert(0, ".")'
 
 [MESSAGES CONTROL]
-disable=unused-argument,arguments-differ,unnecessary-ellipsis
+# redefined-outer-name: Standard pytest fixture pattern - fixtures redefine names from outer scope
+disable=unused-argument,arguments-differ,unnecessary-ellipsis,redefined-outer-name

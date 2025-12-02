@@ -22,6 +22,7 @@ Tests the ExecutionCommandBatch DTO for atomic batch execution.
 import re
 from datetime import datetime, timezone
 from decimal import Decimal
+
 import pytest
 
 from backend.core.enums import ExecutionMode
@@ -86,7 +87,7 @@ class TestExecutionCommandCreation:
             execution_plan=execution_plan
         )
 
-        assert command.command_id.startswith("EXC_")
+        assert getattr(command, "command_id").startswith("EXC_")
         assert command.causality == causality
         assert command.entry_plan == entry
         assert command.size_plan == size
@@ -113,7 +114,7 @@ class TestExecutionCommandCreation:
             exit_plan=exit_plan
         )
 
-        assert command.command_id.startswith("EXC_")
+        assert getattr(command, "command_id").startswith("EXC_")
         assert command.entry_plan is None
         assert command.size_plan is None
         assert command.exit_plan == exit_plan
@@ -137,7 +138,7 @@ class TestExecutionCommandCreation:
             execution_plan=execution_plan
         )
 
-        assert command.command_id.startswith("EXC_")
+        assert getattr(command, "command_id").startswith("EXC_")
         assert command.entry_plan is None
         assert command.size_plan is None
         assert command.exit_plan is None
@@ -161,8 +162,8 @@ class TestExecutionCommandCreation:
         )
 
         # EXC_YYYYMMDD_HHMMSS_hash format
-        assert command.command_id.startswith("EXC_")
-        assert len(command.command_id) == 28
+        assert getattr(command, "command_id").startswith("EXC_")
+        assert len(getattr(command, "command_id")) == 28
 
 
 class TestExecutionCommandValidation:
@@ -333,7 +334,9 @@ class TestExecutionCommandBatchCreation:
         )
 
         assert batch.metadata is not None
-        assert batch.metadata["reason"] == "FLASH_CRASH"
+        assert isinstance(batch.metadata, dict)
+        metadata = dict(batch.metadata)
+        assert metadata["reason"] == "FLASH_CRASH"
 
     def test_batch_with_timeout(self):
         """Test creating batch with timeout."""

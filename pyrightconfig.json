@@ -70,7 +70,7 @@
   "reportUnusedCoroutine": true,
   "reportGeneralTypeIssues": true,
   "reportPropertyTypeMismatch": true,
-  "reportFunctionMemberAccess": true,
+  "reportFunctionMemberAccess": false,
   "reportArgumentType": false,
   "reportCallIssue": false,
   "reportAttributeAccessIssue": false
