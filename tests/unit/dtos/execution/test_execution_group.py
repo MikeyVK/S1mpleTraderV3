@@ -262,24 +262,24 @@ class TestExecutionGroupStrategies:
         assert group.metadata is not None
         assert group.metadata["visible_ratio"] == 0.2
 
-    def test_execution_strategy_dca(self):
-        """Test DCA strategy with frequency."""
+    def test_execution_strategy_layered(self):
+        """Test LAYERED strategy with price levels."""
         group = ExecutionGroup(
             group_id="EXG_20251028_100000_g4h9i",
             parent_directive_id="EXE_20251028_095958_h5c6d7e8",
-            execution_strategy=ExecutionStrategyType.DCA,
+            execution_strategy=ExecutionStrategyType.LAYERED,
             order_ids=["binance_400", "binance_401", "binance_402"],
             status=GroupStatus.ACTIVE,
             created_at=datetime(2025, 10, 28, 10, 0, 0, tzinfo=timezone.utc),
             updated_at=datetime(2025, 10, 28, 12, 0, 0, tzinfo=timezone.utc),
             target_quantity=Decimal("50.0"),
             filled_quantity=Decimal("30.0"),
-            metadata={"frequency": "hourly", "amount_per_buy": Decimal("10.0")}
+            metadata={"price_levels": ["100000", "99500", "99000"]}
         )
 
-        assert group.execution_strategy == ExecutionStrategyType.DCA
+        assert group.execution_strategy == ExecutionStrategyType.LAYERED
         assert group.metadata is not None
-        assert group.metadata["frequency"] == "hourly"
+        assert group.metadata["price_levels"] == ["100000", "99500", "99000"]
 
     def test_execution_strategy_vwap(self):
         """Test VWAP strategy."""
@@ -370,7 +370,7 @@ class TestExecutionGroupStatus:
         group = ExecutionGroup(
             group_id="EXG_20251028_100000_g4h9i",
             parent_directive_id="EXE_20251028_095958_h5c6d7e8",
-            execution_strategy=ExecutionStrategyType.DCA,
+            execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=["binance_400", "binance_401"],
             status=GroupStatus.COMPLETED,
             created_at=datetime(2025, 10, 28, 10, 0, 0, tzinfo=timezone.utc),

@@ -1,7 +1,7 @@
 """ExecutionGroup DTO - Tracks grouped order execution for advanced strategies.
 
 ARCHITECTURAL CONTRACT (MUTABLE TRACKING ENTITY):
-- Tracks lifecycle of multi-order execution strategies (TWAP, ICEBERG, DCA, etc.)
+- Tracks lifecycle of multi-order execution strategies (TWAP, ICEBERG, etc.)
 - MUTABLE: status/timestamps/filled_quantity evolve during execution
 - IMMUTABLE identifiers: group_id, parent_directive_id never change
 - Single Responsibility: Group coordination, NOT individual order management
@@ -17,7 +17,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from re import match
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
@@ -30,7 +30,6 @@ class ExecutionStrategyType(str, Enum):
         TWAP: Time-Weighted Average Price
         VWAP: Volume-Weighted Average Price
         ICEBERG: Iceberg order (visible/hidden pairs)
-        DCA: Dollar-Cost Averaging
         LAYERED: Layered limit orders
         POV: Percentage of Volume
     """
@@ -39,7 +38,6 @@ class ExecutionStrategyType(str, Enum):
     TWAP = "TWAP"
     VWAP = "VWAP"
     ICEBERG = "ICEBERG"
-    DCA = "DCA"
     LAYERED = "LAYERED"
     POV = "POV"
 
@@ -176,15 +174,15 @@ class ExecutionGroup(BaseModel):
     group_id: str
     parent_directive_id: str
     execution_strategy: ExecutionStrategyType
-    order_ids: List[str] = Field(default_factory=list)
+    order_ids: list[str] = Field(default_factory=list)
     status: GroupStatus
     created_at: datetime
     updated_at: datetime
-    target_quantity: Optional[Decimal] = None
-    filled_quantity: Optional[Decimal] = None
-    cancelled_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    metadata: Optional[Dict[str, Any]] = None
+    target_quantity: Decimal | None = None
+    filled_quantity: Decimal | None = None
+    cancelled_at: datetime | None = None
+    completed_at: datetime | None = None
+    metadata: dict[str, Any] | None = None
 
     @field_validator("group_id")
     @classmethod
@@ -230,7 +228,7 @@ class ExecutionGroup(BaseModel):
 
     @field_validator("order_ids")
     @classmethod
-    def validate_unique_order_ids(cls, v: List[str]) -> List[str]:
+    def validate_unique_order_ids(cls, v: list[str]) -> list[str]:
         """Ensure all order IDs are unique.
 
         Args:
@@ -248,7 +246,7 @@ class ExecutionGroup(BaseModel):
 
     @field_validator("target_quantity")
     @classmethod
-    def validate_target_quantity_positive(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+    def validate_target_quantity_positive(cls, v: Decimal | None) -> Decimal | None:
         """Ensure target_quantity is positive if provided.
 
         Args:
@@ -266,7 +264,7 @@ class ExecutionGroup(BaseModel):
 
     @field_validator("filled_quantity")
     @classmethod
-    def validate_fill_ratio(cls, v: Optional[Decimal], info: ValidationInfo) -> Optional[Decimal]:
+    def validate_fill_ratio(cls, v: Decimal | None, info: ValidationInfo) -> Decimal | None:
         """Ensure filled_quantity <= target_quantity (if both present).
 
         Args:
@@ -282,7 +280,7 @@ class ExecutionGroup(BaseModel):
         if v is None:
             return v
 
-        target_quantity: Optional[Decimal] = info.data.get("target_quantity")
+        target_quantity: Decimal | None = info.data.get("target_quantity")
         if target_quantity is not None and v > target_quantity:
             raise ValueError(
                 f"filled_quantity ({v}) cannot exceed target_quantity ({target_quantity})"
@@ -292,8 +290,8 @@ class ExecutionGroup(BaseModel):
     @field_validator("completed_at")
     @classmethod
     def validate_final_state_xor(
-        cls, v: Optional[datetime], info: ValidationInfo
-    ) -> Optional[datetime]:
+        cls, v: datetime | None, info: ValidationInfo
+    ) -> datetime | None:
         """Ensure cancelled_at and completed_at are mutually exclusive.
 
         Args:
@@ -306,7 +304,7 @@ class ExecutionGroup(BaseModel):
         Raises:
             ValueError: If both cancelled_at and completed_at are set
         """
-        cancelled_at: Optional[datetime] = info.data.get("cancelled_at")
+        cancelled_at: datetime | None = info.data.get("cancelled_at")
 
         if cancelled_at is not None and v is not None:
             raise ValueError(
