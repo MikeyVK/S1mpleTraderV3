@@ -81,8 +81,15 @@
 | Field | Type | Req | Description |
 |-------|------|-----|-------------|
 | `execution_urgency` | `Decimal` | ❌ | Urgency [0.0-1.0], default 0.5 |
-| `iceberg_preference` | `Decimal \| None` | ❌ | Iceberg preference [0.0-1.0] |
+| ~~`iceberg_preference`~~ | ~~`Decimal \| None`~~ | ❌ | ⚠️ **TO BE REMOVED** - violates layer separation |
 | `max_total_slippage_pct` | `Decimal` | ❌ | Max total slippage, default 0.01 |
+
+> ⚠️ **ARCHITECTURAL NOTE (2025-12-02):**
+> `iceberg_preference` should NOT be in this sub-directive. Iceberg execution is ExecutionPlanner 
+> responsibility, not StrategyPlanner. Per DTO_ARCHITECTURE.md:
+> - ExecutionPlan has `visibility_preference` (universal 0.0-1.0 trade-off)
+> - ExecutionTranslator maps visibility_preference → iceberg/dark pools per connector
+> See TODO.md for removal action item.
 
 **Note:** The sub-directive in StrategyDirective uses field name `execution_directive` (type `ExecutionDirective`).
 This is distinct from:

@@ -125,6 +125,24 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Scope:** backend/dtos/execution/execution_group.py
   - **Priority:** Medium (architectural clarity)
 
+- [ ] **ExecutionDirective: REMOVE iceberg_preference field** (2025-12-02)
+  - **Issue:** `iceberg_preference` field in `ExecutionDirective` (sub-directive) violates layer responsibilities
+  - **Problem:** Iceberg execution is **ExecutionPlanner** responsibility, NOT StrategyPlanner
+  - **Current violation:** `backend/dtos/strategy/strategy_directive.py` line 169 has `iceberg_preference: Decimal | None`
+  - **Correct architecture (per DTO_ARCHITECTURE.md):**
+    - StrategyDirective.ExecutionDirective → only strategic hints (urgency, slippage limits)
+    - ExecutionPlan → contains `visibility_preference: Decimal` (0.0=stealth, 1.0=visible)
+    - ExecutionTranslator → maps `visibility_preference` to iceberg/dark pools per connector
+  - **Quote from DTO_ARCHITECTURE.md line 888:**
+    > ❌ `iceberg_preference` - Connector-specific. Translator maps from visibility_preference.
+  - **Action Required:**
+    1. Remove `iceberg_preference` from `ExecutionDirective` class
+    2. Ensure `ExecutionPlan` has `visibility_preference` field (universal trade-off)
+    3. Update tests that reference `iceberg_preference` in ExecutionDirective
+  - **Scope:** backend/dtos/strategy/strategy_directive.py (ExecutionDirective class)
+  - **Priority:** High (architectural violation)
+  - **Related:** ExecutionPlan.visibility_preference, ExecutionTranslator
+
 - [x] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27) **RESOLVED**
   - **Commit:** `3b45af6` - refactor(dto): remove DCA from ExecutionStrategyType enum
   - **Status:** COMPLETE - DCA is now correctly a planning-level concept
