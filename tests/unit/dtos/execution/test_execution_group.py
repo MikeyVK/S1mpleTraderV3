@@ -34,7 +34,7 @@ class TestExecutionGroupCreation:
         """Test creation with only required fields."""
         group = ExecutionGroup(
             group_id="EXG_20251028_143022_a8f3c",
-            parent_directive_id="EXE_20251028_143020_b7c4d890",
+            parent_command_id="EXC_20251028_143020_b7c4d890",
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=[],
             status=GroupStatus.PENDING,
@@ -43,7 +43,7 @@ class TestExecutionGroupCreation:
         )
 
         assert group.group_id == "EXG_20251028_143022_a8f3c"
-        assert group.parent_directive_id == "EXE_20251028_143020_b7c4d890"
+        assert group.parent_command_id == "EXC_20251028_143020_b7c4d890"
         assert group.execution_strategy == ExecutionStrategyType.SINGLE
         assert group.order_ids == []
         assert group.status == GroupStatus.PENDING
@@ -59,7 +59,7 @@ class TestExecutionGroupCreation:
         """Test creation with all fields populated."""
         group = ExecutionGroup(
             group_id="EXG_20251028_143025_b7c4d",
-            parent_directive_id="EXE_20251028_143020_c8e6f123",
+            parent_command_id="EXC_20251028_143020_c8e6f123",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123", "binance_124", "binance_125"],
             status=GroupStatus.ACTIVE,
@@ -95,7 +95,7 @@ class TestExecutionGroupCreation:
 
         group = ExecutionGroup(
             group_id="EXG_20251028_150000_c9e7f",
-            parent_directive_id="EXE_20251028_145958_d1a2b3c4",
+            parent_command_id="EXC_20251028_145958_d1a2b3c4",
             execution_strategy=ExecutionStrategyType.ICEBERG,
             order_ids=["binance_200"],
             status=GroupStatus.ACTIVE,
@@ -118,7 +118,7 @@ class TestExecutionGroupValidation:
         with pytest.raises(ValidationError):
             ExecutionGroup(
                 group_id="INVALID_FORMAT",
-                parent_directive_id="EXE_20251028_143020_b7c4d890",
+                parent_command_id="EXC_20251028_143020_b7c4d890",
                 execution_strategy=ExecutionStrategyType.SINGLE,
                 order_ids=[],
                 status=GroupStatus.PENDING,
@@ -126,13 +126,13 @@ class TestExecutionGroupValidation:
                 updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
             )
 
-    def test_parent_directive_id_format_validation(self):
-        """Test parent_directive_id format validation."""
+    def test_parent_command_id_format_validation(self):
+        """Test parent_command_id format validation."""
         # Invalid format should raise ValidationError
         with pytest.raises(ValidationError):
             ExecutionGroup(
                 group_id="EXG_20251028_143022_a8f3c",
-                parent_directive_id="INVALID_ID",
+                parent_command_id="INVALID_ID",
                 execution_strategy=ExecutionStrategyType.SINGLE,
                 order_ids=[],
                 status=GroupStatus.PENDING,
@@ -145,7 +145,7 @@ class TestExecutionGroupValidation:
         with pytest.raises(ValidationError, match="unique"):
             ExecutionGroup(
                 group_id="EXG_20251028_143022_a8f3c",
-                parent_directive_id="EXE_20251028_143020_b7c4d890",
+                parent_command_id="EXC_20251028_143020_b7c4d890",
                 execution_strategy=ExecutionStrategyType.TWAP,
                 order_ids=["binance_123", "binance_123"],  # Duplicate!
                 status=GroupStatus.ACTIVE,
@@ -158,7 +158,7 @@ class TestExecutionGroupValidation:
         with pytest.raises(ValidationError, match="exceed|target"):
             ExecutionGroup(
                 group_id="EXG_20251028_143022_a8f3c",
-                parent_directive_id="EXE_20251028_143020_b7c4d890",
+                parent_command_id="EXC_20251028_143020_b7c4d890",
                 execution_strategy=ExecutionStrategyType.TWAP,
                 order_ids=[],
                 status=GroupStatus.ACTIVE,
@@ -173,7 +173,7 @@ class TestExecutionGroupValidation:
         with pytest.raises(ValidationError, match="cancelled.*completed"):
             ExecutionGroup(
                 group_id="EXG_20251028_143022_a8f3c",
-                parent_directive_id="EXE_20251028_143020_b7c4d890",
+                parent_command_id="EXC_20251028_143020_b7c4d890",
                 execution_strategy=ExecutionStrategyType.TWAP,
                 order_ids=[],
                 status=GroupStatus.COMPLETED,
@@ -188,7 +188,7 @@ class TestExecutionGroupValidation:
         with pytest.raises(ValidationError):
             ExecutionGroup(
                 group_id="EXG_20251028_143022_a8f3c",
-                parent_directive_id="EXE_20251028_143020_b7c4d890",
+                parent_command_id="EXC_20251028_143020_b7c4d890",
                 execution_strategy=ExecutionStrategyType.TWAP,
                 order_ids=[],
                 status=GroupStatus.PENDING,
@@ -205,7 +205,7 @@ class TestExecutionGroupStrategies:
         """Test SINGLE strategy."""
         group = ExecutionGroup(
             group_id="EXG_20251028_120000_i5j0k",
-            parent_directive_id="EXE_20251028_115958_j6d7e8f9",
+            parent_command_id="EXC_20251028_115958_j6d7e8f9",
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=["binance_500"],
             status=GroupStatus.COMPLETED,
@@ -223,7 +223,7 @@ class TestExecutionGroupStrategies:
         """Test TWAP strategy with chunks."""
         group = ExecutionGroup(
             group_id="EXG_20251028_143022_a8f3c",
-            parent_directive_id="EXE_20251028_143020_b7c4d890",
+            parent_command_id="EXC_20251028_143020_b7c4d890",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123", "binance_124", "binance_125"],
             status=GroupStatus.ACTIVE,
@@ -247,7 +247,7 @@ class TestExecutionGroupStrategies:
         """Test ICEBERG strategy with visible_ratio."""
         group = ExecutionGroup(
             group_id="EXG_20251028_150000_c9e7f",
-            parent_directive_id="EXE_20251028_145958_d1a2b3c4",
+            parent_command_id="EXC_20251028_145958_d1a2b3c4",
             execution_strategy=ExecutionStrategyType.ICEBERG,
             order_ids=["binance_200"],
             status=GroupStatus.ACTIVE,
@@ -266,7 +266,7 @@ class TestExecutionGroupStrategies:
         """Test LAYERED strategy with price levels."""
         group = ExecutionGroup(
             group_id="EXG_20251028_100000_g4h9i",
-            parent_directive_id="EXE_20251028_095958_h5c6d7e8",
+            parent_command_id="EXC_20251028_095958_h5c6d7e8",
             execution_strategy=ExecutionStrategyType.LAYERED,
             order_ids=["binance_400", "binance_401", "binance_402"],
             status=GroupStatus.ACTIVE,
@@ -285,7 +285,7 @@ class TestExecutionGroupStrategies:
         """Test VWAP strategy."""
         group = ExecutionGroup(
             group_id="EXG_20251028_110000_k6l1m",
-            parent_directive_id="EXE_20251028_105958_m7n8o9p0",
+            parent_command_id="EXC_20251028_105958_m7n8o9p0",
             execution_strategy=ExecutionStrategyType.VWAP,
             order_ids=[],
             status=GroupStatus.PENDING,
@@ -299,7 +299,7 @@ class TestExecutionGroupStrategies:
         """Test LAYERED limit orders strategy with metadata."""
         group = ExecutionGroup(
             group_id="EXG_20251028_130000_n2o3p",
-            parent_directive_id="EXE_20251028_125958_q4r5s6t7",
+            parent_command_id="EXC_20251028_125958_q4r5s6t7",
             execution_strategy=ExecutionStrategyType.LAYERED,
             order_ids=["binance_600", "binance_601", "binance_602"],
             status=GroupStatus.ACTIVE,
@@ -319,7 +319,7 @@ class TestExecutionGroupStrategies:
         """Test POV (Percentage of Volume) strategy."""
         group = ExecutionGroup(
             group_id="EXG_20251028_140000_u8v9w",
-            parent_directive_id="EXE_20251028_135958_x0y1z2a3",
+            parent_command_id="EXC_20251028_135958_x0y1z2a3",
             execution_strategy=ExecutionStrategyType.POV,
             order_ids=[],
             status=GroupStatus.PENDING,
@@ -341,7 +341,7 @@ class TestExecutionGroupStatus:
         # Initial state: PENDING
         group = ExecutionGroup(
             group_id="EXG_20251028_143022_a8f3c",
-            parent_directive_id="EXE_20251028_143020_b7c4d890",
+            parent_command_id="EXC_20251028_143020_b7c4d890",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=[],
             status=GroupStatus.PENDING,
@@ -355,7 +355,7 @@ class TestExecutionGroupStatus:
         # For now just test ACTIVE state is valid
         active_group = ExecutionGroup(
             group_id="EXG_20251028_143022_a8f3c",
-            parent_directive_id="EXE_20251028_143020_b7c4d890",
+            parent_command_id="EXC_20251028_143020_b7c4d890",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123"],
             status=GroupStatus.ACTIVE,
@@ -369,7 +369,7 @@ class TestExecutionGroupStatus:
         """Test ACTIVE → COMPLETED transition."""
         group = ExecutionGroup(
             group_id="EXG_20251028_100000_g4h9i",
-            parent_directive_id="EXE_20251028_095958_h5c6d7e8",
+            parent_command_id="EXC_20251028_095958_h5c6d7e8",
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=["binance_400", "binance_401"],
             status=GroupStatus.COMPLETED,
@@ -388,7 +388,7 @@ class TestExecutionGroupStatus:
         """Test ACTIVE → CANCELLED transition (emergency cancel)."""
         group = ExecutionGroup(
             group_id="EXG_20251028_160000_e2f8g",
-            parent_directive_id="EXE_20251028_155958_f3b4c5d6",
+            parent_command_id="EXC_20251028_155958_f3b4c5d6",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_300", "binance_301"],
             status=GroupStatus.CANCELLED,
@@ -410,7 +410,7 @@ class TestExecutionGroupStatus:
         """Test ACTIVE → FAILED transition (execution error)."""
         group = ExecutionGroup(
             group_id="EXG_20251028_170000_h3i9j",
-            parent_directive_id="EXE_20251028_165958_k4l5m6n7",
+            parent_command_id="EXC_20251028_165958_k4l5m6n7",
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=[],
             status=GroupStatus.FAILED,
@@ -427,7 +427,7 @@ class TestExecutionGroupStatus:
         """Test ACTIVE → PARTIAL transition (partial fill, stopped early)."""
         group = ExecutionGroup(
             group_id="EXG_20251028_180000_o5p1q",
-            parent_directive_id="EXE_20251028_175958_r6s7t8u9",
+            parent_command_id="EXC_20251028_175958_r6s7t8u9",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_700", "binance_701"],
             status=GroupStatus.PARTIAL,
@@ -450,7 +450,7 @@ class TestExecutionGroupStatus:
         # For now, test that valid combination works
         group = ExecutionGroup(
             group_id="EXG_20251028_190000_v2w3x",
-            parent_directive_id="EXE_20251028_185958_y4z5a6b7",
+            parent_command_id="EXC_20251028_185958_y4z5a6b7",
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=["binance_800"],
             status=GroupStatus.COMPLETED,
@@ -470,7 +470,7 @@ class TestExecutionGroupMutation:
         """Test adding order IDs to group (mutable list)."""
         group = ExecutionGroup(
             group_id="EXG_20251028_143022_a8f3c",
-            parent_directive_id="EXE_20251028_143020_b7c4d890",
+            parent_command_id="EXC_20251028_143020_b7c4d890",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=[],
             status=GroupStatus.ACTIVE,
@@ -494,7 +494,7 @@ class TestExecutionGroupMutation:
         """Test updating filled_quantity (mutable field)."""
         group = ExecutionGroup(
             group_id="EXG_20251028_143022_a8f3c",
-            parent_directive_id="EXE_20251028_143020_b7c4d890",
+            parent_command_id="EXC_20251028_143020_b7c4d890",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123"],
             status=GroupStatus.ACTIVE,
@@ -527,7 +527,7 @@ class TestExecutionGroupSerialization:  # pylint: disable=too-few-public-methods
         """Test model_dump() → model_validate() roundtrip (Pydantic)."""
         original = ExecutionGroup(
             group_id="EXG_20251028_143022_a8f3c",
-            parent_directive_id="EXE_20251028_143020_b7c4d890",
+            parent_command_id="EXC_20251028_143020_b7c4d890",
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123", "binance_124", "binance_125"],
             status=GroupStatus.ACTIVE,

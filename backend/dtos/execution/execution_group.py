@@ -3,7 +3,7 @@
 ARCHITECTURAL CONTRACT (MUTABLE TRACKING ENTITY):
 - Tracks lifecycle of multi-order execution strategies (TWAP, ICEBERG, etc.)
 - MUTABLE: status/timestamps/filled_quantity evolve during execution
-- IMMUTABLE identifiers: group_id, parent_directive_id never change
+- IMMUTABLE identifiers: group_id, parent_command_id never change
 - Single Responsibility: Group coordination, NOT individual order management
 - Validation: Pydantic field_validators enforce business rules
 
@@ -28,13 +28,13 @@ class ExecutionGroup(BaseModel):
 
     MUTABILITY CONTRACT:
     - frozen=False (status/timestamps/filled_quantity change during execution)
-    - Immutable identifiers: group_id, parent_directive_id
+    - Immutable identifiers: group_id, parent_command_id
     - Timestamps: created_at (always), updated_at (always), cancelled_at/completed_at
       (when applicable)
 
     Fields:
         group_id: Unique execution group identifier (EXG_YYYYMMDD_HHMMSS_xxxxx)
-        parent_directive_id: ExecutionDirective that spawned this group
+        parent_command_id: ExecutionCommand that spawned this group
         execution_strategy: Execution strategy type (TWAP, ICEBERG, DCA, etc.)
         order_ids: List of connector order IDs in this group (unique values)
         status: Current lifecycle status
@@ -49,7 +49,7 @@ class ExecutionGroup(BaseModel):
     Example:
         >>> group = ExecutionGroup(
         ...     group_id="EXG_20251028_143022_a8f3c",
-        ...     parent_directive_id="EXE_20251028_143020_b7c4d",
+        ...     parent_command_id="EXC_20251028_143020_b7c4d",
         ...     execution_strategy=ExecutionStrategyType.TWAP,
         ...     order_ids=[],
         ...     status=GroupStatus.PENDING,
@@ -64,7 +64,7 @@ class ExecutionGroup(BaseModel):
             "examples": [
                 {
                     "group_id": "EXG_20251028_143022_a8f3c",
-                    "parent_directive_id": "EXE_20251028_143020_b7c4d",
+                    "parent_command_id": "EXC_20251028_143020_b7c4d",
                     "execution_strategy": "TWAP",
                     "order_ids": [
                         "order_20251028_143025_1",
@@ -88,7 +88,7 @@ class ExecutionGroup(BaseModel):
                 },
                 {
                     "group_id": "EXG_20251028_150015_b9d2e",
-                    "parent_directive_id": "EXE_20251028_150010_c3f1g",
+                    "parent_command_id": "EXC_20251028_150010_c3f1g",
                     "execution_strategy": "ICEBERG",
                     "order_ids": [
                         "order_20251028_150018_1",
@@ -109,7 +109,7 @@ class ExecutionGroup(BaseModel):
                 },
                 {
                     "group_id": "EXG_20251028_160000_d4e5f",
-                    "parent_directive_id": "EXE_20251028_155955_e6g7h",
+                    "parent_command_id": "EXC_20251028_155955_e6g7h",
                     "execution_strategy": "SINGLE",
                     "order_ids": ["order_20251028_160002_1"],
                     "status": "COMPLETED",
@@ -126,7 +126,7 @@ class ExecutionGroup(BaseModel):
     }
 
     group_id: str
-    parent_directive_id: str
+    parent_command_id: str
     execution_strategy: ExecutionStrategyType
     order_ids: list[str] = Field(default_factory=list)
     status: GroupStatus
@@ -159,10 +159,10 @@ class ExecutionGroup(BaseModel):
             )
         return v
 
-    @field_validator("parent_directive_id")
+    @field_validator("parent_command_id")
     @classmethod
-    def validate_parent_directive_id_format(cls, v: str) -> str:
-        """Ensure parent_directive_id matches EXE_YYYYMMDD_HHMMSS_xxxxx format.
+    def validate_parent_command_id_format(cls, v: str) -> str:
+        """Ensure parent_command_id matches EXC_YYYYMMDD_HHMMSS_xxxxx format.
 
         Args:
             v: Parent directive ID string
@@ -173,10 +173,10 @@ class ExecutionGroup(BaseModel):
         Raises:
             ValueError: If format is invalid
         """
-        pattern = r"^EXE_\d{8}_\d{6}_[0-9a-z]{5,8}$"
+        pattern = r"^EXC_\d{8}_\d{6}_[0-9a-z]{5,8}$"
         if not match(pattern, v):
             raise ValueError(
-                f"parent_directive_id must match pattern EXE_YYYYMMDD_HHMMSS_xxxxx, got: {v}"
+                f"parent_command_id must match pattern EXC_YYYYMMDD_HHMMSS_xxxxx, got: {v}"
             )
         return v
 
