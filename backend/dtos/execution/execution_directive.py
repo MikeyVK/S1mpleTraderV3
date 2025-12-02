@@ -2,6 +2,11 @@
 """
 ExecutionDirective - Final aggregated execution instruction.
 
+.. deprecated:: 0.5.0
+    Use :class:`ExecutionCommand` instead. This class will be removed in v1.0.0.
+    ExecutionCommand uses EXC_ prefix instead of EXE_ and field `command_id`
+    instead of `directive_id`.
+
 Aggregates all planning outputs (Entry, Size, Exit, Execution) into a single
 executable directive for the ExecutionHandler.
 
@@ -19,6 +24,7 @@ executable directive for the ExecutionHandler.
 """
 
 # Standard library imports
+import warnings
 from typing import TYPE_CHECKING
 
 # Third-party imports
@@ -26,12 +32,19 @@ from pydantic import BaseModel, Field, model_validator
 
 # Application imports
 from backend.dtos.causality import CausalityChain
-from backend.dtos.strategy import EntryPlan, SizePlan, ExitPlan, ExecutionPlan
+from backend.dtos.strategy import EntryPlan, ExitPlan, ExecutionPlan, SizePlan
 from backend.utils.id_generators import generate_execution_directive_id
 
 if TYPE_CHECKING:
     from typing_extensions import Self
 
+# Emit deprecation warning when module is imported
+warnings.warn(
+    "ExecutionDirective is deprecated. Use ExecutionCommand instead. "
+    "ExecutionDirective will be removed in v1.0.0.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 class ExecutionDirective(BaseModel):
     """
