@@ -81,6 +81,7 @@ __all__ = [
     'generate_execution_command_id',
     'generate_execution_directive_id',  # Deprecated - use generate_execution_command_id
     'generate_execution_group_id',
+    'generate_order_id',
     'generate_batch_id',
     'extract_id_type',
     'extract_id_timestamp',
@@ -190,6 +191,11 @@ def generate_execution_group_id() -> str:
     return _generate_id('EXG')
 
 
+def generate_order_id() -> str:
+    """Generate Order ID."""
+    return _generate_id('ORD')
+
+
 def generate_batch_id() -> str:
     """Generate ExecutionDirectiveBatch ID."""
     return _generate_id('BAT')
@@ -225,7 +231,7 @@ def extract_id_type(typed_id: str) -> str:
         'SIG', 'RSK', 'CTX',        # Quant worker outputs
         'STR',                      # StrategyPlanner output
         'TPL',                      # TradePlan (Execution Anchor)
-        'ENT', 'SIZ', 'EXT', 'EXP', 'EXC', 'EXE', 'EXG', 'BAT'  # Planning pipeline outputs
+        'ENT', 'SIZ', 'EXT', 'EXP', 'EXC', 'EXE', 'EXG', 'ORD', 'BAT'  # Planning/execution outputs
     ]
 
     if prefix not in valid_prefixes:

@@ -189,3 +189,49 @@ class GroupStatus(str, Enum):
     CANCELLED = "CANCELLED"
     FAILED = "FAILED"
     PARTIAL = "PARTIAL"
+
+
+# =============================================================================
+# ORDER ENUMS
+# =============================================================================
+
+
+class OrderType(str, Enum):
+    """Order type specification.
+
+    Values:
+        MARKET: Execute immediately at current market price
+        LIMIT: Execute at specified price or better
+        STOP_LIMIT: Trigger limit order when stop price is reached
+    """
+    MARKET = "MARKET"
+    LIMIT = "LIMIT"
+    STOP_LIMIT = "STOP_LIMIT"
+
+
+class OrderStatus(str, Enum):
+    """Order lifecycle status.
+
+    State Transitions:
+        PENDING → OPEN → FILLED
+        PENDING → OPEN → PARTIALLY_FILLED → FILLED
+        PENDING → OPEN → CANCELLED
+        PENDING → REJECTED
+        PENDING → OPEN → EXPIRED
+
+    Values:
+        PENDING: Created, not yet sent to exchange
+        OPEN: Sent to exchange, awaiting fill
+        PARTIALLY_FILLED: Partial execution received
+        FILLED: Completely filled
+        CANCELLED: Cancelled by user/system
+        REJECTED: Rejected by exchange
+        EXPIRED: Time-in-force expired
+    """
+    PENDING = "PENDING"
+    OPEN = "OPEN"
+    PARTIALLY_FILLED = "PARTIALLY_FILLED"
+    FILLED = "FILLED"
+    CANCELLED = "CANCELLED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
