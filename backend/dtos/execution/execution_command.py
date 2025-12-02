@@ -1,14 +1,9 @@
-# backend/dtos/execution/execution_directive.py
+# backend/dtos/execution/execution_command.py
 """
-ExecutionDirective - Final aggregated execution instruction.
-
-.. deprecated:: 0.5.0
-    Use :class:`ExecutionCommand` instead. This class will be removed in v1.0.0.
-    ExecutionCommand uses EXC_ prefix instead of EXE_ and field `command_id`
-    instead of `directive_id`.
+ExecutionCommand - Final aggregated execution instruction.
 
 Aggregates all planning outputs (Entry, Size, Exit, Execution) into a single
-executable directive for the ExecutionHandler.
+executable command for the ExecutionWorker.
 
 **Clean Execution Contract:**
 - No strategy metadata (clean separation between Strategy and Execution layers)
@@ -19,62 +14,50 @@ executable directive for the ExecutionHandler.
 @layer: DTOs (Execution)
 @dependencies: [
     pydantic, backend.dtos.causality, backend.dtos.strategy.*,
-    backend.utils.id_generator
+    backend.utils.id_generators
 ]
 """
-
-# Standard library imports
-import warnings
 from typing import TYPE_CHECKING
 
-# Third-party imports
 from pydantic import BaseModel, Field, model_validator
 
-# Application imports
 from backend.dtos.causality import CausalityChain
-from backend.dtos.strategy import EntryPlan, ExitPlan, ExecutionPlan, SizePlan
-from backend.utils.id_generators import generate_execution_directive_id
+from backend.dtos.strategy import EntryPlan, ExecutionPlan, ExitPlan, SizePlan
+from backend.utils.id_generators import generate_execution_command_id
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from typing import Self
 
-# Emit deprecation warning when module is imported
-warnings.warn(
-    "ExecutionDirective is deprecated. Use ExecutionCommand instead. "
-    "ExecutionDirective will be removed in v1.0.0.",
-    DeprecationWarning,
-    stacklevel=2
-)
 
-class ExecutionDirective(BaseModel):
+class ExecutionCommand(BaseModel):
     """
-    Final aggregated execution instruction for ExecutionHandler.
-    
-    Aggregates all planning outputs into single executable directive.
+    Final aggregated execution instruction for ExecutionWorker.
+
+    Aggregates all planning outputs into single executable command.
     Supports both NEW_TRADE (all plans) and MODIFY_EXISTING (partial plans)
     scenarios.
-    
+
     **Fields:**
-    - directive_id: Auto-generated unique identifier (EXE_YYYYMMDD_HHMMSS_hash)
+    - command_id: Auto-generated unique identifier (EXC_YYYYMMDD_HHMMSS_hash)
     - causality: Complete ID chain from tick through strategy decision
     - entry_plan: WHERE IN specification (optional - for new trades or additions)
     - size_plan: HOW MUCH specification (optional - for new trades or scaling)
     - exit_plan: WHERE OUT specification (optional - for new trades or adjustments)
     - execution_plan: HOW/WHEN specification (optional - execution trade-offs)
-    
+
     **Validation:**
-    - At least 1 plan required (cannot be empty directive)
+    - At least 1 plan required (cannot be empty command)
     - Causality required (full traceability)
-    
+
     **Use Cases:**
     - NEW_TRADE: All 4 plans present (complete trade setup)
     - MODIFY_EXISTING: Partial plans (e.g., only exit_plan for trailing stop)
     - ADD_TO_POSITION: entry_plan + size_plan only
     """
 
-    directive_id: str = Field(
-        default_factory=generate_execution_directive_id,
-        description="Auto-generated unique execution directive ID (EXE_YYYYMMDD_HHMMSS_hash)"
+    command_id: str = Field(
+        default_factory=generate_execution_command_id,
+        description="Auto-generated unique execution command ID (EXC_YYYYMMDD_HHMMSS_hash)"
     )
     causality: CausalityChain
     entry_plan: EntryPlan | None = None
@@ -90,15 +73,15 @@ class ExecutionDirective(BaseModel):
             "examples": [
                 {
                     "description": "NEW_TRADE - Complete setup with all 4 plans",
-                    "directive_id": "EXE_20251027_143500_a1b2c3d4",
+                    "command_id": "EXC_20251027_143500_a1b2c3d4",
                     "causality": {
-                        "tick_id": "TCK_20251027_143000_abc123",
+                        "origin": {"id": "TCK_20251027_143000_abc123", "type": "TICK"},
                         "signal_ids": ["SIG_20251027_143100_abc456"],
                         "strategy_directive_id": "STR_20251027_143110_def789",
                     },
                     "entry_plan": {
                         "plan_id": "ENT_20251027_143300_ghi012",
-                        "symbol": "BTCUSDT",
+                        "symbol": "BTC_USDT",
                         "direction": "BUY",
                         "order_type": "LIMIT",
                         "limit_price": "100000.00"
@@ -125,9 +108,9 @@ class ExecutionDirective(BaseModel):
                 },
                 {
                     "description": "MODIFY_EXISTING - Trailing stop adjustment (exit only)",
-                    "directive_id": "EXE_20251027_150000_b2c3d4e5",
+                    "command_id": "EXC_20251027_150000_b2c3d4e5",
                     "causality": {
-                        "tick_id": "TCK_20251027_145900_xyz789",
+                        "origin": {"id": "TCK_20251027_145900_xyz789", "type": "TICK"},
                         "strategy_directive_id": "STR_20251027_145950_abc012"
                     },
                     "entry_plan": None,
@@ -141,15 +124,15 @@ class ExecutionDirective(BaseModel):
                 },
                 {
                     "description": "ADD_TO_POSITION - Scale in (entry + size only)",
-                    "directive_id": "EXE_20251027_152000_c3d4e5f6",
+                    "command_id": "EXC_20251027_152000_c3d4e5f6",
                     "causality": {
-                        "tick_id": "TCK_20251027_151800_def123",
+                        "origin": {"id": "TCK_20251027_151800_def123", "type": "TICK"},
                         "signal_ids": ["SIG_20251027_151920_ghi678"],
                         "strategy_directive_id": "STR_20251027_151925_jkl012",
                     },
                     "entry_plan": {
                         "plan_id": "ENT_20251027_151955_mno234",
-                        "symbol": "ETHUSDT",
+                        "symbol": "ETH_USDT",
                         "direction": "BUY",
                         "order_type": "MARKET"
                     },
@@ -176,7 +159,7 @@ class ExecutionDirective(BaseModel):
             self.execution_plan
         ]):
             raise ValueError(
-                "ExecutionDirective must contain at least one plan "
+                "ExecutionCommand must contain at least one plan "
                 "(entry_plan, size_plan, exit_plan, or execution_plan)"
             )
         return self

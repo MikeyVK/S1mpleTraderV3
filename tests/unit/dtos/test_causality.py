@@ -69,7 +69,7 @@ class TestCausalityChainCreation:
         assert chain.size_plan_id is None
         assert chain.exit_plan_id is None
         assert chain.execution_plan_id is None
-        assert chain.execution_directive_id is None
+        assert chain.execution_command_id is None
         assert chain.order_ids == []
         assert chain.fill_ids == []
 
@@ -174,15 +174,15 @@ class TestCausalityChainWorkerIDs:
         assert chain.exit_plan_id == "EXT_20251026_100005_abc1d2e3"
         assert chain.execution_plan_id == "EXP_20251026_100006_def5e6f7"
 
-    def test_add_execution_directive_id(self):
-        """Test adding execution directive ID (final stage)."""
+    def test_add_execution_command_id(self):
+        """Test adding execution command ID (final stage)."""
         origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
             origin=origin,
-            execution_directive_id="EXE_20251026_100007_abc1d2e3"
+            execution_command_id="EXC_20251026_100007_abc1d2e3"
         )
 
-        assert chain.execution_directive_id == "EXE_20251026_100007_abc1d2e3"
+        assert chain.execution_command_id == "EXC_20251026_100007_abc1d2e3"
 
     def test_add_order_ids(self):
         """Test adding order IDs (execution intent)."""
@@ -321,7 +321,7 @@ class TestCausalityChainSerialization:
         assert "size_plan_id" in data
         assert "exit_plan_id" in data
         assert "execution_plan_id" in data
-        assert "execution_directive_id" in data
+        assert "execution_command_id" in data
 
     def test_model_dump_json_serializable(self):
         """Test that model_dump produces JSON-serializable dict."""
@@ -348,7 +348,7 @@ class TestCausalityChainSerialization:
             "size_plan_id": None,
             "exit_plan_id": None,
             "execution_plan_id": None,
-            "execution_directive_id": None
+            "execution_command_id": None
         }
 
         chain = CausalityChain.model_validate(data)
@@ -391,7 +391,7 @@ class TestCausalityChainEdgeCases:
             size_plan_id=None,
             exit_plan_id=None,
             execution_plan_id=None,
-            execution_directive_id=None
+            execution_command_id=None
         )
 
         assert chain.strategy_directive_id is None
@@ -409,7 +409,7 @@ class TestCausalityChainEdgeCases:
             size_plan_id="SIZ_20251026_100006_abc1d2e3",
             exit_plan_id="EXT_20251026_100007_def5e6f7",
             execution_plan_id="EXP_20251026_100008_abc1d2e3",
-            execution_directive_id="EXE_20251026_100009_def5e6f7"
+            execution_command_id="EXC_20251026_100009_def5e6f7"
         )
 
         # Verify all fields populated
@@ -421,7 +421,7 @@ class TestCausalityChainEdgeCases:
         assert chain.size_plan_id is not None
         assert chain.exit_plan_id is not None
         assert chain.execution_plan_id is not None
-        assert chain.execution_directive_id is not None
+        assert chain.execution_command_id is not None
 
 
 class TestCausalityChainOriginIntegration:

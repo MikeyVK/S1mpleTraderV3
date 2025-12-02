@@ -187,8 +187,8 @@ class TestStrategyDirectiveDefaultValues:
         assert directive.exit_directive is None
         assert directive.routing_directive is None
 
-    def test_target_trade_ids_defaults_to_empty_list(self):
-        """target_trade_ids defaults to empty list for NEW_TRADE."""
+    def test_target_plan_ids_defaults_to_empty_list(self):
+        """target_plan_ids defaults to empty list for NEW_TRADE."""
         directive = StrategyDirective(
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
@@ -196,7 +196,7 @@ class TestStrategyDirectiveDefaultValues:
             confidence=Decimal("0.5")
         )
 
-        assert directive.target_trade_ids == []
+        assert directive.target_plan_ids == []
 
     def test_causality_enable_journal_causality(self):
         """causality contain all IDs for Journal causality tracking."""
@@ -242,14 +242,14 @@ class TestStrategyDirectiveSerialization:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.MODIFY_EXISTING,
-            target_trade_ids=["TRD_001"],
+            target_plan_ids=["TPL_001"],
             confidence=Decimal("0.6")
         )
 
         json_str = directive.model_dump_json()
         assert "strategy_planner_id" in json_str
         assert "MODIFY_EXISTING" in json_str
-        assert "TRD_001" in json_str
+        assert "TPL_001" in json_str
 
     def test_can_deserialize_from_dict(self):
         """Can deserialize from dict."""
@@ -308,7 +308,7 @@ class TestStrategyDirectiveUseCases:
             strategy_planner_id="signal_risk_planner",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.MODIFY_EXISTING,
-            target_trade_ids=["TRD_12345678-1234-1234-1234-123456789012"],
+            target_plan_ids=["TPL_12345678_123456_12345678"],
             confidence=Decimal("0.9"),
             exit_directive=ExitDirective(
                 profit_taking_preference=Decimal("0.3"),
@@ -318,7 +318,7 @@ class TestStrategyDirectiveUseCases:
         )
 
         assert directive.scope == DirectiveScope.MODIFY_EXISTING
-        assert len(directive.target_trade_ids) == 1
+        assert len(directive.target_plan_ids) == 1
         assert directive.exit_directive is not None
 
     def test_close_existing_trade(self):
@@ -327,7 +327,7 @@ class TestStrategyDirectiveUseCases:
             strategy_planner_id="signal_risk_exit_planner",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.CLOSE_EXISTING,
-            target_trade_ids=["TRD_001", "TRD_002"],
+            target_plan_ids=["TPL_001", "TPL_002"],
             confidence=Decimal("0.95"),
             routing_directive=ExecutionDirective(
                 execution_urgency=Decimal("1.0"),
@@ -336,7 +336,7 @@ class TestStrategyDirectiveUseCases:
         )
 
         assert directive.scope == DirectiveScope.CLOSE_EXISTING
-        assert len(directive.target_trade_ids) == 2
+        assert len(directive.target_plan_ids) == 2
         # Type narrowing: routing_directive is not None here
         routing_dir = cast(ExecutionDirective, directive.routing_directive)
         assert routing_dir is not None
