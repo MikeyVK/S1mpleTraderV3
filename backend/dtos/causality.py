@@ -104,9 +104,9 @@ class CausalityChain(BaseModel):
         default=None,
         description="ExecutionPlan ID - execution trade-offs (HOW/WHEN)"
     )
-    execution_directive_id: str | None = Field(
+    execution_command_id: str | None = Field(
         default=None,
-        description="ExecutionDirective ID - final execution command"
+        description="ExecutionCommand ID - final aggregated execution instruction"
     )
     order_ids: list[str] = Field(
         default_factory=list,
@@ -140,7 +140,7 @@ class CausalityChain(BaseModel):
                     "strategy_directive_id": "STR_20251109_120001_u1v2w3x4",
                     "entry_plan_id": "ENT_20251109_120002_y5z6a7b8",
                     "size_plan_id": "SIZ_20251109_120003_c9d0e1f2",
-                    "execution_directive_id": "EXE_20251109_120010_g3h4i5j6"
+                    "execution_command_id": "EXC_20251109_120010_g3h4i5j6"
                 },
                 {
                     "description": "Risk-based exit (origin NEWS → risk → modify directive)",

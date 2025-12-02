@@ -28,6 +28,7 @@ from backend.utils.id_generators import (
     generate_size_plan_id,
     generate_exit_plan_id,
     generate_execution_directive_id,
+    generate_execution_command_id,
     generate_trade_plan_id,
     extract_id_type,
     extract_id_timestamp,
@@ -156,6 +157,24 @@ class TestWorkerOutputIDGeneration:
         directive_id = generate_execution_directive_id()
         assert directive_id.startswith("EXE_")
 
+    def test_generate_execution_command_id_has_correct_prefix(self):
+        """Test that execution command IDs start with EXC_ prefix."""
+        command_id = generate_execution_command_id()
+        assert command_id.startswith("EXC_")
+
+    def test_generate_execution_command_id_has_valid_datetime_format(self):
+        """Test that execution command IDs contain valid datetime format."""
+        command_id = generate_execution_command_id()
+        # Format: EXC_YYYYMMDD_HHMMSS_8charhash
+        pattern = r'^EXC_\d{8}_\d{6}_[0-9a-f]{8}$'
+        assert re.match(pattern, command_id), f"Invalid format: {command_id}"
+
+    def test_generate_execution_command_id_is_unique(self):
+        """Test that consecutive execution command IDs are unique."""
+        id1 = generate_execution_command_id()
+        id2 = generate_execution_command_id()
+        assert id1 != id2
+
 
 class TestIDTypeExtraction:
     """Test suite for ID type extraction utility."""
@@ -194,6 +213,11 @@ class TestIDTypeExtraction:
         """Test extracting type from directive ID."""
         directive_id = generate_strategy_directive_id()
         assert extract_id_type(directive_id) == "STR"
+
+    def test_extract_type_from_execution_command_id(self):
+        """Test extracting 'EXC' from execution command ID."""
+        command_id = generate_execution_command_id()
+        assert extract_id_type(command_id) == "EXC"
 
     def test_extract_type_rejects_invalid_format(self):
         """Test that invalid ID format raises ValueError."""
