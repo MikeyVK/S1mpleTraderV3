@@ -92,7 +92,7 @@ class ExecutionDirective(BaseModel):
                     "description": "NEW_TRADE - Complete setup with all 4 plans",
                     "directive_id": "EXE_20251027_143500_a1b2c3d4",
                     "causality": {
-                        "tick_id": "TCK_20251027_143000_abc123",
+                        "origin": {"id": "TCK_20251027_143000_abc123", "type": "TICK"},
                         "signal_ids": ["SIG_20251027_143100_abc456"],
                         "strategy_directive_id": "STR_20251027_143110_def789",
                     },
@@ -127,7 +127,7 @@ class ExecutionDirective(BaseModel):
                     "description": "MODIFY_EXISTING - Trailing stop adjustment (exit only)",
                     "directive_id": "EXE_20251027_150000_b2c3d4e5",
                     "causality": {
-                        "tick_id": "TCK_20251027_145900_xyz789",
+                        "origin": {"id": "TCK_20251027_145900_xyz789", "type": "TICK"},
                         "strategy_directive_id": "STR_20251027_145950_abc012"
                     },
                     "entry_plan": None,
@@ -143,7 +143,7 @@ class ExecutionDirective(BaseModel):
                     "description": "ADD_TO_POSITION - Scale in (entry + size only)",
                     "directive_id": "EXE_20251027_152000_c3d4e5f6",
                     "causality": {
-                        "tick_id": "TCK_20251027_151800_def123",
+                        "origin": {"id": "TCK_20251027_151800_def123", "type": "TICK"},
                         "signal_ids": ["SIG_20251027_151920_ghi678"],
                         "strategy_directive_id": "STR_20251027_151925_jkl012",
                     },

@@ -482,7 +482,7 @@ class StrategyDirective(BaseModel):
                     "scope": "NEW_TRADE",
                     "confidence": 0.85,
                     "causality": {
-                        "tick_id": "TCK_20251027_100000_x1y2z3a4",
+                        "origin": {"id": "TCK_20251027_100000_x1y2z3a4", "type": "TICK"},
                         "signal_ids": ["SIG_20251027_100001_b5c6d7e8"],
                         "strategy_directive_id": "STR_20251027_100002_a1b2c3d4"
                     },
@@ -511,7 +511,7 @@ class StrategyDirective(BaseModel):
                     "confidence": 0.92,
                     "target_plan_ids": ["TPL_20251027_100010_n7o8p9q0"],
                     "causality": {
-                        "news_id": "NWS_20251027_143000_r1s2t3u4",
+                        "origin": {"id": "NWS_20251027_143000_r1s2t3u4", "type": "NEWS"},
                         "risk_ids": ["RSK_20251027_143001_v5w6x7y8"],
                         "strategy_directive_id": "STR_20251027_143002_j3k4l5m6"
                     },
@@ -528,7 +528,7 @@ class StrategyDirective(BaseModel):
                     "confidence": 0.78,
                     "target_plan_ids": ["TPL_20251027_100010_h7i8j9k0"],
                     "causality": {
-                        "tick_id": "TCK_20251027_150000_l1m2n3o4",
+                        "origin": {"id": "TCK_20251027_150000_l1m2n3o4", "type": "TICK"},
                         "strategy_directive_id": "STR_20251027_150003_d3e4f5g6"
                     }
                 }
