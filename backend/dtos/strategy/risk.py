@@ -1,4 +1,4 @@
-# backend/dtos/strategy/risk.py
+﻿# backend/dtos/strategy/risk.py
 """
 Risk DTO: RiskMonitor output contract.
 
@@ -6,38 +6,43 @@ Represents a detected risk event requiring defensive action or awareness.
 RiskMonitors emit Risk signals to indicate conditions that may threaten
 portfolio health, position safety, or system stability.
 
+IMPORTANT: Risk is a PRE-CAUSALITY DTO.
+- Risk represents a detection FACT at a specific point in time
+- CausalityChain is created by StrategyPlanner (first post-causality component)
+- Risk does NOT have a causality field
+
 Risk Framework:
-- ContextWorkers → Objective market context (indicators, regime, volatility)
-- SignalDetectors → Signal (Entry/exit patterns)
-- RiskMonitors → Risk (Portfolio/position risks)
-- StrategyPlanners → Decision making (combines signals, risk, context)
+- ContextWorkers -> Objective market context (indicators, regime, volatility)
+- SignalDetectors -> Signal (Entry/exit patterns)
+- RiskMonitors -> Risk (Portfolio/position risks) [THIS DTO]
+- StrategyPlanners -> Decision making (combines signals, risk, context)
 
 @layer: DTO (Strategy)
-@dependencies: [pydantic, datetime, re, backend.utils.id_generators, backend.dtos.causality]
-@responsibilities: [risk detection contract, causal tracking, severity scoring]
+@dependencies: [pydantic, datetime, decimal, re, backend.utils.id_generators]
+@responsibilities: [risk detection contract, severity scoring]
 """
-
-from datetime import datetime, timezone
 import re
-from typing import Optional
+from datetime import UTC, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, Field, field_validator
 
 from backend.utils.id_generators import generate_risk_id
-from backend.dtos.causality import CausalityChain
 
 
 class Risk(BaseModel):
     """
     RiskMonitor output DTO representing a detected risk.
 
+    This is a PRE-CAUSALITY DTO - it does NOT contain a causality field.
+    CausalityChain is created by StrategyPlanner when it makes a decision.
+
     Fields:
-        causality: CausalityChain - IDs from birth (tick/news/schedule)
         risk_id: Unique risk ID (RSK_ prefix, auto-generated)
         timestamp: When the risk was detected (UTC)
         risk_type: Type of risk (UPPER_SNAKE_CASE, 3-25 chars)
-        severity: Risk severity [0.0, 1.0] for decision making
-        affected_asset: Optional asset identifier (None = system-wide)
+        severity: Risk severity [0.0, 1.0] for decision making (Decimal)
+        affected_symbol: Optional symbol identifier (None = system-wide)
 
     Risk Framework:
         severity (0.0-1.0) mirrors Signal.confidence for balanced decision making
@@ -46,26 +51,19 @@ class Risk(BaseModel):
         High severity (e.g., 0.9) = critical risk requiring immediate action
         Low severity (e.g., 0.3) = minor concern or warning signal
 
-    Causal Chain:
-        CausalityChain birth ID → risk_id → (StrategyPlanner decision)
-
     System-Wide Scope:
         No trade_id reference - risks are system-level events.
-        affected_asset=None signals system-wide impact (e.g., exchange down).
+        affected_symbol=None signals system-wide impact (e.g., exchange down).
 
     Examples:
+        >>> from decimal import Decimal
         >>> risk = Risk(
-        ...     causality=CausalityChain(tick_id="TCK_20251026_100000_a1b2c3d4"),
-        ...     timestamp=datetime.now(timezone.utc),
+        ...     timestamp=datetime.now(UTC),
         ...     risk_type="STOP_LOSS_HIT",
-        ...     severity=0.9,
-        ...     affected_asset="BTC/EUR"
+        ...     severity=Decimal("0.9"),
+        ...     affected_symbol="BTC_EUR"
         ... )
     """
-
-    causality: CausalityChain = Field(
-        description="Causality tracking - IDs from birth (tick/news/schedule)"
-    )
 
     risk_id: str = Field(
         default_factory=generate_risk_id,
@@ -83,19 +81,19 @@ class Risk(BaseModel):
         max_length=25,
     )
 
-    severity: float = Field(
-        description="Risk severity [0.0, 1.0] for decision making",
-        ge=0.0,
-        le=1.0,
+    severity: Decimal = Field(
+        description="Risk severity [0.0, 1.0] for decision making (Decimal)",
+        ge=Decimal("0.0"),
+        le=Decimal("1.0"),
     )
 
-    # Optional field - None indicates system-wide risk (not asset-specific)
-    affected_asset: Optional[str] = Field(
-        None,
-        description="Affected asset (None = system-wide risk)",
-        min_length=5,
+    # Optional field - None indicates system-wide risk (not symbol-specific)
+    affected_symbol: str | None = Field(
+        default=None,
+        description="Affected symbol (None = system-wide risk)",
+        min_length=3,
         max_length=20,
-        pattern=r'^[A-Z0-9_]+/[A-Z0-9_]+$',
+        pattern=r'^[A-Z][A-Z0-9_]*$',
     )
 
     model_config = {
@@ -104,38 +102,46 @@ class Risk(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "description": "Market-wide risk (no specific asset)",
+                    "description": "Market-wide risk (no specific symbol)",
                     "risk_id": "RSK_20251027_100001_a1b2c3d4",
                     "timestamp": "2025-10-27T10:00:01Z",
                     "risk_type": "FLASH_CRASH",
-                    "severity": 0.95
+                    "severity": "0.95"
                 },
                 {
-                    "description": "Asset-specific liquidity crisis",
+                    "description": "Symbol-specific liquidity crisis",
                     "risk_id": "RSK_20251027_143000_e5f6g7h8",
                     "timestamp": "2025-10-27T14:30:00Z",
                     "risk_type": "LIQUIDITY_CRISIS",
-                    "severity": 0.82,
-                    "affected_asset": "BTCUSDT"
+                    "severity": "0.82",
+                    "affected_symbol": "BTC_USDT"
                 },
                 {
                     "description": "Regulatory news event (medium severity)",
                     "risk_id": "RSK_20251027_150500_i9j0k1l2",
                     "timestamp": "2025-10-27T15:05:00Z",
                     "risk_type": "REGULATORY_NEWS",
-                    "severity": 0.65,
-                    "affected_asset": "ETHUSDT"
+                    "severity": "0.65",
+                    "affected_symbol": "ETH_USDT"
                 }
             ]
         }
     }
 
-    @field_validator("timestamp", mode="before")
+    @field_validator('severity', mode='before')
+    @classmethod
+    def convert_to_decimal(cls, v: float | Decimal | str | None) -> Decimal:
+        """Convert float/str input to Decimal for financial precision."""
+        if isinstance(v, Decimal):
+            return v
+        return Decimal(str(v))
+
+    @field_validator("timestamp")
     @classmethod
     def ensure_utc_timezone(cls, value: datetime) -> datetime:
         """Convert naive datetime to UTC-aware datetime."""
         if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
+            return value.replace(tzinfo=UTC)
         return value
 
     @field_validator("risk_type")
