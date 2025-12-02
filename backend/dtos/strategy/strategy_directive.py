@@ -19,8 +19,7 @@ from enum import Enum
 from typing import Annotated
 
 # Third-party imports
-from pydantic import BaseModel, Field, field_validator, ValidationInfo
-
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 # Application imports
 from backend.dtos.causality import CausalityChain
@@ -229,12 +228,12 @@ class StrategyDirective(BaseModel):
 
     DIRECTIVE SCOPES:
     - **NEW_TRADE**: Open new position
-      - Required fields: scope=NEW_TRADE, target_trade_ids=[]
+      - Required fields: scope=NEW_TRADE, target_plan_ids=[]
       - Typical sub-directives: EntryDirective, SizeDirective, ExitDirective, ExecutionDirective
       - All sub-directives are OPTIONAL - planners use defaults if missing
 
     - **MODIFY_EXISTING**: Adjust existing position or open order
-      - Required fields: scope=MODIFY_EXISTING, target_trade_ids=[...] (not empty)
+      - Required fields: scope=MODIFY_EXISTING, target_plan_ids=[...] (not empty)
       - Typical sub-directives:
         - EntryDirective: Modify open limit order (price, timing)
         - SizeDirective: Increase/decrease position size
@@ -243,7 +242,7 @@ class StrategyDirective(BaseModel):
       - All sub-directives are OPTIONAL - only provided sub-directives trigger changes
 
     - **CLOSE_EXISTING**: Close existing position(s)
-      - Required fields: scope=CLOSE_EXISTING, target_trade_ids=[...] (not empty)
+      - Required fields: scope=CLOSE_EXISTING, target_plan_ids=[...] (not empty)
       - Typical sub-directives:
         - ExecutionDirective: Execution urgency for emergency exits
         - ExitDirective: Partial close targets
@@ -386,7 +385,7 @@ class StrategyDirective(BaseModel):
         trigger_context: Context of what triggered this directive (causality tracking)
         scope: Directive scope (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
         confidence: Confidence score [0.0-1.0] in this directive
-        target_trade_ids: List of existing trade IDs (for MODIFY_EXISTING/CLOSE_EXISTING)
+        target_plan_ids: List of existing plan IDs (for MODIFY_EXISTING/CLOSE_EXISTING)
         entry_directive: Optional entry constraints for EntryPlanner
         size_directive: Optional sizing constraints for SizePlanner
         exit_directive: Optional exit constraints for ExitPlanner
@@ -425,10 +424,10 @@ class StrategyDirective(BaseModel):
             "based on planner's analysis strength"
         )
     )
-    target_trade_ids: list[str] = Field(
+    target_plan_ids: list[str] = Field(
         default_factory=list,
         description=(
-            "List of existing trade IDs to modify/close "
+            "List of existing plan IDs to modify/close "
             "(for MODIFY_EXISTING/CLOSE_EXISTING scopes)"
         )
     )
@@ -460,14 +459,14 @@ class StrategyDirective(BaseModel):
         )
     )
 
-    @field_validator("target_trade_ids")
+    @field_validator("target_plan_ids")
     @classmethod
-    def validate_target_trade_ids_for_scope(cls, v: list[str], info: ValidationInfo) -> list[str]:
+    def validate_target_plan_ids_for_scope(cls, v: list[str], info: ValidationInfo) -> list[str]:
         """
-        Validate target_trade_ids consistency with scope.
+        Validate target_plan_ids consistency with scope.
 
-        For MODIFY_EXISTING and CLOSE_EXISTING, target_trade_ids must not be empty.
-        For NEW_TRADE, target_trade_ids should be empty.
+        For MODIFY_EXISTING and CLOSE_EXISTING, target_plan_ids must not be empty.
+        For NEW_TRADE, target_plan_ids should be empty.
         """
         scope: DirectiveScope | None = info.data.get("scope")
         if scope in (DirectiveScope.MODIFY_EXISTING, DirectiveScope.CLOSE_EXISTING):
@@ -475,12 +474,12 @@ class StrategyDirective(BaseModel):
                 # Type narrowing: scope is DirectiveScope here
                 assert scope is not None
                 raise ValueError(
-                    f"target_trade_ids must not be empty for scope {scope.value}"
+                    f"target_plan_ids must not be empty for scope {scope.value}"
                 )
         elif scope == DirectiveScope.NEW_TRADE:
             if v:
                 raise ValueError(
-                    "target_trade_ids must be empty for NEW_TRADE scope"
+                    "target_plan_ids must be empty for NEW_TRADE scope"
                 )
         return v
 
@@ -525,7 +524,7 @@ class StrategyDirective(BaseModel):
                     "strategy_planner_id": "risk_response_planner",
                     "scope": "MODIFY_EXISTING",
                     "confidence": 0.92,
-                    "target_trade_ids": ["TRD_20251027_100010_n7o8p9q0"],
+                    "target_plan_ids": ["TPL_20251027_100010_n7o8p9q0"],
                     "causality": {
                         "news_id": "NWS_20251027_143000_r1s2t3u4",
                         "risk_ids": ["RSK_20251027_143001_v5w6x7y8"],
@@ -542,7 +541,7 @@ class StrategyDirective(BaseModel):
                     "strategy_planner_id": "exit_signal_planner",
                     "scope": "CLOSE_EXISTING",
                     "confidence": 0.78,
-                    "target_trade_ids": ["TRD_20251027_100010_h7i8j9k0"],
+                    "target_plan_ids": ["TPL_20251027_100010_h7i8j9k0"],
                     "causality": {
                         "tick_id": "TCK_20251027_150000_l1m2n3o4",
                         "strategy_directive_id": "STR_20251027_150003_d3e4f5g6"
