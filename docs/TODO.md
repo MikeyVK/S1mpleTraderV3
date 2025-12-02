@@ -41,7 +41,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 | Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
 | Week 3: Factories | 0 | 5 | 🔴 Blocked |
 | Week 4: Platform | 0 | 4 | 🔴 Blocked |
-| Technical Debt | 9 | 10 | ✅ 90% (1 review pending) |
+| Technical Debt | 9 | 12 | 🔄 75% (3 items open) |
 
 ---
 
@@ -125,23 +125,46 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Scope:** backend/dtos/execution/execution_group.py
   - **Priority:** Medium (architectural clarity)
 
-- [ ] **ExecutionDirective: REMOVE iceberg_preference field** (2025-12-02)
+- [ ] **ExecutionDirective (sub-directive): REMOVE iceberg_preference field** (2025-12-02)
   - **Issue:** `iceberg_preference` field in `ExecutionDirective` (sub-directive) violates layer responsibilities
   - **Problem:** Iceberg execution is **ExecutionPlanner** responsibility, NOT StrategyPlanner
   - **Current violation:** `backend/dtos/strategy/strategy_directive.py` line 169 has `iceberg_preference: Decimal | None`
-  - **Correct architecture (per DTO_ARCHITECTURE.md):**
+  - **Correct architecture:**
     - StrategyDirective.ExecutionDirective → only strategic hints (urgency, slippage limits)
     - ExecutionPlan → contains `visibility_preference: Decimal` (0.0=stealth, 1.0=visible)
-    - ExecutionTranslator → maps `visibility_preference` to iceberg/dark pools per connector
-  - **Quote from DTO_ARCHITECTURE.md line 888:**
-    > ❌ `iceberg_preference` - Connector-specific. Translator maps from visibility_preference.
+    - ExecutionWorker → interprets visibility_preference for connector-specific execution
   - **Action Required:**
     1. Remove `iceberg_preference` from `ExecutionDirective` class
-    2. Ensure `ExecutionPlan` has `visibility_preference` field (universal trade-off)
+    2. Verify `ExecutionPlan` has `visibility_preference` field (already exists)
     3. Update tests that reference `iceberg_preference` in ExecutionDirective
   - **Scope:** backend/dtos/strategy/strategy_directive.py (ExecutionDirective class)
   - **Priority:** High (architectural violation)
-  - **Related:** ExecutionPlan.visibility_preference, ExecutionTranslator
+
+- [ ] **DTO_ARCHITECTURE.md: Major sync with authoritative docs** (2025-12-02) 🔴 HIGH PRIORITY
+  - **Issue:** DTO_ARCHITECTURE.md is out of sync with leidende architectuur docs
+  - **Problem:** References non-existent `ExecutionTranslator` component (10+ occurrences)
+  - **Root Cause:** `ExecutionTranslator` was a work title that never became a real component
+  - **Authoritative Sources (these are CORRECT):**
+    - EXECUTION_FLOW.md - No ExecutionTranslator
+    - PIPELINE_FLOW.md - No ExecutionTranslator  
+    - WORKER_TAXONOMY.md - No ExecutionTranslator
+    - TRADE_LIFECYCLE.md - No ExecutionTranslator
+  - **Actual Architecture:**
+    - ExecutionPlanner → produces ExecutionPlan with trade-offs
+    - ExecutionWorker → executes via IExecutionConnector
+    - NO separate translator layer exists or will exist
+  - **Files to Update:**
+    1. `docs/architecture/DTO_ARCHITECTURE.md` - Remove all ExecutionTranslator references
+    2. `backend/dtos/strategy/execution_plan.py` - Update docstrings (lines 20, 47, 53-54)
+  - **Specific Changes in DTO_ARCHITECTURE.md:**
+    - Line 863: Remove ExecutionTranslator from Producer/Consumer table
+    - Line 871-876: Remove "Translator maps to..." from field descriptions
+    - Line 887-889: Update "WHY NOT included" section
+    - Line 898: Remove from lifecycle
+    - Line 906: Remove from design decisions
+    - Line 992: Remove from ExecutionCommand table
+  - **Scope:** Architecture docs + code docstrings
+  - **Priority:** High (documentation out of sync with reality)
 
 - [x] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27) **RESOLVED**
   - **Commit:** `3b45af6` - refactor(dto): remove DCA from ExecutionStrategyType enum
