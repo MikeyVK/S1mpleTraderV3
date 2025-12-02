@@ -6,19 +6,17 @@ Type-safe reference for platform data sources (TICK/NEWS/SCHEDULE).
 Used in PlatformDataDTO and CausalityChain for origin tracking.
 
 @layer: DTO (Shared)
-@dependencies: [pydantic, enum]
+@dependencies: [pydantic, backend.core.enums]
 @responsibilities: [origin identity, type-safe reference, ID validation]
 """
 
-from enum import Enum
 from pydantic import BaseModel, model_validator
 
+from backend.core.enums import OriginType
 
-class OriginType(str, Enum):
-    """Platform data origin types."""
-    TICK = "TICK"
-    NEWS = "NEWS"
-    SCHEDULE = "SCHEDULE"
+
+# Re-export for backwards compatibility
+__all__ = ["Origin", "OriginType"]
 
 
 class Origin(BaseModel):

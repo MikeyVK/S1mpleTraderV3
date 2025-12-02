@@ -15,58 +15,12 @@ Tests: tests/unit/dtos/execution/test_execution_group.py
 
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 from re import match
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
-
-class ExecutionStrategyType(str, Enum):
-    """Execution strategy types.
-
-    Values:
-        SINGLE: Single order (no grouping needed)
-        TWAP: Time-Weighted Average Price
-        VWAP: Volume-Weighted Average Price
-        ICEBERG: Iceberg order (visible/hidden pairs)
-        LAYERED: Layered limit orders
-        POV: Percentage of Volume
-    """
-
-    SINGLE = "SINGLE"
-    TWAP = "TWAP"
-    VWAP = "VWAP"
-    ICEBERG = "ICEBERG"
-    LAYERED = "LAYERED"
-    POV = "POV"
-
-
-class GroupStatus(str, Enum):
-    """Group lifecycle status.
-
-    State Transitions:
-        PENDING → ACTIVE → COMPLETED
-        PENDING → ACTIVE → CANCELLED
-        PENDING → ACTIVE → FAILED
-        PENDING → ACTIVE → PARTIAL
-        * → CANCELLED (any state can transition to CANCELLED)
-
-    Values:
-        PENDING: Created, no orders yet
-        ACTIVE: Orders being executed
-        COMPLETED: All orders filled/complete
-        CANCELLED: Group cancelled (all orders cancelled)
-        FAILED: Execution failed (error state)
-        PARTIAL: Some orders filled, group stopped
-    """
-
-    PENDING = "PENDING"
-    ACTIVE = "ACTIVE"
-    COMPLETED = "COMPLETED"
-    CANCELLED = "CANCELLED"
-    FAILED = "FAILED"
-    PARTIAL = "PARTIAL"
+from backend.core.enums import ExecutionStrategyType, GroupStatus
 
 
 class ExecutionGroup(BaseModel):
