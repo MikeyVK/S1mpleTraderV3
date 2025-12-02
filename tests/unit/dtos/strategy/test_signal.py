@@ -1,19 +1,21 @@
-# tests/unit/dtos/strategy/test_signal.py
+﻿# tests/unit/dtos/strategy/test_signal.py
 """
 Unit tests for Signal DTO.
 
 Tests the signal detection output contract according to TDD principles.
-Signal represents a detected trading signal and is the foundation
-of the causal traceability chain.
+Signal represents a detected trading signal and is a PRE-CAUSALITY DTO.
+It does NOT have a causality field - CausalityChain is created by
+StrategyPlanner when it makes a decision based on the signal.
 
 @layer: Tests (Unit)
-@dependencies: [pytest, pydantic, backend.dtos.strategy.signal]
+@dependencies: [pytest, pydantic, decimal, backend.dtos.strategy.signal]
 """
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives for optional fields
 
 # Standard Library Imports
 from datetime import datetime, timezone
+from decimal import Decimal
 
 # Third-Party Imports
 import pytest
@@ -21,62 +23,49 @@ from pydantic import ValidationError
 
 # Our Application Imports
 from backend.dtos.strategy.signal import Signal
-from backend.dtos.causality import CausalityChain
-from backend.dtos.shared import Origin, OriginType
-from backend.utils.id_generators import generate_tick_id, generate_signal_id
-
-
-def create_test_origin() -> Origin:
-    """Helper to create test Origin instance."""
-    return Origin(id=generate_tick_id(), type=OriginType.TICK)
+from backend.utils.id_generators import generate_signal_id
 
 
 class TestSignalCreation:
     """Test suite for Signal instantiation."""
 
     def test_create_minimal_signal(self):
-        """Test creating signal with required fields only."""
+        """Test creating signal with required fields only (no causality!)."""
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
-            asset="BTC/EUR",
+            symbol="BTC_USDT",
             direction="long",
             signal_type="FVG_ENTRY"
         )
 
-        # Verify causality chain - use getattr to avoid Pylance FieldInfo false positives
-        causality = signal.causality
-        origin_id = getattr(getattr(causality, "origin"), "id")
-        assert origin_id is not None
-        assert origin_id.startswith("TCK_")
-        assert getattr(getattr(causality, "origin"), "type") == OriginType.TICK
+        # Verify NO causality field (Signal is pre-causality)
+        assert not hasattr(signal, 'causality')
         # Verify ID formats
         signal_id = str(signal.signal_id)
         assert signal_id.startswith("SIG_")
-        assert signal.asset == "BTC/EUR"
+        assert signal.symbol == "BTC_USDT"
         assert signal.direction == "long"
         assert signal.signal_type == "FVG_ENTRY"
         assert signal.confidence is None
 
     def test_create_signal_with_confidence(self):
-        """Test creating signal with optional confidence score."""
+        """Test creating signal with optional confidence score (Decimal)."""
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
-            asset="ETH/USDT",
+            symbol="ETH_USDT",
             direction="short",
             signal_type="EMA_CROSS",
-            confidence=0.85
+            confidence=Decimal("0.85")
         )
 
-        assert signal.confidence == 0.85
+        assert signal.confidence == Decimal("0.85")
+        assert isinstance(signal.confidence, Decimal)
 
     def test_signal_id_auto_generated(self):
         """Test that signal_id is auto-generated if not provided."""
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="long",
             signal_type="FVG_ENTRY"
         )
@@ -88,10 +77,9 @@ class TestSignalCreation:
         """Test that custom signal_id can be provided."""
         custom_id = generate_signal_id()
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             signal_id=custom_id,
             timestamp=datetime.now(timezone.utc),
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="long",
             signal_type="FVG_ENTRY"
         )
@@ -99,18 +87,43 @@ class TestSignalCreation:
         assert signal.signal_id == custom_id
 
 
+class TestSignalPreCausality:
+    """Test suite verifying Signal is a pre-causality DTO."""
+
+    def test_signal_has_no_causality_field(self):
+        """Signal should NOT have a causality field - it's pre-causality."""
+        signal = Signal(
+            timestamp=datetime.now(timezone.utc),
+            symbol="BTC_USDT",
+            direction="long",
+            signal_type="BREAKOUT"
+        )
+
+        # Signal is pre-causality - CausalityChain is created by StrategyPlanner
+        assert not hasattr(signal, 'causality')
+
+    def test_signal_creation_without_causality_succeeds(self):
+        """Should create Signal without any causality parameter."""
+        # This should NOT require causality parameter
+        signal = Signal(
+            timestamp=datetime.now(timezone.utc),
+            symbol="ETH_USDT",
+            direction="short",
+            signal_type="REVERSAL"
+        )
+
+        assert signal.signal_id.startswith("SIG_")
 
 
 class TestSignalIDValidation:
     """Test suite for signal_id validation."""
 
     def test_valid_signal_id_format(self):
-        """Test that SIG_ prefix with UUID is valid."""
+        """Test that SIG_ prefix with military datetime is valid."""
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             signal_id=generate_signal_id(),
             timestamp=datetime.now(timezone.utc),
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
         )
@@ -122,10 +135,9 @@ class TestSignalIDValidation:
         """Test that non-SIG_ prefix is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 signal_id="TCK_550e8400-e29b-41d4-a716-446655440000",
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST"
             )
@@ -140,9 +152,8 @@ class TestSignalTimestampValidation:
         """Test that naive datetime is assumed to be UTC."""
         naive_dt = datetime(2025, 1, 15, 10, 30, 0)
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=naive_dt,
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
         )
@@ -157,9 +168,8 @@ class TestSignalTimestampValidation:
         """Test that timezone-aware datetime is preserved."""
         aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=aware_dt,
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
         )
@@ -167,71 +177,69 @@ class TestSignalTimestampValidation:
         assert signal.timestamp == aware_dt
 
 
-class TestSignalAssetValidation:
-    """Test suite for asset field validation."""
+class TestSignalSymbolValidation:
+    """Test suite for symbol field validation (renamed from asset)."""
 
-    def test_valid_asset_formats(self):
-        """Test that valid asset formats are accepted."""
-        valid_assets = [
-            "BTC/EUR",
-            "ETH/USDT",
-            "BTC_PERP/USDT",
-            "ETH_FUTURE/USD",
-            "DOGE123/BTC",
+    def test_valid_symbol_formats(self):
+        """Test that valid symbol formats are accepted (underscore separator)."""
+        valid_symbols = [
+            "BTC_EUR",
+            "ETH_USDT",
+            "BTC_PERP",
+            "DOGE_BTC",
+            "SOL_USDC",
         ]
 
-        for asset in valid_assets:
+        for symbol in valid_symbols:
             signal = Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset=asset,
+                symbol=symbol,
                 direction="long",
                 signal_type="TEST"
             )
-            assert signal.asset == asset
+            assert signal.symbol == symbol
 
-    def test_asset_too_short_rejected(self):
-        """Test that too short asset is rejected."""
+    def test_symbol_too_short_rejected(self):
+        """Test that too short symbol is rejected (min 3 chars)."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="A/B",
+                symbol="AB",
                 direction="long",
                 signal_type="TEST"
             )
 
-        assert "asset" in str(exc_info.value)
+        assert "symbol" in str(exc_info.value)
 
-    def test_asset_too_long_rejected(self):
-        """Test that too long asset is rejected."""
-        long_asset = "A" * 15 + "/" + "B" * 15
+    def test_symbol_too_long_rejected(self):
+        """Test that too long symbol is rejected."""
+        long_symbol = "A" * 25
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset=long_asset,
+                symbol=long_symbol,
                 direction="long",
                 signal_type="TEST"
             )
 
-        assert "asset" in str(exc_info.value)
+        assert "symbol" in str(exc_info.value)
 
-    def test_asset_invalid_format_rejected(self):
-        """Test that invalid asset format is rejected."""
-        invalid_assets = [
-            "btc/eur",  # lowercase
-            "BTC-EUR",  # dash instead of slash
-            "BTC",  # no quote
-            "BTC/eur",  # mixed case
+    def test_symbol_invalid_format_rejected(self):
+        """Test that invalid symbol format is rejected."""
+        invalid_symbols = [
+            "btc_eur",      # lowercase
+            "BTC/EUR",      # slash instead of underscore (OLD format)
+            "BTC-EUR",      # dash separator
+            "BTC_eur",      # mixed case
+            "btc_EUR",      # mixed case
+            "123_456",      # starts with number
         ]
 
-        for invalid_asset in invalid_assets:
+        for invalid_symbol in invalid_symbols:
             with pytest.raises(ValidationError):
                 Signal(
-                    causality=CausalityChain(origin=create_test_origin()),
                     timestamp=datetime.now(timezone.utc),
-                    asset=invalid_asset,
+                    symbol=invalid_symbol,
                     direction="long",
                     signal_type="TEST"
                 )
@@ -243,9 +251,8 @@ class TestSignalDirectionValidation:
     def test_long_direction_accepted(self):
         """Test that 'long' direction is accepted."""
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
         )
@@ -255,9 +262,8 @@ class TestSignalDirectionValidation:
     def test_short_direction_accepted(self):
         """Test that 'short' direction is accepted."""
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="short",
             signal_type="TEST"
         )
@@ -268,9 +274,8 @@ class TestSignalDirectionValidation:
         """Test that invalid direction is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="neutral",  # type: ignore
                 signal_type="TEST"
             )
@@ -289,27 +294,23 @@ class TestSignalTypeValidation:
             "WEEKLY_DCA",
             "RSI_OVERSOLD",
             "BREAKOUT",
-            "A",  # Edge case: single letter (min 3 chars fails this)
         ]
 
         for signal_type in valid_types:
-            if len(signal_type) >= 3:  # Skip single letter for this test
-                signal = Signal(
-                    causality=CausalityChain(origin=create_test_origin()),
-                    timestamp=datetime.now(timezone.utc),
-                    asset="BTC/EUR",
-                    direction="long",
-                    signal_type=signal_type
-                )
-                assert signal.signal_type == signal_type
+            signal = Signal(
+                timestamp=datetime.now(timezone.utc),
+                symbol="BTC_EUR",
+                direction="long",
+                signal_type=signal_type
+            )
+            assert signal.signal_type == signal_type
 
     def test_signal_type_too_short_rejected(self):
         """Test that signal_type < 3 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="long",
                 signal_type="AB"
             )
@@ -320,9 +321,8 @@ class TestSignalTypeValidation:
         """Test that signal_type > 25 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="long",
                 signal_type="A" * 26
             )
@@ -333,9 +333,8 @@ class TestSignalTypeValidation:
         """Test that lowercase signal_type is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="long",
                 signal_type="fvg_entry"
             )
@@ -353,9 +352,8 @@ class TestSignalTypeValidation:
         for reserved_type in reserved_types:
             with pytest.raises(ValidationError) as exc_info:
                 Signal(
-                    causality=CausalityChain(origin=create_test_origin()),
                     timestamp=datetime.now(timezone.utc),
-                    asset="BTC/EUR",
+                    symbol="BTC_EUR",
                     direction="long",
                     signal_type=reserved_type
                 )
@@ -364,29 +362,59 @@ class TestSignalTypeValidation:
 
 
 class TestSignalConfidenceValidation:
-    """Test suite for confidence field validation."""
+    """Test suite for confidence field validation (now Decimal)."""
 
     def test_confidence_none_by_default(self):
         """Test that confidence is None if not provided."""
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
         )
 
         assert signal.confidence is None
 
+    def test_confidence_is_decimal_type(self):
+        """Test that confidence is stored as Decimal for precision."""
+        signal = Signal(
+            timestamp=datetime.now(timezone.utc),
+            symbol="BTC_EUR",
+            direction="long",
+            signal_type="TEST",
+            confidence=Decimal("0.75")
+        )
+
+        assert isinstance(signal.confidence, Decimal)
+        assert signal.confidence == Decimal("0.75")
+
+    def test_confidence_float_converted_to_decimal(self):
+        """Test that float input is converted to Decimal."""
+        signal = Signal(
+            timestamp=datetime.now(timezone.utc),
+            symbol="BTC_EUR",
+            direction="long",
+            signal_type="TEST",
+            confidence=0.85
+        )
+
+        # Should be converted to Decimal
+        assert isinstance(signal.confidence, Decimal)
+
     def test_valid_confidence_range(self):
         """Test that confidence values in [0.0, 1.0] are accepted."""
-        valid_values = [0.0, 0.25, 0.5, 0.75, 1.0]
+        valid_values = [
+            Decimal("0.0"),
+            Decimal("0.25"),
+            Decimal("0.5"),
+            Decimal("0.75"),
+            Decimal("1.0")
+        ]
 
         for conf in valid_values:
             signal = Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
                 confidence=conf
@@ -397,12 +425,11 @@ class TestSignalConfidenceValidation:
         """Test that confidence < 0.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
-                confidence=-0.1
+                confidence=Decimal("-0.1")
             )
 
         assert "confidence" in str(exc_info.value)
@@ -411,12 +438,11 @@ class TestSignalConfidenceValidation:
         """Test that confidence > 1.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
-                confidence=1.1
+                confidence=Decimal("1.1")
             )
 
         assert "confidence" in str(exc_info.value)
@@ -428,9 +454,8 @@ class TestSignalImmutability:
     def test_signal_is_frozen(self):
         """Test that Signal is immutable after creation."""
         signal = Signal(
-            causality=CausalityChain(origin=create_test_origin()),
             timestamp=datetime.now(timezone.utc),
-            asset="BTC/EUR",
+            symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
         )
@@ -442,12 +467,51 @@ class TestSignalImmutability:
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                causality=CausalityChain(origin=create_test_origin()),
                 timestamp=datetime.now(timezone.utc),
-                asset="BTC/EUR",
+                symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
                 extra_field="not allowed"  # type: ignore
             )
 
         assert "extra_field" in str(exc_info.value).lower()
+
+
+class TestSignalSerialization:
+    """Test suite for Signal JSON serialization."""
+
+    def test_signal_to_json(self):
+        """Test Signal serializes to JSON correctly."""
+        signal = Signal(
+            timestamp=datetime(2025, 12, 1, 14, 30, 0, tzinfo=timezone.utc),
+            symbol="BTC_USDT",
+            direction="long",
+            signal_type="FVG_ENTRY",
+            confidence=Decimal("0.85")
+        )
+
+        json_data = signal.model_dump(mode='json')
+
+        assert json_data["symbol"] == "BTC_USDT"
+        assert json_data["direction"] == "long"
+        assert json_data["signal_type"] == "FVG_ENTRY"
+        assert "causality" not in json_data  # Pre-causality!
+        # Confidence should serialize properly
+        assert json_data["confidence"] is not None
+
+    def test_signal_from_json(self):
+        """Test Signal deserializes from JSON correctly."""
+        json_data = {
+            "timestamp": "2025-12-01T14:30:00Z",
+            "symbol": "ETH_USDT",
+            "direction": "short",
+            "signal_type": "REVERSAL",
+            "confidence": "0.72"
+        }
+
+        signal = Signal.model_validate(json_data)
+
+        assert signal.symbol == "ETH_USDT"
+        assert signal.direction == "short"
+        assert signal.signal_type == "REVERSAL"
+        assert signal.confidence == Decimal("0.72")
