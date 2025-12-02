@@ -157,7 +157,7 @@ graph TD
 #### Platform Components (Singletons)
 - **StrategyCache** - Point-in-time DTO container (per strategy)
 - **EventBus** - N-to-N event broadcast
-- **TickCacheManager** - Tick flow initiator
+- **FlowInitiator** - Tick flow initiator
 - **PluginRegistry** - Plugin enrollment and metadata
 
 #### Workers (Plugin Logic)
@@ -167,7 +167,7 @@ graph TD
 
 **Communication:**
 - **Upward:** Publishes events to EventBus (Service subscribes)
-- **Horizontal:** Workers communicate via TickCache and EventBus
+- **Horizontal:** Workers communicate via StrategyCache and EventBus
 
 ---
 

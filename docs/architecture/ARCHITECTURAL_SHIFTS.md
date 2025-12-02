@@ -95,21 +95,21 @@ class ContextWorker:
 ```
 
 **Voordelen:**
-- ✅ **Immutable**: Elke tick = nieuwe TickCache
+- ✅ **Immutable**: Elke tick = nieuwe StrategyCache snapshot
 - ✅ **Type-safe**: DTOs via Pydantic contracts
 - ✅ **Explicit dependencies**: manifest.requires_dtos
-- ✅ **Memory efficient**: TickCache cleared na run
+- ✅ **Memory efficient**: StrategyCache cleared na run
 - ✅ **Testable**: Mock IStrategyCache, inject DTOs
 
 **Kernconcepten:**
 - **RunAnchor**: Frozen timestamp voor point-in-time validation
-- **TickCache**: `Dict[Type[BaseModel], BaseModel]` - één DTO per type
+- **StrategyCache**: `Dict[Type[BaseModel], BaseModel]` - één DTO per type
 - **IStrategyCache**: Protocol voor DTO access/storage
 - **StrategyCache**: Singleton, reconfigured per run
 
 **Twee Communicatiepaden:**
 
-1. **TickCache (Sync, Flow-Data)**
+1. **StrategyCache (Sync, Flow-Data)**
    - Via `IStrategyCache.set_result_dto()`
    - Voor worker-to-worker data
    - Plugin-specifieke DTOs

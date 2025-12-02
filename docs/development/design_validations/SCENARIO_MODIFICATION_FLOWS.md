@@ -106,9 +106,9 @@ RiskMonitor detecteert Black Swan. Alles moet NU dicht.
     {
       "scope": "CLOSE_EXISTING",
       "target_plan_ids": ["TPL_1", "TPL_2", "TPL_3"], // Batch!
-      "routing_directive": {
+      "execution_directive": {
         "execution_urgency": 1.0, // Panic mode
-        "max_slippage_pct": 0.05  // Accepteer 5% slippage
+        "max_total_slippage_pct": 0.05  // Accepteer 5% slippage
       }
     }
     ```

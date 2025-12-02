@@ -5,9 +5,9 @@
 ## Kernprincipes
 
 ### 1. Immutability per Tick
-- ✅ Elke tick = nieuwe TickCache
+- ✅ Elke tick = nieuwe StrategyCache snapshot
 - ✅ Workers lezen/schrijven DTOs, muteren nooit
-- ✅ TickCache cleared na run completion
+- ✅ StrategyCache cleared na run completion
 
 ### 2. Type-Safe DTO Contracts
 - ✅ Alle data via Pydantic BaseModel
@@ -79,7 +79,7 @@ class MyWorker(StandardWorker):
         # 4. Calculate
         result = my_calculation(ema_dto, df)
         
-        # 5. Produce output DTO (stored in TickCache)
+        # 5. Produce output DTO (stored in StrategyCache)
         self.strategy_cache.set_result_dto(
             self,
             MyOutputDTO(value=result, timestamp=anchor.timestamp)
@@ -90,7 +90,7 @@ class MyWorker(StandardWorker):
 
 ## Two Communication Paths
 
-### Path 1: TickCache (Sync, Flow-Data)
+### Path 1: StrategyCache (Sync, Flow-Data)
 
 **Purpose:** Worker-to-worker data passing within one strategy run.
 
@@ -106,7 +106,7 @@ class MyWorker(StandardWorker):
 ```mermaid
 sequenceDiagram
     participant WA as Worker A
-    participant TC as TickCache
+    participant TC as StrategyCache
     participant WB as Worker B
     
     WA->>TC: set_result_dto(EMAOutputDTO)
@@ -151,7 +151,7 @@ sequenceDiagram
 - `Signal` (confidence-based signal)
 - `Risk` (severity-based warning)
 - `StrategyDirective` (Signal/Risk-driven decision)
-- `ExecutionDirective` (ready-to-execute plan)
+- `ExecutionCommandBatch` (ready-to-execute commands)
 
 ## DTO Dependency Resolution
 
@@ -220,7 +220,7 @@ backend/dto_reg/s1mple/ema_detector/v1_0_0/
 from backend.dto_reg.s1mple.ema_detector.v1_0_0.ema_output_dto import EMAOutputDTO
 ```
 
-## TickCacheManager - Flow Lifecycle
+## FlowInitiator - Flow Lifecycle
 
 **Singleton** die strategy run lifecycle beheert:
 
@@ -232,7 +232,7 @@ from backend.dto_reg.s1mple.ema_detector.v1_0_0.ema_output_dto import EMAOutputD
 # - NEWS_RECEIVED (from NewsAdapter)
 
 def on_tick_event(self, event):
-    # 1. Create new TickCache
+    # 1. Create new StrategyCache snapshot
     cache = {}
     
     # 2. Configure StrategyCache singleton
@@ -263,9 +263,9 @@ def on_flow_complete(self):
     self.strategy_cache.clear_cache()
 ```
 
-## Pre-Filled TickCache
+## Pre-Filled StrategyCache
 
-Platform capability providers kunnen TickCache **pre-populaten**:
+Platform capability providers kunnen StrategyCache **pre-populaten**:
 
 ```python
 # Platform fills cache before worker chain starts
@@ -340,7 +340,7 @@ def test_my_worker():
 
 ## Benefits Summary
 
-✅ **Memory Efficient**: TickCache cleared after each run
+✅ **Memory Efficient**: StrategyCache cleared after each run
 ✅ **Type-Safe**: Pydantic validation + Pylance type checking
 ✅ **Testable**: Mock IStrategyCache, inject test DTOs
 ✅ **Debuggable**: Explicit dependencies, no hidden state

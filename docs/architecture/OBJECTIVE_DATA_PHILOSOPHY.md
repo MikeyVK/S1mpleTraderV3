@@ -40,7 +40,7 @@ class EMADetector(StandardWorker):
         # OBJECTIVE FACT - just a number
         ema_20 = df['close'].ewm(span=20).mean().iloc[-1]
         
-        # Store to TickCache WITHOUT interpretation
+        # Store to StrategyCache WITHOUT interpretation
         self.strategy_cache.set_result_dto(
             self,
             EMAOutputDTO(ema_20=ema_20)  # Just the fact: 50100.50
@@ -62,7 +62,7 @@ The EMA detector has **no opinion** about whether `ema_20=50100.50` is good or b
 - StrategyPlanners
 
 **What they do:**
-- Read objective facts from TickCache
+- Read objective facts from StrategyCache
 - Apply their **own**, **plugin-specific** interpretation logic
 - Publish subjective signals/decisions to EventBus
 
@@ -133,27 +133,27 @@ Two strategies consume the **same objective fact** (`ema_20=50100.50`) and reach
 ```yaml
 # Plugin A
 identification:
-  type: "context_worker"  # ENFORCED: Can only write to TickCache
+  type: "context_worker"  # ENFORCED: Can only write to StrategyCache
   subtype: "indicator_calculation"  # TAG: Documentation/filtering
 
 # Plugin B
 identification:
-  type: "context_worker"  # ENFORCED: Can only write to TickCache
+  type: "context_worker"  # ENFORCED: Can only write to StrategyCache
   subtype: "structural_analysis"  # TAG: Documentation/filtering
 ```
 
-**Architecturally identical:** Both can only `set_result_dto()` to TickCache. Neither can publish to EventBus. The subtype just helps humans categorize plugins.
+**Architecturally identical:** Both can only `set_result_dto()` to StrategyCache. Neither can publish to EventBus. The subtype just helps humans categorize plugins.
 
 ---
 
 ## Data Flow: Facts → Interpretation
 
-### The TickCache as "Objective Reality"
+### The StrategyCache as "Objective Reality"
 
-After the ContextWorker chain completes, the TickCache contains a **map of objective facts** about the market:
+After the ContextWorker chain completes, the StrategyCache contains a **map of objective facts** about the market:
 
 ```python
-TickCache = {
+StrategyCache = {
     EMAOutputDTO: EMAOutputDTO(ema_20=50100.50, ema_50=49800.30),
     RSIOutputDTO: RSIOutputDTO(rsi=65.3),
     MarketStructureDTO: MarketStructureDTO(
@@ -196,7 +196,7 @@ Different strategies look at this **same objective reality** and make different 
 - Interprets: "Low volatility, avoid trading"
 - Action: Returns `DispositionEnvelope(disposition="STOP")`
 
-**All three consume the same TickCache, none conflict, each applies own logic.**
+**All three consume the same StrategyCache, none conflict, each applies own logic.**
 
 ---
 
@@ -218,7 +218,7 @@ Different strategies look at this **same objective reality** and make different 
 
 4. **`ContextAggregator` (Platform Component)**
    - **Was:** Collected ContextFactors and aggregated into assessment
-   - **Why removed:** No aggregation needed - consumers read TickCache directly
+   - **Why removed:** No aggregation needed - consumers read StrategyCache directly
 
 **Total:** 62 tests removed, architecture simplified
 
@@ -239,7 +239,7 @@ SignalDetector → Reads aggregated assessment
 ```
 ContextWorker → RegimeOutputDTO(regime="TRENDING")
    ↓
-SignalDetector → Reads TickCache, interprets regime as signal
+SignalDetector → Reads StrategyCache, interprets regime as signal
 ```
 
 **Eliminated:** 2 DTOs, 1 platform component, 62 tests, entire aggregation layer.
@@ -256,12 +256,12 @@ SignalDetector → Reads TickCache, interprets regime as signal
 ### 2. Testability
 - ✅ ContextWorkers test pure calculations (deterministic)
 - ✅ Consumers test interpretation logic in isolation
-- ✅ Mock TickCache with known objective facts
+- ✅ Mock StrategyCache with known objective facts
 
 ### 3. Clarity
 - ✅ Clear separation: facts vs opinions
 - ✅ No hidden aggregation logic
-- ✅ Easier to debug (inspect TickCache = see all facts)
+- ✅ Easier to debug (inspect StrategyCache = see all facts)
 
 ### 4. Quant-Friendly
 - ✅ Perfect for quantitative strategies (backtest many interpretations)
@@ -281,7 +281,7 @@ SignalDetector → Reads TickCache, interprets regime as signal
 |--------|----------------|---------------------|
 | **ContextWorker Output** | `ContextFactor(type="TRENDING", polarity="strength")` | `RegimeOutputDTO(regime="TRENDING")` |
 | **Interpretation** | Platform (ContextAggregator) | Consumer (SignalDetector) |
-| **Aggregation** | Platform component required | None - direct TickCache access |
+| **Aggregation** | Platform component required | None - direct StrategyCache access |
 | **Flexibility** | Limited (platform defines SWOT) | Unlimited (consumers define logic) |
 | **Contradictory Strategies** | Difficult (fight over SWOT labels) | Easy (different interpretations coexist) |
 | **Test Count** | 404 tests | 362 tests (-10% complexity) |
@@ -298,12 +298,12 @@ When creating a new ContextWorker:
 - [ ] No subjective labels ("bullish", "strong", etc.)
 - [ ] No interpretation in docstrings ("signals potential entry")
 - [ ] DTO fields are measurements, not opinions
-- [ ] Uses `set_result_dto()` to store to TickCache
+- [ ] Uses `set_result_dto()` to store to StrategyCache
 - [ ] **NEVER** publishes to EventBus
 
 When creating a new SignalDetector/RiskMonitor:
 
-- [ ] Reads objective facts from TickCache via `get_required_dtos()`
+- [ ] Reads objective facts from StrategyCache via `get_required_dtos()`
 - [ ] Applies own interpretation logic (documented in worker)
 - [ ] Publishes subjective signal to EventBus
 - [ ] Interpretation logic is isolated (doesn't affect other workers)
@@ -315,7 +315,7 @@ When creating a new SignalDetector/RiskMonitor:
 
 - [Core Principles](CORE_PRINCIPLES.md) - Plugin First, Separation of Concerns
 - [Worker Taxonomy](WORKER_TAXONOMY.md) - Worker categories and type vs subtype
-- [Data Flow](DATA_FLOW.md) - TickCache and EventBus communication
+- [Data Flow](DATA_FLOW.md) - StrategyCache and EventBus communication
 - [Point-in-Time Model](POINT_IN_TIME_MODEL.md) - DTO-centric architecture
 
 ---

@@ -168,7 +168,7 @@ class IStrategyCache(Protocol):
         """
         Clear the cache after run completion.
 
-        This is called by the orchestration layer (TickCacheManager or
+        This is called by the orchestration layer (FlowInitiator or
         equivalent) after the strategy run completes or fails.
 
         Always succeeds (even if cache is already empty).

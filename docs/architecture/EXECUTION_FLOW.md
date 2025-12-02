@@ -22,7 +22,7 @@ Context Workers → Signal Detector / Risk Monitor → StrategyPlanner
     ↓
 TradePlanners (Entry/Size/Exit) → ExecutionPlanner
     ↓
-ExecutionPlanner → ExecutionDirective → ExecutionWorker
+ExecutionPlanner → ExecutionCommandBatch → ExecutionWorker
     ↓
 ExecutionWorker 
     ├→ Queries StrategyLedger for existing state (MODIFY/CLOSE)
@@ -103,7 +103,7 @@ sequenceDiagram
     
     TP->>EP: EntryPlan + SizePlan + ExitPlan
     EP->>EP: Aggregate plans + select algorithm
-    EP->>EW: ExecutionDirective + Causality
+    EP->>EW: ExecutionCommandBatch + Causality
     
     Note over EW,SL: ExecutionWorker queries existing state if needed
     EW->>SL: Query existing ExecutionGroup/Orders (MODIFY/CLOSE)
@@ -145,7 +145,7 @@ sequenceDiagram
 **ExecutionPlanner (4th TradePlanner):**
 - Aggregates EntryPlan + SizePlan + ExitPlan
 - Selects execution algorithm
-- Produces ExecutionDirective for ExecutionWorker
+- Produces ExecutionCommand (in ExecutionCommandBatch) for ExecutionWorker
 - Has descriptive read access to StrategyLedger
 
 **ExecutionWorker:**
@@ -294,7 +294,7 @@ CausalityChain.origin = Origin
     ↓
 Signal/Risk/Plan IDs added
     ↓
-ExecutionPlanner aggregates plans, produces ExecutionDirective
+ExecutionPlanner aggregates plans, produces ExecutionCommandBatch
     ↓
 ExecutionWorker creates OrderID
     ↓

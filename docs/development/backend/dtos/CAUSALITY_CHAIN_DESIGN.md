@@ -165,10 +165,10 @@ extended_causality = causality.model_copy(update={"signal_ids": [*causality.sign
 │    └─> Receives: StrategyDirective with CausalityChain                  │
 │    └─> Coordinates: Entry/Size/Exit/Execution plan workers              │
 │    └─> Extends CausalityChain: Adds entry_plan_id, size_plan_id, etc.  │
-│    └─> Creates: ExecutionDirectiveBatch with extended CausalityChain    │
+│    └─> Creates: ExecutionCommandBatch with extended CausalityChain    │
 │                                                                           │
 │ 7. EXECUTION (ExecutionHandler)                                          │
-│    └─> Receives: ExecutionDirectiveBatch with CausalityChain            │
+│    └─> Receives: ExecutionCommandBatch with CausalityChain            │
 │    └─> Creates: order_id(s) for exchange submission                     │
 │    └─> Extends CausalityChain: Adds order_ids to list                   │
 │    └─> Submits orders to ExchangeConnector                              │
@@ -294,8 +294,8 @@ StrategyPlanner → Reads cache.platform_data.origin → Creates CausalityChain
 - `backend/dtos/causality.py` - CausalityChain DTO (TO BE UPDATED: signal_ids/risk_ids lists, add fill_ids/order_ids, use Origin)
 - `backend/dtos/shared/origin.py` (NEW) - Origin DTO (id + type)
 - `backend/dtos/platform_data.py` - PlatformDataDTO (TO BE UPDATED: add Origin field)
-- `backend/dtos/strategy/strategy_directive.py` - Has target_trade_ids[] field (trade context ballast)
-- `backend/dtos/execution/execution_directive.py` - Has target_trade_ids[] field (trade context ballast)
+- `backend/dtos/strategy/strategy_directive.py` - Has target_plan_ids[] field (trade context ballast)
+- `backend/dtos/execution/execution_command.py` - ExecutionCommand and ExecutionCommandBatch (combined)
 - `backend/utils/id_generators.py` - ID format specification (str format, prefixes)
 
 ---

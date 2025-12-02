@@ -33,7 +33,7 @@ This document provides the complete implementation roadmap for DTO refactoring a
 |--------|---------|-----|
 | Remove field | `causality: CausalityChain` | (deleted) |
 | Rename field | `asset: str` | `symbol: str` |
-| Update pattern | `^[A-Z0-9_]+/[A-Z0-9_]+$` | `^[A-Z][A-Z0-9_]{2,}$` |
+| Update pattern | `^[A-Z0-9_]+/[A-Z0-9_]+$` | `^[A-Z][A-Z0-9]{2,}$` |
 | Change type | `confidence: float` | `confidence: Decimal` |
 
 **TDD Steps:**

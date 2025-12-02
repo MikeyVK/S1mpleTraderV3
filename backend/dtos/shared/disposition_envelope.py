@@ -13,7 +13,7 @@ Part of Platgeslagen Orkestratie architecture:
 
 @layer: DTO (Shared)
 @dependencies: [pydantic, typing, re]
-@responsibilities: [flow control contract, event validation, TickCache routing]
+@responsibilities: [flow control contract, event validation, StrategyCache routing]
 """
 
 import re
@@ -31,12 +31,12 @@ class DispositionEnvelope(BaseModel):
         event_payload: Optional System DTO as event payload
 
     Dispositions:
-        - CONTINUE: Continue flow, data placed in TickCache
+        - CONTINUE: Continue flow, data placed in StrategyCache
         - PUBLISH: Publish event on EventBus with optional payload
         - STOP: Terminate this flow branch
 
     Architecture (Point-in-Time Data Model):
-        - Flow data → TickCache (sync, plugin-specific DTOs)
+        - Flow data → StrategyCache (sync, plugin-specific DTOs)
         - Signals/alerts → EventBus (async, System DTOs)
         - DispositionEnvelope bridges worker logic and adapter routing
 
@@ -139,7 +139,7 @@ class DispositionEnvelope(BaseModel):
         "json_schema_extra": {
             "examples": [
                 {
-                    "description": "Context worker continues flow (data to TickCache)",
+                    "description": "Context worker continues flow (data to StrategyCache)",
                     "disposition": "CONTINUE"
                 },
                 {

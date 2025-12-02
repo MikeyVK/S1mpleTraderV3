@@ -84,6 +84,11 @@
 | `iceberg_preference` | `Decimal \| None` | ❌ | Iceberg preference [0.0-1.0] |
 | `max_total_slippage_pct` | `Decimal` | ❌ | Max total slippage, default 0.01 |
 
+**Note:** The sub-directive in StrategyDirective uses field name `execution_directive` (type `ExecutionDirective`).
+This is distinct from:
+- `ExecutionCommand` = aggregated output DTO (in `execution_command.py`)
+- `ExecutionPlan` = execution trade-offs output DTO (produced by ExecutionPlanner)
+
 ---
 
 ## 4. Causality
@@ -183,22 +188,23 @@ causality = CausalityChain(
 
 ---
 
-## 8. Breaking Changes Required
+## 8. Breaking Changes ✅ COMPLETED
 
-| Current | New | Impact |
+| Original | New | Status |
 |---------|-----|--------|
-| `target_trade_ids: list[str]` | `target_plan_ids: list[str]` | Rename field. Per TRADE_LIFECYCLE.md, Level 1 = TradePlan. |
+| `target_trade_ids: list[str]` | `target_plan_ids: list[str]` | ✅ DONE |
 
-**Note:** Sub-directive `ExecutionDirective` remains as-is. No naming conflict exists:
-- `StrategyDirective.execution_directive` = sub-directive with hints for ExecutionPlanner
-- `ExecutionCommand` = aggregated output DTO (renamed from file `execution_directive.py`)
+**Naming Clarification (Code SSOT):**
+- `StrategyDirective.execution_directive` = sub-directive with hints for ExecutionPlanner (type: `ExecutionDirective`)
+- `ExecutionCommand` = aggregated output DTO (in `execution_command.py`)
+- `ExecutionPlan` = execution trade-offs output DTO (produced by ExecutionPlanner)
 
-### Migration Checklist
+### Migration Checklist ✅ COMPLETE (Dec 2025)
 
-- [ ] Rename `target_trade_ids` → `target_plan_ids`
-- [ ] Update docstrings to reflect TradePlan terminology
-- [ ] Update all tests
-- [ ] Update StrategyPlanner implementations
+- [x] Rename `target_trade_ids` → `target_plan_ids`
+- [x] Update docstrings to reflect TradePlan terminology
+- [x] Update all tests
+- [x] Update StrategyPlanner implementations
 
 ---
 

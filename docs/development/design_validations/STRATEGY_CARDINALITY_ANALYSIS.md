@@ -64,7 +64,7 @@ Om fouten bij modificaties (zoals dubbele executie) te voorkomen, dwingen we **A
 
 1.  **StrategyDirective:**
     *   `target_trade_ids` -> **`target_plan_ids`** (List[str]).
-    *   Sub-directive: `ExecutionDirective` -> **`RoutingDirective`**.
+    *   Sub-directive: Uses `ExecutionDirective` (field: `execution_directive`) - per code SSOT.
 2.  **SizeDirective:**
     *   Documentatie update: "Values are ABSOLUTE target states".
 3.  **Validatie:**

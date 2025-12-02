@@ -29,7 +29,7 @@ De DTO design documenten zijn **grondig en kwalitatief hoogwaardig**. Na de revi
 | Section numbering 4→5+ | EXECUTION_GROUP_DESIGN.md | ✅ |
 | Section numbering 4→5+ | EXECUTION_PLAN_DESIGN.md | ✅ |
 | execution_directive_id → execution_command_id | CAUSALITY_CHAIN_DESIGN.md | ✅ |
-| RoutingDirective → ExecutionDirective clarified | STRATEGY_DIRECTIVE_DESIGN.md | ✅ |
+| ExecutionDirective (sub-directive) terminology verified | STRATEGY_DIRECTIVE_DESIGN.md | ✅ |
 | Refactor to standard structure | ORIGIN_DTO_DESIGN.md | ✅ |
 | Refactor to standard structure | TRADE_PLAN_DESIGN.md | ✅ |
 | Add filepath comment header | ALL 16 design docs | ✅ |
@@ -276,7 +276,7 @@ Geen enkel document heeft de Version History tabel per DESIGN_TEMPLATE.md:
 
 1. ~~**Fix dubbele section headers** in EXECUTION_GROUP_DESIGN.md en EXECUTION_PLAN_DESIGN.md~~ ✅
 2. ~~**Update CAUSALITY_CHAIN_DESIGN.md** - `execution_directive_id` → `execution_command_id`~~ ✅
-3. ~~**Clarify RoutingDirective terminology** in STRATEGY_DIRECTIVE_DESIGN.md~~ ✅
+3. ~~**Verify ExecutionDirective terminology** in STRATEGY_DIRECTIVE_DESIGN.md~~ ✅ (Code SSOT uses `ExecutionDirective` + `execution_directive`)
 4. ~~**Refactor ORIGIN_DTO_DESIGN.md** naar standaard 1-8 sectie structuur~~ ✅
 
 ### ~~MEDIUM Priority (Completeness)~~ ✅ MOSTLY DONE

@@ -1,7 +1,7 @@
 # SimpleTraderV3 - Implementation TODO
 
 **Status:** LIVING DOCUMENT  
-**Last Updated:** 2025-11-27  
+**Last Updated:** 2025-12-02  
 **Update Frequency:** Daily (during active development)
 
 ---
@@ -10,7 +10,7 @@
 
 Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 
-> **Quick Status:** 403 tests passing, Week 0 complete, Week 1 in progress
+> **Quick Status:** 456 tests passing, Week 0 complete, Week 1 in progress
 
 ---
 
@@ -36,12 +36,12 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 
 | Phase | Done | Total | Status |
 |-------|------|-------|--------|
-| Week 0: Foundation | 14 | 15 | 🔄 93% (1 DTO pending) |
+| Week 0: Foundation | 14 | 15 | 🔄 93% (1 DTO pending: ExecutionRequest) |
 | Week 1: Config Schemas | 0 | 4 | 🔴 Not started |
 | Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
 | Week 3: Factories | 0 | 5 | 🔴 Blocked |
 | Week 4: Platform | 0 | 4 | 🔴 Blocked |
-| Technical Debt | 0 | 10 | 🔴 Backlog |
+| Technical Debt | 9 | 10 | ✅ 90% (1 review pending) |
 
 ---
 
@@ -60,7 +60,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Fields:** trade_id, strategy_directive, entry_plan, size_plan, exit_plan, causality
   - **Location:** `backend/dtos/strategy/execution_request.py`
   - **Note:** Referenced in PIPELINE_FLOW.md but not yet implemented
-- [x] Execution Layer: ExecutionDirective, ExecutionDirectiveBatch, ExecutionGroup
+- [x] Execution Layer: ExecutionCommand, ExecutionCommandBatch (combined in execution_command.py), ExecutionGroup
 
 **Interface Protocols:**
 - [x] IStrategyCache (protocol + implementation)
@@ -92,55 +92,31 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 - PlatformDataDTO refactored to minimal design (3 fields)
 
 **Technical Debt:**
-- [ ] **Signal DTO: Remove causality field** (2025-11-09)
-  - **Issue:** Signal currently has causality field, but CausalityChain should only start at StrategyPlanner decision
-  - **Rationale:** SignalDetector emits pure detection facts (pre-causality). StrategyPlanner creates first causal link (signal_id → strategy_directive_id)
-  - **Impact:** BREAKING CHANGE - affects Signal constructor, all tests, SignalDetector implementations
-  - **Scope:** backend/dtos/strategy/signal.py, tests/unit/dtos/strategy/test_signal.py, all SignalDetector plugins
-  - **Priority:** High (architectural correctness - causality timing semantics)
+- [x] **Signal DTO: Remove causality field** (2025-11-09) **RESOLVED**
+  - **Commit:** `91c3fb8` - refactor(signal): remove causality, rename asset→symbol
+  - **Status:** COMPLETE - Signal is now PRE-CAUSALITY DTO
   - **Documentation:** DTO_ARCHITECTURE.md already updated (Signal is pre-causality)
 
-- [ ] **Risk DTO: Remove causality field** (2025-11-09)
-  - **Issue:** Risk currently has causality field, but CausalityChain should only start at StrategyPlanner decision
-  - **Rationale:** RiskMonitor emits pure detection facts (pre-causality). StrategyPlanner creates first causal link (risk_id → strategy_directive_id)
-  - **Impact:** BREAKING CHANGE - affects Risk constructor, all tests, RiskMonitor implementations
-  - **Scope:** backend/dtos/strategy/risk.py, tests/unit/dtos/strategy/test_risk.py, all RiskMonitor plugins
-  - **Priority:** High (architectural correctness - causality timing semantics)
+- [x] **Risk DTO: Remove causality field** (2025-11-09) **RESOLVED**
+  - **Commit:** `22f6b03` - refactor(risk): remove causality, rename affected_asset→affected_symbol
+  - **Status:** COMPLETE - Risk is now PRE-CAUSALITY DTO
   - **Documentation:** DTO_ARCHITECTURE.md already updated (Risk is pre-causality)
 
-- [ ] **Symbol field naming consistency** (2025-11-09)
-  - **Issue:** Inconsistent naming across DTOs (asset vs affected_asset vs symbol)
-  - **Solution:** Standardize on `symbol` (trading domain standard)
-    - Signal: `asset` → `symbol`
-    - Risk: `affected_asset` → `affected_symbol` (None = system-wide)
-    - StrategyDirective.EntryDirective: `symbol` (already correct)
-  - **Impact:** BREAKING CHANGE - affects Signal, Risk field names + all tests
-  - **Scope:** backend/dtos/strategy/signal.py, backend/dtos/strategy/risk.py, all tests
-  - **Priority:** High (consistency, before production)
-  - **Documentation:** DTO_ARCHITECTURE.md will be updated
+- [x] **Symbol field naming consistency** (2025-11-09) **RESOLVED**
+  - **Commits:** `91c3fb8` (Signal: asset→symbol), `22f6b03` (Risk: affected_asset→affected_symbol)
+  - **Status:** COMPLETE - All DTOs now use `symbol` / `affected_symbol`
+  - **Documentation:** DTO_ARCHITECTURE.md updated
 
-- [ ] **DirectiveScope: Align terminology with order-level operations** (2025-11-09)
-  - **Issue:** MODIFY_EXISTING/CLOSE_EXISTING suggest position-level, but operations are order-level
-  - **Solution:** Rename enum values to reflect order-level semantics:
-    - `NEW_TRADE` → keep (correct - new position from signal)
-    - `MODIFY_EXISTING` → `MODIFY_ORDER` (order-level adjustment)
-    - `CLOSE_EXISTING` → `CLOSE_ORDER` (order-level closure)
-  - **Impact:** BREAKING CHANGE - affects DirectiveScope enum, StrategyDirective validation, all StrategyPlanner implementations
-  - **Scope:** backend/dtos/strategy/strategy_directive.py, tests, all StrategyPlanner plugins
-  - **Priority:** High (terminological correctness)
-  - **Documentation:** DTO_ARCHITECTURE.md will be updated
-  - **UPDATE (2025-11-20):** **REJECTED**. StrategyPlanner operates on `TradePlan` level (Level 1), not Order level (Level 3). `MODIFY_EXISTING` is correct abstraction. See Issue #7.
+- [x] **DirectiveScope: Align terminology with order-level operations** (2025-11-09) **REJECTED/CLOSED**
+  - **UPDATE (2025-11-20):** REJECTED per Issue #7 architectural analysis
+  - **Rationale:** StrategyPlanner operates on `TradePlan` level (Level 1), not Order level (Level 3)
+  - **Decision:** Keep `MODIFY_EXISTING`/`CLOSE_EXISTING` - correct abstraction level
+  - **Status:** CLOSED - No changes needed
 
-  - **Documentation:** DTO_ARCHITECTURE.md will be updated
-
-- [ ] **StrategyDirective: target_trade_ids → target_order_ids** (2025-11-09)
-  - **Issue:** Field name uses "trade" but tracks order IDs (terminological confusion)
-  - **Solution:** Rename `target_trade_ids` → `target_order_ids`
-  - **Impact:** BREAKING CHANGE - affects StrategyDirective field name, validation logic, all consumers
-  - **Scope:** backend/dtos/strategy/strategy_directive.py, tests, StrategyPlanner/PlanningWorker implementations
-  - **Priority:** High (follows DirectiveScope terminology alignment)
-  - **Documentation:** DTO_ARCHITECTURE.md will be updated
-  - **UPDATE (2025-11-20):** **REJECTED**. StrategyPlanner operates on `TradePlan` level. Rename to `target_plan_ids` instead. See Issue #7.
+- [x] **StrategyDirective: target_trade_ids → target_plan_ids** (2025-11-09) **RESOLVED**
+  - **Commit:** `cb7c761` - feat(dto): rename target_trade_ids to target_plan_ids
+  - **Status:** COMPLETE - Field renamed per Issue #7 recommendation
+  - **Documentation:** Updated to match code SSOT
 
 - [ ] **ExecutionGroup: Review `metadata` field usage** (2025-11-27)
   - **Issue:** `metadata: dict[str, Any]` is a code smell - suggests undefined structure
@@ -149,53 +125,40 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Scope:** backend/dtos/execution/execution_group.py
   - **Priority:** Medium (architectural clarity)
 
-- [ ] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27)
-  - **Issue:** DCA (Dollar Cost Averaging) is a PLANNING strategy, not an EXECUTION strategy
-  - **Rationale:** DCA determines WHEN to buy (time-based intervals), not HOW to execute a single order
-  - **Correct location:** Planning layer (affects StrategyDirective timing, not ExecutionGroup algorithm)
-  - **Scope:** backend/dtos/execution/execution_group.py (ExecutionStrategyType enum)
-  - **Priority:** High (semantic correctness - layer separation)
+- [x] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27) **RESOLVED**
+  - **Commit:** `3b45af6` - refactor(dto): remove DCA from ExecutionStrategyType enum
+  - **Status:** COMPLETE - DCA is now correctly a planning-level concept
+  - **Scope:** ExecutionStrategyType enum now has: SINGLE, TWAP, VWAP, ICEBERG, LAYERED, POV
 
-- [ ] **StrategyDirective sub-directive: ExecutionDirective → RoutingDirective** (2025-11-09)
-  - **Issue:** TWO classes named `ExecutionDirective` (naming conflict):
-    1. `backend/dtos/strategy/strategy_directive.py` line 164 - Sub-directive (routing constraints for RoutingPlanner)
-    2. `backend/dtos/execution/execution_directive.py` line 36 - Execution layer DTO (aggregated final instruction)
-  - **Solution:** Rename strategy sub-directive class `ExecutionDirective` → `RoutingDirective`
+- [x] **StrategyDirective sub-directive: ExecutionDirective** (2025-11-09) **RESOLVED**
+  - **Code SSOT:** `backend/dtos/strategy/strategy_directive.py` line 148 - `ExecutionDirective` class
+  - **Field:** `execution_directive: ExecutionDirective | None`
+  - **Consumer:** ExecutionPlanner (4th TradePlanner)
+  - **Resolution:** 
+    - ExecutionDirective (execution layer) → **ExecutionCommand** (EXC_ prefix)
+    - ExecutionDirectiveBatch → **ExecutionCommandBatch** (combined in execution_command.py)
+    - No naming conflict - sub-directive remains `ExecutionDirective`
+  - **Status:** COMPLETE (Dec 2025)
+  - **Documentation:** Updated to match code SSOT
 
+- [x] **Asset format: BASE/QUOTE → BASE_QUOTE** (2025-11-09) **RESOLVED**
+  - **Status:** COMPLETE - All DTOs use underscore format (e.g., BTC_USDT)
+  - **Verification:** Signal examples show `symbol="BTC_USDT"` format
+  - **Documentation:** DTO_ARCHITECTURE.md already updated
 
-    - Field name `routing_directive` already correct (no change)
-    - Class docstring/descriptions: "Execution constraints" → "Routing constraints"
-  - **Impact:** BREAKING CHANGE - affects class name, imports, all StrategyPlanner implementations that create this sub-directive
-  - **Scope:** backend/dtos/strategy/strategy_directive.py (class rename line 164), all imports, tests
-  - **Priority:** High (naming conflict resolution, clarity)
-  - **Documentation:** DTO_ARCHITECTURE.md already updated (uses RoutingDirective)
+- [x] **Enums Centralisatie** (2025-11-09) **RESOLVED**
+  - **Commit:** `39f12bc` - refactor: centralize enums to backend/core/enums.py (Phase 4.2)
+  - **Status:** COMPLETE - All enums now in `backend/core/enums.py`
+  - **Includes:** OriginType, DirectiveScope, ExecutionMode, ExecutionAction, ExecutionStrategyType, GroupStatus, OrderType, OrderSide, OrderStatus, DispositionType, etc.
 
-- [ ] **Asset format: BASE/QUOTE → BASE_QUOTE** (2025-11-09)
-  - **Issue:** Current BASE/QUOTE format with slash is problematic in filesystem paths, URLs, logs, database keys
-  - **Solution:** Change to BASE_QUOTE with underscore separator (e.g., BTC_USD instead of BTC/USD)
-  - **Impact:** BREAKING CHANGE - affects Signal, Risk, StrategyDirective validation + all tests
-  - **Scope:** All DTOs with symbol field, validation patterns, test fixtures
-  - **Priority:** High (before production - filesystem safety)
-  - **Documentation:** DTO_ARCHITECTURE.md already updated (BASE_QUOTE format)
-
-- [ ] **Enums Centralisatie** (2025-11-09)
-  - **Issue:** Enums currently embedded in DTOs (e.g., OriginType in origin.py, DirectiveScope in strategy_directive.py)
-  - **Impact:** Hard to discover all enums, tight coupling, difficult to add new implementations
-  - **Solution:** Move all enums to `backend/core/enums.py` (centralized registry)
-  - **Benefits:** Single source of truth, easy discovery, loose coupling, no DTO diving needed
-  - **Scope:** OriginType, DirectiveScope, ExecutionMode, DispositionType, and all future enums
-  - **Priority:** Medium (before Week 1 Config Schemas - config may reference enums)
-
-- [ ] **TickCache → StrategyCache Rename** (2025-11-27)
-  - **Issue:** `TickCache` terminology is outdated and confusing - suggests only tick data storage
-  - **Solution:** Rename all references to `StrategyCache` throughout codebase
-  - **Scope:**
-    - `TickCacheManager` → `StrategyCacheManager`
-    - All documentation references
-    - All code imports and usages
-  - **Rationale:** StrategyCache stores much more than ticks: context factors, signals, risks, causality chains, order contexts
-  - **Priority:** Medium (terminology consistency - before production)
-  - **Note:** Interface `IStrategyCache` already uses correct naming
+- [x] **TickCache → StrategyCache Rename** (2025-11-27) **RESOLVED**
+  - **Issue:** `TickCache` terminology was outdated and confusing - suggested only tick data storage
+  - **Solution:** Renamed all references to `StrategyCache` in leidende docs
+  - **Scope Completed:**
+    - ✅ All leidende architecture docs updated (PLATFORM_COMPONENTS, PIPELINE_FLOW, DATA_FLOW, etc.)
+    - ✅ Code already used `StrategyCache` (interface `IStrategyCache`)
+    - ⚠️ ARCHITECTURE_GAPS.md still has `TickCache` (niet-leidend document)
+  - **Status:** COMPLETE (Dec 2025)
 
 ---
 
@@ -256,13 +219,13 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 
 **Components:**
 - [ ] EventAdapter (bus-agnostic worker wrapper)
-- [ ] TickCacheManager (run lifecycle orchestration)
+- [ ] FlowCoordinator (run lifecycle orchestration) - Was: TickCacheManager (name deprecated)
 - [ ] PlanningAggregator (4-plan coordinator, mode-aware)
   - **Design doc:** `docs/development/backend/core/PLANNING_AGGREGATOR_DESIGN.md`
   - **Purpose:** Multi-input aggregator for Entry/Size/Exit/Execution plans
   - **Pattern:** Fan-in coordination (5 event handlers → 2 output events)
   - **State:** Per-trade tracking matrix with RunAnchor reentry guard
-  - **Output:** EXECUTION_INTENT_REQUESTED, EXECUTION_DIRECTIVE_BATCH_READY
+  - **Output:** EXECUTION_INTENT_REQUESTED, EXECUTION_COMMAND_BATCH_READY
 - [ ] **StrategyCache Runtime Validation** (optional defense-in-depth)
   - **Purpose:** Validate worker DTO contracts at runtime (catch implementation bugs)
   - **Dependencies:** WorkerMetadataRegistry (Week 3)
@@ -277,16 +240,16 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Status:** Open question. Defer decision until PlanningAggregator implementation.
   - **Note:** CausalityChain currently lacks trade/batch tracking mechanism
 
-- [ ] **Issue #6: ExecutionDirectiveBatch execution_mode Decision Logic** (2025-11-09)
+- [ ] **Issue #6: ExecutionCommandBatch execution_mode Decision Logic** (2025-11-09)
   - **Problem:** PlanningAggregator currently hardcodes execution_mode=ATOMIC for ALL batches (SRP violation)
   - **Current State:** 
     - PlanningAggregator sets execution_mode, timeout_seconds, rollback_on_failure with hardcoded defaults
-    - StrategyDirective contains execution signals (scope, confidence, routing_directive.execution_urgency)
+    - StrategyDirective contains execution signals (scope, confidence, execution_directive.execution_urgency)
     - No documented algorithm for WHEN to use SEQUENTIAL vs PARALLEL vs ATOMIC
   - **Field Duplication Issue:**
-    - ExecutionPlan.max_execution_window_minutes (per-directive, from RoutingPlanner)
-    - ExecutionDirectiveBatch.timeout_seconds (batch-level, from PlanningAggregator)
-    - Potential conflict: directive wants 60min, batch allows 30s
+    - ExecutionPlan.max_execution_window_minutes (per-command, from ExecutionPlanner)
+    - ExecutionCommandBatch.timeout_seconds (batch-level, from PlanningAggregator)
+    - Potential conflict: command wants 60min, batch allows 30s
   - **Use Cases Identified (from DTO examples):**
     - ATOMIC: Flash crash emergency exit (scope=CLOSE_EXISTING, urgency=1.0, rollback=True)
     - SEQUENTIAL: Hedged exit with ordering (close hedge FIRST, then main position, count=2)
@@ -299,12 +262,12 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Potential Solution:** Derive execution_mode from StrategyDirective fields:
     - `scope` (NEW_TRADE / MODIFY_EXISTING / CLOSE_EXISTING)
     - `confidence` [0.0-1.0]
-    - `routing_directive.execution_urgency` [0.0-1.0]
+    - `execution_directive.execution_urgency` [0.0-1.0]
     - Directive count (1 vs multiple)
-  - **Impact:** Affects PlanningAggregator implementation, ExecutionDirectiveBatch field rationale
+  - **Impact:** Affects PlanningAggregator implementation, ExecutionCommandBatch field rationale
   - **Priority:** High (architectural correctness - SRP, field ownership clarity)
   - **Related Docs:** 
-    - `docs/architecture/DTO_ARCHITECTURE.md` (ExecutionDirectiveBatch documentation)
+    - `docs/architecture/DTO_ARCHITECTURE.md` (ExecutionCommandBatch documentation)
     - `docs/development/backend/core/PLANNING_AGGREGATOR_DESIGN.md` (line 389: hardcoded defaults)
   - **Next Steps:** Research and document decision algorithm before PlanningAggregator implementation
 
@@ -312,8 +275,8 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Context:** Deep dive into StrategyPlanner role revealed architectural misalignment in previous TODOs.
   - **Core Principle:** StrategyPlanner (Level 1) operates on `TradePlan` (Intent), not `Order` (Implementation).
   - **Changes Required:**
-    1.  **Rename `target_trade_ids` → `target_plan_ids`** (Fixes abstraction leak).
-    2.  **Rename `ExecutionDirective` (sub-directive) → `RoutingDirective`** (Fixes naming conflict).
+    1.  **Rename `target_trade_ids` → `target_plan_ids`** (Fixes abstraction leak). ✅ **DONE**
+    2.  ~~**Rename `ExecutionDirective` (sub-directive) → `RoutingDirective`**~~ **RESOLVED** - Naming conflict fixed by renaming execution layer class to ExecutionCommand.
     3.  **Rename `position_size` → `target_position_size`** (Enforces absolute target semantics).
     4.  **Reject `MODIFY_ORDER` rename** (Keep `MODIFY_EXISTING` to respect Level 1 abstraction).
   - **Impact:** BREAKING CHANGE - affects StrategyDirective, SizeDirective, SizePlan, and all StrategyPlanners.

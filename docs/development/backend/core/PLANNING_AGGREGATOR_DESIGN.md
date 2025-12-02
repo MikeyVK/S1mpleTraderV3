@@ -541,7 +541,7 @@ StrategyDirective(
     scope=DirectiveScope.MODIFY_EXISTING,
     target_trade_ids=["TRD_123", "TRD_456"],
     exit_directive=ExitDirective(stop_loss_tolerance=0.01),
-    # NO entry_directive, size_directive, routing_directive
+    # NO entry_directive, size_directive, execution_directive
 )
 ```
 
@@ -594,7 +594,7 @@ def _determine_expected_plans(self) -> list[str]:
         expected.append("size")
     if directive.exit_directive is not None:
         expected.append("exit")
-    if directive.routing_directive is not None:
+    if directive.execution_directive is not None:
         expected.append("execution")
     
     # NEW_TRADE: default to all 4 if none specified

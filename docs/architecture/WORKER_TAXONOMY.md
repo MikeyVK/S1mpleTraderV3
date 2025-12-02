@@ -14,7 +14,7 @@ S1mpleTraderV3 organizes all strategy logic into **6 worker categories**, each w
 graph TB
     Tick[Market Tick]
     
-    subgraph TickCache["TickCache (Sync Flow)"]
+    subgraph StrategyCache["StrategyCache (Sync Flow)"]
         TC[Plugin DTOs<br/>Objective Facts]
     end
     
@@ -48,7 +48,7 @@ graph TB
     TC -->|get_required_dtos<br/>Subjective Interpretation| SP
     SP -->|PUBLISH StrategyDirective| EB
     
-    EB -->|subscribe ExecutionDirective| EW
+    EB -->|subscribe ExecutionCommandBatch| EW
     EW -->|read/write state| SL
     EW -->|place/modify/cancel| Connector[IExecutionConnector]
     
@@ -64,17 +64,17 @@ graph TB
 ```
 
 **Key Flow Principles:**
-- **ContextWorker**: Writes **objective facts** to TickCache only (NEVER EventBus)
-- **SignalDetector**: Reads TickCache → Applies **subjective interpretation** → Publishes Signal to EventBus
-- **RiskMonitor**: Reads TickCache → Applies **subjective interpretation** → Publishes Risk to EventBus
-- **PlanningWorker**: Reads TickCache + Ledger → Publishes Plans (EntryPlan, SizePlan, ExitPlan, ExecutionDirective) to EventBus
-- **StrategyPlanner**: Subscribes to EventBus signals + Reads TickCache → Applies **subjective interpretation** → Publishes StrategyDirective
-- **ExecutionWorker**: Subscribes to ExecutionDirective → Reads/writes StrategyLedger → Executes via IExecutionConnector
+- **ContextWorker**: Writes **objective facts** to StrategyCache only (NEVER EventBus)
+- **SignalDetector**: Reads StrategyCache → Applies **subjective interpretation** → Publishes Signal to EventBus
+- **RiskMonitor**: Reads StrategyCache → Applies **subjective interpretation** → Publishes Risk to EventBus
+- **PlanningWorker**: Reads StrategyCache + Ledger → Publishes Plans (EntryPlan, SizePlan, ExitPlan, ExecutionPlan) to EventBus
+- **StrategyPlanner**: Subscribes to EventBus signals + Reads StrategyCache → Applies **subjective interpretation** → Publishes StrategyDirective
+- **ExecutionWorker**: Subscribes to ExecutionCommandBatch → Reads/writes StrategyLedger → Executes via IExecutionConnector
 
 **Key Principles:**
 - **No Operators**: Workers are wired directly via EventAdapters (not grouped under operators)
 - **Single Responsibility**: Each worker category has one clear purpose
-- **Event-Driven**: Workers communicate via EventBus (async signals) or TickCache (sync flow)
+- **Event-Driven**: Workers communicate via EventBus (async signals) or StrategyCache (sync flow)
 - **Plugin-First**: All workers are loaded from plugins, configured via YAML
 - **Objective Context**: ContextWorkers produce facts, consumers apply interpretation
 
@@ -86,15 +86,15 @@ graph TB
 
 The **`type`** field in `manifest.yaml` defines the worker's **architectural role** and determines:
 - ✅ **Output contracts** - What the worker may produce
-- ✅ **Communication paths** - TickCache vs EventBus
+- ✅ **Communication paths** - StrategyCache vs EventBus
 - ✅ **Interface requirements** - Which methods must be implemented
 - ✅ **Platform validation** - Bootstrap checks enforce type contracts
 
 **6 Valid Types:**
-- `context_worker` - Stores DTOs to TickCache via `set_result_dto()` (NEVER EventBus)
+- `context_worker` - Stores DTOs to StrategyCache via `set_result_dto()` (NEVER EventBus)
 - `signal_detector` - May publish `Signal` to EventBus
 - `risk_monitor` - May publish `Risk` to EventBus  
-- `planning_worker` - Produces plan DTOs (EntryPlan, SizePlan, ExitPlan, ExecutionDirective)
+- `planning_worker` - Produces plan DTOs (EntryPlan, SizePlan, ExitPlan, ExecutionPlan)
 - `strategy_planner` - Publishes `StrategyDirective` to EventBus
 - `execution_worker` - Executes trades via Ledger + Connector (read/write access)
 
@@ -114,7 +114,7 @@ identification:
   subtype: "indicator_calculation"  # DESCRIPTIVE - Just a label
 ```
 
-A `context_worker` with `subtype: "indicator_calculation"` is **architecturally identical** to a `context_worker` with `subtype: "structural_analysis"`. Both store DTOs to TickCache, neither can publish to EventBus.
+A `context_worker` with `subtype: "indicator_calculation"` is **architecturally identical** to a `context_worker` with `subtype: "structural_analysis"`. Both store DTOs to StrategyCache, neither can publish to EventBus.
 
 **27+ Subtypes Available:** See individual worker category sections below for suggested subtypes per type.
 
@@ -139,7 +139,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 - ✅ Consumers (SignalDetectors, StrategyPlanners) apply their own interpretation
 
 **Output Pattern:**
-- Stores plugin-specific DTOs to `TickCache` via `set_result_dto()`
+- Stores plugin-specific DTOs to `StrategyCache` via `set_result_dto()`
 - **NEVER** publishes events to EventBus
 - Output consumed by downstream workers (SignalDetector, RiskMonitor, Planning)
 
@@ -171,7 +171,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 **Output Pattern:**
 - Primary: `DispositionEnvelope(PUBLISH)` with `Signal` (system DTO)
-- Secondary: Can store intermediate scores to `TickCache`
+- Secondary: Can store intermediate scores to `StrategyCache`
 
 **7 Subtypes:**
 1. `TECHNICAL_PATTERN` - Chart pattern breakouts
@@ -234,7 +234,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 **Output Pattern:**
 - TradePlanners (Entry, Size, Exit): `set_result_dto()` with plan DTOs
-- ExecutionPlanner: Aggregates 3 plans → `ExecutionDirective` via EventBus
+- ExecutionPlanner: Aggregates 3 plans → `ExecutionCommandBatch` (via PlanningAggregator) to EventBus
 
 **4 Subtypes (The 4 TradePlanners):**
 1. `ENTRY_PLANNING` - Where/when to enter (limit, market, stop)
@@ -334,7 +334,7 @@ A `context_worker` with `subtype: "indicator_calculation"` is **architecturally 
 
 ### Data Flow Paths
 
-1. **TickCache (Synchronous, Flow Data)**
+1. **StrategyCache (Synchronous, Flow Data)**
    - Via `IStrategyCache.set_result_dto(worker, dto)`
    - For direct worker-to-worker data transfer
    - Contains **plugin-specific DTOs only**

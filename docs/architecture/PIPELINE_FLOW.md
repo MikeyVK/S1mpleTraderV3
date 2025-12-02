@@ -100,7 +100,7 @@ graph TB
 ```
 Market Tick
     ↓
-TickCache (objective facts from ContextWorkers)
+StrategyCache (objective facts from ContextWorkers)
     ↓
 EventBus (Signal + Risk DTOs)
     ↓
@@ -108,7 +108,7 @@ StrategyDirective (confidence + hints)
     ↓
 EntryPlan + SizePlan + ExitPlan (parallel)
     ↓
-ExecutionDirective (aggregated)
+ExecutionCommand (aggregated in ExecutionCommandBatch)
     ↓
 StrategyLedger (containers: TradePlan → ExecutionGroup → Order → Fill)
 ```
@@ -171,7 +171,7 @@ StrategyLedger (containers: TradePlan → ExecutionGroup → Order → Fill)
 **Input:** Raw OHLCV data (current tick + historical window)
 
 **Output:** 
-- Plugin-specific DTOs stored in TickCache via `set_result_dto()`
+- Plugin-specific DTOs stored in StrategyCache via `set_result_dto()`
 - **Never** publishes to EventBus
 
 **Worker Type:** `context_worker` (7 subtypes available)
@@ -204,13 +204,13 @@ StrategyLedger (containers: TradePlan → ExecutionGroup → Order → Fill)
 **Role:** Probabilistic and creative - "I see a possibility"
 
 **Execution:** Parallel
-- All detectors receive same context from TickCache
+- All detectors receive same context from StrategyCache
 - EventAdapters fire workers simultaneously
 - Generate independent signals
 
 **Worker Type:** `signal_detector` (7 subtypes available)
 
-**Input:** TickCache DTOs (objective facts from Phase 1)
+**Input:** StrategyCache DTOs (objective facts from Phase 1)
 
 **Output:**
 ```python
@@ -236,7 +236,7 @@ Signal(
 **Worker Type:** `risk_monitor` (5 subtypes available)
 
 **Input:** 
-- TickCache (market data)
+- StrategyCache (market data)
 - StrategyLedger (open positions, P&L)
 
 **Output:**
@@ -415,9 +415,9 @@ ExecutionPlanner decisions require **complete trade context**:
 
 **Input:** All 3 plans + StrategyDirective
 
-**Output:** ExecutionDirective with algorithm configuration
+**Output:** ExecutionCommand with algorithm configuration (wrapped in ExecutionCommandBatch)
 
-### 6.3 ExecutionDirective Assembly
+### 6.3 ExecutionCommand Assembly
 
 **Component:** `PlanningAggregator` (Platform worker)
 
@@ -425,12 +425,12 @@ ExecutionPlanner decisions require **complete trade context**:
 - Track which plans are expected (3 parallel + 1 sequential)
 - Wait for parallel phase completion (Entry, Size, Exit)
 - Trigger ExecutionPlanner with all 3 plans
-- Aggregate all 4 plans → ExecutionDirective
+- Aggregate all 4 plans → ExecutionCommand(s) in ExecutionCommandBatch
 
 **Output:**
 ```python
-ExecutionDirective(
-    directive_id="EXE_...",
+ExecutionCommand(
+    command_id="EXC_...",
     causality=CausalityChain(...),
     entry_plan=EntryPlan(...),
     size_plan=SizePlan(...),
@@ -443,7 +443,7 @@ ExecutionDirective(
 )
 ```
 
-**Event:** `EXECUTION_DIRECTIVE_READY`
+**Event:** `EXECUTION_COMMAND_BATCH_READY`
 
 **Cross-reference:** [TRADE_LIFECYCLE.md - ExecutionPlanner][trade-lifecycle]
 
@@ -456,7 +456,7 @@ ExecutionDirective(
 **Component:** `ExecutionWorker` (6th worker category)
 
 **Responsibility:**
-- Receive ExecutionDirective via EventBus
+- Receive ExecutionCommandBatch via EventBus
 - Query StrategyLedger for existing state (MODIFY/CLOSE scenarios)
 - Register containers (ExecutionGroup, Order)
 - Execute via IExecutionConnector (place/modify/cancel)
@@ -561,7 +561,7 @@ event_wirings:
 3. **PlanningAggregator = Coordinator (NOT Orchestrator):**
    - Detects phase completion (state tracking)
    - Triggers next phase via events
-   - Aggregates results → ExecutionDirective
+   - Aggregates results → ExecutionCommandBatch
    - No planner selection logic (config does this!)
 
 ---

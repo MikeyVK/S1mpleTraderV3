@@ -40,7 +40,7 @@
 
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
-| [Point-in-Time Model](POINT_IN_TIME_MODEL.md) | **CORE DATA MODEL** | TickCache, IStrategyCache, RunAnchor, DTO flow |
+| [Point-in-Time Model](POINT_IN_TIME_MODEL.md) | **CORE DATA MODEL** | StrategyCache, IStrategyCache, RunAnchor, DTO flow |
 | [Data Flow](DATA_FLOW.md) | Worker Communication | DispositionEnvelope, CONTINUE/PUBLISH/STOP |
 | [Event-Driven Wiring](EVENT_DRIVEN_WIRING.md) | Event Architecture | EventBus, EventAdapter, wiring_map.yaml |
 | [AsyncIO Architecture](ASYNC_IO_ARCHITECTURE.md) | **ASYNC & TIMING** | AsyncIO patterns, Timing separation, Event-driven state |
@@ -57,7 +57,7 @@
 
 | Document | Purpose | Key Topics |
 |----------|---------|------------|
-| [Platform Components](PLATFORM_COMPONENTS.md) | Core Singletons | StrategyCache, EventBus, TickCacheManager, PluginRegistry |
+| [Platform Components](PLATFORM_COMPONENTS.md) | Core Singletons | StrategyCache, EventBus, FlowInitiator, PluginRegistry |
 | [LogEnricher Design](LOGENRICHER_DESIGN.md) | **PRELIMINARY** - Structured Logging | LogFormatter, LogEnricher, Translator, i18n compliance |
 
 ## Critical Path for New Developers
@@ -93,14 +93,14 @@
 
 ```mermaid
 graph LR
-    W1[Worker] -.Sync Flow.-> TC[TickCache<br/>IStrategyCache]
+    W1[Worker] -.Sync Flow.-> TC[StrategyCache<br/>IStrategyCache]
     W2[Worker] -.Async Signals.-> Bus[EventBus<br/>DispositionEnvelope]
     
     style TC fill:#e1f5ff
     style Bus fill:#ffe1e1
 ```
 
-- **Sync Flow** (worker → worker): TickCache via `IStrategyCache.set_result_dto()`
+- **Sync Flow** (worker → worker): StrategyCache via `IStrategyCache.set_result_dto()`
 - **Async Signals** (worker → platform): EventBus via `DispositionEnvelope(PUBLISH)`
 
 ### Worker Output Types

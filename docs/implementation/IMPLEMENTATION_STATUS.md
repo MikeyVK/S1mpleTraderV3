@@ -1,7 +1,7 @@
 # Implementation Status
 
 **Status:** LIVING DOCUMENT  
-**Last Updated:** 2025-11-09  
+**Last Updated:** 2025-12-02  
 **Update Frequency:** Per feature completion
 
 ---
@@ -10,7 +10,7 @@
 
 Quality metrics and test coverage tracking for all S1mpleTrader V3 components.
 
-> **Quick Status:** 403 tests passing (100% coverage), all quality gates 10/10
+> **Quick Status:** 456 tests passing (100% coverage), all quality gates 10/10
 
 ---
 
@@ -29,16 +29,59 @@ Quality metrics and test coverage tracking for all S1mpleTrader V3 components.
 
 | Layer | Tests | Quality Gates | Status |
 |-------|-------|---------------|--------|
-| Strategy DTOs - Signal/Risk | 65 | 10/10 | ✅ Complete |
-| Strategy DTOs - Planning | 63 | 10/10 | ✅ Complete |
-| Execution DTOs | 52 | 10/10 | ✅ Complete |
-| Shared DTOs | 98 | 10/10 | ✅ Complete |
-| Core Services | 80 | 10/10 | ✅ Complete |
-| Core Infrastructure | 14 | 10/10 | ✅ Complete |
-| Utils | 32 | 10/10 | ✅ Complete |
-| **Total** | **403** | - | ✅ |
+| Strategy DTOs (Signal/Risk/Planning) | 145 | 10/10 | ✅ Complete |
+| Execution DTOs | 50 | 10/10 | ✅ Complete |
+| Shared DTOs | 56 | 10/10 | ✅ Complete |
+| State DTOs (Order/Fill) | 41 | 10/10 | ✅ Complete |
+| Causality Chain | 33 | 10/10 | ✅ Complete |
+| Core Services + Interfaces | 94 | 10/10 | ✅ Complete |
+| Utils | 37 | 10/10 | ✅ Complete |
+| **Total** | **456** | - | ✅ |
 
 > **Note:** SWOT terminology fully replaced with quant terminology (2024-11-02). See [../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md](../development/#Archief/REFACTORING_QUANT_TERMINOLOGY_20241102.md) for complete refactoring details.
+
+---
+
+## Recent Updates (2025-12-02)
+
+### DTO Terminology & Architecture Refactors (Commit History Verified)
+
+**Signal DTO Refactor (`91c3fb8`):**
+- ✅ **Removed:** `causality` field (Signal is now PRE-CAUSALITY)
+- ✅ **Renamed:** `asset` → `symbol` (trading domain standard)
+- ✅ **Format:** Symbol uses underscore format (BTC_USDT)
+- Signal now represents pure detection fact, CausalityChain starts at StrategyPlanner
+
+**Risk DTO Refactor (`22f6b03`):**
+- ✅ **Removed:** `causality` field (Risk is now PRE-CAUSALITY)
+- ✅ **Renamed:** `affected_asset` → `affected_symbol`
+- ✅ **Changed:** `severity` type from float to Decimal (precision)
+- Risk now represents pure detection fact, CausalityChain starts at StrategyPlanner
+
+**StrategyDirective Refactor (`cb7c761`):**
+- ✅ **Renamed:** `target_trade_ids` → `target_plan_ids` (per Issue #7)
+- DirectiveScope values preserved: NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING
+
+**Execution DTOs Refactor:**
+- ✅ **Renamed:** ExecutionDirective → ExecutionCommand (`5de7132`)
+- ✅ **Renamed:** ExecutionDirectiveBatch → ExecutionCommandBatch (`5de7132`)
+- ✅ **Renamed:** execution_directive_id → execution_command_id in CausalityChain
+- ✅ **Removed:** DCA from ExecutionStrategyType enum (`3b45af6`)
+
+**Enums Centralization (`39f12bc`):**
+- ✅ All enums moved to `backend/core/enums.py`
+- Includes: OriginType, DirectiveScope, ExecutionMode, ExecutionAction, ExecutionStrategyType, GroupStatus, OrderType, OrderSide, OrderStatus, DispositionType
+
+**Order & Fill DTOs (Phase 5):**
+- ✅ **Order DTO** (`b1620d0`): OrderType, OrderStatus enums, mutable state DTO
+- ✅ **Fill DTO** (`372215e`): Exchange execution tracking, immutable
+
+**Documentation Terminology Sync:**
+- ✅ TickCache → StrategyCache in all leidende docs
+- ✅ FlowOrchestrator references removed (doesn't exist)
+- ✅ ExecutionDirective → ExecutionCommand terminology aligned
+
+**Test Count:** 403 → 456 (+53 tests since last update)
 
 ---
 
@@ -82,16 +125,16 @@ Quality metrics and test coverage tracking for all S1mpleTrader V3 components.
 
 ## DTO Layer Status
 
-### Strategy DTOs - Signal/Risk Detection (65 tests)
+### Strategy DTOs - Signal/Risk Detection (82 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| signal.py | 10.00/10 | 26/26 ✅ | 10.00/10 | 0 | ✅ Complete |
-| risk.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ Complete |
-| strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ Complete |
+| signal.py | 10.00/10 | 32/32 ✅ | 10.00/10 | 0 | ✅ Complete (PRE-CAUSALITY) |
+| risk.py | 10.00/10 | 29/29 ✅ | 10.00/10 | 0 | ✅ Complete (PRE-CAUSALITY) |
+| strategy_directive.py | 10.00/10 | 17/17 ✅ | 10.00/10 | 0 | ✅ Complete (target_plan_ids) |
 | trade_plan.py | 10.00/10 | 4/4 ✅ | 10.00/10 | 0 | ✅ Complete (Execution Anchor) |
 
-**Coverage:** 65/65 tests passing (100%)
+**Coverage:** 82/82 tests passing (100%)
 
 **Removed (Quant Leap Architecture):**
 - ~~context_factor.py~~ - ContextWorkers now produce objective DTOs only
@@ -108,15 +151,14 @@ Quality metrics and test coverage tracking for all S1mpleTrader V3 components.
 
 **Coverage:** 63/63 tests passing (100%)
 
-### Execution DTOs (52 tests)
+### Execution DTOs (50 tests)
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| execution_directive.py | 10.00/10 | 12/12 ✅ | 10.00/10 | 0 | ✅ Complete |
-| execution_directive_batch.py | 10.00/10 | 15/15 ✅ | 10.00/10 | 0 | ✅ Complete (new) |
-| execution_group.py | 10.00/10 | 25/25 ✅ | 10.00/10 | 0 | ✅ Complete (new) |
+| execution_command.py | 10.00/10 | 25/25 ✅ | 10.00/10 | 0 | ✅ Complete (renamed from ExecutionDirective) |
+| execution_group.py | 10.00/10 | 25/25 ✅ | 10.00/10 | 0 | ✅ Complete (DCA removed) |
 
-**Coverage:** 52/52 tests passing (100%)
+**Coverage:** 50/50 tests passing (100%)
 
 ### Shared DTOs (98 tests)
 
@@ -130,6 +172,26 @@ Quality metrics and test coverage tracking for all S1mpleTrader V3 components.
 
 **Coverage:** 98/98 tests passing (100%)
 
+### State DTOs (41 tests) - NEW
+
+| Module | Pylint | Tests | Line Length | Pylance | Status |
+|--------|--------|-------|-------------|---------|--------|
+| order.py | 10.00/10 | 22/22 ✅ | 10.00/10 | 0 | ✅ Complete (Phase 5.1) |
+| fill.py | 10.00/10 | 19/19 ✅ | 10.00/10 | 0 | ✅ Complete (Phase 5.2) |
+
+**Coverage:** 41/41 tests passing (100%)
+
+**Order DTO Features:**
+- OrderType enum (MARKET, LIMIT, STOP_MARKET, STOP_LIMIT)
+- OrderSide enum (BUY, SELL)
+- OrderStatus enum (PENDING, OPEN, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED)
+- Mutable state DTO (status updates allowed)
+
+**Fill DTO Features:**
+- Immutable execution record
+- Links to parent Order via parent_order_id
+- Tracks fill_price, filled_quantity, commission
+
 **Recent Breaking Changes (2025-11-09):**
 - **PlatformDataDTO:** Replaced `source_type: str` with `origin: Origin` (type-safe origin tracking)
 - **CausalityChain:** Replaced `tick_id/news_id/schedule_id` with `origin: Origin` (single origin field)
@@ -141,6 +203,8 @@ Quality metrics and test coverage tracking for all S1mpleTrader V3 components.
 | Module | Status | Replacement |
 |--------|--------|-------------|
 | ~~routing_plan.py~~ | ❌ Deleted | execution_plan.py |
+| ~~execution_directive.py~~ | ❌ Renamed | execution_command.py |
+| ~~execution_directive_batch.py~~ | ❌ Merged | execution_command.py |
 | ~~routing_request.py~~ | ❌ Deleted | - |
 
 **Reason:** Routing logic merged into ExecutionPlan (EXI_ → EXP_ prefix migration)
@@ -170,23 +234,31 @@ Quality metrics and test coverage tracking for all S1mpleTrader V3 components.
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| enums.py | 10.00/10 | 14/14 ✅ | 10.00/10 | 0 | ✅ Core Enums Complete |
+| enums.py | 10.00/10 | 13/13 ✅ | 10.00/10 | 0 | ✅ Core Enums Complete (centralized) |
 
-**Coverage:** 14/14 tests passing (100%)
+**Coverage:** 13/13 tests passing (100%)
+
+**Centralized Enums (commit `39f12bc`):**
+- OriginType (TICK, NEWS, SCHEDULE)
+- DirectiveScope (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
+- ExecutionMode (SEQUENTIAL, PARALLEL, ATOMIC)
+- ExecutionAction (EXECUTE_TRADE, CANCEL_ORDER, CANCEL_GROUP, MODIFY_ORDER)
+- ExecutionStrategyType (SINGLE, TWAP, VWAP, ICEBERG, LAYERED, POV)
+- GroupStatus (PENDING, ACTIVE, COMPLETED, CANCELLED, FAILED, PARTIAL)
+- OrderType, OrderSide, OrderStatus
+- DispositionType (CONTINUE, STOP, PUBLISH)
+- ContextType, SignalType, RiskType, PlanningPhase, ExecutionType
 
 **Removed (Quant Leap Architecture):**
 - ~~context_factors.py~~ - FactorRegistry no longer needed (no SWOT aggregation)
-
-**Core Infrastructure:**
-- ✅ Core Enums: ContextType, SignalType, RiskType, PlanningPhase, ExecutionType (14 tests)
 
 ## Utilities Status
 
 | Module | Pylint | Tests | Line Length | Pylance | Status |
 |--------|--------|-------|-------------|---------|--------|
-| id_generators.py | 10.00/10 | 34/34 ✅ | 10.00/10 | 0 | ✅ Complete (ROU_ removed, EXP_ added, TPL_ added) |
+| id_generators.py | 10.00/10 | 37/37 ✅ | 10.00/10 | 0 | ✅ Complete (EXC_ added, ROU_ removed) |
 
-**Coverage:** 32/32 tests passing (100%)
+**Coverage:** 37/37 tests passing (100%)
 
 ## Test Coverage Summary
 
@@ -194,28 +266,33 @@ Quality metrics and test coverage tracking for all S1mpleTrader V3 components.
 
 | Layer | Tests | Status |
 |-------|-------|--------|
-| **Signal/Risk Detection** | 65/65 ✅ | 100% |
+| **Signal/Risk/Directive/TradePlan** | 82/82 ✅ | 100% |
 | **Strategy Planning** | 63/63 ✅ | 100% |
-| **Execution** | 52/52 ✅ | 100% |
-| **Shared** | 79/79 ✅ | 100% |
+| **Execution** | 50/50 ✅ | 100% |
+| **State (Order/Fill)** | 41/41 ✅ | 100% |
+| **Shared** | 98/98 ✅ | 100% |
+| **Causality** | 33/33 ✅ | 100% |
 | **Platform (Cache)** | 20/20 ✅ | 100% |
 | **Platform (EventBus)** | 33/33 ✅ | 100% |
 | **Platform (Worker)** | 13/13 ✅ | 100% |
 | **Platform (FlowInitiator)** | 14/14 ✅ | 100% |
-| **Core Infrastructure** | 13/13 ✅ | 100% |
-| **Utilities** | 32/32 ✅ | 100% |
-| **TOTAL** | **384/384 ✅** | **100%** |
+| **Core Enums** | 13/13 ✅ | 100% |
+| **Utilities** | 37/37 ✅ | 100% |
+| **TOTAL** | **456/456 ✅** | **100%** |
 
 ### By Phase (Roadmap)
 
 | Phase | Component | Tests | Status |
 |-------|-----------|-------|--------|
-| **1.1** | Data Contracts (14 DTOs) | 259/259 ✅ | Complete |
+| **1.1** | Data Contracts (17 DTOs) | 334/334 ✅ | Complete |
 | **1.2** | IStrategyCache Protocol | 20/20 ✅ | Complete |
 | **1.2** | IEventBus Protocol | 33/33 ✅ | Complete |
 | **1.2** | IWorkerLifecycle Protocol | 13/13 ✅ | Complete |
 | **1.3** | FlowInitiator | 14/14 ✅ | Complete |
 | **1.4** | RunAnchor + StrategyCacheType | - | Complete |
+| **4.2** | Enums Centralization | 13/13 ✅ | Complete |
+| **5.1** | Order DTO | 22/22 ✅ | Complete |
+| **5.2** | Fill DTO | 19/19 ✅ | Complete |
 
 ## Recent Updates (2025-11-09)
 

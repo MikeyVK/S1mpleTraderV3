@@ -181,7 +181,7 @@ PARTIAL = "PARTIAL"       # Some orders filled, group stopped
 |---------|-----|--------|
 | `ExecutionStrategyType.DCA` | **REMOVE** | Remove enum value. Update any usages. |
 | `metadata: Dict[str, Any]` | **REMOVE or TYPE** | Untyped dict violates lean principle. See analysis below. |
-| `parent_directive_id` | `parent_plan_id` | Align with TradePlan terminology if not already. |
+| ~~`parent_directive_id`~~ | `parent_command_id` | ✅ DONE - Aligned with ExecutionCommand terminology. |
 
 ### Metadata Field Analysis
 

@@ -7,12 +7,12 @@
 
 ## Overview
 
-S1mpleTraderV3 uses a **point-in-time data model** where all data exchange is based on a specific moment (tick), not accumulated datasets. Workers communicate through two distinct paths: **TickCache** (synchronous flow, objective facts) and **EventBus** (asynchronous signals, subjective interpretations).
+S1mpleTraderV3 uses a **point-in-time data model** where all data exchange is based on a specific moment (tick), not accumulated datasets. Workers communicate through two distinct paths: **StrategyCache** (synchronous flow, objective facts) and **EventBus** (asynchronous signals, subjective interpretations).
 
 ```mermaid
 graph TB
-    subgraph "Synchronous Path: TickCache"
-        TC[TickCache<br/>Plugin-Specific DTOs]
+    subgraph "Synchronous Path: StrategyCache"
+        TC[StrategyCache<br/>Plugin-Specific DTOs]
         ISC[IStrategyCache Interface]
         CW1[ContextWorker1] -.set_result_dto.-> TC
         CW2[ContextWorker2] -.get_required_dtos.-> TC
@@ -35,7 +35,7 @@ graph TB
 
 **Key Principles:**
 - **Point-in-Time**: No growing DataFrames, only DTOs for current tick
-- **Two Paths**: TickCache for flow data, EventBus for signals
+- **Two Paths**: StrategyCache for flow data, EventBus for signals
 - **Type-Safe**: All data exchange via Pydantic DTOs
 - **Explicit Dependencies**: Workers declare required DTOs in manifest
 
@@ -43,7 +43,7 @@ graph TB
 
 ## The Two Communication Paths
 
-### 1. TickCache - Synchronous Flow Data
+### 1. StrategyCache - Synchronous Flow Data
 
 **Purpose:** Direct worker-to-worker data transfer within a single tick flow
 
@@ -69,7 +69,7 @@ class EMADetector(StandardWorker):
         # 2. Calculate EMA (OBJECTIVE FACT)
         ema_value = calculate_ema(...)
         
-        # 3. Store OBJECTIVE DTO to TickCache (NO interpretation!)
+        # 3. Store OBJECTIVE DTO to StrategyCache (NO interpretation!)
         output_dto = EMAOutputDTO(ema_20=ema_value, timestamp=run_anchor.timestamp)
         self.strategy_cache.set_result_dto(self, output_dto)
         
@@ -143,7 +143,7 @@ stateDiagram-v2
     
     EventAdapter --> NextWorker: trigger next workers
     EventAdapter --> EventBus: broadcast event
-    EventAdapter --> FlowTerminator: cleanup TickCache
+    EventAdapter --> FlowTerminator: cleanup StrategyCache
     
     NextWorker --> [*]
     EventBus --> [*]
@@ -159,7 +159,7 @@ stateDiagram-v2
 **Behavior:**
 - EventAdapter triggers next worker(s) per `wiring_map.yaml`
 - Adapter publishes internal system event for flow tracking
-- TickCache data remains available for downstream workers
+- StrategyCache data remains available for downstream workers
 
 **Example:**
 ```python
@@ -202,7 +202,7 @@ return DispositionEnvelope(
 - `Signal` - Trading signal detected
 - `Risk` - Risk detected
 - `StrategyDirective` - Strategy decision made
-- `ExecutionDirective` - Execution plan ready (from platform aggregator)
+- `ExecutionCommandBatch` - Execution commands ready (from PlanningAggregator)
 
 ---
 
@@ -213,7 +213,7 @@ return DispositionEnvelope(
 **Behavior:**
 - Adapter publishes flow-stop event (e.g., `{strategy_id}_flow_stop`)
 - FlowTerminator component handles cleanup
-- TickCache is cleared
+- StrategyCache is cleared
 - Causality chain is logged to journal
 
 **Example:**
@@ -241,7 +241,7 @@ class MySignalDetector(StandardWorker):
         run_anchor = self.strategy_cache.get_run_anchor()
         timestamp = run_anchor.timestamp
         
-        # Step 2: Retrieve required DTOs from TickCache
+        # Step 2: Retrieve required DTOs from StrategyCache
         required_dtos = self.strategy_cache.get_required_dtos(self)
         ema_dto = required_dtos[EMAOutputDTO]
         regime_dto = required_dtos[RegimeOutputDTO]
@@ -356,9 +356,9 @@ capabilities:
 
 ## Flow Example: Context → Signal → Planning
 
-### Tick Start
+### Flow Start
 ```
-TickCacheManager receives tick
+FlowInitiator receives tick
 └─> Publishes TICK_RECEIVED event
     └─> EventAdapter triggers ContextWorker
 ```
@@ -377,7 +377,7 @@ def process(self):
 # BreakoutScout (SignalDetector)
 def process(self):
     required_dtos = self.strategy_cache.get_required_dtos(self)
-    ema_dto = required_dtos[EMAOutputDTO]  # ← Retrieved from TickCache
+    ema_dto = required_dtos[EMAOutputDTO]  # ← Retrieved from StrategyCache
     
     if ema_dto.ema_20 > resistance_level:
         return DispositionEnvelope(

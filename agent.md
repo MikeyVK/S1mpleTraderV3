@@ -101,11 +101,37 @@ docs/
 2. RED: Write failing tests (20+ for DTOs)
 3. GREEN: Minimal implementation
 4. REFACTOR: Quality gates (Pylint 10/10, tests 100%)
-5. Update: IMPLEMENTATION_STATUS.md
-6. Merge: git checkout main && git merge feature/my-component
+5. ⚠️ MANDATORY: Update IMPLEMENTATION_STATUS.md (test counts, Recent Updates)
+6. ⚠️ MANDATORY: Update TODO.md (mark issues RESOLVED with commit hash)
+7. Merge: git checkout main && git merge feature/my-component
 ```
 
 **Details:** [TDD Workflow](docs/coding_standards/TDD_WORKFLOW.md)
+
+### ⚠️ NEVER SKIP: Status Updates (Dit wordt vaak vergeten!)
+
+**Na ELKE implementatie, refactor, of fix:**
+
+```powershell
+# 1. Get current test count
+pytest tests/ --collect-only -q | Select-String "^\d+ tests"
+
+# 2. Update IMPLEMENTATION_STATUS.md
+# - Update test counts in tables
+# - Add entry to "Recent Updates" section
+# - Update "Last Updated" date
+
+# 3. Update TODO.md
+# - Mark completed items with [x]
+# - Add commit hash and RESOLVED status
+# - Update Summary table percentages
+
+# 4. Commit the doc updates
+git add docs/TODO.md docs/implementation/IMPLEMENTATION_STATUS.md
+git commit -m "docs: update status for <feature> completion"
+```
+
+**WHY:** Zonder status updates is voltooid werk onzichtbaar voor toekomstige sessies.
 
 ### Phase 2: Quality Gates (Verplicht!)
 
@@ -124,6 +150,7 @@ All 5 gates must pass with 10.00/10 + 100% tests passing.
 ❌ **NO imports in functions** - Always top-level
 ❌ **NO code without tests** - TDD is mandatory
 ❌ **NO subjective ContextWorkers** - ContextWorkers produce objective facts only (no "bullish", "strong", etc.)
+❌ **NO implementation without status updates** - Update TODO.md + IMPLEMENTATION_STATUS.md after EVERY feature
 
 ## Quick Reference Card
 

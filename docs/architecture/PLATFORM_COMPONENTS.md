@@ -120,12 +120,12 @@ class EventAdapter:
 **Tests:** 20/20 passing
 
 **Purpose:**
-Provides thread-safe, strategy-isolated data access for workers via TickCache and persistent signal/plan storage.
+Provides thread-safe, strategy-isolated data access for workers via flow-data cache and persistent signal/plan storage.
 
 **Key Features:**
 - ✅ **Multi-tenant isolation**: Each strategy has isolated data
 - ✅ **RunAnchor validation**: Ensures point-in-time consistency
-- ✅ **TickCache lifecycle**: Clear/reconfigure per tick
+- ✅ **StrategyCache lifecycle**: Clear/reconfigure per tick
 - ✅ **Signal/Plan storage**: Persistent storage for Signal/Risk outputs
 - ✅ **Type-safe access**: Generic methods for DTO retrieval
 
@@ -151,10 +151,10 @@ class MyWorker:
         self._cache = strategy_cache
     
     def process(self) -> DispositionEnvelope:
-        # Read from TickCache
+        # Read from StrategyCache
         ema_dto = self._cache.get_result_dto(EMAOutputDTO)
         
-        # Write to TickCache
+        # Write to StrategyCache
         self._cache.set_result_dto(self, MyOutputDTO(...))
         
         # Store signal (persistent)
@@ -165,7 +165,7 @@ class MyWorker:
 
 **Data Flows:**
 
-1. **TickCache (Sync, Worker → Worker)**
+1. **StrategyCache (Sync, Worker → Worker)**
    - Via `set_result_dto()` / `get_result_dto()`
    - Plugin-specific DTOs (EMAOutputDTO, RSIOutputDTO, etc.)
    - Lifespan: Single tick/run
@@ -195,7 +195,7 @@ cache.reconfigure(strategy_id="STRAT_001", run_anchor=anchor)
 cache.set_result_dto(worker, dto)
 cache.store_signal(signal)
 
-# 4. Clear TickCache (after run)
+# 4. Clear StrategyCache (after run)
 cache.clear_tick_cache()
 
 # 5. Reconfigure for next run
@@ -336,30 +336,7 @@ class SignalDetector:
 
 ---
 
-### 4. TickCacheManager - Flow Orchestration (Pending)
-
-**Status:** ❌ Phase 3.3 (Not Yet Implemented)  
-**Location:** `backend/core/tick_cache_manager.py` (future)
-
-**Purpose:**
-Orchestrates tick-by-tick flow execution: EventBus events → Worker chains → TickCache clearing.
-
-**Responsibilities:**
-- Listen to `tick.received` events
-- Trigger worker chain execution (via EventBus)
-- Coordinate StrategyCache.clear_tick_cache()
-- Manage flow state transitions
-
-**Design Considerations:**
-- Should it be event-driven or polling-based?
-- How to handle multi-strategy concurrent execution?
-- Error recovery: partial tick failures?
-
-**Pending Design Decision** - Not yet started.
-
----
-
-### 5. PluginRegistry - Plugin Discovery (Future)
+### 4. PluginRegistry - Plugin Discovery (Future)
 
 **Status:** ❌ Phase 2 (Not Yet Designed)  
 **Location:** `backend/core/plugin_registry.py` (future)
@@ -526,7 +503,7 @@ graph TB
     subgraph Platform["PLATFORM COMPONENTS (Singletons)"]
         Bus[EventBus<br/>publish, subscribe]
         Cache[StrategyCache<br/>set_dto, get_dto, store_*]
-        TCM[TickCacheManager<br/>init tick flow]
+        TCM[FlowInitiator<br/>init tick flow]
         Reg[PluginRegistry<br/>enroll, metadata]
     end
     
@@ -579,7 +556,6 @@ graph TB
 | **StrategyCache** | IStrategyCache | StrategyCache | 20/20 ✅ | Phase 1.2 Complete |
 | **FlowInitiator** | IWorker + IWorkerLifecycle | FlowInitiator | 14/14 ✅ | Phase 1.3 Complete |
 | **IWorkerLifecycle** | IWorkerLifecycle | - | 13/13 ✅ | Phase 1.2 Complete |
-| **TickCacheManager** | - | - | - | Phase 3.3 Pending |
 | **PluginRegistry** | - | - | - | Phase 2 Pending |
 
 **See:** [IMPLEMENTATION_STATUS.md](../implementation/IMPLEMENTATION_STATUS.md) for detailed metrics.

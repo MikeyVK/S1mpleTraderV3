@@ -92,7 +92,7 @@ De StrategyLedger is een **"domme" toegangspoort** tot het grootboek en waarborg
 
 ## **3. ExecutionIntent Commando Lijst**
 
-De ExecutionIntent (DTO) bevat **operationele commando's**, geen strategische logica. Het is de output van de RoutingPlanner (Plugin) en de input voor de ExecutionTranslator (Platform). [cite: ExecutionIntent - Universal Trade-Offs]
+De ExecutionIntent (DTO) bevat **operationele commando's**, geen strategische logica. Het is de output van de ExecutionPlanner (4th TradePlanner) en de input voor de ExecutionTranslator (Platform). [cite: ExecutionIntent - Universal Trade-Offs]
 
 Een "Grid" is strategie (en dus onbekend voor de Translator). EXECUTE_TRADE is een operatie.
 
@@ -140,7 +140,7 @@ De StrategyDirective.scope is de **dwingende opdracht** (de "WHAT") van de Strat
   * Entry/Size: Meestal passief (doen niets).  
   * Exit: Actief als de SL/TP wordt aangepast.  
   * Routing: Actief om de urgentie van de *wijziging* te bepalen.  
-* **Voorbeeld:** Een Trailing Stop StrategyPlanner stuurt scope=MODIFY_EXISTING met een exit_hint (nieuwe SL). Alleen de ExitPlanner en RoutingPlanner reageren hierop.
+* **Voorbeeld:** Een Trailing Stop StrategyPlanner stuurt scope=MODIFY_EXISTING met een exit_hint (nieuwe SL). Alleen de ExitPlanner en ExecutionPlanner reageren hierop.
 
 ### **Scope 3: CLOSE_EXISTING (Termination)**
 

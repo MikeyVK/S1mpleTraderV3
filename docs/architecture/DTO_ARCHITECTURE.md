@@ -1,8 +1,8 @@
 # DTO Architecture - S1mpleTraderV3
 
-**Status:** Architectural Foundation - TradePlan DTO added
-**Last Updated:** 2025-11-20  
-**Version:** 1.1
+**Status:** Architectural Foundation  
+**Last Updated:** 2025-11-09  
+**Version:** 1.0
 
 ---
 
@@ -40,23 +40,20 @@ This document describes **WHY each DTO exists** and **WHY each field exists**.
 4. **Risk** - Threat/risk detection output  
 5. **StrategyDirective** - Strategy planning decision output
 
-### Strategic DTOs (Lifecycle Container)
-6. **TradePlan** - Execution Anchor & State Container
-
 ### Planning DTOs (Decision → Execution Intent)
-7. **EntryPlan** - Entry execution specifications
-8. **SizePlan** - Position sizing specifications
-9. **ExitPlan** - Exit/stop-loss specifications
-10. **ExecutionPlan** - Execution trade-offs (urgency, slippage, visibility)
+6. **EntryPlan** - Entry execution specifications
+7. **SizePlan** - Position sizing specifications
+8. **ExitPlan** - Exit/stop-loss specifications
+9. **ExecutionPlan** - Execution trade-offs (urgency, slippage, visibility)
 
 ### Execution DTOs (Orders & Coordination)
-11. **ExecutionDirective** - Aggregated execution instruction
-12. **ExecutionDirectiveBatch** - Multi-directive atomic coordination
-13. **ExecutionGroup** - Multi-order relationship tracking
+10. **ExecutionCommand** - Aggregated execution instruction
+11. **ExecutionCommandBatch** - Multi-command atomic coordination (combined in execution_command.py)
+12. **ExecutionGroup** - Multi-order relationship tracking
 
 ### Cross-Cutting DTOs (Infrastructure)
-14. **CausalityChain** - ID-only causality tracking
-15. **DispositionEnvelope** - Worker output routing control
+13. **CausalityChain** - ID-only causality tracking
+14. **DispositionEnvelope** - Worker output routing control
 
 ---
 
@@ -445,7 +442,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 | **Consumers** | EntryPlanner | Reads entry_directive for entry constraints |
 | | ExitPlanner | Reads exit_directive for exit constraints |
 | | SizePlanner | Reads size_directive for sizing constraints |
-| | RoutingPlanner | Reads routing_directive for routing constraints |
+| | ExecutionPlanner | Reads execution_directive for execution constraints |
 | | Journal | Persistence (decision audit trail) |
 
 **Field Rationale:**
@@ -462,7 +459,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 | `entry_directive` | EntryDirective \| None | No | Entry constraints for EntryPlanner. Optional - planner uses defaults if missing. NEW_TRADE typically includes this. |
 | `size_directive` | SizeDirective \| None | No | Sizing constraints for SizePlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_ORDER typically includes this. |
 | `exit_directive` | ExitDirective \| None | No | Exit constraints for ExitPlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_ORDER typically includes this. |
-| `routing_directive` | RoutingDirective \| None | No | Routing constraints for RoutingPlanner. Optional - planner uses defaults if missing. All scopes may include this. |
+| `execution_directive` | ExecutionDirective \| None | No | Execution constraints for ExecutionPlanner. Optional - planner uses defaults if missing. All scopes may include this. |
 
 **WHY NOT frozen:**
 - StrategyDirective is enriched post-execution (order_ids added after orders placed)
@@ -473,7 +470,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 - ❌ `entry_price` - EntryPlanner calculates this (tactical detail, not strategic constraint)
 - ❌ `position_size` - SizePlanner calculates this (tactical detail, not strategic constraint)
 - ❌ `stop_loss_price` - ExitPlanner calculates this (tactical detail, not strategic constraint)
-- ❌ `order_type` - RoutingPlanner decides this (tactical detail, not strategic constraint)
+- ❌ `order_type` - ExecutionPlanner decides this (tactical detail, not strategic constraint)
 - ❌ `approved` - Directive IS the approval (StrategyPlanner already decided to act)
 - ❌ `rejected_reason` - If rejected, no directive emitted (rejection = absence of directive)
 
@@ -481,7 +478,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 ```
 Created:    StrategyPlanner (combines Signal + Risk + Context → decision)
 Extended:   causality.strategy_directive_id = directive_id by StrategyPlanner
-Consumed:   Role-based planners (EntryPlanner, SizePlanner, ExitPlanner, RoutingPlanner)
+Consumed:   Role-based planners (EntryPlanner, SizePlanner, ExitPlanner, ExecutionPlanner)
             → Each planner reads its corresponding sub-directive
 Enriched:   order_ids added after ExecutionHandler places orders
 Persisted:  StrategyJournal (complete decision audit trail)
@@ -496,7 +493,7 @@ Modified:   Post-creation (order_ids tracking, not frozen)
   - Alternative rejected: MODIFY_EXISTING/CLOSE_EXISTING (position-level naming, but operations are order-level)
 
 - **Decision 2:** 4 optional sub-directives (not required)
-  - Rationale: Flexibility - not all directives need all constraints. Planners have defaults. CLOSE_ORDER may only need routing_directive.
+  - Rationale: Flexibility - not all directives need all constraints. Planners have defaults. CLOSE_ORDER may only need execution_directive.
   - Alternative rejected: All sub-directives required (rigid, forces dummy values)
 
 - **Decision 3:** Sub-directives as constraints (not tactical plans)
@@ -519,9 +516,9 @@ Modified:   Post-creation (order_ids tracking, not frozen)
   - Rationale: StrategyPlanner extends causal chain (signal_id/risk_id → strategy_directive_id). Enables complete audit trail.
   - Alternative rejected: New causality chain (breaks causal continuity, no signal → directive link)
 
-- **Decision 8:** RoutingDirective name (not ExecutionDirective)
-  - Rationale: Avoids naming conflict with Execution layer DTO (execution/execution_directive.py). Clarifies purpose (routing constraints, not execution commands).
-  - Alternative rejected: Keep ExecutionDirective name (confusing, two DTOs with same name in different layers)
+- **Decision 8:** ExecutionDirective name (sub-directive in StrategyDirective)
+  - Rationale: Clarifies purpose (execution constraints/hints for ExecutionPlanner). Sub-directive within StrategyDirective.
+  - Note: Execution layer output uses ExecutionCommand (in execution_command.py)
 
 **Validation Strategy:**
 - directive_id format: `STR_YYYYMMDD_HHMMSS_hash` (military datetime)
@@ -547,7 +544,7 @@ Modified:   Post-creation (order_ids tracking, not frozen)
 | EntryDirective | EntryPlanner | symbol, direction, timing_preference, preferred_price_zone, max_slippage |
 | SizeDirective | SizePlanner | aggressiveness, max_risk_amount, account_risk_pct |
 | ExitDirective | ExitPlanner | profit_taking_preference, risk_reward_ratio, stop_loss_tolerance |
-| RoutingDirective | RoutingPlanner | execution_urgency, iceberg_preference, max_total_slippage_pct |
+| ExecutionDirective | ExecutionPlanner | execution_urgency, iceberg_preference, max_total_slippage_pct |
 
 **StrategyPlanner Types & Directive Patterns:**
 
@@ -568,79 +565,17 @@ Signal (FVG detected, confidence 0.85)
         - entry_directive: BUY BTCUSDT, timing=0.9
         - size_directive: aggressiveness=0.7, risk=2%
         - exit_directive: RR=3.0, stop=1.5%
-        - routing_directive: urgency=0.8
+        - execution_directive: urgency=0.8
           → EntryPlanner → EntryPlan (exact entry price)
           → SizePlanner → SizePlan (exact position size)
           → ExitPlanner → ExitPlan (exact stop/target prices)
-          → RoutingPlanner → ExecutionPlan (order routing)
-            → ExecutionDirective (aggregated execution instruction)
+          → ExecutionPlanner → ExecutionPlan (execution trade-offs)
+            → ExecutionCommand (aggregated execution instruction)
 ```
 
 StrategyDirective is the strategic decision - planners handle tactical execution.
 
 ---
-
-## Strategic DTOs
-
-### TradePlan
-
-**Purpose:** Execution Anchor and state container for the entire trade lifecycle.
-
-**WHY this DTO exists:**
-- Serves as the **Root Entity** for a trade's lifecycle (Entry → Execution → Exit).
-- **Execution Anchor:** All tactical plans (EntryPlan, ExitPlan) and orders link back to this ID.
-- **State Container:** Tracks the high-level status (`ACTIVE`, `CLOSED`) of the strategic intent.
-- **Ledger Integration:** The primary entity managed by `StrategyLedger`.
-- **Minimalist Design:** Contains ONLY identity, linkage, and status. No metadata, no history (that belongs to `StrategyJournal`).
-
-**Producer/Consumer:**
-
-| Role | Component | Purpose |
-|------|-----------|---------|
-| **Producer** | StrategyPlanner | Creates `TradePlan` when `NEW_TRADE` directive is issued. |
-| **Consumers** | StrategyLedger | Persists and updates status (`ACTIVE` → `CLOSED`). |
-| | ExecutionHandler | Uses `plan_id` to tag orders and track execution progress. |
-| | StrategyJournal | Uses `plan_id` to correlate events in the history log. |
-
-**Field Rationale:**
-
-| Field | Type | Required | WHY it exists |
-|-------|------|----------|---------------|
-| `plan_id` | str | Yes | Unique identifier (`TPL_` prefix). The "Anchor" for all downstream artifacts (orders, fills, logs). |
-| `strategy_instance_id` | str | Yes | Links the trade to the specific strategy instance that spawned it. |
-| `status` | TradeStatus | Yes | Lifecycle state (`ACTIVE`, `CLOSED`). Mutable field to track progress. |
-| `created_at` | datetime | Yes | Creation timestamp (UTC). Ledger housekeeping. |
-
-**WHY NOT frozen:**
-- `status` field MUST be mutable to reflect lifecycle changes (Active → Closed).
-- However, `plan_id` and `strategy_instance_id` should effectively be immutable.
-
-**WHY NOT included:**
-- ❌ `asset_symbol` - Belongs to the specific plans (EntryPlan) or StrategyDirective. `TradePlan` is a generic container.
-- ❌ `metadata` - Strategic context and history belong to `StrategyJournal`.
-- ❌ `updated_at` - Ledger concern, not DTO concern.
-- ❌ `child_lists` (orders, fills) - Children point to Parent (`plan_id`), Parent does not hold lists of Children (scalability/complexity).
-
-**Lifecycle:**
-```
-Created:    StrategyPlanner (on NEW_TRADE decision)
-Persisted:  StrategyLedger (immediately upon creation)
-Referenced: EntryPlan, ExitPlan, ExecutionDirective (all link to plan_id)
-Updated:    StrategyLedger (status changes to CLOSED when exit completes)
-Archived:   StrategyLedger (historical retention)
-```
-
-**Design Decisions:**
-- **Decision 1:** "Execution Anchor" pattern
-  - Rationale: Decouples the "concept of a trade" from the "execution of orders". Orders are transient; the Plan is the persistent intent.
-  - Alternative rejected: Orders as root entities (fragmented view of a strategy).
-
-- **Decision 2:** Minimalist fields
-  - Rationale: SRP. `TradePlan` holds State/Identity. `StrategyJournal` holds History/Context. `EntryPlan`/`ExitPlan` hold Mechanics.
-  - Alternative rejected: Rich "Trade" object with lists of orders, logs, and metrics (God Object anti-pattern).
-
----
-
 
 ## Planning DTOs
 
@@ -653,8 +588,8 @@ StrategyDirective (strategic constraints)
   → EntryPlanner → EntryPlan (WHAT/WHERE to enter)
   → SizePlanner → SizePlan (HOW MUCH)
   → ExitPlanner → ExitPlan (WHERE OUT)
-  → RoutingPlanner → ExecutionPlan (HOW/WHEN - trade-offs)
-    → PlanningAggregator → ExecutionDirective (aggregated)
+  → ExecutionPlanner → ExecutionPlan (HOW/WHEN - trade-offs)
+    → PlanningAggregator → ExecutionCommand (aggregated)
 ```
 
 **Key Design Principles:**
@@ -681,7 +616,7 @@ StrategyDirective (strategic constraints)
 | Role | Component | Purpose |
 |------|-----------|---------|
 | **Producer** | EntryPlanner | Translates StrategyDirective.entry_directive → concrete order spec |
-| **Consumers** | PlanningAggregator | Combines with Size/Exit/ExecutionPlan → ExecutionDirective |
+| **Consumers** | PlanningAggregator | Combines with Size/Exit/ExecutionPlan → ExecutionCommand |
 
 **Field Rationale:**
 
@@ -712,7 +647,7 @@ StrategyDirective (strategic constraints)
 Created:    EntryPlanner (from StrategyDirective.entry_directive constraints)
 Validated:  PlanningAggregator (checks order_type vs price consistency)
 Consumed:   ExecutionHandler (places order based on plan)
-Aggregated: PlanningAggregator adds plan_id to ExecutionDirective
+Aggregated: PlanningAggregator adds plan_id to ExecutionCommand
 Never:      Modified after execution starts
 ```
 
@@ -730,7 +665,7 @@ Never:      Modified after execution starts
   - Alternative rejected: Required prices with sentinel values (misleading, null object pattern overkill)
 
 - **Decision 4:** No causality field
-  - Rationale: Sub-planners receive StrategyDirective (has causality). PlanningAggregator inherits causality when creating ExecutionDirective.
+  - Rationale: Sub-planners receive StrategyDirective (has causality). PlanningAggregator inherits causality when creating ExecutionCommand.
   - Alternative rejected: Duplicate causality in every plan (redundant, violates DRY)
 
 - **Decision 5:** Mutable (not frozen)
@@ -764,7 +699,7 @@ Never:      Modified after execution starts
 | Role | Component | Purpose |
 |------|-----------|---------|
 | **Producer** | SizePlanner | Translates StrategyDirective.size_directive + account constraints → absolute size |
-| **Consumers** | PlanningAggregator | Combines with Entry/Exit/ExecutionPlan → ExecutionDirective |
+| **Consumers** | PlanningAggregator | Combines with Entry/Exit/ExecutionPlan → ExecutionCommand |
 
 **Field Rationale:**
 
@@ -793,7 +728,7 @@ Never:      Modified after execution starts
 Created:    SizePlanner (from StrategyDirective.size_directive + account state)
 Validated:  RiskManager (checks against account limits)
 Consumed:   ExecutionHandler (places order with position_size)
-Aggregated: PlanningAggregator adds plan_id to ExecutionDirective
+Aggregated: PlanningAggregator adds plan_id to ExecutionCommand
 Never:      Modified after execution starts
 ```
 
@@ -844,7 +779,7 @@ Never:      Modified after execution starts
 | Role | Component | Purpose |
 |------|-----------|---------|
 | **Producer** | ExitPlanner | Translates StrategyDirective.exit_directive + risk/reward → price levels |
-| **Consumers** | PlanningAggregator | Combines with Entry/Size/ExecutionPlan → ExecutionDirective |
+| **Consumers** | PlanningAggregator | Combines with Entry/Size/ExecutionPlan → ExecutionCommand |
 
 **Field Rationale:**
 
@@ -871,8 +806,8 @@ Never:      Modified after execution starts
 ```
 Created:    ExitPlanner (from StrategyDirective.exit_directive + entry price + risk tolerance)
 Validated:  PlanningAggregator (checks stop_loss_price vs entry_price consistency)
-Aggregated: PlanningAggregator adds plan_id to ExecutionDirective
-Consumed:   ExecutionDirective → ExecutionHandler (places stop loss/take profit orders)
+Aggregated: PlanningAggregator adds plan_id to ExecutionCommand
+Consumed:   ExecutionCommand → ExecutionHandler (places stop loss/take profit orders)
 Finalized:  ExitPlan "dies" when exit orders are created (immutable, no updates)
 Never:      Modified after creation (frozen - dynamic logic creates new StrategyDirective)
 ```
@@ -913,7 +848,7 @@ Never:      Modified after creation (frozen - dynamic logic creates new Strategy
 **Purpose:** Execution trade-offs specification (HOW/WHEN - universal)
 
 **WHY this DTO exists:**
-- RoutingPlanner translates routing constraints into universal trade-offs
+- ExecutionPlanner translates execution constraints into universal trade-offs
 - Connector-agnostic execution preferences (not CEX/DEX/Backtest-specific)
 - Expresses WHAT strategy wants (urgency, visibility, slippage) not HOW to execute
 - Translation layer converts ExecutionPlan → connector-specific execution specs
@@ -923,8 +858,8 @@ Never:      Modified after creation (frozen - dynamic logic creates new Strategy
 
 | Role | Component | Purpose |
 |------|-----------|---------|
-| **Producer** | RoutingPlanner | Translates StrategyDirective.routing_directive → universal trade-offs |
-| **Consumers** | PlanningAggregator | Combines with Entry/Size/ExitPlan → ExecutionDirective |
+| **Producer** | ExecutionPlanner | Translates StrategyDirective.execution_directive → universal trade-offs |
+| **Consumers** | PlanningAggregator | Combines with Entry/Size/ExitPlan → ExecutionCommand |
 | | ExecutionTranslator | Converts ExecutionPlan trade-offs → connector-specific params (CEX/DEX/Backtest) |
 
 **Field Rationale:**
@@ -958,11 +893,11 @@ Never:      Modified after creation (frozen - dynamic logic creates new Strategy
 
 **Lifecycle:**
 ```
-Created:    RoutingPlanner (from StrategyDirective.routing_directive)
+Created:    ExecutionPlanner (from StrategyDirective.execution_directive)
 Validated:  PlanningAggregator (checks trade-off consistency)
 Translated: ExecutionTranslator (universal → connector-specific)
 Consumed:   ExecutionHandler (executes based on translated spec)
-Aggregated: PlanningAggregator adds plan_id to ExecutionDirective
+Aggregated: PlanningAggregator adds plan_id to ExecutionCommand
 Never:      Modified after creation (frozen)
 ```
 
@@ -992,7 +927,7 @@ Never:      Modified after creation (frozen)
   - Alternative rejected: Required style (forces platform to support all styles)
 
 - **Decision 7:** WHY "ExecutionPlan" (not "RoutingPlan")?
-  - Rationale: Plans **execution trade-offs** (urgency, visibility, slippage). RoutingPlanner determines routing logic → outputs **ExecutionPlan** (HOW/WHEN to execute). Execution **planning** (strategy layer) vs execution **doing** (execution layer). Action field = ExecutionAction (planned actions: EXECUTE_TRADE, CANCEL_ORDER).
+  - Rationale: Plans **execution trade-offs** (urgency, visibility, slippage). ExecutionPlanner determines execution logic → outputs **ExecutionPlan** (HOW/WHEN to execute). Execution **planning** (strategy layer) vs execution **doing** (execution layer). Action field = ExecutionAction (planned actions: EXECUTE_TRADE, CANCEL_ORDER).
   - Alternative rejected: RoutingPlan (confuses routing logic with execution plan output)
 
 **Validation Strategy:**
@@ -1024,8 +959,8 @@ These DTOs bridge the Strategy layer (planning) and Execution layer (doing).
 **Architectural Pattern:**
 ```
 PlanningAggregator
-  → ExecutionDirective (single executable instruction)
-    → ExecutionDirectiveBatch (atomic multi-directive coordination)
+  → ExecutionCommand (single executable instruction)
+    → ExecutionCommandBatch (atomic multi-command coordination)
       → ExecutionGroup (multi-order execution tracking)
 ```
 
@@ -1037,7 +972,7 @@ PlanningAggregator
 
 ---
 
-### ExecutionDirective
+### ExecutionCommand
 
 **Purpose:** Final aggregated execution instruction (single trade setup)
 
@@ -1052,16 +987,16 @@ PlanningAggregator
 
 | Role | Component | Purpose |
 |------|-----------|---------|
-| **Producer** | PlanningAggregator | Aggregates Entry/Size/Exit/ExecutionPlan → ExecutionDirective |
-| **Consumers** | ExecutionDirectiveBatch | Groups multiple directives for atomic execution |
+| **Producer** | PlanningAggregator | Aggregates Entry/Size/Exit/ExecutionPlan → ExecutionCommand |
+| **Consumers** | ExecutionCommandBatch | Groups multiple commands for atomic execution |
 | | ExecutionTranslator | Translates ExecutionPlan → connector-specific params |
-| | ExecutionHandler | Executes single directive (places orders) |
+| | ExecutionHandler | Executes single command (places orders) |
 
 **Field Rationale:**
 
 | Field | Type | Required | WHY it exists |
 |-------|------|----------|---------------|
-| `directive_id` | str | Yes (auto) | Unique execution directive identifier (EXE_ prefix). Enables tracking directive → orders. |
+| `command_id` | str | Yes (auto) | Unique execution command identifier (EXC_ prefix). Enables tracking command → orders. |
 | `causality` | CausalityChain | Yes | Complete ID chain from origin through strategy decision. Full traceability for auditing and debugging. |
 | `entry_plan` | EntryPlan \| None | No | WHERE IN specification. Optional (only for new trades or scaling in). |
 | `size_plan` | SizePlan \| None | No | HOW MUCH specification. Optional (only for new trades or scaling). |
@@ -1069,27 +1004,27 @@ PlanningAggregator
 | `execution_plan` | ExecutionPlan \| None | No | HOW/WHEN specification. Optional (execution trade-offs, may use defaults). |
 
 **WHY frozen:**
-- ExecutionDirective is immutable after creation (instruction snapshot)
+- ExecutionCommand is immutable after creation (instruction snapshot)
 - Execution layer consumes immutable facts
 - Frozen enables safe concurrent access and audit trail
-- Changes require new directive (not mutations)
+- Changes require new command (not mutations)
 
 **WHY NOT included:**
 - ❌ `strategy_id` - Not execution concern (causality provides traceability without strategy metadata)
 - ❌ `planner_metadata` - Strategy layer metadata, not execution parameters
-- ❌ `priority` - ExecutionDirectiveBatch handles priority via ordering
-- ❌ `created_at` - Auto-captured from directive_id timestamp (military datetime)
+- ❌ `priority` - ExecutionCommandBatch handles priority via ordering
+- ❌ `created_at` - Auto-captured from command_id timestamp (military datetime)
 - ❌ `status` - Execution state tracking → separate tracking system (not DTO field)
 
 **Lifecycle:**
 ```
 Created:    PlanningAggregator (aggregates 4 plans + causality)
-Validated:  At least 1 plan required (cannot be empty directive)
-Nested in:  Always nested in ExecutionDirectiveBatch
+Validated:  At least 1 plan required (cannot be empty command)
+Nested in:  Always nested in ExecutionCommandBatch
 Consumed:   ExecutionHandler translates → connector orders
-Grouped:    ExecutionDirectiveBatch coordinates atomic execution
+Grouped:    ExecutionCommandBatch coordinates atomic execution
 Tracked:    ExecutionGroup tracks multi-order execution progress
-Modified:   Never modified after creation (frozen - new directive for changes)
+Modified:   Never modified after creation (frozen - new command for changes)
 ```
 
 **Design Decisions:**
@@ -1098,7 +1033,7 @@ Modified:   Never modified after creation (frozen - new directive for changes)
   - Alternative rejected: Required plans (forces full trade spec even for adjustments)
 
 - **Decision 2:** At least 1 plan required
-  - Rationale: Empty directive is meaningless (validation prevents accidents).
+  - Rationale: Empty command is meaningless (validation prevents accidents).
   - Alternative rejected: Allow empty (dangerous - silent no-ops)
 
 - **Decision 3:** No strategy metadata
@@ -1106,7 +1041,7 @@ Modified:   Never modified after creation (frozen - new directive for changes)
   - Alternative rejected: Include strategy_id (couples layers, violates separation)
 
 - **Decision 4:** Frozen (immutable)
-  - Rationale: Execution instructions are facts at creation time. Mutations violate audit trail. New directive for changes.
+  - Rationale: Execution instructions are facts at creation time. Mutations violate audit trail. New command for changes.
   - Alternative rejected: Mutable (loses audit trail, concurrent access issues)
 
 - **Decision 5:** CausalityChain required
@@ -1114,7 +1049,7 @@ Modified:   Never modified after creation (frozen - new directive for changes)
   - Alternative rejected: Optional causality (loses traceability, regulatory risk)
 
 **Validation Strategy:**
-- directive_id format: `EXE_YYYYMMDD_HHMMSS_hash` (military datetime)
+- command_id format: `EXC_YYYYMMDD_HHMMSS_hash` (military datetime)
 - At least 1 plan: entry_plan OR size_plan OR exit_plan OR execution_plan
 - causality: Complete chain validation (all required IDs present)
 - Plan consistency: Validated by ExecutionHandler (entry+size for new trade, etc)
@@ -1132,13 +1067,13 @@ Modified:   Never modified after creation (frozen - new directive for changes)
 
 ---
 
-### ExecutionDirectiveBatch
+### ExecutionCommandBatch
 
-**Purpose:** Atomic multi-directive execution coordination
+**Purpose:** Atomic multi-command execution coordination
 
 **WHY this DTO exists:**
-- PlanningAggregator ALWAYS produces ExecutionDirectiveBatch (even for single directive)
-- Coordinates execution of 1-N ExecutionDirectives as single unit
+- PlanningAggregator ALWAYS produces ExecutionCommandBatch (even for single command)
+- Coordinates execution of 1-N ExecutionCommands as single unit
 - Enables atomic transactions (all succeed or all rollback)
 - Supports execution modes (SEQUENTIAL, PARALLEL, ATOMIC)
 - Batch-level timeout and rollback control
@@ -1147,15 +1082,15 @@ Modified:   Never modified after creation (frozen - new directive for changes)
 
 | Role | Component | Purpose |
 |------|-----------|---------|
-| **Producer** | PlanningAggregator | ONLY producer - bundles 1-N directives + sets execution_mode/timeout/etc |
+| **Producer** | PlanningAggregator | ONLY producer - bundles 1-N commands + sets execution_mode/timeout/etc |
 | **Consumers** | ExecutionHandler | Executes batch according to execution_mode |
 
 **Field Rationale:**
 
 | Field | Type | Required | WHY it exists |
 |-------|------|----------|---------------|
-| `batch_id` | str | Yes | Unique batch identifier (BAT_ prefix). PlanningAggregator generates. Enables tracking batch → directives → orders. |
-| `directives` | List[ExecutionDirective] | Yes | ExecutionDirectives to execute (min 1). PlanningAggregator bundles 1-N directives. Atomic coordination unit. |
+| `batch_id` | str | Yes | Unique batch identifier (BAT_ prefix). PlanningAggregator generates. Enables tracking batch → commands → orders. |
+| `commands` | List[ExecutionCommand] | Yes | ExecutionCommands to execute (min 1). PlanningAggregator bundles 1-N commands. Atomic coordination unit. |
 | `execution_mode` | ExecutionMode | Yes | Execution mode: SEQUENTIAL (1-by-1), PARALLEL (all at once), ATOMIC (transaction). PlanningAggregator sets based on StrategyDirective scope/count. |
 | `created_at` | datetime | Yes | Batch creation timestamp (UTC). PlanningAggregator sets. Audit trail and timeout calculation. |
 | `rollback_on_failure` | bool | Yes | Rollback all on any failure. PlanningAggregator sets (default True, MUST True for ATOMIC). MUST be True for ATOMIC mode. |
@@ -1163,7 +1098,7 @@ Modified:   Never modified after creation (frozen - new directive for changes)
 | `metadata` | Dict \| None | No | Batch context (strategy_directive_id, trade_count). PlanningAggregator sets for debugging/analysis. Optional. |
 
 **WHY frozen:**
-- ExecutionDirectiveBatch is immutable after creation (coordination contract frozen)
+- ExecutionCommandBatch is immutable after creation (coordination contract frozen)
 - Execution mode cannot change mid-execution (violates contract)
 - Frozen enables safe concurrent access
 - Changes require new batch (not mutations)
@@ -1172,17 +1107,17 @@ Modified:   Never modified after creation (frozen - new directive for changes)
 - ❌ `status` - Runtime state tracking → separate tracking system (not DTO field)
 - ❌ `progress` - Execution progress → tracking system (not coordination spec)
 - ❌ `results` - Execution outcomes → tracking system (not input spec)
-- ❌ `priority` - Directive ordering within batch determines priority
+- ❌ `priority` - Command ordering within batch determines priority
 - ❌ `strategy_id` - In metadata if needed for debugging (not execution parameter)
 
 **Lifecycle:**
 ```
 Created:    PlanningAggregator (when all plans per trade complete)
             - Sets batch_id, execution_mode, created_at, rollback_on_failure, timeout_seconds
-            - Bundles 1-N ExecutionDirectives
+            - Bundles 1-N ExecutionCommands
             - Adds metadata (strategy_directive_id, trade_count)
-Validated:  Min 1 directive, unique directive IDs, ATOMIC → rollback_on_failure=True
-Consumed:   ExecutionHandler executes directives per execution_mode
+Validated:  Min 1 command, unique command IDs, ATOMIC → rollback_on_failure=True
+Consumed:   ExecutionHandler executes commands per execution_mode
 Coordinated: ExecutionHandler manages execution coordination (SEQUENTIAL/PARALLEL/ATOMIC)
 Finalized:  Batch completes (all succeed) or rolls back (any fail + rollback_on_failure)
 Never:      Modified after creation (frozen)
@@ -1219,10 +1154,10 @@ Never:      Modified after creation (frozen)
 
 **Validation Strategy:**
 - batch_id format: `BAT_YYYYMMDD_HHMMSS_xxxxx` (military datetime)
-- directives: Min 1, all directive_ids unique
+- commands: Min 1, all command_ids unique
 - execution_mode: ATOMIC → rollback_on_failure must be True
 - timeout_seconds: Must be positive if provided
-- Directive uniqueness: No duplicate directive_ids within batch
+- Command uniqueness: No duplicate command_ids within batch
 
 **Execution Mode Semantics:**
 
@@ -1240,11 +1175,11 @@ Never:      Modified after creation (frozen)
 
 **WHY this DTO exists:**
 - Tracks lifecycle of multi-order strategies (TWAP, ICEBERG, DCA, LAYERED, POV)
-- Groups orders spawned from single ExecutionDirective
+- Groups orders spawned from single ExecutionCommand
 - Mutable status tracking (PENDING → ACTIVE → COMPLETED/CANCELLED/FAILED/PARTIAL)
 - Progress monitoring (filled_quantity vs target_quantity)
 - Enables atomic group operations (cancel all TWAP chunks, modify entire group)
-- Causal traceability (parent_directive_id → order_ids chain)
+- Causal traceability (parent_command_id → order_ids chain)
 
 **Producer/Consumer:**
 
@@ -1260,7 +1195,7 @@ Never:      Modified after creation (frozen)
 | Field | Type | Required | WHY it exists |
 |-------|------|----------|---------------|
 | `group_id` | str | Yes | Unique execution group identifier (EXG_ prefix). ExecutionHandler generates. Enables tracking group → orders. |
-| `parent_directive_id` | str | Yes | ExecutionDirective that spawned this group. Links group to originating directive. Causal traceability. |
+| `parent_command_id` | str | Yes | ExecutionCommand that spawned this group. Links group to originating command. Causal traceability. |
 | `execution_strategy` | ExecutionStrategyType | Yes | Strategy type: SINGLE, TWAP, VWAP, ICEBERG, DCA, LAYERED, POV. Determines coordination logic. ExecutionHandler sets based on ExecutionPlan hints. |
 | `order_ids` | List[str] | Yes | Connector order IDs in this group (unique values). ExecutionHandler appends as orders spawn. Tracks all spawned orders. Empty initially. |
 | `status` | GroupStatus | Yes | Lifecycle status: PENDING, ACTIVE, COMPLETED, CANCELLED, FAILED, PARTIAL. ExecutionHandler updates as execution progresses. |
@@ -1285,7 +1220,7 @@ Never:      Modified after creation (frozen)
 - ❌ `slippage` - Analytics concern (computed post-execution from fills)
 - ❌ `average_fill_price` - Analytics concern (computed from fills)
 - ❌ `remaining_quantity` - Computed field (target_quantity - filled_quantity)
-- ❌ `strategy_id` - Not execution concern (parent_directive_id provides traceability)
+- ❌ `strategy_id` - Not execution concern (parent_command_id provides traceability)
 
 **Lifecycle:**
 ```
@@ -1335,7 +1270,7 @@ Finalized:  ExecutionHandler transitions status
 
 **Validation Strategy:**
 - group_id format: `EXG_YYYYMMDD_HHMMSS_xxxxx` (military datetime)
-- parent_directive_id format: `EXE_YYYYMMDD_HHMMSS_xxxxx`
+- parent_command_id format: `EXC_YYYYMMDD_HHMMSS_xxxxx`
 - order_ids: All unique (no duplicates)
 - target_quantity: Must be positive if provided
 - filled_quantity: Must be <= target_quantity (if both present)

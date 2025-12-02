@@ -179,19 +179,43 @@ logger.error(  # pylint: disable=logging-fstring-interpolation
 )
 ```
 
-### 4. Quality Gates Verification
+### 4. ⚠️ MANDATORY: Status Updates (NEVER SKIP!)
+
+**This step is frequently forgotten by AI agents. It MUST be done before merge.**
 
 Run complete quality checklist (see [QUALITY_GATES.md](QUALITY_GATES.md)).
 
-If all gates pass, update metrics:
+If all gates pass, **IMMEDIATELY** update status documents:
 
 ```powershell
-git add docs/implementation/IMPLEMENTATION_STATUS.md
-git commit -m "docs: update Quality Metrics Dashboard for SizePlan
+# 1. Get current test count
+$testCount = (pytest tests/ --collect-only -q 2>$null | Select-String "^\d+ tests").Matches.Value
+Write-Host "Total tests: $testCount"
 
-- Added SizePlan row: 10/10 all gates
-- Test coverage: 20/20 passing"
+# 2. Update IMPLEMENTATION_STATUS.md
+# - Update test counts in Summary table
+# - Update module-specific tables
+# - Add entry to "Recent Updates (YYYY-MM-DD)" section
+# - Update "Last Updated" date at top
+
+# 3. Update TODO.md (if applicable)
+# - Mark completed items with [x] and **RESOLVED**
+# - Add commit hash for traceability
+# - Update Summary table percentages
+
+# 4. Commit the updates
+git add docs/TODO.md docs/implementation/IMPLEMENTATION_STATUS.md
+git commit -m "docs: update status for <FeatureName> completion
+
+- Test count: X → Y (+Z tests)
+- Updated module tables
+- Added to Recent Updates"
 ```
+
+**WHY THIS MATTERS:**
+- Status docs are the project's memory across AI sessions
+- Without updates, completed work appears "not done" to future agents
+- This prevents duplicate work and maintains accurate project state
 
 ### 5. Merge to Main
 

@@ -90,7 +90,7 @@ eventbus.publish(
 - Declared in worker manifest (`publishes` section)
 - Published via `PUBLISH` disposition
 - Human-readable names: `SIGNAL_DETECTED`, `EMERGENCY_HALT`
-- **No payload** (data retrieved from TickCache by subscribers)
+- **No payload** (data retrieved from StrategyCache by subscribers)
 
 **Example:**
 ```python
@@ -98,7 +98,7 @@ eventbus.publish(
 return DispositionEnvelope(
     disposition="PUBLISH",
     event_name="BREAKOUT_SIGNAL",
-    event_payload=Signal(...)  # Payload goes to TickCache, not event!
+    event_payload=Signal(...)  # Payload goes to StrategyCache, not event!
 )
 ```
 
@@ -162,7 +162,7 @@ adapter_config = {
     
     # Subscriptions (which events to listen to)
     'subscriptions': [
-        '_tick_flow_start_abc123',  # System event from TickCacheManager
+        '_tick_flow_start_abc123',  # System event from FlowInitiator
         '_regime_classifier_output_def456'  # System event from previous worker
     ],
     
@@ -301,7 +301,7 @@ wiring_rules:
 
 ---
 
-## TickCacheManager: Flow Initiator
+## FlowInitiator: Flow Initiator
 
 ### Purpose
 Singleton that manages tick flow lifecycle
@@ -319,7 +319,7 @@ subscriptions:
 #### 2. On Event Receipt
 ```python
 def on_initiating_event(self, event_name, payload):
-    # 1. Create new TickCache
+    # 1. Create new StrategyCache snapshot
     tick_cache = {}
     timestamp = extract_timestamp(payload)
     
@@ -354,7 +354,7 @@ BTC momentum strategy with EMA → Regime → SignalDetector → Planner
 
 ```mermaid
 sequenceDiagram
-    participant TCM as TickCacheManager
+    participant TCM as FlowInitiator
     participant Bus as EventBus
     participant A_EMA as EventAdapter<br/>(EMA)
     participant EMA as EMA Worker
@@ -389,7 +389,7 @@ sequenceDiagram
     A_Plan->>Bus: publish("STRATEGY_DIRECTIVE_READY", StrategyDirective)
     
     Bus->>TCM: notify("STRATEGY_DIRECTIVE_READY")
-    TCM->>TCM: cleanup TickCache
+    TCM->>TCM: cleanup StrategyCache
 ```
 
 ---
