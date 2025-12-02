@@ -23,66 +23,47 @@ ExecutionPlan (universal) → ExecutionTranslator → ConnectorExecutionSpec (CE
 Strategy layer connector-agnostic, platform layer handles specifics.
 
 @layer: DTOs (Strategy Planning Output)
-@dependencies: [pydantic, decimal, typing, enum, backend.utils.id_generators]
+@dependencies: [pydantic, decimal, backend.core.enums, backend.utils.id_generators]
 """
 
 # Standard Library Imports
 from decimal import Decimal
-from enum import Enum
-from typing import Optional
 
 # Third-Party Imports
 from pydantic import BaseModel, Field, field_validator
 
 # Our Application Imports
+from backend.core.enums import ExecutionAction
 from backend.utils.id_generators import generate_execution_plan_id
-
-
-class ExecutionAction(str, Enum):
-    """
-    Execution action types.
-    
-    Distinguishes between trade execution and order management operations.
-    
-    Values:
-        EXECUTE_TRADE: Execute new trade (default)
-        CANCEL_ORDER: Cancel specific order
-        MODIFY_ORDER: Modify existing order
-        CANCEL_GROUP: Cancel entire execution group (e.g., TWAP)
-    """
-    EXECUTE_TRADE = "EXECUTE_TRADE"
-    CANCEL_ORDER = "CANCEL_ORDER"
-    MODIFY_ORDER = "MODIFY_ORDER"
-    CANCEL_GROUP = "CANCEL_GROUP"
 
 
 class ExecutionPlan(BaseModel):
     """
     Execution plan - Universal trade-offs for connector-agnostic execution.
-    
+
     Expresses WHAT the strategy wants (trade-offs) not HOW to execute it.
     Translator layer converts universal plan → connector-specific execution spec.
-    
+
     **Key Responsibilities:**
     - Universal trade-offs: urgency, visibility, slippage (0.0-1.0 range)
     - Hard constraints: max_slippage_pct (MUST respect)
     - Optional hints: preferred_execution_style, chunk_count (MAY interpret)
     - Action type: EXECUTE_TRADE, CANCEL_ORDER, MODIFY_ORDER, CANCEL_GROUP
-    
+
     **NOT Responsible For:**
     - Connector-specific params (time_in_force, iceberg) → Translator decides
     - TWAP implementation (duration, intervals) → Platform/translator config
     - Routing decisions → ExecutionTranslator handles
-    
+
     **Universal Trade-Offs:**
     - execution_urgency: 0.0 (patient) → 1.0 (urgent/immediate)
     - visibility_preference: 0.0 (stealth) → 1.0 (transparent/visible)
     - max_slippage_pct: 0.0 (tight) → 1.0 (100% slippage, emergency only)
-    
+
     **Constraints vs Hints:**
     - Constraints (MUST): max_slippage_pct, must_complete_immediately
     - Hints (MAY): preferred_execution_style, chunk_count_hint, chunk_distribution
-    
+
     Fields:
         plan_id: Unique execution plan ID (EXP_YYYYMMDD_HHMMSS_xxxxx)
         action: Action type (EXECUTE_TRADE, CANCEL_ORDER, etc)
@@ -95,7 +76,7 @@ class ExecutionPlan(BaseModel):
         chunk_count_hint: Hint for number of chunks (optional)
         chunk_distribution: Hint for chunk distribution (e.g., "UNIFORM", "WEIGHTED")
         min_fill_ratio: Minimum fill ratio to accept (optional)
-    
+
     Examples:
         >>> # High urgency market order
         >>> plan = ExecutionPlan(
@@ -105,7 +86,7 @@ class ExecutionPlan(BaseModel):
         ...     max_slippage_pct=Decimal("0.0100"),
         ...     must_complete_immediately=True
         ... )
-        
+
         >>> # Patient TWAP accumulation
         >>> plan = ExecutionPlan(
         ...     action=ExecutionAction.EXECUTE_TRADE,
@@ -116,7 +97,7 @@ class ExecutionPlan(BaseModel):
         ...     preferred_execution_style="TWAP",
         ...     chunk_count_hint=5
         ... )
-        
+
         >>> # Emergency cancel group
         >>> plan = ExecutionPlan(
         ...     action=ExecutionAction.CANCEL_GROUP,
@@ -175,13 +156,13 @@ class ExecutionPlan(BaseModel):
         description="Force immediate execution (constraint, not hint)"
     )
 
-    max_execution_window_minutes: Optional[int] = Field(
+    max_execution_window_minutes: int | None = Field(
         default=None,
         description="Maximum time window for completion (minutes)",
         ge=1
     )
 
-    preferred_execution_style: Optional[str] = Field(
+    preferred_execution_style: str | None = Field(
         default=None,
         description=(
             "Hint for execution style (e.g., 'TWAP', 'VWAP', 'ICEBERG') - "
@@ -189,13 +170,13 @@ class ExecutionPlan(BaseModel):
         )
     )
 
-    chunk_count_hint: Optional[int] = Field(
+    chunk_count_hint: int | None = Field(
         default=None,
         description="Hint for number of execution chunks - MAY be interpreted",
         ge=1
     )
 
-    chunk_distribution: Optional[str] = Field(
+    chunk_distribution: str | None = Field(
         default=None,
         description=(
             "Hint for chunk distribution (e.g., 'UNIFORM', 'WEIGHTED') - "
@@ -203,7 +184,7 @@ class ExecutionPlan(BaseModel):
         )
     )
 
-    min_fill_ratio: Optional[Decimal] = Field(
+    min_fill_ratio: Decimal | None = Field(
         default=None,
         description="Minimum fill ratio to accept (0.0-1.0)",
         ge=0,

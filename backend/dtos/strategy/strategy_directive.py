@@ -3,7 +3,7 @@
 StrategyDirective and sub-directive DTOs for quant-driven trade planning.
 
 @layer: Strategy
-@dependencies: backend.utils.id_generators
+@dependencies: backend.utils.id_generators, backend.core.enums
 @responsibilities:
     - Bridge detection framework (Signal, Risk)
       and Planning Layer (EntryPlan, SizePlan, ExitPlan, ExecutionPlan)
@@ -15,30 +15,15 @@ StrategyDirective and sub-directive DTOs for quant-driven trade planning.
 # Standard library imports
 from datetime import UTC, datetime
 from decimal import Decimal
-from enum import Enum
 from typing import Annotated
 
 # Third-party imports
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 # Application imports
+from backend.core.enums import DirectiveScope
 from backend.dtos.causality import CausalityChain
 from backend.utils.id_generators import generate_strategy_directive_id
-
-
-class DirectiveScope(str, Enum):
-    """
-    Scope of strategy directive.
-
-    Determines what type of action the directive instructs:
-    - NEW_TRADE: Open new position
-    - MODIFY_EXISTING: Adjust existing position (stops, targets, size)
-    - CLOSE_EXISTING: Close existing position(s)
-    """
-
-    NEW_TRADE = "NEW_TRADE"
-    MODIFY_EXISTING = "MODIFY_EXISTING"
-    CLOSE_EXISTING = "CLOSE_EXISTING"
 
 
 class EntryDirective(BaseModel):

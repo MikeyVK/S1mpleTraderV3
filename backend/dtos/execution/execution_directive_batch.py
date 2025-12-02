@@ -13,27 +13,13 @@ Tests: tests/unit/dtos/execution/test_execution_directive_batch.py
 """
 
 from datetime import datetime
-from enum import Enum
 from re import match
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
+from backend.core.enums import ExecutionMode
 from backend.dtos.execution.execution_directive import ExecutionDirective
-
-
-class ExecutionMode(str, Enum):
-    """Batch execution mode.
-
-    Values:
-        SEQUENTIAL: Execute 1-by-1, stop on first failure
-        PARALLEL: Execute all simultaneously (no rollback)
-        ATOMIC: All succeed or all rollback (transaction)
-    """
-
-    SEQUENTIAL = "SEQUENTIAL"
-    PARALLEL = "PARALLEL"
-    ATOMIC = "ATOMIC"
 
 
 class ExecutionDirectiveBatch(BaseModel):
@@ -113,12 +99,12 @@ class ExecutionDirectiveBatch(BaseModel):
     }
 
     batch_id: str
-    directives: List[ExecutionDirective] = Field(min_length=1)
+    directives: list[ExecutionDirective] = Field(min_length=1)
     execution_mode: ExecutionMode
     created_at: datetime
     rollback_on_failure: bool = True
-    timeout_seconds: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
+    timeout_seconds: int | None = None
+    metadata: dict[str, Any] | None = None
 
     @field_validator("batch_id")
     @classmethod
@@ -143,7 +129,7 @@ class ExecutionDirectiveBatch(BaseModel):
 
     @field_validator("directives")
     @classmethod
-    def validate_non_empty_directives(cls, v: List[ExecutionDirective]) -> List[ExecutionDirective]:
+    def validate_non_empty_directives(cls, v: list[ExecutionDirective]) -> list[ExecutionDirective]:
         """Ensure directives list is not empty.
 
         Args:
@@ -164,8 +150,8 @@ class ExecutionDirectiveBatch(BaseModel):
     @field_validator("directives")
     @classmethod
     def validate_unique_directive_ids(
-        cls, v: List[ExecutionDirective]
-    ) -> List[ExecutionDirective]:
+        cls, v: list[ExecutionDirective]
+    ) -> list[ExecutionDirective]:
         """Ensure all directive IDs are unique within batch.
 
         Args:
@@ -199,7 +185,7 @@ class ExecutionDirectiveBatch(BaseModel):
         Raises:
             ValueError: If ATOMIC mode with rollback_on_failure=False
         """
-        execution_mode: Optional[ExecutionMode] = info.data.get("execution_mode")
+        execution_mode: ExecutionMode | None = info.data.get("execution_mode")
         if execution_mode == ExecutionMode.ATOMIC and not v:
             raise ValueError(
                 "rollback_on_failure must be True for ExecutionMode.ATOMIC"
@@ -208,7 +194,7 @@ class ExecutionDirectiveBatch(BaseModel):
 
     @field_validator("timeout_seconds")
     @classmethod
-    def validate_timeout_positive(cls, v: Optional[int]) -> Optional[int]:
+    def validate_timeout_positive(cls, v: int | None) -> int | None:
         """Ensure timeout_seconds is positive if provided.
 
         Args:
