@@ -1,14 +1,16 @@
 # tests/unit/dtos/execution/test_execution_command.py
 """
-Unit tests for ExecutionCommand DTO - Final execution instruction.
+Unit tests for ExecutionCommand and ExecutionCommandBatch DTOs.
 
 Tests the ExecutionCommand DTO which aggregates all planning outputs
 (Entry, Size, Exit, Execution) into single executable command.
+Tests the ExecutionCommandBatch DTO for atomic batch execution.
 
 **Clean Execution Contract:**
 - No strategy metadata (clean separation)
 - Causality chain with complete ID lineage
 - At least 1 plan required (validation)
+- Batch is ALWAYS used (even for n=1)
 
 @layer: Tests (Unit - Execution DTOs)
 @dependencies: [
@@ -18,9 +20,11 @@ Tests the ExecutionCommand DTO which aggregates all planning outputs
 """
 
 import re
+from datetime import datetime, timezone
 from decimal import Decimal
 import pytest
 
+from backend.core.enums import ExecutionMode
 from backend.dtos.causality import CausalityChain
 from backend.dtos.shared import Origin, OriginType
 from backend.dtos.strategy import (
@@ -29,7 +33,10 @@ from backend.dtos.strategy import (
     ExitPlan,
     ExecutionPlan,
 )
-from backend.dtos.execution.execution_command import ExecutionCommand
+from backend.dtos.execution.execution_command import (
+    ExecutionCommand,
+    ExecutionCommandBatch,
+)
 
 
 def create_test_origin(origin_type: OriginType = OriginType.TICK) -> Origin:
@@ -268,3 +275,208 @@ class TestExecutionCommandCausalityChain:
         assert command.causality.origin.id == "TCK_20251027_100000_abc123"
         assert len(command.causality.signal_ids) == 1
         assert command.causality.strategy_directive_id == "STR_20251027_100002_ghi789"
+
+
+# =============================================================================
+# ExecutionCommandBatch Tests
+# =============================================================================
+
+
+def create_test_command() -> ExecutionCommand:
+    """Helper function to create test ExecutionCommand instances."""
+    causality = CausalityChain(origin=create_test_origin())
+    entry = EntryPlan(symbol="BTC_USDT", direction="BUY", order_type="MARKET")
+    return ExecutionCommand(causality=causality, entry_plan=entry)
+
+
+class TestExecutionCommandBatchCreation:
+    """Test ExecutionCommandBatch creation with valid data."""
+
+    def test_create_batch_with_single_command(self):
+        """Test creating batch with single command (n=1)."""
+        command = create_test_command()
+        batch = ExecutionCommandBatch(
+            batch_id="BAT_20251028_143022_a8f3c",
+            commands=[command],
+            execution_mode=ExecutionMode.SEQUENTIAL,
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
+        )
+
+        assert batch.batch_id == "BAT_20251028_143022_a8f3c"
+        assert len(batch.commands) == 1
+        assert batch.execution_mode == ExecutionMode.SEQUENTIAL
+        assert batch.rollback_on_failure is True  # Default
+
+    def test_create_batch_with_multiple_commands(self):
+        """Test creating batch with multiple commands."""
+        commands = [create_test_command() for _ in range(3)]
+        batch = ExecutionCommandBatch(
+            batch_id="BAT_20251028_143022_b9g4h",
+            commands=commands,
+            execution_mode=ExecutionMode.ATOMIC,
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
+            rollback_on_failure=True
+        )
+
+        assert len(batch.commands) == 3
+        assert batch.execution_mode == ExecutionMode.ATOMIC
+
+    def test_batch_with_metadata(self):
+        """Test creating batch with optional metadata."""
+        command = create_test_command()
+        batch = ExecutionCommandBatch(
+            batch_id="BAT_20251028_143022_c1d2e",
+            commands=[command],
+            execution_mode=ExecutionMode.PARALLEL,
+            created_at=datetime.now(timezone.utc),
+            metadata={"reason": "FLASH_CRASH", "trigger_price": 45000}
+        )
+
+        assert batch.metadata is not None
+        assert batch.metadata["reason"] == "FLASH_CRASH"
+
+    def test_batch_with_timeout(self):
+        """Test creating batch with timeout."""
+        command = create_test_command()
+        batch = ExecutionCommandBatch(
+            batch_id="BAT_20251028_143022_f3g4h",
+            commands=[command],
+            execution_mode=ExecutionMode.SEQUENTIAL,
+            created_at=datetime.now(timezone.utc),
+            timeout_seconds=30
+        )
+
+        assert batch.timeout_seconds == 30
+
+
+class TestExecutionCommandBatchValidation:
+    """Test ExecutionCommandBatch validation rules."""
+
+    def test_batch_id_format_validation(self):
+        """Test batch_id format validation."""
+        command = create_test_command()
+
+        # Invalid format
+        with pytest.raises(ValueError, match="batch_id must match pattern"):
+            ExecutionCommandBatch(
+                batch_id="INVALID_ID",
+                commands=[command],
+                execution_mode=ExecutionMode.SEQUENTIAL,
+                created_at=datetime.now(timezone.utc)
+            )
+
+    def test_commands_non_empty_validation(self):
+        """Test that commands list cannot be empty."""
+        with pytest.raises(ValueError):
+            ExecutionCommandBatch(
+                batch_id="BAT_20251028_143022_a8f3c",
+                commands=[],
+                execution_mode=ExecutionMode.SEQUENTIAL,
+                created_at=datetime.now(timezone.utc)
+            )
+
+    def test_unique_command_ids_validation(self):
+        """Test that all command IDs must be unique."""
+        command1 = create_test_command()
+        # Create a copy with same command_id
+        command2 = ExecutionCommand(
+            command_id=command1.command_id,  # Duplicate ID
+            causality=CausalityChain(origin=create_test_origin()),
+            entry_plan=EntryPlan(symbol="ETH_USDT", direction="SELL", order_type="MARKET")
+        )
+
+        with pytest.raises(ValueError, match="unique"):
+            ExecutionCommandBatch(
+                batch_id="BAT_20251028_143022_a8f3c",
+                commands=[command1, command2],
+                execution_mode=ExecutionMode.SEQUENTIAL,
+                created_at=datetime.now(timezone.utc)
+            )
+
+    def test_atomic_requires_rollback(self):
+        """Test ATOMIC mode requires rollback_on_failure=True."""
+        command = create_test_command()
+
+        with pytest.raises(ValueError, match="rollback_on_failure must be True"):
+            ExecutionCommandBatch(
+                batch_id="BAT_20251028_143022_a8f3c",
+                commands=[command],
+                execution_mode=ExecutionMode.ATOMIC,
+                created_at=datetime.now(timezone.utc),
+                rollback_on_failure=False
+            )
+
+    def test_timeout_must_be_positive(self):
+        """Test timeout_seconds must be positive."""
+        command = create_test_command()
+
+        with pytest.raises(ValueError, match="timeout_seconds must be positive"):
+            ExecutionCommandBatch(
+                batch_id="BAT_20251028_143022_a8f3c",
+                commands=[command],
+                execution_mode=ExecutionMode.SEQUENTIAL,
+                created_at=datetime.now(timezone.utc),
+                timeout_seconds=0
+            )
+
+
+class TestExecutionCommandBatchImmutability:
+    """Test ExecutionCommandBatch immutability."""
+
+    def test_batch_is_frozen(self):
+        """Test that batch is immutable after creation."""
+        command = create_test_command()
+        batch = ExecutionCommandBatch(
+            batch_id="BAT_20251028_143022_a8f3c",
+            commands=[command],
+            execution_mode=ExecutionMode.SEQUENTIAL,
+            created_at=datetime.now(timezone.utc)
+        )
+
+        with pytest.raises(ValueError, match="frozen"):
+            batch.rollback_on_failure = False  # type: ignore
+
+
+class TestExecutionCommandBatchModes:
+    """Test different execution modes."""
+
+    def test_sequential_mode(self):
+        """Test SEQUENTIAL execution mode."""
+        commands = [create_test_command() for _ in range(2)]
+        batch = ExecutionCommandBatch(
+            batch_id="BAT_20251028_143022_a8f3c",
+            commands=commands,
+            execution_mode=ExecutionMode.SEQUENTIAL,
+            created_at=datetime.now(timezone.utc),
+            rollback_on_failure=False  # Allowed for SEQUENTIAL
+        )
+
+        assert batch.execution_mode == ExecutionMode.SEQUENTIAL
+        assert batch.rollback_on_failure is False
+
+    def test_parallel_mode(self):
+        """Test PARALLEL execution mode."""
+        commands = [create_test_command() for _ in range(2)]
+        batch = ExecutionCommandBatch(
+            batch_id="BAT_20251028_143022_a8f3c",
+            commands=commands,
+            execution_mode=ExecutionMode.PARALLEL,
+            created_at=datetime.now(timezone.utc),
+            rollback_on_failure=False  # Allowed for PARALLEL
+        )
+
+        assert batch.execution_mode == ExecutionMode.PARALLEL
+
+    def test_atomic_mode(self):
+        """Test ATOMIC execution mode (requires rollback)."""
+        commands = [create_test_command() for _ in range(2)]
+        batch = ExecutionCommandBatch(
+            batch_id="BAT_20251028_143022_a8f3c",
+            commands=commands,
+            execution_mode=ExecutionMode.ATOMIC,
+            created_at=datetime.now(timezone.utc),
+            rollback_on_failure=True  # Required for ATOMIC
+        )
+
+        assert batch.execution_mode == ExecutionMode.ATOMIC
+        assert batch.rollback_on_failure is True

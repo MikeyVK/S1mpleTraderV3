@@ -295,8 +295,8 @@ class TestExecutionGroupStrategies:
 
         assert group.execution_strategy == ExecutionStrategyType.VWAP
 
-    def test_execution_strategy_layered(self):
-        """Test LAYERED limit orders strategy."""
+    def test_execution_strategy_layered_with_metadata(self):
+        """Test LAYERED limit orders strategy with metadata."""
         group = ExecutionGroup(
             group_id="EXG_20251028_130000_n2o3p",
             parent_directive_id="EXE_20251028_125958_q4r5s6t7",
