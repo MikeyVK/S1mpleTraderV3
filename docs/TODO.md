@@ -1,24 +1,53 @@
-# SimpleTraderV3 - TODO List
+# SimpleTraderV3 - Implementation TODO
 
-**Huidige Focus (2025-11-09):** Origin DTO Integration Complete ✅
-> **Status:** Origin DTO (16 tests), PlatformDataDTO Origin integration (19 tests), CausalityChain Origin integration (33 tests) - All complete. Ready for next phase.
+**Status:** LIVING DOCUMENT  
+**Last Updated:** 2025-11-27  
+**Update Frequency:** Daily (during active development)
 
-## 📚 Documentation Quick Links
+---
 
+## Current Focus
+
+Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
+
+> **Quick Status:** 403 tests passing, Week 0 complete, Week 1 in progress
+
+---
+
+## Quick Links
+
+| Document | Purpose |
+|----------|---------|
+| [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md) | Quality metrics & test counts |
+| [TODO_DOCUMENTATION.md](TODO_DOCUMENTATION.md) | Missing docs & broken links |
+| [DOCUMENTATION_MAINTENANCE.md](DOCUMENTATION_MAINTENANCE.md) | Doc organization rules |
+
+**Navigation:**
 - **📖 Agent Instructions:** [../agent.md](../agent.md) - AI assistant guide
 - **🏛️ Architecture:** [architecture/README.md](architecture/README.md) - System design
 - **✨ Coding Standards:** [coding_standards/README.md](coding_standards/README.md) - TDD, quality gates
 - **📋 Reference:** [reference/README.md](reference/README.md) - Templates
-- **📊 Implementation:** [implementation/IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md) - **Quality metrics & test counts**
-- **🔧 Maintenance:** [DOCUMENTATION_MAINTENANCE.md](DOCUMENTATION_MAINTENANCE.md) - Doc organization
 
 **Archived:** [development/#Archief/](development/#Archief/) - Session handovers, old agent versions
 
 ---
 
-## 🚀 IMPLEMENTATIE ROADMAP (Chronologisch)
+## Summary
 
-> **Voor test counts en quality metrics:** Zie [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
+| Phase | Done | Total | Status |
+|-------|------|-------|--------|
+| Week 0: Foundation | 14 | 15 | 🔄 93% (1 DTO pending) |
+| Week 1: Config Schemas | 0 | 4 | 🔴 Not started |
+| Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
+| Week 3: Factories | 0 | 5 | 🔴 Blocked |
+| Week 4: Platform | 0 | 4 | 🔴 Blocked |
+| Technical Debt | 0 | 10 | 🔴 Backlog |
+
+---
+
+## 🚀 IMPLEMENTATION ROADMAP
+
+> **For test counts and quality metrics:** See [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md)
 
 ### Week 0: Foundation - ✅ COMPLETE
 
@@ -113,6 +142,20 @@
   - **Documentation:** DTO_ARCHITECTURE.md will be updated
   - **UPDATE (2025-11-20):** **REJECTED**. StrategyPlanner operates on `TradePlan` level. Rename to `target_plan_ids` instead. See Issue #7.
 
+- [ ] **ExecutionGroup: Review `metadata` field usage** (2025-11-27)
+  - **Issue:** `metadata: dict[str, Any]` is a code smell - suggests undefined structure
+  - **Rationale:** Typed fields are preferable over generic dict; metadata implies "we don't know what goes here yet"
+  - **Action:** Analyze actual usage patterns, define typed fields or remove if unused
+  - **Scope:** backend/dtos/execution/execution_group.py
+  - **Priority:** Medium (architectural clarity)
+
+- [ ] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27)
+  - **Issue:** DCA (Dollar Cost Averaging) is a PLANNING strategy, not an EXECUTION strategy
+  - **Rationale:** DCA determines WHEN to buy (time-based intervals), not HOW to execute a single order
+  - **Correct location:** Planning layer (affects StrategyDirective timing, not ExecutionGroup algorithm)
+  - **Scope:** backend/dtos/execution/execution_group.py (ExecutionStrategyType enum)
+  - **Priority:** High (semantic correctness - layer separation)
+
 - [ ] **StrategyDirective sub-directive: ExecutionDirective → RoutingDirective** (2025-11-09)
   - **Issue:** TWO classes named `ExecutionDirective` (naming conflict):
     1. `backend/dtos/strategy/strategy_directive.py` line 164 - Sub-directive (routing constraints for RoutingPlanner)
@@ -142,6 +185,17 @@
   - **Benefits:** Single source of truth, easy discovery, loose coupling, no DTO diving needed
   - **Scope:** OriginType, DirectiveScope, ExecutionMode, DispositionType, and all future enums
   - **Priority:** Medium (before Week 1 Config Schemas - config may reference enums)
+
+- [ ] **TickCache → StrategyCache Rename** (2025-11-27)
+  - **Issue:** `TickCache` terminology is outdated and confusing - suggests only tick data storage
+  - **Solution:** Rename all references to `StrategyCache` throughout codebase
+  - **Scope:**
+    - `TickCacheManager` → `StrategyCacheManager`
+    - All documentation references
+    - All code imports and usages
+  - **Rationale:** StrategyCache stores much more than ticks: context factors, signals, risks, causality chains, order contexts
+  - **Priority:** Medium (terminology consistency - before production)
+  - **Note:** Interface `IStrategyCache` already uses correct naming
 
 ---
 

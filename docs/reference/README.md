@@ -9,6 +9,11 @@ This directory contains **templates, examples, and reference implementations** f
 📋 **Templates:**
 - [STRATEGY_DTO_TEMPLATE.md](dtos/STRATEGY_DTO_TEMPLATE.md) - DTO boilerplate
 - [DTO_TEST_TEMPLATE.md](testing/DTO_TEST_TEMPLATE.md) - Test boilerplate
+- [Document Templates](templates/README.md) - ⭐ BASE/ARCHITECTURE/DESIGN/REFERENCE templates
+
+🔧 **Maintenance:**
+- [MAINTENANCE_SCRIPTS.md](MAINTENANCE_SCRIPTS.md) - PowerShell maintenance scripts
+- [AI_DOC_PROMPTS.md](templates/AI_DOC_PROMPTS.md) - AI-assisted documentation prompts
 
 📚 **Examples:**
 - [signal.md](dtos/signal.md) - Signal DTO with causality
@@ -19,13 +24,21 @@ This directory contains **templates, examples, and reference implementations** f
 ```
 reference/
 ├── README.md                           # This file
+├── MAINTENANCE_SCRIPTS.md              # ⭐ PowerShell maintenance scripts
 ├── dtos/
 │   ├── STRATEGY_DTO_TEMPLATE.md       # Copy-paste DTO template
-│   └── signal.md          # Reference DTO implementation
+│   └── signal.md                       # Reference DTO implementation
 ├── testing/
 │   └── DTO_TEST_TEMPLATE.md           # Copy-paste test template
-└── platform/
-    └── strategy_cache.md              # Reference service implementation
+├── platform/
+│   └── strategy_cache.md              # Reference service implementation
+└── templates/                          # ⭐ Document templates
+    ├── README.md                       # Template usage guide
+    ├── BASE_TEMPLATE.md
+    ├── ARCHITECTURE_TEMPLATE.md
+    ├── DESIGN_TEMPLATE.md
+    ├── REFERENCE_TEMPLATE.md
+    └── AI_DOC_PROMPTS.md               # AI-assisted doc prompts
 ```
 
 ## Templates

@@ -23,6 +23,8 @@ Je bent een AI-assistent voor **S1mpleTrader V3** development. Je helpt met:
 - **DTOs?** → [Reference - DTO Template](docs/reference/dtos/STRATEGY_DTO_TEMPLATE.md)
 - **Quality?** → [Coding Standards - Quality Gates](docs/coding_standards/QUALITY_GATES.md)
 - **Git?** → [Coding Standards - Git Workflow](docs/coding_standards/GIT_WORKFLOW.md)
+- **New docs?** → [Document Templates](docs/reference/templates/README.md)
+- **Doc gaps?** → [Documentation TODO](docs/TODO_DOCUMENTATION.md)
 
 ## Quick Navigation
 
@@ -46,6 +48,7 @@ docs/
 │
 ├── reference/             # Templates + examples
 │   ├── README.md         # Reference index
+│   ├── templates/        # ⭐ Document templates
 │   ├── dtos/             # DTO templates + examples
 │   ├── workers/          # Worker templates + examples
 │   ├── platform/         # Platform component references
@@ -64,7 +67,7 @@ docs/
 - 🤖 AI-assisted workflows (iterative documentation)
 - 🗓️ Maintenance schedules (weekly/monthly/quarterly)
 
-## The 4 Core Principles (Never Violate!)
+## The 5 Core Principles (Never Violate!)
 
 1. **Plugin First** - All strategy logic in plugins, not platform
 2. **Separation of Concerns** - Workers/Environment/Factories/EventBus strictly separated
@@ -105,23 +108,10 @@ docs/
 **Details:** [TDD Workflow](docs/coding_standards/TDD_WORKFLOW.md)
 
 ### Phase 2: Quality Gates (Verplicht!)
-```powershell
-# Trailing whitespace
-python -m pylint <file> --disable=all --enable=trailing-whitespace,superfluous-parens
 
-# Imports top-level
-python -m pylint <file> --disable=all --enable=import-outside-toplevel
+All 5 gates must pass with 10.00/10 + 100% tests passing.
 
-# Line length (<100 chars)
-python -m pylint <file> --disable=all --enable=line-too-long --max-line-length=100
-
-# Tests passing
-pytest <test_file> -v
-
-# All gates must be 10.00/10 + 100% tests passing
-```
-
-**Details:** [Quality Gates](docs/coding_standards/QUALITY_GATES.md)
+**See:** [Quality Gates](docs/coding_standards/QUALITY_GATES.md) for commands and details.
 
 ## Key Anti-Patterns (DON'T!)
 

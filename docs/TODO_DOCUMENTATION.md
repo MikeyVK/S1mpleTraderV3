@@ -1,19 +1,38 @@
-# Documentation Inventory - Missing Files Analysis
+# Documentation TODO
 
-**Generated:** 2025-10-29  
-**Purpose:** Identify missing documentation files referenced in README files
+**Status:** LIVING DOCUMENT  
+**Last Updated:** 2025-11-27  
+**Update Frequency:** Monthly (or when creating new docs)
+
+---
+
+## Current Focus
+
+Documentation gap analysis - tracking missing architecture docs and broken links.
+
+> **Quick Status:** 121 broken links detected, 5 architecture docs missing
+
+---
+
+## Quick Links
+
+| Document | Purpose |
+|----------|---------|
+| [TODO.md](TODO.md) | Implementation roadmap |
+| [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md) | Quality metrics & test counts |
+| [MAINTENANCE_SCRIPTS.md](reference/MAINTENANCE_SCRIPTS.md) | PowerShell audit scripts |
 
 ---
 
 ## Summary
 
-| Category | Referenced | Existing | Missing | Status |
-|----------|-----------|----------|---------|---------|
-| **Architecture** | 9 files | 4 files | 5 files | 🔴 44% complete |
-| **Coding Standards** | 5 files | 5 files | 0 files | ✅ 100% complete |
-| **Reference** | 2 files | 2 files | 0 files | ✅ 100% complete |
-| **Implementation** | 1 file | 1 file | 0 files | ✅ 100% complete |
-| **Development** | - | 4 files | - | ℹ️ Design docs |
+| Category | Done | Total | Status |
+|----------|------|-------|--------|
+| Architecture docs | 4 | 9 | 🔴 44% |
+| Coding Standards | 5 | 5 | ✅ 100% |
+| Reference docs | 2 | 2 | ✅ 100% |
+| Implementation | 1 | 1 | ✅ 100% |
+| Broken links | 0 | 121 | 🔴 Fix needed |
 
 **Source Material Available:**
 - ✅ `agent_OLD.md` (2045 lines) - Complete V2 architecture reference
@@ -25,7 +44,7 @@
 
 ## Architecture Documentation (docs/architecture/)
 
-### ✅ Existing Files (4)
+### ✅ Completed (4)
 1. `CORE_PRINCIPLES.md` - ✅ EXISTS
 2. `ARCHITECTURAL_SHIFTS.md` - ✅ EXISTS
 3. `POINT_IN_TIME_MODEL.md` - ✅ EXISTS
@@ -269,4 +288,23 @@ These are blocking the standard onboarding flow in `docs/architecture/README.md`
 
 ---
 
-**Status:** 📋 Inventory complete - Source material identified - Ready for content extraction
+## Broken Links (121 detected)
+
+Run `MAINTENANCE_SCRIPTS.md` Broken Link Check to get current list.
+
+**Sample broken links (2025-11-27):**
+- TODO.md → development/backend/core/WORKER_METADATA_REGISTRY_DESIGN.md
+- DTO_ARCHITECTURE.md → WORKER_DATA_ACCESS.md
+- EXECUTION_FLOW.md → ../development/CAUSALITY_CHAIN_DESIGN.md
+- BASEWORKER_DESIGN_PRELIM.md → IWORKERLIFECYCLE_DESIGN.md
+
+**Action:** Fix or remove broken links during doc creation.
+
+---
+
+## Related Documents
+
+- [TODO.md](TODO.md) - Implementation roadmap (code tasks)
+- [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md) - Quality metrics
+- [DOCUMENTATION_MAINTENANCE.md](DOCUMENTATION_MAINTENANCE.md) - Meta-rules
+- [MAINTENANCE_SCRIPTS.md](reference/MAINTENANCE_SCRIPTS.md) - Audit scripts

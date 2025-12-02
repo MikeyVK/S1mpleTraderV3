@@ -1,14 +1,14 @@
 # Execution Flow Architecture - S1mpleTraderV3
 
 **Status:** Architectural Contract - Definitive  
-**Versie:** 1.0  
-**Datum:** 2025-11-08
+**Version:** 2.0  
+**Last Updated:** 2025-11-27
 
 ---
 
 ## Executive Summary
 
-Dit document beschrijft de **complete execution flow** binnen een strategie - twee parallelle flows die beide via DataProvider → FlowInitiator starten. Dit document is **event bus agnostic** en focust op technische data flow.
+This document describes the **complete execution flow** within a strategy - two parallel flows that both start via DataProvider → FlowInitiator. This document is **event bus agnostic** and focuses on technical data flow.
 
 **Flow 1: Sync Strategy Flow (Market Data → Order Placement)**
 ```
@@ -18,17 +18,17 @@ DataProvider → [_candle_btc_eth_ready]
     ↓ 
 FlowInitiator → [CANDLE_STREAM_DATA_READY] → StrategyCache
     ↓
-Context Workers → Signal Detector / Threat Monitor → StrategyPlanner
+Context Workers → Signal Detector / Risk Monitor → StrategyPlanner
     ↓
-Entry/Exit/Size Planners → PlanningAggregator → ExecutionIntentPlanner
+TradePlanners (Entry/Size/Exit) → ExecutionPlanner
     ↓
-PlanningAggregator → ExecutionTranslator
+ExecutionPlanner → ExecutionDirective → ExecutionWorker
     ↓
-ExecutionHandler 
-    ├→ Creates OrderID
-    ├→ Adds OrderID to CausalityChain
-    ├→ ExchangeConnector (REST API: places order)
-    └→ StrategyLedger.record_order(order_id, order_details)  ← NO causality!
+ExecutionWorker 
+    ├→ Queries StrategyLedger for existing state (MODIFY/CLOSE)
+    ├→ Registers containers (ExecutionGroup, Order)
+    ├→ IExecutionConnector (REST API: places order)
+    └→ Records order in StrategyLedger
     ↓
 StrategyJournalWriter
     ├→ Retrieves CausalityChain from StrategyCache (via OrderID)
@@ -45,10 +45,10 @@ DataProvider → [_reply_from_exchange]
     ↓ 
 FlowInitiator → [EXCHANGE_REPLY] → StrategyCache
     ↓
-ExecutionHandler
-    ├→ Queries StrategyLedger.get_order(order_id)
+ExecutionWorker
+    ├→ Queries StrategyLedger for order context
     ├→ Generates FillID (if fill)
-    └→ Updates StrategyLedger.update_order(order_id, fill_id, fill_details)
+    └→ Updates StrategyLedger with fill/rejection
     ↓
 StrategyJournalWriter
     ├→ Retrieves CausalityChain from previous journal entry (via OrderID lookup)
@@ -58,7 +58,7 @@ FlowTerminator
 ```
 
 **SRP Separation:**
-- **StrategyLedger**: Persists order/fill/trade reality ONLY (NO causality storage)
+- **StrategyLedger**: Persists order/fill/trade reality ONLY (NO causality storage) - owns all containers
 - **StrategyJournalWriter**: Persists causality + correlates order_ids + fill_ids
 - **FillID**: Symmetric ID (FIL_...) - captures actual execution (may differ from order)
 - **Quant Analysis**: Cross-query StrategyJournal ↔ StrategyLedger via order_id/fill_id
@@ -66,7 +66,7 @@ FlowTerminator
 **Key Principle:** 
 > Order reality (StrategyLedger) and causality (StrategyJournal) are separate persistence concerns, correlated via order_id + fill_id for complete trade story analysis.
 
-**Cross-reference:** PIPELINE_FLOW.md (phases 0-4), [CAUSALITY_CHAIN_DESIGN.md](../development/backend/dtos/CAUSALITY_CHAIN_DESIGN.md) (causality propagation)
+**Cross-reference:** [TRADE_LIFECYCLE.md](TRADE_LIFECYCLE.md) (container ownership), [WORKER_TAXONOMY.md](WORKER_TAXONOMY.md) (ExecutionWorker responsibilities)
 
 ---
 
@@ -80,13 +80,13 @@ sequenceDiagram
     participant DP as DataProvider
     participant FI as FlowInitiator
     participant SC as StrategyCache
-    participant SW as Strategy Workers<br/>(Context/Signal/Threat)
+    participant SW as Strategy Workers<br/>(Context/Signal/Risk)
     participant SP as StrategyPlanner
-    participant PA as PlanningAggregator
-    participant ET as ExecutionTranslator
-    participant EH as ExecutionHandler
+    participant TP as TradePlanners<br/>(Entry/Size/Exit)
+    participant EP as ExecutionPlanner<br/>(4th TradePlanner)
+    participant EW as ExecutionWorker
     participant SL as StrategyLedger<br/>(disk)
-    participant XC as ExchangeConnector<br/>(REST API)
+    participant XC as IExecutionConnector<br/>(REST API)
     participant SJ as StrategyJournalWriter<br/>(disk)
     participant FT as FlowTerminator
 
@@ -98,22 +98,26 @@ sequenceDiagram
     
     SW->>SP: Signals + Risks
     SP->>SP: Create CausalityChain<br/>(origin + signal_ids + risk_ids)
-    SP->>PA: StrategyDirective + Causality
+    SP->>TP: StrategyDirective + Causality
     SP->>SJ: Opportunity/signal rejected
     
-    PA->>PA: Aggregate Plans
-    PA->>ET: ExecutionDirective + Causality
+    TP->>EP: EntryPlan + SizePlan + ExitPlan
+    EP->>EP: Aggregate plans + select algorithm
+    EP->>EW: ExecutionDirective + Causality
     
-    ET->>ET: Translate to connector-specific
-    ET->>EH: ExecutionDirective + Spec
+    Note over EW,SL: ExecutionWorker queries existing state if needed
+    EW->>SL: Query existing ExecutionGroup/Orders (MODIFY/CLOSE)
+    SL-->>EW: Current state
     
-    EH->>EH: Generate OrderID
-    EH->>EH: Add OrderID to CausalityChain
-    EH->>XC: Place order (REST)
-    EH->>SL: record_order(order_id, details)<br/>NO causality!
-    EH->>SC: Store order context + causality
+    EW->>EW: Generate OrderID
+    EW->>EW: Add OrderID to CausalityChain
+    EW->>SL: Register ExecutionGroup (on-demand)
+    EW->>SL: Register Order container
+    EW->>XC: Place order (REST)
+    EW->>SL: Record order with exchange_order_id
+    EW->>SC: Store order context + causality
     
-    EH->>SJ: Order recorded
+    EW->>SJ: Order recorded
     SJ->>SC: Get causality via OrderID
 
     alt Order
@@ -138,16 +142,26 @@ sequenceDiagram
 - Adds signal_ids, risk_ids during flow
 - Propagates causality through pipeline
 
-**ExecutionHandler:**
+**ExecutionPlanner (4th TradePlanner):**
+- Aggregates EntryPlan + SizePlan + ExitPlan
+- Selects execution algorithm
+- Produces ExecutionDirective for ExecutionWorker
+- Has descriptive read access to StrategyLedger
+
+**ExecutionWorker:**
 - Generates OrderID: `ORD_{YYYYMMDD}_{HHMMSS}_{hash}`
 - Adds OrderID to CausalityChain: `causality.order_ids.append(order_id)`
-- Stores order context + causality in StrategyCache
+- Queries StrategyLedger for existing state (MODIFY/CLOSE scenarios)
+- Registers containers (ExecutionGroup, Order) on-demand
+- Places order via IExecutionConnector
 - Records order in StrategyLedger (NO causality storage!)
+- Stores order context + causality in StrategyCache
 
 **StrategyLedger:**
 - Persists order reality: status, details, timestamps
+- Owns all containers (Trade, ExecutionGroup, Order, Fill)
 - NO causality storage (SRP separation)
-- Queryable by ExecutionHandler (async flow)
+- Queryable by ExecutionWorker (both sync and async flows)
 
 **StrategyJournalWriter:**
 - Retrieves CausalityChain from StrategyCache (via OrderID)
@@ -167,7 +181,7 @@ sequenceDiagram
     participant DP as DataProvider
     participant FI as FlowInitiator
     participant SC as StrategyCache
-    participant EH as ExecutionHandler
+    participant EW as ExecutionWorker
     participant SL as StrategyLedger<br/>(disk)
     participant SJ as StrategyJournalWriter<br/>(disk)
     participant FT as FlowTerminator
@@ -175,21 +189,22 @@ sequenceDiagram
     EC->>DP: fill/rejection (websocket)
     DP->>FI: [_reply_from_exchange]
     FI->>SC: Store PlatformDataDTO
-    FI->>EH: [EXCHANGE_REPLY]
+    FI->>EW: [EXCHANGE_REPLY]
     
-    EH->>SL: get_order(order_id)
-    SL-->>EH: Order context
+    EW->>SL: Query order context (via order_id)
+    SL-->>EW: Order context
     
     alt Fill received
-        EH->>EH: Generate FillID
-        EH->>SL: update_order(order_id, fill_id, fill_details)
+        EW->>EW: Generate FillID
+        EW->>SL: Register Fill container
+        EW->>SL: Update order status
     else Rejection received
-        EH->>SL: update_order(order_id, rejection_reason)
+        EW->>SL: Update order with rejection_reason
     end
     
-    EH->>SC: Update order context
+    EW->>SC: Update order context
     
-    EH->>SJ: Order updated
+    EW->>SJ: Order updated
     SJ->>SJ: Query previous journal entry<br/>(via OrderID)
     SJ->>SJ: Retrieve CausalityChain
     
@@ -206,13 +221,14 @@ sequenceDiagram
 ### 2.2 Key Operations
 
 **FlowInitiator:**
-- Stores PlatformDataTO in StrategyCache
+- Stores PlatformDataDTO in StrategyCache
 - Triggers EXCHANGE_REPLY event
 
-**ExecutionHandler (Async):**
+**ExecutionWorker (Async):**
 - Queries StrategyLedger for order context
 - Generates FillID: `FIL_{YYYYMMDD}_{HHMMSS}_{hash}` (if fill)
-- Updates StrategyLedger with fill/rejection
+- Registers Fill container in StrategyLedger
+- Updates order status with fill/rejection details
 
 **FillID Rationale:**
 - Symmetric ID captures actual execution
@@ -234,7 +250,8 @@ sequenceDiagram
 
 | Component | Responsibility | Stores Causality? | Stores Reality? |
 |-----------|---------------|-------------------|-----------------|
-| **ExecutionHandler** | Creates OrderID, updates CausalityChain | Via StrategyCache | No |
+| **ExecutionPlanner** | Aggregates plans, selects algorithm | Via StrategyDirective | No |
+| **ExecutionWorker** | Creates OrderID/FillID, executes orders | Via StrategyCache | No |
 | **StrategyLedger** | Persists order/fill/trade reality | ❌ NO | ✅ YES |
 | **StrategyJournalWriter** | Persists causality + correlates IDs | ✅ YES | ❌ NO |
 | **StrategyCache** | Temporary context storage | ✅ YES (temp) | ✅ YES (temp) |
@@ -244,14 +261,14 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Sync Flow"
-        EH1[ExecutionHandler] --> SC[StrategyCache<br/>Temporary]
-        EH1 --> SL[StrategyLedger<br/>Disk - Reality]
+        EW1[ExecutionWorker] --> SC[StrategyCache<br/>Temporary]
+        EW1 --> SL[StrategyLedger<br/>Disk - Reality]
         SC --> SJ1[StrategyJournalWriter]
         SJ1 --> SJDB[StrategyJournal<br/>Disk - Causality]
     end
     
     subgraph "Async Flow"
-        EH2[ExecutionHandler] --> SL
+        EW2[ExecutionWorker] --> SL
         SL --> SJ2[StrategyJournalWriter]
         SJ2 --> SJDB
         SJDB --> SJ2
@@ -277,7 +294,9 @@ CausalityChain.origin = Origin
     ↓
 Signal/Risk/Plan IDs added
     ↓
-ExecutionHandler creates OrderID
+ExecutionPlanner aggregates plans, produces ExecutionDirective
+    ↓
+ExecutionWorker creates OrderID
     ↓
 CausalityChain.order_ids.append(order_id)
     ↓
@@ -285,7 +304,7 @@ StrategyCache stores: order_id → {causality, order_details}
     ↓
 StrategyJournalWriter writes: causality + order_id
     ↓
-(async) ExecutionHandler creates FillID
+(async) ExecutionWorker creates FillID
     ↓
 StrategyJournalWriter writes: causality + order_id + fill_id
     ↓
@@ -334,7 +353,7 @@ story = {
 
 **Execution Analysis:**
 - How much slippage between order intent and fill reality?
-- Which execution strategies minimize slippage?
+- Which execution algorithms minimize slippage?
 - Which market conditions cause highest deviation?
 
 **Complete Story:**
@@ -346,13 +365,10 @@ story = {
 
 ## 5. Related Documents
 
-- **PIPELINE_FLOW.md** - Complete strategy pipeline (phases 0-4)
-- **[CAUSALITY_CHAIN_DESIGN.md](../development/backend/dtos/CAUSALITY_CHAIN_DESIGN.md)** - CausalityChain structure and propagation
-- **STRATEGY_LEDGER_DESIGN.md** - StrategyLedger persistence layer (prelim)
-- **STRATEGY_JOURNAL_WRITER_DESIGN.md** - Journal correlation logic (prelim)
-- **EXECUTION_HANDLER_DESIGN.md** - ExecutionHandler responsibilities (prelim)
-- **FLOW_TERMINATOR_DESIGN.md** - Flow termination logic (prelim)
-- **ORIGIN_DTO_DESIGN.md** - Origin DTO structure (prelim)
+- **[TRADE_LIFECYCLE.md](TRADE_LIFECYCLE.md)** - Container hierarchy and Ledger access patterns
+- **[WORKER_TAXONOMY.md](WORKER_TAXONOMY.md)** - Worker categories and responsibilities
+- **[PIPELINE_FLOW.md](PIPELINE_FLOW.md)** - Complete strategy pipeline (phases 0-4)
+- **[CAUSALITY_CHAIN_DESIGN.md](../development/CAUSALITY_CHAIN_DESIGN.md)** - CausalityChain structure and propagation
 
 ---
 
@@ -365,3 +381,5 @@ story = {
 5. **StrategyJournalWriter Before FlowTerminator**: Recording happens before termination (SRP)
 6. **No Batch IDs in Causality**: Batching is pipeline plumbing, not causality
 7. **Origin DTO**: Type-safe origin reference replaces tick_id/news_id/schedule_id
+8. **ExecutionPlanner as 4th TradePlanner**: Aggregates Entry/Size/Exit plans + selects execution algorithm
+9. **ExecutionWorker Container Ownership**: Full CRUD access to StrategyLedger, registers containers on-demand

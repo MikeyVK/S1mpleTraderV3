@@ -1,3 +1,4 @@
+<!-- filepath: docs/development/backend/dtos/CAUSALITY_CHAIN_DESIGN.md -->
 # CausalityChain Design - Pure Decision Lineage Tracking
 
 **Status:** ✅ Implemented  
@@ -45,7 +46,7 @@ Dit document definieert de **implementation details en lifecycle** van Causality
 - **Origin**: Which data triggered the flow? (Origin DTO with id + type)
 - **Analysis**: Which worker analyzed? (signal_id OR risk_id - mutually exclusive)
 - **Decision**: Which strategy decided? (strategy_directive_id)
-- **Planning**: Which plans were created? (entry_plan_id, size_plan_id, exit_plan_id, execution_intent_id, execution_directive_id)
+- **Planning**: Which plans were created? (entry_plan_id, size_plan_id, exit_plan_id, execution_plan_id, execution_command_id)
 - **Execution Intent**: Which orders submitted? (order_ids[])
 - **Execution Reality**: Which fills confirmed? (fill_ids[])
 
@@ -77,8 +78,8 @@ class CausalityChain:
     entry_plan_id: str | None = None                       # ENT_...
     size_plan_id: str | None = None                        # SIZ_...
     exit_plan_id: str | None = None                        # EXT_...
-    execution_intent_id: str | None = None                 # EXI_...
-    execution_directive_id: str | None = None              # EXE_...
+    execution_plan_id: str | None = None                   # EXP_...
+    execution_command_id: str | None = None                # EXC_...
     
     # EXECUTION IDs - Intent vs Reality
     order_ids: list[str] = field(default_factory=list)    # ORD_... (intent)
@@ -117,7 +118,7 @@ extended_causality = causality.model_copy(update={"signal_ids": [*causality.sign
 | **SignalWorker** | signal_id | Appends to signal_ids[] |
 | **RiskWorker** | risk_id | Appends to risk_ids[] |
 | **StrategyPlanner** | strategy_directive_id | Creates CausalityChain with origin + signal_ids[] + risk_ids[] + strategy_directive_id |
-| **PlanningAggregator** | entry_plan_id, size_plan_id, exit_plan_id, execution_intent_id, execution_directive_id | Extends with all plan IDs |
+| **PlanningAggregator** | entry_plan_id, size_plan_id, exit_plan_id, execution_plan_id, execution_command_id | Extends with all plan IDs |
 | **ExecutionHandler** | order_ids[] | Extends with order_ids[] |
 | **ExchangeConnector** | fill_ids[] | Extends with fill_ids[] |
 
