@@ -180,16 +180,20 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - Option C: Split into multiple architecture docs (last resort)
   - [ ] **Apply ARCHITECTURE_TEMPLATE structure**
   
-  ### Phase 1: Remove Non-Existent Components
-  - [ ] **Remove ExecutionTranslator** (10+ occurrences)
-    - Line 863: Remove from Producer/Consumer table
-    - Line 871-876: Remove "Translator maps to..." from field descriptions
-    - Line 887-889: Update "WHY NOT included" section
-    - Line 898: Remove from lifecycle
-    - Line 906: Remove from design decisions
-    - Line 992: Remove from ExecutionCommand table
-  - [ ] **Update execution_plan.py docstrings** (lines 20, 47, 53-54)
-    - Remove "Translation Pattern" section referencing ExecutionTranslator
+  ### Phase 1: Remove Non-Existent Components ✅ COMPLETED
+  - [x] **Removed ExecutionTranslator from all active docs** (2025-XX-XX)
+    - DTO_ARCHITECTURE.md: 8 occurrences replaced
+    - execution_plan.py: docstrings updated (lines 20, 47, 53-54)
+    - EXECUTION_PLAN_DESIGN.md: translation pattern updated
+    - PLANNING_AGGREGATOR_DESIGN.md: responsibilities updated
+    - SCENARIO_MODIFICATION_FLOWS.md: terminology updated
+    - SCENARIO_TRAILING_STOP.md: terminology updated
+    - PLATFORM_VS_STRATEGY_WIRING.md: 8 occurrences replaced
+    - Trade Lifecycle & Architectuur.md: 7 occurrences replaced
+  - [x] **Preserved archive references** (intentionally kept for historical context)
+    - docs/archive/PIPELINE_FLOW_v4_deprecated.md
+    - docs/development/#Archief/* 
+    - docs/development/251108_1530 ChatLog.md
   
   ### Phase 2: Align with EXECUTION_FLOW.md
   - [ ] Verify ExecutionPlanner role matches (4th TradePlanner, read-only Ledger)

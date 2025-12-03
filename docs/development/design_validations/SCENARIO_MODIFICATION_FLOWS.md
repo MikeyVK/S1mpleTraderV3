@@ -5,7 +5,7 @@ Dit document toetst de `target_plan_ids` abstractie aan de hand van drie complex
 ## De Kernvraag
 Houdt de abstractie stand?
 *   **Abstractie:** `StrategyPlanner` praat tegen `TradePlan` (Level 1).
-*   **Implementatie:** `ExecutionTranslator` praat tegen `Order` (Level 3).
+*   **Implementatie:** `ExecutionWorker` praat tegen `Order` (Level 3) via `IExecutionConnector`.
 
 ---
 
@@ -39,12 +39,12 @@ De strategie ziet bevestiging en wil de positie vergroten.
     }
     ```
 
-### Stap 2: ExecutionTranslator
+### Stap 2: ExecutionWorker
 *   **Context:** Ziet `target_plan_ids=["TPL_1"]`. Weet dat dit een "Scale In" is omdat er een `entry_directive` bij zit voor een bestaand plan.
 *   **Vertaling:**
     *   Dit is géén modificatie van een bestaande order (want we willen *meer*).
     *   Dit is een **nieuwe order** die gekoppeld moet worden aan het bestaande plan.
-*   **Output (ConnectorExecutionSpec):**
+*   **Output (via IExecutionConnector):**
     ```json
     {
       "action": "EXECUTE_TRADE", // Nieuwe order!
@@ -84,14 +84,14 @@ De strategie wil winst veiligstellen (50% sluiten).
     }
     ```
 
-### Stap 2: ExecutionTranslator
+### Stap 2: ExecutionWorker
 *   **Context:** Ziet `direction="SELL"` terwijl Plan `BUY` is. Conclusie: Reduce Position.
 *   **Vertaling:**
     *   Maak nieuwe Sell Order voor 0.75 BTC.
     *   Koppel aan `TPL_1`.
 *   **Output:** `EXECUTE_TRADE` (Sell 0.75).
 
-*   **Status:** ✅ Geslaagd. Wederom, StrategyPlanner denkt in "Plan aanpassing", Translator regelt de orders.
+*   **Status:** ✅ Geslaagd. Wederom, StrategyPlanner denkt in "Plan aanpassing", ExecutionWorker regelt de orders.
 
 ---
 
@@ -113,7 +113,7 @@ RiskMonitor detecteert Black Swan. Alles moet NU dicht.
     }
     ```
 
-### Stap 2: ExecutionTranslator
+### Stap 2: ExecutionWorker
 *   **Context:** `CLOSE_EXISTING` op lijst plannen.
 *   **Vertaling:**
     *   Voor elk plan:
@@ -122,7 +122,7 @@ RiskMonitor detecteert Black Swan. Alles moet NU dicht.
         3.  Indien `net_position != 0`: Stuur Market Close order.
 *   **Output:** Batch van `CANCEL_ALL` en `MARKET_CLOSE` orders.
 
-*   **Status:** ✅ Geslaagd. Dit is de ultieme test. De StrategyPlanner stuurt 1 simpele directive, de Translator genereert misschien wel 20 API calls (cancels + closes).
+*   **Status:** ✅ Geslaagd. Dit is de ultieme test. De StrategyPlanner stuurt 1 simpele directive, de ExecutionWorker genereert misschien wel 20 API calls (cancels + closes) via IExecutionConnector.
 
 ---
 
@@ -138,5 +138,5 @@ Bij Scenario 2 (Scale In) en 3 (Scale Out) moeten we duidelijke afspraken maken 
 *   StrategyPlanner leest huidige size (1.0).
 *   Berekent nieuwe size (1.5).
 *   Stuurt `size_directive(position_size=1.5)`.
-*   Translator ziet verschil (1.5 - 1.0 = +0.5) en koopt het verschil bij.
+*   ExecutionWorker ziet verschil (1.5 - 1.0 = +0.5) en koopt het verschil bij.
 *   Dit voorkomt dat per ongeluk 2x 0.5 wordt gekocht als het bericht dubbel verwerkt wordt.

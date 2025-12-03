@@ -147,13 +147,13 @@ None required. DTO follows architectural guidelines.
 
 **Design Pattern - Constraints vs Hints:**
 - **Constraints (MUST):** `max_slippage_pct`, `must_complete_immediately` - ExecutionWorker MUST respect
-- **Hints (MAY):** `preferred_execution_style`, `chunk_count_hint` - Translator MAY interpret
+- **Hints (MAY):** `preferred_execution_style`, `chunk_count_hint` - ExecutionWorker MAY interpret
 
-**Translation Pattern:**
+**Execution Pattern:**
 ```
 ExecutionPlan (universal) 
-    → ExecutionTranslator 
-    → ConnectorExecutionSpec (CEX/DEX/Backtest specific)
+    → ExecutionWorker 
+    → IExecutionConnector (CEX/DEX/Backtest specific)
 ```
 
 ---

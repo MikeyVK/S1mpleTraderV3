@@ -5,8 +5,8 @@ Dit document beschrijft stap-voor-stap hoe een **Trailing Stop** update door de 
 ## De Spelers
 1.  **StrategyPlanner (Level 1):** De "General". Beslist *dat* de stop omhoog moet. Kent alleen het `TradePlan`.
 2.  **ExitPlanner (Level 1.5):** De "Specialist". Rekent de exacte prijs uit.
-3.  **ExecutionTranslator (Level 2):** De "Vertaler". Zoekt de orders erbij en maakt de technische instructie.
-4.  **ExecutionHandler (Level 3):** De "Uitvoerder". Praat met de exchange.
+3.  **ExecutionWorker (Level 2):** De "Uitvoerder". Vertaalt ExecutionPlan naar connector calls via IExecutionConnector.
+4.  **IExecutionConnector (Level 3):** De "Brug". Praat met de exchange (CEX/DEX/Backtest).
 
 ## De Situatie
 *   **Active TradePlan:** `TPL_BTC_001` (Long BTCUSDT).
@@ -63,8 +63,8 @@ Bundelt het plan in een `ExecutionDirective`.
 }
 ```
 
-### Stap 4: ExecutionTranslator (De Vertaling)
-Hier gebeurt de magie. De Translator moet de abstracte wens ("Update TPL_BTC_001") vertalen naar concrete orders.
+### Stap 4: ExecutionWorker (De Uitvoering)
+Hier gebeurt de magie. De ExecutionWorker ontvangt de ExecutionPlan en delegeert naar IExecutionConnector.
 
 *   *Lookup:* "StrategyLedger, geef mij alle open orders voor `TPL_BTC_001`."
 *   *Resultaat:* `["ORD_BINANCE_555"]` (De huidige Stop Loss order).
@@ -88,5 +88,5 @@ Stuurt het request naar Binance: `cancel_replace_order(id="ORD_BINANCE_555", pri
 ## Conclusie
 Door `target_plan_ids` te gebruiken:
 1.  **SRP is gewaarborgd:** De `StrategyPlanner` hoeft niet te weten dat er toevallig order `ORD_BINANCE_555` loopt. Hij managet zijn *Plan*.
-2.  **Flexibiliteit:** Als de positie uit 10 kleine orders bestond (ladder), had de `ExecutionTranslator` in Stap 4 besloten om *alle 10* orders te updaten, zonder dat de StrategyPlanner daar logica voor hoeft te hebben.
-3.  **Correcte Abstractie:** De StrategyPlanner praat "Business Logic" (Risk management), de Translator praat "Infra Logic" (Order IDs).
+2.  **Flexibiliteit:** Als de positie uit 10 kleine orders bestond (ladder), had de `ExecutionWorker` in Stap 4 besloten om *alle 10* orders te updaten, zonder dat de StrategyPlanner daar logica voor hoeft te hebben.
+3.  **Correcte Abstractie:** De StrategyPlanner praat "Business Logic" (Risk management), de ExecutionWorker delegeert naar IExecutionConnector voor "Infra Logic" (Order IDs).

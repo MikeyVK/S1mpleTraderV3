@@ -860,7 +860,7 @@ Never:      Modified after creation (frozen - dynamic logic creates new Strategy
 |------|-----------|---------|
 | **Producer** | ExecutionPlanner | Translates StrategyDirective.execution_directive → universal trade-offs |
 | **Consumers** | PlanningAggregator | Combines with Entry/Size/ExitPlan → ExecutionCommand |
-| | ExecutionTranslator | Converts ExecutionPlan trade-offs → connector-specific params (CEX/DEX/Backtest) |
+| | ExecutionWorker | Interprets trade-offs via IExecutionConnector (CEX/DEX/Backtest) |
 
 **Field Rationale:**
 
@@ -868,12 +868,12 @@ Never:      Modified after creation (frozen - dynamic logic creates new Strategy
 |-------|------|----------|---------------|
 | `plan_id` | str | Yes (auto) | Unique execution plan identifier (EXP_ prefix). Enables tracking execution plan → execution correlation. |
 | `action` | ExecutionAction | Yes | Action type: EXECUTE_TRADE, CANCEL_ORDER, MODIFY_ORDER, CANCEL_GROUP. Discriminates execution vs order management. Default EXECUTE_TRADE. |
-| `execution_urgency` | Decimal | Yes | Patience vs speed (0.0=patient, 1.0=urgent). Universal trade-off. Translator maps to connector-specific (LIMIT vs MARKET, TWAP duration, etc). |
-| `visibility_preference` | Decimal | Yes | Stealth vs transparency (0.0=stealth, 1.0=visible). Universal trade-off. Translator maps to iceberg, dark pools, private mempool, etc. |
+| `execution_urgency` | Decimal | Yes | Patience vs speed (0.0=patient, 1.0=urgent). Universal trade-off. ExecutionWorker interprets via IExecutionConnector. |
+| `visibility_preference` | Decimal | Yes | Stealth vs transparency (0.0=stealth, 1.0=visible). Universal trade-off. ExecutionWorker interprets via IExecutionConnector. |
 | `max_slippage_pct` | Decimal | Yes | Hard price limit (0.0-1.0 = 0-100%). Constraint (MUST respect). Execution fails if exceeded. |
 | `must_complete_immediately` | bool | No | Force immediate execution. Constraint (MUST respect). Overrides execution_urgency. Default False. |
 | `max_execution_window_minutes` | int \| None | No | Maximum time window for completion. Constraint (MUST respect). Enables TWAP duration limits. |
-| `preferred_execution_style` | str \| None | No | Hint for execution style (e.g., "TWAP", "VWAP", "ICEBERG"). Hint (MAY interpret). Translator decides if feasible. |
+| `preferred_execution_style` | str \| None | No | Hint for execution style (e.g., "TWAP", "VWAP", "ICEBERG"). Hint (MAY interpret). ExecutionWorker decides if feasible. |
 | `chunk_count_hint` | int \| None | No | Hint for number of execution chunks. Hint (MAY interpret). TWAP chunking suggestion. |
 | `chunk_distribution` | str \| None | No | Hint for chunk distribution (e.g., "UNIFORM", "WEIGHTED"). Hint (MAY interpret). Influences TWAP strategy. |
 | `min_fill_ratio` | Decimal \| None | No | Minimum fill ratio to accept (0.0-1.0). Constraint (MUST respect). Partial fill handling. |
@@ -884,9 +884,9 @@ Never:      Modified after creation (frozen - dynamic logic creates new Strategy
 - Safe concurrent access for execution translation
 
 **WHY NOT included:**
-- ❌ `time_in_force` - Connector-specific (GTC, IOC, FOK). Translator maps from urgency/window.
-- ❌ `iceberg_preference` - Connector-specific. Translator maps from visibility_preference.
-- ❌ `twap_duration`/`twap_intervals` - Connector/platform-specific. Translator calculates from execution_urgency + max_execution_window.
+- ❌ `time_in_force` - Connector-specific (GTC, IOC, FOK). ExecutionWorker derives from urgency/window via IExecutionConnector.
+- ❌ `iceberg_preference` - Connector-specific. ExecutionWorker derives from visibility_preference via IExecutionConnector.
+- ❌ `twap_duration`/`twap_intervals` - Connector/platform-specific. ExecutionWorker calculates from execution_urgency + max_execution_window.
 - ❌ `routing_venue` - Platform decision (CEX/DEX selection). Not strategy concern.
 - ❌ `causality` - Inherited from StrategyDirective via aggregation.
 - ❌ `created_at`/`planner_id` - Metadata → worker context.
@@ -895,15 +895,14 @@ Never:      Modified after creation (frozen - dynamic logic creates new Strategy
 ```
 Created:    ExecutionPlanner (from StrategyDirective.execution_directive)
 Validated:  PlanningAggregator (checks trade-off consistency)
-Translated: ExecutionTranslator (universal → connector-specific)
-Consumed:   ExecutionHandler (executes based on translated spec)
+Consumed:   ExecutionWorker (interprets trade-offs via IExecutionConnector)
 Aggregated: PlanningAggregator adds plan_id to ExecutionCommand
 Never:      Modified after creation (frozen)
 ```
 
 **Design Decisions:**
 - **Decision 1:** Universal trade-offs (not connector-specific)
-  - Rationale: Strategy layer connector-agnostic. Translator handles CEX/DEX/Backtest specifics.
+  - Rationale: Strategy layer connector-agnostic. ExecutionWorker handles CEX/DEX/Backtest specifics via IExecutionConnector.
   - Alternative rejected: CEX-specific params (time_in_force, iceberg) - tight coupling, no DEX/backtest support
 
 - **Decision 2:** Decimal 0.0-1.0 range for trade-offs
@@ -989,8 +988,7 @@ PlanningAggregator
 |------|-----------|---------|
 | **Producer** | PlanningAggregator | Aggregates Entry/Size/Exit/ExecutionPlan → ExecutionCommand |
 | **Consumers** | ExecutionCommandBatch | Groups multiple commands for atomic execution |
-| | ExecutionTranslator | Translates ExecutionPlan → connector-specific params |
-| | ExecutionHandler | Executes single command (places orders) |
+| | ExecutionWorker | Executes command via IExecutionConnector (places orders) |
 
 **Field Rationale:**
 

@@ -54,7 +54,7 @@ erDiagram
 | Niveau | Entiteit | Eigenaar (Write/Manage) | Consument (Read) | Omschrijving |
 | :---- | :---- | :---- | :---- | :---- |
 | **Strategisch** | **TradePlan** | StrategyPlanner (indirect) / StrategyLedger | StrategyPlanner (Self) | De langlopende container die de *volledige* strategie (bijv. Grid, DCA) omvat. Wordt aangemaakt door de Ledger bij de *eerste* ExecutionGroup. |
-| **Tactisch** | **ExecutionGroup** | ExecutionTranslator | StrategyPlanner (Read-only Ref), StrategyLedger | Een logische set van 1-N orders die voortkomt uit **één** StrategyDirective. Dit is de atomaire eenheid van tactische uitvoering (bijv. "één TWAP-run"). |
+| **Tactisch** | **ExecutionGroup** | ExecutionWorker | StrategyPlanner (Read-only Ref), StrategyLedger | Een logische set van 1-N orders die voortkomt uit **één** StrategyDirective. Dit is de atomaire eenheid van tactische uitvoering (bijv. "één TWAP-run"). |
 | **Operationeel** | **Order** | ExecutionHandler | ExchangeConnector | De daadwerkelijke, concrete instructie aan de exchange. Bevat geen strategische context. |
 | **Resultaat** | **Fill** | ExchangeConnector (via Async Flow) | StrategyLedger | De onveranderlijke, harde realiteit (waarheid) vanuit de markt. [cite: Async Exchange Reply Flow (Fills/Rejections → Trade Reality)] |
 
@@ -74,7 +74,7 @@ De StrategyLedger is een **"domme" toegangspoort** tot het grootboek en waarborg
 
 ### **Level 2: Mid-Level Access (Translatie Domein)**
 
-* **Gebruiker:** ExecutionTranslator (Platform, de "Uitpakker").  
+* **Gebruiker:** ExecutionWorker (Platform, via IExecutionConnector).  
 * **Rechten:** Slaat de brug tussen abstracte groepen en concrete orders.  
 * **Taak:** Moet weten welke Order IDs bij ExecutionGroup X horen om een CANCEL_GROUP commando te kunnen bouwen. [cite: Fase 4c: EXECUTION TRANSLATION]  
 * **Voorbeeld Methods:**  
@@ -92,9 +92,9 @@ De StrategyLedger is een **"domme" toegangspoort** tot het grootboek en waarborg
 
 ## **3. ExecutionIntent Commando Lijst**
 
-De ExecutionIntent (DTO) bevat **operationele commando's**, geen strategische logica. Het is de output van de ExecutionPlanner (4th TradePlanner) en de input voor de ExecutionTranslator (Platform). [cite: ExecutionIntent - Universal Trade-Offs]
+De ExecutionIntent (DTO) bevat **operationele commando's**, geen strategische logica. Het is de output van de ExecutionPlanner (4th TradePlanner) en de input voor de ExecutionWorker (Platform, via IExecutionConnector). [cite: ExecutionIntent - Universal Trade-Offs]
 
-Een "Grid" is strategie (en dus onbekend voor de Translator). EXECUTE_TRADE is een operatie.
+Een "Grid" is strategie (en dus onbekend voor de ExecutionWorker). EXECUTE_TRADE is een operatie.
 
 ### **Uitputtende Lijst van ExecutionAction (Enum):**
 
@@ -103,25 +103,25 @@ Een "Grid" is strategie (en dus onbekend voor de Translator). EXECUTE_TRADE is e
 * **EXECUTE_TRADE**  
   * **Betekenis:** "Plaats nieuwe orders volgens de bijgevoegde Entry/Size/Exit plannen."  
   * **Context:** Wordt gebruikt bij scope=NEW_TRADE (nieuwe entry) of scope=CLOSE_EXISTING (nieuwe close-order).  
-  * **Gevolg:** Translator maakt 1-op-N ConnectorExecutionSpec(s) aan (bijv. voor een TWAP).
+  * **Gevolg:** ExecutionWorker delegeert naar IExecutionConnector voor 1-op-N orders (bijv. voor een TWAP).
 
 #### **B. Annulerings Commando's**
 
 * **CANCEL_GROUP**  
   * **Betekenis:** "Annuleer alle openstaande (niet-gevulde) orders die behoren bij deze TargetGroupID."  
   * **Context:** Gebruikt bij scope=MODIFY_EXISTING. Bijv. StrategyPlanner trekt een specifieke set grid-orders in.  
-  * **Gevolg:** Translator roept ledger.get_open_order_ids(group_id) aan en bouwt een ConnectorExecutionSpec met annuleringsverzoeken.  
+  * **Gevolg:** ExecutionWorker raadpleegt Ledger via get_open_order_ids(group_id) en bouwt annuleringsverzoeken.  
 * **CANCEL_ALL_IN_PLAN**  
   * **Betekenis:** "Noodstop. Annuleer *alle* openstaande orders binnen het TargetPlanID."  
   * **Context:** Gebruikt bij scope=CLOSE_EXISTING (Panic/Crash).  
-  * **Gevolg:** Translator roept ledger.get_open_order_ids aan voor *elke actieve groep* in het plan.
+  * **Gevolg:** ExecutionWorker raadpleegt Ledger voor alle actieve groepen in het plan.
 
 #### **C. Modificatie Commando's**
 
 * **MODIFY_ORDERS**  
   * **Betekenis:** "Pas parameters aan (bijv. prijs, hoeveelheid) van bestaande, open orders in TargetGroupID."  
   * **Context:** Gebruikt bij scope=MODIFY_EXISTING (bijv. Trailing Stop). Vereist dat de ExitPlan (of EntryPlan) de nieuwe parameters meelevert.  
-  * **Gevolg:** Translator genereert cancel_replace of modify API calls.
+  * **Gevolg:** ExecutionWorker genereert cancel_replace of modify calls via IExecutionConnector.
 
 ## **4. De Lifecycle Scopes (De "WHAT")**
 

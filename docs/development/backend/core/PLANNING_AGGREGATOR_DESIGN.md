@@ -35,7 +35,7 @@
 - ❌ Plan creation (dat is planner workers' domein)
 - ❌ Plan validation (dat is ExecutionIntentPlanner's domein)
 - ❌ Batch execution (dat is ExecutionHandler's domein)
-- ❌ Trade routing logic (dat is ExecutionTranslator's domein)
+- ❌ Trade routing logic (dat is ExecutionWorker's domein via IExecutionConnector)
 
 ### 1.2 Core Use Cases
 

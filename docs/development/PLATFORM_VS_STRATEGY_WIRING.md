@@ -34,12 +34,12 @@ graph LR
         TCM[TickCacheManager]
         CA[ContextAggregator]
         PA[PlanningAggregator]
-        ET[ExecutionTranslator]
+        EW[ExecutionWorker]
         SC[StrategyCache]
         EB[EventBus]
         PR[PluginRegistry]
         
-        PA --> ET
+        PA --> EW
     end
     
     subgraph Strategy["STRATEGY WIRING (Workers - Per Strategy)"]
@@ -73,7 +73,7 @@ graph LR
 3. ⏳ **TickCacheManager** - Flow orchestration (triggers tick flows, publishes TICK_FLOW_START)
 4. ⏳ **ContextAggregator** - Platform worker (aggregates context outputs → AggregatedContextAssessment)
 5. ⏳ **PlanningAggregator** - Platform worker (coordinates parallel planning + triggers ExecutionIntent)
-6. ⏳ **ExecutionTranslator** - Platform factory (translates ExecutionIntent → ConnectorExecutionSpec)
+6. ⏳ **ExecutionWorker** - Platform worker (executes via IExecutionConnector interface)
 7. ⏳ **PluginRegistry** - Worker plugin discovery
 
 **Characteristics:**
@@ -345,13 +345,13 @@ graph TB
         TCM[TickCacheManager]
         CA[ContextAggregator]
         PA[PlanningAggregator]
-        ET[ExecutionTranslator]
+        EW[ExecutionWorker]
         EB[EventBus]
         
         style TCM fill:#90EE90,stroke:#2d5016,stroke-width:3px
         style CA fill:#90EE90,stroke:#2d5016,stroke-width:3px
         style PA fill:#90EE90,stroke:#2d5016,stroke-width:3px
-        style ET fill:#90EE90,stroke:#2d5016,stroke-width:3px
+        style EW fill:#90EE90,stroke:#2d5016,stroke-width:3px
         style EB fill:#90EE90,stroke:#2d5016,stroke-width:3px
     end
     
@@ -640,17 +640,17 @@ graph TB
 
 ---
 
-**4. PlanningAggregator → ExecutionTranslator**
+**4. PlanningAggregator → ExecutionWorker**
 ```yaml
 # Single platform wiring (shared across all strategies)
-- wiring_id: "planning_agg_to_translator"
+- wiring_id: "planning_agg_to_execution"
   source:
     component_id: "planning_aggregator"
-    event_name: "TRANSLATION_REQUESTED"
+    event_name: "EXECUTION_REQUESTED"
     event_type: "SystemEvent"
   target:
-    component_id: "execution_translator_factory"
-    handler_method: "on_translation_request"
+    component_id: "execution_worker"
+    handler_method: "on_execution_request"
 ```
 
 **Resultaat:**
@@ -760,7 +760,7 @@ platform_config = ConfigLoader.load("config/platform/platform.yaml")
 tick_cache_manager = TickCacheManager()
 context_aggregator = ContextAggregator()
 planning_aggregator = PlanningAggregator()
-execution_translator = ExecutionTranslatorFactory()
+execution_worker = ExecutionWorker()  # Uses IExecutionConnector
 event_bus = EventBus()
 strategy_cache = StrategyCache()
 plugin_registry = PluginRegistry()
@@ -912,7 +912,7 @@ Is component een singleton?
 | PlanningWorker | PlanningAggregator | **Platform** | Strategy → Singleton (exit) |
 | PlanningAggregator | ExecutionIntentPlanner | **Platform** | Singleton → Strategy (entry) |
 | ExecutionIntentPlanner | PlanningAggregator | **Platform** | Strategy → Singleton (exit) |
-| PlanningAggregator | ExecutionTranslator | **Platform** | Singleton → Singleton (infra) |
+| PlanningAggregator | ExecutionWorker | **Platform** | Singleton → Singleton (infra) |
 | EMA Detector | Regime Classifier | **Strategy** | Worker → Worker (binnen strategy) |
 | SignalDetector | PlanningWorker | **Strategy** | Worker → Worker (binnen strategy) |
 | RiskMonitor | EmergencyExecutor | **Platform** | Strategy → Singleton (platform safety) |
@@ -1060,7 +1060,7 @@ wiring_rules:
 - TickCacheManager
 - ContextAggregator
 - PlanningAggregator
-- ExecutionTranslator (factory)
+- ExecutionWorker (via IExecutionConnector)
 - EventBus
 - StrategyCache
 - EmergencyExecutor
@@ -1284,9 +1284,9 @@ class BroadcastPatternValidator:
 │         ↓                                        │
 │  [EXIT: ExecutionIntent] → PlanningAggregator    │
 │         ↓                                        │
-│  [PLATFORM: Translation] → ExecutionTranslator   │
+│  [PLATFORM: Execution] → ExecutionWorker         │
 │         ↓                                        │
-│  [PLATFORM: Execution] → ExecutionHandler        │
+│  [CONNECTOR: IExecutionConnector]                │
 │                                                  │
 │         PLATFORM WIRING (Global)                 │
 └──────────────────────────────────────────────────┘

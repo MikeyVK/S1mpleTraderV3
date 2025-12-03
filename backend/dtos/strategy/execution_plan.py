@@ -18,9 +18,9 @@ WHAT the strategy wants (trade-offs) rather than HOW to execute (connector-speci
 - ADDED: action field for non-trade operations (cancel, modify)
 - ADDED: hints (preferred_execution_style, chunk_count_hint, chunk_distribution)
 
-**Translation Pattern:**
-ExecutionPlan (universal) → ExecutionTranslator → ConnectorExecutionSpec (CEX/DEX/Backtest)
-Strategy layer connector-agnostic, platform layer handles specifics.
+**Execution Pattern:**
+ExecutionPlan (universal) → ExecutionWorker → IExecutionConnector (CEX/DEX/Backtest)
+Strategy layer connector-agnostic, ExecutionWorker handles specifics via connector interface.
 
 @layer: DTOs (Strategy Planning Output)
 @dependencies: [pydantic, decimal, backend.core.enums, backend.utils.id_generators]
@@ -42,7 +42,7 @@ class ExecutionPlan(BaseModel):
     Execution plan - Universal trade-offs for connector-agnostic execution.
 
     Expresses WHAT the strategy wants (trade-offs) not HOW to execute it.
-    Translator layer converts universal plan → connector-specific execution spec.
+    ExecutionWorker interprets universal plan via IExecutionConnector.
 
     **Key Responsibilities:**
     - Universal trade-offs: urgency, visibility, slippage (0.0-1.0 range)
@@ -51,9 +51,9 @@ class ExecutionPlan(BaseModel):
     - Action type: EXECUTE_TRADE, CANCEL_ORDER, MODIFY_ORDER, CANCEL_GROUP
 
     **NOT Responsible For:**
-    - Connector-specific params (time_in_force, iceberg) → Translator decides
-    - TWAP implementation (duration, intervals) → Platform/translator config
-    - Routing decisions → ExecutionTranslator handles
+    - Connector-specific params (time_in_force, iceberg) → ExecutionWorker decides
+    - TWAP implementation (duration, intervals) → ExecutionWorker/connector config
+    - Routing decisions → ExecutionWorker handles via IExecutionConnector
 
     **Universal Trade-Offs:**
     - execution_urgency: 0.0 (patient) → 1.0 (urgent/immediate)
