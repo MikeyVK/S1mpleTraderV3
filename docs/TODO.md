@@ -143,6 +143,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 - [ ] **DTO_ARCHITECTURE.md: Major sync with authoritative docs** (2025-12-03) 🔴 HIGH PRIORITY
   - **Issue:** DTO_ARCHITECTURE.md is out of sync with leidende architectuur docs
   - **Last Updated:** 2025-11-09 (outdated!)
+  - **Current Length:** 1359 lines (exceeds 1000 line Architecture limit!)
   - **Root Cause:** Document drifted during rapid architecture evolution
   
   **Authoritative Sources (SSOT - Single Source of Truth):**
@@ -154,7 +155,30 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   | TRADE_LIFECYCLE.md | 2025-11-27 | ✅ CORRECT |
   | Code (backend/dtos/) | Current | ✅ SSOT |
   
+  **DOCUMENTATION REQUIREMENTS (per DOCUMENTATION_MAINTENANCE.md):**
+  - **Max Lines:** 1000 (Architecture docs) - Currently 1359 → MUST REDUCE
+  - **Template:** ARCHITECTURE_TEMPLATE.md applies
+  - **Numbered Sections:** Required (## 1., ### 1.1.)
+  - **Mermaid Diagrams:** For visualization
+  - **NO Implementation Code:** Link to source files
+  - **Focus:** WHAT and WHY, not HOW
+  - **Cross-References:** Link, don't duplicate (Single Source of Truth)
+  - **Status Lifecycle:** DRAFT → PRELIMINARY → APPROVED → DEFINITIVE
+  
   **REFACTORING PLAN:**
+  
+  ### Phase 0: Structure Analysis & Compression Strategy
+  - [ ] **Analyze current structure** (1359 lines - 359 over limit)
+    - Platform DTOs: Origin, PlatformDataDTO (~130 lines)
+    - Analysis DTOs: Signal, Risk, StrategyDirective (~380 lines)
+    - Planning DTOs: EntryPlan, SizePlan, ExitPlan, ExecutionPlan (~370 lines)
+    - Execution DTOs: ExecutionCommand, ExecutionCommandBatch, ExecutionGroup (~400 lines)
+    - Cross-Cutting: CausalityChain, DispositionEnvelope (~80 lines?)
+  - [ ] **Decide compression strategy:**
+    - Option A: Compress "WHY NOT included" and verbose rationale sections
+    - Option B: Move detailed field rationale to docs/development/backend/dtos/ design docs
+    - Option C: Split into multiple architecture docs (last resort)
+  - [ ] **Apply ARCHITECTURE_TEMPLATE structure**
   
   ### Phase 1: Remove Non-Existent Components
   - [ ] **Remove ExecutionTranslator** (10+ occurrences)
@@ -194,19 +218,31 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   ### Phase 6: Code SSOT Verification
   - [ ] Cross-check all DTO fields with actual code in backend/dtos/
   - [ ] Verify TradePlan DTO is documented (added 2025-11-20)
-  - [ ] Verify Order DTO is documented (added 2025-11-xx)
-  - [ ] Verify Fill DTO is documented (added 2025-11-xx)
-  - [ ] Remove any deprecated DTOs (ExecutionRequest rejected)
+  - [ ] Verify Order DTO is documented (added Phase 5.1)
+  - [ ] Verify Fill DTO is documented (added Phase 5.2)
+  - [ ] Remove any deprecated DTOs (ExecutionRequest rejected section)
   
-  ### Phase 7: Final Cleanup
-  - [ ] Update "Last Updated" date
-  - [ ] Update "Version" number
-  - [ ] Verify all cross-references are valid
-  - [ ] Check document length (<300 lines per agent.md guideline?)
+  ### Phase 7: Documentation Compliance
+  - [ ] **Template compliance** (ARCHITECTURE_TEMPLATE.md):
+    - Verify proper header (Status, Version, Last Updated)
+    - Verify Purpose and Scope sections
+    - Add Prerequisites section if needed
+    - Verify Related Documentation section with link definitions
+    - Verify Version History section exists
+  - [ ] **Apply numbered sections** (## 1., ### 1.1.) if not already
+  - [ ] **Verify cross-references** - link don't duplicate
+  - [ ] **Update architecture/README.md** if structure changed
+  
+  ### Phase 8: Final Cleanup
+  - [ ] Update "Last Updated" to 2025-12-03
+  - [ ] Update "Version" to 2.0
+  - [ ] Set Status to DEFINITIVE (reflects implemented reality)
+  - [ ] **Verify document length** (<1000 lines for Architecture!)
+  - [ ] Run link check (no broken references)
   
   **Scope:** docs/architecture/DTO_ARCHITECTURE.md + backend/dtos/strategy/execution_plan.py
   **Priority:** High (documentation out of sync with reality)
-  **Estimated Effort:** 2-3 hours careful review
+  **Estimated Effort:** 3-4 hours careful review + compression
 
 - [x] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27) **RESOLVED**
   - **Commit:** `3b45af6` - refactor(dto): remove DCA from ExecutionStrategyType enum
