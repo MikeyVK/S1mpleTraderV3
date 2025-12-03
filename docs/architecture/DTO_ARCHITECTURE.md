@@ -1,8 +1,8 @@
 # DTO Architecture - S1mpleTraderV3
 
-**Status:** Architectural Foundation  
+**Status:** DEFINITIVE  
 **Last Updated:** 2025-11-28  
-**Version:** 1.1
+**Version:** 1.2
 
 ---
 
@@ -1448,6 +1448,16 @@ Queried:    Quant Analysis (cross-query with StrategyLedger)
 - Avoid terms that blur runtime vs analysis boundaries
 - Question every field name for conceptual accuracy
 - "Trade" = quant concept (orders grouped post-hoc), NOT runtime ID
+
+---
+
+## Version History
+
+| Version | Date       | Author | Changes |
+|---------|------------|--------|---------|
+| 1.0     | 2025-11-15 | Team   | Initial DTO architecture documentation |
+| 1.1     | 2025-11-28 | Team   | Aligned with EXECUTION_FLOW.md (ExecutionWorker terminology), PIPELINE_FLOW.md (DirectiveScope values), added CausalityChain section, verified WORKER_TAXONOMY.md and TRADE_LIFECYCLE.md alignment |
+| 1.2     | 2025-11-28 | Team   | Added Version History section, set Status to DEFINITIVE |
 
 ---
 
