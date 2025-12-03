@@ -140,31 +140,73 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Scope:** backend/dtos/strategy/strategy_directive.py (ExecutionDirective class)
   - **Priority:** High (architectural violation)
 
-- [ ] **DTO_ARCHITECTURE.md: Major sync with authoritative docs** (2025-12-02) 🔴 HIGH PRIORITY
+- [ ] **DTO_ARCHITECTURE.md: Major sync with authoritative docs** (2025-12-03) 🔴 HIGH PRIORITY
   - **Issue:** DTO_ARCHITECTURE.md is out of sync with leidende architectuur docs
-  - **Problem:** References non-existent `ExecutionTranslator` component (10+ occurrences)
-  - **Root Cause:** `ExecutionTranslator` was a work title that never became a real component
-  - **Authoritative Sources (these are CORRECT):**
-    - EXECUTION_FLOW.md - No ExecutionTranslator
-    - PIPELINE_FLOW.md - No ExecutionTranslator  
-    - WORKER_TAXONOMY.md - No ExecutionTranslator
-    - TRADE_LIFECYCLE.md - No ExecutionTranslator
-  - **Actual Architecture:**
-    - ExecutionPlanner → produces ExecutionPlan with trade-offs
-    - ExecutionWorker → executes via IExecutionConnector
-    - NO separate translator layer exists or will exist
-  - **Files to Update:**
-    1. `docs/architecture/DTO_ARCHITECTURE.md` - Remove all ExecutionTranslator references
-    2. `backend/dtos/strategy/execution_plan.py` - Update docstrings (lines 20, 47, 53-54)
-  - **Specific Changes in DTO_ARCHITECTURE.md:**
-    - Line 863: Remove ExecutionTranslator from Producer/Consumer table
+  - **Last Updated:** 2025-11-09 (outdated!)
+  - **Root Cause:** Document drifted during rapid architecture evolution
+  
+  **Authoritative Sources (SSOT - Single Source of Truth):**
+  | Document | Last Updated | Status |
+  |----------|--------------|--------|
+  | EXECUTION_FLOW.md | 2025-11-27 | ✅ CORRECT |
+  | PIPELINE_FLOW.md | 2025-11-28 | ✅ CORRECT |
+  | WORKER_TAXONOMY.md | 2025-11-27 | ✅ CORRECT |
+  | TRADE_LIFECYCLE.md | 2025-11-27 | ✅ CORRECT |
+  | Code (backend/dtos/) | Current | ✅ SSOT |
+  
+  **REFACTORING PLAN:**
+  
+  ### Phase 1: Remove Non-Existent Components
+  - [ ] **Remove ExecutionTranslator** (10+ occurrences)
+    - Line 863: Remove from Producer/Consumer table
     - Line 871-876: Remove "Translator maps to..." from field descriptions
     - Line 887-889: Update "WHY NOT included" section
     - Line 898: Remove from lifecycle
     - Line 906: Remove from design decisions
     - Line 992: Remove from ExecutionCommand table
-  - **Scope:** Architecture docs + code docstrings
-  - **Priority:** High (documentation out of sync with reality)
+  - [ ] **Update execution_plan.py docstrings** (lines 20, 47, 53-54)
+    - Remove "Translation Pattern" section referencing ExecutionTranslator
+  
+  ### Phase 2: Align with EXECUTION_FLOW.md
+  - [ ] Verify ExecutionPlanner role matches (4th TradePlanner, read-only Ledger)
+  - [ ] Verify ExecutionWorker role matches (full CRUD, container ownership)
+  - [ ] Add StrategyJournalWriter references if missing
+  - [ ] Verify ID propagation pattern matches (Origin → CausalityChain → OrderID → FillID)
+  
+  ### Phase 3: Align with PIPELINE_FLOW.md
+  - [ ] Verify phase numbering matches (0-6 phases)
+  - [ ] Verify StrategyDirective description matches Phase 3
+  - [ ] Verify TradePlanner descriptions match Phase 4
+  - [ ] Verify ExecutionCommandBatch flow matches Phase 5
+  
+  ### Phase 4: Align with WORKER_TAXONOMY.md
+  - [ ] Verify 6 worker categories match Producer/Consumer tables
+  - [ ] Verify StrategyCache vs EventBus output patterns
+  - [ ] Verify PlanningWorker output pattern (set_result_dto for plans)
+  - [ ] Verify ExecutionWorker description (no EventBus output, terminal worker)
+  
+  ### Phase 5: Align with TRADE_LIFECYCLE.md
+  - [ ] Verify container hierarchy (TradePlan → ExecutionGroup → Order → Fill)
+  - [ ] Verify Ledger access patterns per worker
+  - [ ] Verify ExecutionAction enum descriptions match
+  - [ ] Verify DirectiveScope descriptions match
+  
+  ### Phase 6: Code SSOT Verification
+  - [ ] Cross-check all DTO fields with actual code in backend/dtos/
+  - [ ] Verify TradePlan DTO is documented (added 2025-11-20)
+  - [ ] Verify Order DTO is documented (added 2025-11-xx)
+  - [ ] Verify Fill DTO is documented (added 2025-11-xx)
+  - [ ] Remove any deprecated DTOs (ExecutionRequest rejected)
+  
+  ### Phase 7: Final Cleanup
+  - [ ] Update "Last Updated" date
+  - [ ] Update "Version" number
+  - [ ] Verify all cross-references are valid
+  - [ ] Check document length (<300 lines per agent.md guideline?)
+  
+  **Scope:** docs/architecture/DTO_ARCHITECTURE.md + backend/dtos/strategy/execution_plan.py
+  **Priority:** High (documentation out of sync with reality)
+  **Estimated Effort:** 2-3 hours careful review
 
 - [x] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27) **RESOLVED**
   - **Commit:** `3b45af6` - refactor(dto): remove DCA from ExecutionStrategyType enum
