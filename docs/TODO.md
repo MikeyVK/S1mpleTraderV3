@@ -195,11 +195,14 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - docs/development/#Archief/* 
     - docs/development/251108_1530 ChatLog.md
   
-  ### Phase 2: Align with EXECUTION_FLOW.md
-  - [ ] Verify ExecutionPlanner role matches (4th TradePlanner, read-only Ledger)
-  - [ ] Verify ExecutionWorker role matches (full CRUD, container ownership)
-  - [ ] Add StrategyJournalWriter references if missing
-  - [ ] Verify ID propagation pattern matches (Origin → CausalityChain → OrderID → FillID)
+  ### Phase 2: Align with EXECUTION_FLOW.md ✅ COMPLETED
+  - [x] **Verified ExecutionPlanner role** (4th TradePlanner, read-only Ledger)
+  - [x] **Updated ExecutionHandler → ExecutionWorker** (20+ occurrences aligned with WORKER_TAXONOMY.md)
+  - [x] **Added StrategyJournalWriter references** (replaced "Journal" in Producer/Consumer tables)
+  - [x] **Documented ID propagation pattern** (added full pattern to CausalityChain section)
+  - [x] **Added CausalityChain documentation** (complete Cross-Cutting DTOs section)
+  - [x] **Updated cross-references** (added WORKER_TAXONOMY.md, TRADE_LIFECYCLE.md links)
+  - [x] **Updated version/date** (1.1, 2025-11-28)
   
   ### Phase 3: Align with PIPELINE_FLOW.md
   - [ ] Verify phase numbering matches (0-6 phases)

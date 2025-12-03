@@ -1,8 +1,8 @@
 # DTO Architecture - S1mpleTraderV3
 
 **Status:** Architectural Foundation  
-**Last Updated:** 2025-11-09  
-**Version:** 1.0
+**Last Updated:** 2025-11-28  
+**Version:** 1.1
 
 ---
 
@@ -25,7 +25,8 @@ This document describes **WHY each DTO exists** and **WHY each field exists**.
 **Cross-references:**
 - [PIPELINE_FLOW.md](PIPELINE_FLOW.md) - Phase sequencing (WHAT happens WHEN)
 - [EXECUTION_FLOW.md](EXECUTION_FLOW.md) - Sync/async flows + SRP responsibilities
-- [WORKER_DATA_ACCESS.md](WORKER_DATA_ACCESS.md) - Data access patterns
+- [WORKER_TAXONOMY.md](WORKER_TAXONOMY.md) - Worker categories and responsibilities
+- [TRADE_LIFECYCLE.md](TRADE_LIFECYCLE.md) - Container hierarchy and Ledger access patterns
 
 ---
 
@@ -220,7 +221,7 @@ Never:      Stored long-term (only payload persists in StrategyCache)
 |------|-----------|---------|
 | **Producer** | SignalDetector (any subtype) | Emits Signal when pattern detected (FVG, MSS, breakout, etc.) |
 | **Consumers** | StrategyPlanner | Decision input (combines Signal + Risk + Context) |
-| | Journal | Persistence (historical pattern analysis) |
+| | StrategyJournalWriter | Persists signal context for complete trade story analysis |
 
 **Field Rationale:**
 
@@ -330,7 +331,7 @@ Signal is pure detection output - no decisions, no planning, no execution detail
 |------|-----------|---------|
 | **Producer** | RiskMonitor (any subtype) | Emits Risk when threat detected (drawdown, volatility spike, correlation break, etc.) |
 | **Consumers** | StrategyPlanner | Decision input (combines Signal + Risk + Context) |
-| | Journal | Persistence (historical risk analysis) |
+| | StrategyJournalWriter | Persists risk context for complete trade story analysis |
 
 **Field Rationale:**
 
@@ -443,7 +444,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 | | ExitPlanner | Reads exit_directive for exit constraints |
 | | SizePlanner | Reads size_directive for sizing constraints |
 | | ExecutionPlanner | Reads execution_directive for execution constraints |
-| | Journal | Persistence (decision audit trail) |
+| | StrategyJournalWriter | Persists directive for decision audit trail |
 
 **Field Rationale:**
 
@@ -480,7 +481,7 @@ Created:    StrategyPlanner (combines Signal + Risk + Context → decision)
 Extended:   causality.strategy_directive_id = directive_id by StrategyPlanner
 Consumed:   Role-based planners (EntryPlanner, SizePlanner, ExitPlanner, ExecutionPlanner)
             → Each planner reads its corresponding sub-directive
-Enriched:   order_ids added after ExecutionHandler places orders
+Enriched:   order_ids added after ExecutionWorker places orders
 Persisted:  StrategyJournal (complete decision audit trail)
 Referenced: Throughout execution pipeline via causality.strategy_directive_id
 Modified:   Post-creation (order_ids tracking, not frozen)
@@ -646,7 +647,7 @@ StrategyDirective (strategic constraints)
 ```
 Created:    EntryPlanner (from StrategyDirective.entry_directive constraints)
 Validated:  PlanningAggregator (checks order_type vs price consistency)
-Consumed:   ExecutionHandler (places order based on plan)
+Consumed:   ExecutionWorker (places order based on plan)
 Aggregated: PlanningAggregator adds plan_id to ExecutionCommand
 Never:      Modified after execution starts
 ```
@@ -727,7 +728,7 @@ Never:      Modified after execution starts
 ```
 Created:    SizePlanner (from StrategyDirective.size_directive + account state)
 Validated:  RiskManager (checks against account limits)
-Consumed:   ExecutionHandler (places order with position_size)
+Consumed:   ExecutionWorker (places order with position_size)
 Aggregated: PlanningAggregator adds plan_id to ExecutionCommand
 Never:      Modified after execution starts
 ```
@@ -807,7 +808,7 @@ Never:      Modified after execution starts
 Created:    ExitPlanner (from StrategyDirective.exit_directive + entry price + risk tolerance)
 Validated:  PlanningAggregator (checks stop_loss_price vs entry_price consistency)
 Aggregated: PlanningAggregator adds plan_id to ExecutionCommand
-Consumed:   ExecutionCommand → ExecutionHandler (places stop loss/take profit orders)
+Consumed:   ExecutionCommand → ExecutionWorker (places stop loss/take profit orders)
 Finalized:  ExitPlan "dies" when exit orders are created (immutable, no updates)
 Never:      Modified after creation (frozen - dynamic logic creates new StrategyDirective)
 ```
@@ -1019,7 +1020,7 @@ PlanningAggregator
 Created:    PlanningAggregator (aggregates 4 plans + causality)
 Validated:  At least 1 plan required (cannot be empty command)
 Nested in:  Always nested in ExecutionCommandBatch
-Consumed:   ExecutionHandler translates → connector orders
+Consumed:   ExecutionWorker translates → connector orders
 Grouped:    ExecutionCommandBatch coordinates atomic execution
 Tracked:    ExecutionGroup tracks multi-order execution progress
 Modified:   Never modified after creation (frozen - new command for changes)
@@ -1050,7 +1051,7 @@ Modified:   Never modified after creation (frozen - new command for changes)
 - command_id format: `EXC_YYYYMMDD_HHMMSS_hash` (military datetime)
 - At least 1 plan: entry_plan OR size_plan OR exit_plan OR execution_plan
 - causality: Complete chain validation (all required IDs present)
-- Plan consistency: Validated by ExecutionHandler (entry+size for new trade, etc)
+- Plan consistency: Validated by ExecutionWorker (entry+size for new trade, etc)
 
 **Use Cases:**
 
@@ -1081,7 +1082,7 @@ Modified:   Never modified after creation (frozen - new command for changes)
 | Role | Component | Purpose |
 |------|-----------|---------|
 | **Producer** | PlanningAggregator | ONLY producer - bundles 1-N commands + sets execution_mode/timeout/etc |
-| **Consumers** | ExecutionHandler | Executes batch according to execution_mode |
+| **Consumers** | ExecutionWorker | Executes batch according to execution_mode |
 
 **Field Rationale:**
 
@@ -1115,8 +1116,8 @@ Created:    PlanningAggregator (when all plans per trade complete)
             - Bundles 1-N ExecutionCommands
             - Adds metadata (strategy_directive_id, trade_count)
 Validated:  Min 1 command, unique command IDs, ATOMIC → rollback_on_failure=True
-Consumed:   ExecutionHandler executes commands per execution_mode
-Coordinated: ExecutionHandler manages execution coordination (SEQUENTIAL/PARALLEL/ATOMIC)
+Consumed:   ExecutionWorker executes commands per execution_mode
+Coordinated: ExecutionWorker manages execution coordination (SEQUENTIAL/PARALLEL/ATOMIC)
 Finalized:  Batch completes (all succeed) or rolls back (any fail + rollback_on_failure)
 Never:      Modified after creation (frozen)
 ```
@@ -1144,7 +1145,7 @@ Never:      Modified after creation (frozen)
 
 - **Decision 6:** PlanningAggregator fills ALL fields
   - Rationale: Clear responsibility. PlanningAggregator knows StrategyDirective scope → determines execution_mode. Sets sensible defaults (timeout=30s, rollback=True).
-  - Alternative rejected: ExecutionHandler decides (duplicates logic, violates SRP)
+  - Alternative rejected: ExecutionWorker decides (duplicates logic, violates SRP)
 
 - **Decision 7:** metadata field
   - Rationale: Debugging aid (strategy_directive_id, trade_count). Minimal (not full strategy context). Optional.
@@ -1183,8 +1184,8 @@ Never:      Modified after creation (frozen)
 
 | Role | Component | Purpose |
 |------|-----------|---------|
-| **Producer** | ExecutionHandler | Creates group when spawning multi-order strategy (TWAP, ICEBERG, etc) |
-| **Consumers** | ExecutionHandler | Updates group as orders spawn, fill, complete |
+| **Producer** | ExecutionWorker | Creates group when spawning multi-order strategy (TWAP, ICEBERG, etc) |
+| **Consumers** | ExecutionWorker | Updates group as orders spawn, fill, complete |
 | | (Future) PositionTracker | Aggregates fills across group orders |
 | | (Future) RiskMonitor | Monitors group exposure and cancels if risk threshold breached |
 
@@ -1192,23 +1193,23 @@ Never:      Modified after creation (frozen)
 
 | Field | Type | Required | WHY it exists |
 |-------|------|----------|---------------|
-| `group_id` | str | Yes | Unique execution group identifier (EXG_ prefix). ExecutionHandler generates. Enables tracking group → orders. |
+| `group_id` | str | Yes | Unique execution group identifier (EXG_ prefix). ExecutionWorker generates. Enables tracking group → orders. |
 | `parent_command_id` | str | Yes | ExecutionCommand that spawned this group. Links group to originating command. Causal traceability. |
-| `execution_strategy` | ExecutionStrategyType | Yes | Strategy type: SINGLE, TWAP, VWAP, ICEBERG, DCA, LAYERED, POV. Determines coordination logic. ExecutionHandler sets based on ExecutionPlan hints. |
-| `order_ids` | List[str] | Yes | Connector order IDs in this group (unique values). ExecutionHandler appends as orders spawn. Tracks all spawned orders. Empty initially. |
-| `status` | GroupStatus | Yes | Lifecycle status: PENDING, ACTIVE, COMPLETED, CANCELLED, FAILED, PARTIAL. ExecutionHandler updates as execution progresses. |
-| `created_at` | datetime | Yes | Group creation timestamp (UTC). ExecutionHandler sets. Audit trail. |
-| `updated_at` | datetime | Yes | Last update timestamp (UTC). ExecutionHandler refreshes on each update. Tracks freshness. |
+| `execution_strategy` | ExecutionStrategyType | Yes | Strategy type: SINGLE, TWAP, VWAP, ICEBERG, DCA, LAYERED, POV. Determines coordination logic. ExecutionWorker sets based on ExecutionPlan hints. |
+| `order_ids` | List[str] | Yes | Connector order IDs in this group (unique values). ExecutionWorker appends as orders spawn. Tracks all spawned orders. Empty initially. |
+| `status` | GroupStatus | Yes | Lifecycle status: PENDING, ACTIVE, COMPLETED, CANCELLED, FAILED, PARTIAL. ExecutionWorker updates as execution progresses. |
+| `created_at` | datetime | Yes | Group creation timestamp (UTC). ExecutionWorker sets. Audit trail. |
+| `updated_at` | datetime | Yes | Last update timestamp (UTC). ExecutionWorker refreshes on each update. Tracks freshness. |
 | `target_quantity` | Decimal \| None | No | Planned total quantity. From SizePlan. Enables progress calculation (filled/target ratio). Optional (not all strategies have fixed target). |
-| `filled_quantity` | Decimal \| None | No | Actual filled quantity so far. ExecutionHandler aggregates from fill events. Tracks execution progress. |
-| `cancelled_at` | datetime \| None | No | Cancellation timestamp (mutually exclusive with completed_at). ExecutionHandler sets on cancel. Audit trail. |
-| `completed_at` | datetime \| None | No | Completion timestamp (mutually exclusive with cancelled_at). ExecutionHandler sets on completion. Audit trail. |
-| `metadata` | Dict \| None | No | Strategy-specific parameters (e.g., TWAP: chunk_size, interval_seconds, chunks_total). ExecutionHandler extracts from ExecutionPlan hints. Debugging and analysis. |
+| `filled_quantity` | Decimal \| None | No | Actual filled quantity so far. ExecutionWorker aggregates from fill events. Tracks execution progress. |
+| `cancelled_at` | datetime \| None | No | Cancellation timestamp (mutually exclusive with completed_at). ExecutionWorker sets on cancel. Audit trail. |
+| `completed_at` | datetime \| None | No | Completion timestamp (mutually exclusive with cancelled_at). ExecutionWorker sets on completion. Audit trail. |
+| `metadata` | Dict \| None | No | Strategy-specific parameters (e.g., TWAP: chunk_size, interval_seconds, chunks_total). ExecutionWorker extracts from ExecutionPlan hints. Debugging and analysis. |
 
 **WHY NOT frozen:**
 - ExecutionGroup is mutable during execution lifecycle (tracking entity, not specification)
 - status evolves: PENDING → ACTIVE → COMPLETED/CANCELLED/FAILED/PARTIAL
-- order_ids list grows as ExecutionHandler spawns orders
+- order_ids list grows as ExecutionWorker spawns orders
 - filled_quantity increases as orders fill
 - updated_at refreshed on each state change
 - Timestamps set when transitions occur (cancelled_at, completed_at)
@@ -1222,15 +1223,15 @@ Never:      Modified after creation (frozen)
 
 **Lifecycle:**
 ```
-Created:    ExecutionHandler (when spawning multi-order strategy)
+Created:    ExecutionWorker (when spawning multi-order strategy)
             - Status: PENDING, order_ids=[], created_at/updated_at set
             - Based on ExecutionPlan hints (preferred_execution_style, chunk_count_hint)
-Spawning:   ExecutionHandler appends order_ids as orders created
+Spawning:   ExecutionWorker appends order_ids as orders created
             - Status: PENDING → ACTIVE (first order placed)
             - updated_at refreshed
-Progress:   ExecutionHandler updates filled_quantity as fill events arrive
+Progress:   ExecutionWorker updates filled_quantity as fill events arrive
             - updated_at refreshed on each update
-Finalized:  ExecutionHandler transitions status
+Finalized:  ExecutionWorker transitions status
             - ACTIVE → COMPLETED (all orders filled)
             - ACTIVE → CANCELLED (group cancelled, cancelled_at set)
             - ACTIVE → FAILED (execution error)
@@ -1262,8 +1263,8 @@ Finalized:  ExecutionHandler transitions status
   - Rationale: Cannot fill more than target (validation prevents data corruption). Over-fills indicate bug.
   - Alternative rejected: No validation (allows impossible states, silent bugs)
 
-- **Decision 7:** ExecutionHandler owns lifecycle
-  - Rationale: Single owner prevents race conditions. ExecutionHandler creates, updates, finalizes groups.
+- **Decision 7:** ExecutionWorker owns lifecycle
+  - Rationale: Single owner prevents race conditions. ExecutionWorker creates, updates, finalizes groups.
   - Alternative rejected: Multiple writers (race conditions, state corruption)
 
 **Validation Strategy:**
@@ -1315,11 +1316,118 @@ Transition Guards:
 
 ## Cross-Cutting DTOs
 
-**Status:** TODO
+Cross-cutting DTOs provide infrastructure for causality tracking and worker routing.
+These DTOs span all layers and enable complete trade story reconstruction.
 
-Planned coverage:
-- CausalityChain (ID-only tracking)
-- DispositionEnvelope (worker routing)
+---
+
+### CausalityChain
+
+**Purpose:** ID-only causality tracking for complete trade story reconstruction
+
+**WHY this DTO exists:**
+- Captures complete decision chain: Origin → Signals → Risks → Directive → Orders → Fills
+- ID-only design (no full DTO copies) enables efficient storage
+- Enables quant analysis: "Why did this trade happen?"
+- StrategyJournalWriter persists causality for audit trail
+- Cross-query StrategyJournal ↔ StrategyLedger via order_id/fill_id correlation
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | StrategyPlanner | Creates chain with origin, signal_ids, risk_ids |
+| **Extended by** | ExecutionWorker | Adds order_ids, fill_ids during execution |
+| **Consumers** | StrategyJournalWriter | Persists complete chain for audit trail |
+| | Quant Analysis | Reconstructs complete trade story |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `origin` | Origin | Yes | Platform data source that triggered flow. Foundation for causal chain. |
+| `signal_ids` | list[str] | Yes | Signal IDs that contributed to decision. Enables signal confluence analysis. |
+| `risk_ids` | list[str] | Yes | Risk IDs that were assessed. Enables risk factor analysis. |
+| `strategy_directive_id` | str | Yes | StrategyDirective that captured decision. Central link in chain. |
+| `plan_ids` | list[str] | No | Plan IDs (Entry/Size/Exit/Execution). Tracks planning decisions. |
+| `order_ids` | list[str] | No | Order IDs created from directive. Added by ExecutionWorker. |
+| `fill_ids` | list[str] | No | Fill IDs from order execution. Added by ExecutionWorker. |
+
+**ID Propagation Pattern:**
+```
+Origin (in PlatformDataDTO)
+    ↓
+CausalityChain.origin = Origin
+    ↓
+Signal/Risk IDs added by StrategyPlanner
+    ↓
+Plan IDs added by TradePlanners
+    ↓
+ExecutionWorker creates OrderID
+    ↓
+CausalityChain.order_ids.append(order_id)
+    ↓
+StrategyJournalWriter writes: causality + order_id
+    ↓
+(async) ExecutionWorker creates FillID
+    ↓
+CausalityChain.fill_ids.append(fill_id)
+    ↓
+StrategyJournalWriter writes: causality + order_id + fill_id
+    ↓
+Complete trade story: WHY → WHAT → HOW → OUTCOME
+```
+
+**WHY NOT frozen:**
+- Chain grows during pipeline flow (IDs added incrementally)
+- order_ids and fill_ids added after creation
+- Mutable by design for progressive enrichment
+
+**Lifecycle:**
+```
+Created:    StrategyPlanner (origin + signal_ids + risk_ids)
+Extended:   TradePlanners (plan_ids)
+Extended:   ExecutionWorker (order_ids during order placement)
+Extended:   ExecutionWorker (fill_ids during async fill processing)
+Persisted:  StrategyJournalWriter (complete trade story)
+Queried:    Quant Analysis (cross-query with StrategyLedger)
+```
+
+**Cross-reference:** [EXECUTION_FLOW.md](EXECUTION_FLOW.md) - ID Propagation Pattern section
+
+---
+
+### DispositionEnvelope
+
+**Purpose:** Worker output routing control
+
+**WHY this DTO exists:**
+- Standardizes worker output handling (STORE, PUBLISH, STORE_AND_PUBLISH)
+- Decouples workers from routing decisions
+- Enables consistent EventBus and StrategyCache integration
+- BaseWorker processes disposition to determine routing
+
+**Producer/Consumer:**
+
+| Role | Component | Purpose |
+|------|-----------|---------|
+| **Producer** | Any Worker | Wraps output DTO with routing instruction |
+| **Consumer** | BaseWorker | Processes envelope to route output |
+
+**Field Rationale:**
+
+| Field | Type | Required | WHY it exists |
+|-------|------|----------|---------------|
+| `disposition` | Disposition | Yes | Routing instruction: STORE, PUBLISH, STORE_AND_PUBLISH |
+| `payload` | BaseModel | Yes | The actual DTO to route |
+| `event_name` | str | No | Event name for PUBLISH disposition |
+
+**Disposition Types:**
+- **STORE**: Store in StrategyCache only (intermediate results)
+- **PUBLISH**: Publish to EventBus only (signals, risks)
+- **STORE_AND_PUBLISH**: Both (rare, for debugging)
+
+**Cross-reference:** [WORKER_TAXONOMY.md](WORKER_TAXONOMY.md) - Worker Communication Patterns
 
 ---
 
@@ -1353,4 +1461,5 @@ Planned coverage:
 
 **Responsible:** Development Team  
 **Review frequency:** Per DTO change (living document)
+
 
