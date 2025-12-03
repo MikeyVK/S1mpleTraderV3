@@ -429,7 +429,7 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 - StrategyPlanner produces high-level trade decisions (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
 - Separates "strategic decision" from "tactical planning" (SRP - planners handle execution details)
 - Contains 4 sub-directives (Entry, Size, Exit, Routing) as constraints/hints for specialized planners
-- Scope field discriminates directive type (NEW_TRADE vs MODIFY_ORDER vs CLOSE_ORDER)
+- Scope field discriminates directive type (NEW_TRADE vs MODIFY_EXISTING vs CLOSE_EXISTING)
 - Confidence scoring enables directive prioritization/rejection
 - Causality tracking from signals/risks through directive to execution
 - Bridge between Analysis DTOs (Signal/Risk) and Planning DTOs (EntryPlan/SizePlan/etc)
@@ -454,12 +454,12 @@ Risk is pure threat detection output - no decisions, no mitigation plans, no exe
 | `strategy_planner_id` | str | Yes | Identifies which StrategyPlanner produced directive. Enables planner-specific analysis (which planners perform best?). |
 | `decision_timestamp` | datetime | Yes (auto) | Exact moment of decision (UTC). Point-in-time model. Enables temporal analysis (decision latency, clustering). |
 | `causality` | CausalityChain | Yes | Complete ID chain from origin through signals/risks to this directive. Enables journal reconstruction: "Why this decision?". Foundation for causal analysis. |
-| `scope` | DirectiveScope | Yes | Decision type: NEW_TRADE, MODIFY_ORDER, or CLOSE_ORDER. Discriminates directive semantics. Type-safe routing. |
+| `scope` | DirectiveScope | Yes | Decision type: NEW_TRADE, MODIFY_EXISTING, or CLOSE_EXISTING. Discriminates directive semantics. Type-safe routing. |
 | `confidence` | Decimal | Yes | Decision confidence [0.0-1.0]. Enables directive prioritization/rejection. Low confidence = skip or reduce size. |
-| `target_order_ids` | list[str] | No | Existing order IDs for MODIFY_ORDER/CLOSE_ORDER. Empty for NEW_TRADE. Validated consistency with scope. |
+| `target_plan_ids` | list[str] | No | Existing plan IDs for MODIFY_EXISTING/CLOSE_EXISTING. Empty for NEW_TRADE. Validated consistency with scope. |
 | `entry_directive` | EntryDirective \| None | No | Entry constraints for EntryPlanner. Optional - planner uses defaults if missing. NEW_TRADE typically includes this. |
-| `size_directive` | SizeDirective \| None | No | Sizing constraints for SizePlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_ORDER typically includes this. |
-| `exit_directive` | ExitDirective \| None | No | Exit constraints for ExitPlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_ORDER typically includes this. |
+| `size_directive` | SizeDirective \| None | No | Sizing constraints for SizePlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_EXISTING typically includes this. |
+| `exit_directive` | ExitDirective \| None | No | Exit constraints for ExitPlanner. Optional - planner uses defaults if missing. NEW_TRADE/MODIFY_EXISTING typically includes this. |
 | `execution_directive` | ExecutionDirective \| None | No | Execution constraints for ExecutionPlanner. Optional - planner uses defaults if missing. All scopes may include this. |
 
 **WHY NOT frozen:**
@@ -488,10 +488,10 @@ Modified:   Post-creation (order_ids tracking, not frozen)
 ```
 
 **Design Decisions:**
-- **Decision 1:** Scope enum (NEW_TRADE, MODIFY_ORDER, CLOSE_ORDER)
-  - Rationale: Type-safe directive discrimination. Order-level semantics (not position-level). Compiler-enforced correctness.
+- **Decision 1:** Scope enum (NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING)
+  - Rationale: Type-safe directive discrimination. Position-level semantics for StrategyPlanner. Compiler-enforced correctness.
   - Alternative rejected: String literals (error-prone, no type safety)
-  - Alternative rejected: MODIFY_EXISTING/CLOSE_EXISTING (position-level naming, but operations are order-level)
+  - Alternative rejected: Order-level naming (MODIFY_ORDER/CLOSE_ORDER) - StrategyPlanner operates at position/plan level
 
 - **Decision 2:** 4 optional sub-directives (not required)
   - Rationale: Flexibility - not all directives need all constraints. Planners have defaults. CLOSE_ORDER may only need execution_directive.
@@ -505,8 +505,8 @@ Modified:   Post-creation (order_ids tracking, not frozen)
   - Rationale: Enriched downstream (order_ids tracking). Avoids creating new DTO versions.
   - Alternative rejected: Frozen + separate tracking DTO (complexity, indirection)
 
-- **Decision 5:** target_order_ids validated with scope
-  - Rationale: Prevents invalid states (NEW_TRADE with order IDs, MODIFY_ORDER without IDs)
+- **Decision 5:** target_plan_ids validated with scope
+  - Rationale: Prevents invalid states (NEW_TRADE with plan IDs, MODIFY_EXISTING without IDs)
   - Alternative rejected: No validation (runtime errors, invalid directives)
 
 - **Decision 6:** Confidence required (unlike Signal/Risk optional confidence)
@@ -523,20 +523,20 @@ Modified:   Post-creation (order_ids tracking, not frozen)
 
 **Validation Strategy:**
 - directive_id format: `STR_YYYYMMDD_HHMMSS_hash` (military datetime)
-- scope vs target_order_ids consistency:
-  - NEW_TRADE: target_order_ids must be empty
-  - MODIFY_ORDER/CLOSE_ORDER: target_order_ids must not be empty
+- scope vs target_plan_ids consistency:
+  - NEW_TRADE: target_plan_ids must be empty
+  - MODIFY_EXISTING/CLOSE_EXISTING: target_plan_ids must not be empty
 - confidence: [0.0, 1.0] required
 - decision_timestamp: UTC-enforced (timezone-aware)
 - Sub-directives validated internally (decimal ranges, format checks)
 
 **Scope Semantics:**
 
-| Scope | target_order_ids | Typical Sub-directives | Purpose |
-|-------|------------------|------------------------|---------|
-| NEW_TRADE | Empty (new position) | entry, size, exit, routing | Open new position from signal |
-| MODIFY_ORDER | Not empty (existing orders) | size, exit, routing | Adjust stops, scale position, change routing |
-| CLOSE_ORDER | Not empty (existing orders) | routing (exit urgency) | Close position from exit signal or risk |
+| Scope | target_plan_ids | Typical Sub-directives | Purpose |
+|-------|-----------------|------------------------|---------|
+| NEW_TRADE | Empty (new position) | entry, size, exit, execution | Open new position from signal |
+| MODIFY_EXISTING | Not empty (existing plans) | size, exit, execution | Adjust stops, scale position, change execution |
+| CLOSE_EXISTING | Not empty (existing plans) | execution (exit urgency) | Close position from exit signal or risk |
 
 **Sub-Directive Semantics:**
 
@@ -979,7 +979,7 @@ PlanningAggregator
 **WHY this DTO exists:**
 - PlanningAggregator combines 4 plans → single executable instruction
 - Clean separation: Strategy planning → Execution doing
-- Supports partial updates (NEW_TRADE vs MODIFY_ORDER vs ADD_TO_POSITION)
+- Supports partial updates (NEW_TRADE vs MODIFY_EXISTING vs ADD_TO_POSITION)
 - Complete causality chain for full traceability
 - All plans optional enables flexibility (trailing stop = only exit_plan)
 
@@ -1058,11 +1058,11 @@ Modified:   Never modified after creation (frozen - new command for changes)
 | Use Case | Plans Present | Description |
 |----------|---------------|-------------|
 | NEW_TRADE | Entry + Size + Exit + Execution | Complete new trade setup (all 4 plans) |
-| MODIFY_ORDER (trailing stop) | Exit only | Trailing stop adjustment (only exit_plan) |
-| MODIFY_ORDER (urgency change) | Execution only | Change execution urgency (only execution_plan) |
-| MODIFY_ORDER (size adjust) | Size + Execution | Adjust position size with urgency |
+| MODIFY_EXISTING (trailing stop) | Exit only | Trailing stop adjustment (only exit_plan) |
+| MODIFY_EXISTING (urgency change) | Execution only | Change execution urgency (only execution_plan) |
+| MODIFY_EXISTING (size adjust) | Size + Execution | Adjust position size with urgency |
 | ADD_TO_POSITION | Entry + Size | Scale in (add to existing position) |
-| CLOSE_POSITION | Exit + Execution | Close position with urgency (exit_plan + execution urgency) |
+| CLOSE_EXISTING | Exit + Execution | Close position with urgency (exit_plan + execution urgency) |
 
 ---
 

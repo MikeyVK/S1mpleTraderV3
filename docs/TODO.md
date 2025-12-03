@@ -204,11 +204,11 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - [x] **Updated cross-references** (added WORKER_TAXONOMY.md, TRADE_LIFECYCLE.md links)
   - [x] **Updated version/date** (1.1, 2025-11-28)
   
-  ### Phase 3: Align with PIPELINE_FLOW.md
-  - [ ] Verify phase numbering matches (0-6 phases)
-  - [ ] Verify StrategyDirective description matches Phase 3
-  - [ ] Verify TradePlanner descriptions match Phase 4
-  - [ ] Verify ExecutionCommandBatch flow matches Phase 5
+  ### Phase 3: Align with PIPELINE_FLOW.md ✅ COMPLETED
+  - [x] **Fixed DirectiveScope values** (MODIFY_ORDER/CLOSE_ORDER → MODIFY_EXISTING/CLOSE_EXISTING)
+  - [x] **Fixed target_order_ids → target_plan_ids** (aligns with code SSOT in enums.py)
+  - [x] **Verified phase descriptions** (Phase 3 StrategyDirective, Phase 4 TradePlanners, Phase 5 ExecutionWorker)
+  - [x] **Fixed sub-directive naming** (routing → execution in scope semantics table)
   
   ### Phase 4: Align with WORKER_TAXONOMY.md
   - [ ] Verify 6 worker categories match Producer/Consumer tables
