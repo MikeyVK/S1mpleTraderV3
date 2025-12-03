@@ -210,17 +210,21 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - [x] **Verified phase descriptions** (Phase 3 StrategyDirective, Phase 4 TradePlanners, Phase 5 ExecutionWorker)
   - [x] **Fixed sub-directive naming** (routing → execution in scope semantics table)
   
-  ### Phase 4: Align with WORKER_TAXONOMY.md
-  - [ ] Verify 6 worker categories match Producer/Consumer tables
-  - [ ] Verify StrategyCache vs EventBus output patterns
-  - [ ] Verify PlanningWorker output pattern (set_result_dto for plans)
-  - [ ] Verify ExecutionWorker description (no EventBus output, terminal worker)
+  ### Phase 4: Align with WORKER_TAXONOMY.md ✅ VERIFIED
+  - [x] **6 worker categories match Producer/Consumer tables:**
+    - ContextWorker: Stores to StrategyCache (not in DTO_ARCH, correct - produces plugin DTOs)
+    - SignalDetector: Producer for Signal DTO (7 references)
+    - RiskMonitor: Producer for Risk DTO (8 references)
+    - PlanningWorker: Producers for Plan DTOs (Entry/Size/Exit/ExecutionPlan)
+    - StrategyPlanner: Producer for StrategyDirective
+    - ExecutionWorker: Producer/Consumer for ExecutionGroup (self-updating, no EventBus output)
   
-  ### Phase 5: Align with TRADE_LIFECYCLE.md
-  - [ ] Verify container hierarchy (TradePlan → ExecutionGroup → Order → Fill)
-  - [ ] Verify Ledger access patterns per worker
-  - [ ] Verify ExecutionAction enum descriptions match
-  - [ ] Verify DirectiveScope descriptions match
+  ### Phase 5: Align with TRADE_LIFECYCLE.md ✅ VERIFIED
+  - [x] **Container hierarchy documented:** TradePlan → ExecutionGroup → Order → Fill
+  - [x] **Ledger access patterns:** DTO_ARCHITECTURE correctly describes ExecutionWorker full CRUD
+  - [x] **ExecutionAction enum matches code:** EXECUTE_TRADE, CANCEL_ORDER, MODIFY_ORDER, CANCEL_GROUP
+    - Note: TRADE_LIFECYCLE.md has outdated values (CANCEL_ALL_IN_PLAN, MODIFY_ORDERS) - separate fix
+  - [x] **DirectiveScope matches code:** NEW_TRADE, MODIFY_EXISTING, CLOSE_EXISTING (fixed in Phase 3)
   
   ### Phase 6: Code SSOT Verification
   - [ ] Cross-check all DTO fields with actual code in backend/dtos/
