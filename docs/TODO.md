@@ -140,11 +140,25 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Scope:** backend/dtos/strategy/strategy_directive.py (ExecutionDirective class)
   - **Priority:** High (architectural violation)
 
-- [ ] **DTO_ARCHITECTURE.md: Major sync with authoritative docs** (2025-12-03) 🔴 HIGH PRIORITY
-  - **Issue:** DTO_ARCHITECTURE.md is out of sync with leidende architectuur docs
-  - **Last Updated:** 2025-11-09 (outdated!)
-  - **Current Length:** 1359 lines (exceeds 1000 line Architecture limit!)
-  - **Root Cause:** Document drifted during rapid architecture evolution
+- [x] **DTO_ARCHITECTURE.md: Major sync with authoritative docs** (2025-12-03) ✅ COMPLETED
+  - **Completed:** 2025-11-28
+  - **Final Version:** 1.2 (Status: DEFINITIVE)
+  - **Current Length:** 1475 lines (compression deferred to separate task)
+  
+  **Commits:**
+  - `e60000b` - Phase 1: Remove ExecutionTranslator references
+  - `d671ae7` - Phase 2: EXECUTION_FLOW.md alignment (ExecutionWorker, StrategyJournalWriter, CausalityChain)
+  - `70246a5` - Phase 3: PIPELINE_FLOW.md alignment (DirectiveScope values)
+  - `4c16347` - Phases 4-5: WORKER_TAXONOMY.md + TRADE_LIFECYCLE.md verified
+  - `40463fe` - Phase 8: Version History, DEFINITIVE status
+  
+  **Deferred to Separate Task:**
+  - Document compression (1475 lines → target <1000)
+  - Numbered sections (## 1., ### 1.1.)
+  - Move Design Decisions to development docs
+  
+  <details>
+  <summary>📋 Original Analysis & Authoritative Sources (click to expand)</summary>
   
   **Authoritative Sources (SSOT - Single Source of Truth):**
   | Document | Last Updated | Status |
@@ -269,6 +283,8 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   **Scope:** docs/architecture/DTO_ARCHITECTURE.md + backend/dtos/strategy/execution_plan.py
   **Priority:** High (documentation out of sync with reality)
   **Completed:** 2025-11-28
+  
+  </details>
 
 - [x] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27) **RESOLVED**
   - **Commit:** `3b45af6` - refactor(dto): remove DCA from ExecutionStrategyType enum
