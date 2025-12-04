@@ -181,6 +181,56 @@ Information appears in multiple contexts?
 
 ---
 
+## TODO.md Archiving
+
+**Principle:** TODO.md stays focused on OPEN work. Completed items are archived.
+
+### Archive Rules
+
+| Item Status | Age | Action |
+|-------------|-----|--------|
+| `[ ]` Open | Any | Keep in TODO.md |
+| `[x]` Completed | < 7 days | Keep in TODO.md (recent context) |
+| `[x]` Completed | ≥ 7 days | Move to `docs/archive/TODO_COMPLETED.md` |
+| `[-]` In Progress | Any | Keep in TODO.md |
+
+### Archive Structure
+
+```
+docs/
+├── TODO.md                         # OPEN + recent completed (7 days)
+└── archive/
+    └── TODO_COMPLETED.md           # All archived completed tasks
+```
+
+### Archive Format
+
+When moving completed items to `TODO_COMPLETED.md`:
+
+```markdown
+## December 2025
+
+- [x] **Task Name** (YYYY-MM-DD) ✅ COMPLETED
+  - Commit: `abc1234`
+  - Summary: Brief description of what was done
+```
+
+### Archive Trigger
+
+Archive should be performed:
+- **Weekly:** During regular maintenance
+- **When TODO.md exceeds 400 lines:** Immediate archive of old completed items
+- **Before major milestones:** Clean slate for new phase
+
+### What NOT to Archive
+
+- Open items `[ ]` - Never archive, still actionable
+- Discussion items with `<details>` - Keep until resolved
+- Blocked items - Keep visible until unblocked
+- Items with unresolved sub-tasks - Keep until all sub-tasks complete
+
+---
+
 ## AI-Assisted Documentation
 
 **See:** [AI_DOC_PROMPTS.md](reference/templates/AI_DOC_PROMPTS.md)
