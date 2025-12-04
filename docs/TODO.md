@@ -251,16 +251,16 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - [x] **ExecutionRequest rejected section:** Kept in Appendix A as historical context
   
   ### Phase 7: Documentation Compliance ⚠️ PARTIAL
-  - [x] **Header:** Status, Version (1.1), Last Updated (2025-11-28) ✅
+  - [x] **Header:** Status, Version (1.2), Last Updated (2025-11-28) ✅
   - [x] **Purpose section:** Present in Executive Summary ✅
   - [x] **Cross-references:** Added in Phase 2 (WORKER_TAXONOMY.md, TRADE_LIFECYCLE.md) ✅
-  - [ ] **1000 LINE LIMIT EXCEEDED:** Currently 1465 lines (limit: 300-1000)
+  - [x] **Version History:** Added in Phase 8 ✅
+  - [ ] **1000 LINE LIMIT EXCEEDED:** Currently 1475 lines (limit: 300-1000)
     - Compression options for future:
       - Move "Design Decisions" to development/backend/dtos/ design docs
       - Compress "WHY NOT included" rationale sections
       - Move "Validation Strategy" details to code docstrings
   - [ ] **Numbered sections not applied** (## 1., ### 1.1.) - cosmetic, low priority
-  - [ ] **Version History section missing** - should add
   
   ### Phase 8: Final Cleanup ✅ COMPLETED
   - [x] **Last Updated:** 2025-11-28
@@ -285,6 +285,154 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   **Completed:** 2025-11-28
   
   </details>
+
+- [ ] **DTO_ARCHITECTURE.md: Review Discussion Points** (2025-12-04) 🔴 OPEN
+  - **Context:** Full document review revealed architectural inconsistencies and open questions
+  - **Status:** DISCUSSION REQUIRED - 21 points to address
+  - **Priority:** High (document claims DEFINITIVE but has unresolved issues)
+  
+  <details>
+  <summary>📋 Discussion Points (21 items - click to expand)</summary>
+  
+  ### ExecutionPlan Semantics
+  
+  1. **ExecutionPlan output is concrete, not trade-offs**
+     - Current: Describes "universal trade-offs" (urgency, visibility, slippage)
+     - Proposed: ExecutionPlan = concrete execution strategy (e.g., TWAP, ICEBERG)
+     - ExecutionPlanner decides strategy based on ExecutionDirective + confidence
+     - Output should be executable plan, not preferences to interpret
+  
+  2. **ExecutionCommand definition needs clarification**
+     - Current: "Final aggregated execution instruction"
+     - Proposed: "Aggregated plans which form a complete execution instruction"
+     - Emphasize: aggregation of Entry/Size/Exit/ExecutionPlan
+  
+  ### Missing DTOs in Taxonomy
+  
+  3. **Order and Fill DTOs missing from DTO Taxonomy**
+     - These exist in code but not documented in taxonomy section
+     - Add to Execution DTOs section (after ExecutionGroup)
+     - Also add TradePlan to taxonomy
+  
+  ### StrategyDirective Issues
+  
+  4. **StrategyDirective "WHY this DTO exists" section cleanup**
+     - a. Remove scope field types from first bullet (DRY - already in Scope section)
+     - b. Replace "Routing" → "Execution" (terminology alignment)
+     - c. **Mutability discussion needed** - Is mutable correct?
+  
+  5. **StrategyDirective confidence field rationale incorrect**
+     - Current: "Low confidence = skip or reduce size"
+     - Problem: Decision to skip is StrategyPlanner's, NOT planners'
+     - Correct: Individual planners use confidence to SELECT planner type
+     - StrategyPlanner already decided to act by emitting directive
+  
+  6. **Rejected DTO needed for StrategyPlanner**
+     - When StrategyPlanner rejects signals/risks, this should be captured
+     - Need: RejectedDirective or RejectionEvent DTO
+     - Must document: WHY rejection occurred (for quant analysis)
+     - Enables: "Why did we NOT trade?" analysis
+  
+  7. **StrategyDirective enrichment violates SRP**
+     - Current: order_ids added post-execution
+     - Problem: Orders/fills are business logic, not strategy concerns
+     - See: TradePlan lifecycle (TradePlan is the anchor, not StrategyDirective)
+     - Action: Remove order_id enrichment from StrategyDirective
+  
+  8. **StrategyDirective lifecycle "referenced" is unclear**
+     - Question: When is StrategyDirective's task complete?
+     - Current: "Referenced throughout execution pipeline"
+     - Need: Stricter lifecycle definition
+  
+  9. **MODIFY_EXISTING scope can apply to entry plans**
+     - Current: Implies only exit/size modifications
+     - Reality: Unfilled entry orders CAN be modified
+     - Update documentation to reflect this
+  
+  ### PlanningAggregator References
+  
+  10. **PlanningAggregator terminology still present**
+      - This aggregation happens in BaseExecutionPlanner boilerplate
+      - Update references to reflect actual implementation
+  
+  11. **Plan validation responsibility**
+      - Without PlanningAggregator, who validates plan content?
+      - Option A: BaseWorker (current implicit assumption)
+      - Option B: ExecutionWorker (consumer validates)
+      - Decision needed
+  
+  ### Dynamic Exit Logic
+  
+  12. **"Dynamic exit logic" needs deeper explanation**
+      - Current: Brief mention in ExitPlan
+      - Need: Full explanation of what this means
+      - Need: Flow implications (PositionMonitor → Signal → new Directive?)
+  
+  ### ExecutionPlan Overhaul
+  
+  13. **ExecutionPlan "WHY this DTO exists" point 4 is wrong**
+      - Current: "Translation layer converts ExecutionPlan"
+      - Reality: ExecutionWorker executes plan, handles Ledger interaction
+      - ExecutionWorker creates orders, passes to IExecutionConnector
+      - IExecutionConnector in ExecutionEnvironment does exchange translation
+  
+  14. **ExecutionPlan field rationales need overhaul**
+      - ExecutionUrgency, VisibilityPreference, PreferredExecutionStyle are NOT concrete
+      - Plan should be concrete AFTER ExecutionPlanner processes ExecutionDirective
+      - Event wiring routes to correct ExecutionWorker (e.g., TWAP worker)
+      - Fields like "urgency" are inputs to planner, not outputs
+  
+  15. **"Universal → Connector Translation Examples" table obsolete**
+      - This translation model is incorrect
+      - Remove or replace with correct flow description
+  
+  16. **Execution DTOs "Architectural Pattern" incorrect**
+      - Current pattern shows PlanningAggregator
+      - ExecutionGroup mentioned too early (it's just an order container)
+      - Update to reflect actual architecture
+  
+  ### ExecutionCommandBatch Fields
+  
+  17. **ExecutionCommandBatch extra fields origin unclear**
+      - Fields: execution_mode, rollback_on_failure, timeout_seconds
+      - Question: Where do these come from?
+      - Hypothesis: StrategyPlanner → StrategyDirective → Batch
+      - If so: Add these fields to StrategyDirective
+      - Or: Other source?
+  
+  18. **Execution Strategy Types table incorrect**
+      - DCA listed as execution strategy
+      - DCA is a PLANNING strategy, not execution
+      - Already fixed in code (commit 3b45af6) but doc still wrong
+  
+  ### CausalityChain & Rejection
+  
+  19. **CausalityChain needs rejection variant**
+      - Current: Only tracks successful decision chains
+      - Needed: Track rejection chains (why NOT traded)
+      - Decision required on structure
+  
+  20. **Order/Fill IDs do NOT belong in StrategyJournal**
+      - Current: "order_ids, fill_ids → StrategyJournal"
+      - Reality: This is business logic, belongs in StrategyLedger
+      - TradePlanID is the cross-query anchor (see TRADE_LIFECYCLE.md)
+  
+  ### Missing State DTOs
+  
+  21. **TradePlan, Order, Fill DTOs missing from document**
+      - These are implemented but not documented
+      - TradePlan: Execution anchor (TPL_ prefix)
+      - Order: Individual order tracking
+      - Fill: Exchange execution confirmation
+      - Add full documentation sections
+  
+  </details>
+  
+  **Next Steps:**
+  1. Schedule architecture discussion session
+  2. Work through items systematically
+  3. Update DTO_ARCHITECTURE.md after decisions
+  4. Update code where needed
 
 - [x] **ExecutionStrategyType: Remove DCA from enum** (2025-11-27) **RESOLVED**
   - **Commit:** `3b45af6` - refactor(dto): remove DCA from ExecutionStrategyType enum
