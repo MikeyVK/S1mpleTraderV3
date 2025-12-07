@@ -239,3 +239,145 @@
 |---------|------|--------|--------|
 | 1.0 | 2025-12-01 | AI Agent | Initial design document |
 | 2.0 | 2025-12-02 | AI Agent | Updated to reflect completed implementation |
+
+---
+
+## 11. ExecutionCommandBatch
+
+ExecutionCommandBatch is combined in the same file (`execution_command.py`).
+
+### 11.1 Identity
+
+| Aspect | Value |
+|--------|-------|
+| **DTO Name** | ExecutionCommandBatch |
+| **ID Prefix** | `BAT_` |
+| **Layer** | Execution |
+| **Status** | ⚠️ Pending refactor (see 11.5) |
+
+### 11.2 Contract
+
+| Role | Component |
+|------|-----------|
+| **Producer** | ExecutionPlanner (boilerplate aggregation) |
+| **Consumer(s)** | ExecutionWorker |
+
+**Architectural Role:**
+- Wraps 1-N ExecutionCommands for coordinated execution
+- **1:1 relationship with StrategyDirective** (one directive = one batch)
+- Multiplicity of commands comes from `target_plan_ids` in StrategyDirective
+
+### 11.3 Fields (Current)
+
+| Field | Type | Req | Status |
+|-------|------|-----|--------|
+| `batch_id` | `str` | ✅ | ✅ Keep (auto-generated) |
+| `commands` | `list[ExecutionCommand]` | ✅ | ✅ Keep |
+| `created_at` | `datetime` | ✅ | ✅ Keep |
+| `execution_mode` | `ExecutionMode` | ✅ | ⚠️ Rename to `mode`, change type |
+| `rollback_on_failure` | `bool` | ✅ | ❌ Remove (implicit in mode) |
+| `timeout_seconds` | `int \| None` | ❌ | ✅ Keep |
+| `metadata` | `dict[str, Any] \| None` | ❌ | ❌ Remove (code smell) |
+
+### 11.4 ExecutionPolicy (NEW)
+
+**Architecture Decision (2025-12-07):**
+
+Batch coordination parameters originate from `ExecutionPolicy` in `StrategyDirective`.
+
+```python
+class ExecutionPolicy(BaseModel):
+    """
+    Defines how a group of trades should be coordinated.
+    
+    This is NOT a directive to a planner - it's a policy that travels
+    unchanged through the pipeline to ExecutionWorker.
+    """
+    mode: BatchExecutionMode = BatchExecutionMode.INDEPENDENT
+    timeout_seconds: int | None = None
+```
+
+### 11.5 BatchExecutionMode (NEW Enum)
+
+```python
+class BatchExecutionMode(str, Enum):
+    """
+    Coordination mode for multiple commands in a batch.
+    
+    Values:
+        INDEPENDENT: Fire all, ignore failures of others (default)
+                     Use case: Flash crash close, DCA entries
+        COORDINATED: Fire all, if one fails, cancel/revert others
+                     Use case: Pair trades, hedged positions
+        SEQUENTIAL:  Fire one by one, stop if one fails
+                     Use case: Rotation strategies, dependent entries
+    """
+    INDEPENDENT = "INDEPENDENT"
+    COORDINATED = "COORDINATED"
+    SEQUENTIAL = "SEQUENTIAL"
+```
+
+### 11.6 Dumb Pipe Aggregation
+
+The aggregation code (boilerplate in BaseExecutionPlanner) does **no decisions** - only 1-on-1 mapping:
+
+```python
+# Boilerplate - NO LOGIC, just mapping
+def create_batch(
+    self, 
+    directive: StrategyDirective, 
+    commands: list[ExecutionCommand]
+) -> ExecutionCommandBatch:
+    
+    policy = directive.execution_policy or ExecutionPolicy()
+    
+    return ExecutionCommandBatch(
+        commands=commands,
+        mode=policy.mode,                    # Direct copy
+        timeout_seconds=policy.timeout_seconds  # Direct copy
+    )
+```
+
+### 11.7 Quant Scenario Validation
+
+| Scenario | Policy | Mode | Behavior |
+|----------|--------|------|----------|
+| Flash Crash (close 3 positions) | None (default) | INDEPENDENT | Fire all, ignore failures |
+| Pair Trade (long A, short B) | `mode=COORDINATED` | COORDINATED | Fire all, cancel others on failure |
+| DCA (3 limit orders) | None (default) | INDEPENDENT | Fire all limits |
+| Rotation (sell A, then buy B) | `mode=SEQUENTIAL` | SEQUENTIAL | One by one, stop on failure |
+
+### 11.8 Implementation Tasks
+
+- [ ] Add `BatchExecutionMode` to `backend/core/enums.py`
+- [ ] Create `ExecutionPolicy` class in `backend/dtos/strategy/strategy_directive.py`
+- [ ] Add `execution_policy` field to `StrategyDirective`
+- [ ] Modify `ExecutionCommandBatch`:
+  - [ ] Rename `execution_mode` → `mode`
+  - [ ] Change type to `BatchExecutionMode`
+  - [ ] Remove `metadata` field
+  - [ ] Remove `rollback_on_failure` field
+- [ ] Update all tests
+- [ ] Update `DTO_ARCHITECTURE.md`
+
+### 11.9 Rationale
+
+**Why Policy, not Directive?**
+- **Directives** are instructions to planners (hints → concrete plans)
+- **Policies** are rules that travel unchanged (no transformation)
+- Batch coordination doesn't need a "BatchPlanner" - it's a direct instruction
+
+**Why INDEPENDENT as Default?**
+- Safe default: failures don't cascade
+- Most common case: single trade (N=1) or unrelated trades
+- Explicit opt-in for COORDINATED/SEQUENTIAL
+
+**Why Remove metadata?**
+- `dict[str, Any]` violates type safety
+- Use cases (FLASH_CRASH reason) belong in Journal, not DTO
+
+**Why Remove rollback_on_failure?**
+- Implicit in mode definition:
+  - INDEPENDENT → no rollback (ignore failures)
+  - COORDINATED → rollback (cancel/revert on failure)
+  - SEQUENTIAL → stop (no rollback, just halt)
