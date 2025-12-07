@@ -179,16 +179,14 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   
   ---
   
-  ### 3. Missing DTOs in Taxonomy Section
+  ### 3. Missing DTOs in Taxonomy Section ✅ CONSOLIDATED
   
-  **Issue:** DTO Taxonomy section is incomplete
+  **Status:** Consolidated with Technical Debt items above
+  - Order DTO → See "Order DTO: Not Implemented"
+  - Fill DTO → See "Fill DTO: Not Implemented"  
+  - TradePlan → See "TradePlan: Quality gates pending"
   
-  **Missing DTOs:**
-  - `Order` - Individual order tracking (exists in code)
-  - `Fill` - Exchange execution confirmation (exists in code)
-  - `TradePlan` - Execution anchor with TPL_ prefix (exists in code)
-  
-  **Action:** Add these to DTO Taxonomy section under appropriate categories
+  **Remaining Action:** Update DTO_ARCHITECTURE.md taxonomy after implementation
   
   ---
   
@@ -415,20 +413,24 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   
   ---
   
-  ### 18. Execution Strategy Types Table - DCA is WRONG
+### 18. Execution Strategy Types Table - DCA is WRONG ✅ CONSOLIDATED
+
+  **Status:** Geconsolideerd naar Technical Debt item 5.
   
-  **Current:** DCA listed in ExecutionGroup "Execution Strategy Types" table
+  **Cross-reference:** Zie boven: "5. ExecutionGroup DTO - Open Items"
+  - Sub-item: "Remove DCA from enum"
+  - Tracked as architecture decision needed
   
-  **Problem:** DCA is a PLANNING strategy, not an execution strategy
-  - DCA = Dollar-Cost Averaging = systematic position building over time
-  - This is StrategyPlanner/SizePlanner domain
-  - NOT ExecutionWorker domain
-  
-  **Note:** Already fixed in code (commit `3b45af6`) but document still wrong
-  
-  **Action:** Remove DCA from Execution Strategy Types table
-  
-  ---
+  ~~**Current:** DCA listed in ExecutionGroup "Execution Strategy Types" table~~
+
+  ~~**Problem:** DCA is a PLANNING strategy, not an execution strategy~~
+  ~~- DCA = Dollar-Cost Averaging = systematic position building over time~~
+  ~~- This is StrategyPlanner/SizePlanner domain~~
+  ~~- NOT ExecutionWorker domain~~
+
+  ~~**Note:** Already fixed in code (commit `3b45af6`) but document still wrong~~
+
+  ~~**Action:** Remove DCA from Execution Strategy Types table~~  ---
   
   ### 19. CausalityChain Needs Rejection Variant
   
@@ -462,23 +464,28 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   
   ---
   
-  ### 21. TradePlan, Order, Fill DTOs Missing from Document
+### 21. TradePlan, Order, Fill DTOs Missing from Document ✅ CONSOLIDATED
+
+  **Status:** Geconsolideerd naar Technical Debt items 3, 4, en 7.
   
-  **Issue:** These DTOs exist in code but are NOT documented in DTO_ARCHITECTURE.md
+  **Cross-references:** Zie boven:
+  - "3. Order DTO - NOT IMPLEMENTED" → Order documentatie + implementatie
+  - "4. Fill DTO - NOT IMPLEMENTED" → Fill documentatie + implementatie
+  - "7. TradePlan DTO - Quality Gate Items" → TradePlan documentatie + quality gates
   
-  **Missing documentation:**
-  - **TradePlan** - Execution anchor (TPL_ prefix), ACTIVE/CLOSED status
-  - **Order** - Individual order tracking (OrderType, OrderStatus, OrderSide)
-  - **Fill** - Exchange execution confirmation
-  
-  **Location in code:**
-  - `backend/dtos/state/trade_plan.py`
-  - `backend/dtos/state/order.py`
-  - `backend/dtos/state/fill.py`
-  
-  **Action:** Add full documentation sections for these State DTOs
-  
-  ---
+  ~~**Issue:** These DTOs exist in code but are NOT documented in DTO_ARCHITECTURE.md~~
+
+  ~~**Missing documentation:**~~
+  ~~- **TradePlan** - Execution anchor (TPL_ prefix), ACTIVE/CLOSED status~~
+  ~~- **Order** - Individual order tracking (OrderType, OrderStatus, OrderSide)~~
+  ~~- **Fill** - Exchange execution confirmation~~
+
+  ~~**Location in code:**~~
+  ~~- `backend/dtos/state/trade_plan.py`~~
+  ~~- `backend/dtos/state/order.py`~~
+  ~~- `backend/dtos/state/fill.py`~~
+
+  ~~**Action:** Add full documentation sections for these State DTOs~~  ---
   
   </details>
   
