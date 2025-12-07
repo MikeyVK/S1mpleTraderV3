@@ -172,20 +172,22 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
       - Decision needed: BaseWorker validates structure OR ExecutionWorker validates content?
       - Content validation = business logic, structure validation = DTO integrity
 
-- [ ] **ExecutionCommandBatch: Field Origin & Metadata** (2025-12-07) 🔴 HIGH
+- [ ] **ExecutionCommandBatch: Field Origin & Metadata** (2025-12-07) 🔴 HIGH → ✅ ARCHITECTURE DECIDED
   - **Source:** `docs/development/backend/dtos/EXECUTION_COMMAND_BATCH_DESIGN.md`
-  - **Code Smell:** `metadata: dict[str, Any]` in line 293 of code
-  - **Documentation Issues (from DTO_ARCHITECTURE.md review):**
-    - [ ] **Extra Fields - Where Do They Come From?**
-      - `execution_mode` (SEQUENTIAL/PARALLEL/ATOMIC)
-      - `rollback_on_failure`, `timeout_seconds`
-      - Hypothesis: StrategyPlanner → StrategyDirective → Batch
-      - Currently NOT in StrategyDirective - trace origins
-    - [ ] **Metadata Decision:**
-      - Usage: `{"reason": "FLASH_CRASH"}`, `{"action": "BULK_CANCEL"}`
-      - If logging/debugging → REMOVE from DTO
-      - If needed → TYPE as `BatchContext` with concrete fields
-      - **No `dict[str, Any]` allowed**
+  - **🏛️ Architecture Decision (2025-12-07):**
+    - **ExecutionPolicy in StrategyDirective:** Nieuwe sub-class die batch coördinatie hints bevat
+    - **1:1 Mapping:** StrategyDirective ↔ ExecutionCommandBatch (één directive = één batch)
+    - **Dumb Pipe Aggregatie:** Boilerplate code kopieert velden 1-op-1, geen logica
+    - **BatchExecutionMode Enum:** INDEPENDENT (default), COORDINATED, SEQUENTIAL
+  - **Implementation Tasks:**
+    - [ ] Create `ExecutionPolicy` class in `strategy_directive.py`
+    - [ ] Add `execution_policy: ExecutionPolicy | None` to `StrategyDirective`
+    - [ ] Rename `execution_mode` → `mode` with `BatchExecutionMode` enum
+    - [ ] Remove `metadata: dict[str, Any]` from `ExecutionCommandBatch`
+    - [ ] Remove `rollback_on_failure` (implicit in mode definition)
+    - [ ] Update tests for new structure
+    - [ ] Update DTO_ARCHITECTURE.md with new flow
+  - **Design Document:** `docs/development/backend/dtos/EXECUTION_POLICY_DESIGN.md`
 
 - [ ] **ExecutionPlan: Architecture Overhaul** (2025-12-07) 🔴 HIGH
   - **Source:** `docs/development/backend/dtos/EXECUTION_PLAN_DESIGN.md`
