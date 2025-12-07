@@ -117,27 +117,31 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - [x] CODE_STYLE.md compliance
     - [x] pytest: 17 tests passing
     - [x] pyright: 0 errors
-  - **Documentation Issues (still pending - DTO_ARCHITECTURE.md updates):**
+  
+  - **🏛️ Architecture Decisions (confirmed 2025-12-07):**
+    - **Mutability:** Should be `frozen=True` (immutable). Current `frozen=False` is design smell.
+      - StrategyDirective is a decision record - decisions don't change
+      - Refactor: change to `frozen=True`, remove `validate_assignment=True`
+    - **Enrichment/SRP:** No order_ids in StrategyDirective (verified in code)
+      - This was outdated documentation - code is correct
+      - Orders/fills belong in StrategyLedger, not StrategyDirective
+    - **Lifecycle:** StrategyDirective is never deleted, only persisted to Journal
+      - Created → consumed by Planners → aggregated to ExecutionCommand → persisted
+      - Remains as historical audit record
+  
+  - **⏸️ DEFERRED:** Waiting for ExecutionCommandBatch directive discussion
+    - Possible new batch-level directive may impact StrategyDirective design
+    - Doc fixes + code refactor deferred until batch directive decision
+  
+  - **Documentation Issues (pending - defer until batch directive resolved):**
     - [ ] **"WHY this DTO exists" Cleanup:**
       - Remove DRY violation (scope field types duplicated)
       - Replace "Routing" → "Execution" terminology
-      - Clarify mutability: should StrategyDirective be immutable?
     - [ ] **Confidence Field Rationale is WRONG:**
       - Current (wrong): "Low confidence = skip or reduce size"
       - Correct: confidence for planner TYPE selection (aggressive vs conservative)
-      - StrategyPlanner already decided to act before emitting directive
-    - [ ] **Enrichment Violates SRP:**
-      - Remove order_id enrichment from lifecycle description
-      - Orders/fills = StrategyLedger domain, NOT StrategyDirective
-    - [ ] **Lifecycle "Referenced" is Unclear:**
-      - Define when StrategyDirective's task is COMPLETE
-      - Define purpose after planners consumed it
-      - Should it be discarded after ExecutionCommand creation?
     - [ ] **MODIFY_EXISTING Scope Incomplete:**
       - Update Scope Semantics table to include entry plan modifications
-      - Unfilled entry orders CAN be modified
-      - Example: Entry order at limit price not filled → adjust price
-      - Example: Entry order partially filled → modify remaining quantity
 
 - [x] **TradePlan: Quality gates passed** (2025-12-07) ✅
   - **Source:** `docs/development/backend/dtos/TRADE_PLAN_DESIGN.md`
