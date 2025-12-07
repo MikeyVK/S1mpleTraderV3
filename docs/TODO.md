@@ -109,38 +109,38 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Status:** ✅ Verified - DCA removed in commit `3b45af6`
   - **Verification:** Enum contains SINGLE, TWAP, VWAP, ICEBERG, LAYERED, POV (no DCA)
 
-- [x] **StrategyDirective: Code Verified** (2025-12-07) ✅
+- [x] **StrategyDirective: Code Verified + ExecutionPolicy Added** (2025-12-07) ✅
   - **Source:** `docs/development/backend/dtos/STRATEGY_DIRECTIVE_DESIGN.md`
-  - **Status:** ✅ Code verified - 17 tests passing, 0 type errors
+  - **Status:** ✅ Code verified - 30 tests passing, 0 type errors
   - **Verified:**
     - [x] Field uses `target_plan_ids` (not `target_trade_ids`)
     - [x] CODE_STYLE.md compliance
-    - [x] pytest: 17 tests passing
+    - [x] pytest: 30 tests passing
     - [x] pyright: 0 errors
   
-  - **🏛️ Architecture Decisions (confirmed 2025-12-07):**
-    - **Mutability:** Should be `frozen=True` (immutable). Current `frozen=False` is design smell.
+  - **🏛️ Architecture Decisions (implemented 2025-12-07):**
+    - [x] **Mutability:** Changed to `frozen=True` (immutable).
       - StrategyDirective is a decision record - decisions don't change
-      - Refactor: change to `frozen=True`, remove `validate_assignment=True`
-    - **Enrichment/SRP:** No order_ids in StrategyDirective (verified in code)
-      - This was outdated documentation - code is correct
+      - Removed `validate_assignment=True` (not needed with frozen)
+    - [x] **Enrichment/SRP:** No order_ids in StrategyDirective (verified in code)
       - Orders/fills belong in StrategyLedger, not StrategyDirective
-    - **Lifecycle:** StrategyDirective is never deleted, only persisted to Journal
+    - [x] **Lifecycle:** StrategyDirective is never deleted, only persisted to Journal
       - Created → consumed by Planners → aggregated to ExecutionCommand → persisted
-      - Remains as historical audit record
-    - **ExecutionPolicy:** NEW field for batch coordination (decided 2025-12-07)
-      - Add `execution_policy: ExecutionPolicy | None` field
+    - [x] **ExecutionPolicy:** NEW field for batch coordination (implemented 2025-12-07)
+      - Added `execution_policy: ExecutionPolicy | None` field
       - ExecutionPolicy contains: `mode` (BatchExecutionMode) + `timeout_seconds`
       - 1:1 mapping to ExecutionCommandBatch (dumb pipe, no logic)
       - See: `EXECUTION_COMMAND_BATCH_DESIGN.md` Section 8
   
-  - **Implementation Tasks:**
-    - [ ] Change `frozen=False` → `frozen=True`
-    - [ ] Remove `validate_assignment=True` from model_config
-    - [ ] Add `ExecutionPolicy` class (before StrategyDirective in same file)
-    - [ ] Add `execution_policy: ExecutionPolicy | None = None` field
-    - [ ] Update tests for immutability
-    - [ ] Update tests for ExecutionPolicy field
+  - **Completed Implementation:**
+    - [x] Change `frozen=False` → `frozen=True`
+    - [x] Remove `validate_assignment=True` from model_config
+    - [x] Add `ExecutionPolicy` class (before StrategyDirective in same file)
+    - [x] Add `execution_policy: ExecutionPolicy | None = None` field
+    - [x] Add `BatchExecutionMode` enum to `backend/core/enums.py`
+    - [x] Update tests for immutability (4 new tests)
+    - [x] Update tests for ExecutionPolicy field (9 new tests)
+    - [x] Export `ExecutionPolicy` from `backend/dtos/strategy/__init__.py`
   
   - **Documentation Issues (pending after implementation):**
     - [ ] **"WHY this DTO exists" Cleanup:**
@@ -181,17 +181,19 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
       - Decision needed: BaseWorker validates structure OR ExecutionWorker validates content?
       - Content validation = business logic, structure validation = DTO integrity
 
-- [ ] **ExecutionCommandBatch: Field Origin & Metadata** (2025-12-07) 🔴 HIGH → ✅ ARCHITECTURE DECIDED
+- [ ] **ExecutionCommandBatch: Field Origin & Metadata** (2025-12-07) 🔄 PARTIALLY IMPLEMENTED
   - **Source:** `docs/development/backend/dtos/EXECUTION_COMMAND_BATCH_DESIGN.md`
   - **🏛️ Architecture Decision (2025-12-07):**
-    - **ExecutionPolicy in StrategyDirective:** Nieuwe sub-class die batch coördinatie hints bevat
+    - **ExecutionPolicy in StrategyDirective:** ✅ IMPLEMENTED
     - **1:1 Mapping:** StrategyDirective ↔ ExecutionCommandBatch (één directive = één batch)
     - **Dumb Pipe Aggregatie:** Boilerplate code kopieert velden 1-op-1, geen logica
-    - **BatchExecutionMode Enum:** INDEPENDENT (default), COORDINATED, SEQUENTIAL
-  - **Implementation Tasks:**
-    - [ ] Create `ExecutionPolicy` class in `strategy_directive.py`
-    - [ ] Add `execution_policy: ExecutionPolicy | None` to `StrategyDirective`
-    - [ ] Rename `execution_mode` → `mode` with `BatchExecutionMode` enum
+    - **BatchExecutionMode Enum:** ✅ IMPLEMENTED - INDEPENDENT (default), COORDINATED, SEQUENTIAL
+  - **Completed:**
+    - [x] Create `ExecutionPolicy` class in `strategy_directive.py`
+    - [x] Add `execution_policy: ExecutionPolicy | None` to `StrategyDirective`
+    - [x] Add `BatchExecutionMode` enum to `backend/core/enums.py`
+  - **Remaining Implementation:**
+    - [ ] Rename `execution_mode` → `mode` with `BatchExecutionMode` enum in `ExecutionCommandBatch`
     - [ ] Remove `metadata: dict[str, Any]` from `ExecutionCommandBatch`
     - [ ] Remove `rollback_on_failure` (implicit in mode definition)
     - [ ] Update tests for new structure

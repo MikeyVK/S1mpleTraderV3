@@ -133,13 +133,46 @@ class TradeStatus(str, Enum):
 # EXECUTION ENUMS
 # =============================================================================
 
+class BatchExecutionMode(str, Enum):
+    """Strategic execution coordination mode for command batches.
+
+    Defines the coordination semantics from strategic intent (StrategyDirective).
+    This is the strategic "what should happen" - not the technical "how to execute".
+
+    Used in ExecutionPolicy (within StrategyDirective) to express coordination
+    requirements that flow unchanged to ExecutionCommandBatch.
+
+    Values:
+        INDEPENDENT: Fire all commands, ignore individual failures.
+                     Use case: Flash crash exit (close all positions ASAP).
+        COORDINATED: Commands are related; cancel pending on failure.
+                     Use case: Pair trade (both legs or neither).
+        SEQUENTIAL: Execute in order, stop on first failure.
+                    Use case: DCA (Dollar Cost Averaging) with dependencies.
+
+    Design Note:
+        Maps 1:1 from StrategyDirective.execution_policy → ExecutionCommandBatch.mode.
+        No transformation logic - pure passthrough ("dumb pipe").
+
+    See Also:
+        - docs/development/backend/dtos/EXECUTION_COMMAND_BATCH_DESIGN.md
+        - docs/development/backend/dtos/EXECUTION_COMMAND_DESIGN.md
+    """
+    INDEPENDENT = "INDEPENDENT"
+    COORDINATED = "COORDINATED"
+    SEQUENTIAL = "SEQUENTIAL"
+
+
 class ExecutionMode(str, Enum):
-    """Batch execution mode.
+    """Batch execution mode (LEGACY - to be replaced by BatchExecutionMode).
 
     Values:
         SEQUENTIAL: Execute 1-by-1, stop on first failure
         PARALLEL: Execute all simultaneously (no rollback)
         ATOMIC: All succeed or all rollback (transaction)
+
+    @deprecated: Use BatchExecutionMode instead. This enum will be removed
+                 when ExecutionCommandBatch is refactored.
     """
     SEQUENTIAL = "SEQUENTIAL"
     PARALLEL = "PARALLEL"

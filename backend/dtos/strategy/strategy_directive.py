@@ -21,7 +21,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 # Application imports
-from backend.core.enums import DirectiveScope
+from backend.core.enums import BatchExecutionMode, DirectiveScope
 from backend.dtos.causality import CausalityChain
 from backend.utils.id_generators import generate_strategy_directive_id
 
@@ -179,6 +179,55 @@ class ExecutionDirective(BaseModel):
             "(e.g., 0.01 = 1%)"
         )
     )
+
+
+class ExecutionPolicy(BaseModel):
+    """
+    Strategic execution coordination policy for command batches.
+
+    Defines how multiple ExecutionCommands from a single StrategyDirective
+    should be coordinated during execution. This is the STRATEGIC intent
+    (what should happen) - not the technical execution mechanism.
+
+    ARCHITECTURAL POSITION:
+    - Lives in StrategyDirective as optional field
+    - Flows unchanged ("dumb pipe") to ExecutionCommandBatch.mode
+    - No transformation logic - pure 1:1 mapping
+
+    USE CASES:
+    - INDEPENDENT: Flash crash exit - close all positions regardless of individual failures
+    - COORDINATED: Pair trade - both legs must succeed or cancel both
+    - SEQUENTIAL: DCA with dependencies - execute in order, stop on failure
+
+    Attributes:
+        mode: Coordination mode (INDEPENDENT, COORDINATED, SEQUENTIAL)
+        timeout_seconds: Optional coordination timeout in seconds
+
+    See Also:
+        - docs/development/backend/dtos/EXECUTION_COMMAND_BATCH_DESIGN.md
+        - BatchExecutionMode enum in backend.core.enums
+    """
+
+    mode: BatchExecutionMode = Field(
+        default=BatchExecutionMode.INDEPENDENT,
+        description=(
+            "Coordination mode: INDEPENDENT (fire all, ignore failures), "
+            "COORDINATED (cancel pending on failure), "
+            "SEQUENTIAL (execute in order, stop on failure)"
+        )
+    )
+    timeout_seconds: Annotated[int, Field(gt=0)] | None = Field(
+        default=None,
+        description=(
+            "Optional coordination timeout in seconds. "
+            "For COORDINATED mode, defines how long to wait for all legs."
+        )
+    )
+
+    model_config = {
+        "frozen": True,  # Immutable after creation
+        "str_strip_whitespace": True,
+    }
 
 
 class StrategyDirective(BaseModel):
@@ -438,6 +487,15 @@ class StrategyDirective(BaseModel):
             "(used for all scopes)"
         )
     )
+    execution_policy: ExecutionPolicy | None = Field(
+        default=None,
+        description=(
+            "Optional execution coordination policy. "
+            "Defines how multiple commands from this directive should be coordinated. "
+            "Flows unchanged to ExecutionCommandBatch.mode. "
+            "If None, defaults to INDEPENDENT (fire all, ignore failures)."
+        )
+    )
 
     @field_validator("target_plan_ids")
     @classmethod
@@ -464,9 +522,8 @@ class StrategyDirective(BaseModel):
         return v
 
     model_config = {
-        "frozen": False,  # Mutable for updates
+        "frozen": True,  # Immutable after creation - strategic decisions don't change
         "str_strip_whitespace": True,
-        "validate_assignment": True,
         "json_schema_extra": {
             "examples": [
                 {

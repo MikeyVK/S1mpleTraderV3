@@ -13,6 +13,7 @@ from typing import cast
 import pytest
 from pydantic import ValidationError
 
+from backend.core.enums import BatchExecutionMode, DirectiveScope
 from backend.dtos.causality import CausalityChain
 from backend.dtos.shared import Origin, OriginType
 from backend.dtos.strategy.strategy_directive import (
@@ -21,7 +22,7 @@ from backend.dtos.strategy.strategy_directive import (
     SizeDirective,
     ExitDirective,
     ExecutionDirective,
-    DirectiveScope
+    ExecutionPolicy,
 )
 
 
@@ -360,3 +361,180 @@ class TestStrategyDirectiveUseCases:
         assert directive.size_directive is None
         assert directive.exit_directive is None
         assert directive.routing_directive is None
+
+
+# =============================================================================
+# IMMUTABILITY TESTS (TDD: RED phase - frozen=True)
+# =============================================================================
+
+class TestStrategyDirectiveImmutability:
+    """Test StrategyDirective immutability (frozen=True)."""
+
+    def test_cannot_modify_strategy_planner_id(self):
+        """Cannot modify strategy_planner_id after creation."""
+        directive = StrategyDirective(
+            strategy_planner_id="original_planner",
+            causality=CausalityChain(origin=create_test_origin()),
+            scope=DirectiveScope.NEW_TRADE,
+            confidence=Decimal("0.5")
+        )
+
+        with pytest.raises(ValidationError):
+            directive.strategy_planner_id = "modified_planner"
+
+    def test_cannot_modify_scope(self):
+        """Cannot modify scope after creation."""
+        directive = StrategyDirective(
+            strategy_planner_id="test",
+            causality=CausalityChain(origin=create_test_origin()),
+            scope=DirectiveScope.NEW_TRADE,
+            confidence=Decimal("0.5")
+        )
+
+        with pytest.raises(ValidationError):
+            directive.scope = DirectiveScope.MODIFY_EXISTING
+
+    def test_cannot_modify_confidence(self):
+        """Cannot modify confidence after creation."""
+        directive = StrategyDirective(
+            strategy_planner_id="test",
+            causality=CausalityChain(origin=create_test_origin()),
+            scope=DirectiveScope.NEW_TRADE,
+            confidence=Decimal("0.5")
+        )
+
+        with pytest.raises(ValidationError):
+            directive.confidence = Decimal("0.9")
+
+    def test_cannot_modify_target_plan_ids(self):
+        """Cannot modify target_plan_ids after creation."""
+        directive = StrategyDirective(
+            strategy_planner_id="test",
+            causality=CausalityChain(origin=create_test_origin()),
+            scope=DirectiveScope.MODIFY_EXISTING,
+            target_plan_ids=["TPL_001"],
+            confidence=Decimal("0.5")
+        )
+
+        with pytest.raises(ValidationError):
+            directive.target_plan_ids = ["TPL_002"]
+
+
+# =============================================================================
+# EXECUTION POLICY TESTS (TDD: RED phase - new field)
+# =============================================================================
+
+class TestExecutionPolicy:
+    """Test ExecutionPolicy creation and validation."""
+
+    def test_create_with_defaults(self):
+        """Can create ExecutionPolicy with default values."""
+        policy = ExecutionPolicy()
+
+        assert policy.mode == BatchExecutionMode.INDEPENDENT
+        assert policy.timeout_seconds is None
+
+    def test_create_with_coordinated_mode(self):
+        """Can create ExecutionPolicy with COORDINATED mode."""
+        policy = ExecutionPolicy(
+            mode=BatchExecutionMode.COORDINATED,
+            timeout_seconds=30
+        )
+
+        assert policy.mode == BatchExecutionMode.COORDINATED
+        assert policy.timeout_seconds == 30
+
+    def test_create_with_sequential_mode(self):
+        """Can create ExecutionPolicy with SEQUENTIAL mode."""
+        policy = ExecutionPolicy(
+            mode=BatchExecutionMode.SEQUENTIAL,
+            timeout_seconds=60
+        )
+
+        assert policy.mode == BatchExecutionMode.SEQUENTIAL
+        assert policy.timeout_seconds == 60
+
+    def test_timeout_must_be_positive(self):
+        """timeout_seconds must be positive if provided."""
+        with pytest.raises(ValidationError):
+            ExecutionPolicy(timeout_seconds=0)
+
+        with pytest.raises(ValidationError):
+            ExecutionPolicy(timeout_seconds=-10)
+
+    def test_policy_is_immutable(self):
+        """ExecutionPolicy is immutable (frozen=True)."""
+        policy = ExecutionPolicy()
+
+        with pytest.raises(ValidationError):
+            policy.mode = BatchExecutionMode.COORDINATED
+
+
+class TestStrategyDirectiveExecutionPolicy:
+    """Test ExecutionPolicy field in StrategyDirective."""
+
+    def test_execution_policy_defaults_to_none(self):
+        """execution_policy defaults to None."""
+        directive = StrategyDirective(
+            strategy_planner_id="test",
+            causality=CausalityChain(origin=create_test_origin()),
+            scope=DirectiveScope.NEW_TRADE,
+            confidence=Decimal("0.5")
+        )
+
+        assert directive.execution_policy is None
+
+    def test_can_create_with_execution_policy(self):
+        """Can create directive with execution_policy."""
+        policy = ExecutionPolicy(
+            mode=BatchExecutionMode.COORDINATED,
+            timeout_seconds=30
+        )
+        directive = StrategyDirective(
+            strategy_planner_id="pair_trade_planner",
+            causality=CausalityChain(origin=create_test_origin()),
+            scope=DirectiveScope.NEW_TRADE,
+            confidence=Decimal("0.85"),
+            execution_policy=policy
+        )
+
+        assert directive.execution_policy is not None
+        exec_policy = cast(ExecutionPolicy, directive.execution_policy)
+        assert exec_policy.mode == BatchExecutionMode.COORDINATED
+        assert exec_policy.timeout_seconds == 30
+
+    def test_flash_crash_scenario_with_independent_policy(self):
+        """Flash crash uses INDEPENDENT mode (fire all, ignore failures)."""
+        directive = StrategyDirective(
+            strategy_planner_id="emergency_exit_planner",
+            causality=CausalityChain(origin=create_test_origin()),
+            scope=DirectiveScope.CLOSE_EXISTING,
+            target_plan_ids=["TPL_001", "TPL_002", "TPL_003"],
+            confidence=Decimal("0.99"),
+            execution_policy=ExecutionPolicy(
+                mode=BatchExecutionMode.INDEPENDENT
+            ),
+            routing_directive=ExecutionDirective(
+                execution_urgency=Decimal("1.0")
+            )
+        )
+
+        exec_policy = cast(ExecutionPolicy, directive.execution_policy)
+        assert exec_policy.mode == BatchExecutionMode.INDEPENDENT
+
+    def test_pair_trade_scenario_with_coordinated_policy(self):
+        """Pair trade uses COORDINATED mode (cancel others on failure)."""
+        directive = StrategyDirective(
+            strategy_planner_id="pair_trade_planner",
+            causality=CausalityChain(origin=create_test_origin()),
+            scope=DirectiveScope.NEW_TRADE,
+            confidence=Decimal("0.85"),
+            execution_policy=ExecutionPolicy(
+                mode=BatchExecutionMode.COORDINATED,
+                timeout_seconds=30
+            )
+        )
+
+        exec_policy = cast(ExecutionPolicy, directive.execution_policy)
+        assert exec_policy.mode == BatchExecutionMode.COORDINATED
+        assert exec_policy.timeout_seconds == 30
