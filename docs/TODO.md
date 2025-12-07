@@ -73,12 +73,6 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Context:** Full document review revealed 21 architectural inconsistencies
   - **Status:** DISCUSSION REQUIRED before document can be considered DEFINITIVE
   - **Source:** User review session 2025-12-04
-
-### Recently Completed
-
-- [x] **ExecutionDirective: REMOVE iceberg_preference field** (2025-12-02 → 2025-12-07) ✅
-  - **Resolution:** Removed field, updated docstring with note about visibility_preference
-  - **Scope:** Code + DTO_ARCHITECTURE.md + STRATEGY_DIRECTIVE_DESIGN.md
   
   <details>
   <summary>📋 Discussion Points (21 items - FULL CONTEXT)</summary>
@@ -409,6 +403,12 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   2. Work through items 1-21 systematically
   3. Update DTO_ARCHITECTURE.md after decisions
   4. Update code where architectural changes needed
+
+### Recently Completed
+
+- [x] **ExecutionDirective: REMOVE iceberg_preference field** (2025-12-02 → 2025-12-07) ✅
+  - **Resolution:** Removed field, updated docstring with note about visibility_preference
+  - **Scope:** Code + DTO_ARCHITECTURE.md + STRATEGY_DIRECTIVE_DESIGN.md
 
 ---
 
