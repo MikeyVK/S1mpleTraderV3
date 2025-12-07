@@ -142,9 +142,12 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - [ ] **Lifecycle "Referenced" is Unclear:**
       - Define when StrategyDirective's task is COMPLETE
       - Define purpose after planners consumed it
+      - Should it be discarded after ExecutionCommand creation?
     - [ ] **MODIFY_EXISTING Scope Incomplete:**
       - Update Scope Semantics table to include entry plan modifications
       - Unfilled entry orders CAN be modified
+      - Example: Entry order at limit price not filled → adjust price
+      - Example: Entry order partially filled → modify remaining quantity
 
 - [ ] **TradePlan: Quality gates pending** (2025-12-07)
   - **Source:** `docs/development/backend/dtos/TRADE_PLAN_DESIGN.md`
@@ -197,10 +200,16 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
       - ExecutionPlanner decides based on ExecutionDirective + confidence
     - [ ] **"WHY this DTO exists" Point 4 is WRONG:**
       - Wrong: "Translation layer converts ExecutionPlan → connector-specific specs"
-      - Correct flow: ExecutionPlan → ExecutionWorker → Orders → IExecutionConnector
+      - Correct flow (5 steps):
+        1. ExecutionPlan is executed by ExecutionWorker
+        2. ExecutionWorker handles ALL Ledger interaction
+        3. ExecutionWorker creates individual Orders
+        4. Orders passed to IExecutionConnector in ExecutionEnvironment
+        5. IExecutionConnector does exchange translation (CEX/DEX/Backtest)
     - [ ] **Field Rationales Need Overhaul:**
       - ExecutionUrgency, VisibilityPreference too abstract for "executable plan"
       - Redefine as concrete execution specifications
+      - Event wiring routes to correct ExecutionWorker type (e.g., TWAPExecutionWorker)
     - [ ] **"Universal → Connector Translation Examples" Table is Obsolete:**
       - Translation happens in IExecutionConnector, not from ExecutionPlan
       - Remove or replace with correct flow description
@@ -211,11 +220,13 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - [ ] **Needs Rejection Variant:**
       - Current: only tracks SUCCESSFUL decision chains
       - Proposed: support rejection tracking
+      - Fields: rejection_reason, rejected_signal_ids, rejected_risk_ids
       - Options: rejection fields in CausalityChain OR separate RejectionChain DTO
     - [ ] **Order/Fill IDs Do NOT Belong in StrategyJournal:**
       - Order/Fill = StrategyLedger domain (WHAT happened)
       - StrategyJournal = decision rationale (WHY)
       - TradePlanID links Journal ↔ Ledger
+      - See: TRADE_LIFECYCLE.md for correct separation
       - Update documentation to remove order_ids/fill_ids from Journal
 
 - [ ] **DTO_ARCHITECTURE.md: Overkoepelende Issues** (2025-12-04)
@@ -224,9 +235,17 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   
   **Overkoepelende Items:**
   - [ ] **Architectural Pattern Diagram is Incorrect:**
-    - Current pattern shows PlanningAggregator → ExecutionCommand → Batch → Group
-    - Problems: PlanningAggregator doesn't exist, ExecutionGroup mentioned too early
-    - ExecutionGroup is created DURING execution, not during planning
+    - Current (wrong) pattern in document:
+      ```
+      PlanningAggregator
+        → ExecutionCommand
+          → ExecutionCommandBatch
+            → ExecutionGroup
+      ```
+    - Problems: 
+      - PlanningAggregator doesn't exist as separate component
+      - ExecutionGroup mentioned too early - it's just an order container
+      - ExecutionGroup is created DURING execution, not during planning
     - Action: Update architectural pattern to reflect reality
   - [ ] **Dynamic Exit Logic Needs Deeper Explanation:**
     - What exactly IS dynamic exit logic?
