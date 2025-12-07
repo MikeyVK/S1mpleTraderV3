@@ -128,12 +128,21 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - **Lifecycle:** StrategyDirective is never deleted, only persisted to Journal
       - Created → consumed by Planners → aggregated to ExecutionCommand → persisted
       - Remains as historical audit record
+    - **ExecutionPolicy:** NEW field for batch coordination (decided 2025-12-07)
+      - Add `execution_policy: ExecutionPolicy | None` field
+      - ExecutionPolicy contains: `mode` (BatchExecutionMode) + `timeout_seconds`
+      - 1:1 mapping to ExecutionCommandBatch (dumb pipe, no logic)
+      - See: `EXECUTION_COMMAND_BATCH_DESIGN.md` Section 8
   
-  - **⏸️ DEFERRED:** Waiting for ExecutionCommandBatch directive discussion
-    - Possible new batch-level directive may impact StrategyDirective design
-    - Doc fixes + code refactor deferred until batch directive decision
+  - **Implementation Tasks:**
+    - [ ] Change `frozen=False` → `frozen=True`
+    - [ ] Remove `validate_assignment=True` from model_config
+    - [ ] Add `ExecutionPolicy` class (before StrategyDirective in same file)
+    - [ ] Add `execution_policy: ExecutionPolicy | None = None` field
+    - [ ] Update tests for immutability
+    - [ ] Update tests for ExecutionPolicy field
   
-  - **Documentation Issues (pending - defer until batch directive resolved):**
+  - **Documentation Issues (pending after implementation):**
     - [ ] **"WHY this DTO exists" Cleanup:**
       - Remove DRY violation (scope field types duplicated)
       - Replace "Routing" → "Execution" terminology
