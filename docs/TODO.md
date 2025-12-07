@@ -187,7 +187,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - [ ] Remove `rollback_on_failure` (implicit in mode definition)
     - [ ] Update tests for new structure
     - [ ] Update DTO_ARCHITECTURE.md with new flow
-  - **Design Document:** `docs/development/backend/dtos/EXECUTION_COMMAND_DESIGN.md` (Section 11)
+  - **Design Document:** `docs/development/backend/dtos/EXECUTION_COMMAND_BATCH_DESIGN.md`
 
 - [ ] **ExecutionPlan: Architecture Overhaul** (2025-12-07) 🔴 HIGH
   - **Source:** `docs/development/backend/dtos/EXECUTION_PLAN_DESIGN.md`
