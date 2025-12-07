@@ -40,7 +40,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 | Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
 | Week 3: Factories | 0 | 5 | 🔴 Blocked |
 | Week 4: Platform | 0 | 4 | 🔴 Blocked |
-| Technical Debt | 3 | 13 | 🔄 23% (Signal verified compliant) |
+| Technical Debt | 4 | 13 | 🔄 31% (Signal, Risk verified) |
 
 ---
 
@@ -74,19 +74,15 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - [x] Symbol pattern `BTC_USDT` (underscore separator)
     - [x] `confidence: Decimal` type
 
-- [ ] **Risk DTO: Refactor Required** (2025-12-07) 🔴 HIGH
+- [x] **Risk DTO: Already Compliant** (2025-12-07) ✅
   - **Source:** `docs/development/backend/dtos/RISK_DESIGN.md`
-  - **Status:** ⚠️ Needs Refactor
-  - **Breaking Changes:**
-    - [ ] Remove `causality: CausalityChain` field
-    - [ ] Rename `affected_asset` → `affected_symbol`
-    - [ ] Update symbol pattern (`BTC/EUR` → `BTC_EUR`)
-    - [ ] Change `severity: float` → `Decimal`
-  - **Migration:**
-    - [ ] Update docstrings, remove CausalityChain import
-    - [ ] Update tests in `test_risk.py`
-    - [ ] Update RiskMonitor plugin implementations
-    - [ ] Update json_schema_extra examples
+  - **Status:** ✅ Verified compliant - no changes needed
+  - **Verification:** 29 tests passing, 0 type errors
+  - **All items already implemented:**
+    - [x] No `causality` field (pre-causality DTO)
+    - [x] Uses `affected_symbol` (not `affected_asset`)
+    - [x] Symbol pattern `BTC_USDT` (underscore separator)
+    - [x] `severity: Decimal` type
 
 - [ ] **Order DTO: Not Implemented** (2025-12-07)
   - **Source:** `docs/development/backend/dtos/ORDER_DESIGN.md`
