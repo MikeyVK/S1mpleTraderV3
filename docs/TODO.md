@@ -313,6 +313,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - `execution_mode` (SEQUENTIAL/PARALLEL/ATOMIC)
   - `rollback_on_failure`
   - `timeout_seconds`
+  - `metadata: dict[str, Any]` ← **CODE SMELL** (found 2025-12-07)
   
   **Question:** Where do these originate?
   
@@ -322,7 +323,15 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   
   **Alternative:** Derived from other signals?
   
-  **Action:** Trace field origins, update StrategyDirective if needed
+  **Metadata Analysis:**
+  - Current usage: `{"reason": "FLASH_CRASH"}`, `{"action": "BULK_CANCEL"}`
+  - Appears to be logging/debugging context, not execution logic
+  - If purely logging → REMOVE (doesn't belong in DTO)
+  - If needed → TYPE as `BatchContext` with concrete fields
+  
+  **Action:** 
+  1. Trace field origins, update StrategyDirective if needed
+  2. Decide on metadata: REMOVE or TYPE (no `dict[str, Any]` allowed)
   
   ---
   
