@@ -3,8 +3,8 @@ Unit tests for StrategyDirective DTO.
 
 Tests creation, validation, and edge cases for strategy planning directives.
 """
-# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
-# Suppress Pydantic FieldInfo false positives - Pylance can't narrow types after isinstance()
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false, reportFunctionMemberAccess=false
+# Suppress Pydantic FieldInfo false positives - Pylance can't narrow types after isinstance()/cast()
 
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -500,8 +500,8 @@ class TestStrategyDirectiveExecutionPolicy:
 
         assert directive.execution_policy is not None
         exec_policy = cast(ExecutionPolicy, directive.execution_policy)
-        assert exec_policy.mode == BatchExecutionMode.COORDINATED
-        assert exec_policy.timeout_seconds == 30
+        assert getattr(exec_policy, "mode") == BatchExecutionMode.COORDINATED
+        assert getattr(exec_policy, "timeout_seconds") == 30
 
     def test_flash_crash_scenario_with_independent_policy(self):
         """Flash crash uses INDEPENDENT mode (fire all, ignore failures)."""
@@ -520,7 +520,7 @@ class TestStrategyDirectiveExecutionPolicy:
         )
 
         exec_policy = cast(ExecutionPolicy, directive.execution_policy)
-        assert exec_policy.mode == BatchExecutionMode.INDEPENDENT
+        assert getattr(exec_policy, "mode") == BatchExecutionMode.INDEPENDENT
 
     def test_pair_trade_scenario_with_coordinated_policy(self):
         """Pair trade uses COORDINATED mode (cancel others on failure)."""
@@ -536,5 +536,5 @@ class TestStrategyDirectiveExecutionPolicy:
         )
 
         exec_policy = cast(ExecutionPolicy, directive.execution_policy)
-        assert exec_policy.mode == BatchExecutionMode.COORDINATED
-        assert exec_policy.timeout_seconds == 30
+        assert getattr(exec_policy, "mode") == BatchExecutionMode.COORDINATED
+        assert getattr(exec_policy, "timeout_seconds") == 30
