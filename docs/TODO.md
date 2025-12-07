@@ -40,7 +40,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 | Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
 | Week 3: Factories | 0 | 5 | 🔴 Blocked |
 | Week 4: Platform | 0 | 4 | 🔴 Blocked |
-| Technical Debt | 2 | 13 | 🔄 15% (DTO refactors + documentation) |
+| Technical Debt | 3 | 13 | 🔄 23% (Signal verified compliant) |
 
 ---
 
@@ -64,19 +64,15 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 
 ### Open Items
 
-- [ ] **Signal DTO: Refactor Required** (2025-12-07) 🔴 HIGH
+- [x] **Signal DTO: Already Compliant** (2025-12-07) ✅
   - **Source:** `docs/development/backend/dtos/SIGNAL_DESIGN.md`
-  - **Status:** ⚠️ Needs Refactor
-  - **Breaking Changes:**
-    - [ ] Remove `causality: CausalityChain` field
-    - [ ] Rename `asset` → `symbol`
-    - [ ] Update symbol pattern (`BTC/EUR` → `BTC_EUR`)
-    - [ ] Change `confidence: float` → `Decimal`
-  - **Migration:**
-    - [ ] Update docstrings, remove CausalityChain import
-    - [ ] Update tests in `test_signal.py`
-    - [ ] Update SignalDetector plugin implementations
-    - [ ] Update json_schema_extra examples
+  - **Status:** ✅ Verified compliant - no changes needed
+  - **Verification:** 32 tests passing, 0 type errors
+  - **All items already implemented:**
+    - [x] No `causality` field (pre-causality DTO)
+    - [x] Uses `symbol` (not `asset`)
+    - [x] Symbol pattern `BTC_USDT` (underscore separator)
+    - [x] `confidence: Decimal` type
 
 - [ ] **Risk DTO: Refactor Required** (2025-12-07) 🔴 HIGH
   - **Source:** `docs/development/backend/dtos/RISK_DESIGN.md`
