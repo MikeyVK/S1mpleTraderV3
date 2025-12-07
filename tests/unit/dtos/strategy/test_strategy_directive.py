@@ -197,7 +197,7 @@ class TestStrategyDirectiveDefaultValues:
             confidence=Decimal("0.5")
         )
 
-        assert directive.target_plan_ids == []
+        assert not directive.target_plan_ids
 
     def test_causality_enable_journal_causality(self):
         """causality contain all IDs for Journal causality tracking."""
