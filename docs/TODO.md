@@ -40,7 +40,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 | Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
 | Week 3: Factories | 0 | 5 | 🔴 Blocked |
 | Week 4: Platform | 0 | 4 | 🔴 Blocked |
-| Technical Debt | 1 | 4 | 🔄 25% (3 open) |
+| Technical Debt | 2 | 4 | 🔄 50% (2 open) |
 
 ---
 
@@ -69,15 +69,16 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   - **Scope:** `backend/dtos/execution/execution_group.py`
   - **Priority:** Medium
 
-- [ ] **ExecutionDirective: REMOVE iceberg_preference field** (2025-12-02) 🔴 HIGH
-  - **Issue:** Violates layer responsibilities (ExecutionPlanner concern, not StrategyPlanner)
-  - **Scope:** `backend/dtos/strategy/strategy_directive.py`
-  - **Action:** Remove field, verify ExecutionPlan.visibility_preference exists
-
 - [ ] **DTO_ARCHITECTURE.md: Review Discussion Points** (2025-12-04) 🔴 HIGH
   - **Context:** Full document review revealed 21 architectural inconsistencies
   - **Status:** DISCUSSION REQUIRED before document can be considered DEFINITIVE
   - **Source:** User review session 2025-12-04
+
+### Recently Completed
+
+- [x] **ExecutionDirective: REMOVE iceberg_preference field** (2025-12-02 → 2025-12-07) ✅
+  - **Resolution:** Removed field, updated docstring with note about visibility_preference
+  - **Scope:** Code + DTO_ARCHITECTURE.md + STRATEGY_DIRECTIVE_DESIGN.md
   
   <details>
   <summary>📋 Discussion Points (21 items - FULL CONTEXT)</summary>

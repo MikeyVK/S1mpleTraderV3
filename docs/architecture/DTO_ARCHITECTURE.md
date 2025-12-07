@@ -545,7 +545,7 @@ Modified:   Post-creation (order_ids tracking, not frozen)
 | EntryDirective | EntryPlanner | symbol, direction, timing_preference, preferred_price_zone, max_slippage |
 | SizeDirective | SizePlanner | aggressiveness, max_risk_amount, account_risk_pct |
 | ExitDirective | ExitPlanner | profit_taking_preference, risk_reward_ratio, stop_loss_tolerance |
-| ExecutionDirective | ExecutionPlanner | execution_urgency, iceberg_preference, max_total_slippage_pct |
+| ExecutionDirective | ExecutionPlanner | execution_urgency, max_total_slippage_pct |
 
 **StrategyPlanner Types & Directive Patterns:**
 
@@ -563,7 +563,7 @@ Signal (FVG detected, confidence 0.85)
     → Decision: NEW_TRADE with confidence 0.80
       → StrategyDirective created:
         - scope=NEW_TRADE
-        - entry_directive: BUY BTCUSDT, timing=0.9
+        - entry_directive: BUY BTC_USDT, timing=0.9
         - size_directive: aggressiveness=0.7, risk=2%
         - exit_directive: RR=3.0, stop=1.5%
         - execution_directive: urgency=0.8

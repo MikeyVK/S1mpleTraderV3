@@ -81,8 +81,9 @@
 | Field | Type | Req | Description |
 |-------|------|-----|-------------|
 | `execution_urgency` | `Decimal` | ❌ | Urgency [0.0-1.0], default 0.5 |
-| `iceberg_preference` | `Decimal \| None` | ❌ | Iceberg preference [0.0-1.0] |
 | `max_total_slippage_pct` | `Decimal` | ❌ | Max total slippage, default 0.01 |
+
+> **Note:** Visibility preferences (iceberg orders) are handled at ExecutionPlan level via `visibility_preference`, not in ExecutionDirective.
 
 **Note:** The sub-directive in StrategyDirective uses field name `execution_directive` (type `ExecutionDirective`).
 This is distinct from:

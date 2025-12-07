@@ -149,10 +149,14 @@ class ExecutionDirective(BaseModel):
     """
     Routing/execution constraints and hints for ExecutionPlanner.
 
+    NOTE: Visibility preferences (iceberg orders, stealth execution) are handled
+    at ExecutionPlan level via visibility_preference field, not here.
+    ExecutionDirective provides strategic hints; ExecutionPlan provides concrete
+    execution specifications.
+
     Attributes:
         execution_urgency: Execution urgency [0.0-1.0],
             1.0 = market orders, 0.0 = patient limit orders
-        iceberg_preference: Optional preference for iceberg orders [0.0-1.0]
         max_total_slippage_pct: Maximum total slippage across all executions
             as decimal
     """
@@ -164,15 +168,6 @@ class ExecutionDirective(BaseModel):
         description=(
             "Execution urgency [0.0-1.0]: "
             "1.0 = immediate market orders, 0.0 = patient limit orders"
-        )
-    )
-    iceberg_preference: Annotated[
-        Decimal, Field(ge=Decimal("0.0"), le=Decimal("1.0"))
-    ] | None = Field(
-        default=None,
-        description=(
-            "Optional preference for iceberg orders [0.0-1.0]: "
-            "1.0 = always use iceberg, 0.0 = never use"
         )
     )
     max_total_slippage_pct: Annotated[
