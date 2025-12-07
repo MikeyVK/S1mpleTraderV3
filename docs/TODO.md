@@ -40,7 +40,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 | Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
 | Week 3: Factories | 0 | 5 | 🔴 Blocked |
 | Week 4: Platform | 0 | 4 | 🔴 Blocked |
-| Technical Debt | 3 | 4 | 🔄 75% (1 open) |
+| Technical Debt | 3 | 12 | 🔄 25% (9 open from design docs) |
 
 ---
 
@@ -63,6 +63,86 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 ## 🔧 Technical Debt
 
 ### Open Items
+
+- [ ] **Signal DTO: Refactor Required** (2025-12-07) 🔴 HIGH
+  - **Source:** `docs/development/backend/dtos/SIGNAL_DESIGN.md`
+  - **Status:** ⚠️ Needs Refactor
+  - **Breaking Changes:**
+    - [ ] Remove `causality: CausalityChain` field
+    - [ ] Rename `asset` → `symbol`
+    - [ ] Update symbol pattern (`BTC/EUR` → `BTC_EUR`)
+    - [ ] Change `confidence: float` → `Decimal`
+  - **Migration:**
+    - [ ] Update docstrings, remove CausalityChain import
+    - [ ] Update tests in `test_signal.py`
+    - [ ] Update SignalDetector plugin implementations
+    - [ ] Update json_schema_extra examples
+
+- [ ] **Risk DTO: Refactor Required** (2025-12-07) 🔴 HIGH
+  - **Source:** `docs/development/backend/dtos/RISK_DESIGN.md`
+  - **Status:** ⚠️ Needs Refactor
+  - **Breaking Changes:**
+    - [ ] Remove `causality: CausalityChain` field
+    - [ ] Rename `affected_asset` → `affected_symbol`
+    - [ ] Update symbol pattern (`BTC/EUR` → `BTC_EUR`)
+    - [ ] Change `severity: float` → `Decimal`
+  - **Migration:**
+    - [ ] Update docstrings, remove CausalityChain import
+    - [ ] Update tests in `test_risk.py`
+    - [ ] Update RiskMonitor plugin implementations
+    - [ ] Update json_schema_extra examples
+
+- [ ] **Order DTO: Not Implemented** (2025-12-07)
+  - **Source:** `docs/development/backend/dtos/ORDER_DESIGN.md`
+  - **Status:** ❌ Not Implemented
+  - **Prerequisites:**
+    - [ ] Add `generate_order_id()` to `backend/utils/id_generators.py`
+    - [ ] Add `OrderType`, `OrderStatus` enums to `backend/core/enums.py`
+  - **Implementation:**
+    - [ ] Create `backend/dtos/state/order.py`
+    - [ ] Write tests and verify passing
+
+- [ ] **Fill DTO: Not Implemented** (2025-12-07)
+  - **Source:** `docs/development/backend/dtos/FILL_DESIGN.md`
+  - **Status:** ❌ Not Implemented
+  - **Prerequisites:**
+    - [ ] Implement Order DTO first (Fill references Order)
+    - [ ] Add `generate_fill_id()` to `backend/utils/id_generators.py`
+  - **Implementation:**
+    - [ ] Create `backend/dtos/state/fill.py`
+    - [ ] Write tests and verify passing
+
+- [ ] **ExecutionGroup: Remove DCA from enum** (2025-12-07)
+  - **Source:** `docs/development/backend/dtos/EXECUTION_GROUP_DESIGN.md`
+  - **Issue:** DCA is a PLANNING concept, not an execution strategy
+  - **Action:**
+    - [ ] Remove `DCA` from `ExecutionStrategyType` enum
+    - [ ] Update any usages
+    - [ ] Run pyright verification
+
+- [ ] **StrategyDirective: Verification pending** (2025-12-07)
+  - **Source:** `docs/development/backend/dtos/STRATEGY_DIRECTIVE_DESIGN.md`
+  - **Status:** ⚠️ Needs verification
+  - **Pending:**
+    - [ ] Verify field rename: `target_trade_ids` → `target_plan_ids`
+    - [ ] Verify CODE_STYLE.md compliance
+    - [ ] Run pytest and pyright
+
+- [ ] **TradePlan: Quality gates pending** (2025-12-07)
+  - **Source:** `docs/development/backend/dtos/TRADE_PLAN_DESIGN.md`
+  - **Pending:**
+    - [ ] Run `pytest tests/unit/dtos/state/test_trade_plan.py`
+    - [ ] Run `pyright backend/dtos/state/trade_plan.py`
+
+- [ ] **PlatformDataDTO: Quality gates pending** (2025-12-07)
+  - **Source:** `docs/development/backend/dtos/PLATFORM_DATA_DTO_DESIGN.md`
+  - **Pending:**
+    - [ ] Run pytest verification
+    - [ ] Run pyright verification
+
+- [ ] **ExecutionCommand: CausalityChain field TBD** (2025-12-07)
+  - **Source:** `docs/development/backend/dtos/EXECUTION_COMMAND_DESIGN.md`
+  - **Pending:** `execution_directive_id` → `execution_command_id` in CausalityChain (TBD when needed)
 
 - [ ] **DTO_ARCHITECTURE.md: Review Discussion Points** (2025-12-04) 🔴 HIGH
   - **Context:** Full document review revealed 21 architectural inconsistencies
