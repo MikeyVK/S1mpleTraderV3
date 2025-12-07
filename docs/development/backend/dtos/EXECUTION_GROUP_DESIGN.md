@@ -179,7 +179,7 @@ PARTIAL = "PARTIAL"       # Some orders filled, group stopped
 
 | Current | New | Impact |
 |---------|-----|--------|
-| `ExecutionStrategyType.DCA` | **REMOVE** | Remove enum value. Update any usages. |
+| ~~`ExecutionStrategyType.DCA`~~ | ✅ **REMOVED** | Removed in commit `3b45af6`. DCA is a planning concept, not execution. |
 | ~~`metadata: Dict[str, Any]`~~ | ✅ **REMOVED** | Removed 2025-12-07. Strategy params belong in ExecutionPlan. |
 | ~~`parent_directive_id`~~ | `parent_command_id` | ✅ DONE - Aligned with ExecutionCommand terminology. |
 
@@ -197,10 +197,10 @@ visible_ratio, etc.) belong in `ExecutionPlan`, not `ExecutionGroup`.
 
 ### Migration Checklist
 
-- [ ] Remove `DCA` from `ExecutionStrategyType` enum
+- [x] Remove `DCA` from `ExecutionStrategyType` enum → **REMOVED** (commit `3b45af6`)
 - [x] ~~Analyze `metadata` usage and either remove or type~~ → **REMOVED** (2025-12-07)
 - [x] Update all tests → Done (23 tests passing)
-- [ ] Update ExecutionWorker implementations
+- [x] Update ExecutionWorker implementations → N/A (no DCA references)
 
 ---
 
@@ -213,7 +213,7 @@ visible_ratio, etc.) belong in `ExecutionPlan`, not `ExecutionGroup`.
 - [x] Breaking changes documented
 
 ### Implementation (post-refactor)
-- [ ] `DCA` removed from enum
+- [x] `DCA` removed from enum → **REMOVED** (commit `3b45af6`)
 - [x] `metadata` addressed → **REMOVED** (2025-12-07)
 - [x] Follows CODE_STYLE.md structure
 - [x] model_config correct (frozen=False)

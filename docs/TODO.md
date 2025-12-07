@@ -40,7 +40,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 | Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
 | Week 3: Factories | 0 | 5 | 🔴 Blocked |
 | Week 4: Platform | 0 | 4 | 🔴 Blocked |
-| Technical Debt | 4 | 13 | 🔄 31% (Signal, Risk verified) |
+| Technical Debt | 8 | 13 | 🔄 62% (8 DTOs verified) |
 
 ---
 
@@ -104,22 +104,20 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - [ ] Create `backend/dtos/state/fill.py`
     - [ ] Write tests and verify passing
 
-- [ ] **ExecutionGroup: Remove DCA from enum** (2025-12-07)
+- [x] **ExecutionGroup: DCA already removed** (2025-12-07) ✅
   - **Source:** `docs/development/backend/dtos/EXECUTION_GROUP_DESIGN.md`
-  - **Issue:** DCA is a PLANNING concept, not an execution strategy
-  - **Action:**
-    - [ ] Remove `DCA` from `ExecutionStrategyType` enum
-    - [ ] Update any usages
-    - [ ] Run pyright verification
+  - **Status:** ✅ Verified - DCA removed in commit `3b45af6`
+  - **Verification:** Enum contains SINGLE, TWAP, VWAP, ICEBERG, LAYERED, POV (no DCA)
 
-- [ ] **StrategyDirective: Verification pending** (2025-12-07)
+- [x] **StrategyDirective: Code Verified** (2025-12-07) ✅
   - **Source:** `docs/development/backend/dtos/STRATEGY_DIRECTIVE_DESIGN.md`
-  - **Status:** ⚠️ Needs verification
-  - **Pending:**
-    - [ ] Verify field rename: `target_trade_ids` → `target_plan_ids`
-    - [ ] Verify CODE_STYLE.md compliance
-    - [ ] Run pytest and pyright
-  - **Documentation Issues (from DTO_ARCHITECTURE.md review):**
+  - **Status:** ✅ Code verified - 17 tests passing, 0 type errors
+  - **Verified:**
+    - [x] Field uses `target_plan_ids` (not `target_trade_ids`)
+    - [x] CODE_STYLE.md compliance
+    - [x] pytest: 17 tests passing
+    - [x] pyright: 0 errors
+  - **Documentation Issues (still pending - DTO_ARCHITECTURE.md updates):**
     - [ ] **"WHY this DTO exists" Cleanup:**
       - Remove DRY violation (scope field types duplicated)
       - Replace "Routing" → "Execution" terminology
@@ -141,17 +139,19 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
       - Example: Entry order at limit price not filled → adjust price
       - Example: Entry order partially filled → modify remaining quantity
 
-- [ ] **TradePlan: Quality gates pending** (2025-12-07)
+- [x] **TradePlan: Quality gates passed** (2025-12-07) ✅
   - **Source:** `docs/development/backend/dtos/TRADE_PLAN_DESIGN.md`
-  - **Pending:**
-    - [ ] Run `pytest tests/unit/dtos/state/test_trade_plan.py`
-    - [ ] Run `pyright backend/dtos/state/trade_plan.py`
+  - **Status:** ✅ Verified
+  - **Verification:**
+    - [x] pytest: 4 tests passing
+    - [x] pyright: 0 errors
 
-- [ ] **PlatformDataDTO: Quality gates pending** (2025-12-07)
+- [x] **PlatformDataDTO: Quality gates passed** (2025-12-07) ✅
   - **Source:** `docs/development/backend/dtos/PLATFORM_DATA_DTO_DESIGN.md`
-  - **Pending:**
-    - [ ] Run pytest verification
-    - [ ] Run pyright verification
+  - **Status:** ✅ Verified
+  - **Verification:**
+    - [x] pytest: 19 tests passing
+    - [x] pyright: 0 errors
 
 - [ ] **ExecutionCommand: CausalityChain field TBD** (2025-12-07)
   - **Source:** `docs/development/backend/dtos/EXECUTION_COMMAND_DESIGN.md`
