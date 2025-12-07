@@ -40,7 +40,7 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 | Week 2: Bootstrap | 0 | 3 | 🔴 Blocked |
 | Week 3: Factories | 0 | 5 | 🔴 Blocked |
 | Week 4: Platform | 0 | 4 | 🔴 Blocked |
-| Technical Debt | 2 | 4 | 🔄 50% (2 open) |
+| Technical Debt | 3 | 4 | 🔄 75% (1 open) |
 
 ---
 
@@ -63,11 +63,6 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
 ## 🔧 Technical Debt
 
 ### Open Items
-
-- [ ] **ExecutionGroup: Review `metadata` field usage** (2025-11-27)
-  - **Issue:** `metadata: dict[str, Any]` is a code smell
-  - **Scope:** `backend/dtos/execution/execution_group.py`
-  - **Priority:** Medium
 
 - [ ] **DTO_ARCHITECTURE.md: Review Discussion Points** (2025-12-04) 🔴 HIGH
   - **Context:** Full document review revealed 21 architectural inconsistencies
@@ -405,6 +400,10 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
   4. Update code where architectural changes needed
 
 ### Recently Completed
+
+- [x] **ExecutionGroup: REMOVE metadata field** (2025-11-27 → 2025-12-07) ✅
+  - **Resolution:** Removed `metadata: dict[str, Any]` - strategy params belong in ExecutionPlan
+  - **Scope:** Code + tests (23 tests) + EXECUTION_GROUP_DESIGN.md
 
 - [x] **ExecutionDirective: REMOVE iceberg_preference field** (2025-12-02 → 2025-12-07) ✅
   - **Resolution:** Removed field, updated docstring with note about visibility_preference

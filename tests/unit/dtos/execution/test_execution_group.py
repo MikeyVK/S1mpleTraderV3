@@ -5,7 +5,7 @@ STAP 1 RED: Write 25+ FAILING tests based on EXECUTION_GROUP_DESIGN.md
 Expected: ALL RED until DTO implementation (STAP 2)
 
 Test Categories:
-- Creation Tests (3): minimal, full, with metadata
+- Creation Tests (2): minimal, full
 - Validation Tests (6): ID formats, unique order IDs, fill ratio, final state XOR
 - Strategy Tests (7): SINGLE, TWAP, VWAP, ICEBERG, DCA, LAYERED, POV
 - Status Tests (6): lifecycle transitions, consistency validation
@@ -53,7 +53,6 @@ class TestExecutionGroupCreation:
         assert group.filled_quantity is None
         assert group.cancelled_at is None
         assert group.completed_at is None
-        assert group.metadata is None
 
     def test_create_execution_group_full(self):
         """Test creation with all fields populated."""
@@ -68,12 +67,7 @@ class TestExecutionGroupCreation:
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("30.0"),
             cancelled_at=None,
-            completed_at=None,
-            metadata={
-                "chunk_size": Decimal("10.0"),
-                "interval_seconds": 300,
-                "total_chunks": 10
-            }
+            completed_at=None
         )
 
         assert group.group_id == "EXG_20251028_143025_b7c4d"
@@ -82,32 +76,6 @@ class TestExecutionGroupCreation:
         assert len(group.order_ids) == 3
         assert group.target_quantity == Decimal("100.0")
         assert group.filled_quantity == Decimal("30.0")
-        assert group.metadata is not None
-        assert group.metadata["total_chunks"] == 10
-
-    def test_create_execution_group_with_metadata(self):
-        """Test creation with strategy-specific metadata."""
-        metadata = {
-            "visible_ratio": 0.2,
-            "refresh_threshold": 0.5,
-            "total_refreshes": 0
-        }
-
-        group = ExecutionGroup(
-            group_id="EXG_20251028_150000_c9e7f",
-            parent_command_id="EXC_20251028_145958_d1a2b3c4",
-            execution_strategy=ExecutionStrategyType.ICEBERG,
-            order_ids=["binance_200"],
-            status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=timezone.utc),
-            metadata=metadata
-        )
-
-        assert group.metadata is not None
-        assert group.metadata["visible_ratio"] == 0.2
-        assert group.metadata["refresh_threshold"] == 0.5
-
 
 class TestExecutionGroupValidation:
     """Test ExecutionGroup validation rules."""
@@ -230,21 +198,14 @@ class TestExecutionGroupStrategies:
             created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
             updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=timezone.utc),
             target_quantity=Decimal("100.0"),
-            filled_quantity=Decimal("30.0"),
-            metadata={
-                "chunk_size": Decimal("10.0"),
-                "interval_seconds": 300,
-                "total_chunks": 10
-            }
+            filled_quantity=Decimal("30.0")
         )
 
         assert group.execution_strategy == ExecutionStrategyType.TWAP
-        assert group.metadata is not None
-        assert group.metadata["interval_seconds"] == 300
         assert len(group.order_ids) == 3
 
     def test_execution_strategy_iceberg(self):
-        """Test ICEBERG strategy with visible_ratio."""
+        """Test ICEBERG strategy."""
         group = ExecutionGroup(
             group_id="EXG_20251028_150000_c9e7f",
             parent_command_id="EXC_20251028_145958_d1a2b3c4",
@@ -254,13 +215,11 @@ class TestExecutionGroupStrategies:
             created_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=timezone.utc),
             updated_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=timezone.utc),
             target_quantity=Decimal("500.0"),
-            filled_quantity=Decimal("0.0"),
-            metadata={"visible_ratio": 0.2, "refresh_threshold": 0.5}
+            filled_quantity=Decimal("0.0")
         )
 
         assert group.execution_strategy == ExecutionStrategyType.ICEBERG
-        assert group.metadata is not None
-        assert group.metadata["visible_ratio"] == 0.2
+        assert len(group.order_ids) == 1
 
     def test_execution_strategy_layered(self):
         """Test LAYERED strategy with price levels."""
@@ -273,13 +232,11 @@ class TestExecutionGroupStrategies:
             created_at=datetime(2025, 10, 28, 10, 0, 0, tzinfo=timezone.utc),
             updated_at=datetime(2025, 10, 28, 12, 0, 0, tzinfo=timezone.utc),
             target_quantity=Decimal("50.0"),
-            filled_quantity=Decimal("30.0"),
-            metadata={"price_levels": ["100000", "99500", "99000"]}
+            filled_quantity=Decimal("30.0")
         )
 
         assert group.execution_strategy == ExecutionStrategyType.LAYERED
-        assert group.metadata is not None
-        assert group.metadata["price_levels"] == ["100000", "99500", "99000"]
+        assert len(group.order_ids) == 3
 
     def test_execution_strategy_vwap(self):
         """Test VWAP strategy."""
@@ -295,26 +252,6 @@ class TestExecutionGroupStrategies:
 
         assert group.execution_strategy == ExecutionStrategyType.VWAP
 
-    def test_execution_strategy_layered_with_metadata(self):
-        """Test LAYERED limit orders strategy with metadata."""
-        group = ExecutionGroup(
-            group_id="EXG_20251028_130000_n2o3p",
-            parent_command_id="EXC_20251028_125958_q4r5s6t7",
-            execution_strategy=ExecutionStrategyType.LAYERED,
-            order_ids=["binance_600", "binance_601", "binance_602"],
-            status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 13, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 13, 5, 0, tzinfo=timezone.utc),
-            metadata={
-                "price_levels": [50000, 49500, 49000],
-                "quantity_per_level": Decimal("10.0")
-            }
-        )
-
-        assert group.execution_strategy == ExecutionStrategyType.LAYERED
-        assert group.metadata is not None
-        assert len(group.metadata["price_levels"]) == 3
-
     def test_execution_strategy_pov(self):
         """Test POV (Percentage of Volume) strategy."""
         group = ExecutionGroup(
@@ -324,13 +261,10 @@ class TestExecutionGroupStrategies:
             order_ids=[],
             status=GroupStatus.PENDING,
             created_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=timezone.utc),
-            metadata={"target_pov_percentage": 0.1, "max_participation": 0.2}
+            updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=timezone.utc)
         )
 
         assert group.execution_strategy == ExecutionStrategyType.POV
-        assert group.metadata is not None
-        assert group.metadata["target_pov_percentage"] == 0.1
 
 
 class TestExecutionGroupStatus:
@@ -396,15 +330,12 @@ class TestExecutionGroupStatus:
             updated_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=timezone.utc),
             target_quantity=Decimal("200.0"),
             filled_quantity=Decimal("40.0"),
-            cancelled_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=timezone.utc),
-            metadata={"cancel_reason": "RISK_THRESHOLD_BREACHED"}
+            cancelled_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=timezone.utc)
         )
 
         assert group.status == GroupStatus.CANCELLED
         assert group.cancelled_at is not None
         assert group.completed_at is None
-        assert group.metadata is not None
-        assert group.metadata["cancel_reason"] == "RISK_THRESHOLD_BREACHED"
 
     def test_status_active_to_failed(self):
         """Test ACTIVE → FAILED transition (execution error)."""
@@ -415,13 +346,10 @@ class TestExecutionGroupStatus:
             order_ids=[],
             status=GroupStatus.FAILED,
             created_at=datetime(2025, 10, 28, 17, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 17, 0, 5, tzinfo=timezone.utc),
-            metadata={"error": "INSUFFICIENT_BALANCE"}
+            updated_at=datetime(2025, 10, 28, 17, 0, 5, tzinfo=timezone.utc)
         )
 
         assert group.status == GroupStatus.FAILED
-        assert group.metadata is not None
-        assert group.metadata["error"] == "INSUFFICIENT_BALANCE"
 
     def test_status_active_to_partial(self):
         """Test ACTIVE → PARTIAL transition (partial fill, stopped early)."""
@@ -434,8 +362,7 @@ class TestExecutionGroupStatus:
             created_at=datetime(2025, 10, 28, 18, 0, 0, tzinfo=timezone.utc),
             updated_at=datetime(2025, 10, 28, 18, 10, 0, tzinfo=timezone.utc),
             target_quantity=Decimal("100.0"),
-            filled_quantity=Decimal("45.0"),
-            metadata={"stop_reason": "USER_REQUESTED"}
+            filled_quantity=Decimal("45.0")
         )
 
         assert group.status == GroupStatus.PARTIAL
@@ -536,12 +463,7 @@ class TestExecutionGroupSerialization:  # pylint: disable=too-few-public-methods
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("30.0"),
             cancelled_at=None,
-            completed_at=None,
-            metadata={
-                "chunk_size": "10.0",  # Note: Decimal as string in JSON
-                "interval_seconds": 300,
-                "total_chunks": 10
-            }
+            completed_at=None
         )
 
         # Serialize to dict (Pydantic model_dump)
@@ -563,16 +485,15 @@ class TestExecutionGroupSerialization:  # pylint: disable=too-few-public-methods
         assert restored.order_ids == original.order_ids
         assert restored.target_quantity == original.target_quantity
         assert restored.filled_quantity == original.filled_quantity
-        assert restored.metadata is not None
-        assert restored.metadata["interval_seconds"] == 300
 
 
-# Test count: 25 tests total
-# - 3 creation tests
+# Test count: 23 tests total (reduced from 25 after metadata removal)
+# - 2 creation tests
 # - 6 validation tests
-# - 7 strategy tests (SINGLE, TWAP, VWAP, ICEBERG, DCA, LAYERED, POV)
+# - 6 strategy tests (SINGLE, TWAP, VWAP, ICEBERG, LAYERED, POV)
 # - 6 status tests (transitions + consistency)
 # - 2 mutation tests
 # - 1 serialization test
 #
-# Expected result: ALL RED ❌ until ExecutionGroup DTO implemented
+# NOTE: metadata field removed per architectural review (2025-12-07)
+# Strategy-specific params belong in ExecutionPlan, not ExecutionGroup

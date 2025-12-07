@@ -1,9 +1,9 @@
 <!-- filepath: docs/development/backend/dtos/EXECUTION_GROUP_DESIGN.md -->
 # ExecutionGroup Design Document
 
-**Status:** Refactor Required  
-**Version:** 1.0  
-**Last Updated:** 2025-12-01
+**Status:** ✅ Current  
+**Version:** 1.1  
+**Last Updated:** 2025-12-07
 
 ---
 
@@ -180,35 +180,26 @@ PARTIAL = "PARTIAL"       # Some orders filled, group stopped
 | Current | New | Impact |
 |---------|-----|--------|
 | `ExecutionStrategyType.DCA` | **REMOVE** | Remove enum value. Update any usages. |
-| `metadata: Dict[str, Any]` | **REMOVE or TYPE** | Untyped dict violates lean principle. See analysis below. |
+| ~~`metadata: Dict[str, Any]`~~ | ✅ **REMOVED** | Removed 2025-12-07. Strategy params belong in ExecutionPlan. |
 | ~~`parent_directive_id`~~ | `parent_command_id` | ✅ DONE - Aligned with ExecutionCommand terminology. |
 
-### Metadata Field Analysis
+### Metadata Field Analysis (RESOLVED 2025-12-07)
 
-**Current state:** `metadata: Dict[str, Any]` for "strategy-specific parameters"
+**Previous state:** `metadata: Dict[str, Any]` for "strategy-specific parameters"
 
-**Issue:** Untyped dict = undefined contract, violates lean DTO principle.
+**Resolution:** **REMOVED** - Strategy-specific execution parameters (chunk_size, interval_seconds, 
+visible_ratio, etc.) belong in `ExecutionPlan`, not `ExecutionGroup`.
 
-**Options:**
-1. **REMOVE** if no concrete consumer exists
-2. **TYPE** with specific fields if needed (e.g., `chunk_size`, `interval_seconds` for TWAP)
-
-**Recommendation:** Analyze current usage. If only used for TWAP/ICEBERG params, create typed fields:
-```python
-# For TWAP
-chunk_count: int | None = None
-interval_seconds: int | None = None
-
-# For ICEBERG
-visible_quantity: Decimal | None = None
-hidden_quantity: Decimal | None = None
-```
+**Rationale:**
+- `ExecutionGroup` is a **tracking container** (order IDs, status, filled quantity)
+- `ExecutionPlan` is the **execution specification** (strategy, urgency, visibility)
+- ExecutionWorker receives ExecutionPlan with all params, creates ExecutionGroup for tracking only
 
 ### Migration Checklist
 
 - [ ] Remove `DCA` from `ExecutionStrategyType` enum
-- [ ] Analyze `metadata` usage and either remove or type
-- [ ] Update all tests
+- [x] ~~Analyze `metadata` usage and either remove or type~~ → **REMOVED** (2025-12-07)
+- [x] Update all tests → Done (23 tests passing)
 - [ ] Update ExecutionWorker implementations
 
 ---
@@ -223,16 +214,16 @@ hidden_quantity: Decimal | None = None
 
 ### Implementation (post-refactor)
 - [ ] `DCA` removed from enum
-- [ ] `metadata` addressed (removed or typed)
-- [ ] Follows CODE_STYLE.md structure
-- [ ] model_config correct (frozen=False)
+- [x] `metadata` addressed → **REMOVED** (2025-12-07)
+- [x] Follows CODE_STYLE.md structure
+- [x] model_config correct (frozen=False)
 
 ### Tests (post-refactor)
-- [ ] Test file updated
-- [ ] All tests pass
+- [x] Test file updated (23 tests)
+- [x] All tests pass
 
 ### Quality Gates
-- [ ] `pytest tests/unit/dtos/execution/test_execution_group.py` - ALL PASS
+- [x] `pytest tests/unit/dtos/execution/test_execution_group.py` - ALL PASS (23)
 - [ ] `pyright backend/dtos/execution/execution_group.py` - No errors
 
 ---
@@ -241,4 +232,5 @@ hidden_quantity: Decimal | None = None
 
 | Version | Date | Author | Changes |
 |---------|------|--------|--------|
+| 1.1 | 2025-12-07 | AI Agent | Removed `metadata` field - strategy params belong in ExecutionPlan |
 | 1.0 | 2025-12-01 | AI Agent | Initial design document |

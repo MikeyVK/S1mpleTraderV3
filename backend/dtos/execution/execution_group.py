@@ -16,7 +16,6 @@ Tests: tests/unit/dtos/execution/test_execution_group.py
 from datetime import datetime
 from decimal import Decimal
 from re import match
-from typing import Any
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
@@ -35,7 +34,7 @@ class ExecutionGroup(BaseModel):
     Fields:
         group_id: Unique execution group identifier (EXG_YYYYMMDD_HHMMSS_xxxxx)
         parent_command_id: ExecutionCommand that spawned this group
-        execution_strategy: Execution strategy type (TWAP, ICEBERG, DCA, etc.)
+        execution_strategy: Execution strategy type (TWAP, ICEBERG, etc.)
         order_ids: List of connector order IDs in this group (unique values)
         status: Current lifecycle status
         created_at: Group creation timestamp (UTC)
@@ -44,7 +43,9 @@ class ExecutionGroup(BaseModel):
         filled_quantity: Actual filled quantity so far (optional)
         cancelled_at: Cancellation timestamp (optional)
         completed_at: Completion timestamp (optional)
-        metadata: Strategy-specific parameters (optional)
+
+    NOTE: Strategy-specific execution parameters (chunk_size, interval, visible_ratio, etc.)
+    belong in ExecutionPlan, not here. ExecutionGroup is a tracking container only.
 
     Example:
         >>> group = ExecutionGroup(
@@ -79,12 +80,7 @@ class ExecutionGroup(BaseModel):
                     "target_quantity": "100.0",
                     "filled_quantity": "40.0",
                     "cancelled_at": None,
-                    "completed_at": None,
-                    "metadata": {
-                        "chunk_size": "20.0",
-                        "interval_seconds": 180,
-                        "chunks_total": 5
-                    }
+                    "completed_at": None
                 },
                 {
                     "group_id": "EXG_20251028_150015_b9d2e",
@@ -100,12 +96,7 @@ class ExecutionGroup(BaseModel):
                     "target_quantity": "500.0",
                     "filled_quantity": "100.0",
                     "cancelled_at": None,
-                    "completed_at": None,
-                    "metadata": {
-                        "visible_size": "100.0",
-                        "hidden_size": "400.0",
-                        "reveal_threshold": 0.8
-                    }
+                    "completed_at": None
                 },
                 {
                     "group_id": "EXG_20251028_160000_d4e5f",
@@ -118,8 +109,7 @@ class ExecutionGroup(BaseModel):
                     "target_quantity": "50.0",
                     "filled_quantity": "50.0",
                     "cancelled_at": None,
-                    "completed_at": "2025-10-28T16:00:05Z",
-                    "metadata": None
+                    "completed_at": "2025-10-28T16:00:05Z"
                 }
             ]
         }
@@ -136,7 +126,6 @@ class ExecutionGroup(BaseModel):
     filled_quantity: Decimal | None = None
     cancelled_at: datetime | None = None
     completed_at: datetime | None = None
-    metadata: dict[str, Any] | None = None
 
     @field_validator("group_id")
     @classmethod
