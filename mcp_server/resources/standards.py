@@ -1,8 +1,8 @@
 """Resource for coding standards."""
-import os
 import json
+
 from mcp_server.resources.base import BaseResource
-from mcp_server.config.settings import settings
+
 
 class StandardsResource(BaseResource):
     """Provides access to coding standards."""

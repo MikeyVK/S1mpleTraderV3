@@ -1,7 +1,7 @@
 """Tests for core exceptions."""
 import pytest
 from mcp_server.core.exceptions import (
-    MCPError, ValidationError, PreflightError, ExecutionError, SystemError
+    MCPError, ValidationError, PreflightError, ExecutionError, MCPSystemError
 )
 
 def test_mcp_error_defaults():
@@ -27,6 +27,6 @@ def test_execution_error():
     assert error.recovery == ["Try again"]
 
 def test_system_error():
-    error = SystemError("Network down", fallback="Use cache")
+    error = MCPSystemError("Network down", fallback="Use cache")
     assert error.code == "ERR_SYSTEM"
     assert error.fallback == "Use cache"

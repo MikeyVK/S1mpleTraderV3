@@ -1,6 +1,6 @@
 """Base class for MCP resources."""
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+
 
 class BaseResource(ABC):
     """Abstract base class for all resources."""
@@ -12,7 +12,6 @@ class BaseResource(ABC):
     @abstractmethod
     async def read(self, uri: str) -> str:
         """Read the resource content."""
-        pass
 
     def matches(self, uri: str) -> bool:
         """Check if the URI matches this resource's pattern."""

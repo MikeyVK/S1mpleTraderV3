@@ -1,15 +1,16 @@
 """MCP Server Entrypoint."""
 import asyncio
-from typing import Any
+
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import (
-    Resource, Tool, TextContent, ImageContent,
+    Resource,
+    Tool,
+    TextContent,
+    ImageContent,
     EmbeddedResource,
-    GetPromptRequest, ListPromptsRequest,
-    ReadResourceRequest, ListResourcesRequest,
-    CallToolRequest, ListToolsRequest
 )
+
 from mcp_server.config.settings import settings
 from mcp_server.core.logging import setup_logging, get_logger
 from mcp_server.resources.standards import StandardsResource
@@ -18,23 +19,29 @@ from mcp_server.resources.standards import StandardsResource
 setup_logging()
 logger = get_logger("server")
 
+
 class MCPServer:
-    def __init__(self):
-        self.server = Server(settings.server.name)
+    """Main MCP server class that handles resources and tools."""
+
+    def __init__(self) -> None:
+        """Initialize the MCP server with resources and tools."""
+        self.server = Server(settings.server.name)  # pylint: disable=no-member
         self.resources = [
             StandardsResource(),
         ]
-        self.tools = []
+        self.tools: list = []
 
         self.setup_handlers()
 
-    def setup_handlers(self):
+    def setup_handlers(self) -> None:
+        """Set up the MCP protocol handlers."""
+
         @self.server.list_resources()
         async def handle_list_resources() -> list[Resource]:
             return [
                 Resource(
                     uri=r.uri_pattern,
-                    name=r.uri_pattern.split("/")[-1],
+                    name=r.uri_pattern.rsplit("/", maxsplit=1)[-1],
                     description=r.description,
                     mimeType=r.mime_type
                 )
@@ -60,15 +67,22 @@ class MCPServer:
             ]
 
         @self.server.call_tool()
-        async def handle_call_tool(name: str, arguments: dict | None) -> list[TextContent | ImageContent | EmbeddedResource]:
+        async def handle_call_tool(
+            name: str,
+            arguments: dict | None
+        ) -> list[TextContent | ImageContent | EmbeddedResource]:
             for tool in self.tools:
                 if tool.name == name:
                     try:
                         result = await tool.execute(**(arguments or {}))
-                        response_content = []
+                        response_content: list[
+                            TextContent | ImageContent | EmbeddedResource
+                        ] = []
                         for content in result.content:
                             if content.get("type") == "text":
-                                response_content.append(TextContent(type="text", text=content["text"]))
+                                response_content.append(
+                                    TextContent(type="text", text=content["text"])
+                                )
                             elif content.get("type") == "image":
                                 response_content.append(ImageContent(
                                     type="image",
@@ -80,24 +94,24 @@ class MCPServer:
                                     type="resource",
                                     resource=content["resource"]
                                 ))
-
-                        # If the tool result indicates an error, we should probably communicate that.
-                        # However, call_tool return signature expects a list of content.
-                        # The MCP protocol handles errors via JSON-RPC error responses if an exception is raised,
-                        # or we can return content that describes the error.
-                        # For now, we return the content as is.
-                        # If we want to signal tool failure at the protocol level, we could raise an exception.
-
                         return response_content
-                    except Exception as e:
-                        logger.error(f"Tool execution failed: {e}", exc_info=True)
-                        # Return exception message as text content so the model sees it
-                        return [TextContent(type="text", text=f"Error executing tool {name}: {str(e)}")]
+                    except (ValueError, TypeError, KeyError) as e:
+                        logger.error(
+                            "Tool execution failed: %s", e, exc_info=True
+                        )
+                        return [TextContent(
+                            type="text",
+                            text=f"Error executing tool {name}: {e!s}"
+                        )]
 
             raise ValueError(f"Tool not found: {name}")
 
-    async def run(self):
-        logger.info(f"Starting MCP server: {settings.server.name}")
+    async def run(self) -> None:
+        """Run the MCP server."""
+        logger.info(
+            "Starting MCP server: %s",
+            settings.server.name  # pylint: disable=no-member
+        )
         async with stdio_server() as (read_stream, write_stream):
             await self.server.run(
                 read_stream,
@@ -105,9 +119,12 @@ class MCPServer:
                 self.server.create_initialization_options()
             )
 
-def main():
+
+def main() -> None:
+    """Entry point for the MCP server."""
     server = MCPServer()
     asyncio.run(server.run())
+
 
 if __name__ == "__main__":
     main()

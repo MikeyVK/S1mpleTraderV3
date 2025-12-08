@@ -2,13 +2,17 @@
 import sys
 import logging
 import json
-from typing import Any, Dict
+from typing import Any
+
 from mcp_server.config.settings import settings
+
 
 class StructuredFormatter(logging.Formatter):
     """JSON formatter for structured logging."""
+
     def format(self, record: logging.LogRecord) -> str:
-        log_data: Dict[str, Any] = {
+        """Format a log record as JSON."""
+        log_data: dict[str, Any] = {
             "timestamp": self.formatTime(record),
             "level": record.levelname,
             "logger": record.name,
@@ -16,17 +20,18 @@ class StructuredFormatter(logging.Formatter):
         }
 
         if hasattr(record, "props"):
-            log_data.update(record.props)  # type: ignore
+            log_data.update(record.props)  # type: ignore[attr-defined]
 
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
 
         return json.dumps(log_data)
 
+
 def setup_logging() -> None:
     """Configure logging based on settings."""
     logger = logging.getLogger("mcp_server")
-    logger.setLevel(settings.logging.level)
+    logger.setLevel(settings.logging.level)  # pylint: disable=no-member
 
     # Console handler
     handler = logging.StreamHandler(sys.stderr)
@@ -34,14 +39,17 @@ def setup_logging() -> None:
     logger.addHandler(handler)
 
     # Audit log file handler if configured
-    if settings.logging.audit_log:
+    if settings.logging.audit_log:  # pylint: disable=no-member
         try:
-            file_handler = logging.FileHandler(settings.logging.audit_log)
+            file_handler = logging.FileHandler(
+                settings.logging.audit_log  # pylint: disable=no-member
+            )
             file_handler.setFormatter(StructuredFormatter())
             logger.addHandler(file_handler)
-        except Exception:
+        except OSError:
             # Fallback if file cannot be opened
             pass
+
 
 def get_logger(name: str) -> logging.Logger:
     """Get a logger instance with the given name."""
