@@ -1,8 +1,7 @@
 # ST3 Workflow MCP Server - Resources Specification
 
-**Status:** DRAFT  
-**Version:** 2.0  
-**Last Updated:** 2025-12-08
+**Status:** v1.0 (Foundation)
+**Last Updated:** 2025-01-21
 
 ---
 
@@ -12,7 +11,7 @@ Resources provide read-only, queryable context to the AI agent. They represent t
 
 ---
 
-### 1.1 `st3://status/implementation`
+### 1.1 `st3://status/implementation` (Planned)
 
 **Description:** Live view of project implementation status, test counts, and module completion metrics. Parsed from `docs/implementation/IMPLEMENTATION_STATUS.md`.
 
@@ -74,7 +73,7 @@ example_output: |
 
 ---
 
-### 1.2 `st3://status/phase`
+### 1.2 `st3://status/phase` (Planned)
 
 **Description:** Derived state showing current development phase based on Git branch, GitHub Project board, and active issues. Helps agent understand what mode to operate in.
 
@@ -138,7 +137,7 @@ example_output: |
 
 ---
 
-### 1.3 `st3://github/issues`
+### 1.3 `st3://github/issues` (Planned)
 
 **Description:** Comprehensive view of GitHub issues with filtering by state, labels, milestone, and project.
 
@@ -207,7 +206,7 @@ example_output: |
 
 ---
 
-### 1.4 `st3://github/project`
+### 1.4 `st3://github/project` (Planned)
 
 **Description:** GitHub Project board state including columns, items, and iteration tracking.
 
@@ -281,7 +280,7 @@ example_output: |
 
 ---
 
-### 1.5 `st3://git/status`
+### 1.5 `st3://git/status` (Planned)
 
 **Description:** Current branch, uncommitted changes, staged files, and TDD phase.
 
@@ -301,7 +300,7 @@ schema:
     tdd_phase: { type: string, enum: [RED, GREEN, REFACTOR, UNKNOWN] }
 ```
 
-### 1.6 `st3://docs/inventory`
+### 1.6 `st3://docs/inventory` (Planned)
 
 **Description:** Inventory of all documentation files with compliance status.
 
@@ -324,7 +323,7 @@ schema:
           broken_links: { type: integer }
 ```
 
-### 1.7 `st3://arch/violations`
+### 1.7 `st3://arch/violations` (Planned)
 
 **Description:** Detected architecture anti-patterns and violations.
 
@@ -350,7 +349,7 @@ schema:
 
 ---
 
-### 1.8 `st3://rules/coding_standards`
+### 1.8 `st3://rules/coding_standards` (Implemented)
 
 **Description:** Aggregated summary of all coding standards from `docs/coding_standards/`. Enables agent to understand and apply project rules without reading multiple files.
 
@@ -403,7 +402,7 @@ schema:
 
 ---
 
-### 1.9 `st3://templates/list`
+### 1.9 `st3://templates/list` (Planned)
 
 **Description:** Provides the complete template hierarchy and guidance on when to use each template. Sourced from `docs/reference/templates/README.md`.
 
