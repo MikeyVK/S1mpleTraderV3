@@ -192,12 +192,29 @@ Week 1: Configuration Schemas (CRITICAL PATH - blocker for all subsequent work)
     - [x] Create `ExecutionPolicy` class in `strategy_directive.py`
     - [x] Add `execution_policy: ExecutionPolicy | None` to `StrategyDirective`
     - [x] Add `BatchExecutionMode` enum to `backend/core/enums.py`
-  - **Remaining Implementation:**
-    - [ ] Rename `execution_mode` → `mode` with `BatchExecutionMode` enum in `ExecutionCommandBatch`
-    - [ ] Remove `metadata: dict[str, Any]` from `ExecutionCommandBatch`
-    - [ ] Remove `rollback_on_failure` (implicit in mode definition)
-    - [ ] Update tests for new structure
-    - [ ] Update DTO_ARCHITECTURE.md with new flow
+  
+  - **🏛️ Architecture Decision: ExecutionMode → BatchExecutionMode (2025-12-08):**
+    - **Besluit:** Legacy `ExecutionMode` enum wordt volledig vervangen door `BatchExecutionMode`
+    - **Rationale:**
+      1. **Strategisch vs Technisch:** `BatchExecutionMode` drukt strategische intentie uit (relatie tussen orders), niet technische implementatie (threading model). Strategy layer hoort geen implementatiedetails te dicteren.
+      2. **ATOMIC is oneerlijk:** Trading kent geen echte rollback - een gevulde order kan niet "un-filled" worden. `COORDINATED` is eerlijker: het belooft "cancel pending", niet "rollback filled".
+      3. **PARALLEL vs INDEPENDENT:** `PARALLEL` is implementatiedetail (asyncio). `INDEPENDENT` is intentie ("falen van A boeit B niet"). ExecutionHandler bepaalt HOE (parallel/sequential), niet de DTO.
+    - **Mapping semantiek (DTO-niveau, geen implementatiedetails):**
+      - `INDEPENDENT` → Orders zijn onafhankelijk, individuele failures stoppen de batch niet
+      - `COORDINATED` → Orders zijn gerelateerd, failure triggert cancel van pending orders
+      - `SEQUENTIAL` → Volgorde is cruciaal, failure stopt verdere uitvoering
+    - **Impact:** 26 usages in ExecutionCommandBatch + tests moeten migreren
+  
+  - **Remaining Implementation (in volgorde):**
+    - [ ] **Step 1: Design doc update** - EXECUTION_COMMAND_BATCH_DESIGN.md met enum besluit
+    - [ ] **Step 2: Remove legacy enum** - Verwijder `ExecutionMode` uit `backend/core/enums.py`
+    - [ ] **Step 3: Refactor ExecutionCommandBatch:**
+      - Rename `execution_mode` → `mode`
+      - Change type to `BatchExecutionMode`
+      - Remove `rollback_on_failure` (implicit in mode definition)
+      - Remove `metadata: dict[str, Any]`
+    - [ ] **Step 4: Update tests** - Migreer alle 20+ tests naar nieuwe structuur
+    - [ ] **Step 5: Update DTO_ARCHITECTURE.md** - Nieuwe flow documenteren
   - **Design Document:** `docs/development/backend/dtos/EXECUTION_COMMAND_BATCH_DESIGN.md`
 
 - [ ] **ExecutionPlan: Architecture Overhaul** (2025-12-07) 🔴 HIGH
