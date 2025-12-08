@@ -34,6 +34,7 @@ class CreateIssueTool(BaseTool):
             "required": ["title", "body"]
         }
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     async def execute(
         self,
         title: str,
@@ -43,7 +44,7 @@ class CreateIssueTool(BaseTool):
         assignees: Optional[list[str]] = None,
         **kwargs: Any
     ) -> ToolResult:
-        """Execute the tool."""
+        """Execute the tool to create a GitHub issue."""
         result = self.manager.create_issue(
             title=title,
             body=body,

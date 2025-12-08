@@ -18,7 +18,7 @@ class CreateBranchTool(BaseTool):
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "Branch name (kebab-case)"},
-                "type": {
+                "branch_type": {
                     "type": "string",
                     "enum": ["feature", "fix", "refactor", "docs"],
                     "default": "feature"
@@ -27,8 +27,10 @@ class CreateBranchTool(BaseTool):
             "required": ["name"]
         }
 
-    async def execute(self, name: str, type: str = "feature", **kwargs: Any) -> ToolResult:
-        branch_name = self.manager.create_feature_branch(name, type)
+    async def execute(
+        self, name: str, branch_type: str = "feature", **kwargs: Any
+    ) -> ToolResult:
+        branch_name = self.manager.create_feature_branch(name, branch_type)
         return ToolResult.text(f"Created and switched to branch: {branch_name}")
 
 class GitStatusTool(BaseTool):

@@ -12,6 +12,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.version:
+        # pylint: disable=no-member
         print(f"ST3 Workflow MCP Server v{settings.server.version}")
         sys.exit(0)
 
