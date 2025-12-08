@@ -21,5 +21,6 @@ def server():
         mock_adapter_class.return_value = mock_adapter
 
         # Now import and create the server with mocked dependencies
+        # pylint: disable=import-outside-toplevel
         from mcp_server.server import MCPServer
         yield MCPServer()

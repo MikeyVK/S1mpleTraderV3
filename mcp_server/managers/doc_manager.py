@@ -1,5 +1,5 @@
 """Documentation Manager."""
-from typing import Dict, Any, List
+from typing import Dict, Any
 from mcp_server.core.exceptions import ValidationError
 
 class DocManager:

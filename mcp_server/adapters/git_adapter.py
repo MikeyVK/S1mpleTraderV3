@@ -1,31 +1,34 @@
 """Git adapter for the MCP server."""
-import os
-import git
-from typing import Any, List
+from typing import Any
+
+from git import Repo, InvalidGitRepositoryError  # type: ignore[import-untyped]
+
 from mcp_server.core.exceptions import MCPSystemError, ExecutionError
 from mcp_server.config.settings import settings
+
 
 class GitAdapter:
     """Adapter for interacting with local Git repository."""
 
     def __init__(self, repo_path: str | None = None) -> None:
         """Initialize the Git adapter."""
+        # pylint: disable=no-member
         self.repo_path = repo_path or settings.server.workspace_root
-        self._repo: git.Repo | None = None
+        self._repo: Repo | None = None
 
     @property
-    def repo(self) -> git.Repo:
+    def repo(self) -> Repo:
         """Get the git repository object."""
         if not self._repo:
             try:
-                self._repo = git.Repo(self.repo_path)
-            except git.InvalidGitRepositoryError as e:
+                self._repo = Repo(self.repo_path)
+            except InvalidGitRepositoryError as e:
                 raise MCPSystemError(
                     f"Invalid git repository at {self.repo_path}",
                     fallback="Initialize git repository"
                 ) from e
             except Exception as e:
-                 raise MCPSystemError(f"Failed to access git repo: {e}") from e
+                raise MCPSystemError(f"Failed to access git repo: {e}") from e
         return self._repo
 
     def get_current_branch(self) -> str:

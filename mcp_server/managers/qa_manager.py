@@ -1,9 +1,6 @@
 """QA Manager for quality gates."""
-import os
-import subprocess
 from typing import List, Dict, Any
-from mcp_server.core.exceptions import ExecutionError
-from mcp_server.config.settings import settings
+
 
 class QAManager:
     """Manager for quality assurance and gates."""
