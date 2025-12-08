@@ -13,7 +13,18 @@ from mcp.types import (
 
 from mcp_server.config.settings import settings
 from mcp_server.core.logging import setup_logging, get_logger
+
+# Resources
 from mcp_server.resources.standards import StandardsResource
+from mcp_server.resources.github import GitHubIssuesResource
+from mcp_server.resources.templates import TemplatesResource
+
+# Tools
+from mcp_server.tools.issue_tools import CreateIssueTool
+from mcp_server.tools.git_tools import CreateBranchTool, GitStatusTool
+from mcp_server.tools.quality_tools import RunQualityGatesTool
+from mcp_server.tools.docs_tools import ValidateDocTool
+from mcp_server.tools.health_tools import HealthCheckTool
 
 # Initialize logging
 setup_logging()
@@ -26,10 +37,21 @@ class MCPServer:
     def __init__(self) -> None:
         """Initialize the MCP server with resources and tools."""
         self.server = Server(settings.server.name)  # pylint: disable=no-member
+
         self.resources = [
             StandardsResource(),
+            GitHubIssuesResource(),
+            TemplatesResource(),
         ]
-        self.tools: list = []
+
+        self.tools = [
+            CreateIssueTool(),
+            CreateBranchTool(),
+            GitStatusTool(),
+            RunQualityGatesTool(),
+            ValidateDocTool(),
+            HealthCheckTool(),
+        ]
 
         self.setup_handlers()
 
