@@ -1,7 +1,8 @@
 """GitHub PR tools."""
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from mcp_server.tools.base import BaseTool, ToolResult
 from mcp_server.managers.github_manager import GitHubManager
+
 
 class CreatePRTool(BaseTool):
     """Tool to create a GitHub Pull Request."""
@@ -20,12 +21,21 @@ class CreatePRTool(BaseTool):
                 "title": {"type": "string", "description": "PR title"},
                 "body": {"type": "string", "description": "PR description"},
                 "head": {"type": "string", "description": "Source branch"},
-                "base": {"type": "string", "description": "Target branch", "default": "main"},
-                "draft": {"type": "boolean", "description": "Create as draft", "default": False}
+                "base": {
+                    "type": "string",
+                    "description": "Target branch",
+                    "default": "main"
+                },
+                "draft": {
+                    "type": "boolean",
+                    "description": "Create as draft",
+                    "default": False
+                }
             },
             "required": ["title", "body", "head"]
         }
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     async def execute(
         self,
         title: str,

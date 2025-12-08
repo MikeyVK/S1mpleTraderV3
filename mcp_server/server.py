@@ -44,27 +44,40 @@ class MCPServer:
         """Initialize the MCP server with resources and tools."""
         self.server = Server(settings.server.name)  # pylint: disable=no-member
 
+        # Core resources (always available)
         self.resources = [
             StandardsResource(),
-            GitHubIssuesResource(),
             TemplatesResource(),
             StatusResource(),
         ]
 
+        # Core tools (always available)
         self.tools = [
-            CreateIssueTool(),
             CreateBranchTool(),
             GitStatusTool(),
             RunQualityGatesTool(),
             ValidateDocTool(),
             HealthCheckTool(),
-            CreatePRTool(),
-            AddLabelsTool(),
             RunTestsTool(),
             CreateFileTool(),
             ValidationTool(),
             ValidateDTOTool(),
         ]
+
+        # GitHub-dependent resources and tools (only if token is configured)
+        if settings.github.token:  # pylint: disable=no-member
+            self.resources.append(GitHubIssuesResource())
+            self.tools.extend([
+                CreateIssueTool(),
+                CreatePRTool(),
+                AddLabelsTool(),
+            ])
+            logger.info("GitHub integration enabled")
+        else:
+            logger.warning(
+                "GitHub token not configured - GitHub tools disabled. "
+                "Set GITHUB_TOKEN environment variable to enable."
+            )
 
         self.setup_handlers()
 

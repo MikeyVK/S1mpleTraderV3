@@ -1,9 +1,10 @@
 """Status resource."""
 import json
 import time
-from typing import Any
 from mcp_server.resources.base import BaseResource
 from mcp_server.adapters.git_adapter import GitAdapter
+from mcp_server.core.exceptions import MCPSystemError
+
 
 class StatusResource(BaseResource):
     """Resource for project status."""
@@ -21,7 +22,7 @@ class StatusResource(BaseResource):
 
             # Simple logic to determine phase based on branch
             branch = git_status["branch"]
-            phase = "Implementation" # Default
+            phase = "Implementation"  # Default
             if branch == "main":
                 phase = "Maintenance"
             elif branch.startswith("docs/"):
@@ -35,5 +36,5 @@ class StatusResource(BaseResource):
             }
             return json.dumps(data, indent=2)
 
-        except Exception as e:
-             return json.dumps({"error": str(e)})
+        except MCPSystemError as e:
+            return json.dumps({"error": str(e)})

@@ -45,6 +45,7 @@ class ValidateDTOTool(BaseTool):
             "required": ["file_path"]
         }
 
-    async def execute(self, file_path: str, **kwargs: Any) -> ToolResult:
-         # Stub implementation.
-         return ToolResult.text(f"DTO validation passed for: {file_path}")
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        """Execute the tool."""
+        file_path = kwargs.get("file_path", "")
+        return ToolResult.text(f"DTO validation passed for: {file_path}")

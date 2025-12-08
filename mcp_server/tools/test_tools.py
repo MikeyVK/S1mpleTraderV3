@@ -1,9 +1,10 @@
 """Test execution tools."""
-import pytest
+import subprocess
 import sys
 from typing import Any, Dict
 from mcp_server.tools.base import BaseTool, ToolResult
 from mcp_server.core.exceptions import ExecutionError
+
 
 class RunTestsTool(BaseTool):
     """Tool to run pytest."""
@@ -16,21 +17,22 @@ class RunTestsTool(BaseTool):
         return {
             "type": "object",
             "properties": {
-                "path": {"type": "string", "description": "Path to test file or directory", "default": "tests/"},
-                "markers": {"type": "string", "description": "Pytest markers to filter by"}
+                "path": {
+                    "type": "string",
+                    "description": "Path to test file or directory",
+                    "default": "tests/"
+                },
+                "markers": {
+                    "type": "string",
+                    "description": "Pytest markers to filter by"
+                }
             }
         }
 
-    async def execute(self, path: str = "tests/", markers: str | None = None, **kwargs: Any) -> ToolResult:
+    async def execute(
+        self, path: str = "tests/", markers: str | None = None, **kwargs: Any
+    ) -> ToolResult:
         """Execute the tool."""
-        # In a real environment, we would use subprocess to run pytest.
-        # For this implementation, we can simulate or run it if possible.
-        # However, running pytest from within the server process might be risky or complex
-        # due to side effects, capturing output, etc.
-        # Ideally, we should spawn a subprocess.
-
-        import subprocess
-
         cmd = [sys.executable, "-m", "pytest", path]
         if markers:
             cmd.extend(["-m", markers])
@@ -40,7 +42,7 @@ class RunTestsTool(BaseTool):
                 cmd,
                 capture_output=True,
                 text=True,
-                check=False # We don't want to raise exception on test failure, just return output
+                check=False
             )
 
             output = result.stdout
@@ -49,5 +51,5 @@ class RunTestsTool(BaseTool):
 
             return ToolResult.text(output)
 
-        except Exception as e:
+        except OSError as e:
             raise ExecutionError(f"Failed to run tests: {e}") from e
