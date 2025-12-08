@@ -7,7 +7,7 @@ import pytest
 def server():
     """
     Create an MCPServer instance with mocked GitHub dependencies.
-    
+
     This patches the GitHubAdapter at the manager level so all GitHub
     operations return mock data instead of hitting the real API.
     """

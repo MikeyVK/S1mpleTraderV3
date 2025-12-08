@@ -18,6 +18,7 @@ from mcp_server.core.logging import setup_logging, get_logger
 from mcp_server.resources.standards import StandardsResource
 from mcp_server.resources.github import GitHubIssuesResource
 from mcp_server.resources.templates import TemplatesResource
+from mcp_server.resources.status import StatusResource
 
 # Tools
 from mcp_server.tools.issue_tools import CreateIssueTool
@@ -25,6 +26,11 @@ from mcp_server.tools.git_tools import CreateBranchTool, GitStatusTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.docs_tools import ValidateDocTool
 from mcp_server.tools.health_tools import HealthCheckTool
+from mcp_server.tools.pr_tools import CreatePRTool
+from mcp_server.tools.label_tools import AddLabelsTool
+from mcp_server.tools.test_tools import RunTestsTool
+from mcp_server.tools.code_tools import CreateFileTool
+from mcp_server.tools.validation_tools import ValidationTool, ValidateDTOTool
 
 # Initialize logging
 setup_logging()
@@ -42,6 +48,7 @@ class MCPServer:
             StandardsResource(),
             GitHubIssuesResource(),
             TemplatesResource(),
+            StatusResource(),
         ]
 
         self.tools = [
@@ -51,6 +58,12 @@ class MCPServer:
             RunQualityGatesTool(),
             ValidateDocTool(),
             HealthCheckTool(),
+            CreatePRTool(),
+            AddLabelsTool(),
+            RunTestsTool(),
+            CreateFileTool(),
+            ValidationTool(),
+            ValidateDTOTool(),
         ]
 
         self.setup_handlers()

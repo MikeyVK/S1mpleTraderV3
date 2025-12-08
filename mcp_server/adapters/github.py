@@ -92,3 +92,31 @@ class GitHubAdapter:
             kwargs["labels"] = labels
 
         return list(self.repo.get_issues(**kwargs))
+
+    def create_pr(
+        self,
+        title: str,
+        body: str,
+        head: str,
+        base: str = "main",
+        draft: bool = False
+    ) -> PullRequest:
+        """Create a new pull request."""
+        try:
+            return self.repo.create_pull(
+                title=title,
+                body=body,
+                head=head,
+                base=base,
+                draft=draft
+            )
+        except GithubException as e:
+            raise ExecutionError(f"Failed to create PR: {e}") from e
+
+    def add_labels(self, issue_number: int, labels: list[str]) -> None:
+        """Add labels to an issue or PR."""
+        try:
+            issue = self.get_issue(issue_number)
+            issue.add_to_labels(*labels)
+        except GithubException as e:
+            raise ExecutionError(f"Failed to add labels: {e}") from e

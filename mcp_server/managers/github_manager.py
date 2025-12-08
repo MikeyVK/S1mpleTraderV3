@@ -51,3 +51,29 @@ class GitHubManager:
             "url": issue.html_url,
             "title": issue.title
         }
+
+    def create_pr(
+        self,
+        title: str,
+        body: str,
+        head: str,
+        base: str = "main",
+        draft: bool = False
+    ) -> Dict[str, Any]:
+        """Create a new pull request."""
+        pr = self.adapter.create_pr(
+            title=title,
+            body=body,
+            head=head,
+            base=base,
+            draft=draft
+        )
+        return {
+            "number": pr.number,
+            "url": pr.html_url,
+            "title": pr.title
+        }
+
+    def add_labels(self, issue_number: int, labels: list[str]) -> None:
+        """Add labels to an issue or PR."""
+        self.adapter.add_labels(issue_number, labels)
