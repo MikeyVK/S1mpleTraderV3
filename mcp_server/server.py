@@ -41,6 +41,7 @@ from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.code_tools import CreateFileTool
 from mcp_server.tools.validation_tools import ValidationTool, ValidateDTOTool
 from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
+from mcp_server.tools.discovery_tools import SearchDocumentationTool, GetWorkContextTool
 
 # Initialize logging
 setup_logging()
@@ -84,6 +85,9 @@ class MCPServer:
             # Scaffold tools
             ScaffoldComponentTool(),
             ScaffoldDesignDocTool(),
+            # Discovery tools
+            SearchDocumentationTool(),
+            GetWorkContextTool(),
         ]
 
         # GitHub-dependent resources and tools (only if token is configured)

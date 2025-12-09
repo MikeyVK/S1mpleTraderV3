@@ -110,3 +110,22 @@ class GitManager:
         """
         return self.adapter.stash_list()
 
+    def get_current_branch(self) -> str:
+        """Get the current branch name.
+        
+        Returns:
+            Current branch name.
+        """
+        return self.adapter.get_current_branch()
+
+    def get_recent_commits(self, limit: int = 5) -> list[str]:
+        """Get recent commit messages.
+        
+        Args:
+            limit: Maximum number of commits to return.
+            
+        Returns:
+            List of commit messages (most recent first).
+        """
+        return self.adapter.get_recent_commits(limit=limit)
+

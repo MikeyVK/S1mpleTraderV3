@@ -167,3 +167,18 @@ class GitAdapter:
             return output.strip().split("\n")
         except Exception as e:
             raise ExecutionError(f"Failed to list stashes: {e}") from e
+
+    def get_recent_commits(self, limit: int = 5) -> list[str]:
+        """Get recent commit messages.
+        
+        Args:
+            limit: Maximum number of commits to return.
+            
+        Returns:
+            List of commit messages (most recent first).
+        """
+        try:
+            commits = list(self.repo.iter_commits(max_count=limit))
+            return [commit.message.split("\n")[0] for commit in commits]
+        except Exception as e:
+            raise ExecutionError(f"Failed to get recent commits: {e}") from e

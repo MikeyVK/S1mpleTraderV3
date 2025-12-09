@@ -338,3 +338,105 @@ Running in thread pool via to_thread...
 to_thread completed, returncode: 0
 Output length: 1596
 Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/managers/test_doc_manager.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_doc_manager.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_doc_manager.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 63804
+[thread] Completed with returncode: 0
+[thread] stdout length: 2109
+[thread] stderr length: 0
+[thread] Duration: 1.27s
+to_thread completed, returncode: 0
+Output length: 2109
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/tools/test_discovery_tools.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_discovery_tools.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_discovery_tools.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 48900
+[thread] Completed with returncode: 1
+[thread] stdout length: 7280
+[thread] stderr length: 0
+[thread] Duration: 1.69s
+to_thread completed, returncode: 1
+Output length: 7280
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/tools/test_discovery_tools.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_discovery_tools.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_discovery_tools.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 56280
+[thread] Completed with returncode: 1
+[thread] stdout length: 3354
+[thread] stderr length: 0
+[thread] Duration: 1.46s
+to_thread completed, returncode: 1
+Output length: 3354
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/tools/test_discovery_tools.py::TestGetWorkContextTool::test_get_context_with_github_integration, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_discovery_tools.py::TestGetWorkContextTool::test_get_context_with_github_integration -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_discovery_tools.py::TestGetWorkContextTool::test_get_context_with_github_integration -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 52812
+[thread] Completed with returncode: 1
+[thread] stdout length: 1781
+[thread] stderr length: 0
+[thread] Duration: 1.57s
+to_thread completed, returncode: 1
+Output length: 1781
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/tools/test_discovery_tools.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_discovery_tools.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_discovery_tools.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 52280
+[thread] Completed with returncode: 0
+[thread] stdout length: 2256
+[thread] stderr length: 0
+[thread] Duration: 1.80s
+to_thread completed, returncode: 0
+Output length: 2256
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 3168
+[thread] Completed with returncode: 0
+[thread] stdout length: 21963
+[thread] stderr length: 0
+[thread] Duration: 3.47s
+to_thread completed, returncode: 0
+Output length: 21963
+Returning result
