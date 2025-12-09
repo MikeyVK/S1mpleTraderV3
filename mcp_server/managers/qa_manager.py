@@ -1,4 +1,6 @@
 """QA Manager for quality gates."""
+# pylint: disable=subprocess-run-check  # We handle return codes manually
+# pylint: disable=too-few-public-methods  # Manager pattern with single entry point
 import re
 import subprocess
 from pathlib import Path
@@ -66,6 +68,7 @@ class QAManager:
 
             proc = subprocess.run(
                 cmd,
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 timeout=60
@@ -139,6 +142,7 @@ class QAManager:
 
             proc = subprocess.run(
                 cmd,
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 timeout=60

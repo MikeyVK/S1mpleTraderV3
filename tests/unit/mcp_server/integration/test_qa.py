@@ -30,7 +30,7 @@ async def test_quality_tool_output_format() -> None:
 
     result = await tool.execute(files=["backend/core/enums.py"])
     text = result.content[0]["text"]
-    
+
     # Verify output format contains expected sections
     assert "Overall Pass:" in text
     assert "Linting:" in text

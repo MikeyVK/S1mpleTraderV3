@@ -1,7 +1,6 @@
 """Tests for QAManager real implementation."""
+# pylint: disable=protected-access  # Testing internal methods is valid
 from pathlib import Path
-
-import pytest
 
 from mcp_server.managers.qa_manager import QAManager
 
