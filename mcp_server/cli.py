@@ -4,6 +4,7 @@ import sys
 from mcp_server.server import main as server_main
 from mcp_server.config.settings import settings
 
+
 def main() -> None:
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="ST3 Workflow MCP Server")
@@ -17,6 +18,7 @@ def main() -> None:
         sys.exit(0)
 
     server_main()
+
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,17 @@
+==================================================
+run_tests called with path=tests/unit/mcp_server/, timeout=60
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+Effective timeout: 60
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 60
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 20820
+[thread] Completed with returncode: 0
+[thread] stdout length: 8526
+[thread] stderr length: 0
+[thread] Duration: 2.91s
+to_thread completed, returncode: 0
+Output length: 8526
+Returning result

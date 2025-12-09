@@ -1,6 +1,6 @@
 """Tests for Test and Code tools."""
 import pytest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, AsyncMock, Mock
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.code_tools import CreateFileTool
 
@@ -8,19 +8,19 @@ from mcp_server.tools.code_tools import CreateFileTool
 async def test_run_tests_tool():
     tool = RunTestsTool()
 
-    with patch("subprocess.run") as mock_run:
-        mock_result = Mock()
-        mock_result.stdout = "Tests passed"
-        mock_result.stderr = ""
-        mock_run.return_value = mock_result
+    with patch("mcp_server.tools.test_tools._run_pytest_sync") as mock_run:
+        # Mock the sync function that runs in thread pool
+        mock_run.return_value = ("Tests passed", "", 0)
 
         result = await tool.execute(path="tests/unit")
 
         assert "Tests passed" in result.content[0]["text"]
         mock_run.assert_called_once()
-        args = mock_run.call_args[0][0]
-        assert "pytest" in args
-        assert "tests/unit" in args
+        # Check that pytest and path are in the command
+        call_args = mock_run.call_args[0]
+        cmd = call_args[0]
+        assert any("pytest" in str(arg) for arg in cmd)
+        assert "tests/unit" in cmd
 
 @pytest.mark.asyncio
 async def test_create_file_tool(tmp_path, monkeypatch):
