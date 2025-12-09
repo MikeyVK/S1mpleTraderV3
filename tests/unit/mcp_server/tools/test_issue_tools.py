@@ -55,18 +55,24 @@ class TestListIssuesTool:
     def test_list_issues_returns_formatted_results(self, mock_adapter) -> None:
         """Should return formatted list of issues."""
         # Setup mock issues
+        mock_label1 = Mock()
+        mock_label1.name = "bug"
+
+        mock_label2 = Mock()
+        mock_label2.name = "feature"
+
         mock_issue1 = Mock()
         mock_issue1.number = 1
         mock_issue1.title = "First issue"
         mock_issue1.state = "open"
-        mock_issue1.labels = [Mock(name="bug")]
+        mock_issue1.labels = [mock_label1]
         mock_issue1.created_at = datetime(2025, 12, 1, tzinfo=timezone.utc)
 
         mock_issue2 = Mock()
         mock_issue2.number = 2
         mock_issue2.title = "Second issue"
         mock_issue2.state = "open"
-        mock_issue2.labels = [Mock(name="feature")]
+        mock_issue2.labels = [mock_label2]
         mock_issue2.created_at = datetime(2025, 12, 2, tzinfo=timezone.utc)
 
         mock_adapter.list_issues.return_value = [mock_issue1, mock_issue2]
@@ -142,6 +148,17 @@ class TestGetIssueTool:
 
     def test_get_issue_returns_details(self, mock_adapter) -> None:
         """Should return issue details with body and labels."""
+        mock_label1 = Mock()
+        mock_label1.name = "dto"
+        mock_label2 = Mock()
+        mock_label2.name = "week-1"
+
+        mock_assignee = Mock()
+        mock_assignee.login = "developer"
+
+        mock_milestone = Mock()
+        mock_milestone.title = "v1.0"
+
         mock_issue = Mock()
         mock_issue.number = 42
         mock_issue.title = "Implement DTO validation"
@@ -154,9 +171,9 @@ Implement validation for DTOs.
 - [x] Create design doc
 """
         mock_issue.state = "open"
-        mock_issue.labels = [Mock(name="dto"), Mock(name="week-1")]
-        mock_issue.assignees = [Mock(login="developer")]
-        mock_issue.milestone = Mock(title="v1.0")
+        mock_issue.labels = [mock_label1, mock_label2]
+        mock_issue.assignees = [mock_assignee]
+        mock_issue.milestone = mock_milestone
         mock_issue.created_at = datetime(2025, 12, 1, tzinfo=timezone.utc)
         mock_issue.updated_at = datetime(2025, 12, 5, tzinfo=timezone.utc)
 

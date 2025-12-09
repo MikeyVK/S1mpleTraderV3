@@ -1,7 +1,10 @@
 """GitHub Manager for business logic."""
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from mcp_server.adapters.github import GitHubAdapter
+
+if TYPE_CHECKING:
+    from github.Issue import Issue
 
 
 class GitHubManager:
@@ -78,3 +81,23 @@ class GitHubManager:
     def add_labels(self, issue_number: int, labels: list[str]) -> None:
         """Add labels to an issue or PR."""
         self.adapter.add_labels(issue_number, labels)
+
+    def list_issues(
+        self,
+        state: str = "open",
+        labels: list[str] | None = None
+    ) -> list["Issue"]:
+        """List issues with optional filtering."""
+        return self.adapter.list_issues(state=state, labels=labels)
+
+    def get_issue(self, issue_number: int) -> "Issue":
+        """Get a specific issue by number."""
+        return self.adapter.get_issue(issue_number)
+
+    def close_issue(
+        self,
+        issue_number: int,
+        comment: str | None = None
+    ) -> "Issue":
+        """Close an issue with optional comment."""
+        return self.adapter.close_issue(issue_number, comment=comment)
