@@ -121,3 +121,31 @@ class GitHubAdapter:
             issue.add_to_labels(*labels)
         except GithubException as e:
             raise ExecutionError(f"Failed to add labels: {e}") from e
+
+    def close_issue(
+        self,
+        issue_number: int,
+        comment: str | None = None
+    ) -> Issue:
+        """Close an issue with optional comment.
+
+        Args:
+            issue_number: The issue number to close.
+            comment: Optional comment to add before closing.
+
+        Returns:
+            The closed issue object.
+        """
+        try:
+            issue = self.get_issue(issue_number)
+
+            # Add comment if provided
+            if comment:
+                issue.create_comment(comment)
+
+            # Close the issue
+            issue.edit(state="closed")
+
+            return issue
+        except GithubException as e:
+            raise ExecutionError(f"Failed to close issue: {e}") from e

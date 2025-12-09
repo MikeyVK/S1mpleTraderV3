@@ -35,7 +35,12 @@ from mcp_server.tools.git_tools import (
 from mcp_server.tools.health_tools import HealthCheckTool
 
 # Tools
-from mcp_server.tools.issue_tools import CreateIssueTool
+from mcp_server.tools.issue_tools import (
+    CloseIssueTool,
+    CreateIssueTool,
+    GetIssueTool,
+    ListIssuesTool,
+)
 from mcp_server.tools.label_tools import AddLabelsTool
 from mcp_server.tools.pr_tools import CreatePRTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
@@ -94,7 +99,12 @@ class MCPServer:
         if settings.github.token:  # pylint: disable=no-member
             self.resources.append(GitHubIssuesResource())
             self.tools.extend([
+                # Issue tools
                 CreateIssueTool(),
+                ListIssuesTool(),
+                GetIssueTool(),
+                CloseIssueTool(),
+                # PR and Label tools
                 CreatePRTool(),
                 AddLabelsTool(),
             ])
