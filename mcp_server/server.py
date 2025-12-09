@@ -40,6 +40,7 @@ from mcp_server.tools.label_tools import AddLabelsTool
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.code_tools import CreateFileTool
 from mcp_server.tools.validation_tools import ValidationTool, ValidateDTOTool
+from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
 
 # Initialize logging
 setup_logging()
@@ -80,6 +81,9 @@ class MCPServer:
             HealthCheckTool(),
             RunTestsTool(),
             CreateFileTool(),
+            # Scaffold tools
+            ScaffoldComponentTool(),
+            ScaffoldDesignDocTool(),
         ]
 
         # GitHub-dependent resources and tools (only if token is configured)
