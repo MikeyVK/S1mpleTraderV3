@@ -1,0 +1,150 @@
+{# documents/tracking.md.jinja2 - Tracking/Living document template #}
+{#
+   For living project management documents (TODO, STATUS, INVENTORY).
+   
+   Follows docs/reference/templates/TRACKING_TEMPLATE.md:
+   - "LIVING DOCUMENT" status (never "DEFINITIVE")
+   - No Version History (too frequent updates)
+   - Checkboxes and progress tables
+   - Current Focus section
+   - Update Frequency explicitly stated
+   
+   Does NOT extend base_document.md.jinja2 (different lifecycle)
+   Max lines: 150 (from DOCUMENTATION_MAINTENANCE.md)
+#}
+{# ═══════════════════════════════════════════════════════════════════════════
+   HEADER SECTION (REQUIRED)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+# {{ output_path | default('docs/TRACKING.md') }}
+# {{ title }}
+
+**Status:** LIVING DOCUMENT  
+**Last Updated:** {{ updated_date | default('YYYY-MM-DD') }}  
+**Update Frequency:** {{ update_frequency | default('Per Feature') }}
+
+---
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   FOCUS SECTION (REQUIRED)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+## Current Focus
+
+{{ current_focus | default('Describe what is currently being worked on or prioritized.') }}
+
+> **Quick Status:** {{ quick_status | default('X/Y items complete, Z in progress') }}
+
+---
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   NAVIGATION SECTION (REQUIRED)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+## Quick Links
+
+| Document | Purpose |
+|----------|---------|
+{% if quick_links %}
+{% for link in quick_links %}
+| [{{ link.title }}]({{ link.path }}) | {{ link.purpose }} |
+{% endfor %}
+{% else %}
+| [TODO.md](TODO.md) | Project roadmap |
+| [IMPLEMENTATION_STATUS.md](implementation/IMPLEMENTATION_STATUS.md) | Implementation tracking |
+{% endif %}
+
+---
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   SUMMARY SECTION (REQUIRED)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+## Summary
+
+| Category | Done | Total | Status |
+|----------|------|-------|--------|
+{% if categories %}
+{% for cat in categories %}
+| {{ cat.name }} | {{ cat.done }} | {{ cat.total }} | {% if cat.done == cat.total %}✅ Complete{% elif cat.done > 0 %}🔄 In Progress{% else %}🔴 Not Started{% endif %} |
+{% endfor %}
+{% else %}
+| Category 1 | 0 | 0 | 🔴 Not Started |
+{% endif %}
+
+---
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   TRACKING SECTIONS (REQUIRED - repeat for each category)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+{% if categories %}
+{% for cat in categories %}
+## {{ cat.name }}
+
+### ✅ Completed
+
+{% if cat.completed %}
+{% for item in cat.completed %}
+- [x] {{ item }}
+{% endfor %}
+{% else %}
+_No completed items yet._
+{% endif %}
+
+### 🔄 In Progress
+
+{% if cat.in_progress %}
+{% for item in cat.in_progress %}
+- [ ] **{{ item.title }}** - {{ item.context | default('') }}
+{% if item.subtasks %}
+{% for sub in item.subtasks %}
+  - {{ sub }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% else %}
+_No items in progress._
+{% endif %}
+
+### 📋 Backlog
+
+{% if cat.backlog %}
+{% for item in cat.backlog %}
+- [ ] {{ item }}
+{% endfor %}
+{% else %}
+_No backlog items._
+{% endif %}
+
+---
+
+{% endfor %}
+{% else %}
+## Category 1
+
+### ✅ Completed
+
+_No completed items yet._
+
+### 🔄 In Progress
+
+_No items in progress._
+
+### 📋 Backlog
+
+- [ ] Item 1
+- [ ] Item 2
+
+---
+
+{% endif %}
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   FOOTER SECTION
+   ═══════════════════════════════════════════════════════════════════════════ #}
+## Related Documents
+
+{% if related %}
+{% for doc in related %}
+- [{{ doc.title }}]({{ doc.path }}) - {{ doc.description }}
+{% endfor %}
+{% else %}
+- [Core Principles](architecture/CORE_PRINCIPLES.md) - Foundational principles
+- [TDD Workflow](coding_standards/TDD_WORKFLOW.md) - Development workflow
+{% endif %}

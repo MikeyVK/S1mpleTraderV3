@@ -1,0 +1,50 @@
+{% extends "base/base_component.py.jinja2" %}
+
+{% block description %}{{ description | default(name + ' command service (Write)') }}{% endblock %}
+
+{% block layer %}Service (Command){% endblock %}
+
+{% block content %}
+class {{ name }}:
+    """Orchestrates write-actions / commands for {{ name | replace('Service', '') }}."""
+
+    def __init__(self{% if dependencies %}, {{ dependencies | join(', ') }}{% endif %}):
+        """Initialize the {{ name }}.
+        
+        Args:
+            {% if dependencies %}
+            {% for dep in dependencies %}
+            {{ dep.split(':')[0] }}: Dependency
+            {% endfor %}
+            {% endif %}
+        """
+        {% if dependencies %}
+        {% for dep in dependencies %}
+        self._{{ dep.split(':')[0] }} = {{ dep.split(':')[0] }}
+        {% endfor %}
+        {% else %}
+        pass
+        {% endif %}
+
+    # --- Private "Motor" ---
+    def _execute_transaction(self) -> None:
+        """Helper for atomic write operations."""
+        pass
+
+    # --- Public Commands ---
+    {% if methods %}
+    {% for method in methods %}
+    def {{ method.name }}(self, command: {{ method.command_type | default('Any') }}) -> None:
+        """{{ method.docstring | default('Executes ' + method.name) }}"""
+        # TODO: Implement command logic
+        # 1. Validation
+        # 2. Execution
+        # 3. Logging
+        pass
+    {% endfor %}
+    {% else %}
+    def execute_command(self, command: Any) -> None:
+        """Executes a command."""
+        pass
+    {% endif %}
+{% endblock %}

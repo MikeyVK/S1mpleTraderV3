@@ -1,0 +1,101 @@
+{# documents/architecture.md.jinja2 - Architecture document template #}
+{#
+   Extends base_document.md.jinja2 for architecture documentation.
+   
+   Follows docs/reference/templates/ARCHITECTURE_TEMPLATE.md:
+   - Numbered sections (## 1. Concept, ### 1.1 Detail)
+   - Mermaid diagrams for visualization
+   - NO implementation code (link to source files)
+   - Focus on WHAT and WHY, not HOW
+   
+   Max lines: 1000 (from DOCUMENTATION_MAINTENANCE.md)
+#}
+{% extends "base/base_document.md.jinja2" %}
+
+{% block filepath %}docs/architecture/{{ filename | default('DOCUMENT.md') }}{% endblock %}
+
+{% block extra_header_fields %}
+**Category:** Architecture
+{% endblock %}
+
+{% block content %}
+{# ═══════════════════════════════════════════════════════════════════════════
+   CONTENT SECTION (ARCHITECTURE-SPECIFIC: numbered, diagrams, no code)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+{% if sections %}
+{% for section in sections %}
+
+## {{ loop.index }}. {{ section.title }}
+
+{{ section.description | default('Describe the concept at a high level.') }}
+
+{% if section.diagram %}
+```mermaid
+{{ section.diagram }}
+```
+{% endif %}
+
+{% if section.subsections %}
+{% for sub in section.subsections %}
+
+### {{ loop.parent.loop.index }}.{{ loop.index }}. {{ sub.title }}
+
+{{ sub.content }}
+
+{% endfor %}
+{% endif %}
+
+---
+
+{% endfor %}
+{% else %}
+
+## 1. Overview
+
+Describe the architectural concept at a high level.
+
+### 1.1. Core Components
+
+Details about components...
+
+```mermaid
+graph TD
+    A[Component A] --> B[Component B]
+    B --> C[Component C]
+```
+
+---
+
+## 2. Design Principles
+
+Explain the principles guiding this architecture...
+
+### 2.1. Principle One
+
+Details...
+
+---
+
+{% endif %}
+
+{% if constraints %}
+## Constraints & Decisions
+
+| Constraint | Rationale | Impact |
+|------------|-----------|--------|
+{% for constraint in constraints %}
+| {{ constraint.name }} | {{ constraint.rationale }} | {{ constraint.impact }} |
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block related_docs %}
+- **[Core Principles][core-principles]** - Foundational architecture principles
+- **[Architectural Shifts][arch-shifts]** - Critical design decisions
+{% if related %}
+{% for doc in related %}
+- **[{{ doc.title }}][related-{{ loop.index }}]** - {{ doc.description }}
+{% endfor %}
+{% endif %}
+{% endblock %}

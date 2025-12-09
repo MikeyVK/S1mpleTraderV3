@@ -1,8 +1,9 @@
 # ST3 Workflow MCP Server - Tools Specification
 
-**Status:** DRAFT  
-**Version:** 2.0  
-**Last Updated:** 2025-12-08
+**Status:** v1.0 (Foundation)
+**Last Updated:** 2025-01-21
+
+> **Note:** These tools are currently in the planning/implementation phase. The foundation infrastructure (`BaseTool`) is implemented, but concrete tools are not yet available in the server.
 
 ---
 

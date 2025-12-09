@@ -1,0 +1,131 @@
+# {{ output_path | default('backend/adapters/' + name.lower() + '.py') }}
+"""
+{{ name }} - {{ description | default('Adapter for external ' + name.replace('Adapter', '') + ' integration') }}.
+
+{{ extended_description | default('Provides abstraction layer for external system interaction.') }}
+
+**Adapter Pattern:**
+- Isolates external dependencies from core business logic
+- Provides testable interface via dependency injection
+- Follows Interface Segregation Principle
+
+@layer: Adapters ({{ layer | default('Infrastructure') }})
+@dependencies: [{{ external_dependencies | default('typing') }}]
+"""
+# Standard library
+from typing import Any, Protocol
+{% if extra_stdlib_imports %}
+{% for imp in extra_stdlib_imports %}
+{{ imp }}
+{% endfor %}
+{% endif %}
+
+# Third-party
+{% if third_party_imports %}
+{% for imp in third_party_imports %}
+{{ imp }}
+{% endfor %}
+{% else %}
+# No third-party imports required
+{% endif %}
+
+# Project modules
+from backend.core.exceptions import {{ exception_type | default('ExecutionError') }}
+{% if project_imports %}
+{% for imp in project_imports %}
+{{ imp }}
+{% endfor %}
+{% endif %}
+
+
+class I{{ name }}(Protocol):
+    """Interface for {{ name }}.
+
+    Defines the contract that {{ name }} implementations must fulfill.
+    Used for dependency injection and testing.
+    """
+
+{% for method in methods %}
+    def {{ method.name }}(self{% if method.params %}, {{ method.params }}{% endif %}) -> {{ method.return_type | default('Any') }}:
+        """{{ method.description | default('Execute ' + method.name + ' operation.') }}"""
+        ...
+
+{% endfor %}
+
+
+class {{ name }}:
+    """{{ docstring | default(name + ' implementation for external integration.') }}
+
+    **Responsibilities:**
+{% for resp in (responsibilities or ['Abstract external system interface', 'Handle connection management', 'Transform data formats', 'Provide error handling']) %}
+    - {{ resp }}
+{% endfor %}
+
+    **Usage:**
+        ```python
+        adapter = {{ name }}({% if constructor_params %}{{ constructor_params }}{% endif %})
+{% if methods %}
+        result = adapter.{{ methods[0].name }}(...)
+{% endif %}
+        ```
+    """
+
+    def __init__(
+        self,
+{% if constructor_params %}
+        {{ constructor_params }},
+{% endif %}
+    ) -> None:
+        """Initialize {{ name }}.
+
+{% if constructor_params %}
+        Args:
+{% for param in constructor_params.split(',') %}
+{% set param_name = param.split(':')[0].strip() %}
+{% set param_type = param.split(':')[1].strip() if ':' in param else 'Any' %}
+            {{ param_name }}: {{ param_type }}
+{% endfor %}
+{% endif %}
+        """
+{% if constructor_params %}
+{% for param in constructor_params.split(',') %}
+{% set param_name = param.split(':')[0].strip() %}
+        self._{{ param_name }} = {{ param_name }}
+{% endfor %}
+{% else %}
+        pass  # No initialization required
+{% endif %}
+
+{% for method in methods %}
+    def {{ method.name }}(
+        self,
+{% if method.params %}
+        {{ method.params }},
+{% endif %}
+    ) -> {{ method.return_type | default('Any') }}:
+        """{{ method.description | default('Execute ' + method.name + ' operation.') }}
+
+{% if method.params %}
+        Args:
+{% for param in method.params.split(',') %}
+{% set param_name = param.split(':')[0].strip() %}
+{% set param_type = param.split(':')[1].strip() if ':' in param else 'Any' %}
+            {{ param_name }}: {{ param_type }}
+{% endfor %}
+{% endif %}
+
+        Returns:
+            {{ method.return_type | default('Any') }}: {{ method.return_description | default('Operation result') }}
+
+        Raises:
+            {{ exception_type | default('ExecutionError') }}: If operation fails
+        """
+        try:
+            # TODO: Implement {{ method.name }} logic
+            raise NotImplementedError("Implement {{ method.name }}")
+        except Exception as e:
+            raise {{ exception_type | default('ExecutionError') }}(
+                f"{{ method.name }} failed: {e}"
+            ) from e
+
+{% endfor %}

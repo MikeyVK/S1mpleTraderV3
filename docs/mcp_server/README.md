@@ -22,6 +22,24 @@ This directory contains the authoritative documentation for the SimpleTraderV3 M
 - **[GitHub Setup](GITHUB_SETUP.md)**  
   Configuration guide for GitHub integration (Secrets, Permissions, Project Board).
 
+## Standardized Development
+
+We provide automated scaffolding to ensure all components adhere to our [Coding Standards](../coding_standards/CODE_STYLE.md).
+
+### Creating Components
+
+Use the `scaffold_component` tool to generate new files:
+
+| Component | Type | Example |
+| :--- | :--- | :--- |
+| **MCP Tool** | `tool` | `scaffold_component(type="tool", name="MyTool", ...)` |
+| **MCP Resource** | `resource` | `scaffold_component(type="resource", name="MyResource", ...)` |
+| **Service** | `service` | `scaffold_component(type="service", service_type="command", ...)` |
+| **Schema** | `schema` | `scaffold_component(type="schema", name="MyConfig", ...)` |
+| **Interface** | `interface` | `scaffold_component(type="interface", name="IMyContract", ...)` |
+
+For detailed reference templates, see **[docs/reference/templates](../reference/templates/README.md)**.
+
 ## Quick Reference
 
 | Resource URI | Description |

@@ -20,10 +20,19 @@ BASE_TEMPLATE.md          ← Foundation (static docs inherit from this)
     │
     ├── DESIGN_TEMPLATE.md         ← Pre-implementation designs (docs/development/)
     │
+    │
     └── REFERENCE_TEMPLATE.md      ← Post-implementation reference (docs/reference/)
 
 TRACKING_TEMPLATE.md      ← Living documents (TODO, STATUS, INVENTORY)
                              Does NOT inherit from BASE (different lifecycle)
+
+Specific Component Templates:
+- [python_tool.md](python_tool.md)
+- [python_resource.md](python_resource.md)
+- [python_service.md](python_service.md)
+- [python_schema.md](python_schema.md)
+- [python_interface.md](python_interface.md)
+
 ```
 
 ## Quick Reference

@@ -9,6 +9,12 @@
 3. **Configuration-Driven** - Behavior controlled via YAML, code is execution engine
 4. **Contract-Driven** - All data exchange validated through Pydantic schemas
 
+## 🤝 Agent Cooperation
+
+**Are you an AI Agent?**
+> **STOP.** Do not guess. Do not scan random files.
+> Read **[AGENT_PROMPT.md](AGENT_PROMPT.md)** immediately to initialize your cooperation protocol.
+
 ## Fundamental Architectural Shifts
 
 ### 1. Flattened Orchestration (No Operators)

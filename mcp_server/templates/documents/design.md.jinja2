@@ -1,0 +1,282 @@
+# {{ title }}
+
+**Status:** {{ status | default('Draft') }}
+**Author:** {{ author | default('AI Assistant') }}
+**Created:** {{ created_date | default('YYYY-MM-DD') }}
+**Last Updated:** {{ updated_date | default('YYYY-MM-DD') }}
+**Issue:** {{ issue_number | default('#XX') }}
+
+---
+
+## 1. Overview
+
+### 1.1 Purpose
+
+{{ purpose | default('Brief description of what this design document covers.') }}
+
+### 1.2 Scope
+
+**In Scope:**
+{% if in_scope %}
+{% for item in in_scope %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- TBD
+{% endif %}
+
+**Out of Scope:**
+{% if out_scope %}
+{% for item in out_scope %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- TBD
+{% endif %}
+
+### 1.3 Related Documents
+
+{% if related_docs %}
+{% for doc in related_docs %}
+- [{{ doc.title }}]({{ doc.path }})
+{% endfor %}
+{% else %}
+- [Core Principles](docs/architecture/CORE_PRINCIPLES.md)
+- [Architectural Shifts](docs/architecture/ARCHITECTURAL_SHIFTS.md)
+{% endif %}
+
+---
+
+## 2. Background
+
+### 2.1 Current State
+
+{{ current_state | default('Description of the current situation and why change is needed.') }}
+
+### 2.2 Problem Statement
+
+{{ problem_statement | default('Clear articulation of the problem this design solves.') }}
+
+### 2.3 Requirements
+
+#### Functional Requirements
+{% if functional_requirements %}
+{% for req in functional_requirements %}
+- [ ] **FR{{ loop.index }}:** {{ req }}
+{% endfor %}
+{% else %}
+- [ ] **FR1:** TBD
+{% endif %}
+
+#### Non-Functional Requirements
+{% if nonfunctional_requirements %}
+{% for req in nonfunctional_requirements %}
+- [ ] **NFR{{ loop.index }}:** {{ req }}
+{% endfor %}
+{% else %}
+- [ ] **NFR1:** Performance - TBD
+- [ ] **NFR2:** Testability - TBD
+{% endif %}
+
+---
+
+## 3. Design
+
+### 3.1 Architecture Position
+
+{{ architecture_position | default('Where this component fits in the overall architecture.') }}
+
+```
+{{ architecture_diagram | default('[ Diagram placeholder - use ASCII art or reference external diagram ]') }}
+```
+
+### 3.2 Component Design
+
+{% if components %}
+{% for component in components %}
+#### {{ component.name }}
+
+**Purpose:** {{ component.purpose }}
+
+**Responsibilities:**
+{% for resp in component.responsibilities %}
+- {{ resp }}
+{% endfor %}
+
+**Dependencies:**
+{% for dep in component.dependencies %}
+- {{ dep }}
+{% endfor %}
+
+{% endfor %}
+{% else %}
+#### Component A
+
+**Purpose:** TBD
+
+**Responsibilities:**
+- TBD
+
+**Dependencies:**
+- TBD
+{% endif %}
+
+### 3.3 Data Model
+
+{% if data_model %}
+{{ data_model }}
+{% else %}
+```python
+# DTO structure (example)
+class ExampleDTO(BaseModel):
+    """Example DTO structure."""
+    id: str
+    # Add fields
+```
+{% endif %}
+
+### 3.4 Interface Design
+
+{% if interfaces %}
+{% for interface in interfaces %}
+```python
+{{ interface }}
+```
+
+{% endfor %}
+{% else %}
+```python
+class IExample(Protocol):
+    """Interface example."""
+    def process(self, input: InputDTO) -> OutputDTO:
+        """Process input."""
+        ...
+```
+{% endif %}
+
+---
+
+## 4. Implementation Plan
+
+### 4.1 Phases
+
+{% if phases %}
+{% for phase in phases %}
+#### Phase {{ loop.index }}: {{ phase.name }}
+
+**Goal:** {{ phase.goal }}
+
+**Tasks:**
+{% for task in phase.tasks %}
+- [ ] {{ task }}
+{% endfor %}
+
+**Exit Criteria:**
+{% for criterion in phase.exit_criteria %}
+- [ ] {{ criterion }}
+{% endfor %}
+
+{% endfor %}
+{% else %}
+#### Phase 1: Foundation
+
+**Goal:** Basic implementation with tests
+
+**Tasks:**
+- [ ] Create DTO definitions
+- [ ] Write failing tests (RED)
+- [ ] Implement minimal functionality (GREEN)
+- [ ] Refactor and optimize (REFACTOR)
+
+**Exit Criteria:**
+- [ ] All tests passing
+- [ ] Quality gates passed (10/10 Pylint)
+{% endif %}
+
+### 4.2 Testing Strategy
+
+{% if testing_strategy %}
+{{ testing_strategy }}
+{% else %}
+| Test Type | Scope | Count Target |
+|-----------|-------|--------------|
+| Unit | DTOs | 20+ per DTO |
+| Unit | Workers | 10+ per worker |
+| Integration | End-to-end | 5+ per flow |
+{% endif %}
+
+---
+
+## 5. Alternatives Considered
+
+{% if alternatives %}
+{% for alt in alternatives %}
+### {{ alt.name }}
+
+**Description:** {{ alt.description }}
+
+**Pros:**
+{% for pro in alt.pros %}
+- {{ pro }}
+{% endfor %}
+
+**Cons:**
+{% for con in alt.cons %}
+- {{ con }}
+{% endfor %}
+
+**Decision:** {{ alt.decision }}
+
+{% endfor %}
+{% else %}
+### Alternative A
+
+**Description:** TBD
+
+**Pros:**
+- TBD
+
+**Cons:**
+- TBD
+
+**Decision:** Rejected because...
+{% endif %}
+
+---
+
+## 6. Open Questions
+
+{% if open_questions %}
+{% for question in open_questions %}
+- [ ] {{ question }}
+{% endfor %}
+{% else %}
+- [ ] TBD
+{% endif %}
+
+---
+
+## 7. Decision Log
+
+| Date | Decision | Rationale |
+|------|----------|-----------|
+{% if decisions %}
+{% for decision in decisions %}
+| {{ decision.date }} | {{ decision.decision }} | {{ decision.rationale }} |
+{% endfor %}
+{% else %}
+| {{ created_date | default('YYYY-MM-DD') }} | Initial design created | {{ purpose | default('Document purpose') }} |
+{% endif %}
+
+---
+
+## 8. References
+
+{% if references %}
+{% for ref in references %}
+- {{ ref }}
+{% endfor %}
+{% else %}
+- [TDD Workflow](docs/coding_standards/TDD_WORKFLOW.md)
+- [Quality Gates](docs/coding_standards/QUALITY_GATES.md)
+{% endif %}

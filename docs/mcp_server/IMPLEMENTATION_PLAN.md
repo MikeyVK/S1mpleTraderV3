@@ -1,836 +1,92 @@
-# MCP Server - Implementation Plan
+# Consolidate Implementation Plan: Jinja2 Templates & Extensibility
 
-> **Document Version**: 1.0  
-> **Last Updated**: 2025-01-21  
-> **Status**: Execution Phase  
-> **Parent**: [ARCHITECTURE.md](./ARCHITECTURE.md)
+This document combines the findings from the **Gap Analysis** with the detailed **Implementation Strategy**, providing a single source of truth for the upcoming work on the `mcp_server` Jinja2 templates.
 
----
+## 1. Executive Summary
 
-## Table of Contents
+Our goal is to professionalize the `mcp_server` scaffolding capabilities. We will fill coverage gaps identified in the analysis (Tools, Resources, Standard Patterns) and introduce a flexible, generic mechanism to support future needs without code changes.
 
-1. [Overview](#1-overview)
-2. [Build Order](#2-build-order)
-3. [Milestone 1: Foundation](#3-milestone-1-foundation)
-4. [Milestone 2: GitHub Integration](#4-milestone-2-github-integration)
-5. [Milestone 3: Development Workflow](#5-milestone-3-development-workflow)
-6. [Milestone 4: Quality Automation](#6-milestone-4-quality-automation)
-7. [Milestone 5: Production Ready](#7-milestone-5-production-ready)
-8. [Testing Strategy](#8-testing-strategy)
-9. [Risk Assessment](#9-risk-assessment)
-10. [Success Criteria](#10-success-criteria)
+**Key Deliverables:**
+1.  **New Templates**: A suite of templates for MCP components and standard architecture patterns (based on S1mpleTraderV2).
+2.  **Extensibility**: A "Generic" template system allowing generation of *any* file type.
+3.  **Documentation Sync**: Aligning automation templates with reference documentation.
 
 ---
 
-## 1. Overview
+## 2. Scope & Design Decisions
 
-### 1.1 Purpose
+### 2.1. Gap Analysis Findings
+-   **Missing MCP Types**: We lack templates for `Tools` and `Resources`, forcing manual boilerplate.
+-   **Missing Architecture Patterns**: Common V2 patterns like `Schemas` (Pydantic), `Interfaces` (Protocol), and `Services` (CQRS-style) are not scaffoldable in V3.
+-   **Extensibility**: The current system is hardcoded (`dto`, `worker`, `adapter`). Adding a new type requires modifying Python code.
 
-This document defines the phased implementation of the ST3 Workflow MCP Server, from foundation to production-ready. It follows the ST3 TDD-workflow and is designed to deliver incremental value.
-
-### 1.2 Principles
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Implementation Principles                        │
-├─────────────────────────────────────────────────────────────────────┤
-│  1. Each milestone is independently deployable                      │
-│  2. Every component has tests BEFORE implementation                │
-│  3. Integration tests validate milestone completion                │
-│  4. Documentation updates are part of each milestone               │
-│  5. Regular checkpoints with working software                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 1.3 Timeline Estimate
-
-| Milestone | Duration | Cumulative |
-|-----------|----------|------------|
-| M1: Foundation | 2-3 days | 2-3 days |
-| M2: GitHub Integration | 3-4 days | 5-7 days |
-| M3: Development Workflow | 4-5 days | 9-12 days |
-| M4: Quality Automation | 3-4 days | 12-16 days |
-| M5: Production Ready | 2-3 days | 14-19 days |
-
-**Total estimated effort: 14-19 development days**
+### 2.2. Service Architecture
+Based on the CQRS-like patterns in `DataCommandService` and `DataQueryService`, we will implement **3 distinct service templates**:
+1.  **Orchestrator Service**: For high-level coordination.
+2.  **Command Service**: For write-heavy operations (validation, transaction, execution).
+3.  **Query Service**: For read-heavy operations (optimization, caching).
 
 ---
 
-## 2. Build Order
+## 3. Implementation Steps
 
-### 2.1 Dependency Graph
+### 3.1. Phase 1: Template Implementation (`mcp_server/templates/components/`)
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         BUILD ORDER                                  │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  Layer 0 (No dependencies):                                         │
-│  ├── config/settings.py         # Configuration loading            │
-│  ├── core/exceptions.py         # Custom exceptions                 │
-│  └── core/logging.py            # Structured logging                │
-│                                                                      │
-│  Layer 1 (Depends on Layer 0):                                      │
-│  ├── resources/base.py          # Resource base classes            │
-│  ├── tools/base.py              # Tool base classes                │
-│  └── state/context.py           # Context management               │
-│                                                                      │
-│  Layer 2 (Depends on Layer 1):                                      │
-│  ├── adapters/git.py            # GitPython wrapper                │
-│  ├── adapters/github.py         # PyGithub wrapper                 │
-│  └── adapters/filesystem.py     # Safe FS operations               │
-│                                                                      │
-│  Layer 3 (Depends on Layer 2):                                      │
-│  ├── managers/git_manager.py    # Git Logic (Naming, TDD)          │
-│  ├── managers/github_manager.py # GitHub Logic (Issues, Projects)  │
-│  ├── managers/doc_manager.py    # Documentation Logic              │
-│  └── managers/qa_manager.py     # Quality Logic                    │
-│                                                                      │
-│  Layer 4 (Depends on Layer 3):                                      │
-│  ├── resources/github.py        # st3://github/*                   │
-│  ├── resources/status.py        # st3://status/*                   │
-│  └── resources/templates.py     # st3://templates/*                │
-│                                                                      │
-│  Layer 5 (Depends on Layer 4):                                      │
-│  ├── tools/git_tools.py         # Git Tools                        │
-│  ├── tools/github_tools.py      # GitHub Tools                     │
-│  ├── tools/issue_tools.py       # Issue Tools                      │
-│  └── tools/quality_tools.py     # Quality Tools                    │
-│                                                                      │
-│  Layer 6 (Depends on Layer 5):                                      │
-│  ├── server.py                  # MCP server entrypoint            │
-│  └── cli.py                     # Command-line interface           │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+We will create the following Jinja2 files inheriting from `base/base_component.py.jinja2`:
 
-### 2.2 Module Inventory
+#### A. MCP Components
+-   **`tool.py.jinja2`**: Implements `BaseTool`. Fields: `input_schema`, `execute` stub.
+-   **`resource.py.jinja2`**: Implements `read()` and URI handling.
 
-```yaml
-total_modules: 24
-total_estimated_loc: 3500-4500
+#### B. Architecture Components
+-   **`schema.py.jinja2`**: Pydantic models (based on `platform_schema.py`).
+-   **`interface.py.jinja2`**: `typing.Protocol` definitions (based on `connectors.py`).
+-   **`service_orchestrator.py.jinja2`**: General dependency injection and logic.
+-   **`service_command.py.jinja2`**: Transactional/Action pattern (based on `data_command_service.py`).
+-   **`service_query.py.jinja2`**: Retrieval pattern (based on `data_query_service.py`).
 
-breakdown:
-  config: 2 modules, ~200 LOC
-  core: 3 modules, ~300 LOC
-  state: 2 modules, ~200 LOC
-  resources: 6 modules, ~800 LOC
-  tools: 8 modules, ~1500 LOC
-  integrations: 2 modules, ~400 LOC
-  server: 1 module, ~200 LOC
-```
+#### C. Extensibility
+-   **`generic.py.jinja2`**: A blank slate wrapper that injects a module header and renders arbitrary body content/structure provided via context.
 
----
+### 3.2. Phase 2: Tooling Refactor
 
-## 3. Milestone 1: Foundation
+#### `mcp_server/managers/scaffold_manager.py`
+-   **Generic Renderer**: Implement `render_generic(template_name, context)` which loads *any* given template file and passes the full context dict.
+-   **Specific Renderers**: Add methods for the new specific types (`render_tool`, `render_service`, etc.) to enforce specific validations (e.g., checking if a command service has a persistor).
 
-### 3.1 Goal
+#### `mcp_server/tools/scaffold_tools.py`
+-   **Update CLI**:
+    -   Expand `component_type` enum: `['dto', 'worker', 'adapter', 'tool', 'resource', 'schema', 'interface', 'service', 'generic']`.
+    -   Add `service_type` argument (enum: `['orchestrator', 'command', 'query']`).
+    -   Add `template_name` argument (for generic mode).
+    -   Add `context` argument (JSON string or dict for generic mode input).
 
-Working MCP server that can start and serve basic resources.
+### 3.3. Phase 3: Documentation
 
-### 3.2 Deliverables
+#### [MODIFY] [docs/reference/templates/COMPONENTS_README.md](file:///d:/dev/SimpleTraderV3/docs/reference/templates/COMPONENTS_README.md)
+- Update index to include DTO, Worker, Adapter templates.
 
-| Component | Path | Description |
-|-----------|------|-------------|
-| Settings | `mcp_server/config/settings.py` | YAML config loading |
-| Exceptions | `mcp_server/core/exceptions.py` | Error hierarchy |
-| Logging | `mcp_server/core/logging.py` | Structured logging |
-| Base Resource | `mcp_server/resources/base.py` | Resource ABC |
-| Base Tool | `mcp_server/tools/base.py` | Tool ABC |
-| Standards Resource | `mcp_server/resources/standards.py` | Load coding standards |
-| Server | `mcp_server/server.py` | MCP server entrypoint |
+#### [NEW] [docs/reference/templates/python_dto.md](file:///d:/dev/SimpleTraderV3/docs/reference/templates/python_dto.md)
+#### [NEW] [docs/reference/templates/python_worker.md](file:///d:/dev/SimpleTraderV3/docs/reference/templates/python_worker.md)
+#### [NEW] [docs/reference/templates/python_adapter.md](file:///d:/dev/SimpleTraderV3/docs/reference/templates/python_adapter.md)
 
-### 3.3 Implementation Order
+## Verification Plan
 
-```python
-# Step 1: Project structure
-"""
-mcp_server/
-├── __init__.py
-├── py.typed
-├── config/
-│   ├── __init__.py
-│   └── settings.py
-├── core/
-│   ├── __init__.py
-│   ├── exceptions.py
-│   └── logging.py
-├── resources/
-│   ├── __init__.py
-│   ├── base.py
-│   └── standards.py
-├── tools/
-│   ├── __init__.py
-│   └── base.py
-└── server.py
-"""
+### Automated Tests
+1.  **Render Verification**: Re-run a script to verify that `scaffold_component` output matches the new reference templates (visual check or diff).
+2.  **Linting**: Ensure new markdown files pass lint checks (if any).
 
-# Step 2: Configuration (TDD)
-# tests/unit/mcp_server/config/test_settings.py
-# mcp_server/config/settings.py
+### Manual Verification
+1.  **Review**: User review of the new reference docs to ensure they match expectations.
+ to prevent "Source of Truth" drift.
 
-# Step 3: Core (TDD)
-# tests/unit/mcp_server/core/test_exceptions.py
-# tests/unit/mcp_server/core/test_logging.py
-# mcp_server/core/exceptions.py
-# mcp_server/core/logging.py
+### 4.1. Automated Verification
+We will run the `scaffold_component` tool for each new type to verify:
+1.  **Tool**: Generates correct `InputSchema`.
+2.  **Resource**: Generates correct URI regex.
+3.  **Command Service**: Generates logic structure resembling `DataCommandService`.
+4.  **Generic**: Generates a valid file using a custom template path (verifying extensibility).
 
-# Step 4: Base classes (TDD)
-# tests/unit/mcp_server/resources/test_base.py
-# tests/unit/mcp_server/tools/test_base.py
-# mcp_server/resources/base.py
-# mcp_server/tools/base.py
-
-# Step 5: Standards resource (TDD)
-# tests/unit/mcp_server/resources/test_standards.py
-# mcp_server/resources/standards.py
-
-# Step 6: Server integration
-# tests/integration/mcp_server/test_server_startup.py
-# mcp_server/server.py
-```
-
-### 3.4 Acceptance Criteria
-
-- [ ] `mcp_server` package importable
-- [ ] Server starts without errors
-- [ ] `st3://rules/coding_standards` resource accessible
-- [ ] Configuration loads from YAML
-- [ ] Structured logging operational
-- [ ] All tests passing (unit + integration)
-- [ ] Coverage ≥ 80%
-
-### 3.5 GitHub Issues
-
-```yaml
-issues_to_create:
-  - title: "M1: Setup MCP server project structure"
-    template: feature_request
-    labels: [type:feature, milestone:m1-foundation, priority:high]
-    
-  - title: "M1: Implement configuration loading"
-    template: tdd_task
-    labels: [type:feature, milestone:m1-foundation, phase:red]
-    
-  - title: "M1: Implement core exceptions and logging"
-    template: tdd_task
-    labels: [type:feature, milestone:m1-foundation, phase:red]
-    
-  - title: "M1: Implement resource base class"
-    template: tdd_task
-    labels: [type:feature, milestone:m1-foundation, phase:red]
-    
-  - title: "M1: Implement standards resource"
-    template: tdd_task
-    labels: [type:feature, milestone:m1-foundation, phase:red]
-    
-  - title: "M1: Implement MCP server entrypoint"
-    template: tdd_task
-    labels: [type:feature, milestone:m1-foundation, phase:red]
-```
-
----
-
-## 4. Milestone 2: GitHub Integration
-
-### 4.1 Goal
-
-Full GitHub integration: issues, PRs, labels, milestones.
-
-### 4.2 Deliverables
-
-| Component | Path | Description |
-|-----------|------|-------------|
-| GitHub Adapter | `mcp_server/adapters/github.py` | PyGithub wrapper |
-| GitHub Manager | `mcp_server/managers/github_manager.py` | Business logic, caching |
-| GitHub Resources | `mcp_server/resources/github.py` | Issue/PR resources |
-| Issue Tools | `mcp_server/tools/issue_tools.py` | CRUD for issues |
-| PR Tools | `mcp_server/tools/pr_tools.py` | PR management |
-| Label Tools | `mcp_server/tools/label_tools.py` | Label management |
-
-### 4.3 Implementation Order
-
-```python
-# Step 1: GitHub Adapter
-# tests/unit/mcp_server/adapters/test_github.py
-# mcp_server/adapters/github.py
-
-# Step 2: GitHub Manager (depends on Adapter)
-# tests/unit/mcp_server/managers/test_github_manager.py
-# mcp_server/managers/github_manager.py
-
-# Step 3: GitHub resources (depends on Manager)
-# tests/unit/mcp_server/resources/test_github.py
-# mcp_server/resources/github.py
-
-# Step 4: Issue tools (depends on Manager)
-# tests/unit/mcp_server/tools/test_issue_tools.py
-# mcp_server/tools/issue_tools.py
-
-# Step 5: PR tools
-# tests/unit/mcp_server/tools/test_pr_tools.py
-# mcp_server/tools/pr_tools.py
-
-# Step 6: Integration tests
-# tests/integration/mcp_server/test_github_integration.py
-```
-
-### 4.4 Acceptance Criteria
-
-- [ ] `issue_create` tool functional
-- [ ] `issue_list` with filtering
-- [ ] `issue_update_labels` working
-- [ ] `pr_create` tool functional
-- [ ] `st3://github/issues` resource live data
-- [ ] Rate limiting handled gracefully
-- [ ] Authentication via token
-
-### 4.5 GitHub Issues
-
-```yaml
-issues_to_create:
-  - title: "M2: Implement GitHub Adapter"
-    template: tdd_task
-    labels: [type:feature, milestone:m2-github, priority:high]
-    
-  - title: "M2: Implement GitHub Manager"
-    template: tdd_task
-    labels: [type:feature, milestone:m2-github, priority:high]
-
-  - title: "M2: Implement GitHub resources"
-    template: tdd_task
-    labels: [type:feature, milestone:m2-github, phase:red]
-    
-  - title: "M2: Implement issue management tools"
-    template: tdd_task
-    labels: [type:feature, milestone:m2-github, phase:red]
-    
-  - title: "M2: Implement PR management tools"
-    template: tdd_task
-    labels: [type:feature, milestone:m2-github, phase:red]
-```
-
----
-
-## 5. Milestone 3: Development Workflow
-
-### 5.1 Goal
-
-Support full TDD workflow: branch, test, commit, validate.
-
-### 5.2 Deliverables
-
-| Component | Path | Description |
-|-----------|------|-------------|
-| Git Adapter | `mcp_server/adapters/git.py` | GitPython wrapper |
-| Git Manager | `mcp_server/managers/git_manager.py` | Branching logic, conventions |
-| Git Tools | `mcp_server/tools/git_tools.py` | Branch, commit, status |
-| Test Tools | `mcp_server/tools/test_tools.py` | pytest execution |
-| Code Tools | `mcp_server/tools/code_tools.py` | File creation/editing |
-| Context State | `mcp_server/state/context.py` | Session context |
-
-### 5.3 Implementation Order
-
-```python
-# Step 1: Git Adapter
-# tests/unit/mcp_server/adapters/test_git.py
-# mcp_server/adapters/git.py
-
-# Step 2: Git Manager (depends on Adapter)
-# tests/unit/mcp_server/managers/test_git_manager.py
-# mcp_server/managers/git_manager.py
-
-# Step 3: Git tools (depends on Manager)
-# tests/unit/mcp_server/tools/test_git_tools.py
-# mcp_server/tools/git_tools.py
-
-# Step 4: Test tools
-# tests/unit/mcp_server/tools/test_test_tools.py
-# mcp_server/tools/test_tools.py
-
-# Step 5: Code tools
-# tests/unit/mcp_server/tools/test_code_tools.py
-# mcp_server/tools/code_tools.py
-
-# Step 6: Context management
-# tests/unit/mcp_server/state/test_context.py
-# mcp_server/state/context.py
-
-# Step 7: Workflow integration
-# tests/integration/mcp_server/test_tdd_workflow.py
-```
-
-### 5.4 Acceptance Criteria
-
-- [ ] `git_branch_create` creates feature branch
-- [ ] `git_status` shows changes
-- [ ] `git_commit` with conventional message
-- [ ] `test_run` executes pytest
-- [ ] `code_create_file` with templates
-- [ ] Session context persists across tool calls
-- [ ] Full RED→GREEN→REFACTOR workflow testable
-
-### 5.5 GitHub Issues
-
-```yaml
-issues_to_create:
-  - title: "M3: Implement Git Adapter"
-    template: tdd_task
-    labels: [type:feature, milestone:m3-workflow, priority:high]
-    
-  - title: "M3: Implement Git Manager"
-    template: tdd_task
-    labels: [type:feature, milestone:m3-workflow, priority:high]
-
-  - title: "M3: Implement Git tools (branch, commit, status)"
-    template: tdd_task
-    labels: [type:feature, milestone:m3-workflow, phase:red]
-    
-  - title: "M3: Implement test execution tools"
-    template: tdd_task
-    labels: [type:feature, milestone:m3-workflow, phase:red]
-    
-  - title: "M3: Implement code generation tools"
-    template: tdd_task
-    labels: [type:feature, milestone:m3-workflow, phase:red]
-    
-  - title: "M3: Implement session context management"
-    template: tdd_task
-    labels: [type:feature, milestone:m3-workflow, phase:red]
-```
-
----
-
-## 6. Milestone 4: Quality Automation
-
-### 6.1 Goal
-
-Automated quality gates: validation, linting, coverage.
-
-### 6.2 Deliverables
-
-| Component | Path | Description |
-|-----------|------|-------------|
-| QA Manager | `mcp_server/managers/qa_manager.py` | Quality logic, gate enforcement |
-| Doc Manager | `mcp_server/managers/doc_manager.py` | Template rendering, validation |
-| Quality Tools | `mcp_server/tools/quality_tools.py` | Pyright, lint (delegates to QA Mgr) |
-| Validation Tools | `mcp_server/tools/validation_tools.py` | Architecture, DTO |
-| Docs Tools | `mcp_server/tools/docs_tools.py` | Doc generation (delegates to Doc Mgr) |
-| Templates Resource | `mcp_server/resources/templates.py` | Code templates |
-
-### 6.3 Implementation Order
-
-```python
-# Step 1: QA Manager
-# tests/unit/mcp_server/managers/test_qa_manager.py
-# mcp_server/managers/qa_manager.py
-
-# Step 2: Doc Manager
-# tests/unit/mcp_server/managers/test_doc_manager.py
-# mcp_server/managers/doc_manager.py
-
-# Step 3: Quality tools (depends on QA Manager)
-# tests/unit/mcp_server/tools/test_quality_tools.py
-# mcp_server/tools/quality_tools.py
-
-# Step 4: Validation tools
-# tests/unit/mcp_server/tools/test_validation_tools.py
-# mcp_server/tools/validation_tools.py
-
-# Step 5: Document tools (depends on Doc Manager)
-# tests/unit/mcp_server/tools/test_docs_tools.py
-# mcp_server/tools/docs_tools.py
-
-# Step 6: Templates resource
-# tests/unit/mcp_server/resources/test_templates.py
-# mcp_server/resources/templates.py
-
-# Step 7: Quality gate integration
-# tests/integration/mcp_server/test_quality_gates.py
-```
-
-### 6.4 Acceptance Criteria
-
-- [ ] `code_quality_check` runs pyright
-- [ ] `architecture_validate` checks patterns
-- [ ] `dto_validate` validates Pydantic models
-- [ ] `naming_validate` checks conventions
-- [ ] `docs_check_coverage` identifies gaps
-- [ ] Templates accessible and valid
-- [ ] All validations return actionable feedback
-
-### 6.5 GitHub Issues
-
-```yaml
-issues_to_create:
-  - title: "M4: Implement QA Manager"
-    template: tdd_task
-    labels: [type:feature, milestone:m4-quality, priority:high]
-
-  - title: "M4: Implement Documentation Manager"
-    template: tdd_task
-    labels: [type:feature, milestone:m4-quality, priority:high]
-
-  - title: "M4: Implement quality check tools"
-    template: tdd_task
-    labels: [type:feature, milestone:m4-quality, phase:red]
-    
-  - title: "M4: Implement validation tools"
-    template: tdd_task
-    labels: [type:feature, milestone:m4-quality, phase:red]
-    
-  - title: "M4: Implement documentation tools"
-    template: tdd_task
-    labels: [type:feature, milestone:m4-quality, phase:red]
-    
-  - title: "M4: Implement templates resource"
-    template: tdd_task
-    labels: [type:feature, milestone:m4-quality, phase:red]
-```
-
----
-
-## 7. Milestone 5: Production Ready
-
-### 7.1 Goal
-
-Production-ready MCP server with CLI and packaging.
-
-### 7.2 Deliverables
-
-| Component | Path | Description |
-|-----------|------|-------------|
-| CLI | `mcp_server/cli.py` | Command-line interface |
-| Health Check | `mcp_server/tools/health_tools.py` | Server health |
-| Packaging | `pyproject.toml` (update) | Package config |
-| Documentation | `docs/dev_tooling/USER_GUIDE.md` | User documentation |
-
-### 7.3 Implementation Order
-
-```python
-# Step 1: CLI implementation
-# tests/unit/mcp_server/test_cli.py
-# mcp_server/cli.py
-
-# Step 2: Health tools
-# tests/unit/mcp_server/tools/test_health_tools.py
-# mcp_server/tools/health_tools.py
-
-# Step 3: Packaging
-# Update pyproject.toml with mcp_server entry
-
-# Step 4: User documentation
-# docs/dev_tooling/USER_GUIDE.md
-
-# Step 5: End-to-end testing
-# tests/e2e/test_full_workflow.py
-```
-
-### 7.4 Acceptance Criteria
-
-- [ ] `st3-mcp` CLI command works
-- [ ] Server health endpoint functional
-- [ ] Package installable via pip
-- [ ] User documentation complete
-- [ ] E2E workflow test passing
-- [ ] Claude Desktop integration tested
-- [ ] Error messages user-friendly
-
-### 7.5 GitHub Issues
-
-```yaml
-issues_to_create:
-  - title: "M5: Implement CLI interface"
-    template: tdd_task
-    labels: [type:feature, milestone:m5-production, priority:high]
-    
-  - title: "M5: Implement health check tools"
-    template: tdd_task
-    labels: [type:feature, milestone:m5-production, phase:red]
-    
-  - title: "M5: Update packaging configuration"
-    template: tdd_task
-    labels: [type:feature, milestone:m5-production]
-    
-  - title: "M5: Write user documentation"
-    template: reference_documentation
-    labels: [type:docs, milestone:m5-production]
-    
-  - title: "M5: Create E2E test suite"
-    template: tdd_task
-    labels: [type:feature, milestone:m5-production]
-```
-
----
-
-## 8. Testing Strategy
-
-### 8.1 Test Pyramid
-
-```
-                    ┌───────────┐
-                    │   E2E     │  5%   - Full workflow tests
-                    │   Tests   │        - Claude Desktop integration
-                    ├───────────┤
-                    │Integration│  15%  - Multi-component tests
-                    │   Tests   │        - GitHub API (mocked)
-                    ├───────────┤
-                    │   Unit    │  80%  - Individual functions
-                    │   Tests   │        - All edge cases
-                    └───────────┘
-```
-
-### 8.2 Test Categories
-
-```yaml
-unit_tests:
-  location: tests/unit/mcp_server/
-  runner: pytest
-  coverage_target: 80%
-  mocking: All external dependencies
-  
-integration_tests:
-  location: tests/integration/mcp_server/
-  runner: pytest
-  coverage_target: 70%
-  mocking: GitHub API, Git operations
-  
-e2e_tests:
-  location: tests/e2e/
-  runner: pytest
-  coverage_target: 50%
-  mocking: Minimal (real filesystem)
-```
-
-### 8.3 Mocking Strategy
-
-```python
-# GitHub API mocking
-@pytest.fixture
-def mock_github():
-    with patch("mcp_server.integrations.github.Github") as mock:
-        mock.return_value.get_repo.return_value = MockRepo()
-        yield mock
-
-# Git operations mocking
-@pytest.fixture
-def mock_git_repo(tmp_path):
-    """Create a real git repo in temp directory."""
-    repo = git.Repo.init(tmp_path)
-    yield repo
-    
-# MCP protocol mocking
-@pytest.fixture
-def mock_mcp_server():
-    """Create MCP server with mocked transports."""
-    server = create_test_server()
-    yield server
-```
-
-### 8.4 Coverage Requirements
-
-| Module | Minimum Coverage |
-|--------|-----------------|
-| `config/` | 90% |
-| `core/` | 90% |
-| `resources/` | 80% |
-| `tools/` | 80% |
-| `integrations/` | 75% |
-| `server.py` | 70% |
-
----
-
-## 9. Risk Assessment
-
-### 9.1 Technical Risks
-
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| MCP SDK breaking changes | Medium | High | Pin version, monitor changelog |
-| GitHub API rate limits | High | Medium | Implement caching, backoff |
-| PyGithub compatibility | Low | Medium | Integration tests |
-| Async complexity | Medium | Medium | Thorough testing |
-| State management bugs | Medium | High | Immutable state patterns |
-
-### 9.2 Project Risks
-
-| Risk | Probability | Impact | Mitigation |
-|------|-------------|--------|------------|
-| Scope creep | High | Medium | Strict milestone boundaries |
-| Integration complexity | Medium | High | Incremental integration |
-| Documentation lag | Medium | Medium | Doc updates in each milestone |
-| Testing overhead | Medium | Low | TDD from start |
-
-### 9.3 Mitigation Actions
-
-```yaml
-pre_emptive_actions:
-  - "Pin all dependencies with exact versions"
-  - "Create integration test fixtures early"
-  - "Document API decisions immediately"
-  - "Weekly scope review against milestones"
-  
-reactive_procedures:
-  - "MCP SDK change: Check compatibility matrix"
-  - "Rate limit hit: Enable exponential backoff"
-  - "Test flakiness: Isolate and fix immediately"
-  - "Scope creep: Defer to future milestone"
-```
-
----
-
-## 10. Success Criteria
-
-### 10.1 Milestone Criteria
-
-```yaml
-milestone_1_success:
-  - Server starts and serves resources
-  - Configuration loading works
-  - Unit test coverage ≥ 80%
-  - Zero pyright errors
-
-milestone_2_success:
-  - Issue CRUD operations work
-  - PR creation works
-  - Rate limiting handled
-  - Integration tests pass
-
-milestone_3_success:
-  - Full TDD workflow automated
-  - Git operations reliable
-  - Test execution accurate
-  - Context persists correctly
-
-milestone_4_success:
-  - All validations functional
-  - Quality gates enforceable
-  - Templates accessible
-  - Docs tools work
-
-milestone_5_success:
-  - CLI fully functional
-  - Package installable
-  - E2E tests pass
-  - Documentation complete
-```
-
-### 10.2 Overall Success Criteria
-
-```yaml
-functional_criteria:
-  - "All 22 tools operational"
-  - "All 15 resources accessible"
-  - "Full TDD workflow supported"
-  - "GitHub integration complete"
-
-quality_criteria:
-  - "Overall coverage ≥ 80%"
-  - "Zero pyright errors"
-  - "All integration tests pass"
-  - "Documentation complete"
-
-usability_criteria:
-  - "Claude Desktop integration works"
-  - "Error messages actionable"
-  - "Configuration simple"
-  - "CLI intuitive"
-```
-
-### 10.3 Definition of Done
-
-```markdown
-## Definition of Done (per feature)
-
-- [ ] Unit tests written and passing
-- [ ] Integration tests (if applicable) passing
-- [ ] Coverage meets threshold
-- [ ] Pyright clean
-- [ ] Code reviewed
-- [ ] Documentation updated
-- [ ] Merged to main
-```
-
----
-
-## Appendix A: Quick Start Commands
-
-### A.1 Project Setup
-
-```bash
-# Create project structure
-mkdir -p mcp_server/{config,core,resources,tools,integrations,state}
-touch mcp_server/__init__.py mcp_server/py.typed
-
-# Install dependencies
-pip install mcp gitpython PyGithub pyyaml pydantic
-
-# Run tests
-pytest tests/unit/mcp_server/ -v --cov=mcp_server
-
-# Type check
-pyright mcp_server/
-```
-
-### A.2 Development Workflow
-
-```bash
-# Create feature branch
-git checkout -b feature/m1-settings
-
-# Write tests first (RED)
-pytest tests/unit/mcp_server/config/test_settings.py -v
-
-# Implement (GREEN)
-# ... write code ...
-
-# Verify
-pytest tests/unit/mcp_server/config/test_settings.py -v --cov
-
-# Commit
-git commit -m "feat(mcp-server): add configuration loading"
-```
-
----
-
-## Appendix B: File Templates
-
-### B.1 Resource Template
-
-```python
-"""Resource: [name]
-
-[Description of what this resource provides]
-"""
-from mcp_server.resources.base import BaseResource
-
-class MyResource(BaseResource):
-    """[Docstring]."""
-    
-    uri_pattern = "category://resource-name"
-    
-    async def read(self) -> str:
-        """Read resource content."""
-        # Implementation
-        pass
-```
-
-### B.2 Tool Template
-
-```python
-"""Tool: [name]
-
-[Description of what this tool does]
-"""
-from mcp_server.tools.base import BaseTool, ToolResult
-
-class MyTool(BaseTool):
-    """[Docstring]."""
-    
-    name = "tool_name"
-    description = "What the tool does"
-    
-    async def execute(self, **params) -> ToolResult:
-        """Execute the tool."""
-        # Implementation
-        pass
-```
+### 4.2. Quality Gates
+-   Generated code must pass `pylint` and `pyright` (via existing CI checks or manual verify).
+-   File headers must correctly reflect `@layer` (e.g., `Service`, `Interface`).
