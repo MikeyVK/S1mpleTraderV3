@@ -1,7 +1,7 @@
 """GitHub Manager for business logic."""
 from typing import TYPE_CHECKING, Any
 
-from mcp_server.adapters.github import GitHubAdapter
+from mcp_server.adapters.github_adapter import GitHubAdapter
 
 if TYPE_CHECKING:
     from github.Issue import Issue
