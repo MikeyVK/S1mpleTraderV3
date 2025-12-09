@@ -93,26 +93,26 @@ class MCPServer:
             # Discovery tools
             SearchDocumentationTool(),
             GetWorkContextTool(),
+            # GitHub Issue tools (always registered, lazy-init checks token)
+            CreateIssueTool(),
+            ListIssuesTool(),
+            GetIssueTool(),
+            CloseIssueTool(),
         ]
 
-        # GitHub-dependent resources and tools (only if token is configured)
+        # GitHub-dependent resources and additional tools (only if token is configured)
         if settings.github.token:  # pylint: disable=no-member
             self.resources.append(GitHubIssuesResource())
             self.tools.extend([
-                # Issue tools
-                CreateIssueTool(),
-                ListIssuesTool(),
-                GetIssueTool(),
-                CloseIssueTool(),
-                # PR and Label tools
+                # PR and Label tools (require token at init time)
                 CreatePRTool(),
                 AddLabelsTool(),
             ])
             logger.info("GitHub integration enabled")
         else:
-            logger.warning(
-                "GitHub token not configured - GitHub tools disabled. "
-                "Set GITHUB_TOKEN environment variable to enable."
+            logger.info(
+                "GitHub token not configured - GitHub issue tools available but will "
+                "return error on use. Set GITHUB_TOKEN to enable full functionality."
             )
 
         self.setup_handlers()

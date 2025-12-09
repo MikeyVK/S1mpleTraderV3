@@ -2,9 +2,22 @@
 import re
 from typing import Any
 
-from mcp_server.core.exceptions import ExecutionError
+from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+def _get_manager(manager: GitHubManager | None) -> GitHubManager:
+    """Get or create GitHubManager, raising clear error if not configured."""
+    if manager is not None:
+        return manager
+    try:
+        return GitHubManager()
+    except MCPSystemError as e:
+        raise ExecutionError(
+            "GitHub integration not configured. Set GITHUB_TOKEN environment variable.",
+            recovery=["Set GITHUB_TOKEN environment variable", "Restart the MCP server"]
+        ) from e
 
 
 class CreateIssueTool(BaseTool):
@@ -14,7 +27,7 @@ class CreateIssueTool(BaseTool):
     description = "Create a new GitHub issue"
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+        self._manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -49,15 +62,18 @@ class CreateIssueTool(BaseTool):
         **kwargs: Any
     ) -> ToolResult:
         """Execute the tool to create a GitHub issue."""
-        result = self.manager.create_issue(
-            title=title,
-            body=body,
-            labels=labels,
-            milestone=milestone,
-            assignees=assignees
-        )
-
-        return ToolResult.text(f"Created issue #{result['number']}: {result['url']}")
+        try:
+            manager = _get_manager(self._manager)
+            result = manager.create_issue(
+                title=title,
+                body=body,
+                labels=labels,
+                milestone=milestone,
+                assignees=assignees
+            )
+            return ToolResult.text(f"Created issue #{result['number']}: {result['url']}")
+        except ExecutionError as e:
+            return ToolResult.error(str(e))
 
 
 class ListIssuesTool(BaseTool):
@@ -68,7 +84,7 @@ class ListIssuesTool(BaseTool):
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         """Initialize with optional manager for testing."""
-        self.manager = manager or GitHubManager()
+        self._manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -98,21 +114,25 @@ class ListIssuesTool(BaseTool):
         **kwargs: Any
     ) -> ToolResult:
         """Execute the tool to list GitHub issues."""
-        issues = self.manager.list_issues(state=state, labels=labels)
+        try:
+            manager = _get_manager(self._manager)
+            issues = manager.list_issues(state=state, labels=labels)
 
-        if not issues:
-            return ToolResult.text("No issues found matching the criteria.")
+            if not issues:
+                return ToolResult.text("No issues found matching the criteria.")
 
-        lines = [f"Found {len(issues)} issue(s):\n"]
+            lines = [f"Found {len(issues)} issue(s):\n"]
 
-        for issue in issues:
-            label_str = ", ".join(label.name for label in issue.labels) or "none"
-            lines.append(
-                f"- #{issue.number}: {issue.title}\n"
-                f"  State: {issue.state} | Labels: {label_str}\n"
-            )
+            for issue in issues:
+                label_str = ", ".join(label.name for label in issue.labels) or "none"
+                lines.append(
+                    f"- #{issue.number}: {issue.title}\n"
+                    f"  State: {issue.state} | Labels: {label_str}\n"
+                )
 
-        return ToolResult.text("\n".join(lines))
+            return ToolResult.text("\n".join(lines))
+        except ExecutionError as e:
+            return ToolResult.error(str(e))
 
 
 class GetIssueTool(BaseTool):
@@ -123,7 +143,7 @@ class GetIssueTool(BaseTool):
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         """Initialize with optional manager for testing."""
-        self.manager = manager or GitHubManager()
+        self._manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -146,7 +166,8 @@ class GetIssueTool(BaseTool):
     ) -> ToolResult:
         """Execute the tool to get issue details."""
         try:
-            issue = self.manager.get_issue(issue_number)
+            manager = _get_manager(self._manager)
+            issue = manager.get_issue(issue_number)
         except ExecutionError as e:
             return ToolResult.error(str(e))
 
@@ -199,7 +220,7 @@ class CloseIssueTool(BaseTool):
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         """Initialize with optional manager for testing."""
-        self.manager = manager or GitHubManager()
+        self._manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -227,7 +248,8 @@ class CloseIssueTool(BaseTool):
     ) -> ToolResult:
         """Execute the tool to close a GitHub issue."""
         try:
-            issue = self.manager.close_issue(issue_number, comment=comment)
+            manager = _get_manager(self._manager)
+            issue = manager.close_issue(issue_number, comment=comment)
         except ExecutionError as e:
             return ToolResult.error(str(e))
 
