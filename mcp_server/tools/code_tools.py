@@ -1,4 +1,5 @@
 """Code manipulation tools."""
+import warnings
 from typing import Any, Dict
 from pathlib import Path
 from mcp_server.tools.base import BaseTool, ToolResult
@@ -7,10 +8,18 @@ from mcp_server.config.settings import settings
 
 
 class CreateFileTool(BaseTool):
-    """Tool to create or overwrite a file."""
+    """Tool to create or overwrite a file.
+
+    .. deprecated::
+        Use scaffold_component or scaffold_design_doc tools instead.
+        This tool bypasses project templates and coding standards.
+    """
 
     name = "create_file"
-    description = "Create or overwrite a file with content"
+    description = (
+        "[DEPRECATED] Create or overwrite a file with content. "
+        "Prefer scaffold_component for code generation."
+    )
 
     @property
     def input_schema(self) -> Dict[str, Any]:
@@ -25,6 +34,13 @@ class CreateFileTool(BaseTool):
 
     async def execute(self, path: str, content: str, **kwargs: Any) -> ToolResult:
         """Execute the tool."""
+        # Emit deprecation warning
+        warnings.warn(
+            "create_file is deprecated. Use scaffold_component or scaffold_design_doc instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         # Security check: ensure path is within workspace
         # pylint: disable=no-member
         full_path = Path(settings.server.workspace_root) / path
