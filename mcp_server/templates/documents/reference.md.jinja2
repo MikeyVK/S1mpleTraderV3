@@ -1,0 +1,156 @@
+{# documents/reference.md.jinja2 - Reference document template #}
+{#
+   Extends base_document.md.jinja2 for reference/API documentation.
+   
+   Follows docs/reference/templates/REFERENCE_TEMPLATE.md:
+   - Unnumbered sections (## API Reference, ## Usage Examples)
+   - Working code examples
+   - Source file links
+   - Post-implementation documentation
+   
+   Max lines: 600 (from DOCUMENTATION_MAINTENANCE.md)
+#}
+{% extends "base/base_document.md.jinja2" %}
+
+{% block filepath %}docs/reference/{{ category | default('') }}{{ filename | default('DOCUMENT.md') }}{% endblock %}
+
+{% block extra_header_fields %}
+**Source:** `{{ source_path | default('backend/module.py') }}`  
+**Tests:** `{{ test_path | default('tests/unit/test_module.py') }}`
+{% endblock %}
+
+{% block content %}
+{# ═══════════════════════════════════════════════════════════════════════════
+   CONTENT SECTION (REFERENCE-SPECIFIC: unnumbered, code examples)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+## Overview
+
+{{ overview | default('Brief description of what this component does and its role in the system.') }}
+
+---
+
+{% if api_reference %}
+## API Reference
+
+{% for item in api_reference %}
+### {{ item.name }}
+
+{{ item.description }}
+
+{% if item.signature %}
+```python
+{{ item.signature }}
+```
+{% endif %}
+
+{% if item.parameters %}
+**Parameters:**
+{% for param in item.parameters %}
+- `{{ param.name }}` ({{ param.type }}): {{ param.description }}{% if param.default %} Default: `{{ param.default }}`{% endif %}
+
+{% endfor %}
+{% endif %}
+
+{% if item.returns %}
+**Returns:** {{ item.returns }}
+{% endif %}
+
+{% if item.raises %}
+**Raises:**
+{% for exc in item.raises %}
+- `{{ exc.type }}`: {{ exc.condition }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+{% else %}
+## API Reference
+
+### Class/Function Name
+
+Description of the API.
+
+```python
+# Method signature
+def method_name(param: str) -> ReturnType:
+    """Docstring."""
+    ...
+```
+
+**Parameters:**
+- `param` (str): Description
+
+**Returns:** Description of return value
+
+{% endif %}
+
+---
+
+## Usage Examples
+
+{% if examples %}
+{% for example in examples %}
+### {{ example.title }}
+
+{{ example.description }}
+
+```python
+{{ example.code }}
+```
+
+{% if example.output %}
+**Output:**
+```
+{{ example.output }}
+```
+{% endif %}
+
+{% endfor %}
+{% else %}
+### Basic Usage
+
+```python
+# Example code demonstrating basic usage
+from backend.module import Component
+
+component = Component()
+result = component.process(input_data)
+```
+
+### Advanced Usage
+
+```python
+# Example with configuration options
+from backend.module import Component
+
+component = Component(option=True)
+result = component.process(input_data, extra="value")
+```
+
+{% endif %}
+
+---
+
+{% if configuration %}
+## Configuration
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+{% for config in configuration %}
+| `{{ config.name }}` | {{ config.type }} | `{{ config.default }}` | {{ config.description }} |
+{% endfor %}
+
+{% endif %}
+
+{% if error_handling %}
+## Error Handling
+
+| Error | Cause | Resolution |
+|-------|-------|------------|
+{% for error in error_handling %}
+| `{{ error.name }}` | {{ error.cause }} | {{ error.resolution }} |
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}

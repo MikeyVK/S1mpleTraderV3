@@ -1,0 +1,18 @@
+{% extends "base/base_component.py.jinja2" %}
+
+{% block description %}{{ description | default(name + ' generic component') }}{% endblock %}
+
+{% block layer %}Generic{% endblock %}
+
+{% block content %}
+# Generic component
+# This file was generated using the generic template.
+
+{% if body %}
+{{ body }}
+{% else %}
+class {{ name }}:
+    """{{ docstring | default(description) }}"""
+    pass
+{% endif %}
+{% endblock %}

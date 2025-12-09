@@ -1,0 +1,40 @@
+{% extends "base/base_component.py.jinja2" %}
+
+{% block description %}{{ description | default(name + ' resource implementation') }}{% endblock %}
+
+{% block layer %}Resources{% endblock %}
+
+{% block dependencies %}mcp_server.resources.base{% endblock %}
+
+{% block stdlib_imports %}
+{{ super() }}
+{% endblock %}
+
+{% block project_imports %}
+# Project modules
+from mcp_server.resources.base import BaseResource
+{% endblock %}
+
+{% block content %}
+class {{ name }}(BaseResource):
+    """{{ docstring | default(description) }}"""
+
+    uri_pattern = "{{ uri_pattern | default('scheme://path') }}"
+    description = "{{ description }}"
+    mime_type = "{{ mime_type | default('application/json') }}"
+
+    async def read(self, uri: str) -> str:
+        """Read the resource content.
+        
+        Args:
+            uri: The URI to read.
+            
+        Returns:
+            Review content as string.
+        """
+        # TODO: Implement resource reading logic
+        if not self.matches(uri):
+            raise ValueError(f"URI {uri} does not match pattern {self.uri_pattern}")
+            
+        return "{}"
+{% endblock %}

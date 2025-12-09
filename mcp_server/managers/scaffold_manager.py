@@ -1,5 +1,6 @@
 """Scaffold Manager for template-driven code generation."""
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -684,6 +685,187 @@ class Test{worker_name}ErrorHandling:
 
         return "\n".join(lines)
 
+    def render_generic(self, template_name: str, context: dict[str, Any]) -> str:
+        """Render any template with provided context.
+
+        Args:
+            template_name: Relative path to template file
+            context: Dictionary of context variables
+
+        Returns:
+            Rendered content string
+        """
+        template = self.get_template(template_name)
+        return template.render(**context)
+
+    def render_tool(
+        self,
+        name: str,
+        description: str,
+        input_schema: dict[str, Any] | None = None,
+        docstring: str | None = None,
+    ) -> str:
+        """Render a Tool class.
+
+        Args:
+            name: Tool name
+            description: Tool description
+            input_schema: Optional input schema dict
+            docstring: Optional docstring
+
+        Returns:
+            Rendered Python code
+        """
+        self._validate_pascal_case(name)
+        tool_name = name if name.endswith("Tool") else f"{name}Tool"
+
+        template = self.get_template("components/tool.py.jinja2")
+        return template.render(
+            name=tool_name,
+            description=description,
+            input_schema=input_schema,
+            docstring=docstring,
+        )
+
+    def render_resource(
+        self,
+        name: str,
+        description: str,
+        uri_pattern: str | None = None,
+        mime_type: str | None = None,
+        docstring: str | None = None,
+    ) -> str:
+        """Render a Resource class.
+
+        Args:
+            name: Resource name
+            description: Resource description
+            uri_pattern: URI pattern string
+            mime_type: MIME type string
+            docstring: Optional docstring
+
+        Returns:
+            Rendered Python code
+        """
+        self._validate_pascal_case(name)
+
+        template = self.get_template("components/resource.py.jinja2")
+        return template.render(
+            name=name,
+            description=description,
+            uri_pattern=uri_pattern,
+            mime_type=mime_type,
+            docstring=docstring,
+        )
+
+    def render_schema(
+        self,
+        name: str,
+        description: str | None = None,
+        models: list[dict[str, Any]] | None = None,
+        docstring: str | None = None,
+    ) -> str:
+        """Render a Schema (Pydantic models).
+
+        Args:
+            name: Root model name
+            description: Schema description
+            models: List of model definitions
+            docstring: Optional docstring
+
+        Returns:
+            Rendered Python code
+        """
+        self._validate_pascal_case(name)
+
+        template = self.get_template("components/schema.py.jinja2")
+        return template.render(
+            name=name,
+            description=description,
+            models=models,
+            docstring=docstring,
+        )
+
+    def render_interface(
+        self,
+        name: str,
+        description: str | None = None,
+        methods: list[dict[str, str]] | None = None,
+        docstring: str | None = None,
+    ) -> str:
+        """Render an Interface (Protocol).
+
+        Args:
+            name: Interface name
+            description: Interface description
+            methods: List of method signatures
+            docstring: Optional docstring
+
+        Returns:
+            Rendered Python code
+        """
+        self._validate_pascal_case(name)
+
+        template = self.get_template("components/interface.py.jinja2")
+        return template.render(
+            name=name,
+            description=description,
+            methods=methods,
+            docstring=docstring,
+        )
+
+    def render_service(
+        self,
+        name: str,
+        service_type: str = "orchestrator",
+        dependencies: list[str] | None = None,
+        methods: list[dict[str, Any]] | None = None,
+        description: str | None = None,
+    ) -> str:
+        """Render a Service class.
+
+        Args:
+            name: Service name
+            service_type: One of 'orchestrator', 'command', 'query'
+            dependencies: List of dependency types
+            methods: List of methods
+            description: Optional description
+
+        Returns:
+            Rendered Python code
+        """
+        self._validate_pascal_case(name)
+        service_name = name if name.endswith("Service") else f"{name}Service"
+
+        template_map = {
+            "orchestrator": "components/service_orchestrator.py.jinja2",
+            "command": "components/service_command.py.jinja2",
+            "query": "components/service_query.py.jinja2",
+        }
+
+        template_path = template_map.get(service_type, template_map["orchestrator"])
+        template = self.get_template(template_path)
+
+        return template.render(
+            name=service_name,
+            dependencies=dependencies,
+            methods=methods,
+            description=description,
+        )
+
+    def render_generic_doc(self, **context: Any) -> str:
+        """Render a generic document.
+
+        Args:
+            **context: Context variables for the template (title, status, etc.)
+
+        Returns:
+            Rendered markdown content
+        """
+        template = self.get_template("documents/generic.md.jinja2")
+        return template.render(**context)
+
+
     def write_file(
         self,
         path: str,
@@ -718,3 +900,152 @@ class Test{worker_name}ErrorHandling:
             f.write(content)
 
         return True
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # Document Templates with Inheritance
+    # ═══════════════════════════════════════════════════════════════════════════
+
+    def render_architecture_doc(
+        self,
+        title: str,
+        filename: str | None = None,
+        purpose: str | None = None,
+        scope_in: list[str] | None = None,
+        scope_out: list[str] | None = None,
+        sections: list[dict[str, Any]] | None = None,
+        constraints: list[dict[str, str]] | None = None,
+        status: str = "DRAFT",
+        version: str = "1.0",
+        author: str | None = None,
+    ) -> str:
+        """Render an architecture document using template inheritance.
+
+        Uses documents/architecture.md.jinja2 which extends base_document.md.jinja2.
+
+        Args:
+            title: Document title
+            filename: Output filename (e.g., 'MY_ARCHITECTURE.md')
+            purpose: Purpose description
+            scope_in: List of in-scope items
+            scope_out: List of out-of-scope items
+            sections: List of section dicts with keys: title, description,
+                      diagram (optional), subsections (optional)
+            constraints: List of constraint dicts with keys: name, rationale, impact
+            status: Document status (DRAFT, PRELIMINARY, APPROVED, DEFINITIVE)
+            version: Document version
+            author: Document author
+
+        Returns:
+            Rendered Markdown as string
+        """
+        template = self.get_template("documents/architecture.md.jinja2")
+        return template.render(
+            title=title,
+            filename=filename,
+            purpose=purpose,
+            scope_in=scope_in or [],
+            scope_out=scope_out or [],
+            sections=sections or [],
+            constraints=constraints or [],
+            status=status,
+            version=version,
+            author=author,
+            updated_date=datetime.now().strftime("%Y-%m-%d"),
+        )
+
+    def render_reference_doc(
+        self,
+        title: str,
+        filename: str | None = None,
+        source_path: str | None = None,
+        test_path: str | None = None,
+        overview: str | None = None,
+        api_reference: list[dict[str, Any]] | None = None,
+        examples: list[dict[str, Any]] | None = None,
+        configuration: list[dict[str, str]] | None = None,
+        error_handling: list[dict[str, str]] | None = None,
+        status: str = "DRAFT",
+        version: str = "1.0",
+    ) -> str:
+        """Render a reference document using template inheritance.
+
+        Uses documents/reference.md.jinja2 which extends base_document.md.jinja2.
+
+        Args:
+            title: Document title
+            filename: Output filename
+            source_path: Path to source code
+            test_path: Path to test file
+            overview: Overview description
+            api_reference: List of API items with keys: name, description,
+                          signature, parameters, returns, raises
+            examples: List of example dicts with keys: title, description,
+                     code, output
+            configuration: List of config options with keys: name, type,
+                          default, description
+            error_handling: List of errors with keys: name, cause, resolution
+            status: Document status
+            version: Document version
+
+        Returns:
+            Rendered Markdown as string
+        """
+        template = self.get_template("documents/reference.md.jinja2")
+        return template.render(
+            title=title,
+            filename=filename,
+            source_path=source_path,
+            test_path=test_path,
+            overview=overview,
+            api_reference=api_reference or [],
+            examples=examples or [],
+            configuration=configuration or [],
+            error_handling=error_handling or [],
+            status=status,
+            version=version,
+            updated_date=datetime.now().strftime("%Y-%m-%d"),
+        )
+
+    def render_tracking_doc(
+        self,
+        title: str,
+        output_path: str | None = None,
+        current_focus: str | None = None,
+        quick_status: str | None = None,
+        quick_links: list[dict[str, str]] | None = None,
+        categories: list[dict[str, Any]] | None = None,
+        update_frequency: str = "Per Feature",
+    ) -> str:
+        """Render a tracking/living document.
+
+        Uses documents/tracking.md.jinja2 (does NOT extend base - different lifecycle).
+
+        Args:
+            title: Document title
+            output_path: Output file path
+            current_focus: Current focus description
+            quick_status: One-line status summary
+            quick_links: List of link dicts with keys: title, path, purpose
+            categories: List of category dicts with keys:
+                - name: Category name
+                - done: Count of completed items
+                - total: Total count
+                - completed: List of completed item strings
+                - in_progress: List of dicts with: title, context, subtasks
+                - backlog: List of backlog item strings
+            update_frequency: How often document is updated
+
+        Returns:
+            Rendered Markdown as string
+        """
+        template = self.get_template("documents/tracking.md.jinja2")
+        return template.render(
+            title=title,
+            output_path=output_path,
+            current_focus=current_focus,
+            quick_status=quick_status,
+            quick_links=quick_links or [],
+            categories=categories or [],
+            update_frequency=update_frequency,
+            updated_date=datetime.now().strftime("%Y-%m-%d"),
+        )

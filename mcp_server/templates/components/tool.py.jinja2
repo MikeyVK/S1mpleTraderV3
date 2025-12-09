@@ -1,0 +1,57 @@
+{% extends "base/base_component.py.jinja2" %}
+
+{% block description %}{{ description | default(name + ' tool implementation') }}{% endblock %}
+
+{% block layer %}Tools{% endblock %}
+
+{% block dependencies %}mcp_server.tools.base{% endblock %}
+
+{% block stdlib_imports %}
+{{ super() }}
+{% endblock %}
+
+{% block thirdparty_imports %}
+{{ super() }}
+{% endblock %}
+
+{% block project_imports %}
+# Project modules
+from mcp_server.tools.base import BaseTool, ToolResult
+{% endblock %}
+
+{% block content %}
+class {{ name }}(BaseTool):
+    """{{ docstring | default(description) }}"""
+
+    name = "{{ name | lower | replace('tool', '') }}"
+    description = "{{ description }}"
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        """Define tool input schema."""
+        return {
+            "type": "object",
+            "properties": {
+                # TODO: Define input properties
+                {% if input_schema %}
+                {% for key, value in input_schema.items() %}
+                "{{ key }}": {{ value | tojson }},
+                {% endfor %}
+                {% endif %}
+            },
+            "required": [],  # TODO: Define required fields
+        }
+
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        """Execute the tool logic."""
+        try:
+            # TODO: Implement tool execution logic
+            # Example:
+            # param = kwargs.get("param")
+            # process(param)
+            
+            return ToolResult.text(f"Executed {{ name }} with {kwargs}")
+            
+        except Exception as e:
+            return ToolResult.error(f"Error executing {{ name }}: {str(e)}")
+{% endblock %}

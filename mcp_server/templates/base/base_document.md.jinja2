@@ -1,0 +1,134 @@
+{# base/base_document.md.jinja2 - Base template for all documentation #}
+{#
+   All document templates extend this base, following docs/reference/templates/BASE_TEMPLATE.md
+   
+   Enforces:
+   - Filepath comment on line 1
+   - Status/Version/Last Updated header
+   - Purpose and Scope sections
+   - Related Documentation footer
+   - Link definitions
+   - Version History
+   
+   Status Lifecycle:
+   DRAFT → PRELIMINARY → APPROVED → DEFINITIVE
+   
+   Line Limits (from DOCUMENTATION_MAINTENANCE.md):
+   - Standard docs: 300 lines
+   - Architecture docs: 1000 lines  
+   - Tracking docs: 150 lines
+   
+   Usage:
+   {% extends "base/base_document.md.jinja2" %}
+   {% block title %}My Document Title{% endblock %}
+   {% block content %}...{% endblock %}
+#}
+{# ═══════════════════════════════════════════════════════════════════════════
+   HEADER SECTION (REQUIRED)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+# {% block filepath %}{{ output_path | default('docs/document.md') }}{% endblock %}
+# {% block title %}{{ title | default('Document Title') }}{% endblock %}
+
+**Status:** {% block status %}{{ status | default('DRAFT') }}{% endblock %}  
+**Version:** {% block version %}{{ version | default('1.0') }}{% endblock %}  
+**Last Updated:** {% block last_updated %}{{ updated_date | default('YYYY-MM-DD') }}{% endblock %}  
+{% block extra_header_fields %}{% endblock %}
+
+---
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   CONTEXT SECTION (REQUIRED)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+## Purpose
+
+{% block purpose %}{{ purpose | default('Describe what this document covers and why it exists.') }}{% endblock %}
+
+## Scope
+
+**In Scope:**
+{% block in_scope %}
+{% if scope_in %}
+{% for item in scope_in %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- TBD
+{% endif %}
+{% endblock %}
+
+**Out of Scope:**
+{% block out_scope %}
+{% if scope_out %}
+{% for item in scope_out %}
+- {{ item }} → See [{{ item }}_DOC.md][{{ item | lower | replace(' ', '-') }}]
+{% endfor %}
+{% else %}
+- TBD
+{% endif %}
+{% endblock %}
+
+{% block prerequisites %}
+{% if prerequisites %}
+## Prerequisites
+
+Read these first:
+{% for prereq in prerequisites %}
+{{ loop.index }}. [{{ prereq.title }}][prereq-{{ loop.index }}] - {{ prereq.reason }}
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+---
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   MAIN CONTENT SECTION (REQUIRED - structure varies by type)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+{% block content %}
+## Content
+
+Content goes here...
+{% endblock %}
+
+---
+
+{# ═══════════════════════════════════════════════════════════════════════════
+   FOOTER SECTION (REQUIRED)
+   ═══════════════════════════════════════════════════════════════════════════ #}
+## Related Documentation
+
+{% block related_docs %}
+{% if related %}
+{% for doc in related %}
+- **[{{ doc.title }}][related-{{ loop.index }}]** - {{ doc.description }}
+{% endfor %}
+{% else %}
+- **[Core Principles][core-principles]** - Foundational architecture principles
+- **[Architectural Shifts][arch-shifts]** - Critical design decisions
+{% endif %}
+{% endblock %}
+
+<!-- Link definitions -->
+{% block link_definitions %}
+[core-principles]: ../architecture/CORE_PRINCIPLES.md "Core architectural principles"
+[arch-shifts]: ../architecture/ARCHITECTURAL_SHIFTS.md "Critical architectural shifts"
+{% if prerequisites %}
+{% for prereq in prerequisites %}
+[prereq-{{ loop.index }}]: {{ prereq.path }} "{{ prereq.title }}"
+{% endfor %}
+{% endif %}
+{% if related %}
+{% for doc in related %}
+[related-{{ loop.index }}]: {{ doc.path }} "{{ doc.title }}"
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+{% block version_history %}
+| {{ version | default('1.0') }} | {{ updated_date | default('YYYY-MM-DD') }} | {{ author | default('AI Assistant') }} | Initial document |
+{% endblock %}

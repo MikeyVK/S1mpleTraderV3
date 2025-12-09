@@ -23,7 +23,11 @@ class ScaffoldComponentTool(BaseTool):
             "properties": {
                 "component_type": {
                     "type": "string",
-                    "enum": ["dto", "worker", "adapter"],
+                    "enum": [
+                        "dto", "worker", "adapter", 
+                        "tool", "resource", "schema", 
+                        "interface", "service", "generic"
+                    ],
                     "description": "Type of component to generate"
                 },
                 "name": {
@@ -58,15 +62,18 @@ class ScaffoldComponentTool(BaseTool):
                 },
                 "methods": {
                     "type": "array",
-                    "description": "For Adapters: list of method definitions",
+                    "description": "For Adapters/Interfaces/Services: list of method definitions",
                     "items": {
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
                             "params": {"type": "string"},
-                            "return_type": {"type": "string"}
+                            "return_type": {"type": "string"},
+                            "docstring": {"type": "string"},
+                            "command_type": {"type": "string"},
+                            "query_type": {"type": "string"}
                         },
-                        "required": ["name", "params", "return_type"]
+                        "required": ["name"]
                     }
                 },
                 "docstring": {
@@ -75,8 +82,50 @@ class ScaffoldComponentTool(BaseTool):
                 },
                 "generate_test": {
                     "type": "boolean",
-                    "description": "Whether to generate a test file",
+                    "description": "Whether to generate a test file (DTOs only)",
                     "default": True
+                },
+                # -- New Fields --
+                "input_schema": {
+                    "type": "object",
+                    "description": "For Tools: Input schema dict"
+                },
+                "uri_pattern": {
+                    "type": "string",
+                    "description": "For Resources: URI pattern"
+                },
+                "mime_type": {
+                    "type": "string",
+                    "description": "For Resources: MIME type"
+                },
+                "models": {
+                    "type": "array",
+                    "description": "For Schemas: List of Pydantic models",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "fields": {"type": "array"}
+                        }
+                    }
+                },
+                "dependencies": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "For Services: List of dependencies"
+                },
+                "service_type": {
+                    "type": "string",
+                    "enum": ["orchestrator", "command", "query"],
+                    "description": "For Services: service subtype"
+                },
+                "template_name": {
+                    "type": "string",
+                    "description": "For Generic: Relative template path"
+                },
+                "context": {
+                    "type": "object",
+                    "description": "For Generic: Context variables"
                 }
             },
             "required": ["component_type", "name", "output_path"]
@@ -91,9 +140,18 @@ class ScaffoldComponentTool(BaseTool):
         fields: list[dict[str, Any]] | None = None,
         input_dto: str | None = None,
         output_dto: str | None = None,
-        methods: list[dict[str, str]] | None = None,
+        methods: list[dict[str, Any]] | None = None,
         docstring: str | None = None,
         generate_test: bool = True,
+        # New args
+        input_schema: dict[str, Any] | None = None,
+        uri_pattern: str | None = None,
+        mime_type: str | None = None,
+        models: list[dict[str, Any]] | None = None,
+        dependencies: list[str] | None = None,
+        service_type: str = "orchestrator",
+        template_name: str | None = None,
+        context: dict[str, Any] | None = None,
         **kwargs: Any
     ) -> ToolResult:
         """Execute component scaffolding."""
@@ -115,7 +173,6 @@ class ScaffoldComponentTool(BaseTool):
             created_files.append(output_path)
 
             if generate_test:
-                # Derive module path from output path
                 module_path = output_path.replace("/", ".").replace("\\", ".").rstrip(".py")
                 test_content = self.manager.render_dto_test(
                     dto_name=name,
@@ -130,36 +187,88 @@ class ScaffoldComponentTool(BaseTool):
         elif component_type == "worker":
             if not input_dto or not output_dto:
                 raise ValidationError(
-                    "input_dto and output_dto are required for Worker generation",
-                    hints=["Provide input_dto and output_dto class names"]
+                    "input_dto and output_dto are required for Worker generation"
                 )
-
             content = self.manager.render_worker(
-                name=name,
-                input_dto=input_dto,
-                output_dto=output_dto
+                name=name, input_dto=input_dto, output_dto=output_dto
             )
             self.manager.write_file(output_path, content)
             created_files.append(output_path)
 
         elif component_type == "adapter":
             if not methods:
-                raise ValidationError(
-                    "Methods are required for Adapter generation",
-                    hints=["Provide methods as list of {name, params, return_type} objects"]
-                )
+                raise ValidationError("Methods are required for Adapter generation")
+            # Convert generic methods dict to expected string format if necessary
+            # Adapter template expects list of dicts: name, params, return_type
+            content = self.manager.render_adapter(name=name, methods=methods)
+            self.manager.write_file(output_path, content)
+            created_files.append(output_path)
 
-            content = self.manager.render_adapter(
-                name=name,
-                methods=methods
+        # -- New Types --
+
+        elif component_type == "tool":
+            content = self.manager.render_tool(
+                name=name, 
+                description=docstring or "", 
+                input_schema=input_schema,
+                docstring=docstring
             )
+            self.manager.write_file(output_path, content)
+            created_files.append(output_path)
+
+        elif component_type == "resource":
+            content = self.manager.render_resource(
+                name=name,
+                description=docstring or "",
+                uri_pattern=uri_pattern,
+                mime_type=mime_type,
+                docstring=docstring
+            )
+            self.manager.write_file(output_path, content)
+            created_files.append(output_path)
+        
+        elif component_type == "schema":
+            content = self.manager.render_schema(
+                name=name,
+                description=docstring,
+                models=models,
+                docstring=docstring
+            )
+            self.manager.write_file(output_path, content)
+            created_files.append(output_path)
+
+        elif component_type == "interface":
+            content = self.manager.render_interface(
+                name=name,
+                description=docstring,
+                methods=methods, # type: ignore
+                docstring=docstring
+            )
+            self.manager.write_file(output_path, content)
+            created_files.append(output_path)
+
+        elif component_type == "service":
+            content = self.manager.render_service(
+                name=name,
+                service_type=service_type,
+                dependencies=dependencies,
+                methods=methods,
+                description=docstring
+            )
+            self.manager.write_file(output_path, content)
+            created_files.append(output_path)
+
+        elif component_type == "generic":
+            if not template_name or not context:
+                raise ValidationError("template_name and context required for generic type")
+            content = self.manager.render_generic(template_name, context)
             self.manager.write_file(output_path, content)
             created_files.append(output_path)
 
         else:
             raise ValidationError(
                 f"Unknown component type: {component_type}",
-                hints=["Use dto, worker, or adapter"]
+                hints=["Use dto, worker, adapter, tool, resource, schema, interface, service, generic"]
             )
 
         return ToolResult.text(
@@ -182,6 +291,12 @@ class ScaffoldDesignDocTool(BaseTool):
         return {
             "type": "object",
             "properties": {
+                "doc_type": {
+                    "type": "string",
+                    "enum": ["design", "architecture", "tracking", "generic"],
+                    "default": "design",
+                    "description": "Type of document to generate"
+                },
                 "title": {
                     "type": "string",
                     "description": "Document title"
@@ -201,12 +316,16 @@ class ScaffoldDesignDocTool(BaseTool):
                 "sections": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of section headings"
+                    "description": "List of section headings (Design/Arch)"
                 },
                 "status": {
                     "type": "string",
                     "enum": ["DRAFT", "REVIEW", "APPROVED"],
                     "default": "DRAFT"
+                },
+                "context": {
+                    "type": "object",
+                    "description": "Context for generic documents"
                 }
             },
             "required": ["title", "output_path"]
@@ -217,21 +336,38 @@ class ScaffoldDesignDocTool(BaseTool):
         self,
         title: str,
         output_path: str,
+        doc_type: str = "design",
         author: str | None = None,
         summary: str | None = None,
         sections: list[str] | None = None,
         status: str = "DRAFT",
+        context: dict[str, Any] | None = None,
         **kwargs: Any
     ) -> ToolResult:
-        """Execute design document scaffolding."""
-        content = self.manager.render_design_doc(
-            title=title,
-            author=author,
-            summary=summary,
-            sections=sections,
-            status=status
-        )
+        """Execute document scaffolding."""
+        if doc_type == "generic":
+             render_context = context or {}
+             render_context.update({
+                 "title": title,
+                 "author": author,
+                 "status": status,
+                 "output_path": output_path
+             })
+             # Merge any generic kwargs into context
+             render_context.update(kwargs)
+             
+             content = self.manager.render_generic_doc(**render_context)
+        else:
+            # Re-map legacy arguments for specific templates
+            # TODO: Future refactor to use separate render methods or unified approach
+            content = self.manager.render_design_doc(
+                title=title,
+                author=author,
+                summary=summary,
+                sections=sections,
+                status=status
+            )
 
         self.manager.write_file(output_path, content)
 
-        return ToolResult.text(f"Created design document: {output_path}")
+        return ToolResult.text(f"Created {doc_type} document: {output_path}")

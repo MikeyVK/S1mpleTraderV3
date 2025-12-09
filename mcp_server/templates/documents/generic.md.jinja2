@@ -1,0 +1,109 @@
+# {{ title }} - S1mpleTraderV3
+
+<!--
+GENERATED DOCUMENT
+Template: generic.md.jinja2
+Type: {{ doc_type | default('Generic') }}
+-->
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     HEADER SECTION (REQUIRED)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+**Status:** {{ status | default('Draft') }}
+**Version:** {{ version | default('0.1') }}
+**Last Updated:** {{ date | default('YYYY-MM-DD') }}
+
+{% if extra_header_fields %}
+{% for key, value in extra_header_fields.items() %}
+**{{ key }}:** {{ value }}
+{% endfor %}
+{% endif %}
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     CONTEXT SECTION (REQUIRED)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+## Purpose
+
+{{ purpose | default('Not specified.') }}
+
+## Scope
+
+**In Scope:**
+{% if scope_in %}
+{% for item in scope_in %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- TBD
+{% endif %}
+
+**Out of Scope:**
+{% if scope_out %}
+{% for item in scope_out %}
+- {{ item }}
+{% endfor %}
+{% else %}
+- TBD
+{% endif %}
+
+## Prerequisites
+
+{% if prerequisites %}
+Read these first:
+{% for prereq in prerequisites %}
+1. [{{ prereq.name }}]({{ prereq.link }}) - {{ prereq.description }}
+{% endfor %}
+{% else %}
+[None]
+{% endif %}
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     CONTENT SECTION
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+{% if content %}
+{{ content }}
+{% else %}
+## Overview
+
+TODO: Add content here.
+{% endif %}
+
+{% if sections %}
+{% for section in sections %}
+## {{ section.title }}
+
+{{ section.body }}
+
+{% endfor %}
+{% endif %}
+
+---
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     FOOTER SECTION (REQUIRED)
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+## Related Documentation
+
+{% if related_docs %}
+{% for doc in related_docs %}
+- **[{{ doc.name }}]({{ doc.link }})** - {{ doc.description }}
+{% endfor %}
+{% else %}
+- **[README.md](../../README.md)** - Project overview
+{% endif %}
+
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| {{ version | default('0.1') }} | {{ date | default('YYYY-MM-DD') }} | {{ author | default('AI') }} | Initial creation |
