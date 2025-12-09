@@ -1,6 +1,8 @@
 """Tests for base resource classes."""
 import pytest
+
 from mcp_server.resources.base import BaseResource
+
 
 class TestResource(BaseResource):
     uri_pattern = "test://resource"

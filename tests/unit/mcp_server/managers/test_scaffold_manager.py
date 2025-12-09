@@ -1,9 +1,11 @@
 """Tests for ScaffoldManager - template-driven code generation."""
-import pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+from mcp_server.core.exceptions import ExecutionError, ValidationError
 from mcp_server.managers.scaffold_manager import ScaffoldManager
-from mcp_server.core.exceptions import ValidationError, ExecutionError
 
 
 class TestScaffoldManagerInit:
@@ -208,15 +210,14 @@ class TestScaffoldManagerWriteFile:
 
     def test_write_to_workspace(self) -> None:
         """Test writing generated content to workspace."""
-        with patch("pathlib.Path.mkdir"):
-            with patch("builtins.open", MagicMock()):
-                manager = ScaffoldManager()
-                result = manager.write_file(
-                    path="backend/dtos/test.py",
-                    content="# Generated content"
-                )
+        with patch("pathlib.Path.mkdir"), patch("builtins.open", MagicMock()):
+            manager = ScaffoldManager()
+            result = manager.write_file(
+                path="backend/dtos/test.py",
+                content="# Generated content"
+            )
 
-                assert result is True or "created" in str(result).lower()
+            assert result is True or "created" in str(result).lower()
 
     def test_write_refuses_overwrite_without_flag(self) -> None:
         """Test writing refuses to overwrite existing files."""
@@ -232,14 +233,13 @@ class TestScaffoldManagerWriteFile:
 
     def test_write_allows_overwrite_with_flag(self) -> None:
         """Test writing allows overwrite when flag is set."""
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.mkdir"):
-                with patch("builtins.open", MagicMock()):
-                    manager = ScaffoldManager()
-                    result = manager.write_file(
-                        path="existing/file.py",
-                        content="New content",
-                        overwrite=True
-                    )
+        with patch("pathlib.Path.exists", return_value=True), patch("pathlib.Path.mkdir"):
+            with patch("builtins.open", MagicMock()):
+                manager = ScaffoldManager()
+                result = manager.write_file(
+                    path="existing/file.py",
+                    content="New content",
+                    overwrite=True
+                )
 
-                    assert result is True or "created" in str(result).lower()
+                assert result is True or "created" in str(result).lower()

@@ -1,8 +1,9 @@
 """Filesystem adapter for safe operations."""
 from pathlib import Path
-from typing import List
+
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import MCPSystemError, ValidationError
+
 
 class FilesystemAdapter:
     """Adapter for safe filesystem operations."""
@@ -36,7 +37,7 @@ class FilesystemAdapter:
         except Exception as e:
             raise MCPSystemError(f"Failed to write file: {e}") from e
 
-    def list_files(self, path: str = ".") -> List[str]:
+    def list_files(self, path: str = ".") -> list[str]:
         """List files in directory."""
         full_path = self._validate_path(path)
         try:

@@ -1,5 +1,4 @@
 """Core exceptions for the MCP server."""
-from typing import Optional
 
 
 class MCPError(Exception):
@@ -9,7 +8,7 @@ class MCPError(Exception):
         self,
         message: str,
         code: str = "ERR_INTERNAL",
-        hints: Optional[list[str]] = None
+        hints: list[str] | None = None
     ) -> None:
         """Initialize the MCP error."""
         super().__init__(message)
@@ -21,7 +20,7 @@ class MCPError(Exception):
 class ValidationError(MCPError):
     """Raised when input validation fails."""
 
-    def __init__(self, message: str, hints: Optional[list[str]] = None) -> None:
+    def __init__(self, message: str, hints: list[str] | None = None) -> None:
         """Initialize the validation error."""
         super().__init__(message, code="ERR_VALIDATION", hints=hints)
 
@@ -29,7 +28,7 @@ class ValidationError(MCPError):
 class PreflightError(MCPError):
     """Raised when pre-flight checks fail."""
 
-    def __init__(self, message: str, blockers: Optional[list[str]] = None) -> None:
+    def __init__(self, message: str, blockers: list[str] | None = None) -> None:
         """Initialize the preflight error."""
         super().__init__(message, code="ERR_PREFLIGHT", hints=blockers)
         self.blockers = blockers or []
@@ -38,7 +37,7 @@ class PreflightError(MCPError):
 class ExecutionError(MCPError):
     """Raised when tool execution fails."""
 
-    def __init__(self, message: str, recovery: Optional[list[str]] = None) -> None:
+    def __init__(self, message: str, recovery: list[str] | None = None) -> None:
         """Initialize the execution error."""
         super().__init__(message, code="ERR_EXECUTION", hints=recovery)
         self.recovery = recovery or []
@@ -47,7 +46,7 @@ class ExecutionError(MCPError):
 class MCPSystemError(MCPError):
     """Raised when system/infrastructure fails."""
 
-    def __init__(self, message: str, fallback: Optional[str] = None) -> None:
+    def __init__(self, message: str, fallback: str | None = None) -> None:
         """Initialize the system error."""
         super().__init__(message, code="ERR_SYSTEM")
         self.fallback = fallback

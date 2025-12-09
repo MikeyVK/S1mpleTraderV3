@@ -1,6 +1,8 @@
 """Health check tools."""
 from typing import Any
+
 from mcp_server.tools.base import BaseTool, ToolResult
+
 
 class HealthCheckTool(BaseTool):
     """Tool to check server health."""

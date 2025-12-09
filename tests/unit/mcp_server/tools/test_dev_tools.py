@@ -1,8 +1,11 @@
 """Tests for Test and Code tools."""
-import pytest
 from unittest.mock import patch
-from mcp_server.tools.test_tools import RunTestsTool
+
+import pytest
+
 from mcp_server.tools.code_tools import CreateFileTool
+from mcp_server.tools.test_tools import RunTestsTool
+
 
 @pytest.mark.asyncio
 async def test_run_tests_tool():

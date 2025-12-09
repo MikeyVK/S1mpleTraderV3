@@ -1,7 +1,9 @@
 """Tests for structured logging."""
 import json
 import logging
+
 from mcp_server.core.logging import StructuredFormatter, get_logger, setup_logging
+
 
 def test_structured_formatter():
     formatter = StructuredFormatter()

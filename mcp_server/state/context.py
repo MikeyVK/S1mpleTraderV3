@@ -1,12 +1,14 @@
 """Session context management."""
-from typing import Any, Dict, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
+
 
 class SessionContext(BaseModel):
     """Holds the state of the current session."""
-    current_task: Optional[str] = None
+    current_task: str | None = None
     active_files: list[str] = Field(default_factory=list)
-    memory: Dict[str, Any] = Field(default_factory=dict)
+    memory: dict[str, Any] = Field(default_factory=dict)
 
     def set_task(self, task: str) -> None:
         """Set the current task."""

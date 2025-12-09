@@ -1,9 +1,10 @@
 """Status resource."""
 import json
 import time
-from mcp_server.resources.base import BaseResource
+
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.core.exceptions import MCPSystemError
+from mcp_server.resources.base import BaseResource
 
 
 class StatusResource(BaseResource):

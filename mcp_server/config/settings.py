@@ -1,7 +1,7 @@
 """Configuration settings for the MCP server."""
 import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field
@@ -28,7 +28,7 @@ class GitHubSettings(BaseModel):
     owner: str = "MikeyVK"
     repo: str = "S1mpleTraderV3"
     project_number: int = 1
-    token: Optional[str] = Field(default=None, validate_default=True)
+    token: str | None = Field(default=None, validate_default=True)
 
 
 class Settings(BaseModel):
@@ -39,7 +39,7 @@ class Settings(BaseModel):
     github: GitHubSettings = Field(default_factory=GitHubSettings)
 
     @classmethod
-    def load(cls, config_path: Optional[str] = None) -> "Settings":
+    def load(cls, config_path: str | None = None) -> "Settings":
         """Load settings from a YAML file and environment variables."""
         config_data: dict[str, Any] = {}
 
@@ -50,7 +50,7 @@ class Settings(BaseModel):
             path = Path(os.environ.get("MCP_CONFIG_PATH", "mcp_config.yaml"))
 
         if path.exists():
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 config_data = yaml.safe_load(f) or {}
 
         # Override with environment variables

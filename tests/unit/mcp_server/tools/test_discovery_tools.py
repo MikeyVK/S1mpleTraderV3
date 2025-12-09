@@ -1,7 +1,9 @@
 """Tests for discovery tools."""
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from mcp_server.tools.discovery_tools import SearchDocumentationTool, GetWorkContextTool
+
+from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
 
 
 class TestSearchDocumentationTool:

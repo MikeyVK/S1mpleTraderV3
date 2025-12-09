@@ -1,6 +1,8 @@
 """Tests for Validation tools."""
 import pytest
-from mcp_server.tools.validation_tools import ValidationTool, ValidateDTOTool
+
+from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
+
 
 @pytest.mark.asyncio
 async def test_validation_tool():

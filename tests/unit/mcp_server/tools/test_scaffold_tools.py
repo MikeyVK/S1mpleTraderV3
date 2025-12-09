@@ -1,9 +1,11 @@
 """Tests for scaffold tools."""
 # pyright: reportUnusedVariable=false
-import pytest
 from unittest.mock import MagicMock
-from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
+
+import pytest
+
 from mcp_server.core.exceptions import ValidationError
+from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
 
 
 class TestScaffoldComponentTool:

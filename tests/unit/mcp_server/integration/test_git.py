@@ -1,8 +1,11 @@
 """Tests for Git integration."""
-import pytest
 from unittest.mock import Mock
+
+import pytest
+
+from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.core.exceptions import ValidationError, PreflightError
+
 
 @pytest.fixture
 def mock_git_adapter():

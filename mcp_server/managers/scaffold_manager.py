@@ -5,8 +5,8 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
-from mcp_server.core.exceptions import ValidationError, ExecutionError
 from mcp_server.config.settings import settings
+from mcp_server.core.exceptions import ExecutionError, ValidationError
 
 
 class ScaffoldManager:

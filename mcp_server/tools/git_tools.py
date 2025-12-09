@@ -1,7 +1,9 @@
 """Git tools."""
-from typing import Any, Dict
-from mcp_server.tools.base import BaseTool, ToolResult
+from typing import Any
+
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.tools.base import BaseTool, ToolResult
+
 
 class CreateBranchTool(BaseTool):
     """Tool to create a git branch."""
@@ -13,7 +15,7 @@ class CreateBranchTool(BaseTool):
         self.manager = manager or GitManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -65,7 +67,7 @@ class GitCommitTool(BaseTool):
         self.manager = manager or GitManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -102,7 +104,7 @@ class GitCheckoutTool(BaseTool):
         self.manager = manager or GitManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -129,7 +131,7 @@ class GitPushTool(BaseTool):
         self.manager = manager or GitManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -158,7 +160,7 @@ class GitMergeTool(BaseTool):
         self.manager = manager or GitManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -188,7 +190,7 @@ class GitDeleteBranchTool(BaseTool):
         self.manager = manager or GitManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -222,7 +224,7 @@ class GitStashTool(BaseTool):
         self.manager = manager or GitManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -247,14 +249,13 @@ class GitStashTool(BaseTool):
             if message:
                 return ToolResult.text(f"Stashed changes: {message}")
             return ToolResult.text("Stashed current changes")
-        elif action == "pop":
+        if action == "pop":
             self.manager.stash_pop()
             return ToolResult.text("Applied and removed latest stash")
-        elif action == "list":
+        if action == "list":
             stashes = self.manager.stash_list()
             if not stashes:
                 return ToolResult.text("No stashes found")
             return ToolResult.text("\n".join(stashes))
-        else:
-            return ToolResult.text(f"Unknown action: {action}")
+        return ToolResult.text(f"Unknown action: {action}")
 

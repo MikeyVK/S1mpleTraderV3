@@ -3,30 +3,32 @@
 Phase 1.3: Verify all tools are operational and return expected results.
 These tests use mocks but test the full flow from Tool -> Manager -> Adapter.
 """
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
+from mcp_server.tools.code_tools import CreateFileTool
+from mcp_server.tools.docs_tools import ValidateDocTool
 
 # Git Tools
 from mcp_server.tools.git_tools import (
     CreateBranchTool,
-    GitStatusTool,
-    GitCommitTool,
     GitCheckoutTool,
-    GitPushTool,
-    GitMergeTool,
+    GitCommitTool,
     GitDeleteBranchTool,
+    GitMergeTool,
+    GitPushTool,
     GitStashTool,
+    GitStatusTool,
 )
-
-# Quality Tools
-from mcp_server.tools.quality_tools import RunQualityGatesTool
-from mcp_server.tools.docs_tools import ValidateDocTool
-from mcp_server.tools.validation_tools import ValidationTool, ValidateDTOTool
 
 # Development Tools
 from mcp_server.tools.health_tools import HealthCheckTool
+
+# Quality Tools
+from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.test_tools import RunTestsTool
-from mcp_server.tools.code_tools import CreateFileTool
+from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
 
 class TestGitToolsIntegration:
@@ -223,15 +225,14 @@ class TestDevelopmentToolsIntegration:
     @pytest.mark.asyncio
     async def test_create_file_tool_flow(self) -> None:
         """Test create file tool complete flow."""
-        with patch("pathlib.Path.mkdir"):
-            with patch("builtins.open", MagicMock()):
-                tool = CreateFileTool()
-                result = await tool.execute(
-                    path="test/file.py",
-                    content="# Test content"
-                )
+        with patch("pathlib.Path.mkdir"), patch("builtins.open", MagicMock()):
+            tool = CreateFileTool()
+            result = await tool.execute(
+                path="test/file.py",
+                content="# Test content"
+            )
 
-                assert result.content is not None
+            assert result.content is not None
 
 
 class TestGitHubToolsIntegration:
@@ -346,8 +347,8 @@ class TestToolSchemas:
     def test_github_tools_have_schemas_with_mock(self) -> None:
         """Verify all GitHub tools have input schemas (with mocked manager)."""
         from mcp_server.tools.issue_tools import CreateIssueTool
-        from mcp_server.tools.pr_tools import CreatePRTool
         from mcp_server.tools.label_tools import AddLabelsTool
+        from mcp_server.tools.pr_tools import CreatePRTool
 
         mock_manager = MagicMock()
         tools = [
@@ -391,8 +392,8 @@ class TestToolNames:
     def test_github_tool_names_with_mock(self) -> None:
         """Verify GitHub tools have unique names (with mocked manager)."""
         from mcp_server.tools.issue_tools import CreateIssueTool
-        from mcp_server.tools.pr_tools import CreatePRTool
         from mcp_server.tools.label_tools import AddLabelsTool
+        from mcp_server.tools.pr_tools import CreatePRTool
 
         mock_manager = MagicMock()
         tools = [
@@ -431,8 +432,8 @@ class TestToolNames:
     def test_github_tools_have_descriptions_with_mock(self) -> None:
         """Verify GitHub tools have descriptions (with mocked manager)."""
         from mcp_server.tools.issue_tools import CreateIssueTool
-        from mcp_server.tools.pr_tools import CreatePRTool
         from mcp_server.tools.label_tools import AddLabelsTool
+        from mcp_server.tools.pr_tools import CreatePRTool
 
         mock_manager = MagicMock()
         tools = [

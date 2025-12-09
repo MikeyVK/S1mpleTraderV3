@@ -1,7 +1,9 @@
 """Resource for templates."""
 import json
-from mcp_server.resources.base import BaseResource
+
 from mcp_server.managers.doc_manager import DocManager
+from mcp_server.resources.base import BaseResource
+
 
 class TemplatesResource(BaseResource):
     """Resource for available templates."""

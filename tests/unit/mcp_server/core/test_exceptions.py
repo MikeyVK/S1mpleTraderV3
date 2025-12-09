@@ -1,6 +1,10 @@
 """Tests for core exceptions."""
 from mcp_server.core.exceptions import (
-    MCPError, ValidationError, PreflightError, ExecutionError, MCPSystemError
+    ExecutionError,
+    MCPError,
+    MCPSystemError,
+    PreflightError,
+    ValidationError,
 )
 
 

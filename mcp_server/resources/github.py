@@ -1,7 +1,9 @@
 """GitHub resources."""
 import json
-from mcp_server.resources.base import BaseResource
+
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.resources.base import BaseResource
+
 
 class GitHubIssuesResource(BaseResource):
     """Resource for accessing GitHub issues."""

@@ -1,6 +1,8 @@
 """GitHub Manager for business logic."""
-from typing import Any, Dict
+from typing import Any
+
 from mcp_server.adapters.github import GitHubAdapter
+
 
 class GitHubManager:
     """Manager for GitHub operations."""
@@ -20,7 +22,7 @@ class GitHubManager:
                     "number": i.number,
                     "title": i.title,
                     "state": i.state,
-                    "labels": [l.name for l in i.labels],
+                    "labels": [label.name for label in i.labels],
                     "assignees": [a.login for a in i.assignees],
                     "created_at": i.created_at.isoformat(),
                     "updated_at": i.updated_at.isoformat(),
@@ -36,7 +38,7 @@ class GitHubManager:
         labels: list[str] | None = None,
         milestone: int | None = None,
         assignees: list[str] | None = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new issue and return details."""
         issue = self.adapter.create_issue(
             title=title,
@@ -58,7 +60,7 @@ class GitHubManager:
         head: str,
         base: str = "main",
         draft: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a new pull request."""
         pr = self.adapter.create_pr(
             title=title,

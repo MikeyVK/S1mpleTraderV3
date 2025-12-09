@@ -1,8 +1,10 @@
 """Git Manager for business logic."""
 import re
 from typing import Any
+
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.core.exceptions import PreflightError, ValidationError
+
 
 class GitManager:
     """Manager for Git operations and conventions."""

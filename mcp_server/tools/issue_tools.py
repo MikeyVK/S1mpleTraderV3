@@ -1,7 +1,9 @@
 """GitHub issue tools."""
-from typing import Any, Dict, Optional
-from mcp_server.tools.base import BaseTool, ToolResult
+from typing import Any
+
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.tools.base import BaseTool, ToolResult
+
 
 class CreateIssueTool(BaseTool):
     """Tool to create a GitHub issue."""
@@ -13,7 +15,7 @@ class CreateIssueTool(BaseTool):
         self.manager = manager or GitHubManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -39,9 +41,9 @@ class CreateIssueTool(BaseTool):
         self,
         title: str,
         body: str,
-        labels: Optional[list[str]] = None,
-        milestone: Optional[int] = None,
-        assignees: Optional[list[str]] = None,
+        labels: list[str] | None = None,
+        milestone: int | None = None,
+        assignees: list[str] | None = None,
         **kwargs: Any
     ) -> ToolResult:
         """Execute the tool to create a GitHub issue."""

@@ -1,13 +1,13 @@
 """Discovery tools for AI self-orientation."""
 # pyright: reportIncompatibleMethodOverride=false
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
-from mcp_server.tools.base import BaseTool, ToolResult
-from mcp_server.managers.doc_manager import DocManager
-from mcp_server.managers.git_manager import GitManager
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import MCPError
+from mcp_server.managers.doc_manager import DocManager
+from mcp_server.managers.git_manager import GitManager
+from mcp_server.tools.base import BaseTool, ToolResult
 
 
 class SearchDocumentationTool(BaseTool):
@@ -20,7 +20,7 @@ class SearchDocumentationTool(BaseTool):
     )
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -90,7 +90,7 @@ class GetWorkContextTool(BaseTool):
     )
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -111,7 +111,7 @@ class GetWorkContextTool(BaseTool):
         **kwargs: Any
     ) -> ToolResult:
         """Execute work context aggregation."""
-        context: Dict[str, Any] = {}
+        context: dict[str, Any] = {}
 
         # Get Git context
         git_manager = GitManager()
@@ -158,7 +158,7 @@ class GetWorkContextTool(BaseTool):
 
         return ToolResult.text(self._format_context(context))
 
-    def _extract_issue_number(self, branch: str) -> Optional[int]:
+    def _extract_issue_number(self, branch: str) -> int | None:
         """Extract issue number from branch name.
 
         Patterns:
@@ -189,11 +189,11 @@ class GetWorkContextTool(BaseTool):
 
         if latest.startswith("test:") or "failing test" in latest:
             return "red"
-        elif latest.startswith("feat:") or "pass" in latest:
+        if latest.startswith("feat:") or "pass" in latest:
             return "green"
-        elif latest.startswith("refactor:"):
+        if latest.startswith("refactor:"):
             return "refactor"
-        elif latest.startswith("docs:"):
+        if latest.startswith("docs:"):
             return "docs"
 
         return "unknown"
@@ -207,7 +207,7 @@ class GetWorkContextTool(BaseTool):
         matches = re.findall(pattern, body)
         return matches[:10]  # Limit to 10 items
 
-    def _format_context(self, context: Dict[str, Any]) -> str:
+    def _format_context(self, context: dict[str, Any]) -> str:
         """Format context for readable output."""
         lines = ["## Work Context\n"]
 

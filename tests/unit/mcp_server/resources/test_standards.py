@@ -1,7 +1,10 @@
 """Tests for standards resource."""
 import json
+
 import pytest
+
 from mcp_server.resources.standards import StandardsResource
+
 
 @pytest.mark.asyncio
 async def test_standards_resource_read():

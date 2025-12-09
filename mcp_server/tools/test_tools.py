@@ -3,10 +3,11 @@ import asyncio
 import os
 import subprocess
 import sys
-from typing import Any, Dict
-from mcp_server.tools.base import BaseTool, ToolResult
-from mcp_server.core.exceptions import ExecutionError
+from typing import Any
+
 from mcp_server.config.settings import settings
+from mcp_server.core.exceptions import ExecutionError
+from mcp_server.tools.base import BaseTool, ToolResult
 
 
 def _run_pytest_sync(
@@ -53,7 +54,7 @@ class RunTestsTool(BaseTool):
     DEFAULT_TIMEOUT = 300
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {

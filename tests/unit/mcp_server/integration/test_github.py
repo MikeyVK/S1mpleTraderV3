@@ -1,8 +1,11 @@
 """Tests for GitHub integration."""
-import pytest
 from unittest.mock import Mock
+
+import pytest
+
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.issue_tools import CreateIssueTool
+
 
 @pytest.fixture
 def mock_adapter():

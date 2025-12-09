@@ -1,7 +1,7 @@
 """Structured logging for the MCP server."""
-import sys
-import logging
 import json
+import logging
+import sys
 from typing import Any
 
 from mcp_server.config.settings import settings

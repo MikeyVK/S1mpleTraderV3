@@ -1,12 +1,14 @@
 """Tests for Git Tools - commit, push, merge, checkout, delete."""
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
 from mcp_server.tools.git_tools import (
-    GitCommitTool,
-    GitPushTool,
-    GitMergeTool,
     GitCheckoutTool,
+    GitCommitTool,
     GitDeleteBranchTool,
+    GitMergeTool,
+    GitPushTool,
     GitStashTool,
 )
 

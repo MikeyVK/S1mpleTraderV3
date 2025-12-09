@@ -1,10 +1,11 @@
 """Code manipulation tools."""
 import warnings
-from typing import Any, Dict
 from pathlib import Path
-from mcp_server.tools.base import BaseTool, ToolResult
-from mcp_server.core.exceptions import ExecutionError, ValidationError
+from typing import Any
+
 from mcp_server.config.settings import settings
+from mcp_server.core.exceptions import ExecutionError, ValidationError
+from mcp_server.tools.base import BaseTool, ToolResult
 
 
 class CreateFileTool(BaseTool):
@@ -22,7 +23,7 @@ class CreateFileTool(BaseTool):
     )
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {

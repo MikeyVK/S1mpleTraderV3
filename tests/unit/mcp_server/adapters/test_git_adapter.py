@@ -1,6 +1,8 @@
 """Tests for GitAdapter - extended git operations."""
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.core.exceptions import ExecutionError
 

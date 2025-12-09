@@ -1,6 +1,8 @@
 """Tests for DocManager."""
-import pytest
 from pathlib import Path
+
+import pytest
+
 from mcp_server.managers.doc_manager import DocManager
 
 

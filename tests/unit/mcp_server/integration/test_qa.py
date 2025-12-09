@@ -1,7 +1,9 @@
 """Tests for QA integration."""
 import pytest
+
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.quality_tools import RunQualityGatesTool
+
 
 def test_qa_manager_run_gates():
     manager = QAManager()

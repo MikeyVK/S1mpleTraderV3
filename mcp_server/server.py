@@ -4,44 +4,44 @@ import asyncio
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import (
-    Resource,
-    Tool,
-    TextContent,
-    ImageContent,
     EmbeddedResource,
+    ImageContent,
+    Resource,
+    TextContent,
+    Tool,
 )
 
 from mcp_server.config.settings import settings
-from mcp_server.core.logging import setup_logging, get_logger
+from mcp_server.core.logging import get_logger, setup_logging
+from mcp_server.resources.github import GitHubIssuesResource
 
 # Resources
 from mcp_server.resources.standards import StandardsResource
-from mcp_server.resources.github import GitHubIssuesResource
-from mcp_server.resources.templates import TemplatesResource
 from mcp_server.resources.status import StatusResource
+from mcp_server.resources.templates import TemplatesResource
+from mcp_server.tools.code_tools import CreateFileTool
+from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
+from mcp_server.tools.docs_tools import ValidateDocTool
+from mcp_server.tools.git_tools import (
+    CreateBranchTool,
+    GitCheckoutTool,
+    GitCommitTool,
+    GitDeleteBranchTool,
+    GitMergeTool,
+    GitPushTool,
+    GitStashTool,
+    GitStatusTool,
+)
+from mcp_server.tools.health_tools import HealthCheckTool
 
 # Tools
 from mcp_server.tools.issue_tools import CreateIssueTool
-from mcp_server.tools.git_tools import (
-    CreateBranchTool,
-    GitStatusTool,
-    GitCommitTool,
-    GitCheckoutTool,
-    GitPushTool,
-    GitMergeTool,
-    GitDeleteBranchTool,
-    GitStashTool,
-)
-from mcp_server.tools.quality_tools import RunQualityGatesTool
-from mcp_server.tools.docs_tools import ValidateDocTool
-from mcp_server.tools.health_tools import HealthCheckTool
-from mcp_server.tools.pr_tools import CreatePRTool
 from mcp_server.tools.label_tools import AddLabelsTool
-from mcp_server.tools.test_tools import RunTestsTool
-from mcp_server.tools.code_tools import CreateFileTool
-from mcp_server.tools.validation_tools import ValidationTool, ValidateDTOTool
+from mcp_server.tools.pr_tools import CreatePRTool
+from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
-from mcp_server.tools.discovery_tools import SearchDocumentationTool, GetWorkContextTool
+from mcp_server.tools.test_tools import RunTestsTool
+from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
 # Initialize logging
 setup_logging()

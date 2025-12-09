@@ -1,12 +1,14 @@
 """GitHub adapter for the MCP server."""
-from typing import Optional, Any
+from typing import Any
+
 from github import Github, GithubException
-from github.Repository import Repository
 from github.Issue import Issue
 from github.PullRequest import PullRequest
+from github.Repository import Repository
 
 from mcp_server.config.settings import settings
-from mcp_server.core.exceptions import MCPSystemError, ExecutionError
+from mcp_server.core.exceptions import ExecutionError, MCPSystemError
+
 
 class GitHubAdapter:
     """Adapter for interacting with the GitHub API."""
@@ -20,7 +22,7 @@ class GitHubAdapter:
             )
 
         self.client = Github(settings.github.token)  # pylint: disable=no-member
-        self._repo: Optional[Repository] = None
+        self._repo: Repository | None = None
 
     @property
     def repo(self) -> Repository:

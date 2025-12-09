@@ -1,8 +1,9 @@
 """Command line interface for the MCP server."""
 import argparse
 import sys
-from mcp_server.server import main as server_main
+
 from mcp_server.config.settings import settings
+from mcp_server.server import main as server_main
 
 
 def main() -> None:

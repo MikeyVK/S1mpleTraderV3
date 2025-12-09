@@ -1,8 +1,10 @@
 """Tests for GitManager - extended git operations."""
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
+from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.core.exceptions import ValidationError, PreflightError
 
 
 class TestGitManagerCommitTddPhase:

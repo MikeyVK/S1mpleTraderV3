@@ -1,7 +1,9 @@
 """Documentation tools."""
-from typing import Any, Dict
-from mcp_server.tools.base import BaseTool, ToolResult
+from typing import Any
+
 from mcp_server.managers.doc_manager import DocManager
+from mcp_server.tools.base import BaseTool, ToolResult
+
 
 class ValidateDocTool(BaseTool):
     """Tool to validate documentation."""
@@ -13,7 +15,7 @@ class ValidateDocTool(BaseTool):
         self.manager = manager or DocManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {

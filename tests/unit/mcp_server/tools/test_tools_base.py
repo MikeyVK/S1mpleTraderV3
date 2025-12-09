@@ -1,6 +1,8 @@
 """Tests for base tool classes."""
 import pytest
+
 from mcp_server.tools.base import BaseTool, ToolResult
+
 
 class TestTool(BaseTool):
     name = "test_tool"

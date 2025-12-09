@@ -1,6 +1,7 @@
 """Tests for configuration settings."""
 from mcp_server.config.settings import Settings
 
+
 def test_default_settings():
     """Test that default settings are loaded correctly."""
     settings = Settings()

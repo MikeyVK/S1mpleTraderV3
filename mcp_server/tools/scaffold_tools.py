@@ -1,9 +1,10 @@
 """Scaffold tools for template-driven code generation."""
 # pyright: reportIncompatibleMethodOverride=false
-from typing import Any, Dict
-from mcp_server.tools.base import BaseTool, ToolResult
-from mcp_server.managers.scaffold_manager import ScaffoldManager
+from typing import Any
+
 from mcp_server.core.exceptions import ValidationError
+from mcp_server.managers.scaffold_manager import ScaffoldManager
+from mcp_server.tools.base import BaseTool, ToolResult
 
 
 class ScaffoldComponentTool(BaseTool):
@@ -16,7 +17,7 @@ class ScaffoldComponentTool(BaseTool):
         self.manager = manager or ScaffoldManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {
@@ -35,7 +36,7 @@ class ScaffoldComponentTool(BaseTool):
                 },
                 "fields": {
                     "type": "array",
-                    "description": "For DTOs: list of field objects with 'name', 'type', optional 'default'",
+                    "description": "For DTOs: list of {name, type, default} objects",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -176,7 +177,7 @@ class ScaffoldDesignDocTool(BaseTool):
         self.manager = manager or ScaffoldManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {

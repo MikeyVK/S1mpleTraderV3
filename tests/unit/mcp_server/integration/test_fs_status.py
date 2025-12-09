@@ -1,9 +1,12 @@
 """Tests for filesystem and status components."""
-import pytest
 from unittest.mock import Mock
+
+import pytest
+
 from mcp_server.adapters.filesystem import FilesystemAdapter
-from mcp_server.resources.status import StatusResource
 from mcp_server.core.exceptions import ValidationError
+from mcp_server.resources.status import StatusResource
+
 
 def test_fs_adapter_read_write(tmp_path):
     adapter = FilesystemAdapter(root_path=str(tmp_path))

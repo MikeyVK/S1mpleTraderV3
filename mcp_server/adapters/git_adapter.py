@@ -1,10 +1,10 @@
 """Git adapter for the MCP server."""
 from typing import Any
 
-from git import Repo, InvalidGitRepositoryError  # type: ignore[import-untyped]
+from git import InvalidGitRepositoryError, Repo  # type: ignore[import-untyped]
 
-from mcp_server.core.exceptions import MCPSystemError, ExecutionError
 from mcp_server.config.settings import settings
+from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 
 
 class GitAdapter:

@@ -1,7 +1,9 @@
 """Quality tools."""
-from typing import Any, Dict
-from mcp_server.tools.base import BaseTool, ToolResult
+from typing import Any
+
 from mcp_server.managers.qa_manager import QAManager
+from mcp_server.tools.base import BaseTool, ToolResult
+
 
 class RunQualityGatesTool(BaseTool):
     """Tool to run quality gates."""
@@ -13,7 +15,7 @@ class RunQualityGatesTool(BaseTool):
         self.manager = manager or QAManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {

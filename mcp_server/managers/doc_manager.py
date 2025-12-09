@@ -1,7 +1,7 @@
 """Documentation Manager."""
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ValidationError
@@ -28,7 +28,7 @@ class DocManager:
         "implementation": "implementation",
     }
 
-    def __init__(self, docs_dir: Optional[Path] = None) -> None:
+    def __init__(self, docs_dir: Path | None = None) -> None:
         """Initialize DocManager.
 
         Args:
@@ -41,7 +41,7 @@ class DocManager:
         else:
             self.docs_dir = docs_dir
 
-        self._index: List[Dict[str, Any]] = []
+        self._index: list[dict[str, Any]] = []
         self._build_index()
 
     def _build_index(self) -> None:
@@ -75,9 +75,9 @@ class DocManager:
     def search(
         self,
         query: str,
-        scope: Optional[str] = None,
+        scope: str | None = None,
         max_results: int = 10
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search documentation for matching content.
 
         Args:
@@ -94,7 +94,7 @@ class DocManager:
 
         query_lower = query.lower()
         query_terms = query_lower.split()
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
         for doc in self._index:
             # Filter by scope if specified
@@ -128,7 +128,7 @@ class DocManager:
         return results[:max_results]
 
     def _calculate_relevance(
-        self, content: str, query_terms: List[str]
+        self, content: str, query_terms: list[str]
     ) -> float:
         """Calculate relevance score for content against query terms."""
         if not query_terms:
@@ -152,7 +152,7 @@ class DocManager:
         return min(base_score, 1.0)
 
     def _find_best_match(
-        self, lines: List[str], query_terms: List[str]
+        self, lines: list[str], query_terms: list[str]
     ) -> tuple[int, str]:
         """Find the line with best match and extract snippet.
 
@@ -190,11 +190,11 @@ class DocManager:
         """Return the number of indexed documents."""
         return len(self._index)
 
-    def list_documents(self) -> List[str]:
+    def list_documents(self) -> list[str]:
         """Return list of all indexed document paths."""
         return [doc["relative_path"] for doc in self._index]
 
-    def validate_structure(self, content: str, template_type: str) -> Dict[str, Any]:
+    def validate_structure(self, content: str, template_type: str) -> dict[str, Any]:
         """Validate document structure against template."""
         if template_type not in self.TEMPLATES:
             raise ValidationError(f"Unknown template type: {template_type}")

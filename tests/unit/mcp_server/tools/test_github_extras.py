@@ -1,9 +1,12 @@
 """Tests for PR and Label tools."""
-import pytest
 from unittest.mock import Mock
+
+import pytest
+
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.tools.pr_tools import CreatePRTool
 from mcp_server.tools.label_tools import AddLabelsTool
+from mcp_server.tools.pr_tools import CreatePRTool
+
 
 @pytest.fixture
 def mock_adapter():

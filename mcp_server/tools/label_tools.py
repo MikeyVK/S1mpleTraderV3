@@ -1,7 +1,9 @@
 """GitHub label tools."""
-from typing import Any, Dict
-from mcp_server.tools.base import BaseTool, ToolResult
+from typing import Any
+
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.tools.base import BaseTool, ToolResult
+
 
 class AddLabelsTool(BaseTool):
     """Tool to add labels to an issue or PR."""
@@ -13,7 +15,7 @@ class AddLabelsTool(BaseTool):
         self.manager = manager or GitHubManager()
 
     @property
-    def input_schema(self) -> Dict[str, Any]:
+    def input_schema(self) -> dict[str, Any]:
         return {
             "type": "object",
             "properties": {

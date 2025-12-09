@@ -1,11 +1,11 @@
 """QA Manager for quality gates."""
-from typing import List, Dict, Any
+from typing import Any
 
 
 class QAManager:
     """Manager for quality assurance and gates."""
 
-    def run_quality_gates(self, files: List[str]) -> Dict[str, Any]:
+    def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
         """Run quality gates on specified files."""
         results = {
             "overall_pass": True,
@@ -28,7 +28,7 @@ class QAManager:
 
         return results
 
-    def _run_pylint(self, files: List[str]) -> Dict[str, Any]:
+    def _run_pylint(self, files: list[str]) -> dict[str, Any]:
         """Run pylint checks."""
         # This is a stub. In reality, we'd subprocess.run(["pylint", ...])
         return {
@@ -39,7 +39,7 @@ class QAManager:
             "issues": []
         }
 
-    def _run_mypy(self, files: List[str]) -> Dict[str, Any]:
+    def _run_mypy(self, files: list[str]) -> dict[str, Any]:
         """Run mypy checks."""
         # Stub
         return {

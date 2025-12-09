@@ -1,6 +1,8 @@
 """Tests for CLI."""
 from unittest.mock import patch
+
 from mcp_server.cli import main
+
 
 def test_cli_version(capsys):
     with patch("sys.exit") as mock_exit:
@@ -24,7 +26,6 @@ def test_cli_version(capsys):
     assert "ST3 Workflow MCP Server v1.0.0" in captured.out
 
 def test_cli_run():
-    with patch("mcp_server.cli.server_main") as mock_server:
-        with patch("sys.argv", ["mcp-server"]):
-            main()
-            mock_server.assert_called_once()
+    with patch("mcp_server.cli.server_main") as mock_server, patch("sys.argv", ["mcp-server"]):
+        main()
+        mock_server.assert_called_once()

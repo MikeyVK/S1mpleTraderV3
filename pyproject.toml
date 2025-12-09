@@ -70,6 +70,8 @@ disallow_untyped_defs = false
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -90,12 +92,18 @@ select = [
 ignore = [
     "ANN101", # Missing type annotation for self
     "ANN102", # Missing type annotation for cls
+    "ANN401", # Dynamically typed expressions (Any) are disallowed - needed for **kwargs
+    "ARG002", # Unused method argument - needed for interface compliance
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "ANN",  # No type annotations required in tests
     "ARG",  # Unused arguments OK in fixtures
+    "N806", # Variable names can be uppercase (MockManager pattern)
+    "E501", # Line length OK in tests
+    "SIM117", # Nested with OK in tests
+    "SIM105", # try-except-pass OK in tests
 ]
 
 [tool.pyright]
