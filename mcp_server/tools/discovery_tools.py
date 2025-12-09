@@ -1,12 +1,13 @@
 """Discovery tools for AI self-orientation."""
+# pyright: reportIncompatibleMethodOverride=false
 import re
-import json
 from typing import Any, Dict, Optional
 
 from mcp_server.tools.base import BaseTool, ToolResult
 from mcp_server.managers.doc_manager import DocManager
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.config.settings import settings
+from mcp_server.core.exceptions import MCPError
 
 
 class SearchDocumentationTool(BaseTool):
@@ -127,7 +128,7 @@ class GetWorkContextTool(BaseTool):
             tdd_phase = self._detect_tdd_phase(recent_commits)
             context["tdd_phase"] = tdd_phase
             context["recent_commits"] = recent_commits
-        except Exception:
+        except (OSError, ValueError, RuntimeError):
             context["tdd_phase"] = "unknown"
             context["recent_commits"] = []
 
@@ -152,7 +153,7 @@ class GetWorkContextTool(BaseTool):
                             issue.get("body", "")
                         )
                     }
-            except Exception:
+            except (OSError, ValueError, RuntimeError, ImportError, MCPError):
                 pass  # GitHub integration optional
 
         return ToolResult.text(self._format_context(context))

@@ -11,7 +11,7 @@ from mcp_server.config.settings import settings
 
 class ScaffoldManager:
     """Manager for template-driven code and document generation.
-    
+
     Uses Jinja2 templates to generate:
     - DTOs (frozen dataclasses)
     - Workers (async processors)
@@ -22,7 +22,7 @@ class ScaffoldManager:
 
     def __init__(self, template_dir: Path | None = None) -> None:
         """Initialize the scaffold manager.
-        
+
         Args:
             template_dir: Path to templates directory. Defaults to mcp_server/templates.
         """
@@ -31,7 +31,7 @@ class ScaffoldManager:
         else:
             # Default to mcp_server/templates relative to this file
             self.template_dir = Path(__file__).parent.parent / "templates"
-        
+
         self._env: Environment | None = None
 
     @property
@@ -48,13 +48,13 @@ class ScaffoldManager:
 
     def get_template(self, template_name: str) -> Any:
         """Load a template by name.
-        
+
         Args:
             template_name: Relative path to template (e.g., 'components/dto.py.jinja2')
-            
+
         Returns:
             Loaded Jinja2 template
-            
+
         Raises:
             ExecutionError: If template not found
         """
@@ -68,7 +68,7 @@ class ScaffoldManager:
 
     def list_templates(self) -> list[str]:
         """List all available templates.
-        
+
         Returns:
             List of template names
         """
@@ -80,10 +80,10 @@ class ScaffoldManager:
 
     def _validate_pascal_case(self, name: str) -> None:
         """Validate name is PascalCase.
-        
+
         Args:
             name: Name to validate
-            
+
         Raises:
             ValidationError: If not PascalCase
         """
@@ -194,16 +194,16 @@ class ScaffoldManager:
             f'    """{docstring or f"{name} data transfer object."}"""',
             "",
         ]
-        
+
         for field in fields:
             if "default" in field:
                 lines.append(f"    {field['name']}: {field['type']} = {field['default']}")
             else:
                 lines.append(f"    {field['name']}: {field['type']}")
-        
+
         if not fields:
             lines.append("    pass")
-        
+
         lines.append("")
         return "\n".join(lines)
 
@@ -286,7 +286,7 @@ class ScaffoldManager:
         deps_str = ""
         if dependencies:
             deps_str = ", " + ", ".join(dependencies)
-        
+
         return f'''"""Generated Worker module."""
 from typing import Any
 
@@ -302,10 +302,10 @@ class {name}(BaseWorker[{input_dto}, {output_dto}]):
 {self._render_dep_assignments(dependencies)}
     async def process(self, input_data: {input_dto}) -> {output_dto}:
         """Process input and return output.
-        
+
         Args:
             input_data: Input DTO to process
-            
+
         Returns:
             Processed output DTO
         """
@@ -316,7 +316,7 @@ class {name}(BaseWorker[{input_dto}, {output_dto}]):
         """Render dependency assignments for __init__."""
         if not dependencies:
             return ""
-        
+
         lines = []
         for dep in dependencies:
             name = dep.split(":")[0].strip()
@@ -398,7 +398,7 @@ class {name}(BaseWorker[{input_dto}, {output_dto}]):
             "        pass",
             "",
         ]
-        
+
         for method in methods:
             lines.extend([
                 f"    def {method['name']}(self, {method['params']}) -> {method['return_type']}:",
@@ -406,7 +406,7 @@ class {name}(BaseWorker[{input_dto}, {output_dto}]):
                 "        raise NotImplementedError()",
                 "",
             ])
-        
+
         return "\n".join(lines)
 
     def render_dto_test(
@@ -670,18 +670,18 @@ class Test{worker_name}ErrorHandling:
             "",
             f"**Status:** {status}",
         ]
-        
+
         if author:
             lines.append(f"**Author:** {author}")
-        
+
         lines.append("")
-        
+
         if summary:
             lines.extend(["## Summary", "", summary, ""])
-        
+
         for section in (sections or ["Overview", "Requirements", "Design"]):
             lines.extend([f"## {section}", "", "TODO: Add content", ""])
-        
+
         return "\n".join(lines)
 
     def write_file(
@@ -691,30 +691,30 @@ class Test{worker_name}ErrorHandling:
         overwrite: bool = False,
     ) -> bool:
         """Write generated content to a file in the workspace.
-        
+
         Args:
             path: Relative path within workspace
             content: Content to write
             overwrite: Whether to overwrite existing files
-            
+
         Returns:
             True if file was written
-            
+
         Raises:
             ExecutionError: If file exists and overwrite=False
         """
         # pylint: disable=no-member
         full_path = Path(settings.server.workspace_root) / path
-        
+
         if full_path.exists() and not overwrite:
             raise ExecutionError(
                 f"File exists: {path}. Use overwrite=True to replace.",
                 recovery=["Set overwrite=True or choose a different path"]
             )
-        
+
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(full_path, "w", encoding="utf-8") as f:
             f.write(content)
-        
+
         return True

@@ -4,7 +4,7 @@ Phase 1.3: Verify all tools are operational and return expected results.
 These tests use mocks but test the full flow from Tool -> Manager -> Adapter.
 """
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import MagicMock, patch
 
 # Git Tools
 from mcp_server.tools.git_tools import (
@@ -37,10 +37,10 @@ class TestGitToolsIntegration:
         """Test create branch tool complete flow."""
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             mock_adapter.return_value.is_clean.return_value = True
-            
+
             tool = CreateBranchTool()
             result = await tool.execute(name="test-feature", branch_type="feature")
-            
+
             assert "feature/test-feature" in result.content[0]["text"]
 
     @pytest.mark.asyncio
@@ -53,10 +53,10 @@ class TestGitToolsIntegration:
                 "untracked_files": [],
                 "modified_files": []
             }
-            
+
             tool = GitStatusTool()
             result = await tool.execute()
-            
+
             assert "Branch: main" in result.content[0]["text"]
             assert "Clean: True" in result.content[0]["text"]
 
@@ -65,10 +65,10 @@ class TestGitToolsIntegration:
         """Test git commit tool complete flow."""
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             mock_adapter.return_value.commit.return_value = "abc123def"
-            
+
             tool = GitCommitTool()
             result = await tool.execute(phase="green", message="implement feature")
-            
+
             assert "abc123def" in result.content[0]["text"]
             mock_adapter.return_value.commit.assert_called_with("feat: implement feature")
 
@@ -78,7 +78,7 @@ class TestGitToolsIntegration:
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             tool = GitCheckoutTool()
             result = await tool.execute(branch="feature/test")
-            
+
             assert "feature/test" in result.content[0]["text"]
             mock_adapter.return_value.checkout.assert_called_once()
 
@@ -87,10 +87,10 @@ class TestGitToolsIntegration:
         """Test git push tool complete flow."""
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             mock_adapter.return_value.get_status.return_value = {"branch": "feature/test"}
-            
+
             tool = GitPushTool()
             result = await tool.execute()
-            
+
             assert "feature/test" in result.content[0]["text"]
             mock_adapter.return_value.push.assert_called_once()
 
@@ -100,10 +100,10 @@ class TestGitToolsIntegration:
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             mock_adapter.return_value.is_clean.return_value = True
             mock_adapter.return_value.get_status.return_value = {"branch": "main"}
-            
+
             tool = GitMergeTool()
             result = await tool.execute(branch="feature/test")
-            
+
             assert "feature/test" in result.content[0]["text"]
             mock_adapter.return_value.merge.assert_called_with("feature/test")
 
@@ -113,7 +113,7 @@ class TestGitToolsIntegration:
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             tool = GitDeleteBranchTool()
             result = await tool.execute(branch="feature/old")
-            
+
             assert "feature/old" in result.content[0]["text"]
             mock_adapter.return_value.delete_branch.assert_called_with(
                 "feature/old", force=False
@@ -125,7 +125,7 @@ class TestGitToolsIntegration:
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             tool = GitStashTool()
             result = await tool.execute(action="push", message="WIP")
-            
+
             assert "WIP" in result.content[0]["text"]
             mock_adapter.return_value.stash.assert_called_with(message="WIP")
 
@@ -135,7 +135,7 @@ class TestGitToolsIntegration:
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             tool = GitStashTool()
             result = await tool.execute(action="pop")
-            
+
             assert "Applied" in result.content[0]["text"]
             mock_adapter.return_value.stash_pop.assert_called_once()
 
@@ -146,10 +146,10 @@ class TestGitToolsIntegration:
             mock_adapter.return_value.stash_list.return_value = [
                 "stash@{0}: WIP on main"
             ]
-            
+
             tool = GitStashTool()
             result = await tool.execute(action="list")
-            
+
             assert "stash@{0}" in result.content[0]["text"]
 
 
@@ -164,10 +164,10 @@ class TestQualityToolsIntegration:
             "overall_pass": True,
             "gates": [{"name": "Linting", "passed": True, "score": "10/10"}]
         }
-        
+
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(files=["test.py"])
-        
+
         assert "Pass" in result.content[0]["text"] or "pass" in result.content[0]["text"].lower()
 
     @pytest.mark.asyncio
@@ -179,13 +179,13 @@ class TestQualityToolsIntegration:
             "errors": [],
             "warnings": []
         }
-        
+
         tool = ValidateDocTool(manager=mock_manager)
         result = await tool.execute(
             content="# Title\n\n## Section",
             template_type="design"
         )
-        
+
         # Tool returns validation result
         assert result.content is not None
 
@@ -194,7 +194,7 @@ class TestQualityToolsIntegration:
         """Test architecture validation tool complete flow."""
         tool = ValidationTool()
         result = await tool.execute(scope="all")
-        
+
         # Should return validation results
         assert result.content is not None
 
@@ -205,7 +205,7 @@ class TestQualityToolsIntegration:
             with patch("pathlib.Path.read_text", return_value="from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass TestDTO:\n    pass"):
                 tool = ValidateDTOTool()
                 result = await tool.execute(file_path="backend/dtos/test.py")
-                
+
                 assert result.content is not None
 
 
@@ -217,7 +217,7 @@ class TestDevelopmentToolsIntegration:
         """Test health check tool complete flow."""
         tool = HealthCheckTool()
         result = await tool.execute()
-        
+
         assert "healthy" in result.content[0]["text"].lower() or "ok" in result.content[0]["text"].lower()
 
     @pytest.mark.asyncio
@@ -230,7 +230,7 @@ class TestDevelopmentToolsIntegration:
                     path="test/file.py",
                     content="# Test content"
                 )
-                
+
                 assert result.content is not None
 
 
@@ -242,32 +242,32 @@ class TestGitHubToolsIntegration:
         """Test create issue tool complete flow."""
         # Import here to avoid failure when no GITHUB_TOKEN
         from mcp_server.tools.issue_tools import CreateIssueTool
-        
+
         mock_manager = MagicMock()
         mock_manager.create_issue.return_value = {
             "number": 42,
             "url": "https://github.com/test/repo/issues/42"
         }
-        
+
         tool = CreateIssueTool(manager=mock_manager)
         result = await tool.execute(
             title="Test Issue",
             body="Test body"
         )
-        
+
         assert "42" in result.content[0]["text"] or "issue" in result.content[0]["text"].lower()
 
     @pytest.mark.asyncio
     async def test_create_pr_tool_flow(self) -> None:
         """Test create PR tool complete flow."""
         from mcp_server.tools.pr_tools import CreatePRTool
-        
+
         mock_manager = MagicMock()
         mock_manager.create_pr.return_value = {
             "number": 99,
             "url": "https://github.com/test/repo/pull/99"
         }
-        
+
         tool = CreatePRTool(manager=mock_manager)
         result = await tool.execute(
             title="Test PR",
@@ -275,23 +275,23 @@ class TestGitHubToolsIntegration:
             head="feature/test",
             base="main"
         )
-        
+
         assert "99" in result.content[0]["text"] or "pr" in result.content[0]["text"].lower()
 
     @pytest.mark.asyncio
     async def test_add_labels_tool_flow(self) -> None:
         """Test add labels tool complete flow."""
         from mcp_server.tools.label_tools import AddLabelsTool
-        
+
         mock_manager = MagicMock()
         mock_manager.add_labels.return_value = ["bug", "priority:high"]
-        
+
         tool = AddLabelsTool(manager=mock_manager)
         result = await tool.execute(
             issue_number=42,
             labels=["bug", "priority:high"]
         )
-        
+
         assert result.content is not None
 
 
@@ -310,7 +310,7 @@ class TestToolSchemas:
             GitDeleteBranchTool(),
             GitStashTool(),
         ]
-        
+
         for tool in tools:
             schema = tool.input_schema
             assert schema is not None or schema == {}, f"{tool.name} missing schema"
@@ -324,7 +324,7 @@ class TestToolSchemas:
             ValidationTool(),
             ValidateDTOTool(),
         ]
-        
+
         for tool in tools:
             schema = tool.input_schema
             assert schema is not None or schema == {}, f"{tool.name} missing schema"
@@ -337,7 +337,7 @@ class TestToolSchemas:
             RunTestsTool(),
             CreateFileTool(),
         ]
-        
+
         for tool in tools:
             schema = tool.input_schema
             assert schema is not None or schema == {}, f"{tool.name} missing schema"
@@ -348,14 +348,14 @@ class TestToolSchemas:
         from mcp_server.tools.issue_tools import CreateIssueTool
         from mcp_server.tools.pr_tools import CreatePRTool
         from mcp_server.tools.label_tools import AddLabelsTool
-        
+
         mock_manager = MagicMock()
         tools = [
             CreateIssueTool(manager=mock_manager),
             CreatePRTool(manager=mock_manager),
             AddLabelsTool(manager=mock_manager),
         ]
-        
+
         for tool in tools:
             schema = tool.input_schema
             assert schema is not None or schema == {}, f"{tool.name} missing schema"
@@ -384,7 +384,7 @@ class TestToolNames:
             RunTestsTool(),
             CreateFileTool(),
         ]
-        
+
         names = [tool.name for tool in tools]
         assert len(names) == len(set(names)), f"Duplicate tool names found: {names}"
 
@@ -393,14 +393,14 @@ class TestToolNames:
         from mcp_server.tools.issue_tools import CreateIssueTool
         from mcp_server.tools.pr_tools import CreatePRTool
         from mcp_server.tools.label_tools import AddLabelsTool
-        
+
         mock_manager = MagicMock()
         tools = [
             CreateIssueTool(manager=mock_manager),
             CreatePRTool(manager=mock_manager),
             AddLabelsTool(manager=mock_manager),
         ]
-        
+
         names = [tool.name for tool in tools]
         assert len(names) == len(set(names)), f"Duplicate tool names found: {names}"
 
@@ -423,7 +423,7 @@ class TestToolNames:
             RunTestsTool(),
             CreateFileTool(),
         ]
-        
+
         for tool in tools:
             assert tool.description, f"{tool.name} missing description"
             assert len(tool.description) > 10, f"{tool.name} description too short"
@@ -433,14 +433,14 @@ class TestToolNames:
         from mcp_server.tools.issue_tools import CreateIssueTool
         from mcp_server.tools.pr_tools import CreatePRTool
         from mcp_server.tools.label_tools import AddLabelsTool
-        
+
         mock_manager = MagicMock()
         tools = [
             CreateIssueTool(manager=mock_manager),
             CreatePRTool(manager=mock_manager),
             AddLabelsTool(manager=mock_manager),
         ]
-        
+
         for tool in tools:
             assert tool.description, f"{tool.name} missing description"
             assert len(tool.description) > 10, f"{tool.name} description too short"

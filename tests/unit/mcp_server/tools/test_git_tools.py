@@ -105,7 +105,7 @@ class TestGitPushTool:
         mock_manager.get_status.return_value = {"branch": "feature/new"}
 
         tool = GitPushTool(manager=mock_manager)
-        result = await tool.execute(set_upstream=True)
+        _ = await tool.execute(set_upstream=True)  # result unused, testing side effect
 
         mock_manager.push.assert_called_once_with(set_upstream=True)
 
@@ -196,7 +196,7 @@ class TestGitDeleteBranchTool:
         mock_manager = MagicMock()
 
         tool = GitDeleteBranchTool(manager=mock_manager)
-        result = await tool.execute(branch="feature/test", force=True)
+        _ = await tool.execute(branch="feature/test", force=True)  # result unused
 
         mock_manager.delete_branch.assert_called_once_with("feature/test", force=True)
 

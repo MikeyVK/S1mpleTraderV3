@@ -1,6 +1,6 @@
 """Tests for Test and Code tools."""
 import pytest
-from unittest.mock import patch, AsyncMock, Mock
+from unittest.mock import patch
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.code_tools import CreateFileTool
 

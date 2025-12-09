@@ -1,6 +1,6 @@
 """Tests for discovery tools."""
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 from mcp_server.tools.discovery_tools import SearchDocumentationTool, GetWorkContextTool
 
 
@@ -174,7 +174,7 @@ class TestGetWorkContextTool:
         self, tool: GetWorkContextTool
     ) -> None:
         """Should handle GitHub integration gracefully.
-        
+
         Note: Full GitHub integration is tested via integration tests.
         This unit test verifies the tool handles errors gracefully.
         """

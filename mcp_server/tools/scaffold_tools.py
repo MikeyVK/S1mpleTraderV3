@@ -1,4 +1,5 @@
 """Scaffold tools for template-driven code generation."""
+# pyright: reportIncompatibleMethodOverride=false
 from typing import Any, Dict
 from mcp_server.tools.base import BaseTool, ToolResult
 from mcp_server.managers.scaffold_manager import ScaffoldManager
@@ -95,14 +96,14 @@ class ScaffoldComponentTool(BaseTool):
     ) -> ToolResult:
         """Execute component scaffolding."""
         created_files = []
-        
+
         if component_type == "dto":
             if not fields:
                 raise ValidationError(
                     "Fields are required for DTO generation",
                     hints=["Provide fields as list of {name, type} objects"]
                 )
-            
+
             content = self.manager.render_dto(
                 name=name,
                 fields=fields,
@@ -110,7 +111,7 @@ class ScaffoldComponentTool(BaseTool):
             )
             self.manager.write_file(output_path, content)
             created_files.append(output_path)
-            
+
             if generate_test:
                 # Derive module path from output path
                 module_path = output_path.replace("/", ".").replace("\\", ".").rstrip(".py")
@@ -123,14 +124,14 @@ class ScaffoldComponentTool(BaseTool):
                     test_path = test_path.replace("backend/", "tests/unit/")
                 self.manager.write_file(test_path, test_content)
                 created_files.append(test_path)
-                
+
         elif component_type == "worker":
             if not input_dto or not output_dto:
                 raise ValidationError(
                     "input_dto and output_dto are required for Worker generation",
                     hints=["Provide input_dto and output_dto class names"]
                 )
-            
+
             content = self.manager.render_worker(
                 name=name,
                 input_dto=input_dto,
@@ -138,27 +139,27 @@ class ScaffoldComponentTool(BaseTool):
             )
             self.manager.write_file(output_path, content)
             created_files.append(output_path)
-            
+
         elif component_type == "adapter":
             if not methods:
                 raise ValidationError(
                     "Methods are required for Adapter generation",
                     hints=["Provide methods as list of {name, params, return_type} objects"]
                 )
-            
+
             content = self.manager.render_adapter(
                 name=name,
                 methods=methods
             )
             self.manager.write_file(output_path, content)
             created_files.append(output_path)
-            
+
         else:
             raise ValidationError(
                 f"Unknown component type: {component_type}",
                 hints=["Use dto, worker, or adapter"]
             )
-        
+
         return ToolResult.text(
             f"Scaffolded {component_type} '{name}':\n" +
             "\n".join(f"  - {f}" for f in created_files)
@@ -227,7 +228,7 @@ class ScaffoldDesignDocTool(BaseTool):
             sections=sections,
             status=status
         )
-        
+
         self.manager.write_file(output_path, content)
-        
+
         return ToolResult.text(f"Created design document: {output_path}")

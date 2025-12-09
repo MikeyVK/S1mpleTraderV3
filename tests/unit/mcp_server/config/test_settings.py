@@ -1,6 +1,4 @@
 """Tests for configuration settings."""
-import os
-import pytest
 from mcp_server.config.settings import Settings
 
 def test_default_settings():

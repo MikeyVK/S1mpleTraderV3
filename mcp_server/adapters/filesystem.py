@@ -1,8 +1,6 @@
 """Filesystem adapter for safe operations."""
-import os
-import shutil
 from pathlib import Path
-from typing import List, Generator
+from typing import List
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import MCPSystemError, ValidationError
 

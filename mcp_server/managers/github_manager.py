@@ -1,7 +1,6 @@
 """GitHub Manager for business logic."""
 from typing import Any, Dict
 from mcp_server.adapters.github import GitHubAdapter
-from mcp_server.core.exceptions import ExecutionError
 
 class GitHubManager:
     """Manager for GitHub operations."""

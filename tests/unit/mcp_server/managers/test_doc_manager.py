@@ -1,7 +1,6 @@
 """Tests for DocManager."""
 import pytest
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 from mcp_server.managers.doc_manager import DocManager
 
 

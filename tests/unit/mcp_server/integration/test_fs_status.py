@@ -1,6 +1,5 @@
 """Tests for filesystem and status components."""
 import pytest
-from pathlib import Path
 from unittest.mock import Mock
 from mcp_server.adapters.filesystem import FilesystemAdapter
 from mcp_server.resources.status import StatusResource

@@ -135,7 +135,7 @@ class GitAdapter:
 
     def stash(self, message: str | None = None) -> None:
         """Stash current changes.
-        
+
         Args:
             message: Optional message for the stash entry.
         """
@@ -156,7 +156,7 @@ class GitAdapter:
 
     def stash_list(self) -> list[str]:
         """List all stash entries.
-        
+
         Returns:
             List of stash entry descriptions.
         """
@@ -170,10 +170,10 @@ class GitAdapter:
 
     def get_recent_commits(self, limit: int = 5) -> list[str]:
         """Get recent commit messages.
-        
+
         Args:
             limit: Maximum number of commits to return.
-            
+
         Returns:
             List of commit messages (most recent first).
         """

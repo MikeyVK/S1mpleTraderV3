@@ -4,7 +4,6 @@ from github import Github, GithubException
 from github.Repository import Repository
 from github.Issue import Issue
 from github.PullRequest import PullRequest
-from github.Project import Project
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import MCPSystemError, ExecutionError

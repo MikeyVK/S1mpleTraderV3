@@ -21,7 +21,7 @@ def _run_pytest_sync(
     env["VIRTUAL_ENV"] = venv_path
     env["PATH"] = f"{os.path.dirname(cmd[0])};{env.get('PATH', '')}"
     env["PYTHONUNBUFFERED"] = "1"  # Disable output buffering
-    
+
     # Use Popen for proper subprocess control
     proc = subprocess.Popen(
         cmd,
@@ -33,7 +33,7 @@ def _run_pytest_sync(
         env=env,
         creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
     )
-    
+
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
         return stdout or "", stderr or "", proc.returncode

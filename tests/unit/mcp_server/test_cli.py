@@ -1,6 +1,5 @@
 """Tests for CLI."""
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from mcp_server.cli import main
 
 def test_cli_version(capsys):
