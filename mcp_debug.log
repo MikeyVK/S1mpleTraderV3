@@ -134,3 +134,71 @@ Running in thread pool via to_thread...
 to_thread completed, returncode: 0
 Output length: 10296
 Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/integration/test_all_tools.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/integration/test_all_tools.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/integration/test_all_tools.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 33688
+[thread] Completed with returncode: 1
+[thread] stdout length: 11257
+[thread] stderr length: 0
+[thread] Duration: 2.57s
+to_thread completed, returncode: 1
+Output length: 11257
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/integration/test_all_tools.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/integration/test_all_tools.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/integration/test_all_tools.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 57072
+[thread] Completed with returncode: 1
+[thread] stdout length: 4845
+[thread] stderr length: 0
+[thread] Duration: 2.18s
+to_thread completed, returncode: 1
+Output length: 4845
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/integration/test_all_tools.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/integration/test_all_tools.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/integration/test_all_tools.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 57444
+[thread] Completed with returncode: 0
+[thread] stdout length: 3826
+[thread] stderr length: 0
+[thread] Duration: 1.90s
+to_thread completed, returncode: 0
+Output length: 3826
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 46084
+[thread] Completed with returncode: 0
+[thread] stdout length: 13569
+[thread] stderr length: 0
+[thread] Duration: 3.18s
+to_thread completed, returncode: 0
+Output length: 13569
+Returning result
