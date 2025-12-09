@@ -82,6 +82,7 @@ class ScaffoldComponentTool(BaseTool):
             "required": ["component_type", "name", "output_path"]
         }
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     async def execute(
         self,
         component_type: str,
@@ -211,6 +212,7 @@ class ScaffoldDesignDocTool(BaseTool):
             "required": ["title", "output_path"]
         }
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     async def execute(
         self,
         title: str,

@@ -24,7 +24,7 @@ def _run_pytest_sync(
     env["PYTHONUNBUFFERED"] = "1"  # Disable output buffering
 
     # Use Popen for proper subprocess control
-    proc = subprocess.Popen(
+    with subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -33,15 +33,14 @@ def _run_pytest_sync(
         cwd=cwd,
         env=env,
         creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
-    )
-
-    try:
-        stdout, stderr = proc.communicate(timeout=timeout)
-        return stdout or "", stderr or "", proc.returncode
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-        raise
+    ) as proc:
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+            return stdout or "", stderr or "", proc.returncode
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            raise
 
 
 class RunTestsTool(BaseTool):

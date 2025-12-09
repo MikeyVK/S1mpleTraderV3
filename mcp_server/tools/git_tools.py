@@ -258,4 +258,3 @@ class GitStashTool(BaseTool):
                 return ToolResult.text("No stashes found")
             return ToolResult.text("\n".join(stashes))
         return ToolResult.text(f"Unknown action: {action}")
-

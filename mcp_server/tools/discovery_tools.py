@@ -136,6 +136,7 @@ class GetWorkContextTool(BaseTool):
         # pylint: disable=no-member
         if settings.github.token and issue_number:
             try:
+                # pylint: disable=import-outside-toplevel
                 from mcp_server.managers.github_manager import GitHubManager
                 gh_manager = GitHubManager()
                 issue = gh_manager.get_issue(issue_number)
