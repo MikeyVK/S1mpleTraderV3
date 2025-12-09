@@ -8,7 +8,6 @@ import pytest
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.issue_tools import (
     CloseIssueTool,
-    CreateIssueTool,
     GetIssueTool,
     ListIssuesTool,
 )
