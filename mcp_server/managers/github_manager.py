@@ -5,6 +5,7 @@ from mcp_server.adapters.github_adapter import GitHubAdapter
 
 if TYPE_CHECKING:
     from github.Issue import Issue
+    from github.Label import Label
 
 
 class GitHubManager:
@@ -101,3 +102,28 @@ class GitHubManager:
     ) -> "Issue":
         """Close an issue with optional comment."""
         return self.adapter.close_issue(issue_number, comment=comment)
+
+    def list_labels(self) -> list["Label"]:
+        """List all labels in the repository."""
+        return self.adapter.list_labels()
+
+    def create_label(
+        self,
+        name: str,
+        color: str,
+        description: str = ""
+    ) -> "Label":
+        """Create a new label in the repository."""
+        return self.adapter.create_label(
+            name=name,
+            color=color,
+            description=description
+        )
+
+    def delete_label(self, name: str) -> None:
+        """Delete a label from the repository."""
+        self.adapter.delete_label(name)
+
+    def remove_labels(self, issue_number: int, labels: list[str]) -> None:
+        """Remove labels from an issue or PR."""
+        self.adapter.remove_labels(issue_number, labels)

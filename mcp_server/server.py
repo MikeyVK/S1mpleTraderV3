@@ -41,7 +41,13 @@ from mcp_server.tools.issue_tools import (
     GetIssueTool,
     ListIssuesTool,
 )
-from mcp_server.tools.label_tools import AddLabelsTool
+from mcp_server.tools.label_tools import (
+    AddLabelsTool,
+    CreateLabelTool,
+    DeleteLabelTool,
+    ListLabelsTool,
+    RemoveLabelsTool,
+)
 from mcp_server.tools.pr_tools import CreatePRTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
@@ -107,6 +113,10 @@ class MCPServer:
                 # PR and Label tools (require token at init time)
                 CreatePRTool(),
                 AddLabelsTool(),
+                ListLabelsTool(),
+                CreateLabelTool(),
+                DeleteLabelTool(),
+                RemoveLabelsTool(),
             ])
             logger.info("GitHub integration enabled")
         else:

@@ -3,6 +3,7 @@ from typing import Any
 
 from github import Github, GithubException
 from github.Issue import Issue
+from github.Label import Label
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 
@@ -149,3 +150,56 @@ class GitHubAdapter:
             return issue
         except GithubException as e:
             raise ExecutionError(f"Failed to close issue: {e}") from e
+
+    def list_labels(self) -> list[Label]:
+        """List all labels in the repository."""
+        try:
+            return list(self.repo.get_labels())
+        except GithubException as e:
+            raise MCPSystemError(f"Failed to list labels: {e}") from e
+
+    def create_label(
+        self,
+        name: str,
+        color: str,
+        description: str = ""
+    ) -> Label:
+        """Create a new label in the repository."""
+        try:
+            return self.repo.create_label(
+                name=name,
+                color=color,
+                description=description
+            )
+        except GithubException as e:
+            if e.status == 422:
+                raise ExecutionError(
+                    f"Label '{name}' already exists",
+                    recovery=["Use a different name or delete existing label"]
+                ) from e
+            raise ExecutionError(f"Failed to create label: {e}") from e
+
+    def delete_label(self, name: str) -> None:
+        """Delete a label from the repository."""
+        try:
+            label = self.repo.get_label(name)
+            label.delete()
+        except GithubException as e:
+            if e.status == 404:
+                raise ExecutionError(
+                    f"Label '{name}' not found",
+                    recovery=["Check label name"]
+                ) from e
+            raise ExecutionError(f"Failed to delete label: {e}") from e
+
+    def remove_labels(self, issue_number: int, labels: list[str]) -> None:
+        """Remove labels from an issue or PR."""
+        try:
+            issue = self.get_issue(issue_number)
+            for label_name in labels:
+                try:
+                    issue.remove_from_labels(label_name)
+                except GithubException:
+                    pass  # Label might not be on issue, ignore
+        except GithubException as e:
+            raise ExecutionError(f"Failed to remove labels: {e}") from e
