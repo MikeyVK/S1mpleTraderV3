@@ -14,6 +14,7 @@ This directory contains **templates, examples, and reference implementations** f
 🔧 **Maintenance:**
 - [MAINTENANCE_SCRIPTS.md](MAINTENANCE_SCRIPTS.md) - PowerShell maintenance scripts
 - [AI_DOC_PROMPTS.md](templates/AI_DOC_PROMPTS.md) - AI-assisted documentation prompts
+- [MCP_TOOLS.md](../mcp/MCP_TOOLS.md) - ⭐ MCP server tools reference
 
 📚 **Examples:**
 - [signal.md](dtos/signal.md) - Signal DTO with causality
