@@ -5,6 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.issue_tools import (
     CloseIssueTool,
@@ -223,8 +224,6 @@ Implement validation for DTOs.
 
     def test_get_issue_handles_not_found(self, mock_adapter) -> None:
         """Should handle issue not found gracefully."""
-        from mcp_server.core.exceptions import ExecutionError
-
         mock_adapter.get_issue.side_effect = ExecutionError("Issue #999 not found")
 
         manager = GitHubManager(adapter=mock_adapter)
@@ -307,8 +306,6 @@ class TestCloseIssueTool:
 
     def test_close_issue_handles_not_found(self, mock_adapter) -> None:
         """Should handle issue not found gracefully."""
-        from mcp_server.core.exceptions import ExecutionError
-
         mock_adapter.close_issue.side_effect = ExecutionError("Issue #999 not found")
 
         manager = GitHubManager(adapter=mock_adapter)
