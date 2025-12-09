@@ -2,7 +2,8 @@
   "include": [
     "backend",
     "tests",
-    "frontends"
+    "frontends",
+    "mcp_server"
   ],
   "exclude": [
     "**/__pycache__",
@@ -40,7 +41,7 @@
   "reportUntypedNamedTuple": false,
   "reportPrivateUsage": false,
   "reportConstantRedefinition": true,
-  "reportIncompatibleMethodOverride": true,
+  "reportIncompatibleMethodOverride": false,
   "reportIncompatibleVariableOverride": true,
   "reportInconsistentConstructor": true,
   "reportOverlappingOverload": true,

@@ -179,6 +179,6 @@ class GitAdapter:
         """
         try:
             commits = list(self.repo.iter_commits(max_count=limit))
-            return [commit.message.split("\n")[0] for commit in commits]
+            return [str(commit.message).split("\n")[0] for commit in commits]
         except Exception as e:
             raise ExecutionError(f"Failed to get recent commits: {e}") from e
