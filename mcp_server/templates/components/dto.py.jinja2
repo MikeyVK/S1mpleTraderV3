@@ -1,24 +1,143 @@
-"""Generated DTO module."""
-from dataclasses import dataclass
-from typing import Any
-{% if imports %}
-{% for imp in imports %}
+# {{ output_path | default('backend/dtos/strategy/' + name.lower() + '.py') }}
+"""
+{{ name }} DTO - {{ description | default('Data transfer object for ' + name) }}.
+
+{{ extended_description | default('Immutable Pydantic model representing ' + name + ' data.') }}
+
+@layer: DTOs ({{ layer | default('Strategy') }})
+@dependencies: [pydantic{% if has_causality %}, backend.dtos.causality{% endif %}{% if has_id_generator %}, backend.utils.id_generators{% endif %}]
+"""
+# Standard library
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Literal, Optional
+{% if extra_stdlib_imports %}
+{% for imp in extra_stdlib_imports %}
+{{ imp }}
+{% endfor %}
+{% endif %}
+
+# Third-party
+from pydantic import BaseModel, Field, field_validator
+
+# Project modules
+{% if has_id_generator %}
+from backend.utils.id_generators import generate_{{ name.lower() }}_id
+{% endif %}
+{% if has_causality %}
+from backend.dtos.causality import CausalityChain
+{% endif %}
+{% if project_imports %}
+{% for imp in project_imports %}
 {{ imp }}
 {% endfor %}
 {% endif %}
 
 
-@dataclass(frozen=True)
-class {{ name }}:
-    """{{ docstring }}"""
+class {{ name }}(BaseModel):
+    """{{ docstring | default(name + ' data transfer object.') }}"""
+
+{% if has_causality %}
+    # Causality tracking (always first)
+    causality: CausalityChain = Field(
+        ...,
+        description="Lineage tracking from originating tick"
+    )
+
+{% endif %}
+    # Primary identifier
+    {{ name.lower() }}_id: str = Field(
+        default_factory={% if has_id_generator %}generate_{{ name.lower() }}_id{% else %}lambda: "{{ id_prefix | default('DTO') }}_" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S"){% endif %},
+        description="{{ name }} unique identifier ({{ id_prefix | default('DTO') }}_YYYYMMDD_HHMMSS_hash format)"
+    )
+
+{% if has_timestamp %}
+    # Timestamp (always UTC)
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="Creation timestamp in UTC"
+    )
+
+{% endif %}
 {% if fields %}
+    # Core data fields
 {% for field in fields %}
-{% if field.default is defined %}
-    {{ field.name }}: {{ field.type }} = {{ field.default }}
+{% if field.description is defined %}
+    {{ field.name }}: {{ field.type }}{% if field.optional | default(false) %} | None{% endif %} = Field(
+        {% if field.default is defined %}default={{ field.default }},{% elif field.optional | default(false) %}default=None,{% else %}...,{% endif %}
+
+        description="{{ field.description }}"{% if field.ge is defined %},
+        ge={{ field.ge }}{% endif %}{% if field.le is defined %},
+        le={{ field.le }}{% endif %}{% if field.min_length is defined %},
+        min_length={{ field.min_length }}{% endif %}{% if field.max_length is defined %},
+        max_length={{ field.max_length }}{% endif %}{% if field.pattern is defined %},
+        pattern=r"{{ field.pattern }}"{% endif %}
+
+    )
 {% else %}
-    {{ field.name }}: {{ field.type }}
+    {{ field.name }}: {{ field.type }}{% if field.optional | default(false) %} | None{% endif %}{% if field.default is defined %} = {{ field.default }}{% elif field.optional | default(false) %} = None{% endif %}
+
 {% endif %}
 {% endfor %}
+{% endif %}
+
+    # Pydantic configuration
+    model_config = {
+        "frozen": {{ frozen | default('True') }},
+        "str_strip_whitespace": True,
+        "validate_assignment": True,
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": [
+{% if examples %}
+{% for example in examples %}
+                {{ example | tojson }},
+{% endfor %}
 {% else %}
-    pass
+                {
+                    "description": "Standard {{ name }} creation",
+                    "{{ name.lower() }}_id": "{{ id_prefix | default('DTO') }}_20250101_120000_abc123",
+{% if has_timestamp %}
+                    "timestamp": "2025-01-01T12:00:00Z",
+{% endif %}
+                    # TODO: Add realistic example field values
+                },
+{% endif %}
+            ]
+        }
+    }
+
+    # Validators
+    @field_validator("{{ name.lower() }}_id")
+    @classmethod
+    def validate_id_format(cls, v: str) -> str:
+        """Validate {{ name.lower() }}_id follows military datetime format."""
+        import re
+        pattern = r"^{{ id_prefix | default('DTO') }}_\d{8}_\d{6}_[a-f0-9]+$"
+        if not re.match(pattern, v):
+            raise ValueError(
+                f"{{ name.lower() }}_id must match {{ id_prefix | default('DTO') }}_YYYYMMDD_HHMMSS_hash format, got: {v}"
+            )
+        return v
+
+{% if has_timestamp %}
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def ensure_utc_timestamp(cls, v: datetime) -> datetime:
+        """Ensure timestamp is timezone-aware UTC."""
+        if v.tzinfo is None:
+            return v.replace(tzinfo=timezone.utc)
+        return v.astimezone(timezone.utc)
+
+{% endif %}
+{% if custom_validators %}
+{% for validator in custom_validators %}
+    @field_validator("{{ validator.field }}")
+    @classmethod
+    def validate_{{ validator.field }}(cls, v: {{ validator.type }}) -> {{ validator.type }}:
+        """{{ validator.description }}"""
+        {{ validator.code | indent(8) }}
+        return v
+
+{% endfor %}
 {% endif %}

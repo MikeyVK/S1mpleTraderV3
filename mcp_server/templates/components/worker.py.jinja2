@@ -1,30 +1,152 @@
-"""Generated Worker module."""
-from typing import Any
+# {{ output_path | default('backend/workers/' + worker_type + '/' + name.lower() + '.py') }}
+"""
+{{ name }} - {{ description | default(name + ' worker implementation') }}.
 
+{{ extended_description | default('Processes ' + input_dto + ' and produces ' + output_dto + '.') }}
+
+**Worker Category:** {{ worker_type | default('context_worker') }}
+**Pipeline Position:** {{ pipeline_position | default('TBD') }}
+
+@layer: Workers ({{ worker_type | default('Context') }})
+@dependencies: [{{ input_dto }}, {{ output_dto }}{% for dep in dependencies %}, {{ dep.split(':')[0].strip() }}{% endfor %}]
+"""
+# Standard library
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import Any
+{% if extra_stdlib_imports %}
+{% for imp in extra_stdlib_imports %}
+{{ imp }}
+{% endfor %}
+{% endif %}
+
+# Third-party
+from pydantic import BaseModel
+
+# Project modules - Core interfaces
 from backend.core.interfaces.base_worker import BaseWorker
+from backend.core.interfaces.strategy_cache import IStrategyCache
+from backend.core.enums import DispositionType
+{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %}
+from backend.core.eventbus import EventBus
+{% endif %}
+
+# Project modules - DTOs
+from {{ input_dto_module | default('backend.dtos.strategy.' + input_dto.lower()) }} import {{ input_dto }}
+from {{ output_dto_module | default('backend.dtos.strategy.' + output_dto.lower()) }} import {{ output_dto }}
+{% if project_imports %}
+{% for imp in project_imports %}
+{{ imp }}
+{% endfor %}
+{% endif %}
 
 
 class {{ name }}(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
-    """Worker that processes {{ input_dto }} and produces {{ output_dto }}."""
+    """{{ docstring | default(name + ' processes ' + input_dto + ' to produce ' + output_dto + '.') }}
 
-    def __init__(self{% if dependencies %}, {{ dependencies | join(', ') }}{% endif %}) -> None:
-        """Initialize the worker."""
-        super().__init__()
+    **Responsibilities:**
+{% for resp in (responsibilities or ['Process input DTO', 'Apply business logic', 'Return output DTO']) %}
+    - {{ resp }}
+{% endfor %}
+
+    **Subscribes to:** {{ input_dto }}
+    **Publishes:** {{ output_dto }}{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %} (via EventBus){% else %} (via StrategyCache){% endif %}
+
+    """
+
+    def __init__(
+        self,
+        strategy_cache: IStrategyCache,
+{% for dep in dependencies %}
+        {{ dep }},
+{% endfor %}
+    ) -> None:
+        """Initialize {{ name }}.
+
+        Args:
+            strategy_cache: Cache for storing/retrieving DTOs within tick lifecycle
 {% for dep in dependencies %}
 {% set dep_name = dep.split(':')[0].strip() %}
-        self.{{ dep_name }} = {{ dep_name }}
+{% set dep_type = dep.split(':')[1].strip() if ':' in dep else 'Any' %}
+            {{ dep_name }}: {{ dep_type }} dependency
+{% endfor %}
+        """
+        super().__init__()
+        self._strategy_cache = strategy_cache
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+        self._{{ dep_name }} = {{ dep_name }}
 {% endfor %}
 
     async def process(self, input_data: {{ input_dto }}) -> {{ output_dto }}:
-        """Process input and return output.
-        
+        """Process {{ input_dto }} and produce {{ output_dto }}.
+
+        **Processing Steps:**
+        1. Extract required data from input DTO
+        2. Apply business logic / calculations
+        3. Construct and return output DTO
+
         Args:
-            input_data: Input DTO to process
-            
+            input_data: {{ input_dto }} containing input data
+
         Returns:
-            Processed output DTO
-            
+            {{ output_dto }} with processing results
+
         Raises:
-            NotImplementedError: Until implementation is complete
+            ValueError: If input data is invalid
+            RuntimeError: If processing fails
         """
-        raise NotImplementedError("Implement process method")
+        # Step 1: Extract data from input
+        # TODO: Extract relevant fields from input_data
+
+        # Step 2: Apply business logic
+        # TODO: Implement core processing logic
+
+        # Step 3: Construct output DTO
+{% if worker_type == 'context_worker' %}
+        # ContextWorkers produce OBJECTIVE FACTS only
+        # NO subjective labels: "bullish", "strong", "good"
+        # YES objective data: prices, ratios, counts, timestamps
+{% endif %}
+        output = {{ output_dto }}(
+            # TODO: Populate output fields
+{% if has_causality %}
+            causality=input_data.causality.chain_from(
+                source_id=input_data.{{ input_dto.lower() }}_id,
+                worker_name="{{ name }}"
+            ),
+{% endif %}
+        )
+
+{% if worker_type == 'context_worker' %}
+        # Store in StrategyCache for downstream workers
+        self._strategy_cache.set_result_dto(output)
+{% endif %}
+
+        return output
+
+    def get_disposition(self, output: {{ output_dto }}) -> DispositionType:
+        """Determine disposition after processing.
+
+{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %}
+        Returns PUBLISH to emit event to EventBus.
+{% elif worker_type == 'context_worker' %}
+        Returns CONTINUE to trigger next worker in pipeline.
+{% else %}
+        Returns appropriate disposition based on output.
+{% endif %}
+
+        Args:
+            output: The {{ output_dto }} produced by process()
+
+        Returns:
+            DispositionType indicating next action
+        """
+{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %}
+        return DispositionType.PUBLISH
+{% elif worker_type == 'context_worker' %}
+        return DispositionType.CONTINUE
+{% else %}
+        # TODO: Implement disposition logic
+        return DispositionType.CONTINUE
+{% endif %}

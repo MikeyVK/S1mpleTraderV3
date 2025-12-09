@@ -98,39 +98,83 @@ class ScaffoldManager:
         name: str,
         fields: list[dict[str, Any]],
         docstring: str | None = None,
+        description: str | None = None,
+        extended_description: str | None = None,
+        id_prefix: str | None = None,
+        has_causality: bool = False,
+        has_timestamp: bool = True,
+        has_id_generator: bool = False,
+        frozen: bool = True,
+        layer: str = "Strategy",
+        examples: list[dict[str, Any]] | None = None,
+        custom_validators: list[dict[str, Any]] | None = None,
     ) -> str:
         """Render a DTO (Data Transfer Object).
-        
+
+        Generates a Pydantic-based DTO following project coding standards:
+        - Proper import grouping (stdlib, third-party, project)
+        - ID validation with military datetime format
+        - Optional causality tracking
+        - UTC timestamp handling
+        - json_schema_extra with examples
+        - frozen=True by default
+
         Args:
             name: DTO class name (PascalCase)
-            fields: List of field definitions with 'name', 'type', optional 'default', 'optional'
+            fields: List of field definitions with keys:
+                - name: Field name
+                - type: Field type
+                - default: Optional default value
+                - optional: If True, makes field optional (X | None)
+                - description: Field description for Field()
+                - ge, le, min_length, max_length, pattern: Validation constraints
             docstring: Optional class docstring
-            
+            description: Short description for module docstring
+            extended_description: Extended description for module docstring
+            id_prefix: ID prefix for validation (e.g., 'SIG' for Signal DTO)
+            has_causality: Include CausalityChain field
+            has_timestamp: Include timestamp field with UTC validation
+            has_id_generator: Use id_generator from backend.utils
+            frozen: Whether DTO is immutable (default: True)
+            layer: Architecture layer (e.g., 'Strategy', 'Execution')
+            examples: List of example dicts for json_schema_extra
+            custom_validators: List of custom validators with keys:
+                - field: Field name to validate
+                - type: Field type
+                - description: Validator docstring
+                - code: Validation code
+
         Returns:
             Rendered Python code as string
         """
         self._validate_pascal_case(name)
-        
-        # Process fields for optional handling
-        processed_fields = []
-        for field in fields:
-            f = field.copy()
-            if f.get("optional"):
-                f["type"] = f"{f['type']} | None"
-                if "default" not in f:
-                    f["default"] = "None"
-            processed_fields.append(f)
-        
+
+        # Derive id_prefix from name if not provided
+        if not id_prefix:
+            # Extract prefix from name: SignalDTO -> SIG, EntryPlan -> ENT
+            clean_name = name.replace("DTO", "").replace("Plan", "")
+            id_prefix = clean_name[:3].upper()
+
         try:
             template = self.get_template("components/dto.py.jinja2")
             return template.render(
                 name=name,
-                fields=processed_fields,
+                fields=fields,
                 docstring=docstring or f"{name} data transfer object.",
+                description=description,
+                extended_description=extended_description,
+                id_prefix=id_prefix,
+                has_causality=has_causality,
+                has_timestamp=has_timestamp,
+                has_id_generator=has_id_generator,
+                frozen=frozen,
+                layer=layer,
+                examples=examples,
+                custom_validators=custom_validators,
             )
         except ExecutionError:
             # Fallback: generate without template
-            return self._render_dto_fallback(name, processed_fields, docstring)
+            return self._render_dto_fallback(name, fields, docstring)
 
     def _render_dto_fallback(
         self,
@@ -168,30 +212,63 @@ class ScaffoldManager:
         name: str,
         input_dto: str,
         output_dto: str,
+        worker_type: str = "context_worker",
         dependencies: list[str] | None = None,
+        description: str | None = None,
+        extended_description: str | None = None,
+        responsibilities: list[str] | None = None,
+        pipeline_position: str | None = None,
+        has_causality: bool = True,
+        input_dto_module: str | None = None,
+        output_dto_module: str | None = None,
     ) -> str:
         """Render a Worker class.
-        
+
+        Generates a Worker following project patterns:
+        - Proper import grouping
+        - BaseWorker inheritance with generic types
+        - IStrategyCache dependency injection
+        - Async process method
+        - DispositionType handling
+        - ContextWorker objective data constraints
+
         Args:
             name: Worker name (will add 'Worker' suffix if needed)
             input_dto: Input DTO class name
             output_dto: Output DTO class name
-            dependencies: Optional list of dependency declarations
-            
+            worker_type: Worker category (context_worker, signal_detector,
+                risk_monitor, planning_worker, strategy_planner, execution_worker)
+            dependencies: List of dependency declarations (e.g., ['config: Config'])
+            description: Short description for module docstring
+            extended_description: Extended description
+            responsibilities: List of worker responsibilities
+            pipeline_position: Position in processing pipeline
+            has_causality: Whether to chain causality from input to output
+            input_dto_module: Import path for input DTO
+            output_dto_module: Import path for output DTO
+
         Returns:
             Rendered Python code as string
         """
         self._validate_pascal_case(name)
-        
+
         worker_name = name if name.endswith("Worker") else f"{name}Worker"
-        
+
         try:
             template = self.get_template("components/worker.py.jinja2")
             return template.render(
                 name=worker_name,
                 input_dto=input_dto,
                 output_dto=output_dto,
+                worker_type=worker_type,
                 dependencies=dependencies or [],
+                description=description,
+                extended_description=extended_description,
+                responsibilities=responsibilities,
+                pipeline_position=pipeline_position,
+                has_causality=has_causality,
+                input_dto_module=input_dto_module,
+                output_dto_module=output_dto_module,
             )
         except ExecutionError:
             return self._render_worker_fallback(
@@ -250,25 +327,54 @@ class {name}(BaseWorker[{input_dto}, {output_dto}]):
         self,
         name: str,
         methods: list[dict[str, str]],
+        description: str | None = None,
+        extended_description: str | None = None,
+        responsibilities: list[str] | None = None,
+        constructor_params: str | None = None,
+        exception_type: str = "ExecutionError",
+        layer: str = "Infrastructure",
     ) -> str:
         """Render an Adapter class.
-        
+
+        Generates an Adapter following project patterns:
+        - Interface definition (Protocol)
+        - Proper import grouping
+        - Error handling with project exceptions
+        - Dependency injection via constructor
+
         Args:
             name: Adapter name (will add 'Adapter' suffix if needed)
-            methods: List of method definitions with 'name', 'params', 'return_type'
-            
+            methods: List of method definitions with keys:
+                - name: Method name
+                - params: Parameter string (e.g., 'data: dict[str, Any]')
+                - return_type: Return type
+                - description: Method docstring
+                - return_description: Description of return value
+            description: Short description for module docstring
+            extended_description: Extended description
+            responsibilities: List of adapter responsibilities
+            constructor_params: Constructor parameter string
+            exception_type: Exception type to raise on errors
+            layer: Architecture layer
+
         Returns:
             Rendered Python code as string
         """
         self._validate_pascal_case(name)
-        
+
         adapter_name = name if name.endswith("Adapter") else f"{name}Adapter"
-        
+
         try:
             template = self.get_template("components/adapter.py.jinja2")
             return template.render(
                 name=adapter_name,
                 methods=methods,
+                description=description,
+                extended_description=extended_description,
+                responsibilities=responsibilities,
+                constructor_params=constructor_params,
+                exception_type=exception_type,
+                layer=layer,
             )
         except ExecutionError:
             return self._render_adapter_fallback(adapter_name, methods)
@@ -307,21 +413,67 @@ class {name}(BaseWorker[{input_dto}, {output_dto}]):
         self,
         dto_name: str,
         module_path: str,
+        description: str | None = None,
+        id_prefix: str | None = None,
+        has_timestamp: bool = True,
+        has_causality: bool = False,
+        frozen: bool = True,
+        required_fields: list[dict[str, Any]] | None = None,
+        optional_fields: list[dict[str, Any]] | None = None,
+        validated_fields: list[dict[str, Any]] | None = None,
     ) -> str:
         """Render a test file for a DTO.
-        
+
+        Generates comprehensive tests following project TDD requirements:
+        - 20+ tests for complex DTOs
+        - Creation, validation, immutability, edge cases
+        - ID format validation
+        - Timestamp UTC handling (if applicable)
+        - Field-specific validation tests
+
         Args:
             dto_name: Name of the DTO class to test
             module_path: Import path for the DTO module
-            
+            description: Test module description
+            id_prefix: ID prefix for validation tests
+            has_timestamp: Whether DTO has timestamp field
+            has_causality: Whether DTO tracks causality
+            frozen: Whether DTO is immutable
+            required_fields: List of required fields with keys:
+                - name: Field name
+                - example: Example value for tests
+            optional_fields: List of optional fields
+            validated_fields: List of fields with validation to test, with keys:
+                - name: Field name
+                - valid_example: Valid value
+                - invalid_example: Invalid value (optional)
+                - min_value, max_value: Range bounds (optional)
+
         Returns:
             Rendered Python test code as string
         """
+        # Derive id_prefix from name if not provided
+        if not id_prefix:
+            clean_name = dto_name.replace("DTO", "").replace("Plan", "")
+            id_prefix = clean_name[:3].upper()
+
+        # Combine all fields for certain tests
+        all_fields = (required_fields or []) + (optional_fields or [])
+
         try:
             template = self.get_template("components/dto_test.py.jinja2")
             return template.render(
                 dto_name=dto_name,
                 module_path=module_path,
+                description=description,
+                id_prefix=id_prefix,
+                has_timestamp=has_timestamp,
+                has_causality=has_causality,
+                frozen=frozen,
+                required_fields=required_fields or [],
+                optional_fields=optional_fields or [],
+                validated_fields=validated_fields or [],
+                all_fields=all_fields,
             )
         except ExecutionError:
             return self._render_dto_test_fallback(dto_name, module_path)
@@ -347,6 +499,80 @@ class Test{dto_name}:
         pass
 '''
 
+    def render_worker_test(
+        self,
+        worker_name: str,
+        module_path: str,
+        input_dto: str | None = None,
+        output_dto: str | None = None,
+        worker_type: str = "context_worker",
+        description: str | None = None,
+        dependencies: list[str] | None = None,
+    ) -> str:
+        """Render a test file for a Worker.
+
+        Generates comprehensive tests following project TDD requirements:
+        - Processing tests with valid/invalid input
+        - Dependency injection tests
+        - Error handling and recovery
+        - Output contract validation
+
+        Args:
+            worker_name: Name of the Worker class to test
+            module_path: Import path for the Worker module
+            input_dto: Input DTO class name
+            output_dto: Output DTO class name
+            worker_type: Type of worker (context_worker, signal_detector, etc.)
+            description: Test module description
+            dependencies: List of dependencies to mock in tests
+
+        Returns:
+            Rendered Python test code as string
+        """
+        try:
+            template = self.get_template("components/worker_test.py.jinja2")
+            return template.render(
+                worker_name=worker_name,
+                module_path=module_path,
+                input_dto=input_dto,
+                output_dto=output_dto,
+                worker_type=worker_type,
+                description=description,
+                dependencies=dependencies or [],
+            )
+        except ExecutionError:
+            return self._render_worker_test_fallback(worker_name, module_path)
+
+    def _render_worker_test_fallback(self, worker_name: str, module_path: str) -> str:
+        """Fallback worker test rendering without template."""
+        return f'''"""Tests for {worker_name}."""
+import pytest
+from {module_path} import {worker_name}
+
+
+class Test{worker_name}Processing:
+    """Tests for {worker_name} processing logic."""
+
+    def test_process_valid_input(self) -> None:
+        """Test processing with valid input."""
+        # TODO: Add test implementation
+        pass
+
+    def test_process_invalid_input(self) -> None:
+        """Test processing with invalid input raises error."""
+        # TODO: Add test implementation
+        pass
+
+
+class Test{worker_name}ErrorHandling:
+    """Tests for {worker_name} error handling."""
+
+    def test_handles_missing_dependency(self) -> None:
+        """Test graceful handling of missing dependencies."""
+        # TODO: Add test implementation
+        pass
+'''
+
     def render_design_doc(
         self,
         title: str,
@@ -354,16 +580,55 @@ class Test{dto_name}:
         summary: str | None = None,
         sections: list[str] | None = None,
         status: str = "DRAFT",
+        version: str = "0.1.0",
+        context: str | None = None,
+        problem_statement: str | None = None,
+        goals: list[str] | None = None,
+        requirements: list[dict[str, str]] | None = None,
+        design_decision: str | None = None,
+        alternatives: list[dict[str, str]] | None = None,
+        implementation_steps: list[str] | None = None,
+        tdd_phases: list[dict[str, Any]] | None = None,
+        risks: list[dict[str, str]] | None = None,
     ) -> str:
         """Render a design document.
-        
+
+        Generates comprehensive design documentation following project standards:
+        - Version history with status tracking
+        - Problem statement and context
+        - Goals and requirements (functional/non-functional)
+        - Design decisions with alternatives considered
+        - TDD implementation phases
+        - Risk assessment
+
         Args:
             title: Document title
             author: Document author
             summary: Executive summary
-            sections: List of section headings to include
+            sections: List of section headings to include (for simple docs)
             status: Document status (DRAFT, REVIEW, APPROVED)
-            
+            version: Document version (semver)
+            context: System context description
+            problem_statement: Problem being solved
+            goals: List of goals
+            requirements: List of requirements with keys:
+                - id: Requirement ID (FR-001, NFR-001)
+                - description: Requirement description
+                - priority: Priority (Must/Should/Could)
+            design_decision: Main design decision description
+            alternatives: List of alternatives with keys:
+                - name: Alternative name
+                - pros: Pros description
+                - cons: Cons description
+            implementation_steps: List of implementation steps
+            tdd_phases: List of TDD phases with keys:
+                - phase: Phase name (Red/Green/Refactor)
+                - tasks: List of task descriptions
+            risks: List of risks with keys:
+                - description: Risk description
+                - mitigation: Mitigation strategy
+                - impact: Impact level (High/Medium/Low)
+
         Returns:
             Rendered Markdown as string
         """
@@ -375,6 +640,16 @@ class Test{dto_name}:
                 summary=summary,
                 sections=sections or ["Overview", "Requirements", "Design", "Implementation"],
                 status=status,
+                version=version,
+                context=context,
+                problem_statement=problem_statement,
+                goals=goals or [],
+                requirements=requirements or [],
+                design_decision=design_decision,
+                alternatives=alternatives or [],
+                implementation_steps=implementation_steps or [],
+                tdd_phases=tdd_phases or [],
+                risks=risks or [],
             )
         except ExecutionError:
             return self._render_design_doc_fallback(

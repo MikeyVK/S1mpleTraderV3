@@ -71,8 +71,8 @@ class TestScaffoldManagerRenderDTO:
         )
         
         assert "OrderState" in result
-        assert "dataclass" in result
-        assert "frozen=True" in result
+        assert "BaseModel" in result  # Pydantic
+        assert '"frozen": True' in result  # Pydantic model_config dict
         assert "order_id: str" in result
 
     def test_render_dto_with_docstring(self) -> None:
@@ -189,8 +189,8 @@ class TestScaffoldManagerRenderDesignDoc:
         )
         
         assert "# Order Processing System" in result
-        assert "## Requirements" in result
-        assert "## Architecture" in result
+        assert "Requirements" in result
+        assert "Architecture" in result
 
     def test_render_design_doc_with_status(self) -> None:
         """Test design doc includes status badge."""

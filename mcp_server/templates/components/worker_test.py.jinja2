@@ -1,0 +1,210 @@
+# {{ test_output_path | default('tests/unit/workers/' + worker_type + '/test_' + name.lower() + '.py') }}
+"""
+Unit tests for {{ name }}.
+
+Tests the {{ description | default(name + ' worker') }} processing logic according to TDD principles.
+Covers: initialization, processing, disposition, error handling.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, {{ module_path }}, {{ input_dto }}, {{ output_dto }}]
+"""
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
+
+# Standard library
+from datetime import datetime, timezone
+from decimal import Decimal
+from unittest.mock import AsyncMock, MagicMock, patch
+
+# Third-party
+import pytest
+
+# Module under test
+from {{ module_path }} import {{ name }}
+from {{ input_dto_module | default('backend.dtos.strategy.' + input_dto.lower()) }} import {{ input_dto }}
+from {{ output_dto_module | default('backend.dtos.strategy.' + output_dto.lower()) }} import {{ output_dto }}
+from backend.core.enums import DispositionType
+
+
+class Test{{ name }}Initialization:
+    """Tests for {{ name }} initialization."""
+
+    def test_init_with_required_dependencies(self) -> None:
+        """Test {{ name }} can be initialized with required dependencies."""
+        mock_cache = MagicMock()
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+        mock_{{ dep_name }} = MagicMock()
+{% endfor %}
+
+        worker = {{ name }}(
+            strategy_cache=mock_cache,
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+            {{ dep_name }}=mock_{{ dep_name }},
+{% endfor %}
+        )
+
+        assert worker is not None
+        assert worker._strategy_cache == mock_cache
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+        assert worker._{{ dep_name }} == mock_{{ dep_name }}
+{% endfor %}
+
+
+class Test{{ name }}Processing:
+    """Tests for {{ name }} process method."""
+
+    @pytest.fixture
+    def worker(self) -> {{ name }}:
+        """Create worker instance with mocked dependencies."""
+        mock_cache = MagicMock()
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+        mock_{{ dep_name }} = MagicMock()
+{% endfor %}
+
+        return {{ name }}(
+            strategy_cache=mock_cache,
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+            {{ dep_name }}=mock_{{ dep_name }},
+{% endfor %}
+        )
+
+    @pytest.fixture
+    def valid_input(self) -> {{ input_dto }}:
+        """Create valid input DTO for testing."""
+        return {{ input_dto }}(
+            # TODO: Add required fields with valid test values
+        )
+
+    @pytest.mark.asyncio
+    async def test_process_returns_output_dto(
+        self, worker: {{ name }}, valid_input: {{ input_dto }}
+    ) -> None:
+        """Test process returns correct output DTO type."""
+        result = await worker.process(valid_input)
+
+        assert isinstance(result, {{ output_dto }})
+
+    @pytest.mark.asyncio
+    async def test_process_preserves_causality(
+        self, worker: {{ name }}, valid_input: {{ input_dto }}
+    ) -> None:
+        """Test process chains causality from input to output."""
+        result = await worker.process(valid_input)
+
+{% if has_causality %}
+        # Verify causality chain is extended
+        assert result.causality is not None
+        # TODO: Verify causality chain includes input reference
+{% else %}
+        # This worker does not track causality
+        pass
+{% endif %}
+
+{% if worker_type == 'context_worker' %}
+    @pytest.mark.asyncio
+    async def test_process_stores_in_cache(
+        self, worker: {{ name }}, valid_input: {{ input_dto }}
+    ) -> None:
+        """Test ContextWorker stores result in StrategyCache."""
+        result = await worker.process(valid_input)
+
+        worker._strategy_cache.set_result_dto.assert_called_once_with(result)
+
+    @pytest.mark.asyncio
+    async def test_output_contains_objective_data_only(
+        self, worker: {{ name }}, valid_input: {{ input_dto }}
+    ) -> None:
+        """Test ContextWorker output contains only objective facts.
+
+        Per OBJECTIVE_DATA_PHILOSOPHY.md:
+        - NO subjective labels: "bullish", "strong", "good"
+        - YES objective data: prices, ratios, counts, timestamps
+        """
+        result = await worker.process(valid_input)
+
+        # Get output as dict for inspection
+        output_data = result.model_dump()
+
+        # Verify no subjective labels in any string values
+        subjective_terms = ["bullish", "bearish", "strong", "weak", "good", "bad"]
+        for key, value in output_data.items():
+            if isinstance(value, str):
+                assert not any(
+                    term in value.lower() for term in subjective_terms
+                ), f"Field '{key}' contains subjective label: {value}"
+
+{% endif %}
+
+class Test{{ name }}Disposition:
+    """Tests for {{ name }} disposition determination."""
+
+    @pytest.fixture
+    def worker(self) -> {{ name }}:
+        """Create worker instance."""
+        return {{ name }}(
+            strategy_cache=MagicMock(),
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+            {{ dep_name }}=MagicMock(),
+{% endfor %}
+        )
+
+    @pytest.fixture
+    def valid_output(self) -> {{ output_dto }}:
+        """Create valid output DTO."""
+        return {{ output_dto }}(
+            # TODO: Add required fields
+        )
+
+    def test_get_disposition_returns_correct_type(
+        self, worker: {{ name }}, valid_output: {{ output_dto }}
+    ) -> None:
+        """Test get_disposition returns correct DispositionType."""
+        result = worker.get_disposition(valid_output)
+
+        assert isinstance(result, DispositionType)
+{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %}
+        assert result == DispositionType.PUBLISH
+{% elif worker_type == 'context_worker' %}
+        assert result == DispositionType.CONTINUE
+{% else %}
+        # TODO: Verify expected disposition
+{% endif %}
+
+
+class Test{{ name }}ErrorHandling:
+    """Tests for {{ name }} error handling."""
+
+    @pytest.fixture
+    def worker(self) -> {{ name }}:
+        """Create worker instance."""
+        return {{ name }}(
+            strategy_cache=MagicMock(),
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+            {{ dep_name }}=MagicMock(),
+{% endfor %}
+        )
+
+    @pytest.mark.asyncio
+    async def test_process_handles_invalid_input(self, worker: {{ name }}) -> None:
+        """Test process handles invalid input gracefully."""
+        # TODO: Define what constitutes invalid input and expected behavior
+        pass
+
+    @pytest.mark.asyncio
+    async def test_process_handles_dependency_failure(
+        self, worker: {{ name }}
+    ) -> None:
+        """Test process handles dependency failures gracefully."""
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+        # Simulate {{ dep_name }} failure
+        worker._{{ dep_name }}.some_method.side_effect = RuntimeError("Dependency failed")
+{% endfor %}
+        # TODO: Verify error handling behavior
+        pass
