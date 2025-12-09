@@ -1,0 +1,30 @@
+"""Generated Worker module."""
+from typing import Any
+
+from backend.core.interfaces.base_worker import BaseWorker
+
+
+class {{ name }}(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
+    """Worker that processes {{ input_dto }} and produces {{ output_dto }}."""
+
+    def __init__(self{% if dependencies %}, {{ dependencies | join(', ') }}{% endif %}) -> None:
+        """Initialize the worker."""
+        super().__init__()
+{% for dep in dependencies %}
+{% set dep_name = dep.split(':')[0].strip() %}
+        self.{{ dep_name }} = {{ dep_name }}
+{% endfor %}
+
+    async def process(self, input_data: {{ input_dto }}) -> {{ output_dto }}:
+        """Process input and return output.
+        
+        Args:
+            input_data: Input DTO to process
+            
+        Returns:
+            Processed output DTO
+            
+        Raises:
+            NotImplementedError: Until implementation is complete
+        """
+        raise NotImplementedError("Implement process method")

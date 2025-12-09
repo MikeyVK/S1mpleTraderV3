@@ -202,3 +202,88 @@ Running in thread pool via to_thread...
 to_thread completed, returncode: 0
 Output length: 13569
 Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/managers/test_scaffold_manager.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_scaffold_manager.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_scaffold_manager.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 58808
+[thread] Completed with returncode: 2
+[thread] stdout length: 1594
+[thread] stderr length: 0
+[thread] Duration: 1.24s
+to_thread completed, returncode: 2
+Output length: 1594
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/managers/test_scaffold_manager.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_scaffold_manager.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_scaffold_manager.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 42932
+[thread] Completed with returncode: 2
+[thread] stdout length: 1690
+[thread] stderr length: 0
+[thread] Duration: 1.25s
+to_thread completed, returncode: 2
+Output length: 1690
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/managers/test_scaffold_manager.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_scaffold_manager.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_scaffold_manager.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 20576
+[thread] Completed with returncode: 1
+[thread] stdout length: 20443
+[thread] stderr length: 0
+[thread] Duration: 1.92s
+to_thread completed, returncode: 1
+Output length: 20443
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/managers/test_scaffold_manager.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_scaffold_manager.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_scaffold_manager.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 58260
+[thread] Completed with returncode: 0
+[thread] stdout length: 2976
+[thread] stderr length: 0
+[thread] Duration: 1.26s
+to_thread completed, returncode: 0
+Output length: 2976
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 9148
+[thread] Completed with returncode: 0
+[thread] stdout length: 15991
+[thread] stderr length: 0
+[thread] Duration: 3.03s
+to_thread completed, returncode: 0
+Output length: 15991
+Returning result

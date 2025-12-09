@@ -1,0 +1,26 @@
+"""Generated Adapter module."""
+from typing import Any
+
+
+class {{ name }}:
+    """{{ name }} for external integration."""
+
+    def __init__(self) -> None:
+        """Initialize the adapter."""
+        pass
+{% for method in methods %}
+
+    def {{ method.name }}(self, {{ method.params }}) -> {{ method.return_type }}:
+        """Execute {{ method.name }} operation.
+        
+        Args:
+            {{ method.params.split(':')[0] }}: Input parameter
+            
+        Returns:
+            {{ method.return_type }}: Operation result
+            
+        Raises:
+            NotImplementedError: Until implementation is complete
+        """
+        raise NotImplementedError("Implement {{ method.name }}")
+{% endfor %}

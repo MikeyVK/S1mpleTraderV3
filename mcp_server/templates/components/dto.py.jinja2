@@ -1,0 +1,24 @@
+"""Generated DTO module."""
+from dataclasses import dataclass
+from typing import Any
+{% if imports %}
+{% for imp in imports %}
+{{ imp }}
+{% endfor %}
+{% endif %}
+
+
+@dataclass(frozen=True)
+class {{ name }}:
+    """{{ docstring }}"""
+{% if fields %}
+{% for field in fields %}
+{% if field.default is defined %}
+    {{ field.name }}: {{ field.type }} = {{ field.default }}
+{% else %}
+    {{ field.name }}: {{ field.type }}
+{% endif %}
+{% endfor %}
+{% else %}
+    pass
+{% endif %}

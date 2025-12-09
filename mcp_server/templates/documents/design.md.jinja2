@@ -1,0 +1,20 @@
+# {{ title }}
+
+**Status:** {{ status }}
+{% if author %}**Author:** {{ author }}{% endif %}
+**Created:** {{ now().strftime('%Y-%m-%d') if now is defined else 'YYYY-MM-DD' }}
+
+---
+{% if summary %}
+
+## Summary
+
+{{ summary }}
+{% endif %}
+{% for section in sections %}
+
+## {{ section }}
+
+TODO: Add content for {{ section }}
+
+{% endfor %}
