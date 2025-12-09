@@ -90,3 +90,23 @@ class GitManager:
             )
         self.adapter.delete_branch(branch_name, force=force)
 
+    def stash(self, message: str | None = None) -> None:
+        """Stash current changes.
+        
+        Args:
+            message: Optional message for the stash entry.
+        """
+        self.adapter.stash(message=message)
+
+    def stash_pop(self) -> None:
+        """Pop the latest stash entry."""
+        self.adapter.stash_pop()
+
+    def stash_list(self) -> list[str]:
+        """List all stash entries.
+        
+        Returns:
+            List of stash entry descriptions.
+        """
+        return self.adapter.stash_list()
+

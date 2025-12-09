@@ -211,3 +211,50 @@ class GitDeleteBranchTool(BaseTool):
         self.manager.delete_branch(branch, force=force)
         return ToolResult.text(f"Deleted branch: {branch}")
 
+
+class GitStashTool(BaseTool):
+    """Tool to stash changes in a dirty working directory."""
+
+    name = "git_stash"
+    description = "Stash the changes in a dirty working directory (git stash)"
+
+    def __init__(self, manager: GitManager | None = None) -> None:
+        self.manager = manager or GitManager()
+
+    @property
+    def input_schema(self) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["push", "pop", "list"],
+                    "description": "Stash action: push (save), pop (restore), list"
+                },
+                "message": {
+                    "type": "string",
+                    "description": "Optional name for the stash (only for push)"
+                }
+            },
+            "required": ["action"]
+        }
+
+    async def execute(
+        self, action: str, message: str | None = None, **kwargs: Any
+    ) -> ToolResult:
+        if action == "push":
+            self.manager.stash(message=message)
+            if message:
+                return ToolResult.text(f"Stashed changes: {message}")
+            return ToolResult.text("Stashed current changes")
+        elif action == "pop":
+            self.manager.stash_pop()
+            return ToolResult.text("Applied and removed latest stash")
+        elif action == "list":
+            stashes = self.manager.stash_list()
+            if not stashes:
+                return ToolResult.text("No stashes found")
+            return ToolResult.text("\n".join(stashes))
+        else:
+            return ToolResult.text(f"Unknown action: {action}")
+

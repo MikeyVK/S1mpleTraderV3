@@ -132,3 +132,38 @@ class GitAdapter:
             raise
         except Exception as e:
             raise ExecutionError(f"Failed to delete {branch_name}: {e}") from e
+
+    def stash(self, message: str | None = None) -> None:
+        """Stash current changes.
+        
+        Args:
+            message: Optional message for the stash entry.
+        """
+        try:
+            if message:
+                self.repo.git.stash("push", "-m", message)
+            else:
+                self.repo.git.stash("push")
+        except Exception as e:
+            raise ExecutionError(f"Failed to stash changes: {e}") from e
+
+    def stash_pop(self) -> None:
+        """Pop the latest stash entry."""
+        try:
+            self.repo.git.stash("pop")
+        except Exception as e:
+            raise ExecutionError(f"Failed to pop stash: {e}") from e
+
+    def stash_list(self) -> list[str]:
+        """List all stash entries.
+        
+        Returns:
+            List of stash entry descriptions.
+        """
+        try:
+            output = self.repo.git.stash("list")
+            if not output:
+                return []
+            return output.strip().split("\n")
+        except Exception as e:
+            raise ExecutionError(f"Failed to list stashes: {e}") from e

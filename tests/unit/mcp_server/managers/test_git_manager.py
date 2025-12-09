@@ -171,3 +171,58 @@ class TestGitManagerDeleteBranch:
         for branch in ["main", "master", "develop"]:
             with pytest.raises(ValidationError, match="Cannot delete"):
                 manager.delete_branch(branch)
+
+
+class TestGitManagerStash:
+    """Tests for stash functionality."""
+
+    def test_stash_changes(self) -> None:
+        """Test stash current changes."""
+        mock_adapter = MagicMock()
+
+        manager = GitManager(adapter=mock_adapter)
+        manager.stash()
+
+        mock_adapter.stash.assert_called_once_with(message=None)
+
+    def test_stash_with_message(self) -> None:
+        """Test stash with custom message."""
+        mock_adapter = MagicMock()
+
+        manager = GitManager(adapter=mock_adapter)
+        manager.stash(message="WIP: feature work")
+
+        mock_adapter.stash.assert_called_once_with(message="WIP: feature work")
+
+    def test_stash_pop(self) -> None:
+        """Test pop the latest stash."""
+        mock_adapter = MagicMock()
+
+        manager = GitManager(adapter=mock_adapter)
+        manager.stash_pop()
+
+        mock_adapter.stash_pop.assert_called_once()
+
+    def test_stash_list(self) -> None:
+        """Test list all stashes."""
+        mock_adapter = MagicMock()
+        mock_adapter.stash_list.return_value = [
+            "stash@{0}: WIP on main: abc1234",
+            "stash@{1}: On feature: def5678"
+        ]
+
+        manager = GitManager(adapter=mock_adapter)
+        result = manager.stash_list()
+
+        mock_adapter.stash_list.assert_called_once()
+        assert len(result) == 2
+
+    def test_stash_list_empty(self) -> None:
+        """Test list stashes when none exist."""
+        mock_adapter = MagicMock()
+        mock_adapter.stash_list.return_value = []
+
+        manager = GitManager(adapter=mock_adapter)
+        result = manager.stash_list()
+
+        assert result == []

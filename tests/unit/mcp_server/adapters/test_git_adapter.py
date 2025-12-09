@@ -149,6 +149,84 @@ class TestGitAdapterDeleteBranch:
             mock_repo.heads.__contains__ = lambda self, x: False
             mock_repo_class.return_value = mock_repo
 
+
+class TestGitAdapterStash:
+    """Tests for git stash functionality."""
+
+    def test_stash_changes(self) -> None:
+        """Test stash current changes."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.stash()
+
+            mock_repo.git.stash.assert_called_once_with("push")
+
+    def test_stash_with_message(self) -> None:
+        """Test stash with custom message."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.stash(message="WIP: feature work")
+
+            mock_repo.git.stash.assert_called_once_with("push", "-m", "WIP: feature work")
+
+    def test_stash_pop(self) -> None:
+        """Test pop the latest stash."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.stash_pop()
+
+            mock_repo.git.stash.assert_called_once_with("pop")
+
+    def test_stash_list(self) -> None:
+        """Test list all stashes."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.git.stash.return_value = (
+                "stash@{0}: WIP on main: abc1234 commit msg\n"
+                "stash@{1}: On feature: def5678 another msg"
+            )
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            result = adapter.stash_list()
+
+            mock_repo.git.stash.assert_called_once_with("list")
+            assert len(result) == 2
+            assert "stash@{0}" in result[0]
+
+    def test_stash_list_empty(self) -> None:
+        """Test list stashes when none exist."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.git.stash.return_value = ""
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            result = adapter.stash_list()
+
+            assert result == []
+
+    def test_stash_error_handling(self) -> None:
+        """Test stash error is wrapped in ExecutionError."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.git.stash.side_effect = Exception("Git error")
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            with pytest.raises(ExecutionError, match="stash"):
+                adapter.stash()
+
             adapter = GitAdapter("/fake/path")
 
             with pytest.raises(ExecutionError, match="does not exist"):

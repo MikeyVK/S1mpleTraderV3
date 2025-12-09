@@ -30,6 +30,7 @@ from mcp_server.tools.git_tools import (
     GitPushTool,
     GitMergeTool,
     GitDeleteBranchTool,
+    GitStashTool,
 )
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.docs_tools import ValidateDocTool
@@ -69,6 +70,7 @@ class MCPServer:
             GitPushTool(),
             GitMergeTool(),
             GitDeleteBranchTool(),
+            GitStashTool(),
             # Quality tools
             RunQualityGatesTool(),
             ValidateDocTool(),

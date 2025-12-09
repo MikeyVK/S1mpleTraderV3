@@ -7,6 +7,7 @@ from mcp_server.tools.git_tools import (
     GitMergeTool,
     GitCheckoutTool,
     GitDeleteBranchTool,
+    GitStashTool,
 )
 
 
@@ -208,3 +209,77 @@ class TestGitDeleteBranchTool:
         assert "force" in schema["properties"]
         assert "branch" in schema["required"]
         assert schema["properties"]["force"]["type"] == "boolean"
+
+
+class TestGitStashTool:
+    """Tests for GitStashTool."""
+
+    @pytest.mark.asyncio
+    async def test_stash_push(self) -> None:
+        """Test stash push action."""
+        mock_manager = MagicMock()
+
+        tool = GitStashTool(manager=mock_manager)
+        result = await tool.execute(action="push")
+
+        mock_manager.stash.assert_called_once_with(message=None)
+        assert "Stashed" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_stash_push_with_message(self) -> None:
+        """Test stash push with custom message."""
+        mock_manager = MagicMock()
+
+        tool = GitStashTool(manager=mock_manager)
+        result = await tool.execute(action="push", message="WIP: feature work")
+
+        mock_manager.stash.assert_called_once_with(message="WIP: feature work")
+        assert "WIP: feature work" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_stash_pop(self) -> None:
+        """Test stash pop action."""
+        mock_manager = MagicMock()
+
+        tool = GitStashTool(manager=mock_manager)
+        result = await tool.execute(action="pop")
+
+        mock_manager.stash_pop.assert_called_once()
+        assert "Applied" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_stash_list(self) -> None:
+        """Test stash list action."""
+        mock_manager = MagicMock()
+        mock_manager.stash_list.return_value = [
+            "stash@{0}: WIP on main: abc1234",
+            "stash@{1}: On feature: def5678"
+        ]
+
+        tool = GitStashTool(manager=mock_manager)
+        result = await tool.execute(action="list")
+
+        mock_manager.stash_list.assert_called_once()
+        assert "stash@{0}" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_stash_list_empty(self) -> None:
+        """Test stash list when no stashes exist."""
+        mock_manager = MagicMock()
+        mock_manager.stash_list.return_value = []
+
+        tool = GitStashTool(manager=mock_manager)
+        result = await tool.execute(action="list")
+
+        assert "No stashes" in result.content[0]["text"]
+
+    def test_stash_tool_schema(self) -> None:
+        """Test stash tool has correct schema."""
+        tool = GitStashTool(manager=MagicMock())
+        schema = tool.input_schema
+
+        assert "action" in schema["properties"]
+        assert "message" in schema["properties"]
+        assert "action" in schema["required"]
+        assert "enum" in schema["properties"]["action"]
+        assert set(schema["properties"]["action"]["enum"]) == {"push", "pop", "list"}

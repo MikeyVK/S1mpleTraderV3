@@ -15,3 +15,122 @@ Running in thread pool via to_thread...
 to_thread completed, returncode: 0
 Output length: 8526
 Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/adapters/test_git_adapter.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/adapters/test_git_adapter.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/adapters/test_git_adapter.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 56104
+[thread] Completed with returncode: 1
+[thread] stdout length: 4854
+[thread] stderr length: 0
+[thread] Duration: 1.51s
+to_thread completed, returncode: 1
+Output length: 4854
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/adapters/test_git_adapter.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/adapters/test_git_adapter.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/adapters/test_git_adapter.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 62380
+[thread] Completed with returncode: 0
+[thread] stdout length: 2413
+[thread] stderr length: 0
+[thread] Duration: 1.33s
+to_thread completed, returncode: 0
+Output length: 2413
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/managers/test_git_manager.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_git_manager.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_git_manager.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 47440
+[thread] Completed with returncode: 1
+[thread] stdout length: 4944
+[thread] stderr length: 0
+[thread] Duration: 1.51s
+to_thread completed, returncode: 1
+Output length: 4944
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/managers/test_git_manager.py, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_git_manager.py -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/managers/test_git_manager.py -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 65180
+[thread] Completed with returncode: 0
+[thread] stdout length: 2877
+[thread] stderr length: 0
+[thread] Duration: 1.35s
+to_thread completed, returncode: 0
+Output length: 2877
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/tools/test_git_tools.py::TestGitStashTool, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_git_tools.py::TestGitStashTool -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_git_tools.py::TestGitStashTool -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 9336
+[thread] Completed with returncode: 4
+[thread] stdout length: 1519
+[thread] stderr length: 118
+[thread] Duration: 1.47s
+to_thread completed, returncode: 4
+Output length: 1646
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/tools/test_git_tools.py::TestGitStashTool, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_git_tools.py::TestGitStashTool -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/tools/test_git_tools.py::TestGitStashTool -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 37708
+[thread] Completed with returncode: 0
+[thread] stdout length: 1148
+[thread] stderr length: 0
+[thread] Duration: 1.41s
+to_thread completed, returncode: 0
+Output length: 1148
+Returning result
+==================================================
+run_tests called with path=tests/unit/mcp_server/, timeout=None
+Command: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+Effective timeout: 300
+Workspace root: D:/dev/SimpleTraderV3
+Running in thread pool via to_thread...
+[thread] Running: d:\dev\SimpleTraderV3\.venv\Scripts\python.exe -m pytest tests/unit/mcp_server/ -v --tb=short
+[thread] CWD: D:/dev/SimpleTraderV3, timeout: 300
+[thread] VIRTUAL_ENV set to: d:\dev\SimpleTraderV3\.venv
+[thread] Process started, PID: 67164
+[thread] Completed with returncode: 0
+[thread] stdout length: 10296
+[thread] stderr length: 0
+[thread] Duration: 2.85s
+to_thread completed, returncode: 0
+Output length: 10296
+Returning result
