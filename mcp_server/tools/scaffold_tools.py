@@ -105,7 +105,17 @@ class ScaffoldComponentTool(BaseTool):
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "fields": {"type": "array"}
+                            "fields": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {"type": "string"},
+                                        "type": {"type": "string"}
+                                    },
+                                    "required": ["name", "type"]
+                                }
+                            }
                         }
                     }
                 },
