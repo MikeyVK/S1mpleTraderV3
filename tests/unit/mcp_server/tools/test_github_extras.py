@@ -6,7 +6,7 @@ import pytest
 
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.label_tools import AddLabelsTool
-from mcp_server.tools.pr_tools import CreatePRTool
+from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
 
 
 @pytest.fixture
@@ -53,3 +53,52 @@ def test_add_labels_tool(mock_adapter) -> None:
 
     assert "Added labels to #456" in result.content[0]["text"]
     mock_adapter.add_labels.assert_called_with(456, ["bug", "high-priority"])
+
+
+def test_list_prs_tool(mock_adapter) -> None:
+    """Test ListPRsTool lists pull requests with formatting."""
+    mock_base = Mock()
+    mock_base.ref = "main"
+    mock_head = Mock()
+    mock_head.ref = "feature/branch"
+
+    mock_pr = Mock()
+    mock_pr.number = 5
+    mock_pr.title = "Add feature"
+    mock_pr.state = "open"
+    mock_pr.base = mock_base
+    mock_pr.head = mock_head
+
+    mock_adapter.list_prs.return_value = [mock_pr]
+
+    manager = GitHubManager(adapter=mock_adapter)
+    tool = ListPRsTool(manager=manager)
+
+    result = asyncio.run(tool.execute())
+
+    assert not result.is_error
+    assert "#5" in result.content[0]["text"]
+    assert "feature/branch" in result.content[0]["text"]
+    mock_adapter.list_prs.assert_called_with(state="open", base=None, head=None)
+
+
+def test_merge_pr_tool(mock_adapter) -> None:
+    """Test MergePRTool merges PRs and returns confirmation."""
+    mock_adapter.merge_pr.return_value = {
+        "merged": True,
+        "sha": "abc123",
+        "message": "Merged"
+    }
+
+    manager = GitHubManager(adapter=mock_adapter)
+    tool = MergePRTool(manager=manager)
+
+    result = asyncio.run(tool.execute(pr_number=8, merge_method="squash"))
+
+    assert not result.is_error
+    assert "abc123" in result.content[0]["text"]
+    mock_adapter.merge_pr.assert_called_with(
+        pr_number=8,
+        commit_message=None,
+        merge_method="squash",
+    )

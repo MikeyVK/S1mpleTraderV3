@@ -3,6 +3,7 @@
 # pylint: disable=too-few-public-methods  # Manager pattern with single entry point
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -56,8 +57,9 @@ class QAManager:
 
         try:
             # Run pylint with specific checks
+            python_exe = sys.executable
             cmd = [
-                "python", "-m", "pylint",
+                python_exe, "-m", "pylint",
                 *files,
                 "--disable=all",
                 "--enable=trailing-whitespace,superfluous-parens,"
@@ -129,13 +131,14 @@ class QAManager:
             "gate_number": 2,
             "name": "Type Checking",
             "passed": True,
-            "score": "N/A",
+            "score": "Pass",
             "issues": []
         }
 
         try:
+            python_exe = sys.executable
             cmd = [
-                "python", "-m", "mypy",
+                python_exe, "-m", "mypy",
                 *files,
                 "--no-error-summary"
             ]
@@ -152,12 +155,15 @@ class QAManager:
             issues = self._parse_mypy_output(proc.stdout)
             result["issues"] = issues
             result["passed"] = len(issues) == 0
+            result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
 
         except subprocess.TimeoutExpired:
             result["passed"] = False
+            result["score"] = "Timeout"
             result["issues"] = [{"message": "Mypy timed out"}]
         except FileNotFoundError:
             result["passed"] = False
+            result["score"] = "Not Found"
             result["issues"] = [{"message": "Mypy not found"}]
 
         return result

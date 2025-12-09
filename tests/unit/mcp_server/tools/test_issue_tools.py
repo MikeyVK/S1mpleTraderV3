@@ -11,6 +11,7 @@ from mcp_server.tools.issue_tools import (
     CloseIssueTool,
     GetIssueTool,
     ListIssuesTool,
+    UpdateIssueTool,
 )
 
 
@@ -315,3 +316,68 @@ class TestCloseIssueTool:
 
         assert result.is_error
         assert "not found" in result.content[0]["text"].lower()
+
+
+class TestUpdateIssueTool:
+    """Tests for UpdateIssueTool."""
+
+    def test_tool_schema_requires_issue_number(self, mock_adapter) -> None:
+        """Should require issue_number parameter."""
+        manager = GitHubManager(adapter=mock_adapter)
+        tool = UpdateIssueTool(manager=manager)
+        schema = tool.input_schema
+
+        assert "issue_number" in schema["properties"]
+        assert "issue_number" in schema["required"]
+
+    def test_update_issue_requires_changes(self, mock_adapter) -> None:
+        """Should error when no update fields are provided."""
+        manager = GitHubManager(adapter=mock_adapter)
+        tool = UpdateIssueTool(manager=manager)
+
+        result = asyncio.run(tool.execute(issue_number=7))
+
+        assert result.is_error
+        assert "no updates" in result.content[0]["text"].lower()
+
+    def test_update_issue_applies_changes(self, mock_adapter) -> None:
+        """Should call manager with provided fields and return confirmation."""
+        mock_issue = Mock()
+        mock_issue.number = 7
+        mock_issue.title = "Updated"
+        mock_adapter.update_issue.return_value = mock_issue
+
+        manager = GitHubManager(adapter=mock_adapter)
+        tool = UpdateIssueTool(manager=manager)
+
+        result = asyncio.run(
+            tool.execute(
+                issue_number=7,
+                title="New Title",
+                labels=["bug"],
+            )
+        )
+
+        assert not result.is_error
+        assert "Updated issue #7" in result.content[0]["text"]
+        mock_adapter.update_issue.assert_called_with(
+            issue_number=7,
+            title="New Title",
+            body=None,
+            state=None,
+            labels=["bug"],
+            milestone_number=None,
+            assignees=None,
+        )
+
+    def test_update_issue_handles_error(self, mock_adapter) -> None:
+        """Should surface execution errors."""
+        mock_adapter.update_issue.side_effect = ExecutionError("fail")
+
+        manager = GitHubManager(adapter=mock_adapter)
+        tool = UpdateIssueTool(manager=manager)
+
+        result = asyncio.run(tool.execute(issue_number=7, title="New"))
+
+        assert result.is_error
+        assert "fail" in result.content[0]["text"].lower()

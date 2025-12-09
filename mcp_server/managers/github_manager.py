@@ -6,6 +6,8 @@ from mcp_server.adapters.github_adapter import GitHubAdapter
 if TYPE_CHECKING:
     from github.Issue import Issue
     from github.Label import Label
+    from github.Milestone import Milestone
+    from github.PullRequest import PullRequest
 
 
 class GitHubManager:
@@ -127,3 +129,67 @@ class GitHubManager:
     def remove_labels(self, issue_number: int, labels: list[str]) -> None:
         """Remove labels from an issue or PR."""
         self.adapter.remove_labels(issue_number, labels)
+
+    def update_issue(
+        self,
+        issue_number: int,
+        title: str | None = None,
+        body: str | None = None,
+        state: str | None = None,
+        labels: list[str] | None = None,
+        milestone: int | None = None,
+        assignees: list[str] | None = None
+    ) -> "Issue":
+        """Update fields on an issue."""
+        return self.adapter.update_issue(
+            issue_number=issue_number,
+            title=title,
+            body=body,
+            state=state,
+            labels=labels,
+            milestone_number=milestone,
+            assignees=assignees,
+        )
+
+    def list_milestones(self, state: str = "open") -> list["Milestone"]:
+        """List milestones for the repository."""
+        return self.adapter.list_milestones(state=state)
+
+    def create_milestone(
+        self,
+        title: str,
+        description: str | None = None,
+        due_on: str | None = None
+    ) -> "Milestone":
+        """Create a new milestone."""
+        return self.adapter.create_milestone(
+            title=title,
+            description=description,
+            due_on=due_on,
+        )
+
+    def close_milestone(self, milestone_number: int) -> "Milestone":
+        """Close a milestone."""
+        return self.adapter.close_milestone(milestone_number)
+
+    def list_prs(
+        self,
+        state: str = "open",
+        base: str | None = None,
+        head: str | None = None
+    ) -> list["PullRequest"]:
+        """List pull requests with optional filtering."""
+        return self.adapter.list_prs(state=state, base=base, head=head)
+
+    def merge_pr(
+        self,
+        pr_number: int,
+        commit_message: str | None = None,
+        merge_method: str = "merge"
+    ) -> dict[str, Any]:
+        """Merge a pull request."""
+        return self.adapter.merge_pr(
+            pr_number=pr_number,
+            commit_message=commit_message,
+            merge_method=merge_method,
+        )

@@ -40,6 +40,7 @@ from mcp_server.tools.issue_tools import (
     CreateIssueTool,
     GetIssueTool,
     ListIssuesTool,
+    UpdateIssueTool,
 )
 from mcp_server.tools.label_tools import (
     AddLabelsTool,
@@ -48,7 +49,12 @@ from mcp_server.tools.label_tools import (
     ListLabelsTool,
     RemoveLabelsTool,
 )
-from mcp_server.tools.pr_tools import CreatePRTool
+from mcp_server.tools.milestone_tools import (
+    CloseMilestoneTool,
+    CreateMilestoneTool,
+    ListMilestonesTool,
+)
+from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
 from mcp_server.tools.test_tools import RunTestsTool
@@ -104,6 +110,7 @@ class MCPServer:
             ListIssuesTool(),
             GetIssueTool(),
             CloseIssueTool(),
+            UpdateIssueTool(),
         ]
 
         # GitHub-dependent resources and additional tools (only if token is configured)
@@ -112,11 +119,16 @@ class MCPServer:
             self.tools.extend([
                 # PR and Label tools (require token at init time)
                 CreatePRTool(),
+                ListPRsTool(),
+                MergePRTool(),
                 AddLabelsTool(),
                 ListLabelsTool(),
                 CreateLabelTool(),
                 DeleteLabelTool(),
                 RemoveLabelsTool(),
+                ListMilestonesTool(),
+                CreateMilestoneTool(),
+                CloseMilestoneTool(),
             ])
             logger.info("GitHub integration enabled")
         else:

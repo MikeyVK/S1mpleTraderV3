@@ -23,14 +23,25 @@ class ToolResult(BaseModel):
 
 
 class BaseTool(ABC):
-    """Abstract base class for all tools."""
+    """Abstract base class for all tools.
+    
+    Subclasses can override execute() with explicit parameters while
+    still calling parent signature via **kwargs at runtime.
+    """
 
     name: str
     description: str
 
     @abstractmethod
     async def execute(self, **kwargs: Any) -> ToolResult:
-        """Execute the tool."""
+        """Execute the tool.
+        
+        Subclasses may override with explicit parameters, e.g.:
+            async def execute(self, issue_number: int, **kwargs: Any) -> ToolResult
+        
+        The **kwargs ensures compatibility with the abstract method while
+        allowing type checkers to permit explicit parameters in subclasses.
+        """
 
     @property
     def input_schema(self) -> dict[str, Any]:

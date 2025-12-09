@@ -52,7 +52,7 @@ class CreateIssueTool(BaseTool):
         }
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         title: str,
         body: str,
@@ -159,7 +159,7 @@ class GetIssueTool(BaseTool):
             "required": ["issue_number"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         issue_number: int,
         **kwargs: Any
@@ -240,7 +240,7 @@ class CloseIssueTool(BaseTool):
             "required": ["issue_number"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         issue_number: int,
         comment: str | None = None,
@@ -254,3 +254,85 @@ class CloseIssueTool(BaseTool):
             return ToolResult.error(str(e))
 
         return ToolResult.text(f"Closed issue #{issue.number}: {issue.title}")
+
+
+class UpdateIssueTool(BaseTool):
+    """Tool to update fields on a GitHub issue."""
+
+    name = "update_issue"
+    description = "Update title, body, state, labels, milestone, or assignees for an issue"
+
+    def __init__(self, manager: GitHubManager | None = None) -> None:
+        self._manager = manager
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "issue_number": {
+                    "type": "integer",
+                    "description": "Issue number to update"
+                },
+                "title": {"type": "string", "description": "New title"},
+                "body": {"type": "string", "description": "Updated description"},
+                "state": {
+                    "type": "string",
+                    "enum": ["open", "closed"],
+                    "description": "Target state"
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Replace labels with this list"
+                },
+                "milestone": {
+                    "type": "integer",
+                    "description": "Milestone number to assign"
+                },
+                "assignees": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Replace assignees with this list"
+                }
+            },
+            "required": ["issue_number"]
+        }
+
+    async def execute(  # type: ignore[override]
+        self,
+        issue_number: int,
+        title: str | None = None,
+        body: str | None = None,
+        state: str | None = None,
+        labels: list[str] | None = None,
+        milestone: int | None = None,
+        assignees: list[str] | None = None,
+        **kwargs: Any
+    ) -> ToolResult:
+        """Execute the tool to update an issue."""
+        manager = _get_manager(self._manager)
+
+        has_updates = any(
+            value is not None
+            for value in [title, body, state, labels, milestone, assignees]
+        )
+        if not has_updates:
+            return ToolResult.error(
+                "No updates provided. Specify at least one field to change."
+            )
+
+        try:
+            issue = manager.update_issue(
+                issue_number=issue_number,
+                title=title,
+                body=body,
+                state=state,
+                labels=labels,
+                milestone=milestone,
+                assignees=assignees,
+            )
+        except ExecutionError as e:
+            return ToolResult.error(str(e))
+
+        return ToolResult.text(f"Updated issue #{issue.number}: {issue.title}")

@@ -67,7 +67,7 @@ class CreateLabelTool(BaseTool):
             "required": ["name", "color"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         name: str,
         color: str,
@@ -105,7 +105,7 @@ class DeleteLabelTool(BaseTool):
             "required": ["name"]
         }
 
-    async def execute(self, name: str, **kwargs: Any) -> ToolResult:
+    async def execute(self, name: str, **kwargs: Any) -> ToolResult:  # type: ignore[override]
         """Execute the tool."""
         self.manager.delete_label(name)
         return ToolResult.text(f"Deleted label: **{name}**")
@@ -138,7 +138,7 @@ class RemoveLabelsTool(BaseTool):
             "required": ["issue_number", "labels"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         issue_number: int,
         labels: list[str],
@@ -175,7 +175,7 @@ class AddLabelsTool(BaseTool):
             "required": ["issue_number", "labels"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         issue_number: int,
         labels: list[str],
