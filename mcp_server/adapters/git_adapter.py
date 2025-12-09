@@ -77,3 +77,58 @@ class GitAdapter:
             return commit.hexsha
         except Exception as e:
             raise ExecutionError(f"Failed to commit: {e}") from e
+
+    def checkout(self, branch_name: str) -> None:
+        """Checkout to an existing branch."""
+        try:
+            if branch_name not in self.repo.heads:
+                raise ExecutionError(f"Branch {branch_name} does not exist")
+            self.repo.heads[branch_name].checkout()
+        except ExecutionError:
+            raise
+        except Exception as e:
+            raise ExecutionError(f"Failed to checkout {branch_name}: {e}") from e
+
+    def push(self, set_upstream: bool = False) -> None:
+        """Push current branch to origin."""
+        try:
+            origin = self.repo.remote("origin")
+        except ValueError as e:
+            raise ExecutionError(
+                "No origin remote configured"
+            ) from e
+
+        try:
+            branch = self.get_current_branch()
+            if set_upstream:
+                origin.push(refspec=f"{branch}:{branch}", set_upstream=True)
+            else:
+                origin.push()
+        except Exception as e:
+            raise ExecutionError(f"Failed to push: {e}") from e
+
+    def merge(self, branch_name: str) -> None:
+        """Merge a branch into current branch."""
+        try:
+            if branch_name not in self.repo.heads:
+                raise ExecutionError(f"Branch {branch_name} does not exist")
+            self.repo.git.merge(branch_name)
+        except ExecutionError:
+            raise
+        except Exception as e:
+            raise ExecutionError(f"Failed to merge {branch_name}: {e}") from e
+
+    def delete_branch(self, branch_name: str, force: bool = False) -> None:
+        """Delete a branch."""
+        try:
+            if branch_name not in self.repo.heads:
+                raise ExecutionError(f"Branch {branch_name} does not exist")
+            if self.get_current_branch() == branch_name:
+                raise ExecutionError(
+                    f"Cannot delete current branch {branch_name}"
+                )
+            self.repo.delete_head(branch_name, force=force)
+        except ExecutionError:
+            raise
+        except Exception as e:
+            raise ExecutionError(f"Failed to delete {branch_name}: {e}") from e

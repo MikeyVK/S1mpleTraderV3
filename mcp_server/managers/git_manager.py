@@ -57,3 +57,36 @@ class GitManager:
 
         full_message = f"{prefix_map[phase]}: {message}"
         return self.adapter.commit(full_message)
+
+    def commit_docs(self, message: str) -> str:
+        """Commit changes with docs prefix."""
+        full_message = f"docs: {message}"
+        return self.adapter.commit(full_message)
+
+    def checkout(self, branch_name: str) -> None:
+        """Checkout to an existing branch."""
+        self.adapter.checkout(branch_name)
+
+    def push(self, set_upstream: bool = False) -> None:
+        """Push current branch to origin."""
+        self.adapter.push(set_upstream=set_upstream)
+
+    def merge(self, branch_name: str) -> None:
+        """Merge a branch into current branch."""
+        if not self.adapter.is_clean():
+            raise PreflightError(
+                "Working directory is not clean",
+                blockers=["Commit or stash changes before merging"]
+            )
+        self.adapter.merge(branch_name)
+
+    def delete_branch(self, branch_name: str, force: bool = False) -> None:
+        """Delete a branch."""
+        protected_branches = ["main", "master", "develop"]
+        if branch_name in protected_branches:
+            raise ValidationError(
+                f"Cannot delete protected branch: {branch_name}",
+                hints=[f"Protected branches: {', '.join(protected_branches)}"]
+            )
+        self.adapter.delete_branch(branch_name, force=force)
+

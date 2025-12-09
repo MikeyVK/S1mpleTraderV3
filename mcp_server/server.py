@@ -22,7 +22,15 @@ from mcp_server.resources.status import StatusResource
 
 # Tools
 from mcp_server.tools.issue_tools import CreateIssueTool
-from mcp_server.tools.git_tools import CreateBranchTool, GitStatusTool
+from mcp_server.tools.git_tools import (
+    CreateBranchTool,
+    GitStatusTool,
+    GitCommitTool,
+    GitCheckoutTool,
+    GitPushTool,
+    GitMergeTool,
+    GitDeleteBranchTool,
+)
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.docs_tools import ValidateDocTool
 from mcp_server.tools.health_tools import HealthCheckTool
@@ -53,15 +61,23 @@ class MCPServer:
 
         # Core tools (always available)
         self.tools = [
+            # Git tools
             CreateBranchTool(),
             GitStatusTool(),
+            GitCommitTool(),
+            GitCheckoutTool(),
+            GitPushTool(),
+            GitMergeTool(),
+            GitDeleteBranchTool(),
+            # Quality tools
             RunQualityGatesTool(),
             ValidateDocTool(),
+            ValidationTool(),
+            ValidateDTOTool(),
+            # Development tools
             HealthCheckTool(),
             RunTestsTool(),
             CreateFileTool(),
-            ValidationTool(),
-            ValidateDTOTool(),
         ]
 
         # GitHub-dependent resources and tools (only if token is configured)
