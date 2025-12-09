@@ -5,7 +5,8 @@ import logging
 from mcp_server.core.logging import StructuredFormatter, get_logger, setup_logging
 
 
-def test_structured_formatter():
+def test_structured_formatter() -> None:
+    """Test that StructuredFormatter produces valid JSON with all fields."""
     formatter = StructuredFormatter()
     record = logging.LogRecord(
         name="test", level=logging.INFO, pathname="", lineno=0,
@@ -20,11 +21,13 @@ def test_structured_formatter():
     assert data["level"] == "INFO"
     assert data["key"] == "value"
 
-def test_get_logger():
+def test_get_logger() -> None:
+    """Test that get_logger returns logger with correct name prefix."""
     logger = get_logger("test")
     assert logger.name == "mcp_server.test"
 
-def test_setup_logging(tmp_path, monkeypatch):
+def test_setup_logging(tmp_path, monkeypatch) -> None:
+    """Test that setup_logging configures audit log file correctly."""
     # Mock settings
     log_file = tmp_path / "audit.log"
     monkeypatch.setattr("mcp_server.config.settings.settings.logging.audit_log", str(log_file))

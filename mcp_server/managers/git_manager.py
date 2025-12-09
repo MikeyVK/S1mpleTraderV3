@@ -130,4 +130,3 @@ class GitManager:
             List of commit messages (most recent first).
         """
         return self.adapter.get_recent_commits(limit=limit)
-

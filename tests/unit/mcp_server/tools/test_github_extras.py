@@ -1,4 +1,5 @@
 """Tests for PR and Label tools."""
+import asyncio
 from unittest.mock import Mock
 
 import pytest
@@ -10,9 +11,11 @@ from mcp_server.tools.pr_tools import CreatePRTool
 
 @pytest.fixture
 def mock_adapter():
+    """Create a mock GitHub adapter for testing."""
     return Mock()
 
-def test_create_pr_tool(mock_adapter):
+def test_create_pr_tool(mock_adapter) -> None:
+    """Test CreatePRTool creates PR and returns correct response."""
     # Setup mock
     mock_pr = Mock()
     mock_pr.number = 123
@@ -23,7 +26,6 @@ def test_create_pr_tool(mock_adapter):
     manager = GitHubManager(adapter=mock_adapter)
     tool = CreatePRTool(manager=manager)
 
-    import asyncio
     result = asyncio.run(tool.execute(
         title="New Feature",
         body="Description",
@@ -39,11 +41,11 @@ def test_create_pr_tool(mock_adapter):
         draft=False
     )
 
-def test_add_labels_tool(mock_adapter):
+def test_add_labels_tool(mock_adapter) -> None:
+    """Test AddLabelsTool adds labels and returns confirmation."""
     manager = GitHubManager(adapter=mock_adapter)
     tool = AddLabelsTool(manager=manager)
 
-    import asyncio
     result = asyncio.run(tool.execute(
         issue_number=456,
         labels=["bug", "high-priority"]

@@ -120,14 +120,14 @@ class TestDocManagerSearch:
         manager = DocManager(docs_dir=docs_dir)
         results = manager.search("")
 
-        assert results == []
+        assert not results
 
     def test_search_no_matches_returns_empty(self, docs_dir: Path) -> None:
         """Should return empty when no matches found."""
         manager = DocManager(docs_dir=docs_dir)
         results = manager.search("xyznonexistent123")
 
-        assert results == []
+        assert not results
 
 
 class TestDocManagerIndexing:

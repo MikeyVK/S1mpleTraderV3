@@ -25,6 +25,11 @@ from mcp_server.tools.git_tools import (
 # Development Tools
 from mcp_server.tools.health_tools import HealthCheckTool
 
+# GitHub Tools (imported here for availability, require manager injection)
+from mcp_server.tools.issue_tools import CreateIssueTool
+from mcp_server.tools.label_tools import AddLabelsTool
+from mcp_server.tools.pr_tools import CreatePRTool
+
 # Quality Tools
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.test_tools import RunTestsTool
@@ -203,8 +208,12 @@ class TestQualityToolsIntegration:
     @pytest.mark.asyncio
     async def test_validate_dto_tool_flow(self) -> None:
         """Test DTO validation tool complete flow."""
+        mock_content = (
+            "from dataclasses import dataclass\n\n"
+            "@dataclass(frozen=True)\nclass TestDTO:\n    pass"
+        )
         with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.read_text", return_value="from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass TestDTO:\n    pass"):
+            with patch("pathlib.Path.read_text", return_value=mock_content):
                 tool = ValidateDTOTool()
                 result = await tool.execute(file_path="backend/dtos/test.py")
 
@@ -220,7 +229,8 @@ class TestDevelopmentToolsIntegration:
         tool = HealthCheckTool()
         result = await tool.execute()
 
-        assert "healthy" in result.content[0]["text"].lower() or "ok" in result.content[0]["text"].lower()
+        result_text = result.content[0]["text"].lower()
+        assert "healthy" in result_text or "ok" in result_text
 
     @pytest.mark.asyncio
     async def test_create_file_tool_flow(self) -> None:
@@ -241,9 +251,6 @@ class TestGitHubToolsIntegration:
     @pytest.mark.asyncio
     async def test_create_issue_tool_flow(self) -> None:
         """Test create issue tool complete flow."""
-        # Import here to avoid failure when no GITHUB_TOKEN
-        from mcp_server.tools.issue_tools import CreateIssueTool
-
         mock_manager = MagicMock()
         mock_manager.create_issue.return_value = {
             "number": 42,
@@ -261,8 +268,6 @@ class TestGitHubToolsIntegration:
     @pytest.mark.asyncio
     async def test_create_pr_tool_flow(self) -> None:
         """Test create PR tool complete flow."""
-        from mcp_server.tools.pr_tools import CreatePRTool
-
         mock_manager = MagicMock()
         mock_manager.create_pr.return_value = {
             "number": 99,
@@ -282,8 +287,6 @@ class TestGitHubToolsIntegration:
     @pytest.mark.asyncio
     async def test_add_labels_tool_flow(self) -> None:
         """Test add labels tool complete flow."""
-        from mcp_server.tools.label_tools import AddLabelsTool
-
         mock_manager = MagicMock()
         mock_manager.add_labels.return_value = ["bug", "priority:high"]
 
@@ -314,7 +317,7 @@ class TestToolSchemas:
 
         for tool in tools:
             schema = tool.input_schema
-            assert schema is not None or schema == {}, f"{tool.name} missing schema"
+            assert schema is not None or not schema, f"{tool.name} missing schema"
             assert isinstance(schema, dict), f"{tool.name} schema not a dict"
 
     def test_all_quality_tools_have_schemas(self) -> None:
@@ -328,7 +331,7 @@ class TestToolSchemas:
 
         for tool in tools:
             schema = tool.input_schema
-            assert schema is not None or schema == {}, f"{tool.name} missing schema"
+            assert schema is not None or not schema, f"{tool.name} missing schema"
             assert isinstance(schema, dict), f"{tool.name} schema not a dict"
 
     def test_all_dev_tools_have_schemas(self) -> None:
@@ -341,15 +344,11 @@ class TestToolSchemas:
 
         for tool in tools:
             schema = tool.input_schema
-            assert schema is not None or schema == {}, f"{tool.name} missing schema"
+            assert schema is not None or not schema, f"{tool.name} missing schema"
             assert isinstance(schema, dict), f"{tool.name} schema not a dict"
 
     def test_github_tools_have_schemas_with_mock(self) -> None:
         """Verify all GitHub tools have input schemas (with mocked manager)."""
-        from mcp_server.tools.issue_tools import CreateIssueTool
-        from mcp_server.tools.label_tools import AddLabelsTool
-        from mcp_server.tools.pr_tools import CreatePRTool
-
         mock_manager = MagicMock()
         tools = [
             CreateIssueTool(manager=mock_manager),
@@ -359,7 +358,7 @@ class TestToolSchemas:
 
         for tool in tools:
             schema = tool.input_schema
-            assert schema is not None or schema == {}, f"{tool.name} missing schema"
+            assert schema is not None or not schema, f"{tool.name} missing schema"
             assert isinstance(schema, dict), f"{tool.name} schema not a dict"
 
 
@@ -391,10 +390,6 @@ class TestToolNames:
 
     def test_github_tool_names_with_mock(self) -> None:
         """Verify GitHub tools have unique names (with mocked manager)."""
-        from mcp_server.tools.issue_tools import CreateIssueTool
-        from mcp_server.tools.label_tools import AddLabelsTool
-        from mcp_server.tools.pr_tools import CreatePRTool
-
         mock_manager = MagicMock()
         tools = [
             CreateIssueTool(manager=mock_manager),
@@ -431,10 +426,6 @@ class TestToolNames:
 
     def test_github_tools_have_descriptions_with_mock(self) -> None:
         """Verify GitHub tools have descriptions (with mocked manager)."""
-        from mcp_server.tools.issue_tools import CreateIssueTool
-        from mcp_server.tools.label_tools import AddLabelsTool
-        from mcp_server.tools.pr_tools import CreatePRTool
-
         mock_manager = MagicMock()
         tools = [
             CreateIssueTool(manager=mock_manager),

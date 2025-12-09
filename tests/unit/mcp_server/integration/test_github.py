@@ -1,4 +1,5 @@
 """Tests for GitHub integration."""
+import asyncio
 from unittest.mock import Mock
 
 import pytest
@@ -9,9 +10,11 @@ from mcp_server.tools.issue_tools import CreateIssueTool
 
 @pytest.fixture
 def mock_adapter():
+    """Create a mock GitHub adapter for testing."""
     return Mock()
 
-def test_manager_get_issues(mock_adapter):
+def test_manager_get_issues(mock_adapter) -> None:
+    """Test GitHubManager returns correctly formatted issue data."""
     # Setup mock
     mock_issue = Mock()
     mock_issue.number = 1
@@ -30,7 +33,8 @@ def test_manager_get_issues(mock_adapter):
     assert data["open_count"] == 1
     assert data["issues"][0]["title"] == "Test Issue"
 
-def test_create_issue_tool(mock_adapter):
+def test_create_issue_tool(mock_adapter) -> None:
+    """Test CreateIssueTool creates issue and returns correct response."""
     # Setup mock
     mock_issue = Mock()
     mock_issue.number = 42
@@ -41,7 +45,6 @@ def test_create_issue_tool(mock_adapter):
     manager = GitHubManager(adapter=mock_adapter)
     tool = CreateIssueTool(manager=manager)
 
-    import asyncio
     result = asyncio.run(tool.execute(title="New Issue", body="Body"))
 
     assert "Created issue #42" in result.content[0]["text"]

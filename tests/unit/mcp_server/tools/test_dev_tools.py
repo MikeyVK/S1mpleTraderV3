@@ -3,12 +3,14 @@ from unittest.mock import patch
 
 import pytest
 
+from mcp_server.core.exceptions import ValidationError
 from mcp_server.tools.code_tools import CreateFileTool
 from mcp_server.tools.test_tools import RunTestsTool
 
 
 @pytest.mark.asyncio
-async def test_run_tests_tool():
+async def test_run_tests_tool() -> None:
+    """Test RunTestsTool executes pytest and returns output."""
     tool = RunTestsTool()
 
     with patch("mcp_server.tools.test_tools._run_pytest_sync") as mock_run:
@@ -26,7 +28,8 @@ async def test_run_tests_tool():
         assert "tests/unit" in cmd
 
 @pytest.mark.asyncio
-async def test_create_file_tool(tmp_path, monkeypatch):
+async def test_create_file_tool(tmp_path, monkeypatch) -> None:
+    """Test CreateFileTool creates file with correct content in subdirectory."""
     # Mock workspace root to tmp_path
     monkeypatch.setattr("mcp_server.config.settings.settings.server.workspace_root", str(tmp_path))
 
@@ -39,11 +42,11 @@ async def test_create_file_tool(tmp_path, monkeypatch):
     assert file_path.read_text() == "hello world"
 
 @pytest.mark.asyncio
-async def test_create_file_security_check(tmp_path, monkeypatch):
+async def test_create_file_security_check(tmp_path, monkeypatch) -> None:
+    """Test CreateFileTool rejects path traversal attempts."""
     monkeypatch.setattr("mcp_server.config.settings.settings.server.workspace_root", str(tmp_path))
 
     tool = CreateFileTool()
 
-    from mcp_server.core.exceptions import ValidationError
     with pytest.raises(ValidationError):
         await tool.execute(path="../outside.txt", content="bad")

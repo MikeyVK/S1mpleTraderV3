@@ -48,10 +48,10 @@ class TestSearchDocumentationTool:
             }
         ]
 
-        with patch("mcp_server.tools.discovery_tools.DocManager") as MockManager:
+        with patch("mcp_server.tools.discovery_tools.DocManager") as mock_manager_class:
             mock_instance = MagicMock()
             mock_instance.search.return_value = mock_results
-            MockManager.return_value = mock_instance
+            mock_manager_class.return_value = mock_instance
 
             result = await tool.execute(query="DTO flow")
 
@@ -61,10 +61,10 @@ class TestSearchDocumentationTool:
     @pytest.mark.asyncio
     async def test_search_with_scope(self, tool: SearchDocumentationTool) -> None:
         """Should pass scope to DocManager."""
-        with patch("mcp_server.tools.discovery_tools.DocManager") as MockManager:
+        with patch("mcp_server.tools.discovery_tools.DocManager") as mock_manager_class:
             mock_instance = MagicMock()
             mock_instance.search.return_value = []
-            MockManager.return_value = mock_instance
+            mock_manager_class.return_value = mock_instance
 
             await tool.execute(query="code style", scope="coding_standards")
 
@@ -77,10 +77,10 @@ class TestSearchDocumentationTool:
     @pytest.mark.asyncio
     async def test_search_empty_results(self, tool: SearchDocumentationTool) -> None:
         """Should handle no results gracefully."""
-        with patch("mcp_server.tools.discovery_tools.DocManager") as MockManager:
+        with patch("mcp_server.tools.discovery_tools.DocManager") as mock_manager_class:
             mock_instance = MagicMock()
             mock_instance.search.return_value = []
-            MockManager.return_value = mock_instance
+            mock_manager_class.return_value = mock_instance
 
             result = await tool.execute(query="xyznonexistent")
 
@@ -115,11 +115,11 @@ class TestGetWorkContextTool:
         self, tool: GetWorkContextTool
     ) -> None:
         """Should include current branch information."""
-        with patch("mcp_server.tools.discovery_tools.GitManager") as MockGit:
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-implement-dto"
             mock_git.get_recent_commits.return_value = []
-            MockGit.return_value = mock_git
+            mock_git_class.return_value = mock_git
 
             with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
                 mock_settings.github.token = None  # No GitHub
@@ -134,11 +134,11 @@ class TestGetWorkContextTool:
         self, tool: GetWorkContextTool
     ) -> None:
         """Should extract issue number from branch name."""
-        with patch("mcp_server.tools.discovery_tools.GitManager") as MockGit:
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-implement-dto"
             mock_git.get_recent_commits.return_value = []
-            MockGit.return_value = mock_git
+            mock_git_class.return_value = mock_git
 
             with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
                 mock_settings.github.token = None
@@ -154,13 +154,13 @@ class TestGetWorkContextTool:
         self, tool: GetWorkContextTool
     ) -> None:
         """Should detect TDD phase from recent commits."""
-        with patch("mcp_server.tools.discovery_tools.GitManager") as MockGit:
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-dto"
             mock_git.get_recent_commits.return_value = [
                 "test: Add failing test for DTO validation"
             ]
-            MockGit.return_value = mock_git
+            mock_git_class.return_value = mock_git
 
             with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
                 mock_settings.github.token = None
@@ -180,11 +180,11 @@ class TestGetWorkContextTool:
         Note: Full GitHub integration is tested via integration tests.
         This unit test verifies the tool handles errors gracefully.
         """
-        with patch("mcp_server.tools.discovery_tools.GitManager") as MockGit:
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-implement-dto"
             mock_git.get_recent_commits.return_value = []
-            MockGit.return_value = mock_git
+            mock_git_class.return_value = mock_git
 
             with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
                 mock_settings.github.token = "test-token"

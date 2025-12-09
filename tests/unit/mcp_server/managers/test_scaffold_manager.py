@@ -3,6 +3,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from jinja2.exceptions import TemplateNotFound
 
 from mcp_server.core.exceptions import ExecutionError, ValidationError
 from mcp_server.managers.scaffold_manager import ScaffoldManager
@@ -39,8 +40,6 @@ class TestScaffoldManagerTemplateLoading:
 
     def test_load_template_not_found_raises_error(self) -> None:
         """Test loading non-existent template raises error."""
-        from jinja2.exceptions import TemplateNotFound
-
         with patch("jinja2.Environment.get_template") as mock_get:
             mock_get.side_effect = TemplateNotFound("nonexistent.jinja2")
 
