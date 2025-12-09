@@ -1,4 +1,7 @@
 """QA Manager for quality gates."""
+import re
+import subprocess
+from pathlib import Path
 from typing import Any
 
 
@@ -7,14 +10,25 @@ class QAManager:
 
     def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
         """Run quality gates on specified files."""
-        results = {
+        results: dict[str, Any] = {
             "overall_pass": True,
             "gates": [],
         }
 
-        # Gate 1: Pylint (Whitespace/Imports)
-        # Note: In a real implementation we would call pylint via subprocess or library
-        # Here we mock the behavior for the foundation
+        # Verify files exist
+        missing_files = [f for f in files if not Path(f).exists()]
+        if missing_files:
+            results["overall_pass"] = False
+            results["gates"].append({
+                "gate_number": 0,
+                "name": "File Validation",
+                "passed": False,
+                "score": "N/A",
+                "issues": [{"message": f"File not found: {f}"} for f in missing_files]
+            })
+            return results
+
+        # Gate 1: Pylint (Whitespace/Imports/Line Length)
         pylint_result = self._run_pylint(files)
         results["gates"].append(pylint_result)
         if not pylint_result["passed"]:
@@ -29,9 +43,8 @@ class QAManager:
         return results
 
     def _run_pylint(self, files: list[str]) -> dict[str, Any]:
-        """Run pylint checks."""
-        # This is a stub. In reality, we'd subprocess.run(["pylint", ...])
-        return {
+        """Run pylint checks on files."""
+        result: dict[str, Any] = {
             "gate_number": 1,
             "name": "Linting",
             "passed": True,
@@ -39,13 +52,127 @@ class QAManager:
             "issues": []
         }
 
+        try:
+            # Run pylint with specific checks
+            cmd = [
+                "python", "-m", "pylint",
+                *files,
+                "--disable=all",
+                "--enable=trailing-whitespace,superfluous-parens,"
+                "import-outside-toplevel,line-too-long",
+                "--max-line-length=100",
+                "--output-format=text"
+            ]
+
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            # Parse pylint output
+            output = proc.stdout + proc.stderr
+            issues = self._parse_pylint_output(output)
+            score = self._extract_pylint_score(output)
+
+            result["issues"] = issues
+            result["score"] = score
+            result["passed"] = len(issues) == 0 and "10" in score
+
+        except subprocess.TimeoutExpired:
+            result["passed"] = False
+            result["score"] = "N/A"
+            result["issues"] = [{"message": "Pylint timed out"}]
+        except FileNotFoundError:
+            result["passed"] = False
+            result["score"] = "N/A"
+            result["issues"] = [{"message": "Pylint not found"}]
+
+        return result
+
+    def _parse_pylint_output(self, output: str) -> list[dict[str, Any]]:
+        """Parse pylint output into structured issues."""
+        issues: list[dict[str, Any]] = []
+
+        # Pattern: filepath:line:col: code: message
+        pattern = r"^(.+?):(\d+):(\d+): ([A-Z]\d+): (.+)$"
+
+        for line in output.split("\n"):
+            match = re.match(pattern, line.strip())
+            if match:
+                issues.append({
+                    "file": match.group(1),
+                    "line": int(match.group(2)),
+                    "column": int(match.group(3)),
+                    "code": match.group(4),
+                    "message": match.group(5)
+                })
+
+        return issues
+
+    def _extract_pylint_score(self, output: str) -> str:
+        """Extract score from pylint output."""
+        # Pattern: "Your code has been rated at X.XX/10"
+        pattern = r"Your code has been rated at ([\d.]+)/10"
+        match = re.search(pattern, output)
+        if match:
+            return f"{match.group(1)}/10"
+        return "10/10"  # Default if no issues found
+
     def _run_mypy(self, files: list[str]) -> dict[str, Any]:
-        """Run mypy checks."""
-        # Stub
-        return {
+        """Run mypy type checking on files."""
+        result: dict[str, Any] = {
             "gate_number": 2,
             "name": "Type Checking",
             "passed": True,
             "score": "N/A",
             "issues": []
         }
+
+        try:
+            cmd = [
+                "python", "-m", "mypy",
+                *files,
+                "--no-error-summary"
+            ]
+
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+
+            # Parse mypy output
+            issues = self._parse_mypy_output(proc.stdout)
+            result["issues"] = issues
+            result["passed"] = len(issues) == 0
+
+        except subprocess.TimeoutExpired:
+            result["passed"] = False
+            result["issues"] = [{"message": "Mypy timed out"}]
+        except FileNotFoundError:
+            result["passed"] = False
+            result["issues"] = [{"message": "Mypy not found"}]
+
+        return result
+
+    def _parse_mypy_output(self, output: str) -> list[dict[str, Any]]:
+        """Parse mypy output into structured issues."""
+        issues: list[dict[str, Any]] = []
+
+        # Pattern: filepath:line: error: message
+        pattern = r"^(.+?):(\d+): (error|warning): (.+)$"
+
+        for line in output.split("\n"):
+            match = re.match(pattern, line.strip())
+            if match:
+                issues.append({
+                    "file": match.group(1),
+                    "line": int(match.group(2)),
+                    "severity": match.group(3),
+                    "message": match.group(4)
+                })
+
+        return issues
