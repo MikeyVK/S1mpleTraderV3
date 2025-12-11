@@ -1,3 +1,4 @@
+"""Git analysis tools for inspecting repository state."""
 from typing import Any
 
 from mcp_server.managers.git_manager import GitManager

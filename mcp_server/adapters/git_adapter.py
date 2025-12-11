@@ -190,7 +190,7 @@ class GitAdapter:
             if not output:
                 return []
             return [line.strip() for line in output.split("\n") if line.strip()]
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             raise ExecutionError(f"Failed to list branches: {e}") from e
 
     def get_diff_stat(self, target: str, source: str = "HEAD") -> str:
@@ -208,7 +208,7 @@ class GitAdapter:
             # Usually strict comparison 'target...source' is better for "what is in source that is not in target"
             # Command: git diff target...source --stat
             return self.repo.git.diff(f"{target}...{source}", "--stat")
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             raise ExecutionError(f"Failed to get diff stat: {e}") from e
 
     def get_recent_commits(self, limit: int = 5) -> list[str]:
@@ -222,6 +222,9 @@ class GitAdapter:
         """
         try:
             commits = list(self.repo.iter_commits(max_count=limit))
-            return [str(commit.message).split("\n", maxsplit=1)[0] for commit in commits]
+            return [
+                str(commit.message).split("\n", maxsplit=1)[0]
+                for commit in commits
+            ]
         except Exception as e:
             raise ExecutionError(f"Failed to get recent commits: {e}") from e
