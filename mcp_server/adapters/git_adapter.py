@@ -205,7 +205,8 @@ class GitAdapter:
         """
         try:
             # git diff source...target --stat (triple dot for merge base comparison?)
-            # Usually strict comparison 'target...source' is better for "what is in source that is not in target"
+            # Usually strict comparison 'target...source' is better for
+            # "what is in source that is not in target"
             # Command: git diff target...source --stat
             return self.repo.git.diff(f"{target}...{source}", "--stat")
         except Exception as e:  # pylint: disable=broad-exception-caught
