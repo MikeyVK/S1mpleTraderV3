@@ -75,7 +75,6 @@ class QAManager:
                 python_exe, "-m", "pylint",
                 *files,
                 "--enable=all",
-                "--disable=I0011,I0020", 
                 "--max-line-length=100",
                 "--output-format=text"
             ]

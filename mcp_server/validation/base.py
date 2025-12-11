@@ -23,8 +23,9 @@ class BaseValidator(ABC):
     """
     Abstract base class for content validators.
     """
-    # pylint: disable=too-few-public-methods
-
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return f"{self.__class__.__name__}()"
     @abstractmethod
     async def validate(self, path: str, content: str | None = None) -> ValidationResult:
         """

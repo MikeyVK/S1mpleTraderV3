@@ -1,7 +1,9 @@
 """MCP Server Entrypoint."""
+# pylint: disable=duplicate-code
 import asyncio
 from io import TextIOWrapper
 import sys
+from typing import Any
 
 from pydantic import AnyUrl
 import anyio
@@ -78,7 +80,8 @@ class MCPServer:
 
     def __init__(self) -> None:
         """Initialize the MCP server with resources and tools."""
-        self.server = Server(settings.server.name)  # pylint: disable=no-member
+        server_name = getattr(getattr(settings, "server"), "name")
+        self.server = Server(server_name)
 
         # Core resources (always available)
         self.resources = [
@@ -126,7 +129,8 @@ class MCPServer:
         ]
 
         # GitHub-dependent resources and additional tools (only if token is configured)
-        if settings.github.token:  # pylint: disable=no-member
+        github_token = getattr(getattr(settings, "github"), "token")
+        if github_token:
             self.resources.append(GitHubIssuesResource())
             self.tools.extend([
                 # PR and Label tools (require token at init time)
@@ -154,7 +158,7 @@ class MCPServer:
     def setup_handlers(self) -> None:
         """Set up the MCP protocol handlers."""
 
-        @self.server.list_resources()
+        @self.server.list_resources()  # type: ignore[no-untyped-call, misc]
         async def handle_list_resources() -> list[Resource]:
             return [
                 Resource(
@@ -166,14 +170,14 @@ class MCPServer:
                 for r in self.resources
             ]
 
-        @self.server.read_resource()
+        @self.server.read_resource()  # type: ignore[no-untyped-call, misc]
         async def handle_read_resource(uri: str) -> str:
             for resource in self.resources:
                 if resource.matches(uri):
                     return await resource.read(uri)
             raise ValueError(f"Resource not found: {uri}")
 
-        @self.server.list_tools()
+        @self.server.list_tools()  # type: ignore[no-untyped-call, misc]
         async def handle_list_tools() -> list[Tool]:
             return [
                 Tool(
@@ -184,10 +188,10 @@ class MCPServer:
                 for t in self.tools
             ]
 
-        @self.server.call_tool()
+        @self.server.call_tool()  # type: ignore[misc]
         async def handle_call_tool(
             name: str,
-            arguments: dict | None
+            arguments: dict[str, Any] | None
         ) -> list[TextContent | ImageContent | EmbeddedResource]:
             for tool in self.tools:
                 if tool.name == name:
@@ -226,9 +230,10 @@ class MCPServer:
 
     async def run(self) -> None:
         """Run the MCP server."""
+        server_name = getattr(getattr(settings, "server"), "name")
         logger.info(
             "Starting MCP server: %s",
-            settings.server.name  # pylint: disable=no-member
+            server_name
         )
         # Force LF only on Windows to prevent "invalid trailing data"
         # and other CRLF issues in the JSON-RPC stream

@@ -29,13 +29,22 @@ class TemplateValidationTool(BaseTool):
         "required": ["path", "template_type"]
     }
 
-    async def execute(self, path: str, template_type: str, **kwargs: Any) -> ToolResult:
+    async def execute(self, **kwargs: Any) -> ToolResult:
         """Execute template validation."""
+        path = kwargs.get("path")
+        template_type = kwargs.get("template_type")
+
+        if not path or not template_type:
+            return ToolResult.text("❌ Missing required arguments: path, template_type")
+
         try:
             validator = TemplateValidator(template_type)
             val_result = await validator.validate(path)
-            
-            status = "✅ Template Validation Passed" if val_result.passed else "❌ Template Validation Failed"
+
+            status = (
+                "✅ Template Validation Passed" if val_result.passed
+                else "❌ Template Validation Failed"
+            )
             details = ""
             if val_result.issues:
                 details = "\n\nIssues:\n" + "\n".join(
@@ -45,5 +54,5 @@ class TemplateValidationTool(BaseTool):
 
             return ToolResult.text(f"{status}{details}")
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (ValueError, OSError) as e:
             return ToolResult.text(f"❌ Validation error: {e}")

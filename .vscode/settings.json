@@ -20,7 +20,10 @@
     "python.analysis.enablePytestSupport": true,
     "python.analysis.inlayHints.pytestParameters": true,
     "python.analysis.autoImportCompletions": true,
-    "pylint.args": ["--rcfile=${workspaceFolder}/.pylintrc"],
+    "pylint.args": [
+        "--enable=all",
+        "--max-line-length=100"
+    ],
     "github.copilot.chat.terminalChatLocation": "terminal",
     "github.copilot.chat.runCommand.enabled": true,
     "github.copilot.chat.runCommand.alwaysApprove": [
