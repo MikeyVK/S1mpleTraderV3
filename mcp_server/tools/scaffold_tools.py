@@ -141,8 +141,8 @@ class ScaffoldComponentTool(BaseTool):
             "required": ["component_type", "name", "output_path"]
         }
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-    async def execute(
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals,arguments-differ,too-many-branches,too-many-statements
+    async def execute(  # type: ignore[override]
         self,
         component_type: str,
         name: str,
@@ -218,8 +218,8 @@ class ScaffoldComponentTool(BaseTool):
 
         elif component_type == "tool":
             content = self.manager.render_tool(
-                name=name, 
-                description=docstring or "", 
+                name=name,
+                description=docstring or "",
                 input_schema=input_schema,
                 docstring=docstring
             )
@@ -236,7 +236,7 @@ class ScaffoldComponentTool(BaseTool):
             )
             self.manager.write_file(output_path, content)
             created_files.append(output_path)
-        
+
         elif component_type == "schema":
             content = self.manager.render_schema(
                 name=name,
@@ -278,7 +278,9 @@ class ScaffoldComponentTool(BaseTool):
         else:
             raise ValidationError(
                 f"Unknown component type: {component_type}",
-                hints=["Use dto, worker, adapter, tool, resource, schema, interface, service, generic"]
+                hints=[
+                    "Use dto, worker, adapter, tool, resource, schema, interface, service, generic"
+                ]
             )
 
         return ToolResult.text(
@@ -341,8 +343,8 @@ class ScaffoldDesignDocTool(BaseTool):
             "required": ["title", "output_path"]
         }
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
-    async def execute(
+    # pylint: disable=too-many-arguments,too-many-positional-arguments,arguments-differ
+    async def execute(  # type: ignore[override]
         self,
         title: str,
         output_path: str,
@@ -356,20 +358,20 @@ class ScaffoldDesignDocTool(BaseTool):
     ) -> ToolResult:
         """Execute document scaffolding."""
         if doc_type == "generic":
-             render_context = context or {}
-             render_context.update({
-                 "title": title,
-                 "author": author,
-                 "status": status,
-                 "output_path": output_path
-             })
-             # Merge any generic kwargs into context
-             render_context.update(kwargs)
-             
-             content = self.manager.render_generic_doc(**render_context)
+            render_context = context or {}
+            render_context.update({
+                "title": title,
+                "author": author,
+                "status": status,
+                "output_path": output_path
+            })
+            # Merge any generic kwargs into context
+            render_context.update(kwargs)
+
+            content = self.manager.render_generic_doc(**render_context)
         else:
             # Re-map legacy arguments for specific templates
-            # TODO: Future refactor to use separate render methods or unified approach
+            # TODO: Future refactor to use separate render methods or unified approach # pylint: disable=fixme
             content = self.manager.render_design_doc(
                 title=title,
                 author=author,
