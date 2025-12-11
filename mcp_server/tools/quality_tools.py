@@ -28,7 +28,7 @@ class RunQualityGatesTool(BaseTool):
             "required": ["files"]
         }
 
-    async def execute(self, files: list[str], **kwargs: Any) -> ToolResult:
+    async def execute(self, files: list[str], **kwargs: Any) -> ToolResult:  # type: ignore[override] # pylint: disable=arguments-differ
         result = self.manager.run_quality_gates(files)
 
         text = "Quality Gates Results:\n"
