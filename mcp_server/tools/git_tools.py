@@ -29,7 +29,7 @@ class CreateBranchTool(BaseTool):
             "required": ["name"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
         self, name: str, branch_type: str = "feature", **kwargs: Any
     ) -> ToolResult:
         branch_name = self.manager.create_feature_branch(name, branch_type)
@@ -44,7 +44,7 @@ class GitStatusTool(BaseTool):
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
-    async def execute(self, **kwargs: Any) -> ToolResult:
+    async def execute(self, **kwargs: Any) -> ToolResult:  # type: ignore[override] # pylint: disable=arguments-differ
         status = self.manager.get_status()
 
         text = f"Branch: {status['branch']}\n"
@@ -84,7 +84,7 @@ class GitCommitTool(BaseTool):
             "required": ["phase", "message"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
         self, phase: str, message: str, **kwargs: Any
     ) -> ToolResult:
         if phase == "docs":
@@ -116,7 +116,7 @@ class GitCheckoutTool(BaseTool):
             "required": ["branch"]
         }
 
-    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:
+    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:  # type: ignore[override] # pylint: disable=arguments-differ
         self.manager.checkout(branch)
         return ToolResult.text(f"Switched to branch: {branch}")
 
@@ -144,7 +144,11 @@ class GitPushTool(BaseTool):
             "required": []
         }
 
-    async def execute(self, set_upstream: bool = False, **kwargs: Any) -> ToolResult:
+    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
+        self,
+        set_upstream: bool = False,
+        **kwargs: Any
+    ) -> ToolResult:
         status = self.manager.get_status()
         self.manager.push(set_upstream=set_upstream)
         return ToolResult.text(f"Pushed branch: {status['branch']}")
@@ -172,7 +176,7 @@ class GitMergeTool(BaseTool):
             "required": ["branch"]
         }
 
-    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:
+    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:  # type: ignore[override] # pylint: disable=arguments-differ
         status = self.manager.get_status()
         self.manager.merge(branch)
         return ToolResult.text(
@@ -207,7 +211,7 @@ class GitDeleteBranchTool(BaseTool):
             "required": ["branch"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
         self, branch: str, force: bool = False, **kwargs: Any
     ) -> ToolResult:
         self.manager.delete_branch(branch, force=force)
@@ -241,7 +245,7 @@ class GitStashTool(BaseTool):
             "required": ["action"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
         self, action: str, message: str | None = None, **kwargs: Any
     ) -> ToolResult:
         if action == "push":

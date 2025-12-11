@@ -1,5 +1,10 @@
 """MCP Server Entrypoint."""
 import asyncio
+from io import TextIOWrapper
+import sys
+
+from pydantic import AnyUrl
+import anyio
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -146,7 +151,7 @@ class MCPServer:
         async def handle_list_resources() -> list[Resource]:
             return [
                 Resource(
-                    uri=r.uri_pattern,
+                    uri=AnyUrl(r.uri_pattern),
                     name=r.uri_pattern.rsplit("/", maxsplit=1)[-1],
                     description=r.description,
                     mimeType=r.mime_type
@@ -218,7 +223,11 @@ class MCPServer:
             "Starting MCP server: %s",
             settings.server.name  # pylint: disable=no-member
         )
-        async with stdio_server() as (read_stream, write_stream):
+        # Force LF only on Windows to prevent "invalid trailing data"
+        # and other CRLF issues in the JSON-RPC stream
+        stdout = anyio.wrap_file(TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n"))
+
+        async with stdio_server(stdout=stdout) as (read_stream, write_stream):
             await self.server.run(
                 read_stream,
                 write_stream,

@@ -9,7 +9,7 @@ class FilesystemAdapter:
     """Adapter for safe filesystem operations."""
 
     def __init__(self, root_path: str | None = None) -> None:
-        self.root_path = Path(root_path or settings.server.workspace_root).resolve()
+        self.root_path = Path(root_path or settings.server.workspace_root).resolve()  # pylint: disable=no-member
 
     def _validate_path(self, path: str | Path) -> Path:
         """Ensure path is within workspace root."""

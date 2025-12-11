@@ -1,4 +1,6 @@
+# pylint: disable=too-many-lines,too-many-arguments,too-many-positional-arguments,too-many-locals,too-many-branches,too-many-statements
 """Scaffold Manager for template-driven code generation."""
+# pylint: disable=too-few-public-methods
 import re
 from datetime import datetime
 from pathlib import Path
