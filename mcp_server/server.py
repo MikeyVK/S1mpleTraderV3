@@ -1,5 +1,6 @@
 """MCP Server Entrypoint."""
 import asyncio
+from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -11,6 +12,7 @@ from mcp.types import (
     Tool,
 )
 
+from pydantic import AnyUrl
 from mcp_server.config.settings import settings
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.resources.github import GitHubIssuesResource
@@ -142,11 +144,11 @@ class MCPServer:
     def setup_handlers(self) -> None:
         """Set up the MCP protocol handlers."""
 
-        @self.server.list_resources()
+        @self.server.list_resources()  # type: ignore[misc]
         async def handle_list_resources() -> list[Resource]:
             return [
                 Resource(
-                    uri=r.uri_pattern,
+                    uri=AnyUrl(r.uri_pattern),
                     name=r.uri_pattern.rsplit("/", maxsplit=1)[-1],
                     description=r.description,
                     mimeType=r.mime_type
@@ -154,14 +156,14 @@ class MCPServer:
                 for r in self.resources
             ]
 
-        @self.server.read_resource()
+        @self.server.read_resource()  # type: ignore[misc]
         async def handle_read_resource(uri: str) -> str:
             for resource in self.resources:
                 if resource.matches(uri):
                     return await resource.read(uri)
             raise ValueError(f"Resource not found: {uri}")
 
-        @self.server.list_tools()
+        @self.server.list_tools()  # type: ignore[misc]
         async def handle_list_tools() -> list[Tool]:
             return [
                 Tool(
@@ -172,10 +174,10 @@ class MCPServer:
                 for t in self.tools
             ]
 
-        @self.server.call_tool()
+        @self.server.call_tool()  # type: ignore[misc]
         async def handle_call_tool(
             name: str,
-            arguments: dict | None
+            arguments: dict[str, Any] | None
         ) -> list[TextContent | ImageContent | EmbeddedResource]:
             for tool in self.tools:
                 if tool.name == name:
@@ -218,10 +220,29 @@ class MCPServer:
             "Starting MCP server: %s",
             settings.server.name  # pylint: disable=no-member
         )
+
+        # Windows-safe stdout wrapper to prevent CRLF conversion
+        # Writes bytes directly to buffer, bypassing TextIOWrapper newline translation
+        class SafeStdout:
+            def __init__(self, buffer: Any) -> None:
+                self.buffer = buffer
+                self.encoding = 'utf-8'
+
+            def write(self, data: str | bytes) -> None:
+                if isinstance(data, str):
+                    self.buffer.write(data.encode('utf-8'))
+                else:
+                    self.buffer.write(data)
+
+            def flush(self) -> None:
+                self.buffer.flush()
+
         async with stdio_server() as (read_stream, write_stream):
             await self.server.run(
                 read_stream,
-                write_stream,
+                # Use SafeStdout to wrap the underlying buffer of the write stream
+                # This bypasses the TextIOWrapper that forces \r\n on Windows
+                SafeStdout(write_stream),  # type: ignore[arg-type]
                 self.server.create_initialization_options()
             )
 

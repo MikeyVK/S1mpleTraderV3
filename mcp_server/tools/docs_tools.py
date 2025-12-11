@@ -25,6 +25,6 @@ class ValidateDocTool(BaseTool):
             "required": ["content", "template_type"]
         }
 
-    async def execute(self, content: str, template_type: str, **kwargs: Any) -> ToolResult:
+    async def execute(self, content: str, template_type: str, **kwargs: Any) -> ToolResult:  # type: ignore[override]
         result = self.manager.validate_structure(content, template_type)
         return ToolResult.text(f"Validation result: {result}")

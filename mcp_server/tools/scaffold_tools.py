@@ -142,7 +142,7 @@ class ScaffoldComponentTool(BaseTool):
         }
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         component_type: str,
         name: str,
@@ -251,7 +251,7 @@ class ScaffoldComponentTool(BaseTool):
             content = self.manager.render_interface(
                 name=name,
                 description=docstring,
-                methods=methods, # type: ignore
+                methods=methods,
                 docstring=docstring
             )
             self.manager.write_file(output_path, content)
@@ -342,7 +342,7 @@ class ScaffoldDesignDocTool(BaseTool):
         }
 
     # pylint: disable=too-many-arguments,too-many-positional-arguments
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         title: str,
         output_path: str,

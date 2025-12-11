@@ -1,0 +1,27 @@
+{"timestamp": "2025-12-10 21:19:18,966", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-10 21:19:18,967", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-10 21:21:32,735", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-10 21:21:32,736", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-10 21:22:40,425", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-10 21:22:40,426", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-10 21:25:52,766", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-10 21:25:52,767", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-10 21:26:08,257", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-10 21:26:08,258", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-10 21:27:05,587", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-10 21:27:05,588", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-11 13:05:40,017", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-11 13:05:40,018", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-11 13:08:54,357", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-11 13:08:54,358", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-11 13:09:01,402", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-11 13:09:01,403", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-11 13:11:00,289", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-11 13:11:00,290", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-11 13:18:28,160", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-11 13:18:28,161", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-11 13:25:54,211", "level": "ERROR", "logger": "mcp_server.server", "message": "GITHUB_TOKEN appears to be unexpanded: ${env:GITHUB_TOKEN}"}
+{"timestamp": "2025-12-11 13:25:54,212", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-11 13:25:54,212", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}
+{"timestamp": "2025-12-11 13:32:31,297", "level": "INFO", "logger": "mcp_server.server", "message": "GitHub integration enabled"}
+{"timestamp": "2025-12-11 13:32:31,298", "level": "INFO", "logger": "mcp_server.server", "message": "Starting MCP server: st3-workflow"}

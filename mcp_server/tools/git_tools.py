@@ -29,7 +29,7 @@ class CreateBranchTool(BaseTool):
             "required": ["name"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self, name: str, branch_type: str = "feature", **kwargs: Any
     ) -> ToolResult:
         branch_name = self.manager.create_feature_branch(name, branch_type)
@@ -84,7 +84,7 @@ class GitCommitTool(BaseTool):
             "required": ["phase", "message"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self, phase: str, message: str, **kwargs: Any
     ) -> ToolResult:
         if phase == "docs":
@@ -116,7 +116,7 @@ class GitCheckoutTool(BaseTool):
             "required": ["branch"]
         }
 
-    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:
+    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:  # type: ignore[override]
         self.manager.checkout(branch)
         return ToolResult.text(f"Switched to branch: {branch}")
 
@@ -144,7 +144,7 @@ class GitPushTool(BaseTool):
             "required": []
         }
 
-    async def execute(self, set_upstream: bool = False, **kwargs: Any) -> ToolResult:
+    async def execute(self, set_upstream: bool = False, **kwargs: Any) -> ToolResult:  # type: ignore[override]
         status = self.manager.get_status()
         self.manager.push(set_upstream=set_upstream)
         return ToolResult.text(f"Pushed branch: {status['branch']}")
@@ -172,7 +172,7 @@ class GitMergeTool(BaseTool):
             "required": ["branch"]
         }
 
-    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:
+    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:  # type: ignore[override]
         status = self.manager.get_status()
         self.manager.merge(branch)
         return ToolResult.text(
@@ -207,7 +207,7 @@ class GitDeleteBranchTool(BaseTool):
             "required": ["branch"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self, branch: str, force: bool = False, **kwargs: Any
     ) -> ToolResult:
         self.manager.delete_branch(branch, force=force)
@@ -241,7 +241,7 @@ class GitStashTool(BaseTool):
             "required": ["action"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self, action: str, message: str | None = None, **kwargs: Any
     ) -> ToolResult:
         if action == "push":

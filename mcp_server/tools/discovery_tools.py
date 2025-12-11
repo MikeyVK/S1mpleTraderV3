@@ -48,7 +48,7 @@ class SearchDocumentationTool(BaseTool):
             "required": ["query"]
         }
 
-    async def execute(
+    async def execute(  # type: ignore[override]
         self,
         query: str,
         scope: str = "all",
@@ -143,15 +143,15 @@ class GetWorkContextTool(BaseTool):
 
                 if issue:
                     context["active_issue"] = {
-                        "number": issue.get("number"),
-                        "title": issue.get("title"),
-                        "body": issue.get("body", "")[:500],
+                        "number": issue.number,
+                        "title": issue.title,
+                        "body": (issue.body or "")[:500],
                         "labels": [
-                            label.get("name")
-                            for label in issue.get("labels", [])
+                            label.name
+                            for label in issue.labels
                         ],
                         "acceptance_criteria": self._extract_checklist(
-                            issue.get("body", "")
+                            issue.body or ""
                         )
                     }
             except (OSError, ValueError, RuntimeError, ImportError, MCPError):
