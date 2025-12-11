@@ -35,6 +35,14 @@ class RunQualityGatesTool(BaseTool):
         text += f"Overall Pass: {result['overall_pass']}\n"
         for gate in result['gates']:
             status = "✅" if gate['passed'] else "❌"
-            text += f"{status} {gate['name']}: {gate['score']}\n"
+            text += f"\n{status} {gate['name']}: {gate['score']}\n"
+            if not gate['passed'] and gate.get('issues'):
+                text += "  Issues:\n"
+                for issue in gate['issues']:
+                    # Format: ❌ file.py:10: [CODE] Message
+                    loc = f"{issue.get('file', 'unknown')}:{issue.get('line', '?')}:{issue.get('column', '?')}"
+                    code = f"[{issue.get('code', 'MISC')}] " if 'code' in issue else ""
+                    msg = issue.get('message', 'Unknown issue')
+                    text += f"  - {loc} {code}{msg}\n"
 
         return ToolResult.text(text)

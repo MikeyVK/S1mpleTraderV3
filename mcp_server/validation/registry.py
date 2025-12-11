@@ -26,11 +26,15 @@ class ValidatorRegistry:
     def get_validators(cls, path: str) -> list[BaseValidator]:
         """
         Get all appropriate validator instances for path.
-        
-        Returns list of validators (extension match + pattern matches).
+
+        Args:
+            path: Absolute path to the file.
+
+        Returns:
+            list[BaseValidator]: List of validators (extension match + pattern matches).
         """
         validators = []
-        
+
         # 1. Extension match
         _, ext = os.path.splitext(path)
         validator_cls = cls._extension_map.get(ext)
@@ -41,7 +45,7 @@ class ValidatorRegistry:
         for pattern, validator_inst in cls._pattern_map:
             if re.search(pattern, path):
                 validators.append(validator_inst)
-        
+
         return validators
 
     @classmethod

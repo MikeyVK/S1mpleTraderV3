@@ -61,9 +61,7 @@ class QAManager:
             cmd = [
                 python_exe, "-m", "pylint",
                 *files,
-                "--disable=all",
-                "--enable=trailing-whitespace,superfluous-parens,"
-                "import-outside-toplevel,line-too-long",
+                "--enable=all",
                 "--max-line-length=100",
                 "--output-format=text"
             ]
@@ -140,6 +138,7 @@ class QAManager:
             cmd = [
                 python_exe, "-m", "mypy",
                 *files,
+                "--strict",
                 "--no-error-summary"
             ]
 
