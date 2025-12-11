@@ -120,6 +120,30 @@ class GitManager:
         """
         return self.adapter.get_current_branch()
 
+    def list_branches(self, verbose: bool = False, remote: bool = False) -> list[str]:
+        """List branches with optional details.
+
+        Args:
+            verbose: Include upstream/hash info.
+            remote: Include remote branches.
+
+        Returns:
+            List of branch strings.
+        """
+        return self.adapter.list_branches(verbose=verbose, remote=remote)
+
+    def compare_branches(self, target: str, source: str = "HEAD") -> str:
+        """Compare two branches and return diff stat.
+
+        Args:
+            target: Target branch (e.g. main).
+            source: Source branch (default HEAD).
+
+        Returns:
+            Diff statistics.
+        """
+        return self.adapter.get_diff_stat(target, source)
+
     def get_recent_commits(self, limit: int = 5) -> list[str]:
         """Get recent commit messages.
 
