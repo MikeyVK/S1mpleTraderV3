@@ -65,6 +65,8 @@ from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
+from mcp_server.tools.safe_edit_tool import SafeEditTool
+from mcp_server.tools.template_validation_tool import TemplateValidationTool
 
 # Initialize logging
 setup_logging()
@@ -103,6 +105,8 @@ class MCPServer:
             ValidateDocTool(),
             ValidationTool(),
             ValidateDTOTool(),
+            SafeEditTool(),
+            TemplateValidationTool(),
             # Development tools
             HealthCheckTool(),
             RunTestsTool(),
