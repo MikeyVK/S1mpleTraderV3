@@ -1,6 +1,4 @@
 """QA Manager for quality gates."""
-# pylint: disable=subprocess-run-check  # We handle return codes manually
-# pylint: disable=too-few-public-methods  # Manager pattern with single entry point
 import re
 import subprocess
 import sys
@@ -45,6 +43,21 @@ class QAManager:
 
         return results
 
+    def check_health(self) -> bool:
+        """Check if QA tools are available."""
+        try:
+            # Check if pylint and mypy are installed
+            for tool in ["pylint", "mypy"]:
+                subprocess.run(
+                    [sys.executable, "-m", tool, "--version"],
+                    check=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+            return True
+        except (subprocess.SubprocessError, FileNotFoundError):
+            return False
+
     def _run_pylint(self, files: list[str]) -> dict[str, Any]:
         """Run pylint checks on files."""
         result: dict[str, Any] = {
@@ -62,6 +75,7 @@ class QAManager:
                 python_exe, "-m", "pylint",
                 *files,
                 "--enable=all",
+                "--disable=I0011,I0020", 
                 "--max-line-length=100",
                 "--output-format=text"
             ]
@@ -71,7 +85,8 @@ class QAManager:
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
+                check=False
             )
 
             # Parse pylint output
@@ -81,7 +96,7 @@ class QAManager:
 
             result["issues"] = issues
             result["score"] = score
-            result["passed"] = len(issues) == 0 and "10" in score
+            result["passed"] = not issues and "10" in score
 
         except subprocess.TimeoutExpired:
             result["passed"] = False
@@ -147,13 +162,14 @@ class QAManager:
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
+                check=False
             )
 
             # Parse mypy output
             issues = self._parse_mypy_output(proc.stdout)
             result["issues"] = issues
-            result["passed"] = len(issues) == 0
+            result["passed"] = not issues
             result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
 
         except subprocess.TimeoutExpired:

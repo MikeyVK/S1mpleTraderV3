@@ -28,7 +28,12 @@ class RunQualityGatesTool(BaseTool):
             "required": ["files"]
         }
 
-    async def execute(self, files: list[str], **kwargs: Any) -> ToolResult:  # type: ignore[override] # pylint: disable=arguments-differ
+    async def execute(self, **kwargs: Any) -> ToolResult:
+        """Execute quality gates."""
+        files = kwargs.get("files", [])
+        if not files:
+            return ToolResult.text("❌ No files provided")
+
         result = self.manager.run_quality_gates(files)
 
         text = "Quality Gates Results:\n"
@@ -40,7 +45,11 @@ class RunQualityGatesTool(BaseTool):
                 text += "  Issues:\n"
                 for issue in gate['issues']:
                     # Format: ❌ file.py:10: [CODE] Message
-                    loc = f"{issue.get('file', 'unknown')}:{issue.get('line', '?')}:{issue.get('column', '?')}"
+                    loc = (
+                        f"{issue.get('file', 'unknown')}:"
+                        f"{issue.get('line', '?')}:"
+                        f"{issue.get('column', '?')}"
+                    )
                     code = f"[{issue.get('code', 'MISC')}] " if 'code' in issue else ""
                     msg = issue.get('message', 'Unknown issue')
                     text += f"  - {loc} {code}{msg}\n"
