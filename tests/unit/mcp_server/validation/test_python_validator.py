@@ -1,3 +1,4 @@
+# tests/unit/mcp_server/validation/test_python_validator.py
 """
 Unit tests for PythonValidator.
 
@@ -11,7 +12,7 @@ Tests according to TDD principles with comprehensive coverage.
 
 # Standard library
 from typing import Generator
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 # Third-party
 import pytest
@@ -106,27 +107,45 @@ class TestPythonValidator:
         assert scanned_path != path
         assert scanned_path.endswith(".py")
 
-    def test_parse_result_mapping(self, validator: PythonValidator) -> None:
-        """Test _parse_result logic mapping back filenames."""
-        raw_result = {
-            "overall_pass": False,
-            "gates": [
-                {
-                    "name": "MyPy",
-                    "issues": [
-                        {"message": "/tmp/tmp123.py:4: error: Bad type"}
-                    ]
-                }
-            ]
-        }
+    @pytest.mark.asyncio
+    async def test_parse_result_mapping_logic(self, validator: PythonValidator) -> None:
+        """Verify filename mapping logic when using temporary files."""
+        path = "original.py"
+        content = "code code"
+        temp_path = "/tmp/random_temp_file.py"
 
-        # Validate logic mapping
-        # pylint: disable=protected-access
-        result = validator._parse_result(
-            raw_result, "original.py", "/tmp/tmp123.py"
-        )
+        # Patch system calls to control temp file generation
+        with patch("mcp_server.validation.python_validator.tempfile.mkstemp") as mock_mkstemp, \
+             patch("mcp_server.validation.python_validator.os.fdopen", MagicMock()), \
+             patch("mcp_server.validation.python_validator.os.name", "posix"):
 
-        assert len(result.issues) == 1
-        # The temp path should be replaced by basename of original
-        assert "original.py" in result.issues[0].message
-        assert "/tmp/tmp123.py" not in result.issues[0].message
+            mock_mkstemp.return_value = (123, temp_path)
+
+            # Mock QA to fail on the temp path
+            validator.qa_manager.run_quality_gates.return_value = {  # type: ignore
+                "overall_pass": False,
+                "gates": [
+                    {
+                        "name": "MyPy",
+                        "issues": [
+                            # The tool reports the error using the temp path it scanned
+                            {"message": f"{temp_path}:1: error: Invalid syntax"}
+                        ]
+                    }
+                ]
+            }
+
+            # Execute
+            result = await validator.validate(path, content)
+
+            # Verify
+            assert len(result.issues) == 1
+            message = result.issues[0].message
+
+            # The temp path should NOT be in the message
+            assert temp_path not in message
+
+            # The basename of the original path SHOULD be in the message
+            # logic: msg.replace(scanned_path, os.path.basename(original_path))
+            # /tmp/random_temp_file.py -> original.py
+            assert "original.py" in message
