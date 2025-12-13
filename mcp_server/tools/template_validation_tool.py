@@ -10,7 +10,11 @@ from mcp_server.validation.template_validator import TemplateValidator
 class TemplateValidationInput(BaseModel):
     """Input for TemplateValidationTool."""
     path: str = Field(..., description="Absolute path to the file")
-    template_type: str = Field(..., description="Type of template to validate against", pattern="^(worker|tool|dto|adapter|base)$")
+    template_type: str = Field(
+        ...,
+        description="Type of template to validate against",
+        pattern="^(worker|tool|dto|adapter|base)$"
+    )
 
 
 class TemplateValidationTool(BaseTool):

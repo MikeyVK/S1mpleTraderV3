@@ -19,7 +19,7 @@ class SafeEditInput(BaseModel):
     content: str = Field(..., description="New content for the file")
     mode: str = Field(
         default="strict",
-        description="Validation mode. 'strict' fails on error, 'interactive' writes but reports issues.",
+        description="Validation mode. 'strict' fails on error, 'interactive' writes but warns.",
         pattern="^(strict|interactive|verify_only)$"
     )
 

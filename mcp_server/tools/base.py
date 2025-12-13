@@ -24,7 +24,7 @@ class ToolResult(BaseModel):
 
 class BaseTool(ABC):
     """Abstract base class for all tools.
-    
+
     Subclasses must override execute() with a single parameters argument
     typed as their specific Pydantic model (InputModel).
     """
@@ -36,7 +36,7 @@ class BaseTool(ABC):
     @abstractmethod
     async def execute(self, params: Any) -> ToolResult:
         """Execute the tool.
-        
+
         Args:
             params: Validated Pydantic model instance containing arguments.
         """
@@ -47,7 +47,7 @@ class BaseTool(ABC):
         # Retrieve schema from args_model if available
         if self.args_model:
             return self.args_model.model_json_schema()
-            
+
         return {
             "type": "object",
             "properties": {},

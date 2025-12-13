@@ -45,7 +45,11 @@ class CreatePRTool(BaseTool):
 
 class ListPRsInput(BaseModel):
     """Input for ListPRsTool."""
-    state: str = Field(default="open", description="Filter by PR state", pattern="^(open|closed|all)$")
+    state: str = Field(
+        default="open",
+        description="Filter by PR state",
+        pattern="^(open|closed|all)$"
+    )
     base: str | None = Field(default=None, description="Filter by base branch")
     head: str | None = Field(default=None, description="Filter by head branch")
 
@@ -86,8 +90,15 @@ class ListPRsTool(BaseTool):
 class MergePRInput(BaseModel):
     """Input for MergePRTool."""
     pr_number: int = Field(..., description="Pull request number to merge")
-    commit_message: str | None = Field(default=None, description="Optional commit message for the merge")
-    merge_method: str = Field(default="merge", description="Merge strategy", pattern="^(merge|squash|rebase)$")
+    commit_message: str | None = Field(
+        default=None,
+        description="Optional commit message for the merge"
+    )
+    merge_method: str = Field(
+        default="merge",
+        description="Merge strategy",
+        pattern="^(merge|squash|rebase)$"
+    )
 
 
 class MergePRTool(BaseTool):

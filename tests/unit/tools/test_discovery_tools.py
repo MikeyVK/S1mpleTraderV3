@@ -69,7 +69,9 @@ class TestSearchDocumentationTool:
             mock_instance.search.return_value = []
             mock_manager_class.return_value = mock_instance
 
-            await tool.execute(SearchDocumentationInput(query="code style", scope="coding_standards"))
+            await tool.execute(
+                SearchDocumentationInput(query="code style", scope="coding_standards")
+            )
 
         mock_instance.search.assert_called_once_with(
             "code style",
@@ -153,6 +155,23 @@ class TestGetWorkContextTool:
         assert "42" in result.content[0]["text"]
 
     @pytest.mark.asyncio
+    async def test_get_context_extracts_issue_number_alternate_format(
+        self, tool: GetWorkContextTool
+    ) -> None:
+        """Should extract issue number from issue-123 format."""
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "issue-123"
+            mock_git.get_recent_commits.return_value = []
+            mock_git_class.return_value = mock_git
+
+            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
+                mock_settings.github.token = None
+                result = await tool.execute(GetWorkContextInput())
+
+        assert "123" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
     async def test_get_context_detects_tdd_phase(
         self, tool: GetWorkContextTool
     ) -> None:
@@ -175,14 +194,43 @@ class TestGetWorkContextTool:
         assert "red" in result.content[0]["text"].lower()
 
     @pytest.mark.asyncio
+    async def test_detect_tdd_phase_variations(
+        self, tool: GetWorkContextTool
+    ) -> None:
+        """Should detect green, refactor, and docs phases."""
+        test_cases = [
+            (["feat: new feature"], "green"),
+            (["pass: all tests passed"], "green"),
+            (["refactor: clean up"], "refactor"),
+            (["docs: update readme"], "docs"),
+            (["chore: misc"], "unknown"),
+        ]
+
+        emojis = {
+            "green": "🟢",
+            "refactor": "🔄",
+            "docs": "📝",
+            "unknown": "❓"
+        }
+
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "main"
+            mock_git_class.return_value = mock_git
+            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
+                mock_settings.github.token = None
+
+                for commits, expected in test_cases:
+                    mock_git.get_recent_commits.return_value = commits
+                    result = await tool.execute(GetWorkContextInput())
+                    text = result.content[0]["text"]
+                    assert expected in text or emojis[expected] in text
+
+    @pytest.mark.asyncio
     async def test_get_context_with_github_integration(
         self, tool: GetWorkContextTool
     ) -> None:
-        """Should handle GitHub integration gracefully.
-
-        Note: Full GitHub integration is tested via integration tests.
-        This unit test verifies the tool handles errors gracefully.
-        """
+        """Should handle GitHub integration gracefully (error case)."""
         with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-implement-dto"
@@ -197,6 +245,44 @@ class TestGetWorkContextTool:
 
         # Should not error even if GitHub fetch fails
         assert not result.is_error
-        # Should still contain branch info
         assert "feature/42-implement-dto" in result.content[0]["text"]
-        assert "42" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_get_context_github_success(
+        self, tool: GetWorkContextTool
+    ) -> None:
+        """Should successfully retrieve and format GitHub issue info."""
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/42-feat"
+            mock_git.get_recent_commits.return_value = []
+            mock_git_class.return_value = mock_git
+
+            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
+                mock_settings.github.token = "test-token"
+
+                with patch("mcp_server.tools.discovery_tools.GitHubManager") as mock_gh_cls:
+                    mock_gh = MagicMock()
+                    mock_gh.get_issue.return_value = {
+                        "number": 42,
+                        "title": "Implement Feature",
+                        "body": "Description.\n\n- [ ] Task 1\n- [x] Task 2",
+                        "labels": [{"name": "enhancement"}]
+                    }
+                    mock_gh.list_issues.return_value = [
+                        MagicMock(number=10, title="Closed 1")
+                    ]
+                    mock_gh_cls.return_value = mock_gh
+
+                    result = await tool.execute(
+                        GetWorkContextInput(include_closed_recent=True)
+                    )
+
+        text = result.content[0]["text"]
+        assert "Active Issue: #42" in text
+        assert "Implement Feature" in text
+        assert "enhancement" in text
+        assert "Task 1" in text  # Checklist extraction
+        assert "Task 2" in text
+        assert "Recently Closed Issues" in text
+        assert "#10 Closed 1" in text

@@ -14,28 +14,46 @@ class ScaffoldComponentInput(BaseModel):
     component_type: str = Field(..., description="Type of component to generate")
     name: str = Field(..., description="Component name (PascalCase)")
     output_path: str = Field(..., description="Output file path relative to workspace")
-    
+
     # Specific fields
     fields: list[dict[str, Any]] | None = Field(
         default=None,
         description="For DTOs: list of {name, type, default} objects"
     )
-    input_dto: str | None = Field(default=None, description="For Workers: input DTO class name")
-    output_dto: str | None = Field(default=None, description="For Workers: output DTO class name")
+    input_dto: str | None = Field(
+        default=None,
+        description="For Workers: input DTO class name"
+    )
+    output_dto: str | None = Field(
+        default=None,
+        description="For Workers: output DTO class name"
+    )
     methods: list[dict[str, Any]] | None = Field(
         default=None,
         description="For Adapters/Interfaces/Services: list of method definitions"
     )
-    docstring: str | None = Field(default=None, description="Optional docstring for the component")
+    docstring: str | None = Field(
+        default=None,
+        description="Optional docstring for the component"
+    )
     generate_test: bool = Field(
         default=True,
         description="Whether to generate a test file (DTOs only)"
     )
-    
+
     # New fields
-    input_schema: dict[str, Any] | None = Field(default=None, description="For Tools: Input schema dict")
-    uri_pattern: str | None = Field(default=None, description="For Resources: URI pattern")
-    mime_type: str | None = Field(default=None, description="For Resources: MIME type")
+    input_schema: dict[str, Any] | None = Field(
+        default=None,
+        description="For Tools: Input schema dict"
+    )
+    uri_pattern: str | None = Field(
+        default=None,
+        description="For Resources: URI pattern"
+    )
+    mime_type: str | None = Field(
+        default=None,
+        description="For Resources: MIME type"
+    )
     models: list[dict[str, Any]] | None = Field(
         default=None,
         description="For Schemas: List of Pydantic models"
@@ -44,12 +62,18 @@ class ScaffoldComponentInput(BaseModel):
         default=None,
         description="For Services: List of dependencies"
     )
-    service_type: str = Field(default="orchestrator", description="For Services: service subtype")
+    service_type: str = Field(
+        default="orchestrator",
+        description="For Services: service subtype"
+    )
     template_name: str | None = Field(
         default=None,
         description="For Generic: Relative template path"
     )
-    context: dict[str, Any] | None = Field(default=None, description="For Generic: Context variables")
+    context: dict[str, Any] | None = Field(
+        default=None,
+        description="For Generic: Context variables"
+    )
 
 
 class ScaffoldComponentTool(BaseTool):
@@ -177,7 +201,7 @@ class ScaffoldComponentTool(BaseTool):
         content = self.manager.render_interface(
             name=params.name,
             description=params.docstring,
-            methods=params.methods,  # type: ignore
+            methods=params.methods,
             docstring=params.docstring
         )
         self.manager.write_file(params.output_path, content)
@@ -220,7 +244,10 @@ class ScaffoldDesignDocInput(BaseModel):
         description="Status",
         pattern="^(DRAFT|REVIEW|APPROVED)$"
     )
-    context: dict[str, Any] | None = Field(default=None, description="Context for generic documents")
+    context: dict[str, Any] | None = Field(
+        default=None,
+        description="Context for generic documents"
+    )
 
 
 class ScaffoldDesignDocTool(BaseTool):

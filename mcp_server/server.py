@@ -1,11 +1,10 @@
 """MCP Server Entrypoint."""
-# pylint: disable=duplicate-code
 import asyncio
 from io import TextIOWrapper
 import sys
-from typing import Any
+from typing import Any, cast, Type
 
-from pydantic import AnyUrl
+from pydantic import AnyUrl, BaseModel
 import anyio
 
 from mcp.server import Server
@@ -199,8 +198,8 @@ class MCPServer:
                         # ALL tools now enforce args_model via BaseTool inheritance
                         if getattr(tool, "args_model", None):
                             # Validate args against model
-                            # pylint: disable=not-callable
-                            model_validated = tool.args_model(**(arguments or {}))
+                            model_cls = cast(Type[BaseModel], tool.args_model)
+                            model_validated = model_cls(**(arguments or {}))
                             result = await tool.execute(model_validated)
                         else:
                             # Fallback if somehow a tool is missed (should not happen)
@@ -208,7 +207,7 @@ class MCPServer:
                             # But legacy typically wanted spread kwargs.
                             # We assume full migration.
                             # Raising error here would be strict.
-                            # But for safety, we try passing as kwargs, which will fail types 
+                            # But for safety, we try passing as kwargs, which will fail types
                             # if tool expects params.
                             # Actually, BaseTool.execute(params) means we must pass an object.
                             # If no model, we pass the dict?

@@ -1,7 +1,7 @@
 """Discovery tools for AI self-orientation."""
 # pyright: reportIncompatibleMethodOverride=false
 import re
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, Field
 
@@ -9,12 +9,16 @@ from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import MCPError
 from mcp_server.managers.doc_manager import DocManager
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool, ToolResult
 
 
 class SearchDocumentationInput(BaseModel):
     """Input for SearchDocumentationTool."""
-    query: str = Field(..., description="Search query (e.g., 'how to implement a worker', 'DTO validation rules')")
+    query: str = Field(
+        ...,
+        description="Search query (e.g., 'how to implement a worker', 'DTO validation rules')"
+    )
     scope: str = Field(
         default="all",
         description="Optional scope to filter results",
@@ -109,17 +113,17 @@ class GetWorkContextTool(BaseTool):
             context["recent_commits"] = []
 
         # Get GitHub issue details if configured
-        # pylint: disable=no-member
         if settings.github.token:
             try:
-                # pylint: disable=import-outside-toplevel
-                from mcp_server.managers.github_manager import GitHubManager
                 gh_manager = GitHubManager()
-                
+
                 # Active Issue
                 if issue_number:
-                    issue = gh_manager.get_issue(issue_number)
-                    if issue:
+                    issue_raw = gh_manager.get_issue(issue_number)
+                    if issue_raw:
+                        # Cast to dict because MyPy might confuse it with Issue object or dict
+                        # In previous refactor we confirmed GitHubManager returns dicts
+                        issue = cast(dict[str, Any], issue_raw)
                         context["active_issue"] = {
                             "number": issue.get("number"),
                             "title": issue.get("title"),

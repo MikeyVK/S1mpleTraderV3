@@ -109,6 +109,80 @@ async def test_scaffold_tool_component(mock_scaffold_manager):
     mock_scaffold_manager.render_tool.assert_called()
 
 @pytest.mark.asyncio
+async def test_scaffold_resource(mock_scaffold_manager):
+    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+    params = ScaffoldComponentInput(
+        component_type="resource",
+        name="TestResource",
+        output_path="res.py",
+        uri_pattern="test://{id}",
+        mime_type="application/json"
+    )
+
+    mock_scaffold_manager.render_resource.return_value = "res_code"
+    await tool.execute(params)
+    mock_scaffold_manager.render_resource.assert_called()
+
+@pytest.mark.asyncio
+async def test_scaffold_schema(mock_scaffold_manager):
+    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+    params = ScaffoldComponentInput(
+        component_type="schema",
+        name="TestSchema",
+        output_path="schema.py",
+        models=[{"name": "M", "fields": []}]
+    )
+
+    mock_scaffold_manager.render_schema.return_value = "schema_code"
+    await tool.execute(params)
+    mock_scaffold_manager.render_schema.assert_called()
+
+@pytest.mark.asyncio
+async def test_scaffold_interface(mock_scaffold_manager):
+    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+    params = ScaffoldComponentInput(
+        component_type="interface",
+        name="ITest",
+        output_path="interface.py",
+        methods=[{"name": "m"}]
+    )
+
+    mock_scaffold_manager.render_interface.return_value = "interface_code"
+    await tool.execute(params)
+    mock_scaffold_manager.render_interface.assert_called()
+
+@pytest.mark.asyncio
+async def test_scaffold_service(mock_scaffold_manager):
+    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+    params = ScaffoldComponentInput(
+        component_type="service",
+        name="TestService",
+        output_path="service.py",
+        service_type="orchestrator",
+        dependencies=["Dep"],
+        methods=[{"name": "m"}]
+    )
+
+    mock_scaffold_manager.render_service.return_value = "service_code"
+    await tool.execute(params)
+    mock_scaffold_manager.render_service.assert_called()
+
+@pytest.mark.asyncio
+async def test_scaffold_generic_component(mock_scaffold_manager):
+    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+    params = ScaffoldComponentInput(
+        component_type="generic",
+        name="Gen",
+        output_path="gen.py",
+        template_name="tpl.j2",
+        context={"k": "v"}
+    )
+
+    mock_scaffold_manager.render_generic.return_value = "gen_code"
+    await tool.execute(params)
+    mock_scaffold_manager.render_generic.assert_called_with("tpl.j2", {"k": "v"})
+
+@pytest.mark.asyncio
 async def test_scaffold_generic_missing_args(mock_scaffold_manager):
     tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
     params = ScaffoldComponentInput(

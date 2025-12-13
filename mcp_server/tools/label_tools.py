@@ -143,4 +143,6 @@ class AddLabelsTool(BaseTool):
 
     async def execute(self, params: AddLabelsInput) -> ToolResult:
         self.manager.add_labels(params.issue_number, params.labels)
-        return ToolResult.text(f"Added labels to #{params.issue_number}: {', '.join(params.labels)}")
+        return ToolResult.text(
+            f"Added labels to #{params.issue_number}: {', '.join(params.labels)}"
+        )

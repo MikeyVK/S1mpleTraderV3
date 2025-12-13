@@ -9,7 +9,11 @@ from mcp_server.tools.base import BaseTool, ToolResult
 
 class ValidationInput(BaseModel):
     """Input for ValidationTool."""
-    scope: str = Field(default="all", description="Validation scope (all, dtos, workers, platform)", pattern="^(all|dtos|workers|platform)$")
+    scope: str = Field(
+        default="all",
+        description="Validation scope (all, dtos, workers, platform)",
+        pattern="^(all|dtos|workers|platform)$"
+    )
 
 
 class ValidationTool(BaseTool):

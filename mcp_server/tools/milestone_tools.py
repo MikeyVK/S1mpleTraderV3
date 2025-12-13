@@ -10,7 +10,11 @@ from mcp_server.tools.base import BaseTool, ToolResult
 
 class ListMilestonesInput(BaseModel):
     """Input for ListMilestonesTool."""
-    state: str = Field(default="open", description="Filter milestones by state", pattern="^(open|closed|all)$")
+    state: str = Field(
+        default="open",
+        description="Filter milestones by state",
+        pattern="^(open|closed|all)$"
+    )
 
 
 class ListMilestonesTool(BaseTool):
