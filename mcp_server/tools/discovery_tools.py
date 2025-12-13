@@ -3,11 +3,23 @@
 import re
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import MCPError
 from mcp_server.managers.doc_manager import DocManager
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class SearchDocumentationInput(BaseModel):
+    """Input for SearchDocumentationTool."""
+    query: str = Field(..., description="Search query (e.g., 'how to implement a worker', 'DTO validation rules')")
+    scope: str = Field(
+        default="all",
+        description="Optional scope to filter results",
+        pattern="^(all|architecture|coding_standards|development|reference|implementation)$"
+    )
 
 
 class SearchDocumentationTool(BaseTool):
@@ -18,56 +30,27 @@ class SearchDocumentationTool(BaseTool):
         "Semantic/fuzzy search across all docs/ files. "
         "Returns ranked results with snippets for understanding project structure."
     )
+    args_model = SearchDocumentationInput
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "type": "string",
-                    "description": (
-                        "Search query (e.g., 'how to implement a worker', "
-                        "'DTO validation rules')"
-                    )
-                },
-                "scope": {
-                    "type": "string",
-                    "description": "Optional scope to filter results",
-                    "enum": [
-                        "all",
-                        "architecture",
-                        "coding_standards",
-                        "development",
-                        "reference",
-                        "implementation"
-                    ],
-                    "default": "all"
-                }
-            },
-            "required": ["query"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(
-        self,
-        query: str,
-        scope: str = "all",
-        **kwargs: Any
-    ) -> ToolResult:
+    async def execute(self, params: SearchDocumentationInput) -> ToolResult:
         """Execute documentation search."""
         manager = DocManager()
-        scope_filter = None if scope == "all" else scope
+        scope_filter = None if params.scope == "all" else params.scope
 
-        results = manager.search(query, scope=scope_filter, max_results=10)
+        results = manager.search(params.query, scope=scope_filter, max_results=10)
 
         if not results:
             return ToolResult.text(
-                f"No results found for query: '{query}'\n"
+                f"No results found for query: '{params.query}'\n"
                 "Try broader search terms or different scope."
             )
 
         # Format results for output
-        output_lines = [f"Found {len(results)} results for '{query}':\n"]
+        output_lines = [f"Found {len(results)} results for '{params.query}':\n"]
 
         for i, result in enumerate(results, 1):
             output_lines.append(
@@ -80,6 +63,14 @@ class SearchDocumentationTool(BaseTool):
         return ToolResult.text("\n".join(output_lines))
 
 
+class GetWorkContextInput(BaseModel):
+    """Input for GetWorkContextTool."""
+    include_closed_recent: bool = Field(
+        default=False,
+        description="Include recently closed issues (last 7 days) for context"
+    )
+
+
 class GetWorkContextTool(BaseTool):
     """Tool to aggregate work context from Git and GitHub."""
 
@@ -88,28 +79,13 @@ class GetWorkContextTool(BaseTool):
         "Aggregates context from GitHub Issues, current branch, and TDD phase "
         "to understand what to work on next."
     )
+    args_model = GetWorkContextInput
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "include_closed_recent": {
-                    "type": "boolean",
-                    "description": (
-                        "Include recently closed issues (last 7 days) for context"
-                    ),
-                    "default": False
-                }
-            },
-            "required": []
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(
-        self,
-        include_closed_recent: bool = False,
-        **kwargs: Any
-    ) -> ToolResult:
+    async def execute(self, params: GetWorkContextInput) -> ToolResult:
         """Execute work context aggregation."""
         context: dict[str, Any] = {}
 
@@ -134,39 +110,45 @@ class GetWorkContextTool(BaseTool):
 
         # Get GitHub issue details if configured
         # pylint: disable=no-member
-        if settings.github.token and issue_number:
+        if settings.github.token:
             try:
                 # pylint: disable=import-outside-toplevel
                 from mcp_server.managers.github_manager import GitHubManager
                 gh_manager = GitHubManager()
-                issue = gh_manager.get_issue(issue_number)
+                
+                # Active Issue
+                if issue_number:
+                    issue = gh_manager.get_issue(issue_number)
+                    if issue:
+                        context["active_issue"] = {
+                            "number": issue.get("number"),
+                            "title": issue.get("title"),
+                            "body": issue.get("body", "")[:500],
+                            "labels": [
+                                label.get("name")
+                                for label in issue.get("labels", [])
+                            ],
+                            "acceptance_criteria": self._extract_checklist(
+                                issue.get("body", "")
+                            )
+                        }
 
-                if issue:
-                    context["active_issue"] = {
-                        "number": issue.get("number"),
-                        "title": issue.get("title"),
-                        "body": issue.get("body", "")[:500],
-                        "labels": [
-                            label.get("name")
-                            for label in issue.get("labels", [])
-                        ],
-                        "acceptance_criteria": self._extract_checklist(
-                            issue.get("body", "")
-                        )
-                    }
+                # Recently Closed Issues (Implemented to satisfy param)
+                if params.include_closed_recent:
+                     # This effectively implements the logic for the formerly unused argument
+                    closed_issues = gh_manager.list_issues(state="closed")
+                    # Naively taking top 3 for brevity, assuming list_issues sorts by recent
+                    context["recently_closed"] = [
+                        f"#{i.number} {i.title}" for i in closed_issues[:3]
+                    ]
+
             except (OSError, ValueError, RuntimeError, ImportError, MCPError):
                 pass  # GitHub integration optional
 
         return ToolResult.text(self._format_context(context))
 
     def _extract_issue_number(self, branch: str) -> int | None:
-        """Extract issue number from branch name.
-
-        Patterns:
-        - feature/42-description
-        - fix/123-bug-name
-        - issue-42-something
-        """
+        """Extract issue number from branch name."""
         patterns = [
             r"(?:feature|fix|refactor|docs)/(\d+)-",
             r"issue-(\d+)",
@@ -242,6 +224,12 @@ class GetWorkContextTool(BaseTool):
                 lines.append("\n**Acceptance Criteria:**")
                 for criterion in issue["acceptance_criteria"]:
                     lines.append(f"- [ ] {criterion}")
+
+        # Recently Closed
+        if context.get("recently_closed"):
+            lines.append("\n**Recently Closed Issues:**")
+            for closed in context["recently_closed"]:
+                lines.append(f"- {closed}")
 
         # Recent commits
         if context.get("recent_commits"):

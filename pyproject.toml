@@ -109,3 +109,16 @@ ignore = [
 [tool.pyright]
 # Pydantic v2 integration - prevents FieldInfo type inference issues
 reportFunctionMemberAccess = false
+
+[tool.pylint.MAIN]
+init-hook = 'import sys; sys.path.append(".")'
+extension-pkg-allow-list = ["pydantic"]
+
+[tool.pylint.FORMAT]
+max-line-length = 100
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "R0801", # duplicate-code (often inevitable in tests/scaffolding)
+]
+enable = "all"

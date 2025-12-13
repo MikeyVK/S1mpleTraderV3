@@ -3,7 +3,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
+from mcp_server.tools.discovery_tools import (
+    GetWorkContextTool, GetWorkContextInput,
+    SearchDocumentationTool, SearchDocumentationInput
+)
 
 
 class TestSearchDocumentationTool:
@@ -53,7 +56,7 @@ class TestSearchDocumentationTool:
             mock_instance.search.return_value = mock_results
             mock_manager_class.return_value = mock_instance
 
-            result = await tool.execute(query="DTO flow")
+            result = await tool.execute(SearchDocumentationInput(query="DTO flow"))
 
         assert not result.is_error
         assert "DATA_FLOW.md" in result.content[0]["text"]
@@ -66,7 +69,7 @@ class TestSearchDocumentationTool:
             mock_instance.search.return_value = []
             mock_manager_class.return_value = mock_instance
 
-            await tool.execute(query="code style", scope="coding_standards")
+            await tool.execute(SearchDocumentationInput(query="code style", scope="coding_standards"))
 
         mock_instance.search.assert_called_once_with(
             "code style",
@@ -82,7 +85,7 @@ class TestSearchDocumentationTool:
             mock_instance.search.return_value = []
             mock_manager_class.return_value = mock_instance
 
-            result = await tool.execute(query="xyznonexistent")
+            result = await tool.execute(SearchDocumentationInput(query="xyznonexistent"))
 
         assert not result.is_error
         assert "no results" in result.content[0]["text"].lower()
@@ -124,7 +127,7 @@ class TestGetWorkContextTool:
             with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
                 mock_settings.github.token = None  # No GitHub
 
-                result = await tool.execute()
+                result = await tool.execute(GetWorkContextInput())
 
         assert not result.is_error
         assert "feature/42-implement-dto" in result.content[0]["text"]
@@ -143,7 +146,7 @@ class TestGetWorkContextTool:
             with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
                 mock_settings.github.token = None
 
-                result = await tool.execute()
+                result = await tool.execute(GetWorkContextInput())
 
         assert not result.is_error
         # Should identify issue #42 from branch name
@@ -165,7 +168,7 @@ class TestGetWorkContextTool:
             with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
                 mock_settings.github.token = None
 
-                result = await tool.execute()
+                result = await tool.execute(GetWorkContextInput())
 
         assert not result.is_error
         # Should identify red phase from recent test commit
@@ -190,7 +193,7 @@ class TestGetWorkContextTool:
                 mock_settings.github.token = "test-token"
 
                 # Execute - GitHub code path will fail gracefully
-                result = await tool.execute()
+                result = await tool.execute(GetWorkContextInput())
 
         # Should not error even if GitHub fetch fails
         assert not result.is_error

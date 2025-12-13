@@ -35,7 +35,6 @@ class DocManager:
             docs_dir: Path to docs directory. Defaults to workspace/docs.
         """
         if docs_dir is None:
-            # pylint: disable=no-member
             workspace = Path(settings.server.workspace_root)
             self.docs_dir = workspace / "docs"
         else:
@@ -131,9 +130,6 @@ class DocManager:
         self, content: str, query_terms: list[str]
     ) -> float:
         """Calculate relevance score for content against query terms."""
-        if not query_terms:
-            return 0.0
-
         matches = 0
         for term in query_terms:
             if term in content:
@@ -178,11 +174,7 @@ class DocManager:
                     line.strip() for line in snippet_lines if line.strip()
                 )[:150]
 
-        # Default snippet if no good match found
-        if not best_snippet and lines:
-            best_snippet = " ".join(
-                line.strip() for line in lines[:3] if line.strip()
-            )[:150]
+
 
         return best_line, best_snippet
 
@@ -205,7 +197,7 @@ class DocManager:
             issues.append("Missing title")
 
         return {
-            "valid": len(issues) == 0,
+            "valid": not issues,
             "issues": issues
         }
 

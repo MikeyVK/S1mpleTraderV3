@@ -17,7 +17,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Module under test
-from mcp_server.tools.safe_edit_tool import SafeEditTool
+from pydantic import ValidationError
+from mcp_server.tools.safe_edit_tool import SafeEditTool, SafeEditInput
 from mcp_server.validation.base import ValidationResult, ValidationIssue
 
 
@@ -32,13 +33,13 @@ class TestSafeEditTool:
     @pytest.mark.asyncio
     async def test_missing_arguments(self, tool: SafeEditTool) -> None:
         """Test execution with missing arguments."""
-        # Missing content
-        result = await tool.execute(path="test.py")
-        assert "Missing required arguments" in result.content[0]["text"]
+        # Missing content key raises ValidationError
+        with pytest.raises(ValidationError):
+            SafeEditInput(path="test.py")
 
-        # Missing path
-        result = await tool.execute(content="code")
-        assert "Missing required arguments" in result.content[0]["text"]
+        # Missing path key raises ValidationError
+        with pytest.raises(ValidationError):
+            SafeEditInput(content="code")
 
     @pytest.mark.asyncio
     async def test_execute_strict_pass(self, tool: SafeEditTool) -> None:
@@ -63,7 +64,7 @@ class TestSafeEditTool:
                 mock_parent.mkdir = MagicMock()
 
                 # Execute
-                result = await tool.execute(path=path, content=content, mode="strict")
+                result = await tool.execute(SafeEditInput(path=path, content=content, mode="strict"))
 
                 # Verify
                 assert "File saved successfully" in result.content[0]["text"]
@@ -90,7 +91,7 @@ class TestSafeEditTool:
 
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
-                result = await tool.execute(path=path, content=content, mode="strict")
+                result = await tool.execute(SafeEditInput(path=path, content=content, mode="strict"))
 
                 # Verify
                 text = result.content[0]["text"]
@@ -119,7 +120,7 @@ class TestSafeEditTool:
 
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
-                result = await tool.execute(path=path, content=content, mode="interactive")
+                result = await tool.execute(SafeEditInput(path=path, content=content, mode="interactive"))
 
                 # Verify
                 text = result.content[0]["text"]
@@ -144,7 +145,7 @@ class TestSafeEditTool:
 
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
-                result = await tool.execute(path=path, content=content, mode="verify_only")
+                result = await tool.execute(SafeEditInput(path=path, content=content, mode="verify_only"))
 
                 # Verify
                 text = result.content[0]["text"]
@@ -176,7 +177,7 @@ class TestSafeEditTool:
                 mock_tmpl_cls.return_value = mock_base_instance
 
                 # Execute
-                await tool.execute(path=path, content=content)
+                await tool.execute(SafeEditInput(path=path, content=content))
 
                 # Verify that TemplateValidator was instantiated with "base"
                 mock_tmpl_cls.assert_called_with("base")

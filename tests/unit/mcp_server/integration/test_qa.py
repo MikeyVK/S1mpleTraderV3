@@ -5,7 +5,7 @@ Integration tests for real QA tool execution with actual files.
 import pytest
 
 from mcp_server.managers.qa_manager import QAManager
-from mcp_server.tools.quality_tools import RunQualityGatesTool
+from mcp_server.tools.quality_tools import RunQualityGatesTool, RunQualityGatesInput
 
 
 def test_qa_manager_run_gates_with_real_file() -> None:
@@ -28,7 +28,7 @@ async def test_quality_tool_output_format() -> None:
     manager = QAManager()
     tool = RunQualityGatesTool(manager=manager)
 
-    result = await tool.execute(files=["backend/core/enums.py"])
+    result = await tool.execute(RunQualityGatesInput(files=["backend/core/enums.py"]))
     text = result.content[0]["text"]
 
     # Verify output format contains expected sections

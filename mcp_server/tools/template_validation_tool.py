@@ -1,8 +1,16 @@
 """Tool for validating file structure against templates."""
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.tools.base import BaseTool, ToolResult
 from mcp_server.validation.template_validator import TemplateValidator
+
+
+class TemplateValidationInput(BaseModel):
+    """Input for TemplateValidationTool."""
+    path: str = Field(..., description="Absolute path to the file")
+    template_type: str = Field(..., description="Type of template to validate against", pattern="^(worker|tool|dto|adapter|base)$")
 
 
 class TemplateValidationTool(BaseTool):
@@ -13,33 +21,17 @@ class TemplateValidationTool(BaseTool):
         "Validate a file's structure against a project template "
         "(worker, tool, dto, etc.)"
     )
-    input_schema = {
-        "type": "object",
-        "properties": {
-            "path": {
-                "type": "string",
-                "description": "Absolute path to the file"
-            },
-            "template_type": {
-                "type": "string",
-                "enum": list(TemplateValidator.RULES.keys()),
-                "description": "Type of template to validate against"
-            }
-        },
-        "required": ["path", "template_type"]
-    }
+    args_model = TemplateValidationInput
 
-    async def execute(self, **kwargs: Any) -> ToolResult:
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return self.args_model.model_json_schema()
+
+    async def execute(self, params: TemplateValidationInput) -> ToolResult:
         """Execute template validation."""
-        path = kwargs.get("path")
-        template_type = kwargs.get("template_type")
-
-        if not path or not template_type:
-            return ToolResult.text("❌ Missing required arguments: path, template_type")
-
         try:
-            validator = TemplateValidator(template_type)
-            val_result = await validator.validate(path)
+            validator = TemplateValidator(params.template_type)
+            val_result = await validator.validate(params.path)
 
             status = (
                 "✅ Template Validation Passed" if val_result.passed

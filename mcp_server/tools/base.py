@@ -25,32 +25,29 @@ class ToolResult(BaseModel):
 class BaseTool(ABC):
     """Abstract base class for all tools.
     
-    Subclasses can override execute() with explicit parameters while
-    still calling parent signature via **kwargs at runtime.
+    Subclasses must override execute() with a single parameters argument
+    typed as their specific Pydantic model (InputModel).
     """
 
     name: str
     description: str
+    args_model: type[BaseModel] | None = None
 
     @abstractmethod
-    async def execute(self, **kwargs: Any) -> ToolResult:
+    async def execute(self, params: Any) -> ToolResult:
         """Execute the tool.
         
-        Subclasses may override with explicit parameters, e.g.:
-            async def execute(self, issue_number: int, **kwargs: Any) -> ToolResult
-        
-        The **kwargs ensures compatibility with the abstract method while
-        allowing type checkers to permit explicit parameters in subclasses.
+        Args:
+            params: Validated Pydantic model instance containing arguments.
         """
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        """Get the JSON schema for input parameters.
-
-        Subclasses should override this to provide specific schema definitions,
-        or we can implement automatic schema generation from the execute method
-        signature in the future.
-        """
+        """Get the JSON schema for input parameters."""
+        # Retrieve schema from args_model if available
+        if self.args_model:
+            return self.args_model.model_json_schema()
+            
         return {
             "type": "object",
             "properties": {},

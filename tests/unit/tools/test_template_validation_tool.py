@@ -18,7 +18,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Module under test
-from mcp_server.tools.template_validation_tool import TemplateValidationTool
+from pydantic import ValidationError
+from mcp_server.tools.template_validation_tool import TemplateValidationTool, TemplateValidationInput
 from mcp_server.validation.base import ValidationResult, ValidationIssue
 
 
@@ -34,12 +35,12 @@ class TestTemplateValidationTool:
     async def test_missing_arguments(self, tool: TemplateValidationTool) -> None:
         """Test execution with missing arguments."""
         # Missing template_type
-        result = await tool.execute(path="test.py")
-        assert "Missing required arguments" in result.content[0]["text"]
+        with pytest.raises(ValidationError):
+            TemplateValidationInput(path="test.py")
 
         # Missing path
-        result = await tool.execute(template_type="worker")
-        assert "Missing required arguments" in result.content[0]["text"]
+        with pytest.raises(ValidationError):
+            TemplateValidationInput(template_type="worker")
 
     @pytest.mark.asyncio
     async def test_execute_pass(self, tool: TemplateValidationTool) -> None:
@@ -59,7 +60,7 @@ class TestTemplateValidationTool:
             mock_validator_cls.return_value = mock_instance
 
             # Execute
-            result = await tool.execute(path=path, template_type=template_type)
+            result = await tool.execute(TemplateValidationInput(path=path, template_type=template_type))
 
             # Verify
             assert "Template Validation Passed" in result.content[0]["text"]
@@ -88,7 +89,7 @@ class TestTemplateValidationTool:
             mock_validator_cls.return_value = mock_instance
 
             # Execute
-            result = await tool.execute(path=path, template_type=template_type)
+            result = await tool.execute(TemplateValidationInput(path=path, template_type=template_type))
 
             # Verify
             text = result.content[0]["text"]
@@ -99,18 +100,9 @@ class TestTemplateValidationTool:
     @pytest.mark.asyncio
     async def test_execute_value_error(self, tool: TemplateValidationTool) -> None:
         """Test handling of invalid template type (ValueError)."""
-        path = "test.py"
-        template_type = "invalid"
-        target = "mcp_server.tools.template_validation_tool.TemplateValidator"
-
-        with patch(target) as mock_validator_cls:
-            # Simulate constructor error logic (TemplateValidator raises ValueError)
-            mock_validator_cls.side_effect = ValueError("Unknown template type")
-
-            result = await tool.execute(path=path, template_type=template_type)
-
-            assert "Validation error" in result.content[0]["text"]
-            assert "Unknown template type" in result.content[0]["text"]
+        # Pydantic validation now catches this before execution
+        with pytest.raises(ValidationError):
+            TemplateValidationInput(path="test.py", template_type="invalid")
 
     @pytest.mark.asyncio
     async def test_execute_os_error(self, tool: TemplateValidationTool) -> None:
@@ -125,7 +117,7 @@ class TestTemplateValidationTool:
             mock_instance.validate.side_effect = OSError("Access denied")
             mock_validator_cls.return_value = mock_instance
 
-            result = await tool.execute(path=path, template_type=template_type)
+            result = await tool.execute(TemplateValidationInput(path=path, template_type=template_type))
 
             assert "Validation error" in result.content[0]["text"]
             assert "Access denied" in result.content[0]["text"]

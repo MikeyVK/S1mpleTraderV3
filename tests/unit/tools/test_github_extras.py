@@ -5,8 +5,8 @@ from unittest.mock import Mock
 import pytest
 
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.tools.label_tools import AddLabelsTool
-from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
+from mcp_server.tools.label_tools import AddLabelsTool, AddLabelsInput
+from mcp_server.tools.pr_tools import CreatePRTool, CreatePRInput, ListPRsTool, ListPRsInput, MergePRTool, MergePRInput
 
 
 @pytest.fixture
@@ -26,11 +26,11 @@ def test_create_pr_tool(mock_adapter) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = CreatePRTool(manager=manager)
 
-    result = asyncio.run(tool.execute(
+    result = asyncio.run(tool.execute(CreatePRInput(
         title="New Feature",
         body="Description",
         head="feature/branch"
-    ))
+    )))
 
     assert "Created PR #123" in result.content[0]["text"]
     mock_adapter.create_pr.assert_called_with(
@@ -46,10 +46,10 @@ def test_add_labels_tool(mock_adapter) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = AddLabelsTool(manager=manager)
 
-    result = asyncio.run(tool.execute(
+    result = asyncio.run(tool.execute(AddLabelsInput(
         issue_number=456,
         labels=["bug", "high-priority"]
-    ))
+    )))
 
     assert "Added labels to #456" in result.content[0]["text"]
     mock_adapter.add_labels.assert_called_with(456, ["bug", "high-priority"])
@@ -74,7 +74,7 @@ def test_list_prs_tool(mock_adapter) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = ListPRsTool(manager=manager)
 
-    result = asyncio.run(tool.execute())
+    result = asyncio.run(tool.execute(ListPRsInput()))
 
     assert not result.is_error
     assert "#5" in result.content[0]["text"]
@@ -93,7 +93,7 @@ def test_merge_pr_tool(mock_adapter) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = MergePRTool(manager=manager)
 
-    result = asyncio.run(tool.execute(pr_number=8, merge_method="squash"))
+    result = asyncio.run(tool.execute(MergePRInput(pr_number=8, merge_method="squash")))
 
     assert not result.is_error
     assert "abc123" in result.content[0]["text"]

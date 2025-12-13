@@ -1,9 +1,16 @@
 """GitHub milestone tools."""
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class ListMilestonesInput(BaseModel):
+    """Input for ListMilestonesTool."""
+    state: str = Field(default="open", description="Filter milestones by state", pattern="^(open|closed|all)$")
 
 
 class ListMilestonesTool(BaseTool):
@@ -11,29 +18,18 @@ class ListMilestonesTool(BaseTool):
 
     name = "list_milestones"
     description = "List milestones with optional state filter"
+    args_model = ListMilestonesInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "state": {
-                    "type": "string",
-                    "enum": ["open", "closed", "all"],
-                    "description": "Filter milestones by state",
-                    "default": "open"
-                }
-            },
-            "required": []
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(self, state: str = "open", **kwargs: Any) -> ToolResult:
-        """Execute the tool."""
+    async def execute(self, params: ListMilestonesInput) -> ToolResult:
         try:
-            milestones = self.manager.list_milestones(state=state)
+            milestones = self.manager.list_milestones(state=params.state)
         except ExecutionError as e:
             return ToolResult.error(str(e))
 
@@ -51,46 +47,33 @@ class ListMilestonesTool(BaseTool):
         return ToolResult.text("\n".join(lines))
 
 
+class CreateMilestoneInput(BaseModel):
+    """Input for CreateMilestoneTool."""
+    title: str = Field(..., description="Milestone title")
+    description: str | None = Field(default=None, description="Optional milestone description")
+    due_on: str | None = Field(default=None, description="Optional due date (ISO 8601 string)")
+
+
 class CreateMilestoneTool(BaseTool):
     """Tool to create a new milestone."""
 
     name = "create_milestone"
     description = "Create a new milestone in the repository"
+    args_model = CreateMilestoneInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "Milestone title"},
-                "description": {
-                    "type": "string",
-                    "description": "Optional milestone description"
-                },
-                "due_on": {
-                    "type": "string",
-                    "description": "Optional due date (ISO 8601 string)"
-                }
-            },
-            "required": ["title"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override]
-        self,
-        title: str,
-        description: str | None = None,
-        due_on: str | None = None,
-        **kwargs: Any
-    ) -> ToolResult:
-        """Execute the tool."""
+    async def execute(self, params: CreateMilestoneInput) -> ToolResult:
         try:
             milestone = self.manager.create_milestone(
-                title=title,
-                description=description,
-                due_on=due_on,
+                title=params.title,
+                description=params.description,
+                due_on=params.due_on,
             )
         except ExecutionError as e:
             return ToolResult.error(str(e))
@@ -98,34 +81,28 @@ class CreateMilestoneTool(BaseTool):
         return ToolResult.text(f"Created milestone #{milestone.number}: {milestone.title}")
 
 
+class CloseMilestoneInput(BaseModel):
+    """Input for CloseMilestoneTool."""
+    milestone_number: int = Field(..., description="Milestone number to close")
+
+
 class CloseMilestoneTool(BaseTool):
     """Tool to close a milestone."""
 
     name = "close_milestone"
     description = "Close a milestone by number"
+    args_model = CloseMilestoneInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "milestone_number": {
-                    "type": "integer",
-                    "description": "Milestone number to close"
-                }
-            },
-            "required": ["milestone_number"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override]
-        self, milestone_number: int, **kwargs: Any
-    ) -> ToolResult:
-        """Execute the tool."""
+    async def execute(self, params: CloseMilestoneInput) -> ToolResult:
         try:
-            milestone = self.manager.close_milestone(milestone_number)
+            milestone = self.manager.close_milestone(params.milestone_number)
         except ExecutionError as e:
             return ToolResult.error(str(e))
 

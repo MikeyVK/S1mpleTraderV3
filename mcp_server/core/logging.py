@@ -31,7 +31,7 @@ class StructuredFormatter(logging.Formatter):
 def setup_logging() -> None:
     """Configure logging based on settings."""
     logger = logging.getLogger("mcp_server")
-    logger.setLevel(settings.logging.level)  # pylint: disable=no-member
+    logger.setLevel(settings.logging.level)
 
     # Console handler
     handler = logging.StreamHandler(sys.stderr)
@@ -39,10 +39,10 @@ def setup_logging() -> None:
     logger.addHandler(handler)
 
     # Audit log file handler if configured
-    if settings.logging.audit_log:  # pylint: disable=no-member
+    if settings.logging.audit_log:
         try:
             file_handler = logging.FileHandler(
-                settings.logging.audit_log  # pylint: disable=no-member
+                settings.logging.audit_log
             )
             file_handler.setFormatter(StructuredFormatter())
             logger.addHandler(file_handler)

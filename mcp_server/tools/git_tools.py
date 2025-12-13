@@ -1,8 +1,20 @@
 """Git tools."""
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class CreateBranchInput(BaseModel):
+    """Input for CreateBranchTool."""
+    name: str = Field(..., description="Branch name (kebab-case)")
+    branch_type: str = Field(
+        default="feature",
+        description="Branch type",
+        pattern="^(feature|fix|refactor|docs)$"
+    )
 
 
 class CreateBranchTool(BaseTool):
@@ -10,41 +22,39 @@ class CreateBranchTool(BaseTool):
 
     name = "create_feature_branch"
     description = "Create a new feature branch"
+    args_model = CreateBranchInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "Branch name (kebab-case)"},
-                "branch_type": {
-                    "type": "string",
-                    "enum": ["feature", "fix", "refactor", "docs"],
-                    "default": "feature"
-                }
-            },
-            "required": ["name"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
-        self, name: str, branch_type: str = "feature", **kwargs: Any
-    ) -> ToolResult:
-        branch_name = self.manager.create_feature_branch(name, branch_type)
+    async def execute(self, params: CreateBranchInput) -> ToolResult:
+        branch_name = self.manager.create_feature_branch(params.name, params.branch_type)
         return ToolResult.text(f"Created and switched to branch: {branch_name}")
+
+
+class GitStatusInput(BaseModel):
+    """Input for GitStatusTool (empty)."""
+
 
 class GitStatusTool(BaseTool):
     """Tool to check git status."""
 
     name = "git_status"
     description = "Check current git status"
+    args_model = GitStatusInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
-    async def execute(self, **kwargs: Any) -> ToolResult:  # type: ignore[override] # pylint: disable=arguments-differ
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return self.args_model.model_json_schema()
+
+    async def execute(self, params: GitStatusInput) -> ToolResult:
         status = self.manager.get_status()
 
         text = f"Branch: {status['branch']}\n"
@@ -57,41 +67,41 @@ class GitStatusTool(BaseTool):
         return ToolResult.text(text)
 
 
+class GitCommitInput(BaseModel):
+    """Input for GitCommitTool."""
+    phase: str = Field(
+        ...,
+        description="TDD phase (red=test, green=feat, refactor, docs)",
+        pattern="^(red|green|refactor|docs)$"
+    )
+    message: str = Field(..., description="Commit message (without prefix)")
+
+
 class GitCommitTool(BaseTool):
     """Tool to commit changes with TDD phase prefix."""
 
     name = "git_add_or_commit"
     description = "Commit changes with TDD phase prefix (red/green/refactor/docs)"
+    args_model = GitCommitInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "phase": {
-                    "type": "string",
-                    "enum": ["red", "green", "refactor", "docs"],
-                    "description": "TDD phase (red=test, green=feat, refactor, docs)"
-                },
-                "message": {
-                    "type": "string",
-                    "description": "Commit message (without prefix)"
-                }
-            },
-            "required": ["phase", "message"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
-        self, phase: str, message: str, **kwargs: Any
-    ) -> ToolResult:
-        if phase == "docs":
-            commit_hash = self.manager.commit_docs(message)
+    async def execute(self, params: GitCommitInput) -> ToolResult:
+        if params.phase == "docs":
+            commit_hash = self.manager.commit_docs(params.message)
         else:
-            commit_hash = self.manager.commit_tdd_phase(phase, message)
+            commit_hash = self.manager.commit_tdd_phase(params.phase, params.message)
         return ToolResult.text(f"Committed: {commit_hash}")
+
+
+class GitCheckoutInput(BaseModel):
+    """Input for GitCheckoutTool."""
+    branch: str = Field(..., description="Branch name to checkout")
 
 
 class GitCheckoutTool(BaseTool):
@@ -99,26 +109,26 @@ class GitCheckoutTool(BaseTool):
 
     name = "git_checkout"
     description = "Switch to an existing branch"
+    args_model = GitCheckoutInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "branch": {
-                    "type": "string",
-                    "description": "Branch name to checkout"
-                }
-            },
-            "required": ["branch"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:  # type: ignore[override] # pylint: disable=arguments-differ
-        self.manager.checkout(branch)
-        return ToolResult.text(f"Switched to branch: {branch}")
+    async def execute(self, params: GitCheckoutInput) -> ToolResult:
+        self.manager.checkout(params.branch)
+        return ToolResult.text(f"Switched to branch: {params.branch}")
+
+
+class GitPushInput(BaseModel):
+    """Input for GitPushTool."""
+    set_upstream: bool = Field(
+        default=False,
+        description="Set upstream tracking (for new branches)"
+    )
 
 
 class GitPushTool(BaseTool):
@@ -126,32 +136,24 @@ class GitPushTool(BaseTool):
 
     name = "git_push"
     description = "Push current branch to origin remote"
+    args_model = GitPushInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "set_upstream": {
-                    "type": "boolean",
-                    "description": "Set upstream tracking (for new branches)",
-                    "default": False
-                }
-            },
-            "required": []
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
-        self,
-        set_upstream: bool = False,
-        **kwargs: Any
-    ) -> ToolResult:
+    async def execute(self, params: GitPushInput) -> ToolResult:
         status = self.manager.get_status()
-        self.manager.push(set_upstream=set_upstream)
+        self.manager.push(set_upstream=params.set_upstream)
         return ToolResult.text(f"Pushed branch: {status['branch']}")
+
+
+class GitMergeInput(BaseModel):
+    """Input for GitMergeTool."""
+    branch: str = Field(..., description="Branch name to merge")
 
 
 class GitMergeTool(BaseTool):
@@ -159,29 +161,27 @@ class GitMergeTool(BaseTool):
 
     name = "git_merge"
     description = "Merge a branch into the current branch"
+    args_model = GitMergeInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "branch": {
-                    "type": "string",
-                    "description": "Branch name to merge"
-                }
-            },
-            "required": ["branch"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(self, branch: str, **kwargs: Any) -> ToolResult:  # type: ignore[override] # pylint: disable=arguments-differ
+    async def execute(self, params: GitMergeInput) -> ToolResult:
         status = self.manager.get_status()
-        self.manager.merge(branch)
+        self.manager.merge(params.branch)
         return ToolResult.text(
-            f"Merged {branch} into {status['branch']}"
+            f"Merged {params.branch} into {status['branch']}"
         )
+
+
+class GitDeleteBranchInput(BaseModel):
+    """Input for GitDeleteBranchTool."""
+    branch: str = Field(..., description="Branch name to delete")
+    force: bool = Field(default=False, description="Force delete unmerged branch")
 
 
 class GitDeleteBranchTool(BaseTool):
@@ -189,33 +189,31 @@ class GitDeleteBranchTool(BaseTool):
 
     name = "git_delete_branch"
     description = "Delete a git branch (cannot delete protected branches)"
+    args_model = GitDeleteBranchInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "branch": {
-                    "type": "string",
-                    "description": "Branch name to delete"
-                },
-                "force": {
-                    "type": "boolean",
-                    "description": "Force delete unmerged branch",
-                    "default": False
-                }
-            },
-            "required": ["branch"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
-        self, branch: str, force: bool = False, **kwargs: Any
-    ) -> ToolResult:
-        self.manager.delete_branch(branch, force=force)
-        return ToolResult.text(f"Deleted branch: {branch}")
+    async def execute(self, params: GitDeleteBranchInput) -> ToolResult:
+        self.manager.delete_branch(params.branch, force=params.force)
+        return ToolResult.text(f"Deleted branch: {params.branch}")
+
+
+class GitStashInput(BaseModel):
+    """Input for GitStashTool."""
+    action: str = Field(
+        ...,
+        description="Stash action: push (save), pop (restore), list",
+        pattern="^(push|pop|list)$"
+    )
+    message: str | None = Field(
+        default=None,
+        description="Optional name for the stash (only for push)"
+    )
 
 
 class GitStashTool(BaseTool):
@@ -223,42 +221,27 @@ class GitStashTool(BaseTool):
 
     name = "git_stash"
     description = "Stash the changes in a dirty working directory (git stash)"
+    args_model = GitStashInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string",
-                    "enum": ["push", "pop", "list"],
-                    "description": "Stash action: push (save), pop (restore), list"
-                },
-                "message": {
-                    "type": "string",
-                    "description": "Optional name for the stash (only for push)"
-                }
-            },
-            "required": ["action"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
-        self, action: str, message: str | None = None, **kwargs: Any
-    ) -> ToolResult:
-        if action == "push":
-            self.manager.stash(message=message)
-            if message:
-                return ToolResult.text(f"Stashed changes: {message}")
+    async def execute(self, params: GitStashInput) -> ToolResult:
+        if params.action == "push":
+            self.manager.stash(message=params.message)
+            if params.message:
+                return ToolResult.text(f"Stashed changes: {params.message}")
             return ToolResult.text("Stashed current changes")
-        if action == "pop":
+        if params.action == "pop":
             self.manager.stash_pop()
             return ToolResult.text("Applied and removed latest stash")
-        if action == "list":
+        if params.action == "list":
             stashes = self.manager.stash_list()
             if not stashes:
                 return ToolResult.text("No stashes found")
             return ToolResult.text("\n".join(stashes))
-        return ToolResult.text(f"Unknown action: {action}")
+        return ToolResult.text(f"Unknown action: {params.action}")

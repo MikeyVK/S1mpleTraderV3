@@ -1,7 +1,13 @@
 """Health check tools."""
 from typing import Any
 
+from pydantic import BaseModel
+
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class HealthCheckInput(BaseModel):
+    """Input for HealthCheckTool."""
 
 
 class HealthCheckTool(BaseTool):
@@ -9,6 +15,11 @@ class HealthCheckTool(BaseTool):
 
     name = "health_check"
     description = "Check server health status"
+    args_model = HealthCheckInput
 
-    async def execute(self, **kwargs: Any) -> ToolResult:
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return self.args_model.model_json_schema()
+
+    async def execute(self, params: HealthCheckInput) -> ToolResult:
         return ToolResult.text("OK")

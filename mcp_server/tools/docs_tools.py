@@ -1,8 +1,16 @@
 """Documentation tools."""
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.managers.doc_manager import DocManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class ValidateDocInput(BaseModel):
+    """Input for ValidateDocTool."""
+    content: str = Field(..., description="Document content")
+    template_type: str = Field(..., description="Template type")
 
 
 class ValidateDocTool(BaseTool):
@@ -10,26 +18,15 @@ class ValidateDocTool(BaseTool):
 
     name = "validate_document_structure"
     description = "Validate document structure"
+    args_model = ValidateDocInput
 
     def __init__(self, manager: DocManager | None = None) -> None:
         self.manager = manager or DocManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "content": {"type": "string"},
-                "template_type": {"type": "string"}
-            },
-            "required": ["content", "template_type"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
-        self,
-        content: str,
-        template_type: str,
-        **kwargs: Any
-    ) -> ToolResult:
-        result = self.manager.validate_structure(content, template_type)
+    async def execute(self, params: ValidateDocInput) -> ToolResult:
+        result = self.manager.validate_structure(params.content, params.template_type)
         return ToolResult.text(f"Validation result: {result}")

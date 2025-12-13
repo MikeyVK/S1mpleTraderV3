@@ -3,9 +3,17 @@ import warnings
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, ValidationError
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class CreateFileInput(BaseModel):
+    """Input for CreateFileTool."""
+    path: str = Field(..., description="Relative path to file")
+    content: str = Field(..., description="File content")
 
 
 class CreateFileTool(BaseTool):
@@ -21,19 +29,13 @@ class CreateFileTool(BaseTool):
         "[DEPRECATED] Create or overwrite a file with content. "
         "Prefer scaffold_component for code generation."
     )
+    args_model = CreateFileInput
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "Relative path to file"},
-                "content": {"type": "string", "description": "File content"}
-            },
-            "required": ["path", "content"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(self, path: str, content: str, **kwargs: Any) -> ToolResult:
+    async def execute(self, params: CreateFileInput) -> ToolResult:
         """Execute the tool."""
         # Emit deprecation warning
         warnings.warn(
@@ -41,6 +43,9 @@ class CreateFileTool(BaseTool):
             DeprecationWarning,
             stacklevel=2
         )
+
+        path = params.path
+        content = params.content
 
         # Security check: ensure path is within workspace
         # pylint: disable=no-member

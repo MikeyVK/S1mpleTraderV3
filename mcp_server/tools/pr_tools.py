@@ -1,9 +1,20 @@
 """GitHub PR tools."""
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class CreatePRInput(BaseModel):
+    """Input for CreatePRTool."""
+    title: str = Field(..., description="PR title")
+    body: str = Field(..., description="PR description")
+    head: str = Field(..., description="Source branch")
+    base: str = Field(default="main", description="Target branch")
+    draft: bool = Field(default=False, description="Create as draft")
 
 
 class CreatePRTool(BaseTool):
@@ -11,52 +22,32 @@ class CreatePRTool(BaseTool):
 
     name = "create_pr"
     description = "Create a new GitHub Pull Request"
+    args_model = CreatePRInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "PR title"},
-                "body": {"type": "string", "description": "PR description"},
-                "head": {"type": "string", "description": "Source branch"},
-                "base": {
-                    "type": "string",
-                    "description": "Target branch",
-                    "default": "main"
-                },
-                "draft": {
-                    "type": "boolean",
-                    "description": "Create as draft",
-                    "default": False
-                }
-            },
-            "required": ["title", "body", "head"]
-        }
+        return self.args_model.model_json_schema()
 
-    # pylint: disable=too-many-arguments,too-many-positional-arguments
-    async def execute(  # type: ignore[override]
-        self,
-        title: str,
-        body: str,
-        head: str,
-        base: str = "main",
-        draft: bool = False,
-        **kwargs: Any
-    ) -> ToolResult:
-        """Execute the tool."""
+    async def execute(self, params: CreatePRInput) -> ToolResult:
         result = self.manager.create_pr(
-            title=title,
-            body=body,
-            head=head,
-            base=base,
-            draft=draft
+            title=params.title,
+            body=params.body,
+            head=params.head,
+            base=params.base,
+            draft=params.draft
         )
 
         return ToolResult.text(f"Created PR #{result['number']}: {result['url']}")
+
+
+class ListPRsInput(BaseModel):
+    """Input for ListPRsTool."""
+    state: str = Field(default="open", description="Filter by PR state", pattern="^(open|closed|all)$")
+    base: str | None = Field(default=None, description="Filter by base branch")
+    head: str | None = Field(default=None, description="Filter by head branch")
 
 
 class ListPRsTool(BaseTool):
@@ -64,43 +55,18 @@ class ListPRsTool(BaseTool):
 
     name = "list_prs"
     description = "List pull requests with optional state/base/head filters"
+    args_model = ListPRsInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "state": {
-                    "type": "string",
-                    "enum": ["open", "closed", "all"],
-                    "description": "Filter by PR state",
-                    "default": "open"
-                },
-                "base": {
-                    "type": "string",
-                    "description": "Filter by base branch"
-                },
-                "head": {
-                    "type": "string",
-                    "description": "Filter by head branch"
-                },
-            },
-            "required": []
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(
-        self,
-        state: str = "open",
-        base: str | None = None,
-        head: str | None = None,
-        **kwargs: Any
-    ) -> ToolResult:
-        """Execute the tool."""
+    async def execute(self, params: ListPRsInput) -> ToolResult:
         try:
-            prs = self.manager.list_prs(state=state, base=base, head=head)
+            prs = self.manager.list_prs(state=params.state, base=params.base, head=params.head)
         except ExecutionError as e:
             return ToolResult.error(str(e))
 
@@ -117,55 +83,37 @@ class ListPRsTool(BaseTool):
         return ToolResult.text("\n".join(lines))
 
 
+class MergePRInput(BaseModel):
+    """Input for MergePRTool."""
+    pr_number: int = Field(..., description="Pull request number to merge")
+    commit_message: str | None = Field(default=None, description="Optional commit message for the merge")
+    merge_method: str = Field(default="merge", description="Merge strategy", pattern="^(merge|squash|rebase)$")
+
+
 class MergePRTool(BaseTool):
     """Tool to merge a pull request."""
 
     name = "merge_pr"
     description = "Merge a pull request with optional commit message and method"
+    args_model = MergePRInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "pr_number": {
-                    "type": "integer",
-                    "description": "Pull request number to merge"
-                },
-                "commit_message": {
-                    "type": "string",
-                    "description": "Optional commit message for the merge"
-                },
-                "merge_method": {
-                    "type": "string",
-                    "enum": ["merge", "squash", "rebase"],
-                    "description": "Merge strategy",
-                    "default": "merge"
-                }
-            },
-            "required": ["pr_number"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override]
-        self,
-        pr_number: int,
-        commit_message: str | None = None,
-        merge_method: str = "merge",
-        **kwargs: Any
-    ) -> ToolResult:
-        """Execute the tool."""
+    async def execute(self, params: MergePRInput) -> ToolResult:
         try:
             result = self.manager.merge_pr(
-                pr_number=pr_number,
-                commit_message=commit_message,
-                merge_method=merge_method,
+                pr_number=params.pr_number,
+                commit_message=params.commit_message,
+                merge_method=params.merge_method,
             )
         except ExecutionError as e:
             return ToolResult.error(str(e))
 
         return ToolResult.text(
-            f"Merged PR #{pr_number} using {merge_method} (SHA {result['sha']})"
+            f"Merged PR #{params.pr_number} using {params.merge_method} (SHA {result['sha']})"
         )

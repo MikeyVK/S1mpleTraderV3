@@ -5,6 +5,8 @@ import subprocess
 import sys
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.tools.base import BaseTool, ToolResult
@@ -43,62 +45,41 @@ def _run_pytest_sync(
             raise
 
 
+class RunTestsInput(BaseModel):
+    """Input for RunTestsTool."""
+    path: str = Field(default="tests/", description="Path to test file or directory")
+    markers: str | None = Field(default=None, description="Pytest markers to filter by")
+    timeout: int = Field(default=300, description="Timeout in seconds (default: 300)")
+    verbose: bool = Field(default=True, description="Verbose output (-v flag)")
+
+
 class RunTestsTool(BaseTool):
     """Tool to run pytest."""
 
     name = "run_tests"
     description = "Run tests using pytest"
+    args_model = RunTestsInput
 
     # Default timeout in seconds (5 minutes for large test suites)
     DEFAULT_TIMEOUT = 300
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "path": {
-                    "type": "string",
-                    "description": "Path to test file or directory",
-                    "default": "tests/"
-                },
-                "markers": {
-                    "type": "string",
-                    "description": "Pytest markers to filter by"
-                },
-                "timeout": {
-                    "type": "integer",
-                    "description": "Timeout in seconds (default: 300)",
-                    "default": 300
-                },
-                "verbose": {
-                    "type": "boolean",
-                    "description": "Verbose output (-v flag)",
-                    "default": True
-                }
-            }
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(
-        self,
-        path: str = "tests/",
-        markers: str | None = None,
-        timeout: int | None = None,
-        verbose: bool = True,
-        **kwargs: Any
-    ) -> ToolResult:
+    async def execute(self, params: RunTestsInput) -> ToolResult:
         """Execute the tool."""
-        cmd = [sys.executable, "-m", "pytest", path]
+        cmd = [sys.executable, "-m", "pytest", params.path]
 
-        if verbose:
+        if params.verbose:
             cmd.append("-v")
 
         cmd.append("--tb=short")  # Always use short traceback
 
-        if markers:
-            cmd.extend(["-m", markers])
+        if params.markers:
+            cmd.extend(["-m", params.markers])
 
-        effective_timeout = timeout or self.DEFAULT_TIMEOUT
+        effective_timeout = params.timeout or self.DEFAULT_TIMEOUT
 
         try:
             # pylint: disable=no-member

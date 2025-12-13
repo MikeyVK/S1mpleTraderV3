@@ -1,6 +1,9 @@
+# mcp_server/tools/safe_edit_tool.py
 """Safe file editing tool with validation."""
 from pathlib import Path
 from typing import Any
+
+from pydantic import BaseModel, Field
 
 from mcp_server.tools.base import BaseTool, ToolResult
 from mcp_server.validation.registry import ValidatorRegistry
@@ -8,6 +11,17 @@ from mcp_server.validation.registry import ValidatorRegistry
 from mcp_server.validation.python_validator import PythonValidator
 from mcp_server.validation.markdown_validator import MarkdownValidator
 from mcp_server.validation.template_validator import TemplateValidator
+
+
+class SafeEditInput(BaseModel):
+    """Input for SafeEditTool."""
+    path: str = Field(..., description="Absolute path to the file")
+    content: str = Field(..., description="New content for the file")
+    mode: str = Field(
+        default="strict",
+        description="Validation mode. 'strict' fails on error, 'interactive' writes but reports issues.",
+        pattern="^(strict|interactive|verify_only)$"
+    )
 
 
 class SafeEditTool(BaseTool):
@@ -18,29 +32,7 @@ class SafeEditTool(BaseTool):
         "Write content to a file with automatic validation. "
         "Supports 'strict' mode (rejects on error) or 'interactive' (warns)."
     )
-    input_schema = {
-        "type": "object",
-        "properties": {
-            "path": {
-                "type": "string",
-                "description": "Absolute path to the file"
-            },
-            "content": {
-                "type": "string",
-                "description": "New content for the file"
-            },
-            "mode": {
-                "type": "string",
-                "enum": ["strict", "interactive", "verify_only"],
-                "default": "strict",
-                "description": (
-                    "Validation mode. 'strict' fails on error, "
-                    "'interactive' writes but reports issues."
-                )
-            }
-        },
-        "required": ["path", "content"]
-    }
+    args_model = SafeEditInput
 
     def __init__(self) -> None:
         """Initialize and register default validators."""
@@ -51,20 +43,20 @@ class SafeEditTool(BaseTool):
         ValidatorRegistry.register(".md", MarkdownValidator)
 
         # Register Patterns for Templates
-        # Register Patterns for Templates (supporting singular and plural)
         ValidatorRegistry.register_pattern(r".*_workers?\.py$", TemplateValidator("worker"))
         ValidatorRegistry.register_pattern(r".*_tools?\.py$", TemplateValidator("tool"))
         ValidatorRegistry.register_pattern(r".*_dtos?\.py$", TemplateValidator("dto"))
         ValidatorRegistry.register_pattern(r".*_adapters?\.py$", TemplateValidator("adapter"))
 
-    async def execute(self, **kwargs: Any) -> ToolResult:
-        """Execute the safe edit."""
-        path = kwargs.get("path")
-        content = kwargs.get("content")
-        mode = kwargs.get("mode", "strict")
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return self.args_model.model_json_schema()
 
-        if not path or content is None:
-            return ToolResult.text("❌ Missing required arguments: path, content")
+    async def execute(self, params: SafeEditInput) -> ToolResult:
+        """Execute the safe edit."""
+        path = params.path
+        content = params.content
+        mode = params.mode
 
         passed, issues_text = await self._validate(path, content)
 
@@ -103,6 +95,15 @@ class SafeEditTool(BaseTool):
     async def _validate(self, path: str, content: str) -> tuple[bool, str]:
         """Run validators on content."""
         validators = ValidatorRegistry.get_validators(path)
+
+        # Skip component templates (Tool, Worker, etc.) for test files
+        # Tests should not be forced to look like the components they test
+        is_test = "tests/" in path.replace("\\", "/") or Path(path).name.startswith("test_")
+        if is_test:
+            validators = [
+                v for v in validators
+                if not isinstance(v, TemplateValidator) or v.template_type == "base"
+            ]
 
         # Fallback logic: If it's a Python file but no specific TemplateValidator is found,
         # apply the 'base' template validator.

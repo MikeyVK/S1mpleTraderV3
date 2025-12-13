@@ -4,8 +4,8 @@ from unittest.mock import patch
 import pytest
 
 from mcp_server.core.exceptions import ValidationError
-from mcp_server.tools.code_tools import CreateFileTool
-from mcp_server.tools.test_tools import RunTestsTool
+from mcp_server.tools.code_tools import CreateFileTool, CreateFileInput
+from mcp_server.tools.test_tools import RunTestsTool, RunTestsInput
 
 
 @pytest.mark.asyncio
@@ -17,7 +17,7 @@ async def test_run_tests_tool() -> None:
         # Mock the sync function that runs in thread pool
         mock_run.return_value = ("Tests passed", "", 0)
 
-        result = await tool.execute(path="tests/unit")
+        result = await tool.execute(RunTestsInput(path="tests/unit"))
 
         assert "Tests passed" in result.content[0]["text"]
         mock_run.assert_called_once()
@@ -35,7 +35,7 @@ async def test_create_file_tool(tmp_path, monkeypatch) -> None:
 
     tool = CreateFileTool()
 
-    await tool.execute(path="new_dir/test.txt", content="hello world")
+    await tool.execute(CreateFileInput(path="new_dir/test.txt", content="hello world"))
 
     file_path = tmp_path / "new_dir/test.txt"
     assert file_path.exists()
@@ -49,4 +49,4 @@ async def test_create_file_security_check(tmp_path, monkeypatch) -> None:
     tool = CreateFileTool()
 
     with pytest.raises(ValidationError):
-        await tool.execute(path="../outside.txt", content="bad")
+        await tool.execute(CreateFileInput(path="../outside.txt", content="bad"))

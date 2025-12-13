@@ -1,8 +1,15 @@
 """GitHub label tools."""
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class ListLabelsInput(BaseModel):
+    """Input for ListLabelsTool."""
+    # No input fields needed currently, but model required for consistency
 
 
 class ListLabelsTool(BaseTool):
@@ -10,20 +17,16 @@ class ListLabelsTool(BaseTool):
 
     name = "list_labels"
     description = "List all labels in the repository"
+    args_model = ListLabelsInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(self, **kwargs: Any) -> ToolResult:
-        """Execute the tool."""
+    async def execute(self, params: ListLabelsInput) -> ToolResult:
         labels = self.manager.list_labels()
 
         if not labels:
@@ -37,50 +40,39 @@ class ListLabelsTool(BaseTool):
         return ToolResult.text("\n".join(lines))
 
 
+class CreateLabelInput(BaseModel):
+    """Input for CreateLabelTool."""
+    name: str = Field(..., description="Label name (e.g., 'type:feature')")
+    color: str = Field(..., description="Color hex code without # (e.g., '0e8a16')")
+    description: str | None = Field(default="", description="Label description")
+
+
 class CreateLabelTool(BaseTool):
     """Tool to create a new label in the repository."""
 
     name = "create_label"
     description = "Create a new label in the repository"
+    args_model = CreateLabelInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Label name (e.g., 'type:feature')"
-                },
-                "color": {
-                    "type": "string",
-                    "description": "Color hex code without # (e.g., '0e8a16')"
-                },
-                "description": {
-                    "type": "string",
-                    "description": "Label description"
-                }
-            },
-            "required": ["name", "color"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override]
-        self,
-        name: str,
-        color: str,
-        description: str = "",
-        **kwargs: Any
-    ) -> ToolResult:
-        """Execute the tool."""
+    async def execute(self, params: CreateLabelInput) -> ToolResult:
         label = self.manager.create_label(
-            name=name,
-            color=color,
-            description=description
+            name=params.name,
+            color=params.color,
+            description=params.description or ""
         )
-        return ToolResult.text(f"Created label: **{label.name}** (#{color})")
+        return ToolResult.text(f"Created label: **{label.name}** (#{params.color})")
+
+
+class DeleteLabelInput(BaseModel):
+    """Input for DeleteLabelTool."""
+    name: str = Field(..., description="Label name to delete")
 
 
 class DeleteLabelTool(BaseTool):
@@ -88,27 +80,24 @@ class DeleteLabelTool(BaseTool):
 
     name = "delete_label"
     description = "Delete a label from the repository"
+    args_model = DeleteLabelInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Label name to delete"
-                }
-            },
-            "required": ["name"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(self, name: str, **kwargs: Any) -> ToolResult:  # type: ignore[override]
-        """Execute the tool."""
-        self.manager.delete_label(name)
-        return ToolResult.text(f"Deleted label: **{name}**")
+    async def execute(self, params: DeleteLabelInput) -> ToolResult:
+        self.manager.delete_label(params.name)
+        return ToolResult.text(f"Deleted label: **{params.name}**")
+
+
+class RemoveLabelsInput(BaseModel):
+    """Input for RemoveLabelsTool."""
+    issue_number: int = Field(..., description="Issue/PR number")
+    labels: list[str] = Field(..., description="List of labels to remove")
 
 
 class RemoveLabelsTool(BaseTool):
@@ -116,39 +105,26 @@ class RemoveLabelsTool(BaseTool):
 
     name = "remove_labels"
     description = "Remove labels from an issue or PR"
+    args_model = RemoveLabelsInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "issue_number": {
-                    "type": "integer",
-                    "description": "Issue/PR number"
-                },
-                "labels": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of labels to remove"
-                }
-            },
-            "required": ["issue_number", "labels"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override]
-        self,
-        issue_number: int,
-        labels: list[str],
-        **kwargs: Any
-    ) -> ToolResult:
-        """Execute the tool."""
-        self.manager.remove_labels(issue_number, labels)
+    async def execute(self, params: RemoveLabelsInput) -> ToolResult:
+        self.manager.remove_labels(params.issue_number, params.labels)
         return ToolResult.text(
-            f"Removed labels from #{issue_number}: {', '.join(labels)}"
+            f"Removed labels from #{params.issue_number}: {', '.join(params.labels)}"
         )
+
+
+class AddLabelsInput(BaseModel):
+    """Input for AddLabelsTool."""
+    issue_number: int = Field(..., description="Issue/PR number")
+    labels: list[str] = Field(..., description="List of labels to add")
 
 
 class AddLabelsTool(BaseTool):
@@ -156,31 +132,15 @@ class AddLabelsTool(BaseTool):
 
     name = "add_labels"
     description = "Add labels to an issue or PR"
+    args_model = AddLabelsInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "issue_number": {"type": "integer", "description": "Issue/PR number"},
-                "labels": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of labels to add"
-                }
-            },
-            "required": ["issue_number", "labels"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override]
-        self,
-        issue_number: int,
-        labels: list[str],
-        **kwargs: Any
-    ) -> ToolResult:
-        """Execute the tool."""
-        self.manager.add_labels(issue_number, labels)
-        return ToolResult.text(f"Added labels to #{issue_number}: {', '.join(labels)}")
+    async def execute(self, params: AddLabelsInput) -> ToolResult:
+        self.manager.add_labels(params.issue_number, params.labels)
+        return ToolResult.text(f"Added labels to #{params.issue_number}: {', '.join(params.labels)}")

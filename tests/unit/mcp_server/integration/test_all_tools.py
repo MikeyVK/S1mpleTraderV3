@@ -7,33 +7,33 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcp_server.tools.code_tools import CreateFileTool
-from mcp_server.tools.docs_tools import ValidateDocTool
+from mcp_server.tools.code_tools import CreateFileTool, CreateFileInput
+from mcp_server.tools.docs_tools import ValidateDocTool, ValidateDocInput
 
 # Git Tools
 from mcp_server.tools.git_tools import (
-    CreateBranchTool,
-    GitCheckoutTool,
-    GitCommitTool,
-    GitDeleteBranchTool,
-    GitMergeTool,
-    GitPushTool,
-    GitStashTool,
-    GitStatusTool,
+    CreateBranchTool, CreateBranchInput,
+    GitCheckoutTool, GitCheckoutInput,
+    GitCommitTool, GitCommitInput,
+    GitDeleteBranchTool, GitDeleteBranchInput,
+    GitMergeTool, GitMergeInput,
+    GitPushTool, GitPushInput,
+    GitStashTool, GitStashInput,
+    GitStatusTool, GitStatusInput,
 )
 
 # Development Tools
-from mcp_server.tools.health_tools import HealthCheckTool
+from mcp_server.tools.health_tools import HealthCheckTool, HealthCheckInput
 
 # GitHub Tools (imported here for availability, require manager injection)
-from mcp_server.tools.issue_tools import CreateIssueTool
-from mcp_server.tools.label_tools import AddLabelsTool
-from mcp_server.tools.pr_tools import CreatePRTool
+from mcp_server.tools.issue_tools import CreateIssueTool, CreateIssueInput
+from mcp_server.tools.label_tools import AddLabelsTool, AddLabelsInput
+from mcp_server.tools.pr_tools import CreatePRTool, CreatePRInput
 
 # Quality Tools
-from mcp_server.tools.quality_tools import RunQualityGatesTool
-from mcp_server.tools.test_tools import RunTestsTool
-from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
+from mcp_server.tools.quality_tools import RunQualityGatesTool, RunQualityGatesInput
+from mcp_server.tools.test_tools import RunTestsTool, RunTestsInput
+from mcp_server.tools.validation_tools import ValidateDTOTool, ValidateDTOInput, ValidationTool, ValidationInput
 
 
 class TestGitToolsIntegration:
@@ -46,7 +46,7 @@ class TestGitToolsIntegration:
             mock_adapter.return_value.is_clean.return_value = True
 
             tool = CreateBranchTool()
-            result = await tool.execute(name="test-feature", branch_type="feature")
+            result = await tool.execute(CreateBranchInput(name="test-feature", branch_type="feature"))
 
             assert "feature/test-feature" in result.content[0]["text"]
 
@@ -62,7 +62,7 @@ class TestGitToolsIntegration:
             }
 
             tool = GitStatusTool()
-            result = await tool.execute()
+            result = await tool.execute(GitStatusInput())
 
             assert "Branch: main" in result.content[0]["text"]
             assert "Clean: True" in result.content[0]["text"]
@@ -74,7 +74,7 @@ class TestGitToolsIntegration:
             mock_adapter.return_value.commit.return_value = "abc123def"
 
             tool = GitCommitTool()
-            result = await tool.execute(phase="green", message="implement feature")
+            result = await tool.execute(GitCommitInput(phase="green", message="implement feature"))
 
             assert "abc123def" in result.content[0]["text"]
             mock_adapter.return_value.commit.assert_called_with("feat: implement feature")
@@ -84,7 +84,7 @@ class TestGitToolsIntegration:
         """Test git checkout tool complete flow."""
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             tool = GitCheckoutTool()
-            result = await tool.execute(branch="feature/test")
+            result = await tool.execute(GitCheckoutInput(branch="feature/test"))
 
             assert "feature/test" in result.content[0]["text"]
             mock_adapter.return_value.checkout.assert_called_once()
@@ -96,7 +96,7 @@ class TestGitToolsIntegration:
             mock_adapter.return_value.get_status.return_value = {"branch": "feature/test"}
 
             tool = GitPushTool()
-            result = await tool.execute()
+            result = await tool.execute(GitPushInput())
 
             assert "feature/test" in result.content[0]["text"]
             mock_adapter.return_value.push.assert_called_once()
@@ -109,7 +109,7 @@ class TestGitToolsIntegration:
             mock_adapter.return_value.get_status.return_value = {"branch": "main"}
 
             tool = GitMergeTool()
-            result = await tool.execute(branch="feature/test")
+            result = await tool.execute(GitMergeInput(branch="feature/test"))
 
             assert "feature/test" in result.content[0]["text"]
             mock_adapter.return_value.merge.assert_called_with("feature/test")
@@ -119,7 +119,7 @@ class TestGitToolsIntegration:
         """Test git delete branch tool complete flow."""
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             tool = GitDeleteBranchTool()
-            result = await tool.execute(branch="feature/old")
+            result = await tool.execute(GitDeleteBranchInput(branch="feature/old"))
 
             assert "feature/old" in result.content[0]["text"]
             mock_adapter.return_value.delete_branch.assert_called_with(
@@ -131,7 +131,7 @@ class TestGitToolsIntegration:
         """Test git stash push tool complete flow."""
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             tool = GitStashTool()
-            result = await tool.execute(action="push", message="WIP")
+            result = await tool.execute(GitStashInput(action="push", message="WIP"))
 
             assert "WIP" in result.content[0]["text"]
             mock_adapter.return_value.stash.assert_called_with(message="WIP")
@@ -141,7 +141,7 @@ class TestGitToolsIntegration:
         """Test git stash pop tool complete flow."""
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
             tool = GitStashTool()
-            result = await tool.execute(action="pop")
+            result = await tool.execute(GitStashInput(action="pop"))
 
             assert "Applied" in result.content[0]["text"]
             mock_adapter.return_value.stash_pop.assert_called_once()
@@ -155,7 +155,7 @@ class TestGitToolsIntegration:
             ]
 
             tool = GitStashTool()
-            result = await tool.execute(action="list")
+            result = await tool.execute(GitStashInput(action="list"))
 
             assert "stash@{0}" in result.content[0]["text"]
 
@@ -173,7 +173,7 @@ class TestQualityToolsIntegration:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(files=["test.py"])
+        result = await tool.execute(RunQualityGatesInput(files=["test.py"]))
 
         assert "Pass" in result.content[0]["text"] or "pass" in result.content[0]["text"].lower()
 
@@ -188,10 +188,10 @@ class TestQualityToolsIntegration:
         }
 
         tool = ValidateDocTool(manager=mock_manager)
-        result = await tool.execute(
+        result = await tool.execute(ValidateDocInput(
             content="# Title\n\n## Section",
             template_type="design"
-        )
+        ))
 
         # Tool returns validation result
         assert result.content is not None
@@ -200,7 +200,7 @@ class TestQualityToolsIntegration:
     async def test_validation_tool_flow(self) -> None:
         """Test architecture validation tool complete flow."""
         tool = ValidationTool()
-        result = await tool.execute(scope="all")
+        result = await tool.execute(ValidationInput(scope="all"))
 
         # Should return validation results
         assert result.content is not None
@@ -215,7 +215,7 @@ class TestQualityToolsIntegration:
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text", return_value=mock_content):
                 tool = ValidateDTOTool()
-                result = await tool.execute(file_path="backend/dtos/test.py")
+                result = await tool.execute(ValidateDTOInput(file_path="backend/dtos/test.py"))
 
                 assert result.content is not None
 
@@ -227,7 +227,7 @@ class TestDevelopmentToolsIntegration:
     async def test_health_check_tool_flow(self) -> None:
         """Test health check tool complete flow."""
         tool = HealthCheckTool()
-        result = await tool.execute()
+        result = await tool.execute(HealthCheckInput())
 
         result_text = result.content[0]["text"].lower()
         assert "healthy" in result_text or "ok" in result_text
@@ -237,10 +237,10 @@ class TestDevelopmentToolsIntegration:
         """Test create file tool complete flow."""
         with patch("pathlib.Path.mkdir"), patch("builtins.open", MagicMock()):
             tool = CreateFileTool()
-            result = await tool.execute(
+            result = await tool.execute(CreateFileInput(
                 path="test/file.py",
                 content="# Test content"
-            )
+            ))
 
             assert result.content is not None
 
@@ -254,14 +254,15 @@ class TestGitHubToolsIntegration:
         mock_manager = MagicMock()
         mock_manager.create_issue.return_value = {
             "number": 42,
-            "url": "https://github.com/test/repo/issues/42"
+            "url": "https://github.com/test/repo/issues/42",
+            "title": "Test Issue"
         }
 
         tool = CreateIssueTool(manager=mock_manager)
-        result = await tool.execute(
+        result = await tool.execute(CreateIssueInput(
             title="Test Issue",
             body="Test body"
-        )
+        ))
 
         assert "42" in result.content[0]["text"] or "issue" in result.content[0]["text"].lower()
 
@@ -275,12 +276,12 @@ class TestGitHubToolsIntegration:
         }
 
         tool = CreatePRTool(manager=mock_manager)
-        result = await tool.execute(
+        result = await tool.execute(CreatePRInput(
             title="Test PR",
             body="Test body",
             head="feature/test",
             base="main"
-        )
+        ))
 
         assert "99" in result.content[0]["text"] or "pr" in result.content[0]["text"].lower()
 
@@ -291,10 +292,10 @@ class TestGitHubToolsIntegration:
         mock_manager.add_labels.return_value = ["bug", "priority:high"]
 
         tool = AddLabelsTool(manager=mock_manager)
-        result = await tool.execute(
+        result = await tool.execute(AddLabelsInput(
             issue_number=42,
             labels=["bug", "priority:high"]
-        )
+        ))
 
         assert result.content is not None
 

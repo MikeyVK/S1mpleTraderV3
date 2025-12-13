@@ -196,7 +196,24 @@ class MCPServer:
             for tool in self.tools:
                 if tool.name == name:
                     try:
-                        result = await tool.execute(**(arguments or {}))
+                        # ALL tools now enforce args_model via BaseTool inheritance
+                        if getattr(tool, "args_model", None):
+                            # Validate args against model
+                            # pylint: disable=not-callable
+                            model_validated = tool.args_model(**(arguments or {}))
+                            result = await tool.execute(model_validated)
+                        else:
+                            # Fallback if somehow a tool is missed (should not happen)
+                            # Passing kwargs as a single dict if BaseTool expects Any
+                            # But legacy typically wanted spread kwargs.
+                            # We assume full migration.
+                            # Raising error here would be strict.
+                            # But for safety, we try passing as kwargs, which will fail types 
+                            # if tool expects params.
+                            # Actually, BaseTool.execute(params) means we must pass an object.
+                            # If no model, we pass the dict?
+                            result = await tool.execute(arguments or {})
+
                         response_content: list[
                             TextContent | ImageContent | EmbeddedResource
                         ] = []

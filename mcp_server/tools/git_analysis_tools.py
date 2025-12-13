@@ -1,8 +1,16 @@
 """Git analysis tools for inspecting repository state."""
 from typing import Any
 
+from pydantic import BaseModel, Field
+
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+
+class GitListBranchesInput(BaseModel):
+    """Input for GitListBranchesTool."""
+    verbose: bool = Field(default=False, description="Include upstream/hash info (-vv)")
+    remote: bool = Field(default=False, description="Include remote branches (-r)")
 
 
 class GitListBranchesTool(BaseTool):
@@ -10,36 +18,26 @@ class GitListBranchesTool(BaseTool):
 
     name = "git_list_branches"
     description = "List git branches with optional verbose info and remotes"
+    args_model = GitListBranchesInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "verbose": {
-                    "type": "boolean",
-                    "description": "Include upstream/hash info (-vv)",
-                    "default": False
-                },
-                "remote": {
-                    "type": "boolean",
-                    "description": "Include remote branches (-r)",
-                    "default": False
-                }
-            },
-            "required": []
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
-        self, verbose: bool = False, remote: bool = False, **kwargs: Any
-    ) -> ToolResult:
-        branches = self.manager.list_branches(verbose=verbose, remote=remote)
+    async def execute(self, params: GitListBranchesInput) -> ToolResult:
+        branches = self.manager.list_branches(verbose=params.verbose, remote=params.remote)
         if not branches:
             return ToolResult.text("No branches found")
         return ToolResult.text("\n".join(branches))
+
+
+class GitDiffInput(BaseModel):
+    """Input for GitDiffTool."""
+    target_branch: str = Field(..., description="Target branch to compare against (e.g. main)")
+    source_branch: str = Field(default="HEAD", description="Source branch (default: HEAD)")
 
 
 class GitDiffTool(BaseTool):
@@ -47,32 +45,17 @@ class GitDiffTool(BaseTool):
 
     name = "git_diff_stat"
     description = "Get diff statistics between two branches"
+    args_model = GitDiffInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "target_branch": {
-                    "type": "string",
-                    "description": "Target branch to compare against (e.g. main)"
-                },
-                "source_branch": {
-                    "type": "string",
-                    "description": "Source branch (default: HEAD)",
-                    "default": "HEAD"
-                }
-            },
-            "required": ["target_branch"]
-        }
+        return self.args_model.model_json_schema()
 
-    async def execute(  # type: ignore[override] # pylint: disable=arguments-differ
-        self, target_branch: str, source_branch: str = "HEAD", **kwargs: Any
-    ) -> ToolResult:
-        stats = self.manager.compare_branches(target_branch, source_branch)
+    async def execute(self, params: GitDiffInput) -> ToolResult:
+        stats = self.manager.compare_branches(params.target_branch, params.source_branch)
         if not stats:
             return ToolResult.text("No differences found")
         return ToolResult.text(stats)

@@ -1,8 +1,14 @@
+# tests/unit/mcp_server/resources/test_standards.py
 """Tests for standards resource."""
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
+
+# Standard library
 import json
 
+# Third-party
 import pytest
 
+# Module under test
 from mcp_server.resources.standards import StandardsResource
 
 
@@ -15,6 +21,7 @@ async def test_standards_resource_read() -> None:
     data = json.loads(content)
     assert data["python"]["version"] == ">=3.11"
     assert data["testing"]["coverage_min"] == 80
+
 
 def test_standards_resource_metadata() -> None:
     """Test that standards resource has correct URI pattern and description."""

@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.tools.issue_tools import CreateIssueTool
+from mcp_server.tools.issue_tools import CreateIssueTool, CreateIssueInput
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def test_create_issue_tool(mock_adapter) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = CreateIssueTool(manager=manager)
 
-    result = asyncio.run(tool.execute(title="New Issue", body="Body"))
+    result = asyncio.run(tool.execute(CreateIssueInput(title="New Issue", body="Body")))
 
     assert "Created issue #42" in result.content[0]["text"]
     mock_adapter.create_issue.assert_called_with(

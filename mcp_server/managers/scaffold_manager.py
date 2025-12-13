@@ -81,6 +81,19 @@ class ScaffoldManager:
                 templates.append(str(path.relative_to(self.template_dir)))
         return templates
 
+    def _render(self, template_name: str, **kwargs: Any) -> str:
+        """Render a template with strict type casting.
+
+        Args:
+            template_name: Relative path to template
+            **kwargs: Template variables
+
+        Returns:
+            Rendered string
+        """
+        template = self.get_template(template_name)
+        return str(template.render(**kwargs))
+
     def _validate_pascal_case(self, name: str) -> None:
         """Validate name is PascalCase.
 
@@ -464,8 +477,8 @@ class {name}(BaseWorker[{input_dto}, {output_dto}]):
         all_fields = (required_fields or []) + (optional_fields or [])
 
         try:
-            template = self.get_template("components/dto_test.py.jinja2")
-            return template.render(
+            return self._render(
+                "components/dto_test.py.jinja2",
                 dto_name=dto_name,
                 module_path=module_path,
                 description=description,
@@ -533,8 +546,8 @@ class Test{dto_name}:
             Rendered Python test code as string
         """
         try:
-            template = self.get_template("components/worker_test.py.jinja2")
-            return template.render(
+            return self._render(
+                "components/worker_test.py.jinja2",
                 worker_name=worker_name,
                 module_path=module_path,
                 input_dto=input_dto,
@@ -636,8 +649,8 @@ class Test{worker_name}ErrorHandling:
             Rendered Markdown as string
         """
         try:
-            template = self.get_template("documents/design.md.jinja2")
-            return template.render(
+            return self._render(
+                "documents/design.md.jinja2",
                 title=title,
                 author=author,
                 summary=summary,
@@ -697,8 +710,7 @@ class Test{worker_name}ErrorHandling:
         Returns:
             Rendered content string
         """
-        template = self.get_template(template_name)
-        return template.render(**context)
+        return self._render(template_name, **context)
 
     def render_tool(
         self,
@@ -721,8 +733,8 @@ class Test{worker_name}ErrorHandling:
         self._validate_pascal_case(name)
         tool_name = name if name.endswith("Tool") else f"{name}Tool"
 
-        template = self.get_template("components/tool.py.jinja2")
-        return template.render(
+        return self._render(
+            "components/tool.py.jinja2",
             name=tool_name,
             description=description,
             input_schema=input_schema,
@@ -751,8 +763,8 @@ class Test{worker_name}ErrorHandling:
         """
         self._validate_pascal_case(name)
 
-        template = self.get_template("components/resource.py.jinja2")
-        return template.render(
+        return self._render(
+            "components/resource.py.jinja2",
             name=name,
             description=description,
             uri_pattern=uri_pattern,
@@ -780,8 +792,8 @@ class Test{worker_name}ErrorHandling:
         """
         self._validate_pascal_case(name)
 
-        template = self.get_template("components/schema.py.jinja2")
-        return template.render(
+        return self._render(
+            "components/schema.py.jinja2",
             name=name,
             description=description,
             models=models,
@@ -808,8 +820,8 @@ class Test{worker_name}ErrorHandling:
         """
         self._validate_pascal_case(name)
 
-        template = self.get_template("components/interface.py.jinja2")
-        return template.render(
+        return self._render(
+            "components/interface.py.jinja2",
             name=name,
             description=description,
             methods=methods,
@@ -846,9 +858,9 @@ class Test{worker_name}ErrorHandling:
         }
 
         template_path = template_map.get(service_type, template_map["orchestrator"])
-        template = self.get_template(template_path)
 
-        return template.render(
+        return self._render(
+            template_path,
             name=service_name,
             dependencies=dependencies,
             methods=methods,
@@ -864,8 +876,7 @@ class Test{worker_name}ErrorHandling:
         Returns:
             Rendered markdown content
         """
-        template = self.get_template("documents/generic.md.jinja2")
-        return template.render(**context)
+        return self._render("documents/generic.md.jinja2", **context)
 
 
     def write_file(
@@ -940,8 +951,8 @@ class Test{worker_name}ErrorHandling:
         Returns:
             Rendered Markdown as string
         """
-        template = self.get_template("documents/architecture.md.jinja2")
-        return template.render(
+        return self._render(
+            "documents/architecture.md.jinja2",
             title=title,
             filename=filename,
             purpose=purpose,
@@ -992,8 +1003,8 @@ class Test{worker_name}ErrorHandling:
         Returns:
             Rendered Markdown as string
         """
-        template = self.get_template("documents/reference.md.jinja2")
-        return template.render(
+        return self._render(
+            "documents/reference.md.jinja2",
             title=title,
             filename=filename,
             source_path=source_path,
@@ -1040,8 +1051,8 @@ class Test{worker_name}ErrorHandling:
         Returns:
             Rendered Markdown as string
         """
-        template = self.get_template("documents/tracking.md.jinja2")
-        return template.render(
+        return self._render(
+            "documents/tracking.md.jinja2",
             title=title,
             output_path=output_path,
             current_focus=current_focus,

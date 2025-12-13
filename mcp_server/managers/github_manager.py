@@ -37,6 +37,7 @@ class GitHubManager:
             ]
         }
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def create_issue(
         self,
         title: str,
@@ -59,6 +60,7 @@ class GitHubManager:
             "title": issue.title
         }
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def create_pr(
         self,
         title: str,
@@ -130,6 +132,7 @@ class GitHubManager:
         """Remove labels from an issue or PR."""
         self.adapter.remove_labels(issue_number, labels)
 
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
     def update_issue(
         self,
         issue_number: int,

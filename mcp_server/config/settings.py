@@ -34,9 +34,9 @@ class GitHubSettings(BaseModel):
 class Settings(BaseModel):
     """Main settings container."""
 
-    server: ServerSettings = Field(default_factory=ServerSettings)
-    logging: LogSettings = Field(default_factory=LogSettings)
-    github: GitHubSettings = Field(default_factory=GitHubSettings)
+    server: ServerSettings = ServerSettings()
+    logging: LogSettings = LogSettings()
+    github: GitHubSettings = GitHubSettings()
 
     @classmethod
     def load(cls, config_path: str | None = None) -> "Settings":
