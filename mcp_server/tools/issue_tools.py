@@ -31,7 +31,7 @@ class CreateIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
@@ -64,7 +64,7 @@ class GetIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: GetIssueInput) -> ToolResult:
         try:
@@ -106,12 +106,15 @@ class ListIssuesTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: ListIssuesInput) -> ToolResult:
         try:
+            state_str = (
+                params.state.value if isinstance(params.state, IssueState) else params.state
+            )
             issues = self.manager.list_issues(
-                state=params.state,
+                state=state_str or "open",
                 labels=params.labels
             )
             if not issues:
@@ -152,7 +155,7 @@ class UpdateIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: UpdateIssueInput) -> ToolResult:
         try:
@@ -188,14 +191,11 @@ class CloseIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: CloseIssueInput) -> ToolResult:
         try:
-            if params.comment:
-                self.manager.create_comment(params.issue_number, params.comment)
-
-            self.manager.update_issue(params.issue_number, state="closed")
+            self.manager.close_issue(params.issue_number, comment=params.comment)
             return ToolResult.text(f"Closed issue #{params.issue_number}")
         except ExecutionError as e:
             return ToolResult.error(str(e))
