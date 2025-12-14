@@ -110,8 +110,11 @@ class ListIssuesTool(BaseTool):
 
     async def execute(self, params: ListIssuesInput) -> ToolResult:
         try:
+            state_str = (
+                params.state.value if isinstance(params.state, IssueState) else params.state
+            )
             issues = self.manager.list_issues(
-                state=params.state,
+                state=state_str or "open",
                 labels=params.labels
             )
             if not issues:
@@ -192,10 +195,7 @@ class CloseIssueTool(BaseTool):
 
     async def execute(self, params: CloseIssueInput) -> ToolResult:
         try:
-            if params.comment:
-                self.manager.create_comment(params.issue_number, params.comment)
-
-            self.manager.update_issue(params.issue_number, state="closed")
+            self.manager.close_issue(params.issue_number, comment=params.comment)
             return ToolResult.text(f"Closed issue #{params.issue_number}")
         except ExecutionError as e:
             return ToolResult.error(str(e))
