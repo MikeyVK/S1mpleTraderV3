@@ -55,16 +55,40 @@ class TestScaffolder(BaseScaffolder):
         optional = kwargs.get("optional_fields", [])
         kwargs["all_fields"] = required + optional
 
-        return str(self.renderer.render(
-            "components/dto_test.py.jinja2",
-            dto_name=name,
-            **kwargs
-        ))
+        try:
+            return str(self.renderer.render(
+                "components/dto_test.py.jinja2",
+                dto_name=name,
+                **kwargs
+            ))
+        except Exception as e:
+            # Fallback to generic test template
+            if "not found" in str(e).lower():
+                return str(self.renderer.render(
+                    "base/base_test.py.jinja2",
+                    test_name=f"Test{name}",
+                    test_type="DTO",
+                    component_name=name,
+                    **kwargs
+                ))
+            raise
 
     def _scaffold_worker_test(self, name: str, **kwargs: Any) -> str:
         """Scaffold Worker tests."""
-        return str(self.renderer.render(
-            "components/worker_test.py.jinja2",
-            worker_name=name,
-            **kwargs
-        ))
+        try:
+            return str(self.renderer.render(
+                "components/worker_test.py.jinja2",
+                worker_name=name,
+                **kwargs
+            ))
+        except Exception as e:
+            # Fallback to generic test template
+            if "not found" in str(e).lower():
+                return str(self.renderer.render(
+                    "base/base_test.py.jinja2",
+                    test_name=f"Test{name}",
+                    test_type="Worker",
+                    component_name=name,
+                    **kwargs
+                ))
+            raise

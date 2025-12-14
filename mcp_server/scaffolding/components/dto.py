@@ -33,4 +33,10 @@ class DTOScaffolder(BaseScaffolder):
         if not kwargs.get("docstring"):
             kwargs["docstring"] = f"{name} data transfer object."
 
-        return str(self.renderer.render("components/dto.py.jinja2", name=name, **kwargs))
+        try:
+            return str(self.renderer.render("components/dto.py.jinja2", name=name, **kwargs))
+        except Exception as e:
+            # Fallback to generic component template
+            if "not found" in str(e).lower():
+                return str(self.renderer.render("components/generic.py.jinja2", name=name, **kwargs))
+            raise

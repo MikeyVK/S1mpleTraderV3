@@ -20,8 +20,18 @@ class AdapterScaffolder(BaseScaffolder):
         self.validate(name=name)
         adapter_name = name if name.endswith("Adapter") else f"{name}Adapter"
 
-        return str(self.renderer.render(
-            "components/adapter.py.jinja2",
-            name=adapter_name,
-            **kwargs
-        ))
+        try:
+            return str(self.renderer.render(
+                "components/adapter.py.jinja2",
+                name=adapter_name,
+                **kwargs
+            ))
+        except Exception as e:
+            # Fallback to generic component template
+            if "not found" in str(e).lower():
+                return str(self.renderer.render(
+                    "components/generic.py.jinja2",
+                    name=adapter_name,
+                    **kwargs
+                ))
+            raise

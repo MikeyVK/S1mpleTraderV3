@@ -23,4 +23,14 @@ class GenericScaffolder(BaseScaffolder):
         if not template_name:
             raise ValueError("template_name is required for GenericScaffolder")
 
-        return str(self.renderer.render(template_name, **kwargs))
+        try:
+            return str(self.renderer.render(template_name, **kwargs))
+        except Exception as e:
+            # Fallback to generic template based on file type
+            if "not found" in str(e).lower():
+                # Determine fallback based on template extension
+                if template_name.endswith(".py.jinja2"):
+                    return str(self.renderer.render("components/generic.py.jinja2", name=name, **kwargs))
+                elif template_name.endswith(".md.jinja2"):
+                    return str(self.renderer.render("documents/generic.md.jinja2", name=name, **kwargs))
+            raise
