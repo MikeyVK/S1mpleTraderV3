@@ -31,7 +31,7 @@ class CreateIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
@@ -64,7 +64,7 @@ class GetIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: GetIssueInput) -> ToolResult:
         try:
@@ -106,7 +106,7 @@ class ListIssuesTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: ListIssuesInput) -> ToolResult:
         try:
@@ -152,7 +152,7 @@ class UpdateIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: UpdateIssueInput) -> ToolResult:
         try:
@@ -188,7 +188,7 @@ class CloseIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: CloseIssueInput) -> ToolResult:
         try:

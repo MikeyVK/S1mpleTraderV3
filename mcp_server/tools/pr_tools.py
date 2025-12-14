@@ -29,7 +29,7 @@ class CreatePRTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: CreatePRInput) -> ToolResult:
         result = self.manager.create_pr(
@@ -66,7 +66,7 @@ class ListPRsTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: ListPRsInput) -> ToolResult:
         try:
@@ -113,7 +113,7 @@ class MergePRTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: MergePRInput) -> ToolResult:
         try:
