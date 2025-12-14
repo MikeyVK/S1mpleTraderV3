@@ -1,0 +1,264 @@
+﻿************* Module mcp_server.cli
+mcp_server\cli.py:17:0: I0011: Locally disabling no-member (E1101) (locally-disabled)
+mcp_server\cli.py:17:0: I0021: Useless suppression of 'no-member' (useless-suppression)
+************* Module mcp_server.server
+mcp_server\server.py:2:0: I0011: Locally disabling duplicate-code (R0801) (locally-disabled)
+mcp_server\server.py:202:0: I0011: Locally disabling not-callable (E1102) (locally-disabled)
+mcp_server\server.py:211:93: C0303: Trailing whitespace (trailing-whitespace)
+mcp_server\server.py:202:0: I0021: Useless suppression of 'not-callable' (useless-suppression)
+************* Module mcp_server.state.context
+mcp_server\state\context.py:20:0: I0011: Locally disabling no-member (E1101) (locally-disabled)
+mcp_server\state\context.py:20:0: I0020: Suppressed 'no-member' (from line 20) (suppressed-message)
+************* Module mcp_server.tools.base
+mcp_server\tools\base.py:50:0: C0303: Trailing whitespace (trailing-whitespace)
+************* Module mcp_server.tools.code_tools
+mcp_server\tools\code_tools.py:51:0: I0011: Locally disabling no-member (E1101) (locally-disabled)
+mcp_server\tools\code_tools.py:51:0: I0021: Useless suppression of 'no-member' (useless-suppression)
+************* Module mcp_server.tools.discovery_tools
+mcp_server\tools\discovery_tools.py:112:0: I0011: Locally disabling no-member (E1101) (locally-disabled)
+mcp_server\tools\discovery_tools.py:115:0: I0011: Locally disabling import-outside-toplevel (C0415) (locally-disabled)
+mcp_server\tools\discovery_tools.py:17:0: C0301: Line too long (115/100) (line-too-long)
+mcp_server\tools\discovery_tools.py:118:0: C0303: Trailing whitespace (trailing-whitespace)
+mcp_server\tools\discovery_tools.py:112:0: I0021: Useless suppression of 'no-member' (useless-suppression)
+mcp_server\tools\discovery_tools.py:116:0: I0020: Suppressed 'import-outside-toplevel' (from line 115) (suppressed-message)
+************* Module mcp_server.tools.label_tools
+mcp_server\tools\label_tools.py:146:0: C0301: Line too long (101/100) (line-too-long)
+************* Module mcp_server.tools.milestone_tools
+mcp_server\tools\milestone_tools.py:13:0: C0301: Line too long (111/100) (line-too-long)
+************* Module mcp_server.tools.pr_tools
+mcp_server\tools\pr_tools.py:48:0: C0301: Line too long (103/100) (line-too-long)
+mcp_server\tools\pr_tools.py:89:0: C0301: Line too long (105/100) (line-too-long)
+mcp_server\tools\pr_tools.py:90:0: C0301: Line too long (111/100) (line-too-long)
+************* Module mcp_server.tools.safe_edit_tool
+mcp_server\tools\safe_edit_tool.py:22:0: C0301: Line too long (105/100) (line-too-long)
+************* Module mcp_server.tools.scaffold_tools
+mcp_server\tools\scaffold_tools.py:17:0: C0303: Trailing whitespace (trailing-whitespace)
+mcp_server\tools\scaffold_tools.py:34:0: C0303: Trailing whitespace (trailing-whitespace)
+mcp_server\tools\scaffold_tools.py:36:0: C0301: Line too long (105/100) (line-too-long)
+mcp_server\tools\scaffold_tools.py:52:0: C0301: Line too long (102/100) (line-too-long)
+mcp_server\tools\scaffold_tools.py:223:0: C0301: Line too long (101/100) (line-too-long)
+************* Module mcp_server.tools.template_validation_tool
+mcp_server\tools\template_validation_tool.py:13:0: C0301: Line too long (131/100) (line-too-long)
+************* Module mcp_server.tools.test_tools
+mcp_server\tools\test_tools.py:85:0: I0011: Locally disabling no-member (E1101) (locally-disabled)
+mcp_server\tools\test_tools.py:85:0: I0021: Useless suppression of 'no-member' (useless-suppression)
+************* Module mcp_server.tools.validation_tools
+mcp_server\tools\validation_tools.py:12:0: C0301: Line too long (141/100) (line-too-long)
+************* Module tests.unit.mcp_server.test_server
+tests\unit\mcp_server\test_server.py:18:12: C0415: Import outside toplevel (mcp_server.server.MCPServer) (import-outside-toplevel)
+tests\unit\mcp_server\test_server.py:47:12: C0415: Import outside toplevel (mcp_server.server.MCPServer) (import-outside-toplevel)
+************* Module tests.unit.mcp_server.config.test_settings
+tests\unit\mcp_server\config\test_settings.py:2:0: I0011: Locally disabling no-member (E1101) (locally-disabled)
+tests\unit\mcp_server\config\test_settings.py:2:0: I0021: Useless suppression of 'no-member' (useless-suppression)
+************* Module tests.unit.mcp_server.integration.test_all_tools
+tests\unit\mcp_server\integration\test_all_tools.py:36:0: C0301: Line too long (112/100) (line-too-long)
+tests\unit\mcp_server\integration\test_all_tools.py:49:0: C0301: Line too long (102/100) (line-too-long)
+tests\unit\mcp_server\integration\test_all_tools.py:35:0: W0611: Unused RunTestsInput imported from mcp_server.tools.test_tools (unused-import)
+************* Module tests.unit.mcp_server.resources.test_base
+tests\unit\mcp_server\resources\test_base.py:41:0: I0011: Locally disabling abstract-class-instantiated (E0110) (locally-disabled)
+tests\unit\mcp_server\resources\test_base.py:42:0: I0020: Suppressed 'abstract-class-instantiated' (from line 41) (suppressed-message)
+************* Module tests.integration.mcp_server.conftest
+tests\integration\mcp_server\conftest.py:24:0: I0011: Locally disabling import-outside-toplevel (C0415) (locally-disabled)
+tests\integration\mcp_server\conftest.py:25:0: I0020: Suppressed 'import-outside-toplevel' (from line 24) (suppressed-message)
+************* Module tests.integration.mcp_server.test_server_startup
+tests\integration\mcp_server\test_server_startup.py:1:0: R0801: Similar lines in 2 files
+==tests.unit.mcp_server.integration.test_github:[50:57]
+==tests.unit.mcp_server.managers.test_github_manager:[86:96]
+    mock_adapter.create_issue.assert_called_with(
+        title="New Issue",
+        body="Body",
+        labels=None,
+        milestone_number=None,
+        assignees=None
+    ) (duplicate-code)
+
+
+Report
+======
+2888 statements analysed.
+
+Statistics by type
+------------------
+
++---------+-------+-----------+-----------+------------+---------+
+|type     |number |old number |difference |%documented |%badname |
++=========+=======+===========+===========+============+=========+
+|module   |68     |NC         |NC         |100.00      |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|class    |134    |NC         |NC         |100.00      |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|method   |367    |NC         |NC         |100.00      |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|function |44     |NC         |NC         |100.00      |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+
+
+
+External dependencies
+---------------------
+::
+
+    anyio (mcp_server.server)
+    jinja2 (tests.unit.mcp_server.managers.test_scaffold_manager)
+      \-Environment (tests.unit.mcp_server.managers.test_scaffold_manager)
+    mcp 
+      \-server (mcp_server.server)
+      | \-stdio (mcp_server.server)
+      \-types (mcp_server.server)
+    mcp_server 
+      \-adapters 
+      | \-filesystem (tests.unit.mcp_server.integration.test_fs_status)
+      | \-git_adapter (mcp_server.resources.status,tests.unit.mcp_server.adapters.test_git_adapter)
+      \-cli (tests.unit.mcp_server.test_cli)
+      \-config 
+      | \-settings (mcp_server.core.logging,mcp_server.tools.code_tools,mcp_server.tools.discovery_tools,mcp_server.tools.test_tools,tests.unit.mcp_server.config.test_settings)
+      \-core 
+      | \-exceptions (mcp_server.resources.status,mcp_server.tools.code_tools,mcp_server.tools.discovery_tools,mcp_server.tools.issue_tools,mcp_server.tools.milestone_tools,mcp_server.tools.pr_tools,mcp_server.tools.scaffold_tools,mcp_server.tools.test_tools,tests.unit.mcp_server.adapters.test_git_adapter,tests.unit.mcp_server.core.test_exceptions,tests.unit.mcp_server.integration.test_fs_status,tests.unit.mcp_server.integration.test_git,tests.unit.mcp_server.managers.test_doc_manager,tests.unit.mcp_server.managers.test_git_manager,tests.unit.mcp_server.managers.test_scaffold_manager)
+      | \-logging (tests.unit.mcp_server.core.test_logging)
+      \-managers 
+      | \-doc_manager (mcp_server.resources.templates,mcp_server.tools.discovery_tools,mcp_server.tools.docs_tools,tests.unit.mcp_server.managers.test_doc_manager)
+      | \-git_manager (mcp_server.tools.discovery_tools,mcp_server.tools.git_analysis_tools,mcp_server.tools.git_tools,tests.unit.mcp_server.integration.test_git,tests.unit.mcp_server.managers.test_git_manager)
+      | \-github_manager (mcp_server.resources.github,mcp_server.tools.discovery_tools,mcp_server.tools.issue_tools,mcp_server.tools.label_tools,mcp_server.tools.milestone_tools,mcp_server.tools.pr_tools,tests.unit.mcp_server.integration.test_github,tests.unit.mcp_server.managers.test_github_manager)
+      | \-qa_manager (mcp_server.tools.quality_tools,mcp_server.tools.validation_tools,mcp_server.validation.python_validator,tests.unit.mcp_server.integration.test_qa,tests.unit.mcp_server.managers.test_qa_manager)
+      | \-scaffold_manager (mcp_server.tools.scaffold_tools,tests.unit.mcp_server.managers.test_scaffold_manager)
+      \-resources 
+      | \-base (tests.unit.mcp_server.resources.test_base,tests.unit.mcp_server.resources.test_resources_base)
+      | \-standards (tests.unit.mcp_server.resources.test_standards)
+      | \-status (tests.unit.mcp_server.integration.test_fs_status)
+      \-server (tests.integration.mcp_server.conftest,tests.unit.mcp_server.test_server)
+      \-tools 
+      | \-code_tools (tests.unit.mcp_server.integration.test_all_tools)
+      | \-docs_tools (tests.unit.mcp_server.integration.test_all_tools)
+      | \-git_tools (tests.unit.mcp_server.integration.test_all_tools)
+      | \-health_tools (tests.unit.mcp_server.integration.test_all_tools)
+      | \-issue_tools (tests.unit.mcp_server.integration.test_all_tools,tests.unit.mcp_server.integration.test_github)
+      | \-label_tools (tests.unit.mcp_server.integration.test_all_tools)
+      | \-pr_tools (tests.unit.mcp_server.integration.test_all_tools)
+      | \-quality_tools (tests.unit.mcp_server.integration.test_all_tools,tests.unit.mcp_server.integration.test_qa)
+      | \-test_tools (tests.unit.mcp_server.integration.test_all_tools)
+      | \-validation_tools (tests.unit.mcp_server.integration.test_all_tools)
+      \-validation 
+        \-base (tests.unit.mcp_server.validation.test_python_validator,tests.unit.mcp_server.validation.test_validator_registry)
+        \-markdown_validator (mcp_server.tools.safe_edit_tool,tests.unit.mcp_server.validation.test_markdown_validator)
+        \-python_validator (mcp_server.tools.safe_edit_tool,tests.unit.mcp_server.validation.test_python_validator)
+        \-registry (mcp_server.tools.safe_edit_tool,tests.unit.mcp_server.validation.test_validator_registry)
+        \-template_validator (mcp_server.tools.safe_edit_tool,mcp_server.tools.template_validation_tool,tests.unit.mcp_server.validation.test_template_validator)
+    pydantic (mcp_server.config.settings,mcp_server.server,mcp_server.state.context,mcp_server.tools.base,mcp_server.tools.code_tools,mcp_server.tools.discovery_tools,mcp_server.tools.docs_tools,mcp_server.tools.git_analysis_tools,mcp_server.tools.git_tools,mcp_server.tools.health_tools,mcp_server.tools.issue_tools,mcp_server.tools.label_tools,mcp_server.tools.milestone_tools,mcp_server.tools.pr_tools,mcp_server.tools.quality_tools,mcp_server.tools.safe_edit_tool,mcp_server.tools.scaffold_tools,mcp_server.tools.template_validation_tool,mcp_server.tools.test_tools,mcp_server.tools.validation_tools)
+    pytest (tests.integration.mcp_server.conftest,tests.integration.mcp_server.test_server_startup,tests.unit.mcp_server.adapters.test_git_adapter,tests.unit.mcp_server.conftest,tests.unit.mcp_server.integration.test_all_tools,tests.unit.mcp_server.integration.test_fs_status,tests.unit.mcp_server.integration.test_git,tests.unit.mcp_server.integration.test_github,tests.unit.mcp_server.integration.test_qa,tests.unit.mcp_server.managers.test_doc_manager,tests.unit.mcp_server.managers.test_git_manager,tests.unit.mcp_server.managers.test_github_manager,tests.unit.mcp_server.managers.test_qa_manager,tests.unit.mcp_server.managers.test_scaffold_manager,tests.unit.mcp_server.resources.test_base,tests.unit.mcp_server.resources.test_resources_base,tests.unit.mcp_server.resources.test_standards,tests.unit.mcp_server.validation.test_markdown_validator,tests.unit.mcp_server.validation.test_python_validator,tests.unit.mcp_server.validation.test_template_validator,tests.unit.mcp_server.validation.test_validator_registry)
+    yaml (mcp_server.config.settings)
+
+
+
+6143 lines have been analyzed
+
+Raw metrics
+-----------
+
++----------+-------+------+---------+-----------+
+|type      |number |%     |previous |difference |
++==========+=======+======+=========+===========+
+|code      |3844   |62.58 |NC       |NC         |
++----------+-------+------+---------+-----------+
+|docstring |763    |12.42 |NC       |NC         |
++----------+-------+------+---------+-----------+
+|comment   |272    |4.43  |NC       |NC         |
++----------+-------+------+---------+-----------+
+|empty     |1264   |20.58 |NC       |NC         |
++----------+-------+------+---------+-----------+
+
+
+
+Duplication
+-----------
+
++-------------------------+------+---------+-----------+
+|                         |now   |previous |difference |
++=========================+======+=========+===========+
+|nb duplicated lines      |0     |NC       |NC         |
++-------------------------+------+---------+-----------+
+|percent duplicated lines |0.000 |NC       |NC         |
++-------------------------+------+---------+-----------+
+
+
+
+Messages by category
+--------------------
+
++-----------+-------+---------+-----------+
+|type       |number |previous |difference |
++===========+=======+=========+===========+
+|convention |21     |NC       |NC         |
++-----------+-------+---------+-----------+
+|refactor   |1      |NC       |NC         |
++-----------+-------+---------+-----------+
+|warning    |1      |NC       |NC         |
++-----------+-------+---------+-----------+
+|error      |0      |NC       |NC         |
++-----------+-------+---------+-----------+
+
+
+
+% errors / warnings by module
+-----------------------------
+
++-------------------------------------------------+------+--------+---------+-----------+
+|module                                           |error |warning |refactor |convention |
++=================================================+======+========+=========+===========+
+|tests.unit.mcp_server.integration.test_all_tools |0.00  |100.00  |0.00     |9.52       |
++-------------------------------------------------+------+--------+---------+-----------+
+|tests.integration.mcp_server.test_server_startup |0.00  |0.00    |100.00   |0.00       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.scaffold_tools                  |0.00  |0.00    |0.00     |23.81      |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.pr_tools                        |0.00  |0.00    |0.00     |14.29      |
++-------------------------------------------------+------+--------+---------+-----------+
+|tests.unit.mcp_server.test_server                |0.00  |0.00    |0.00     |9.52       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.discovery_tools                 |0.00  |0.00    |0.00     |9.52       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.validation_tools                |0.00  |0.00    |0.00     |4.76       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.template_validation_tool        |0.00  |0.00    |0.00     |4.76       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.safe_edit_tool                  |0.00  |0.00    |0.00     |4.76       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.milestone_tools                 |0.00  |0.00    |0.00     |4.76       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.label_tools                     |0.00  |0.00    |0.00     |4.76       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.base                            |0.00  |0.00    |0.00     |4.76       |
++-------------------------------------------------+------+--------+---------+-----------+
+|mcp_server.server                                |0.00  |0.00    |0.00     |4.76       |
++-------------------------------------------------+------+--------+---------+-----------+
+
+
+
+Messages
+--------
+
++------------------------+------------+
+|message id              |occurrences |
++========================+============+
+|line-too-long           |14          |
++------------------------+------------+
+|locally-disabled        |11          |
++------------------------+------------+
+|useless-suppression     |6           |
++------------------------+------------+
+|trailing-whitespace     |5           |
++------------------------+------------+
+|suppressed-message      |4           |
++------------------------+------------+
+|import-outside-toplevel |2           |
++------------------------+------------+
+|unused-import           |1           |
++------------------------+------------+
+|duplicate-code          |1           |
++------------------------+------------+
+
+
+
+
+-----------------------------------
+Your code has been rated at 9.92/10
+

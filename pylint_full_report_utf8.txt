@@ -1,0 +1,177 @@
+﻿************* Module mcp_server.server
+mcp_server\server.py:211:93: C0303: Trailing whitespace (trailing-whitespace)
+************* Module mcp_server.tools.base
+mcp_server\tools\base.py:50:0: C0303: Trailing whitespace (trailing-whitespace)
+************* Module mcp_server.tools.discovery_tools
+mcp_server\tools\discovery_tools.py:17:0: C0301: Line too long (115/100) (line-too-long)
+mcp_server\tools\discovery_tools.py:118:0: C0303: Trailing whitespace (trailing-whitespace)
+************* Module mcp_server.tools.label_tools
+mcp_server\tools\label_tools.py:146:0: C0301: Line too long (101/100) (line-too-long)
+************* Module mcp_server.tools.milestone_tools
+mcp_server\tools\milestone_tools.py:13:0: C0301: Line too long (111/100) (line-too-long)
+************* Module mcp_server.tools.pr_tools
+mcp_server\tools\pr_tools.py:48:0: C0301: Line too long (103/100) (line-too-long)
+mcp_server\tools\pr_tools.py:89:0: C0301: Line too long (105/100) (line-too-long)
+mcp_server\tools\pr_tools.py:90:0: C0301: Line too long (111/100) (line-too-long)
+************* Module mcp_server.tools.safe_edit_tool
+mcp_server\tools\safe_edit_tool.py:22:0: C0301: Line too long (105/100) (line-too-long)
+************* Module mcp_server.tools.scaffold_tools
+mcp_server\tools\scaffold_tools.py:17:0: C0303: Trailing whitespace (trailing-whitespace)
+mcp_server\tools\scaffold_tools.py:34:0: C0303: Trailing whitespace (trailing-whitespace)
+mcp_server\tools\scaffold_tools.py:36:0: C0301: Line too long (105/100) (line-too-long)
+mcp_server\tools\scaffold_tools.py:52:0: C0301: Line too long (102/100) (line-too-long)
+mcp_server\tools\scaffold_tools.py:223:0: C0301: Line too long (101/100) (line-too-long)
+************* Module mcp_server.tools.template_validation_tool
+mcp_server\tools\template_validation_tool.py:13:0: C0301: Line too long (131/100) (line-too-long)
+************* Module mcp_server.tools.validation_tools
+mcp_server\tools\validation_tools.py:12:0: C0301: Line too long (141/100) (line-too-long)
+
+
+Report
+======
+1451 statements analysed.
+
+Statistics by type
+------------------
+
++---------+-------+-----------+-----------+------------+---------+
+|type     |number |old number |difference |%documented |%badname |
++=========+=======+===========+===========+============+=========+
+|module   |42     |42         |=          |100.00      |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|class    |104    |104        |=          |100.00      |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|method   |169    |169        |=          |100.00      |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+|function |9      |9          |=          |100.00      |0.00     |
++---------+-------+-----------+-----------+------------+---------+
+
+
+
+External dependencies
+---------------------
+::
+
+    anyio (mcp_server.server)
+    mcp 
+      \-server (mcp_server.server)
+      | \-stdio (mcp_server.server)
+      \-types (mcp_server.server)
+    mcp_server 
+      \-adapters 
+      | \-git_adapter (mcp_server.resources.status)
+      \-config 
+      | \-settings (mcp_server.core.logging,mcp_server.tools.code_tools,mcp_server.tools.discovery_tools,mcp_server.tools.test_tools)
+      \-core 
+      | \-exceptions (mcp_server.resources.status,mcp_server.tools.code_tools,mcp_server.tools.discovery_tools,mcp_server.tools.issue_tools,mcp_server.tools.milestone_tools,mcp_server.tools.pr_tools,mcp_server.tools.scaffold_tools,mcp_server.tools.test_tools)
+      \-managers 
+      | \-doc_manager (mcp_server.resources.templates,mcp_server.tools.discovery_tools,mcp_server.tools.docs_tools)
+      | \-git_manager (mcp_server.tools.discovery_tools,mcp_server.tools.git_analysis_tools,mcp_server.tools.git_tools)
+      | \-github_manager (mcp_server.resources.github,mcp_server.tools.discovery_tools,mcp_server.tools.issue_tools,mcp_server.tools.label_tools,mcp_server.tools.milestone_tools,mcp_server.tools.pr_tools)
+      | \-qa_manager (mcp_server.tools.quality_tools,mcp_server.tools.validation_tools,mcp_server.validation.python_validator)
+      | \-scaffold_manager (mcp_server.tools.scaffold_tools)
+      \-validation 
+        \-markdown_validator (mcp_server.tools.safe_edit_tool)
+        \-python_validator (mcp_server.tools.safe_edit_tool)
+        \-registry (mcp_server.tools.safe_edit_tool)
+        \-template_validator (mcp_server.tools.safe_edit_tool,mcp_server.tools.template_validation_tool)
+    pydantic (mcp_server.config.settings,mcp_server.server,mcp_server.state.context,mcp_server.tools.base,mcp_server.tools.code_tools,mcp_server.tools.discovery_tools,mcp_server.tools.docs_tools,mcp_server.tools.git_analysis_tools,mcp_server.tools.git_tools,mcp_server.tools.health_tools,mcp_server.tools.issue_tools,mcp_server.tools.label_tools,mcp_server.tools.milestone_tools,mcp_server.tools.pr_tools,mcp_server.tools.quality_tools,mcp_server.tools.safe_edit_tool,mcp_server.tools.scaffold_tools,mcp_server.tools.template_validation_tool,mcp_server.tools.test_tools,mcp_server.tools.validation_tools)
+    yaml (mcp_server.config.settings)
+
+
+
+3128 lines have been analyzed
+
+Raw metrics
+-----------
+
++----------+-------+------+---------+-----------+
+|type      |number |%     |previous |difference |
++==========+=======+======+=========+===========+
+|code      |2006   |64.13 |NC       |NC         |
++----------+-------+------+---------+-----------+
+|docstring |340    |10.87 |NC       |NC         |
++----------+-------+------+---------+-----------+
+|comment   |120    |3.84  |NC       |NC         |
++----------+-------+------+---------+-----------+
+|empty     |662    |21.16 |NC       |NC         |
++----------+-------+------+---------+-----------+
+
+
+
+Duplication
+-----------
+
++-------------------------+------+---------+-----------+
+|                         |now   |previous |difference |
++=========================+======+=========+===========+
+|nb duplicated lines      |0     |0        |0          |
++-------------------------+------+---------+-----------+
+|percent duplicated lines |0.000 |0.000    |=          |
++-------------------------+------+---------+-----------+
+
+
+
+Messages by category
+--------------------
+
++-----------+-------+---------+-----------+
+|type       |number |previous |difference |
++===========+=======+=========+===========+
+|convention |17     |17       |17         |
++-----------+-------+---------+-----------+
+|refactor   |0      |0        |0          |
++-----------+-------+---------+-----------+
+|warning    |0      |0        |0          |
++-----------+-------+---------+-----------+
+|error      |0      |0        |0          |
++-----------+-------+---------+-----------+
+
+
+
+% errors / warnings by module
+-----------------------------
+
++------------------------------------------+------+--------+---------+-----------+
+|module                                    |error |warning |refactor |convention |
++==========================================+======+========+=========+===========+
+|mcp_server.tools.scaffold_tools           |0.00  |0.00    |0.00     |29.41      |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.pr_tools                 |0.00  |0.00    |0.00     |17.65      |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.discovery_tools          |0.00  |0.00    |0.00     |11.76      |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.validation_tools         |0.00  |0.00    |0.00     |5.88       |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.template_validation_tool |0.00  |0.00    |0.00     |5.88       |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.safe_edit_tool           |0.00  |0.00    |0.00     |5.88       |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.milestone_tools          |0.00  |0.00    |0.00     |5.88       |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.label_tools              |0.00  |0.00    |0.00     |5.88       |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.tools.base                     |0.00  |0.00    |0.00     |5.88       |
++------------------------------------------+------+--------+---------+-----------+
+|mcp_server.server                         |0.00  |0.00    |0.00     |5.88       |
++------------------------------------------+------+--------+---------+-----------+
+
+
+
+Messages
+--------
+
++--------------------+------------+
+|message id          |occurrences |
++====================+============+
+|line-too-long       |12          |
++--------------------+------------+
+|trailing-whitespace |5           |
++--------------------+------------+
+
+
+
+
+------------------------------------------------------------------
+Your code has been rated at 9.88/10 (previous run: 9.88/10, +0.00)
+

@@ -1,0 +1,31 @@
+﻿************* Module mcp_server.server
+mcp_server\server.py:211:93: C0303: Trailing whitespace (trailing-whitespace)
+************* Module mcp_server.tools.base
+mcp_server\tools\base.py:50:0: C0303: Trailing whitespace (trailing-whitespace)
+************* Module mcp_server.tools.discovery_tools
+mcp_server\tools\discovery_tools.py:17:0: C0301: Line too long (115/100) (line-too-long)
+mcp_server\tools\discovery_tools.py:118:0: C0303: Trailing whitespace (trailing-whitespace)
+************* Module mcp_server.tools.label_tools
+mcp_server\tools\label_tools.py:146:0: C0301: Line too long (101/100) (line-too-long)
+************* Module mcp_server.tools.milestone_tools
+mcp_server\tools\milestone_tools.py:13:0: C0301: Line too long (111/100) (line-too-long)
+************* Module mcp_server.tools.pr_tools
+mcp_server\tools\pr_tools.py:48:0: C0301: Line too long (103/100) (line-too-long)
+mcp_server\tools\pr_tools.py:89:0: C0301: Line too long (105/100) (line-too-long)
+mcp_server\tools\pr_tools.py:90:0: C0301: Line too long (111/100) (line-too-long)
+************* Module mcp_server.tools.safe_edit_tool
+mcp_server\tools\safe_edit_tool.py:22:0: C0301: Line too long (105/100) (line-too-long)
+************* Module mcp_server.tools.scaffold_tools
+mcp_server\tools\scaffold_tools.py:17:0: C0303: Trailing whitespace (trailing-whitespace)
+mcp_server\tools\scaffold_tools.py:34:0: C0303: Trailing whitespace (trailing-whitespace)
+mcp_server\tools\scaffold_tools.py:36:0: C0301: Line too long (105/100) (line-too-long)
+mcp_server\tools\scaffold_tools.py:52:0: C0301: Line too long (102/100) (line-too-long)
+mcp_server\tools\scaffold_tools.py:223:0: C0301: Line too long (101/100) (line-too-long)
+************* Module mcp_server.tools.template_validation_tool
+mcp_server\tools\template_validation_tool.py:13:0: C0301: Line too long (131/100) (line-too-long)
+************* Module mcp_server.tools.validation_tools
+mcp_server\tools\validation_tools.py:12:0: C0301: Line too long (141/100) (line-too-long)
+
+------------------------------------------------------------------
+Your code has been rated at 9.88/10 (previous run: 9.88/10, +0.00)
+

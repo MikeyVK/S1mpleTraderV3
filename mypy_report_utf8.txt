@@ -1,0 +1,11 @@
+﻿mcp_server\config\settings.py:6: error: Unused "type: ignore" comment  [unused-ignore]
+mcp_server\core\logging.py:23: error: Unused "type: ignore" comment  [unused-ignore]
+mcp_server\adapters\git_adapter.py:4: error: Unused "type: ignore" comment  [unused-ignore]
+mcp_server\adapters\git_adapter.py:167: error: Returning Any from function declared to return "list[str]"  [no-any-return]
+mcp_server\adapters\git_adapter.py:211: error: Returning Any from function declared to return "str"  [no-any-return]
+mcp_server\managers\scaffold_manager.py:176: error: Returning Any from function declared to return "str"  [no-any-return]
+mcp_server\managers\scaffold_manager.py:275: error: Returning Any from function declared to return "str"  [no-any-return]
+mcp_server\managers\scaffold_manager.py:385: error: Returning Any from function declared to return "str"  [no-any-return]
+mcp_server\tools\issue_tools.py:114: error: Argument "state" to "list_issues" of "GitHubManager" has incompatible type "Literal['open', 'closed', 'all'] | None"; expected "str"  [arg-type]
+mcp_server\tools\issue_tools.py:196: error: "GitHubManager" has no attribute "create_comment"  [attr-defined]
+Found 10 errors in 5 files (checked 50 source files)
