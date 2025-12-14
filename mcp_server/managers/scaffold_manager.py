@@ -42,89 +42,87 @@ class ScaffoldManager:
     def render_dto(self, name: str, fields: list[dict[str, Any]]) -> str:
         self._validate_pascal_case(name)
         try:
-            tmpl = self.env.get_template("dto.jinja2")
+            tmpl = self.env.get_template("components/dto.py.jinja2")
             return tmpl.render(name=name, fields=fields)
         except TemplateNotFound:
-            lines = ["from dataclasses import dataclass", "", f"@dataclass", f"class {name}:"]
-            if not fields:
-                lines.append("    pass")
-            else:
-                for f in fields:
-                    default = f.get("default")
-                    if default is not None:
-                        lines.append(f"    {f['name']}: {f['type']} = {default}")
-                    else:
-                        lines.append(f"    {f['name']}: {f['type']}")
-            return "\n".join(lines)
+            # Fall back to base component template for .py files
+            tmpl = self.env.get_template("base/base_component.py.jinja2")
+            return tmpl.render(name=name, fields=fields, component_type="DTO")
 
     # --- Render Worker ---
     def render_worker(self, name: str, input_type: str, output_type: str, dependencies: Optional[list[str]] = None) -> str:
         try:
-            tmpl = self.env.get_template("worker.jinja2")
+            tmpl = self.env.get_template("components/worker.py.jinja2")
             return tmpl.render(name=f"{name}Worker", input_type=input_type, output_type=output_type, dependencies=dependencies or [])
         except TemplateNotFound:
-            cls_name = f"{name}Worker"
-            lines = [f"class {cls_name}(BaseWorker[{input_type}, {output_type}]):"]
-            if dependencies:
-                lines.append("    def __init__(self) -> None:")
-                for dep in dependencies:
-                    attr = dep.split(":")[0].strip()
-                    lines.append(f"        self.{attr} = {attr}")
-            else:
-                lines.append("    def __init__(self) -> None:")
-                lines.append("        pass")
-            return "\n".join(lines)
+            # Fall back to base component template for .py files
+            tmpl = self.env.get_template("base/base_component.py.jinja2")
+            return tmpl.render(name=f"{name}Worker", input_type=input_type, output_type=output_type, dependencies=dependencies or [], component_type="Worker")
 
     # --- Render Adapter ---
     def render_adapter(self, name: str, methods: list[dict[str, str]]) -> str:
         try:
-            tmpl = self.env.get_template("adapter.jinja2")
+            tmpl = self.env.get_template("components/adapter.py.jinja2")
             return tmpl.render(name=f"{name}Adapter", methods=methods)
         except TemplateNotFound:
-            lines = [f"class {name}Adapter:"]
-            if not methods:
-                lines.append("    pass")
-            else:
-                for m in methods:
-                    params = m.get("params", "")
-                    rt = m.get("return_type", "None")
-                    lines.append(f"    def {m['name']}(self, {params}) -> {rt}:")
-                    lines.append("        pass")
-            return "\n".join(lines)
+            # Fall back to base component template for .py files
+            tmpl = self.env.get_template("base/base_component.py.jinja2")
+            return tmpl.render(name=f"{name}Adapter", methods=methods, component_type="Adapter")
 
-    # --- Render Tools/Resources/Schema/Interface ---
     def render_tool(self, name: str, description: str) -> str:
-        tmpl = self.env.get_template("tool.jinja2")
-        return tmpl.render(name=name, description=description)
+        try:
+            tmpl = self.env.get_template("components/tool.py.jinja2")
+            return tmpl.render(name=name, description=description)
+        except TemplateNotFound:
+            # Fall back to base component template for .py files
+            tmpl = self.env.get_template("base/base_component.py.jinja2")
+            return tmpl.render(name=name, description=description, component_type="Tool")
 
     def render_resource(self, name: str, description: str) -> str:
-        tmpl = self.env.get_template("resource.jinja2")
-        return tmpl.render(name=name, description=description)
+        try:
+            tmpl = self.env.get_template("components/resource.py.jinja2")
+            return tmpl.render(name=name, description=description)
+        except TemplateNotFound:
+            # Fall back to base component template for .py files
+            tmpl = self.env.get_template("base/base_component.py.jinja2")
+            return tmpl.render(name=name, description=description, component_type="Resource")
 
     def render_schema(self, name: str) -> str:
-        tmpl = self.env.get_template("schema.jinja2")
-        return tmpl.render(name=name)
+        try:
+            tmpl = self.env.get_template("components/schema.py.jinja2")
+            return tmpl.render(name=name)
+        except TemplateNotFound:
+            # Fall back to base component template for .py files
+            tmpl = self.env.get_template("base/base_component.py.jinja2")
+            return tmpl.render(name=name, component_type="Schema")
 
     def render_interface(self, name: str) -> str:
-        tmpl = self.env.get_template("interface.jinja2")
-        return tmpl.render(name=name)
+        try:
+            tmpl = self.env.get_template("components/interface.py.jinja2")
+            return tmpl.render(name=name)
+        except TemplateNotFound:
+            # Fall back to base component template for .py files
+            tmpl = self.env.get_template("base/base_component.py.jinja2")
+            return tmpl.render(name=name, component_type="Interface")
 
     # --- Render Tests ---
     def render_dto_test(self, dto_name: str, import_path: str) -> str:
         try:
-            tmpl = self.env.get_template("dto_test.jinja2")
+            tmpl = self.env.get_template("tests/dto_test.py.jinja2")
             return tmpl.render(dto_name=dto_name, import_path=import_path)
         except TemplateNotFound:
-            lines = [f"from {import_path} import {dto_name}", "", f"class Test{dto_name}:", "    def test_init(self) -> None:", f"        _ = {dto_name}()"]
-            return "\n".join(lines)
+            # Fall back to base test template for .py files
+            tmpl = self.env.get_template("base/base_test.py.jinja2")
+            return tmpl.render(test_name=f"Test{dto_name}", import_path=import_path, test_type="DTO", component_name=dto_name)
 
     def render_worker_test(self, worker_name: str, import_path: str) -> str:
         try:
-            tmpl = self.env.get_template("worker_test.jinja2")
+            tmpl = self.env.get_template("tests/worker_test.py.jinja2")
             return tmpl.render(worker_name=worker_name, import_path=import_path)
         except TemplateNotFound:
-            lines = [f"from {import_path} import {worker_name}", "", "class TestMyWorkerProcessing:", "    def test_process(self) -> None:", f"        _ = {worker_name}()"]
-            return "\n".join(lines)
+            # Fall back to base test template for .py files
+            tmpl = self.env.get_template("base/base_test.py.jinja2")
+            return tmpl.render(test_name=f"Test{worker_name}", import_path=import_path, test_type="Worker", component_name=worker_name)
 
     # --- Generic rendering ---
     def render_generic(self, template_name: str, context: dict[str, Any]) -> str:
@@ -133,34 +131,58 @@ class ScaffoldManager:
 
     # --- Advanced Docs ---
     def render_service(self, name: str, service_type: str) -> str:
-        tmpl = self.env.get_template("service.jinja2")
-        return tmpl.render(name=name, service_type=service_type)
+        try:
+            tmpl = self.env.get_template("components/service.py.jinja2")
+            return tmpl.render(name=name, service_type=service_type)
+        except TemplateNotFound:
+            # Fall back to base component template for .py files
+            tmpl = self.env.get_template("base/base_component.py.jinja2")
+            return tmpl.render(name=name, service_type=service_type, component_type="Service")
 
     def render_design_doc(self, title: str, author: str, summary: str | None = None) -> str:
         try:
-            tmpl = self.env.get_template("design_doc.jinja2")
+            tmpl = self.env.get_template("documents/design_doc.md.jinja2")
             return tmpl.render(title=title, author=author, summary=summary)
         except TemplateNotFound:
-            lines = [f"# {title}", "", f"**Author:** {author}"]
-            if summary:
-                lines += ["", "## Summary", summary]
-            return "\n".join(lines)
+            # Fall back to base document template for .md files
+            tmpl = self.env.get_template("base/base_document.md.jinja2")
+            return tmpl.render(title=title, author=author, summary=summary, doc_type="Design")
 
     def render_generic_doc(self, title: str) -> str:
-        tmpl = self.env.get_template("generic_doc.jinja2")
-        return tmpl.render(title=title)
+        try:
+            tmpl = self.env.get_template("documents/generic_doc.md.jinja2")
+            return tmpl.render(title=title)
+        except TemplateNotFound:
+            # Fall back to base document template for .md files
+            tmpl = self.env.get_template("base/base_document.md.jinja2")
+            return tmpl.render(title=title, doc_type="Generic")
 
     def render_architecture_doc(self, title: str) -> str:
-        tmpl = self.env.get_template("architecture_doc.jinja2")
-        return tmpl.render(title=title)
+        try:
+            tmpl = self.env.get_template("documents/architecture_doc.md.jinja2")
+            return tmpl.render(title=title)
+        except TemplateNotFound:
+            # Fall back to base document template for .md files
+            tmpl = self.env.get_template("base/base_document.md.jinja2")
+            return tmpl.render(title=title, doc_type="Architecture")
 
     def render_reference_doc(self, title: str) -> str:
-        tmpl = self.env.get_template("reference_doc.jinja2")
-        return tmpl.render(title=title)
+        try:
+            tmpl = self.env.get_template("documents/reference_doc.md.jinja2")
+            return tmpl.render(title=title)
+        except TemplateNotFound:
+            # Fall back to base document template for .md files
+            tmpl = self.env.get_template("base/base_document.md.jinja2")
+            return tmpl.render(title=title, doc_type="Reference")
 
     def render_tracking_doc(self, title: str) -> str:
-        tmpl = self.env.get_template("tracking_doc.jinja2")
-        return tmpl.render(title=title)
+        try:
+            tmpl = self.env.get_template("documents/tracking_doc.md.jinja2")
+            return tmpl.render(title=title)
+        except TemplateNotFound:
+            # Fall back to base document template for .md files
+            tmpl = self.env.get_template("base/base_document.md.jinja2")
+            return tmpl.render(title=title, doc_type="Tracking")
 
     # --- File writing ---
     def write_file(self, relative_path: str, content: str, overwrite: bool = False) -> bool:

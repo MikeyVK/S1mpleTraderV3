@@ -130,24 +130,45 @@ class TestScaffoldManagerRenderComponents:
         assert result == "class DTO:"
 
     def test_render_dto_fallback(self, manager: ScaffoldManager, mock_env: MagicMock) -> None:
-        """Test DTO rendering fallback."""
-        mock_env.get_template.side_effect = TemplateNotFound("dto")
+        """Test DTO rendering fallback to base component template."""
+        # First call fails (specific template), second call succeeds (base template)
+        mock_tmpl = MagicMock()
+        mock_tmpl.render.return_value = "# Base DTO component"
+        
+        def get_template_side_effect(template_name: str) -> MagicMock:
+            if "components/dto" in template_name:
+                raise TemplateNotFound("dto")
+            elif "base/base_component" in template_name:
+                return mock_tmpl
+            raise TemplateNotFound(template_name)
+        
+        mock_env.get_template.side_effect = get_template_side_effect
         fields = [
             {"name": "f1", "type": "int", "default": "1"},
             {"name": "f2", "type": "str"}
         ]
         result = manager.render_dto("TestDTO", fields=fields)
-        assert "@dataclass" in result
-        assert "class TestDTO:" in result
-        assert "f1: int = 1" in result
+        assert result == "# Base DTO component"
+        # Verify fallback was triggered
+        assert mock_env.get_template.call_count == 2
 
     def test_render_dto_fallback_empty_fields(
         self, manager: ScaffoldManager, mock_env: MagicMock
     ) -> None:
         """Test DTO rendering fallback with empty fields."""
-        mock_env.get_template.side_effect = TemplateNotFound("dto")
+        mock_tmpl = MagicMock()
+        mock_tmpl.render.return_value = "# Base DTO component"
+        
+        def get_template_side_effect(template_name: str) -> MagicMock:
+            if "components/dto" in template_name:
+                raise TemplateNotFound("dto")
+            elif "base/base_component" in template_name:
+                return mock_tmpl
+            raise TemplateNotFound(template_name)
+        
+        mock_env.get_template.side_effect = get_template_side_effect
         result = manager.render_dto("EmptyDTO", fields=[])
-        assert "pass" in result
+        assert result == "# Base DTO component"
 
     # --- Render Worker ---
 
@@ -161,22 +182,43 @@ class TestScaffoldManagerRenderComponents:
         assert mock_tmpl.render.call_args[1]["name"] == "TaskWorker"
 
     def test_render_worker_fallback(self, manager: ScaffoldManager, mock_env: MagicMock) -> None:
-        """Test Worker rendering fallback."""
-        mock_env.get_template.side_effect = TemplateNotFound("worker")
+        """Test Worker rendering fallback to base component template."""
+        mock_tmpl = MagicMock()
+        mock_tmpl.render.return_value = "# Base Worker component"
+        
+        def get_template_side_effect(template_name: str) -> MagicMock:
+            if "components/worker" in template_name:
+                raise TemplateNotFound("worker")
+            elif "base/base_component" in template_name:
+                return mock_tmpl
+            raise TemplateNotFound(template_name)
+        
+        mock_env.get_template.side_effect = get_template_side_effect
 
         result = manager.render_worker(
             "Task", "In", "Out", dependencies=["db: DB"]
         )
-        assert "class TaskWorker(BaseWorker[In, Out]):" in result
-        assert "self.db = db" in result
+        assert result == "# Base Worker component"
+        # Verify fallback was triggered
+        assert mock_env.get_template.call_count == 2
 
     def test_render_worker_fallback_no_deps(
         self, manager: ScaffoldManager, mock_env: MagicMock
     ) -> None:
         """Test Worker rendering fallback with no dependencies."""
-        mock_env.get_template.side_effect = TemplateNotFound("worker")
+        mock_tmpl = MagicMock()
+        mock_tmpl.render.return_value = "# Base Worker component"
+        
+        def get_template_side_effect(template_name: str) -> MagicMock:
+            if "components/worker" in template_name:
+                raise TemplateNotFound("worker")
+            elif "base/base_component" in template_name:
+                return mock_tmpl
+            raise TemplateNotFound(template_name)
+        
+        mock_env.get_template.side_effect = get_template_side_effect
         result = manager.render_worker("Task", "In", "Out", dependencies=None)
-        assert "__init__(self) -> None" in result
+        assert result == "# Base Worker component"
 
     # --- Render Adapter ---
 
@@ -189,14 +231,25 @@ class TestScaffoldManagerRenderComponents:
         assert mock_tmpl.render.call_args[1]["name"] == "TestAdapter"
 
     def test_render_adapter_fallback(self, manager: ScaffoldManager, mock_env: MagicMock) -> None:
-        """Test Adapter rendering fallback."""
-        mock_env.get_template.side_effect = TemplateNotFound("adapter")
+        """Test Adapter rendering fallback to base component template."""
+        mock_tmpl = MagicMock()
+        mock_tmpl.render.return_value = "# Base Adapter component"
+        
+        def get_template_side_effect(template_name: str) -> MagicMock:
+            if "components/adapter" in template_name:
+                raise TemplateNotFound("adapter")
+            elif "base/base_component" in template_name:
+                return mock_tmpl
+            raise TemplateNotFound(template_name)
+        
+        mock_env.get_template.side_effect = get_template_side_effect
 
         result = manager.render_adapter("Git", methods=[
             {"name": "fetch", "params": "remote: str", "return_type": "None"}
         ])
-        assert "class GitAdapter:" in result
-        assert "def fetch(self, remote: str) -> None:" in result
+        assert result == "# Base Adapter component"
+        # Verify fallback was triggered
+        assert mock_env.get_template.call_count == 2
 
 
 class TestScaffoldManagerRenderTools:
@@ -258,12 +311,23 @@ class TestScaffoldManagerRenderTools:
     def test_render_dto_test_fallback(
         self, manager: ScaffoldManager, mock_env: MagicMock
     ) -> None:
-        """Test DTO Test fallback."""
-        mock_env.get_template.side_effect = TemplateNotFound("test")
+        """Test DTO Test fallback to base test template."""
+        mock_tmpl = MagicMock()
+        mock_tmpl.render.return_value = "# Base test component"
+        
+        def get_template_side_effect(template_name: str) -> MagicMock:
+            if "tests/dto_test" in template_name:
+                raise TemplateNotFound("test")
+            elif "base/base_test" in template_name:
+                return mock_tmpl
+            raise TemplateNotFound(template_name)
+        
+        mock_env.get_template.side_effect = get_template_side_effect
 
         result = manager.render_dto_test("MyDTO", "pkg.mod")
-        assert "class TestMyDTO:" in result
-        assert "from pkg.mod import MyDTO" in result
+        assert result == "# Base test component"
+        # Verify fallback was triggered
+        assert mock_env.get_template.call_count == 2
 
     def test_render_worker_test_success(
         self, manager: ScaffoldManager, mock_env: MagicMock
@@ -278,12 +342,23 @@ class TestScaffoldManagerRenderTools:
     def test_render_worker_test_fallback(
         self, manager: ScaffoldManager, mock_env: MagicMock
     ) -> None:
-        """Test Worker Test fallback."""
-        mock_env.get_template.side_effect = TemplateNotFound("test")
+        """Test Worker Test fallback to base test template."""
+        mock_tmpl = MagicMock()
+        mock_tmpl.render.return_value = "# Base test component"
+        
+        def get_template_side_effect(template_name: str) -> MagicMock:
+            if "tests/worker_test" in template_name:
+                raise TemplateNotFound("test")
+            elif "base/base_test" in template_name:
+                return mock_tmpl
+            raise TemplateNotFound(template_name)
+        
+        mock_env.get_template.side_effect = get_template_side_effect
 
         result = manager.render_worker_test("MyWorker", "pkg.mod")
-        assert "class TestMyWorkerProcessing:" in result
-        assert "from pkg.mod import MyWorker" in result
+        assert result == "# Base test component"
+        # Verify fallback was triggered
+        assert mock_env.get_template.call_count == 2
 
     def test_render_generic(self, manager: ScaffoldManager, mock_env: MagicMock) -> None:
         """Test generic rendering."""
@@ -332,13 +407,23 @@ class TestScaffoldManagerRenderAdvanced:
     def test_render_design_doc_fallback(
         self, manager: ScaffoldManager, mock_env: MagicMock
     ) -> None:
-        """Test Design Doc fallback."""
-        mock_env.get_template.side_effect = TemplateNotFound("doc")
+        """Test Design Doc fallback to base document template."""
+        mock_tmpl = MagicMock()
+        mock_tmpl.render.return_value = "# Base document"
+        
+        def get_template_side_effect(template_name: str) -> MagicMock:
+            if "documents/design_doc" in template_name:
+                raise TemplateNotFound("doc")
+            elif "base/base_document" in template_name:
+                return mock_tmpl
+            raise TemplateNotFound(template_name)
+        
+        mock_env.get_template.side_effect = get_template_side_effect
 
         result = manager.render_design_doc("Plan", author="Me", summary="Goal")
-        assert "# Plan" in result
-        assert "**Author:** Me" in result
-        assert "## Summary" in result
+        assert result == "# Base document"
+        # Verify fallback was triggered
+        assert mock_env.get_template.call_count == 2
 
     def test_render_generic_doc(self, manager: ScaffoldManager, mock_env: MagicMock) -> None:
         """Test Generic Doc rendering."""
