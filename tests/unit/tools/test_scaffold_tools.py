@@ -1,39 +1,68 @@
 """Unit tests for scaffold_tools.py."""
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.tools.scaffold_tools import (
     ScaffoldComponentTool, ScaffoldComponentInput,
     ScaffoldDesignDocTool, ScaffoldDesignDocInput
 )
-from mcp_server.tools.base import ToolResult
 
 @pytest.fixture
-def mock_scaffold_manager():
-    return MagicMock()
+def mock_renderer():
+    renderer = MagicMock()
+    # Mock render to return a string so casts don't fail if they check type
+    renderer.render.return_value = "generated_content"
+    return renderer
+
+@pytest.fixture
+def mock_write_file():
+    with patch("mcp_server.tools.scaffold_tools.write_scaffold_file") as mock:
+        yield mock
 
 @pytest.mark.asyncio
-async def test_scaffold_component_dispatch(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_dto(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="dto",
         name="TestDto",
         output_path="path/to/dto.py",
         fields=[{"name": "field1", "type": "str"}]
     )
-    
-    # Mock specific handler logic indirectly via manager calls
-    mock_scaffold_manager.render_dto.return_value = "content"
-    
+
     result = await tool.execute(params)
+
+    # Verify render called for DTO
+    mock_renderer.render.assert_any_call(
+        "components/dto.py.jinja2",
+        name="TestDto",
+        fields=[{"name": "field1", "type": "str"}],
+        docstring="TestDto data transfer object.", # Default applied by scaffolder
+        id_prefix=ANY # derived
+    )
     
-    mock_scaffold_manager.render_dto.assert_called_once()
-    mock_scaffold_manager.write_file.assert_called()
+    # Verify render called for Test (default generate_test=True)
+    mock_renderer.render.assert_any_call(
+        "components/dto_test.py.jinja2",
+        dto_name="TestDto",
+        test_type="dto",
+        module_path="path.to.dto",
+        all_fields=[{"name": "field1", "type": "str"}],
+        required_fields=[{"name": "field1", "type": "str"}],
+        optional_fields=[],
+        id_prefix=ANY
+    )
+
+    # Verify write called
+    assert mock_write_file.call_count == 2
+    mock_write_file.assert_any_call("path/to/dto.py", "generated_content")
+    # Test path derivation: path/to/dto.py -> path/to/dto_test.py
+    mock_write_file.assert_any_call("path/to/dto_test.py", "generated_content")
+
     assert "Scaffolded dto 'TestDto'" in result.content[0]["text"]
 
 @pytest.mark.asyncio
-async def test_scaffold_component_unknown_type(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_component_unknown_type(mock_renderer):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="unknown_type",
         name="Test",
@@ -45,8 +74,8 @@ async def test_scaffold_component_unknown_type(mock_scaffold_manager):
     assert "Unknown component type: unknown_type" in str(exc.value)
 
 @pytest.mark.asyncio
-async def test_scaffold_worker(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_worker(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="worker",
         name="TestWorker",
@@ -55,18 +84,20 @@ async def test_scaffold_worker(mock_scaffold_manager):
         output_dto="OutputDto"
     )
     
-    mock_scaffold_manager.render_worker.return_value = "worker_code"
-    
     result = await tool.execute(params)
     
-    mock_scaffold_manager.render_worker.assert_called_with(
-        name="TestWorker", input_dto="InputDto", output_dto="OutputDto"
+    mock_renderer.render.assert_called_with(
+        "components/worker.py.jinja2",
+        name="TestWorker",
+        input_dto="InputDto",
+        output_dto="OutputDto"
     )
+    mock_write_file.assert_called_once_with("worker.py", "generated_content")
     assert "Scaffolded worker 'TestWorker'" in result.content[0]["text"]
 
 @pytest.mark.asyncio
-async def test_scaffold_worker_missing_args(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_worker_missing_args(mock_renderer):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="worker",
         name="TestWorker",
@@ -78,8 +109,8 @@ async def test_scaffold_worker_missing_args(mock_scaffold_manager):
         await tool.execute(params)
 
 @pytest.mark.asyncio
-async def test_scaffold_adapter(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_adapter(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="adapter",
         name="TestAdapter",
@@ -87,15 +118,18 @@ async def test_scaffold_adapter(mock_scaffold_manager):
         methods=[{"name": "fetch", "return": "dict"}]
     )
     
-    mock_scaffold_manager.render_adapter.return_value = "adapter_code"
-    
     await tool.execute(params)
     
-    mock_scaffold_manager.render_adapter.assert_called()
+    mock_renderer.render.assert_called_with(
+        "components/adapter.py.jinja2",
+        name="TestAdapter",
+        methods=[{"name": "fetch", "return": "dict"}]
+    )
+    mock_write_file.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_scaffold_tool_component(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_tool_component(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="tool",
         name="TestTool",
@@ -103,14 +137,20 @@ async def test_scaffold_tool_component(mock_scaffold_manager):
         input_schema={"type": "object"}
     )
     
-    mock_scaffold_manager.render_tool.return_value = "tool_code"
-    
     await tool.execute(params)
-    mock_scaffold_manager.render_tool.assert_called()
+    
+    mock_renderer.render.assert_called_with(
+        "components/tool.py.jinja2",
+        name="TestTool",
+        description="",
+        input_schema={"type": "object"},
+        docstring=None
+    )
+    mock_write_file.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_scaffold_resource(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_resource(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="resource",
         name="TestResource",
@@ -119,13 +159,21 @@ async def test_scaffold_resource(mock_scaffold_manager):
         mime_type="application/json"
     )
 
-    mock_scaffold_manager.render_resource.return_value = "res_code"
     await tool.execute(params)
-    mock_scaffold_manager.render_resource.assert_called()
+    
+    mock_renderer.render.assert_called_with(
+        "components/resource.py.jinja2",
+        name="TestResource",
+        description="",
+        uri_pattern="test://{id}",
+        mime_type="application/json",
+        docstring=None
+    )
+    mock_write_file.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_scaffold_schema(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_schema(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="schema",
         name="TestSchema",
@@ -133,13 +181,20 @@ async def test_scaffold_schema(mock_scaffold_manager):
         models=[{"name": "M", "fields": []}]
     )
 
-    mock_scaffold_manager.render_schema.return_value = "schema_code"
     await tool.execute(params)
-    mock_scaffold_manager.render_schema.assert_called()
+    
+    mock_renderer.render.assert_called_with(
+        "components/schema.py.jinja2",
+        name="TestSchema",
+        description=None,
+        models=[{"name": "M", "fields": []}],
+        docstring=None
+    )
+    mock_write_file.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_scaffold_interface(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_interface(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="interface",
         name="ITest",
@@ -147,13 +202,20 @@ async def test_scaffold_interface(mock_scaffold_manager):
         methods=[{"name": "m"}]
     )
 
-    mock_scaffold_manager.render_interface.return_value = "interface_code"
     await tool.execute(params)
-    mock_scaffold_manager.render_interface.assert_called()
+    
+    mock_renderer.render.assert_called_with(
+        "components/interface.py.jinja2",
+        name="ITest",
+        description=None,
+        methods=[{"name": "m"}],
+        docstring=None
+    )
+    mock_write_file.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_scaffold_service(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_service(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="service",
         name="TestService",
@@ -163,13 +225,21 @@ async def test_scaffold_service(mock_scaffold_manager):
         methods=[{"name": "m"}]
     )
 
-    mock_scaffold_manager.render_service.return_value = "service_code"
     await tool.execute(params)
-    mock_scaffold_manager.render_service.assert_called()
+    
+    mock_renderer.render.assert_called_with(
+        "components/service_orchestrator.py.jinja2",
+        name="TestService",
+        dependencies=["Dep"],
+        methods=[{"name": "m"}],
+        description=None,
+        service_type="orchestrator"
+    )
+    mock_write_file.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_scaffold_generic_component(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_generic_component(mock_renderer, mock_write_file):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="generic",
         name="Gen",
@@ -178,13 +248,14 @@ async def test_scaffold_generic_component(mock_scaffold_manager):
         context={"k": "v"}
     )
 
-    mock_scaffold_manager.render_generic.return_value = "gen_code"
     await tool.execute(params)
-    mock_scaffold_manager.render_generic.assert_called_with("tpl.j2", {"k": "v"})
+    
+    mock_renderer.render.assert_called_with("tpl.j2", k="v")
+    mock_write_file.assert_called_once()
 
 @pytest.mark.asyncio
-async def test_scaffold_generic_missing_args(mock_scaffold_manager):
-    tool = ScaffoldComponentTool(manager=mock_scaffold_manager)
+async def test_scaffold_generic_missing_args(mock_renderer):
+    tool = ScaffoldComponentTool(renderer=mock_renderer)
     params = ScaffoldComponentInput(
         component_type="generic",
         name="Gen",
@@ -195,8 +266,8 @@ async def test_scaffold_generic_missing_args(mock_scaffold_manager):
         await tool.execute(params)
 
 @pytest.mark.asyncio
-async def test_scaffold_design_doc(mock_scaffold_manager):
-    tool = ScaffoldDesignDocTool(manager=mock_scaffold_manager)
+async def test_scaffold_design_doc(mock_renderer, mock_write_file):
+    tool = ScaffoldDesignDocTool(renderer=mock_renderer)
     params = ScaffoldDesignDocInput(
         title="My Design",
         output_path="design.md",
@@ -204,23 +275,23 @@ async def test_scaffold_design_doc(mock_scaffold_manager):
         author="Me"
     )
     
-    mock_scaffold_manager.render_design_doc.return_value = "# Design"
-    
     result = await tool.execute(params)
     
-    mock_scaffold_manager.render_design_doc.assert_called_with(
+    mock_renderer.render.assert_called_with(
+        "documents/design.md.jinja2",
         title="My Design",
         author="Me",
         summary=None,
         sections=None,
-        status="DRAFT"
+        status="DRAFT",
+        doc_type="design"
     )
-    mock_scaffold_manager.write_file.assert_called_with("design.md", "# Design")
+    mock_write_file.assert_called_with("design.md", "generated_content")
     assert "Created design document: design.md" in result.content[0]["text"]
 
 @pytest.mark.asyncio
-async def test_scaffold_generic_doc(mock_scaffold_manager):
-    tool = ScaffoldDesignDocTool(manager=mock_scaffold_manager)
+async def test_scaffold_generic_doc(mock_renderer, mock_write_file):
+    tool = ScaffoldDesignDocTool(renderer=mock_renderer)
     params = ScaffoldDesignDocInput(
         title="Generic Doc",
         output_path="doc.md",
@@ -228,8 +299,16 @@ async def test_scaffold_generic_doc(mock_scaffold_manager):
         context={"extra": "value"}
     )
     
-    mock_scaffold_manager.render_generic_doc.return_value = "content"
-    
     await tool.execute(params)
     
-    mock_scaffold_manager.render_generic_doc.assert_called()
+    mock_renderer.render.assert_called_with(
+        "documents/generic.md.jinja2",
+        title="Generic Doc",
+        extra="value",
+        doc_type="generic",
+        author=None,
+        summary=None,
+        sections=None,
+        status="DRAFT"
+    )
+    mock_write_file.assert_called_once()

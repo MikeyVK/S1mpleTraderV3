@@ -1,6 +1,10 @@
 """Result types for scaffolding operations."""
 from dataclasses import dataclass
-from typing import Protocol, Any
+from typing import Protocol, Any, TYPE_CHECKING
+from mcp_server.scaffolding.utils import validate_pascal_case
+
+if TYPE_CHECKING:
+    from mcp_server.scaffolding.renderer import JinjaRenderer
 
 
 @dataclass(frozen=True)
@@ -10,8 +14,16 @@ class ScaffoldResult:
     file_name: str | None = None
 
 
-class ComponentScaffolder(Protocol):
-    """Protocol for component scaffolders."""
+class BaseScaffolder:
+    """Base implementation for scaffolders."""
+
+    def __init__(self, renderer: "JinjaRenderer") -> None:
+        """Initialize the scaffolder.
+
+        Args:
+            renderer: Template renderer instance
+        """
+        self.renderer = renderer
 
     def validate(self, **kwargs: Any) -> bool:
         """Validate scaffolding arguments.
@@ -22,14 +34,16 @@ class ComponentScaffolder(Protocol):
         Returns:
             True if valid
         """
+        if "name" in kwargs:
+            validate_pascal_case(kwargs["name"])
+        return True
+
+
+class ComponentScaffolder(Protocol):
+    """Protocol for component scaffolders."""
+
+    def validate(self, **kwargs: Any) -> bool:
+        """Validate scaffolding arguments."""
 
     def scaffold(self, name: str, **kwargs: Any) -> str:
-        """Scaffold a component.
-
-        Args:
-            name: Component name
-            **kwargs: Component specific arguments
-
-        Returns:
-            Rendered code string
-        """
+        """Scaffold a component."""

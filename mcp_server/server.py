@@ -119,12 +119,6 @@ class MCPServer:
             # Discovery tools
             SearchDocumentationTool(),
             GetWorkContextTool(),
-            # GitHub Issue tools (always registered, lazy-init checks token)
-            CreateIssueTool(),
-            ListIssuesTool(),
-            GetIssueTool(),
-            CloseIssueTool(),
-            UpdateIssueTool(),
         ]
 
         # GitHub-dependent resources and additional tools (only if token is configured)
@@ -132,6 +126,12 @@ class MCPServer:
         if github_token:
             self.resources.append(GitHubIssuesResource())
             self.tools.extend([
+                # GitHub Issue tools
+                CreateIssueTool(),
+                ListIssuesTool(),
+                GetIssueTool(),
+                CloseIssueTool(),
+                UpdateIssueTool(),
                 # PR and Label tools (require token at init time)
                 CreatePRTool(),
                 ListPRsTool(),

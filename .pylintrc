@@ -1,7 +1,0 @@
-[MAIN]
-# init-hook is a more robust way to ensure pylint finds modules in a multi-root workspace.
-init-hook='import sys; sys.path.insert(0, ".")'
-
-[MESSAGES CONTROL]
-# redefined-outer-name: Standard pytest fixture pattern - fixtures redefine names from outer scope
-disable=unused-argument,arguments-differ,unnecessary-ellipsis,redefined-outer-name

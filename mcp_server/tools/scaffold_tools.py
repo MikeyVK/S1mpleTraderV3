@@ -1,12 +1,26 @@
 """Scaffold tools for template-driven code generation."""
 # pyright: reportIncompatibleMethodOverride=false
-from typing import Any, Callable, Awaitable
+from typing import Any, Callable, Awaitable, cast
 
 from pydantic import BaseModel, Field
 
 from mcp_server.core.exceptions import ValidationError
-from mcp_server.managers.scaffold_manager import ScaffoldManager
 from mcp_server.tools.base import BaseTool, ToolResult
+from mcp_server.scaffolding.base import ComponentScaffolder
+from mcp_server.scaffolding.renderer import JinjaRenderer
+from mcp_server.scaffolding.utils import write_scaffold_file
+
+from mcp_server.scaffolding.components.dto import DTOScaffolder
+from mcp_server.scaffolding.components.worker import WorkerScaffolder
+from mcp_server.scaffolding.components.adapter import AdapterScaffolder
+from mcp_server.scaffolding.components.tool import ToolScaffolder
+from mcp_server.scaffolding.components.resource import ResourceScaffolder
+from mcp_server.scaffolding.components.schema import SchemaScaffolder
+from mcp_server.scaffolding.components.interface import InterfaceScaffolder
+from mcp_server.scaffolding.components.service import ServiceScaffolder
+from mcp_server.scaffolding.components.generic import GenericScaffolder
+from mcp_server.scaffolding.components.doc import DesignDocScaffolder
+from mcp_server.scaffolding.components.test import TestScaffolder
 
 
 class ScaffoldComponentInput(BaseModel):
@@ -83,8 +97,22 @@ class ScaffoldComponentTool(BaseTool):
     description = "Generate a new component from template (dto, worker, adapter, manager, tool)"
     args_model = ScaffoldComponentInput
 
-    def __init__(self, manager: ScaffoldManager | None = None) -> None:
-        self.manager = manager or ScaffoldManager()
+    def __init__(self, renderer: JinjaRenderer | None = None) -> None:
+        self.renderer = renderer or JinjaRenderer()
+        # Initialize component scaffolders map
+        # Cast to ComponentScaffolder to satisfy Protocol typing
+        self.scaffolders: dict[str, ComponentScaffolder] = {
+            "dto": cast(ComponentScaffolder, DTOScaffolder(self.renderer)),
+            "worker": cast(ComponentScaffolder, WorkerScaffolder(self.renderer)),
+            "adapter": cast(ComponentScaffolder, AdapterScaffolder(self.renderer)),
+            "tool": cast(ComponentScaffolder, ToolScaffolder(self.renderer)),
+            "resource": cast(ComponentScaffolder, ResourceScaffolder(self.renderer)),
+            "schema": cast(ComponentScaffolder, SchemaScaffolder(self.renderer)),
+            "interface": cast(ComponentScaffolder, InterfaceScaffolder(self.renderer)),
+            "service": cast(ComponentScaffolder, ServiceScaffolder(self.renderer)),
+            "generic": cast(ComponentScaffolder, GenericScaffolder(self.renderer)),
+        }
+        self.test_scaffolder = TestScaffolder(self.renderer)
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -126,24 +154,33 @@ class ScaffoldComponentTool(BaseTool):
                 hints=["Provide fields as list of {name, type} objects"]
             )
 
-        content = self.manager.render_dto(
+        content = self.scaffolders["dto"].scaffold(
             name=params.name,
             fields=params.fields,
             docstring=params.docstring
         )
-        self.manager.write_file(params.output_path, content)
+        write_scaffold_file(params.output_path, content)
         created = [params.output_path]
 
         if params.generate_test:
             module_path = params.output_path.replace("/", ".").replace("\\", ".").rstrip(".py")
-            test_content = self.manager.render_dto_test(
-                dto_name=params.name,
-                module_path=module_path
+            # Basic module path heuristic
+            
+            # Split fields into required and optional for test generation
+            required_fields = [f for f in params.fields if "default" not in f]
+            optional_fields = [f for f in params.fields if "default" in f]
+
+            test_content = self.test_scaffolder.scaffold(
+                name=params.name,
+                test_type="dto",
+                module_path=module_path,
+                required_fields=required_fields,
+                optional_fields=optional_fields
             )
             test_path = params.output_path.replace(".py", "_test.py")
             if "backend/" in test_path:
                 test_path = test_path.replace("backend/", "tests/unit/")
-            self.manager.write_file(test_path, test_content)
+            write_scaffold_file(test_path, test_content)
             created.append(test_path)
 
         return created
@@ -152,78 +189,84 @@ class ScaffoldComponentTool(BaseTool):
         if not params.input_dto or not params.output_dto:
             raise ValidationError("input_dto and output_dto are required for Worker generation")
 
-        content = self.manager.render_worker(
-            name=params.name, input_dto=params.input_dto, output_dto=params.output_dto
+        content = self.scaffolders["worker"].scaffold(
+            name=params.name,
+            input_dto=params.input_dto,
+            output_dto=params.output_dto
         )
-        self.manager.write_file(params.output_path, content)
+        write_scaffold_file(params.output_path, content)
         return [params.output_path]
 
     async def _scaffold_adapter(self, params: ScaffoldComponentInput) -> list[str]:
         if not params.methods:
             raise ValidationError("Methods are required for Adapter generation")
 
-        content = self.manager.render_adapter(name=params.name, methods=params.methods)
-        self.manager.write_file(params.output_path, content)
+        content = self.scaffolders["adapter"].scaffold(name=params.name, methods=params.methods)
+        write_scaffold_file(params.output_path, content)
         return [params.output_path]
 
     async def _scaffold_tool(self, params: ScaffoldComponentInput) -> list[str]:
-        content = self.manager.render_tool(
+        content = self.scaffolders["tool"].scaffold(
             name=params.name,
             description=params.docstring or "",
             input_schema=params.input_schema,
             docstring=params.docstring
         )
-        self.manager.write_file(params.output_path, content)
+        write_scaffold_file(params.output_path, content)
         return [params.output_path]
 
     async def _scaffold_resource(self, params: ScaffoldComponentInput) -> list[str]:
-        content = self.manager.render_resource(
+        content = self.scaffolders["resource"].scaffold(
             name=params.name,
             description=params.docstring or "",
             uri_pattern=params.uri_pattern,
             mime_type=params.mime_type,
             docstring=params.docstring
         )
-        self.manager.write_file(params.output_path, content)
+        write_scaffold_file(params.output_path, content)
         return [params.output_path]
 
     async def _scaffold_schema(self, params: ScaffoldComponentInput) -> list[str]:
-        content = self.manager.render_schema(
+        content = self.scaffolders["schema"].scaffold(
             name=params.name,
             description=params.docstring,
             models=params.models,
             docstring=params.docstring
         )
-        self.manager.write_file(params.output_path, content)
+        write_scaffold_file(params.output_path, content)
         return [params.output_path]
 
     async def _scaffold_interface(self, params: ScaffoldComponentInput) -> list[str]:
-        content = self.manager.render_interface(
+        content = self.scaffolders["interface"].scaffold(
             name=params.name,
             description=params.docstring,
             methods=params.methods,
             docstring=params.docstring
         )
-        self.manager.write_file(params.output_path, content)
+        write_scaffold_file(params.output_path, content)
         return [params.output_path]
 
     async def _scaffold_service(self, params: ScaffoldComponentInput) -> list[str]:
-        content = self.manager.render_service(
+        content = self.scaffolders["service"].scaffold(
             name=params.name,
             service_type=params.service_type,
             dependencies=params.dependencies,
             methods=params.methods,
             description=params.docstring
         )
-        self.manager.write_file(params.output_path, content)
+        write_scaffold_file(params.output_path, content)
         return [params.output_path]
 
     async def _scaffold_generic(self, params: ScaffoldComponentInput) -> list[str]:
         if not params.template_name or not params.context:
             raise ValidationError("template_name and context required for generic type")
 
-        content = self.manager.render_generic(params.template_name, params.context)
-        self.manager.write_file(params.output_path, content)
+        content = self.scaffolders["generic"].scaffold(
+            params.name,
+            template_name=params.template_name,
+            **params.context
+        )
+        write_scaffold_file(params.output_path, content)
         return [params.output_path]
 
 
@@ -257,31 +300,24 @@ class ScaffoldDesignDocTool(BaseTool):
     description = "Generate a design document from template"
     args_model = ScaffoldDesignDocInput
 
-    def __init__(self, manager: ScaffoldManager | None = None) -> None:
-        self.manager = manager or ScaffoldManager()
+    def __init__(self, renderer: JinjaRenderer | None = None) -> None:
+        self.renderer = renderer or JinjaRenderer()
+        self.design_doc_scaffolder = DesignDocScaffolder(self.renderer)
 
     @property
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
     async def execute(self, params: ScaffoldDesignDocInput) -> ToolResult:
-        if params.doc_type == "generic":
-            render_context = params.context or {}
-            render_context.update({
-                "title": params.title,
-                "author": params.author,
-                "status": params.status,
-                "output_path": params.output_path
-            })
-            content = self.manager.render_generic_doc(**render_context)
-        else:
-            content = self.manager.render_design_doc(
-                title=params.title,
-                author=params.author,
-                summary=params.summary,
-                sections=params.sections,
-                status=params.status
-            )
+        content = self.design_doc_scaffolder.scaffold(
+            name=params.title,
+            doc_type=params.doc_type,
+            author=params.author,
+            summary=params.summary,
+            sections=params.sections,
+            status=params.status,
+            **(params.context or {})
+        )
 
-        self.manager.write_file(params.output_path, content)
+        write_scaffold_file(params.output_path, content)
         return ToolResult.text(f"Created {params.doc_type} document: {params.output_path}")

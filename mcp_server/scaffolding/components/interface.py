@@ -1,18 +1,18 @@
-"""Resource Scaffolder Component."""
+"""Interface Scaffolder Component."""
 from typing import Any
 
 from mcp_server.scaffolding.base import BaseScaffolder
 
 
-class ResourceScaffolder(BaseScaffolder):
-    """Scaffolds API Resources."""
+class InterfaceScaffolder(BaseScaffolder):
+    """Scaffolds Interfaces (Protocols)."""
 
     def scaffold(self, name: str, **kwargs: Any) -> str:
-        """Scaffold a Resource.
+        """Scaffold an Interface.
 
         Args:
-            name: Resource name
-            **kwargs: Resource arguments
+            name: Interface name
+            **kwargs: Context variables
 
         Returns:
             Rendered Python code
@@ -20,7 +20,7 @@ class ResourceScaffolder(BaseScaffolder):
         self.validate(name=name)
 
         return str(self.renderer.render(
-            "components/resource.py.jinja2",
+            "components/interface.py.jinja2",
             name=name,
             **kwargs
         ))
