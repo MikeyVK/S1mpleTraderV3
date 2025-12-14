@@ -147,6 +147,14 @@ class MCPServer:
             ])
             logger.info("GitHub integration enabled")
         else:
+            # Register issue tools without token so schemas are available; execution will error.
+            self.tools.extend([
+                CreateIssueTool(),
+                ListIssuesTool(),
+                GetIssueTool(),
+                CloseIssueTool(),
+                UpdateIssueTool(),
+            ])
             logger.info(
                 "GitHub token not configured - GitHub issue tools available but will "
                 "return error on use. Set GITHUB_TOKEN to enable full functionality."
