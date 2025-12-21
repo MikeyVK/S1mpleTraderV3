@@ -82,10 +82,9 @@ async def test_get_issue_tool(mock_github_manager):
 @pytest.mark.asyncio
 async def test_close_issue_tool(mock_github_manager):
     tool = CloseIssueTool(manager=mock_github_manager)
-    mock_github_manager.update_issue.return_value = MagicMock(number=5)
+    mock_github_manager.close_issue.return_value = MagicMock(number=5)
     
     # Test with comment
     await tool.execute(CloseIssueInput(issue_number=5, comment="Done"))
-    
-    mock_github_manager.create_comment.assert_called_with(5, "Done")
-    mock_github_manager.update_issue.assert_called_with(5, state="closed")
+
+    mock_github_manager.close_issue.assert_called_with(5, comment="Done")

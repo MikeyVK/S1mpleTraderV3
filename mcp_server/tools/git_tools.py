@@ -214,6 +214,10 @@ class GitStashInput(BaseModel):
         default=None,
         description="Optional name for the stash (only for push)"
     )
+    include_untracked: bool = Field(
+        default=False,
+        description="Include untracked files when stashing (git stash push -u)"
+    )
 
 
 class GitStashTool(BaseTool):
@@ -232,7 +236,7 @@ class GitStashTool(BaseTool):
 
     async def execute(self, params: GitStashInput) -> ToolResult:
         if params.action == "push":
-            self.manager.stash(message=params.message)
+            self.manager.stash(message=params.message, include_untracked=params.include_untracked)
             if params.message:
                 return ToolResult.text(f"Stashed changes: {params.message}")
             return ToolResult.text("Stashed current changes")

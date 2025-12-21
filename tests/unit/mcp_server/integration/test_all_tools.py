@@ -134,7 +134,7 @@ class TestGitToolsIntegration:
             result = await tool.execute(GitStashInput(action="push", message="WIP"))
 
             assert "WIP" in result.content[0]["text"]
-            mock_adapter.return_value.stash.assert_called_with(message="WIP")
+            mock_adapter.return_value.stash.assert_called_with(message="WIP", include_untracked=False)
 
     @pytest.mark.asyncio
     async def test_git_stash_tool_pop_flow(self) -> None:

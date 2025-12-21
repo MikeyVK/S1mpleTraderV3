@@ -92,13 +92,14 @@ class GitManager:
             )
         self.adapter.delete_branch(branch_name, force=force)
 
-    def stash(self, message: str | None = None) -> None:
+    def stash(self, message: str | None = None, include_untracked: bool = False) -> None:
         """Stash current changes.
 
         Args:
             message: Optional message for the stash entry.
+            include_untracked: Include untracked files in the stash entry.
         """
-        self.adapter.stash(message=message)
+        self.adapter.stash(message=message, include_untracked=include_untracked)
 
     def stash_pop(self) -> None:
         """Pop the latest stash entry."""

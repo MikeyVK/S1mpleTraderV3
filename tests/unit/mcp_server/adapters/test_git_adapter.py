@@ -166,6 +166,17 @@ class TestGitAdapterStash:
 
             mock_repo.git.stash.assert_called_once_with("push")
 
+    def test_stash_changes_include_untracked(self) -> None:
+        """Test stash current changes including untracked files (-u)."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.stash(include_untracked=True)
+
+            mock_repo.git.stash.assert_called_once_with("push", "-u")
+
     def test_stash_with_message(self) -> None:
         """Test stash with custom message."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
@@ -176,6 +187,19 @@ class TestGitAdapterStash:
             adapter.stash(message="WIP: feature work")
 
             mock_repo.git.stash.assert_called_once_with("push", "-m", "WIP: feature work")
+
+    def test_stash_with_message_include_untracked(self) -> None:
+        """Test stash with message including untracked files (-u)."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.stash(message="WIP: feature work", include_untracked=True)
+
+            mock_repo.git.stash.assert_called_once_with(
+                "push", "-u", "-m", "WIP: feature work"
+            )
 
     def test_stash_pop(self) -> None:
         """Test pop the latest stash."""
