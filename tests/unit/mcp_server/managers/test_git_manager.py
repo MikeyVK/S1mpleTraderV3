@@ -151,7 +151,10 @@ class TestGitManagerOperations:
     def test_stash_operations(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test stash delegations."""
         manager.stash("saving work")
-        mock_adapter.stash.assert_called_with(message="saving work")
+        mock_adapter.stash.assert_called_with(message="saving work", include_untracked=False)
+
+        manager.stash("saving work", include_untracked=True)
+        mock_adapter.stash.assert_called_with(message="saving work", include_untracked=True)
 
         manager.stash_pop()
         mock_adapter.stash_pop.assert_called_once()

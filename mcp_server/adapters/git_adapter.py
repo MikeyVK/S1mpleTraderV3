@@ -133,17 +133,20 @@ class GitAdapter:
         except Exception as e:
             raise ExecutionError(f"Failed to delete {branch_name}: {e}") from e
 
-    def stash(self, message: str | None = None) -> None:
+    def stash(self, message: str | None = None, include_untracked: bool = False) -> None:
         """Stash current changes.
 
         Args:
             message: Optional message for the stash entry.
+            include_untracked: Include untracked files in the stash entry.
         """
         try:
+            args: list[str] = ["push"]
+            if include_untracked:
+                args.append("-u")
             if message:
-                self.repo.git.stash("push", "-m", message)
-            else:
-                self.repo.git.stash("push")
+                args.extend(["-m", message])
+            self.repo.git.stash(*args)
         except Exception as e:
             raise ExecutionError(f"Failed to stash changes: {e}") from e
 
