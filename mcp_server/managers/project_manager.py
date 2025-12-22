@@ -135,6 +135,9 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
 
         Returns:
             Tuple of (issue_number, issue_url)
+
+        Raises:
+            ValueError: If parent_issue_number provided but issue doesn't exist
         """
         if spec.parent_issue_number is None:
             parent_response = self.github_adapter.create_issue(
@@ -147,9 +150,16 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             )
             return parent_response["number"], parent_response["html_url"]
 
+        # Validate existing parent issue exists
         parent_number = spec.parent_issue_number
-        parent_url = f"https://github.com/org/repo/issues/{parent_number}"
-        return parent_number, parent_url
+        try:
+            parent_issue = self.github_adapter.get_issue(parent_number)
+            return parent_number, parent_issue.html_url
+        except Exception as e:
+            raise ValueError(
+                f"Parent issue #{parent_number} not found or inaccessible. "
+                f"Error: {e}"
+            ) from e
 
     def _create_sub_issues(
         self, phases: list[PhaseSpec], milestone_id: int

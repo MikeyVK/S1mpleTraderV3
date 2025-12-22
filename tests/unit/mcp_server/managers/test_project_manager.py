@@ -426,3 +426,71 @@ class TestProjectManagerInitializeProject:
         # Verify no persistence happened (error before persistence)
         projects_file = tmp_path / ".st3" / "projects.json"
         assert not projects_file.exists()
+
+    def test_validate_existing_parent_issue(self, tmp_path: Path) -> None:
+        """Test that providing parent_issue_number validates the issue exists."""
+        mock_adapter = Mock()
+
+        # Mock successful milestone creation
+        mock_adapter.create_milestone.return_value = {"number": 10}
+
+        # Mock get_issue to raise error (parent doesn't exist)
+        mock_adapter.get_issue.side_effect = Exception("Issue not found")
+
+        manager = ProjectManager(github_adapter=mock_adapter, workspace_root=tmp_path)
+
+        spec = ProjectSpec(
+            project_title="Test with Non-Existent Parent",
+            phases=[PhaseSpec(phase_id="A", title="Phase A", depends_on=[], blocks=[])],
+            parent_issue_number=999,  # Non-existent issue
+        )
+
+        try:
+            manager.initialize_project(spec)
+            assert False, "Expected ValueError for non-existent parent"
+        except ValueError as e:
+            assert "Parent issue #999 not found" in str(e)
+
+        # Verify get_issue was called with correct number
+        mock_adapter.get_issue.assert_called_once_with(999)
+
+        # Verify no sub-issues created (validation failed early)
+        assert not mock_adapter.create_issue.call_count
+
+    def test_use_existing_parent_issue_url(self, tmp_path: Path) -> None:
+        """Test that existing parent issue's real URL is used."""
+        mock_adapter = Mock()
+
+        # Mock milestone creation
+        mock_adapter.create_milestone.return_value = {"number": 10}
+
+        # Mock existing parent issue
+        mock_parent = Mock()
+        mock_parent.html_url = "https://github.com/owner/repo/issues/18"
+        mock_adapter.get_issue.return_value = mock_parent
+
+        # Mock sub-issue creation
+        mock_adapter.create_issue.return_value = {
+            "number": 20,
+            "html_url": "https://github.com/owner/repo/issues/20"
+        }
+
+        # Mock update_issue
+        mock_adapter.update_issue.return_value = None
+
+        manager = ProjectManager(github_adapter=mock_adapter, workspace_root=tmp_path)
+
+        spec = ProjectSpec(
+            project_title="Test with Existing Parent",
+            phases=[PhaseSpec(phase_id="A", title="Phase A", depends_on=[], blocks=[])],
+            parent_issue_number=18,
+        )
+
+        result = manager.initialize_project(spec)
+
+        # Verify real URL used from API
+        assert result.parent_issue["number"] == 18
+        assert result.parent_issue["url"] == "https://github.com/owner/repo/issues/18"
+
+        # Verify get_issue was called
+        mock_adapter.get_issue.assert_called_once_with(18)
