@@ -33,8 +33,13 @@ from mcp_server.tools.pr_tools import CreatePRTool, CreatePRInput
 
 # Quality Tools
 from mcp_server.tools.quality_tools import RunQualityGatesTool, RunQualityGatesInput
-from mcp_server.tools.test_tools import RunTestsTool, RunTestsInput
-from mcp_server.tools.validation_tools import ValidateDTOTool, ValidateDTOInput, ValidationTool, ValidationInput
+from mcp_server.tools.test_tools import RunTestsTool
+from mcp_server.tools.validation_tools import (
+    ValidateDTOTool,
+    ValidateDTOInput,
+    ValidationTool,
+    ValidationInput,
+)
 
 
 class TestGitToolsIntegration:
@@ -47,7 +52,9 @@ class TestGitToolsIntegration:
             mock_adapter.return_value.is_clean.return_value = True
 
             tool = CreateBranchTool()
-            result = await tool.execute(CreateBranchInput(name="test-feature", branch_type="feature"))
+            result = await tool.execute(
+                CreateBranchInput(name="test-feature", branch_type="feature")
+            )
 
             assert "feature/test-feature" in result.content[0]["text"]
 
@@ -78,7 +85,10 @@ class TestGitToolsIntegration:
             result = await tool.execute(GitCommitInput(phase="green", message="implement feature"))
 
             assert "abc123def" in result.content[0]["text"]
-            mock_adapter.return_value.commit.assert_called_with("feat: implement feature", files=None)
+            mock_adapter.return_value.commit.assert_called_with(
+                "feat: implement feature",
+                files=None,
+            )
 
     @pytest.mark.asyncio
     async def test_git_restore_tool_flow(self) -> None:
@@ -145,7 +155,10 @@ class TestGitToolsIntegration:
             result = await tool.execute(GitStashInput(action="push", message="WIP"))
 
             assert "WIP" in result.content[0]["text"]
-            mock_adapter.return_value.stash.assert_called_with(message="WIP", include_untracked=False)
+            mock_adapter.return_value.stash.assert_called_with(
+                message="WIP",
+                include_untracked=False,
+            )
 
     @pytest.mark.asyncio
     async def test_git_stash_tool_pop_flow(self) -> None:
@@ -318,13 +331,14 @@ class TestToolSchemas:
         """Verify all Git tools have input schemas."""
         tools = [
             CreateBranchTool(),
-            GitStatusTool(),
-            GitCommitTool(),
             GitCheckoutTool(),
-            GitPushTool(),
-            GitMergeTool(),
-            GitDeleteBranchTool(),
             GitStashTool(),
+            GitStatusTool(),
+            GitRestoreTool(),
+            GitCommitTool(),
+            GitMergeTool(),
+            GitPushTool(),
+            GitDeleteBranchTool(),
         ]
 
         for tool in tools:
@@ -381,14 +395,14 @@ class TestToolNames:
         """Verify all core tools have unique names."""
         tools = [
             CreateBranchTool(),
-            GitStatusTool(),
-            GitCommitTool(),
-            GitRestoreTool(),
             GitCheckoutTool(),
-            GitPushTool(),
-            GitMergeTool(),
-            GitDeleteBranchTool(),
             GitStashTool(),
+            GitStatusTool(),
+            GitRestoreTool(),
+            GitCommitTool(),
+            GitMergeTool(),
+            GitPushTool(),
+            GitDeleteBranchTool(),
             RunQualityGatesTool(),
             ValidateDocTool(),
             ValidationTool(),
@@ -417,13 +431,14 @@ class TestToolNames:
         """Verify all core tools have descriptions."""
         tools = [
             CreateBranchTool(),
-            GitStatusTool(),
-            GitCommitTool(),
             GitCheckoutTool(),
-            GitPushTool(),
-            GitMergeTool(),
-            GitDeleteBranchTool(),
             GitStashTool(),
+            GitStatusTool(),
+            GitRestoreTool(),
+            GitCommitTool(),
+            GitMergeTool(),
+            GitPushTool(),
+            GitDeleteBranchTool(),
             RunQualityGatesTool(),
             ValidateDocTool(),
             ValidationTool(),

@@ -315,3 +315,14 @@ class TestGitAdapterRestore:
                 "a.py",
                 "b.py",
             )
+
+    def test_restore_wraps_errors_in_execution_error(self) -> None:
+        """Test restore errors are wrapped in ExecutionError."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.git.restore.side_effect = Exception("Git error")
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            with pytest.raises(ExecutionError, match="restore"):
+                adapter.restore(files=["a.py"], source="HEAD")

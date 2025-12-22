@@ -1,9 +1,26 @@
 """QA Manager for quality gates."""
+import json
+import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+
+def _venv_script_path(script_name: str) -> str:
+    """Return a best-effort path to a venv script.
+
+    On Windows virtualenvs, console scripts are typically in the same folder
+    as sys.executable.
+    """
+    exe_dir = str(Path(sys.executable).resolve().parent)
+    return str(Path(exe_dir) / script_name)
+
+
+def _pyright_script_name() -> str:
+    """Return the appropriate pyright script name for the current OS."""
+    return "pyright.exe" if os.name == "nt" else "pyright"
 
 
 class QAManager:
@@ -41,6 +58,12 @@ class QAManager:
         if not mypy_result["passed"]:
             results["overall_pass"] = False
 
+        # Gate 3: Pyright (Pylance parity)
+        pyright_result = self._run_pyright(files)
+        results["gates"].append(pyright_result)
+        if not pyright_result["passed"]:
+            results["overall_pass"] = False
+
         return results
 
     def check_health(self) -> bool:
@@ -54,6 +77,14 @@ class QAManager:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL
                 )
+
+            # Check if pyright is available (console script)
+            subprocess.run(
+                [_venv_script_path(_pyright_script_name()), "--version"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
             return True
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
@@ -198,5 +229,100 @@ class QAManager:
                     "severity": match.group(3),
                     "message": match.group(4)
                 })
+
+        return issues
+
+    def _run_pyright(self, files: list[str]) -> dict[str, Any]:
+        """Run pyright type checking on files.
+
+        Note: pyright is a separate CLI (not `python -m pyright`).
+        """
+        result: dict[str, Any] = {
+            "gate_number": 3,
+            "name": "Pyright",
+            "passed": True,
+            "score": "Pass",
+            "issues": [],
+        }
+
+        try:
+            cmd = [
+                _venv_script_path(_pyright_script_name()),
+                "--outputjson",
+                *files,
+            ]
+
+            proc = subprocess.run(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+
+            issues = self._parse_pyright_output(proc.stdout or "")
+            result["issues"] = issues
+            result["passed"] = not issues
+            result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
+
+        except subprocess.TimeoutExpired:
+            result["passed"] = False
+            result["score"] = "Timeout"
+            result["issues"] = [{"message": "Pyright timed out"}]
+        except FileNotFoundError:
+            result["passed"] = False
+            result["score"] = "Not Found"
+            result["issues"] = [{"message": "Pyright not found"}]
+
+        return result
+
+    def _pyright_issue_from_diag(self, diag: dict[str, Any]) -> dict[str, Any]:
+        """Convert a single pyright diagnostic to the common issue format."""
+        issue: dict[str, Any] = {
+            "message": str(diag.get("message", "Unknown issue")),
+        }
+
+        file_path = diag.get("file")
+        if isinstance(file_path, str):
+            issue["file"] = file_path
+
+        start = ((diag.get("range") or {}).get("start") or {})
+        line = start.get("line")
+        char = start.get("character")
+        if isinstance(line, int):
+            issue["line"] = line + 1  # pyright is 0-based
+        if isinstance(char, int):
+            issue["column"] = char + 1
+
+        rule = diag.get("rule")
+        if rule is not None:
+            issue["code"] = str(rule)
+
+        sev = diag.get("severity")
+        if sev is not None:
+            issue["severity"] = str(sev)
+
+        return issue
+
+    def _parse_pyright_output(self, output: str) -> list[dict[str, Any]]:
+        """Parse pyright --outputjson output into structured issues."""
+        issues: list[dict[str, Any]] = []
+
+        # When `--outputjson` is used, output is JSON. Keep parsing defensive.
+        try:
+            data = json.loads(output)
+            diagnostics = data.get("generalDiagnostics", [])
+            if isinstance(diagnostics, list):
+                for diag in diagnostics:
+                    if isinstance(diag, dict):
+                        issues.append(self._pyright_issue_from_diag(diag))
+
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Fall back to plain-text parsing if JSON isn't available/valid.
+            for line in output.split("\n"):
+                text = line.strip()
+                if text:
+                    issues.append({"message": text})
 
         return issues

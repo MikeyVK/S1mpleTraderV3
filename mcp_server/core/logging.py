@@ -20,7 +20,7 @@ class StructuredFormatter(logging.Formatter):
         }
 
         if hasattr(record, "props"):
-            log_data.update(record.props)  # type: ignore[attr-defined]
+            log_data.update(record.props)
 
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)

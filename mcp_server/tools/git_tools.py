@@ -101,7 +101,11 @@ class GitCommitTool(BaseTool):
         if params.phase == "docs":
             commit_hash = self.manager.commit_docs(params.message, files=params.files)
         else:
-            commit_hash = self.manager.commit_tdd_phase(params.phase, params.message, files=params.files)
+            commit_hash = self.manager.commit_tdd_phase(
+                params.phase,
+                params.message,
+                files=params.files,
+            )
         return ToolResult.text(f"Committed: {commit_hash}")
 
 

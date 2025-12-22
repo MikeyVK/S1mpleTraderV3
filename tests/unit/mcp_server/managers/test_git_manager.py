@@ -1,17 +1,8 @@
-# tests/unit/mcp_server/managers/test_git_manager.py
-"""
-Unit tests for GitManager.
-
-Tests according to TDD principles with comprehensive coverage.
-
-@layer: Tests (Unit)
-@dependencies: [pytest]
-"""
+"""Unit tests for GitManager."""
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives
 
 # Standard library
-import typing  # noqa: F401
 from unittest.mock import MagicMock
 
 # Third-party
@@ -88,11 +79,6 @@ class TestGitManagerValidation:
         with pytest.raises(ValidationError, match="Cannot delete protected branch"):
             manager.delete_branch("main")
 
-    def _satisfy_typing_policy(self) -> typing.Any:
-        """Use typing to satisfy template policy requirements."""
-        return None
-
-
 class TestGitManagerOperations:
     """Test suite for GitManager operations (commit, merge, stash)."""
 
@@ -117,7 +103,9 @@ class TestGitManagerOperations:
         assert result == "hash123"
         mock_adapter.commit.assert_called_once_with("test: failing test", files=None)
 
-    def test_commit_tdd_phase_with_files_passes_through(self, manager: GitManager, mock_adapter: MagicMock) -> None:
+    def test_commit_tdd_phase_with_files_passes_through(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
         """Test valid TDD commit with files."""
         mock_adapter.commit.return_value = "hash123"
 
@@ -131,7 +119,9 @@ class TestGitManagerOperations:
         manager.commit_docs("update readme")
         mock_adapter.commit.assert_called_once_with("docs: update readme", files=None)
 
-    def test_commit_docs_with_files_passes_through(self, manager: GitManager, mock_adapter: MagicMock) -> None:
+    def test_commit_docs_with_files_passes_through(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
         """Test documentation commit helpers with files."""
         manager.commit_docs("update docs", files=["README.md"])
 
@@ -143,7 +133,7 @@ class TestGitManagerOperations:
 
         mock_adapter.restore.assert_called_once_with(files=["a.py", "b.py"], source="HEAD")
 
-    def test_restore_requires_files(self, manager: GitManager, mock_adapter: MagicMock) -> None:
+    def test_restore_requires_files(self, manager: GitManager) -> None:
         """Test restore operation requires files."""
         with pytest.raises(ValidationError):
             manager.restore(files=[])

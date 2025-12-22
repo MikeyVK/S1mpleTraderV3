@@ -1,7 +1,7 @@
 """Git adapter for the MCP server."""
 from typing import Any
 
-from git import InvalidGitRepositoryError, Repo  # type: ignore[import-untyped]
+from git import InvalidGitRepositoryError, Repo
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
@@ -12,7 +12,6 @@ class GitAdapter:
 
     def __init__(self, repo_path: str | None = None) -> None:
         """Initialize the Git adapter."""
-        # pylint: disable=no-member
         self.repo_path = repo_path or settings.server.workspace_root
         self._repo: Repo | None = None
 
@@ -188,7 +187,7 @@ class GitAdapter:
             List of stash entry descriptions.
         """
         try:
-            output = self.repo.git.stash("list")
+            output = str(self.repo.git.stash("list"))
             if not output:
                 return []
             return output.strip().split("\n")
@@ -213,11 +212,11 @@ class GitAdapter:
                 args.append("-vv")
 
             # GitPython's repo.git.branch returns the raw string output
-            output = self.repo.git.branch(*args)
+            output = str(self.repo.git.branch(*args))
             if not output:
                 return []
             return [line.strip() for line in output.split("\n") if line.strip()]
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:
             raise ExecutionError(f"Failed to list branches: {e}") from e
 
     def get_diff_stat(self, target: str, source: str = "HEAD") -> str:
@@ -235,8 +234,8 @@ class GitAdapter:
             # Usually strict comparison 'target...source' is better for
             # "what is in source that is not in target"
             # Command: git diff target...source --stat
-            return self.repo.git.diff(f"{target}...{source}", "--stat")
-        except Exception as e:  # pylint: disable=broad-exception-caught
+            return str(self.repo.git.diff(f"{target}...{source}", "--stat"))
+        except Exception as e:
             raise ExecutionError(f"Failed to get diff stat: {e}") from e
 
     def get_recent_commits(self, limit: int = 5) -> list[str]:

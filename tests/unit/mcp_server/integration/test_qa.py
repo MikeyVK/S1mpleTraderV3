@@ -14,10 +14,11 @@ def test_qa_manager_run_gates_with_real_file() -> None:
     # Use a real file that is known to be clean
     result = manager.run_quality_gates(["backend/core/enums.py"])
 
-    # Should have both Linting and Type Checking gates
-    assert len(result["gates"]) == 2
+    # Should have Linting, Mypy, and Pyright gates
+    assert len(result["gates"]) == 3
     assert result["gates"][0]["name"] == "Linting"
     assert result["gates"][1]["name"] == "Type Checking"
+    assert result["gates"][2]["name"] == "Pyright"
     # overall_pass depends on actual file quality
     assert isinstance(result["overall_pass"], bool)
 
@@ -35,3 +36,4 @@ async def test_quality_tool_output_format() -> None:
     assert "Overall Pass:" in text
     assert "Linting:" in text
     assert "Type Checking:" in text
+    assert "Pyright:" in text
