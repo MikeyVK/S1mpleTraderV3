@@ -41,4 +41,4 @@ def test_git_manager_commit_tdd(mock_git_adapter) -> None:
     manager = GitManager(adapter=mock_git_adapter)
     manager.commit_tdd_phase("red", "Added test")
 
-    mock_git_adapter.commit.assert_called_with("test: Added test")
+    mock_git_adapter.commit.assert_called_with("test: Added test", files=None)

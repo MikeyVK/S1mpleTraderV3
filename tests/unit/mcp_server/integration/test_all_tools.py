@@ -18,6 +18,7 @@ from mcp_server.tools.git_tools import (
     GitDeleteBranchTool, GitDeleteBranchInput,
     GitMergeTool, GitMergeInput,
     GitPushTool, GitPushInput,
+    GitRestoreTool, GitRestoreInput,
     GitStashTool, GitStashInput,
     GitStatusTool, GitStatusInput,
 )
@@ -77,7 +78,17 @@ class TestGitToolsIntegration:
             result = await tool.execute(GitCommitInput(phase="green", message="implement feature"))
 
             assert "abc123def" in result.content[0]["text"]
-            mock_adapter.return_value.commit.assert_called_with("feat: implement feature")
+            mock_adapter.return_value.commit.assert_called_with("feat: implement feature", files=None)
+
+    @pytest.mark.asyncio
+    async def test_git_restore_tool_flow(self) -> None:
+        """Test git restore tool complete flow."""
+        with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
+            tool = GitRestoreTool()
+            result = await tool.execute(GitRestoreInput(files=["a.py"], source="HEAD"))
+
+            assert "Restored" in result.content[0]["text"]
+            mock_adapter.return_value.restore.assert_called_with(files=["a.py"], source="HEAD")
 
     @pytest.mark.asyncio
     async def test_git_checkout_tool_flow(self) -> None:
@@ -372,6 +383,7 @@ class TestToolNames:
             CreateBranchTool(),
             GitStatusTool(),
             GitCommitTool(),
+            GitRestoreTool(),
             GitCheckoutTool(),
             GitPushTool(),
             GitMergeTool(),

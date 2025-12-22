@@ -43,12 +43,24 @@ class GitManager:
         self.adapter.create_branch(full_name)
         return full_name
 
-    def commit_tdd_phase(self, phase: str, message: str) -> str:
-        """Commit changes with TDD phase prefix."""
+    def commit_tdd_phase(self, phase: str, message: str, files: list[str] | None = None) -> str:
+        """Commit changes with TDD phase prefix.
+
+        Args:
+            phase: TDD phase (red/green/refactor).
+            message: Commit message (without prefix).
+            files: Optional list of file paths to stage + commit.
+        """
         if phase not in ["red", "green", "refactor"]:
             raise ValidationError(
                 f"Invalid TDD phase: {phase}",
                 hints=["Use red, green, or refactor"]
+            )
+
+        if files is not None and not files:
+            raise ValidationError(
+                "Files list cannot be empty",
+                hints=["Omit 'files' to commit everything, or provide at least one path"]
             )
 
         prefix_map = {
@@ -58,12 +70,36 @@ class GitManager:
         }
 
         full_message = f"{prefix_map[phase]}: {message}"
-        return self.adapter.commit(full_message)
+        return self.adapter.commit(full_message, files=files)
 
-    def commit_docs(self, message: str) -> str:
-        """Commit changes with docs prefix."""
+    def commit_docs(self, message: str, files: list[str] | None = None) -> str:
+        """Commit changes with docs prefix.
+
+        Args:
+            message: Commit message (without prefix).
+            files: Optional list of file paths to stage + commit.
+        """
+        if files is not None and not files:
+            raise ValidationError(
+                "Files list cannot be empty",
+                hints=["Omit 'files' to commit everything, or provide at least one path"]
+            )
         full_message = f"docs: {message}"
-        return self.adapter.commit(full_message)
+        return self.adapter.commit(full_message, files=files)
+
+    def restore(self, files: list[str], source: str = "HEAD") -> None:
+        """Restore files to a given source ref.
+
+        Args:
+            files: File paths to restore.
+            source: Git ref to restore from (default HEAD).
+        """
+        if not files:
+            raise ValidationError(
+                "Files list cannot be empty",
+                hints=["Provide at least one path to restore"]
+            )
+        self.adapter.restore(files=files, source=source)
 
     def checkout(self, branch_name: str) -> None:
         """Checkout to an existing branch."""

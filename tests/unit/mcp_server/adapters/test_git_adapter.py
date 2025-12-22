@@ -257,3 +257,61 @@ class TestGitAdapterStash:
 
             with pytest.raises(ExecutionError, match="does not exist"):
                 adapter.delete_branch("nonexistent")
+
+
+class TestGitAdapterCommit:
+    """Tests for git commit functionality."""
+
+    def test_commit_stages_all_when_files_none(self) -> None:
+        """Test commit stages all changes when files is omitted."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_commit = MagicMock()
+            mock_commit.hexsha = "abc1234"
+            mock_repo.index.commit.return_value = mock_commit
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            result = adapter.commit("msg")
+
+            assert result == "abc1234"
+            mock_repo.git.add.assert_called_once_with(".")
+            mock_repo.index.commit.assert_called_once_with("msg")
+
+    def test_commit_stages_only_given_files(self) -> None:
+        """Test commit stages only provided files."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_commit = MagicMock()
+            mock_commit.hexsha = "abc1234"
+            mock_repo.index.commit.return_value = mock_commit
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            result = adapter.commit("msg", files=["a.py", "docs/readme.md"])
+
+            assert result == "abc1234"
+            mock_repo.git.add.assert_called_once_with("a.py", "docs/readme.md")
+            mock_repo.index.commit.assert_called_once_with("msg")
+
+
+class TestGitAdapterRestore:
+    """Tests for git restore functionality."""
+
+    def test_restore_calls_git_restore_for_files(self) -> None:
+        """Test restore delegates to `git restore` with correct args."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.restore(files=["a.py", "b.py"], source="HEAD")
+
+            mock_repo.git.restore.assert_called_once_with(
+                "--source=HEAD",
+                "--staged",
+                "--worktree",
+                "--",
+                "a.py",
+                "b.py",
+            )

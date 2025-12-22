@@ -75,6 +75,12 @@ class GitCommitInput(BaseModel):
         pattern="^(red|green|refactor|docs)$"
     )
     message: str = Field(..., description="Commit message (without prefix)")
+    files: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional list of file paths to stage and commit. When omitted, commits all changes."
+        )
+    )
 
 
 class GitCommitTool(BaseTool):
@@ -93,10 +99,45 @@ class GitCommitTool(BaseTool):
 
     async def execute(self, params: GitCommitInput) -> ToolResult:
         if params.phase == "docs":
-            commit_hash = self.manager.commit_docs(params.message)
+            commit_hash = self.manager.commit_docs(params.message, files=params.files)
         else:
-            commit_hash = self.manager.commit_tdd_phase(params.phase, params.message)
+            commit_hash = self.manager.commit_tdd_phase(params.phase, params.message, files=params.files)
         return ToolResult.text(f"Committed: {commit_hash}")
+
+
+class GitRestoreInput(BaseModel):
+    """Input for GitRestoreTool."""
+
+    files: list[str] = Field(
+        ...,
+        min_length=1,
+        description="File paths to restore (discard local changes)"
+    )
+    source: str = Field(
+        default="HEAD",
+        description="Git ref to restore from (default: HEAD)"
+    )
+
+
+class GitRestoreTool(BaseTool):
+    """Tool to restore files to a ref (discard local changes)."""
+
+    name = "git_restore"
+    description = "Restore files to a git ref (discard local changes)"
+    args_model = GitRestoreInput
+
+    def __init__(self, manager: GitManager | None = None) -> None:
+        self.manager = manager or GitManager()
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return self.args_model.model_json_schema()
+
+    async def execute(self, params: GitRestoreInput) -> ToolResult:
+        self.manager.restore(files=params.files, source=params.source)
+        return ToolResult.text(
+            f"Restored {len(params.files)} file(s) from {params.source}"
+        )
 
 
 class GitCheckoutInput(BaseModel):
