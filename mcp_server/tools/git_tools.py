@@ -7,6 +7,12 @@ from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool, ToolResult
 
 
+def _input_schema(args_model: type[BaseModel] | None) -> dict[str, Any]:
+    if args_model is None:
+        return {}
+    return args_model.model_json_schema()
+
+
 class CreateBranchInput(BaseModel):
     """Input for CreateBranchTool."""
     name: str = Field(..., description="Branch name (kebab-case)")
@@ -29,7 +35,7 @@ class CreateBranchTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: CreateBranchInput) -> ToolResult:
         branch_name = self.manager.create_feature_branch(params.name, params.branch_type)
@@ -52,7 +58,7 @@ class GitStatusTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitStatusInput) -> ToolResult:
         status = self.manager.get_status()
@@ -95,7 +101,7 @@ class GitCommitTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitCommitInput) -> ToolResult:
         if params.phase == "docs":
@@ -135,7 +141,7 @@ class GitRestoreTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitRestoreInput) -> ToolResult:
         self.manager.restore(files=params.files, source=params.source)
@@ -161,7 +167,7 @@ class GitCheckoutTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
         self.manager.checkout(params.branch)
@@ -188,7 +194,7 @@ class GitPushTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitPushInput) -> ToolResult:
         status = self.manager.get_status()
@@ -213,7 +219,7 @@ class GitMergeTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitMergeInput) -> ToolResult:
         status = self.manager.get_status()
@@ -241,7 +247,7 @@ class GitDeleteBranchTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitDeleteBranchInput) -> ToolResult:
         self.manager.delete_branch(params.branch, force=params.force)
@@ -277,7 +283,7 @@ class GitStashTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitStashInput) -> ToolResult:
         if params.action == "push":
