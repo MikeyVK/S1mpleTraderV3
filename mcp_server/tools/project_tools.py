@@ -34,6 +34,10 @@ class InitializeProjectInput(BaseModel):
         default=True,
         description="Enable PolicyEngine dependency checks"
     )
+    force_create_parent: bool = Field(
+        default=False,
+        description="Skip duplicate detection when creating parent issue"
+    )
 
 
 class InitializeProjectTool(BaseTool):
@@ -148,6 +152,7 @@ class InitializeProjectTool(BaseTool):
             parent_issue_number=params.parent_issue_number,
             auto_create_branches=params.auto_create_branches,
             enforce_dependencies=params.enforce_dependencies,
+            force_create_parent=params.force_create_parent,
         )
 
     def _error_result(self, message: str) -> ToolResult:

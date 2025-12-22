@@ -26,6 +26,8 @@ class TestProjectManagerInitializeProject:
         """Test project initialization with linear dependencies A→B→C."""
         # Setup
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 10, "title": "Test Milestone"}
         mock_adapter.create_issue.side_effect = [
             {"number": 101, "html_url": "https://github.com/org/repo/issues/101"},  # parent
@@ -77,6 +79,8 @@ class TestProjectManagerInitializeProject:
     def test_initialize_project_parallel_dependencies(self, tmp_path: Path) -> None:
         """Test project initialization with parallel dependencies A→B+C."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 11, "title": "Parallel Test"}
         mock_adapter.create_issue.side_effect = [
             {"number": 201, "html_url": "https://github.com/org/repo/issues/201"},  # parent
@@ -109,6 +113,8 @@ class TestProjectManagerInitializeProject:
     def test_initialize_project_detects_cycle(self, tmp_path: Path) -> None:
         """Test project initialization rejects circular dependencies A↔B."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         manager = ProjectManager(github_adapter=mock_adapter, workspace_root=tmp_path)
 
         spec = ProjectSpec(
@@ -134,6 +140,8 @@ class TestProjectManagerInitializeProject:
     def test_persist_project_metadata_to_json(self, tmp_path: Path) -> None:
         """Test that ProjectMetadata is persisted to .st3/projects.json."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 12, "title": "Persist Test"}
         mock_adapter.create_issue.side_effect = [
             {"number": 301, "html_url": "https://github.com/org/repo/issues/301"},  # parent
@@ -199,6 +207,8 @@ class TestProjectManagerInitializeProject:
 
         # Create new project
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 13, "title": "New Project"}
         mock_adapter.create_issue.side_effect = [
             {"number": 401, "html_url": "https://github.com/org/repo/issues/401"},  # parent
@@ -227,6 +237,8 @@ class TestProjectManagerInitializeProject:
     def test_atomic_write_on_github_failure(self, tmp_path: Path) -> None:
         """Test atomic write: rollback if GitHub API fails mid-operation."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 14, "title": "Failure Test"}
         mock_adapter.create_issue.side_effect = [
             {"number": 501, "html_url": "https://github.com/org/repo/issues/501"},  # parent
@@ -256,6 +268,8 @@ class TestProjectManagerInitializeProject:
     def test_create_milestone_via_adapter(self, tmp_path: Path) -> None:
         """Test that milestone is created via GitHubAdapter.create_milestone()."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 15, "title": "Milestone Test"}
         mock_adapter.create_issue.side_effect = [
             {"number": 601, "html_url": "https://github.com/org/repo/issues/601"},  # parent
@@ -283,6 +297,8 @@ class TestProjectManagerInitializeProject:
     def test_create_sub_issues_via_adapter(self, tmp_path: Path) -> None:
         """Test that sub-issues are created via GitHubAdapter.create_issue() for each phase."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 16, "title": "Sub-issue Test"}
         mock_adapter.create_issue.side_effect = [
             {"number": 701, "html_url": "https://github.com/org/repo/issues/701"},  # parent
@@ -317,6 +333,8 @@ class TestProjectManagerInitializeProject:
     def test_update_parent_issue_with_links(self, tmp_path: Path) -> None:
         """Test that parent issue body is updated with sub-issue links."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 17, "title": "Update Test"}
         mock_adapter.create_issue.side_effect = [
             {"number": 801, "html_url": "https://github.com/org/repo/issues/801"},  # parent
@@ -348,6 +366,8 @@ class TestProjectManagerInitializeProject:
     def test_return_project_summary(self, tmp_path: Path) -> None:
         """Test that initialize_project returns ProjectSummary with all fields."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.return_value = {"number": 18, "title": "Summary Test"}
         mock_adapter.create_issue.side_effect = [
             {"number": 901, "html_url": "https://github.com/org/repo/issues/901"},  # parent
@@ -381,6 +401,8 @@ class TestProjectManagerInitializeProject:
     def test_validate_graph_before_github_calls(self, tmp_path: Path) -> None:
         """Test that dependency graph validation happens before any GitHub API calls."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         manager = ProjectManager(github_adapter=mock_adapter, workspace_root=tmp_path)
 
         spec = ProjectSpec(
@@ -406,6 +428,8 @@ class TestProjectManagerInitializeProject:
     def test_handle_github_api_error_gracefully(self, tmp_path: Path) -> None:
         """Test that GitHub API errors are handled gracefully with clear error messages."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
         mock_adapter.create_milestone.side_effect = Exception("Rate limit exceeded")
 
         manager = ProjectManager(github_adapter=mock_adapter, workspace_root=tmp_path)
@@ -430,6 +454,8 @@ class TestProjectManagerInitializeProject:
     def test_validate_existing_parent_issue(self, tmp_path: Path) -> None:
         """Test that providing parent_issue_number validates the issue exists."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
 
         # Mock successful milestone creation
         mock_adapter.create_milestone.return_value = {"number": 10}
@@ -460,6 +486,8 @@ class TestProjectManagerInitializeProject:
     def test_use_existing_parent_issue_url(self, tmp_path: Path) -> None:
         """Test that existing parent issue's real URL is used."""
         mock_adapter = Mock()
+
+        mock_adapter.search_issues.return_value = []  # No duplicates
 
         # Mock milestone creation
         mock_adapter.create_milestone.return_value = {"number": 10}

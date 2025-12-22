@@ -135,6 +135,29 @@ class GitHubAdapter:
 
         return list(self.repo.get_issues(**kwargs))
 
+    def search_issues(self, query: str, max_results: int = 10) -> list[Issue]:
+        """Search for issues using GitHub search syntax.
+
+        Args:
+            query: GitHub search query (e.g., 'is:issue is:open "text" in:title')
+            max_results: Maximum number of results to return
+
+        Returns:
+            List of matching issues
+
+        Example:
+            search_issues('is:issue is:open "Project Init" in:title')
+        """
+        try:
+            # GitHub search returns paginated results
+            results = self.client.search_issues(query, sort="created", order="desc")
+            # Explicit cast to list of Issue objects
+            issues: list[Issue] = list(results[:max_results])
+            return issues
+        except GithubException:
+            # Search can fail but shouldn't crash the flow
+            return []
+
     def create_pr(
         self,
         title: str,

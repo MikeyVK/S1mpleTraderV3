@@ -12,6 +12,7 @@ Responsibilities:
 Uses GitHubAdapter for all GitHub operations (dependency injection).
 """
 
+from difflib import SequenceMatcher
 import json
 import time
 from pathlib import Path
@@ -124,10 +125,55 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
         milestone_id: int = milestone_response["number"]
         return milestone_id
 
+    def _calculate_title_similarity(self, title1: str, title2: str) -> float:
+        """Calculate similarity between two titles (0.0 - 1.0).
+
+        Uses SequenceMatcher for fuzzy string matching.
+        """
+        # Normalize titles for comparison
+        norm1 = title1.lower().strip()
+        norm2 = title2.lower().strip()
+        return SequenceMatcher(None, norm1, norm2).ratio()
+
+    def _find_similar_parent_issues(
+        self, project_title: str
+    ) -> list[dict[str, Any]]:
+        """Find potentially matching parent issues using fuzzy search.
+
+        Args:
+            project_title: Project title to search for
+
+        Returns:
+            List of matching issues with similarity scores, sorted by similarity
+        """
+        # Extract keywords for search (first 3 words)
+        keywords = project_title.replace(":", "").split()[:3]
+        search_query = f'is:issue is:open {" ".join(keywords)} in:title'
+
+        # Search GitHub
+        results = self.github_adapter.search_issues(search_query, max_results=10)
+
+        # Calculate similarity scores
+        matches = []
+        for issue in results:
+            similarity = self._calculate_title_similarity(
+                project_title,
+                issue.title
+            )
+            matches.append({
+                "number": issue.number,
+                "title": issue.title,
+                "url": issue.html_url,
+                "similarity": similarity
+            })
+
+        # Sort by similarity (highest first)
+        return sorted(matches, key=lambda x: x["similarity"], reverse=True)
+
     def _create_or_get_parent_issue(
         self, spec: ProjectSpec, milestone_id: int
     ) -> tuple[int, str]:
-        """Create parent issue or use existing.
+        """Create parent issue or use existing with duplicate detection.
 
         Args:
             spec: Project specification
@@ -137,29 +183,65 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             Tuple of (issue_number, issue_url)
 
         Raises:
-            ValueError: If parent_issue_number provided but issue doesn't exist
+            ValueError: If parent_issue_number provided but doesn't exist,
+                       or if similar issues found without force_create_parent
         """
-        if spec.parent_issue_number is None:
-            parent_response = self.github_adapter.create_issue(
-                title=f"[PARENT] {spec.project_title}",
-                body=(
-                    f"Parent issue for {spec.project_title}\n\n"
-                    "## Sub-issues\n(will be updated after creation)"
-                ),
-                milestone=milestone_id,
-            )
-            return parent_response["number"], parent_response["html_url"]
+        # Case 1: Explicit parent issue number provided
+        if spec.parent_issue_number is not None:
+            parent_number = spec.parent_issue_number
+            try:
+                parent_issue = self.github_adapter.get_issue(parent_number)
+                return parent_number, parent_issue.html_url
+            except Exception as e:
+                raise ValueError(
+                    f"Parent issue #{parent_number} not found or inaccessible. "
+                    f"Error: {e}"
+                ) from e
 
-        # Validate existing parent issue exists
-        parent_number = spec.parent_issue_number
-        try:
-            parent_issue = self.github_adapter.get_issue(parent_number)
-            return parent_number, parent_issue.html_url
-        except Exception as e:
-            raise ValueError(
-                f"Parent issue #{parent_number} not found or inaccessible. "
-                f"Error: {e}"
-            ) from e
+        # Case 2: Auto-create parent with duplicate detection
+        if not spec.force_create_parent:
+            similar = self._find_similar_parent_issues(spec.project_title)
+
+            # High confidence match (> 80% similarity)
+            if similar and similar[0]["similarity"] > 0.8:
+                match = similar[0]
+                raise ValueError(
+                    f"Found likely duplicate issue #{match['number']}: "
+                    f"{match['title']}\n"
+                    f"Similarity: {match['similarity']:.0%}\n"
+                    f"URL: {match['url']}\n\n"
+                    f"Options:\n"
+                    f"1. Use existing issue: Set parent_issue_number: "
+                    f"{match['number']}\n"
+                    f"2. Force create new: Set force_create_parent: true"
+                )
+
+            # Medium confidence matches (> 60% similarity)
+            if similar and similar[0]["similarity"] > 0.6:
+                options = "\n".join([
+                    f"  #{m['number']}: {m['title']} "
+                    f"({m['similarity']:.0%} match)"
+                    for m in similar[:3]
+                ])
+                raise ValueError(
+                    f"Found {len(similar[:3])} potentially related issues:\n"
+                    f"{options}\n\n"
+                    f"Options:\n"
+                    f"1. Use existing: Set parent_issue_number: <number>\n"
+                    f"2. Modify title to be more specific\n"
+                    f"3. Force create: Set force_create_parent: true"
+                )
+
+        # Case 3: No duplicates found or force_create_parent = true
+        parent_response = self.github_adapter.create_issue(
+            title=f"[PARENT] {spec.project_title}",
+            body=(
+                f"Parent issue for {spec.project_title}\n\n"
+                "## Sub-issues\n(will be updated after creation)"
+            ),
+            milestone=milestone_id,
+        )
+        return parent_response["number"], parent_response["html_url"]
 
     def _create_sub_issues(
         self, phases: list[PhaseSpec], milestone_id: int

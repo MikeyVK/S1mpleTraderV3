@@ -78,6 +78,7 @@ class ProjectSpec(BaseModel):
         parent_issue_number: Tracker issue number (e.g., 18)
         auto_create_branches: Create feature branches immediately (default: False)
         enforce_dependencies: Enable PolicyEngine checks (default: True)
+        force_create_parent: Skip duplicate detection, always create new parent
     """
 
     project_title: str = Field(..., description="Title for milestone and parent issue")
@@ -97,6 +98,10 @@ class ProjectSpec(BaseModel):
     enforce_dependencies: bool = Field(
         default=True,
         description="Enable PolicyEngine dependency checks"
+    )
+    force_create_parent: bool = Field(
+        default=False,
+        description="Skip duplicate detection when creating parent issue"
     )
 
     @model_validator(mode="after")
