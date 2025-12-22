@@ -110,9 +110,9 @@ class ListIssuesTool(BaseTool):
 
     async def execute(self, params: ListIssuesInput) -> ToolResult:
         try:
-            state_str = (
-                params.state.value if isinstance(params.state, IssueState) else params.state
-            )
+            # `IssueState` is a typing.Literal alias, not a runtime type.
+            # Pydantic will give us either a string value or None.
+            state_str = params.state
             issues = self.manager.list_issues(
                 state=state_str or "open",
                 labels=params.labels

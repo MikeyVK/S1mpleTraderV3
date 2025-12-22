@@ -1,17 +1,8 @@
-# tests/unit/mcp_server/managers/test_git_manager.py
-"""
-Unit tests for GitManager.
-
-Tests according to TDD principles with comprehensive coverage.
-
-@layer: Tests (Unit)
-@dependencies: [pytest]
-"""
+"""Unit tests for GitManager."""
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 # Suppress Pydantic FieldInfo false positives
 
 # Standard library
-import typing  # noqa: F401
 from unittest.mock import MagicMock
 
 # Third-party
@@ -88,11 +79,6 @@ class TestGitManagerValidation:
         with pytest.raises(ValidationError, match="Cannot delete protected branch"):
             manager.delete_branch("main")
 
-    def _satisfy_typing_policy(self) -> typing.Any:
-        """Use typing to satisfy template policy requirements."""
-        return None
-
-
 class TestGitManagerOperations:
     """Test suite for GitManager operations (commit, merge, stash)."""
 
@@ -115,12 +101,42 @@ class TestGitManagerOperations:
         result = manager.commit_tdd_phase("red", "failing test")
 
         assert result == "hash123"
-        mock_adapter.commit.assert_called_once_with("test: failing test")
+        mock_adapter.commit.assert_called_once_with("test: failing test", files=None)
+
+    def test_commit_tdd_phase_with_files_passes_through(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test valid TDD commit with files."""
+        mock_adapter.commit.return_value = "hash123"
+
+        result = manager.commit_tdd_phase("green", "scoped", files=["a.py"])
+
+        assert result == "hash123"
+        mock_adapter.commit.assert_called_once_with("feat: scoped", files=["a.py"])
 
     def test_commit_docs(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test documentation commit helpers."""
         manager.commit_docs("update readme")
-        mock_adapter.commit.assert_called_once_with("docs: update readme")
+        mock_adapter.commit.assert_called_once_with("docs: update readme", files=None)
+
+    def test_commit_docs_with_files_passes_through(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test documentation commit helpers with files."""
+        manager.commit_docs("update docs", files=["README.md"])
+
+        mock_adapter.commit.assert_called_once_with("docs: update docs", files=["README.md"])
+
+    def test_restore_success(self, manager: GitManager, mock_adapter: MagicMock) -> None:
+        """Test restore operation."""
+        manager.restore(files=["a.py", "b.py"], source="HEAD")
+
+        mock_adapter.restore.assert_called_once_with(files=["a.py", "b.py"], source="HEAD")
+
+    def test_restore_requires_files(self, manager: GitManager) -> None:
+        """Test restore operation requires files."""
+        with pytest.raises(ValidationError):
+            manager.restore(files=[])
 
     def test_checkout(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test checkout delegation."""
@@ -151,7 +167,10 @@ class TestGitManagerOperations:
     def test_stash_operations(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test stash delegations."""
         manager.stash("saving work")
-        mock_adapter.stash.assert_called_with(message="saving work")
+        mock_adapter.stash.assert_called_with(message="saving work", include_untracked=False)
+
+        manager.stash("saving work", include_untracked=True)
+        mock_adapter.stash.assert_called_with(message="saving work", include_untracked=True)
 
         manager.stash_pop()
         mock_adapter.stash_pop.assert_called_once()

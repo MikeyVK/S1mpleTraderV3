@@ -9,7 +9,8 @@ from mcp_server.tools.git_tools import (
     GitPushTool, GitPushInput,
     GitMergeTool, GitMergeInput,
     GitDeleteBranchTool, GitDeleteBranchInput,
-    GitStashTool, GitStashInput
+    GitStashTool, GitStashInput,
+    GitRestoreTool, GitRestoreInput,
 )
 from mcp_server.tools.base import ToolResult
 
@@ -54,7 +55,7 @@ async def test_git_commit_tool_tdd(mock_git_manager):
     params = GitCommitInput(phase="red", message="failing test")
     result = await tool.execute(params)
     
-    mock_git_manager.commit_tdd_phase.assert_called_once_with("red", "failing test")
+    mock_git_manager.commit_tdd_phase.assert_called_once_with("red", "failing test", files=None)
     assert "Committed: abc1234" in result.content[0]["text"]
 
 @pytest.mark.asyncio
@@ -65,7 +66,7 @@ async def test_git_commit_tool_docs(mock_git_manager):
     params = GitCommitInput(phase="docs", message="update readme")
     result = await tool.execute(params)
     
-    mock_git_manager.commit_docs.assert_called_once_with("update readme")
+    mock_git_manager.commit_docs.assert_called_once_with("update readme", files=None)
     assert "Committed: doc1234" in result.content[0]["text"]
 
 @pytest.mark.asyncio
@@ -116,7 +117,7 @@ async def test_git_stash_tool(mock_git_manager):
     
     # Push
     result = await tool.execute(GitStashInput(action="push", message="wip"))
-    mock_git_manager.stash.assert_called_with(message="wip")
+    mock_git_manager.stash.assert_called_with(message="wip", include_untracked=False)
     assert "Stashed changes: wip" in result.content[0]["text"]
 
     # Pop
@@ -128,3 +129,14 @@ async def test_git_stash_tool(mock_git_manager):
     mock_git_manager.stash_list.return_value = ["stash@{0}: wip"]
     result = await tool.execute(GitStashInput(action="list"))
     assert "stash@{0}: wip" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_restore_tool(mock_git_manager):
+    tool = GitRestoreTool(manager=mock_git_manager)
+
+    params = GitRestoreInput(files=["foo.py", "bar.py"], source="HEAD")
+    result = await tool.execute(params)
+
+    mock_git_manager.restore.assert_called_once_with(files=["foo.py", "bar.py"], source="HEAD")
+    assert "Restored 2 file(s)" in result.content[0]["text"]

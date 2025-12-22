@@ -7,6 +7,12 @@ from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool, ToolResult
 
 
+def _input_schema(args_model: type[BaseModel] | None) -> dict[str, Any]:
+    if args_model is None:
+        return {}
+    return args_model.model_json_schema()
+
+
 class CreateBranchInput(BaseModel):
     """Input for CreateBranchTool."""
     name: str = Field(..., description="Branch name (kebab-case)")
@@ -29,7 +35,7 @@ class CreateBranchTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: CreateBranchInput) -> ToolResult:
         branch_name = self.manager.create_feature_branch(params.name, params.branch_type)
@@ -52,7 +58,7 @@ class GitStatusTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitStatusInput) -> ToolResult:
         status = self.manager.get_status()
@@ -75,6 +81,12 @@ class GitCommitInput(BaseModel):
         pattern="^(red|green|refactor|docs)$"
     )
     message: str = Field(..., description="Commit message (without prefix)")
+    files: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional list of file paths to stage and commit. When omitted, commits all changes."
+        )
+    )
 
 
 class GitCommitTool(BaseTool):
@@ -89,14 +101,53 @@ class GitCommitTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitCommitInput) -> ToolResult:
         if params.phase == "docs":
-            commit_hash = self.manager.commit_docs(params.message)
+            commit_hash = self.manager.commit_docs(params.message, files=params.files)
         else:
-            commit_hash = self.manager.commit_tdd_phase(params.phase, params.message)
+            commit_hash = self.manager.commit_tdd_phase(
+                params.phase,
+                params.message,
+                files=params.files,
+            )
         return ToolResult.text(f"Committed: {commit_hash}")
+
+
+class GitRestoreInput(BaseModel):
+    """Input for GitRestoreTool."""
+
+    files: list[str] = Field(
+        ...,
+        min_length=1,
+        description="File paths to restore (discard local changes)"
+    )
+    source: str = Field(
+        default="HEAD",
+        description="Git ref to restore from (default: HEAD)"
+    )
+
+
+class GitRestoreTool(BaseTool):
+    """Tool to restore files to a ref (discard local changes)."""
+
+    name = "git_restore"
+    description = "Restore files to a git ref (discard local changes)"
+    args_model = GitRestoreInput
+
+    def __init__(self, manager: GitManager | None = None) -> None:
+        self.manager = manager or GitManager()
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return _input_schema(self.args_model)
+
+    async def execute(self, params: GitRestoreInput) -> ToolResult:
+        self.manager.restore(files=params.files, source=params.source)
+        return ToolResult.text(
+            f"Restored {len(params.files)} file(s) from {params.source}"
+        )
 
 
 class GitCheckoutInput(BaseModel):
@@ -116,7 +167,7 @@ class GitCheckoutTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
         self.manager.checkout(params.branch)
@@ -143,7 +194,7 @@ class GitPushTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitPushInput) -> ToolResult:
         status = self.manager.get_status()
@@ -168,7 +219,7 @@ class GitMergeTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitMergeInput) -> ToolResult:
         status = self.manager.get_status()
@@ -196,7 +247,7 @@ class GitDeleteBranchTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitDeleteBranchInput) -> ToolResult:
         self.manager.delete_branch(params.branch, force=params.force)
@@ -214,6 +265,10 @@ class GitStashInput(BaseModel):
         default=None,
         description="Optional name for the stash (only for push)"
     )
+    include_untracked: bool = Field(
+        default=False,
+        description="Include untracked files when stashing (git stash push -u)"
+    )
 
 
 class GitStashTool(BaseTool):
@@ -228,11 +283,11 @@ class GitStashTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return _input_schema(self.args_model)
 
     async def execute(self, params: GitStashInput) -> ToolResult:
         if params.action == "push":
-            self.manager.stash(message=params.message)
+            self.manager.stash(message=params.message, include_untracked=params.include_untracked)
             if params.message:
                 return ToolResult.text(f"Stashed changes: {params.message}")
             return ToolResult.text("Stashed current changes")

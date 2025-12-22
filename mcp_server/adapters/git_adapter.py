@@ -1,7 +1,7 @@
 """Git adapter for the MCP server."""
 from typing import Any
 
-from git import InvalidGitRepositoryError, Repo  # type: ignore[import-untyped]
+from git import InvalidGitRepositoryError, Repo
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
@@ -12,7 +12,6 @@ class GitAdapter:
 
     def __init__(self, repo_path: str | None = None) -> None:
         """Initialize the Git adapter."""
-        # pylint: disable=no-member
         self.repo_path = repo_path or settings.server.workspace_root
         self._repo: Repo | None = None
 
@@ -69,14 +68,38 @@ class GitAdapter:
         except Exception as e:
             raise ExecutionError(f"Failed to create branch {branch_name}: {e}") from e
 
-    def commit(self, message: str) -> str:
-        """Commit changes."""
+    def commit(self, message: str, files: list[str] | None = None) -> str:
+        """Commit changes.
+
+        Args:
+            message: Commit message.
+            files: Optional list of file paths to stage and commit. When omitted,
+                stages all changes (equivalent to `git add .`).
+        """
         try:
-            self.repo.git.add(".")
+            if files is None:
+                self.repo.git.add(".")
+            else:
+                self.repo.git.add(*files)
             commit = self.repo.index.commit(message)
             return commit.hexsha
         except Exception as e:
             raise ExecutionError(f"Failed to commit: {e}") from e
+
+    def restore(self, files: list[str], source: str = "HEAD") -> None:
+        """Restore files to a given source ref (default: HEAD).
+
+        This restores both staged and working tree changes for the given files.
+
+        Args:
+            files: List of file paths to restore.
+            source: Git ref to restore from.
+        """
+        try:
+            # Restore both index and working tree from the given source.
+            self.repo.git.restore(f"--source={source}", "--staged", "--worktree", "--", *files)
+        except Exception as e:
+            raise ExecutionError(f"Failed to restore files: {e}") from e
 
     def checkout(self, branch_name: str) -> None:
         """Checkout to an existing branch."""
@@ -133,17 +156,20 @@ class GitAdapter:
         except Exception as e:
             raise ExecutionError(f"Failed to delete {branch_name}: {e}") from e
 
-    def stash(self, message: str | None = None) -> None:
+    def stash(self, message: str | None = None, include_untracked: bool = False) -> None:
         """Stash current changes.
 
         Args:
             message: Optional message for the stash entry.
+            include_untracked: Include untracked files in the stash entry.
         """
         try:
+            args: list[str] = ["push"]
+            if include_untracked:
+                args.append("-u")
             if message:
-                self.repo.git.stash("push", "-m", message)
-            else:
-                self.repo.git.stash("push")
+                args.extend(["-m", message])
+            self.repo.git.stash(*args)
         except Exception as e:
             raise ExecutionError(f"Failed to stash changes: {e}") from e
 
@@ -161,7 +187,7 @@ class GitAdapter:
             List of stash entry descriptions.
         """
         try:
-            output = self.repo.git.stash("list")
+            output = str(self.repo.git.stash("list"))
             if not output:
                 return []
             return output.strip().split("\n")
@@ -186,11 +212,11 @@ class GitAdapter:
                 args.append("-vv")
 
             # GitPython's repo.git.branch returns the raw string output
-            output = self.repo.git.branch(*args)
+            output = str(self.repo.git.branch(*args))
             if not output:
                 return []
             return [line.strip() for line in output.split("\n") if line.strip()]
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:
             raise ExecutionError(f"Failed to list branches: {e}") from e
 
     def get_diff_stat(self, target: str, source: str = "HEAD") -> str:
@@ -208,8 +234,8 @@ class GitAdapter:
             # Usually strict comparison 'target...source' is better for
             # "what is in source that is not in target"
             # Command: git diff target...source --stat
-            return self.repo.git.diff(f"{target}...{source}", "--stat")
-        except Exception as e:  # pylint: disable=broad-exception-caught
+            return str(self.repo.git.diff(f"{target}...{source}", "--stat"))
+        except Exception as e:
             raise ExecutionError(f"Failed to get diff stat: {e}") from e
 
     def get_recent_commits(self, limit: int = 5) -> list[str]:
