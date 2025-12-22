@@ -35,6 +35,7 @@ from mcp_server.tools.git_tools import (
     GitDeleteBranchTool,
     GitMergeTool,
     GitPushTool,
+    GitRestoreTool,
     GitStashTool,
     GitStatusTool,
 )
@@ -100,6 +101,7 @@ class MCPServer:
             GitMergeTool(),
             GitDeleteBranchTool(),
             GitStashTool(),
+            GitRestoreTool(),
             GitListBranchesTool(),
             GitDiffTool(),
             # Quality tools
