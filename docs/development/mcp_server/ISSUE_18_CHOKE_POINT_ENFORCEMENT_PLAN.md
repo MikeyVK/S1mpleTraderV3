@@ -280,10 +280,25 @@ class IPolicyEngine(Protocol):
 
 ## 6. Open Questions
 
-- [ ] Should phase state be branch-scoped or repo-scoped?
-- [ ] How strict should RED be? (e.g., allow failing tests but require only tests changed)
-- [ ] Standard paths/names for required docs/artifacts.
-- [ ] Which gates run at `merge_pr` vs enforced at `create_pr`.
+- [x] **Phase state scope:** repo-backed file with **branch-keyed state**.
+    - Decision: store state in one repo file (e.g. `.st3/state.json`) containing a map `{ branch_name: { phase, updated_at, issue_number? } }`.
+    - Rationale: supports multiple concurrent branches without global coupling, and avoids per-branch files.
+
+- [x] **RED strictness:** enforce *tests-first* without requiring “tests must fail”.
+    - Decision (v1): RED commits must include test changes and may skip running tests; GREEN/REFACTOR enforce passing tests.
+    - Guardrail: block GREEN if no prior RED state exists on the branch.
+    - Note: enforcing “only tests changed” is desirable but depends on selective staging/commit tooling (#24). Until then, we can enforce that no non-test `.py` files are modified at RED commit time.
+
+- [x] **Docs/artifact standardization:** issue-scoped folder.
+    - Decision: required artifacts live under `docs/development/issues/<issue_number>/`.
+    - Required files (initial): `implementation_plan.md`, `walkthrough.md`.
+    - Creation mechanism: `scaffold_design_doc` (template-backed).
+    - Validation: `validate_doc` + existence checks at choke points.
+
+- [x] **Where to enforce which gates:** lightweight on PR creation, strict on merge/close.
+    - `create_pr`: enforce artifacts exist + validate docs.
+    - `merge_pr`: enforce tests pass + quality gates pass (final “hard” gate).
+    - `close_issue`: enforce artifacts exist + validate docs + post closing summary comment.
 
 ---
 
@@ -306,6 +321,7 @@ Recommendation:
 |------|----------|-----------|
 | 2025-12-21 | Enforce at choke points | Mood-proof enforcement at unavoidable operations |
 | 2025-12-21 | Keep SafeEdit fast-only | Avoid latency and thrash during iteration |
+| 2025-12-22 | Resolve open questions | Unblock implementation by making scope/paths/gates explicit |
 
 ---
 
