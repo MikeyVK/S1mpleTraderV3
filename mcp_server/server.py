@@ -230,7 +230,6 @@ class MCPServer:
                             # Actually, BaseTool.execute(params) means we must pass an object.
                             # If no model, we pass the dict?
                             result = await tool.execute(arguments or {})
-
                         response_content: list[
                             TextContent | ImageContent | EmbeddedResource
                         ] = []
@@ -251,7 +250,7 @@ class MCPServer:
                                     resource=content["resource"]
                                 ))
                         return response_content
-                    except (ValueError, TypeError, KeyError) as e:
+                    except Exception as e:  # pylint: disable=broad-exception-caught
                         logger.error(
                             "Tool execution failed: %s", e, exc_info=True
                         )
@@ -259,7 +258,6 @@ class MCPServer:
                             type="text",
                             text=f"Error executing tool {name}: {e!s}"
                         )]
-
             raise ValueError(f"Tool not found: {name}")
 
     async def run(self) -> None:

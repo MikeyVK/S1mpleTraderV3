@@ -5,7 +5,7 @@ from difflib import unified_diff
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from mcp_server.tools.base import BaseTool, ToolResult
 from mcp_server.validation.registry import ValidatorRegistry
@@ -45,7 +45,6 @@ class InsertLine(BaseModel):
             raise ValueError("at_line must be >= 1")
         return self
 
-
 class SearchReplace(BaseModel):
     """Represents a search/replace operation."""
     search: str = Field(..., description="Pattern to search for")
@@ -54,6 +53,12 @@ class SearchReplace(BaseModel):
     count: int | None = Field(None, description="Maximum number of replacements (None = all)")
     flags: int = Field(default=0, description="Regex flags (e.g., re.IGNORECASE)")
 
+    @field_validator("flags", mode="before")
+    @classmethod
+    def _coerce_flags(cls, value: Any) -> int:
+        if value is None:
+            return 0
+        return int(value)
 
 class SafeEditInput(BaseModel):
     """Input for SafeEditTool."""
@@ -377,7 +382,7 @@ class SafeEditTool(BaseTool):
         if search_replace.regex:
             # Regex mode
             try:
-                pattern = re.compile(search_replace.search, search_replace.flags)
+                pattern = re.compile(search_replace.search, search_replace.flags or 0)
                 if search_replace.count is not None:
                     new_content, replacement_count = pattern.subn(
                         search_replace.replace, content, count=search_replace.count
