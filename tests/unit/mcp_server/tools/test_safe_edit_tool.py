@@ -597,3 +597,207 @@ def test_all_edit_modes_rejected():
             search_replace=SearchReplace(search="old", replace="new"),
             mode="strict"
         )
+
+
+# ============================================================================
+# Integration Tests - Phase 5
+# ============================================================================
+
+
+@pytest.fixture
+def python_file():
+    """Create temporary Python file for validator integration tests."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("def hello():\n    print('Hello World')\n")
+
+    yield temp_path
+
+    if temp_path.exists():
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_line_edit_preserves_valid_python(safe_edit_tool, python_file):
+    """Test that line edits work with Python validator."""
+    params = SafeEditInput(
+        path=str(python_file),
+        line_edits=[LineEdit(
+            start_line=2,
+            end_line=2,
+            new_content="    print('Hello Integration Test')\n"
+        )],
+        mode="interactive",
+        show_diff=False
+    )
+    result = await safe_edit_tool.execute(params)
+    assert result.is_error is False
+    assert "File saved successfully" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_insert_lines_adds_import(safe_edit_tool, python_file):
+    """Test inserting import statement at beginning."""
+    params = SafeEditInput(
+        path=str(python_file),
+        insert_lines=[InsertLine(
+            at_line=1,
+            content="import sys\n"
+        )],
+        mode="interactive",
+        show_diff=False
+    )
+    result = await safe_edit_tool.execute(params)
+    assert result.is_error is False
+    
+    # Verify file has import
+    content = python_file.read_text()
+    assert content.startswith("import sys\n")
+
+
+@pytest.mark.asyncio
+async def test_search_replace_with_regex_capturing_groups(safe_edit_tool, temp_file):
+    """Test regex search/replace with capturing groups."""
+    temp_file.write_text("Hello World\nHello Python\n")
+    
+    params = SafeEditInput(
+        path=str(temp_file),
+        search_replace=SearchReplace(
+            search=r"Hello (\w+)",
+            replace=r"Goodbye \1",
+            regex=True
+        ),
+        mode="interactive",
+        show_diff=False
+    )
+    result = await safe_edit_tool.execute(params)
+    assert result.is_error is False
+    
+    content = temp_file.read_text()
+    assert "Goodbye World" in content
+    assert "Goodbye Python" in content
+
+
+@pytest.mark.asyncio
+async def test_multiple_line_edits_non_overlapping(safe_edit_tool, multiline_file):
+    """Test multiple non-overlapping line edits in one call."""
+    params = SafeEditInput(
+        path=str(multiline_file),
+        line_edits=[
+            LineEdit(start_line=1, end_line=1, new_content="Modified Line 1\n"),
+            LineEdit(start_line=3, end_line=3, new_content="Modified Line 3\n"),
+            LineEdit(start_line=5, end_line=5, new_content="Modified Line 5\n"),
+        ],
+        mode="interactive",
+        show_diff=False
+    )
+    result = await safe_edit_tool.execute(params)
+    assert result.is_error is False
+    
+    content = multiline_file.read_text()
+    assert "Modified Line 1" in content
+    assert "Modified Line 3" in content
+    assert "Modified Line 5" in content
+    assert "Line 2" in content  # Unchanged
+    assert "Line 4" in content  # Unchanged
+
+
+@pytest.mark.asyncio
+async def test_verify_only_shows_diff_without_writing(safe_edit_tool, temp_file):
+    """Test verify_only mode shows diff but doesn't modify file."""
+    original_content = temp_file.read_text()
+    
+    params = SafeEditInput(
+        path=str(temp_file),
+        search_replace=SearchReplace(search="Hello", replace="Goodbye"),
+        mode="verify_only",
+        show_diff=True
+    )
+    result = await safe_edit_tool.execute(params)
+    assert result.is_error is False
+    assert "Diff Preview" in result.content[0]["text"]
+    
+    # File should be unchanged
+    assert temp_file.read_text() == original_content
+
+
+@pytest.mark.asyncio
+async def test_empty_file_handling(safe_edit_tool):
+    """Test editing empty file."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        # Empty file
+    
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            content="First line\n",
+            mode="interactive"
+        )
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        assert temp_path.read_text() == "First line\n"
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_file_without_trailing_newline(safe_edit_tool):
+    """Test handling file without trailing newline."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("No newline at end")  # No \n
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            insert_lines=[InsertLine(at_line=2, content="Second line\n")],
+            mode="interactive",
+            show_diff=False
+        )
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_count_limit(safe_edit_tool):
+    """Test search/replace with count parameter limits replacements."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("foo foo foo foo\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search_replace=SearchReplace(search="foo", replace="bar", count=2),
+            mode="interactive",
+            show_diff=False
+        )
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        # Should replace only first 2 occurrences
+        assert content.count("bar") == 2
+        assert content.count("foo") == 2
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_strict_mode_rejects_invalid_python(safe_edit_tool, python_file):
+    """Test strict mode rejects edits that break Python syntax."""
+    params = SafeEditInput(
+        path=str(python_file),
+        line_edits=[LineEdit(
+            start_line=1,
+            end_line=1,
+            new_content="invalid syntax here!!!\n"
+        )],
+        mode="strict",
+        show_diff=False
+    )
+    result = await safe_edit_tool.execute(params)
+    # In strict mode, should reject due to validation errors
+    assert "Edit rejected" in result.content[0]["text"] or "validation" in result.content[0]["text"].lower()
