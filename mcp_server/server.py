@@ -117,8 +117,8 @@ class MCPServer:
             RunTestsTool(),
             CreateFileTool(),
             # Project tools (Phase 0.5)
-            InitializeProjectTool(workspace_root=settings.workspace_root),
-            GetProjectPlanTool(workspace_root=settings.workspace_root),
+            InitializeProjectTool(workspace_root=Path(settings.server.workspace_root)),
+            GetProjectPlanTool(workspace_root=Path(settings.server.workspace_root)),
             # Scaffold tools
             ScaffoldComponentTool(),
             ScaffoldDesignDocTool(),
