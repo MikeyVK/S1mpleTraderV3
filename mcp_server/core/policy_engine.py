@@ -1,12 +1,23 @@
-"""PolicyEngine - Phase A.1: Strict policy enforcement for MCP operations.
+# mcp_server/core/policy_engine.py
+"""
+PolicyEngine - Phase A.1: Strict policy enforcement for MCP operations.
 
 This module implements the core policy engine that validates all MCP operations
 against project phase plans with NO backward compatibility (strict enforcement).
+
+@layer: Core
+@dependencies: []
 """
+
+# Standard library
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+# Third-party
+
+# Project modules
 
 
 @dataclass
