@@ -15,5 +15,22 @@
     "optional_phases": [],
     "skip_reason": null,
     "created_at": "2025-12-23T12:05:49.083553+00:00"
+  },
+  "38": {
+    "issue_number": 38,
+    "issue_title": "Enhance SafeEditTool with line-based edits, diff preview, and search/replace",
+    "issue_type": "feature",
+    "required_phases": [
+      "discovery",
+      "planning",
+      "design",
+      "component",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "optional_phases": [],
+    "skip_reason": null,
+    "created_at": "2025-12-23T20:00:48.300921+00:00"
   }
 }
