@@ -1,15 +1,10 @@
 """Tests for PhaseStateEngine - Phase A.2 (RED phase)."""
-# pylint: disable=protected-access,too-few-public-methods
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
 
-from mcp_server.core.phase_state_engine import (
-    PhaseStateEngine,
-    PhaseTransition,
-    TransitionResult,
-)
+from mcp_server.core.phase_state_engine import PhaseStateEngine
 
 
 @pytest.fixture(autouse=True)
