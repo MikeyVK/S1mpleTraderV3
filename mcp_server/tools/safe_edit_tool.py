@@ -4,7 +4,7 @@ from difflib import unified_diff
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.tools.base import BaseTool, ToolResult
 from mcp_server.validation.registry import ValidatorRegistry
@@ -14,10 +14,32 @@ from mcp_server.validation.markdown_validator import MarkdownValidator
 from mcp_server.validation.template_validator import TemplateValidator
 
 
+class LineEdit(BaseModel):
+    """Represents a line-based edit operation."""
+    start_line: int = Field(..., description="Starting line number (1-based, inclusive)")
+    end_line: int = Field(..., description="Ending line number (1-based, inclusive)")
+    new_content: str = Field(..., description="New content for the line range")
+
+    @model_validator(mode='after')
+    def validate_line_range(self) -> "LineEdit":
+        """Validate that line range is valid."""
+        if self.start_line < 1:
+            raise ValueError("start_line must be >= 1")
+        if self.end_line < 1:
+            raise ValueError("end_line must be >= 1")
+        if self.start_line > self.end_line:
+            raise ValueError("start_line must be <= end_line")
+        return self
+
+
 class SafeEditInput(BaseModel):
     """Input for SafeEditTool."""
     path: str = Field(..., description="Absolute path to the file")
-    content: str = Field(..., description="New content for the file")
+    content: str | None = Field(None, description="New content for the file (full rewrite)")
+    line_edits: list[LineEdit] | None = Field(
+        None,
+        description="List of line-based edits (chirurgical edits)"
+    )
     mode: str = Field(
         default="strict",
         description="Validation mode. 'strict' fails on error, 'interactive' writes but warns.",
@@ -36,7 +58,8 @@ class SafeEditTool(BaseTool):
     description = (
         "Write content to a file with automatic validation. "
         "Supports 'strict' mode (rejects on error) or 'interactive' (warns). "
-        "Shows diff preview by default."
+        "Shows diff preview by default. "
+        "Supports full content rewrite or chirurgical line-based edits."
     )
     args_model = SafeEditInput
 
@@ -59,32 +82,47 @@ class SafeEditTool(BaseTool):
         """Return the input schema for the tool."""
         return SafeEditInput.model_json_schema()
 
-    async def execute(self, params: SafeEditInput) -> ToolResult:
+    async def execute(self, params: SafeEditInput) -> ToolResult:  # pylint: disable=too-many-return-statements,too-many-branches
         """Execute the safe edit."""
         path = params.path
-        content = params.content
         mode = params.mode
         show_diff = params.show_diff
 
-        # Read original content for diff
+        # Read original content
         original_content = ""
         try:
             original_content = Path(path).read_text(encoding="utf-8")
         except FileNotFoundError:
             # New file - empty original
-            pass
-        except (UnicodeDecodeError, PermissionError):
-            # Binary file or read error - skip diff
-            pass
+            if params.line_edits:
+                return ToolResult.error(
+                    "Cannot apply line edits to non-existent file. "
+                    "Use content mode to create the file first."
+                )
+        except (UnicodeDecodeError, PermissionError) as e:
+            return ToolResult.error(f"Failed to read file: {e}")
+
+        # Determine edit mode and generate new content
+        if params.content is not None:
+            # Full content rewrite mode
+            new_content = params.content
+        elif params.line_edits is not None:
+            # Line-based edit mode
+            try:
+                new_content = self._apply_line_edits(original_content, params.line_edits)
+            except ValueError as e:
+                return ToolResult.error(f"Line edit failed: {e}")
+        else:
+            return ToolResult.error("Must provide either 'content' or 'line_edits'")
 
         # Generate diff preview
         diff_output = ""
         if show_diff:
-            diff_output = self._generate_diff(path, original_content, content)
+            diff_output = self._generate_diff(path, original_content, new_content)
 
-        passed, issues_text = await self._validate(path, content)
+        passed, issues_text = await self._validate(path, new_content)
 
-        # 3. Handle specific modes
+        # Handle specific modes
         if mode == "verify_only":
             status = "✅ Validation Passed" if passed else "❌ Validation Failed"
             result_text = f"{status}{issues_text}"
@@ -102,14 +140,14 @@ class SafeEditTool(BaseTool):
                 result_text = f"**Diff Preview:**\n```diff\n{diff_output}\n```\n\n{result_text}"
             return ToolResult.text(result_text)
 
-        # 4. Write Content (Interactive or Strict+Passed)
+        # Write Content (Interactive or Strict+Passed)
         try:
             # Ensure directory exists
             file_path = Path(path)
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Write file
-            file_path.write_text(content, encoding="utf-8")
+            file_path.write_text(new_content, encoding="utf-8")
 
             status = "✅ File saved successfully."
             if not passed:
@@ -125,6 +163,65 @@ class SafeEditTool(BaseTool):
 
         except OSError as e:
             return ToolResult.text(f"❌ Failed to write file: {e}")
+
+    def _apply_line_edits(self, content: str, edits: list[LineEdit]) -> str:
+        """Apply line-based edits to content.
+
+        Args:
+            content: Original file content
+            edits: List of line edits to apply
+
+        Returns:
+            Modified content
+
+        Raises:
+            ValueError: If edits are invalid (out of bounds, overlapping)
+        """
+        lines = content.splitlines(keepends=True)
+        total_lines = len(lines)
+
+        # Validate all edits first
+        for edit in edits:
+            if edit.start_line > total_lines:
+                raise ValueError(
+                    f"Line {edit.start_line} is out of bounds (file has {total_lines} lines)"
+                )
+            if edit.end_line > total_lines:
+                raise ValueError(
+                    f"Line {edit.end_line} is out of bounds (file has {total_lines} lines)"
+                )
+
+        # Check for overlapping edits
+        sorted_edits = sorted(edits, key=lambda e: e.start_line)
+        for i in range(len(sorted_edits) - 1):
+            current = sorted_edits[i]
+            next_edit = sorted_edits[i + 1]
+            if current.end_line >= next_edit.start_line:
+                raise ValueError(
+                    f"Overlapping edits detected: lines {current.start_line}-{current.end_line} "
+                    f"and {next_edit.start_line}-{next_edit.end_line}"
+                )
+
+        # Apply edits in reverse order to maintain line numbers
+        for edit in sorted(edits, key=lambda e: e.start_line, reverse=True):
+            # Convert to 0-based indexing
+            start_idx = edit.start_line - 1
+            end_idx = edit.end_line  # end_line is inclusive, so this is correct for slicing
+
+            # Prepare new content with proper line ending
+            new_lines = edit.new_content.splitlines(keepends=True)
+
+            # Ensure last line has proper ending if original did
+            if new_lines and lines and not new_lines[-1].endswith(('\n', '\r\n')):
+                # Check if we're replacing lines that had endings
+                if end_idx <= len(lines) and any(lines[start_idx:end_idx]):
+                    # Add newline if original lines had them
+                    new_lines[-1] = new_lines[-1] + '\n'
+
+            # Replace the range
+            lines[start_idx:end_idx] = new_lines
+
+        return ''.join(lines)
 
     def _generate_diff(self, path: str, original_content: str, new_content: str) -> str:
         """Generate unified diff between original and new content."""
