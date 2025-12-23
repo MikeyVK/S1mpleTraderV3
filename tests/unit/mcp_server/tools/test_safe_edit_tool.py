@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.tools.safe_edit_tool import SafeEditInput, SafeEditTool, LineEdit, SearchReplace
+from mcp_server.tools.safe_edit_tool import (
+    SafeEditInput, SafeEditTool, LineEdit, SearchReplace, InsertLine
+)
 
 
 @pytest.fixture
@@ -289,7 +291,7 @@ async def test_line_edit_on_new_file_rejected(safe_edit_tool):
         assert "non-existent" in text.lower()
 
 
-# --- Search/Replace Tests (RED PHASE) ---
+# --- Search/Replace Tests ---
 
 @pytest.mark.asyncio
 async def test_search_replace_literal_single_occurrence(safe_edit_tool, search_replace_file):
@@ -384,3 +386,134 @@ async def test_search_replace_invalid_regex(safe_edit_tool, search_replace_file)
     assert result.is_error
     text = get_text_content(result)
     assert "regex" in text.lower() or "pattern" in text.lower()
+
+
+# --- Insert Lines Tests (RED PHASE) ---
+
+@pytest.mark.asyncio
+async def test_insert_line_at_beginning(safe_edit_tool, multiline_file):
+    """Test inserting a line at the beginning of file."""
+    params = SafeEditInput(
+        path=str(multiline_file),
+        insert_lines=[InsertLine(at_line=1, content="# Header comment\n")],
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+    text = get_text_content(result)
+
+    assert "✅ File saved successfully" in text
+
+    # Verify file content
+    content = multiline_file.read_text()
+    lines = content.splitlines()
+    assert lines[0] == "# Header comment"
+    assert lines[1] == "Line 1"
+    assert lines[2] == "Line 2"
+
+
+@pytest.mark.asyncio
+async def test_insert_line_in_middle(safe_edit_tool, multiline_file):
+    """Test inserting a line in the middle of file."""
+    params = SafeEditInput(
+        path=str(multiline_file),
+        insert_lines=[InsertLine(at_line=3, content="# Inserted line\n")],
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+    text = get_text_content(result)
+
+    assert "✅ File saved successfully" in text
+
+    # Verify file content - inserted before line 3
+    content = multiline_file.read_text()
+    lines = content.splitlines()
+    assert lines[0] == "Line 1"
+    assert lines[1] == "Line 2"
+    assert lines[2] == "# Inserted line"
+    assert lines[3] == "Line 3"
+    assert lines[4] == "Line 4"
+
+
+@pytest.mark.asyncio
+async def test_insert_line_at_end(safe_edit_tool, multiline_file):
+    """Test inserting a line at the end of file."""
+    params = SafeEditInput(
+        path=str(multiline_file),
+        insert_lines=[InsertLine(at_line=6, content="# Footer comment\n")],
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+    text = get_text_content(result)
+
+    assert "✅ File saved successfully" in text
+
+    # Verify file content
+    content = multiline_file.read_text()
+    lines = content.splitlines()
+    assert lines[5] == "# Footer comment"
+
+
+@pytest.mark.asyncio
+async def test_insert_multiple_lines(safe_edit_tool, multiline_file):
+    """Test inserting multiple lines at different positions."""
+    params = SafeEditInput(
+        path=str(multiline_file),
+        insert_lines=[
+            InsertLine(at_line=2, content="# Comment after Line 1\n"),
+            InsertLine(at_line=5, content="# Comment before Line 4\n"),
+        ],
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+    text = get_text_content(result)
+
+    assert "✅ File saved successfully" in text
+
+    # Verify file content
+    content = multiline_file.read_text()
+    lines = content.splitlines()
+    assert lines[0] == "Line 1"
+    assert lines[1] == "# Comment after Line 1"
+    assert lines[2] == "Line 2"
+    assert lines[3] == "Line 3"
+    assert lines[4] == "# Comment before Line 4"
+    assert lines[5] == "Line 4"
+
+
+@pytest.mark.asyncio
+async def test_insert_line_out_of_bounds(safe_edit_tool, multiline_file):
+    """Test that out-of-bounds insert is rejected."""
+    params = SafeEditInput(
+        path=str(multiline_file),
+        insert_lines=[InsertLine(at_line=100, content="Too far\n")],
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+
+    assert result.is_error
+    text = get_text_content(result)
+    assert "out of bounds" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_insert_line_on_new_file_rejected(safe_edit_tool):
+    """Test that inserts on non-existent files are rejected."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        new_file = Path(tmpdir) / "nonexistent.txt"
+
+        params = SafeEditInput(
+            path=str(new_file),
+            insert_lines=[InsertLine(at_line=1, content="New line\n")],
+            mode="strict"
+        )
+
+        result = await safe_edit_tool.execute(params)
+
+        assert result.is_error
+        text = get_text_content(result)
+        assert "non-existent" in text.lower()
