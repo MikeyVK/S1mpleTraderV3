@@ -124,7 +124,7 @@ async def test_diff_preview_empty_when_no_changes(safe_edit_tool, temp_file):
     text = get_text_content(result)
 
     # Should mention success but no diff shown (empty diff)
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
     # Diff section should not appear if no changes
     assert "**Diff Preview:**" not in text or "```diff\n\n```" in text
 
@@ -174,7 +174,7 @@ async def test_diff_preview_in_verify_only_mode(safe_edit_tool, temp_file):
     assert "+New content" in text
 
     # Should indicate validation passed
-    assert "âœ… Validation Passed" in text
+    assert "Validation Passed" in text
 
     # File should NOT be modified
     assert temp_file.read_text() == "Hello World\n"
@@ -194,7 +194,7 @@ async def test_line_edit_single_line(safe_edit_tool, multiline_file):
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = multiline_file.read_text()
@@ -221,7 +221,7 @@ async def test_line_edit_multiple_non_overlapping(safe_edit_tool, multiline_file
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = multiline_file.read_text()
@@ -245,7 +245,7 @@ async def test_line_edit_range(safe_edit_tool, multiline_file):
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = multiline_file.read_text()
@@ -322,7 +322,7 @@ async def test_search_replace_literal(safe_edit_tool, search_replace_file):
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = search_replace_file.read_text()
@@ -343,7 +343,7 @@ async def test_search_replace_with_count_limit(safe_edit_tool, search_replace_fi
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify only one replacement
     content = search_replace_file.read_text()
@@ -367,7 +367,7 @@ async def test_search_replace_regex(safe_edit_tool, search_replace_file):
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = search_replace_file.read_text()
@@ -421,7 +421,7 @@ async def test_insert_line_at_beginning(safe_edit_tool, multiline_file):
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = multiline_file.read_text()
@@ -443,7 +443,7 @@ async def test_insert_line_in_middle(safe_edit_tool, multiline_file):
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = multiline_file.read_text()
@@ -466,7 +466,7 @@ async def test_insert_line_at_end(safe_edit_tool, multiline_file):
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = multiline_file.read_text()
@@ -489,7 +489,7 @@ async def test_insert_multiple_lines(safe_edit_tool, multiline_file):
     result = await safe_edit_tool.execute(params)
     text = get_text_content(result)
 
-    assert "âœ… File saved successfully" in text
+    assert "File saved successfully" in text
 
     # Verify file content
     content = multiline_file.read_text()
