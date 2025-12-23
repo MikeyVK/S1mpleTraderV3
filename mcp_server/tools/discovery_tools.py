@@ -1,7 +1,7 @@
 """Discovery tools for AI self-orientation."""
 # pyright: reportIncompatibleMethodOverride=false
 import re
-from typing import Any, cast
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -119,21 +119,16 @@ class GetWorkContextTool(BaseTool):
 
                 # Active Issue
                 if issue_number:
-                    issue_raw = gh_manager.get_issue(issue_number)
-                    if issue_raw:
-                        # Cast to dict because MyPy might confuse it with Issue object or dict
-                        # In previous refactor we confirmed GitHubManager returns dicts
-                        issue = cast(dict[str, Any], issue_raw)
+                    issue = gh_manager.get_issue(issue_number)
+                    if issue:
+                        # GitHubManager.get_issue() returns PyGithub Issue object
                         context["active_issue"] = {
-                            "number": issue.get("number"),
-                            "title": issue.get("title"),
-                            "body": issue.get("body", "")[:500],
-                            "labels": [
-                                label.get("name")
-                                for label in issue.get("labels", [])
-                            ],
+                            "number": issue.number,
+                            "title": issue.title,
+                            "body": (issue.body or "")[:500],
+                            "labels": [label.name for label in issue.labels],
                             "acceptance_criteria": self._extract_checklist(
-                                issue.get("body", "")
+                                issue.body or ""
                             )
                         }
 

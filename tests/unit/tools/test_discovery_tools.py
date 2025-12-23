@@ -263,12 +263,15 @@ class TestGetWorkContextTool:
 
                 with patch("mcp_server.tools.discovery_tools.GitHubManager") as mock_gh_cls:
                     mock_gh = MagicMock()
-                    mock_gh.get_issue.return_value = {
-                        "number": 42,
-                        "title": "Implement Feature",
-                        "body": "Description.\n\n- [ ] Task 1\n- [x] Task 2",
-                        "labels": [{"name": "enhancement"}]
-                    }
+                    # get_issue returns Issue object (not dict)
+                    mock_issue = MagicMock()
+                    mock_issue.number = 42
+                    mock_issue.title = "Implement Feature"
+                    mock_issue.body = "Description.\n\n- [ ] Task 1\n- [x] Task 2"
+                    mock_label = MagicMock()
+                    mock_label.name = "enhancement"
+                    mock_issue.labels = [mock_label]
+                    mock_gh.get_issue.return_value = mock_issue
                     mock_gh.list_issues.return_value = [
                         MagicMock(number=10, title="Closed 1")
                     ]
