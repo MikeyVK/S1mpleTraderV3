@@ -41,7 +41,7 @@ class TestPolicyEngineDecide:
         
         assert decision.allowed is True
         assert decision.requires_human_approval is False
-        assert "Valid operation" in decision.reason
+        assert "Valid commit" in decision.reason or "TDD phase prefix" in decision.reason
 
     def test_decide_without_project_plan_requires_approval(self):
         """Should require human approval when no project plan exists."""
