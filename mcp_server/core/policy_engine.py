@@ -33,12 +33,14 @@ class DecisionContext:
 @dataclass
 class PolicyDecision:
     """Result of a policy decision."""
+
     allowed: bool
     requires_human_approval: bool
     reason: str
     escalation_message: str | None = None
 
 
+# pylint: disable=too-few-public-methods
 class PolicyEngine:
     """Core policy enforcement engine with strict validation.
 
