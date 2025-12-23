@@ -33,6 +33,19 @@ class LineEdit(BaseModel):
         return self
 
 
+class InsertLine(BaseModel):
+    """Represents a line insert operation."""
+    at_line: int = Field(..., description="Insert before this line (1-based). Use file_lines+1 to append.")
+    content: str = Field(..., description="Content to insert")
+
+    @model_validator(mode='after')
+    def validate_at_line(self) -> "InsertLine":
+        """Validate that at_line is valid."""
+        if self.at_line < 1:
+            raise ValueError("at_line must be >= 1")
+        return self
+
+
 class SearchReplace(BaseModel):
     """Represents a search/replace operation."""
     search: str = Field(..., description="Pattern to search for")
@@ -49,6 +62,10 @@ class SafeEditInput(BaseModel):
     line_edits: list[LineEdit] | None = Field(
         None,
         description="List of line-based edits (chirurgical edits)"
+    )
+    insert_lines: list[InsertLine] | None = Field(
+        None,
+        description="List of line insert operations"
     )
     search_replace: SearchReplace | None = Field(
         None,
@@ -73,7 +90,7 @@ class SafeEditTool(BaseTool):
         "Write content to a file with automatic validation. "
         "Supports 'strict' mode (rejects on error) or 'interactive' (warns). "
         "Shows diff preview by default. "
-        "Supports full content rewrite, chirurgical line-based edits, or search/replace."
+        "Supports full content rewrite, chirurgical line-based edits, line inserts, or search/replace."
     )
     args_model = SafeEditInput
 
@@ -113,6 +130,11 @@ class SafeEditTool(BaseTool):
                     "Cannot apply line edits to non-existent file. "
                     "Use content mode to create the file first."
                 )
+            if params.insert_lines:
+                return ToolResult.error(
+                    "Cannot insert lines into non-existent file. "
+                    "Use content mode to create the file first."
+                )
             if params.search_replace:
                 return ToolResult.error(
                     "Cannot apply search/replace to non-existent file. "
@@ -131,6 +153,12 @@ class SafeEditTool(BaseTool):
                 new_content = self._apply_line_edits(original_content, params.line_edits)
             except ValueError as e:
                 return ToolResult.error(f"Line edit failed: {e}")
+        elif params.insert_lines is not None:
+            # Insert lines mode
+            try:
+                new_content = self._apply_insert_lines(original_content, params.insert_lines)
+            except ValueError as e:
+                return ToolResult.error(f"Insert lines failed: {e}")
         elif params.search_replace is not None:
             # Search/replace mode
             try:
@@ -145,7 +173,9 @@ class SafeEditTool(BaseTool):
             except (ValueError, re.error) as e:
                 return ToolResult.error(f"Search/replace failed: {e}")
         else:
-            return ToolResult.error("Must provide 'content', 'line_edits', or 'search_replace'")
+            return ToolResult.error(
+                "Must provide 'content', 'line_edits', 'insert_lines', or 'search_replace'"
+            )
 
         # Generate diff preview
         diff_output = ""
@@ -252,6 +282,51 @@ class SafeEditTool(BaseTool):
 
             # Replace the range
             lines[start_idx:end_idx] = new_lines
+
+        return ''.join(lines)
+
+    def _apply_insert_lines(self, content: str, inserts: list[InsertLine]) -> str:
+        """Apply line insert operations to content.
+
+        Args:
+            content: Original file content
+            inserts: List of line inserts to apply
+
+        Returns:
+            Modified content
+
+        Raises:
+            ValueError: If inserts are invalid (out of bounds)
+        """
+        lines = content.splitlines(keepends=True)
+        total_lines = len(lines)
+
+        # Validate all inserts first
+        for insert in inserts:
+            # at_line can be 1 to total_lines+1 (append at end)
+            if insert.at_line < 1 or insert.at_line > total_lines + 1:
+                raise ValueError(
+                    f"Insert at_line {insert.at_line} is out of bounds "
+                    f"(valid range: 1-{total_lines + 1})"
+                )
+
+        # Sort inserts by at_line in reverse order to maintain line numbers
+        sorted_inserts = sorted(inserts, key=lambda i: i.at_line, reverse=True)
+
+        # Apply inserts in reverse order
+        for insert in sorted_inserts:
+            # Convert to 0-based indexing
+            insert_idx = insert.at_line - 1
+
+            # Prepare content with proper line ending
+            insert_lines = insert.content.splitlines(keepends=True)
+
+            # Ensure last line has newline
+            if insert_lines and not insert_lines[-1].endswith(('\n', '\r\n')):
+                insert_lines[-1] = insert_lines[-1] + '\n'
+
+            # Insert at position
+            lines[insert_idx:insert_idx] = insert_lines
 
         return ''.join(lines)
 
