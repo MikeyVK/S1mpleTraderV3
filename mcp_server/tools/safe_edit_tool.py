@@ -1,5 +1,6 @@
 # mcp_server/tools/safe_edit_tool.py
 """Safe file editing tool with validation."""
+from difflib import unified_diff
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,10 @@ class SafeEditInput(BaseModel):
         description="Validation mode. 'strict' fails on error, 'interactive' writes but warns.",
         pattern="^(strict|interactive|verify_only)$"
     )
+    show_diff: bool = Field(
+        default=True,
+        description="Show unified diff preview comparing original and new content"
+    )
 
 
 class SafeEditTool(BaseTool):
@@ -30,7 +35,8 @@ class SafeEditTool(BaseTool):
     name = "safe_edit_file"
     description = (
         "Write content to a file with automatic validation. "
-        "Supports 'strict' mode (rejects on error) or 'interactive' (warns)."
+        "Supports 'strict' mode (rejects on error) or 'interactive' (warns). "
+        "Shows diff preview by default."
     )
     args_model = SafeEditInput
 
@@ -50,27 +56,51 @@ class SafeEditTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        """Return the input schema for the tool."""
+        return SafeEditInput.model_json_schema()
 
     async def execute(self, params: SafeEditInput) -> ToolResult:
         """Execute the safe edit."""
         path = params.path
         content = params.content
         mode = params.mode
+        show_diff = params.show_diff
+
+        # Read original content for diff
+        original_content = ""
+        try:
+            original_content = Path(path).read_text(encoding="utf-8")
+        except FileNotFoundError:
+            # New file - empty original
+            pass
+        except (UnicodeDecodeError, PermissionError):
+            # Binary file or read error - skip diff
+            pass
+
+        # Generate diff preview
+        diff_output = ""
+        if show_diff:
+            diff_output = self._generate_diff(path, original_content, content)
 
         passed, issues_text = await self._validate(path, content)
 
         # 3. Handle specific modes
         if mode == "verify_only":
             status = "✅ Validation Passed" if passed else "❌ Validation Failed"
-            return ToolResult.text(f"{status}{issues_text}")
+            result_text = f"{status}{issues_text}"
+            if diff_output:
+                result_text = f"**Diff Preview:**\n```diff\n{diff_output}\n```\n\n{result_text}"
+            return ToolResult.text(result_text)
 
         if mode == "strict" and not passed:
             # Reject edit
-            return ToolResult.text(
+            result_text = (
                 f"❌ Edit rejected due to validation errors (Mode: strict):{issues_text}\n"
                 "Use mode='interactive' to force save if necessary, or fix the content."
             )
+            if diff_output:
+                result_text = f"**Diff Preview:**\n```diff\n{diff_output}\n```\n\n{result_text}"
+            return ToolResult.text(result_text)
 
         # 4. Write Content (Interactive or Strict+Passed)
         try:
@@ -87,10 +117,35 @@ class SafeEditTool(BaseTool):
             elif issues_text:
                 status += f"\nℹ️ Saved with non-blocking issues:{issues_text}"
 
+            # Add diff to output
+            if diff_output:
+                status = f"**Diff Preview:**\n```diff\n{diff_output}\n```\n\n{status}"
+
             return ToolResult.text(status)
 
         except OSError as e:
             return ToolResult.text(f"❌ Failed to write file: {e}")
+
+    def _generate_diff(self, path: str, original_content: str, new_content: str) -> str:
+        """Generate unified diff between original and new content."""
+        # Quick check: no changes
+        if original_content == new_content:
+            return ""
+
+        # Generate diff
+        filename = Path(path).name
+        original_lines = original_content.splitlines(keepends=True)
+        new_lines = new_content.splitlines(keepends=True)
+
+        diff_lines = unified_diff(
+            original_lines,
+            new_lines,
+            fromfile=f"a/{filename}",
+            tofile=f"b/{filename}",
+            lineterm=""
+        )
+
+        return "".join(diff_lines)
 
     async def _validate(self, path: str, content: str) -> tuple[bool, str]:
         """Run validators on content."""
