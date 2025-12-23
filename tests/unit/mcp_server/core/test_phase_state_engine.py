@@ -3,11 +3,29 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
+
 from mcp_server.core.phase_state_engine import (
     PhaseStateEngine,
     PhaseTransition,
     TransitionResult,
 )
+
+
+@pytest.fixture(autouse=True)
+def cleanup_state_file():
+    """Clean up state file before and after each test."""
+    state_file = Path(".") / ".st3" / "state.json"
+
+    # Clean before test
+    if state_file.exists():
+        state_file.unlink()
+
+    yield
+
+    # Clean after test
+    if state_file.exists():
+        state_file.unlink()
 
 
 @dataclass
