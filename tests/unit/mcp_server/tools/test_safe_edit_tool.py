@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.tools.safe_edit_tool import SafeEditInput, SafeEditTool, LineEdit
+from mcp_server.tools.safe_edit_tool import SafeEditInput, SafeEditTool, LineEdit, SearchReplace
 
 
 @pytest.fixture
@@ -35,6 +35,20 @@ def multiline_file():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
         temp_path = Path(f.name)
         f.write("Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n")
+
+    yield temp_path
+
+    # Cleanup
+    if temp_path.exists():
+        temp_path.unlink()
+
+
+@pytest.fixture
+def search_replace_file():
+    """Create temporary file for search/replace testing."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("Hello world\nHello Python\nGoodbye world\n")
 
     yield temp_path
 
@@ -273,3 +287,100 @@ async def test_line_edit_on_new_file_rejected(safe_edit_tool):
         assert result.is_error
         text = get_text_content(result)
         assert "non-existent" in text.lower()
+
+
+# --- Search/Replace Tests (RED PHASE) ---
+
+@pytest.mark.asyncio
+async def test_search_replace_literal_single_occurrence(safe_edit_tool, search_replace_file):
+    """Test literal search/replace with single occurrence."""
+    params = SafeEditInput(
+        path=str(search_replace_file),
+        search_replace=SearchReplace(search="world", replace="universe"),
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+    text = get_text_content(result)
+
+    assert "✅ File saved successfully" in text
+
+    # Verify file content - both occurrences should be replaced
+    content = search_replace_file.read_text()
+    assert "Hello universe" in content
+    assert "Goodbye universe" in content
+    assert "world" not in content
+
+
+@pytest.mark.asyncio
+async def test_search_replace_with_count_limit(safe_edit_tool, search_replace_file):
+    """Test search/replace with count limit."""
+    params = SafeEditInput(
+        path=str(search_replace_file),
+        search_replace=SearchReplace(search="Hello", replace="Hi", count=1),
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+    text = get_text_content(result)
+
+    assert "✅ File saved successfully" in text
+
+    # Verify only first occurrence was replaced
+    content = search_replace_file.read_text()
+    lines = content.splitlines()
+    assert lines[0] == "Hi world"
+    assert lines[1] == "Hello Python"  # Second "Hello" unchanged
+
+
+@pytest.mark.asyncio
+async def test_search_replace_regex_mode(safe_edit_tool, search_replace_file):
+    """Test regex-based search/replace."""
+    params = SafeEditInput(
+        path=str(search_replace_file),
+        search_replace=SearchReplace(search=r"Hello \w+", replace="Greetings", regex=True),
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+    text = get_text_content(result)
+
+    assert "✅ File saved successfully" in text
+
+    # Verify regex replacement
+    content = search_replace_file.read_text()
+    lines = content.splitlines()
+    assert lines[0] == "Greetings"
+    assert lines[1] == "Greetings"
+
+
+@pytest.mark.asyncio
+async def test_search_replace_pattern_not_found_strict(safe_edit_tool, search_replace_file):
+    """Test that pattern not found in strict mode returns error."""
+    params = SafeEditInput(
+        path=str(search_replace_file),
+        search_replace=SearchReplace(search="nonexistent", replace="replacement"),
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+
+    assert result.is_error
+    text = get_text_content(result)
+    assert "not found" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_invalid_regex(safe_edit_tool, search_replace_file):
+    """Test that invalid regex pattern is rejected."""
+    params = SafeEditInput(
+        path=str(search_replace_file),
+        search_replace=SearchReplace(search="[invalid(", replace="test", regex=True),
+        mode="strict"
+    )
+
+    result = await safe_edit_tool.execute(params)
+
+    assert result.is_error
+    text = get_text_content(result)
+    assert "regex" in text.lower() or "pattern" in text.lower()
