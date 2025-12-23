@@ -35,7 +35,10 @@ class LineEdit(BaseModel):
 
 class InsertLine(BaseModel):
     """Represents a line insert operation."""
-    at_line: int = Field(..., description="Insert before this line (1-based). Use file_lines+1 to append.")
+    at_line: int = Field(
+        ...,
+        description="Insert before this line (1-based). Use file_lines+1 to append."
+    )
     content: str = Field(..., description="Content to insert")
 
     @model_validator(mode='after')
@@ -98,22 +101,22 @@ class SafeEditInput(BaseModel):
             self.insert_lines,
             self.search_replace
         ]
-        
+
         # Count non-None modes
         specified_modes = sum(1 for mode in modes if mode is not None)
-        
-        if specified_modes == 0:
+
+        if not specified_modes:
             raise ValueError(
                 'At least one edit mode must be specified: '
                 'content, line_edits, insert_lines, or search_replace'
             )
-        
+
         if specified_modes > 1:
             raise ValueError(
                 'Only one edit mode can be specified at a time. '
                 'Choose one of: content, line_edits, insert_lines, or search_replace'
             )
-        
+
         return self
 class SafeEditTool(BaseTool):
     """Tool for safely editing files with validation."""
@@ -123,7 +126,8 @@ class SafeEditTool(BaseTool):
         "Write content to a file with automatic validation. "
         "Supports 'strict' mode (rejects on error) or 'interactive' (warns). "
         "Shows diff preview by default. "
-        "Supports full content rewrite, chirurgical line-based edits, line inserts, or search/replace."
+        "Supports full content rewrite, chirurgical line-based edits, "
+        "line inserts, or search/replace."
     )
     args_model = SafeEditInput
 
@@ -199,7 +203,7 @@ class SafeEditTool(BaseTool):
                     original_content, params.search_replace
                 )
                 # In strict mode, error if pattern not found
-                if mode == "strict" and replacement_count == 0:
+                if mode == "strict" and not replacement_count:
                     return ToolResult.error(
                         f"Pattern '{params.search_replace.search}' not found in file"
                     )
