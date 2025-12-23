@@ -6,8 +6,6 @@ Phase 0.5: Project Type Selection & Phase Planning
 - Project plan stored in .st3/projects.json
 """
 import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
