@@ -1,5 +1,6 @@
 # mcp_server/tools/safe_edit_tool.py
 """Safe file editing tool with validation."""
+import re
 from difflib import unified_diff
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,15 @@ class LineEdit(BaseModel):
         return self
 
 
+class SearchReplace(BaseModel):
+    """Represents a search/replace operation."""
+    search: str = Field(..., description="Pattern to search for")
+    replace: str = Field(..., description="Replacement text")
+    regex: bool = Field(default=False, description="Use regex pattern matching")
+    count: int | None = Field(None, description="Maximum number of replacements (None = all)")
+    flags: int = Field(default=0, description="Regex flags (e.g., re.IGNORECASE)")
+
+
 class SafeEditInput(BaseModel):
     """Input for SafeEditTool."""
     path: str = Field(..., description="Absolute path to the file")
@@ -39,6 +49,10 @@ class SafeEditInput(BaseModel):
     line_edits: list[LineEdit] | None = Field(
         None,
         description="List of line-based edits (chirurgical edits)"
+    )
+    search_replace: SearchReplace | None = Field(
+        None,
+        description="Search and replace operation"
     )
     mode: str = Field(
         default="strict",
@@ -59,7 +73,7 @@ class SafeEditTool(BaseTool):
         "Write content to a file with automatic validation. "
         "Supports 'strict' mode (rejects on error) or 'interactive' (warns). "
         "Shows diff preview by default. "
-        "Supports full content rewrite or chirurgical line-based edits."
+        "Supports full content rewrite, chirurgical line-based edits, or search/replace."
     )
     args_model = SafeEditInput
 
@@ -99,6 +113,11 @@ class SafeEditTool(BaseTool):
                     "Cannot apply line edits to non-existent file. "
                     "Use content mode to create the file first."
                 )
+            if params.search_replace:
+                return ToolResult.error(
+                    "Cannot apply search/replace to non-existent file. "
+                    "Use content mode to create the file first."
+                )
         except (UnicodeDecodeError, PermissionError) as e:
             return ToolResult.error(f"Failed to read file: {e}")
 
@@ -112,8 +131,21 @@ class SafeEditTool(BaseTool):
                 new_content = self._apply_line_edits(original_content, params.line_edits)
             except ValueError as e:
                 return ToolResult.error(f"Line edit failed: {e}")
+        elif params.search_replace is not None:
+            # Search/replace mode
+            try:
+                new_content, replacement_count = self._apply_search_replace(
+                    original_content, params.search_replace
+                )
+                # In strict mode, error if pattern not found
+                if mode == "strict" and replacement_count == 0:
+                    return ToolResult.error(
+                        f"Pattern '{params.search_replace.search}' not found in file"
+                    )
+            except (ValueError, re.error) as e:
+                return ToolResult.error(f"Search/replace failed: {e}")
         else:
-            return ToolResult.error("Must provide either 'content' or 'line_edits'")
+            return ToolResult.error("Must provide 'content', 'line_edits', or 'search_replace'")
 
         # Generate diff preview
         diff_output = ""
@@ -222,6 +254,51 @@ class SafeEditTool(BaseTool):
             lines[start_idx:end_idx] = new_lines
 
         return ''.join(lines)
+
+    def _apply_search_replace(
+        self, content: str, search_replace: SearchReplace
+    ) -> tuple[str, int]:
+        """Apply search and replace operation.
+
+        Args:
+            content: Original file content
+            search_replace: Search/replace parameters
+
+        Returns:
+            Tuple of (modified_content, replacement_count)
+
+        Raises:
+            ValueError: If regex is invalid
+            re.error: If regex pattern is malformed
+        """
+        if search_replace.regex:
+            # Regex mode
+            try:
+                pattern = re.compile(search_replace.search, search_replace.flags)
+                if search_replace.count is not None:
+                    new_content, replacement_count = pattern.subn(
+                        search_replace.replace, content, count=search_replace.count
+                    )
+                else:
+                    new_content, replacement_count = pattern.subn(
+                        search_replace.replace, content
+                    )
+                return new_content, replacement_count
+            except re.error as e:
+                raise ValueError(f"Invalid regex pattern: {e}") from e
+        else:
+            # Literal mode
+            if search_replace.count is not None:
+                # Python's str.replace() uses count parameter differently
+                # We need to count manually for accurate reporting
+                parts = content.split(search_replace.search, search_replace.count)
+                new_content = search_replace.replace.join(parts)
+                replacement_count = len(parts) - 1
+            else:
+                replacement_count = content.count(search_replace.search)
+                new_content = content.replace(search_replace.search, search_replace.replace)
+
+            return new_content, replacement_count
 
     def _generate_diff(self, path: str, original_content: str, new_content: str) -> str:
         """Generate unified diff between original and new content."""
