@@ -14,6 +14,7 @@ Uses GitHubAdapter for all GitHub operations (dependency injection).
 
 from difflib import SequenceMatcher
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,9 @@ from mcp_server.state.project import (
     ProjectSummary,
     SubIssueMetadata,
 )
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 class ProjectManager:  # pylint: disable=too-few-public-methods
@@ -68,24 +72,41 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             ValueError: If dependency graph contains cycles
             Exception: If GitHub API calls fail (propagates from adapter)
         """
+        logger.info(
+            "Initializing project: %s with %d phases",
+            spec.project_title,
+            len(spec.phases)
+        )
+
         # Step 1: Validate dependency graph
+        logger.debug("Step 1: Validating dependency graph")
         self._validate_graph(spec.phases)
+        logger.info("Dependency graph validated: no cycles detected")
 
         # Step 2: Create GitHub milestone
+        logger.debug("Step 2: Creating GitHub milestone")
         milestone_id = self._create_milestone(spec.project_title)
+        logger.info("Milestone created: #%d", milestone_id)
 
         # Step 3: Create or use existing parent issue
+        logger.debug("Step 3: Creating or using existing parent issue")
         parent_number, parent_url = self._create_or_get_parent_issue(
             spec, milestone_id
         )
+        logger.info("Parent issue: #%d (%s)", parent_number, parent_url)
 
         # Step 4: Create sub-issues for each phase
+        logger.debug("Step 4: Creating %d sub-issues", len(spec.phases))
         sub_issues = self._create_sub_issues(spec.phases, milestone_id)
+        logger.info("Created %d sub-issues", len(sub_issues))
 
         # Step 5: Update parent issue with sub-issue links
+        logger.debug("Step 5: Updating parent issue with sub-issue links")
         self._update_parent_with_links(parent_number, spec, sub_issues)
+        logger.info("Parent issue #%d updated with links", parent_number)
 
         # Step 6: Persist ProjectMetadata
+        logger.debug("Step 6: Persisting project metadata")
         project_id = self._generate_project_id(spec.project_title)
         project_metadata = ProjectMetadata(
             project_id=project_id,
@@ -94,9 +115,13 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             phases=sub_issues,
         )
         self._persist_project_metadata(project_metadata)
+        logger.info("Project metadata persisted: %s", project_id)
 
         # Step 7: Return ProjectSummary
-        return self._build_summary(project_metadata, spec.phases)
+        logger.debug("Step 7: Building project summary")
+        summary = self._build_summary(project_metadata, spec.phases)
+        logger.info("Project initialization complete: %s", project_id)
+        return summary
 
     def _validate_graph(self, phases: list[PhaseSpec]) -> None:
         """Validate dependency graph is acyclic.
@@ -118,11 +143,13 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
         Returns:
             Milestone ID
         """
+        logger.debug("Creating milestone: %s", project_title)
         milestone_response = self.github_adapter.create_milestone(
             title=project_title,
             description=f"Milestone for {project_title}",
         )
         milestone_id: int = milestone_response["number"]
+        logger.info("Milestone created: #%d (%s)", milestone_id, project_title)
         return milestone_id
 
     def _calculate_title_similarity(self, title1: str, title2: str) -> float:
@@ -146,6 +173,7 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
         Returns:
             List of matching issues with similarity scores, sorted by similarity
         """
+        logger.debug("Searching for similar parent issues: %s", project_title)
         # Extract keywords for search (first 3 words)
         keywords = project_title.replace(":", "").split()[:3]
         search_query = f'is:issue is:open {" ".join(keywords)} in:title'
@@ -168,7 +196,13 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             })
 
         # Sort by similarity (highest first)
-        return sorted(matches, key=lambda x: x["similarity"], reverse=True)
+        matches.sort(key=lambda x: x["similarity"], reverse=True)
+        top_sim = matches[0]["similarity"] if matches else 0.0
+        logger.info(
+            "Found %d similar issues (top similarity: %.2f)",
+            len(matches), top_sim
+        )
+        return matches
 
     def _create_or_get_parent_issue(
         self, spec: ProjectSpec, milestone_id: int
@@ -189,10 +223,19 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
         # Case 1: Explicit parent issue number provided
         if spec.parent_issue_number is not None:
             parent_number = spec.parent_issue_number
+            logger.debug("Using existing parent issue: #%d", parent_number)
             try:
                 parent_issue = self.github_adapter.get_issue(parent_number)
+                logger.info(
+                    "Found existing parent issue: #%d (%s)",
+                    parent_number, parent_issue.title
+                )
                 return parent_number, parent_issue.html_url
             except Exception as e:
+                logger.error(
+                    "Parent issue #%d not found or inaccessible: %s",
+                    parent_number, e
+                )
                 raise ValueError(
                     f"Parent issue #{parent_number} not found or inaccessible. "
                     f"Error: {e}"
@@ -205,6 +248,10 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             # High confidence match (> 80% similarity)
             if similar and similar[0]["similarity"] > 0.8:
                 match = similar[0]
+                logger.warning(
+                    "High similarity duplicate detected: #%d (%.0f%%)",
+                    match['number'], match['similarity'] * 100
+                )
                 raise ValueError(
                     f"Found likely duplicate issue #{match['number']}: "
                     f"{match['title']}\n"
@@ -218,6 +265,10 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
 
             # Medium confidence matches (> 60% similarity)
             if similar and similar[0]["similarity"] > 0.6:
+                logger.warning(
+                    "Found %d potentially related issues (top: %.0f%%)",
+                    len(similar[:3]), similar[0]['similarity'] * 100
+                )
                 options = "\n".join([
                     f"  #{m['number']}: {m['title']} "
                     f"({m['similarity']:.0%} match)"
@@ -233,6 +284,7 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
                 )
 
         # Case 3: No duplicates found or force_create_parent = true
+        logger.debug("Creating new parent issue: %s", spec.project_title)
         parent_response = self.github_adapter.create_issue(
             title=f"[PARENT] {spec.project_title}",
             body=(
@@ -241,7 +293,12 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             ),
             milestone=milestone_id,
         )
-        return parent_response["number"], parent_response["html_url"]
+        parent_number = parent_response["number"]
+        logger.info(
+            "Created new parent issue: #%d (%s)",
+            parent_number, spec.project_title
+        )
+        return parent_number, parent_response["html_url"]
 
     def _create_sub_issues(
         self, phases: list[PhaseSpec], milestone_id: int
@@ -255,21 +312,31 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
         Returns:
             Mapping of phase_id to SubIssueMetadata
         """
+        logger.debug("Creating %d sub-issues", len(phases))
         sub_issues: dict[str, SubIssueMetadata] = {}
         for phase in phases:
+            logger.debug(
+                "Creating sub-issue for phase: %s", phase.phase_id
+            )
             issue_response = self.github_adapter.create_issue(
                 title=f"[{phase.phase_id}] {phase.title}",
                 body=self._build_phase_issue_body(phase),
                 milestone=milestone_id,
                 labels=phase.labels,
             )
+            issue_number = issue_response["number"]
+            logger.debug(
+                "Created sub-issue #%d for phase %s",
+                issue_number, phase.phase_id
+            )
             sub_issues[phase.phase_id] = SubIssueMetadata(
-                issue_number=issue_response["number"],
+                issue_number=issue_number,
                 url=issue_response["html_url"],
                 depends_on=phase.depends_on,
                 blocks=phase.blocks,
                 status="open",
             )
+        logger.info("Created %d sub-issues", len(sub_issues))
         return sub_issues
 
     def _update_parent_with_links(
@@ -285,10 +352,18 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             spec: Project specification
             sub_issues: Created sub-issues
         """
+        logger.debug(
+            "Updating parent issue #%d with sub-issue links",
+            parent_issue_number
+        )
         parent_body = self._build_parent_issue_body(spec, sub_issues)
         self.github_adapter.update_issue(
             issue_number=parent_issue_number,
             body=parent_body,
+        )
+        logger.info(
+            "Parent issue #%d updated with %d sub-issue links",
+            parent_issue_number, len(sub_issues)
         )
 
     def _build_summary(
@@ -346,8 +421,13 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
             )
         return body
 
-    def _build_dependency_graph(self, phases: list[PhaseSpec]) -> dict[str, list[str]]:
-        """Build dependency graph from phases (maps phase_id → list of blocked phase_ids)."""
+    def _build_dependency_graph(
+        self, phases: list[PhaseSpec]
+    ) -> dict[str, list[str]]:
+        """Build dependency graph from phases.
+
+        Maps phase_id → list of blocked phase_ids.
+        """
         graph: dict[str, list[str]] = {}
         for phase in phases:
             graph[phase.phase_id] = phase.blocks.copy()
@@ -358,6 +438,7 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
 
         Loads existing projects, adds new project, writes atomically via .tmp file.
         """
+        logger.debug("Persisting project metadata: %s", metadata.project_id)
         # Load existing projects
         projects_file = self.workspace_root / ".st3" / "projects.json"
         existing_projects = self._load_projects()
@@ -371,6 +452,10 @@ class ProjectManager:  # pylint: disable=too-few-public-methods
         with open(temp_file, "w", encoding="utf-8") as f:
             json.dump({"projects": existing_projects}, f, indent=2)
         temp_file.replace(projects_file)
+        logger.info(
+            "Project metadata persisted: %s (%s)",
+            metadata.project_id, projects_file
+        )
 
     def _load_projects(self) -> dict[str, Any]:
         """Load existing projects from .st3/projects.json.
