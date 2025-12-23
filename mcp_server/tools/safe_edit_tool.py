@@ -82,6 +82,34 @@ class SafeEditInput(BaseModel):
     )
 
 
+
+
+    @model_validator(mode='after')
+    def validate_edit_modes(self) -> "SafeEditInput":
+        """Validate that exactly one edit mode is specified."""
+        modes = [
+            self.content,
+            self.line_edits,
+            self.insert_lines,
+            self.search_replace
+        ]
+        
+        # Count non-None modes
+        specified_modes = sum(1 for mode in modes if mode is not None)
+        
+        if specified_modes == 0:
+            raise ValueError(
+                'At least one edit mode must be specified: '
+                'content, line_edits, insert_lines, or search_replace'
+            )
+        
+        if specified_modes > 1:
+            raise ValueError(
+                'Only one edit mode can be specified at a time. '
+                'Choose one of: content, line_edits, insert_lines, or search_replace'
+            )
+        
+        return self
 class SafeEditTool(BaseTool):
     """Tool for safely editing files with validation."""
 
