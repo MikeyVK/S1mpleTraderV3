@@ -63,6 +63,7 @@ from mcp_server.tools.milestone_tools import (
     ListMilestonesTool,
 )
 from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
+from mcp_server.tools.project_tools import InitializeProjectTool, GetProjectPlanTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
 from mcp_server.tools.test_tools import RunTestsTool
@@ -115,6 +116,9 @@ class MCPServer:
             HealthCheckTool(),
             RunTestsTool(),
             CreateFileTool(),
+            # Project tools (Phase 0.5)
+            InitializeProjectTool(workspace_root=settings.workspace_root),
+            GetProjectPlanTool(workspace_root=settings.workspace_root),
             # Scaffold tools
             ScaffoldComponentTool(),
             ScaffoldDesignDocTool(),
