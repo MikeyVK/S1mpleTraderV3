@@ -119,7 +119,75 @@ class SafeEditInput(BaseModel):
 
         return self
 class SafeEditTool(BaseTool):
-    """Tool for safely editing files with validation."""
+    """Tool for safely editing files with validation and multiple edit modes.
+    
+    Supports four mutually exclusive edit modes:
+    1. **content**: Full file rewrite
+    2. **line_edits**: Replace specific line ranges (surgical edits)
+    3. **insert_lines**: Insert content without replacing existing lines
+    4. **search_replace**: Pattern-based find/replace (literal or regex)
+    
+    All modes support:
+    - Validation modes: strict (reject on error) / interactive (warn) / verify_only (dry-run)
+    - Diff preview: Shows unified diff before applying changes (default: enabled)
+    - Validator integration: PythonValidator, MarkdownValidator, TemplateValidator
+    
+    Examples:
+    
+    **Full content rewrite:**
+    ```python
+    SafeEditInput(
+        path="file.py",
+        content="def hello():\\n    print('Hello')\\n",
+        mode="strict"
+    )
+    ```
+    
+    **Line-based edits (replace specific lines):**
+    ```python
+    SafeEditInput(
+        path="file.py",
+        line_edits=[
+            LineEdit(start_line=10, end_line=12, new_content="new code\\n")
+        ],
+        mode="interactive"
+    )
+    ```
+    
+    **Insert lines (add without replacing):**
+    ```python
+    SafeEditInput(
+        path="file.py",
+        insert_lines=[
+            InsertLine(at_line=1, content="import sys\\n"),
+            InsertLine(at_line=10, content="# Comment\\n")
+        ],
+        mode="interactive"
+    )
+    ```
+    
+    **Search/replace (literal):**
+    ```python
+    SafeEditInput(
+        path="file.py",
+        search_replace=SearchReplace(search="old_name", replace="new_name"),
+        mode="strict"
+    )
+    ```
+    
+    **Search/replace (regex with capturing groups):**
+    ```python
+    SafeEditInput(
+        path="file.py",
+        search_replace=SearchReplace(
+            search=r"from typing import (\\w+)",
+            replace=r"from collections.abc import \\1",
+            regex=True
+        ),
+        mode="interactive"
+    )
+    ```
+    """
 
     name = "safe_edit_file"
     description = (
