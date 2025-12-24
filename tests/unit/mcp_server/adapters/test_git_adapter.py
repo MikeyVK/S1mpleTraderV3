@@ -1,8 +1,22 @@
-"""Tests for GitAdapter - extended git operations."""
+# tests/unit/mcp_server/adapters/test_git_adapter.py
+"""
+Tests for GitAdapter - extended git operations.
+
+Tests according to TDD principles with comprehensive coverage.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, mcp_server.adapters.git_adapter]
+"""
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
+# Suppress Pydantic FieldInfo false positives
+
+# Standard library
 from unittest.mock import MagicMock, patch
 
+# Third-party
 import pytest
 
+# Module under test
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.core.exceptions import ExecutionError
 

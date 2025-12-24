@@ -174,91 +174,89 @@ class MCPServer:
 
     def setup_handlers(self) -> None:
         """Set up the MCP protocol handlers."""
+        self.server.list_resources()(self.list_resources)
+        self.server.read_resource()(self.read_resource)
+        self.server.list_tools()(self.list_tools)
+        self.server.call_tool()(self.call_tool)
 
-        @self.server.list_resources()  # type: ignore[no-untyped-call, misc]
-        async def handle_list_resources() -> list[Resource]:
-            return [
-                Resource(
-                    uri=AnyUrl(r.uri_pattern),
-                    name=r.uri_pattern.rsplit("/", maxsplit=1)[-1],
-                    description=r.description,
-                    mimeType=r.mime_type
-                )
-                for r in self.resources
-            ]
+    async def list_resources(self) -> list[Resource]:
+        """List available resources."""
+        return [
+            Resource(
+                uri=AnyUrl(r.uri_pattern),
+                name=r.uri_pattern.rsplit("/", maxsplit=1)[-1],
+                description=r.description,
+                mimeType=r.mime_type
+            )
+            for r in self.resources
+        ]
 
-        @self.server.read_resource()  # type: ignore[no-untyped-call, misc]
-        async def handle_read_resource(uri: str) -> str:
-            for resource in self.resources:
-                if resource.matches(uri):
-                    return await resource.read(uri)
-            raise ValueError(f"Resource not found: {uri}")
+    async def read_resource(self, uri: str) -> str:
+        """Read a specific resource."""
+        for resource in self.resources:
+            if resource.matches(uri):
+                return await resource.read(uri)
+        raise ValueError(f"Resource not found: {uri}")
 
-        @self.server.list_tools()  # type: ignore[no-untyped-call, misc]
-        async def handle_list_tools() -> list[Tool]:
-            return [
-                Tool(
-                    name=t.name,
-                    description=t.description,
-                    inputSchema=t.input_schema
-                )
-                for t in self.tools
-            ]
+    async def list_tools(self) -> list[Tool]:
+        """List available tools."""
+        return [
+            Tool(
+                name=t.name,
+                description=t.description,
+                inputSchema=t.input_schema
+            )
+            for t in self.tools
+        ]
 
-        @self.server.call_tool()  # type: ignore[misc]
-        async def handle_call_tool(
-            name: str,
-            arguments: dict[str, Any] | None
-        ) -> list[TextContent | ImageContent | EmbeddedResource]:
-            for tool in self.tools:
-                if tool.name == name:
-                    try:
-                        # ALL tools now enforce args_model via BaseTool inheritance
-                        if getattr(tool, "args_model", None):
-                            # Validate args against model
-                            model_cls = cast(Type[BaseModel], tool.args_model)
-                            model_validated = model_cls(**(arguments or {}))
-                            result = await tool.execute(model_validated)
-                        else:
-                            # Fallback if somehow a tool is missed (should not happen)
-                            # Passing kwargs as a single dict if BaseTool expects Any
-                            # But legacy typically wanted spread kwargs.
-                            # We assume full migration.
-                            # Raising error here would be strict.
-                            # But for safety, we try passing as kwargs, which will fail types
-                            # if tool expects params.
-                            # Actually, BaseTool.execute(params) means we must pass an object.
-                            # If no model, we pass the dict?
-                            result = await tool.execute(arguments or {})
-                        response_content: list[
-                            TextContent | ImageContent | EmbeddedResource
-                        ] = []
-                        for content in result.content:
-                            if content.get("type") == "text":
-                                response_content.append(
-                                    TextContent(type="text", text=content["text"])
-                                )
-                            elif content.get("type") == "image":
-                                response_content.append(ImageContent(
-                                    type="image",
-                                    data=content["data"],
-                                    mimeType=content["mimeType"]
-                                ))
-                            elif content.get("type") == "resource":
-                                response_content.append(EmbeddedResource(
-                                    type="resource",
-                                    resource=content["resource"]
-                                ))
-                        return response_content
-                    except Exception as e:  # pylint: disable=broad-exception-caught
-                        logger.error(
-                            "Tool execution failed: %s", e, exc_info=True
-                        )
-                        return [TextContent(
-                            type="text",
-                            text=f"Error executing tool {name}: {e!s}"
-                        )]
-            raise ValueError(f"Tool not found: {name}")
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None
+    ) -> list[TextContent | ImageContent | EmbeddedResource]:
+        """Execute a tool."""
+        for tool in self.tools:
+            if tool.name == name:
+                try:
+                    # ALL tools now enforce args_model via BaseTool inheritance
+                    if getattr(tool, "args_model", None):
+                        # Validate args against model
+                        model_cls = cast(Type[BaseModel], tool.args_model)
+                        model_validated = model_cls(**(arguments or {}))
+                        result = await tool.execute(model_validated)
+                    else:
+                        # Fallback for legacy (should not be hit in this refactor)
+                        result = await tool.execute(arguments or {})
+
+                    response_content: list[
+                        TextContent | ImageContent | EmbeddedResource
+                    ] = []
+                    for content in result.content:
+                        if content.get("type") == "text":
+                            response_content.append(
+                                TextContent(type="text", text=content["text"])
+                            )
+                        elif content.get("type") == "image":
+                            response_content.append(ImageContent(
+                                type="image",
+                                data=content["data"],
+                                mimeType=content["mimeType"]
+                            ))
+                        elif content.get("type") == "resource":
+                            response_content.append(EmbeddedResource(
+                                type="resource",
+                                resource=content["resource"]
+                            ))
+                    return response_content
+                except Exception as e:  # pylint: disable=broad-exception-caught
+                    logger.error(
+                        "Tool execution failed: %s", e, exc_info=True
+                    )
+                    return [TextContent(
+                        type="text",
+                        text=f"Error executing tool {name}: {e!s}"
+                    )]
+        raise ValueError(f"Tool not found: {name}")
 
     async def run(self) -> None:
         """Run the MCP server."""

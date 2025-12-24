@@ -7,12 +7,17 @@ class TestServerToolRegistration:
 
     def test_github_tools_always_registered(self) -> None:
         """GitHub tools should always be registered, even without token."""
-        # Patch settings to simulate no GitHub token
-        with patch("mcp_server.server.settings") as mock_settings:
+        # Patch settings globally to ensure adapters pick it up
+        with patch("mcp_server.config.settings.settings") as mock_settings, \
+             patch("mcp_server.tools.issue_tools.GitHubManager") as mock_issue_manager:
             mock_settings.server.name = "test-server"
             mock_settings.github.token = None  # No token configured
             mock_settings.github.owner = "test"
             mock_settings.github.repo = "repo"
+            mock_settings.server.workspace_root = "."
+            mock_settings.logging.level = "INFO"
+
+            mock_issue_manager.return_value = MagicMock()
 
             # Import after patching to get fresh instance
             from mcp_server.server import MCPServer
@@ -30,19 +35,30 @@ class TestServerToolRegistration:
 
     def test_github_tools_registered_with_token(self) -> None:
         """GitHub tools should be registered when token is configured."""
-        with patch("mcp_server.server.settings") as mock_settings, \
+        mock_settings = MagicMock()
+        mock_settings.server.name = "test-server"
+        mock_settings.github.token = "test-token"
+        mock_settings.github.owner = "test"
+        mock_settings.github.repo = "repo"
+        mock_settings.server.workspace_root = "."
+        mock_settings.logging.level = "INFO"
+
+        # Patch settings in all relevant modules to ensure consistency
+        with patch("mcp_server.config.settings.settings", mock_settings), \
+             patch("mcp_server.server.settings", mock_settings), \
+             patch("mcp_server.adapters.github_adapter.settings", mock_settings), \
              patch("mcp_server.resources.github.GitHubManager") as mock_res_manager, \
              patch("mcp_server.tools.pr_tools.GitHubManager") as mock_pr_manager, \
-             patch("mcp_server.tools.label_tools.GitHubManager") as mock_label_manager:
-            mock_settings.server.name = "test-server"
-            mock_settings.github.token = "test-token"
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+             patch("mcp_server.tools.label_tools.GitHubManager") as mock_label_manager, \
+             patch("mcp_server.tools.milestone_tools.GitHubManager") as mock_milestone_manager, \
+             patch("mcp_server.tools.issue_tools.GitHubManager") as mock_issue_manager:
 
             # Mock all GitHubManager instances to avoid actual API calls
             mock_res_manager.return_value = MagicMock()
             mock_pr_manager.return_value = MagicMock()
             mock_label_manager.return_value = MagicMock()
+            mock_milestone_manager.return_value = MagicMock()
+            mock_issue_manager.return_value = MagicMock()
 
             from mcp_server.server import MCPServer
 

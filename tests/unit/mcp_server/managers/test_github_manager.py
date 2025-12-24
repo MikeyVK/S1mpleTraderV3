@@ -37,8 +37,15 @@ class TestGitHubManager:
 
     def test_init_default(self) -> None:
         """Test initialization with default adapter."""
-        mgr = GitHubManager()
-        assert mgr.adapter is not None
+        # When no token is configured, init should fail
+        with pytest.raises(Exception):
+            GitHubManager()
+
+    def test_init_with_mock(self) -> None:
+        """Test initialization with injected mock."""
+        mock = MagicMock()
+        mgr = GitHubManager(adapter=mock)
+        assert mgr.adapter == mock
 
     def test_get_issues_resource_data(
         self, manager: GitHubManager, mock_adapter: MagicMock

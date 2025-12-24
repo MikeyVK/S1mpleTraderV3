@@ -1,0 +1,127 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.12, pytest-9.0.2, pluggy-1.6.0
+rootdir: /app
+configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml!)
+plugins: anyio-4.12.0, cov-7.0.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 311 items
+
+tests/unit/mcp_server/adapters/test_git_adapter.py ..................... [  6%]
+.                                                                        [  7%]
+tests/unit/mcp_server/adapters/test_github_adapter.py .................. [ 12%]
+............................                                             [ 21%]
+tests/unit/mcp_server/config/test_settings.py ...                        [ 22%]
+tests/unit/mcp_server/core/test_exceptions.py .....                      [ 24%]
+tests/unit/mcp_server/core/test_logging.py ...                           [ 25%]
+tests/unit/mcp_server/core/test_phase_state_engine.py ...............    [ 30%]
+tests/unit/mcp_server/core/test_policy_engine.py ..............          [ 34%]
+tests/unit/mcp_server/integration/test_all_tools.py .................... [ 41%]
+........                                                                 [ 43%]
+tests/unit/mcp_server/integration/test_fs_status.py ...                  [ 44%]
+tests/unit/mcp_server/integration/test_git.py ....                       [ 45%]
+tests/unit/mcp_server/integration/test_github.py ..                      [ 46%]
+tests/unit/mcp_server/integration/test_qa.py ..                          [ 47%]
+tests/unit/mcp_server/managers/test_doc_manager.py .............         [ 51%]
+tests/unit/mcp_server/managers/test_git_manager.py ..................... [ 58%]
+...                                                                      [ 59%]
+tests/unit/mcp_server/managers/test_github_manager.py .................. [ 64%]
+.                                                                        [ 65%]
+tests/unit/mcp_server/managers/test_project_manager.py ..............    [ 69%]
+tests/unit/mcp_server/managers/test_qa_manager.py .........              [ 72%]
+tests/unit/mcp_server/resources/test_base.py ...                         [ 73%]
+tests/unit/mcp_server/resources/test_resources_base.py ..                [ 74%]
+tests/unit/mcp_server/resources/test_standards.py ..                     [ 74%]
+tests/unit/mcp_server/test_cli.py ..                                     [ 75%]
+tests/unit/mcp_server/test_server.py ..                                  [ 76%]
+tests/unit/mcp_server/tools/test_phase_tools.py ..........               [ 79%]
+tests/unit/mcp_server/tools/test_safe_edit_tool.py ..................... [ 86%]
+..............                                                           [ 90%]
+tests/unit/mcp_server/tools/test_template_validation_tool.py ...         [ 91%]
+tests/unit/mcp_server/validation/test_markdown_validator.py .......      [ 93%]
+tests/unit/mcp_server/validation/test_python_validator.py ...            [ 94%]
+tests/unit/mcp_server/validation/test_template_validator.py ........     [ 97%]
+tests/unit/mcp_server/validation/test_validator_registry.py ........     [100%]
+
+=============================== warnings summary ===============================
+tests/unit/mcp_server/integration/test_all_tools.py::TestDevelopmentToolsIntegration::test_create_file_tool_flow
+  /app/tests/unit/mcp_server/integration/test_all_tools.py:264: DeprecationWarning: create_file is deprecated. Use scaffold_component or scaffold_design_doc instead.
+    result = await tool.execute(CreateFileInput(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.12-final-0 _______________
+
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+mcp_server/__init__.py                               0      0   100%
+mcp_server/__main__.py                               3      3     0%
+mcp_server/adapters/filesystem.py                   32     11    66%
+mcp_server/adapters/git_adapter.py                 139     52    63%
+mcp_server/adapters/github_adapter.py              180      6    97%
+mcp_server/cli.py                                   14      1    93%
+mcp_server/config/__init__.py                        0      0   100%
+mcp_server/config/settings.py                       40      2    95%
+mcp_server/core/__init__.py                          0      0   100%
+mcp_server/core/exceptions.py                       21      0   100%
+mcp_server/core/logging.py                          28      1    96%
+mcp_server/core/phase_state_engine.py               87      7    92%
+mcp_server/core/policy_engine.py                    68      6    91%
+mcp_server/integrations/__init__.py                  0      0   100%
+mcp_server/managers/doc_manager.py                  89      1    99%
+mcp_server/managers/git_manager.py                  63      2    97%
+mcp_server/managers/github_manager.py               42      0   100%
+mcp_server/managers/project_manager.py              47      1    98%
+mcp_server/managers/qa_manager.py                  155     12    92%
+mcp_server/resources/__init__.py                     0      0   100%
+mcp_server/resources/base.py                         9      0   100%
+mcp_server/resources/github.py                      11      2    82%
+mcp_server/resources/standards.py                    8      0   100%
+mcp_server/resources/status.py                      23      4    83%
+mcp_server/resources/templates.py                    8      1    88%
+mcp_server/scaffolding/__init__.py                   0      0   100%
+mcp_server/scaffolding/base.py                      17      3    82%
+mcp_server/scaffolding/components/adapter.py        12      8    33%
+mcp_server/scaffolding/components/doc.py            14     10    29%
+mcp_server/scaffolding/components/dto.py            18     14    22%
+mcp_server/scaffolding/components/generic.py        17     13    24%
+mcp_server/scaffolding/components/interface.py      11      7    36%
+mcp_server/scaffolding/components/resource.py       11      7    36%
+mcp_server/scaffolding/components/schema.py         11      7    36%
+mcp_server/scaffolding/components/service.py        15     11    27%
+mcp_server/scaffolding/components/test.py           41     32    22%
+mcp_server/scaffolding/components/tool.py           12      8    33%
+mcp_server/scaffolding/components/worker.py         12      8    33%
+mcp_server/scaffolding/renderer.py                  30     15    50%
+mcp_server/scaffolding/utils.py                     14      8    43%
+mcp_server/server.py                                97     35    64%
+mcp_server/state/__init__.py                         0      0   100%
+mcp_server/state/context.py                         12     12     0%
+mcp_server/tools/__init__.py                         0      0   100%
+mcp_server/tools/base.py                            23      1    96%
+mcp_server/tools/code_tools.py                      35      5    86%
+mcp_server/tools/discovery_tools.py                119     87    27%
+mcp_server/tools/docs_tools.py                      19      0   100%
+mcp_server/tools/git_analysis_tools.py              38     10    74%
+mcp_server/tools/git_tools.py                      162      7    96%
+mcp_server/tools/health_tools.py                    13      0   100%
+mcp_server/tools/issue_tools.py                    110     33    70%
+mcp_server/tools/label_tools.py                     83     18    78%
+mcp_server/tools/milestone_tools.py                 64     24    62%
+mcp_server/tools/phase_tools.py                     22      0   100%
+mcp_server/tools/pr_tools.py                        66     17    74%
+mcp_server/tools/project_tools.py                   51     17    67%
+mcp_server/tools/quality_tools.py                   33      1    97%
+mcp_server/tools/safe_edit_tool.py                 224     22    90%
+mcp_server/tools/scaffold_tools.py                 132     57    57%
+mcp_server/tools/template_validation_tool.py        25      1    96%
+mcp_server/tools/test_tools.py                      58     34    41%
+mcp_server/tools/validation_tools.py                28      0   100%
+mcp_server/validation/__init__.py                    3      0   100%
+mcp_server/validation/base.py                       17      1    94%
+mcp_server/validation/markdown_validator.py         36      1    97%
+mcp_server/validation/python_validator.py           46      5    89%
+mcp_server/validation/registry.py                   28      0   100%
+mcp_server/validation/template_validator.py         61      0   100%
+--------------------------------------------------------------------
+TOTAL                                             2907    651    78%
+======================== 311 passed, 1 warning in 8.80s ========================

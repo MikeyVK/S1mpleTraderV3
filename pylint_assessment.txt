@@ -1,0 +1,5 @@
+************* Module mcp_server.tools.scaffold_tools
+mcp_server/tools/scaffold_tools.py:168:0: C0303: Trailing whitespace (trailing-whitespace)
+
+------------------------------------------------------------------
+Your code has been rated at 9.99/10 (previous run: 9.99/10, +0.00)

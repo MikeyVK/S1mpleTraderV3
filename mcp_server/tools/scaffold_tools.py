@@ -165,7 +165,7 @@ class ScaffoldComponentTool(BaseTool):
         if params.generate_test:
             module_path = params.output_path.replace("/", ".").replace("\\", ".").rstrip(".py")
             # Basic module path heuristic
-            
+
             # Split fields into required and optional for test generation
             required_fields = [f for f in params.fields if "default" not in f]
             optional_fields = [f for f in params.fields if "default" in f]
