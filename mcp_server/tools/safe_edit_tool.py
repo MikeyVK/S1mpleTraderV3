@@ -48,20 +48,6 @@ class InsertLine(BaseModel):
             raise ValueError("at_line must be >= 1")
         return self
 
-class SearchReplace(BaseModel):
-    """Represents a search/replace operation."""
-    search: str = Field(..., description="Pattern to search for")
-    replace: str = Field(..., description="Replacement text")
-    regex: bool = Field(default=False, description="Use regex pattern matching")
-    count: int | None = Field(None, description="Maximum number of replacements (None = all)")
-    flags: int = Field(default=0, description="Regex flags (e.g., re.IGNORECASE)")
-
-    @field_validator("flags", mode="before")
-    @classmethod
-    def _coerce_flags(cls, value: Any) -> int:
-        if value is None:
-            return 0
-        return int(value)
 
 class SafeEditInput(BaseModel):
     """Input for SafeEditTool."""
@@ -75,10 +61,12 @@ class SafeEditInput(BaseModel):
         None,
         description="List of line insert operations"
     )
-    search_replace: SearchReplace | None = Field(
-        None,
-        description="Search and replace operation"
-    )
+    # Flattened search/replace parameters (no nested SearchReplace object)
+    search: str | None = Field(None, description="Pattern to search for (search/replace mode)")
+    replace: str | None = Field(None, description="Replacement text (search/replace mode)")
+    regex: bool = Field(default=False, description="Use regex pattern matching (search/replace mode)")
+    search_count: int | None = Field(None, description="Maximum number of replacements, None = all (search/replace mode)")
+    search_flags: int = Field(default=0, description="Regex flags e.g. re.IGNORECASE (search/replace mode)")
     mode: str = Field(
         default="strict",
         description="Validation mode. 'strict' fails on error, 'interactive' writes but warns.",
@@ -89,35 +77,51 @@ class SafeEditInput(BaseModel):
         description="Show unified diff preview comparing original and new content"
     )
 
-
-
+    @field_validator("search_flags", mode="before")
+    @classmethod
+    def _coerce_flags(cls, value: Any) -> int:
+        if value is None:
+            return 0
+        return int(value)
 
     @model_validator(mode='after')
     def validate_edit_modes(self) -> "SafeEditInput":
         """Validate that exactly one edit mode is specified."""
+        # Check if search/replace mode is active
+        search_replace_active = self.search is not None or self.replace is not None
+        
         modes = [
             self.content,
             self.line_edits,
             self.insert_lines,
-            self.search_replace
+            search_replace_active
         ]
 
         # Count non-None modes
-        specified_modes = sum(1 for mode in modes if mode is not None)
+        specified_modes = sum(1 for mode in modes if mode)
 
         if not specified_modes:
             raise ValueError(
                 'At least one edit mode must be specified: '
-                'content, line_edits, insert_lines, or search_replace'
+                'content, line_edits, insert_lines, or search/replace (search + replace)'
             )
 
         if specified_modes > 1:
             raise ValueError(
                 'Only one edit mode can be specified at a time. '
-                'Choose one of: content, line_edits, insert_lines, or search_replace'
+                'Choose one of: content, line_edits, insert_lines, or search/replace'
             )
+        
+        # If search/replace mode, both search and replace must be provided
+        if search_replace_active:
+            if self.search is None or self.replace is None:
+                raise ValueError(
+                    'Both search and replace parameters must be provided for search/replace mode'
+                )
 
         return self
+
+
 class SafeEditTool(BaseTool):
     """Tool for safely editing files with validation and multiple edit modes.
     
@@ -224,6 +228,9 @@ class SafeEditTool(BaseTool):
         mode = params.mode
         show_diff = params.show_diff
 
+        # Determine if search/replace mode is active
+        search_replace_active = params.search is not None and params.replace is not None
+
         # Read original content
         original_content = ""
         try:
@@ -240,7 +247,7 @@ class SafeEditTool(BaseTool):
                     "Cannot insert lines into non-existent file. "
                     "Use content mode to create the file first."
                 )
-            if params.search_replace:
+            if search_replace_active:
                 return ToolResult.error(
                     "Cannot apply search/replace to non-existent file. "
                     "Use content mode to create the file first."
@@ -264,22 +271,27 @@ class SafeEditTool(BaseTool):
                 new_content = self._apply_insert_lines(original_content, params.insert_lines)
             except ValueError as e:
                 return ToolResult.error(f"Insert lines failed: {e}")
-        elif params.search_replace is not None:
-            # Search/replace mode
+        elif search_replace_active:
+            # Search/replace mode - use flattened parameters
             try:
-                new_content, replacement_count = self._apply_search_replace(
-                    original_content, params.search_replace
+                new_content, replacement_count = self._apply_search_replace_flat(
+                    original_content,
+                    search=params.search,
+                    replace=params.replace,
+                    regex=params.regex,
+                    count=params.search_count,
+                    flags=params.search_flags
                 )
                 # In strict mode, error if pattern not found
                 if mode == "strict" and not replacement_count:
                     return ToolResult.error(
-                        f"Pattern '{params.search_replace.search}' not found in file"
+                        f"Pattern '{params.search}' not found in file"
                     )
             except (ValueError, re.error) as e:
                 return ToolResult.error(f"Search/replace failed: {e}")
         else:
             return ToolResult.error(
-                "Must provide 'content', 'line_edits', 'insert_lines', or 'search_replace'"
+                "Must provide 'content', 'line_edits', 'insert_lines', or 'search' + 'replace'"
             )
 
         # Generate diff preview
@@ -434,15 +446,24 @@ class SafeEditTool(BaseTool):
             lines[insert_idx:insert_idx] = insert_lines
 
         return ''.join(lines)
-
-    def _apply_search_replace(
-        self, content: str, search_replace: SearchReplace
+    def _apply_search_replace_flat(
+        self,
+        content: str,
+        search: str,
+        replace: str,
+        regex: bool = False,
+        count: int | None = None,
+        flags: int = 0
     ) -> tuple[str, int]:
-        """Apply search and replace operation.
+        """Apply search and replace operation with flattened parameters.
 
         Args:
             content: Original file content
-            search_replace: Search/replace parameters
+            search: Pattern to search for
+            replace: Replacement text
+            regex: Use regex pattern matching
+            count: Maximum number of replacements (None = all)
+            flags: Regex flags (e.g., re.IGNORECASE)
 
         Returns:
             Tuple of (modified_content, replacement_count)
@@ -451,32 +472,33 @@ class SafeEditTool(BaseTool):
             ValueError: If regex is invalid
             re.error: If regex pattern is malformed
         """
-        if search_replace.regex:
+        if regex:
             # Regex mode
             try:
-                pattern = re.compile(search_replace.search, search_replace.flags or 0)
-                if search_replace.count is not None:
+                pattern = re.compile(search, flags or 0)
+                if count is not None:
                     new_content, replacement_count = pattern.subn(
-                        search_replace.replace, content, count=search_replace.count
+                        replace, content, count=count
                     )
                 else:
                     new_content, replacement_count = pattern.subn(
-                        search_replace.replace, content
+                        replace, content
                     )
                 return new_content, replacement_count
             except re.error as e:
                 raise ValueError(f"Invalid regex pattern: {e}") from e
         else:
             # Literal mode
-            if search_replace.count is not None:
+            if count is not None:
                 # Python's str.replace() uses count parameter differently
                 # We need to count manually for accurate reporting
-                parts = content.split(search_replace.search, search_replace.count)
-                new_content = search_replace.replace.join(parts)
+                parts = content.split(search, count)
+                new_content = replace.join(parts)
                 replacement_count = len(parts) - 1
             else:
-                replacement_count = content.count(search_replace.search)
-                new_content = content.replace(search_replace.search, search_replace.replace)
+                replacement_count = content.count(search)
+                new_content = content.replace(search, replace)
+
 
             return new_content, replacement_count
 
