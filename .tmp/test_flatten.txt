@@ -1,0 +1,4 @@
+Test file for search/replace
+This is line 2
+REPLACED_new_value should be replaced
+Another REPLACED_new_value here
