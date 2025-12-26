@@ -1,19 +1,43 @@
 # Issue #50 Discovery: Workflow Configuration System
 
 **Status:** IN PROGRESS
-**Author:** AI Agent
-**Created:** 2025-12-26
 **Issue:** #50 - Config: Workflow Configuration System (workflows.yaml)
 **Parent:** Epic #49 - MCP Platform Configurability
+**Phase:** Discovery/Research
+**Date:** 2025-12-26
 
 ---
 
-## 1. Current PHASE_TEMPLATES Analysis
+## Purpose
 
-### 1.1 Location & Structure
+Research and document current PHASE_TEMPLATES implementation, usage patterns, coding standards, and requirements for migration to workflows.yaml configuration.
+
+**Research Focus:** Objective observation of existing code, not design proposals.
+
+## Scope
+
+**In Scope:**
+- Current PHASE_TEMPLATES structure and usage
+- Execution mode requirements (from Issue #42)
+- Phase transition behavior
+- Existing coding patterns (Enums, Pydantic, error handling)
+- Success criteria
+
+**Out of Scope:**
+- YAML schema design (belongs in Planning)
+- Pydantic model design (belongs in Planning)
+- Implementation details (belongs in TDD)
+- Validation rules configuration (Issue #52/53/54)
+
+---
+
+## 1. Current State Analysis
+
+### 1.1 PHASE_TEMPLATES Location
 
 **File:** `mcp_server/managers/project_manager.py` (lines 11-39)
 
+**Structure:**
 ```python
 PHASE_TEMPLATES = {
     "feature": {
@@ -39,33 +63,42 @@ PHASE_TEMPLATES = {
 }
 ```
 
-### 1.2 Fields Per Template
+### 1.2 Data Structure
 
-| Field | Type | Purpose |
-|-------|------|---------|
-| `required_phases` | `tuple[str, ...]` | Ordered sequence of phases for issue type |
-| `description` | `str` | Human-readable workflow description |
+**Per Template:**
+- **`required_phases`**: `tuple[str, ...]` - Ordered phase sequence
+- **`description`**: `str` - Human-readable workflow description
 
-**Missing Fields:**
-- No execution mode (autonomous vs interactive)
-- No phase transition rules
-- No validation settings
-- No custom metadata
+**Missing:**
+- Execution mode specification
+- Phase transition rules
+- Validation settings
+- Custom metadata
+
+### 1.3 Issue Types
+
+**Current:** 5 predefined + 1 custom
+- `feature` (7 phases)
+- `bug` (6 phases)
+- `docs` (4 phases)
+- `refactor` (5 phases)
+- `hotfix` (3 phases)
+- `custom` (user-defined)
 
 ---
 
 ## 2. Usage Patterns
 
-### 2.1 Where is PHASE_TEMPLATES Used?
+### 2.1 Where PHASE_TEMPLATES is Used
 
-**Summary:** Used ONLY during project initialization, then stored data takes over.
+**Finding:** PHASE_TEMPLATES is used **ONLY** during project initialization. After initialization, stored data in `.st3/projects.json` is used exclusively.
 
 #### A. ProjectManager.initialize_project()
 
 **Location:** `project_manager.py:78-140`
 
-**Usage:**
-1. Validate `issue_type` in `PHASE_TEMPLATES.keys()`
+**Operations:**
+1. Validate `issue_type` against `PHASE_TEMPLATES.keys()`
 2. Read `template["required_phases"]`
 3. Read `template["description"]`
 4. Create `ProjectPlan` with copied data
@@ -73,12 +106,10 @@ PHASE_TEMPLATES = {
 
 **Code:**
 ```python
-# Validate issue type
 valid_types = list(PHASE_TEMPLATES.keys()) + ["custom"]
 if issue_type not in valid_types:
     raise ValueError(f"Invalid issue_type: {issue_type}...")
 
-# Copy template data
 template = PHASE_TEMPLATES[issue_type]
 required_phases = tuple(template["required_phases"])
 ```
@@ -87,16 +118,13 @@ required_phases = tuple(template["required_phases"])
 
 **Location:** `mcp_server/tools/project_tools.py`
 
-**Usage:**
-- Wraps `ProjectManager.initialize_project()`
-- Adds `description` to tool response
-- Exposes via MCP protocol
+**Purpose:** MCP protocol wrapper for `ProjectManager.initialize_project()`
 
 #### C. After Initialization
 
-**CRITICAL Finding:** PHASE_TEMPLATES is **NEVER** referenced again after `initialize_project()`:
-- PhaseStateEngine uses stored state (`.st3/state.json`)
-- PolicyEngine uses stored plan (`.st3/projects.json`)
+**Key Finding:** PHASE_TEMPLATES is **never referenced again**:
+- `PhaseStateEngine` → reads `.st3/state.json`
+- `PolicyEngine` → reads `.st3/projects.json`
 - No validation against original templates
 
 ### 2.2 Data Flow
@@ -107,327 +135,356 @@ User/Agent
 InitializeProjectTool
     ↓
 ProjectManager.initialize_project()
-    ↓ (reads PHASE_TEMPLATES)
+    ↓ (READS PHASE_TEMPLATES - only time)
 Creates ProjectPlan
     ↓
 Stores in .st3/projects.json
     ↓
 // PHASE_TEMPLATES never used again
     ↓
-PolicyEngine validates against stored plan
-PhaseStateEngine tracks transitions in state
+PolicyEngine → validates against stored plan
+PhaseStateEngine → tracks transitions
 ```
 
 ---
 
-## 3. Missing Capabilities (Issue #42 Requirements)
+## 3. Coding Standards Research
 
-### 3.1 Execution Modes
+### 3.1 Enum vs Literal Usage
+
+**Finding:** Codebase **does NOT use Enums**. Uses `Literal` type hints instead.
+
+**Example:** `mcp_server/tools/issue_tools.py`
+```python
+from typing import Literal
+
+IssueState = Literal["open", "closed", "all"]
+```
+
+**Guidance (from `docs/architecture/ARCHITECTURAL_SHIFTS.md`):**
+- **Use Enum when:** Type safety and exhaustive checking critical
+- **Use Literal when:** Runtime flexibility needed (e.g., plugin-based systems)
+
+**Pattern for Issue #50:**
+- Issue types: Could use `IssueType = Literal["feature", "bug", "docs", "refactor", "hotfix", "custom"]`
+- Phase names: Could use `Phase = Literal["discovery", "planning", ...]`
+- Execution modes: Could use `ExecutionMode = Literal["autonomous", "interactive"]`
+
+### 3.2 Pydantic BaseModel Patterns
+
+**Reference:** `mcp_server/config/settings.py`
+
+**Pattern 1: Nested Models**
+```python
+class LogSettings(BaseModel):
+    level: str = "INFO"
+    audit_log: str = "logs/mcp_audit.log"
+
+class ServerSettings(BaseModel):
+    name: str = "st3-workflow"
+    version: str = "1.0.0"
+    workspace_root: str = Field(default_factory=os.getcwd)
+
+class Settings(BaseModel):
+    server: ServerSettings = ServerSettings()
+    logging: LogSettings = LogSettings()
+```
+
+**Pattern 2: Class Method Loader**
+```python
+@classmethod
+def load(cls, config_path: str | None = None) -> "Settings":
+    """Load settings from YAML file."""
+    path = Path(config_path or os.environ.get("MCP_CONFIG_PATH", "mcp_config.yaml"))
+    
+    if path.exists():
+        with open(path, encoding="utf-8") as f:
+            config_data = yaml.safe_load(f) or {}
+    
+    return cls(**config_data)
+```
+
+**Pattern 3: Global Instance**
+```python
+# Global settings instance
+settings = Settings.load()
+```
+
+**Pattern 4: Field Validators**
+
+From `mcp_server/tools/safe_edit_tool.py`:
+```python
+class LineEdit(BaseModel):
+    start_line: int = Field(..., description="Starting line number")
+    end_line: int = Field(..., description="Ending line number")
+
+    @model_validator(mode='after')
+    def validate_line_range(self) -> "LineEdit":
+        if self.start_line < 1:
+            raise ValueError("start_line must be >= 1")
+        if self.start_line > self.end_line:
+            raise ValueError("start_line must be <= end_line")
+        return self
+```
+
+**Pattern 5: Field Patterns**
+```python
+mode: str = Field(
+    default="strict",
+    pattern="^(strict|interactive|verify_only)$"
+)
+```
+
+### 3.3 Module Structure
+
+**Current Config Directory:**
+```
+mcp_server/config/
+├── __init__.py
+└── settings.py       # Single settings file
+```
+
+**Loading Pattern:**
+- Settings loaded **once** at module import
+- Global instance: `settings = Settings.load()`
+- Accessed via: `from mcp_server.config.settings import settings`
+
+**For Issue #50:**
+- New file: `mcp_server/config/workflow_config.py`
+- Pattern: `workflow_config = WorkflowConfig.load()`
+
+### 3.4 Error Handling
+
+**Custom Exception Hierarchy:** `mcp_server/exceptions.py`
+
+```python
+class MCPError(Exception):
+    """Base class."""
+    def __init__(self, message: str, code: str, hints: list[str] | None = None):
+        self.message = message
+        self.code = code
+        self.hints = hints or []
+
+class ValidationError(MCPError):
+    """Input validation fails."""
+    def __init__(self, message: str, hints: list[str] | None = None):
+        super().__init__(message, code="ERR_VALIDATION", hints=hints)
+```
+
+**Usage Pattern:**
+```python
+if branch_type not in ["feature", "fix", "refactor", "docs"]:
+    raise ValidationError(
+        f"Invalid branch type: {branch_type}",
+        hints=["Use feature, fix, refactor, or docs"]
+    )
+```
+
+**For Issue #50:**
+- Use `ValidationError` for invalid config YAML
+- Provide hints for common mistakes
+- Fail fast at config load time
+
+### 3.5 Constants Management
+
+**Pattern 1: Module-Level Dict Constants**
+```python
+PHASE_TEMPLATES = {
+    "feature": {...},
+    "bug": {...}
+}
+```
+
+**Pattern 2: Type Alias Constants**
+```python
+IssueState = Literal["open", "closed", "all"]
+```
+
+**Pattern 3: Inline Constants with Validation**
+```python
+protected_branches = ["main", "master", "develop"]
+if branch_name in protected_branches:
+    raise ValidationError(...)
+```
+
+**For Issue #50:** Replace module-level dict with YAML + Pydantic loader
+
+---
+
+## 4. Missing Capabilities
+
+### 4.1 Execution Modes
 
 **Requirement (from Issue #42):**
-- **Autonomous Mode**: Agent-driven, rigid phase sequence, automatic execution
-- **Interactive Mode**: Human-in-the-loop, flexible, requires approval
+- **Autonomous Mode**: Agent-driven, rigid sequential phases
+- **Interactive Mode**: Human-in-the-loop, flexible workflow
 
-**Current State:** NO execution mode distinction found in code
+**Current State:** NO execution mode support found
 
-**What EXISTS:**
-- `human_approval` field in transitions (audit trail only)
-- `PolicyDecision.requires_human_approval` flag (policy violation signal)
+**What Exists:**
+- `human_approval: str | None` in transitions (audit trail only)
+- `PolicyDecision.requires_human_approval: bool` (policy violation flag)
 
-**What's MISSING:**
-- No mode configuration (autonomous/interactive flag)
-- No mode-aware PolicyEngine rules
-- No automatic vs manual execution distinction
+**What's Missing:**
+- No mode configuration
+- No mode-aware PolicyEngine
+- No automatic vs manual distinction
 - No mode selection at initialization
 
-### 3.2 Phase Transitions
+### 4.2 Phase Transitions
 
-**Current State:** PhaseStateEngine allows ANY phase transition
+**Current State:** `PhaseStateEngine` allows **ANY** transition
 
 **Validation:**
-- ✅ From-phase must match current state
-- ❌ No target phase validation
-- ❌ No transition graph (allowed paths)
+- ✅ `from_phase` must match current state
+- ❌ No `to_phase` validation
+- ❌ No transition graph
 - ❌ No sequential enforcement
 
 **Example:**
 ```python
-# This is ALLOWED (no graph validation):
+# This SUCCEEDS (no graph validation):
 engine.transition(branch="feature/42", from_phase="discovery", to_phase="integration")
-# ✅ Success - skips planning, design, component, tdd phases
+# Skips planning, design, component, tdd
 ```
 
-**Issue #42 Requirement:** Enforce sequential transitions in autonomous mode
+**Issue #42 Need:** Enforce sequential transitions in autonomous mode
 
-### 3.3 Validation Settings
+### 4.3 Validation Configuration
 
-**Current State:** PolicyEngine has hardcoded validation rules
+**Observation:** Validation rules (TDD prefixes, scaffold phases, file policies) are hardcoded in:
+- `policy_engine.py` - TDD commit prefixes
+- `policy_engine.py` - Scaffold phases
+- `git_manager.py` - Branch types
 
-**Examples:**
-- TDD commit prefixes hardcoded (`red:`, `green:`, `refactor:`)
-- Scaffold phases hardcoded (`component`, `tdd`)
-- File policies hardcoded
-
-**Missing:** Per-workflow validation configuration
+**Clarification for 5.5:** 
+- **workflows.yaml** should define ONLY phase sequences and execution modes
+- **Validation rules** belong in separate configs (Issues #52, #53, #54)
+- No overlap - clean separation of concerns
 
 ---
 
-## 4. Requirements for workflows.yaml
+## 5. Requirements Analysis
 
-### 4.1 Must Support (Current Functionality)
+### 5.1 Must Support (Current Functionality)
 
-1. **Issue Types**
-   - 5 predefined: feature, bug, docs, refactor, hotfix
-   - 1 custom (user-defined phases)
+1. **5 Predefined Issue Types**
+   - feature, bug, docs, refactor, hotfix
 
-2. **Phase Sequences**
-   - Required phases per issue type
+2. **Custom Issue Type**
+   - User-defined phase sequence
+
+3. **Phase Sequences**
+   - Required phases per type
    - Phase ordering
 
-3. **Descriptions**
+4. **Descriptions**
    - Human-readable workflow descriptions
 
-4. **Backward Compatibility**
-   - None needed (no enforced projects in production)
-
-### 4.2 Must Add (Issue #42 Requirements)
+### 5.2 Must Add (Issue #42)
 
 1. **Execution Modes**
-   ```yaml
-   feature:
-     execution_mode: autonomous  # or interactive
-     required_phases: [...]
-   ```
+   - Autonomous: rigid, sequential
+   - Interactive: flexible, approval-based
 
 2. **Phase Transitions**
-   ```yaml
-   feature:
-     transitions:
-       discovery: [planning]  # Only planning allowed after discovery
-       planning: [design]
-       design: [component]
-       # etc.
-   ```
+   - Define allowed transitions per type
+   - Enforce sequential in autonomous mode
+   - Allow flexible in interactive mode
 
-3. **Mode-Specific Behaviors**
-   ```yaml
-   autonomous:
-     enforce_sequential: true
-     require_approval: false
-   interactive:
-     enforce_sequential: false
-     require_approval: true
-   ```
+3. **Mode Configuration**
+   - Selected at project initialization
+   - Stored in project plan
 
-### 4.3 Nice to Have
+### 5.3 Out of Scope
 
-1. **Phase Metadata**
-   ```yaml
-   phases:
-     discovery:
-       description: "Research and planning"
-       min_duration: null
-       max_duration: null
-   ```
+**Explicitly NOT in workflows.yaml:**
+- Validation rules → Issue #52 (validation.yaml)
+- Quality gates → Issue #53 (quality.yaml)
+- Scaffold rules → Issue #54 (scaffold.yaml)
+- Git conventions → Issue #55 (git.yaml)
+- Phase-specific tooling requirements
 
-2. **Validation Configuration**
-   ```yaml
-   feature:
-     validations:
-       quality_gates: required
-       test_coverage: 80
-   ```
-
-3. **Custom Fields**
-   ```yaml
-   feature:
-     custom:
-       team: backend
-       priority: high
-   ```
+**Rationale:** Clean separation - workflows define WHAT phases exist, other configs define HOW to validate/execute within those phases.
 
 ---
 
-## 5. Open Questions
+## 6. Success Criteria
 
-### 5.1 Execution Mode Selection
+**Discovery Phase Complete When:**
+- [x] PHASE_TEMPLATES structure documented
+- [x] Usage patterns identified
+- [x] Coding standards researched
+- [x] Missing capabilities identified
+- [x] Requirements documented
+- [ ] Open questions listed for Planning
 
-**Question:** How is execution mode selected?
-- **Option A:** At project initialization (fixed for entire workflow)
-- **Option B:** Changeable per phase
-- **Option C:** Global setting (all projects same mode)
-
-**Recommendation:** Option A (per-project, set at initialization)
-
-### 5.2 Transition Graph Flexibility
-
-**Question:** Should transition graph be:
-- **Option A:** Strict sequential only (discovery → planning → design)
-- **Option B:** Allow defined jumps (discovery → [planning, design])
-- **Option C:** Fully flexible with no restrictions
-
-**Current:** Option C exists
-**Issue #42:** Wants Option A for autonomous mode
-
-**Recommendation:** Mode-dependent (A for autonomous, C for interactive)
-
-### 5.3 Custom Workflow Support
-
-**Question:** How flexible should custom workflows be?
-
-**Current:**
-```python
-initialize_project(
-    issue_type="custom",
-    custom_phases=("phase1", "phase2", "phase3")
-)
-```
-
-**Future with Config:**
-- Should custom workflows be pre-defined in YAML?
-- Or still programmatically via API?
-
-**Recommendation:** Support both (pre-defined templates + runtime custom)
-
-### 5.4 Phase Name Standardization
-
-**Issue #42 Concern:** Phase names contradict TDD (tdd vs red/green/refactor)
-
-**Question:** Should workflows.yaml:
-- Define both old and new phase names?
-- Include migration path?
-- Support aliases?
-
-**Recommendation:** Address in Issue #42 implementation, not here
-
-### 5.5 Validation Integration
-
-**Question:** Should workflows.yaml include validation rules?
-
-**Example:**
-```yaml
-feature:
-  phases: [...]
-  validations:
-    tdd:
-      - require_commit_prefix: true
-      - require_tests: true
-```
-
-**Recommendation:** NO - keep validation in separate config (Issue #52/53/54)
-
----
-
-## 6. Proposed YAML Schema (Draft)
-
-```yaml
-# config/workflows.yaml
-
-workflows:
-  feature:
-    description: "Full 7-phase workflow for new features"
-    execution_mode: autonomous  # NEW
-    required_phases:
-      - discovery
-      - planning
-      - design
-      - component
-      - tdd
-      - integration
-      - documentation
-    transitions:  # NEW - optional, for strict mode
-      discovery: [planning]
-      planning: [design]
-      design: [component]
-      component: [tdd]
-      tdd: [integration]
-      integration: [documentation]
-      documentation: []  # terminal state
-  
-  bug:
-    description: "6-phase workflow (skip design)"
-    execution_mode: autonomous
-    required_phases:
-      - discovery
-      - planning
-      - component
-      - tdd
-      - integration
-      - documentation
-    transitions:
-      discovery: [planning]
-      planning: [component]
-      component: [tdd]
-      tdd: [integration]
-      integration: [documentation]
-      documentation: []
-  
-  # ... other issue types
-
-execution_modes:  # NEW - mode definitions
-  autonomous:
-    enforce_sequential: true
-    require_approval: false
-    description: "Agent-driven with strict phase enforcement"
-  
-  interactive:
-    enforce_sequential: false
-    require_approval: true
-    description: "Human-in-the-loop with flexible workflow"
-```
-
----
-
-## 7. Migration Impact
-
-### 7.1 Files to Modify
-
-| File | Changes Required |
-|------|------------------|
-| `project_manager.py` | Remove PHASE_TEMPLATES, load from config |
-| `mcp_server/config/workflow_config.py` | NEW - Pydantic models + loader |
-| `phase_state_engine.py` | Add transition graph validation |
-| `policy_engine.py` | Add mode-aware validation |
-| `project_tools.py` | Update to use WorkflowConfig |
-
-### 7.2 Backward Compatibility
-
-**None needed** - no enforced projects exist in production
-
-**Strategy:** Fail fast if `config/workflows.yaml` missing
-
----
-
-## 8. Success Criteria
-
-- [ ] All PHASE_TEMPLATES functionality migrated
+**Overall Issue #50 Success:**
+- [ ] All PHASE_TEMPLATES functionality migrated to workflows.yaml
 - [ ] Execution modes supported (autonomous/interactive)
 - [ ] Phase transitions configurable
 - [ ] No hardcoded workflow logic in Python
 - [ ] Pydantic validation enforces schema
 - [ ] All tests passing
+- [ ] Config loaded at startup (fail fast)
+
+---
+
+## Open Questions for Planning
+
+### Q1: Execution Mode Selection
+
+How is execution mode chosen?
+- Option A: Per-project at initialization (recommended)
+- Option B: Changeable per phase
+- Option C: Global setting
+
+### Q2: Transition Graph Flexibility
+
+For autonomous mode:
+- Option A: Strict sequential only
+- Option B: Allow defined jumps
+- Option C: Fully flexible (current)
+
+Recommendation: A for autonomous, C for interactive
+
+### Q3: Custom Workflow Support
+
+Should custom workflows be:
+- Pre-defined in YAML?
+- Programmatically via API (current)?
+- Both?
+
+Recommendation: Support both
+
+### Q4: Literal vs Enum
+
+For type safety:
+- Use `Literal` (matches codebase pattern)?
+- Use `Enum` (stronger type safety)?
+
+Recommendation: `Literal` (consistency with existing patterns)
+
+### Q5: Config Loading
+
+When to load workflows.yaml:
+- Startup (global instance pattern)?
+- Per-request (lazy loading)?
+
+Recommendation: Startup with global instance (matches settings pattern)
 
 ---
 
 ## Next Steps
 
-1. **Planning Phase:**
-   - Finalize YAML schema design
-   - Design Pydantic models
-   - Define migration strategy
+**Planning Phase:**
+1. Answer open questions
+2. Design YAML schema structure
+3. Design Pydantic models (WorkflowConfig, ExecutionMode, Transitions)
+4. Define migration strategy
+5. Create implementation plan
 
-2. **TDD Phase:**
-   - Write tests for config loading
-   - Write tests for execution modes
-   - Write tests for transition validation
-   - Implement WorkflowConfig
-   - Update ProjectManager
-   - Update PhaseStateEngine
-
-3. **Integration Phase:**
-   - End-to-end workflow tests
-   - Verify no hardcoded PHASE_TEMPLATES remains
-
-4. **Documentation Phase:**
-   - Config reference documentation
-   - Execution mode guide
+**NOT in Discovery:**
+- Concrete YAML examples (belongs in Planning)
+- Pydantic class definitions (belongs in Planning)
+- Implementation details (belongs in TDD)
