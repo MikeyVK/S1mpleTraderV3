@@ -10,7 +10,7 @@ from mcp_server.tools.safe_edit_tool import (
     InsertLine,
     SafeEditInput,
     SafeEditTool,
-    SearchReplace,
+    
 )
 
 
@@ -315,7 +315,7 @@ async def test_search_replace_literal(safe_edit_tool, search_replace_file):
     """Test literal search and replace."""
     params = SafeEditInput(
         path=str(search_replace_file),
-        search_replace=SearchReplace(search="Hello", replace="Hi", regex=False),
+        search="Hello", replace="Hi",
         mode="strict"
     )
 
@@ -336,7 +336,7 @@ async def test_search_replace_with_count_limit(safe_edit_tool, search_replace_fi
     """Test search and replace with count limit."""
     params = SafeEditInput(
         path=str(search_replace_file),
-        search_replace=SearchReplace(search="Hello", replace="Hi", regex=False, count=1),
+        search="Hello", replace="Hi", search_count=1,
         mode="strict"
     )
 
@@ -356,11 +356,7 @@ async def test_search_replace_regex(safe_edit_tool, search_replace_file):
     """Test regex search and replace."""
     params = SafeEditInput(
         path=str(search_replace_file),
-        search_replace=SearchReplace(
-            search=r"Hello (\w+)",
-            replace=r"Greetings \1",
-            regex=True
-        ),
+        search=r"Hello (\w+)", replace=r"Greetings \1", regex=True,
         mode="strict"
     )
 
@@ -381,7 +377,7 @@ async def test_search_replace_pattern_not_found(safe_edit_tool, search_replace_f
     """Test that pattern not found is handled in strict mode."""
     params = SafeEditInput(
         path=str(search_replace_file),
-        search_replace=SearchReplace(search="NonExistent", replace="Something", regex=False),
+        search="NonExistent", replace="Something",
         mode="strict"
     )
 
@@ -396,7 +392,9 @@ async def test_search_replace_invalid_regex(safe_edit_tool, search_replace_file)
     """Test that invalid regex is rejected."""
     params = SafeEditInput(
         path=str(search_replace_file),
-        search_replace=SearchReplace(search="[invalid(", replace="Something", regex=True),
+        search="[invalid(",
+        replace="Something",
+        regex=True,
         mode="strict"
     )
 
@@ -581,7 +579,7 @@ def test_single_edit_mode_valid():
     # Should not raise - search_replace only
     SafeEditInput(
         path="test.py",
-        search_replace=SearchReplace(search="old", replace="new"),
+        search="old", replace="new",
         mode="strict"
     )
 
@@ -594,7 +592,7 @@ def test_all_edit_modes_rejected():
             content="Content",
             line_edits=[LineEdit(start_line=1, end_line=1, new_content="Edit")],
             insert_lines=[InsertLine(at_line=1, content="Insert")],
-            search_replace=SearchReplace(search="old", replace="new"),
+            search="old", replace="new",
             mode="strict"
         )
 
@@ -662,11 +660,7 @@ async def test_search_replace_with_regex_capturing_groups(safe_edit_tool, temp_f
     
     params = SafeEditInput(
         path=str(temp_file),
-        search_replace=SearchReplace(
-            search=r"Hello (\w+)",
-            replace=r"Goodbye \1",
-            regex=True
-        ),
+        search=r"Hello (\w+)", replace=r"Goodbye \1", regex=True,
         mode="interactive",
         show_diff=False
     )
@@ -709,7 +703,7 @@ async def test_verify_only_shows_diff_without_writing(safe_edit_tool, temp_file)
     
     params = SafeEditInput(
         path=str(temp_file),
-        search_replace=SearchReplace(search="Hello", replace="Goodbye"),
+        search="Hello", replace="Goodbye",
         mode="verify_only",
         show_diff=True
     )
@@ -770,7 +764,9 @@ async def test_search_replace_count_limit(safe_edit_tool):
     try:
         params = SafeEditInput(
             path=str(temp_path),
-            search_replace=SearchReplace(search="foo", replace="bar", count=2),
+            search="foo",
+            replace="bar",
+            search_count=2,
             mode="interactive",
             show_diff=False
         )
@@ -782,8 +778,8 @@ async def test_search_replace_count_limit(safe_edit_tool):
         assert content.count("bar") == 2
         assert content.count("foo") == 2
     finally:
-        temp_path.unlink()
-
+        if temp_path.exists():
+            temp_path.unlink()
 
 @pytest.mark.asyncio
 async def test_strict_mode_rejects_invalid_python(safe_edit_tool, python_file):
@@ -801,3 +797,344 @@ async def test_strict_mode_rejects_invalid_python(safe_edit_tool, python_file):
     result = await safe_edit_tool.execute(params)
     # In strict mode, should reject due to validation errors
     assert "Edit rejected" in result.content[0]["text"] or "validation" in result.content[0]["text"].lower()
+
+
+# ==================================================================
+# Comprehensive Tests for Flattened Search/Replace Parameters
+# ==================================================================
+
+
+@pytest.mark.asyncio
+async def test_search_replace_literal_basic(safe_edit_tool):
+    """Test basic literal search and replace without regex."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("foo bar foo baz foo\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search="foo",
+            replace="qux",
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        # All occurrences should be replaced
+        assert "qux bar qux baz qux" in content
+        assert "foo" not in content
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_regex_with_capturing_groups(safe_edit_tool):
+    """Test regex search/replace with capturing groups (\1, \2, etc.)."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("import foo\nimport bar\nimport baz\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search=r"import (\w+)",
+            replace=r"from \1 import *",
+            regex=True,
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        assert "from foo import *" in content
+        assert "from bar import *" in content
+        assert "from baz import *" in content
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_with_count_parameter(safe_edit_tool):
+    """Test search/replace with count parameter limiting replacements."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("test test test test test\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search="test",
+            replace="replaced",
+            search_count=3,  # Only replace first 3
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        # Should have 3 "replaced" and 2 "test"
+        assert content.count("replaced") == 3
+        assert content.count("test") == 2
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_with_ignorecase_flag(safe_edit_tool):
+    """Test search/replace with re.IGNORECASE flag."""
+    import re
+    
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("Hello HELLO hello HeLLo\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search="hello",
+            replace="hi",
+            regex=True,
+            search_flags=re.IGNORECASE,
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        # All variations should be replaced
+        assert content.count("hi") == 4
+        assert "Hello" not in content.lower() or content.strip() == "hi hi hi hi"
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_with_multiline_flag(safe_edit_tool):
+    """Test search/replace with re.MULTILINE flag for ^ and $ anchors."""
+    import re
+    
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("start line 1\nstart line 2\nline 3\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search=r"^start",
+            replace="begin",
+            regex=True,
+            search_flags=re.MULTILINE,
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        assert "begin line 1" in content
+        assert "begin line 2" in content
+        assert "line 3" in content
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_pattern_not_found_strict_mode(safe_edit_tool):
+    """Test that pattern not found returns error in strict mode."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("hello world\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search="nonexistent",
+            replace="something",
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        text = get_text_content(result)
+        
+        # In strict mode, should error when pattern not found
+        assert "Pattern 'nonexistent' not found in file" in text
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_invalid_regex_pattern(safe_edit_tool):
+    """Test that invalid regex pattern returns error."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("test content\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search="[invalid(regex",  # Invalid regex
+            replace="something",
+            regex=True,
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        text = get_text_content(result)
+        
+        # Should error on invalid regex
+        assert "Search/replace failed:" in text
+        assert "Invalid regex pattern" in text
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_backreference_in_replacement(safe_edit_tool):
+    """Test using backreferences (\1, \2) in replacement string."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("John Smith\nJane Doe\nBob Johnson\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search=r"(\w+) (\w+)",
+            replace=r"\2, \1",  # Swap first and last names
+            regex=True,
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        assert "Smith, John" in content
+        assert "Doe, Jane" in content
+        assert "Johnson, Bob" in content
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_special_regex_characters_literal_mode(safe_edit_tool):
+    """Test that special regex characters are treated literally when regex=False."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("test [.*] pattern\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search="[.*]",  # Should match literal "[.*]", not regex pattern
+            replace="[replaced]",
+            regex=False,  # Literal mode
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        assert "test [replaced] pattern" in content
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_with_combined_flags(safe_edit_tool):
+    """Test search/replace with multiple regex flags combined."""
+    import re
+    
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("Hello World\nhello WORLD\nHELLO world\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search=r"^hello",
+            replace="greetings",
+            regex=True,
+            search_flags=re.IGNORECASE | re.MULTILINE,  # Combined flags
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        # All lines starting with "hello" (case-insensitive) should be replaced
+        assert content.count("greetings") == 3
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_empty_replacement(safe_edit_tool):
+    """Test search/replace with empty replacement string (deletion)."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("remove_this text remove_this\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search="remove_this",
+            replace="",  # Empty replacement = deletion
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        # Both instances removed, result is " text " with spaces
+        assert content.strip() == "text"
+    finally:
+        temp_path.unlink()
+
+
+@pytest.mark.asyncio
+async def test_search_replace_count_with_regex(safe_edit_tool):
+    """Test that count parameter works with regex mode."""
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        temp_path = Path(f.name)
+        f.write("foo1 foo2 foo3 foo4\n")
+
+    try:
+        params = SafeEditInput(
+            path=str(temp_path),
+            search=r"foo\d",
+            replace="bar",
+            regex=True,
+            search_count=2,  # Only first 2 matches
+            mode="strict",
+            show_diff=False
+        )
+
+        result = await safe_edit_tool.execute(params)
+        assert result.is_error is False
+        
+        content = temp_path.read_text()
+        assert content.count("bar") == 2
+        assert "foo3" in content
+        assert "foo4" in content
+    finally:
+        temp_path.unlink()
