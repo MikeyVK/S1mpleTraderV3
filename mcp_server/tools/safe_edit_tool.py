@@ -233,7 +233,7 @@ class SafeEditTool(BaseTool):
         """Return the input schema for the tool."""
         return SafeEditInput.model_json_schema()
 
-    async def execute(self, params: SafeEditInput) -> ToolResult:  # pylint: disable=too-many-return-statements,too-many-branches
+    async def execute(self, params: SafeEditInput) -> ToolResult:
         """Execute the safe edit."""
         path = params.path
         mode = params.mode
