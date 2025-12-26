@@ -62,11 +62,22 @@ class SafeEditInput(BaseModel):
         description="List of line insert operations"
     )
     # Flattened search/replace parameters (no nested SearchReplace object)
-    search: str | None = Field(None, description="Pattern to search for (search/replace mode)")
-    replace: str | None = Field(None, description="Replacement text (search/replace mode)")
-    regex: bool = Field(default=False, description="Use regex pattern matching (search/replace mode)")
-    search_count: int | None = Field(None, description="Maximum number of replacements, None = all (search/replace mode)")
-    search_flags: int = Field(default=0, description="Regex flags e.g. re.IGNORECASE (search/replace mode)")
+    search: str | None = Field(
+        None, description="Pattern to search for (search/replace mode)"
+    )
+    replace: str | None = Field(
+        None, description="Replacement text (search/replace mode)"
+    )
+    regex: bool = Field(
+        default=False, description="Use regex pattern matching (search/replace mode)"
+    )
+    search_count: int | None = Field(
+        None,
+        description="Maximum number of replacements, None = all (search/replace mode)",
+    )
+    search_flags: int = Field(
+        default=0, description="Regex flags e.g. re.IGNORECASE (search/replace mode)"
+    )
     mode: str = Field(
         default="strict",
         description="Validation mode. 'strict' fails on error, 'interactive' writes but warns.",
@@ -89,7 +100,7 @@ class SafeEditInput(BaseModel):
         """Validate that exactly one edit mode is specified."""
         # Check if search/replace mode is active
         search_replace_active = self.search is not None or self.replace is not None
-        
+
         modes = [
             self.content,
             self.line_edits,
@@ -111,7 +122,7 @@ class SafeEditInput(BaseModel):
                 'Only one edit mode can be specified at a time. '
                 'Choose one of: content, line_edits, insert_lines, or search/replace'
             )
-        
+
         # If search/replace mode, both search and replace must be provided
         if search_replace_active:
             if self.search is None or self.replace is None:
@@ -273,6 +284,8 @@ class SafeEditTool(BaseTool):
                 return ToolResult.error(f"Insert lines failed: {e}")
         elif search_replace_active:
             # Search/replace mode - use flattened parameters
+            # Type narrowing: we validated that both are not None in validate_edit_modes
+            assert params.search is not None and params.replace is not None
             try:
                 new_content, replacement_count = self._apply_search_replace_flat(
                     original_content,
