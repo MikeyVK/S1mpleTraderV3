@@ -1,4 +1,36 @@
 {
+  "fix/42-phase-naming-tdd-contradiction": {
+    "current_phase": "design",
+    "issue_number": 42,
+    "transitions": [
+      {
+        "from_phase": "discovery",
+        "to_phase": "planning",
+        "timestamp": "2025-12-24T23:12:48.706550+00:00"
+      },
+      {
+        "from_phase": "planning",
+        "to_phase": "design",
+        "timestamp": "2025-12-25T00:15:23.123456+00:00"
+      }
+    ]
+  },
+  "refactor/50-workflow-configuration-system": {
+    "current_phase": "planning",
+    "issue_number": 50,
+    "transitions": [
+      {
+        "from_phase": "discovery",
+        "to_phase": "planning",
+        "timestamp": "2025-12-26T15:30:00.000000+00:00"
+      }
+    ]
+  },
+  "refactor/49-mcp-platform-configurability": {
+    "current_phase": "discovery",
+    "issue_number": 49,
+    "transitions": []
+  },
   "feature/38-enhanced-safe-edit": {
     "current_phase": "design",
     "issue_number": 38,
