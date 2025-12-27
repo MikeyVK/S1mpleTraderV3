@@ -15,9 +15,10 @@ from pathlib import Path
 
 import pytest
 import yaml  # type: ignore[import-untyped]
+from pydantic import ValidationError
 
-# Module under test - will be implemented in GREEN phase
-# from mcp_server.config.workflows import WorkflowConfig, WorkflowTemplate
+# Module under test
+from mcp_server.config.workflows import WorkflowConfig, WorkflowTemplate
 
 
 @pytest.fixture
@@ -99,7 +100,7 @@ def invalid_schema_yaml(tmp_path: Path) -> Path:
 
 
 # =============================================================================
-# Phase 1: Config Loading Tests (RED)
+# Phase 1: Config Loading Tests (GREEN)
 # =============================================================================
 
 class TestWorkflowConfigLoading:
@@ -117,18 +118,13 @@ class TestWorkflowConfigLoading:
         Args:
             valid_workflows_yaml: Path to valid test YAML file
         """
-        # RED phase - test not implemented yet
-        _ = valid_workflows_yaml
-        pytest.skip("RED: Not implemented yet")
+        config = WorkflowConfig.load(valid_workflows_yaml)
 
-        # Uncomment in GREEN phase:
-        # config = WorkflowConfig.load(valid_workflows_yaml)
-        #
-        # assert isinstance(config, WorkflowConfig)
-        # assert config.version == "1.0"
-        # assert "feature" in config.workflows
-        # assert "hotfix" in config.workflows
-        # assert len(config.workflows) == 2
+        assert isinstance(config, WorkflowConfig)
+        assert config.version == "1.0"
+        assert "feature" in config.workflows
+        assert "hotfix" in config.workflows
+        assert len(config.workflows) == 2
 
     def test_load_missing_file(self, tmp_path: Path) -> None:
         """Test loading non-existent workflows.yaml file.
@@ -141,20 +137,15 @@ class TestWorkflowConfigLoading:
         Args:
             tmp_path: Pytest tmp_path fixture
         """
-        # RED phase - test not implemented yet
-        _ = tmp_path
-        pytest.skip("RED: Not implemented yet")
+        missing_path = tmp_path / "nonexistent.yaml"
 
-        # Uncomment in GREEN phase:
-        # missing_path = tmp_path / "nonexistent.yaml"
-        #
-        # with pytest.raises(FileNotFoundError) as exc_info:
-        #     WorkflowConfig.load(missing_path)
-        #
-        # error_msg = str(exc_info.value)
-        # assert "Workflow config not found" in error_msg
-        # assert str(missing_path) in error_msg
-        # assert "Hint:" in error_msg
+        with pytest.raises(FileNotFoundError) as exc_info:
+            WorkflowConfig.load(missing_path)
+
+        error_msg = str(exc_info.value)
+        assert "Workflow config not found" in error_msg
+        assert str(missing_path) in error_msg
+        assert "Hint:" in error_msg
 
     def test_load_invalid_yaml(self, invalid_yaml: Path) -> None:
         """Test loading malformed YAML file.
@@ -166,14 +157,8 @@ class TestWorkflowConfigLoading:
         Args:
             invalid_yaml: Path to malformed YAML file
         """
-        # RED phase - test not implemented yet
-        _ = invalid_yaml
-        pytest.skip("RED: Not implemented yet")
-
-        # Uncomment in GREEN phase:
-        # from pydantic import ValidationError
-        # with pytest.raises((yaml.YAMLError, ValidationError)):
-        #     WorkflowConfig.load(invalid_yaml)
+        with pytest.raises((yaml.YAMLError, ValidationError)):
+            WorkflowConfig.load(invalid_yaml)
 
     def test_load_invalid_schema(self, invalid_schema_yaml: Path) -> None:
         """Test loading YAML with invalid schema (missing required fields).
@@ -185,17 +170,11 @@ class TestWorkflowConfigLoading:
         Args:
             invalid_schema_yaml: Path to invalid schema YAML file
         """
-        # RED phase - test not implemented yet
-        _ = invalid_schema_yaml
-        pytest.skip("RED: Not implemented yet")
+        with pytest.raises(ValidationError) as exc_info:
+            WorkflowConfig.load(invalid_schema_yaml)
 
-        # Uncomment in GREEN phase:
-        # from pydantic import ValidationError
-        # with pytest.raises(ValidationError) as exc_info:
-        #     WorkflowConfig.load(invalid_schema_yaml)
-        #
-        # error_msg = str(exc_info.value)
-        # assert "phases" in error_msg or "required" in error_msg.lower()
+        error_msg = str(exc_info.value)
+        assert "phases" in error_msg or "required" in error_msg.lower()
 
 
 class TestWorkflowTemplateValidation:
@@ -209,22 +188,16 @@ class TestWorkflowTemplateValidation:
         - Raises ValueError
         - Error message lists duplicate phases
         """
-        # RED phase - test not implemented yet
-        pytest.skip("RED: Not implemented yet")
+        with pytest.raises(ValueError) as exc_info:
+            WorkflowTemplate(
+                name="test",
+                phases=["discovery", "planning", "discovery"],  # Duplicate
+                default_execution_mode="interactive"
+            )
 
-        # Uncomment in GREEN phase:
-        # from mcp_server.config.workflows import WorkflowTemplate
-        #
-        # with pytest.raises(ValueError) as exc_info:
-        #     WorkflowTemplate(
-        #         name="test",
-        #         phases=["discovery", "planning", "discovery"],  # Duplicate
-        #         default_execution_mode="interactive"
-        #     )
-        #
-        # error_msg = str(exc_info.value)
-        # assert "duplicate" in error_msg.lower()
-        # assert "discovery" in error_msg
+        error_msg = str(exc_info.value)
+        assert "duplicate" in error_msg.lower()
+        assert "discovery" in error_msg
 
     def test_empty_phase_names_rejected(self) -> None:
         """Test that empty/whitespace phase names are rejected.
@@ -234,21 +207,15 @@ class TestWorkflowTemplateValidation:
         - Raises ValueError
         - Error message indicates empty phase names
         """
-        # RED phase - test not implemented yet
-        pytest.skip("RED: Not implemented yet")
+        with pytest.raises(ValueError) as exc_info:
+            WorkflowTemplate(
+                name="test",
+                phases=["discovery", "  ", "planning"],  # Empty phase
+                default_execution_mode="interactive"
+            )
 
-        # Uncomment in GREEN phase:
-        # from mcp_server.config.workflows import WorkflowTemplate
-        #
-        # with pytest.raises(ValueError) as exc_info:
-        #     WorkflowTemplate(
-        #         name="test",
-        #         phases=["discovery", "  ", "planning"],  # Empty phase
-        #         default_execution_mode="interactive"
-        #     )
-        #
-        # error_msg = str(exc_info.value)
-        # assert "empty" in error_msg.lower()
+        error_msg = str(exc_info.value)
+        assert "empty" in error_msg.lower()
 
     def test_invalid_execution_mode_rejected(self) -> None:
         """Test that invalid execution_mode values are rejected.
@@ -258,19 +225,12 @@ class TestWorkflowTemplateValidation:
         - Raises ValidationError
         - Valid values: "interactive", "autonomous"
         """
-        # RED phase - test not implemented yet
-        pytest.skip("RED: Not implemented yet")
+        with pytest.raises(ValidationError) as exc_info:
+            WorkflowTemplate(
+                name="test",
+                phases=["discovery"],
+                default_execution_mode="manual"  # Invalid, type: ignore
+            )
 
-        # Uncomment in GREEN phase:
-        # from pydantic import ValidationError
-        # from mcp_server.config.workflows import WorkflowTemplate
-        #
-        # with pytest.raises(ValidationError) as exc_info:
-        #     WorkflowTemplate(
-        #         name="test",
-        #         phases=["discovery"],
-        #         default_execution_mode="manual"  # Invalid
-        #     )
-        #
-        # error_msg = str(exc_info.value)
-        # assert "execution_mode" in error_msg.lower() or "literal" in error_msg.lower()
+        error_msg = str(exc_info.value)
+        assert "execution_mode" in error_msg.lower() or "literal" in error_msg.lower()
