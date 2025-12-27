@@ -1,6 +1,6 @@
 """Project management tools for MCP server.
 
-Phase 0.5: Project initialization with issue type selection.
+Phase 0.5: Project initialization with workflow selection.
 """
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from mcp_server.managers.project_manager import ProjectManager, PHASE_TEMPLATES
+from mcp_server.managers.project_manager import ProjectManager, ProjectInitOptions
 from mcp_server.tools.base import BaseTool, ToolResult
 
 
@@ -17,34 +17,37 @@ class InitializeProjectInput(BaseModel):
 
     issue_number: int = Field(..., description="GitHub issue number")
     issue_title: str = Field(..., description="Issue title")
-    issue_type: str = Field(
+    workflow_name: str = Field(
         ...,
         description=(
-            "Type of work: feature (7 phases), bug (6), docs (4), "
-            "refactor (5), hotfix (3), or custom"
+            "Workflow name from workflows.yaml: "
+            "feature, bug, hotfix, refactor, docs"
         )
     )
-    custom_phases: tuple[str, ...] | None = Field(
+    execution_mode: str | None = Field(
         default=None,
-        description="Custom phase list (required if issue_type=custom)"
+        description="Execution mode: 'autonomous' or 'interactive' (overrides workflow default)"
+    )
+    custom_phases: list[str] | None = Field(
+        default=None,
+        description="Custom phase list (requires skip_reason)"
     )
     skip_reason: str | None = Field(
         default=None,
-        description="Reason for custom phases"
+        description="Reason for custom phases (required with custom_phases)"
     )
 
 
 class InitializeProjectTool(BaseTool):
-    """Tool for initializing projects with phase plan selection.
+    """Tool for initializing projects with workflow selection.
 
-    Phase 0.5: Human selects issue_type → generates project phase plan.
+    Uses workflows.yaml configuration (Issue #50).
     """
 
     name = "initialize_project"
     description = (
-        "Initialize project with phase plan selection. "
-        "Human selects issue_type (feature/bug/docs/refactor/hotfix/custom) "
-        "to generate project-specific phase plan."
+        "Initialize project with workflow from workflows.yaml. "
+        "Workflow determines phase sequence and execution mode."
     )
     args_model = InitializeProjectInput
 
@@ -71,23 +74,38 @@ class InitializeProjectTool(BaseTool):
             ToolResult with success message and project details
 
         Raises:
-            ValueError: If issue_type invalid or custom_phases missing
+            ValueError: If workflow_name invalid or validation fails
         """
         try:
-            result = self.manager.initialize_project(
+            # Build options
+            options = None
+            if params.execution_mode or params.custom_phases or params.skip_reason:
+                options = ProjectInitOptions(
+                    execution_mode=params.execution_mode,
+                    custom_phases=tuple(params.custom_phases) if params.custom_phases else None,
+                    skip_reason=params.skip_reason
+                )
+
+            # Initialize project with new API
+            plan = self.manager.initialize_project(
                 issue_number=params.issue_number,
                 issue_title=params.issue_title,
-                issue_type=params.issue_type,
-                custom_phases=params.custom_phases,
-                skip_reason=params.skip_reason
+                workflow_name=params.workflow_name,
+                options=options
             )
 
-            # Add template info to result
-            if params.issue_type != "custom":
-                template = PHASE_TEMPLATES[params.issue_type]
-                result["description"] = template["description"]
+            # Format response
+            response = {
+                "success": True,
+                "issue_number": plan.issue_number,  # pylint: disable=no-member
+                "issue_title": plan.issue_title,  # pylint: disable=no-member
+                "workflow_name": plan.workflow_name,  # pylint: disable=no-member
+                "required_phases": list(plan.required_phases),  # pylint: disable=no-member
+                "skip_reason": plan.skip_reason,  # pylint: disable=no-member
+                "description": f"{len(plan.required_phases)}-phase workflow"  # pylint: disable=no-member
+            }
 
-            return ToolResult.text(json.dumps(result, indent=2))
+            return ToolResult.text(json.dumps(response, indent=2))
         except (ValueError, OSError) as e:
             return ToolResult.error(str(e))
 
@@ -130,6 +148,7 @@ class GetProjectPlanTool(BaseTool):
         try:
             plan = self.manager.get_project_plan(issue_number=params.issue_number)
             if plan:
+                # plan is already a dict from project_manager
                 return ToolResult.text(json.dumps(plan, indent=2))
             return ToolResult.error(f"No project plan found for issue #{params.issue_number}")
         except (ValueError, OSError) as e:
