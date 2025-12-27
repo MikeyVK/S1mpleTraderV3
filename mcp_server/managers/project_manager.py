@@ -13,6 +13,23 @@ from mcp_server.config.workflows import workflow_config
 
 
 @dataclass
+class ProjectInitOptions:
+    """Optional parameters for project initialization.
+
+    Reduces initialize_project() parameter count from 7 to 4.
+
+    Attributes:
+        execution_mode: Execution mode override (interactive or autonomous)
+        custom_phases: Custom phase list (overrides workflow phases)
+        skip_reason: Reason for custom phases (required if custom_phases provided)
+    """
+
+    execution_mode: str | None = None
+    custom_phases: tuple[str, ...] | None = None
+    skip_reason: str | None = None
+
+
+@dataclass
 class ProjectPlan:
     """Project phase plan (immutable after creation)."""
 
@@ -45,10 +62,7 @@ class ProjectManager:
         issue_number: int,
         issue_title: str,
         workflow_name: str,
-        *,
-        execution_mode: str | None = None,
-        custom_phases: tuple[str, ...] | None = None,
-        skip_reason: str | None = None
+        options: ProjectInitOptions | None = None
     ) -> dict[str, Any]:
         """Initialize project with workflow selection.
 
@@ -56,9 +70,7 @@ class ProjectManager:
             issue_number: GitHub issue number
             issue_title: Issue title
             workflow_name: Workflow name from workflows.yaml (feature, bug, hotfix, etc.)
-            execution_mode: Optional execution mode override (interactive or autonomous)
-            custom_phases: Optional custom phase list (overrides workflow phases)
-            skip_reason: Reason for custom phases (required if custom_phases provided)
+            options: Optional parameters (execution_mode, custom_phases, skip_reason)
 
         Returns:
             dict with success, workflow_name, execution_mode, required_phases, skip_reason
@@ -66,6 +78,8 @@ class ProjectManager:
         Raises:
             ValueError: If workflow_name invalid or custom_phases without skip_reason
         """
+        opts = options or ProjectInitOptions()
+
         # Validate workflow exists
         try:
             workflow = workflow_config.get_workflow(workflow_name)
@@ -74,23 +88,22 @@ class ProjectManager:
             raise ValueError(str(e)) from e
 
         # Determine execution mode (override or workflow default)
-        exec_mode = execution_mode or workflow.default_execution_mode
+        exec_mode = opts.execution_mode or workflow.default_execution_mode
 
         # Validate execution mode
         if exec_mode not in ("interactive", "autonomous"):
-            raise ValueError(
+            msg = (
                 f"Invalid execution_mode: '{exec_mode}'. "
-                "Valid values: 'interactive', 'autonomous'"
+                f"Valid values: 'interactive', 'autonomous'"
             )
+            raise ValueError(msg)
 
-        # Determine phases (custom overrides workflow)
-        if custom_phases is not None:
-            if not skip_reason:
-                raise ValueError(
-                    "skip_reason required when custom_phases provided. "
-                    "Explain why phases differ from workflow."
-                )
-            required_phases = custom_phases
+        # Determine phases (custom override or workflow default)
+        if opts.custom_phases:
+            if not opts.skip_reason:
+                msg = "skip_reason required when custom_phases provided"
+                raise ValueError(msg)
+            required_phases = opts.custom_phases
         else:
             required_phases = tuple(workflow.phases)
 
@@ -101,25 +114,24 @@ class ProjectManager:
             workflow_name=workflow_name,
             execution_mode=exec_mode,
             required_phases=required_phases,
-            skip_reason=skip_reason,
+            skip_reason=opts.skip_reason,
             created_at=datetime.now(UTC).isoformat()
         )
 
-        # Store project metadata
+        # Save to projects.json
         self._save_project_plan(plan)
 
+        # Return result
         return {
             "success": True,
-            "issue_number": issue_number,
-            "issue_title": issue_title,
-            "workflow_name": workflow_name,
-            "execution_mode": exec_mode,
-            "required_phases": required_phases,
-            "skip_reason": skip_reason
+            "workflow_name": plan.workflow_name,
+            "execution_mode": plan.execution_mode,
+            "required_phases": plan.required_phases,
+            "skip_reason": plan.skip_reason
         }
 
     def get_project_plan(self, issue_number: int) -> dict[str, Any] | None:
-        """Retrieve project plan for issue.
+        """Get stored project plan.
 
         Args:
             issue_number: GitHub issue number
@@ -131,11 +143,11 @@ class ProjectManager:
             return None
 
         projects: dict[str, Any] = json.loads(self.projects_file.read_text())
-        plan = projects.get(str(issue_number))
-        return dict(plan) if plan else None
+        plan: dict[str, Any] | None = projects.get(str(issue_number))
+        return plan
 
     def _save_project_plan(self, plan: ProjectPlan) -> None:
-        """Save project plan to .st3/projects.json (atomic write).
+        """Save project plan to projects.json.
 
         Args:
             plan: ProjectPlan to save
@@ -149,18 +161,15 @@ class ProjectManager:
         else:
             projects = {}
 
-        # Add/update project (workflow-based structure)
+        # Store plan (convert tuple to list for JSON)
         projects[str(plan.issue_number)] = {
-            "issue_number": plan.issue_number,
             "issue_title": plan.issue_title,
             "workflow_name": plan.workflow_name,
             "execution_mode": plan.execution_mode,
-            "required_phases": plan.required_phases,
+            "required_phases": list(plan.required_phases),
             "skip_reason": plan.skip_reason,
             "created_at": plan.created_at
         }
 
-        # Atomic write
-        tmp_file = self.projects_file.with_suffix(".json.tmp")
-        tmp_file.write_text(json.dumps(projects, indent=2))
-        tmp_file.replace(self.projects_file)
+        # Write to file
+        self.projects_file.write_text(json.dumps(projects, indent=2))

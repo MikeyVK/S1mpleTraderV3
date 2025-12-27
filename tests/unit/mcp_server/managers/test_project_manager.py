@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 from mcp_server.config.workflows import workflow_config
 
 
@@ -119,7 +119,7 @@ class TestProjectManagerWorkflows:
             issue_number=77,
             issue_title="Test",
             workflow_name="feature",
-            execution_mode="autonomous"  # Override default
+            options=ProjectInitOptions(execution_mode="autonomous")
         )
 
         assert result["execution_mode"] == "autonomous"
@@ -139,8 +139,10 @@ class TestProjectManagerWorkflows:
             issue_number=50,
             issue_title="Complex refactor",
             workflow_name="refactor",
-            custom_phases=custom_phases,
-            skip_reason="Adding design phase for complex refactor"
+            options=ProjectInitOptions(
+                custom_phases=custom_phases,
+                skip_reason="Adding design phase for complex refactor"
+            )
         )
 
         assert result["success"] is True
@@ -179,7 +181,7 @@ class TestProjectManagerWorkflows:
                 issue_number=888,
                 issue_title="Test",
                 workflow_name="feature",
-                execution_mode="manual"  # Invalid
+                options=ProjectInitOptions(execution_mode="manual")
             )
 
         error_msg = str(exc_info.value)
@@ -195,8 +197,7 @@ class TestProjectManagerWorkflows:
                 issue_number=777,
                 issue_title="Test",
                 workflow_name="feature",
-                custom_phases=("discovery", "tdd")
-                # Missing skip_reason
+                options=ProjectInitOptions(custom_phases=("discovery", "tdd"))
             )
 
         error_msg = str(exc_info.value)
