@@ -189,5 +189,4 @@ class WorkflowConfig(BaseModel):
 
 
 # Module-level singleton (loaded at import time)
-# Commented out until workflows.yaml exists - uncomment in integration phase
-# workflow_config = WorkflowConfig.load()
+workflow_config = WorkflowConfig.load()

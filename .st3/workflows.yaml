@@ -1,0 +1,62 @@
+# Workflow Configuration
+# Schema Version: 1.0
+# Documentation: docs/reference/WORKFLOWS.md
+
+version: "1.0"
+
+workflows:
+  # Feature Development (full workflow)
+  feature:
+    name: feature
+    description: "Full development workflow with all phases (discovery → design → TDD → integration → docs)"
+    default_execution_mode: interactive
+    phases:
+      - discovery
+      - planning
+      - design
+      - tdd
+      - integration
+      - documentation
+
+  # Bug Fix (no design phase)
+  bug:
+    name: bug
+    description: "Bug fix workflow (discovery → planning → TDD → integration → docs)"
+    default_execution_mode: interactive
+    phases:
+      - discovery
+      - planning
+      - tdd
+      - integration
+      - documentation
+
+  # Hotfix (minimal workflow)
+  hotfix:
+    name: hotfix
+    description: "Emergency fix workflow (TDD → integration → docs only)"
+    default_execution_mode: autonomous
+    phases:
+      - tdd
+      - integration
+      - documentation
+
+  # Refactor (no design phase by default)
+  refactor:
+    name: refactor
+    description: "Code refactoring workflow (discovery → planning → TDD → integration → docs)"
+    default_execution_mode: interactive
+    phases:
+      - discovery
+      - planning
+      - tdd
+      - integration
+      - documentation
+
+  # Documentation (minimal workflow)
+  docs:
+    name: docs
+    description: "Documentation-only workflow (planning → docs)"
+    default_execution_mode: interactive
+    phases:
+      - planning
+      - documentation
