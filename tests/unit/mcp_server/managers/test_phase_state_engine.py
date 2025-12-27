@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine  # type: ignore[import-not-found]
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 
 
@@ -210,3 +210,51 @@ class TestPhaseStateEngineTransitions:
         # Second transition (forced)
         assert transitions[1]["forced"] is True
         assert transitions[1]["skip_reason"] == "Design already done"
+
+    def test_phase_state_engine_initialize_branch_without_project(
+        self, phase_engine: PhaseStateEngine
+    ) -> None:
+        """Test initialize_branch fails if project not initialized."""
+        with pytest.raises(ValueError) as exc_info:
+            phase_engine.initialize_branch(
+                branch="feature/99-test",
+                issue_number=99,
+                initial_phase="discovery"
+            )
+
+        error_msg = str(exc_info.value)
+        assert "Project 99 not found" in error_msg
+        assert "Initialize project first" in error_msg
+
+    def test_phase_state_engine_get_state_without_state_file(
+        self, phase_engine: PhaseStateEngine
+    ) -> None:
+        """Test get_state fails if state.json doesn't exist."""
+        with pytest.raises(ValueError) as exc_info:
+            phase_engine.get_state(branch="feature/88-test")
+
+        error_msg = str(exc_info.value)
+        assert "State file not found" in error_msg
+
+    def test_phase_state_engine_get_state_unknown_branch(
+        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test get_state fails for unknown branch."""
+        # Initialize one branch to create state.json
+        project_manager.initialize_project(
+            issue_number=50,
+            issue_title="Test",
+            workflow_name="feature"
+        )
+        phase_engine.initialize_branch(
+            branch="feature/50-test",
+            issue_number=50,
+            initial_phase="discovery"
+        )
+
+        # Try to get state for different branch
+        with pytest.raises(ValueError) as exc_info:
+            phase_engine.get_state(branch="feature/99-unknown")
+
+        error_msg = str(exc_info.value)
+        assert "Branch 'feature/99-unknown' not found" in error_msg
