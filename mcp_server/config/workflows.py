@@ -125,8 +125,9 @@ class WorkflowConfig(BaseModel):
             ValueError: Unknown workflow name
         """
         if name not in self.workflows:
-            # Pydantic ensures self.workflows is dict at runtime, not FieldInfo
-            available = ", ".join(sorted(self.workflows.keys()))  # pylint: disable=no-member
+            # At runtime, self.workflows is a dict (Pydantic transforms Field to actual type)
+            workflow_names = list(self.workflows.keys())
+            available = ", ".join(sorted(workflow_names))
             raise ValueError(
                 f"Unknown workflow: '{name}'\n"
                 f"Available workflows: {available}\n"

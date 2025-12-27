@@ -229,7 +229,7 @@ class TestWorkflowTemplateValidation:
             WorkflowTemplate(
                 name="test",
                 phases=["discovery"],
-                default_execution_mode="manual"  # Invalid, type: ignore
+                default_execution_mode="manual"  # type: ignore[arg-type]
             )
 
         error_msg = str(exc_info.value)
