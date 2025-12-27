@@ -234,3 +234,57 @@ class TestWorkflowTemplateValidation:
 
         error_msg = str(exc_info.value)
         assert "execution_mode" in error_msg.lower() or "literal" in error_msg.lower()
+
+
+# =============================================================================
+# Phase 2: Workflow Lookup Tests (RED)
+# =============================================================================
+
+class TestWorkflowLookup:
+    """Test WorkflowConfig.get_workflow() method."""
+
+    def test_get_workflow_exists(self, valid_workflows_yaml: Path) -> None:
+        """Test getting an existing workflow by name.
+
+        Expected behavior:
+        - Returns WorkflowTemplate instance
+        - Template has correct name and phases
+        - Workflow matches expected configuration
+
+        Args:
+            valid_workflows_yaml: Path to valid test YAML file
+        """
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        workflow = config.get_workflow("feature")
+
+        assert isinstance(workflow, WorkflowTemplate)
+        assert workflow.name == "feature"
+        assert workflow.phases == [
+            "discovery", "planning", "design", "tdd", "integration", "documentation"
+        ]
+        assert workflow.default_execution_mode == "interactive"
+
+    def test_get_workflow_unknown(self, valid_workflows_yaml: Path) -> None:
+        """Test getting a non-existent workflow by name.
+
+        Expected behavior:
+        - Raises ValueError
+        - Error message includes unknown workflow name
+        - Error message lists available workflows
+        - Error message includes helpful hint
+
+        Args:
+            valid_workflows_yaml: Path to valid test YAML file
+        """
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        with pytest.raises(ValueError) as exc_info:
+            config.get_workflow("nonexistent")
+
+        error_msg = str(exc_info.value)
+        assert "Unknown workflow: 'nonexistent'" in error_msg
+        assert "Available workflows:" in error_msg
+        assert "feature" in error_msg
+        assert "hotfix" in error_msg
+        assert "Hint:" in error_msg
