@@ -11,7 +11,7 @@ import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
-from mcp_server.tools.phase_tools import (  # type: ignore[attr-defined]
+from mcp_server.tools.phase_tools import (
     ForcePhaseTransitionInput,
     ForcePhaseTransitionTool,
 )
@@ -68,6 +68,7 @@ class TestForcePhaseTransitionTool:
 
         return branch
 
+    @pytest.mark.asyncio
     async def test_force_phase_transition_tool_success(
         self,
         tool: ForcePhaseTransitionTool,
@@ -86,10 +87,10 @@ class TestForcePhaseTransitionTool:
         result = await tool.execute(params)
 
         # Check result
-        assert "✅" in result.content
-        assert "discovery" in result.content
-        assert "design" in result.content
-        assert "forced" in result.content.lower()
+        assert "✅" in result.content[0]["text"]
+        assert "discovery" in result.content[0]["text"]
+        assert "design" in result.content[0]["text"]
+        assert "forced" in result.content[0]["text"].lower()
 
         # Verify state updated
         state = phase_engine.get_state(initialized_branch)
@@ -100,36 +101,34 @@ class TestForcePhaseTransitionTool:
         assert transition["forced"] is True
         assert transition["skip_reason"] == "Planning already done in previous project"
 
-    async def test_force_phase_transition_tool_requires_skip_reason(
+    def test_force_phase_transition_tool_requires_skip_reason(
         self,
-        tool: ForcePhaseTransitionTool,
         initialized_branch: str
     ) -> None:
         """Test tool requires skip_reason parameter."""
-        # This test verifies skip_reason is mandatory in the input model
-        # Pydantic will enforce this at validation time
-        with pytest.raises(ValueError):
+        # Empty skip_reason should be rejected
+        with pytest.raises(ValueError, match="cannot be empty"):
             ForcePhaseTransitionInput(
                 branch=initialized_branch,
                 to_phase="design",
-                skip_reason="",  # Empty skip_reason should be rejected
+                skip_reason="",
                 human_approval="Approved"
             )
 
-    async def test_force_phase_transition_tool_requires_human_approval(
+    def test_force_phase_transition_tool_requires_human_approval(
         self,
-        tool: ForcePhaseTransitionTool,
         initialized_branch: str
     ) -> None:
         """Test tool requires human_approval parameter."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="cannot be empty"):
             ForcePhaseTransitionInput(
                 branch=initialized_branch,
                 to_phase="design",
                 skip_reason="Planning done",
-                human_approval=""  # Empty approval should be rejected
+                human_approval=""
             )
 
+    @pytest.mark.asyncio
     async def test_force_phase_transition_tool_unknown_branch(
         self,
         tool: ForcePhaseTransitionTool
@@ -145,9 +144,10 @@ class TestForcePhaseTransitionTool:
         result = await tool.execute(params)
 
         # Check error message
-        assert "❌" in result.content
-        assert "not found" in result.content.lower() or "error" in result.content.lower()
+        assert "❌" in result.content[0]["text"]
+        assert result.is_error is True
 
+    @pytest.mark.asyncio
     async def test_force_phase_transition_tool_allows_any_transition(
         self,
         tool: ForcePhaseTransitionTool,
@@ -173,10 +173,10 @@ class TestForcePhaseTransitionTool:
         result = await tool.execute(params)
 
         # Check success
-        assert "✅" in result.content
+        assert "✅" in result.content[0]["text"]
         assert phase_engine.get_current_phase(initialized_branch) == "discovery"
 
-    async def test_force_phase_transition_tool_input_model_validation(
+    def test_force_phase_transition_tool_input_model_validation(
         self
     ) -> None:
         """Test input model has correct field types and requirements."""
