@@ -1,6 +1,10 @@
 """ProjectManager - Phase 0.5: Project Type Selection & Phase Planning.
 
 Manages project initialization with human-selected phase templates.
+
+Issue #50: Migrated from PHASE_TEMPLATES to workflows.yaml.
+- Old API: initialize_project(issue_type="feature")
+- New API: initialize_project(workflow_name="feature")
 """
 import json
 from dataclasses import dataclass
@@ -8,7 +12,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-# Phase 0.5: PHASE_TEMPLATES for different issue types
+from mcp_server.config.workflows import workflow_config
+
+# Phase 0.5: PHASE_TEMPLATES for different issue types (DEPRECATED - use workflows.yaml)
 PHASE_TEMPLATES = {
     "feature": {
         "required_phases": (
@@ -45,7 +51,8 @@ class ProjectPlan:
 
     issue_number: int
     issue_title: str
-    issue_type: str  # feature, bug, docs, refactor, hotfix, custom
+    workflow_name: str  # Issue #50: Renamed from issue_type
+    execution_mode: str  # Issue #50: New field (interactive or autonomous)
     required_phases: tuple[str, ...]
     optional_phases: tuple[str, ...] = ()
     skip_reason: str | None = None
@@ -56,6 +63,7 @@ class ProjectManager:
     """Manages project initialization and phase plan selection.
 
     Phase 0.5: Human selects issue_type → generates project phase plan.
+    Issue #50: Migrated to workflow_name + workflows.yaml.
     """
 
     def __init__(self, workspace_root: Path | str):
@@ -71,8 +79,9 @@ class ProjectManager:
         self,
         issue_number: int,
         issue_title: str,
-        issue_type: str,
+        issue_type: str | None = None,  # DEPRECATED: use workflow_name
         *,
+        workflow_name: str | None = None,  # NEW: replaces issue_type
         custom_phases: tuple[str, ...] | None = None,
         skip_reason: str | None = None
     ) -> dict[str, Any]:
@@ -81,45 +90,62 @@ class ProjectManager:
         Phase 0.5: Human selects issue_type (feature/bug/docs/refactor/hotfix/custom),
         generates project phase plan, stores in .st3/projects.json.
 
+        Issue #50: Updated to use workflow_name + workflows.yaml instead of PHASE_TEMPLATES.
+
         Args:
             issue_number: GitHub issue number
             issue_title: Issue title
-            issue_type: Type of work (feature, bug, docs, refactor, hotfix, custom)
-            custom_phases: Custom phase list (required if issue_type=custom)
+            issue_type: DEPRECATED - use workflow_name instead
+            workflow_name: Workflow name from workflows.yaml (feature, bug, hotfix, etc.)
+            custom_phases: Custom phase list (overrides workflow phases)
             skip_reason: Reason for custom phases (required if custom_phases provided)
 
         Returns:
-            dict with success, issue_type, required_phases, skip_reason
+            dict with success, workflow_name, execution_mode, required_phases, skip_reason
 
         Raises:
-            ValueError: If issue_type invalid or custom_phases missing
+            ValueError: If workflow_name invalid or both issue_type and workflow_name provided
         """
-        # Validate issue_type
-        valid_types = list(PHASE_TEMPLATES.keys()) + ["custom"]
-        if issue_type not in valid_types:
+        # Handle backward compatibility
+        if issue_type is not None and workflow_name is not None:
             raise ValueError(
-                f"Invalid issue_type: {issue_type}. "
-                f"Valid types: {', '.join(valid_types)}"
+                "Cannot specify both issue_type and workflow_name. "
+                "Use workflow_name (issue_type is deprecated)."
             )
 
-        # Handle custom issue_type
-        if issue_type == "custom":
-            if not custom_phases:
-                raise ValueError(
-                    "custom_phases required when issue_type='custom'. "
-                    "Provide tuple of phase names."
-                )
+        if issue_type is not None:
+            # Backward compatibility: map issue_type to workflow_name
+            workflow_name = issue_type
+
+        if workflow_name is None:
+            raise ValueError(
+                "workflow_name is required. "
+                "Specify workflow_name parameter (e.g., workflow_name='feature')."
+            )
+
+        # Validate workflow_name exists in workflows.yaml
+        try:
+            workflow = workflow_config.get_workflow(workflow_name)
+        except ValueError as e:
+            # Re-raise with workflow_config error message (includes available workflows)
+            raise ValueError(str(e)) from e
+
+        # Determine execution mode and phases
+        execution_mode = workflow.default_execution_mode
+
+        if custom_phases is not None:
+            # Custom phases override workflow phases
             required_phases = custom_phases
         else:
-            # Use template
-            template = PHASE_TEMPLATES[issue_type]
-            required_phases = tuple(template["required_phases"])
+            # Use workflow phases from workflows.yaml
+            required_phases = tuple(workflow.phases)
 
         # Create project plan
         plan = ProjectPlan(
             issue_number=issue_number,
             issue_title=issue_title,
-            issue_type=issue_type,
+            workflow_name=workflow_name,
+            execution_mode=execution_mode,
             required_phases=required_phases,
             skip_reason=skip_reason,
             created_at=datetime.now(UTC).isoformat()
@@ -132,7 +158,8 @@ class ProjectManager:
             "success": True,
             "issue_number": issue_number,
             "issue_title": issue_title,
-            "issue_type": issue_type,
+            "workflow_name": workflow_name,
+            "execution_mode": execution_mode,
             "required_phases": required_phases,
             "skip_reason": skip_reason
         }
@@ -168,11 +195,12 @@ class ProjectManager:
         else:
             projects = {}
 
-        # Add/update project
+        # Add/update project (NEW structure with workflow_name + execution_mode)
         projects[str(plan.issue_number)] = {
             "issue_number": plan.issue_number,
             "issue_title": plan.issue_title,
-            "issue_type": plan.issue_type,
+            "workflow_name": plan.workflow_name,  # NEW: replaces issue_type
+            "execution_mode": plan.execution_mode,  # NEW: from workflow
             "required_phases": plan.required_phases,
             "optional_phases": plan.optional_phases,
             "skip_reason": plan.skip_reason,
