@@ -17,12 +17,16 @@ phase transitions via PhaseStateEngine.
 
 # Standard library
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # Third-party
 from pydantic import BaseModel, Field, field_validator
 
 # Project modules
 from mcp_server.tools.base import BaseTool, ToolResult
+
+if TYPE_CHECKING:
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
 
 
 class TransitionPhaseInput(BaseModel):
@@ -57,15 +61,11 @@ class ForcePhaseTransitionInput(BaseModel):
         return v.strip()
 
 
-class TransitionPhaseTool(BaseTool):
-    """MCP tool for standard sequential phase transitions.
+class _BasePhaseTransitionTool(BaseTool):
+    """Base class for phase transition tools.
 
-    Validates transitions via PhaseStateEngine against workflow definitions.
+    Provides common manager creation logic to avoid duplication.
     """
-
-    name = "transition_phase"
-    description = "Transition branch to next phase (strict sequential)"
-    args_model = TransitionPhaseInput
 
     def __init__(self, workspace_root: Path | str):
         """Initialize tool.
@@ -76,6 +76,33 @@ class TransitionPhaseTool(BaseTool):
         super().__init__()
         self.workspace_root = Path(workspace_root)
 
+    def _create_engine(self) -> "PhaseStateEngine":
+        """Create PhaseStateEngine instance.
+
+        Returns:
+            PhaseStateEngine instance with initialized managers
+        """
+        # Import here to avoid circular dependency
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        project_manager = ProjectManager(workspace_root=self.workspace_root)
+        return PhaseStateEngine(
+            workspace_root=self.workspace_root,
+            project_manager=project_manager
+        )
+
+
+class TransitionPhaseTool(_BasePhaseTransitionTool):
+    """MCP tool for standard sequential phase transitions.
+
+    Validates transitions via PhaseStateEngine against workflow definitions.
+    """
+
+    name = "transition_phase"
+    description = "Transition branch to next phase (strict sequential)"
+    args_model = TransitionPhaseInput
+
     async def execute(self, params: TransitionPhaseInput) -> ToolResult:
         """Execute standard phase transition.
 
@@ -85,19 +112,9 @@ class TransitionPhaseTool(BaseTool):
         Returns:
             ToolResult with success or error message
         """
-        # Import here to avoid circular dependency
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
-        # Create managers
-        project_manager = ProjectManager(workspace_root=self.workspace_root)
-        engine = PhaseStateEngine(
-            workspace_root=self.workspace_root,
-            project_manager=project_manager
-        )
+        engine = self._create_engine()
 
         try:
-            # Execute transition
             result = engine.transition(
                 branch=params.branch,
                 to_phase=params.to_phase,
@@ -113,7 +130,7 @@ class TransitionPhaseTool(BaseTool):
             return ToolResult.error(f"❌ Transition failed: {e}")
 
 
-class ForcePhaseTransitionTool(BaseTool):
+class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
     """MCP tool for forced non-sequential phase transitions.
 
     Bypasses workflow validation. Requires skip_reason and human_approval.
@@ -124,15 +141,6 @@ class ForcePhaseTransitionTool(BaseTool):
     description = "Force non-sequential phase transition (skip/jump with reason)"
     args_model = ForcePhaseTransitionInput
 
-    def __init__(self, workspace_root: Path | str):
-        """Initialize tool.
-
-        Args:
-            workspace_root: Path to workspace root
-        """
-        super().__init__()
-        self.workspace_root = Path(workspace_root)
-
     async def execute(self, params: ForcePhaseTransitionInput) -> ToolResult:
         """Execute forced phase transition.
 
@@ -142,19 +150,9 @@ class ForcePhaseTransitionTool(BaseTool):
         Returns:
             ToolResult with success or error message
         """
-        # Import here to avoid circular dependency
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
-        # Create managers
-        project_manager = ProjectManager(workspace_root=self.workspace_root)
-        engine = PhaseStateEngine(
-            workspace_root=self.workspace_root,
-            project_manager=project_manager
-        )
+        engine = self._create_engine()
 
         try:
-            # Execute forced transition
             result = engine.force_transition(
                 branch=params.branch,
                 to_phase=params.to_phase,
