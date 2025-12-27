@@ -1,14 +1,28 @@
-"""ProjectManager - Workflow-based project initialization.
-
-Issue #50: Migrated from PHASE_TEMPLATES to workflows.yaml configuration.
-Manages project initialization with workflow selection from workflows.yaml.
+# mcp_server/managers/project_manager.py
 """
+Project manager - Workflow-based project initialization.
+
+Manages project initialization with workflow selection from workflows.yaml.
+Replaces hardcoded PHASE_TEMPLATES with dynamic workflow configuration.
+
+@layer: Platform
+@dependencies: [workflow_config]
+@responsibilities:
+    - Initialize projects with workflow selection
+    - Validate workflow existence and execution mode
+    - Support custom phase overrides with skip_reason
+    - Persist project plans to .st3/projects.json
+    - Retrieve stored project plans
+"""
+
+# Standard library
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+# Project modules
 from mcp_server.config.workflows import workflow_config
 
 
@@ -16,34 +30,41 @@ from mcp_server.config.workflows import workflow_config
 class ProjectInitOptions:
     """Optional parameters for project initialization.
 
-    Reduces initialize_project() parameter count from 7 to 4.
-
-    Attributes:
-        execution_mode: Execution mode override (interactive or autonomous)
-        custom_phases: Custom phase list (overrides workflow phases)
-        skip_reason: Reason for custom phases (required if custom_phases provided)
+    Reduces initialize_project() from 7 to 4 parameters.
+    Field order: overrides → customizations → metadata
     """
 
+    # Overrides
     execution_mode: str | None = None
+
+    # Customizations
     custom_phases: tuple[str, ...] | None = None
     skip_reason: str | None = None
 
 
 @dataclass
 class ProjectPlan:
-    """Project phase plan (immutable after creation)."""
+    """Project phase plan data structure.
 
+    Field order: identifier → core data → optional → metadata
+    """
+
+    # Identifiers
     issue_number: int
     issue_title: str
+
+    # Core workflow data
     workflow_name: str
     execution_mode: str
     required_phases: tuple[str, ...]
+
+    # Optional fields
     skip_reason: str | None = None
     created_at: str | None = None
 
 
 class ProjectManager:
-    """Manages project initialization and phase plan selection.
+    """Project initialization manager with workflow support.
 
     Uses workflows.yaml for workflow definitions and phase sequences.
     """
@@ -69,14 +90,14 @@ class ProjectManager:
         Args:
             issue_number: GitHub issue number
             issue_title: Issue title
-            workflow_name: Workflow name from workflows.yaml (feature, bug, hotfix, etc.)
+            workflow_name: Workflow from workflows.yaml (feature, bug, hotfix, etc.)
             options: Optional parameters (execution_mode, custom_phases, skip_reason)
 
         Returns:
             dict with success, workflow_name, execution_mode, required_phases, skip_reason
 
         Raises:
-            ValueError: If workflow_name invalid or custom_phases without skip_reason
+            ValueError: If workflow invalid or custom_phases without skip_reason
         """
         opts = options or ProjectInitOptions()
 
@@ -84,7 +105,7 @@ class ProjectManager:
         try:
             workflow = workflow_config.get_workflow(workflow_name)
         except ValueError as e:
-            # Re-raise with workflow_config error message (includes available workflows)
+            # Re-raise with workflow_config error (includes available workflows)
             raise ValueError(str(e)) from e
 
         # Determine execution mode (override or workflow default)

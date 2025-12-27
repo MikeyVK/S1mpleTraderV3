@@ -1,35 +1,59 @@
-"""PhaseStateEngine - Workflow-based phase state and transition management.
-
-Issue #50: Integrated with workflows.yaml for transition validation.
-Manages branch phase state with strict sequential validation and forced transitions.
+# mcp_server/managers/phase_state_engine.py
 """
+Phase state engine - Workflow-based phase transition management.
+
+Manages branch phase state with strict sequential validation via workflows.yaml.
+Supports both standard sequential transitions and forced non-sequential transitions
+with audit trail.
+
+@layer: Platform
+@dependencies: [workflow_config, project_manager]
+@responsibilities:
+    - Initialize branch state with workflow caching
+    - Validate phase transitions against workflow definitions
+    - Execute standard sequential transitions
+    - Execute forced non-sequential transitions with skip_reason
+    - Maintain transition history with forced flag audit
+    - Persist state to .st3/state.json
+"""
+
+# Standard library
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+# Project modules
 from mcp_server.config.workflows import workflow_config
 from mcp_server.managers.project_manager import ProjectManager
 
 
 @dataclass
 class TransitionRecord:
-    """Single phase transition record."""
+    """Phase transition record for audit trail.
 
+    Field order: identifier → data → flags → optional
+    """
+
+    # Core transition data
     from_phase: str
     to_phase: str
     timestamp: str
+
+    # Metadata
     human_approval: str | None
     forced: bool
+
+    # Optional fields
     skip_reason: str | None = None
 
 
 class PhaseStateEngine:
-    """Manages phase state and transitions with workflow validation.
+    """Phase state and transition manager with workflow validation.
 
     Validates transitions against workflows.yaml definitions.
-    Supports both strict sequential and forced (non-sequential) transitions.
+    Supports standard sequential and forced non-sequential transitions.
     """
 
     def __init__(self, workspace_root: Path | str, project_manager: ProjectManager):
@@ -37,7 +61,7 @@ class PhaseStateEngine:
 
         Args:
             workspace_root: Path to workspace root directory
-            project_manager: ProjectManager instance for workflow lookup
+            project_manager: ProjectManager for workflow lookup
         """
         self.workspace_root = Path(workspace_root)
         self.state_file = self.workspace_root / ".st3" / "state.json"
@@ -48,13 +72,18 @@ class PhaseStateEngine:
     ) -> dict[str, Any]:
         """Initialize branch state with workflow caching.
 
+        Caches workflow_name in state.json for performance optimization.
+
         Args:
             branch: Branch name (e.g., 'feature/42-test')
             issue_number: GitHub issue number
             initial_phase: Starting phase
 
         Returns:
-            dict with success status and branch state
+            dict with success, branch, current_phase
+
+        Raises:
+            ValueError: If project not initialized
         """
         # Get project plan to cache workflow_name
         project = self.project_manager.get_project_plan(issue_number)
@@ -63,7 +92,7 @@ class PhaseStateEngine:
             raise ValueError(msg)
 
         # Create initial state
-        state = {
+        state: dict[str, Any] = {
             "branch": branch,
             "issue_number": issue_number,
             "workflow_name": project["workflow_name"],  # Cache for performance
@@ -82,18 +111,18 @@ class PhaseStateEngine:
     ) -> dict[str, Any]:
         """Execute strict sequential phase transition.
 
-        Validates transition against workflow definition via workflow_config.
+        Validates transition against workflow via workflow_config.validate_transition().
 
         Args:
             branch: Branch name
             to_phase: Target phase
-            human_approval: Optional human approval message
+            human_approval: Optional approval message
 
         Returns:
             dict with success, from_phase, to_phase
 
         Raises:
-            ValueError: If transition is invalid per workflow
+            ValueError: If transition invalid per workflow
         """
         # Get current state
         state = self.get_state(branch)
@@ -130,15 +159,15 @@ class PhaseStateEngine:
         skip_reason: str,
         human_approval: str
     ) -> dict[str, Any]:
-        """Execute forced (non-sequential) phase transition.
+        """Execute forced non-sequential phase transition.
 
-        Bypasses workflow validation. Requires explicit skip_reason.
+        Bypasses workflow validation. Requires explicit skip_reason for audit.
 
         Args:
             branch: Branch name
             to_phase: Target phase
-            skip_reason: Reason for skipping validation
-            human_approval: Required human approval message
+            skip_reason: Reason for bypassing validation
+            human_approval: Required approval message
 
         Returns:
             dict with success, from_phase, to_phase, forced, skip_reason
@@ -190,7 +219,7 @@ class PhaseStateEngine:
             branch: Branch name
 
         Returns:
-            Branch state dict with workflow_name, current_phase, transitions
+            Branch state with workflow_name, current_phase, transitions
 
         Raises:
             ValueError: If branch state not found
