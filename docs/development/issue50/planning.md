@@ -107,20 +107,37 @@ phases: [discovery, planning, design, tdd, integration, documentation]
 - **B. Programmatic API**: Code can create workflows dynamically
 - **C. Both**: YAML for defaults, API for edge cases
 
-**Decision**: **Option A - Pre-Defined Only (with validation allowing custom)**
+**Decision**: **Option A - Pre-Defined Only (consistent with Decision 1.2 security model)**
 
 **Rationale**:
+- **Security model alignment**: Same principle as Decision 1.2
+  - Standard workflows (pre-defined) = normal operations
+  - Custom workflows (if needed) = exceptional operations requiring YAML edit + restart
 - Matches Config Over Code principle (YAML is SSOT)
-- Simpler implementation (no API surface to maintain)
-- Validation doesn't reject unknown workflows (warns but allows)
-- Edge cases handled by creating new workflow definitions in YAML
-- Future extension: Add workflow via MCP tool (still YAML-based)
+- Prevents ad-hoc workflow creation during session (discipline enforcement)
+- Unknown workflows blocked at initialization (fail fast, not fallback)
+- Edge cases: Edit workflows.yaml, restart server (deliberate action)
 
 **Consequences**:
 - WorkflowConfig.workflows: Dict[str, WorkflowTemplate] loaded from YAML
-- ProjectManager.initialize() validates workflow name exists (warning if not)
+- ProjectManager.initialize() **rejects** unknown workflow names (ValidationError)
 - No programmatic workflow creation API
-- Unknown workflows use generic fallback (all phases, strict sequential)
+- No fallback workflow (forces explicit YAML definition)
+- To add workflow: Edit YAML → restart server → initialize with new workflow name
+
+**Example**:
+```python
+# Standard workflow (allowed)
+initialize_project(issue_number=50, workflow_name="feature")  # ✅
+
+# Unknown workflow (rejected)
+initialize_project(issue_number=60, workflow_name="custom-flow")  # ❌ ValidationError
+
+# To use custom workflow:
+# 1. Edit workflows.yaml, add "custom-flow" definition
+# 2. Restart MCP server
+# 3. initialize_project(issue_number=60, workflow_name="custom-flow")  # ✅
+```
 
 ---
 
