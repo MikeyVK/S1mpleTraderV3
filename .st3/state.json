@@ -16,7 +16,7 @@
     ]
   },
   "refactor/50-workflows-yaml": {
-    "current_phase": "planning",
+    "current_phase": "tdd",
     "issue_number": 50,
     "transitions": [
       {
@@ -24,6 +24,18 @@
         "to_phase": "planning",
         "timestamp": "2025-12-27T00:00:00.000000+00:00",
         "human_approval": "Discovery complete: PHASE_TEMPLATES usage analyzed, coding standards researched, 5 open questions identified. Ready for planning decisions."
+      },
+      {
+        "from_phase": "planning",
+        "to_phase": "design",
+        "timestamp": "2025-12-27T10:51:27.355504+00:00",
+        "human_approval": "Planning complete: 5 key decisions made (execution modes, transition security model, custom workflows, type hints, loading strategy), work breakdown defined (4 phases, 7 days), implementation sequence established. Ready for design phase with concrete schemas and Pydantic models."
+      },
+      {
+        "from_phase": "design",
+        "to_phase": "tdd",
+        "timestamp": "2025-12-27T11:01:20.721828+00:00",
+        "human_approval": "Design complete: YAML schema defined (workflows.yaml with 5 workflows), Pydantic models designed (WorkflowConfig, WorkflowTemplate), migration strategy documented (ProjectManager + PhaseStateEngine updates), 3 Mermaid sequence diagrams, strict QA enforcement rules (10/10 for all files including tests), extended TDD cycle with QA step. Ready for implementation."
       }
     ]
   },

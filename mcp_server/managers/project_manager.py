@@ -1,10 +1,7 @@
-"""ProjectManager - Phase 0.5: Project Type Selection & Phase Planning.
+"""ProjectManager - Workflow-based project initialization.
 
-Manages project initialization with human-selected phase templates.
-
-Issue #50: Migrated from PHASE_TEMPLATES to workflows.yaml.
-- Old API: initialize_project(issue_type="feature")
-- New API: initialize_project(workflow_name="feature")
+Issue #50: Migrated from PHASE_TEMPLATES to workflows.yaml configuration.
+Manages project initialization with workflow selection from workflows.yaml.
 """
 import json
 from dataclasses import dataclass
@@ -14,36 +11,6 @@ from typing import Any
 
 from mcp_server.config.workflows import workflow_config
 
-# Phase 0.5: PHASE_TEMPLATES for different issue types (DEPRECATED - use workflows.yaml)
-PHASE_TEMPLATES = {
-    "feature": {
-        "required_phases": (
-            "discovery", "planning", "design", "component",
-            "tdd", "integration", "documentation"
-        ),
-        "description": "Full 7-phase workflow for new features"
-    },
-    "bug": {
-        "required_phases": (
-            "discovery", "planning", "component",
-            "tdd", "integration", "documentation"
-        ),
-        "description": "6-phase workflow (skip design)"
-    },
-    "docs": {
-        "required_phases": ("discovery", "planning", "component", "documentation"),
-        "description": "4-phase workflow (skip tdd + integration)"
-    },
-    "refactor": {
-        "required_phases": ("discovery", "planning", "tdd", "integration", "documentation"),
-        "description": "5-phase workflow (skip design + component)"
-    },
-    "hotfix": {
-        "required_phases": ("component", "tdd", "integration"),
-        "description": "Minimal 3-phase workflow (requires approval for all operations)"
-    }
-}
-
 
 @dataclass
 class ProjectPlan:
@@ -51,10 +18,9 @@ class ProjectPlan:
 
     issue_number: int
     issue_title: str
-    workflow_name: str  # Issue #50: Renamed from issue_type
-    execution_mode: str  # Issue #50: New field (interactive or autonomous)
+    workflow_name: str
+    execution_mode: str
     required_phases: tuple[str, ...]
-    optional_phases: tuple[str, ...] = ()
     skip_reason: str | None = None
     created_at: str | None = None
 
@@ -62,8 +28,7 @@ class ProjectPlan:
 class ProjectManager:
     """Manages project initialization and phase plan selection.
 
-    Phase 0.5: Human selects issue_type → generates project phase plan.
-    Issue #50: Migrated to workflow_name + workflows.yaml.
+    Uses workflows.yaml for workflow definitions and phase sequences.
     """
 
     def __init__(self, workspace_root: Path | str):
@@ -79,65 +44,54 @@ class ProjectManager:
         self,
         issue_number: int,
         issue_title: str,
-        issue_type: str | None = None,  # DEPRECATED: use workflow_name
+        workflow_name: str,
         *,
-        workflow_name: str | None = None,  # NEW: replaces issue_type
+        execution_mode: str | None = None,
         custom_phases: tuple[str, ...] | None = None,
         skip_reason: str | None = None
     ) -> dict[str, Any]:
-        """Initialize project with phase plan selection.
-
-        Phase 0.5: Human selects issue_type (feature/bug/docs/refactor/hotfix/custom),
-        generates project phase plan, stores in .st3/projects.json.
-
-        Issue #50: Updated to use workflow_name + workflows.yaml instead of PHASE_TEMPLATES.
+        """Initialize project with workflow selection.
 
         Args:
             issue_number: GitHub issue number
             issue_title: Issue title
-            issue_type: DEPRECATED - use workflow_name instead
             workflow_name: Workflow name from workflows.yaml (feature, bug, hotfix, etc.)
-            custom_phases: Custom phase list (overrides workflow phases)
+            execution_mode: Optional execution mode override (interactive or autonomous)
+            custom_phases: Optional custom phase list (overrides workflow phases)
             skip_reason: Reason for custom phases (required if custom_phases provided)
 
         Returns:
             dict with success, workflow_name, execution_mode, required_phases, skip_reason
 
         Raises:
-            ValueError: If workflow_name invalid or both issue_type and workflow_name provided
+            ValueError: If workflow_name invalid or custom_phases without skip_reason
         """
-        # Handle backward compatibility
-        if issue_type is not None and workflow_name is not None:
-            raise ValueError(
-                "Cannot specify both issue_type and workflow_name. "
-                "Use workflow_name (issue_type is deprecated)."
-            )
-
-        if issue_type is not None:
-            # Backward compatibility: map issue_type to workflow_name
-            workflow_name = issue_type
-
-        if workflow_name is None:
-            raise ValueError(
-                "workflow_name is required. "
-                "Specify workflow_name parameter (e.g., workflow_name='feature')."
-            )
-
-        # Validate workflow_name exists in workflows.yaml
+        # Validate workflow exists
         try:
             workflow = workflow_config.get_workflow(workflow_name)
         except ValueError as e:
             # Re-raise with workflow_config error message (includes available workflows)
             raise ValueError(str(e)) from e
 
-        # Determine execution mode and phases
-        execution_mode = workflow.default_execution_mode
+        # Determine execution mode (override or workflow default)
+        exec_mode = execution_mode or workflow.default_execution_mode
 
+        # Validate execution mode
+        if exec_mode not in ("interactive", "autonomous"):
+            raise ValueError(
+                f"Invalid execution_mode: '{exec_mode}'. "
+                "Valid values: 'interactive', 'autonomous'"
+            )
+
+        # Determine phases (custom overrides workflow)
         if custom_phases is not None:
-            # Custom phases override workflow phases
+            if not skip_reason:
+                raise ValueError(
+                    "skip_reason required when custom_phases provided. "
+                    "Explain why phases differ from workflow."
+                )
             required_phases = custom_phases
         else:
-            # Use workflow phases from workflows.yaml
             required_phases = tuple(workflow.phases)
 
         # Create project plan
@@ -145,7 +99,7 @@ class ProjectManager:
             issue_number=issue_number,
             issue_title=issue_title,
             workflow_name=workflow_name,
-            execution_mode=execution_mode,
+            execution_mode=exec_mode,
             required_phases=required_phases,
             skip_reason=skip_reason,
             created_at=datetime.now(UTC).isoformat()
@@ -159,7 +113,7 @@ class ProjectManager:
             "issue_number": issue_number,
             "issue_title": issue_title,
             "workflow_name": workflow_name,
-            "execution_mode": execution_mode,
+            "execution_mode": exec_mode,
             "required_phases": required_phases,
             "skip_reason": skip_reason
         }
@@ -195,14 +149,13 @@ class ProjectManager:
         else:
             projects = {}
 
-        # Add/update project (NEW structure with workflow_name + execution_mode)
+        # Add/update project (workflow-based structure)
         projects[str(plan.issue_number)] = {
             "issue_number": plan.issue_number,
             "issue_title": plan.issue_title,
-            "workflow_name": plan.workflow_name,  # NEW: replaces issue_type
-            "execution_mode": plan.execution_mode,  # NEW: from workflow
+            "workflow_name": plan.workflow_name,
+            "execution_mode": plan.execution_mode,
             "required_phases": plan.required_phases,
-            "optional_phases": plan.optional_phases,
             "skip_reason": plan.skip_reason,
             "created_at": plan.created_at
         }
