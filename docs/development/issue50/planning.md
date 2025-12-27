@@ -68,27 +68,32 @@ Planning document for migrating hardcoded PHASE_TEMPLATES dict to workflows.yaml
 - **B. Allow Jumps**: Can skip phases (discovery → design if planning not needed)
 - **C. Fully Flexible**: Any transition allowed (current behavior)
 
-**Decision**: **Option A - Strict Sequential (with explicit skip mechanism)**
+**Decision**: **Option A - Strict Sequential (separate tool for non-standard transitions)**
 
 **Rationale**:
 - Enforces workflow discipline (matches user's "niet op een bierviltje" philosophy)
 - Prevents accidental phase skips
-- Explicit skip requires human approval (visible in transitions array)
-- Supports valid shortcuts (hotfix workflow has fewer phases by design)
+- **Security model**: Standard transitions vs dangerous operations
+  - `transition_phase`: Always allowed within session (strict sequential only)
+  - `force_phase_transition`: Requires per-use human approval (skip/jump capability)
+- Clear separation between normal flow and exceptional cases
 
 **Consequences**:
 - WorkflowConfig has `phases: list[str]` defining sequence
 - PhaseStateEngine validates transition against workflow graph
-- Skip mechanism: `transition_phase(skip_to="design", reason="...")` adds multiple transitions with skip flag
+- **Two separate tools**:
+  - `transition_phase(to_phase)`: Only allows next phase in sequence
+  - `force_phase_transition(to_phase, reason)`: Allows any transition, requires explicit approval
 - Transition validation checks current_phase index vs target_phase index
+- Force transitions marked with `forced: true` flag in transitions array
 
 **Example**:
 ```yaml
 # Strict sequential: feature workflow
 phases: [discovery, planning, design, tdd, integration, documentation]
-# discovery → planning ✅
-# discovery → design ❌ (must go through planning)
-# discovery → design with skip ✅ (if human approval provided)
+# transition_phase("planning") from discovery ✅ (next phase)
+# transition_phase("design") from discovery ❌ (not next phase)
+# force_phase_transition("design", "Planning not needed for hotfix") ✅ (with approval)
 ```
 
 ---
@@ -217,12 +222,13 @@ workflow_config = WorkflowConfig.load()  # Module-level init
 **Tasks**:
 1. **RED**: Write test_workflow_config.py (loading, validation, CRUD)
 2. **RED**: Write test_project_manager_workflows.py (initialization with workflows)
-3. **RED**: Write test_phase_state_transitions.py (strict sequential, skip mechanism)
-4. **GREEN**: Implement WorkflowConfig + Pydantic models
-5. **GREEN**: Update ProjectManager.initialize() (workflow param, validation)
-6. **GREEN**: Update PhaseStateEngine.transition() (graph validation)
-7. **GREEN**: Add transition_phase skip mechanism
-8. **REFACTOR**: Extract validation logic, optimize lookups
+3. **RED**: Write test_phase_state_transitions.py (strict sequential validation)
+4. **RED**: Write test_phase_state_force_transitions.py (force transition mechanism)
+5. **GREEN**: Implement WorkflowConfig + Pydantic models
+6. **GREEN**: Update ProjectManager.initialize() (workflow param, validation)
+7. **GREEN**: Update PhaseStateEngine.transition() (strict graph validation)
+8. **GREEN**: Add PhaseStateEngine.force_transition() (any transition with flag)
+9. **REFACTOR**: Extract validation logic, optimize lookups
 
 **Deliverable**: Passing tests + implementation
 
@@ -234,9 +240,10 @@ workflow_config = WorkflowConfig.load()  # Module-level init
 1. Create workflows.yaml with 5 default workflows (feature, bug, hotfix, refactor, docs)
 2. Migrate existing projects to new format (`.st3/projects.json` updates)
 3. Update initialize_project tool (add workflow_name param)
-4. Update transition_phase tool (add skip_to param)
-5. Smoke test existing branches (fix/42, feature/38, refactor/49, refactor/50)
-6. Update error messages in tools
+4. Keep transition_phase tool strict (no skip parameter, next phase only)
+5. **NEW**: Create force_phase_transition tool (skip/jump capability, requires approval)
+6. Smoke test existing branches (fix/42, feature/38, refactor/49, refactor/50)
+7. Update error messages in tools
 
 **Deliverable**: Working system with all tools updated
 
@@ -248,8 +255,9 @@ workflow_config = WorkflowConfig.load()  # Module-level init
 1. Update [USAGE.md](../../USAGE.md) (workflow selection examples)
 2. Update [ARCHITECTURE.md](../../ARCHITECTURE.md) (WorkflowConfig section)
 3. Create [WORKFLOWS.md](../../WORKFLOWS.md) (workflow definitions reference)
-4. Update tool docstrings (initialize_project, transition_phase)
+4. Update tool docstrings (initialize_project, transition_phase, force_phase_transition)
 5. Add YAML comments (workflows.yaml inline documentation)
+6. Document security model (when to use transition_phase vs force_phase_transition)
 
 **Deliverable**: Complete user + developer documentation
 
@@ -274,14 +282,14 @@ workflow_config = WorkflowConfig.load()  # Module-level init
 - PhaseStateEngine updates (transition validation)
 - Integration tests for manager layer
 
-### Step 4: TDD Phase - Transitions (0.5 days)
-- Skip mechanism implementation
+### Step 4: TDD Phase - Force Transitions (0.5 days)
+- Force transition mechanism implementation (separate from standard transition)
 - Edge case handling (unknown workflows, invalid transitions)
-- End-to-end tests
+- End-to-end tests for both standard and forced transitions
 
 ### Step 5: Integration Phase (1 day)
 - workflows.yaml creation
-- Tool updates (initialize_project, transition_phase)
+- Tool updates (initialize_project, transition_phase strict validation, new force_phase_transition)
 - Migration of existing projects
 - Smoke tests
 
