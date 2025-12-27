@@ -147,6 +147,29 @@ class TestWorkflowConfigLoading:
         assert str(missing_path) in error_msg
         assert "Hint:" in error_msg
 
+    def test_load_default_path_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test loading with default path when file doesn't exist.
+
+        Expected behavior:
+        - Uses default path .st3/workflows.yaml
+        - Raises FileNotFoundError
+        - Error message mentions .st3/workflows.yaml
+
+        Args:
+            tmp_path: Pytest tmp_path fixture
+            monkeypatch: Pytest monkeypatch fixture for changing working directory
+        """
+        # Change to tmp_path so .st3/workflows.yaml doesn't exist
+        monkeypatch.chdir(tmp_path)
+
+        with pytest.raises(FileNotFoundError) as exc_info:
+            WorkflowConfig.load()  # No path argument = default
+
+        error_msg = str(exc_info.value)
+        assert ".st3/workflows.yaml" in error_msg
+
     def test_load_invalid_yaml(self, invalid_yaml: Path) -> None:
         """Test loading malformed YAML file.
 
@@ -288,3 +311,117 @@ class TestWorkflowLookup:
         assert "feature" in error_msg
         assert "hotfix" in error_msg
         assert "Hint:" in error_msg
+
+
+# =============================================================================
+# Phase 3: Transition Validation Tests (RED)
+# =============================================================================
+
+class TestTransitionValidation:
+    """Test WorkflowConfig.validate_transition() method."""
+
+    def test_validate_transition_next_phase(self, valid_workflows_yaml: Path) -> None:
+        """Test validating transition to next phase (valid).
+
+        Expected behavior:
+        - Returns True for valid next-phase transition
+        - Follows strict sequential order
+
+        Args:
+            valid_workflows_yaml: Path to valid test YAML file
+        """
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        # Valid transitions: discovery → planning, planning → design, etc.
+        assert config.validate_transition("feature", "discovery", "planning") is True
+        assert config.validate_transition("feature", "planning", "design") is True
+        assert config.validate_transition("hotfix", "tdd", "integration") is True
+
+    def test_validate_transition_skip_phase(self, valid_workflows_yaml: Path) -> None:
+        """Test validating transition that skips a phase (invalid).
+
+        Expected behavior:
+        - Raises ValueError
+        - Error message indicates invalid transition
+        - Error message shows expected next phase
+        - Error message includes hint about force_phase_transition
+
+        Args:
+            valid_workflows_yaml: Path to valid test YAML file
+        """
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        with pytest.raises(ValueError) as exc_info:
+            config.validate_transition("feature", "discovery", "design")  # Skips planning
+
+        error_msg = str(exc_info.value)
+        assert "Invalid transition:" in error_msg
+        assert "discovery" in error_msg
+        assert "design" in error_msg
+        assert "Expected next phase: planning" in error_msg
+        assert "force_phase_transition" in error_msg
+
+    def test_validate_transition_backward(self, valid_workflows_yaml: Path) -> None:
+        """Test validating backward transition (invalid).
+
+        Expected behavior:
+        - Raises ValueError
+        - Error message indicates invalid transition
+        - Backward transitions not allowed
+
+        Args:
+            valid_workflows_yaml: Path to valid test YAML file
+        """
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        with pytest.raises(ValueError) as exc_info:
+            config.validate_transition("feature", "design", "planning")  # Backward
+
+        error_msg = str(exc_info.value)
+        assert "Invalid transition:" in error_msg
+        assert "design" in error_msg
+        assert "planning" in error_msg
+
+    def test_validate_transition_invalid_current_phase(
+        self, valid_workflows_yaml: Path
+    ) -> None:
+        """Test validation with invalid current phase.
+
+        Expected behavior:
+        - Raises ValueError
+        - Error message indicates current phase not in workflow
+        - Error message lists valid phases
+
+        Args:
+            valid_workflows_yaml: Path to valid test YAML file
+        """
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        with pytest.raises(ValueError) as exc_info:
+            config.validate_transition("feature", "invalid", "planning")
+
+        error_msg = str(exc_info.value)
+        assert "Current phase 'invalid' not in workflow 'feature'" in error_msg
+        assert "Valid phases:" in error_msg
+
+    def test_validate_transition_invalid_target_phase(
+        self, valid_workflows_yaml: Path
+    ) -> None:
+        """Test validation with invalid target phase.
+
+        Expected behavior:
+        - Raises ValueError
+        - Error message indicates target phase not in workflow
+        - Error message lists valid phases
+
+        Args:
+            valid_workflows_yaml: Path to valid test YAML file
+        """
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        with pytest.raises(ValueError) as exc_info:
+            config.validate_transition("feature", "discovery", "invalid")
+
+        error_msg = str(exc_info.value)
+        assert "Target phase 'invalid' not in workflow 'feature'" in error_msg
+        assert "Valid phases:" in error_msg
