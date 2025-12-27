@@ -84,67 +84,81 @@ Platform configurability requires migrating hardcoded workflow definitions to YA
 
 ### 3.1 Architecture Position
 
+#### 3.1.1 Server Startup Flow
+
+```mermaid
+sequenceDiagram
+    participant Server as MCP Server
+    participant Settings as settings.py
+    participant Workflows as workflows.py (NEW)
+    participant FS as .st3/workflows.yaml
+    
+    Server->>Settings: Import & load
+    Settings->>Settings: Settings.load()
+    Server->>Workflows: Import & load
+    Workflows->>FS: Read workflows.yaml
+    FS-->>Workflows: YAML content
+    Workflows->>Workflows: Pydantic validation
+    alt Valid config
+        Workflows-->>Server: workflow_config ready
+        Server->>Server: Server initialized ✅
+    else Invalid config
+        Workflows-->>Server: ValidationError
+        Server->>Server: Crash (fail fast) ❌
+    end
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ MCP Server Startup                                          │
-│ ┌─────────────────────┐  ┌──────────────────────────┐      │
-│ │ settings.py         │  │ workflows.py (NEW)       │      │
-│ │ Settings.load()     │  │ WorkflowConfig.load()    │      │
-│ └──────────┬──────────┘  └───────────┬──────────────┘      │
-│            │                          │                      │
-│            └────────────┬─────────────┘                      │
-│                         ▼                                    │
-│            ┌─────────────────────────┐                       │
-│            │ Server Initialized      │                       │
-│            └─────────────────────────┘                       │
-└─────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────┐
-│ Tool Invocation: initialize_project                         │
-│ ┌─────────────────────────────────────────────────────┐     │
-│ │ InitializeProjectTool                                │     │
-│ │ - workflow_name: str (e.g., "feature")              │     │
-│ │ - execution_mode: str | None (e.g., "interactive")  │     │
-│ └───────────────────────┬─────────────────────────────┘     │
-│                         ▼                                    │
-│            ┌─────────────────────────┐                       │
-│            │ ProjectManager          │                       │
-│            │ .initialize()           │                       │
-│            └────────────┬────────────┘                       │
-│                         │                                    │
-│          ┌──────────────┴──────────────┐                    │
-│          ▼                              ▼                    │
-│ ┌────────────────────┐      ┌────────────────────┐          │
-│ │ workflow_config    │      │ PhaseStateEngine   │          │
-│ │ .get_workflow()    │      │ .initialize()      │          │
-│ └────────────────────┘      └────────────────────┘          │
-│                                                              │
-│          Writes to: .st3/projects.json                       │
-│          Writes to: .st3/state.json                          │
-└─────────────────────────────────────────────────────────────┘
+#### 3.1.2 Project Initialization Flow
 
-┌─────────────────────────────────────────────────────────────┐
-│ Tool Invocation: transition_phase                           │
-│ ┌─────────────────────────────────────────────────────┐     │
-│ │ TransitionPhaseTool                                  │     │
-│ │ - to_phase: str (e.g., "planning")                  │     │
-│ └───────────────────────┬─────────────────────────────┘     │
-│                         ▼                                    │
-│            ┌─────────────────────────┐                       │
-│            │ PhaseStateEngine        │                       │
-│            │ .transition()           │                       │
-│            └────────────┬────────────┘                       │
-│                         │                                    │
-│          ┌──────────────┴──────────────┐                    │
-│          ▼                              ▼                    │
-│ ┌────────────────────┐      ┌────────────────────┐          │
-│ │ workflow_config    │      │ Validate:          │          │
-│ │ .validate_trans..()│      │ current → next     │          │
-│ └────────────────────┘      │ (strict sequential)│          │
-│                             └────────────────────┘          │
-│                                                              │
-│          Updates: .st3/state.json (transitions array)        │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant Tool as initialize_project tool
+    participant PM as ProjectManager
+    participant WC as workflow_config
+    participant PSE as PhaseStateEngine
+    participant PJ as .st3/projects.json
+    participant SJ as .st3/state.json
+    
+    Tool->>PM: initialize(workflow_name, execution_mode)
+    PM->>WC: get_workflow(workflow_name)
+    alt Workflow exists
+        WC-->>PM: WorkflowTemplate
+        PM->>PM: Determine phases & exec_mode
+        PM->>PJ: Write project metadata
+        PM->>PSE: initialize(branch, first_phase)
+        PSE->>SJ: Write initial state
+        PSE-->>Tool: Success ✅
+    else Unknown workflow
+        WC-->>PM: ValueError
+        PM-->>Tool: Validation error ❌
+    end
+```
+
+#### 3.1.3 Phase Transition Flow
+
+```mermaid
+sequenceDiagram
+    participant Tool as transition_phase tool
+    participant PSE as PhaseStateEngine
+    participant SJ as .st3/state.json
+    participant PJ as .st3/projects.json
+    participant WC as workflow_config
+    
+    Tool->>PSE: transition(branch, to_phase)
+    PSE->>SJ: Read current state
+    SJ-->>PSE: current_phase, issue_number
+    PSE->>PJ: Read project metadata
+    PJ-->>PSE: workflow_name, required_phases
+    PSE->>WC: validate_transition(workflow_name, current, target)
+    alt Valid (next phase)
+        WC-->>PSE: True ✅
+        PSE->>SJ: Update current_phase
+        PSE->>SJ: Append to transitions[]
+        PSE-->>Tool: Success
+    else Invalid (not next)
+        WC-->>PSE: ValueError
+        PSE-->>Tool: Validation error ❌<br/>Hint: Use force_phase_transition
+    end
 ```
 
 ### 3.2 Component Design
@@ -686,11 +700,123 @@ Hint: Check workflow definition or override parameter
 - Extract workflow lookup from managers
 - Centralize validation logic
 
-### 4.2 Exit Criteria
-- All tests passing (100% coverage for config layer)
-- Pylint 10/10 for new files
-- Mypy type checks passing
-- All existing projects migrated successfully
+### 4.2 Coding Standards & Quality Enforcement
+
+**CRITICAL**: No shortcuts, strict QA enforcement for ALL files (including tests).
+
+#### 4.2.1 Coding Standards (from discovery.md Section 3)
+
+**Type Hints:**
+- ALL functions/methods MUST have type hints (args + return)
+- Use `str` for phase names (not Literal, since config-driven)
+- Use `Literal["interactive", "autonomous"]` for execution modes
+- Use `Path` for file paths (not str)
+
+**Pydantic Patterns:**
+- Nested `BaseModel` for complex structures
+- `@classmethod def load()` for config loading
+- `@model_validator(mode="after")` for cross-field validation
+- `Field(..., description="...")` for all fields
+- Module-level singleton: `workflow_config = WorkflowConfig.load()`
+
+**Error Handling:**
+- Custom exceptions inherit from `MCPError`
+- Provide recovery hints in error messages
+- Use `raise ... from e` for error chaining
+
+**Module Structure:**
+- NEW file: `mcp_server/config/workflows.py`
+- One config model per file (matches `settings.py`)
+- Keep under 500 lines (single responsibility)
+
+**Docstrings:**
+- Google style docstrings for all public methods
+- Include Args, Returns, Raises sections
+- Document validation rules in class docstrings
+
+#### 4.2.2 Tool Usage Requirements
+
+**Use MCP Tools (NOT manual file edits):**
+- `safe_edit_file` - All code changes (validates syntax before write)
+- `scaffold_component` - Generate new config class structure
+- `run_tests` - Execute pytest with proper markers
+- `run_quality_gates` - Pylint/Mypy validation (10/10 required)
+- `git_add_or_commit` - Version control with TDD phase prefix
+
+**Test File Creation:**
+- `scaffold_component` with `generate_test=True` (for DTOs)
+- Manual test creation: Use `safe_edit_file` + pytest structure
+- Test file naming: `test_<module_name>.py` (e.g., `test_workflow_config.py`)
+
+#### 4.2.3 Quality Gates (STRICT - NO EXCEPTIONS)
+
+**ALL files (including test files) MUST pass:**
+
+1. **Pylint: 10/10**
+   ```bash
+   pylint mcp_server/config/workflows.py --score=yes
+   # Score MUST be 10.00/10
+   ```
+   - No disabled checks without justification
+   - Fix all warnings (not just errors)
+
+2. **Mypy: 0 errors**
+   ```bash
+   mypy mcp_server/config/workflows.py --strict
+   # MUST show: Success: no issues found
+   ```
+   - Strict mode enabled
+   - All type hints validated
+
+3. **Pytest: 100% coverage (config layer)**
+   ```bash
+   pytest tests/config/test_workflow_config.py --cov=mcp_server/config/workflows --cov-report=term-missing
+   # Coverage MUST be 100% for new code
+   ```
+   - Every branch tested
+   - Edge cases covered
+
+4. **Test Files QA:**
+   ```bash
+   pylint tests/config/test_workflow_config.py --score=yes
+   # Test files ALSO need 10/10
+   ```
+   - Test code held to same standards
+   - No "test code doesn't need quality" exceptions
+
+**Enforcement Strategy:**
+- Run `run_quality_gates` after EVERY file edit
+- Fix issues immediately (don't accumulate tech debt)
+- RED → GREEN → REFACTOR → **QA** (add QA step to TDD cycle)
+
+#### 4.2.4 TDD Cycle with QA
+
+**Extended RED → GREEN → REFACTOR → QA:**
+
+```mermaid
+graph LR
+    A[RED: Write failing test] --> B[GREEN: Minimal implementation]
+    B --> C[REFACTOR: Clean up code]
+    C --> D[QA: Quality gates]
+    D --> E{All pass?}
+    E -->|No| C
+    E -->|Yes| F[Commit with TDD phase prefix]
+    F --> G{More tests?}
+    G -->|Yes| A
+    G -->|No| H[Phase complete]
+```
+
+**Commit Strategy:**
+- RED phase: `git_add_or_commit(phase="red", message="Add test_validate_transition_next_phase")`
+- GREEN phase: `git_add_or_commit(phase="green", message="Implement WorkflowConfig.validate_transition")`
+- REFACTOR phase: `git_add_or_commit(phase="refactor", message="Extract phase validation logic")`
+
+### 4.3 Exit Criteria
+- ✅ All tests passing (100% coverage for config layer)
+- ✅ Pylint 10/10 for ALL files (code + tests)
+- ✅ Mypy strict mode passing
+- ✅ All existing projects migrated successfully
+- ✅ QA gates run on every file (no exceptions)
 
 ---
 
@@ -759,6 +885,9 @@ None - all questions resolved in planning phase.
 | 2025-12-27 | Store `workflow_name` in both projects.json and state.json | projects.json = source of truth, state.json = cache for performance |
 | 2025-12-27 | `forced` flag in transitions array | Makes non-standard transitions visible in history |
 | 2025-12-27 | Strict validation (no fallback) | Fail fast, aligns with security model |
+| 2025-12-27 | Use Mermaid diagrams (not ASCII) | Better readability, easier to maintain |
+| 2025-12-27 | QA enforcement for test files | No quality shortcuts, all code held to 10/10 standard |
+| 2025-12-27 | Extended TDD cycle with QA step | RED → GREEN → REFACTOR → QA (before commit) |
 
 ---
 
