@@ -295,13 +295,42 @@ class LabelConfig(BaseModel):
 - A: Enforce `category:value` pattern
 - B: Allow freeform names with warnings
 
-**Recommendation:** Option B (flexibility)
+**What it means:**
+- Option A: All labels MUST follow the `category:value` format (e.g., `type:feature`, `status:in-progress`)
+- Option B: Allow any label name, but warn when deviating from the pattern
+
+**Examples:**
+- Valid under both: `type:feature`, `priority:high`, `status:in-progress`
+- Valid only under Option B: `bug`, `needs-review`, `good-first-issue`
+
+**Benefits/Drawbacks:**
+- Option A Benefits: Consistency, categorization, easier filtering
+- Option A Drawbacks: Less flexibility, rejects common GitHub labels
+- Option B Benefits: Flexibility, accepts standard GitHub labels
+- Option B Drawbacks: Can lead to inconsistent naming
+
+**Recommendation:** Option A (enforce pattern)
+
+**Reasoning:** Consistency is critical for workflow automation. While Option B offers flexibility, it can lead to label sprawl and makes programmatic filtering harder. The `category:value` pattern provides clear organization and aligns with our existing label structure. For standard GitHub labels like `good-first-issue`, we can define them in labels.yaml with proper categories (e.g., `contribution:good-first-issue`).
 
 ### Q2: Handle missing labels in YAML?
 
 **Options:**
 - A: Strict - reject operation
 - B: Warn and allow (GitHub may have label)
+
+**What "warn" means:**
+When a tool attempts to add a label that's not in labels.yaml:
+- Log a warning message
+- Continue with the operation (don't fail)
+- Assume the label exists in GitHub repository
+- Agent will see the warning in logs for awareness
+
+**Agent behavior:**
+- The MCP server logs the warning
+- The operation proceeds without blocking
+- If GitHub rejects (label doesn't exist), that's a separate GitHub API error
+- This separates "label not in YAML" from "label doesn't exist in GitHub"
 
 **Recommendation:** Option B with logging
 
@@ -311,6 +340,19 @@ class LabelConfig(BaseModel):
 - A: Auto-sync labels to GitHub
 - B: Manual sync via dedicated tool
 
+**What "auto-sync" means:**
+When the MCP server starts up:
+- Load labels.yaml
+- Compare with labels in GitHub repository
+- Automatically create/update labels in GitHub to match YAML
+- This happens every server restart without user intervention
+
+**Startup behavior details:**
+- Option A: Silent sync on every startup (could cause unexpected changes)
+- Option B: Sync only when user explicitly calls a sync tool
+- Option B allows user to review diff before applying changes
+- Option B prevents accidental overwrites of GitHub labels
+
 **Recommendation:** Option B (explicit sync tool)
 
 ---
@@ -319,7 +361,7 @@ class LabelConfig(BaseModel):
 
 ### Risk 1: Color Format Confusion
 **Risk:** Users add `#` prefix  
-**Mitigation:** Validation strips `#` if present  
+**Mitigation:** Validation REJECTS `#` prefix with clear error message  
 **Severity:** Low  
 
 ### Risk 2: Label Sync Conflicts
@@ -331,6 +373,26 @@ class LabelConfig(BaseModel):
 **Risk:** Typo in labels.yaml breaks workflows  
 **Mitigation:** Validation at load time  
 **Severity:** Medium  
+
+---
+
+## Planning vs Design Phase Boundary
+
+**Planning Phase Focus:**
+- WHAT to build (scope, decisions, strategy)
+- High-level approach (patterns, not implementations)
+- Work sequencing (order of tasks)
+- Effort estimates
+- Success criteria
+
+**Design Phase Focus** (AFTER planning):
+- HOW to build (detailed class structures)
+- Exact method signatures with type hints
+- Pydantic model field definitions
+- Validation logic design
+- Error handling flows
+
+**Why this order?** Planning establishes the roadmap, design fills in technical details.
 
 ---
 
@@ -349,11 +411,11 @@ class LabelConfig(BaseModel):
 ### Next Phase: Planning
 
 **Deliverables:**
-1. Detailed API design (LabelConfig, Label classes)
-2. Method signatures with type hints
-3. Test strategy
-4. Implementation sequence
-5. Migration plan
+1. Work breakdown (phases/tasks/effort estimates)
+2. API contracts (method signatures WITHOUT implementation details)
+3. Test strategy (scenarios, not test code structure)
+4. labels.yaml content decisions (which labels to include)
+5. Migration strategy (existing tool updates)
 
 ---
 
