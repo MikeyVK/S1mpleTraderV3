@@ -25,7 +25,7 @@ class TestLabelCreation:
         label = Label(name="type:feature", color="1D76DB")
         assert label.name == "type:feature"
         assert label.color == "1D76DB"
-        assert label.description == ""
+        assert not label.description
 
     def test_label_creation_with_description(self):
         """Create label with optional description."""
@@ -80,7 +80,13 @@ class TestLabelImmutability:
         """Verify frozen=True prevents modification."""
         label = Label(name="type:feature", color="1D76DB")
         with pytest.raises(FrozenInstanceError):
-            label.name = "type:bug"
+            label.name = "type:bug"  # type: ignore[misc]
+
+    def test_label_color_immutable(self):
+        """Verify color field is also immutable."""
+        label = Label(name="type:feature", color="1D76DB")
+        with pytest.raises(FrozenInstanceError):
+            label.color = "FF0000"  # type: ignore[misc]
 
 
 class TestLabelConversion:
