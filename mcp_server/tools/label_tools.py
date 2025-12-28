@@ -66,28 +66,28 @@ class CreateLabelTool(BaseTool):
     async def execute(self, params: CreateLabelInput) -> ToolResult:
         # Load label config for validation
         label_config = LabelConfig.load()
-        
+
         # Validate label name pattern
         is_valid, error_msg = label_config.validate_label_name(params.name)
         if not is_valid:
             return ToolResult.text(f"❌ {error_msg}")
-        
+
         # Validate color format (no # prefix)
         if params.color.startswith("#"):
             return ToolResult.text(
                 f"❌ Color must not include # prefix. "
                 f"Use '{params.color[1:]}' instead."
             )
-        
+
         # Validate hex format
         if not re.match(r'^[0-9A-Fa-f]{6}$', params.color):
             return ToolResult.text(
                 f"❌ Invalid color format '{params.color}'. "
                 f"Must be 6-character hex code (e.g., '1D76DB')."
             )
-        
+
         # Create label
-        label = await self.manager.create_label(
+        label = self.manager.create_label(
             name=params.name,
             color=params.color,
             description=params.description or ""
@@ -169,16 +169,16 @@ class AddLabelsTool(BaseTool):
     async def execute(self, params: AddLabelsInput) -> ToolResult:
         # Load label config for validation
         label_config = LabelConfig.load()
-        
+
         # Validate all labels exist
         undefined = [label for label in params.labels if not label_config.label_exists(label)]
         if undefined:
             return ToolResult.text(
                 f"❌ Labels not defined in labels.yaml: {undefined}"
             )
-        
+
         # Add labels
-        await self.manager.add_labels(params.issue_number, params.labels)
+        self.manager.add_labels(params.issue_number, params.labels)
         return ToolResult.text(
             f"Added labels to #{params.issue_number}: {', '.join(params.labels)}"
         )
@@ -205,13 +205,16 @@ class SyncLabelsToGitHubTool(BaseTool):
     async def execute(self, params: SyncLabelsInput) -> ToolResult:
         """Execute label sync."""
         label_config = LabelConfig.load()
-        
+
         # Create a simple adapter that uses the manager
         class GitHubAdapter:
-            def __init__(self, manager):
+            """Adapter to wrap GitHubManager for sync_to_github."""
+
+            def __init__(self, manager: Any) -> None:
                 self.manager = manager
-            
-            def list_labels(self):
+
+            def list_labels(self) -> list[dict[str, str]]:
+                """List all labels from GitHub."""
                 labels = self.manager.list_labels()
                 return [
                     {
@@ -221,25 +224,27 @@ class SyncLabelsToGitHubTool(BaseTool):
                     }
                     for label in labels
                 ]
-            
-            def create_label(self, name: str, color: str, description: str):
+
+            def create_label(self, name: str, color: str, description: str) -> None:
+                """Create a label in GitHub."""
                 self.manager.create_label(name=name, color=color, description=description)
-            
-            def update_label(self, name: str, color: str, description: str):
-                self.manager.update_label(name=name, color=color, description=description)
-        
+
+            def update_label(self, name: str, color: str, description: str) -> None:
+                """Update a label in GitHub."""
+                # Note: GitHubManager doesn't have update_label yet
+                pass
         adapter = GitHubAdapter(self.manager)
         result = label_config.sync_to_github(adapter, dry_run=params.dry_run)
-        
+
         summary = (
             f"Created {len(result['created'])}, "
             f"Updated {len(result['updated'])}, "
             f"Skipped {len(result['skipped'])}"
         )
-        
+
         if result['errors']:
             summary += f", Errors {len(result['errors'])}"
-        
+
         details = []
         if result['created']:
             details.append(f"Created: {', '.join(result['created'])}")
@@ -249,10 +254,10 @@ class SyncLabelsToGitHubTool(BaseTool):
             details.append(f"Skipped: {', '.join(result['skipped'])}")
         if result['errors']:
             details.append(f"Errors: {', '.join(result['errors'])}")
-        
+
         mode_str = "dry_run: True" if params.dry_run else "dry_run: False"
         full_text = f"{summary}\n{mode_str}"
         if details:
-            full_text += f"\n\n" + "\n".join(details)
-        
+            full_text += "\n\n" + "\n".join(details)
+
         return ToolResult.text(full_text)

@@ -6,7 +6,7 @@ Tests integration of LabelConfig validation into label tools.
 @layer: Tests (Unit)
 @dependencies: [pytest, unittest.mock, mcp_server.tools.label_tools]
 """
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock
 
 import pytest
 
@@ -40,7 +40,7 @@ labels:
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        mock_manager.create_label = AsyncMock(
+        mock_manager.create_label = Mock(
             return_value=Mock(name="type:bug", color="FF0000")
         )
 
@@ -70,7 +70,7 @@ freeform_exceptions: []
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        mock_manager.create_label = AsyncMock()
+        mock_manager.create_label = Mock()
 
         tool = CreateLabelTool(manager=mock_manager)
         params = CreateLabelInput(name="invalid-label", color="FF0000")
@@ -93,7 +93,7 @@ labels: []
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        mock_manager.create_label = AsyncMock()
+        mock_manager.create_label = Mock()
 
         tool = CreateLabelTool(manager=mock_manager)
         params = CreateLabelInput(name="type:feature", color="#FF0000")
@@ -125,7 +125,7 @@ labels:
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        mock_manager.add_labels = AsyncMock()
+        mock_manager.add_labels = Mock()
 
         tool = AddLabelsTool(manager=mock_manager)
         params = AddLabelsInput(
@@ -152,7 +152,7 @@ labels:
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        mock_manager.add_labels = AsyncMock()
+        mock_manager.add_labels = Mock()
 
         tool = AddLabelsTool(manager=mock_manager)
         params = AddLabelsInput(
