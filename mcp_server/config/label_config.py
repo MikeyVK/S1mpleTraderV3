@@ -54,7 +54,17 @@ class Label:
 
 
 class LabelConfig(BaseModel):
-    """Label configuration loaded from labels.yaml."""
+    """Label configuration loaded from labels.yaml.
+    
+    Example:
+        >>> config = LabelConfig(
+        ...     version="1.0",
+        ...     labels=[
+        ...         Label(name="type:feature", color="1D76DB", description="New feature")
+        ...     ],
+        ...     freeform_exceptions=["good first issue"]
+        ... )
+    """
 
     version: str = Field(..., description="Schema version")
     labels: list[Label] = Field(..., description="Label definitions")

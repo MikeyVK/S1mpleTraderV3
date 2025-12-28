@@ -280,7 +280,7 @@ labels: []
         LabelConfig._instance = None  # pylint: disable=protected-access
 
         config = LabelConfig.load(yaml_file)
-        assert len(config.labels) == 0
+        assert not config.labels
 
     def test_load_builds_caches(self, tmp_path):
         """Verify _labels_by_name cache is populated."""
