@@ -118,10 +118,10 @@ class TestStartupValidationNonBlocking:
         caplog.set_level(logging.WARNING)
 
         # Act - Should NOT raise exception
-        result = validate_label_config_on_startup(yaml_file)
+        validate_label_config_on_startup(yaml_file)
 
         # Assert
-        assert result is None  # Function completes without raising
+        # Function completes without raising
 
 
 class TestStartupValidationLogMessages:
