@@ -299,3 +299,197 @@ labels:
         # pylint: disable=protected-access
         assert "type:feature" in config._labels_by_name
         assert "priority:high" in config._labels_by_name
+
+
+class TestLabelValidation:
+    """Test label name validation methods."""
+
+    def test_validate_label_name_type_valid(self, tmp_path):
+        """Accept valid type: label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("type:feature")
+        assert valid
+        assert error == ""
+
+    def test_validate_label_name_priority_valid(self, tmp_path):
+        """Accept valid priority: label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "priority:high"
+    color: "D93F0B"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("priority:high")
+        assert valid
+        assert error == ""
+
+    def test_validate_label_name_status_valid(self, tmp_path):
+        """Accept valid status: label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "status:in-progress"
+    color: "FFA500"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("status:in-progress")
+        assert valid
+        assert error == ""
+
+    def test_validate_label_name_phase_valid(self, tmp_path):
+        """Accept valid phase: label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "phase:design"
+    color: "0E8A16"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("phase:design")
+        assert valid
+        assert error == ""
+
+    def test_validate_label_name_scope_valid(self, tmp_path):
+        """Accept valid scope: label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "scope:backend"
+    color: "5319E7"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("scope:backend")
+        assert valid
+        assert error == ""
+
+    def test_validate_label_name_component_valid(self, tmp_path):
+        """Accept valid component: label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "component:api"
+    color: "D4C5F9"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("component:api")
+        assert valid
+        assert error == ""
+
+    def test_validate_label_name_effort_valid(self, tmp_path):
+        """Accept valid effort: label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "effort:small"
+    color: "C2E0C6"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("effort:small")
+        assert valid
+        assert error == ""
+
+    def test_validate_label_name_parent_valid(self, tmp_path):
+        """Accept valid parent: label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "parent:epic-42"
+    color: "B60205"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("parent:epic-42")
+        assert valid
+        assert error == ""
+
+    def test_validate_label_name_invalid_pattern(self, tmp_path):
+        """Reject label that doesn't match pattern."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("InvalidLabel")
+        assert not valid
+        assert "does not match required pattern" in error
+
+    def test_validate_label_name_freeform_exception(self, tmp_path):
+        """Accept freeform label in exceptions list."""
+        yaml_content = """version: "1.0"
+freeform_exceptions:
+  - "good first issue"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        valid, error = config.validate_label_name("good first issue")
+        assert valid
+        assert error == ""
+
+    def test_label_exists_true(self, tmp_path):
+        """Return True for defined label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        assert config.label_exists("type:feature")
+
+    def test_label_exists_false(self, tmp_path):
+        """Return False for undefined label."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        assert not config.label_exists("type:bug")
