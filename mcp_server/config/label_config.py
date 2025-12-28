@@ -16,7 +16,7 @@ Loads and validates label definitions from labels.yaml.
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 # Third-party
 from pydantic import BaseModel, Field, field_validator, ConfigDict
@@ -160,6 +160,61 @@ class LabelConfig(BaseModel):
     def get_labels_by_category(self, category: str) -> list[Label]:
         """Get all labels in a category."""
         return self._labels_by_category.get(category, [])
+
+    def sync_to_github(
+        self,
+        github_adapter: Any,
+        dry_run: bool = False
+    ) -> dict[str, list[str]]:
+        """Sync labels to GitHub repository."""
+        result: dict[str, list[str]] = {
+            "created": [],
+            "updated": [],
+            "skipped": [],
+            "errors": []
+        }
+
+        try:
+            existing = github_adapter.list_labels()
+            existing_by_name = {label["name"]: label for label in existing}
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            result["errors"].append(f"Failed to fetch labels: {e}")
+            return result
+
+        for label in self.labels:
+            try:
+                if label.name not in existing_by_name:
+                    if not dry_run:
+                        github_adapter.create_label(
+                            name=label.name,
+                            color=label.color,
+                            description=label.description
+                        )
+                    result["created"].append(label.name)
+                else:
+                    existing_label = existing_by_name[label.name]
+                    if self._needs_update(label, existing_label):
+                        if not dry_run:
+                            github_adapter.update_label(
+                                name=label.name,
+                                color=label.color,
+                                description=label.description
+                            )
+                        result["updated"].append(label.name)
+                    else:
+                        result["skipped"].append(label.name)
+
+            except Exception as e:  # pylint: disable=broad-exception-caught
+                result["errors"].append(f"{label.name}: {e}")
+
+        return result
+
+    def _needs_update(self, yaml_label: Label, github_label: dict[str, Any]) -> bool:
+        """Check if GitHub label needs update."""
+        return (
+            yaml_label.color != github_label["color"] or
+            yaml_label.description != github_label.get("description", "")
+        )
 
     @field_validator("labels")
     @classmethod
