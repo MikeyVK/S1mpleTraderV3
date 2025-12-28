@@ -621,7 +621,6 @@ labels:
         config = LabelConfig.load(yaml_file)
         type_labels = config.get_labels_by_category("type")
         priority_labels = config.get_labels_by_category("priority")
-        
         assert len(type_labels) == 2
         assert len(priority_labels) == 1
         assert all(label.name.startswith("type:") for label in type_labels)
