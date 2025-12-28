@@ -640,6 +640,86 @@ if result["errors"]:
         print(f"Failed: {error}")
 ```
 
+
+## 5.4 Startup Validation
+
+**Purpose:** Validate labels.yaml at MCP server startup for early problem detection.
+
+**Implementation in MCP server initialization:**
+
+```python
+# mcp_server/__init__.py or similar startup module
+import logging
+from mcp_server.config.label_config import LabelConfig
+
+logger = logging.getLogger(__name__)
+
+def validate_label_config_on_startup():
+    """
+    Validate labels.yaml at server startup.
+    
+    Logs warnings but does NOT block startup.
+    Tools will validate at operation time (Level 2).
+    """
+    try:
+        label_config = LabelConfig.load()
+        logger.info(f"Loaded labels.yaml: {len(label_config.labels)} labels")
+        
+        # Optional: Check if GitHub sync needed
+        # (This is passive detection, not enforcement)
+        # Actual sync enforcement happens via tools (Issue #61)
+        
+    except FileNotFoundError:
+        logger.warning(
+            "labels.yaml not found at .st3/labels.yaml. "
+            "Label validation will fail until file is created. "
+            "Run scaffold tool or create manually."
+        )
+    except ValueError as e:
+        logger.error(
+            f"Invalid labels.yaml configuration: {e}. "
+            f"Fix configuration before using label tools."
+        )
+    except Exception as e:
+        logger.error(
+            f"Unexpected error loading labels.yaml: {e}. "
+            f"Label tools may not function correctly."
+        )
+
+# Call during server initialization
+validate_label_config_on_startup()
+```
+
+**Behavior:**
+
+**Success:**
+```
+[INFO] Loaded labels.yaml: 52 labels
+```
+
+**File not found:**
+```
+[WARNING] labels.yaml not found at .st3/labels.yaml. 
+Label validation will fail until file is created.
+Run scaffold tool or create manually.
+```
+
+**Invalid YAML:**
+```
+[ERROR] Invalid labels.yaml configuration: Duplicate label names found: {'type:feature'}.
+Fix configuration before using label tools.
+```
+
+**Key design decisions:**
+- ✅ **Non-blocking:** Warnings/errors logged but server starts
+- ✅ **Early detection:** Problems found at startup, not at first tool use
+- ✅ **Clear guidance:** Error messages explain how to fix
+- ✅ **Level 1 only:** Detection, not enforcement (tools enforce at Level 2)
+
+**Testing:**
+- Unit test: Call validate function with missing/invalid YAML
+- Integration test: Server startup with various config states
+- Verify logs contain appropriate messages
 ---
 
 ## 6. Tool Integration

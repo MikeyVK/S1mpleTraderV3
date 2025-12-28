@@ -8,7 +8,7 @@
 
 ## Overview
 
-**TDD Approach:** 6 RED-GREEN-REFACTOR cycles
+**TDD Approach:** 7 RED-GREEN-REFACTOR cycles
 **Target:** 10.0/10 all quality gates, 100% meaningful coverage
 **Branch:** refactor/51-labels-yaml (from epic refactor/49)
 
@@ -853,6 +853,156 @@ Quality gates: 10/10 (implementation AND tests)
 Status: REFACTOR complete
 ```
 
+## Cycle 7: Startup Validation (Early Detection)
+
+### RED Phase - Write Tests First
+
+**File:** `tests/config/test_label_startup.py` (NEW)
+
+**Scaffold with generic template:**
+```python
+"""
+Unit tests for label configuration startup validation.
+
+Tests early detection of configuration issues at server startup.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, logging, mcp_server.config.label_config]
+"""
+```
+
+**Tests to write (6 tests):**
+1. `test_startup_validation_success()` - Valid config logs info message
+2. `test_startup_validation_file_not_found()` - Missing file logs warning
+3. `test_startup_validation_invalid_yaml()` - Syntax error logs error
+4. `test_startup_validation_duplicate_labels()` - Pydantic error logs error
+5. `test_startup_validation_non_blocking()` - Function returns even on error
+6. `test_startup_validation_log_messages()` - Verify exact log content
+
+**Use caplog fixture for log capture**
+
+**Commit:**
+```
+test: add startup validation tests (RED)
+
+- 6 tests for validate_label_config_on_startup()
+- Tests all error scenarios (missing, invalid, duplicates)
+- Verifies non-blocking behavior
+- Uses caplog fixture for log message verification
+
+Status: RED
+Expected: ImportError (function not created)
+```
+
+### GREEN Phase - Implement Startup Validation
+
+**File:** `mcp_server/config/label_startup.py` (NEW)
+
+**Scaffold with generic template:**
+```python
+"""
+Label configuration startup validation.
+
+Validates labels.yaml at MCP server startup for early problem detection.
+
+@layer: Backend (Config)
+@dependencies: [logging, mcp_server.config.label_config]
+@responsibilities:
+    - Load labels.yaml at startup
+    - Log warnings for missing/invalid config
+    - Non-blocking validation (server starts anyway)
+"""
+```
+
+**Implementation:**
+```python
+import logging
+from mcp_server.config.label_config import LabelConfig
+
+logger = logging.getLogger(__name__)
+
+def validate_label_config_on_startup() -> None:
+    """
+    Validate labels.yaml at server startup.
+    
+    Logs warnings but does NOT block startup.
+    Tools will validate at operation time.
+    """
+    try:
+        label_config = LabelConfig.load()
+        logger.info(f"Loaded labels.yaml: {len(label_config.labels)} labels")
+        
+    except FileNotFoundError:
+        logger.warning(
+            "labels.yaml not found at .st3/labels.yaml. "
+            "Label validation will fail until file is created. "
+            "Run scaffold tool or create manually."
+        )
+    except ValueError as e:
+        logger.error(
+            f"Invalid labels.yaml configuration: {e}. "
+            f"Fix configuration before using label tools."
+        )
+    except Exception as e:
+        logger.error(
+            f"Unexpected error loading labels.yaml: {e}. "
+            f"Label tools may not function correctly."
+        )
+```
+
+**Hook in server startup** (update existing file):
+```python
+# mcp_server/__init__.py (or main.py)
+from mcp_server.config.label_startup import validate_label_config_on_startup
+
+# During initialization
+validate_label_config_on_startup()
+```
+
+**Verify:**
+```bash
+pytest tests/config/test_label_startup.py -v
+```
+Expected: All 6 tests pass
+
+**Commit:**
+```
+feat: implement startup validation for labels.yaml
+
+- validate_label_config_on_startup(): Non-blocking validation
+- Logs info on success, warning on missing file, error on invalid
+- Hook in MCP server initialization
+- Early detection without blocking startup
+
+Status: GREEN
+Tests: 73/73 passing (67 previous + 6 startup)
+```
+
+### REFACTOR Phase - Enhance Error Messages
+
+**Improvements:**
+- Add suggestions to error messages (e.g., "Did you run sync?")
+- Consistent log formatting
+- Type hints complete
+- Docstrings enhanced
+
+**Run all quality gates:**
+- Check label_startup.py
+- Check test_label_startup.py
+- Verify Pylance: 0 errors
+
+**Commit:**
+```
+refactor: enhance startup validation error messages
+
+- Clearer guidance in log messages
+- Consistent formatting
+- Complete type hints and docstrings
+
+Quality gates: 10/10
+Pylance: 0 errors, 0 warnings
+```
+
 ---
 
 ## Quality Gates (Detailed)
@@ -934,16 +1084,16 @@ Pylance: 0 errors, 0 warnings (if REFACTOR)
 - Cycle 4: 3 commits
 - Cycle 5: 3 commits
 - Cycle 6: 3 commits
+- Cycle 7: 3 commits
 - Final: 1 commit (labels.yaml creation + docs update)
-
-**Total: ~19 commits**
+**Total: ~22 commits**
 
 ---
 
 ## Success Criteria
 
 **Must achieve:**
-- ✅ All 67+ tests passing
+- ✅ All 73+ tests passing
 - ✅ Quality gates 10/10 on ALL files (implementation + tests)
 - ✅ Pylance 0 errors, 0 warnings on ALL files
 - ✅ Type hints complete (mypy strict passes)
@@ -956,10 +1106,12 @@ Pylance: 0 errors, 0 warnings (if REFACTOR)
 **Deliverables:**
 - `.st3/labels.yaml` with 50+ labels
 - `mcp_server/config/label_config.py` (Label + LabelConfig)
+- `mcp_server/config/label_startup.py` (startup validation)
 - Updated `mcp_server/tools/label_tools.py` (CreateLabel + Sync)
 - Updated `mcp_server/tools/issue_tools.py` (AddLabels)
 - `tests/config/test_label_config.py` (52+ tests)
 - `tests/tools/test_label_tools.py` (15+ tests)
+- `tests/config/test_label_startup.py` (6+ tests)
 
 ---
 
