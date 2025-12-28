@@ -211,7 +211,7 @@ class LabelConfig(BaseModel):
 
     def _needs_update(self, yaml_label: Label, github_label: dict[str, Any]) -> bool:
         """Check if GitHub label needs update."""
-        return (
+        return bool(
             yaml_label.color != github_label["color"] or
             yaml_label.description != github_label.get("description", "")
         )
