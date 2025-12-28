@@ -22,6 +22,9 @@ from mcp_server.config.settings import settings
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.resources.github import GitHubIssuesResource
 
+# Config
+from mcp_server.config.label_startup import validate_label_config_on_startup
+
 # Resources
 from mcp_server.resources.standards import StandardsResource
 from mcp_server.resources.status import StatusResource
@@ -84,6 +87,10 @@ class MCPServer:
     def __init__(self) -> None:
         """Initialize the MCP server with resources and tools."""
         server_name = getattr(getattr(settings, "server"), "name")
+
+        # Validate label configuration at startup
+        validate_label_config_on_startup()
+
         self.server = Server(server_name)
 
         # Core resources (always available)
@@ -263,6 +270,10 @@ class MCPServer:
     async def run(self) -> None:
         """Run the MCP server."""
         server_name = getattr(getattr(settings, "server"), "name")
+
+        # Validate label configuration at startup
+        validate_label_config_on_startup()
+
         logger.info(
             "Starting MCP server: %s",
             server_name
