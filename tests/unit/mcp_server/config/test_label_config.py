@@ -215,14 +215,14 @@ labels:
             LabelConfig.load(yaml_file)
 
     def test_load_missing_labels_field(self, tmp_path):
-        """Raise ValidationError for missing labels."""
+        """Raise ValueError for missing labels field."""
         yaml_content = """version: "1.0"
 """
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
         LabelConfig._instance = None  # pylint: disable=protected-access
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ValueError, match="Missing required field"):
             LabelConfig.load(yaml_file)
 
     def test_load_invalid_color_in_yaml(self, tmp_path):
