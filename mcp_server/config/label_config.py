@@ -79,6 +79,7 @@ class LabelConfig(BaseModel):
 
     _instance: Optional["LabelConfig"] = None
     _labels_by_name: dict[str, Label] = {}
+    _labels_by_category: dict[str, list[Label]] = {}
 
     @classmethod
     def load(cls, config_path: Path | None = None) -> "LabelConfig":
@@ -122,6 +123,14 @@ class LabelConfig(BaseModel):
         self._labels_by_name = {label.name: label for label in self.labels}
         self._labels_by_name = {label.name: label for label in self.labels}
 
+        # Group by category
+        self._labels_by_category = {}
+        for label in self.labels:
+            if ":" in label.name:
+                cat = label.name.split(":", 1)[0]
+                if cat not in self._labels_by_category:
+                    self._labels_by_category[cat] = []
+                self._labels_by_category[cat].append(label)
     def validate_label_name(self, name: str) -> tuple[bool, str]:
         """Validate label name against pattern rules."""
         if name in self.freeform_exceptions:
@@ -143,6 +152,14 @@ class LabelConfig(BaseModel):
     def label_exists(self, name: str) -> bool:
         """Check if label is defined in labels.yaml."""
         return name in self._labels_by_name
+
+    def get_label(self, name: str) -> Label | None:
+        """Get label by exact name match."""
+        return self._labels_by_name.get(name)
+
+    def get_labels_by_category(self, category: str) -> list[Label]:
+        """Get all labels in a category."""
+        return self._labels_by_category.get(category, [])
 
     @field_validator("labels")
     @classmethod
