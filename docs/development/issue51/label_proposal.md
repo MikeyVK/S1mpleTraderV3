@@ -121,10 +121,11 @@ This document proposes a structured approach to labels.yaml based on:
 **Recommendation:**
 - ✅ **KEEP:** `phase:research`, `phase:planning`
 - ✅ **ADD TDD phases:** `phase:red`, `phase:green`, `phase:refactor` (critical for TDD workflow this project uses)
-- ✅ **ADD lifecycle:** `phase:design`, `phase:implementation`, `phase:review`, `phase:done` (standard SDLC phases)
-- ❌ **SKIP:** `phase:discussion`, `phase:approved`, `phase:verification`, `phase:documentation` (too granular, overlap with status/type labels)
+- ✅ **ADD from workflows.yaml:** `phase:design`, `phase:integration`, `phase:documentation` (match workflow phases)
+- ✅ **ADD terminal state:** `phase:done` (end state, not in workflow)
+- ❌ **SKIP:** `phase:discussion`, `phase:approved`, `phase:verification`, `phase:review` (not in workflows.yaml)
 
-**Total: 11 labels** (2 existing + 9 new: 3 TDD + 4 lifecycle + 2 from workflows)
+**Total: 10 labels** (2 existing + 8 new: 3 TDD sub-states + 3 workflow phases + 1 terminal + 1 rename)
 
 **Note:** This aligns with workflows.yaml which defines phase sequences per workflow type.
 
@@ -136,20 +137,27 @@ We chose **Optie B** (granular labels) instead of 1:1 workflow mapping because:
 3. Granularity helps enforce TDD discipline and measure compliance
 
 ```
-workflows.yaml phase → GitHub labels
+workflows.yaml phase → GitHub labels (1:1 for main phases, 1:3 for TDD)
 
-research        → phase:research (1:1 mapping)
+research        → phase:research (renamed from discovery)
 planning        → phase:planning (1:1 mapping)
 design          → phase:design (1:1 mapping)
 tdd             → phase:red / phase:green / phase:refactor (3 sub-states)
-integration     → phase:integration (add this label)
-documentation   → phase:documentation (add this label)
+integration     → phase:integration (1:1 mapping)
+documentation   → phase:documentation (1:1 mapping)
 (terminal)      → phase:done (end state, not in workflow)
 ```
 
-**Missing labels to add:**
-- `phase:integration` - Integration phase (from workflows.yaml)
-- `phase:documentation` - Documentation phase (from workflows.yaml)
+**Label list (10 total):**
+- `phase:research` (rename discovery in GitHub)
+- `phase:planning` (exists)
+- `phase:design` (add)
+- `phase:red` (add - TDD sub-state)
+- `phase:green` (add - TDD sub-state)
+- `phase:refactor` (add - TDD sub-state)
+- `phase:integration` (add - from workflows.yaml)
+- `phase:documentation` (add - from workflows.yaml)
+- `phase:done` (add - terminal state)
 
 ---
 
@@ -290,13 +298,13 @@ documentation   → phase:documentation (add this label)
 |----------|----------------|---------------|-------------|-------------------|
 | type:* | 7 | +3 useful | +0 | **10** |
 | priority:* | 4 | +1 useful | +0 | **5** |
-| phase:* | 2 | +9 useful | +0 | **11** |
+| phase:* | 2 | +8 useful | +0 | **10** |
 | status:* | 1 | +3 useful | +0 | **4** |
 | scope:* | 10 | +0 | +0 | **10** |
 | component:* | 0 | +0 | +4 (remove) | **0** |
 | effort:* | 0 | +0 | +3 (skip) | **0** |
 | freeform | ~15 | +5 | +0 | **~15** |
-| **TOTAL** | **52** | **41** | **37** | **~55** |
+| **TOTAL** | **52** | **41** | **37** | **~54** |
 
 ---
 
