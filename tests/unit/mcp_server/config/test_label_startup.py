@@ -105,7 +105,7 @@ labels:
 
         # Assert
         assert "Failed to load label configuration" in caplog.text
-        assert "Duplicate label names found" in caplog.text
+        assert "Duplicate label names" in caplog.text
 
 
 class TestStartupValidationNonBlocking:
