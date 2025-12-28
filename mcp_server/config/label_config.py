@@ -132,7 +132,10 @@ class LabelConfig(BaseModel):
             return (
                 False,
                 f"Label '{name}' does not match required pattern. "
-                f"Expected 'category:value' format."
+                f"Expected format: 'category:value' where category is one of "
+                f"[type, priority, status, phase, scope, component, effort, parent] "
+                f"and value is lowercase alphanumeric with hyphens. "
+                f"Freeform labels must be in freeform_exceptions list."
             )
 
         return (True, "")

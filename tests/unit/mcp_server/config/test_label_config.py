@@ -318,7 +318,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("type:feature")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_validate_label_name_priority_valid(self, tmp_path):
         """Accept valid priority: label."""
@@ -334,7 +334,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("priority:high")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_validate_label_name_status_valid(self, tmp_path):
         """Accept valid status: label."""
@@ -350,7 +350,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("status:in-progress")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_validate_label_name_phase_valid(self, tmp_path):
         """Accept valid phase: label."""
@@ -366,7 +366,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("phase:design")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_validate_label_name_scope_valid(self, tmp_path):
         """Accept valid scope: label."""
@@ -382,7 +382,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("scope:backend")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_validate_label_name_component_valid(self, tmp_path):
         """Accept valid component: label."""
@@ -398,7 +398,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("component:api")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_validate_label_name_effort_valid(self, tmp_path):
         """Accept valid effort: label."""
@@ -414,7 +414,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("effort:small")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_validate_label_name_parent_valid(self, tmp_path):
         """Accept valid parent: label."""
@@ -430,7 +430,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("parent:epic-42")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_validate_label_name_invalid_pattern(self, tmp_path):
         """Reject label that doesn't match pattern."""
@@ -464,7 +464,7 @@ labels:
         config = LabelConfig.load(yaml_file)
         valid, error = config.validate_label_name("good first issue")
         assert valid
-        assert error == ""
+        assert not error
 
     def test_label_exists_true(self, tmp_path):
         """Return True for defined label."""
