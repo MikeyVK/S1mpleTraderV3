@@ -493,3 +493,155 @@ labels:
 
         config = LabelConfig.load(yaml_file)
         assert not config.label_exists("type:bug")
+
+
+class TestLabelQueries:
+    """Test label query methods."""
+
+    def test_get_label_found(self, tmp_path):
+        """Return label when found by name."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+    description: "New feature"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        label = config.get_label("type:feature")
+        assert label is not None
+        assert label.name == "type:feature"
+        assert label.color == "1D76DB"
+
+    def test_get_label_not_found(self, tmp_path):
+        """Return None when label not found."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        label = config.get_label("type:bug")
+        assert label is None
+
+    def test_get_label_case_sensitive(self, tmp_path):
+        """Label lookup is case-sensitive."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        label = config.get_label("Type:feature")
+        assert label is None
+
+    def test_get_labels_by_category_type(self, tmp_path):
+        """Return all type: labels."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+  - name: "type:bug"
+    color: "D73A4A"
+  - name: "priority:high"
+    color: "D93F0B"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        labels = config.get_labels_by_category("type")
+        assert len(labels) == 2
+        assert labels[0].name == "type:feature"
+        assert labels[1].name == "type:bug"
+
+    def test_get_labels_by_category_priority(self, tmp_path):
+        """Return all priority: labels."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "priority:high"
+    color: "D93F0B"
+  - name: "priority:low"
+    color: "0E8A16"
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        labels = config.get_labels_by_category("priority")
+        assert len(labels) == 2
+        assert labels[0].name == "priority:high"
+        assert labels[1].name == "priority:low"
+
+    def test_get_labels_by_category_empty(self, tmp_path):
+        """Return empty list for unknown category."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        labels = config.get_labels_by_category("nonexistent")
+        assert labels == []
+
+    def test_get_labels_by_category_cache_correct(self, tmp_path):
+        """Verify category grouping is correct."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+  - name: "priority:high"
+    color: "D93F0B"
+  - name: "type:bug"
+    color: "D73A4A"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        type_labels = config.get_labels_by_category("type")
+        priority_labels = config.get_labels_by_category("priority")
+        
+        assert len(type_labels) == 2
+        assert len(priority_labels) == 1
+        assert all(label.name.startswith("type:") for label in type_labels)
+        assert priority_labels[0].name == "priority:high"
+
+    def test_cache_build_on_load(self, tmp_path):
+        """Caches are populated at load time."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+  - name: "priority:high"
+    color: "D93F0B"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        # pylint: disable=protected-access
+        assert len(config._labels_by_name) == 2
+        assert "type:feature" in config._labels_by_name
+        assert "priority:high" in config._labels_by_name
