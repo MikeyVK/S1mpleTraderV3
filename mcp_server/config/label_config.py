@@ -120,6 +120,26 @@ class LabelConfig(BaseModel):
     def _build_caches(self) -> None:
         """Build internal lookup caches."""
         self._labels_by_name = {label.name: label for label in self.labels}
+        self._labels_by_name = {label.name: label for label in self.labels}
+
+    def validate_label_name(self, name: str) -> tuple[bool, str]:
+        """Validate label name against pattern rules."""
+        if name in self.freeform_exceptions:
+            return (True, "")
+
+        pattern = r'^(type|priority|status|phase|scope|component|effort|parent):[a-z0-9-]+$'
+        if not re.match(pattern, name):
+            return (
+                False,
+                f"Label '{name}' does not match required pattern. "
+                f"Expected 'category:value' format."
+            )
+
+        return (True, "")
+
+    def label_exists(self, name: str) -> bool:
+        """Check if label is defined in labels.yaml."""
+        return name in self._labels_by_name
 
     @field_validator("labels")
     @classmethod
