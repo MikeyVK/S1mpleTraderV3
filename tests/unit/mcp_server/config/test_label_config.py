@@ -644,3 +644,304 @@ labels:
         assert len(config._labels_by_name) == 2
         assert "type:feature" in config._labels_by_name
         assert "priority:high" in config._labels_by_name
+
+
+class TestGitHubSync:
+    """Test GitHub label synchronization."""
+
+    def test_sync_create_new_labels(self, tmp_path):
+        """Create labels that don't exist in GitHub."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+    description: "New feature"
+  - name: "type:bug"
+    color: "D73A4A"
+    description: "Bug fix"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        # Mock GitHub adapter
+        github_mock = Mock()
+        github_mock.list_labels.return_value = []
+
+        result = config.sync_to_github(github_mock, dry_run=False)
+
+        assert len(result["created"]) == 2
+        assert "type:feature" in result["created"]
+        assert "type:bug" in result["created"]
+        assert github_mock.create_label.call_count == 2
+
+    def test_sync_update_changed_color(self, tmp_path):
+        """Update label when color differs."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "FF0000"
+    description: "New feature"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.return_value = [
+            {"name": "type:feature", "color": "1D76DB", "description": "New feature"}
+        ]
+
+        result = config.sync_to_github(github_mock, dry_run=False)
+
+        assert len(result["updated"]) == 1
+        assert "type:feature" in result["updated"]
+        assert github_mock.update_label.call_count == 1
+
+    def test_sync_update_changed_description(self, tmp_path):
+        """Update label when description differs."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+    description: "Updated description"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.return_value = [
+            {"name": "type:feature", "color": "1D76DB", "description": "Old description"}
+        ]
+
+        result = config.sync_to_github(github_mock, dry_run=False)
+
+        assert len(result["updated"]) == 1
+        assert "type:feature" in result["updated"]
+
+    def test_sync_skip_unchanged(self, tmp_path):
+        """Skip label when no changes needed."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+    description: "New feature"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.return_value = [
+            {"name": "type:feature", "color": "1D76DB", "description": "New feature"}
+        ]
+
+        result = config.sync_to_github(github_mock, dry_run=False)
+
+        assert len(result["skipped"]) == 1
+        assert "type:feature" in result["skipped"]
+        assert github_mock.update_label.call_count == 0
+
+    def test_sync_dry_run_no_changes(self, tmp_path):
+        """Dry run mode doesn't call GitHub API."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.return_value = []
+
+        result = config.sync_to_github(github_mock, dry_run=True)
+
+        assert len(result["created"]) == 1
+        assert github_mock.create_label.call_count == 0
+
+    def test_sync_dry_run_reports_changes(self, tmp_path):
+        """Dry run shows what would change."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:new"
+    color: "FF0000"
+  - name: "type:existing"
+    color: "00FF00"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.return_value = [
+            {"name": "type:existing", "color": "0000FF", "description": ""}
+        ]
+
+        result = config.sync_to_github(github_mock, dry_run=True)
+
+        assert len(result["created"]) == 1
+        assert len(result["updated"]) == 1
+        assert github_mock.create_label.call_count == 0
+        assert github_mock.update_label.call_count == 0
+
+    def test_sync_github_api_error(self, tmp_path):
+        """Handle GitHub API errors gracefully."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.side_effect = Exception("API error")
+
+        result = config.sync_to_github(github_mock)
+
+        assert len(result["errors"]) == 1
+        assert "Failed to fetch labels" in result["errors"][0]
+
+    def test_sync_partial_success(self, tmp_path):
+        """Some labels succeed, some fail."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+  - name: "type:bug"
+    color: "D73A4A"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.return_value = []
+        github_mock.create_label.side_effect = [None, Exception("Failed")]
+
+        result = config.sync_to_github(github_mock, dry_run=False)
+
+        assert len(result["created"]) == 1
+        assert len(result["errors"]) == 1
+        assert "type:bug" in result["errors"][0]
+
+    def test_sync_empty_labels_list(self, tmp_path):
+        """Handle empty labels.yaml gracefully."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels: []
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.return_value = []
+
+        result = config.sync_to_github(github_mock)
+
+        assert result["created"] == []
+        assert result["updated"] == []
+        assert result["skipped"] == []
+        assert result["errors"] == []
+
+    def test_sync_result_format(self, tmp_path):
+        """Result has correct dict structure."""
+        from unittest.mock import Mock
+
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+
+        github_mock = Mock()
+        github_mock.list_labels.return_value = []
+
+        result = config.sync_to_github(github_mock)
+
+        assert "created" in result
+        assert "updated" in result
+        assert "skipped" in result
+        assert "errors" in result
+        assert isinstance(result["created"], list)
+
+    def test_needs_update_color_differs(self, tmp_path):
+        """Helper detects color change."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "FF0000"
+    description: "Test"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        label = config.labels[0]
+
+        github_label = {"color": "1D76DB", "description": "Test"}
+        assert config._needs_update(label, github_label)  # pylint: disable=protected-access
+
+    def test_needs_update_description_differs(self, tmp_path):
+        """Helper detects description change."""
+        yaml_content = """version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+    description: "New"
+"""
+        yaml_file = tmp_path / "labels.yaml"
+        yaml_file.write_text(yaml_content)
+        LabelConfig._instance = None  # pylint: disable=protected-access
+
+        config = LabelConfig.load(yaml_file)
+        label = config.labels[0]
+
+        github_label = {"color": "1D76DB", "description": "Old"}
+        assert config._needs_update(label, github_label)  # pylint: disable=protected-access
