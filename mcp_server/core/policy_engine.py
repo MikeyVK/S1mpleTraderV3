@@ -138,9 +138,9 @@ class PolicyEngine:
     def _decide_scaffold(self, ctx: DecisionContext) -> PolicyDecision:
         """Decide on scaffold operations.
 
-        Allows scaffolding in component/tdd phases only.
+        Allows scaffolding in design/tdd phases only.
         """
-        allowed_phases = {"component", "tdd"}
+        allowed_phases = {"design", "tdd"}
 
         if ctx.phase in allowed_phases:
             return PolicyDecision(
@@ -153,7 +153,7 @@ class PolicyEngine:
             allowed=False,
             requires_human_approval=True,
             reason=f"Scaffolding not allowed in {ctx.phase} phase",
-            escalation_message="Scaffold only in component/tdd phases"
+            escalation_message="Scaffold only in design/tdd phases"
         )
 
     def _decide_create_file(self, ctx: DecisionContext) -> PolicyDecision:
@@ -225,3 +225,4 @@ class PolicyEngine:
                 "reason": decision.reason,
             },
         })
+

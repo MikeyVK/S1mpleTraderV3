@@ -1,4 +1,4 @@
-"""Tests for ProjectManager with workflow-based initialization.
+﻿"""Tests for ProjectManager with workflow-based initialization.
 
 Issue #50: Tests migrated from PHASE_TEMPLATES to workflows.yaml.
 - Workflow selection from workflows.yaml
@@ -54,7 +54,7 @@ class TestProjectManagerWorkflows:
         """Test feature workflow from workflows.yaml."""
         workflow = workflow_config.get_workflow("feature")
         assert len(workflow.phases) == 6
-        expected = ["discovery", "planning", "design", "tdd", "integration", "documentation"]
+        expected = ["research", "planning", "design", "tdd", "integration", "documentation"]
         assert workflow.phases == expected
         assert workflow.default_execution_mode == "interactive"
 
@@ -133,7 +133,7 @@ class TestProjectManagerWorkflows:
         self, manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test initialize_project with custom phases."""
-        custom_phases = ("discovery", "planning", "design", "tdd", "integration", "documentation")
+        custom_phases = ("research", "planning", "design", "tdd", "integration", "documentation")
 
         result = manager.initialize_project(
             issue_number=50,
@@ -197,7 +197,7 @@ class TestProjectManagerWorkflows:
                 issue_number=777,
                 issue_title="Test",
                 workflow_name="feature",
-                options=ProjectInitOptions(custom_phases=("discovery", "tdd"))
+                options=ProjectInitOptions(custom_phases=("research", "tdd"))
             )
 
         error_msg = str(exc_info.value)

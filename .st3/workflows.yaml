@@ -8,10 +8,10 @@ workflows:
   # Feature Development (full workflow)
   feature:
     name: feature
-    description: "Full development workflow with all phases (discovery → design → TDD → integration → docs)"
+    description: "Full development workflow with all phases (research → design → TDD → integration → docs)"
     default_execution_mode: interactive
     phases:
-      - discovery
+      - research
       - planning
       - design
       - tdd
@@ -21,10 +21,10 @@ workflows:
   # Bug Fix (no design phase)
   bug:
     name: bug
-    description: "Bug fix workflow (discovery → planning → TDD → integration → docs)"
+    description: "Bug fix workflow (research → planning → TDD → integration → docs)"
     default_execution_mode: interactive
     phases:
-      - discovery
+      - research
       - planning
       - tdd
       - integration
@@ -43,10 +43,10 @@ workflows:
   # Refactor (no design phase by default)
   refactor:
     name: refactor
-    description: "Code refactoring workflow (discovery → planning → TDD → integration → docs)"
+    description: "Code refactoring workflow (research → planning → TDD → integration → docs)"
     default_execution_mode: interactive
     phases:
-      - discovery
+      - research
       - planning
       - tdd
       - integration
@@ -60,3 +60,4 @@ workflows:
     phases:
       - planning
       - documentation
+
