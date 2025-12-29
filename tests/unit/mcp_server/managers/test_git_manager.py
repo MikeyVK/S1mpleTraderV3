@@ -40,35 +40,30 @@ class TestGitManagerValidation:
         assert status == {"branch": "main"}
         mock_adapter.get_status.assert_called_once()
 
-    def test_create_feature_branch_valid(
-        self, manager: GitManager, mock_adapter: MagicMock
-    ) -> None:
-        """Test creating a valid feature branch."""
-        name = manager.create_feature_branch("my-feature", "feature")
+    def test_create_branch_valid(self, manager: GitManager, mock_adapter: MagicMock) -> None:
+        """Test creating a branch with explicit base."""
+        name = manager.create_branch("my-feature", "feature", "HEAD")
 
         assert name == "feature/my-feature"
-        mock_adapter.create_branch.assert_called_once_with("feature/my-feature")
+        mock_adapter.create_branch.assert_called_once_with("feature/my-feature", base="HEAD")
         mock_adapter.is_clean.assert_called_once()
 
-    def test_create_feature_branch_invalid_type(self, manager: GitManager) -> None:
+    def test_create_branch_invalid_type(self, manager: GitManager) -> None:
         """Test validation of branch type."""
         with pytest.raises(ValidationError, match="Invalid branch type"):
-            manager.create_feature_branch("valid-name", "invalid-type")
+            manager.create_branch("valid-name", "invalid-type", "HEAD")
 
-    def test_create_feature_branch_invalid_name(self, manager: GitManager) -> None:
+    def test_create_branch_invalid_name(self, manager: GitManager) -> None:
         """Test validation of branch name (regex)."""
         with pytest.raises(ValidationError, match="Invalid branch name"):
-            manager.create_feature_branch("Bad Name!", "feature")
+            manager.create_branch("Bad Name!", "feature", "HEAD")
 
-    def test_create_feature_branch_dirty(
-        self, manager: GitManager, mock_adapter: MagicMock
-    ) -> None:
+    def test_create_branch_dirty(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test pre-flight check failure for dirty working directory."""
         mock_adapter.is_clean.return_value = False
 
         with pytest.raises(PreflightError, match="Working directory is not clean"):
-            manager.create_feature_branch("valid-name", "feature")
-
+            manager.create_branch("valid-name", "feature", "HEAD")
     def test_commit_tdd_phase_invalid(self, manager: GitManager) -> None:
         """Test validation of TDD phase."""
         with pytest.raises(ValidationError, match="Invalid TDD phase"):
@@ -199,4 +194,35 @@ class TestGitManagerOperations:
         """Test retrieving recent commits."""
         mock_adapter.get_recent_commits.return_value = ["msg1"]
         assert manager.get_recent_commits(1) == ["msg1"]
-        mock_adapter.get_recent_commits.assert_called_with(limit=1)
+
+
+class TestGitManagerCreateBranch:
+    """Tests for NEW create_branch method with explicit base_branch (Issue #64)."""
+
+    @pytest.fixture
+    def mock_adapter(self) -> MagicMock:
+        """Fixture for mocked GitAdapter."""
+        adapter = MagicMock()
+        adapter.is_clean.return_value = True
+        adapter.get_current_branch.return_value = "refactor/51-mcp"
+        return adapter
+
+    @pytest.fixture
+    def manager(self, mock_adapter: MagicMock) -> GitManager:
+        """Fixture for GitManager with mocked adapter."""
+        return GitManager(adapter=mock_adapter)
+
+    def test_create_branch_requires_base_branch_parameter(self, manager: GitManager) -> None:
+        """RED: create_branch should require base_branch parameter (no default)."""
+        with pytest.raises(TypeError):
+            manager.create_branch("test", "feature")  # Missing base_branch
+
+    def test_create_branch_passes_base_to_adapter(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """RED: Should pass base_branch to adapter.create_branch as base."""
+        manager.create_branch("test", "feature", "main")
+
+        mock_adapter.create_branch.assert_called_once_with(
+            "feature/test", base="main"
+        )

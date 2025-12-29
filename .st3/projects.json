@@ -1,4 +1,4 @@
-{
+﻿{
     "18":  {
                "issue_number":  18,
                "issue_title":  "Choke-point enforcement with PolicyEngine",
@@ -85,6 +85,20 @@
                                    ],
                "skip_reason":  null,
                "created_at":  "2025-12-27T21:35:23.969404+00:00"
+           },
+    "64":  {
+               "issue_title":  "Bug: create_feature_branch has incorrect name and unsafe default base",
+               "required_phases":  [
+                                       "research",
+                                       "planning",
+                                       "tdd",
+                                       "integration",
+                                       "documentation"
+                                   ],
+               "execution_mode":  "interactive",
+               "created_at":  "2025-12-29T20:28:33.6262046+01:00",
+               "skip_reason":  null,
+               "issue_number":  64,
+               "workflow_name":  "bug"
            }
 }
-

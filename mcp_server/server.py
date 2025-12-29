@@ -217,6 +217,11 @@ class MCPServer:
             name: str,
             arguments: dict[str, Any] | None
         ) -> list[TextContent | ImageContent | EmbeddedResource]:
+            logger.debug(
+                "Tool call received",
+                extra={"props": {"tool_name": name, "arguments": arguments}}
+            )
+
             for tool in self.tools:
                 if tool.name == name:
                     try:
@@ -224,7 +229,29 @@ class MCPServer:
                         if getattr(tool, "args_model", None):
                             # Validate args against model
                             model_cls = cast(Type[BaseModel], tool.args_model)
-                            model_validated = model_cls(**(arguments or {}))
+                            logger.debug(
+                                "Validating tool arguments",
+                                extra={"props": {"tool_name": name, "model": model_cls.__name__}}
+                            )
+                            try:
+                                model_validated = model_cls(**(arguments or {}))
+                                logger.debug(
+                                    "Arguments validated successfully",
+                                    extra={"props": {"tool_name": name}}
+                                )
+                            except Exception as validation_error:
+                                logger.error(
+                                    "Argument validation failed: %s",
+                                    validation_error,
+                                    exc_info=True,
+                                    extra={"props": {
+                                        "tool_name": name,
+                                        "model": model_cls.__name__,
+                                        "arguments": arguments,
+                                        "error_type": type(validation_error).__name__
+                                    }}
+                                )
+                                raise
                             result = await tool.execute(model_validated)
                         else:
                             # Fallback if somehow a tool is missed (should not happen)
