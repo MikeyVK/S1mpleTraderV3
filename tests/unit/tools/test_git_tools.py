@@ -19,16 +19,57 @@ def mock_git_manager():
     return MagicMock()
 
 @pytest.mark.asyncio
-async def test_create_branch_tool(mock_git_manager):
+async def test_create_branch_tool_requires_base_branch(mock_git_manager):
+    """Test that base_branch parameter is required."""
+    with pytest.raises(Exception):  # Pydantic validation error
+        CreateBranchInput(name="test-branch", branch_type="feature")
+
+@pytest.mark.asyncio
+async def test_create_branch_tool_calls_manager_with_explicit_base(mock_git_manager):
+    """Test that tool passes all parameters including base_branch to manager."""
     tool = CreateBranchTool(manager=mock_git_manager)
-    mock_git_manager.create_feature_branch.return_value = "feature/test-branch"
+    mock_git_manager.create_branch.return_value = "feature/test-branch"
     
-    params = CreateBranchInput(name="test-branch", branch_type="feature")
+    params = CreateBranchInput(
+        name="test-branch",
+        branch_type="feature",
+        base_branch="HEAD"
+    )
     result = await tool.execute(params)
     
-    mock_git_manager.create_feature_branch.assert_called_once_with("test-branch", "feature")
+    mock_git_manager.create_branch.assert_called_once_with(
+        "test-branch",
+        "feature",
+        "HEAD"
+    )
     assert isinstance(result, ToolResult)
     assert "Created and switched to branch: feature/test-branch" in result.content[0]["text"]
+
+@pytest.mark.asyncio
+async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager):
+    """Test creating branch from another branch name."""
+    tool = CreateBranchTool(manager=mock_git_manager)
+    mock_git_manager.create_branch.return_value = "fix/new-fix"
+    
+    params = CreateBranchInput(
+        name="new-fix",
+        branch_type="fix",
+        base_branch="refactor/51-labels-yaml"
+    )
+    result = await tool.execute(params)
+    
+    mock_git_manager.create_branch.assert_called_once_with(
+        "new-fix",
+        "fix",
+        "refactor/51-labels-yaml"
+    )
+    assert "fix/new-fix" in result.content[0]["text"]
+
+@pytest.mark.asyncio
+async def test_create_branch_tool_name_changed(mock_git_manager):
+    """Test that tool name is 'create_branch' (not 'create_feature_branch')."""
+    tool = CreateBranchTool(manager=mock_git_manager)
+    assert tool.name == "create_branch", "Tool should be renamed to create_branch"
 
 @pytest.mark.asyncio
 async def test_git_status_tool(mock_git_manager):

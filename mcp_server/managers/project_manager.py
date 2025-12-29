@@ -163,7 +163,9 @@ class ProjectManager:
         if not self.projects_file.exists():
             return None
 
-        projects: dict[str, Any] = json.loads(self.projects_file.read_text())
+        projects: dict[str, Any] = json.loads(
+            self.projects_file.read_text(encoding="utf-8-sig")  # Handle BOM if present
+        )
         plan: dict[str, Any] | None = projects.get(str(issue_number))
         return plan
 
