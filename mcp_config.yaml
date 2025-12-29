@@ -7,8 +7,8 @@ server:
   workspace_root: "D:/dev/SimpleTraderV3"
 
 logging:
-  level: "INFO"
-  audit_log: "logs/mcp_audit.log"
+  level: "DEBUG"
+  audit_log: "mcp_server/logs/mcp_audit.log"
 
 github:
   owner: "MikeyVK"
