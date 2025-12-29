@@ -1,4 +1,4 @@
-﻿"""RED tests for transition_phase MCP tool.
+"""RED tests for transition_phase MCP tool.
 
 Issue #50 - Step 5: Update TransitionPhaseTool to New API
 
@@ -76,7 +76,7 @@ class TestTransitionPhaseTool:
         initialized_branch: str,
         feature_phases: list[str]
     ) -> None:
-        """Test successful sequential transition: first ÔåÆ second phase."""
+        """Test successful sequential transition: first → second phase."""
         # Arrange
         params = TransitionPhaseInput(
             branch=initialized_branch,
@@ -88,8 +88,8 @@ class TestTransitionPhaseTool:
         result = await tool.execute(params)
 
         # Assert
-        assert "Ô£à" in result.content[0]["text"]
-        assert f"{feature_phases[0]} ÔåÆ {feature_phases[1]}" in result.content[0]["text"]
+        assert "✅" in result.content[0]["text"]
+        assert f"{feature_phases[0]} → {feature_phases[1]}" in result.content[0]["text"]
         assert initialized_branch in result.content[0]["text"]
 
     @pytest.mark.asyncio
@@ -111,7 +111,7 @@ class TestTransitionPhaseTool:
         result = await tool.execute(params)
 
         # Assert
-        assert "ÔØî" in result.content[0]["text"]
+        assert "❌" in result.content[0]["text"]
         assert "Invalid transition" in result.content[0]["text"]
 
     @pytest.mark.asyncio
@@ -132,7 +132,7 @@ class TestTransitionPhaseTool:
         result = await tool.execute(params)
 
         # Assert
-        assert "ÔØî" in result.content[0]["text"]
+        assert "❌" in result.content[0]["text"]
 
     @pytest.mark.asyncio
     async def test_transition_phase_tool_invalid_target_phase(
@@ -152,7 +152,7 @@ class TestTransitionPhaseTool:
         result = await tool.execute(params)
 
         # Assert
-        assert "ÔØî" in result.content[0]["text"]
+        assert "❌" in result.content[0]["text"]
 
     @pytest.mark.asyncio
     async def test_transition_phase_tool_with_human_approval(
@@ -175,7 +175,7 @@ class TestTransitionPhaseTool:
         result = await tool.execute(params)
 
         # Assert - Verify transition succeeded
-        assert "Ô£à" in result.content[0]["text"]
+        assert "✅" in result.content[0]["text"]
 
         # Verify human approval recorded in state
         state = phase_engine.get_state(initialized_branch)

@@ -1,4 +1,4 @@
-﻿"""RED tests for force_phase_transition MCP tool.
+"""RED tests for force_phase_transition MCP tool.
 
 Issue #50 - Step 4: Force Transition Tool
 
@@ -77,7 +77,7 @@ class TestForcePhaseTransitionTool:
         phase_engine: PhaseStateEngine,
         feature_phases: list[str]
     ) -> None:
-        """Test successful forced transition (discovery ÔåÆ design, skips planning)."""
+        """Test successful forced transition (discovery → design, skips planning)."""
         # Execute tool (force skip planning)
         params = ForcePhaseTransitionInput(
             branch=initialized_branch,
@@ -89,7 +89,7 @@ class TestForcePhaseTransitionTool:
         result = await tool.execute(params)
 
         # Check result
-        assert "Ô£à" in result.content[0]["text"]
+        assert "✅" in result.content[0]["text"]
         assert feature_phases[0] in result.content[0]["text"]  # discovery
         assert feature_phases[2] in result.content[0]["text"]  # design
         assert "forced" in result.content[0]["text"].lower()
@@ -149,7 +149,7 @@ class TestForcePhaseTransitionTool:
         result = await tool.execute(params)
 
         # Check error message
-        assert "ÔØî" in result.content[0]["text"]
+        assert "❌" in result.content[0]["text"]
         assert result.is_error is True
 
     @pytest.mark.asyncio
@@ -168,7 +168,7 @@ class TestForcePhaseTransitionTool:
             human_approval="Normal transition"
         )
 
-        # Force backward transition (planning ÔåÆ discovery)
+        # Force backward transition (planning → discovery)
         params = ForcePhaseTransitionInput(
             branch=initialized_branch,
             to_phase=feature_phases[0],  # discovery (Backward!)
@@ -179,7 +179,7 @@ class TestForcePhaseTransitionTool:
         result = await tool.execute(params)
 
         # Check success
-        assert "Ô£à" in result.content[0]["text"]
+        assert "✅" in result.content[0]["text"]
         assert phase_engine.get_current_phase(initialized_branch) == feature_phases[0]  # discovery
 
     def test_force_phase_transition_tool_input_model_validation(
