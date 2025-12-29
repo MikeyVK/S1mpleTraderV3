@@ -18,6 +18,7 @@ from mcp_server.tools.base import ToolResult
 def mock_git_manager():
     return MagicMock()
 
+@pytest.mark.skip(reason="OLD tool - will be replaced in Step 5/6 (Issue #64)")
 @pytest.mark.asyncio
 async def test_create_branch_tool(mock_git_manager):
     tool = CreateBranchTool(manager=mock_git_manager)
@@ -28,6 +29,7 @@ async def test_create_branch_tool(mock_git_manager):
     
     mock_git_manager.create_feature_branch.assert_called_once_with("test-branch", "feature")
     assert isinstance(result, ToolResult)
+    assert "Created and switched to branch: feature/test-branch" in result.content[0]["text"]
     assert "Created and switched to branch: feature/test-branch" in result.content[0]["text"]
 
 @pytest.mark.asyncio

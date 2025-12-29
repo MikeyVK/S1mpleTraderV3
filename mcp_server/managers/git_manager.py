@@ -16,32 +16,6 @@ class GitManager:
         """Get git status."""
         return self.adapter.get_status()
 
-    def create_feature_branch(self, name: str, branch_type: str = "feature") -> str:
-        """Create a new feature branch enforcing naming conventions."""
-        # Validation
-        if branch_type not in ["feature", "fix", "refactor", "docs"]:
-            raise ValidationError(
-                f"Invalid branch type: {branch_type}",
-                hints=["Use feature, fix, refactor, or docs"]
-            )
-
-        if not re.match(r"^[a-z0-9-]+$", name):
-            raise ValidationError(
-                f"Invalid branch name: {name}",
-                hints=["Use kebab-case (lowercase, numbers, hyphens only)"]
-            )
-
-        full_name = f"{branch_type}/{name}"
-
-        # Pre-flight check
-        if not self.adapter.is_clean():
-            raise PreflightError(
-                "Working directory is not clean",
-                blockers=["Commit or stash changes before creating a new branch"]
-            )
-
-        self.adapter.create_branch(full_name)
-        return full_name
 
     def create_branch(self, name: str, branch_type: str, base_branch: str) -> str:
         """Create a new branch with explicit base_branch (Issue #64).
