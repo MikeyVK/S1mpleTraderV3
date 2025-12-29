@@ -1,0 +1,12 @@
+﻿{
+    "branches":  {
+                     "fix/64-create-branch-from-head":  {
+                                                            "issue_number":  64,
+                                                            "workflow_name":  "bug",
+                                                            "current_phase":  "research",
+                                                            "transition_history":  [
+
+                                                                                   ]
+                                                        }
+                 }
+}
