@@ -402,7 +402,9 @@ class TestGitAdapterCreateBranch:
             mock_repo = MagicMock()
             mock_branch = MagicMock()
             mock_branch.name = "existing-branch"
-            mock_repo.heads = [mock_branch]
+            # Use MagicMock list-like behavior instead of setting __contains__
+            mock_repo.heads = MagicMock()
+            mock_repo.heads.__iter__ = lambda self: iter([mock_branch])
             mock_repo.heads.__contains__ = lambda self, x: x == "existing-branch"
             mock_repo_class.return_value = mock_repo
 
@@ -412,9 +414,9 @@ class TestGitAdapterCreateBranch:
                 adapter.create_branch("existing-branch", base="main")
 
     def test_create_branch_logs_operation(self) -> None:
-        """RED: Should log branch creation with all relevant details."""
+        """GREEN: Should log branch creation with all relevant details."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
-            with patch("mcp_server.adapters.git_adapter.get_logger") as mock_logger:
+            with patch("mcp_server.core.logging.get_logger") as mock_logger:
                 mock_repo = MagicMock()
                 mock_repo.heads = []
                 mock_new_branch = MagicMock()
