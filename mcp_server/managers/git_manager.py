@@ -43,6 +43,70 @@ class GitManager:
         self.adapter.create_branch(full_name)
         return full_name
 
+    def create_branch(self, name: str, branch_type: str, base_branch: str) -> str:
+        """Create a new branch with explicit base_branch (Issue #64).
+
+        Args:
+            name: Branch name in kebab-case
+            branch_type: Type (feature, fix, refactor, docs)
+            base_branch: Base to create from (required - no default!)
+
+        Returns:
+            Full branch name (e.g., 'feature/123-my-feature')
+
+        Raises:
+            ValidationError: If name or type invalid
+            PreflightError: If working directory not clean
+        """
+        from mcp_server.core.logging import get_logger  # pylint: disable=import-outside-toplevel
+        logger = get_logger("managers.git")
+
+        # Validation
+        if branch_type not in ["feature", "fix", "refactor", "docs"]:
+            raise ValidationError(
+                f"Invalid branch type: {branch_type}",
+                hints=["Use feature, fix, refactor, or docs"]
+            )
+
+        if not re.match(r"^[a-z0-9-]+$", name):
+            raise ValidationError(
+                f"Invalid branch name: {name}",
+                hints=["Use kebab-case (lowercase, numbers, hyphens only)"]
+            )
+
+        full_name = f"{branch_type}/{name}"
+
+        current_branch = self.adapter.get_current_branch()
+
+        logger.info(
+            "Creating branch",
+            extra={"props": {
+                "full_name": full_name,
+                "branch_type": branch_type,
+                "base_branch": base_branch,
+                "current_branch": current_branch
+            }}
+        )
+
+        # Pre-flight check
+        if not self.adapter.is_clean():
+            raise PreflightError(
+                "Working directory is not clean",
+                blockers=["Commit or stash changes before creating a new branch"]
+            )
+
+        self.adapter.create_branch(full_name, base=base_branch)
+
+        logger.info(
+            "Branch created successfully",
+            extra={"props": {
+                "full_name": full_name,
+                "base_branch": base_branch
+            }}
+        )
+
+        return full_name
+
     def commit_tdd_phase(self, phase: str, message: str, files: list[str] | None = None) -> str:
         """Commit changes with TDD phase prefix.
 

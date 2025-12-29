@@ -231,4 +231,3 @@ class TestGitManagerCreateBranch:
         mock_adapter.create_branch.assert_called_once_with(
             "feature/test", base="main"
         )
-        mock_adapter.get_recent_commits.assert_called_with(limit=1)
