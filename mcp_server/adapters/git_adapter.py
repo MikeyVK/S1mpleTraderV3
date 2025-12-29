@@ -67,38 +67,48 @@ class GitAdapter:
         from mcp_server.core.logging import get_logger  # pylint: disable=import-outside-toplevel
         logger = get_logger("git_adapter")
 
+        # Resolve base reference
+        if base == "HEAD":
+            base_ref = self.repo.head.commit
+            resolved_base = f"HEAD ({base_ref.hexsha[:7]})"
+        else:
+            base_ref = base  # type: ignore[assignment]
+            resolved_base = base
+
+        logger.debug(
+            "Creating git branch",
+            extra={"props": {
+                "branch_name": branch_name,
+                "base": base,
+                "resolved_base": resolved_base,
+                "current_branch": self.get_current_branch()
+            }}
+        )
+
         try:
             if branch_name in self.repo.heads:
                 raise ExecutionError(f"Branch {branch_name} already exists")
-
-            logger.debug(
-                "Creating branch",
-                extra={"props": {"branch_name": branch_name, "base": base}}
-            )
-
-            # Resolve HEAD to actual commit if needed
-            if base == "HEAD":
-                base_ref = self.repo.head.commit
-                logger.debug(
-                    "Resolved HEAD to commit",
-                    extra={"props": {"commit": base_ref.hexsha}}
-                )
-            else:
-                base_ref = base  # type: ignore[assignment]
 
             new_branch = self.repo.create_head(branch_name, base_ref)
             new_branch.checkout()
 
             logger.info(
-                "Branch created successfully",
-                extra={"props": {"branch_name": branch_name, "base": base}}
+                "Created and checked out branch",
+                extra={"props": {
+                    "branch_name": branch_name,
+                    "base": resolved_base
+                }}
             )
+        except ExecutionError:
+            raise
         except Exception as e:
             logger.error(
-                "Failed to create branch: %s",
-                e,
-                exc_info=True,
-                extra={"props": {"branch_name": branch_name, "base": base}}
+                "Failed to create branch",
+                extra={"props": {
+                    "branch_name": branch_name,
+                    "base": base,
+                    "error": str(e)
+                }}
             )
             raise ExecutionError(f"Failed to create branch {branch_name}: {e}") from e
 
