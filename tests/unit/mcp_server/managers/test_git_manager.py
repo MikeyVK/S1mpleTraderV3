@@ -200,3 +200,45 @@ class TestGitManagerOperations:
         mock_adapter.get_recent_commits.return_value = ["msg1"]
         assert manager.get_recent_commits(1) == ["msg1"]
         mock_adapter.get_recent_commits.assert_called_with(limit=1)
+
+
+class TestGitManagerCreateBranch:
+    """Tests for create_branch with explicit base_branch parameter (Issue #64)."""
+
+    @pytest.fixture
+    def mock_adapter(self) -> MagicMock:
+        """Fixture for mocked GitAdapter."""
+        adapter = MagicMock()
+        adapter.is_clean.return_value = True
+        adapter.get_current_branch.return_value = "refactor/51-mcp"
+        return adapter
+
+    @pytest.fixture
+    def manager(self, mock_adapter: MagicMock) -> GitManager:
+        """Fixture for GitManager with mocked adapter."""
+        return GitManager(adapter=mock_adapter)
+
+    def test_create_feature_branch_requires_base_branch(self, manager: GitManager) -> None:
+        """RED: create_feature_branch should require base_branch parameter."""
+        with pytest.raises(TypeError, match="base_branch"):
+            manager.create_feature_branch("test-feature", "feature")  # Missing base_branch
+
+    def test_create_feature_branch_passes_base_to_adapter(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """RED: Should pass base_branch to adapter.create_branch."""
+        manager.create_feature_branch("test-feature", "feature", base_branch="main")
+
+        mock_adapter.create_branch.assert_called_once_with(
+            "feature/test-feature", base="main"
+        )
+
+    def test_create_feature_branch_with_head(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """RED: Should support HEAD as base_branch."""
+        manager.create_feature_branch("test-feature", "feature", base_branch="HEAD")
+
+        mock_adapter.create_branch.assert_called_once_with(
+            "feature/test-feature", base="HEAD"
+        )
