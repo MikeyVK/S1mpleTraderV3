@@ -326,3 +326,106 @@ class TestGitAdapterRestore:
             adapter = GitAdapter("/fake/path")
             with pytest.raises(ExecutionError, match="restore"):
                 adapter.restore(files=["a.py"], source="HEAD")
+
+
+class TestGitAdapterCreateBranch:
+    """Tests for create_branch functionality (Issue #64 - TDD RED phase)."""
+
+    def test_create_branch_requires_explicit_base(self) -> None:
+        """RED: Should fail when base parameter missing (no default allowed)."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            # Should require base parameter (no default)
+            with pytest.raises(TypeError, match="base"):
+                adapter.create_branch("test-branch")  # Missing base parameter
+
+    def test_create_branch_with_head(self) -> None:
+        """RED: Should create from current HEAD when base='HEAD'."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_head = MagicMock()
+            mock_commit = MagicMock()
+            mock_commit.hexsha = "abc123f"
+            mock_head.commit = mock_commit
+            mock_repo.head = mock_head
+            mock_repo.heads = []
+            mock_new_branch = MagicMock()
+            mock_repo.create_head.return_value = mock_new_branch
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.create_branch("test-branch", base="HEAD")
+
+            # Should resolve HEAD to commit and create from it
+            mock_repo.create_head.assert_called_once_with("test-branch", mock_commit)
+            mock_new_branch.checkout.assert_called_once()
+
+    def test_create_branch_with_branch_name(self) -> None:
+        """RED: Should create from specified branch name."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.heads = []
+            mock_new_branch = MagicMock()
+            mock_repo.create_head.return_value = mock_new_branch
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.create_branch("test-branch", base="main")
+
+            # Should pass branch name directly to create_head
+            mock_repo.create_head.assert_called_once_with("test-branch", "main")
+            mock_new_branch.checkout.assert_called_once()
+
+    def test_create_branch_with_commit_hash(self) -> None:
+        """RED: Should create from specific commit hash."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_repo.heads = []
+            mock_new_branch = MagicMock()
+            mock_repo.create_head.return_value = mock_new_branch
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            adapter.create_branch("test-branch", base="abc123f")
+
+            # Should pass commit hash directly
+            mock_repo.create_head.assert_called_once_with("test-branch", "abc123f")
+            mock_new_branch.checkout.assert_called_once()
+
+    def test_create_branch_already_exists_raises_error(self) -> None:
+        """RED: Should fail when branch already exists."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_branch = MagicMock()
+            mock_branch.name = "existing-branch"
+            mock_repo.heads = [mock_branch]
+            mock_repo.heads.__contains__ = lambda self, x: x == "existing-branch"
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            with pytest.raises(ExecutionError, match="already exists"):
+                adapter.create_branch("existing-branch", base="main")
+
+    def test_create_branch_logs_operation(self) -> None:
+        """RED: Should log branch creation with all relevant details."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            with patch("mcp_server.adapters.git_adapter.get_logger") as mock_logger:
+                mock_repo = MagicMock()
+                mock_repo.heads = []
+                mock_new_branch = MagicMock()
+                mock_repo.create_head.return_value = mock_new_branch
+                mock_repo_class.return_value = mock_repo
+
+                mock_log = MagicMock()
+                mock_logger.return_value = mock_log
+
+                adapter = GitAdapter("/fake/path")
+                adapter.create_branch("test-branch", base="main")
+
+                # Should log the operation
+                assert mock_log.debug.called or mock_log.info.called
