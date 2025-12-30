@@ -351,7 +351,35 @@ def _reconstruct_branch_state(self, branch: str) -> dict[str, Any]:
 
 ## 5. Phase Detection Algorithm
 
-### 5.1 Multi-Strategy Detection
+### 5.0 Architecture Note: Future Label-Based Standard
+
+**Strategic Direction (Not Issue #39 Scope):**
+
+Labels.yaml defines canonical phase labels (phase:research, phase:planning, etc.). In the future, commit messages SHOULD use these standardized labels:
+
+```
+Commit Format (Future):
+phase:research - Analyze cross-machine recovery scenario
+phase:planning - Define implementation goals
+phase:design - Complete technical specifications
+```
+
+**Benefits:**
+- labels.yaml = SSOT for phase identifiers (issues, PRs, commits)
+- Phase detection trivial (parse label prefix)
+- No ambiguity or heuristics needed
+- Enforced via Epic #18 quality gates
+
+**Issue #39 Implementation:**
+Uses pragmatic heuristics (5.1-5.3) for backwards compatibility with existing commits. Future enhancement issue will implement label-based enforcement.
+
+**Related Work:**
+- Epic #18 child issue: Commit message validation
+- labels.yaml: Canonical phase label definitions
+
+---
+
+### 5.1 Multi-Strategy Detection (Current Implementation)
 
 ```python
 def _infer_phase_from_git(
@@ -421,11 +449,15 @@ def _detect_explicit_phase_keywords(
 ) -> str | None:
     """Detect phase from explicit keywords in commit messages.
     
-    Patterns Matched:
-    - "Complete {phase} phase"
-    - "{phase} phase #XX"
-    - "{phase}: description"
-    - "Start {phase} phase"
+    Patterns Matched (Priority Order):
+    1. phase:{label} format (aligns with labels.yaml) - PREFERRED
+       - "phase:research - Description"
+       - "[phase:planning] Description"
+    2. Legacy patterns (backwards compatibility):
+       - "Complete {phase} phase"
+       - "{phase} phase #XX"
+       - "{phase}: description"
+       - "Start {phase} phase"
     
     Args:
         commits: List of commit messages (most recent first)
@@ -444,10 +476,12 @@ def _detect_explicit_phase_keywords(
         # Check each phase (reverse order: later phases first)
         for phase in reversed(workflow_phases):
             patterns = [
-                f"complete {phase}",
+                f"phase:{phase}",      # labels.yaml format (PREFERRED)
+                f"[phase:{phase}]",    # Bracketed variant
+                f"complete {phase}",   # Legacy patterns
                 f"{phase} phase",
                 f"start {phase}",
-                f"{phase}:",  # Prefix style
+                f"{phase}:",
             ]
             
             if any(pattern in commit_lower for pattern in patterns):
@@ -883,6 +917,15 @@ B. `get_recent_commits(limit: int) -> list[Commit]` (commit objects)
 **Question:** Should `reconstructed: true` flag persist forever or be cleared on next transition?
 
 **Decision:** Clear on first successful transition (indicates state now "owned" by this machine).
+
+### Q4: Label-Based Commit Messages (Future Work)
+**Question:** When to enforce phase:label format in commits?
+
+**Decision:** 
+- Issue #39: Support both label format AND legacy patterns (backwards compatible)
+- Future Epic #18 child issue: Enforce phase:label format via quality gates
+- Gradual migration: Encourage label format in documentation, enforce later
+- Benefits: Trivial phase detection, consistent with labels.yaml SSOT
 
 ---
 
