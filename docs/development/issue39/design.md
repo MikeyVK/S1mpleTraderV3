@@ -351,35 +351,33 @@ def _reconstruct_branch_state(self, branch: str) -> dict[str, Any]:
 
 ## 5. Phase Detection Algorithm
 
-### 5.0 Architecture Note: Future Label-Based Standard
+### 5.1 Label-Based Detection (ONLY)
 
-**Strategic Direction (Not Issue #39 Scope):**
+**Design Principle:** labels.yaml is SSOT for all phase identifiers.
 
-Labels.yaml defines canonical phase labels (phase:research, phase:planning, etc.). In the future, commit messages SHOULD use these standardized labels:
+Commit messages MUST use standardized phase labels from labels.yaml:
 
 ```
-Commit Format (Future):
+Required Format:
 phase:research - Analyze cross-machine recovery scenario
 phase:planning - Define implementation goals
 phase:design - Complete technical specifications
+phase:red - Add failing test for state initialization
+phase:green - Implement state.json creation
+phase:refactor - Extract phase detection to separate method
+phase:integration - Test cross-machine scenario
+phase:documentation - Update tool documentation
 ```
+
+**No Legacy Support:** Issue #39 requires strict label format. No backwards compatibility with old commit patterns.
 
 **Benefits:**
 - labels.yaml = SSOT for phase identifiers (issues, PRs, commits)
 - Phase detection trivial (parse label prefix)
-- No ambiguity or heuristics needed
-- Enforced via Epic #18 quality gates
+- No ambiguity, no heuristics needed
+- 100% reliable detection
 
-**Issue #39 Implementation:**
-Uses pragmatic heuristics (5.1-5.3) for backwards compatibility with existing commits. Future enhancement issue will implement label-based enforcement.
-
-**Related Work:**
-- Epic #18 child issue: Commit message validation
-- labels.yaml: Canonical phase label definitions
-
----
-
-### 5.1 Multi-Strategy Detection (Current Implementation)
+**Implementation:**
 
 ```python
 def _infer_phase_from_git(
@@ -387,12 +385,13 @@ def _infer_phase_from_git(
     branch: str, 
     workflow_phases: list[str]
 ) -> str:
-    """Infer current phase using multi-strategy detection.
+    """Infer current phase from standardized commit labels.
     
-    Strategy Priority:
-    1. Explicit phase keywords (highest confidence)
-    2. Conventional commit prefixes (medium confidence)
-    3. Fallback to first phase (safe default)
+    Algorithm:
+    1. Get recent commits on branch
+    2. Parse phase:label from commit messages
+    3. Return most recent valid phase
+    4. Fallback to first phase if no labeled commits found
     
     Args:
         branch: Branch name for git log filtering
@@ -403,29 +402,29 @@ def _infer_phase_from_git(
         
     Performance:
         - Git log scan: O(n) where n = 50 commits
-        - Pattern matching: O(m) where m = number of phases (typically <10)
-        - Total: O(n*m) ≈ O(50*8) = 400 operations max
+        - Label parsing: O(1) per commit (simple prefix match)
+        - Total: O(n) ≈ O(50) operations
+        
+    Note:
+        TDD phases (red/green/refactor) map to "tdd" in workflow_phases.
+        All other phases must match exactly.
     """
     try:
         # Get recent commits on this branch
         commits = self.git_manager.get_recent_commits(limit=50)
         
-        # Strategy 1: Explicit phase keywords (e.g., "Complete research phase")
-        phase = self._detect_explicit_phase_keywords(commits, workflow_phases)
+        # Detect phase from labels
+        phase = self._detect_phase_label(commits, workflow_phases)
         if phase:
-            logger.info(f"Phase detected via explicit keywords: {phase}")
+            logger.info(f"Phase detected from commit label: {phase}")
             return phase
         
-        # Strategy 2: Conventional commits (e.g., "test:" → red)
-        phase = self._detect_conventional_commits(commits)
-        if phase and phase in workflow_phases:
-            logger.info(f"Phase detected via conventional commits: {phase}")
-            return phase
-        
-        # Strategy 3: Safe fallback
+        # Fallback: No labeled commits found
         fallback = workflow_phases[0]
         logger.warning(
-            f"No phase detected in commits, defaulting to first phase: {fallback}"
+            f"No phase labels found in commits. "
+            f"Defaulting to first phase: {fallback}\n"
+            f"Note: Commits should use phase:label format from labels.yaml"
         )
         return fallback
         
@@ -439,97 +438,69 @@ def _infer_phase_from_git(
         return fallback
 ```
 
-### 5.2 Explicit Keyword Detection
+### 5.2 Label Parsing Implementation
 
 ```python
-def _detect_explicit_phase_keywords(
+def _detect_phase_label(
     self, 
     commits: list[str], 
     workflow_phases: list[str]
 ) -> str | None:
-    """Detect phase from explicit keywords in commit messages.
+    """Detect phase from phase:label format in commit messages.
     
-    Patterns Matched (Priority Order):
-    1. phase:{label} format (aligns with labels.yaml) - PREFERRED
-       - "phase:research - Description"
-       - "[phase:planning] Description"
-    2. Legacy patterns (backwards compatibility):
-       - "Complete {phase} phase"
-       - "{phase} phase #XX"
-       - "{phase}: description"
-       - "Start {phase} phase"
+    Supported Formats:
+    - "phase:research - Description"  (preferred)
+    - "[phase:planning] Description"  (bracketed)
+    - "phase:design: Description"     (colon separator)
+    
+    TDD Phase Mapping:
+    - phase:red → tdd (in workflow_phases)
+    - phase:green → tdd (in workflow_phases)
+    - phase:refactor → tdd (in workflow_phases, or standalone if workflow has it)
     
     Args:
         commits: List of commit messages (most recent first)
-        workflow_phases: Valid phases to match against
+        workflow_phases: Valid phases from projects.json
         
     Returns:
         Phase name or None if not found
         
     Algorithm:
-        Iterate commits from newest to oldest, checking each phase
-        in reverse order (later phases more likely to be current)
+        Scan commits from newest to oldest.
+        Parse phase:label prefix.
+        Map to workflow phase.
+        Return first match.
     """
+    import re
+    
+    # Define TDD phase mappings
+    tdd_phases = {"red", "green", "refactor"}
+    
     for commit in commits:
-        commit_lower = commit.lower()
+        # Match phase:label pattern (case insensitive)
+        # Patterns: "phase:xyz", "[phase:xyz]"
+        match = re.search(r'\[?phase:(\w+)\]?', commit.lower())
         
-        # Check each phase (reverse order: later phases first)
-        for phase in reversed(workflow_phases):
-            patterns = [
-                f"phase:{phase}",      # labels.yaml format (PREFERRED)
-                f"[phase:{phase}]",    # Bracketed variant
-                f"complete {phase}",   # Legacy patterns
-                f"{phase} phase",
-                f"start {phase}",
-                f"{phase}:",
-            ]
+        if match:
+            detected_label = match.group(1)
             
-            if any(pattern in commit_lower for pattern in patterns):
-                return phase
+            # Handle TDD phases
+            if detected_label in tdd_phases:
+                # Map to "tdd" if workflow has it
+                if "tdd" in workflow_phases:
+                    return "tdd"
+                # Or return "refactor" if standalone phase
+                elif detected_label == "refactor" and "refactor" in workflow_phases:
+                    return "refactor"
+            
+            # Direct phase match
+            elif detected_label in workflow_phases:
+                return detected_label
     
     return None
 ```
 
-### 5.3 Conventional Commit Detection
-
-```python
-def _detect_conventional_commits(self, commits: list[str]) -> str | None:
-    """Detect phase from conventional commit prefixes.
-    
-    Mappings:
-    - test: → red
-    - feat: → green
-    - refactor: → refactor
-    - docs: → documentation
-    
-    Args:
-        commits: List of commit messages
-        
-    Returns:
-        Phase name or None if not matched
-        
-    Limitations:
-        Only works for TDD cycle phases. Cannot detect research, planning,
-        design, or integration phases.
-    """
-    if not commits:
-        return None
-    
-    latest = commits[0].lower()
-    
-    if latest.startswith("test:") or "failing test" in latest:
-        return "red"
-    if latest.startswith("feat:") or "pass" in latest:
-        return "green"
-    if latest.startswith("refactor:"):
-        return "refactor"
-    if latest.startswith("docs:"):
-        return "documentation"
-    
-    return None
-```
-
-### 5.4 Branch Name Parsing
+### 5.3 Branch Name Parsing
 
 ```python
 def _extract_issue_from_branch(self, branch: str) -> int | None:
