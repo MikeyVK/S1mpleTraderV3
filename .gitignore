@@ -26,6 +26,9 @@ dist/
 *.swo
 *~
 
+# Logs
+.logs/
+
 # Run results
 results/
 
@@ -34,4 +37,4 @@ source_data/
 Kraken_Trading_History/
 
 # Generated documents
-#docs/mcp_server.audit.log
+#docs/
