@@ -3,8 +3,11 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mcp_server.core.logging import get_logger
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool, ToolResult
+
+logger = get_logger("tools.git")
 
 
 def _input_schema(args_model: type[BaseModel] | None) -> dict[str, Any]:
@@ -21,13 +24,17 @@ class CreateBranchInput(BaseModel):
         description="Branch type",
         pattern="^(feature|fix|refactor|docs)$"
     )
+    base_branch: str = Field(
+        ...,
+        description="Base branch to create from (e.g., 'HEAD', 'main', 'refactor/51-labels-yaml')"
+    )
 
 
 class CreateBranchTool(BaseTool):
-    """Tool to create a git branch."""
+    """Tool to create a git branch from specified base."""
 
-    name = "create_feature_branch"
-    description = "Create a new feature branch"
+    name = "create_branch"
+    description = "Create a new branch from specified base branch"
     args_model = CreateBranchInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
@@ -38,9 +45,31 @@ class CreateBranchTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: CreateBranchInput) -> ToolResult:
-        branch_name = self.manager.create_feature_branch(params.name, params.branch_type)
-        return ToolResult.text(f"Created and switched to branch: {branch_name}")
+        logger.info(
+            "Branch creation requested",
+            extra={"props": {
+                "name": params.name,
+                "branch_type": params.branch_type,
+                "base_branch": params.base_branch
+            }}
+        )
 
+        try:
+            branch_name = self.manager.create_branch(
+                params.name,
+                params.branch_type,
+                params.base_branch
+            )
+            return ToolResult.text(f"✅ Created and switched to branch: {branch_name}")
+        except Exception as e:
+            logger.error(
+                "Branch creation failed",
+                extra={"props": {
+                    "name": params.name,
+                    "error": str(e)
+                }}
+            )
+            raise
 
 class GitStatusInput(BaseModel):
     """Input for GitStatusTool (empty)."""

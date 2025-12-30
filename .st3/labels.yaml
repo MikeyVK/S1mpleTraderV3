@@ -1,0 +1,139 @@
+version: "1.0"
+
+freeform_exceptions:
+  - "good first issue"
+  - "help wanted"
+  - "wontfix"
+  - "duplicate"
+  - "invalid"
+
+# Dynamic label patterns - validated but not pre-created
+# These labels are created on-demand when needed
+label_patterns:
+  - pattern: "^parent:issue-\\d+$"
+    description: "Parent issue reference for child issues"
+    color: "EDEDED"
+    example: "parent:issue-18"
+
+labels:
+  # TYPE - Issue Classification (7 labels)
+  # What kind of work is being done
+  - name: "type:feature"
+    color: "1D76DB"
+    description: "New functionality or capability"
+  
+  - name: "type:enhancement"
+    color: "A2EEEF"
+    description: "Improvement to existing feature"
+  
+  - name: "type:bug"
+    color: "D73A4A"
+    description: "Something isn't working"
+  
+  - name: "type:refactor"
+    color: "0E8A16"
+    description: "Code improvement without behavior change"
+  
+  - name: "type:docs"
+    color: "0075CA"
+    description: "Documentation changes"
+  
+  - name: "type:research"
+    color: "1D76DB"
+    description: "Research and exploration work"
+  
+  - name: "type:epic"
+    color: "5319E7"
+    description: "Large feature with multiple sub-issues"
+  
+  # PRIORITY - Urgency Level (5 labels)
+  # How important/urgent is this work
+  - name: "priority:critical"
+    color: "B60205"
+    description: "Must be fixed immediately"
+  
+  - name: "priority:high"
+    color: "D93F0B"
+    description: "Should be addressed soon"
+  
+  - name: "priority:medium"
+    color: "FBCA04"
+    description: "Normal priority"
+  
+  - name: "priority:low"
+    color: "BFD4F2"
+    description: "Low priority, nice to have"
+  
+  - name: "priority:triage"
+    color: "EDEDED"
+    description: "Needs prioritization"
+  
+  # PHASE - Workflow State (6 labels)
+  # Which phase in the workflow (aligns with workflows.yaml)
+  - name: "phase:research"
+    color: "C5DEF5"
+    description: "Research/discovery phase"
+  
+  - name: "phase:planning"
+    color: "C5DEF5"
+    description: "Planning phase"
+  
+  - name: "phase:design"
+    color: "C5DEF5"
+    description: "Design phase"
+  
+  - name: "phase:tdd"
+    color: "0E8A16"
+    description: "TDD implementation phase"
+  
+  - name: "phase:integration"
+    color: "1D76DB"
+    description: "Integration testing phase"
+  
+  - name: "phase:documentation"
+    color: "0075CA"
+    description: "Documentation phase"
+  
+  # STATUS - Current State (4 labels)
+  # What's blocking or what action is needed
+  - name: "status:blocked"
+    color: "D73A4A"
+    description: "Blocked by external dependency"
+  
+  - name: "status:in-progress"
+    color: "0E8A16"
+    description: "Currently being worked on"
+  
+  - name: "status:needs-info"
+    color: "D876E3"
+    description: "Needs more information"
+  
+  - name: "status:ready"
+    color: "FBCA04"
+    description: "Ready for review/merge"
+  
+  # SCOPE - Impact Area (6 labels)
+  # Which part of the system is affected
+  - name: "scope:architecture"
+    color: "BFD4F2"
+    description: "Architectural changes"
+  
+  - name: "scope:mcp-server"
+    color: "BFD4F2"
+    description: "MCP server internals"
+  
+  - name: "scope:platform"
+    color: "BFD4F2"
+    description: "GitHub/git platform integration"
+  
+  - name: "scope:tooling"
+    color: "BFD4F2"
+    description: "Development tooling"
+  
+  - name: "scope:workflow"
+    color: "BFD4F2"
+    description: "Workflow/process improvements"
+  
+  - name: "scope:documentation"
+    color: "BFD4F2"
+    description: "Documentation scope"

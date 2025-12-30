@@ -1,4 +1,4 @@
-"""Tests for PolicyEngine - Phase A.1 (RED phase)."""
+﻿"""Tests for PolicyEngine - Phase A.1 (RED phase)."""
 # pylint: disable=protected-access,too-few-public-methods
 from dataclasses import dataclass
 
@@ -19,7 +19,7 @@ class MockProjectPlan:
 class TestPolicyEngineDecide:
     """Test PolicyEngine.decide() core validation."""
 
-    def test_decide_with_valid_project_plan(self):
+    def test_decide_with_valid_project_plan(self, feature_phases):
         """Should allow operation when project plan exists and phase matches."""
         engine = PolicyEngine()
         ctx = DecisionContext(
@@ -27,10 +27,10 @@ class TestPolicyEngineDecide:
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
                 issue_number=30,
-                required_phases=["discovery", "planning", "tdd"],
-                current_phase="tdd"
+                required_phases=[feature_phases[0], feature_phases[1], feature_phases[3]],
+                current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"message": "green: Implement PolicyEngine"}
         )
 
@@ -40,14 +40,14 @@ class TestPolicyEngineDecide:
         assert decision.requires_human_approval is False
         assert "Valid commit" in decision.reason or "TDD phase prefix" in decision.reason
 
-    def test_decide_without_project_plan_requires_approval(self):
+    def test_decide_without_project_plan_requires_approval(self, feature_phases):
         """Should require human approval when no project plan exists."""
         engine = PolicyEngine()
         ctx = DecisionContext(
             operation="commit",
             branch="feature/unknown-branch",
             project_plan=None,
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"message": "Some commit"}
         )
 
@@ -57,7 +57,7 @@ class TestPolicyEngineDecide:
         assert decision.requires_human_approval is True
         assert "No project plan" in decision.reason
 
-    def test_decide_with_phase_mismatch_requires_approval(self):
+    def test_decide_with_phase_mismatch_requires_approval(self, feature_phases):
         """Should require approval when phase doesn't match project plan."""
         engine = PolicyEngine()
         ctx = DecisionContext(
@@ -65,10 +65,10 @@ class TestPolicyEngineDecide:
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
                 issue_number=30,
-                required_phases=["discovery", "planning", "tdd"],
-                current_phase="planning"
+                required_phases=[feature_phases[0], feature_phases[1], feature_phases[3]],
+                current_phase=feature_phases[1]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"message": "green: Premature implementation"}
         )
 
@@ -78,7 +78,7 @@ class TestPolicyEngineDecide:
         assert decision.requires_human_approval is True
         assert "Phase mismatch" in decision.reason
 
-    def test_decide_with_phase_not_in_plan_requires_approval(self):
+    def test_decide_with_phase_not_in_plan_requires_approval(self, feature_phases):
         """Should require approval when phase not in required_phases."""
         engine = PolicyEngine()
         ctx = DecisionContext(
@@ -86,10 +86,10 @@ class TestPolicyEngineDecide:
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
                 issue_number=30,
-                required_phases=["discovery", "planning", "tdd"],
-                current_phase="integration"
+                required_phases=[feature_phases[0], feature_phases[1], feature_phases[3]],
+                current_phase=feature_phases[4]
             ),
-            phase="integration",
+            phase=feature_phases[4],
             metadata={"message": "Skip to integration"}
         )
 
@@ -103,7 +103,7 @@ class TestPolicyEngineDecide:
 class TestPolicyEngineDecideCommit:
     """Test PolicyEngine._decide_commit() for git commits."""
 
-    def test_decide_commit_with_tdd_phase_prefix(self):
+    def test_decide_commit_with_tdd_phase_prefix(self, feature_phases):
         """Should allow commits with TDD phase prefixes."""
         engine = PolicyEngine()
         ctx = DecisionContext(
@@ -111,10 +111,10 @@ class TestPolicyEngineDecideCommit:
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
                 issue_number=30,
-                required_phases=["tdd"],
-                current_phase="tdd"
+                required_phases=[feature_phases[3]],
+                current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"message": "green: Implement PolicyEngine"}
         )
 
@@ -123,7 +123,7 @@ class TestPolicyEngineDecideCommit:
         assert decision.allowed is True
         assert "TDD phase prefix" in decision.reason
 
-    def test_decide_commit_without_phase_prefix_requires_approval(self):
+    def test_decide_commit_without_phase_prefix_requires_approval(self, feature_phases):
         """Should require approval for commits without phase prefix."""
         engine = PolicyEngine()
         ctx = DecisionContext(
@@ -131,10 +131,10 @@ class TestPolicyEngineDecideCommit:
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
                 issue_number=30,
-                required_phases=["tdd"],
-                current_phase="tdd"
+                required_phases=[feature_phases[3]],
+                current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"message": "Implement PolicyEngine"}  # No prefix!
         )
 
@@ -148,18 +148,18 @@ class TestPolicyEngineDecideCommit:
 class TestPolicyEngineDecideScaffold:
     """Test PolicyEngine._decide_scaffold() for scaffolding operations."""
 
-    def test_decide_scaffold_in_component_phase(self):
-        """Should allow scaffolding during component phase."""
+    def test_decide_scaffold_in_design_phase(self, feature_phases):
+        """Should allow scaffolding during design phase."""
         engine = PolicyEngine()
         ctx = DecisionContext(
             operation="scaffold",
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
                 issue_number=30,
-                required_phases=["component", "tdd"],
-                current_phase="component"
+                required_phases=[feature_phases[2], feature_phases[3]],
+                current_phase=feature_phases[2]
             ),
-            phase="component",
+            phase=feature_phases[2],
             metadata={"component_type": "dto", "name": "PolicyDecision"}
         )
 
@@ -167,7 +167,7 @@ class TestPolicyEngineDecideScaffold:
 
         assert decision.allowed is True
 
-    def test_decide_scaffold_in_tdd_phase(self):
+    def test_decide_scaffold_in_tdd_phase(self, feature_phases):
         """Should allow scaffolding during TDD phase (tests)."""
         engine = PolicyEngine()
         ctx = DecisionContext(
@@ -175,10 +175,10 @@ class TestPolicyEngineDecideScaffold:
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
                 issue_number=30,
-                required_phases=["tdd"],
-                current_phase="tdd"
+                required_phases=[feature_phases[3]],
+                current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"component_type": "test", "name": "test_policy_engine"}
         )
 
@@ -186,18 +186,18 @@ class TestPolicyEngineDecideScaffold:
 
         assert decision.allowed is True
 
-    def test_decide_scaffold_in_discovery_phase_requires_approval(self):
-        """Should require approval for scaffolding in discovery."""
+    def test_decide_scaffold_in_research_phase_requires_approval(self, feature_phases):
+        """Should require approval for scaffolding in research."""
         engine = PolicyEngine()
         ctx = DecisionContext(
             operation="scaffold",
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
                 issue_number=30,
-                required_phases=["discovery", "planning"],
-                current_phase="discovery"
+                required_phases=[feature_phases[0], feature_phases[1]],
+                current_phase=feature_phases[0]
             ),
-            phase="discovery",
+            phase=feature_phases[0],
             metadata={"component_type": "dto"}
         )
 
@@ -210,16 +210,16 @@ class TestPolicyEngineDecideScaffold:
 class TestPolicyEngineDecideCreateFile:
     """Test PolicyEngine._decide_create_file() for file creation."""
 
-    def test_decide_create_file_config_allowed(self):
+    def test_decide_create_file_config_allowed(self, feature_phases):
         """Should allow creating config files (YAML, JSON, TOML)."""
         engine = PolicyEngine()
         ctx = DecisionContext(
             operation="create_file",
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
-                issue_number=30, required_phases=["tdd"], current_phase="tdd"
+                issue_number=30, required_phases=[feature_phases[3]], current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"path": "config/settings.yaml"}
         )
 
@@ -228,16 +228,16 @@ class TestPolicyEngineDecideCreateFile:
         assert decision.allowed is True
         assert "Config file" in decision.reason
 
-    def test_decide_create_file_backend_python_blocked(self):
+    def test_decide_create_file_backend_python_blocked(self, feature_phases):
         """Should block creating Python files in backend/."""
         engine = PolicyEngine()
         ctx = DecisionContext(
             operation="create_file",
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
-                issue_number=30, required_phases=["tdd"], current_phase="tdd"
+                issue_number=30, required_phases=[feature_phases[3]], current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"path": "backend/core/policy_engine.py"}
         )
 
@@ -247,16 +247,16 @@ class TestPolicyEngineDecideCreateFile:
         assert decision.requires_human_approval is True
         assert "must use scaffold" in decision.reason.lower()
 
-    def test_decide_create_file_test_python_blocked(self):
+    def test_decide_create_file_test_python_blocked(self, feature_phases):
         """Should block creating test files in tests/."""
         engine = PolicyEngine()
         ctx = DecisionContext(
             operation="create_file",
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
-                issue_number=30, required_phases=["tdd"], current_phase="tdd"
+                issue_number=30, required_phases=[feature_phases[3]], current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"path": "tests/unit/test_something.py"}
         )
 
@@ -265,16 +265,16 @@ class TestPolicyEngineDecideCreateFile:
         assert decision.allowed is False
         assert decision.requires_human_approval is True
 
-    def test_decide_create_file_script_allowed(self):
+    def test_decide_create_file_script_allowed(self, feature_phases):
         """Should allow creating scripts in scripts/ directory."""
         engine = PolicyEngine()
         ctx = DecisionContext(
             operation="create_file",
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
-                issue_number=30, required_phases=["tdd"], current_phase="tdd"
+                issue_number=30, required_phases=[feature_phases[3]], current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"path": "scripts/analyze_coverage.py"}
         )
 
@@ -286,16 +286,16 @@ class TestPolicyEngineDecideCreateFile:
 class TestPolicyEngineAuditTrail:
     """Test PolicyEngine audit logging."""
 
-    def test_decide_logs_audit_trail(self):
+    def test_decide_logs_audit_trail(self, feature_phases):
         """Should log all decisions to audit trail."""
         engine = PolicyEngine()
         ctx = DecisionContext(
             operation="commit",
             branch="feature/30-policy-engine-core",
             project_plan=MockProjectPlan(
-                issue_number=30, required_phases=["tdd"], current_phase="tdd"
+                issue_number=30, required_phases=[feature_phases[3]], current_phase=feature_phases[3]
             ),
-            phase="tdd",
+            phase=feature_phases[3],
             metadata={"message": "green: Test commit"}
         )
 
@@ -307,3 +307,4 @@ class TestPolicyEngineAuditTrail:
         assert last_entry["operation"] == "commit"
         assert last_entry["branch"] == "feature/30-policy-engine-core"
         assert last_entry["decision"]["allowed"] == decision.allowed
+

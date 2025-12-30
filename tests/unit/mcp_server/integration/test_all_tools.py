@@ -53,7 +53,11 @@ class TestGitToolsIntegration:
 
             tool = CreateBranchTool()
             result = await tool.execute(
-                CreateBranchInput(name="test-feature", branch_type="feature")
+                CreateBranchInput(
+                    name="test-feature",
+                    branch_type="feature",
+                    base_branch="HEAD"
+                )
             )
 
             assert "feature/test-feature" in result.content[0]["text"]

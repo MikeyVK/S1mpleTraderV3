@@ -1,4 +1,4 @@
-"""Tests for workflow configuration (WorkflowConfig, WorkflowTemplate).
+﻿"""Tests for workflow configuration (WorkflowConfig, WorkflowTemplate).
 
 Test Coverage:
 - Config loading (valid YAML, missing file, invalid YAML, invalid schema)
@@ -38,7 +38,7 @@ def valid_workflows_yaml(tmp_path: Path) -> Path:
                 "name": "feature",
                 "description": "Full development workflow",
                 "default_execution_mode": "interactive",
-                "phases": ["discovery", "planning", "design", "tdd", "integration", "documentation"]
+                "phases": ["research", "planning", "design", "tdd", "integration", "documentation"]
             },
             "hotfix": {
                 "name": "hotfix",
@@ -214,13 +214,13 @@ class TestWorkflowTemplateValidation:
         with pytest.raises(ValueError) as exc_info:
             WorkflowTemplate(
                 name="test",
-                phases=["discovery", "planning", "discovery"],  # Duplicate
+                phases=["research", "planning", "research"],  # Duplicate
                 default_execution_mode="interactive"
             )
 
         error_msg = str(exc_info.value)
         assert "duplicate" in error_msg.lower()
-        assert "discovery" in error_msg
+        assert "research" in error_msg
 
     def test_empty_phase_names_rejected(self) -> None:
         """Test that empty/whitespace phase names are rejected.
@@ -233,7 +233,7 @@ class TestWorkflowTemplateValidation:
         with pytest.raises(ValueError) as exc_info:
             WorkflowTemplate(
                 name="test",
-                phases=["discovery", "  ", "planning"],  # Empty phase
+                phases=["research", "  ", "planning"],  # Empty phase
                 default_execution_mode="interactive"
             )
 
@@ -251,7 +251,7 @@ class TestWorkflowTemplateValidation:
         with pytest.raises(ValidationError) as exc_info:
             WorkflowTemplate(
                 name="test",
-                phases=["discovery"],
+                phases=["research"],
                 default_execution_mode="manual"  # type: ignore[arg-type]
             )
 
@@ -284,7 +284,7 @@ class TestWorkflowLookup:
         assert isinstance(workflow, WorkflowTemplate)
         assert workflow.name == "feature"
         assert workflow.phases == [
-            "discovery", "planning", "design", "tdd", "integration", "documentation"
+            "research", "planning", "design", "tdd", "integration", "documentation"
         ]
         assert workflow.default_execution_mode == "interactive"
 
@@ -332,8 +332,8 @@ class TestTransitionValidation:
         """
         config = WorkflowConfig.load(valid_workflows_yaml)
 
-        # Valid transitions: discovery → planning, planning → design, etc.
-        assert config.validate_transition("feature", "discovery", "planning") is True
+        # Valid transitions: research ÔåÆ planning, planning ÔåÆ design, etc.
+        assert config.validate_transition("feature", "research", "planning") is True
         assert config.validate_transition("feature", "planning", "design") is True
         assert config.validate_transition("hotfix", "tdd", "integration") is True
 
@@ -352,11 +352,11 @@ class TestTransitionValidation:
         config = WorkflowConfig.load(valid_workflows_yaml)
 
         with pytest.raises(ValueError) as exc_info:
-            config.validate_transition("feature", "discovery", "design")  # Skips planning
+            config.validate_transition("feature", "research", "design")  # Skips planning
 
         error_msg = str(exc_info.value)
         assert "Invalid transition:" in error_msg
-        assert "discovery" in error_msg
+        assert "research" in error_msg
         assert "design" in error_msg
         assert "Expected next phase: planning" in error_msg
         assert "force_phase_transition" in error_msg
@@ -420,7 +420,7 @@ class TestTransitionValidation:
         config = WorkflowConfig.load(valid_workflows_yaml)
 
         with pytest.raises(ValueError) as exc_info:
-            config.validate_transition("feature", "discovery", "invalid")
+            config.validate_transition("feature", "research", "invalid")
 
         error_msg = str(exc_info.value)
         assert "Target phase 'invalid' not in workflow 'feature'" in error_msg

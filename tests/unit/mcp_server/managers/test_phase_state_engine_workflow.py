@@ -1,4 +1,4 @@
-"""RED tests for PhaseStateEngine workflow validation.
+﻿"""RED tests for PhaseStateEngine workflow validation.
 
 Issue #50 - Step 3: PhaseStateEngine Integration
 
@@ -38,9 +38,10 @@ class TestPhaseStateEngineTransitions:
         )
 
     def test_phase_state_engine_transition_valid(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager,
+        feature_phases: list[str]
     ) -> None:
-        """Test valid sequential transition (discovery → planning)."""
+        """Test valid sequential transition (phase[0] ÔåÆ phase[1])."""
         # Initialize project with feature workflow
         project_manager.initialize_project(
             issue_number=42,
@@ -48,28 +49,29 @@ class TestPhaseStateEngineTransitions:
             workflow_name="feature"
         )
 
-        # Initialize branch state (current_phase = discovery)
+        # Initialize branch state (current_phase = first phase)
         phase_engine.initialize_branch(
             branch="feature/42-test",
             issue_number=42,
-            initial_phase="discovery"
+            initial_phase=feature_phases[0]
         )
 
-        # Valid transition: discovery → planning (next phase in workflow)
+        # Valid transition: phase[0] ÔåÆ phase[1] (next phase in workflow)
         result = phase_engine.transition(
             branch="feature/42-test",
-            to_phase="planning",
+            to_phase=feature_phases[1],
             human_approval="Move to planning"
         )
 
         assert result["success"] is True
-        assert result["from_phase"] == "discovery"
-        assert result["to_phase"] == "planning"
+        assert result["from_phase"] == feature_phases[0]
+        assert result["to_phase"] == feature_phases[1]
 
     def test_phase_state_engine_transition_invalid(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager,
+        feature_phases: list[str]
     ) -> None:
-        """Test invalid transition (discovery → design, skips planning)."""
+        """Test invalid transition (phase[0] ÔåÆ phase[2], skips phase[1])."""
         # Initialize project
         project_manager.initialize_project(
             issue_number=43,
@@ -81,24 +83,25 @@ class TestPhaseStateEngineTransitions:
         phase_engine.initialize_branch(
             branch="feature/43-test",
             issue_number=43,
-            initial_phase="discovery"
+            initial_phase=feature_phases[0]
         )
 
-        # Invalid transition: discovery → design (skips planning)
+        # Invalid transition: phase[0] ÔåÆ phase[2] (skips phase[1])
         with pytest.raises(ValueError) as exc_info:
             phase_engine.transition(
                 branch="feature/43-test",
-                to_phase="design",
+                to_phase=feature_phases[2],
                 human_approval="Skip planning"
             )
 
         error_msg = str(exc_info.value)
         assert "Invalid transition" in error_msg
-        assert "discovery" in error_msg
-        assert "design" in error_msg
+        assert feature_phases[0] in error_msg
+        assert feature_phases[2] in error_msg
 
     def test_phase_state_engine_force_transition(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager,
+        feature_phases: list[str]
     ) -> None:
         """Test force_transition allows non-sequential jumps."""
         # Initialize project
@@ -112,25 +115,26 @@ class TestPhaseStateEngineTransitions:
         phase_engine.initialize_branch(
             branch="feature/44-test",
             issue_number=44,
-            initial_phase="discovery"
+            initial_phase=feature_phases[0]
         )
 
-        # Force transition: discovery → design (skip planning)
+        # Force transition: phase[0] ÔåÆ phase[2] (skip phase[1])
         result = phase_engine.force_transition(
             branch="feature/44-test",
-            to_phase="design",
+            to_phase=feature_phases[2],
             skip_reason="Planning already done in previous project",
             human_approval="Force skip planning"
         )
 
         assert result["success"] is True
-        assert result["from_phase"] == "discovery"
-        assert result["to_phase"] == "design"
+        assert result["from_phase"] == feature_phases[0]
+        assert result["to_phase"] == feature_phases[2]
         assert result["forced"] is True
         assert result["skip_reason"] == "Planning already done in previous project"
 
     def test_phase_state_engine_get_current_phase(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager,
+        bug_phases: list[str]
     ) -> None:
         """Test get_current_phase returns correct phase."""
         # Initialize project and branch
@@ -142,15 +146,16 @@ class TestPhaseStateEngineTransitions:
         phase_engine.initialize_branch(
             branch="bug/45-test",
             issue_number=45,
-            initial_phase="discovery"
+            initial_phase=bug_phases[0]
         )
 
         # Get current phase
         current = phase_engine.get_current_phase(branch="bug/45-test")
-        assert current == "discovery"
+        assert current == bug_phases[0]
 
     def test_phase_state_engine_get_workflow_name_from_cache(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager,
+        hotfix_phases: list[str]
     ) -> None:
         """Test workflow_name cached in state.json for performance."""
         # Initialize project and branch
@@ -162,7 +167,7 @@ class TestPhaseStateEngineTransitions:
         phase_engine.initialize_branch(
             branch="hotfix/46-test",
             issue_number=46,
-            initial_phase="tdd"
+            initial_phase=hotfix_phases[0]
         )
 
         # Get state (should include cached workflow_name)
@@ -170,7 +175,8 @@ class TestPhaseStateEngineTransitions:
         assert state["workflow_name"] == "hotfix"
 
     def test_phase_state_engine_transition_history_includes_forced_flag(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager,
+        feature_phases: list[str]
     ) -> None:
         """Test transition history marks forced transitions."""
         # Initialize project and branch
@@ -182,20 +188,20 @@ class TestPhaseStateEngineTransitions:
         phase_engine.initialize_branch(
             branch="feature/47-test",
             issue_number=47,
-            initial_phase="discovery"
+            initial_phase=feature_phases[0]
         )
 
         # Normal transition
         phase_engine.transition(
             branch="feature/47-test",
-            to_phase="planning",
+            to_phase=feature_phases[1],
             human_approval="Next phase"
         )
 
         # Forced transition
         phase_engine.force_transition(
             branch="feature/47-test",
-            to_phase="tdd",
+            to_phase=feature_phases[3],
             skip_reason="Design already done",
             human_approval="Force skip design"
         )
@@ -212,14 +218,14 @@ class TestPhaseStateEngineTransitions:
         assert transitions[1]["skip_reason"] == "Design already done"
 
     def test_phase_state_engine_initialize_branch_without_project(
-        self, phase_engine: PhaseStateEngine
+        self, phase_engine: PhaseStateEngine, feature_phases: list[str]
     ) -> None:
         """Test initialize_branch fails if project not initialized."""
         with pytest.raises(ValueError) as exc_info:
             phase_engine.initialize_branch(
                 branch="feature/99-test",
                 issue_number=99,
-                initial_phase="discovery"
+                initial_phase=feature_phases[0]
             )
 
         error_msg = str(exc_info.value)
@@ -237,7 +243,8 @@ class TestPhaseStateEngineTransitions:
         assert "State file not found" in error_msg
 
     def test_phase_state_engine_get_state_unknown_branch(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager,
+        feature_phases: list[str]
     ) -> None:
         """Test get_state fails for unknown branch."""
         # Initialize one branch to create state.json
@@ -249,7 +256,7 @@ class TestPhaseStateEngineTransitions:
         phase_engine.initialize_branch(
             branch="feature/50-test",
             issue_number=50,
-            initial_phase="discovery"
+            initial_phase=feature_phases[0]
         )
 
         # Try to get state for different branch
