@@ -38,3 +38,6 @@ Kraken_Trading_History/
 
 # Generated documents
 #docs/
+
+# ST3 Workflow - Runtime state (not version controlled)
+.st3/state.json
