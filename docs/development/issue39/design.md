@@ -889,14 +889,15 @@ B. `get_recent_commits(limit: int) -> list[Commit]` (commit objects)
 
 **Decision:** Clear on first successful transition (indicates state now "owned" by this machine).
 
-### Q4: Label-Based Commit Messages (Future Work)
-**Question:** When to enforce phase:label format in commits?
+### Q4: Label-Based Commit Messages (REQUIRED)
+**Question:** Should phase:label format be enforced or optional?
 
 **Decision:** 
-- Issue #39: Support both label format AND legacy patterns (backwards compatible)
-- Future Epic #18 child issue: Enforce phase:label format via quality gates
-- Gradual migration: Encourage label format in documentation, enforce later
-- Benefits: Trivial phase detection, consistent with labels.yaml SSOT
+- Issue #39: REQUIRES phase:label format (no backwards compatibility)
+- Commits MUST use standardized labels from labels.yaml
+- Fallback to first phase only when no labeled commits exist (safe degradation)
+- Future Epic #18: Enforce via quality gates (pre-commit hooks)
+- Benefits: Trivial phase detection, consistent with labels.yaml SSOT, no ambiguity
 
 ---
 
