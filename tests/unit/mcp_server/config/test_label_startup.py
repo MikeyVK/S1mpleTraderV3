@@ -11,7 +11,6 @@ Tests early detection of configuration issues at server startup.
 import logging
 
 # Third-party
-import pytest
 
 # Local
 from mcp_server.config.label_config import LabelConfig
@@ -62,7 +61,7 @@ labels:
 
         assert "ERROR" in caplog.text
 
-    def test_startup_validation_non_blocking(self, tmp_path, caplog):
+    def test_startup_validation_non_blocking(self):
         """Function returns even on error (non-blocking)."""
         LabelConfig._instance = None  # pylint: disable=protected-access
 

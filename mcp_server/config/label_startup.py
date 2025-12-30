@@ -32,12 +32,12 @@ def validate_label_config_on_startup(config_path: str | None = None) -> None:
     Tools will validate at operation time.
     """
     from pathlib import Path
-    
+
     try:
         path = Path(config_path) if config_path else None
         label_config = LabelConfig.load(path)
         logger.info("Loaded labels.yaml: %d labels", len(label_config.labels))
-        
+
     except FileNotFoundError:
         logger.warning(
             "labels.yaml not found at .st3/labels.yaml. "
