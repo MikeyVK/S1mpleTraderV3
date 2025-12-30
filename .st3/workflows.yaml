@@ -18,14 +18,15 @@ workflows:
       - integration
       - documentation
 
-  # Bug Fix (no design phase)
+  # Bug Fix (with lightweight design phase for uniformity)
   bug:
     name: bug
-    description: "Bug fix workflow (research → planning → TDD → integration → docs)"
+    description: "Bug fix workflow (research → planning → design → TDD → integration → docs)"
     default_execution_mode: interactive
     phases:
       - research
       - planning
+      - design
       - tdd
       - integration
       - documentation
