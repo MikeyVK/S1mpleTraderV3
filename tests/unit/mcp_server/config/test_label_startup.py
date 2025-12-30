@@ -11,10 +11,19 @@ Tests early detection of configuration issues at server startup.
 import logging
 
 # Third-party
+import pytest
 
 # Local
 from mcp_server.config.label_config import LabelConfig
 from mcp_server.config.label_startup import validate_label_config_on_startup
+
+
+@pytest.fixture(autouse=True)
+def reset_labelconfig_singleton():
+    """Reset LabelConfig singleton before each test for isolation."""
+    LabelConfig.reset()
+    yield
+    LabelConfig.reset()
 
 
 class TestStartupValidation:
@@ -30,17 +39,13 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
-        LabelConfig.load(yaml_file)
-
         with caplog.at_level(logging.INFO):
-            validate_label_config_on_startup()
+            validate_label_config_on_startup(str(yaml_file))
 
         assert "Loaded labels.yaml: 1 labels" in caplog.text
 
     def test_startup_validation_file_not_found(self, tmp_path, caplog):
         """Missing file logs warning."""
-        LabelConfig._instance = None  # pylint: disable=protected-access
         nonexistent = str(tmp_path / "nonexistent.yaml")
 
         with caplog.at_level(logging.WARNING):
@@ -54,8 +59,6 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text("invalid: yaml: syntax:")
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
-
         with caplog.at_level(logging.ERROR):
             validate_label_config_on_startup(str(yaml_file))
 
@@ -63,8 +66,6 @@ labels:
 
     def test_startup_validation_non_blocking(self):
         """Function returns even on error (non-blocking)."""
-        LabelConfig._instance = None  # pylint: disable=protected-access
-
         # Should not raise, just log
         validate_label_config_on_startup()
         assert True  # Got here without exception
