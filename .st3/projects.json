@@ -115,6 +115,7 @@
     "required_phases": [
       "research",
       "planning",
+      "design",
       "tdd",
       "integration",
       "documentation"
