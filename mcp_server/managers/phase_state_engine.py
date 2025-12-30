@@ -233,12 +233,13 @@ class PhaseStateEngine:
             ValueError: If auto-recovery fails (invalid branch, missing project)
         """
         # Auto-recovery: Create empty state file if missing
+        states: dict[str, Any]
         if not self.state_file.exists():
             self.state_file.parent.mkdir(parents=True, exist_ok=True)
             self.state_file.write_text(json.dumps({}, indent=2))
-            states: dict[str, Any] = {}
+            states = {}
         else:
-            states: dict[str, Any] = json.loads(self.state_file.read_text())
+            states = json.loads(self.state_file.read_text())
 
         # Auto-recovery: Reconstruct if branch not in state
         if branch not in states:
@@ -310,7 +311,7 @@ class PhaseStateEngine:
         Raises:
             ValueError: If branch format invalid or project not found
         """
-        logger.info(f"Reconstructing state for branch '{branch}'...")
+        logger.info("Reconstructing state for branch '%s'...", branch)
 
         # Step 1: Extract issue number from branch
         issue_number = self._extract_issue_from_branch(branch)
@@ -337,8 +338,8 @@ class PhaseStateEngine:
         }
 
         logger.info(
-            f"Reconstructed state: issue={issue_number}, "
-            f"phase={current_phase}, workflow={project['workflow_name']}"
+            "Reconstructed state: issue=%s, phase=%s, workflow=%s",
+            issue_number, current_phase, project["workflow_name"]
         )
 
         return state
@@ -385,15 +386,15 @@ class PhaseStateEngine:
             detected_phase = self._detect_phase_label(commits, workflow_phases)
 
             if detected_phase:
-                logger.info(f"Detected phase '{detected_phase}' from git commits")
+                logger.info("Detected phase '%s' from git commits", detected_phase)
                 return detected_phase
 
         except RuntimeError as e:
-            logger.warning(f"Git command failed during phase detection: {e}")
+            logger.warning("Git command failed during phase detection: %s", e)
 
         # Fallback: First phase of workflow
         fallback_phase = workflow_phases[0]
-        logger.info(f"No valid phase detected, using fallback: {fallback_phase}")
+        logger.info("No valid phase detected, using fallback: %s", fallback_phase)
         return fallback_phase
 
     def _get_git_commits(self, branch: str, limit: int = 50) -> list[str]:
