@@ -1,16 +1,53 @@
-# Issue #39 Research: Project Initialization as Enforcement Foundation
+# Issue #39 Research: Project Initialization Foundation Infrastructure
 
-**Issue:** InitializeProjectTool does not initialize branch state - Breaking enforcement architecture  
-**Parent Epic:** Issue #18 (Enforce TDD & Coverage via Hard Tooling Constraints)  
-**Related Epic:** Issue #42 (8-Phase Model Foundation)  
+**Issue:** InitializeProjectTool does not initialize branch state - Foundation for enforcement  
+**Epic Context:** Part of Epic #49 (Platform Configurability), enables Epic #18 (Enforcement)  
 **Date:** 2025-12-30  
 **Status:** Research Phase
 
 ---
 
-## Problem Statement: Enforcement Architecture Gap
+## Scope: Foundation Infrastructure (Not Enforcement)
 
-`initialize_project` tool creates project plan metadata in `.st3/projects.json` but **does not initialize branch phase state** in `.st3/state.json`, fundamentally **breaking the enforcement architecture**.
+**What Issue #39 Delivers:**
+- ✅ **Atomic initialization** - InitializeProjectTool creates both projects.json AND state.json
+- ✅ **Cross-machine recovery** - PhaseStateEngine auto-reconstructs missing state from git
+- ✅ **JSON format consistency** - Python tools create Python-compatible JSON
+- ✅ **Basic infrastructure** - The pipes and plumbing for state management
+
+**What Issue #39 Does NOT Deliver (Out of Scope):**
+- ❌ **Tool permission enforcement** - Belongs to Epic #18 child issues
+- ❌ **Quality gate validation** - Belongs to Epic #18 child issues  
+- ❌ **Phase activity restrictions** - Belongs to Epic #18 child issues
+- ❌ **Architectural compliance checks** - Belongs to Epic #18 child issues
+
+**Separation of Concerns:**
+```
+Issue #39 (Foundation - THIS ISSUE):
+├─ InitializeProjectTool creates state.json
+├─ PhaseStateEngine manages state lifecycle
+├─ Cross-machine state recovery
+└─ Provides: get_current_phase(), get_state(), transition()
+
+Epic #18 Enforcement (FUTURE WORK):
+├─ Uses: phase_engine.get_current_phase() ← Depends on #39
+├─ Implements: TOOL_PERMISSIONS matrix
+├─ Implements: QUALITY_GATES validation
+└─ Implements: Phase activity restrictions
+```
+
+**Analogy:**
+- Issue #39 = **Building the railroad tracks** (infrastructure)
+- Epic #18 = **Running trains with rules** (enforcement using the tracks)
+
+**Why This Matters:**
+Without Issue #39, Epic #18 enforcement **cannot function** (no state to enforce against), but fixing #39 doesn't automatically enable enforcement - it just makes enforcement **possible**.
+
+---
+
+## Problem Statement: Foundation Infrastructure Missing
+
+`initialize_project` tool creates project plan metadata in `.st3/projects.json` but **does not initialize branch phase state** in `.st3/state.json`, breaking the foundation that enforcement depends on.
 
 ### Why This Breaks Enforcement (Epic #18 Context)
 
@@ -62,13 +99,165 @@ Architectural Compliance (automated checks)
 - Issue #64 (2025-12-29): JSON format mismatch caused transition_phase failures
 - Issue #68 (2025-12-30): Fixed parameter mismatch symptom, not root cause
 
-**But these are symptoms - the ROOT problem is broken enforcement architecture.**
+### Deep Impact: Blocking Future Enforcement (Epic #18)
+
+**The dependency chain:**
+```
+Issue #39 (Foundation)
+    ↓
+PhaseStateEngine.get_current_phase() works
+    ↓
+Epic #18 Child Issues CAN implement enforcement
+    ↓
+Tool permissions, quality gates, validation all functional
+```
+
+**Without Issue #39 fix:**
+- Epic #18 implementation **technically impossible** (no state to query)
+- Tools cannot check "what phase am I in?"
+- Enforcement layer has no foundation to build on
+
+**Key Insight:** Issue #39 is **prerequisite infrastructure**, not enforcement itself.
+
+**Link to Enforcement Work:**
+- **Issue #48** (Git as SSOT for phase tracking) - Depends on #39 for state management foundation
+- **Issue #45** (state.json structure) - Depends on #39 for consistent state creation
+- **Future Issue TBD** (Initialization validation & enforcement) - Will use #39's infrastructure to add:
+  - Validate workflow exists before initialization
+  - Validate branch naming convention
+  - Enforce project metadata completeness
+  - Block initialization on policy violations
 
 ---
 
-## The Role of projects.json and state.json in Enforcement
+## Context: The Role of projects.json and state.json (For Epic #18 Understanding)
+
+> **Note:** This section explains WHY state.json matters for future enforcement work.  
+> **Issue #39 scope:** Create the infrastructure (files, recovery).  
+> **Epic #18 scope:** Add enforcement layers on top of that infrastructure.
 
 ### projects.json: Enforcement Policy Definition (SSOT)
+
+**Purpose:** Defines **WHAT enforcement rules could apply** to this project (future use)
+
+**Structure:**
+```json
+{
+  "39": {
+    "issue_title": "InitializeProjectTool state initialization bug",
+    "workflow_name": "bug",                    // ← Could determine enforcement policy
+    "execution_mode": "interactive",           // ← Could determine validation strictness
+    "required_phases": [                       // ← Could define legal phase transitions
+      "research",
+      "planning", 
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2025-12-30T..."
+  }
+}
+```
+
+**Potential Enforcement Capabilities (Epic #18 Future Work):**
+- ⏳ **Phase Sequence Validation:** Only transitions in `required_phases` allowed
+- ⏳ **Workflow-Specific Rules:** Bug workflow different from feature workflow
+- ⏳ **Execution Mode Enforcement:** Interactive allows overrides, strict blocks them
+- ⏳ **Tool Permission Matrix:** Phase → Allowed Tools mapping
+- ⏳ **Quality Gate Selection:** Which gates apply per workflow type
+
+**Issue #39 Scope:** ✅ Create projects.json with this structure  
+**Epic #18 Scope:** ⏳ Implement enforcement using this data
+
+---
+
+### state.json: Enforcement State Tracking (Runtime)
+
+**Purpose:** Tracks **WHERE we are** in the workflow (for future enforcement)
+
+**Structure:**
+```json
+{
+  "fix/39-initialize-project-tool": {
+    "branch": "fix/39-initialize-project-tool",
+    "issue_number": 39,
+    "workflow_name": "bug",                    // ← Cached from projects.json
+    "current_phase": "research",               // ← CRITICAL: Runtime context
+    "transitions": [                           // ← Audit trail
+      {
+        "from_phase": "research",
+        "to_phase": "planning",
+        "timestamp": "2025-12-30T...",
+        "human_approval": "Research complete",
+        "forced": false
+      }
+    ],
+    "created_at": "2025-12-30T..."
+  }
+}
+```
+
+**Potential Enforcement Capabilities (Epic #18 Future Work):**
+- ⏳ **Tool Permission Checks:** "Can scaffold DTOs in this phase?" (check current_phase)
+- ⏳ **Transition Validation:** "Is planning → red valid?" (check workflow + current_phase)
+- ⏳ **Quality Gate Trigger:** "Which gates to run?" (check current_phase + workflow)
+- ⏳ **Commit Message Validation:** "Correct phase prefix?" (check current_phase)
+- ⏳ **Architectural Validation:** "Only tests allowed in red phase?" (check current_phase)
+- ✅ **Audit Trail:** "Did we skip phases?" (check transitions array) ← Already works!
+
+**Issue #39 Scope:** ✅ Create and manage state.json lifecycle  
+**Epic #18 Scope:** ⏳ Implement enforcement checks using this data
+
+---
+
+### Example: How Future Enforcement Would Use This Infrastructure
+
+**Epic #18 Child Issue (Future Work) - Tool Permission Matrix:**
+
+```python
+# NOT IN SCOPE FOR ISSUE #39 - This is Epic #18 enforcement work!
+TOOL_PERMISSIONS = {
+    "research": {
+        "allowed": ["scaffold_design_doc", "safe_edit_file"],
+        "forbidden": ["scaffold_component", "scaffold_test"],
+    },
+    "red": {
+        "allowed": ["scaffold_test", "safe_edit_file"],
+        "forbidden": ["scaffold_component"],  # No impl in red phase!
+    },
+    "green": {
+        "allowed": ["scaffold_component", "safe_edit_file"],
+        "required_checks": ["tests_must_pass"],
+    }
+}
+
+# In scaffold_component tool (Epic #18 enhancement):
+def execute(self, params):
+    # Uses infrastructure from Issue #39:
+    phase = phase_engine.get_current_phase(branch)  # ← #39 makes this work
+    
+    # Enforcement logic (Epic #18 adds this):
+    if "scaffold_component" not in TOOL_PERMISSIONS[phase]["allowed"]:
+        return ToolResult.error(
+            f"❌ Cannot scaffold components in {phase} phase\n"
+            f"Reason: Implementation only allowed in 'green' phase"
+        )
+    
+    # Tool proceeds...
+```
+
+**Dependency:**
+```
+Issue #39 fixes get_current_phase() infrastructure
+    ↓
+Epic #18 child issue adds TOOL_PERMISSIONS enforcement
+    ↓
+Tools respect phase restrictions
+```
+
+**Issue #39 Scope:** ✅ Make `get_current_phase()` work reliably  
+**Epic #18 Scope:** ⏳ Add the permission checks and blocking logic
 
 **Purpose:** Defines **WHAT enforcement rules apply** to this project
 
@@ -531,59 +720,59 @@ $ grep -r "state" .gitignore
 
 ---
 
-## Root Cause Analysis: Why Enforcement Architecture is Broken
+## Root Cause Analysis: Infrastructure Gaps
 
-### Gap 1: Missing State Initialization Breaks Tool Enforcement (Single Machine)
+### Gap 1: Missing State Initialization (Single Machine)
 
-**The Broken Flow:**
+**The Broken Infrastructure:**
 ```
 User: initialize_project(issue=39, workflow="bug")
     ↓
-✅ projects.json created (enforcement POLICY defined)
-❌ state.json NOT created (enforcement STATE missing)
+✅ projects.json created (policy metadata exists)
+❌ state.json NOT created (runtime state missing)
     ↓
-User: scaffold_component(name="MyDTO")
-    ↓
-Tool tries: phase = phase_engine.get_current_phase(branch)
+User: phase_engine.get_current_phase(branch)
     ↓
 ❌ ERROR: "State file not found"
     ↓
-Tool behavior: Error swallowed OR tool proceeds anyway
-    ↓
-Result: DTO created in research phase (VIOLATION - no enforcement!)
+Result: Basic phase queries fail - infrastructure broken
 ```
 
-**What Should Happen (Epic #18 Vision):**
+**What Issue #39 Fixes:**
 ```
 User: initialize_project(issue=39, workflow="bug")
     ↓
-✅ projects.json created (policy)
-✅ state.json created (state: current_phase="research")
+✅ projects.json created (policy metadata)
+✅ state.json created (runtime state initialized to first phase)
     ↓
-User: scaffold_component(name="MyDTO")
+User: phase_engine.get_current_phase(branch)
     ↓
-Tool checks: phase = phase_engine.get_current_phase(branch)  # Returns "research"
+✅ Returns "research" - infrastructure works!
     ↓
-Tool validates: TOOL_PERMISSIONS["research"]["allowed"]
-    ↓
-✅ "scaffold_component" NOT in allowed list!
-    ↓
-❌ BLOCKED: "Cannot scaffold components in research phase. 
-            Components only allowed in 'green' phase.
-            Write tests first (transition to 'red', then 'green')"
+Result: Foundation ready for future enforcement (Epic #18)
 ```
 
-**Current Reality Without state.json:**
-- ❌ All scaffold tools execute without phase checks
-- ❌ git_add_or_commit has no phase prefix validation
-- ❌ safe_edit_file cannot restrict file types per phase
-- ❌ transition_phase cannot validate "from" state
+**Infrastructure Fix - Not Enforcement:**
+- ✅ Issue #39: Makes `get_current_phase()` work
+- ⏳ Epic #18: Uses `get_current_phase()` to enforce rules
 
-**Epic #18 Goal BROKEN:** "Enforce phase-appropriate activities"
+**Note on Enforcement Context:**
+While this section mentioned enforcement examples earlier, Issue #39's actual scope is fixing the infrastructure. The enforcement examples show WHY the infrastructure matters, not WHAT Issue #39 implements.
+
+**Future Enforcement Work (Epic #18 children):**
+- Tool permission checks using `get_current_phase()`
+- Quality gates using `get_state()` for transition validation
+- Activity restrictions based on current phase
+
+**Issue #39 Deliverable:**
+- ✅ `get_current_phase()` returns accurate phase
+- ✅ `get_state()` returns complete branch state
+- ✅ `transition()` validates and updates state
+- ✅ Both files created atomically on initialization
 
 ### Gap 2: Missing State Recovery (Cross-Machine Scenario)
 
-**Critical Discovery:** During research, cross-machine scenario revealed fundamental gap in state management architecture.
+**Critical Discovery:** Cross-machine scenario revealed infrastructure gap (not originally in Epic #18 design).
 
 **Scenario:**
 ```
@@ -605,7 +794,7 @@ Machine B (Fresh clone/pull):
 └─ Problem: Current phase information LOST
 ```
 
-**Analysis of Existing Architecture:**
+**Infrastructure Gap Analysis:**
 
 Checked Issue #42 documentation (8-phase model design):
 - ✅ Extensive design for PhaseStateEngine responsibilities
@@ -631,15 +820,159 @@ def get_state(self, branch: str) -> dict[str, Any]:
 - No reconstruction from git history
 - Error message suggests "initialize branch" (incorrect - initialization already happened on Machine A)
 
-**Architectural Assumption (Implicit):**
-- ✅ projects.json in git (SSOT for workflow definitions)
-- ✅ state.json NOT in git (runtime state principle)
-- ❌ **state.json always exists** (WRONG - breaks on machine switch)
-- ❌ **No recovery strategy defined**
+**What Issue #39 Fixes:**
+- ✅ Auto-recovery when state.json missing
+- ✅ Reconstruct state from projects.json (workflow) + git commits (phase)
+- ✅ Transparent to user (no manual sync needed)
+- ✅ Infrastructure works across machines
 
-**Conclusion:** Cross-machine state recovery is a **GAP** in current architecture, not existing business logic
+**Link to Epic #18:**
+Once Issue #39 fixes cross-machine infrastructure, Epic #18 enforcement will work consistently across machines (same phase detection, same enforcement rules applied).
 
-### Why Manual Workarounds Fail
+**Link to Issue #48:**
+Issue #48 (Git as SSOT research) explores whether git should be primary phase tracker. Issue #39's recovery mechanism (infer phase from git commits) provides one implementation approach for #48's research questions.
+
+---
+
+## Relationship to Epic #18: Enforcement (Clear Boundaries)
+
+### Issue #39: Foundation Layer (This Issue)
+
+**What we deliver:**
+```
+Layer 1: Infrastructure (Issue #39 scope)
+├─ InitializeProjectTool creates both files atomically
+├─ PhaseStateEngine manages state lifecycle
+├─ Cross-machine state recovery via git commit parsing
+├─ API: get_current_phase(), get_state(), transition()
+└─ Result: Infrastructure works, no enforcement yet
+```
+
+**Acceptance Criteria (Infrastructure Only):**
+- [x] InitializeProjectTool creates projects.json AND state.json
+- [x] PhaseStateEngine.get_current_phase() returns accurate phase
+- [x] PhaseStateEngine.get_state() returns complete branch state
+- [x] Cross-machine recovery reconstructs state from git + projects.json
+- [x] JSON format compatibility (Python → Python)
+- [ ] No enforcement logic added (out of scope)
+
+### Epic #18: Enforcement Layers (Future Work)
+
+**What Epic #18 adds ON TOP of #39 infrastructure:**
+```
+Layer 2: Tool Permissions (Epic #18 child issue - TBD)
+├─ TOOL_PERMISSIONS matrix configuration
+├─ scaffold_component checks: get_current_phase() → "research" → BLOCK
+├─ scaffold_test checks: get_current_phase() → "red" → ALLOW
+└─ Uses: Issue #39's get_current_phase() API
+
+Layer 3: Quality Gates (Epic #18 child issue - TBD)
+├─ QUALITY_GATES configuration per transition
+├─ transition_phase runs: tests_must_pass gate before green → refactor
+├─ Blocking validation on gate failures
+└─ Uses: Issue #39's get_state() and transition() APIs
+
+Layer 4: Activity Validation (Epic #18 child issue - TBD)
+├─ File type restrictions per phase
+├─ Commit message prefix enforcement
+├─ Architectural pattern validation
+└─ Uses: Issue #39's get_current_phase() API
+```
+
+**Key Insight:** Issue #39 is **prerequisite** for Epic #18, not part of it.
+
+### Links to Specific Epic #18 Children
+
+**Existing Children (Waiting for Issue #39):**
+- **Issue #42** (8-Phase Model) - Blocked by Epic #49, defines phase sequences that #39 will track
+- **Issue #45** (state.json structure) - Blocked by #39 (needs consistent state creation)
+- **Issue #48** (Git as SSOT) - Related to #39's recovery strategy (git commit parsing)
+
+**Future Children (Will Use #39 Infrastructure):**
+- **Issue TBD: "Tool Permission Enforcement"**
+  - Implements TOOL_PERMISSIONS matrix
+  - Uses: `phase_engine.get_current_phase(branch)` from #39
+  - Scope: Add permission checks to existing tools
+  
+- **Issue TBD: "Quality Gate Validation on Transitions"**
+  - Implements QUALITY_GATES configuration
+  - Uses: `phase_engine.get_state(branch)` and `transition()` from #39
+  - Scope: Add validation hooks to transition_phase tool
+  
+- **Issue TBD: "Phase Activity Validation"**
+  - Implements file type restrictions per phase
+  - Uses: `phase_engine.get_current_phase(branch)` from #39
+  - Scope: Add validation to safe_edit_file and git_add_or_commit
+
+- **Issue TBD: "Initialization Validation & Enforcement"**
+  - Enforces initialization policies (branch naming, workflow validation)
+  - Uses: Projects.json and state.json from #39
+  - Scope: Add pre/post validation to initialize_project tool
+
+**Recommendation:** Create these child issues AFTER Issue #39 completes, using working infrastructure as foundation.
+
+### What Changes After Issue #39?
+
+**Before Issue #39 (Current State):**
+```python
+# Tools cannot check phase - infrastructure broken
+def scaffold_component(self, params):
+    try:
+        phase = phase_engine.get_current_phase(branch)
+    except ValueError:
+        phase = None  # State missing - error
+    
+    # No enforcement possible - just proceed
+    return self._create_component(params)
+```
+
+**After Issue #39 (Infrastructure Fixed):**
+```python
+# Tools CAN check phase - infrastructure works
+def scaffold_component(self, params):
+    phase = phase_engine.get_current_phase(branch)  # Works reliably!
+    
+    # Still no enforcement - that's Epic #18's job
+    # But infrastructure is ready for Epic #18 to add:
+    # if not can_scaffold_in_phase("component", phase):
+    #     return ToolResult.error("Not allowed in this phase")
+    
+    return self._create_component(params)
+```
+
+**After Epic #18 Child Issues (Enforcement Added):**
+```python
+# Tools check phase AND enforce permissions
+def scaffold_component(self, params):
+    phase = phase_engine.get_current_phase(branch)  # From #39
+    
+    # Epic #18 adds this enforcement:
+    if not can_scaffold_in_phase("component", phase):
+        return ToolResult.error(
+            f"❌ Cannot scaffold components in {phase} phase\n"
+            f"Allowed in: {get_allowed_phases('component')}"
+        )
+    
+    return self._create_component(params)
+```
+
+### Summary: Clear Separation of Concerns
+
+| Aspect | Issue #39 (Foundation) | Epic #18 (Enforcement) |
+|--------|------------------------|------------------------|
+| **Scope** | Infrastructure only | Policy enforcement |
+| **Deliverable** | Working state management | Validation & blocking |
+| **API** | get_current_phase(), get_state() | TOOL_PERMISSIONS, QUALITY_GATES |
+| **Tools Modified** | initialize_project, PhaseStateEngine | All tools + transition_phase |
+| **Tests** | State lifecycle, recovery | Enforcement rules, blocking |
+| **Epic** | Part of Epic #49 (Config) | Core of Epic #18 (Enforcement) |
+
+**The Pipeline:**
+```
+Epic #49 (Config) → Issue #39 (State Infrastructure) → Epic #18 (Enforcement Using State)
+```
+
+---
 
 **Issue:** Manual state.json creation causes format incompatibility
 
@@ -1077,7 +1410,7 @@ PhaseStateEngine.get_state(branch)
 
 ---
 
-## Benefits of Complete Solution
+## Benefits of Complete Solution (Infrastructure Focus)
 
 **1. Single Machine User Experience**
 - ✅ Single tool call initializes complete project state
@@ -1097,11 +1430,25 @@ PhaseStateEngine.get_state(branch)
 - ✅ state.json never in git (proper separation)
 - ✅ Graceful degradation on errors
 
-**4. Epic #49 Impact**
+**4. Foundation for Epic #18 Enforcement**
+- ✅ `get_current_phase()` works reliably → Enables tool permission checks
+- ✅ `get_state()` provides context → Enables quality gate validation
+- ✅ `transition()` validates sequences → Enables audit trail
+- ✅ Cross-machine consistency → Enforcement rules apply everywhere
+
+**5. Epic #49 Platform Configurability**
 - ✅ Completes project initialization infrastructure
 - ✅ Enables smooth Phase 2 work (#52, #53, #54)
 - ✅ Fixes recurring pain point before future issues
-- ✅ Establishes pattern for cross-machine scenarios
+- ✅ Establishes pattern for state management
+
+**What This Does NOT Provide (Out of Scope):**
+- ❌ Tool permission enforcement (Epic #18 child issue)
+- ❌ Quality gate validation on transitions (Epic #18 child issue)
+- ❌ Phase activity restrictions (Epic #18 child issue)
+- ❌ Architectural compliance checks (Epic #18 child issue)
+
+**Key Insight:** Issue #39 builds the foundation - Epic #18 adds the enforcement.
 
 ---
 
@@ -1169,16 +1516,16 @@ PhaseStateEngine.get_state(branch)
 
 **Key Findings:**
 
-1. **Root Cause Identified:** Two distinct gaps in state management
-   - Gap 1: InitializeProjectTool doesn't create state.json (single machine issue)
-   - Gap 2: PhaseStateEngine has no recovery mechanism (cross-machine issue)
+1. **Root Cause Identified:** Two distinct infrastructure gaps
+   - Gap 1: InitializeProjectTool doesn't create state.json (single machine)
+   - Gap 2: PhaseStateEngine has no recovery mechanism (cross-machine)
 
 2. **Architecture Gap Discovered:** Cross-machine state recovery not in original design
    - Issue #42 docs: No recovery strategy documented
    - PhaseStateEngine code: Fails hard when state.json missing
    - Implicit assumption: state.json always exists (breaks on machine switch)
 
-3. **Solution Approach:** Dual-mode state management
+3. **Solution Approach:** Dual-mode state infrastructure
    - Mode 1: Enhanced initialization (InitializeProjectTool creates both files)
    - Mode 2: Auto-recovery (PhaseStateEngine reconstructs from git + projects.json)
 
@@ -1186,6 +1533,7 @@ PhaseStateEngine.get_state(branch)
    - Pattern: "Complete research phase", "Planning phase #67"
    - Can infer current phase from commit history
    - Safe fallback: Default to first phase if no commits found
+   - Connects to Issue #48 research (Git as SSOT for phase tracking)
 
 5. **Integration Points:** 4 components need updates
    - InitializeProjectTool: Add GitManager + PhaseStateEngine
@@ -1193,7 +1541,20 @@ PhaseStateEngine.get_state(branch)
    - GitAdapter: Verify/add get_recent_commits() method
    - .gitignore: Add state.json exclusion
 
-**Ready for Planning Phase:** Complete implementation design for both modes
+6. **Scope Clarification:** Infrastructure foundation, not enforcement
+   - Issue #39: Makes `get_current_phase()` and `get_state()` work
+   - Epic #18 children: Use those APIs to implement enforcement
+   - Clear separation of concerns
+
+**Links to Epic #18 Enforcement:**
+- **Issue #42:** 8-phase model defines sequences #39 will track
+- **Issue #45:** state.json structure needs #39 for consistent creation
+- **Issue #48:** Git as SSOT research, #39 provides one implementation approach
+- **Future child issues:** Tool permissions, quality gates, activity validation
+  - All will use `get_current_phase()` API from #39
+  - All blocked until #39 infrastructure complete
+
+**Ready for Planning Phase:** Complete implementation design for dual-mode infrastructure
 2. state.json deletion from git was correct - it's runtime state
 3. Manual workarounds cause JSON format incompatibility
 4. Fix requires GitManager + PhaseStateEngine integration
