@@ -12,18 +12,18 @@ from pathlib import Path
 from mcp_server.config.label_config import LabelConfig
 
 
-class TestLabelConfigSingletonBug:
-    """Reproduce Issue #67: Singleton returns stale cache after schema changes."""
+class TestLabelConfigSingletonFix:
+    """Verify Issue #67 fix: Singleton cache invalidation works correctly."""
 
-    def test_singleton_returns_stale_instance_after_file_change(
+    def test_singleton_automatically_reloads_after_file_change(
         self, tmp_path: Path
     ) -> None:
         """
-        Bug reproduction:
+        FIX VERIFICATION:
         1. Load LabelConfig from labels.yaml (cached in _instance)
-        2. Modify labels.yaml to add new field (label_patterns)
-        3. Call load() again - should reload, but returns stale cache
-        4. Result: Stale data returned
+        2. Modify labels.yaml to add new labels and patterns
+        3. Call load() again - should detect mtime change and reload
+        4. Result: Fresh data returned
         """
         # Create initial labels.yaml
         config_file = tmp_path / "labels.yaml"
@@ -42,7 +42,6 @@ freeform_exceptions:
         config_file.write_text(initial_yaml, encoding="utf-8")
 
         # STEP 1: Load config (caches in _instance)
-        # Reset singleton to simulate first load
         type(LabelConfig)._instance = None  # type: ignore[attr-defined]
         config1 = LabelConfig.load(config_file)
         assert len(config1.labels) == 2
@@ -72,16 +71,15 @@ label_patterns:
 """
         config_file.write_text(updated_yaml, encoding="utf-8")
 
-        # STEP 3: Load again - BUG: returns stale cached instance
+        # STEP 3: Load again - FIX: detects mtime change and reloads
         config2 = LabelConfig.load(config_file)
 
-        # EXPECTED: config2 should have 3 labels and 1 pattern
-        # ACTUAL: config2 has 2 labels (stale) and pattern access fails
-        assert len(config2.labels) == 2  # BUG: Still has old data!
-        assert not config2.label_patterns  # BUG: Pattern not loaded!
+        # FIXED: config2 should have 3 labels and 1 pattern
+        assert len(config2.labels) == 3  # ✅ Reloaded!
+        assert len(config2.label_patterns) == 1  # ✅ Pattern loaded!
 
-        # Verify it's the same object (cached)
-        assert config1 is config2  # Same object in memory
+        # Different object (fresh load)
+        assert config1 is not config2  # Different objects in memory
 
     def test_singleton_reset_allows_reload(self, tmp_path: Path) -> None:
         """
@@ -123,9 +121,11 @@ freeform_exceptions: []
         assert len(config2.labels) == 2  # ✅ Works after reset
         assert config1 is not config2  # Different objects
 
-    def test_impact_on_label_tools(self, tmp_path: Path) -> None:
+    def test_label_tools_get_fresh_data_after_file_change(
+        self, tmp_path: Path
+    ) -> None:
         """
-        Demonstrate impact: Tools using label_exists() fail on stale cache.
+        FIX VERIFICATION: Tools using label_exists() get fresh data.
         """
         config_file = tmp_path / "labels.yaml"
         initial_yaml = """
@@ -155,11 +155,11 @@ freeform_exceptions: []
 """
         config_file.write_text(updated_yaml, encoding="utf-8")
 
-        # Re-load (gets stale cache)
+        # Re-load (detects change and reloads)
         config2 = LabelConfig.load(config_file)
 
-        # BUG: type:bug was added to file but label_exists returns False
-        assert config2.label_exists("type:bug") is False  # ❌ Should be True!
+        # FIXED: type:bug was added to file and label_exists returns True
+        assert config2.label_exists("type:bug") is True  # ✅ Works!
 
 
 class TestLabelConfigCacheInvalidation:
