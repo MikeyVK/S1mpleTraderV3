@@ -1398,6 +1398,224 @@ PhaseStateEngine.get_state(branch)
 - Impact: User must use proper branch naming convention
 
 **Case 4: Project plan missing**
+- Issue: Issue #39 initialized, but projects.json deleted
+- Error: "Project plan not found for issue #39"
+- Impact: User must re-run initialize_project
+
+**Case 5: Multiple branches for same issue**
+- Branch A: fix/39-bug-description
+- Branch B: fix/39-alternative-approach
+- Recovery: Both branches share same project plan
+- Impact: Separate state.json entries, correct behavior
+
+---
+
+## Phase Detection: GetWorkContextTool vs PhaseStateEngine Recovery
+
+### Analysis Context
+
+During tool impact analysis, discovered GetWorkContextTool has phase detection via git commit parsing. This raises question: can we reuse this mechanism for PhaseStateEngine recovery?
+
+**GetWorkContextTool's `_detect_tdd_phase()` Method:**
+```python
+def _detect_tdd_phase(self, commits: list[str]) -> str:
+    """Detect TDD phase from recent commits."""
+    latest = commits[0].lower()
+    
+    if latest.startswith("test:") or "failing test" in latest:
+        return "red"
+    if latest.startswith("feat:") or "pass" in latest:
+        return "green"
+    if latest.startswith("refactor:"):
+        return "refactor"
+    if latest.startswith("docs:"):
+        return "docs"
+    
+    return "unknown"
+```
+
+### Critical Limitation: TDD-Only Scope
+
+**Key Insight:** GetWorkContextTool reflects **outdated architecture assumption** that TDD cycle is standalone mechanism.
+
+**Reality:** TDD phases integrated into broader project workflow:
+```
+Full Project Workflow (from workflows.yaml):
+├─ research        ← Project phase (outside TDD)
+├─ planning        ← Project phase (outside TDD)
+├─ design          ← Project phase (outside TDD)
+├─ red             ← TDD cycle begins
+├─ green           ← TDD cycle
+├─ refactor        ← TDD cycle ends
+├─ integration     ← Project phase (outside TDD)
+└─ documentation   ← Project phase (outside TDD)
+```
+
+**GetWorkContextTool Gaps:**
+- ❌ Only detects: red, green, refactor, docs
+- ❌ Cannot detect: research, planning, design, integration
+- ❌ Hard-coded TDD model (no workflow awareness)
+- ❌ No projects.json integration (doesn't know which phases valid)
+- ❌ Returns "unknown" for non-TDD phases (incorrect - they're valid project phases)
+
+**Result:** Tool provides incomplete/misleading context when project in research or planning phase.
+
+### PhaseStateEngine Recovery Needs Full Workflow Support
+
+**Requirements for Issue #39:**
+- ✅ Must detect ALL workflow phases (not just TDD cycle)
+- ✅ Must be workflow-aware (use projects.json for valid phase list)
+- ✅ Must handle multiple workflow types (feature has 8 phases, bug has 6, docs has 4)
+- ✅ Safe fallback to first phase of workflow (not "unknown")
+
+**Recovery Strategy Comparison:**
+
+| Aspect | GetWorkContextTool | PhaseStateEngine Recovery |
+|--------|-------------------|---------------------------|
+| **Scope** | TDD cycle only (red/green/refactor) | All workflow phases (research → docs) |
+| **Workflow Aware** | ❌ Hard-coded TDD model | ✅ Uses projects.json for phase list |
+| **Detection Method** | Conventional commit prefixes | + Explicit phase keywords in commits |
+| **Fallback** | "unknown" (incorrect) | First phase of workflow (safe) |
+| **Projects.json** | ❌ Not used | ✅ SSOT for workflow definition |
+| **Pattern Example** | `test:` → red, `feat:` → green | `Complete research phase` → research |
+
+### Shared Logic: PhaseDetector Utility
+
+**Reusable component for both tools:**
+```python
+# mcp_server/utils/phase_detection.py (NEW)
+class PhaseDetector:
+    """Shared phase detection from git commits."""
+    
+    @staticmethod
+    def detect_from_conventional_commits(commits: list[str]) -> str | None:
+        """Detect phase from conventional commit prefixes.
+        
+        Limited to TDD cycle phases: red, green, refactor, docs
+        Returns None if no match found.
+        """
+        if not commits:
+            return None
+        
+        latest = commits[0].lower()
+        
+        if latest.startswith("test:") or "failing test" in latest:
+            return "red"
+        if latest.startswith("feat:") or "pass" in latest:
+            return "green"
+        if latest.startswith("refactor:"):
+            return "refactor"
+        if latest.startswith("docs:"):
+            return "docs"
+        
+        return None
+    
+    @staticmethod
+    def detect_from_explicit_keywords(
+        commits: list[str], 
+        valid_phases: list[str]
+    ) -> str | None:
+        """Detect phase from explicit phase keywords in commits.
+        
+        Searches for patterns like:
+        - "Complete research phase"
+        - "Planning phase #67"
+        - "Start design phase"
+        
+        Args:
+            commits: List of commit messages
+            valid_phases: Valid phase names from workflow (e.g., from projects.json)
+        
+        Returns: Phase name or None if not found
+        """
+        for commit in commits:
+            commit_lower = commit.lower()
+            for phase in valid_phases:
+                # Pattern 1: "complete X phase"
+                if f"complete {phase}" in commit_lower:
+                    return phase
+                # Pattern 2: "X phase" anywhere in commit
+                if f"{phase} phase" in commit_lower:
+                    return phase
+                # Pattern 3: Phase-prefixed commits (like "research: analyze X")
+                if commit_lower.startswith(f"{phase}:"):
+                    return phase
+        
+        return None
+```
+
+**PhaseStateEngine uses multi-strategy detection:**
+```python
+def _infer_phase_from_git(self, branch: str, workflow_phases: list[str]) -> str:
+    """Infer current phase with workflow awareness."""
+    commits = self.git_manager.get_recent_commits(branch, limit=50)
+    
+    # Strategy 1: Explicit phase keywords (best quality)
+    phase = PhaseDetector.detect_from_explicit_keywords(commits, workflow_phases)
+    if phase:
+        return phase
+    
+    # Strategy 2: Conventional commits (TDD cycle only)
+    phase = PhaseDetector.detect_from_conventional_commits(commits)
+    if phase and phase in workflow_phases:  # Validate against workflow!
+        return phase
+    
+    # Strategy 3: Safe fallback - first phase of workflow
+    return workflow_phases[0]
+```
+
+**GetWorkContextTool can be refactored:**
+```python
+def _detect_tdd_phase(self, commits: list[str]) -> str:
+    """Detect phase using shared logic."""
+    phase = PhaseDetector.detect_from_conventional_commits(commits)
+    return phase or "unknown"
+```
+
+### Future Enhancement (Outside Issue #39 Scope)
+
+After Issue #39 completes, GetWorkContextTool should be enhanced to use state.json directly:
+
+```python
+# Future enhancement for GetWorkContextTool
+async def execute(self, params):
+    try:
+        # NEW: Use PhaseStateEngine (benefits from auto-recovery!)
+        branch = self.git_manager.get_current_branch()
+        phase_engine = PhaseStateEngine(...)
+        state = phase_engine.get_state(branch)  # Auto-recovers if missing
+        
+        current_phase = state["current_phase"]
+        workflow = state["workflow_name"]
+    except ValueError:
+        # Fallback to git parsing (legacy behavior)
+        current_phase = self._detect_tdd_phase(recent_commits)
+        workflow = "unknown"
+    
+    return {
+        "current_phase": current_phase,  # Now ALL phases, not just TDD
+        "workflow": workflow,
+        "issues": open_issues,
+        ...
+    }
+```
+
+**Benefits:**
+- ✅ Accurate phase detection (uses SSOT: state.json)
+- ✅ Full workflow support (not limited to TDD cycle)
+- ✅ Consistent with enforcement (same source as Epic #18 checks)
+- ✅ Faster (no git log parsing)
+
+### Conclusion for Issue #39
+
+**For Phase Detection Utility:**
+- ✅ Create `PhaseDetector` class with shared logic
+- ✅ PhaseStateEngine uses multi-strategy detection (explicit keywords + conventional commits + fallback)
+- ✅ GetWorkContextTool can be refactored to use `PhaseDetector` (optional improvement)
+
+**Key Takeaway:** TDD cycle is **part of** project workflow, not standalone. GetWorkContextTool's limited scope reflects outdated architecture. Issue #39 recovery must support full workflow (research → documentation), not just TDD phases.
+
+**Case 4: Project plan missing**
 - State.json missing, projects.json also missing
 - Error: "Project plan not found, run initialize_project first"
 - Impact: User must initialize (correct behavior)
