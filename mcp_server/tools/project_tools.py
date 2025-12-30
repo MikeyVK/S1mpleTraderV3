@@ -1,6 +1,6 @@
-﻿"""Project management tools for MCP server.
+"""Project management tools for MCP server.
 
-Phase 0.5: Project initialization with issue type selection.
+Phase 0.5: Project initialization with workflow selection.
 """
 import json
 from pathlib import Path
@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from mcp_server.config.workflows import WorkflowConfig
-from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 from mcp_server.tools.base import BaseTool, ToolResult
 
 
@@ -18,16 +18,16 @@ class InitializeProjectInput(BaseModel):
 
     issue_number: int = Field(..., description="GitHub issue number")
     issue_title: str = Field(..., description="Issue title")
-    issue_type: str = Field(
+    workflow_name: str = Field(
         ...,
         description=(
-            "Type of work: feature (7 phases), bug (6), docs (4), "
+            "Workflow from workflows.yaml: feature (7 phases), bug (6), docs (4), "
             "refactor (5), hotfix (3), or custom"
         )
     )
     custom_phases: tuple[str, ...] | None = Field(
         default=None,
-        description="Custom phase list (required if issue_type=custom)"
+        description="Custom phase list (required if workflow_name=custom)"
     )
     skip_reason: str | None = Field(
         default=None,
@@ -38,13 +38,13 @@ class InitializeProjectInput(BaseModel):
 class InitializeProjectTool(BaseTool):
     """Tool for initializing projects with phase plan selection.
 
-    Phase 0.5: Human selects issue_type ? generates project phase plan.
+    Phase 0.5: Human selects workflow_name → generates project phase plan.
     """
 
     name = "initialize_project"
     description = (
         "Initialize project with phase plan selection. "
-        "Human selects issue_type (feature/bug/docs/refactor/hotfix/custom) "
+        "Human selects workflow_name (feature/bug/docs/refactor/hotfix/custom) "
         "to generate project-specific phase plan."
     )
     args_model = InitializeProjectInput
@@ -72,21 +72,28 @@ class InitializeProjectTool(BaseTool):
             ToolResult with success message and project details
 
         Raises:
-            ValueError: If issue_type invalid or custom_phases missing
+            ValueError: If workflow_name invalid or custom_phases missing
         """
         try:
+            # Create options if custom phases provided
+            options = None
+            if params.custom_phases or params.skip_reason:
+                options = ProjectInitOptions(
+                    custom_phases=params.custom_phases,
+                    skip_reason=params.skip_reason
+                )
+
             result = self.manager.initialize_project(
                 issue_number=params.issue_number,
                 issue_title=params.issue_title,
-                issue_type=params.issue_type,
-                custom_phases=params.custom_phases,
-                skip_reason=params.skip_reason
+                workflow_name=params.workflow_name,
+                options=options
             )
 
             # Add template info to result
-            if params.issue_type != "custom":
+            if params.workflow_name != "custom":
                 workflow_config = WorkflowConfig.load()
-                workflow = workflow_config.get_workflow(params.issue_type)
+                workflow = workflow_config.get_workflow(params.workflow_name)
                 result["description"] = workflow.description
 
             return ToolResult.text(json.dumps(result, indent=2))
