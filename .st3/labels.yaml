@@ -7,11 +7,24 @@ freeform_exceptions:
   - "duplicate"
   - "invalid"
 
+# Dynamic label patterns - validated but not pre-created
+# These labels are created on-demand when needed
+label_patterns:
+  - pattern: "^parent:issue-\\d+$"
+    description: "Parent issue reference for child issues"
+    color: "EDEDED"
+    example: "parent:issue-18"
+
 labels:
-  # Type labels
+  # TYPE - Issue Classification (7 labels)
+  # What kind of work is being done
   - name: "type:feature"
     color: "1D76DB"
-    description: "New feature or enhancement"
+    description: "New functionality or capability"
+  
+  - name: "type:enhancement"
+    color: "A2EEEF"
+    description: "Improvement to existing feature"
   
   - name: "type:bug"
     color: "D73A4A"
@@ -23,17 +36,18 @@ labels:
   
   - name: "type:docs"
     color: "0075CA"
-    description: "Documentation only changes"
+    description: "Documentation changes"
   
-  - name: "type:test"
-    color: "FBCA04"
-    description: "Adding missing tests"
+  - name: "type:research"
+    color: "1D76DB"
+    description: "Research and exploration work"
   
-  - name: "type:chore"
-    color: "FEF2C0"
-    description: "Maintenance tasks"
+  - name: "type:epic"
+    color: "5319E7"
+    description: "Large feature with multiple sub-issues"
   
-  # Priority labels
+  # PRIORITY - Urgency Level (5 labels)
+  # How important/urgent is this work
   - name: "priority:critical"
     color: "B60205"
     description: "Must be fixed immediately"
@@ -50,7 +64,38 @@ labels:
     color: "BFD4F2"
     description: "Low priority, nice to have"
   
-  # Status labels
+  - name: "priority:triage"
+    color: "EDEDED"
+    description: "Needs prioritization"
+  
+  # PHASE - Workflow State (6 labels)
+  # Which phase in the workflow (aligns with workflows.yaml)
+  - name: "phase:research"
+    color: "C5DEF5"
+    description: "Research/discovery phase"
+  
+  - name: "phase:planning"
+    color: "C5DEF5"
+    description: "Planning phase"
+  
+  - name: "phase:design"
+    color: "C5DEF5"
+    description: "Design phase"
+  
+  - name: "phase:tdd"
+    color: "0E8A16"
+    description: "TDD implementation phase"
+  
+  - name: "phase:integration"
+    color: "1D76DB"
+    description: "Integration testing phase"
+  
+  - name: "phase:documentation"
+    color: "0075CA"
+    description: "Documentation phase"
+  
+  # STATUS - Current State (4 labels)
+  # What's blocking or what action is needed
   - name: "status:blocked"
     color: "D73A4A"
     description: "Blocked by external dependency"
@@ -59,106 +104,36 @@ labels:
     color: "0E8A16"
     description: "Currently being worked on"
   
-  - name: "status:review"
-    color: "FBCA04"
-    description: "Ready for review"
-  
   - name: "status:needs-info"
     color: "D876E3"
     description: "Needs more information"
   
-  # Phase labels (13 total from TDD workflow)
-  - name: "phase:discovery"
-    color: "C5DEF5"
-    description: "Discovery phase"
-  
-  - name: "phase:requirements"
-    color: "C5DEF5"
-    description: "Requirements gathering"
-  
-  - name: "phase:design"
-    color: "C5DEF5"
-    description: "Design phase"
-  
-  - name: "phase:implementation"
-    color: "0E8A16"
-    description: "Implementation phase"
-  
-  - name: "phase:testing"
+  - name: "status:ready"
     color: "FBCA04"
-    description: "Testing phase"
+    description: "Ready for review/merge"
   
-  - name: "phase:integration"
-    color: "1D76DB"
-    description: "Integration phase"
-  
-  - name: "phase:deployment"
-    color: "5319E7"
-    description: "Deployment phase"
-  
-  - name: "phase:monitoring"
-    color: "FEF2C0"
-    description: "Monitoring phase"
-  
-  - name: "phase:maintenance"
-    color: "EDEDED"
-    description: "Maintenance phase"
-  
-  - name: "phase:complete"
-    color: "0E8A16"
-    description: "Phase complete"
-  
-  - name: "phase:red"
-    color: "D73A4A"
-    description: "TDD RED phase (failing tests)"
-  
-  - name: "phase:green"
-    color: "0E8A16"
-    description: "TDD GREEN phase (passing tests)"
-  
-  - name: "phase:refactor"
-    color: "1D76DB"
-    description: "TDD REFACTOR phase (cleanup)"
-  
-  # Component labels
-  - name: "component:mcp-server"
-    color: "C2E0C6"
-    description: "MCP server component"
-  
-  - name: "component:tools"
-    color: "C2E0C6"
-    description: "Tool implementations"
-  
-  - name: "component:resources"
-    color: "C2E0C6"
-    description: "Resource implementations"
-  
-  - name: "component:config"
-    color: "C2E0C6"
-    description: "Configuration management"
-  
-  # Effort labels
-  - name: "effort:small"
-    color: "D4C5F9"
-    description: "Small effort (< 1 day)"
-  
-  - name: "effort:medium"
-    color: "D4C5F9"
-    description: "Medium effort (1-3 days)"
-  
-  - name: "effort:large"
-    color: "D4C5F9"
-    description: "Large effort (> 3 days)"
-  
-  # Scope labels
+  # SCOPE - Impact Area (6 labels)
+  # Which part of the system is affected
   - name: "scope:architecture"
     color: "BFD4F2"
     description: "Architectural changes"
   
-  - name: "scope:workflow"
+  - name: "scope:mcp-server"
     color: "BFD4F2"
-    description: "Workflow improvements"
+    description: "MCP server internals"
+  
+  - name: "scope:platform"
+    color: "BFD4F2"
+    description: "GitHub/git platform integration"
   
   - name: "scope:tooling"
     color: "BFD4F2"
     description: "Development tooling"
+  
+  - name: "scope:workflow"
+    color: "BFD4F2"
+    description: "Workflow/process improvements"
+  
+  - name: "scope:documentation"
+    color: "BFD4F2"
+    description: "Documentation scope"

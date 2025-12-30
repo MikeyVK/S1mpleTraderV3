@@ -1,4 +1,4 @@
-﻿{
+{
     "18":  {
                "issue_number":  18,
                "issue_title":  "Choke-point enforcement with PolicyEngine",
@@ -100,5 +100,20 @@
                "skip_reason":  null,
                "issue_number":  64,
                "workflow_name":  "bug"
+           },
+    "67":  {
+               "issue_number":  67,
+               "issue_title":  "Bug: LabelConfig singleton causes stale cache after schema changes",
+               "workflow_name":  "bug",
+               "execution_mode":  "interactive",
+               "required_phases":  [
+                                       "research",
+                                       "planning",
+                                       "tdd",
+                                       "integration",
+                                       "documentation"
+                                   ],
+               "skip_reason":  null,
+               "created_at":  "2025-12-30T14:35:00.000000+00:00"
            }
 }

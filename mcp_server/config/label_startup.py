@@ -1,78 +1,55 @@
-# mcp_server/config/label_startup.py
 """
 Label configuration startup validation.
 
-Provides non-blocking validation of labels.yaml during server initialization
-to catch configuration errors early without blocking server startup.
+Validates labels.yaml at MCP server startup for early problem detection.
 
 @layer: Backend (Config)
-@dependencies: [logging, pathlib, mcp_server.config.label_config]
+@dependencies: [logging, mcp_server.config.label_config]
 @responsibilities:
-    - Validate labels.yaml at server startup
-    - Log validation results (info/warning/error)
-    - Non-blocking validation (never raises exceptions)
-    - Report configuration issues early
+    - Load labels.yaml at startup
+    - Log warnings for missing/invalid config
+    - Non-blocking validation (server starts anyway)
 """
 
 # Standard library
 import logging
-from pathlib import Path
 
-# Project modules
+# Local
 from mcp_server.config.label_config import LabelConfig
+
 
 logger = logging.getLogger(__name__)
 
 
-def validate_label_config_on_startup(path: Path | None = None) -> None:
+def validate_label_config_on_startup(config_path: str | None = None) -> None:
     """
-    Validate label configuration at server startup.
-
-    Attempts to load labels.yaml and logs the result without raising exceptions.
-    This allows the server to start even if label configuration is invalid,
-    while alerting operators to configuration issues.
-
+    Validate labels.yaml at server startup.
+    
     Args:
-        path: Path to labels.yaml (defaults to .st3/labels.yaml)
-
-    Returns:
-        None
-
-    Logs:
-        INFO: Successfully loaded configuration
-        WARNING: File not found
-        ERROR: YAML syntax error or validation error
+        config_path: Optional path to labels.yaml (for testing)
+    
+    Logs warnings but does NOT block startup.
+    Tools will validate at operation time.
     """
-    if path is None:
-        path = Path(".st3/labels.yaml")
+    from pathlib import Path
 
     try:
-        # Reset singleton to force fresh load
-        LabelConfig._instance = None  # pylint: disable=protected-access
-
-        # Attempt to load configuration
-        config = LabelConfig.load(path)
-
-        # Success - log info
-        label_count = len(config.labels)
-        logger.info(
-            "Successfully loaded label configuration from %s (%d labels defined)",
-            path,
-            label_count
-        )
+        path = Path(config_path) if config_path else None
+        label_config = LabelConfig.load(path)
+        logger.info("Loaded labels.yaml: %d labels", len(label_config.labels))
 
     except FileNotFoundError:
-        # Missing file - log warning
         logger.warning(
-            "Label configuration file not found: %s. "
-            "Labels will not be validated during operations.",
-            path
+            "labels.yaml not found at .st3/labels.yaml. "
+            "Label validation will fail until file is created."
         )
-
-    except Exception as e:  # pylint: disable=broad-except
-        # Any other error (YAML syntax, validation) - log error
+    except ValueError as e:
         logger.error(
-            "Failed to load label configuration from %s: %s",
-            path,
-            str(e)
+            "Invalid labels.yaml configuration: %s. "
+            "Fix configuration before using label tools.", e
+        )
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        logger.error(
+            "Unexpected error loading labels.yaml: %s. "
+            "Label tools may not function correctly.", e
         )

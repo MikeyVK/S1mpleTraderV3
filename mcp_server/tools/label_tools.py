@@ -183,17 +183,17 @@ class AddLabelsTool(BaseTool):
             f"Added labels to #{params.issue_number}: {', '.join(params.labels)}"
         )
 
-class SyncLabelsInput(BaseModel):
-    """Input for SyncLabelsToGitHubTool."""
-    dry_run: bool = Field(default=True, description="Preview changes without applying")
+class DetectLabelDriftInput(BaseModel):
+    """Input for DetectLabelDriftTool."""
+    # No input fields needed - read-only detection
 
 
-class SyncLabelsToGitHubTool(BaseTool):
-    """Tool to sync labels from labels.yaml to GitHub."""
+class DetectLabelDriftTool(BaseTool):
+    """Tool to detect drift between labels.yaml and GitHub labels (read-only)."""
 
-    name = "sync_labels_to_github"
-    description = "Sync label definitions from labels.yaml to GitHub"
-    args_model = SyncLabelsInput
+    name = "detect_label_drift"
+    description = "Detect differences between labels.yaml and GitHub repository labels"
+    args_model = DetectLabelDriftInput
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
@@ -202,62 +202,84 @@ class SyncLabelsToGitHubTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: SyncLabelsInput) -> ToolResult:
-        """Execute label sync."""
-        label_config = LabelConfig.load()
+    async def execute(self, params: DetectLabelDriftInput) -> ToolResult:
+        """Detect label drift between YAML and GitHub."""
+        try:
+            label_config = LabelConfig.load()
+            github_labels = self.manager.list_labels()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            return ToolResult.text(f"❌ Error loading labels: {e}")
 
-        # Create a simple adapter that uses the manager
-        class GitHubAdapter:
-            """Adapter to wrap GitHubManager for sync_to_github."""
+        # Build lookup dicts
+        yaml_by_name = {label.name: label for label in label_config.labels}
+        github_by_name = {label.name: label for label in github_labels}
 
-            def __init__(self, manager: Any) -> None:
-                self.manager = manager
+        # Detect drift
+        github_only = [name for name in github_by_name if name not in yaml_by_name]
+        yaml_only = [name for name in yaml_by_name if name not in github_by_name]
 
-            def list_labels(self) -> list[dict[str, str]]:
-                """List all labels from GitHub."""
-                labels = self.manager.list_labels()
-                return [
-                    {
-                        "name": label.name,
-                        "color": label.color,
-                        "description": label.description or ""
-                    }
-                    for label in labels
-                ]
+        color_mismatch = []
+        desc_mismatch = []
 
-            def create_label(self, name: str, color: str, description: str) -> None:
-                """Create a label in GitHub."""
-                self.manager.create_label(name=name, color=color, description=description)
+        for name in set(yaml_by_name.keys()) & set(github_by_name.keys()):
+            yaml_label = yaml_by_name[name]
+            github_label = github_by_name[name]
 
-            def update_label(self, name: str, color: str, description: str) -> None:
-                """Update a label in GitHub."""
-                # Note: GitHubManager doesn't have update_label yet
-                pass
-        adapter = GitHubAdapter(self.manager)
-        result = label_config.sync_to_github(adapter, dry_run=params.dry_run)
+            if yaml_label.color.lower() != github_label.color.lower():
+                color_mismatch.append({
+                    "name": name,
+                    "yaml_color": yaml_label.color,
+                    "github_color": github_label.color
+                })
 
-        summary = (
-            f"Created {len(result['created'])}, "
-            f"Updated {len(result['updated'])}, "
-            f"Skipped {len(result['skipped'])}"
-        )
+            yaml_desc = yaml_label.description or ""
+            github_desc = github_label.description or ""
+            if yaml_desc != github_desc:
+                desc_mismatch.append({
+                    "name": name,
+                    "yaml_desc": yaml_desc,
+                    "github_desc": github_desc
+                })
 
-        if result['errors']:
-            summary += f", Errors {len(result['errors'])}"
+        # Build report
+        if not any([github_only, yaml_only, color_mismatch, desc_mismatch]):
+            return ToolResult.text("✅ No drift detected - labels.yaml and GitHub are aligned")
 
-        details = []
-        if result['created']:
-            details.append(f"Created: {', '.join(result['created'])}")
-        if result['updated']:
-            details.append(f"Updated: {', '.join(result['updated'])}")
-        if result['skipped']:
-            details.append(f"Skipped: {', '.join(result['skipped'])}")
-        if result['errors']:
-            details.append(f"Errors: {', '.join(result['errors'])}")
+        lines = ["⚠️ Label drift detected:\n"]
 
-        mode_str = "dry_run: True" if params.dry_run else "dry_run: False"
-        full_text = f"{summary}\n{mode_str}"
-        if details:
-            full_text += "\n\n" + "\n".join(details)
+        if github_only:
+            lines.append(f"**GitHub-only labels ({len(github_only)}):**")
+            for label in github_only[:10]:  # Limit to 10
+                lines.append(f"  - {label}")
+            if len(github_only) > 10:
+                lines.append(f"  ... and {len(github_only) - 10} more")
+            lines.append("  💡 Recommendation: Add to labels.yaml or remove from GitHub\n")
 
-        return ToolResult.text(full_text)
+        if yaml_only:
+            lines.append(f"**YAML-only labels ({len(yaml_only)}):**")
+            for label in yaml_only[:10]:
+                lines.append(f"  - {label}")
+            if len(yaml_only) > 10:
+                lines.append(f"  ... and {len(yaml_only) - 10} more")
+            lines.append("  💡 Recommendation: Create in GitHub or remove from YAML\n")
+
+        if color_mismatch:
+            lines.append(f"**Color mismatches ({len(color_mismatch)}):**")
+            for item in color_mismatch[:5]:
+                lines.append(
+                    f"  - {item['name']}: YAML=#{item['yaml_color']}, "
+                    f"GitHub=#{item['github_color']}"
+                )
+            if len(color_mismatch) > 5:
+                lines.append(f"  ... and {len(color_mismatch) - 5} more")
+            lines.append("  💡 Recommendation: Update manually to align\n")
+
+        if desc_mismatch:
+            lines.append(f"**Description mismatches ({len(desc_mismatch)}):**")
+            for item in desc_mismatch[:5]:
+                lines.append(f"  - {item['name']}")
+            if len(desc_mismatch) > 5:
+                lines.append(f"  ... and {len(desc_mismatch) - 5} more")
+            lines.append("  💡 Recommendation: Update manually to align")
+
+        return ToolResult.text("\n".join(lines))
