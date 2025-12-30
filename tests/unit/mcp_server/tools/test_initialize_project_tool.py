@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 import pytest
 
+from mcp_server.config.workflows import workflow_config
 from mcp_server.tools.project_tools import InitializeProjectInput, InitializeProjectTool
 
 
@@ -76,8 +77,10 @@ class TestInitializeProjectToolMode1:
             assert state["branch"] == "fix/39-initialize-project-tool"
             assert state["issue_number"] == 39
             assert state["workflow_name"] == "bug"
-            # First phase of bug workflow
-            assert state["current_phase"] == "research"
+            # First phase from workflows.yaml (SSOT)
+            bug_workflow = workflow_config.get_workflow("bug")
+            expected_first_phase = bug_workflow.phases[0]
+            assert state["current_phase"] == expected_first_phase
             assert state["transitions"] == []
             assert "created_at" in state
             # Not reconstructed, freshly created
@@ -129,23 +132,38 @@ class TestInitializeProjectToolMode1:
             states = json.loads(state_file.read_text())
             state = states["hotfix/99-security"]
 
-            # Hotfix workflow starts with "tdd" phase
-            assert state["current_phase"] == "tdd"
+            # First phase from workflows.yaml (SSOT)
+            hotfix_workflow = workflow_config.get_workflow("hotfix")
+            expected_first_phase = hotfix_workflow.phases[0]
+            assert state["current_phase"] == expected_first_phase
 
     @pytest.mark.asyncio
     async def test_all_workflow_types_supported(
         self, tool: InitializeProjectTool, workspace_root: Path
     ) -> None:
-        """Test atomic initialization works for all workflow types."""
-        workflows = [
-            ("feature", "feature/1-test", "research"),
-            ("bug", "fix/2-test", "research"),
-            ("docs", "docs/3-test", "planning"),  # docs workflow starts with planning
-            ("refactor", "refactor/4-test", "research"),
-            ("hotfix", "hotfix/5-test", "tdd"),
-        ]
+        """Test atomic initialization works for all workflow types.
 
-        for workflow_name, branch, expected_phase in workflows:
+        Uses workflows.yaml as SSOT for expected first phases.
+        """
+        workflows_to_test = ["feature", "bug", "docs", "refactor", "hotfix"]
+
+        for workflow_name in workflows_to_test:
+            # Get expected first phase from workflows.yaml (SSOT)
+            workflow = workflow_config.get_workflow(workflow_name)
+            expected_first_phase = workflow.phases[0]
+
+            # Determine branch prefix from workflow name
+            branch_prefix_map = {
+                "feature": "feature",
+                "bug": "fix",
+                "docs": "docs",
+                "refactor": "refactor",
+                "hotfix": "hotfix"
+            }
+            prefix = branch_prefix_map[workflow_name]
+            issue_num = workflows_to_test.index(workflow_name) + 1
+            branch = f"{prefix}/{issue_num}-test"
+
             # Clear state between tests
             state_file = workspace_root / ".st3" / "state.json"
             if state_file.exists():
@@ -155,7 +173,7 @@ class TestInitializeProjectToolMode1:
                 mock_git.return_value = branch
 
                 params = InitializeProjectInput(
-                    issue_number=int(branch.split("/")[1].split("-")[0]),
+                    issue_number=issue_num,
                     issue_title=f"Test {workflow_name}",
                     workflow_name=workflow_name
                 )
@@ -165,8 +183,9 @@ class TestInitializeProjectToolMode1:
 
                 states = json.loads(state_file.read_text())
                 state = states[branch]
-                assert state["current_phase"] == expected_phase, \
-                    f"{workflow_name} must start at {expected_phase}"
+                assert state["current_phase"] == expected_first_phase, \
+                    f"{workflow_name} must start at {expected_first_phase} " \
+                    f"(from workflows.yaml)"
 
     @pytest.mark.asyncio
     async def test_error_handling_git_failure(
