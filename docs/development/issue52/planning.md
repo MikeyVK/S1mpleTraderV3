@@ -77,7 +77,7 @@ Define the implementation approach for migrating from hardcoded validation rules
   - Change constructor signature from (strategy_cache, deps) to (build_spec)
   - Add initialize() method
   - Add TEMPLATE_METADATA frontmatter with strict + guidelines sections
-- Document: Migration note for existing workers (v1.0 → v2.0)
+  - **BREAKING CHANGE:** No backward compatibility - old pattern no longer supported
 
 **Dependencies:** None (existing file update)
 
@@ -342,12 +342,12 @@ Define the implementation approach for migrating from hardcoded validation rules
 1. Implement LayeredTemplateValidator class
 2. Implement three-tier validation methods
 3. Write tests for LayeredTemplateValidator
-4. Keep RULES dict temporarily (parallel validation)
+4. **No parallel validation** - direct replacement of RULES dict
 
 **Verification:**
 - ✅ New validator passes all tests
-- ✅ Validation results match RULES dict (compatibility check)
-- ✅ Old validator still works
+- ✅ RULES dict removed (no compatibility check needed)
+- ✅ Tests updated for new validation behavior
 
 ### Phase 3: Integration (Day 3)
 
@@ -458,12 +458,14 @@ Define the implementation approach for migrating from hardcoded validation rules
 - Profile validation performance (should be <100ms)
 - Optimize if performance degrades
 
-### Risk 4: Migration Confusion
+### Risk 4: Breaking Changes
 **Mitigation:**
-- Document worker template v1.0 → v2.0 migration
-- Support both versions temporarily (backward compatibility)
-- Clear error messages guide users to migration docs
-- Provide migration examples
+- **No backward compatibility** - clean break approach
+- Worker template immediately uses IWorkerLifecycle (v2.0 only)
+- Existing generated workers will fail validation (expected)
+- Clear error messages: "Worker must implement IWorkerLifecycle - see migration guide"
+- Migration guide documents: old pattern → new pattern transformation
+- Breaking change is acceptable (platform still in development)
 
 ---
 
