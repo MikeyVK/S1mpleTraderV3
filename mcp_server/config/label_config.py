@@ -117,6 +117,26 @@ class LabelConfig(BaseModel):
         if config_path is None:
             config_path = Path(".st3/labels.yaml")
 
+        instance = cls._load_from_file(config_path)
+        cls._instance = instance
+        return instance
+
+    @classmethod
+    def _load_from_file(cls, config_path: Path) -> "LabelConfig":
+        """Load configuration from YAML file (no caching logic).
+
+        Private method - use load() instead for caching.
+
+        Args:
+            config_path: Path to labels.yaml (must exist)
+
+        Returns:
+            New LabelConfig instance
+
+        Raises:
+            FileNotFoundError: Config file not found
+            ValueError: Invalid YAML syntax or validation error
+        """
         if not config_path.exists():
             raise FileNotFoundError(
                 f"Label configuration not found: {config_path}"
@@ -146,8 +166,9 @@ class LabelConfig(BaseModel):
             label_patterns=patterns
         )
 
+        # Build internal caches
         instance._build_caches()
-        cls._instance = instance
+
         return instance
 
     def _build_caches(self) -> None:
