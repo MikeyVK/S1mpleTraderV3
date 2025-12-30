@@ -1,4 +1,4 @@
-"""
+﻿"""
 Unit tests for label tool integration with LabelConfig.
 
 Tests validation hooks in CreateLabelTool, AddLabelsTool, and DetectLabelDriftTool.
@@ -23,6 +23,15 @@ from mcp_server.tools.label_tools import (
     DetectLabelDriftTool,
     DetectLabelDriftInput,
 )
+
+
+# Test Helper
+class _MockLabel:  # pylint: disable=too-few-public-methods
+    """Mock label object for testing (avoids Mock.name conflict)."""
+    def __init__(self, name: str, color: str, description: str = "") -> None:
+        self.name = name
+        self.color = color
+        self.description = description
 
 
 class TestCreateLabelToolValidation:
@@ -86,7 +95,7 @@ labels:
 
         mock_manager = Mock()
         mock_manager.create_label = Mock(
-            return_value=Mock(name="type:bug", color="FF0000")
+            return_value=_MockLabel(name="type:bug", color="FF0000")
         )
 
         tool = CreateLabelTool(manager=mock_manager)
@@ -114,7 +123,7 @@ labels:
 
         mock_manager = Mock()
         mock_manager.create_label = Mock(
-            return_value=Mock(name="good first issue", color="7057FF")
+            return_value=_MockLabel(name="good first issue", color="7057FF")
         )
 
         tool = CreateLabelTool(manager=mock_manager)
@@ -247,8 +256,8 @@ labels:
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
             return_value=[
-                Mock(name="type:feature", color="1D76DB", description=""),
-                Mock(name="custom-label", color="FF0000", description=""),
+                _MockLabel(name="type:feature", color="1D76DB", description=""),
+                _MockLabel(name="custom-label", color="FF0000", description=""),
             ]
         )
 
@@ -279,7 +288,7 @@ labels:
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
-            return_value=[Mock(name="type:feature", color="1D76DB", description="")]
+            return_value=[_MockLabel(name="type:feature", color="1D76DB", description="")]
         )
 
         tool = DetectLabelDriftTool(manager=mock_manager)
@@ -305,10 +314,17 @@ labels:
         LabelConfig._instance = None  # pylint: disable=protected-access
         LabelConfig.load(yaml_file)
 
+        # Create mock label with attributes (not Mock object)
+        class MockLabel:
+            def __init__(self, name, color, description):
+                self.name = name
+                self.color = color
+                self.description = description
+
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
             return_value=[
-                Mock(name="type:feature", color="FF0000", description="")
+                MockLabel(name="type:feature", color="FF0000", description="")
             ]
         )
 
@@ -340,7 +356,7 @@ labels:
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
             return_value=[
-                Mock(
+                _MockLabel(
                     name="type:feature",
                     color="1D76DB",
                     description="GitHub description",
@@ -374,7 +390,7 @@ labels:
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
             return_value=[
-                Mock(name="type:feature", color="1D76DB", description="Test")
+                _MockLabel(name="type:feature", color="1D76DB", description="Test")
             ]
         )
 
@@ -403,8 +419,8 @@ labels:
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
             return_value=[
-                Mock(name="type:feature", color="FF0000", description=""),  # Color mismatch
-                Mock(name="github-only", color="000000", description=""),  # GitHub only
+                _MockLabel(name="type:feature", color="FF0000", description=""),  # Color mismatch
+                _MockLabel(name="github-only", color="000000", description=""),  # GitHub only
             ]
         )
 
