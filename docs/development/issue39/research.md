@@ -205,7 +205,7 @@ $ grep -r "state" .gitignore
 
 ## Root Cause Analysis
 
-### The Integration Gap
+### Gap 1: Missing State Initialization (Single Machine)
 
 **Current Flow:**
 ```
@@ -241,7 +241,67 @@ InitializeProjectTool.execute()
 ✅ Ready for transition_phase immediately
 ```
 
+### Gap 2: Missing State Recovery (Cross-Machine Scenario)
+
+**Critical Discovery:** During research, cross-machine scenario revealed fundamental gap in state management architecture.
+
+**Scenario:**
+```
+Machine A (Development):
+├─ Create branch: fix/39-initialize-project-tool
+├─ Initialize project: projects.json ✅ + state.json ✅
+├─ Work on issue: current_phase = "planning"
+├─ Commit and push code
+└─ Only projects.json committed (state.json in .gitignore)
+
+Git (SSOT for code):
+├─ .st3/projects.json ✅ (version controlled)
+└─ .st3/state.json ❌ (NOT version controlled - runtime state)
+
+Machine B (Fresh clone/pull):
+├─ Pull latest code
+├─ Has: .st3/projects.json ✅
+├─ Missing: .st3/state.json ❌
+└─ Problem: Current phase information LOST
+```
+
+**Analysis of Existing Architecture:**
+
+Checked Issue #42 documentation (8-phase model design):
+- ✅ Extensive design for PhaseStateEngine responsibilities
+- ✅ Clear SRP: ProjectManager (projects.json) vs PhaseStateEngine (state.json)
+- ❌ **NO documentation for cross-machine state recovery**
+- ❌ **NO scenario handling for missing state.json**
+
+Checked PhaseStateEngine implementation:
+```python
+def get_state(self, branch: str) -> dict[str, Any]:
+    """Get full state for branch."""
+    if not self.state_file.exists():
+        raise ValueError("State file not found. Initialize branch first.")
+    
+    if branch not in states:
+        raise ValueError(f"Branch '{branch}' not found. Initialize branch first.")
+    
+    return state
+```
+
+**Current behavior:** **FAILS HARD** if state.json missing
+- No auto-recovery mechanism
+- No reconstruction from git history
+- Error message suggests "initialize branch" (incorrect - initialization already happened on Machine A)
+
+**Architectural Assumption (Implicit):**
+- ✅ projects.json in git (SSOT for workflow definitions)
+- ✅ state.json NOT in git (runtime state principle)
+- ❌ **state.json always exists** (WRONG - breaks on machine switch)
+- ❌ **No recovery strategy defined**
+
+**Conclusion:** Cross-machine state recovery is a **GAP** in current architecture, not existing business logic
+
 ### Why Manual Workarounds Fail
+
+**Issue:** Manual state.json creation causes format incompatibility
 
 **PowerShell JSON generation:**
 ```powershell
@@ -261,169 +321,490 @@ InitializeProjectTool.execute()
 
 **Why:** Python's json.loads() expects Python's json.dump() formatting
 
-**Solution:** Never manually create state.json - let PhaseStateEngine do it
+**Solution:** Let PhaseStateEngine create state.json - never manual editing
+
+### Git Commit History as Phase Indicator
+
+**Observation:** Git commit messages already contain phase information!
+
+```bash
+$ git log --oneline --grep="phase"
+456514d docs: Complete research phase for Issue #39
+1123b6b docs: Planning phase #67: Design cache invalidation solution
+4920f0e test: Research phase #67: Analyze singleton stale cache bug
+0e6d8d8 test: Complete planning phase for Issue #64
+```
+
+**Pattern:** Many commits explicitly mention phase transitions
+- "Complete research phase"
+- "Planning phase #67"
+- "test: Research phase"
+
+**Insight:** Git history contains phase progression information that could be used for state reconstruction when state.json is missing
 
 ---
 
-## Integration Points Identified
+---
 
-### Required Components for Fix
+## Proposed Solution: Dual-Mode State Management
 
-**1. GitManager Integration**
-- **Import:** `from mcp_server.managers.git_manager import GitManager`
-- **Usage:** `git_manager.get_current_branch()` → returns branch name
-- **Purpose:** Auto-detect branch for state initialization
+### Overview
 
-**2. PhaseStateEngine Integration**
-- **Import:** `from mcp_server.managers.phase_state_engine import PhaseStateEngine`
-- **Usage:** `phase_engine.initialize_branch(branch, issue_number, first_phase)`
-- **Purpose:** Create state.json atomically with projects.json
+Fix both scenarios with comprehensive state management:
 
-**3. First Phase Detection**
-- **Source:** `result["required_phases"][0]` from ProjectManager
-- **Example:** `"research"` for bug workflow
-- **Purpose:** Initialize branch state with correct starting phase
+**Mode 1: Normal Initialization** (Single machine, new project)
+- InitializeProjectTool creates both projects.json AND state.json atomically
+- Branch name auto-detected via GitManager
+- First phase auto-detected from workflow
 
-### Modified InitializeProjectTool Structure
+**Mode 2: Auto-Recovery** (Cross-machine, missing state.json)
+- PhaseStateEngine.get_state() detects missing branch state
+- Reconstructs state from projects.json + git commit history
+- Transparent to user (no manual intervention)
 
-**Constructor changes:**
+### Mode 1: Enhanced InitializeProjectTool
+
+**Implementation Strategy:**
+
+**1. Add Required Dependencies**
 ```python
-def __init__(self, workspace_root: Path | str):
-    super().__init__()
-    self.workspace_root = Path(workspace_root)
-    self.project_manager = ProjectManager(workspace_root=workspace_root)
-    self.git_manager = GitManager()  # NEW: For branch detection
-    self.phase_engine = PhaseStateEngine(  # NEW: For state initialization
-        workspace_root=workspace_root,
-        project_manager=self.project_manager
-    )
+class InitializeProjectTool(BaseTool):
+    def __init__(self, workspace_root: Path | str):
+        super().__init__()
+        self.workspace_root = Path(workspace_root)
+        self.project_manager = ProjectManager(workspace_root=workspace_root)
+        self.git_manager = GitManager()  # NEW: For branch detection
+        self.phase_engine = PhaseStateEngine(  # NEW: For state initialization
+            workspace_root=workspace_root,
+            project_manager=self.project_manager
+        )
 ```
 
-**Execute method changes:**
+**2. Execute Method with Atomic Initialization**
 ```python
 async def execute(self, params: InitializeProjectInput) -> ToolResult:
     try:
-        # 1. Initialize project plan (existing)
+        # Step 1: Create project plan
         result = self.project_manager.initialize_project(...)
         
-        # 2. Get current branch (NEW)
+        # Step 2: Get current branch
         branch = self.git_manager.get_current_branch()
         
-        # 3. Get first phase from result (NEW)
+        # Step 3: Get first phase from workflow
         first_phase = result["required_phases"][0]
         
-        # 4. Initialize branch state (NEW)
+        # Step 4: Initialize branch state
         self.phase_engine.initialize_branch(
             branch=branch,
             issue_number=params.issue_number,
             initial_phase=first_phase
         )
         
-        # 5. Return success message (ENHANCED)
         return ToolResult.text(
-            f"✅ Project initialized\\n"
-            f"✅ Branch state initialized: {branch} @ {first_phase}\\n"
-            f"📝 Projects: .st3/projects.json\\n"
+            f"✅ Project initialized\n"
+            f"✅ Branch state initialized: {branch} @ {first_phase}\n"
+            f"📝 Projects: .st3/projects.json\n"
             f"📝 State: .st3/state.json"
         )
     except (ValueError, OSError) as e:
         return ToolResult.error(str(e))
 ```
 
+### Mode 2: PhaseStateEngine Auto-Recovery
+
+**Problem:** On machine switch, state.json is missing but git + projects.json have all info needed
+
+**Strategy:** Transparent auto-recovery when state missing
+
+**Implementation in PhaseStateEngine:**
+
+```python
+def get_state(self, branch: str) -> dict[str, Any]:
+    """Get branch state with transparent auto-recovery.
+    
+    If state.json missing or branch not found:
+    1. Reconstruct state from projects.json (SSOT for workflow)
+    2. Infer current phase from git commit messages
+    3. Initialize state.json with reconstructed data
+    4. Return state
+    
+    This handles cross-machine scenarios automatically.
+    """
+    # Check if state file exists
+    if not self.state_file.exists():
+        logger.info("State file missing, reconstructing from git...")
+        # Create empty state file
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        self.state_file.write_text(json.dumps({}, indent=2))
+    
+    # Load state
+    states = json.loads(self.state_file.read_text())
+    
+    # Check if branch exists
+    if branch not in states:
+        logger.info(f"Branch '{branch}' not in state, reconstructing...")
+        state = self._reconstruct_branch_state(branch)
+        self._save_state(branch, state)
+        return state
+    
+    return states[branch]
+
+def _reconstruct_branch_state(self, branch: str) -> dict[str, Any]:
+    """Reconstruct missing branch state from projects.json + git history.
+    
+    Recovery algorithm:
+    1. Extract issue number from branch name (e.g., fix/39-name → 39)
+    2. Load project plan from projects.json (SSOT for workflow)
+    3. Infer current phase from git commit messages
+    4. Create state with empty transition history (cannot reconstruct)
+    
+    Returns:
+        Reconstructed state dict
+    
+    Raises:
+        ValueError: If issue number can't be extracted or project not found
+    """
+    # Step 1: Extract issue number from branch name
+    issue_number = self._extract_issue_from_branch(branch)
+    if not issue_number:
+        raise ValueError(
+            f"Cannot extract issue number from branch '{branch}'. "
+            "Expected format: <type>/<number>-<description>"
+        )
+    
+    # Step 2: Get project plan (SSOT for workflow definition)
+    project = self.project_manager.get_project_plan(issue_number)
+    if not project:
+        raise ValueError(
+            f"Project plan not found for issue #{issue_number}. "
+            "Run initialize_project first."
+        )
+    
+    # Step 3: Infer current phase from git commits
+    current_phase = self._infer_phase_from_git(
+        branch=branch,
+        workflow_phases=project["required_phases"]
+    )
+    
+    # Step 4: Create reconstructed state
+    logger.info(
+        f"Reconstructed state for {branch}: "
+        f"issue={issue_number}, phase={current_phase}"
+    )
+    
+    return {
+        "branch": branch,
+        "issue_number": issue_number,
+        "workflow_name": project["workflow_name"],
+        "current_phase": current_phase,
+        "transitions": [],  # Cannot reconstruct history
+        "created_at": datetime.now(UTC).isoformat(),
+        "reconstructed": True  # Flag for debugging/audit
+    }
+
+def _extract_issue_from_branch(self, branch: str) -> int | None:
+    """Extract issue number from branch name.
+    
+    Supported formats:
+    - feature/42-description → 42
+    - fix/39-description → 39
+    - refactor/49-description → 49
+    
+    Returns:
+        Issue number or None if not found
+    """
+    import re
+    match = re.match(r'^[a-z]+/(\d+)-', branch)
+    return int(match.group(1)) if match else None
+
+def _infer_phase_from_git(
+    self, branch: str, workflow_phases: list[str]
+) -> str:
+    """Infer current phase from git commit messages.
+    
+    Algorithm:
+    1. Get recent commits on current branch (limit 50)
+    2. Search commit messages for phase keywords
+    3. Return most recent phase found (latest = current)
+    4. If no phase commits found, default to first phase (safe)
+    
+    Commit message patterns recognized:
+    - "Complete research phase for Issue #39"
+    - "Planning phase #67: Design cache invalidation"
+    - "test: Research phase #67"
+    
+    Args:
+        branch: Branch name
+        workflow_phases: List of valid phases from workflow
+    
+    Returns:
+        Inferred current phase (or first phase as fallback)
+    """
+    try:
+        # Get recent commits (GitAdapter method)
+        commits = self.git_adapter.get_recent_commits(branch, limit=50)
+        
+        # Search commits in reverse chronological order
+        for commit in commits:
+            message_lower = commit.message.lower()
+            
+            # Check each phase in reverse order (later phases take precedence)
+            for phase in reversed(workflow_phases):
+                if phase in message_lower:
+                    logger.info(
+                        f"Inferred phase '{phase}' from commit {commit.sha[:7]}: "
+                        f"{commit.message[:60]}..."
+                    )
+                    return phase
+        
+        # No phase found in commits - use first phase (safe default)
+        first_phase = workflow_phases[0]
+        logger.warning(
+            f"No phase commits found for {branch}, "
+            f"defaulting to first phase: {first_phase}"
+        )
+        return first_phase
+        
+    except Exception as e:
+        # Git error - fallback to first phase
+        first_phase = workflow_phases[0]
+        logger.warning(
+            f"Could not infer phase from git ({e}), "
+            f"using first phase: {first_phase}"
+        )
+        return first_phase
+```
+
+**User Experience:**
+```
+Machine B (after git pull):
+User: transition_phase(to="integration")
+    ↓
+PhaseStateEngine.get_state(branch)
+    ↓
+[INFO] Branch 'fix/39-initialize-project-tool' not in state, reconstructing...
+[INFO] Inferred phase 'planning' from commit 456514d
+    ↓
+Validate transition: planning → integration
+    ↓
+✅ Transition successful
+```
+
+**Tradeoffs Accepted:**
+- ⚠️ Transition history lost (empty array after reconstruction)
+- ⚠️ May be "behind" if mid-phase work uncommitted (last committed phase returned)
+- ⚠️ Requires commit message conventions (phase keywords in messages)
+
+**Benefits:**
+- ✅ Transparent - no user action required
+- ✅ Works across machines automatically
+- ✅ Git commit history is SSOT for phase progression
+- ✅ projects.json is SSOT for workflow definition
+- ✅ Graceful degradation (defaults to first phase if inference fails)
+
 ---
 
-## Proposed Solution
+## Integration Points Summary
 
-### Implementation Strategy
+## Integration Points Summary
 
-**1. Update InitializeProjectTool**
-- Add GitManager dependency for branch detection
-- Add PhaseStateEngine dependency for state initialization
-- Call both ProjectManager AND PhaseStateEngine in execute()
-- Provide atomic initialization (both files or neither)
+### Components Requiring Updates
 
-**2. Add state.json to .gitignore**
-```gitignore
-# State files (runtime, auto-generated)
-.st3/state.json
+**1. InitializeProjectTool** (mcp_server/tools/project_tools.py)
+- **Add:** GitManager dependency for branch detection
+- **Add:** PhaseStateEngine dependency for state initialization
+- **Update:** execute() method to call both ProjectManager AND PhaseStateEngine
+- **Purpose:** Atomic initialization of both projects.json and state.json
+
+**2. PhaseStateEngine** (mcp_server/managers/phase_state_engine.py)
+- **Add:** GitAdapter dependency for commit history access
+- **Add:** `_reconstruct_branch_state()` method
+- **Add:** `_infer_phase_from_git()` method
+- **Add:** `_extract_issue_from_branch()` method
+- **Update:** `get_state()` method to auto-recover when branch missing
+- **Purpose:** Transparent cross-machine state reconstruction
+
+**3. GitAdapter** (mcp_server/adapters/git_adapter.py)
+- **Verify:** `get_recent_commits(branch, limit)` method exists
+- **Add if missing:** Method to retrieve commit history with messages
+- **Purpose:** Provide commit data for phase inference
+
+**4. .gitignore**
+- **Add:** `.st3/state.json` exclusion
+- **Purpose:** Prevent accidental version control of runtime state
+
+### Data Flow Summary
+
+**Initialization Flow (Mode 1):**
+```
+InitializeProjectTool
+    ├─> ProjectManager.initialize_project()
+    │       └─> Creates .st3/projects.json
+    ├─> GitManager.get_current_branch()
+    │       └─> Returns branch name
+    └─> PhaseStateEngine.initialize_branch()
+            └─> Creates .st3/state.json
 ```
 
-**3. Error Handling & Rollback**
-```python
-try:
-    # 1. Create projects.json
-    result = self.project_manager.initialize_project(...)
-    
-    try:
-        # 2. Create state.json
-        branch = self.git_manager.get_current_branch()
-        self.phase_engine.initialize_branch(...)
-    except Exception as state_error:
-        # Rollback: Delete projects.json entry
-        # (Only if we want strict atomicity)
-        raise
-        
-except Exception as e:
-    return ToolResult.error(str(e))
+**Recovery Flow (Mode 2):**
+```
+PhaseStateEngine.get_state(branch)
+    ├─> State file missing OR branch not in state
+    ├─> _reconstruct_branch_state(branch)
+    │       ├─> _extract_issue_from_branch() → issue number
+    │       ├─> ProjectManager.get_project_plan() → workflow
+    │       ├─> _infer_phase_from_git() → current phase
+    │       │       └─> GitAdapter.get_recent_commits()
+    │       └─> Create reconstructed state dict
+    └─> _save_state() → Write to state.json
 ```
 
-**4. Tests Required**
-- Test both files created
-- Test state.json has Python-compatible format
-- Test transition_phase works immediately after
-- Test error handling (branch detection failure, etc.)
+---
+
+## Proposed Solution Summary
+
+### Complete Fix Scope
+
+**Problem 1: Single Machine Initialization**
+- ✅ InitializeProjectTool creates both projects.json AND state.json
+- ✅ Atomic operation (both files together)
+- ✅ No manual state.json editing required
+
+**Problem 2: Cross-Machine State Recovery**
+- ✅ PhaseStateEngine auto-recovers missing state
+- ✅ Reconstructs from projects.json (workflow) + git log (phase)
+- ✅ Transparent to user (no manual sync needed)
+
+**Problem 3: JSON Format Incompatibility**
+- ✅ Only Python creates state.json (consistent formatting)
+- ✅ No PowerShell/manual editing
+
+**Problem 4: Git Tracking**
+- ✅ state.json added to .gitignore
+- ✅ Prevents accidental commits
 
 ### Acceptance Criteria
 
+**Mode 1 (Initialization):**
 - [ ] InitializeProjectTool creates both projects.json AND state.json
 - [ ] Branch name auto-detected via GitManager
 - [ ] First phase auto-detected from workflow
 - [ ] State.json format compatible with transition_phase tool
-- [ ] No manual editing required
-- [ ] state.json added to .gitignore
-- [ ] Tests verify both file creation and format compatibility
 - [ ] Works for all workflow types (feature, bug, docs, refactor, hotfix, custom)
-- [ ] Error messages if not on a feature branch
+
+**Mode 2 (Recovery):**
+- [ ] PhaseStateEngine.get_state() auto-recovers missing state
+- [ ] Reconstructs state from projects.json (SSOT for workflow)
+- [ ] Infers current phase from git commit messages
+- [ ] Defaults to first phase if no commits found
+- [ ] Logs reconstruction actions (audit trail)
+- [ ] Sets `reconstructed: true` flag in state
+
+**Both Modes:**
+- [ ] No manual editing required (either scenario)
+- [ ] state.json added to .gitignore
+- [ ] Error handling for edge cases (invalid branch format, missing project plan, git errors)
+- [ ] Comprehensive tests for both initialization and recovery
+
+### Edge Cases to Handle
+
+**Case 1: Mid-phase uncommitted work**
+- Git shows: Last commit = "Complete research phase"
+- Reality: Developer halfway through planning
+- Recovery: Returns "research" (last committed phase)
+- Impact: Developer must re-transition to planning (idempotent, safe)
+
+**Case 2: No phase commits yet**
+- Git shows: No commits with phase keywords
+- Recovery: Returns first phase from workflow
+- Impact: Correct - project just started
+
+**Case 3: Branch name format invalid**
+- Branch: "weird-branch-name" (no issue number)
+- Error: "Cannot extract issue number from branch"
+- Impact: User must use proper branch naming convention
+
+**Case 4: Project plan missing**
+- State.json missing, projects.json also missing
+- Error: "Project plan not found, run initialize_project first"
+- Impact: User must initialize (correct behavior)
+
+**Case 5: Git adapter failure**
+- Git command fails (detached HEAD, corrupt repo, etc.)
+- Fallback: Default to first phase
+- Log: Warning about git error
+- Impact: Safe degradation
 
 ---
 
-## Benefits of Fix
+## Benefits of Complete Solution
 
-**1. User Experience**
+**1. Single Machine User Experience**
 - ✅ Single tool call initializes complete project state
 - ✅ No manual file editing required
 - ✅ Immediate transition_phase usage after initialization
-
-**2. System Integrity**
 - ✅ Atomic operation (both files or neither)
+
+**2. Cross-Machine User Experience**
+- ✅ State reconstructs automatically on machine switch
+- ✅ No manual sync commands required
+- ✅ Git is SSOT (commit history + projects.json)
+- ✅ Transparent recovery (user doesn't notice)
+
+**3. System Integrity**
 - ✅ Consistent JSON formatting (Python → Python)
 - ✅ No format incompatibility issues
+- ✅ state.json never in git (proper separation)
+- ✅ Graceful degradation on errors
 
-**3. Epic #49 Completion**
+**4. Epic #49 Impact**
 - ✅ Completes project initialization infrastructure
 - ✅ Enables smooth Phase 2 work (#52, #53, #54)
 - ✅ Fixes recurring pain point before future issues
+- ✅ Establishes pattern for cross-machine scenarios
 
 ---
 
-## Next Steps
+## Next Steps (Planning Phase)
 
-**Planning Phase:**
-1. Design atomic initialization flow
-2. Plan error handling strategy
-3. Identify test scenarios
-4. Document .gitignore addition
+**Planning Phase Goals:**
 
-**TDD Phase:**
-1. Write tests for both file creation
-2. Write tests for JSON format compatibility
-3. Write tests for error handling
-4. Write tests for all workflow types
+1. **Design Atomic Initialization Flow**
+   - Detailed InitializeProjectTool changes
+   - Error handling and rollback strategy
+   - Success/failure messages
 
-**Integration Phase:**
-1. Update .gitignore
-2. Verify no state.json in git history after fix
-3. Test complete workflow end-to-end
+2. **Design Auto-Recovery Flow**
+   - PhaseStateEngine.get_state() enhancement
+   - Git commit parsing algorithm
+   - Reconstruction logic and edge cases
+
+3. **Design GitAdapter API**
+   - Verify or design get_recent_commits() method
+   - Define Commit dataclass structure
+   - Error handling for git failures
+
+4. **Plan Test Strategy**
+   - Mode 1 tests: Initialization scenarios
+   - Mode 2 tests: Recovery scenarios
+   - Integration tests: End-to-end workflows
+   - Edge case tests: Error conditions
+
+5. **Plan .gitignore Update**
+   - Add state.json exclusion
+   - Verify no existing tracked state.json
+   - Document reasoning
+
+**Handover Artifacts:**
+- ✅ Research document complete (this document)
+- ✅ Problem analysis: Two gaps identified (initialization + recovery)
+- ✅ Architecture analysis: Existing design lacks recovery
+- ✅ Solution proposed: Dual-mode state management
+- ✅ Integration points identified: 4 components
+- ✅ Benefits documented: UX + system integrity
+- ✅ Edge cases identified: 5 scenarios
+
+**Status:** Research phase COMPLETE. Ready for Planning phase.
 
 ---
 
@@ -447,7 +828,32 @@ except Exception as e:
 ## Research Complete ✅
 
 **Key Findings:**
-1. Root cause: Missing integration between InitializeProjectTool and PhaseStateEngine
+
+1. **Root Cause Identified:** Two distinct gaps in state management
+   - Gap 1: InitializeProjectTool doesn't create state.json (single machine issue)
+   - Gap 2: PhaseStateEngine has no recovery mechanism (cross-machine issue)
+
+2. **Architecture Gap Discovered:** Cross-machine state recovery not in original design
+   - Issue #42 docs: No recovery strategy documented
+   - PhaseStateEngine code: Fails hard when state.json missing
+   - Implicit assumption: state.json always exists (breaks on machine switch)
+
+3. **Solution Approach:** Dual-mode state management
+   - Mode 1: Enhanced initialization (InitializeProjectTool creates both files)
+   - Mode 2: Auto-recovery (PhaseStateEngine reconstructs from git + projects.json)
+
+4. **Git as Partial SSOT:** Commit messages contain phase progression
+   - Pattern: "Complete research phase", "Planning phase #67"
+   - Can infer current phase from commit history
+   - Safe fallback: Default to first phase if no commits found
+
+5. **Integration Points:** 4 components need updates
+   - InitializeProjectTool: Add GitManager + PhaseStateEngine
+   - PhaseStateEngine: Add reconstruction methods + git commit parsing
+   - GitAdapter: Verify/add get_recent_commits() method
+   - .gitignore: Add state.json exclusion
+
+**Ready for Planning Phase:** Complete implementation design for both modes
 2. state.json deletion from git was correct - it's runtime state
 3. Manual workarounds cause JSON format incompatibility
 4. Fix requires GitManager + PhaseStateEngine integration
