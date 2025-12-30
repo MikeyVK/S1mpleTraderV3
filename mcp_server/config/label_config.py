@@ -105,21 +105,77 @@ class LabelConfig(BaseModel):
     )
 
     _instance: Optional["LabelConfig"] = None
+    _loaded_path: Optional[Path] = None
+    _loaded_mtime: Optional[float] = None
     _labels_by_name: dict[str, Label] = {}
     _labels_by_category: dict[str, list[Label]] = {}
 
     @classmethod
     def load(cls, config_path: Path | None = None) -> "LabelConfig":
-        """Load label configuration from YAML file."""
-        if cls._instance is not None:
-            return cls._instance
+        """Load label configuration with intelligent cache invalidation.
 
+        Automatically reloads if:
+        - No cached instance exists
+        - Config path changed
+        - File was modified (mtime check)
+
+        Args:
+            config_path: Path to labels.yaml (default: .st3/labels.yaml)
+
+        Returns:
+            LabelConfig instance (cached or freshly loaded)
+
+        Raises:
+            FileNotFoundError: Config file not found
+            ValueError: Invalid YAML syntax or schema
+        """
+        # Resolve default path
         if config_path is None:
             config_path = Path(".st3/labels.yaml")
 
+        # Check if file exists (early fail)
+        if not config_path.exists():
+            raise FileNotFoundError(
+                f"Label configuration not found: {config_path}"
+            )
+
+        # Get current file mtime
+        current_mtime = config_path.stat().st_mtime
+
+        # Check if cache is still valid
+        if (
+            cls._instance is not None and
+            cls._loaded_path == config_path and
+            cls._loaded_mtime == current_mtime
+        ):
+            return cls._instance  # Cache hit - file unchanged
+
+        # Cache miss - load fresh instance
         instance = cls._load_from_file(config_path)
+
+        # Update cache state
         cls._instance = instance
+        cls._loaded_path = config_path
+        cls._loaded_mtime = current_mtime
+
         return instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """Force cache invalidation for next load() call.
+
+        Use cases:
+        - Testing: Reset singleton between test cases
+        - Development: Force reload after external file changes
+        - Edge cases: Manual cache busting when mtime unreliable
+
+        Example:
+            >>> LabelConfig.reset()
+            >>> config = LabelConfig.load()  # Guaranteed fresh load
+        """
+        cls._instance = None
+        cls._loaded_path = None
+        cls._loaded_mtime = None
 
     @classmethod
     def _load_from_file(cls, config_path: Path) -> "LabelConfig":
