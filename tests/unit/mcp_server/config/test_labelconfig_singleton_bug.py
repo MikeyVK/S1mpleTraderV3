@@ -6,6 +6,7 @@ cached instance after the schema file has been modified.
 NOTE: Tests use protected _instance access to demonstrate the bug.
 This is intentional test code that should trigger the protected-access warning.
 """
+import time
 from pathlib import Path
 
 from mcp_server.config.label_config import LabelConfig
@@ -159,3 +160,125 @@ freeform_exceptions: []
 
         # BUG: type:bug was added to file but label_exists returns False
         assert config2.label_exists("type:bug") is False  # ❌ Should be True!
+
+
+class TestLabelConfigCacheInvalidation:
+    """Test cache invalidation based on file modification time (Issue #67 fix)."""
+
+    def test_load_detects_file_modification_and_reloads(
+        self, tmp_path: Path
+    ) -> None:
+        """RED: Test that load() reloads when file mtime changes."""
+        config_file = tmp_path / "labels.yaml"
+        initial_yaml = """
+version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+  - name: "type:bug"
+    color: "D73A4A"
+freeform_exceptions: []
+"""
+        config_file.write_text(initial_yaml, encoding="utf-8")
+
+        # Load first time
+        LabelConfig.reset()  # Clean slate
+        config1 = LabelConfig.load(config_file)
+        assert len(config1.labels) == 2
+
+        # Modify file - add new label
+        time.sleep(0.01)  # Ensure mtime changes
+        updated_yaml = """
+version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+  - name: "type:bug"
+    color: "D73A4A"
+  - name: "type:enhancement"
+    color: "A2EEEF"
+freeform_exceptions: []
+"""
+        config_file.write_text(updated_yaml, encoding="utf-8")
+
+        # Load again - should detect file change and reload
+        config2 = LabelConfig.load(config_file)
+        assert len(config2.labels) == 3  # ✅ Reloaded!
+        assert config1 is not config2  # Different objects
+
+    def test_load_reuses_cache_when_file_unchanged(self, tmp_path: Path) -> None:
+        """RED: Test that load() returns cached instance when file unchanged."""
+        config_file = tmp_path / "labels.yaml"
+        yaml_content = """
+version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+freeform_exceptions: []
+"""
+        config_file.write_text(yaml_content, encoding="utf-8")
+
+        # Load twice without modifying file
+        LabelConfig.reset()
+        config1 = LabelConfig.load(config_file)
+        config2 = LabelConfig.load(config_file)
+
+        # Should return same cached instance
+        assert config1 is config2  # ✅ Same object
+
+    def test_reset_invalidates_cache(self, tmp_path: Path) -> None:
+        """RED: Test that reset() forces reload on next load()."""
+        config_file = tmp_path / "labels.yaml"
+        yaml_content = """
+version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+freeform_exceptions: []
+"""
+        config_file.write_text(yaml_content, encoding="utf-8")
+
+        # Load, reset, load again
+        LabelConfig.reset()
+        config1 = LabelConfig.load(config_file)
+        
+        LabelConfig.reset()  # Force invalidation
+        
+        config2 = LabelConfig.load(config_file)
+
+        # Should be different objects (fresh load after reset)
+        assert config1 is not config2
+
+    def test_different_config_paths_independent(self, tmp_path: Path) -> None:
+        """RED: Test that different config paths don't share cache."""
+        config1_file = tmp_path / "config1.yaml"
+        config2_file = tmp_path / "config2.yaml"
+
+        config1_yaml = """
+version: "1.0"
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+freeform_exceptions: []
+"""
+        config2_yaml = """
+version: "1.0"
+labels:
+  - name: "type:bug"
+    color: "D73A4A"
+  - name: "priority:high"
+    color: "FF0000"
+freeform_exceptions: []
+"""
+        config1_file.write_text(config1_yaml, encoding="utf-8")
+        config2_file.write_text(config2_yaml, encoding="utf-8")
+
+        # Load different configs
+        LabelConfig.reset()
+        cfg1 = LabelConfig.load(config1_file)
+        cfg2 = LabelConfig.load(config2_file)
+
+        # Should be different instances with different data
+        assert cfg1 is not cfg2
+        assert len(cfg1.labels) == 1
+        assert len(cfg2.labels) == 2
