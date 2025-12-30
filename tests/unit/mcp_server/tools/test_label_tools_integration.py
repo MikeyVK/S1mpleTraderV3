@@ -48,7 +48,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         tool = CreateLabelTool(manager=Mock())
@@ -68,7 +68,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         tool = CreateLabelTool(manager=Mock())
@@ -90,7 +90,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -118,7 +118,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -147,7 +147,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         tool = AddLabelsTool(manager=Mock())
@@ -171,7 +171,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -197,7 +197,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -225,7 +225,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -250,7 +250,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -283,7 +283,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -311,7 +311,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         # Create mock label with attributes (not Mock object)
@@ -350,7 +350,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -384,7 +384,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -413,7 +413,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
@@ -445,7 +445,7 @@ labels:
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text(yaml_content)
 
-        LabelConfig._instance = None  # pylint: disable=protected-access
+        LabelConfig.reset()
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()

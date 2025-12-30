@@ -4,6 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from mcp_server.config.label_config import LabelConfig
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.label_tools import AddLabelsTool, AddLabelsInput
 from mcp_server.tools.pr_tools import CreatePRTool, CreatePRInput, ListPRsTool, ListPRsInput, MergePRTool, MergePRInput
@@ -13,6 +14,24 @@ from mcp_server.tools.pr_tools import CreatePRTool, CreatePRInput, ListPRsTool, 
 def mock_adapter():
     """Create a mock GitHub adapter for testing."""
     return Mock()
+
+@pytest.fixture
+def test_label_config(tmp_path):
+    """Create a temp label config with test labels."""
+    yaml_content = """version: "1.0"
+labels:
+  - name: "bug"
+    color: "d73a4a"
+  - name: "high-priority"
+    color: "0052cc"
+"""
+    yaml_file = tmp_path / "labels.yaml"
+    yaml_file.write_text(yaml_content)
+    
+    LabelConfig.reset()
+    LabelConfig.load(yaml_file)
+    yield
+    LabelConfig.reset()
 
 def test_create_pr_tool(mock_adapter) -> None:
     """Test CreatePRTool creates PR and returns correct response."""
@@ -41,7 +60,7 @@ def test_create_pr_tool(mock_adapter) -> None:
         draft=False
     )
 
-def test_add_labels_tool(mock_adapter) -> None:
+def test_add_labels_tool(mock_adapter, test_label_config) -> None:
     """Test AddLabelsTool adds labels and returns confirmation."""
     manager = GitHubManager(adapter=mock_adapter)
     tool = AddLabelsTool(manager=manager)

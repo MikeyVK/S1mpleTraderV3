@@ -129,8 +129,10 @@ class LabelConfig(BaseModel):
             FileNotFoundError: Config file not found
             ValueError: Invalid YAML syntax or schema
         """
-        # Resolve default path
+        # If no path specified and instance exists, return it (test support)
         if config_path is None:
+            if cls._instance is not None:
+                return cls._instance
             config_path = Path(".st3/labels.yaml")
 
         # Check if file exists (early fail)
