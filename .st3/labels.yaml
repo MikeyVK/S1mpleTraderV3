@@ -68,8 +68,10 @@ labels:
     color: "EDEDED"
     description: "Needs prioritization"
   
-  # PHASE - Workflow State (6 labels)
+  # PHASE - Workflow State (9 labels)
   # Which phase in the workflow (aligns with workflows.yaml)
+  # Note: phase:tdd for issues, phase:red/green/refactor for commits (granularity)
+  
   - name: "phase:research"
     color: "C5DEF5"
     description: "Research/discovery phase"
@@ -84,7 +86,19 @@ labels:
   
   - name: "phase:tdd"
     color: "0E8A16"
-    description: "TDD implementation phase"
+    description: "TDD implementation phase (issue-level)"
+  
+  - name: "phase:red"
+    color: "D73A4A"
+    description: "TDD red phase - write failing tests (commit-level)"
+  
+  - name: "phase:green"
+    color: "0E8A16"
+    description: "TDD green phase - make tests pass (commit-level)"
+  
+  - name: "phase:refactor"
+    color: "FBCA04"
+    description: "TDD refactor phase - improve code (commit-level)"
   
   - name: "phase:integration"
     color: "1D76DB"
