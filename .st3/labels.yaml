@@ -7,6 +7,14 @@ freeform_exceptions:
   - "duplicate"
   - "invalid"
 
+# Dynamic label patterns - validated but not pre-created
+# These labels are created on-demand when needed
+label_patterns:
+  - pattern: "^parent:issue-\\d+$"
+    description: "Parent issue reference for child issues"
+    color: "EDEDED"
+    example: "parent:issue-18"
+
 labels:
   # TYPE - Issue Classification (7 labels)
   # What kind of work is being done
