@@ -1,4 +1,4 @@
-# Issue #53 Research: Quality Gates Configuration (quality.yaml)
+# Issue #53 Research: Quality Gates Configuration Analysis
 
 **Issue:** Migrate quality gate configs to quality.yaml  
 **Epic:** #49 - MCP Platform Configurability  
@@ -8,277 +8,332 @@
 
 ---
 
-## Executive Summary
+## Research Objective
 
-**The Problem:**
-Quality gate configurations (Pylint, Mypy, Pyright) are hardcoded in `qa_manager.py`, violating "Config Over Code" principle. Teams cannot customize timeouts, command-line arguments, or add custom quality gates without modifying Python code.
-
-**The Solution:**
-Create `config/quality.yaml` following established patterns from Issue #50 (workflows.yaml) and #51 (labels.yaml). Use Pydantic models for validation, enable custom gates, and make all parameters configurable.
-
-**The Innovation:**
-Extensible quality gate system where teams can define custom gates (e.g., coverage thresholds, security scanners) without code changes. Each gate is independently configurable with timeouts, arguments, and output parsing patterns.
-
-**Impact:**
-- ✅ Teams can customize quality gates per project
-- ✅ Add custom gates (coverage, security, formatting) via YAML
-- ✅ Adjust timeouts for CI/CD environments
-- ✅ Disable specific gates for prototyping
-- ✅ Zero code changes for gate configuration
+Analyze current quality gate implementation in `qa_manager.py` to identify all hardcoded configuration items that should be externalized to `config/quality.yaml`.
 
 ---
 
-## Scope: Quality Gate Configuration System
+## Current Implementation Analysis
 
-**What This Issue Delivers:**
+### File: `mcp_server/managers/qa_manager.py` (329 lines)
 
-**Phase 1: Configuration Schema**
-- Create `config/quality.yaml` with gate definitions
-- Pydantic model: `QualityConfig` with validation
-- Gate schema: name, command, timeout, output patterns, enabled flag
+**Class:** `QAManager`
 
-**Phase 2: QAManager Migration**
-- Update `QAManager` to load config from YAML
-- Remove hardcoded gate configurations (100+ lines)
-- Preserve existing behavior (3 gates: Pylint, Mypy, Pyright)
+**Public Methods:**
+- `run_quality_gates(files: list[str]) -> dict[str, Any]` - Orchestrates gate execution
+- `check_health() -> bool` - Verifies QA tools are installed
 
-**Phase 3: Extensibility**
-- Support custom quality gates
-- Output pattern matching (regex)
-- Conditional gate execution (file type filtering)
-
-**What This Issue Does NOT Deliver:**
-- ❌ Coverage gate implementation (separate issue)
-- ❌ Security scanning tools (separate issue)
-- ❌ Custom linter configurations (.pylintrc, mypy.ini) - those stay in their standard locations
-- ❌ Test execution (that's pytest, not a quality gate)
+**Private Methods:**
+- `_run_pylint(files: list[str]) -> dict[str, Any]` (Lines 97-158)
+- `_run_mypy(files: list[str]) -> dict[str, Any]` (Lines 176-221)
+- `_run_pyright(files: list[str]) -> dict[str, Any]` (Lines 261-295)
+- `_parse_pylint_output(output: str) -> list[dict[str, Any]]` (Lines 122-158)
+- `_parse_mypy_output(output: str) -> list[dict[str, Any]]` (Lines 223-240)
+- `_parse_pyright_output(output: str) -> list[dict[str, Any]]` (Lines 314-329)
 
 ---
 
-## Problem Statement
+## Hardcoded Configuration Inventory
 
-### Current Architecture: Hardcoded Quality Gates
+### Gate 1: Pylint
 
-**File:** `mcp_server/managers/qa_manager.py`
-
-**Gate 1: Pylint (Lines 97-120)**
-```python
-cmd = [
-    python_exe, "-m", "pylint",
-    *files,
-    "--enable=all",
-    "--max-line-length=100",  # ← Hardcoded
-    "--output-format=text"
-]
-timeout=60  # ← Hardcoded
-```
-
-**Gate 2: Mypy (Lines 176-193)**
-```python
-cmd = [
-    python_exe, "-m", "mypy",
-    *files,
-    "--strict",  # ← Hardcoded
-    "--no-error-summary"
-]
-timeout=60  # ← Hardcoded
-```
-
-**Gate 3: Pyright (Lines 261-278)**
-```python
-cmd = [
-    _venv_script_path(_pyright_script_name()),
-    "--outputjson",  # ← Hardcoded
-    *files,
-]
-timeout=120  # ← Hardcoded
-```
-
-**The Problem:**
-1. **Configuration Lock-In:** Cannot change timeout without code modification
-2. **No Extensibility:** Cannot add custom gates (e.g., coverage, security)
-3. **Team Inflexibility:** Different teams have different quality standards
-4. **CI/CD Friction:** Long timeouts block CI pipelines, short timeouts fail slow builds
-5. **Testing Difficulty:** Cannot disable gates for local testing
-
-### Discovery: Quality Gate Parameters
-
-**Audit Complete:** 3 quality gates, 15+ configuration points
+**Location:** Lines 97-120
 
 **Hardcoded Items:**
 
-| Parameter | Gate | Current Value | Configurability Need |
-|-----------|------|---------------|---------------------|
-| **Command** | Pylint | `python -m pylint` | LOW (standard) |
-| **Args** | Pylint | `--enable=all --max-line-length=100` | HIGH (team-specific) |
-| **Timeout** | Pylint | 60 seconds | HIGH (CI/CD variation) |
-| **Command** | Mypy | `python -m mypy` | LOW (standard) |
-| **Args** | Mypy | `--strict --no-error-summary` | MEDIUM (strictness levels) |
-| **Timeout** | Mypy | 60 seconds | HIGH (large codebases) |
-| **Command** | Pyright | `pyright` | LOW (standard) |
-| **Args** | Pyright | `--outputjson` | LOW (output format needed) |
-| **Timeout** | Pyright | 120 seconds | HIGH (slow type checking) |
-| **Output Pattern** | All | Hardcoded parsing | MEDIUM (custom tools) |
-| **Enabled** | All | Always on | HIGH (disable for prototyping) |
+| Item | Value | Line |
+|------|-------|------|
+| Command | `python -m pylint` | 105-106 |
+| Argument: enable | `--enable=all` | 108 |
+| Argument: max-line-length | `--max-line-length=100` | 109 |
+| Argument: output-format | `--output-format=text` | 110 |
+| Timeout | 60 seconds | 117 |
 
-**Additional Findings:**
-- Pylint score extraction: Regex pattern `"Your code has been rated at ([\d.]+)/10"` (line 166)
-- Mypy error parsing: Regex pattern `"^(.+?):(\d+): (error|warning): (.+)$"` (line 227)
-- Pyright JSON parsing: Uses `--outputjson` flag (line 269)
+**Output Parsing:**
+- Format: Plain text
+- Score extraction regex: `r"Your code has been rated at ([\d.]+)/10"` (Line 166)
+- Issue extraction: Line-by-line parsing with complex regex (Lines 131-148)
 
-### Architectural Insight: Gate as First-Class Entity
+### Gate 2: Mypy
 
-**User Requirement:**
-"I want to add custom quality gates (coverage, security scanners, formatters) without modifying Python code. Each gate should be independently configurable."
+**Location:** Lines 176-195
 
-**Design Principle:**
-A quality gate is a **command** that:
-1. Accepts file paths as arguments
-2. Returns exit code (0 = pass, non-zero = fail)
-3. Outputs structured data (text, JSON, XML)
-4. Has timeout constraints
-5. Can be enabled/disabled
+**Hardcoded Items:**
 
-This led to discovery of **Gate abstraction pattern**.
+| Item | Value | Line |
+|------|-------|------|
+| Command | `python -m mypy` | 183-184 |
+| Argument: strict | `--strict` | 186 |
+| Argument: no-error-summary | `--no-error-summary` | 187 |
+| Timeout | 60 seconds | 193 |
+
+**Output Parsing:**
+- Format: Plain text
+- Issue extraction regex: `r"^(.+?):(\d+): (error|warning): (.+)$"` (Line 227)
+
+### Gate 3: Pyright
+
+**Location:** Lines 261-278
+
+**Hardcoded Items:**
+
+| Item | Value | Line |
+|------|-------|------|
+| Command | `pyright` (NOT `python -m pyright`) | 268 |
+| Argument: outputjson | `--outputjson` | 269 |
+| Timeout | 120 seconds | 274 |
+
+**Output Parsing:**
+- Format: JSON
+- JSON path: `generalDiagnostics` (Line 323)
+- Complex JSON structure parsing (Lines 314-329)
 
 ---
 
-## Research Findings
+## Execution Flow Analysis
 
-### Finding 1: Established Config Pattern
+### Current Workflow
 
-**From Issue #50 (workflows.yaml):**
+1. **File Validation** (Lines 36-44)
+   - Check all files exist
+   - Fail immediately if any missing
+   - Add "File Validation" pseudo-gate to results
+
+2. **Pylint Execution** (Lines 46-49)
+   - Run `_run_pylint()`
+   - If failed: Set `overall_pass = False`
+   - **Continue to next gate** (no fail-fast)
+
+3. **Mypy Execution** (Lines 51-54)
+   - Run `_run_mypy()`
+   - If failed: Set `overall_pass = False`
+   - **Continue to next gate** (no fail-fast)
+
+4. **Pyright Execution** (Lines 56-59)
+   - Run `_run_pyright()`
+   - If failed: Set `overall_pass = False`
+   - Return aggregated results
+
+**Key Finding:** Current behavior is **continue-on-error**, NOT fail-fast. All gates run even if earlier gates fail.
+
+---
+
+## Pattern Analysis from Existing Configs
+
+### Pattern 1: workflows.yaml Structure
+
+**Observed:** Issue #50 (workflows.yaml)
+
 ```yaml
 version: "1.0"
 workflows:
   feature:
     name: feature
-    description: "Full development workflow"
-    phases: [research, planning, design, tdd, integration, documentation]
+    description: "..."
+    phases: [...]
 ```
 
-**Pattern:**
-- `version` field for schema evolution
-- Top-level collections (`workflows`, `labels`)
-- Rich metadata (name, description)
-- Sensible defaults
+**Key Patterns:**
+- Top-level `version` field
+- Plural collection key (`workflows`, not `workflow`)
+- Each item has: `name`, `description`, configuration
+- Rich metadata embedded
 
-**Apply to quality.yaml:**
+### Pattern 2: labels.yaml Structure
+
+**Observed:** Issue #51 (labels.yaml)
+
 ```yaml
 version: "1.0"
-quality_gates:
-  pylint:
-    name: pylint
-    description: "Python linting for code quality"
-    command: ["python", "-m", "pylint"]
-    args: ["--enable=all", "--max-line-length=100"]
-    timeout: 60
-    enabled: true
+labels:
+  - name: "type:feature"
+    color: "1D76DB"
+    description: "..."
 ```
 
-### Finding 2: Output Parsing Strategies
+**Key Patterns:**
+- List of items with shared structure
+- Each item has: `name`, metadata, configuration
+- Validation via Pydantic models
+- Sensible defaults
 
-**Current Implementation:**
+### Pattern 3: Pydantic Validation
 
-**Pylint:** Text parsing with regex
+**Observed:** Both Issue #50 and #51
+
 ```python
-pattern = r"Your code has been rated at ([\d.]+)/10"
+class ConfigModel(BaseModel):
+    field: str = Field(..., description="...")
+    model_config = {"frozen": True}
 ```
 
-**Mypy:** Line-by-line regex parsing
-```python
-pattern = r"^(.+?):(\d+): (error|warning): (.+)$"
-```
-
-**Pyright:** JSON parsing
-```python
-json.loads(output)
-data.get("generalDiagnostics", [])
-```
-
-**Design Decision:**
-Support **multiple output formats**:
-- `text`: Plain text, no parsing
-- `regex`: Line-by-line regex matching
-- `json`: JSON structure parsing
-
-### Finding 3: Gate Execution Flow
-
-**Current Flow:**
-1. File validation (check files exist)
-2. Run Gate 1 (Pylint) → **fail-fast** if failed
-3. Run Gate 2 (Mypy) → **fail-fast** if failed
-4. Run Gate 3 (Pyright) → **fail-fast** if failed
-5. Return aggregated results
-
-**Key Insight:** Fail-fast behavior is intentional (blocks on first gate failure)
-
-**Design Decision:**
-Make fail-fast **configurable**:
-```yaml
-execution:
-  mode: fail-fast  # OR: continue-on-error
-```
-
-### Finding 4: Custom Gate Use Cases
-
-**Team Feedback (Hypothetical):**
-
-**Team A (Startup):**
-"We want fast feedback. Disable Pyright (too slow), keep Pylint + Mypy."
-
-**Team B (Enterprise):**
-"Add security gate (Bandit), coverage gate (>80%), and formatting gate (Black)."
-
-**Team C (Research):**
-"Prototyping phase - disable all gates except Mypy (type safety only)."
-
-**Design Implication:**
-- Gates must be independently toggleable
-- Custom gates must be easy to add
-- Order of execution should be configurable
+**Key Patterns:**
+- Frozen models (immutability)
+- Rich Field descriptions
+- Validation constraints (ge, le, pattern)
+- Default factories for complex types
 
 ---
 
-## Recommendations for Planning Phase
+## Output Parsing Strategy Analysis
 
-Based on research findings, the planning phase should address:
+### Strategy 1: Plain Text with Regex (Pylint, Mypy)
 
-1. **Configuration Schema Design**
-   - YAML structure for gates, execution modes, output formats
-   - Pydantic models for validation
-   - Default values and sensible fallbacks
+**Characteristics:**
+- Line-by-line processing
+- Regex pattern matching
+- Extract: file, line, column, severity, message
 
-2. **Migration Strategy**
-   - Incremental approach (one gate at a time)
-   - Backward compatibility decision
-   - Testing strategy for each gate
+**Example (Mypy):**
+```
+mcp_server/file.py:42: error: Missing return statement
+```
 
-3. **Extensibility Goals**
-   - Custom gate support (coverage, security, formatting)
-   - Output format support (text, regex, JSON)
-   - File type filtering per gate
+**Regex:** `^(.+?):(\d+): (error|warning): (.+)$`
 
-4. **Open Questions to Resolve**
-   - **Backward Compatibility:** Fail gracefully if quality.yaml missing, or require it?
-   - **Custom Gate Validation:** Validate command existence before running?
-   - **Output Parsing:** Support custom parsers (Python functions) or limit to regex/JSON?
-   - **Gate Ordering:** Run in YAML definition order or allow priority field?
+### Strategy 2: JSON Parsing (Pyright)
 
-5. **Risk Assessment**
-   - Breaking changes (QAManager constructor signature)
-   - Performance impact (config loading overhead)
-   - Edge cases (timeout handling, JSON parsing failures)
-   - CI/CD impact (different timeout requirements)
+**Characteristics:**
+- Single JSON object output
+- Nested structure traversal
+- Field extraction: `message`, `file`, `range`, `severity`, `rule`
+
+**Example:**
+```json
+{
+  "generalDiagnostics": [
+    {
+      "file": "mcp_server/file.py",
+      "message": "Type mismatch",
+      "severity": "error",
+      "range": {"start": {"line": 41, "character": 10}}
+    }
+  ]
+}
+```
+
+**Note:** Pyright line numbers are 0-based (converted to 1-based in code, Line 301)
+
+---
+
+## Configuration Dependencies
+
+### External Dependencies
+
+1. **Pylint Configuration:** `.pylintrc` (not managed by qa_manager.py)
+2. **Mypy Configuration:** `mypy.ini` (not managed by qa_manager.py)
+3. **Pyright Configuration:** `pyrightconfig.json` (not managed by qa_manager.py)
+
+**Finding:** QA gates rely on BOTH:
+- Command-line arguments (hardcoded in qa_manager.py)
+- Tool-specific config files (external)
+
+**Question for Planning:** Should quality.yaml manage tool-specific configs, or only gate orchestration?
+
+---
+
+## Edge Cases and Error Handling
+
+### Timeout Behavior
+
+**Code:** Lines 117, 193, 274
+
+```python
+proc = subprocess.run(..., timeout=60, check=False)
+```
+
+**Exception Handling:**
+- `TimeoutExpired` → Result: `passed=False`, `score="Timeout"`
+- `FileNotFoundError` → Result: `passed=False`, `score="Not Found"`
+
+**Finding:** Timeouts are per-gate, not global
+
+### Tool Availability Check
+
+**Method:** `check_health()` (Lines 70-90)
+
+**Checks:**
+1. Pylint: `python -m pylint --version`
+2. Mypy: `python -m mypy --version`
+3. Pyright: `pyright --version`
+
+**Behavior:** Returns `True` if all tools available, `False` otherwise
+
+**Finding:** Health check does NOT fail startup, just returns boolean
+
+---
+
+## Code Volume Analysis
+
+### Lines to Externalize
+
+| Component | Lines | Description |
+|-----------|-------|-------------|
+| `_run_pylint()` | 62 | Gate execution + parsing |
+| `_run_mypy()` | 46 | Gate execution + parsing |
+| `_run_pyright()` | 57 | Gate execution + parsing |
+| Hardcoded commands | ~15 | Command strings, arguments |
+| Hardcoded timeouts | ~3 | Timeout values |
+| Hardcoded patterns | ~3 | Regex patterns |
+| **Total** | **186** | Lines with hardcoded config |
+
+**Observation:** Almost 60% of qa_manager.py (186/329 lines) contains gate-specific logic that could be generalized.
+
+---
+
+## Extensibility Requirements (Observed)
+
+### Use Case 1: Custom Timeouts
+
+**Scenario:** Large codebases need longer timeouts  
+**Current:** Requires code modification  
+**Evidence:** Pyright timeout (120s) > Pylint/Mypy (60s)
+
+### Use Case 2: Selective Gate Execution
+
+**Scenario:** Disable slow gates during prototyping  
+**Current:** No mechanism to disable gates  
+**Evidence:** All gates always run
+
+### Use Case 3: Custom Gates
+
+**Scenario:** Add coverage gate, security gate (Bandit), formatter gate (Black)  
+**Current:** Requires adding new `_run_*()` methods  
+**Evidence:** Pattern duplication across 3 gate methods
+
+---
+
+## Key Research Findings
+
+1. **Configuration Spread:** 15+ configuration points across 3 gates
+2. **Execution Model:** Continue-on-error (NOT fail-fast as might be assumed)
+3. **Output Diversity:** Three distinct parsing strategies (text/regex, regex, JSON)
+4. **Code Duplication:** 60% of qa_manager.py is gate-specific boilerplate
+5. **Pattern Precedent:** workflows.yaml and labels.yaml establish clear config patterns
+6. **Tool Independence:** Gate commands are independent of tool configs (.pylintrc, mypy.ini)
+7. **Health Checking:** Existing mechanism to verify tool availability
+8. **No Priority System:** Gates run in fixed order (Pylint → Mypy → Pyright)
+
+---
+
+## Questions for Planning Phase
+
+1. Should quality.yaml manage tool-specific configs (.pylintrc), or only orchestration?
+2. Should execution mode (continue-on-error) be configurable?
+3. Should gate execution order be configurable?
+4. Should we support custom output parsers, or limit to regex/JSON?
+5. Should file type filtering be per-gate or global?
+6. Should health checks fail startup or just warn?
 
 ---
 
 ## Related Documentation
 
-- **Issue #50:** workflows.yaml (config pattern established)
-- **Issue #51:** labels.yaml (Pydantic validation pattern)
+- **Issue #50:** workflows.yaml (config pattern reference)
+- **Issue #51:** labels.yaml (Pydantic pattern reference)
 - **Issue #49:** Epic overview (MCP Platform Configurability)
-- **Epic #18:** Enforcement tooling (requires this issue)
+- **Code:** `mcp_server/managers/qa_manager.py` (current implementation)
 
 ---
 
@@ -286,5 +341,5 @@ Based on research findings, the planning phase should address:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.0 | 2026-01-01 | Initial research (Phase 1: Research complete) |
+| 1.0 | 2026-01-01 | Initial research - current state analysis only |
 
