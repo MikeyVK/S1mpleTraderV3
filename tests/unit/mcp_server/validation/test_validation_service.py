@@ -163,14 +163,18 @@ class TestValidationService:
         self, service: ValidationService
     ) -> None:
         """Test that template validators are filtered for test files."""
-        from mcp_server.validation.template_validator import (
-            TemplateValidator
+        from mcp_server.validation.layered_template_validator import (
+            LayeredTemplateValidator
         )
 
         # Create mock validators
         python_validator = MockValidator()
-        template_validator_worker = TemplateValidator("worker")
-        template_validator_base = TemplateValidator("base")
+        template_validator_worker = LayeredTemplateValidator(
+            "worker", service.template_analyzer
+        )
+        template_validator_base = LayeredTemplateValidator(
+            "base", service.template_analyzer
+        )
 
         with patch(
             "mcp_server.validation.validation_service.ValidatorRegistry"
@@ -187,7 +191,7 @@ class TestValidationService:
                 "tests/unit/test_worker.py"
             )
 
-            # Should filter out non-base TemplateValidators
+            # Should filter out non-base LayeredTemplateValidators
             assert python_validator in validators
             assert template_validator_worker not in validators
             assert template_validator_base in validators
@@ -196,11 +200,13 @@ class TestValidationService:
         self, service: ValidationService
     ) -> None:
         """Test that template validators are filtered for test_ prefix files."""
-        from mcp_server.validation.template_validator import (
-            TemplateValidator
+        from mcp_server.validation.layered_template_validator import (
+            LayeredTemplateValidator
         )
 
-        template_validator = TemplateValidator("tool")
+        template_validator = LayeredTemplateValidator(
+            "tool", service.template_analyzer
+        )
 
         with patch(
             "mcp_server.validation.validation_service.ValidatorRegistry"
@@ -220,8 +226,8 @@ class TestValidationService:
         self, service: ValidationService
     ) -> None:
         """Test that base template validator is added as fallback for Python."""
-        from mcp_server.validation.template_validator import (
-            TemplateValidator
+        from mcp_server.validation.layered_template_validator import (
+            LayeredTemplateValidator
         )
 
         python_validator = MockValidator()
@@ -236,22 +242,25 @@ class TestValidationService:
                 "src/random_file.py"
             )
 
-            # Should add base TemplateValidator as fallback
+            # Should add base LayeredTemplateValidator as fallback
             assert len(validators) == 2  # python_validator + base template
             assert any(
-                isinstance(v, TemplateValidator) and v.template_type == "base"
+                isinstance(v, LayeredTemplateValidator)
+                and v.template_type == "base"
                 for v in validators
             )
 
     def test_get_applicable_validators_no_fallback_if_template_exists(
         self, service: ValidationService
     ) -> None:
-        """Test that base fallback is not added if TemplateValidator exists."""
-        from mcp_server.validation.template_validator import (
-            TemplateValidator
+        """Test that base fallback is not added if LayeredTemplateValidator exists."""
+        from mcp_server.validation.layered_template_validator import (
+            LayeredTemplateValidator
         )
 
-        template_validator = TemplateValidator("worker")
+        template_validator = LayeredTemplateValidator(
+            "worker", service.template_analyzer
+        )
 
         with patch(
             "mcp_server.validation.validation_service.ValidatorRegistry"

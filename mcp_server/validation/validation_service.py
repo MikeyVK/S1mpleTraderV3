@@ -19,7 +19,8 @@ from mcp_server.validation.base import BaseValidator
 from mcp_server.validation.registry import ValidatorRegistry
 from mcp_server.validation.python_validator import PythonValidator
 from mcp_server.validation.markdown_validator import MarkdownValidator
-from mcp_server.validation.template_validator import TemplateValidator
+from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
+from mcp_server.validation.template_analyzer import TemplateAnalyzer
 
 
 class ValidationService:  # pylint: disable=too-few-public-methods
@@ -39,6 +40,9 @@ class ValidationService:  # pylint: disable=too-few-public-methods
 
     def __init__(self) -> None:
         """Initialize validation service and register validators."""
+        self.template_analyzer = TemplateAnalyzer(
+            template_root=Path("mcp_server/templates")
+        )
         self._setup_validators()
 
     def _setup_validators(self) -> None:
@@ -47,18 +51,22 @@ class ValidationService:  # pylint: disable=too-few-public-methods
         ValidatorRegistry.register(".py", PythonValidator)
         ValidatorRegistry.register(".md", MarkdownValidator)
 
-        # Register pattern-based validators for templates
+        # Register pattern-based validators using LayeredTemplateValidator
         ValidatorRegistry.register_pattern(
-            r".*_workers?\.py$", TemplateValidator("worker")
+            r".*_workers?\.py$",
+            LayeredTemplateValidator("worker", self.template_analyzer)
         )
         ValidatorRegistry.register_pattern(
-            r".*_tools?\.py$", TemplateValidator("tool")
+            r".*_tools?\.py$",
+            LayeredTemplateValidator("tool", self.template_analyzer)
         )
         ValidatorRegistry.register_pattern(
-            r".*_dtos?\.py$", TemplateValidator("dto")
+            r".*_dtos?\.py$",
+            LayeredTemplateValidator("dto", self.template_analyzer)
         )
         ValidatorRegistry.register_pattern(
-            r".*_adapters?\.py$", TemplateValidator("adapter")
+            r".*_adapters?\.py$",
+            LayeredTemplateValidator("adapter", self.template_analyzer)
         )
 
     async def validate(self, path: str, content: str) -> tuple[bool, str]:
@@ -82,7 +90,7 @@ class ValidationService:  # pylint: disable=too-few-public-methods
         Get validators with context-specific filtering.
 
         Applies special logic:
-        - Test files: Filter out non-base TemplateValidators
+        - Test files: Filter out non-base LayeredTemplateValidators
         - Python files without template: Add base template as fallback
 
         Args:
@@ -100,17 +108,19 @@ class ValidationService:  # pylint: disable=too-few-public-methods
         if is_test:
             validators = [
                 v for v in validators
-                if not isinstance(v, TemplateValidator)
+                if not isinstance(v, LayeredTemplateValidator)
                 or v.template_type == "base"
             ]
 
         # Python fallback logic: Add base template if no template validator
         if path.endswith(".py"):
             has_template_validator = any(
-                isinstance(v, TemplateValidator) for v in validators
+                isinstance(v, LayeredTemplateValidator) for v in validators
             )
             if not has_template_validator:
-                validators.append(TemplateValidator("base"))
+                validators.append(
+                    LayeredTemplateValidator("base", self.template_analyzer)
+                )
 
         return validators
 
