@@ -240,192 +240,36 @@ execution:
 
 ---
 
-## Proposed Solution
+## Recommendations for Planning Phase
 
-### quality.yaml Schema
+Based on research findings, the planning phase should address:
 
-```yaml
-# Quality Gates Configuration
-# Schema Version: 1.0
-# Documentation: docs/reference/quality.yaml
+1. **Configuration Schema Design**
+   - YAML structure for gates, execution modes, output formats
+   - Pydantic models for validation
+   - Default values and sensible fallbacks
 
-version: "1.0"
+2. **Migration Strategy**
+   - Incremental approach (one gate at a time)
+   - Backward compatibility decision
+   - Testing strategy for each gate
 
-# Execution strategy
-execution:
-  mode: fail-fast  # fail-fast | continue-on-error
-  parallel: false  # Run gates in parallel (future feature)
+3. **Extensibility Goals**
+   - Custom gate support (coverage, security, formatting)
+   - Output format support (text, regex, JSON)
+   - File type filtering per gate
 
-# Quality gates definition
-gates:
-  # Gate 1: Pylint (Python linting)
-  pylint:
-    name: "Linting"
-    description: "Python code quality checks (whitespace, imports, line length)"
-    command: ["python", "-m", "pylint"]
-    args:
-      - "--enable=all"
-      - "--max-line-length=100"
-      - "--output-format=text"
-    timeout: 60
-    enabled: true
-    output_format: text
-    score_pattern: 'Your code has been rated at ([\d.]+)/10'
-    issue_pattern: '^(.+?):(\d+):(\d+): \[([A-Z]\d+)\(([^)]+)\)\] (.+)$'
-    file_types: [".py"]
-    
-  # Gate 2: Mypy (Type checking)
-  mypy:
-    name: "Type Checking"
-    description: "Static type checking with mypy"
-    command: ["python", "-m", "mypy"]
-    args:
-      - "--strict"
-      - "--no-error-summary"
-    timeout: 60
-    enabled: true
-    output_format: regex
-    issue_pattern: '^(.+?):(\d+): (error|warning): (.+)$'
-    file_types: [".py"]
-    
-  # Gate 3: Pyright (Pylance parity)
-  pyright:
-    name: "Pyright"
-    description: "TypeScript-based type checker (Pylance compatibility)"
-    command: ["pyright"]  # Note: not `python -m pyright`
-    args:
-      - "--outputjson"
-    timeout: 120
-    enabled: true
-    output_format: json
-    json_path: "generalDiagnostics"
-    file_types: [".py"]
+4. **Open Questions to Resolve**
+   - **Backward Compatibility:** Fail gracefully if quality.yaml missing, or require it?
+   - **Custom Gate Validation:** Validate command existence before running?
+   - **Output Parsing:** Support custom parsers (Python functions) or limit to regex/JSON?
+   - **Gate Ordering:** Run in YAML definition order or allow priority field?
 
-  # Example custom gate (commented out by default)
-  # coverage:
-  #   name: "Coverage"
-  #   description: "Code coverage threshold check"
-  #   command: ["pytest"]
-  #   args:
-  #     - "--cov=mcp_server"
-  #     - "--cov-report=term-missing"
-  #     - "--cov-fail-under=80"
-  #   timeout: 300
-  #   enabled: false
-  #   output_format: text
-  #   file_types: [".py"]
-```
-
-### Pydantic Models
-
-```python
-# mcp_server/config/quality_config.py
-from enum import Enum
-from typing import Literal
-from pydantic import BaseModel, Field
-
-
-class ExecutionMode(str, Enum):
-    """Quality gate execution strategy."""
-    FAIL_FAST = "fail-fast"
-    CONTINUE_ON_ERROR = "continue-on-error"
-
-
-class OutputFormat(str, Enum):
-    """Quality gate output parsing format."""
-    TEXT = "text"
-    REGEX = "regex"
-    JSON = "json"
-
-
-class QualityGate(BaseModel):
-    """Definition of a single quality gate."""
-    
-    name: str = Field(..., description="Display name for the gate")
-    description: str = Field(..., description="What this gate checks")
-    command: list[str] = Field(..., description="Command to execute (e.g., ['python', '-m', 'pylint'])")
-    args: list[str] = Field(default_factory=list, description="Command-line arguments")
-    timeout: int = Field(default=60, ge=1, le=3600, description="Timeout in seconds")
-    enabled: bool = Field(default=True, description="Whether gate is active")
-    output_format: OutputFormat = Field(default=OutputFormat.TEXT, description="Output parsing strategy")
-    score_pattern: str | None = Field(default=None, description="Regex to extract numeric score")
-    issue_pattern: str | None = Field(default=None, description="Regex to extract issues (for text/regex formats)")
-    json_path: str | None = Field(default=None, description="JSON path to diagnostics (for json format)")
-    file_types: list[str] = Field(default_factory=lambda: [".py"], description="File extensions this gate applies to")
-    
-    model_config = {"frozen": True}
-
-
-class ExecutionConfig(BaseModel):
-    """Quality gate execution configuration."""
-    
-    mode: ExecutionMode = Field(default=ExecutionMode.FAIL_FAST, description="Execution strategy")
-    parallel: bool = Field(default=False, description="Run gates in parallel (not yet implemented)")
-    
-    model_config = {"frozen": True}
-
-
-class QualityConfig(BaseModel):
-    """Root quality gates configuration."""
-    
-    version: str = Field(..., pattern=r"^\d+\.\d+$", description="Config schema version")
-    execution: ExecutionConfig = Field(default_factory=ExecutionConfig, description="Execution settings")
-    gates: dict[str, QualityGate] = Field(..., description="Named quality gates")
-    
-    model_config = {"frozen": True}
-```
-
-### Migration Impact
-
-**Lines to Remove:**
-- `_run_pylint()` method: ~40 lines → Replace with generic `_run_gate()`
-- `_run_mypy()` method: ~35 lines → Replace with generic `_run_gate()`
-- `_run_pyright()` method: ~30 lines → Replace with generic `_run_gate()`
-- Hardcoded commands/timeouts: ~15 lines
-
-**Total Removal:** ~120 lines of hardcoded configuration
-
-**Lines to Add:**
-- `QualityConfig` loading: ~20 lines
-- Generic `_run_gate()` method: ~50 lines
-- Output parsing dispatch: ~30 lines
-
-**Net Change:** +100 lines (more flexible, less duplication)
-
----
-
-## Next Steps
-
-### Planning Phase Deliverables
-
-1. **Goal Breakdown:**
-   - TDD goals for Pydantic models
-   - TDD goals for QAManager refactoring
-   - TDD goals for custom gate support
-
-2. **Implementation Strategy:**
-   - Incremental migration (one gate at a time)
-   - Backward compatibility (fail if config missing?)
-   - Test coverage requirements
-
-3. **Risk Assessment:**
-   - Breaking changes (yes: QAManager constructor)
+5. **Risk Assessment**
+   - Breaking changes (QAManager constructor signature)
    - Performance impact (config loading overhead)
    - Edge cases (timeout handling, JSON parsing failures)
-
-### Open Questions
-
-1. **Backward Compatibility:** Should system fail gracefully if quality.yaml is missing, or require it?
-   - **Recommendation:** Require config (fail-fast on missing)
-   
-2. **Custom Gate Validation:** Should we validate that custom gate commands exist before running?
-   - **Recommendation:** Yes, run health check on startup
-   
-3. **Output Parsing:** Should we support custom parsers (Python functions)?
-   - **Recommendation:** No, keep to regex/JSON for simplicity
-   
-4. **Gate Ordering:** Should gates run in YAML definition order?
-   - **Recommendation:** Yes, preserve order for predictability
+   - CI/CD impact (different timeout requirements)
 
 ---
 
