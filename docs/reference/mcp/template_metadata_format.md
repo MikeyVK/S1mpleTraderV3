@@ -353,48 +353,9 @@ variables:
 
 ## Examples
 
-### DTO Template (ARCHITECTURAL)
+### Worker Template (ARCHITECTURAL) - Actual Template
 
-```jinja
-{# TEMPLATE_METADATA
-enforcement: ARCHITECTURAL
-level: content
-extends: base/base_component.py.jinja2
-version: "2.0"
-
-validates:
-  strict:
-    - rule: base_class
-      description: "Must inherit from Pydantic BaseModel"
-      pattern: "class \\w+\\(BaseModel\\)"
-      
-    - rule: frozen_config
-      description: "Must have frozen=True in model_config"
-      pattern: '"frozen":\\s*True'
-      
-    - rule: field_validators
-      description: "Must have field validators for id and timestamp"
-      methods:
-        - "validate_id_format"
-        - "ensure_utc_timestamp"
-      
-  guidelines:
-    - rule: docstring_format
-      description: "Class docstring should describe purpose and immutability"
-      severity: WARNING
-
-purpose: |
-  Generate immutable Pydantic DTOs following project conventions.
-  Enforces causality tracking, ID generation, and timestamp handling.
-
-variables:
-  - name
-  - description
-  - has_causality
-#}
-```
-
-### Worker Template (ARCHITECTURAL)
+**Location:** `mcp_server/templates/components/worker.py.jinja2`
 
 ```jinja
 {# TEMPLATE_METADATA
@@ -413,20 +374,80 @@ validates:
       description: "Must implement process() method"
       pattern: "async def process\\(self, input_data: \\w+\\) -> \\w+"
       
+    - rule: required_imports
+      description: "Must import BaseWorker and IStrategyCache"
+      imports:
+        - "backend.core.interfaces.base_worker.BaseWorker"
+        - "backend.core.interfaces.strategy_cache.IStrategyCache"
+  
   guidelines:
     - rule: naming_convention
       description: "Worker class name should describe processing action"
       severity: WARNING
-
-variables:
-  - name
-  - input_dto
-  - output_dto
-  - worker_type
+      
+    - rule: docstring_format
+      description: "Docstring should include Responsibilities and Subscribes to/Publishes sections"
+      pattern: "Responsibilities:|Subscribes to:|Publishes:"
+      severity: WARNING
 #}
 ```
 
-### Base Document Template (FORMAT)
+**Key Points:**
+- `ARCHITECTURAL` enforcement: Strict on base class, flexible on naming
+- 3 strict rules: base class pattern, process() method, required imports
+- 2 guidelines: naming convention and docstring format (WARNINGs only)
+- Extends base_component for shared format rules
+
+### Adapter Template (ARCHITECTURAL) - Actual Template
+
+**Location:** `mcp_server/templates/components/adapter.py.jinja2`
+
+```jinja
+{# TEMPLATE_METADATA
+enforcement: ARCHITECTURAL
+level: content
+extends: base/base_component.py.jinja2
+version: "2.0"
+
+validates:
+  strict:
+    - rule: protocol_interface
+      description: "Must define Protocol interface (I<ClassName>)"
+      pattern: "class I\\w+\\(Protocol\\)"
+      
+    - rule: adapter_implementation
+      description: "Must implement adapter class matching protocol"
+      pattern: "class \\w+Adapter:"
+      
+    - rule: required_imports
+      description: "Must import Protocol and core exceptions"
+      imports:
+        - "typing.Protocol"
+        - "backend.core.exceptions"
+  
+  guidelines:
+    - rule: naming_convention
+      description: "Adapter class name should end with 'Adapter' suffix"
+      severity: WARNING
+      
+    - rule: docstring_format
+      description: "Docstring should include Responsibilities and Usage example"
+      pattern: "Responsibilities:|Usage:"
+      severity: WARNING
+      
+    - rule: interface_segregation
+      description: "Protocol interface should be specific, not god interface"
+      severity: WARNING
+#}
+```
+
+**Key Points:**
+- Protocol+Adapter pattern enforcement (two classes required)
+- Interface naming convention: `I<ClassName>(Protocol)`
+- Adapter class validation: Must have `Adapter` suffix
+- Interface Segregation Principle as guideline (WARNING only)
+
+### Base Document Template (FORMAT) - Conceptual Example
 
 ```jinja
 {# TEMPLATE_METADATA
@@ -436,22 +457,38 @@ version: "2.0"
 
 validates:
   strict:
-    - rule: frontmatter_block
+    - rule: frontmatter_presence
       description: "Must have YAML frontmatter block at start"
       pattern: "^---\\n[\\s\\S]*?\\n---"
       
-    - rule: required_headers
+    - rule: separator_structure
+      description: "Must have separator line (---) after header"
+      pattern: "^---$"
+      
+    - rule: required_sections
       description: "Must have ## Purpose and ## Scope sections"
       pattern: "## Purpose|## Scope"
+      
+    - rule: link_definitions
+      description: "Must have Related Documentation section at end"
+      pattern: "## Related Documentation"
 
 purpose: |
   Enforce consistent structure for all markdown documentation.
+  Format rules apply universally, content varies by doc type.
 
 variables:
   - title
   - doc_type
+  - status
 #}
 ```
+
+**Key Points:**
+- `FORMAT` enforcement: Non-negotiable structure rules
+- Applies to ALL document types (research, planning, design)
+- Content flexibility maintained via inheritance
+- Document-specific rules in child templates (research.md, planning.md)
 
 ## Best Practices
 
@@ -523,6 +560,77 @@ description: "Validate configuration"
 - Keep inheritance chains shallow (max 2 levels)
 - Document inheritance relationships
 
+## Quick Start Guide
+
+### Adding Validation to a New Template
+
+**Step 1: Choose Enforcement Level**
+```yaml
+# Non-negotiable structure (markdown format, file structure)
+enforcement: FORMAT
+
+# OR: System architecture patterns (base classes, protocols)
+enforcement: ARCHITECTURAL
+
+# OR: Style guidelines (naming, formatting)
+enforcement: GUIDELINE
+```
+
+**Step 2: Define Strict Rules**
+```yaml
+validates:
+  strict:
+    - rule: base_class_inheritance
+      description: "Must inherit from BaseWorker[Input, Output]"
+      pattern: "class \\w+\\(BaseWorker\\[\\w+, \\w+\\]\\)"
+```
+
+**Step 3: Add Guidelines (Optional)**
+```yaml
+  guidelines:
+    - rule: naming_convention
+      description: "Class name should be descriptive (e.g., ParseMarketDataWorker)"
+      severity: WARNING
+```
+
+**Step 4: Test Validation**
+1. Scaffold code using template
+2. Run validation via SafeEditTool
+3. Verify errors block save, warnings allow save
+4. Check agent hints appear in validation response
+
+### Common Patterns
+
+**Pattern 1: Base Class Validation**
+```yaml
+- rule: base_class
+  description: "Must inherit from BaseModel with frozen config"
+  pattern: "class \\w+\\(BaseModel\\):[\\s\\S]*frozen.*True"
+```
+
+**Pattern 2: Required Method Validation**
+```yaml
+- rule: process_method
+  description: "Must implement async process() method"
+  pattern: "async def process\\(self, input_data: \\w+\\) -> \\w+"
+```
+
+**Pattern 3: Import Validation**
+```yaml
+- rule: required_imports
+  description: "Must import core interfaces"
+  imports:
+    - "backend.core.interfaces.base_worker"
+    - "backend.core.interfaces.strategy_cache"
+```
+
+**Pattern 4: Document Structure Validation**
+```yaml
+- rule: required_sections
+  description: "Must have Purpose, Scope, and Related Documentation sections"
+  pattern: "## Purpose|## Scope|## Related Documentation"
+```
+
 ---
 
 <!-- ═══════════════════════════════════════════════════════════════════════════
@@ -531,6 +639,7 @@ description: "Validate configuration"
 
 ## Related Documentation
 
+- **[validation_api.md](validation_api.md)** - TemplateAnalyzer and LayeredTemplateValidator API reference
 - **[MCP_TOOLS.md](MCP_TOOLS.md)** - MCP server tool documentation
 - **[template_analyzer.py](../../../mcp_server/validation/template_analyzer.py)** - Implementation of metadata parsing
 - **[layered_template_validator.py](../../../mcp_server/validation/layered_template_validator.py)** - Three-tier validation logic
