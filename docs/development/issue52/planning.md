@@ -20,70 +20,47 @@ Define the implementation approach for migrating from hardcoded validation rules
 
 ## Scope
 
-**In Scope:**
-- Create missing base template (base_document.md.jinja2)
-- Fix worker template (IWorkerLifecycle two-phase init)
-- Add metadata to core templates (worker, dto, tool)
-- Build template analyzer infrastructure
-- Build layered validator infrastructure
+**In Scope (Epic #49: Config Infrastructure):**
+- Template metadata schema design (YAML frontmatter format)
+- TemplateAnalyzer infrastructure (extract metadata from templates)
+- LayeredTemplateValidator infrastructure (three-tier enforcement logic)
+- Add metadata to **3 core templates** (dto, tool, base_document - NO redesign)
 - Integrate with SafeEditTool and ValidatorRegistry
-- Remove hardcoded RULES dict
-- Create template documentation
+- Remove hardcoded RULES dict (30 lines)
+- Template version field support
+- Infrastructure documentation
 
-**Out of Scope:**
-- All 21 templates with metadata (only core 6)
+**Out of Scope (Moved to Other Epics):**
+- Worker template redesign (IWorkerLifecycle) → **Epic #72: Template Library**
+- Document templates (research, planning, unit_test) → **Epic #72: Template Library**
+- Template governance (quarterly review, Rule of Three) → **Epic #73: Template Governance**
 - AST-based validation improvements (future enhancement)
-- Epic #18 enforcement tooling (separate issue)
-- Template versioning migration (future as needed)
-- Quarterly governance implementation (process doc only)
+- Epic #18 enforcement policy tooling (separate concern)
 
 ---
 
 ## Implementation Goals
 
-### Goal 1: Base Document Template
+### Goal 1: Base Document Template Metadata
 
-**Objective:** Create base_document.md.jinja2 for strict format enforcement across all documentation.
+**Objective:** Add validation metadata to base_document.md.jinja2 for format enforcement.
 
 **Success Criteria:**
-- ✅ Template enforces frontmatter presence and required fields
-- ✅ Template enforces separator structure (---)
-- ✅ Template enforces grouped links at document end
+- ✅ Template includes TEMPLATE_METADATA frontmatter
+- ✅ Metadata enforces frontmatter presence and required fields
+- ✅ Metadata enforces separator structure (---)
 - ✅ Template metadata specifies STRICT enforcement level
-- ✅ Generated docs pass format validation
+- ✅ Template includes version field (e.g., version: "1.0")
 
 **What Changes:**
-- Create: `mcp_server/templates/base/base_document.md.jinja2`
-- Metadata includes: enforcement level, format rules, validation specs
-
-**Dependencies:** None (new file)
-
----
-
-### Goal 2: Worker Template Fix
-
-**Objective:** Update worker template to match IWorkerLifecycle two-phase initialization pattern.
-
-**Success Criteria:**
-- ✅ Template generates `__init__(build_spec: BuildSpec)` method
-- ✅ Template generates `initialize(strategy_cache: IStrategyCache)` method
-- ✅ Template generates async `process(input_data: InputDTO)` method
-- ✅ Template metadata includes strict architectural rules
-- ✅ Template metadata includes guidelines for best practices
-- ✅ Generated workers match backend/core/interfaces/worker.py pattern
-
-**What Changes:**
-- Update: `mcp_server/templates/components/worker.py.jinja2`
-  - Change constructor signature from (strategy_cache, deps) to (build_spec)
-  - Add initialize() method
-  - Add TEMPLATE_METADATA frontmatter with strict + guidelines sections
-  - **BREAKING CHANGE:** No backward compatibility - old pattern no longer supported
+- Update: `mcp_server/templates/base/base_document.md.jinja2`
+- Add TEMPLATE_METADATA with enforcement level, format rules, validation specs
 
 **Dependencies:** None (existing file update)
 
 ---
 
-### Goal 3: Core Template Metadata
+### Goal 2: Core Component Template Metadata
 
 **Objective:** Add validation metadata to dto and tool templates.
 
@@ -91,7 +68,7 @@ Define the implementation approach for migrating from hardcoded validation rules
 - ✅ dto.py.jinja2 has TEMPLATE_METADATA with strict + guidelines
 - ✅ tool.py.jinja2 has TEMPLATE_METADATA with strict + guidelines
 - ✅ Metadata specifies enforcement levels (ARCHITECTURAL)
-- ✅ Metadata inherits from base templates
+- ✅ Metadata includes version field
 - ✅ Strict rules define architectural contracts
 - ✅ Guidelines define best practices (warnings only)
 
@@ -110,39 +87,7 @@ Define the implementation approach for migrating from hardcoded validation rules
 
 ---
 
-### Goal 4: Document Templates with Agent Guidance
-
-**Objective:** Create research.md and planning.md templates with content guidance for AI agents.
-
-**Success Criteria:**
-- ✅ research.md.jinja2 extends base_document.md.jinja2
-- ✅ planning.md.jinja2 extends base_document.md.jinja2
-- ✅ Templates include purpose statement
-- ✅ Templates include content_guidance (includes/excludes)
-- ✅ Templates include agent_hint for appropriate focus
-- ✅ Templates specify recommended sections (guidelines)
-- ✅ Generated docs follow phase-appropriate content patterns
-
-**What Changes:**
-- Create: `mcp_server/templates/documents/research.md.jinja2`
-  - Extends: base_document.md.jinja2
-  - Purpose: "Analyze problems, gather information"
-  - Guidance: Include analysis/findings, exclude implementation
-  - Agent hint: "Detective mindset - focus on WHY and WHAT"
-  - Sections: Executive Summary, Problem Statement, Findings, Recommendations
-
-- Create: `mcp_server/templates/documents/planning.md.jinja2`
-  - Extends: base_document.md.jinja2
-  - Purpose: "Define implementation approach"
-  - Guidance: Include goals/testing/rollout, exclude analysis/code
-  - Agent hint: "Project manager - focus on WHAT and sequencing"
-  - Sections: Purpose, Scope, Implementation Goals, Testing Strategy
-
-**Dependencies:** Goal 1 (base_document.md.jinja2 must exist)
-
----
-
-### Goal 5: Template Analyzer
+### Goal 3: Template Analyzer Infrastructure
 
 **Objective:** Build infrastructure to extract and parse template metadata.
 
@@ -190,11 +135,11 @@ Define the implementation approach for migrating from hardcoded validation rules
   - Method: `_get_base_template(template) -> Template`
   - Remove: `RULES` dict (30 lines deleted)
 
-**Dependencies:** Goal 5 (TemplateAnalyzer must exist)
+**Dependencies:** Goal 3 (TemplateAnalyzer must exist)
 
 ---
 
-### Goal 7: SafeEditTool Integration
+### Goal 5: SafeEditTool Integration
 
 **Objective:** Integrate template-driven validation into SafeEditTool workflow.
 
@@ -218,41 +163,30 @@ Define the implementation approach for migrating from hardcoded validation rules
   - Load file patterns from template metadata (not hardcoded)
   - Register validators dynamically based on templates
 
-**Dependencies:** Goal 6 (LayeredTemplateValidator must exist)
+**Dependencies:** Goal 4 (LayeredTemplateValidator must exist)
 
 ---
 
-### Goal 8: Template Documentation
+### Goal 6: Infrastructure Documentation
 
-**Objective:** Document template metadata format and usage for future template creation.
+**Objective:** Document template metadata format for future template creation.
 
 **Success Criteria:**
 - ✅ Metadata format specification documented
 - ✅ Enforcement levels explained (STRICT, ARCHITECTURAL, GUIDELINE)
 - ✅ Three-tier model documented with examples
-- ✅ Template creation checklist provided
-- ✅ Governance process documented (quarterly review)
-- ✅ Escape hatch mechanism documented (TEMPLATE_OVERRIDE)
+- ✅ Template versioning documented
 
 **What Changes:**
 - Create: `docs/reference/template_metadata_format.md`
   - Metadata structure specification
   - Enforcement level definitions
   - Validation rule examples
-  - Agent guidance examples
+  - Version field usage
 
-- Create: `docs/reference/template_governance.md`
-  - Template growth limits
-  - Rule of Three principle
-  - Quarterly review process
-  - Escape hatch usage
+**Dependencies:** Goals 1-5 (implementation complete)
 
-- Update: `docs/reference/template_creation_guide.md`
-  - Template creation checklist
-  - Quality standards
-  - Testing requirements
-
-**Dependencies:** Goals 1-7 (implementation complete)
+**Note:** Template governance documentation moved to Epic #73
 
 ---
 
@@ -296,9 +230,9 @@ Define the implementation approach for migrating from hardcoded validation rules
 ### End-to-End Tests (3 tests)
 
 **Scaffold → Validate Cycle (3 tests):**
-- `test_scaffold_worker_passes_validation()` - Generated worker validates
 - `test_scaffold_dto_passes_validation()` - Generated DTO validates
-- `test_scaffold_document_passes_validation()` - Generated doc validates
+- `test_scaffold_tool_passes_validation()` - Generated tool validates
+- `test_scaffold_document_passes_validation()` - Generated doc validates (base_document)
 
 ### Quality Gates
 
@@ -322,19 +256,19 @@ Define the implementation approach for migrating from hardcoded validation rules
 
 ## Rollout Plan
 
-### Phase 1: Non-Breaking Additions (Day 1)
+### Phase 1: Infrastructure Setup (Day 1)
 
 **Add new infrastructure without breaking existing:**
-1. Create base_document.md.jinja2
-2. Create research.md.jinja2, planning.md.jinja2
-3. Add metadata to worker.py.jinja2, dto.py.jinja2, tool.py.jinja2
+1. Add metadata to base_document.md.jinja2
+2. Add metadata to dto.py.jinja2
+3. Add metadata to tool.py.jinja2
 4. Create template_analyzer.py module
 5. Write tests for TemplateAnalyzer
 
 **Verification:**
 - ✅ All existing tests still pass
 - ✅ No breaking changes to existing code
-- ✅ New templates can be rendered
+- ✅ Templates can still be rendered
 
 ### Phase 2: Validator Implementation (Day 2)
 
@@ -365,44 +299,40 @@ Define the implementation approach for migrating from hardcoded validation rules
 
 ### Phase 4: Documentation (Day 4)
 
-**Document and polish:**
+**Document infrastructure:**
 1. Create template_metadata_format.md
-2. Create template_governance.md
-3. Update template_creation_guide.md
-4. Run final quality gates
+2. Run final quality gates
 
 **Verification:**
-- ✅ All documentation complete
+- ✅ Infrastructure documentation complete
 - ✅ All tests passing
 - ✅ Pylint 10/10
 - ✅ Issue ready for review
+
+**Note:** Template governance documentation moved to Epic #73
 
 ---
 
 ## File Changes Summary
 
-### New Files (6)
-1. `mcp_server/templates/base/base_document.md.jinja2` - Base doc template
-2. `mcp_server/templates/documents/research.md.jinja2` - Research template
-3. `mcp_server/templates/documents/planning.md.jinja2` - Planning template
-4. `mcp_server/validators/template_analyzer.py` - Metadata extraction
-5. `docs/reference/template_metadata_format.md` - Metadata spec
-6. `docs/reference/template_governance.md` - Governance process
+### New Files (2)
+1. `mcp_server/validators/template_analyzer.py` - Metadata extraction infrastructure
+2. `docs/reference/template_metadata_format.md` - Metadata specification
 
 ### Modified Files (5)
-1. `mcp_server/templates/components/worker.py.jinja2` - IWorkerLifecycle + metadata
+1. `mcp_server/templates/base/base_document.md.jinja2` - Add metadata
 2. `mcp_server/templates/components/dto.py.jinja2` - Add metadata
 3. `mcp_server/templates/components/tool.py.jinja2` - Add metadata
-4. `mcp_server/validators/template_validator.py` - LayeredTemplateValidator, remove RULES
-5. `mcp_server/tools/safe_edit_tool.py` - Use new validator, pass hints
+4. `mcp_server/validators/template_validator.py` - LayeredTemplateValidator, remove RULES dict
+5. `mcp_server/tools/safe_edit_tool.py` - Use new validator
 
 ### Test Files (3)
-1. `tests/unit/mcp_server/validators/test_template_analyzer.py` - New tests
-2. `tests/unit/mcp_server/validators/test_template_validator.py` - Update tests
-3. `tests/integration/test_template_validation.py` - New integration tests
+1. `tests/unit/mcp_server/validators/test_template_analyzer.py` - New tests (8 tests)
+2. `tests/unit/mcp_server/validators/test_template_validator.py` - Update tests (12 tests)
+3. `tests/integration/test_template_validation.py` - New integration tests (5 tests)
 
 **Total Impact:**
-- 6 new files
+- 2 new files
 - 5 modified files
 - 3 test files
 - ~30 lines deleted (RULES dict)

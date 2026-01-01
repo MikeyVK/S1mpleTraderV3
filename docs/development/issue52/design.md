@@ -18,20 +18,21 @@ This design document specifies the technical architecture for migrating from har
 
 ### 1.2 Scope
 
-**In Scope:**
+**In Scope (Epic #49: Config Infrastructure):**
 - TemplateAnalyzer component (metadata extraction from templates)
-- LayeredTemplateValidator component (three-tier enforcement)
+- LayeredTemplateValidator component (three-tier enforcement logic)
 - Template metadata schema specification (YAML frontmatter format)
 - Integration contracts with SafeEditTool and ValidatorRegistry
-- Six core template updates (base_document, worker, dto, tool, research, planning)
-- Removal of hardcoded RULES dict from existing validator
+- **Template metadata ONLY** for 6 core templates (dto, tool, base_document - no redesign)
+- Removal of hardcoded RULES dict (30 lines) from existing validator
+- Template version field support (for future template evolution)
 
-**Out of Scope:**
-- All 21 templates with metadata (only 6 core templates in Phase 1)
-- AST-based Python validation improvements
-- Template versioning and migration tooling
-- Quarterly governance automation
-- Epic #18 enforcement tooling
+**Out of Scope (Moved to Other Epics):**
+- Worker template redesign (IWorkerLifecycle two-phase) → Epic: Template Library
+- Document templates (research, planning, unit_test) → Epic: Template Library  
+- Template governance (quarterly review, Rule of Three) → Epic: Template Governance
+- AST-based Python validation improvements (future enhancement)
+- Epic #18 enforcement policy tooling (separate concern)
 
 ### 1.3 Related Documents
 
@@ -91,6 +92,23 @@ How do we maintain validation rules in templates (SSOT) while enabling:
 - **NFR2:** Testability - 100% coverage on TemplateAnalyzer and LayeredTemplateValidator
 - **NFR3:** Maintainability - Zero hardcoded rules, all validation from templates
 - **NFR4:** Extensibility - Adding new template requires only template file (no code changes)
+
+#### Backward Compatibility & Versioning
+
+**Validation Mechanism: NO backward compatibility (clean break)**
+- Old RULES dict will be removed completely (30 lines deleted)
+- No compatibility layer between hardcoded validation and template-driven validation
+- Files must pass new template-driven validation immediately
+
+**Template Evolution: YES versioning support**
+- Templates include `version` field in metadata: `{# TEMPLATE_METADATA version: "2.0" #}`
+- Template versions enable future evolution (v1.0 → v2.0 → v3.0)
+- Validation logic CAN check version field for version-specific rules (future)
+- Example: worker v1.0 (single-phase) vs v2.0 (IWorkerLifecycle) can coexist during transition
+
+**Rationale:**
+- Clean break for infrastructure (no technical debt)
+- Controlled evolution for templates (gradual adoption)
 
 ---
 
