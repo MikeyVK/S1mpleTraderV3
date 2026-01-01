@@ -1,3 +1,59 @@
+{# components/tool.py.jinja2 - MCP Tool template #}
+{# TEMPLATE_METADATA
+enforcement: ARCHITECTURAL
+level: content
+extends: base/base_component.py.jinja2
+version: "2.0"
+
+validates:
+  strict:
+    - rule: base_class
+      description: "Must inherit from BaseTool"
+      pattern: "class \\w+\\(BaseTool\\)"
+      
+    - rule: required_properties
+      description: "Must define name, description, and input_schema properties"
+      attributes:
+        - "name"
+        - "description"
+        - "input_schema"
+      
+    - rule: execute_method
+      description: "Must implement async execute method returning ToolResult"
+      methods:
+        - name: "execute"
+          signature: "async def execute\\(self, \\*\\*kwargs: Any\\) -> ToolResult"
+      
+    - rule: required_imports
+      description: "Must import BaseTool and ToolResult"
+      imports:
+        - "from mcp_server.tools.base import BaseTool, ToolResult"
+      
+  guidelines:
+    - rule: error_handling
+      description: "execute() should have try-except with ToolResult.error()"
+      severity: WARNING
+      pattern: "except.*ToolResult\\.error"
+      
+    - rule: docstring_format
+      description: "Class and methods should have descriptive docstrings"
+      severity: WARNING
+      
+    - rule: input_validation
+      description: "Should validate input parameters before processing"
+      severity: WARNING
+
+purpose: |
+  Generate MCP tools following platform conventions.
+  Enforces BaseTool inheritance, input schema definition, async execution,
+  and proper error handling.
+
+variables:
+  - name
+  - description
+  - docstring
+  - input_schema
+#}
 {% extends "base/base_component.py.jinja2" %}
 
 {% block description %}{{ description | default(name + ' tool implementation') }}{% endblock %}

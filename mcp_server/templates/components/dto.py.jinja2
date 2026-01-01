@@ -1,3 +1,59 @@
+{# components/dto.py.jinja2 - Data Transfer Object template #}
+{# TEMPLATE_METADATA
+enforcement: ARCHITECTURAL
+level: content
+extends: base/base_component.py.jinja2
+version: "2.0"
+
+validates:
+  strict:
+    - rule: base_class
+      description: "Must inherit from Pydantic BaseModel"
+      pattern: "class \\w+\\(BaseModel\\)"
+      
+    - rule: frozen_config
+      description: "Must have frozen=True in model_config"
+      pattern: '"frozen":\\s*True'
+      
+    - rule: field_validators
+      description: "Must have field validators for id and timestamp"
+      methods:
+        - "validate_id_format"
+        - "ensure_utc_timestamp"
+      
+    - rule: required_imports
+      description: "Must import BaseModel and Field from pydantic"
+      imports:
+        - "from pydantic import BaseModel, Field"
+      
+  guidelines:
+    - rule: field_ordering
+      description: "Fields should follow order: causality → id → timestamp → data"
+      severity: WARNING
+      
+    - rule: docstring_format
+      description: "Class docstring should describe purpose and immutability"
+      severity: WARNING
+      
+    - rule: model_config
+      description: "model_config should include str_strip_whitespace, validate_assignment, extra='forbid'"
+      severity: WARNING
+
+purpose: |
+  Generate immutable Pydantic DTOs following project conventions.
+  Enforces causality tracking, ID generation, timestamp handling, and validation.
+
+variables:
+  - name
+  - description
+  - layer
+  - has_causality
+  - has_id_generator
+  - has_timestamp
+  - fields
+  - frozen
+  - id_prefix
+#}
 # {{ output_path | default('backend/dtos/strategy/' + name.lower() + '.py') }}
 """
 {{ name }} DTO - {{ description | default('Data transfer object for ' + name) }}.
