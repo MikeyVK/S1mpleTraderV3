@@ -73,7 +73,8 @@ class PhaseStateEngine:
         self.project_manager = project_manager
 
     def initialize_branch(
-        self, branch: str, issue_number: int, initial_phase: str
+        self, branch: str, issue_number: int, initial_phase: str,
+        parent_branch: str | None = None
     ) -> dict[str, Any]:
         """Initialize branch state with workflow caching.
 
@@ -83,9 +84,10 @@ class PhaseStateEngine:
             branch: Branch name (e.g., 'feature/42-test')
             issue_number: GitHub issue number
             initial_phase: Starting phase
+            parent_branch: Optional parent branch - if None, inherits from project
 
         Returns:
-            dict with success, branch, current_phase
+            dict with success, branch, current_phase, parent_branch
 
         Raises:
             ValueError: If project not initialized
@@ -96,12 +98,17 @@ class PhaseStateEngine:
             msg = f"Project {issue_number} not found. Initialize project first."
             raise ValueError(msg)
 
+        # Determine parent_branch: explicit param or inherit from project
+        if parent_branch is None:
+            parent_branch = project.get("parent_branch")
+
         # Create initial state
         state: dict[str, Any] = {
             "branch": branch,
             "issue_number": issue_number,
             "workflow_name": project["workflow_name"],  # Cache for performance
             "current_phase": initial_phase,
+            "parent_branch": parent_branch,  # Store parent_branch
             "transitions": [],
             "created_at": datetime.now(UTC).isoformat()
         }
@@ -109,7 +116,12 @@ class PhaseStateEngine:
         # Save state
         self._save_state(branch, state)
 
-        return {"success": True, "branch": branch, "current_phase": initial_phase}
+        return {
+            "success": True,
+            "branch": branch,
+            "current_phase": initial_phase,
+            "parent_branch": parent_branch
+        }
 
     def transition(
         self, branch: str, to_phase: str, human_approval: str | None = None
@@ -301,12 +313,14 @@ class PhaseStateEngine:
         1. Issue number from branch name
         2. Workflow definition from projects.json
         3. Current phase from phase:label commits
+        4. Parent branch from projects.json (Issue #79)
 
         Args:
             branch: Branch name (e.g., 'fix/39-test')
 
         Returns:
-            Reconstructed state dict with reconstructed=True flag
+            Reconstructed state dict with reconstructed=True flag,
+            includes parent_branch from projects.json
 
         Raises:
             ValueError: If branch format invalid or project not found
@@ -326,20 +340,24 @@ class PhaseStateEngine:
         workflow_phases = project["required_phases"]
         current_phase = self._infer_phase_from_git(branch, workflow_phases)
 
-        # Step 4: Create reconstructed state
+        # Step 4: Extract parent_branch from project
+        parent_branch = project.get("parent_branch")
+
+        # Step 5: Create reconstructed state
         state: dict[str, Any] = {
             "branch": branch,
             "issue_number": issue_number,
             "workflow_name": project["workflow_name"],
             "current_phase": current_phase,
+            "parent_branch": parent_branch,  # Reconstructed from projects.json
             "transitions": [],  # Cannot reconstruct history
             "created_at": datetime.now(UTC).isoformat(),
             "reconstructed": True  # Audit flag
         }
 
         logger.info(
-            "Reconstructed state: issue=%s, phase=%s, workflow=%s",
-            issue_number, current_phase, project["workflow_name"]
+            "Reconstructed state: issue=%s, phase=%s, workflow=%s, parent=%s",
+            issue_number, current_phase, project["workflow_name"], parent_branch
         )
 
         return state
