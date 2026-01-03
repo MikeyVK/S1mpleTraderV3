@@ -78,6 +78,35 @@
     "skip_reason": null,
     "created_at": "2025-12-27T21:35:23.969404+00:00"
   },
+  "52": {
+    "issue_title": "Config: Validation Rules Configuration (validation.yaml)",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2025-12-30T22:04:15.116679+00:00"
+  },
+  "53": {
+    "issue_title": "Config: Quality Gates Configuration (quality.yaml)",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2026-01-01T20:34:05.382525+00:00"
+  },
   "64": {
     "issue_title": "Bug: create_feature_branch has incorrect name and unsafe default base",
     "required_phases": [
@@ -122,19 +151,5 @@
     ],
     "skip_reason": null,
     "created_at": "2025-12-30T18:27:12.939751+00:00"
-  },
-  "53": {
-    "issue_title": "Config: Quality Gates Configuration (quality.yaml)",
-    "workflow_name": "refactor",
-    "execution_mode": "interactive",
-    "required_phases": [
-      "research",
-      "planning",
-      "tdd",
-      "integration",
-      "documentation"
-    ],
-    "skip_reason": null,
-    "created_at": "2026-01-01T20:34:05.382525+00:00"
   }
 }

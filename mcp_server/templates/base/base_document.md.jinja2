@@ -1,4 +1,44 @@
 {# base/base_document.md.jinja2 - Base template for all documentation #}
+{# TEMPLATE_METADATA
+enforcement: STRICT
+level: format
+version: "2.0"
+
+validates:
+  strict:
+    - rule: frontmatter_presence
+      description: "Document must have Status/Version/Last Updated header"
+      pattern: "\\*\\*Status:\\*\\*.*\\*\\*Version:\\*\\*.*\\*\\*Last Updated:\\*\\*"
+      
+    - rule: separator_structure
+      description: "Must have --- separator after header"
+      pattern: "^---$"
+      
+    - rule: required_sections
+      description: "Must have Purpose and Scope sections"
+      sections: ["Purpose", "Scope"]
+      
+    - rule: section_order
+      description: "Sections must follow standard order: Purpose → Scope → Content → Related Documentation"
+      
+    - rule: link_definitions
+      description: "Links must be defined at bottom of document"
+      pattern: "\\[.+\\]:.+"
+
+purpose: |
+  Base template for all documentation in the project. Enforces consistent
+  structure, metadata, and formatting across all documentation types.
+
+variables:
+  - title
+  - status
+  - version
+  - updated_date
+  - purpose
+  - scope_in
+  - scope_out
+  - content
+#}
 {#
    All document templates extend this base, following docs/reference/templates/BASE_TEMPLATE.md
    

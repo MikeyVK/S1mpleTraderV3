@@ -1,6 +1,6 @@
 """Base classes for validation."""
 from abc import ABC, abstractmethod
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 
 class ValidationIssue(NamedTuple):
@@ -17,6 +17,27 @@ class ValidationResult(NamedTuple):
     passed: bool
     score: float  # 0.0 to 10.0
     issues: list[ValidationIssue]
+    agent_hint: str | None = None
+    content_guidance: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "passed": self.passed,
+            "score": self.score,
+            "issues": [
+                {
+                    "message": issue.message,
+                    "line": issue.line,
+                    "column": issue.column,
+                    "code": issue.code,
+                    "severity": issue.severity,
+                }
+                for issue in self.issues
+            ],
+            "agent_hint": self.agent_hint,
+            "content_guidance": self.content_guidance,
+        }
 
 
 class BaseValidator(ABC):

@@ -8,11 +8,7 @@ from typing import Any
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from mcp_server.tools.base import BaseTool, ToolResult
-from mcp_server.validation.registry import ValidatorRegistry
-# Import validators to ensure registration
-from mcp_server.validation.python_validator import PythonValidator
-from mcp_server.validation.markdown_validator import MarkdownValidator
-from mcp_server.validation.template_validator import TemplateValidator
+from mcp_server.validation.validation_service import ValidationService
 
 
 class LineEdit(BaseModel):
@@ -204,18 +200,9 @@ class SafeEditTool(BaseTool):
     args_model = SafeEditInput
 
     def __init__(self) -> None:
-        """Initialize and register default validators."""
+        """Initialize tool and validation service."""
         super().__init__()
-
-        # Ensure registry is populated with Extensions
-        ValidatorRegistry.register(".py", PythonValidator)
-        ValidatorRegistry.register(".md", MarkdownValidator)
-
-        # Register Patterns for Templates
-        ValidatorRegistry.register_pattern(r".*_workers?\.py$", TemplateValidator("worker"))
-        ValidatorRegistry.register_pattern(r".*_tools?\.py$", TemplateValidator("tool"))
-        ValidatorRegistry.register_pattern(r".*_dtos?\.py$", TemplateValidator("dto"))
-        ValidatorRegistry.register_pattern(r".*_adapters?\.py$", TemplateValidator("adapter"))
+        self.validation_service = ValidationService()
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -524,40 +511,5 @@ class SafeEditTool(BaseTool):
         return "".join(diff_lines)
 
     async def _validate(self, path: str, content: str) -> tuple[bool, str]:
-        """Run validators on content."""
-        validators = ValidatorRegistry.get_validators(path)
-
-        # Skip component templates (Tool, Worker, etc.) for test files
-        # Tests should not be forced to look like the components they test
-        is_test = "tests/" in path.replace("\\", "/") or Path(path).name.startswith("test_")
-        if is_test:
-            validators = [
-                v for v in validators
-                if not isinstance(v, TemplateValidator) or v.template_type == "base"
-            ]
-
-        # Fallback logic: If it's a Python file but no specific TemplateValidator is found,
-        # apply the 'base' template validator.
-        if path.endswith(".py"):
-            has_template_validator = any(
-                isinstance(v, TemplateValidator) for v in validators
-            )
-            if not has_template_validator:
-                validators.append(TemplateValidator("base"))
-
-        issues_text = ""
-        passed = True
-
-        for validator in validators:
-            result = await validator.validate(path, content=content)
-            if not result.passed:
-                passed = False
-
-            if result.issues:
-                issues_text += "\n\n**Validation Issues:**\n"
-                for issue in result.issues:
-                    icon = "❌" if issue.severity == "error" else "⚠️"
-                    loc = f" (line {issue.line})" if issue.line else ""
-                    issues_text += f"{icon} {issue.message}{loc}\n"
-
-        return passed, issues_text
+        """Delegate validation to ValidationService."""
+        return await self.validation_service.validate(path, content)
