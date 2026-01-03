@@ -206,8 +206,12 @@ class GitCheckoutTool(BaseTool):
         # 1. Switch branch
         self.manager.checkout(params.branch)
 
-        # 2. Try to sync PhaseStateEngine state
+        # 2. Wait for VS Code to process the checkout before writing state.json
         # pylint: disable=import-outside-toplevel
+        import asyncio
+        await asyncio.sleep(0.5)
+
+        # 3. Try to sync PhaseStateEngine state
         from pathlib import Path
         from mcp_server.managers.phase_state_engine import PhaseStateEngine
         from mcp_server.managers.project_manager import ProjectManager
@@ -226,7 +230,7 @@ class GitCheckoutTool(BaseTool):
             # Explicitly save to ensure state.json is flushed for new branch
             engine._save_state(params.branch, state)
 
-            # 3. Return enriched result with phase info
+            # 4. Return enriched result with phase info
             return ToolResult.text(
                 f"Switched to branch: {params.branch}\n"
                 f"Current phase: {current_phase}"
