@@ -22,7 +22,7 @@ class CreateBranchInput(BaseModel):
     branch_type: str = Field(
         default="feature",
         description="Branch type",
-        pattern="^(feature|fix|refactor|docs)$"
+        pattern="^(feature|fix|refactor|docs|epic)$"
     )
     base_branch: str = Field(
         ...,
