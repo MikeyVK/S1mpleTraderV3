@@ -397,12 +397,217 @@ Proposed Flow (WITH parent tracking):
 
 ---
 
+## CRITICAL: How state.json Actually Works (Cross-Machine Sync)
+
+### Reality Check - Auto-Recovery System
+
+**Key Discovery:** state.json is in `.gitignore` BUT auto-recovery makes cross-machine work possible!
+
+#### The Flow After Branch Switch:
+
+```python
+# git_checkout tool calls:
+state = engine.get_state(params.branch)
+```
+
+#### What get_state() Does (PhaseStateEngine.get_state):
+
+```python
+def get_state(self, branch: str) -> dict[str, Any]:
+    # Step 1: Check if state.json exists
+    if not self.state_file.exists():
+        self.state_file.write_text(json.dumps({}, indent=2))  # Create empty
+        states = {}
+    else:
+        states = json.loads(self.state_file.read_text())
+    
+    # Step 2: Check if branch in state.json
+    if branch not in states:
+        # AUTO-RECOVERY MODE 2: Reconstruct from git!
+        state = self._reconstruct_branch_state(branch)
+        self._save_state(branch, state)  # Save for next time
+        return state
+    
+    return states[branch]
+```
+
+#### Auto-Recovery Sources (Mode 2):
+
+**File:** `phase_state_engine.py:298-340` (`_reconstruct_branch_state`)
+
+1. **Issue Number** - Extracted from branch name:
+   ```python
+   # Branch: feature/79-parent-branch-tracking
+   # Extract: 79
+   match = re.match(r'^(?:feature|fix|bug|docs|refactor|hotfix)/(\d+)-', branch)
+   issue_number = int(match.group(1))
+   ```
+
+2. **Workflow Definition** - From projects.json (IN GIT):
+   ```python
+   project = self.project_manager.get_project_plan(issue_number)
+   # Returns: {"workflow_name": "feature", "required_phases": [...]}
+   ```
+
+3. **Current Phase** - Inferred from git commits:
+   ```python
+   commits = git log --max-count=50 --pretty=%s branch
+   # Search for: phase:red, phase:tdd, phase:integration, etc.
+   current_phase = self._detect_phase_label(commits, workflow_phases)
+   ```
+
+#### Reconstructed State Structure:
+
+```json
+{
+  "branch": "feature/79-parent-branch-tracking",
+  "issue_number": 79,
+  "workflow_name": "feature",
+  "current_phase": "research",  // From git commits OR fallback to first phase
+  "transitions": [],  // ❌ Cannot reconstruct history
+  "created_at": "2026-01-03T14:10:37.070163+00:00",
+  "reconstructed": true  // ✅ Audit flag
+}
+```
+
+### Cross-Machine Scenario:
+
+```
+Machine A:
+1. Create branch feature/79-test
+2. Work, make commits with phase:red, phase:green labels
+3. Push to GitHub
+4. state.json stays local (in .gitignore)
+
+Machine B:
+1. git pull
+2. git checkout feature/79-test
+3. No state.json for this branch!
+4. get_state() auto-recovery:
+   - Read projects.json (IS in git) ✅
+   - Extract issue number from branch name ✅
+   - Scan git commits for phase:labels ✅
+   - Reconstruct state.json locally ✅
+5. Continue working!
+```
+
+### What IS in Git vs What Is NOT:
+
+| File | In Git? | Purpose | Source of Truth |
+|------|---------|---------|-----------------|
+| `projects.json` | ✅ YES | Workflow definitions per issue | SSOT for workflows |
+| `state.json` | ❌ NO (.gitignore) | Current phase per branch (local cache) | Reconstructable from git |
+| Git commits | ✅ YES | phase:label in commit messages | SSOT for phase history |
+| Branch name | ✅ YES | Contains issue number | Used for reconstruction |
+
+### Critical Insight for parent_branch:
+
+**Question:** Where can parent_branch be stored to survive cross-machine?
+
+**Options:**
+
+1. ✅ **projects.json** - IN GIT, survives cross-machine
+   - Pro: Persistent, shared across machines
+   - Con: Project-level, not branch-level
+   - Verdict: Good for "canonical" parent
+
+2. ❌ **state.json** - NOT in git, lost on machine switch
+   - Pro: Branch-level metadata
+   - Con: Needs reconstruction like current_phase
+   - Verdict: Needs reconstruction source!
+
+3. ✅ **Git commits** - IN GIT via commit metadata
+   - Pro: Already reconstructible source
+   - Con: Need to add parent_branch label to first commit
+   - Verdict: Best for auto-recovery!
+
+4. ✅ **Branch name** - IN GIT inherently
+   - Pro: Always available
+   - Con: Can't change branch names to encode parent
+   - Verdict: Not feasible
+
+5. ✅ **GitHub Issue** - IN GitHub, accessible anywhere
+   - Pro: Survives everything
+   - Con: Requires API calls, slower
+   - Verdict: Good for audit/backup
+
+### Recommended Storage Strategy:
+
+**Primary Storage (Fast Local Cache):**
+- state.json with parent_branch field
+- Good for current session
+- Lost on machine switch → needs reconstruction
+
+**Reconstruction Source (SSOT):**
+- Add parent_branch to projects.json
+- OR encode in first commit on branch
+- OR store in GitHub issue metadata
+
+**Reconstruction Flow:**
+```python
+def _reconstruct_branch_state(self, branch: str) -> dict[str, Any]:
+    # Existing code...
+    issue_number = self._extract_issue_from_branch(branch)
+    project = self.project_manager.get_project_plan(issue_number)
+    current_phase = self._infer_phase_from_git(branch, workflow_phases)
+    
+    # NEW: Reconstruct parent_branch
+    parent_branch = self._reconstruct_parent_branch(branch, project)
+    
+    state = {
+        "branch": branch,
+        "issue_number": issue_number,
+        "workflow_name": project["workflow_name"],
+        "current_phase": current_phase,
+        "parent_branch": parent_branch,  # ✅ Reconstructed
+        "transitions": [],
+        "created_at": datetime.now(UTC).isoformat(),
+        "reconstructed": True
+    }
+    return state
+```
+
+**Where to get parent_branch for reconstruction:**
+
+Option A: From projects.json
+```json
+{
+  "79": {
+    "issue_title": "...",
+    "workflow_name": "feature",
+    "parent_branch": "epic/76-quality-gates-tooling",  // NEW
+    "required_phases": [...]
+  }
+}
+```
+
+Option B: From git commit metadata
+```bash
+# First commit on branch feature/79:
+git log --max-count=1 --pretty=%B feature/79
+
+# Output should contain:
+parent:epic/76-quality-gates-tooling
+```
+
+Option C: From git reflog + git merge-base
+```python
+# Find where branch was created
+result = subprocess.run(
+    ["git", "reflog", "show", "--all"],
+    capture_output=True, text=True
+)
+# Parse: "checkout: moving from <parent> to <branch>"
+```
+
+---
+
 ## Next Steps
 
-1. ✅ **Research Complete** - Understand current state flow
-2. ⏭️ **Planning** - Decide on Option 1 architecture
+1. ✅ **Research Complete** - Understand current state flow AND auto-recovery
+2. ⏭️ **Planning** - Decide where to store parent_branch for reconstruction
 3. ⏭️ **Design** - Detailed implementation plan
-4. ⏭️ **TDD** - Write tests for parent_branch storage/retrieval
+4. ⏭️ **TDD** - Write tests for parent_branch storage/retrieval/reconstruction
 5. ⏭️ **Integration** - Update all tools
 6. ⏭️ **Documentation** - Update tool docs
 
