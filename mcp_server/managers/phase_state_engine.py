@@ -20,6 +20,7 @@ with audit trail.
 # Standard library
 import json
 import logging
+import os
 import re
 import subprocess
 from dataclasses import dataclass
@@ -268,8 +269,11 @@ class PhaseStateEngine:
         # Update branch state
         states[branch] = state
 
-        # Write to file
-        self.state_file.write_text(json.dumps(states, indent=2))
+        # Write to file with explicit flush
+        with open(self.state_file, 'w', encoding='utf-8') as f:
+            json.dump(states, f, indent=2)
+            f.flush()  # Explicit flush to ensure data is written
+            os.fsync(f.fileno())  # Force OS-level write
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
         """Convert TransitionRecord to dict for JSON serialization.
