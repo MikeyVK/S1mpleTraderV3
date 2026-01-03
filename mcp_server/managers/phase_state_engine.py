@@ -313,12 +313,14 @@ class PhaseStateEngine:
         1. Issue number from branch name
         2. Workflow definition from projects.json
         3. Current phase from phase:label commits
+        4. Parent branch from projects.json (Issue #79)
 
         Args:
             branch: Branch name (e.g., 'fix/39-test')
 
         Returns:
-            Reconstructed state dict with reconstructed=True flag
+            Reconstructed state dict with reconstructed=True flag,
+            includes parent_branch from projects.json
 
         Raises:
             ValueError: If branch format invalid or project not found
@@ -338,20 +340,24 @@ class PhaseStateEngine:
         workflow_phases = project["required_phases"]
         current_phase = self._infer_phase_from_git(branch, workflow_phases)
 
-        # Step 4: Create reconstructed state
+        # Step 4: Extract parent_branch from project
+        parent_branch = project.get("parent_branch")
+
+        # Step 5: Create reconstructed state
         state: dict[str, Any] = {
             "branch": branch,
             "issue_number": issue_number,
             "workflow_name": project["workflow_name"],
             "current_phase": current_phase,
+            "parent_branch": parent_branch,  # Reconstructed from projects.json
             "transitions": [],  # Cannot reconstruct history
             "created_at": datetime.now(UTC).isoformat(),
             "reconstructed": True  # Audit flag
         }
 
         logger.info(
-            "Reconstructed state: issue=%s, phase=%s, workflow=%s",
-            issue_number, current_phase, project["workflow_name"]
+            "Reconstructed state: issue=%s, phase=%s, workflow=%s, parent=%s",
+            issue_number, current_phase, project["workflow_name"], parent_branch
         )
 
         return state
