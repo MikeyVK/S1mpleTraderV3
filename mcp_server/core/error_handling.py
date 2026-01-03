@@ -4,6 +4,25 @@ Global error handling infrastructure for MCP tools.
 Provides @tool_error_handler decorator that catches exceptions and converts them
 to ToolResult.error() responses, preventing VS Code from disabling tools.
 
+## Problem Solved
+
+When MCP tools raise uncaught exceptions, VS Code's MCP client interprets this as
+a tool crash and permanently disables the tool for the session. This decorator
+ensures all exceptions are caught and converted to structured error responses,
+keeping tools available.
+
+## Automatic Application
+
+All tools inheriting from BaseTool automatically have this decorator applied via
+the __init_subclass__ hook. No manual decoration needed.
+
+## Error Classification
+
+Exceptions are classified into categories for appropriate logging:
+- ValueError → USER error (warning level) - invalid user input
+- FileNotFoundError → CONFIG error (error level) - configuration issue
+- Other exceptions → BUG (exception level) - unexpected errors
+
 @layer: Core Infrastructure
 @dependencies: [functools, logging, mcp_server.tools.base]
 @responsibilities:
@@ -11,6 +30,18 @@ to ToolResult.error() responses, preventing VS Code from disabling tools.
     - Classify errors (USER/CONFIG/SYSTEM/BUG)
     - Return structured error responses
     - Log errors appropriately
+
+Example:
+    # Tool implementation - no explicit error handling needed
+    class MyTool(BaseTool):
+        async def execute(self, params: MyInput) -> ToolResult:
+            if not params.value:
+                raise ValueError("value is required")  # Caught automatically
+            return ToolResult.text("Success!")
+
+    # The decorator is automatically applied by BaseTool.__init_subclass__
+    # Exceptions are caught and returned as ToolResult.error()
+    # Tools remain "enabled" in VS Code
 """
 
 import functools
