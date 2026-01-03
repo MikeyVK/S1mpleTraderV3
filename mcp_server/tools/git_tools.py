@@ -368,7 +368,8 @@ class GitStashTool(BaseTool):
             stashes = self.manager.stash_list()
             if not stashes:
                 return ToolResult.text("No stashes found")
-
+            return ToolResult.text("\n".join(stashes))
+        return ToolResult.error(f"Unknown stash action: {params.action}")
 
 class GetParentBranchInput(BaseModel):
     """Input for GetParentBranchTool."""
@@ -436,4 +437,3 @@ class GetParentBranchTool(BaseTool):
                 extra={"props": {"branch": params.branch, "error": str(e)}}
             )
             return ToolResult.error(f"Failed to get parent branch: {str(e)}")
-
