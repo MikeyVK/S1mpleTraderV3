@@ -45,11 +45,5 @@
                                                                                                             ]
                                                                                       }
                                 },
-    "chat.tools.mcp.autoApprove":  {
-                                       "autoApprove":  true,
-                                       "safe_edit_file":  true,
-                                       "transition_phase":  true,
-                                       "force_phase_transition":  true
-                                   },
     "github.copilot.chat.cli.mcp.enabled":  true
 }

@@ -185,7 +185,11 @@ class GitCheckoutInput(BaseModel):
 
 
 class GitCheckoutTool(BaseTool):
-    """Tool to checkout to a branch."""
+    """Tool to checkout to a branch.
+
+    Automatically synchronizes PhaseStateEngine state after branch switch
+    to ensure correct TDD phase tracking.
+    """
 
     name = "git_checkout"
     description = "Switch to an existing branch"
@@ -199,8 +203,40 @@ class GitCheckoutTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
+        # 1. Switch branch
         self.manager.checkout(params.branch)
-        return ToolResult.text(f"Switched to branch: {params.branch}")
+
+        # 2. Try to sync PhaseStateEngine state
+        # pylint: disable=import-outside-toplevel
+        from pathlib import Path
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        try:
+            workspace_root = Path.cwd()
+            project_manager = ProjectManager(workspace_root=workspace_root)
+            engine = PhaseStateEngine(
+                workspace_root=workspace_root,
+                project_manager=project_manager
+            )
+            state = engine.get_state(params.branch)
+            current_phase = state.get('current_phase', 'unknown')
+
+            # 3. Return enriched result with phase info
+            return ToolResult.text(
+                f"Switched to branch: {params.branch}\n"
+                f"Current phase: {current_phase}"
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            # If state sync fails, still report successful branch switch
+            logger.warning(
+                "Branch switched but state sync failed",
+                extra={"props": {"branch": params.branch, "error": str(e)}}
+            )
+            return ToolResult.text(
+                f"Switched to branch: {params.branch}\n"
+                f"(State sync unavailable: {str(e)})"
+            )
 
 
 class GitPushInput(BaseModel):

@@ -27,11 +27,28 @@ class BaseTool(ABC):
 
     Subclasses must override execute() with a single parameters argument
     typed as their specific Pydantic model (InputModel).
+
+    Error handling is automatically applied via @tool_error_handler decorator.
     """
 
     name: str
     description: str
     args_model: type[BaseModel] | None = None
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Automatically wrap execute() with error handler on subclass creation."""
+        super().__init_subclass__(**kwargs)
+
+        # Import here to avoid circular dependency
+        # pylint: disable=import-outside-toplevel
+        from mcp_server.core.error_handling import tool_error_handler
+
+        # Wrap the execute method with error handler if not already wrapped
+        if hasattr(cls.execute, "__wrapped__"):
+            return  # Already wrapped
+
+        original_execute = cls.execute
+        cls.execute = tool_error_handler(original_execute)  # type: ignore[method-assign]
 
     @abstractmethod
     async def execute(self, params: Any) -> ToolResult:
