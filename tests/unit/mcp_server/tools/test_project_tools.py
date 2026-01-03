@@ -6,7 +6,7 @@ Issue #79: Tests for parent_branch in InitializeProjectTool.
 - Handles auto-detection failure gracefully
 """
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -64,8 +64,9 @@ class TestInitializeProjectToolParentBranch:
 
         # Verify
         assert result.is_error is False
-        assert "epic/76-quality-gates" in result.content[0].text
-        assert '"parent_branch": "epic/76-quality-gates"' in result.content[0].text
+        content_text = result.content[0]["text"]
+        assert "epic/76-quality-gates" in content_text
+        assert '"parent_branch": "epic/76-quality-gates"' in content_text
 
     @pytest.mark.asyncio
     async def test_initialize_auto_detects_parent_branch(
@@ -92,7 +93,8 @@ class TestInitializeProjectToolParentBranch:
 
         # Verify
         assert result.is_error is False
-        assert '"parent_branch": "main"' in result.content[0].text
+        content_text = result.content[0]["text"]
+        assert '"parent_branch": "main"' in content_text
         mock_detect.assert_called_once_with("feature/80-test")
 
     @pytest.mark.asyncio
@@ -120,7 +122,8 @@ class TestInitializeProjectToolParentBranch:
 
         # Verify - no error, parent_branch is null
         assert result.is_error is False
-        assert '"parent_branch": null' in result.content[0].text
+        content_text = result.content[0]["text"]
+        assert '"parent_branch": null' in content_text
         mock_detect.assert_called_once_with("feature/81-test")
 
     @pytest.mark.asyncio
@@ -148,5 +151,6 @@ class TestInitializeProjectToolParentBranch:
 
         # Verify - auto-detect NOT called
         assert result.is_error is False
-        assert '"parent_branch": "epic/special"' in result.content[0].text
+        content_text = result.content[0]["text"]
+        assert '"parent_branch": "epic/special"' in content_text
         mock_detect.assert_not_called()
