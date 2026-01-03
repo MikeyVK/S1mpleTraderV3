@@ -358,8 +358,8 @@ class PhaseStateEngine:
         Raises:
             ValueError: If branch format invalid
         """
-        # Match: (feature|fix|bug|docs|refactor|hotfix)/(\d+)-(.+)
-        match = re.match(r'^(?:feature|fix|bug|docs|refactor|hotfix)/(\d+)-', branch)
+        # Match: (feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-(.+)
+        match = re.match(r'^(?:feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-', branch)
         if not match:
             msg = f"Cannot extract issue number from branch '{branch}'. "
             msg += "Expected format: <type>/<number>-<title>"
