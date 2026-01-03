@@ -17,10 +17,10 @@ Loads and validates label definitions from labels.yaml.
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, ClassVar
 
 # Third-party
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, PrivateAttr
 import yaml  # type: ignore[import-untyped]
 
 
@@ -104,11 +104,14 @@ class LabelConfig(BaseModel):
         arbitrary_types_allowed=True  # Allow Label/LabelPattern dataclasses
     )
 
-    _instance: Optional["LabelConfig"] = None
-    _loaded_path: Optional[Path] = None
-    _loaded_mtime: Optional[float] = None
-    _labels_by_name: dict[str, Label] = {}
-    _labels_by_category: dict[str, list[Label]] = {}
+    # Singleton cache (class-level, shared across all instances)
+    _instance: ClassVar[Optional["LabelConfig"]] = None
+    _loaded_path: ClassVar[Optional[Path]] = None
+    _loaded_mtime: ClassVar[Optional[float]] = None
+
+    # Instance caches (Pydantic-compatible private attributes)
+    _labels_by_name: dict[str, Label] = PrivateAttr(default_factory=dict)
+    _labels_by_category: dict[str, list[Label]] = PrivateAttr(default_factory=dict)
 
     @classmethod
     def load(cls, config_path: Path | None = None) -> "LabelConfig":

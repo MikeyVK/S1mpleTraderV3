@@ -153,8 +153,7 @@
     "created_at": "2025-12-30T18:27:12.939751+00:00"
   },
   "77": {
-    "issue_number": 77,
-    "issue_title": "Bug: git_checkout tool does not sync phase state after branch switch",
+    "issue_title": "MCP Tool Error Handling & VS Code Tool Availability",
     "workflow_name": "bug",
     "execution_mode": "interactive",
     "required_phases": [
@@ -166,6 +165,6 @@
       "documentation"
     ],
     "skip_reason": null,
-    "created_at": "2026-01-03T10:52:00.000000+00:00"
+    "created_at": "2026-01-03T13:09:13.042516+00:00"
   }
 }
