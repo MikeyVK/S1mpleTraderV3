@@ -142,6 +142,71 @@ async def test_git_checkout_tool(mock_git_manager):
         assert "tdd" in result.content[0]["text"]
 
 @pytest.mark.asyncio
+async def test_git_checkout_tool_displays_parent_branch(mock_git_manager):
+    """Test git checkout displays parent_branch when present.
+
+    Issue #79: Show parent_branch in checkout output for context.
+    """
+    tool = GitCheckoutTool(manager=mock_git_manager)
+
+    # Mock PhaseStateEngine to return state with parent_branch
+    mock_engine = MagicMock()
+    mock_engine.get_state.return_value = {
+        'current_phase': 'design',
+        'branch': 'feature/79-test',
+        'parent_branch': 'epic/76-quality-gates'
+    }
+
+    params = GitCheckoutInput(branch="feature/79-test")
+
+    with patch(
+        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
+        return_value=mock_engine
+    ), \
+         patch('mcp_server.managers.project_manager.ProjectManager'), \
+         patch('pathlib.Path.cwd', return_value=MagicMock()):
+
+        result = await tool.execute(params)
+
+        mock_git_manager.checkout.assert_called_once_with("feature/79-test")
+        assert "Switched to branch: feature/79-test" in result.content[0]["text"]
+        assert "Current phase: design" in result.content[0]["text"]
+        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+
+@pytest.mark.asyncio
+async def test_git_checkout_tool_no_parent_branch(mock_git_manager):
+    """Test git checkout without parent_branch doesn't show it.
+
+    Issue #79: Backward compatibility - don't show parent if None.
+    """
+    tool = GitCheckoutTool(manager=mock_git_manager)
+
+    # Mock PhaseStateEngine to return state WITHOUT parent_branch
+    mock_engine = MagicMock()
+    mock_engine.get_state.return_value = {
+        'current_phase': 'tdd',
+        'branch': 'main',
+        'parent_branch': None
+    }
+
+    params = GitCheckoutInput(branch="main")
+
+    with patch(
+        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
+        return_value=mock_engine
+    ), \
+         patch('mcp_server.managers.project_manager.ProjectManager'), \
+         patch('pathlib.Path.cwd', return_value=MagicMock()):
+
+        result = await tool.execute(params)
+
+        mock_git_manager.checkout.assert_called_once_with("main")
+        output = result.content[0]["text"]
+        assert "Switched to branch: main" in output
+        assert "Current phase: tdd" in output
+        assert "Parent branch:" not in output  # Should NOT appear
+
+@pytest.mark.asyncio
 async def test_git_push_tool(mock_git_manager):
     """Test git push tool."""
     tool = GitPushTool(manager=mock_git_manager)
