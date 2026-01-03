@@ -146,3 +146,60 @@ class TestPhaseStateEngineParentBranch:
         # Verify persisted to state.json
         state = engine.get_state("docs/81-test")
         assert state["parent_branch"] is None
+
+    def test_reconstruct_branch_state_includes_parent_branch(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager,
+        workspace_root: Path
+    ) -> None:
+        """Test auto-recovery reconstructs parent_branch from projects.json.
+
+        Issue #79: Cross-machine scenario - state.json missing after git pull.
+        """
+        # Setup - create project with parent_branch
+        project_manager.initialize_project(
+            issue_number=82,
+            issue_title="Test Reconstruction",
+            workflow_name="feature",
+            options=ProjectInitOptions(parent_branch="epic/76-qa")
+        )
+
+        # Simulate cross-machine: delete state.json but keep projects.json
+        state_file = workspace_root / ".st3" / "state.json"
+        if state_file.exists():
+            state_file.unlink()
+
+        # Execute - get_state triggers auto-recovery
+        state = engine.get_state("feature/82-test-reconstruction")
+
+        # Verify - parent_branch reconstructed from projects.json
+        assert state["parent_branch"] == "epic/76-qa"
+        assert state["reconstructed"] is True
+        assert state["workflow_name"] == "feature"
+
+    def test_reconstruct_branch_state_with_none_parent_branch(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager,
+        workspace_root: Path
+    ) -> None:
+        """Test auto-recovery handles missing parent_branch gracefully.
+
+        Issue #79: Old projects without parent_branch should reconstruct with None.
+        """
+        # Setup - create project WITHOUT parent_branch
+        project_manager.initialize_project(
+            issue_number=83,
+            issue_title="Old Project",
+            workflow_name="bug"
+        )
+
+        # Simulate cross-machine: delete state.json
+        state_file = workspace_root / ".st3" / "state.json"
+        if state_file.exists():
+            state_file.unlink()
+
+        # Execute - get_state triggers auto-recovery
+        state = engine.get_state("bug/83-old-project")
+
+        # Verify - parent_branch is None (backward compat)
+        assert state["parent_branch"] is None
+        assert state["reconstructed"] is True
+        assert state["workflow_name"] == "bug"
