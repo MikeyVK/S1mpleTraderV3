@@ -368,5 +368,72 @@ class GitStashTool(BaseTool):
             stashes = self.manager.stash_list()
             if not stashes:
                 return ToolResult.text("No stashes found")
-            return ToolResult.text("\n".join(stashes))
-        return ToolResult.text(f"Unknown action: {params.action}")
+
+
+class GetParentBranchInput(BaseModel):
+    """Input for GetParentBranchTool."""
+    branch: str | None = Field(
+        default=None,
+        description="Branch name to query (defaults to current branch)"
+    )
+
+
+class GetParentBranchTool(BaseTool):
+    """Tool to get the parent branch for a given branch.
+
+    Issue #79: Query parent_branch from PhaseStateEngine state to
+    determine merge target for PRs.
+    """
+
+    name = "get_parent_branch"
+    description = "Get the parent branch for a specified branch"
+    args_model = GetParentBranchInput
+
+    def __init__(self, manager: GitManager | None = None) -> None:
+        self.manager = manager or GitManager()
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return _input_schema(self.args_model)
+
+    async def execute(self, params: GetParentBranchInput) -> ToolResult:
+        # 1. Determine which branch to query
+        # pylint: disable=import-outside-toplevel
+        from pathlib import Path
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        try:
+            workspace_root = Path.cwd()
+
+            # Get branch name (current if not specified)
+            branch_name = params.branch
+            if not branch_name:
+                branch_name = self.manager.get_current_branch()
+
+            # 2. Query PhaseStateEngine state
+            project_manager = ProjectManager(workspace_root=workspace_root)
+            engine = PhaseStateEngine(
+                workspace_root=workspace_root,
+                project_manager=project_manager
+            )
+            state = engine.get_state(branch_name)
+            parent_branch = state.get('parent_branch')
+
+            # 3. Return result
+            if parent_branch:
+                return ToolResult.text(
+                    f"Branch: {branch_name}\n"
+                    f"Parent branch: {parent_branch}"
+                )
+            return ToolResult.text(
+                f"Branch: {branch_name}\n"
+                f"Parent branch: (not set)"
+            )
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.error(
+                "Failed to get parent branch",
+                extra={"props": {"branch": params.branch, "error": str(e)}}
+            )
+            return ToolResult.error(f"Failed to get parent branch: {str(e)}")
+

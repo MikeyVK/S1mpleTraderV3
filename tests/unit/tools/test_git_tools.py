@@ -13,6 +13,7 @@ from mcp_server.tools.git_tools import (
     GitDeleteBranchTool, GitDeleteBranchInput,
     GitStashTool, GitStashInput,
     GitRestoreTool, GitRestoreInput,
+    GetParentBranchTool, GetParentBranchInput,
 )
 from mcp_server.tools.base import ToolResult
 
@@ -272,3 +273,101 @@ async def test_git_restore_tool(mock_git_manager):
 
     mock_git_manager.restore.assert_called_once_with(files=["foo.py", "bar.py"], source="HEAD")
     assert "Restored 2 file(s)" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_get_parent_branch_current_branch():
+    """Test get parent branch for current branch.
+
+    Issue #79: Query parent_branch from PhaseStateEngine state.
+    """
+    tool = GetParentBranchTool()
+
+    # Mock PhaseStateEngine to return state with parent_branch
+    mock_engine = MagicMock()
+    mock_engine.get_state.return_value = {
+        'current_phase': 'tdd',
+        'branch': 'feature/79-parent-branch-tracking',
+        'parent_branch': 'epic/76-quality-gates'
+    }
+
+    params = GetParentBranchInput()  # No branch specified = current branch
+
+    with patch(
+        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
+        return_value=mock_engine
+    ), \
+         patch('mcp_server.managers.project_manager.ProjectManager'), \
+         patch('pathlib.Path.cwd', return_value=MagicMock()), \
+         patch('mcp_server.managers.git_manager.GitManager') as mock_git:
+        mock_git.return_value.get_current_branch.return_value = 'feature/79-parent-branch-tracking'
+
+        result = await tool.execute(params)
+
+        mock_engine.get_state.assert_called_once_with('feature/79-parent-branch-tracking')
+        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_get_parent_branch_specified_branch():
+    """Test get parent branch for specified branch.
+
+    Issue #79: Query parent_branch for any branch, not just current.
+    """
+    tool = GetParentBranchTool()
+
+    # Mock PhaseStateEngine to return state with parent_branch
+    mock_engine = MagicMock()
+    mock_engine.get_state.return_value = {
+        'current_phase': 'design',
+        'branch': 'feature/77-error-handling',
+        'parent_branch': 'epic/76-quality-gates'
+    }
+
+    params = GetParentBranchInput(branch='feature/77-error-handling')
+
+    with patch(
+        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
+        return_value=mock_engine
+    ), \
+         patch('mcp_server.managers.project_manager.ProjectManager'), \
+         patch('pathlib.Path.cwd', return_value=MagicMock()):
+
+        result = await tool.execute(params)
+
+        mock_engine.get_state.assert_called_once_with('feature/77-error-handling')
+        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+        assert "feature/77-error-handling" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_get_parent_branch_not_set():
+    """Test get parent branch when not set.
+
+    Issue #79: Graceful handling when parent_branch is None.
+    """
+    tool = GetParentBranchTool()
+
+    # Mock PhaseStateEngine to return state WITHOUT parent_branch
+    mock_engine = MagicMock()
+    mock_engine.get_state.return_value = {
+        'current_phase': 'tdd',
+        'branch': 'main',
+        'parent_branch': None
+    }
+
+    params = GetParentBranchInput(branch='main')
+
+    with patch(
+        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
+        return_value=mock_engine
+    ), \
+         patch('mcp_server.managers.project_manager.ProjectManager'), \
+         patch('pathlib.Path.cwd', return_value=MagicMock()):
+
+        result = await tool.execute(params)
+
+        mock_engine.get_state.assert_called_once_with('main')
+        output = result.content[0]["text"]
+        assert "Parent branch: (not set)" in output
+        assert "main" in output
