@@ -50,6 +50,9 @@ class ProjectPlan:
     """Project phase plan data structure.
 
     Field order: identifier → core data → optional → metadata
+    
+    Note: Has 8 fields which exceeds pylint's default of 7,
+    but all fields are necessary for complete project metadata.
     """
 
     # Identifiers
@@ -87,7 +90,6 @@ class ProjectManager:
         issue_number: int,
         issue_title: str,
         workflow_name: str,
-        parent_branch: str | None = None,
         options: ProjectInitOptions | None = None
     ) -> dict[str, Any]:
         """Initialize project with workflow selection.
@@ -96,20 +98,20 @@ class ProjectManager:
             issue_number: GitHub issue number
             issue_title: Issue title
             workflow_name: Workflow from workflows.yaml (feature, bug, hotfix, etc.)
-            parent_branch: Optional parent branch this feature/bug branches from
-            options: Optional parameters (execution_mode, custom_phases, skip_reason)
+            options: Optional parameters (execution_mode, custom_phases, skip_reason,
+                    parent_branch)
 
         Returns:
-            dict with success, workflow_name, execution_mode, required_phases, skip_reason
+            dict with success, workflow_name, execution_mode, required_phases,
+            skip_reason, parent_branch
 
         Raises:
             ValueError: If workflow invalid or custom_phases without skip_reason
         """
         opts = options or ProjectInitOptions()
 
-        # Use explicit parent_branch parameter, fallback to options
-        if parent_branch is None and opts.parent_branch is not None:
-            parent_branch = opts.parent_branch
+        # Extract parent_branch from options
+        parent_branch = opts.parent_branch
 
         # Validate workflow exists
         try:

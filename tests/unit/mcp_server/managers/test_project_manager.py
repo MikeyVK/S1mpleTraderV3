@@ -232,14 +232,14 @@ class TestProjectManagerWorkflows:
         self, manager: ProjectManager
     ) -> None:
         """Test initializing project with explicit parent_branch.
-        
+
         Issue #79: parent_branch tracking for merge targets.
         """
         result = manager.initialize_project(
             issue_number=79,
             issue_title="Add parent branch tracking",
             workflow_name="feature",
-            parent_branch="epic/76-quality-gates-tooling"
+            options=ProjectInitOptions(parent_branch="epic/76-quality-gates-tooling")
         )
 
         # Verify parent_branch in returned result
