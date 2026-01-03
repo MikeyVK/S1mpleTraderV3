@@ -223,8 +223,8 @@ class GitCheckoutTool(BaseTool):
             # Get state - this triggers auto-recovery and saves if needed
             state = engine.get_state(params.branch)
             
-            # Yield to event loop to allow file I/O to complete
-            await asyncio.sleep(0)
+            # Give file I/O time to complete before returning
+            await asyncio.sleep(0.1)
             
             current_phase = state.get('current_phase', 'unknown')
             parent_branch = state.get('parent_branch')
