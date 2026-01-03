@@ -223,9 +223,6 @@ class GitCheckoutTool(BaseTool):
             state = engine.get_state(params.branch)
             current_phase = state.get('current_phase', 'unknown')
             parent_branch = state.get('parent_branch')
-            
-            # Explicitly save to ensure state.json is flushed for new branch
-            engine._save_state(params.branch, state)
 
             # 3. Return enriched result with phase info
             output = (
