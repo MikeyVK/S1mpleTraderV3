@@ -62,3 +62,15 @@ workflows:
       - planning
       - documentation
 
+  # Epic (research and planning focused)
+  epic:
+    name: epic
+    description: "Epic workflow for large initiatives (research → planning → design → coordination → documentation)"
+    default_execution_mode: interactive
+    phases:
+      - research
+      - planning
+      - design
+      - coordination
+      - documentation
+
