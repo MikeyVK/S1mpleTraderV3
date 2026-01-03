@@ -206,9 +206,12 @@ class GitCheckoutTool(BaseTool):
         # 1. Switch branch
         self.manager.checkout(params.branch)
 
-        # 2. Try to sync PhaseStateEngine state
+        # 2. Wait for VS Code to process the checkout before writing state.json
         # pylint: disable=import-outside-toplevel
         import asyncio
+        await asyncio.sleep(0.5)
+
+        # 3. Try to sync PhaseStateEngine state
         from pathlib import Path
         from mcp_server.managers.phase_state_engine import PhaseStateEngine
         from mcp_server.managers.project_manager import ProjectManager
@@ -222,22 +225,16 @@ class GitCheckoutTool(BaseTool):
             )
             # Get state - this triggers auto-recovery and saves if needed
             state = engine.get_state(params.branch)
-            
-            # Give file I/O time to complete before returning
-            await asyncio.sleep(0.1)
-            
             current_phase = state.get('current_phase', 'unknown')
-            parent_branch = state.get('parent_branch')
+            
+            # Explicitly save to ensure state.json is flushed for new branch
+            engine._save_state(params.branch, state)
 
-            # 3. Return enriched result with phase info
-            output = (
+            # 4. Return enriched result with phase info
+            return ToolResult.text(
                 f"Switched to branch: {params.branch}\n"
                 f"Current phase: {current_phase}"
             )
-            if parent_branch:
-                output += f"\nParent branch: {parent_branch}"
-
-            return ToolResult.text(output)
         except Exception as e:  # pylint: disable=broad-exception-caught
             # If state sync fails, still report successful branch switch
             logger.warning(
@@ -375,71 +372,4 @@ class GitStashTool(BaseTool):
             if not stashes:
                 return ToolResult.text("No stashes found")
             return ToolResult.text("\n".join(stashes))
-        return ToolResult.error(f"Unknown stash action: {params.action}")
-
-class GetParentBranchInput(BaseModel):
-    """Input for GetParentBranchTool."""
-    branch: str | None = Field(
-        default=None,
-        description="Branch name to query (defaults to current branch)"
-    )
-
-
-class GetParentBranchTool(BaseTool):
-    """Tool to get the parent branch for a given branch.
-
-    Issue #79: Query parent_branch from PhaseStateEngine state to
-    determine merge target for PRs.
-    """
-
-    name = "get_parent_branch"
-    description = "Get the parent branch for a specified branch"
-    args_model = GetParentBranchInput
-
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
-
-    @property
-    def input_schema(self) -> dict[str, Any]:
-        return _input_schema(self.args_model)
-
-    async def execute(self, params: GetParentBranchInput) -> ToolResult:
-        # 1. Determine which branch to query
-        # pylint: disable=import-outside-toplevel
-        from pathlib import Path
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
-        try:
-            workspace_root = Path.cwd()
-
-            # Get branch name (current if not specified)
-            branch_name = params.branch
-            if not branch_name:
-                branch_name = self.manager.get_current_branch()
-
-            # 2. Query PhaseStateEngine state
-            project_manager = ProjectManager(workspace_root=workspace_root)
-            engine = PhaseStateEngine(
-                workspace_root=workspace_root,
-                project_manager=project_manager
-            )
-            state = engine.get_state(branch_name)
-            parent_branch = state.get('parent_branch')
-
-            # 3. Return result
-            if parent_branch:
-                return ToolResult.text(
-                    f"Branch: {branch_name}\n"
-                    f"Parent branch: {parent_branch}"
-                )
-            return ToolResult.text(
-                f"Branch: {branch_name}\n"
-                f"Parent branch: (not set)"
-            )
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.error(
-                "Failed to get parent branch",
-                extra={"props": {"branch": params.branch, "error": str(e)}}
-            )
-            return ToolResult.error(f"Failed to get parent branch: {str(e)}")
+        return ToolResult.text(f"Unknown action: {params.action}")
