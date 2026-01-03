@@ -233,7 +233,7 @@ class PhaseStateEngine:
         """Get full state for branch with auto-recovery.
 
         Mode 2 Enhancement: Automatically reconstructs state from projects.json
-        + git commits when state.json missing or branch not in state.
+        + git commits when state.json missing or branch doesn't match current.
 
         Args:
             branch: Branch name
@@ -244,23 +244,22 @@ class PhaseStateEngine:
         Raises:
             ValueError: If auto-recovery fails (invalid branch, missing project)
         """
-        # Auto-recovery: Load existing states or start empty
-        states: dict[str, Any]
-        if not self.state_file.exists():
-            states = {}
-        else:
-            states = json.loads(self.state_file.read_text())
-
-        # Auto-recovery: Reconstruct if branch not in state
-        if branch not in states:
-            state = self._reconstruct_branch_state(branch)
-            self._save_state(branch, state)
-            return state
-
-        return states[branch]
+        # Check if state.json exists and matches current branch
+        if self.state_file.exists():
+            state = json.loads(self.state_file.read_text())
+            # If state is for the requested branch, return it
+            if state.get('branch') == branch:
+                return state
+        
+        # State doesn't exist or is for different branch - reconstruct
+        state = self._reconstruct_branch_state(branch)
+        self._save_state(branch, state)
+        return state
 
     def _save_state(self, branch: str, state: dict[str, Any]) -> None:
         """Save branch state to state.json.
+        
+        Overwrites state.json with only the current branch state.
 
         Args:
             branch: Branch name
@@ -269,18 +268,9 @@ class PhaseStateEngine:
         # Ensure .st3 directory exists
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Load existing states
-        if self.state_file.exists():
-            states = json.loads(self.state_file.read_text())
-        else:
-            states = {}
-
-        # Update branch state
-        states[branch] = state
-
-        # Write to file with explicit flush
+        # Write only current branch state - flush previous state
         with open(self.state_file, 'w', encoding='utf-8') as f:
-            json.dump(states, f, indent=2)
+            json.dump(state, f, indent=2)
             f.flush()  # Explicit flush to ensure data is written immediately
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
