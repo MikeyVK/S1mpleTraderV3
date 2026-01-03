@@ -219,9 +219,13 @@ class GitCheckoutTool(BaseTool):
                 workspace_root=workspace_root,
                 project_manager=project_manager
             )
+            # Get state - this triggers auto-recovery and saves if needed
             state = engine.get_state(params.branch)
             current_phase = state.get('current_phase', 'unknown')
             parent_branch = state.get('parent_branch')
+            
+            # Explicitly save to ensure state.json is flushed for new branch
+            engine._save_state(params.branch, state)
 
             # 3. Return enriched result with phase info
             output = (

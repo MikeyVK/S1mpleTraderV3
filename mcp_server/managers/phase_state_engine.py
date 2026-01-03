@@ -245,11 +245,9 @@ class PhaseStateEngine:
         Raises:
             ValueError: If auto-recovery fails (invalid branch, missing project)
         """
-        # Auto-recovery: Create empty state file if missing
+        # Auto-recovery: Load existing states or start empty
         states: dict[str, Any]
         if not self.state_file.exists():
-            self.state_file.parent.mkdir(parents=True, exist_ok=True)
-            self.state_file.write_text(json.dumps({}, indent=2))
             states = {}
         else:
             states = json.loads(self.state_file.read_text())
