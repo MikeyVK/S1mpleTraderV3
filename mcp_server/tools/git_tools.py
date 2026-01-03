@@ -221,12 +221,17 @@ class GitCheckoutTool(BaseTool):
             )
             state = engine.get_state(params.branch)
             current_phase = state.get('current_phase', 'unknown')
+            parent_branch = state.get('parent_branch')
 
             # 3. Return enriched result with phase info
-            return ToolResult.text(
+            output = (
                 f"Switched to branch: {params.branch}\n"
                 f"Current phase: {current_phase}"
             )
+            if parent_branch:
+                output += f"\nParent branch: {parent_branch}"
+
+            return ToolResult.text(output)
         except Exception as e:  # pylint: disable=broad-exception-caught
             # If state sync fails, still report successful branch switch
             logger.warning(
