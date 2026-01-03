@@ -208,6 +208,7 @@ class GitCheckoutTool(BaseTool):
 
         # 2. Try to sync PhaseStateEngine state
         # pylint: disable=import-outside-toplevel
+        import asyncio
         from pathlib import Path
         from mcp_server.managers.phase_state_engine import PhaseStateEngine
         from mcp_server.managers.project_manager import ProjectManager
@@ -221,6 +222,10 @@ class GitCheckoutTool(BaseTool):
             )
             # Get state - this triggers auto-recovery and saves if needed
             state = engine.get_state(params.branch)
+            
+            # Yield to event loop to allow file I/O to complete
+            await asyncio.sleep(0)
+            
             current_phase = state.get('current_phase', 'unknown')
             parent_branch = state.get('parent_branch')
 
