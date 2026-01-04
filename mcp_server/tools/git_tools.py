@@ -227,7 +227,7 @@ class GitCheckoutTool(BaseTool):
             # Get state - this triggers auto-recovery and saves if needed
             state = engine.get_state(params.branch)
             current_phase = str(state.get('current_phase', 'unknown'))
-            
+
             # Explicitly save to ensure state.json is flushed for new branch
             # pylint: disable=protected-access
             engine._save_state(params.branch, state)
