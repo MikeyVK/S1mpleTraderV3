@@ -203,12 +203,13 @@ class GitCheckoutTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
-        # 1. Switch branch
-        self.manager.checkout(params.branch)
-
-        # 2. Wait for VS Code to process the checkout before writing state.json
+        # 1. Switch branch (blocking operation)
+        # Use asyncio.to_thread to prevent blocking the main event loop
         # pylint: disable=import-outside-toplevel
         import asyncio
+        await asyncio.to_thread(self.manager.checkout, params.branch)
+
+        # 2. Wait for VS Code to process the checkout before writing state.json
         await asyncio.sleep(0.5)
 
         # 3. Try to sync PhaseStateEngine state
@@ -216,7 +217,7 @@ class GitCheckoutTool(BaseTool):
         from mcp_server.managers.phase_state_engine import PhaseStateEngine
         from mcp_server.managers.project_manager import ProjectManager
 
-        try:
+        def sync_state() -> str:
             workspace_root = Path.cwd()
             project_manager = ProjectManager(workspace_root=workspace_root)
             engine = PhaseStateEngine(
@@ -225,10 +226,16 @@ class GitCheckoutTool(BaseTool):
             )
             # Get state - this triggers auto-recovery and saves if needed
             state = engine.get_state(params.branch)
-            current_phase = state.get('current_phase', 'unknown')
+            current_phase = str(state.get('current_phase', 'unknown'))
             
             # Explicitly save to ensure state.json is flushed for new branch
+            # pylint: disable=protected-access
             engine._save_state(params.branch, state)
+            return current_phase
+
+        try:
+            # Run state sync in thread pool to avoid blocking on I/O
+            current_phase = await asyncio.to_thread(sync_state)
 
             # 4. Return enriched result with phase info
             return ToolResult.text(
