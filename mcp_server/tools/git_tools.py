@@ -203,51 +203,64 @@ class GitCheckoutTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
-        # 1. Switch branch (blocking operation)
-        # Use asyncio.to_thread to prevent blocking the main event loop
+        # Switch branch
+        self.manager.checkout(params.branch)
+
+        # Fire-and-forget state sync via subprocess (Issue #85)
+        # Response returns immediately, state.json written in background
         # pylint: disable=import-outside-toplevel
-        import asyncio
-        await asyncio.to_thread(self.manager.checkout, params.branch)
-
-        # 2. Wait for VS Code to process the checkout before writing state.json
-        await asyncio.sleep(0.5)
-
-        # 3. Try to sync PhaseStateEngine state
+        import subprocess
+        import sys
         from pathlib import Path
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
 
-        def sync_state() -> str:
-            workspace_root = Path.cwd()
-            project_manager = ProjectManager(workspace_root=workspace_root)
-            engine = PhaseStateEngine(
-                workspace_root=workspace_root,
-                project_manager=project_manager
-            )
-            # get_state() triggers auto-recovery and saves if needed (Issue #85 fix)
-            # No need to call _save_state() directly - get_state() handles it
-            state = engine.get_state(params.branch)
-            return str(state.get('current_phase', 'unknown'))
+        workspace_root = Path.cwd()
+        log_file = workspace_root / ".st3" / "sync_debug.log"
 
-        try:
-            # Run state sync in thread pool to avoid blocking on I/O
-            current_phase = await asyncio.to_thread(sync_state)
+        # Get the Python executable from the venv
+        python_exe = workspace_root / ".venv" / "Scripts" / "python.exe"
+        if not python_exe.exists():
+            python_exe = Path(sys.executable)
 
-            # 4. Return enriched result with phase info
-            return ToolResult.text(
-                f"Switched to branch: {params.branch}\n"
-                f"Current phase: {current_phase}"
-            )
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            # If state sync fails, still report successful branch switch
-            logger.warning(
-                "Branch switched but state sync failed",
-                extra={"props": {"branch": params.branch, "error": str(e)}}
-            )
-            return ToolResult.text(
-                f"Switched to branch: {params.branch}\n"
-                f"(State sync unavailable: {str(e)})"
-            )
+        sync_script = f'''
+import sys
+sys.path.insert(0, r"{workspace_root}")
+import os
+os.chdir(r"{workspace_root}")
+try:
+    from pathlib import Path
+    from mcp_server.managers.phase_state_engine import PhaseStateEngine
+    from mcp_server.managers.project_manager import ProjectManager
+    workspace = Path(r"{workspace_root}")
+    pm = ProjectManager(workspace_root=workspace)
+    engine = PhaseStateEngine(workspace_root=workspace, project_manager=pm)
+    engine.get_state("{params.branch}")
+    with open(r"{log_file}", "w") as f:
+        f.write("SUCCESS")
+except Exception as err:
+    import traceback
+    with open(r"{log_file}", "w") as f:
+        f.write("ERROR: " + str(err) + "\\n" + traceback.format_exc())
+'''
+        # Ensure .st3 directory exists
+        (workspace_root / ".st3").mkdir(parents=True, exist_ok=True)
+
+        # Write marker to confirm Popen was called
+        marker = workspace_root / ".st3" / "popen_called.txt"
+        marker.write_text(f"Popen called with: {python_exe}")
+
+        # Start detached subprocess - does NOT block response
+        subprocess.Popen(  # noqa: S603
+            [str(python_exe), "-c", sync_script],
+            cwd=str(workspace_root),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0,
+        )
+
+        return ToolResult.text(
+            f"Switched to branch: {params.branch}\n"
+            f"(State syncing in background...)"
+        )
 
 
 class GitPushInput(BaseModel):

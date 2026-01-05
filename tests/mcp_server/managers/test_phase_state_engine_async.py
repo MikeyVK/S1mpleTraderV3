@@ -4,6 +4,8 @@ Tests for async-safe state.json operations in PhaseStateEngine.
 
 Issue #85: Blocking I/O in _save_state() causes MCP stream to hang.
 Fix: Use write_text() instead of open()+flush().
+     Use anyio.to_thread.run_sync() instead of asyncio.to_thread() for
+     compatibility with MCP's anyio-based server.
 
 @layer: Tests
 @issue: #85
@@ -109,16 +111,17 @@ class TestSaveStateNonBlocking:
 
 
 class TestPhaseToolsAsyncSafe:
-    """Tests verifying phase tools use asyncio.to_thread() for blocking calls."""
+    """Tests verifying phase tools use anyio.to_thread.run_sync() for blocking calls."""
 
     @pytest.mark.asyncio
-    async def test_force_phase_transition_uses_to_thread(self) -> None:
-        """Verify ForcePhaseTransitionTool wraps engine call in asyncio.to_thread().
+    async def test_force_phase_transition_uses_anyio_to_thread(self) -> None:
+        """Verify ForcePhaseTransitionTool wraps engine call in anyio.to_thread.run_sync().
 
-        Without asyncio.to_thread(), the blocking engine.force_transition() call
+        Without anyio.to_thread.run_sync(), the blocking engine.force_transition() call
         blocks the event loop and hangs the MCP stream.
+        Note: We must use anyio (not asyncio) because MCP server uses anyio internally.
         """
-        import asyncio  # noqa: PLC0415
+        import anyio.to_thread  # noqa: PLC0415
 
         from mcp_server.tools.phase_tools import (  # noqa: PLC0415
             ForcePhaseTransitionInput,
@@ -138,19 +141,19 @@ class TestPhaseToolsAsyncSafe:
             "skip_reason": "test"
         }
 
-        # Track if asyncio.to_thread is used
-        to_thread_was_called = False
-        original_to_thread = asyncio.to_thread
+        # Track if anyio.to_thread.run_sync is used
+        run_sync_was_called = False
+        original_run_sync = anyio.to_thread.run_sync
 
-        async def tracking_to_thread(
+        async def tracking_run_sync(
             func: Any, *args: Any, **kwargs: Any
         ) -> Any:
-            nonlocal to_thread_was_called
-            to_thread_was_called = True
-            return await original_to_thread(func, *args, **kwargs)
+            nonlocal run_sync_was_called
+            run_sync_was_called = True
+            return await original_run_sync(func, *args, **kwargs)
 
         with patch.object(tool, '_create_engine', return_value=mock_engine):
-            with patch('asyncio.to_thread', tracking_to_thread):
+            with patch('anyio.to_thread.run_sync', tracking_run_sync):
                 params = ForcePhaseTransitionInput(
                     branch="test/123-test",
                     to_phase="design",
@@ -160,16 +163,16 @@ class TestPhaseToolsAsyncSafe:
                 await tool.execute(params)
 
         # Assert
-        assert to_thread_was_called, (
-            "ForcePhaseTransitionTool.execute() must use asyncio.to_thread() "
+        assert run_sync_was_called, (
+            "ForcePhaseTransitionTool.execute() must use anyio.to_thread.run_sync() "
             "to wrap the blocking engine.force_transition() call. "
             "Without it, the MCP stream hangs."
         )
 
     @pytest.mark.asyncio
-    async def test_transition_phase_uses_to_thread(self) -> None:
-        """Verify TransitionPhaseTool wraps engine call in asyncio.to_thread()."""
-        import asyncio  # noqa: PLC0415
+    async def test_transition_phase_uses_anyio_to_thread(self) -> None:
+        """Verify TransitionPhaseTool wraps engine call in anyio.to_thread.run_sync()."""
+        import anyio.to_thread  # noqa: PLC0415
 
         from mcp_server.tools.phase_tools import (  # noqa: PLC0415
             TransitionPhaseInput,
@@ -186,27 +189,30 @@ class TestPhaseToolsAsyncSafe:
             "to_phase": "tdd"
         }
 
-        to_thread_was_called = False
-        original_to_thread = asyncio.to_thread
+        run_sync_was_called = False
+        original_run_sync = anyio.to_thread.run_sync
 
-        async def tracking_to_thread(
+        async def tracking_run_sync(
             func: Any, *args: Any, **kwargs: Any
         ) -> Any:
-            nonlocal to_thread_was_called
-            to_thread_was_called = True
-            return await original_to_thread(func, *args, **kwargs)
+            nonlocal run_sync_was_called
+            run_sync_was_called = True
+            return await original_run_sync(func, *args, **kwargs)
 
         with patch.object(tool, '_create_engine', return_value=mock_engine):
-            with patch('asyncio.to_thread', tracking_to_thread):
+            with patch('anyio.to_thread.run_sync', tracking_run_sync):
                 params = TransitionPhaseInput(
                     branch="test/123-test",
-                    to_phase="tdd"
+                    to_phase="tdd",
+                    human_approval="test approval"
                 )
                 await tool.execute(params)
 
-        assert to_thread_was_called, (
-            "TransitionPhaseTool.execute() must use asyncio.to_thread() "
-            "to wrap the blocking engine.transition() call."
+        # Assert
+        assert run_sync_was_called, (
+            "TransitionPhaseTool.execute() must use anyio.to_thread.run_sync() "
+            "to wrap the blocking engine.transition() call. "
+            "Without it, the MCP stream hangs."
         )
 
 

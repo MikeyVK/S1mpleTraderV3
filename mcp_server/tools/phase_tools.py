@@ -106,8 +106,9 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
     async def execute(self, params: TransitionPhaseInput) -> ToolResult:
         """Execute standard phase transition.
 
-        Uses asyncio.to_thread() to prevent blocking the event loop
-        during file I/O operations (Issue #85 fix).
+        Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based
+        server - asyncio.to_thread doesn't work correctly within anyio context
+        (Issue #85 fix).
 
         Args:
             params: TransitionPhaseInput with branch and target phase
@@ -115,7 +116,7 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
         Returns:
             ToolResult with success or error message
         """
-        import asyncio  # noqa: PLC0415
+        import anyio  # noqa: PLC0415
 
         engine = self._create_engine()
 
@@ -127,7 +128,7 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
             )
 
         try:
-            result = await asyncio.to_thread(do_transition)
+            result = await anyio.to_thread.run_sync(do_transition)
 
             return ToolResult.text(
                 f"✅ Successfully transitioned '{params.branch}' "
@@ -152,8 +153,9 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
     async def execute(self, params: ForcePhaseTransitionInput) -> ToolResult:
         """Execute forced phase transition.
 
-        Uses asyncio.to_thread() to prevent blocking the event loop
-        during file I/O operations (Issue #85 fix).
+        Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based
+        server - asyncio.to_thread doesn't work correctly within anyio context
+        (Issue #85 fix).
 
         Args:
             params: ForcePhaseTransitionInput with branch, phase, reason, approval
@@ -161,7 +163,7 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
         Returns:
             ToolResult with success or error message
         """
-        import asyncio  # noqa: PLC0415
+        import anyio  # noqa: PLC0415
 
         engine = self._create_engine()
 
@@ -174,7 +176,7 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
             )
 
         try:
-            result = await asyncio.to_thread(do_force_transition)
+            result = await anyio.to_thread.run_sync(do_force_transition)
 
             return ToolResult.text(
                 f"✅ Forced transition '{params.branch}' "

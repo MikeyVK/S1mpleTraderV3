@@ -244,12 +244,19 @@ class PhaseStateEngine:
         Raises:
             ValueError: If auto-recovery fails (invalid branch, missing project)
         """
-        # Check if state.json exists and matches current branch
+        # Check if state.json exists, is not empty, and matches current branch
         if self.state_file.exists():
-            state = json.loads(self.state_file.read_text())
-            # If state is for the requested branch, return it
-            if state.get('branch') == branch:
-                return state
+            content = self.state_file.read_text().strip()
+            if content:  # Not empty
+                try:
+                    state = json.loads(content)
+                    # If state is for the requested branch, return it
+                    if state.get('branch') == branch:
+                        return state
+                except json.JSONDecodeError:
+                    # Invalid JSON, will reconstruct below
+                    logger.warning("Invalid JSON in state.json, reconstructing")
+                    pass
 
         # State doesn't exist or is for different branch - reconstruct
         state = self._reconstruct_branch_state(branch)
@@ -264,8 +271,8 @@ class PhaseStateEngine:
         """Save branch state to state.json.
 
         Overwrites state.json with only the current branch state.
-        Uses write_text() instead of open()+flush() to avoid blocking I/O
-        that can hang the MCP stream (Issue #85).
+        Uses atomic write (temp file + rename) to avoid file locking issues
+        on Windows (Issue #85).
 
         Args:
             branch: Branch name (unused, kept for API compatibility)
@@ -274,11 +281,20 @@ class PhaseStateEngine:
         # Ensure .st3 directory exists
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write using write_text() - no blocking flush (Issue #85 fix)
-        self.state_file.write_text(
-            json.dumps(state, indent=2),
-            encoding='utf-8'
-        )
+        # Atomic write: write to temp file then rename (avoids locking issues)
+        import os as os_module
+        content = json.dumps(state, indent=2)
+        temp_file = self.state_file.parent / f".state_{os_module.getpid()}.tmp"
+        try:
+            temp_file.write_text(content, encoding='utf-8')
+            # On Windows, need to remove target first if it exists
+            if self.state_file.exists():
+                self.state_file.unlink()
+            temp_file.rename(self.state_file)
+        except OSError:
+            # Fallback: direct write if atomic fails
+            temp_file.unlink(missing_ok=True)
+            self.state_file.write_text(content, encoding='utf-8')
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
         """Convert TransitionRecord to dict for JSON serialization.
@@ -432,7 +448,7 @@ class PhaseStateEngine:
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=10
+                timeout=2  # Short timeout to avoid blocking MCP (Issue #85)
             )
             commits = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             return commits
