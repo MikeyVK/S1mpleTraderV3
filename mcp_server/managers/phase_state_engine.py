@@ -20,12 +20,13 @@ with audit trail.
 # Standard library
 import json
 import logging
+import os
 import re
 import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Project modules
 from mcp_server.config.workflows import workflow_config
@@ -249,14 +250,13 @@ class PhaseStateEngine:
             content = self.state_file.read_text().strip()
             if content:  # Not empty
                 try:
-                    state = json.loads(content)
+                    state = cast(dict[str, Any], json.loads(content))
                     # If state is for the requested branch, return it
                     if state.get('branch') == branch:
                         return state
                 except json.JSONDecodeError:
                     # Invalid JSON, will reconstruct below
                     logger.warning("Invalid JSON in state.json, reconstructing")
-                    pass
 
         # State doesn't exist or is for different branch - reconstruct
         state = self._reconstruct_branch_state(branch)
@@ -265,7 +265,7 @@ class PhaseStateEngine:
 
     def _save_state(
         self,
-        branch: str,  # pylint: disable=unused-argument
+        _branch: str,
         state: dict[str, Any]
     ) -> None:
         """Save branch state to state.json.
@@ -282,9 +282,8 @@ class PhaseStateEngine:
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Atomic write: write to temp file then rename (avoids locking issues)
-        import os as os_module
         content = json.dumps(state, indent=2)
-        temp_file = self.state_file.parent / f".state_{os_module.getpid()}.tmp"
+        temp_file = self.state_file.parent / f".state_{os.getpid()}.tmp"
         try:
             temp_file.write_text(content, encoding='utf-8')
             # On Windows, need to remove target first if it exists

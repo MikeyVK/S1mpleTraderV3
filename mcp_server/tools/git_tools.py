@@ -1,10 +1,15 @@
 """Git tools."""
+from pathlib import Path
 from typing import Any
 
+import anyio
 from pydantic import BaseModel, Field
 
+from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.base import BaseTool, ToolResult
 
 logger = get_logger("tools.git")
@@ -203,63 +208,36 @@ class GitCheckoutTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
-        # Switch branch
-        self.manager.checkout(params.branch)
-
-        # Fire-and-forget state sync via subprocess (Issue #85)
-        # Response returns immediately, state.json written in background
-        # pylint: disable=import-outside-toplevel
-        import subprocess
-        import sys
-        from pathlib import Path
-
         workspace_root = Path.cwd()
-        log_file = workspace_root / ".st3" / "sync_debug.log"
 
-        # Get the Python executable from the venv
-        python_exe = workspace_root / ".venv" / "Scripts" / "python.exe"
-        if not python_exe.exists():
-            python_exe = Path(sys.executable)
+        try:
+            # GitPython operations can block; run them in a worker thread.
+            await anyio.to_thread.run_sync(self.manager.checkout, params.branch)
+        except MCPError as exc:
+            logger.error(
+                "Branch checkout failed",
+                extra={"props": {"branch": params.branch, "error": str(exc)}},
+            )
+            return ToolResult.error(f"Checkout failed for branch: {params.branch}")
 
-        sync_script = f'''
-import sys
-sys.path.insert(0, r"{workspace_root}")
-import os
-os.chdir(r"{workspace_root}")
-try:
-    from pathlib import Path
-    from mcp_server.managers.phase_state_engine import PhaseStateEngine
-    from mcp_server.managers.project_manager import ProjectManager
-    workspace = Path(r"{workspace_root}")
-    pm = ProjectManager(workspace_root=workspace)
-    engine = PhaseStateEngine(workspace_root=workspace, project_manager=pm)
-    engine.get_state("{params.branch}")
-    with open(r"{log_file}", "w") as f:
-        f.write("SUCCESS")
-except Exception as err:
-    import traceback
-    with open(r"{log_file}", "w") as f:
-        f.write("ERROR: " + str(err) + "\\n" + traceback.format_exc())
-'''
-        # Ensure .st3 directory exists
-        (workspace_root / ".st3").mkdir(parents=True, exist_ok=True)
-
-        # Write marker to confirm Popen was called
-        marker = workspace_root / ".st3" / "popen_called.txt"
-        marker.write_text(f"Popen called with: {python_exe}")
-
-        # Start detached subprocess - does NOT block response
-        subprocess.Popen(  # noqa: S603
-            [str(python_exe), "-c", sync_script],
-            cwd=str(workspace_root),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0,
-        )
+        current_phase = "unknown"
+        try:
+            project_manager = ProjectManager(workspace_root=workspace_root)
+            engine = PhaseStateEngine(
+                workspace_root=workspace_root,
+                project_manager=project_manager,
+            )
+            state = await anyio.to_thread.run_sync(engine.get_state, params.branch)
+            current_phase = state.get("current_phase") or "unknown"
+        except (MCPError, ValueError, OSError) as exc:
+            logger.warning(
+                "Phase state sync failed after checkout",
+                extra={"props": {"branch": params.branch, "error": str(exc)}},
+            )
 
         return ToolResult.text(
             f"Switched to branch: {params.branch}\n"
-            f"(State syncing in background...)"
+            f"Phase: {current_phase}"
         )
 
 

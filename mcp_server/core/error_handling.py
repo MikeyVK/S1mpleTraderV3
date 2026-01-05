@@ -48,7 +48,6 @@ import functools
 import logging
 from typing import Any, Awaitable, Callable, TypeVar, cast
 
-from mcp_server.tools.base import ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +70,9 @@ def tool_error_handler(
     """
     @functools.wraps(func)
     async def wrapper(*args: Any, **kwargs: Any) -> T:
+        # Import here to avoid circular import at module load time.
+        from mcp_server.tools.base import ToolResult  # noqa: PLC0415
+
         try:
             return await func(*args, **kwargs)
         except ValueError as e:
@@ -83,7 +85,7 @@ def tool_error_handler(
             error_msg = f"Configuration error: {str(e)}"
             logger.error("[CONFIG ERROR] %s: %s", func.__name__, error_msg)
             return cast(T, ToolResult.error(error_msg))
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:
             # SYSTEM/BUG - unexpected error (intentionally catch all)
             error_msg = f"Unexpected error: {type(e).__name__}: {str(e)}"
             logger.exception("[BUG] %s: %s", func.__name__, error_msg)

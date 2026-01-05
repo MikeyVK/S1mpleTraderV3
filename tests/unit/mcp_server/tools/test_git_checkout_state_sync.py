@@ -28,10 +28,10 @@ class TestGitCheckoutStateSync:
 
         # Patch imports that happen inside execute()
         with patch(
-            'mcp_server.managers.phase_state_engine.PhaseStateEngine',
+            'mcp_server.tools.git_tools.PhaseStateEngine',
             return_value=mock_engine
         ), \
-             patch('mcp_server.managers.project_manager.ProjectManager'), \
+             patch('mcp_server.tools.git_tools.ProjectManager'), \
              patch('pathlib.Path.cwd', return_value=Mock()):
 
             # Execute
@@ -57,14 +57,14 @@ class TestGitCheckoutStateSync:
         params.branch = "feature/456-test"
 
         mock_engine = Mock()
-        mock_engine.get_state.side_effect = Exception("State sync failed")
+        mock_engine.get_state.side_effect = ValueError("State sync failed")
 
         # Patch imports
         with patch(
-            'mcp_server.managers.phase_state_engine.PhaseStateEngine',
+            'mcp_server.tools.git_tools.PhaseStateEngine',
             return_value=mock_engine
         ), \
-             patch('mcp_server.managers.project_manager.ProjectManager'), \
+             patch('mcp_server.tools.git_tools.ProjectManager'), \
              patch('pathlib.Path.cwd', return_value=Mock()):
 
             # Execute
@@ -91,10 +91,10 @@ class TestGitCheckoutStateSync:
 
         # Patch imports
         with patch(
-            'mcp_server.managers.phase_state_engine.PhaseStateEngine',
+            'mcp_server.tools.git_tools.PhaseStateEngine',
             return_value=mock_engine
         ), \
-             patch('mcp_server.managers.project_manager.ProjectManager'), \
+             patch('mcp_server.tools.git_tools.ProjectManager'), \
              patch('pathlib.Path.cwd', return_value=Mock()):
 
             # Execute

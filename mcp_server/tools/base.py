@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from mcp_server.core.error_handling import tool_error_handler
+
 
 class ToolResult(BaseModel):
     """Result of a tool execution."""
@@ -39,16 +41,12 @@ class BaseTool(ABC):
         """Automatically wrap execute() with error handler on subclass creation."""
         super().__init_subclass__(**kwargs)
 
-        # Import here to avoid circular dependency
-        # pylint: disable=import-outside-toplevel
-        from mcp_server.core.error_handling import tool_error_handler
-
         # Wrap the execute method with error handler if not already wrapped
         if hasattr(cls.execute, "__wrapped__"):
             return  # Already wrapped
 
         original_execute = cls.execute
-        cls.execute = tool_error_handler(original_execute)  # type: ignore[method-assign]
+        cls.execute = tool_error_handler(original_execute)  # type: ignore[assignment]
 
     @abstractmethod
     async def execute(self, params: Any) -> ToolResult:
