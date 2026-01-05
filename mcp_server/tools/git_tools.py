@@ -224,14 +224,10 @@ class GitCheckoutTool(BaseTool):
                 workspace_root=workspace_root,
                 project_manager=project_manager
             )
-            # Get state - this triggers auto-recovery and saves if needed
+            # get_state() triggers auto-recovery and saves if needed (Issue #85 fix)
+            # No need to call _save_state() directly - get_state() handles it
             state = engine.get_state(params.branch)
-            current_phase = str(state.get('current_phase', 'unknown'))
-
-            # Explicitly save to ensure state.json is flushed for new branch
-            # pylint: disable=protected-access
-            engine._save_state(params.branch, state)
-            return current_phase
+            return str(state.get('current_phase', 'unknown'))
 
         try:
             # Run state sync in thread pool to avoid blocking on I/O

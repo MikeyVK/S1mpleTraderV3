@@ -250,28 +250,35 @@ class PhaseStateEngine:
             # If state is for the requested branch, return it
             if state.get('branch') == branch:
                 return state
-        
+
         # State doesn't exist or is for different branch - reconstruct
         state = self._reconstruct_branch_state(branch)
         self._save_state(branch, state)
         return state
 
-    def _save_state(self, branch: str, state: dict[str, Any]) -> None:
+    def _save_state(
+        self,
+        branch: str,  # pylint: disable=unused-argument
+        state: dict[str, Any]
+    ) -> None:
         """Save branch state to state.json.
-        
+
         Overwrites state.json with only the current branch state.
+        Uses write_text() instead of open()+flush() to avoid blocking I/O
+        that can hang the MCP stream (Issue #85).
 
         Args:
-            branch: Branch name
+            branch: Branch name (unused, kept for API compatibility)
             state: State dict to save
         """
         # Ensure .st3 directory exists
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write only current branch state - flush previous state
-        with open(self.state_file, 'w', encoding='utf-8') as f:
-            json.dump(state, f, indent=2)
-            f.flush()  # Explicit flush to ensure data is written immediately
+        # Write using write_text() - no blocking flush (Issue #85 fix)
+        self.state_file.write_text(
+            json.dumps(state, indent=2),
+            encoding='utf-8'
+        )
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
         """Convert TransitionRecord to dict for JSON serialization.
