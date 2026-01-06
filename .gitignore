@@ -9,6 +9,8 @@ env/
 .venv/
 pip-selfcheck.json
 
+.mypy_cache/
+.tmp/
 # Build artifacts
 build/
 _build/
@@ -30,6 +32,21 @@ dist/
 .logs/
 
 # Run results
+
+# Local QA / debug outputs (artifacts)
+.coverage
+coverage.json
+quality_report.json
+deep_report_output.md
+mcp_debug.log
+mcp_server.audit.log
+.mcp_server.lock
+mypy_report*.txt
+pylint_*.txt
+
+temp_*
+script.py
+test.py
 results/
 
 # Source data
