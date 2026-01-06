@@ -43,6 +43,30 @@ Translate the research findings in `docs/development/issue91/research.md` into a
 
 - Latest test run: `10 failed, 1017 passed`
 - Failures clustered into:
+
+## Decisions (to unblock fixes)
+
+These decisions keep scope tight: we aim to stop being merge-blocking, not redesign quality gate configuration.
+
+1) **Keep QAManager behavior as-is (strict)**
+- Pylint/mypy/pyright failures remain hard failures for QA.
+- We will not introduce gate-configurability work here.
+
+2) **SafeEdit strict-mode is “QA-strict”**
+- `mode=strict` must reject writes when QA fails (even if the finding is stylistic like `invalid-name`).
+- `mode=interactive` remains the escape hatch to save with QA failures.
+- Therefore, tests that expect “guidelines warn but allow save” must be written to trigger *template guideline warnings*, not QA failures, OR must use interactive mode.
+
+3) **Scaffolded output must validate**
+- The contract from Issue #52 stands: scaffolded DTOs/tools must pass validation.
+- Fixing template output to satisfy current QA/typing is in-scope because it unblocks merges.
+
+4) **`state.json` is single-branch state (current behavior)**
+- `PhaseStateEngine` persists a single state object keyed by `branch` field, not a dict keyed by branch names.
+- Tests expecting a mapping will be updated to reflect the canonical schema.
+
+5) **Unit test placement: mirror is the source of truth**
+- Any unit test primarily testing `mcp_server.*` moves under `tests/unit/mcp_server/` mirrored folders (including tools + scaffolding).
   - Validation severity contract drift
   - Scaffold→Validate E2E drift
   - State schema drift (`state.json`)
