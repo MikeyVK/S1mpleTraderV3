@@ -299,7 +299,7 @@ async def test_get_parent_branch_current_branch():
     ), \
          patch('mcp_server.managers.project_manager.ProjectManager'), \
          patch('pathlib.Path.cwd', return_value=MagicMock()), \
-         patch('mcp_server.managers.git_manager.GitManager') as mock_git:
+         patch('mcp_server.tools.git_tools.GitManager') as mock_git:
         mock_git.return_value.get_current_branch.return_value = 'feature/79-parent-branch-tracking'
 
         result = await tool.execute(params)
