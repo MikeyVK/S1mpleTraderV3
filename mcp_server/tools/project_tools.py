@@ -147,12 +147,14 @@ class InitializeProjectTool(BaseTool):
             ValueError: If workflow_name invalid or custom_phases missing
         """
         try:
+            # Get current branch once and reuse (avoid duplicate Git calls)
+            branch = self.git_manager.get_current_branch()
+
             # Step 1: Determine parent_branch
             parent_branch = params.parent_branch
 
             if parent_branch is None:
                 # Auto-detect from git reflog
-                branch = self.git_manager.get_current_branch()
                 parent_branch = self._detect_parent_branch_from_reflog(branch)
 
                 if parent_branch:
@@ -177,10 +179,7 @@ class InitializeProjectTool(BaseTool):
                 options=options
             )
 
-            # Step 3: Get current branch from git
-            branch = self.git_manager.get_current_branch()
-
-            # Step 4: Determine first phase from workflow
+            # Step 3: Determine first phase from workflow
             first_phase = result["required_phases"][0]
 
             # Step 5: Initialize branch state atomically

@@ -28,10 +28,10 @@ class TestGitCheckoutStateSync:
 
         # Patch imports that happen inside execute()
         with patch(
-            'mcp_server.tools.git_tools.PhaseStateEngine',
+            'mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine',
             return_value=mock_engine
         ), \
-             patch('mcp_server.tools.git_tools.ProjectManager'), \
+             patch('mcp_server.tools.git_tools.project_manager.ProjectManager'), \
              patch('pathlib.Path.cwd', return_value=Mock()):
 
             # Execute
@@ -61,10 +61,10 @@ class TestGitCheckoutStateSync:
 
         # Patch imports
         with patch(
-            'mcp_server.tools.git_tools.PhaseStateEngine',
+            'mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine',
             return_value=mock_engine
         ), \
-             patch('mcp_server.tools.git_tools.ProjectManager'), \
+             patch('mcp_server.tools.git_tools.project_manager.ProjectManager'), \
              patch('pathlib.Path.cwd', return_value=Mock()):
 
             # Execute
@@ -91,10 +91,10 @@ class TestGitCheckoutStateSync:
 
         # Patch imports
         with patch(
-            'mcp_server.tools.git_tools.PhaseStateEngine',
+            'mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine',
             return_value=mock_engine
         ), \
-             patch('mcp_server.tools.git_tools.ProjectManager'), \
+             patch('mcp_server.tools.git_tools.project_manager.ProjectManager'), \
              patch('pathlib.Path.cwd', return_value=Mock()):
 
             # Execute

@@ -13,7 +13,7 @@ validates:
       
     - rule: frozen_config
       description: "Must have frozen=True in model_config"
-      pattern: '"frozen":\\s*True'
+      pattern: '"frozen":\s*True'
       
     - rule: field_validators
       description: "Must have field validators for id and timestamp"
@@ -139,7 +139,7 @@ class {{ name }}(BaseModel):
 
     # Pydantic configuration
     model_config = {
-        "frozen": {{ frozen | default('True') }},
+        "frozen": True,
         "str_strip_whitespace": True,
         "validate_assignment": True,
         "extra": "forbid",

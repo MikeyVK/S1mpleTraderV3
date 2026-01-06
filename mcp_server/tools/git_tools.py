@@ -1,4 +1,4 @@
-﻿"""Git tools."""
+"""Git tools."""
 
 import subprocess
 from pathlib import Path
