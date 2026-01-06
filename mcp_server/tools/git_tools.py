@@ -1,4 +1,7 @@
-"""Git tools."""
+﻿"""Git tools."""
+import os
+import re
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +68,7 @@ class CreateBranchTool(BaseTool):
                 params.branch_type,
                 params.base_branch
             )
-            return ToolResult.text(f"✅ Created and switched to branch: {branch_name}")
+            return ToolResult.text(f"âœ… Created and switched to branch: {branch_name}")
         except Exception as e:
             logger.error(
                 "Branch creation failed",
@@ -367,3 +370,83 @@ class GitStashTool(BaseTool):
                 return ToolResult.text("No stashes found")
             return ToolResult.text("\n".join(stashes))
         return ToolResult.text(f"Unknown action: {params.action}")
+
+
+
+class GetParentBranchInput(BaseModel):
+    """Input for GetParentBranchTool."""
+
+    branch: str | None = Field(
+        default=None,
+        description="Branch name to inspect (default: current branch)"
+    )
+
+
+class GetParentBranchTool(BaseTool):
+    """Tool to detect a branch's parent branch.
+
+    Uses git reflog and searches for: "checkout: moving from <parent> to <branch>".
+
+    Notes:
+    - Runs git with --no-pager and stdin closed to avoid stdio hangs.
+    """
+
+    name = "get_parent_branch"
+    description = "Detect parent branch for a branch (via git reflog)"
+    args_model = GetParentBranchInput
+
+    def __init__(
+        self,
+        workspace_root: Path | None = None,
+        manager: GitManager | None = None,
+    ) -> None:
+        self.workspace_root = workspace_root or Path.cwd()
+        self.manager = manager or GitManager()
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return _input_schema(self.args_model)
+
+    def _detect_parent_branch_from_reflog(self, branch: str) -> str | None:
+        env = os.environ.copy()
+        env.setdefault("GIT_PAGER", "cat")
+        env.setdefault("PAGER", "cat")
+        env.setdefault("GIT_TERMINAL_PROMPT", "0")
+
+        result = subprocess.run(
+            ["git", "--no-pager", "reflog", "show", "--all"],
+            cwd=self.workspace_root,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=10,
+            env=env,
+        )
+
+        pattern = re.compile(
+            r"checkout: moving from (.+?) to " + re.escape(branch)
+        )
+        for line in result.stdout.splitlines():
+            match = pattern.search(line)
+            if match:
+                return match.group(1)
+        return None
+
+    async def execute(self, params: GetParentBranchInput) -> ToolResult:
+        try:
+            branch = params.branch or self.manager.get_current_branch()
+            parent = await anyio.to_thread.run_sync(
+                self._detect_parent_branch_from_reflog,
+                branch,
+            )
+
+            if parent:
+                return ToolResult.text(
+                    f"Branch: {branch}\nParent branch: {parent}"
+                )
+            return ToolResult.text(
+                f"Branch: {branch}\nParent branch: (not detected)"
+            )
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
+            return ToolResult.error(f"Failed to detect parent branch: {exc}")
