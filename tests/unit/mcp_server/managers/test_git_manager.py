@@ -48,6 +48,16 @@ class TestGitManagerValidation:
         mock_adapter.create_branch.assert_called_once_with("feature/my-feature", base="HEAD")
         mock_adapter.is_clean.assert_called_once()
 
+    def test_create_branch_epic_valid(self, manager: GitManager, mock_adapter: MagicMock) -> None:
+        """Test creating an epic branch with explicit base."""
+        name = manager.create_branch("91-test-suite-cleanup", "epic", "HEAD")
+
+        assert name == "epic/91-test-suite-cleanup"
+        mock_adapter.create_branch.assert_called_once_with(
+            "epic/91-test-suite-cleanup", base="HEAD"
+        )
+        mock_adapter.is_clean.assert_called_once()
+
     def test_create_branch_invalid_type(self, manager: GitManager) -> None:
         """Test validation of branch type."""
         with pytest.raises(ValidationError, match="Invalid branch type"):
@@ -215,7 +225,7 @@ class TestGitManagerCreateBranch:
     def test_create_branch_requires_base_branch_parameter(self, manager: GitManager) -> None:
         """RED: create_branch should require base_branch parameter (no default)."""
         with pytest.raises(TypeError):
-            manager.create_branch("test", "feature")  # Missing base_branch
+            manager.create_branch("test", "feature")  # type: ignore[call-arg]
 
     def test_create_branch_passes_base_to_adapter(
         self, manager: GitManager, mock_adapter: MagicMock

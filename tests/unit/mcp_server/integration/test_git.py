@@ -22,6 +22,18 @@ def test_git_manager_create_branch_valid(mock_git_adapter: Mock) -> None:
     assert branch == "feature/my-feature"
     mock_git_adapter.create_branch.assert_called_with("feature/my-feature", base="HEAD")
 
+def test_git_manager_create_branch_epic_valid(mock_git_adapter: Mock) -> None:
+    """Test creating an epic branch with explicit base on clean working directory."""
+    mock_git_adapter.is_clean.return_value = True
+    manager = GitManager(adapter=mock_git_adapter)
+
+    branch = manager.create_branch("91-test-suite-cleanup", "epic", "HEAD")
+
+    assert branch == "epic/91-test-suite-cleanup"
+    mock_git_adapter.create_branch.assert_called_with(
+        "epic/91-test-suite-cleanup", base="HEAD"
+    )
+
 def test_git_manager_create_branch_dirty(mock_git_adapter: Mock) -> None:
     """Test that creating branch fails on dirty working directory."""
     mock_git_adapter.is_clean.return_value = False
