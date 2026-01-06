@@ -127,8 +127,9 @@ class TestIssue39CrossMachine:
         assert "42" in projects
         
         state = json.loads(state_file.read_text())
-        assert "fix/42-cross-machine-test" in state
-        assert state["fix/42-cross-machine-test"]["current_phase"] == "research"
+        # state.json stores a single state object for the current branch
+        assert state["branch"] == "fix/42-cross-machine-test"
+        assert state["current_phase"] == "research"
         
         # =====================================================================
         # MACHINE A: Make phase progression with phase:label commits

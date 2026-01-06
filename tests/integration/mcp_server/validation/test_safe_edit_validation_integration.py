@@ -110,18 +110,18 @@ class TestDTO:  # Missing BaseModel inheritance
         tool: SafeEditTool,
         temp_dir: Path
     ) -> None:
-        """Test that GUIDELINE violations produce warnings but allow save.
+        """Test strict-mode behavior for lint "guideline" violations.
 
-        Per planning.md: Warnings allow save.
-        Validates that GUIDELINE-level rules don't block.
+        Option 1 decision: `mode="strict"` rejects edits when QA gates fail.
+        A naming violation (pylint `invalid-name`) therefore blocks the save.
         """
-        # Valid DTO with guideline violation (naming convention)
+        # Valid DTO with naming violation (pylint invalid-name)
         test_file = temp_dir / "test_dto.py"
         valid_dto = '''"""Test DTO"""
 from pydantic import BaseModel
 
-class lowercase_dto(BaseModel):  # Guideline: should be PascalCase
-    """Valid DTO with naming guideline violation."""
+class lowercase_dto(BaseModel):  # Should be PascalCase
+    """Valid DTO with naming violation."""
     model_config = {"frozen": True}
     name: str
 '''
@@ -132,14 +132,12 @@ class lowercase_dto(BaseModel):  # Guideline: should be PascalCase
             mode="strict"
         ))
 
-        text = result.content[0]["text"]
-        
-        # Guidelines should allow save
-        if test_file.exists():
-            assert "saved" in text.lower()
-        else:
-            # If blocked, that's a bug (guidelines shouldn't block)
-            pytest.fail(f"File blocked despite guideline violation: {text}")
+        text = result.content[0]["text"].lower()
+
+        # Strict mode should block the save when QA fails
+        assert not test_file.exists(), f"Expected strict rejection, but file was saved: {text}"
+        assert "rejected" in text or "validation" in text
+        assert "invalid-name" in text or "class name" in text
 
     @pytest.mark.asyncio
     async def test_safe_edit_includes_agent_hints(

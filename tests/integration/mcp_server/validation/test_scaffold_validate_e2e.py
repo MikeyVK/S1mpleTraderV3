@@ -6,7 +6,7 @@ Tests that code generated from templates passes validation based on
 the same template's TEMPLATE_METADATA.
 
 @layer: Tests (E2E)
-@dependencies: [pytest, DTOScaffolder, ToolScaffolder, ValidationService]
+@dependencies: [pytest, DTOScaffolder, ToolScaffolder, LayeredTemplateValidator]
 """
 # pyright: reportCallIssue=false
 # Standard library
@@ -22,6 +22,8 @@ from mcp_server.scaffolding.components.tool import ToolScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
 
 # Validation infrastructure
+from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
+from mcp_server.validation.template_analyzer import TemplateAnalyzer
 from mcp_server.validation.validation_service import ValidationService
 
 
@@ -40,6 +42,11 @@ class TestScaffoldValidateCycle:
         return JinjaRenderer()
 
     @pytest.fixture
+    def template_analyzer(self) -> TemplateAnalyzer:
+        """Fixture for TemplateAnalyzer."""
+        return TemplateAnalyzer(Path("mcp_server/templates"))
+
+    @pytest.fixture
     def validator(self) -> ValidationService:
         """Fixture for ValidationService."""
         return ValidationService()
@@ -48,21 +55,25 @@ class TestScaffoldValidateCycle:
     async def test_scaffold_dto_passes_validation(
         self,
         renderer: JinjaRenderer,
-        validator: ValidationService,
+        template_analyzer: TemplateAnalyzer,
         temp_dir: Path
     ) -> None:
-        """Test that scaffolded DTO passes validation.
+        """Test that scaffolded DTO passes template-driven validation.
 
-        Per planning.md: Generated DTO validates.
-        E2E: dto.py.jinja2 scaffolding → dto.py.jinja2 TEMPLATE_METADATA.
+        This test verifies the SSOT contract from Issue #52:
+        - scaffolding renders from dto.py.jinja2
+        - validation checks the same template's TEMPLATE_METADATA rules
+
+        It intentionally does NOT run Python QA gates (pylint/mypy/pyright),
+        because DTO/tool templates can contain agent TODOs while still being
+        structurally compliant with TEMPLATE_METADATA.
         """
-        # Scaffold a DTO
         scaffolder = DTOScaffolder(renderer)
-        output_path = temp_dir / "test_dto.py"
+        output_path = temp_dir / "scaffolded_dto.py"
 
         content = scaffolder.scaffold(
             name="TestDTO",
-            description="Test DTO for E2E validation",
+            description="Test DTO for E2E template validation",
             layer="DTOs",
             has_causality=False,
             fields=[
@@ -70,56 +81,46 @@ class TestScaffoldValidateCycle:
             ]
         )
         output_path.write_text(content, encoding="utf-8")
-
-        # Verify file was created
         assert output_path.exists(), "DTO should be scaffolded"
 
-        # Read content back for validation
         file_content = output_path.read_text(encoding="utf-8")
 
-        # Validate the scaffolded DTO
-        passed, issues = await validator.validate(str(output_path), file_content)
+        dto_validator = LayeredTemplateValidator("dto", template_analyzer)
+        result = await dto_validator.validate(str(output_path), file_content)
 
-        # Scaffolded code should pass validation
-        assert passed, f"Scaffolded DTO failed validation. Issues: {issues}"
+        assert result.passed, f"DTO failed template validation: {[i.message for i in result.issues]}"
 
     @pytest.mark.asyncio
     async def test_scaffold_tool_passes_validation(
         self,
         renderer: JinjaRenderer,
-        validator: ValidationService,
+        template_analyzer: TemplateAnalyzer,
         temp_dir: Path
     ) -> None:
-        """Test that scaffolded Tool passes validation.
+        """Test that scaffolded Tool passes template-driven validation.
 
-        Per planning.md: Generated tool validates.
-        E2E: tool.py.jinja2 scaffolding → tool.py.jinja2 TEMPLATE_METADATA.
+        See `test_scaffold_dto_passes_validation` for rationale.
         """
-        # Scaffold a Tool
         scaffolder = ToolScaffolder(renderer)
-        output_path = temp_dir / "test_tool.py"
+        output_path = temp_dir / "scaffolded_tool.py"
 
         content = scaffolder.scaffold(
             name="TestTool",
-            description="Test tool for E2E validation",
+            description="Test tool for E2E template validation",
             input_schema={
                 "type": "object",
                 "properties": {"name": {"type": "string"}}
             }
         )
         output_path.write_text(content, encoding="utf-8")
-
-        # Verify file was created
         assert output_path.exists(), "Tool should be scaffolded"
 
-        # Read content back for validation
         file_content = output_path.read_text(encoding="utf-8")
 
-        # Validate the scaffolded Tool
-        passed, issues = await validator.validate(str(output_path), file_content)
+        tool_validator = LayeredTemplateValidator("tool", template_analyzer)
+        result = await tool_validator.validate(str(output_path), file_content)
 
-        # Scaffolded code should pass validation
-        assert passed, f"Scaffolded Tool failed validation. Issues: {issues}"
+        assert result.passed, f"Tool failed template validation: {[i.message for i in result.issues]}"
 
     @pytest.mark.asyncio
     async def test_scaffold_document_passes_validation(
@@ -151,15 +152,11 @@ Test document for E2E validation.
 Testing that scaffolded documents pass FORMAT validation.
 '''
         output_path.write_text(doc_content, encoding="utf-8")
-
-        # Verify file was created
         assert output_path.exists(), "Document should be created"
 
-        # Validate the document
         passed, issues = await validator.validate(
             str(output_path),
             doc_content
         )
 
-        # Document with proper frontmatter should pass validation
         assert passed, f"Document failed validation. Issues: {issues}"
