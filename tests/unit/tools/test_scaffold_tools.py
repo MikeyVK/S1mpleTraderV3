@@ -69,9 +69,10 @@ async def test_scaffold_component_unknown_type(mock_renderer):
         output_path="path.py"
     )
     
-    with pytest.raises(ValidationError) as exc:
-        await tool.execute(params)
-    assert "Unknown component type: unknown_type" in str(exc.value)
+    result = await tool.execute(params)
+
+    assert result.is_error
+    assert "Unknown component type: unknown_type" in result.content[0]["text"]
 
 @pytest.mark.asyncio
 async def test_scaffold_worker(mock_renderer, mock_write_file):
@@ -105,8 +106,9 @@ async def test_scaffold_worker_missing_args(mock_renderer):
         # Missing dtos
     )
     
-    with pytest.raises(ValidationError):
-        await tool.execute(params)
+    result = await tool.execute(params)
+
+    assert result.is_error
 
 @pytest.mark.asyncio
 async def test_scaffold_adapter(mock_renderer, mock_write_file):
@@ -262,8 +264,9 @@ async def test_scaffold_generic_missing_args(mock_renderer):
         output_path="gen.py"
     )
     
-    with pytest.raises(ValidationError):
-        await tool.execute(params)
+    result = await tool.execute(params)
+
+    assert result.is_error
 
 @pytest.mark.asyncio
 async def test_scaffold_design_doc(mock_renderer, mock_write_file):

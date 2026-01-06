@@ -23,7 +23,8 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, Field, field_validator
 
 # Project modules
-from mcp_server.tools.base import BaseTool, ToolResult
+from mcp_server.tools.base import BaseTool
+from mcp_server.tools.tool_result import ToolResult
 
 if TYPE_CHECKING:
     from mcp_server.managers.phase_state_engine import PhaseStateEngine

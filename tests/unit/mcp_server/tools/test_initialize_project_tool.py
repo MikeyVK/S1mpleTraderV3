@@ -70,9 +70,7 @@ class TestInitializeProjectToolMode1:
             assert projects["39"]["workflow_name"] == "bug"
 
             # Verify state.json structure
-            states = json.loads(state_file.read_text())
-            assert "fix/39-initialize-project-tool" in states
-            state = states["fix/39-initialize-project-tool"]
+            state = json.loads(state_file.read_text())
 
             assert state["branch"] == "fix/39-initialize-project-tool"
             assert state["issue_number"] == 39
@@ -105,8 +103,8 @@ class TestInitializeProjectToolMode1:
 
             # Verify state uses detected branch
             state_file = workspace_root / ".st3" / "state.json"
-            states = json.loads(state_file.read_text())
-            assert "feature/42-user-auth" in states
+            state = json.loads(state_file.read_text())
+            assert state["branch"] == "feature/42-user-auth"
 
             # Verify GitManager was called
             mock_git.assert_called_once()
@@ -129,8 +127,7 @@ class TestInitializeProjectToolMode1:
             assert not result.is_error
 
             state_file = workspace_root / ".st3" / "state.json"
-            states = json.loads(state_file.read_text())
-            state = states["hotfix/99-security"]
+            state = json.loads(state_file.read_text())
 
             # First phase from workflows.yaml (SSOT)
             hotfix_workflow = workflow_config.get_workflow("hotfix")
@@ -181,8 +178,8 @@ class TestInitializeProjectToolMode1:
 
                 assert not result.is_error, f"{workflow_name} workflow must work"
 
-                states = json.loads(state_file.read_text())
-                state = states[branch]
+                state = json.loads(state_file.read_text())
+                assert state["branch"] == branch
                 assert state["current_phase"] == expected_first_phase, \
                     f"{workflow_name} must start at {expected_first_phase} " \
                     f"(from workflows.yaml)"

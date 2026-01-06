@@ -5,7 +5,8 @@ from typing import Any, Callable, Awaitable, cast
 from pydantic import BaseModel, Field
 
 from mcp_server.core.exceptions import ValidationError
-from mcp_server.tools.base import BaseTool, ToolResult
+from mcp_server.tools.base import BaseTool
+from mcp_server.tools.tool_result import ToolResult
 from mcp_server.scaffolding.base import ComponentScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.scaffolding.utils import write_scaffold_file

@@ -4,7 +4,8 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from mcp_server.managers.doc_manager import DocManager
-from mcp_server.tools.base import BaseTool, ToolResult
+from mcp_server.tools.base import BaseTool
+from mcp_server.tools.tool_result import ToolResult
 
 
 class ValidateDocInput(BaseModel):

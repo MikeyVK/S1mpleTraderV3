@@ -1,6 +1,5 @@
 ﻿"""Git tools."""
-import os
-import re
+
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -11,9 +10,9 @@ from pydantic import BaseModel, Field
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
-from mcp_server.tools.base import BaseTool, ToolResult
+from mcp_server.managers import phase_state_engine, project_manager
+from mcp_server.tools.base import BaseTool
+from mcp_server.tools.tool_result import ToolResult
 
 logger = get_logger("tools.git")
 
@@ -224,11 +223,12 @@ class GitCheckoutTool(BaseTool):
             return ToolResult.error(f"Checkout failed for branch: {params.branch}")
 
         current_phase = "unknown"
+        state: dict[str, Any] = {}
         try:
-            project_manager = ProjectManager(workspace_root=workspace_root)
-            engine = PhaseStateEngine(
+            pm = project_manager.ProjectManager(workspace_root=workspace_root)
+            engine = phase_state_engine.PhaseStateEngine(
                 workspace_root=workspace_root,
-                project_manager=project_manager,
+                project_manager=pm,
             )
             state = await anyio.to_thread.run_sync(engine.get_state, params.branch)
             current_phase = state.get("current_phase") or "unknown"
@@ -238,10 +238,13 @@ class GitCheckoutTool(BaseTool):
                 extra={"props": {"branch": params.branch, "error": str(exc)}},
             )
 
-        return ToolResult.text(
-            f"Switched to branch: {params.branch}\n"
-            f"Phase: {current_phase}"
-        )
+        parent_branch = state.get("parent_branch") if "state" in locals() else None
+
+        output = f"Switched to branch: {params.branch}\nCurrent phase: {current_phase}"
+        if parent_branch:
+            output += f"\nParent branch: {parent_branch}"
+
+        return ToolResult.text(output)
 
 
 class GitPushInput(BaseModel):
@@ -383,70 +386,37 @@ class GetParentBranchInput(BaseModel):
 
 
 class GetParentBranchTool(BaseTool):
-    """Tool to detect a branch's parent branch.
+    """Tool to show a branch's configured parent branch.
 
-    Uses git reflog and searches for: "checkout: moving from <parent> to <branch>".
-
-    Notes:
-    - Runs git with --no-pager and stdin closed to avoid stdio hangs.
+    Issue #79: Parent branch is tracked in PhaseStateEngine state.
     """
 
     name = "get_parent_branch"
-    description = "Detect parent branch for a branch (via git reflog)"
+    description = "Detect parent branch for a branch (via PhaseStateEngine state)"
     args_model = GetParentBranchInput
 
-    def __init__(
-        self,
-        workspace_root: Path | None = None,
-        manager: GitManager | None = None,
-    ) -> None:
+    def __init__(self, workspace_root: Path | None = None) -> None:
         self.workspace_root = workspace_root or Path.cwd()
-        self.manager = manager or GitManager()
 
     @property
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    def _detect_parent_branch_from_reflog(self, branch: str) -> str | None:
-        env = os.environ.copy()
-        env.setdefault("GIT_PAGER", "cat")
-        env.setdefault("PAGER", "cat")
-        env.setdefault("GIT_TERMINAL_PROMPT", "0")
-
-        result = subprocess.run(
-            ["git", "--no-pager", "reflog", "show", "--all"],
-            cwd=self.workspace_root,
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=10,
-            env=env,
-        )
-
-        pattern = re.compile(
-            r"checkout: moving from (.+?) to " + re.escape(branch)
-        )
-        for line in result.stdout.splitlines():
-            match = pattern.search(line)
-            if match:
-                return match.group(1)
-        return None
-
     async def execute(self, params: GetParentBranchInput) -> ToolResult:
         try:
-            branch = params.branch or self.manager.get_current_branch()
-            parent = await anyio.to_thread.run_sync(
-                self._detect_parent_branch_from_reflog,
-                branch,
+            git = GitManager()
+            branch = params.branch or git.get_current_branch()
+
+            pm = project_manager.ProjectManager(workspace_root=self.workspace_root)
+            engine = phase_state_engine.PhaseStateEngine(
+                workspace_root=self.workspace_root,
+                project_manager=pm,
             )
+            state = await anyio.to_thread.run_sync(engine.get_state, branch)
+            parent = state.get("parent_branch")
 
             if parent:
-                return ToolResult.text(
-                    f"Branch: {branch}\nParent branch: {parent}"
-                )
-            return ToolResult.text(
-                f"Branch: {branch}\nParent branch: (not detected)"
-            )
+                return ToolResult.text(f"Branch: {branch}\nParent branch: {parent}")
+            return ToolResult.text(f"Branch: {branch}\nParent branch: (not set)")
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
-            return ToolResult.error(f"Failed to detect parent branch: {exc}")
+            return ToolResult.error(f"Failed to get parent branch: {exc}")

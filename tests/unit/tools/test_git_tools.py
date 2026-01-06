@@ -15,7 +15,7 @@ from mcp_server.tools.git_tools import (
     GitRestoreTool, GitRestoreInput,
     GetParentBranchTool, GetParentBranchInput,
 )
-from mcp_server.tools.base import ToolResult
+from mcp_server.tools.tool_result import ToolResult
 
 @pytest.fixture
 def mock_git_manager():

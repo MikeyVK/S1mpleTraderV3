@@ -6,7 +6,7 @@ from mcp_server.tools.pr_tools import (
     ListPRsTool, ListPRsInput,
     MergePRTool, MergePRInput
 )
-from mcp_server.tools.base import ToolResult
+from mcp_server.tools.tool_result import ToolResult
 
 @pytest.fixture
 def mock_github_manager():
