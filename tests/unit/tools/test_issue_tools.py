@@ -8,7 +8,7 @@ from mcp_server.tools.issue_tools import (
     GetIssueTool, GetIssueInput,
     CloseIssueTool, CloseIssueInput
 )
-from mcp_server.tools.base import ToolResult
+from mcp_server.tools.tool_result import ToolResult
 
 @pytest.fixture
 def mock_github_manager():

@@ -240,7 +240,7 @@ class TestPhaseStateEngineTransitions:
             phase_engine.get_state(branch="feature/88-test")
 
         error_msg = str(exc_info.value)
-        assert "State file not found" in error_msg
+        assert "Project plan not found" in error_msg
 
     def test_phase_state_engine_get_state_unknown_branch(
         self, phase_engine: PhaseStateEngine, project_manager: ProjectManager,
@@ -264,4 +264,4 @@ class TestPhaseStateEngineTransitions:
             phase_engine.get_state(branch="feature/99-unknown")
 
         error_msg = str(exc_info.value)
-        assert "Branch 'feature/99-unknown' not found" in error_msg
+        assert "Project plan not found" in error_msg

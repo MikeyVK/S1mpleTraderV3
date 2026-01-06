@@ -8,7 +8,7 @@ disabling MCP tools when exceptions occur.
 import pytest
 
 from mcp_server.core.error_handling import tool_error_handler
-from mcp_server.tools.base import ToolResult
+from mcp_server.tools.tool_result import ToolResult
 
 
 class TestToolErrorHandler:

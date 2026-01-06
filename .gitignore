@@ -30,6 +30,7 @@ dist/
 
 # Logs
 .logs/
+mcp_server/logs/
 
 # Run results
 

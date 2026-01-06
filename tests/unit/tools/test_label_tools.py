@@ -10,7 +10,7 @@ from mcp_server.tools.label_tools import (
     AddLabelsTool, AddLabelsInput,
     RemoveLabelsTool, RemoveLabelsInput
 )
-from mcp_server.tools.base import ToolResult
+from mcp_server.tools.tool_result import ToolResult
 
 @pytest.fixture
 def mock_github_manager():

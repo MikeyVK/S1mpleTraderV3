@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.tools.test_tools import RunTestsTool, RunTestsInput
-from mcp_server.tools.base import ToolResult
+from mcp_server.tools.tool_result import ToolResult
 
 @pytest.fixture
 def mock_run_pytest_sync():
@@ -63,6 +63,7 @@ async def test_run_tests_exception(mock_run_pytest_sync, mock_settings):
     tool = RunTestsTool()
     mock_run_pytest_sync.side_effect = OSError("Boom")
     
-    with pytest.raises(ExecutionError) as exc:
-        await tool.execute(RunTestsInput())
-    assert "Failed to run tests: Boom" in str(exc.value)
+    result = await tool.execute(RunTestsInput())
+
+    assert result.is_error
+    assert "Failed to run tests: Boom" in result.content[0]["text"]

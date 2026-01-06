@@ -3,7 +3,9 @@ import asyncio
 from io import TextIOWrapper
 from pathlib import Path
 import sys
+import time
 from typing import Any, cast, Type
+import uuid
 
 from pydantic import AnyUrl, BaseModel
 import anyio
@@ -220,9 +222,17 @@ class MCPServer:
             name: str,
             arguments: dict[str, Any] | None
         ) -> list[TextContent | ImageContent | EmbeddedResource]:
+            call_id = uuid.uuid4().hex
+            start_time = time.perf_counter()
+            argument_keys = sorted((arguments or {}).keys())
+
             logger.debug(
                 "Tool call received",
-                extra={"props": {"tool_name": name, "arguments": arguments}}
+                extra={"props": {
+                    "call_id": call_id,
+                    "tool_name": name,
+                    "argument_keys": argument_keys,
+                }}
             )
 
             for tool in self.tools:
@@ -234,13 +244,20 @@ class MCPServer:
                             model_cls = cast(Type[BaseModel], tool.args_model)
                             logger.debug(
                                 "Validating tool arguments",
-                                extra={"props": {"tool_name": name, "model": model_cls.__name__}}
+                                extra={"props": {
+                                    "call_id": call_id,
+                                    "tool_name": name,
+                                    "model": model_cls.__name__,
+                                }}
                             )
                             try:
                                 model_validated = model_cls(**(arguments or {}))
                                 logger.debug(
                                     "Arguments validated successfully",
-                                    extra={"props": {"tool_name": name}}
+                                    extra={"props": {
+                                        "call_id": call_id,
+                                        "tool_name": name,
+                                    }}
                                 )
                             except Exception as validation_error:
                                 logger.error(
@@ -248,6 +265,7 @@ class MCPServer:
                                     validation_error,
                                     exc_info=True,
                                     extra={"props": {
+                                        "call_id": call_id,
                                         "tool_name": name,
                                         "model": model_cls.__name__,
                                         "arguments": arguments,
@@ -286,10 +304,28 @@ class MCPServer:
                                     type="resource",
                                     resource=content["resource"]
                                 ))
+                        duration_ms = (time.perf_counter() - start_time) * 1000.0
+                        logger.debug(
+                            "Tool call completed",
+                            extra={"props": {
+                                "call_id": call_id,
+                                "tool_name": name,
+                                "duration_ms": duration_ms,
+                            }}
+                        )
                         return response_content
                     except Exception as e:  # pylint: disable=broad-exception-caught
+                        duration_ms = (time.perf_counter() - start_time) * 1000.0
                         logger.error(
-                            "Tool execution failed: %s", e, exc_info=True
+                            "Tool execution failed: %s",
+                            e,
+                            exc_info=True,
+                            extra={"props": {
+                                "call_id": call_id,
+                                "tool_name": name,
+                                "duration_ms": duration_ms,
+                                "error_type": type(e).__name__,
+                            }}
                         )
                         return [TextContent(
                             type="text",
