@@ -441,13 +441,20 @@ class PhaseStateEngine:
             RuntimeError: If git command fails
         """
         try:
+            env = os.environ.copy()
+            env.setdefault("GIT_TERMINAL_PROMPT", "0")
+            env.setdefault("GIT_PAGER", "cat")
+            env.setdefault("PAGER", "cat")
+
             result = subprocess.run(
                 ["git", "log", f"--max-count={limit}", "--pretty=%s", branch],
                 cwd=self.workspace_root,
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=2  # Short timeout to avoid blocking MCP (Issue #85)
+                timeout=2,  # Short timeout to avoid blocking MCP (Issue #85)
+                env=env,
             )
             commits = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             return commits
