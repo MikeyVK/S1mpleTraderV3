@@ -28,6 +28,8 @@ dist/
 *.swo
 *~
 
+# Legacy/alternate log folder (runtime)
+mcp_server/logs/
 # Logs
 .logs/
 
