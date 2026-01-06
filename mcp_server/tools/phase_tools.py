@@ -106,20 +106,29 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
     async def execute(self, params: TransitionPhaseInput) -> ToolResult:
         """Execute standard phase transition.
 
+        Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based
+        server - asyncio.to_thread doesn't work correctly within anyio context
+        (Issue #85 fix).
+
         Args:
             params: TransitionPhaseInput with branch and target phase
 
         Returns:
             ToolResult with success or error message
         """
+        import anyio  # noqa: PLC0415
+
         engine = self._create_engine()
 
-        try:
-            result = engine.transition(
+        def do_transition() -> dict:
+            return engine.transition(
                 branch=params.branch,
                 to_phase=params.to_phase,
                 human_approval=params.human_approval
             )
+
+        try:
+            result = await anyio.to_thread.run_sync(do_transition)
 
             return ToolResult.text(
                 f"✅ Successfully transitioned '{params.branch}' "
@@ -144,21 +153,30 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
     async def execute(self, params: ForcePhaseTransitionInput) -> ToolResult:
         """Execute forced phase transition.
 
+        Uses anyio.to_thread.run_sync() for compatibility with MCP's anyio-based
+        server - asyncio.to_thread doesn't work correctly within anyio context
+        (Issue #85 fix).
+
         Args:
             params: ForcePhaseTransitionInput with branch, phase, reason, approval
 
         Returns:
             ToolResult with success or error message
         """
+        import anyio  # noqa: PLC0415
+
         engine = self._create_engine()
 
-        try:
-            result = engine.force_transition(
+        def do_force_transition() -> dict:
+            return engine.force_transition(
                 branch=params.branch,
                 to_phase=params.to_phase,
                 skip_reason=params.skip_reason,
                 human_approval=params.human_approval
             )
+
+        try:
+            result = await anyio.to_thread.run_sync(do_force_transition)
 
             return ToolResult.text(
                 f"✅ Forced transition '{params.branch}' "

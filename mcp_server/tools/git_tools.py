@@ -1,10 +1,15 @@
 """Git tools."""
+from pathlib import Path
 from typing import Any
 
+import anyio
 from pydantic import BaseModel, Field
 
+from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.base import BaseTool, ToolResult
 
 logger = get_logger("tools.git")
@@ -203,48 +208,37 @@ class GitCheckoutTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
-        # 1. Switch branch
-        self.manager.checkout(params.branch)
-
-        # 2. Wait for VS Code to process the checkout before writing state.json
-        # pylint: disable=import-outside-toplevel
-        import asyncio
-        await asyncio.sleep(0.5)
-
-        # 3. Try to sync PhaseStateEngine state
-        from pathlib import Path
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
+        workspace_root = Path.cwd()
 
         try:
-            workspace_root = Path.cwd()
+            # GitPython operations can block; run them in a worker thread.
+            await anyio.to_thread.run_sync(self.manager.checkout, params.branch)
+        except MCPError as exc:
+            logger.error(
+                "Branch checkout failed",
+                extra={"props": {"branch": params.branch, "error": str(exc)}},
+            )
+            return ToolResult.error(f"Checkout failed for branch: {params.branch}")
+
+        current_phase = "unknown"
+        try:
             project_manager = ProjectManager(workspace_root=workspace_root)
             engine = PhaseStateEngine(
                 workspace_root=workspace_root,
-                project_manager=project_manager
+                project_manager=project_manager,
             )
-            # Get state - this triggers auto-recovery and saves if needed
-            state = engine.get_state(params.branch)
-            current_phase = state.get('current_phase', 'unknown')
-            
-            # Explicitly save to ensure state.json is flushed for new branch
-            engine._save_state(params.branch, state)
-
-            # 4. Return enriched result with phase info
-            return ToolResult.text(
-                f"Switched to branch: {params.branch}\n"
-                f"Current phase: {current_phase}"
-            )
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            # If state sync fails, still report successful branch switch
+            state = await anyio.to_thread.run_sync(engine.get_state, params.branch)
+            current_phase = state.get("current_phase") or "unknown"
+        except (MCPError, ValueError, OSError) as exc:
             logger.warning(
-                "Branch switched but state sync failed",
-                extra={"props": {"branch": params.branch, "error": str(e)}}
+                "Phase state sync failed after checkout",
+                extra={"props": {"branch": params.branch, "error": str(exc)}},
             )
-            return ToolResult.text(
-                f"Switched to branch: {params.branch}\n"
-                f"(State sync unavailable: {str(e)})"
-            )
+
+        return ToolResult.text(
+            f"Switched to branch: {params.branch}\n"
+            f"Phase: {current_phase}"
+        )
 
 
 class GitPushInput(BaseModel):

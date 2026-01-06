@@ -20,12 +20,13 @@ with audit trail.
 # Standard library
 import json
 import logging
+import os
 import re
 import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Project modules
 from mcp_server.config.workflows import workflow_config
@@ -233,7 +234,7 @@ class PhaseStateEngine:
         """Get full state for branch with auto-recovery.
 
         Mode 2 Enhancement: Automatically reconstructs state from projects.json
-        + git commits when state.json missing or branch doesn't match current.
+        + git commits when state.json is missing/empty or branch doesn't match current.
 
         Args:
             branch: Branch name
@@ -244,22 +245,28 @@ class PhaseStateEngine:
         Raises:
             ValueError: If auto-recovery fails (invalid branch, missing project)
         """
-        # Check if state.json exists and matches current branch
+        # Check if state.json exists, is not empty, and matches requested branch
         if self.state_file.exists():
-            state = json.loads(self.state_file.read_text())
-            # If state is for the requested branch, return it
-            if state.get('branch') == branch:
-                return state
-        
-        # State doesn't exist or is for different branch - reconstruct
+            content = self.state_file.read_text(encoding="utf-8").strip()
+            if content:
+                try:
+                    state = cast(dict[str, Any], json.loads(content))
+                    if state.get("branch") == branch:
+                        return state
+                except json.JSONDecodeError:
+                    logger.warning("Invalid JSON in state.json, reconstructing")
+
+        # State doesn't exist/empty/invalid or is for different branch - reconstruct
         state = self._reconstruct_branch_state(branch)
         self._save_state(branch, state)
         return state
 
     def _save_state(self, branch: str, state: dict[str, Any]) -> None:
         """Save branch state to state.json.
-        
+
         Overwrites state.json with only the current branch state.
+        Uses atomic write (temp file + rename) to avoid file locking issues
+        on Windows (Issue #85).
 
         Args:
             branch: Branch name
@@ -268,10 +275,21 @@ class PhaseStateEngine:
         # Ensure .st3 directory exists
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Write only current branch state - flush previous state
-        with open(self.state_file, 'w', encoding='utf-8') as f:
-            json.dump(state, f, indent=2)
-            f.flush()  # Explicit flush to ensure data is written immediately
+        state["branch"] = branch
+
+        # Atomic write: write to temp file then rename (avoids locking issues)
+        content = json.dumps(state, indent=2)
+        temp_file = self.state_file.parent / ".state.tmp"
+        try:
+            temp_file.write_text(content, encoding="utf-8")
+            # On Windows, need to remove target first if it exists
+            if self.state_file.exists():
+                self.state_file.unlink()
+            temp_file.rename(self.state_file)
+        except OSError:
+            # Fallback: direct write if atomic fails
+            temp_file.unlink(missing_ok=True)
+            self.state_file.write_text(content, encoding="utf-8")
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
         """Convert TransitionRecord to dict for JSON serialization.
@@ -419,13 +437,20 @@ class PhaseStateEngine:
             RuntimeError: If git command fails
         """
         try:
+            env = os.environ.copy()
+            env.setdefault("GIT_TERMINAL_PROMPT", "0")
+            env.setdefault("GIT_PAGER", "cat")
+            env.setdefault("PAGER", "cat")
+
             result = subprocess.run(
                 ["git", "log", f"--max-count={limit}", "--pretty=%s", branch],
                 cwd=self.workspace_root,
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=10
+                timeout=2,  # Short timeout to avoid blocking MCP (Issue #85)
+                env=env,
             )
             commits = [line.strip() for line in result.stdout.splitlines() if line.strip()]
             return commits
