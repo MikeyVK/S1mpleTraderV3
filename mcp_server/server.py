@@ -42,6 +42,7 @@ from mcp_server.tools.git_tools import (
     GitRestoreTool,
     GitStashTool,
     GitStatusTool,
+    GetParentBranchTool,
 )
 from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.health_tools import HealthCheckTool
@@ -114,6 +115,7 @@ class MCPServer:
             GitRestoreTool(),
             GitListBranchesTool(),
             GitDiffTool(),
+            GetParentBranchTool(),
             # Quality tools
             RunQualityGatesTool(),
             ValidateDocTool(),

@@ -41,12 +41,18 @@ class ProjectInitOptions:
     custom_phases: tuple[str, ...] | None = None
     skip_reason: str | None = None
 
+    # Branch metadata
+    parent_branch: str | None = None
+
 
 @dataclass
 class ProjectPlan:
     """Project phase plan data structure.
 
     Field order: identifier → core data → optional → metadata
+    
+    Note: Has 8 fields which exceeds pylint's default of 7,
+    but all fields are necessary for complete project metadata.
     """
 
     # Identifiers
@@ -60,6 +66,7 @@ class ProjectPlan:
 
     # Optional fields
     skip_reason: str | None = None
+    parent_branch: str | None = None
     created_at: str | None = None
 
 
@@ -91,15 +98,20 @@ class ProjectManager:
             issue_number: GitHub issue number
             issue_title: Issue title
             workflow_name: Workflow from workflows.yaml (feature, bug, hotfix, etc.)
-            options: Optional parameters (execution_mode, custom_phases, skip_reason)
+            options: Optional parameters (execution_mode, custom_phases, skip_reason,
+                    parent_branch)
 
         Returns:
-            dict with success, workflow_name, execution_mode, required_phases, skip_reason
+            dict with success, workflow_name, execution_mode, required_phases,
+            skip_reason, parent_branch
 
         Raises:
             ValueError: If workflow invalid or custom_phases without skip_reason
         """
         opts = options or ProjectInitOptions()
+
+        # Extract parent_branch from options
+        parent_branch = opts.parent_branch
 
         # Validate workflow exists
         try:
@@ -136,6 +148,7 @@ class ProjectManager:
             execution_mode=exec_mode,
             required_phases=required_phases,
             skip_reason=opts.skip_reason,
+            parent_branch=parent_branch,
             created_at=datetime.now(UTC).isoformat()
         )
 
@@ -148,7 +161,8 @@ class ProjectManager:
             "workflow_name": plan.workflow_name,
             "execution_mode": plan.execution_mode,
             "required_phases": plan.required_phases,
-            "skip_reason": plan.skip_reason
+            "skip_reason": plan.skip_reason,
+            "parent_branch": plan.parent_branch
         }
 
     def get_project_plan(self, issue_number: int) -> dict[str, Any] | None:
@@ -191,6 +205,7 @@ class ProjectManager:
             "execution_mode": plan.execution_mode,
             "required_phases": list(plan.required_phases),
             "skip_reason": plan.skip_reason,
+            "parent_branch": plan.parent_branch,
             "created_at": plan.created_at
         }
 

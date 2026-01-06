@@ -167,8 +167,39 @@
     "skip_reason": null,
     "created_at": "2026-01-03T13:09:13.042516+00:00"
   },
+  "79": {
+    "issue_title": "Feature: Add parent_branch tracking to state management",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2026-01-03T14:10:37.044782+00:00"
+  },
+  "76": {
+    "issue_title": "Epic: Quality Gates Tooling Implementation",
+    "workflow_name": "epic",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "coordination",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "epic/49-mcp-platform-configurability",
+    "created_at": "2026-01-03T22:34:10.793314+00:00"
+  },
   "85": {
-    "issue_title": "Epic branch support",
+    "issue_number": 85,
+    "issue_title": "Issue #85: state.json rewrite reliability on branch checkout (MCP stdio-safe)",
     "workflow_name": "bug",
     "execution_mode": "interactive",
     "required_phases": [

@@ -234,7 +234,7 @@ class PhaseStateEngine:
         """Get full state for branch with auto-recovery.
 
         Mode 2 Enhancement: Automatically reconstructs state from projects.json
-        + git commits when state.json missing or branch doesn't match current.
+        + git commits when state.json is missing/empty or branch doesn't match current.
 
         Args:
             branch: Branch name
@@ -245,29 +245,23 @@ class PhaseStateEngine:
         Raises:
             ValueError: If auto-recovery fails (invalid branch, missing project)
         """
-        # Check if state.json exists, is not empty, and matches current branch
+        # Check if state.json exists, is not empty, and matches requested branch
         if self.state_file.exists():
-            content = self.state_file.read_text().strip()
-            if content:  # Not empty
+            content = self.state_file.read_text(encoding="utf-8").strip()
+            if content:
                 try:
                     state = cast(dict[str, Any], json.loads(content))
-                    # If state is for the requested branch, return it
-                    if state.get('branch') == branch:
+                    if state.get("branch") == branch:
                         return state
                 except json.JSONDecodeError:
-                    # Invalid JSON, will reconstruct below
                     logger.warning("Invalid JSON in state.json, reconstructing")
 
-        # State doesn't exist or is for different branch - reconstruct
+        # State doesn't exist/empty/invalid or is for different branch - reconstruct
         state = self._reconstruct_branch_state(branch)
         self._save_state(branch, state)
         return state
 
-    def _save_state(
-        self,
-        _branch: str,
-        state: dict[str, Any]
-    ) -> None:
+    def _save_state(self, branch: str, state: dict[str, Any]) -> None:
         """Save branch state to state.json.
 
         Overwrites state.json with only the current branch state.
@@ -275,17 +269,19 @@ class PhaseStateEngine:
         on Windows (Issue #85).
 
         Args:
-            branch: Branch name (unused, kept for API compatibility)
+            branch: Branch name
             state: State dict to save
         """
         # Ensure .st3 directory exists
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
+        state["branch"] = branch
+
         # Atomic write: write to temp file then rename (avoids locking issues)
         content = json.dumps(state, indent=2)
-        temp_file = self.state_file.parent / f".state_{os.getpid()}.tmp"
+        temp_file = self.state_file.parent / ".state.tmp"
         try:
-            temp_file.write_text(content, encoding='utf-8')
+            temp_file.write_text(content, encoding="utf-8")
             # On Windows, need to remove target first if it exists
             if self.state_file.exists():
                 self.state_file.unlink()
@@ -293,7 +289,7 @@ class PhaseStateEngine:
         except OSError:
             # Fallback: direct write if atomic fails
             temp_file.unlink(missing_ok=True)
-            self.state_file.write_text(content, encoding='utf-8')
+            self.state_file.write_text(content, encoding="utf-8")
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
         """Convert TransitionRecord to dict for JSON serialization.
