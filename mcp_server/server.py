@@ -34,6 +34,8 @@ from mcp_server.resources.templates import TemplatesResource
 from mcp_server.tools.code_tools import CreateFileTool
 from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
 from mcp_server.tools.docs_tools import ValidateDocTool
+from mcp_server.tools.git_fetch_tool import GitFetchTool
+from mcp_server.tools.git_pull_tool import GitPullTool
 from mcp_server.tools.git_tools import (
     CreateBranchTool,
     GitCheckoutTool,
@@ -110,6 +112,8 @@ class MCPServer:
             GitStatusTool(),
             GitCommitTool(),
             GitCheckoutTool(),
+            GitFetchTool(),
+            GitPullTool(),
             GitPushTool(),
             GitMergeTool(),
             GitDeleteBranchTool(),

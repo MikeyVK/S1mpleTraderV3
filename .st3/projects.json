@@ -243,5 +243,21 @@
     "skip_reason": null,
     "parent_branch": "epic/76-quality-gates-tooling",
     "created_at": "2026-01-06T19:07:54.466688+00:00"
+  },
+  "94": {
+    "issue_title": "Inventory + implement missing ST3 git tools (sync/pull/fetch etc.)",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-01-07T13:02:08.564154+00:00"
   }
 }

@@ -141,6 +141,54 @@ class GitManager:
         """Push current branch to origin."""
         self.adapter.push(set_upstream=set_upstream)
 
+
+    def fetch(self, remote: str = "origin", prune: bool = False) -> str:
+        """Fetch updates from a remote.
+
+        Responsibilities:
+        - Delegate to GitAdapter.fetch().
+
+        Usage example:
+        - manager.fetch(remote="origin", prune=False)
+
+        Notes:
+        - Fetch is allowed even when the working tree is dirty.
+        """
+        return self.adapter.fetch(remote=remote, prune=prune)
+
+
+    def pull(self, remote: str = "origin", rebase: bool = False) -> str:
+        """Pull updates from a remote into the current branch.
+
+        Responsibilities:
+        - Enforce safe-by-default preflight (clean tree, not detached, upstream configured).
+        - Delegate execution to GitAdapter.pull().
+
+        Usage example:
+        - manager.pull(remote="origin", rebase=False)
+        """
+        if not self.adapter.is_clean():
+            raise PreflightError(
+                "Working directory is not clean",
+                blockers=["Commit or stash changes before pulling"],
+            )
+
+        if self.adapter.get_current_branch() == "HEAD":
+            raise PreflightError(
+                "Detached HEAD - cannot pull",
+                blockers=["Checkout a branch before pulling"],
+            )
+
+        if not self.adapter.has_upstream():
+            raise PreflightError(
+                "No upstream configured for current branch",
+                blockers=[
+                    "Set upstream tracking (e.g. 'git branch --set-upstream-to=origin/<branch>')",
+                    "Or pull with an explicit refspec (not supported yet)",
+                ],
+            )
+
+        return self.adapter.pull(remote=remote, rebase=rebase)
     def merge(self, branch_name: str) -> None:
         """Merge a branch into current branch."""
         if not self.adapter.is_clean():
