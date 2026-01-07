@@ -5,7 +5,7 @@ from git import InvalidGitRepositoryError, Repo
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
-
+from mcp_server.core.logging import get_logger
 
 class GitAdapter:
     """Adapter for interacting with local Git repository."""
@@ -64,7 +64,6 @@ class GitAdapter:
         Raises:
             ExecutionError: If branch already exists or creation fails
         """
-        from mcp_server.core.logging import get_logger  # pylint: disable=import-outside-toplevel
         logger = get_logger("git_adapter")
 
         # Resolve base reference
@@ -174,6 +173,118 @@ class GitAdapter:
         except Exception as e:
             raise ExecutionError(f"Failed to push: {e}") from e
 
+
+    def fetch(self, remote: str = "origin", prune: bool = False) -> str:
+        """Fetch updates from a remote.
+
+        Responsibilities:
+        - Perform a non-interactive fetch (disable pager/prompts) to avoid stdio hangs.
+
+        Usage example:
+        - adapter.fetch(remote="origin", prune=False)
+
+        Args:
+            remote: Remote name (default: origin).
+            prune: Whether to prune deleted remote-tracking branches.
+
+        Returns:
+            A short human-readable summary.
+
+        Raises:
+            ExecutionError: When remote is missing or fetch fails.
+        """
+        try:
+            # Ensure non-interactive behavior even when Git spawns subprocesses.
+            self.repo.git.update_environment(
+                GIT_TERMINAL_PROMPT="0",
+                GIT_PAGER="cat",
+                PAGER="cat",
+            )
+
+            remote_obj = self.repo.remote(remote)
+            fetch_info = remote_obj.fetch(prune=prune)
+            return f"Fetched from {remote}: {len(fetch_info)} ref(s)"
+        except ValueError as e:
+            raise ExecutionError(
+                f"Remote '{remote}' is not configured",
+                recovery=[
+                    "Configure a remote (e.g. 'origin')",
+                    "Check remotes via 'git remote -v'",
+                ],
+            ) from e
+        except Exception as e:
+            raise ExecutionError(f"Failed to fetch from remote '{remote}': {e}") from e
+
+
+    def has_upstream(self) -> bool:
+        """Check whether the current branch has an upstream tracking branch.
+
+        Responsibilities:
+        - Provide a safe upstream presence check for GitManager preflight.
+
+        Usage example:
+        - adapter.has_upstream()
+
+        Returns:
+            True if the active branch has a tracking branch; False otherwise.
+        """
+        try:
+            # Detached head raises TypeError in get_current_branch; active_branch access
+            # can raise in detached states.
+            tracking = self.repo.active_branch.tracking_branch()
+            return tracking is not None
+        except TypeError:
+            return False
+        except Exception as e:
+            raise ExecutionError(f"Failed to check upstream: {e}") from e
+
+    def pull(self, remote: str = "origin", rebase: bool = False) -> str:
+        """Pull updates from a remote into the current branch.
+
+        Responsibilities:
+        - Perform a non-interactive pull (disable pager/prompts) to avoid stdio hangs.
+
+        Usage example:
+        - adapter.pull(remote="origin", rebase=False)
+
+        Args:
+            remote: Remote name (default: origin).
+            rebase: Use --rebase instead of merge.
+
+        Returns:
+            A short human-readable summary.
+
+        Raises:
+            ExecutionError: When remote is missing or pull fails.
+        """
+        try:
+            self.repo.git.update_environment(
+                GIT_TERMINAL_PROMPT="0",
+                GIT_PAGER="cat",
+                PAGER="cat",
+            )
+
+            # Validate remote exists early for clearer errors.
+            self.repo.remote(remote)
+
+            args: list[str] = [remote]
+            if rebase:
+                args.append("--rebase")
+
+            output = str(self.repo.git.pull(*args)).strip()
+            if output:
+                return output
+            return f"Pulled from {remote}"
+        except ValueError as e:
+            raise ExecutionError(
+                f"Remote '{remote}' is not configured",
+                recovery=[
+                    "Configure a remote (e.g. 'origin')",
+                    "Check remotes via 'git remote -v'",
+                ],
+            ) from e
+        except Exception as e:
+            raise ExecutionError(f"Failed to pull from remote '{remote}': {e}") from e
     def merge(self, branch_name: str) -> None:
         """Merge a branch into current branch."""
         try:
