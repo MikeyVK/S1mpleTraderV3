@@ -3,7 +3,9 @@ import asyncio
 from io import TextIOWrapper
 from pathlib import Path
 import sys
+import time
 from typing import Any, cast, Type
+import uuid
 
 from pydantic import AnyUrl, BaseModel
 import anyio
@@ -22,6 +24,9 @@ from mcp_server.config.settings import settings
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.resources.github import GitHubIssuesResource
 
+# Config
+from mcp_server.config.label_startup import validate_label_config_on_startup
+
 # Resources
 from mcp_server.resources.standards import StandardsResource
 from mcp_server.resources.status import StatusResource
@@ -39,6 +44,7 @@ from mcp_server.tools.git_tools import (
     GitRestoreTool,
     GitStashTool,
     GitStatusTool,
+    GetParentBranchTool,
 )
 from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.health_tools import HealthCheckTool
@@ -65,7 +71,7 @@ from mcp_server.tools.milestone_tools import (
 )
 from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
 from mcp_server.tools.project_tools import InitializeProjectTool, GetProjectPlanTool
-from mcp_server.tools.phase_tools import TransitionPhaseTool
+from mcp_server.tools.phase_tools import TransitionPhaseTool, ForcePhaseTransitionTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
 from mcp_server.tools.test_tools import RunTestsTool
@@ -84,6 +90,10 @@ class MCPServer:
     def __init__(self) -> None:
         """Initialize the MCP server with resources and tools."""
         server_name = getattr(getattr(settings, "server"), "name")
+
+        # Validate label configuration at startup
+        validate_label_config_on_startup()
+
         self.server = Server(server_name)
 
         # Core resources (always available)
@@ -107,6 +117,7 @@ class MCPServer:
             GitRestoreTool(),
             GitListBranchesTool(),
             GitDiffTool(),
+            GetParentBranchTool(),
             # Quality tools
             RunQualityGatesTool(),
             ValidateDocTool(),
@@ -123,6 +134,7 @@ class MCPServer:
             GetProjectPlanTool(workspace_root=Path(settings.server.workspace_root)),
             # Phase tools (Phase B)
             TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
+            ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
             # Scaffold tools
             ScaffoldComponentTool(),
             ScaffoldDesignDocTool(),
@@ -210,6 +222,19 @@ class MCPServer:
             name: str,
             arguments: dict[str, Any] | None
         ) -> list[TextContent | ImageContent | EmbeddedResource]:
+            call_id = uuid.uuid4().hex
+            start_time = time.perf_counter()
+            argument_keys = sorted((arguments or {}).keys())
+
+            logger.debug(
+                "Tool call received",
+                extra={"props": {
+                    "call_id": call_id,
+                    "tool_name": name,
+                    "argument_keys": argument_keys,
+                }}
+            )
+
             for tool in self.tools:
                 if tool.name == name:
                     try:
@@ -217,7 +242,37 @@ class MCPServer:
                         if getattr(tool, "args_model", None):
                             # Validate args against model
                             model_cls = cast(Type[BaseModel], tool.args_model)
-                            model_validated = model_cls(**(arguments or {}))
+                            logger.debug(
+                                "Validating tool arguments",
+                                extra={"props": {
+                                    "call_id": call_id,
+                                    "tool_name": name,
+                                    "model": model_cls.__name__,
+                                }}
+                            )
+                            try:
+                                model_validated = model_cls(**(arguments or {}))
+                                logger.debug(
+                                    "Arguments validated successfully",
+                                    extra={"props": {
+                                        "call_id": call_id,
+                                        "tool_name": name,
+                                    }}
+                                )
+                            except Exception as validation_error:
+                                logger.error(
+                                    "Argument validation failed: %s",
+                                    validation_error,
+                                    exc_info=True,
+                                    extra={"props": {
+                                        "call_id": call_id,
+                                        "tool_name": name,
+                                        "model": model_cls.__name__,
+                                        "arguments": arguments,
+                                        "error_type": type(validation_error).__name__
+                                    }}
+                                )
+                                raise
                             result = await tool.execute(model_validated)
                         else:
                             # Fallback if somehow a tool is missed (should not happen)
@@ -249,10 +304,28 @@ class MCPServer:
                                     type="resource",
                                     resource=content["resource"]
                                 ))
+                        duration_ms = (time.perf_counter() - start_time) * 1000.0
+                        logger.debug(
+                            "Tool call completed",
+                            extra={"props": {
+                                "call_id": call_id,
+                                "tool_name": name,
+                                "duration_ms": duration_ms,
+                            }}
+                        )
                         return response_content
                     except Exception as e:  # pylint: disable=broad-exception-caught
+                        duration_ms = (time.perf_counter() - start_time) * 1000.0
                         logger.error(
-                            "Tool execution failed: %s", e, exc_info=True
+                            "Tool execution failed: %s",
+                            e,
+                            exc_info=True,
+                            extra={"props": {
+                                "call_id": call_id,
+                                "tool_name": name,
+                                "duration_ms": duration_ms,
+                                "error_type": type(e).__name__,
+                            }}
                         )
                         return [TextContent(
                             type="text",
@@ -263,6 +336,10 @@ class MCPServer:
     async def run(self) -> None:
         """Run the MCP server."""
         server_name = getattr(getattr(settings, "server"), "name")
+
+        # Validate label configuration at startup
+        validate_label_config_on_startup()
+
         logger.info(
             "Starting MCP server: %s",
             server_name

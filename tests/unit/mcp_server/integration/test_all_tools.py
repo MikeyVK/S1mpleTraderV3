@@ -53,7 +53,11 @@ class TestGitToolsIntegration:
 
             tool = CreateBranchTool()
             result = await tool.execute(
-                CreateBranchInput(name="test-feature", branch_type="feature")
+                CreateBranchInput(
+                    name="test-feature",
+                    branch_type="feature",
+                    base_branch="HEAD"
+                )
             )
 
             assert "feature/test-feature" in result.content[0]["text"]
@@ -241,7 +245,8 @@ class TestQualityToolsIntegration:
                 tool = ValidateDTOTool()
                 result = await tool.execute(ValidateDTOInput(file_path="backend/dtos/test.py"))
 
-                assert result.content is not None
+                assert result.is_error is False
+                assert "DTO validation passed" in result.content[0]["text"]
 
 
 class TestDevelopmentToolsIntegration:

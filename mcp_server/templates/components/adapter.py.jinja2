@@ -1,3 +1,39 @@
+{# TEMPLATE_METADATA
+enforcement: ARCHITECTURAL
+level: content
+extends: base/base_component.py.jinja2
+version: "2.0"
+
+validates:
+  strict:
+    - rule: protocol_interface
+      description: "Must define Protocol interface (I<ClassName>)"
+      pattern: "class I\\w+\\(Protocol\\)"
+      
+    - rule: adapter_implementation
+      description: "Must implement adapter class matching protocol"
+      pattern: "class \\w+Adapter:"
+      
+    - rule: required_imports
+      description: "Must import Protocol and core exceptions"
+      imports:
+        - "typing.Protocol"
+        - "backend.core.exceptions"
+  
+  guidelines:
+    - rule: naming_convention
+      description: "Adapter class name should end with 'Adapter' suffix"
+      severity: WARNING
+      
+    - rule: docstring_format
+      description: "Docstring should include Responsibilities and Usage example"
+      pattern: "Responsibilities:|Usage:"
+      severity: WARNING
+      
+    - rule: interface_segregation
+      description: "Protocol interface should be specific, not god interface"
+      severity: WARNING
+#}
 # {{ output_path | default('backend/adapters/' + name.lower() + '.py') }}
 """
 {{ name }} - {{ description | default('Adapter for external ' + name.replace('Adapter', '') + ' integration') }}.

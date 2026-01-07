@@ -47,16 +47,11 @@ class TestSafeEditTool:
         path = "test.py"
         content = "valid code"
 
-        with patch("mcp_server.tools.safe_edit_tool.ValidatorRegistry") as mock_registry:
-            # Setup validator mock
-            mock_validator = MagicMock()
+        # Mock ValidationService.validate to return passing result
+        async def mock_validate(*_, **__):
+            return True, ""  # passed=True, no issues
 
-            async def async_validate(*_, **__):
-                return ValidationResult(passed=True, score=10.0, issues=[])
-            mock_validator.validate.side_effect = async_validate
-
-            mock_registry.get_validators.return_value = [mock_validator]
-
+        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
             # Mock file writing
             with patch("pathlib.Path.write_text") as mock_write, \
                  patch("pathlib.Path.parent") as mock_parent:
@@ -64,7 +59,9 @@ class TestSafeEditTool:
                 mock_parent.mkdir = MagicMock()
 
                 # Execute
-                result = await tool.execute(SafeEditInput(path=path, content=content, mode="strict"))
+                result = await tool.execute(
+                    SafeEditInput(path=path, content=content, mode="strict")
+                )
 
                 # Verify
                 assert "File saved successfully" in result.content[0]["text"]
@@ -76,22 +73,16 @@ class TestSafeEditTool:
         path = "test.py"
         content = "invalid code"
 
-        with patch("mcp_server.tools.safe_edit_tool.ValidatorRegistry") as mock_registry:
-            # Setup failing validator
-            mock_validator = MagicMock()
+        # Mock ValidationService.validate to return failing result
+        async def mock_validate(*_, **__):
+            return False, "\n\n**Validation Issues:**\n❌ Error\n"
 
-            async def async_validate(*_, **__):
-                return ValidationResult(
-                    passed=False,
-                    score=0.0,
-                    issues=[ValidationIssue(message="Error", severity="error")]
-                )
-            mock_validator.validate.side_effect = async_validate
-            mock_registry.get_validators.return_value = [mock_validator]
-
+        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
-                result = await tool.execute(SafeEditInput(path=path, content=content, mode="strict"))
+                result = await tool.execute(
+                    SafeEditInput(path=path, content=content, mode="strict")
+                )
 
                 # Verify
                 text = result.content[0]["text"]
@@ -105,22 +96,16 @@ class TestSafeEditTool:
         path = "test.py"
         content = "invalid code"
 
-        with patch("mcp_server.tools.safe_edit_tool.ValidatorRegistry") as mock_registry:
-            # Setup failing validator
-            mock_validator = MagicMock()
+        # Mock ValidationService.validate to return failing result
+        async def mock_validate(*_, **__):
+            return False, "\n\n**Validation Issues:**\n❌ Error\n"
 
-            async def async_validate(*_, **__):
-                return ValidationResult(
-                    passed=False,
-                    score=0.0,
-                    issues=[ValidationIssue(message="Error", severity="error")]
-                )
-            mock_validator.validate.side_effect = async_validate
-            mock_registry.get_validators.return_value = [mock_validator]
-
+        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
-                result = await tool.execute(SafeEditInput(path=path, content=content, mode="interactive"))
+                result = await tool.execute(
+                    SafeEditInput(path=path, content=content, mode="interactive")
+                )
 
                 # Verify
                 text = result.content[0]["text"]
@@ -134,18 +119,16 @@ class TestSafeEditTool:
         path = "test.py"
         content = "code"
 
-        with patch("mcp_server.tools.safe_edit_tool.ValidatorRegistry") as mock_registry:
-            # Setup passing validator
-            mock_validator = MagicMock()
+        # Mock ValidationService.validate to return passing result
+        async def mock_validate(*_, **__):
+            return True, ""
 
-            async def async_validate(*_, **__):
-                return ValidationResult(passed=True, score=10.0, issues=[])
-            mock_validator.validate.side_effect = async_validate
-            mock_registry.get_validators.return_value = [mock_validator]
-
+        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
             with patch("pathlib.Path.write_text") as mock_write:
                 # Execute
-                result = await tool.execute(SafeEditInput(path=path, content=content, mode="verify_only"))
+                result = await tool.execute(
+                    SafeEditInput(path=path, content=content, mode="verify_only")
+                )
 
                 # Verify
                 text = result.content[0]["text"]
@@ -158,28 +141,14 @@ class TestSafeEditTool:
         path = "script.py"
         content = "code"
 
-        with patch("mcp_server.tools.safe_edit_tool.ValidatorRegistry") as mock_registry:
-            # Return empty list initially
-            mock_registry.get_validators.return_value = []
+        # Mock ValidationService.validate to return passing result
+        # The fallback logic is now in ValidationService, not SafeEditTool
+        async def mock_validate(*_, **__):
+            return True, ""
 
-            # Use side_effect to inspect the validators list passed to _validate
-            # equivalent logic. Since _validate is internal, we can verify via behavior.
-            # safe_edit_tool._validate loops over validators.
-            # If we mock TemplateValidator("base") and it gets called, we know logic worked.
+        with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
+            # Execute
+            await tool.execute(SafeEditInput(path=path, content=content))
 
-            with patch("mcp_server.tools.safe_edit_tool.TemplateValidator") as mock_tmpl_cls:
-                # Setup base template validator mock
-                mock_base_instance = MagicMock()
-
-                async def async_validate(*_, **__):
-                    return ValidationResult(passed=True, score=10.0, issues=[])
-                mock_base_instance.validate.side_effect = async_validate
-                mock_tmpl_cls.return_value = mock_base_instance
-
-                # Execute
-                await tool.execute(SafeEditInput(path=path, content=content))
-
-                # Verify that TemplateValidator was instantiated with "base"
-                mock_tmpl_cls.assert_called_with("base")
-                # And its validate method was called
-                mock_base_instance.validate.assert_called()
+            # Verify that validate was called (fallback logic is internal to service)
+            tool.validation_service.validate.assert_called_once()

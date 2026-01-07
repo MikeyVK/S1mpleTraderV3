@@ -4,7 +4,7 @@
     "issue_title": "Choke-point enforcement with PolicyEngine",
     "issue_type": "feature",
     "required_phases": [
-      "discovery",
+      "research",
       "planning",
       "design",
       "component",
@@ -21,7 +21,7 @@
     "issue_title": "Enhance SafeEditTool with line-based edits, diff preview, and search/replace",
     "issue_type": "feature",
     "required_phases": [
-      "discovery",
+      "research",
       "planning",
       "design",
       "component",
@@ -38,7 +38,7 @@
     "issue_title": "Epic: MCP Platform Configurability",
     "issue_type": "refactor",
     "required_phases": [
-      "discovery",
+      "research",
       "planning",
       "tdd",
       "integration",
@@ -53,23 +53,7 @@
     "issue_title": "Config: Workflow Configuration System (workflows.yaml)",
     "issue_type": "refactor",
     "required_phases": [
-      "discovery",
-      "planning",
-      "design",
-      "tdd",
-      "integration",
-      "documentation"
-    ],
-    "optional_phases": [],
-    "skip_reason": "Adding design phase for complex refactor (not in standard refactor template)",
-    "created_at": "2025-12-27T00:00:00.000000+00:00"
-  },
-  "50": {
-    "issue_number": 50,
-    "issue_title": "Config: Workflow Configuration System (workflows.yaml)",
-    "issue_type": "refactor",
-    "required_phases": [
-      "discovery",
+      "research",
       "planning",
       "tdd",
       "integration",
@@ -78,5 +62,186 @@
     "optional_phases": [],
     "skip_reason": null,
     "created_at": "2025-12-26T21:19:46.386026+00:00"
+  },
+  "51": {
+    "issue_title": "Config: Label Management System (labels.yaml)",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2025-12-27T21:35:23.969404+00:00"
+  },
+  "52": {
+    "issue_title": "Config: Validation Rules Configuration (validation.yaml)",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2025-12-30T22:04:15.116679+00:00"
+  },
+  "53": {
+    "issue_title": "Config: Quality Gates Configuration (quality.yaml)",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2026-01-01T20:34:05.382525+00:00"
+  },
+  "64": {
+    "issue_title": "Bug: create_feature_branch has incorrect name and unsafe default base",
+    "required_phases": [
+      "research",
+      "planning",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "execution_mode": "interactive",
+    "created_at": "2025-12-29T20:28:33.6262046+01:00",
+    "skip_reason": null,
+    "issue_number": 64,
+    "workflow_name": "bug"
+  },
+  "67": {
+    "issue_number": 67,
+    "issue_title": "Bug: LabelConfig singleton causes stale cache after schema changes",
+    "workflow_name": "bug",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2025-12-30T14:35:00.000000+00:00"
+  },
+  "39": {
+    "issue_title": "InitializeProjectTool does not initialize branch state",
+    "workflow_name": "bug",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2025-12-30T18:27:12.939751+00:00"
+  },
+  "77": {
+    "issue_title": "MCP Tool Error Handling & VS Code Tool Availability",
+    "workflow_name": "bug",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2026-01-03T13:09:13.042516+00:00"
+  },
+  "79": {
+    "issue_title": "Feature: Add parent_branch tracking to state management",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2026-01-03T14:10:37.044782+00:00"
+  },
+  "76": {
+    "issue_title": "Epic: Quality Gates Tooling Implementation",
+    "workflow_name": "epic",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "coordination",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "epic/49-mcp-platform-configurability",
+    "created_at": "2026-01-03T22:34:10.793314+00:00"
+  },
+  "85": {
+    "issue_number": 85,
+    "issue_title": "Issue #85: state.json rewrite reliability on branch checkout (MCP stdio-safe)",
+    "workflow_name": "bug",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "created_at": "2026-01-04T08:24:36.714321+00:00"
+  },
+  "89": {
+    "issue_title": "Bug: Copilot Chat disables MCP tools per session (misleading 'disabled by the user')",
+    "workflow_name": "bug",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "epic/76-quality-gates-tooling",
+    "created_at": "2026-01-06T12:07:50.242172+00:00"
+  },
+  "91": {
+    "issue_title": "Epic: Restore clean tests + consistent ToolResult error contract",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "epic/76-quality-gates-tooling",
+    "created_at": "2026-01-06T19:07:54.466688+00:00"
   }
 }

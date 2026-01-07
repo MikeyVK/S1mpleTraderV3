@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import MagicMock, patch, mock_open
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.tools.code_tools import CreateFileTool, CreateFileInput
-from mcp_server.tools.base import ToolResult
+from mcp_server.tools.tool_result import ToolResult
 
 @pytest.fixture
 def mock_settings():
@@ -49,9 +49,10 @@ async def test_create_file_tool_security_error(mock_settings):
             MagicMock(__str__=lambda x: "/workspace")    # workspace
         ]
         
-        with pytest.raises(ValidationError) as exc:
-            await tool.execute(params)
-        assert "Access denied" in str(exc.value)
+        result = await tool.execute(params)
+
+        assert result.is_error
+        assert "Access denied" in result.content[0]["text"]
 
 @pytest.mark.asyncio
 async def test_create_file_tool_deprecation_warning():

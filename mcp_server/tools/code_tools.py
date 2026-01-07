@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, ValidationError
-from mcp_server.tools.base import BaseTool, ToolResult
+from mcp_server.tools.base import BaseTool
+from mcp_server.tools.tool_result import ToolResult
 
 
 class CreateFileInput(BaseModel):

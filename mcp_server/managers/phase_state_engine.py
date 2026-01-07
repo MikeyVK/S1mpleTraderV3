@@ -19,14 +19,20 @@ with audit trail.
 
 # Standard library
 import json
+import logging
+import os
+import re
+import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 # Project modules
 from mcp_server.config.workflows import workflow_config
 from mcp_server.managers.project_manager import ProjectManager
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -68,7 +74,8 @@ class PhaseStateEngine:
         self.project_manager = project_manager
 
     def initialize_branch(
-        self, branch: str, issue_number: int, initial_phase: str
+        self, branch: str, issue_number: int, initial_phase: str,
+        parent_branch: str | None = None
     ) -> dict[str, Any]:
         """Initialize branch state with workflow caching.
 
@@ -78,9 +85,10 @@ class PhaseStateEngine:
             branch: Branch name (e.g., 'feature/42-test')
             issue_number: GitHub issue number
             initial_phase: Starting phase
+            parent_branch: Optional parent branch - if None, inherits from project
 
         Returns:
-            dict with success, branch, current_phase
+            dict with success, branch, current_phase, parent_branch
 
         Raises:
             ValueError: If project not initialized
@@ -91,12 +99,17 @@ class PhaseStateEngine:
             msg = f"Project {issue_number} not found. Initialize project first."
             raise ValueError(msg)
 
+        # Determine parent_branch: explicit param or inherit from project
+        if parent_branch is None:
+            parent_branch = project.get("parent_branch")
+
         # Create initial state
         state: dict[str, Any] = {
             "branch": branch,
             "issue_number": issue_number,
             "workflow_name": project["workflow_name"],  # Cache for performance
             "current_phase": initial_phase,
+            "parent_branch": parent_branch,  # Store parent_branch
             "transitions": [],
             "created_at": datetime.now(UTC).isoformat()
         }
@@ -104,7 +117,12 @@ class PhaseStateEngine:
         # Save state
         self._save_state(branch, state)
 
-        return {"success": True, "branch": branch, "current_phase": initial_phase}
+        return {
+            "success": True,
+            "branch": branch,
+            "current_phase": initial_phase,
+            "parent_branch": parent_branch
+        }
 
     def transition(
         self, branch: str, to_phase: str, human_approval: str | None = None
@@ -213,7 +231,10 @@ class PhaseStateEngine:
         return current
 
     def get_state(self, branch: str) -> dict[str, Any]:
-        """Get full state for branch.
+        """Get full state for branch with auto-recovery.
+
+        Mode 2 Enhancement: Automatically reconstructs state from projects.json
+        + git commits when state.json is missing/empty or branch doesn't match current.
 
         Args:
             branch: Branch name
@@ -222,23 +243,30 @@ class PhaseStateEngine:
             Branch state with workflow_name, current_phase, transitions
 
         Raises:
-            ValueError: If branch state not found
+            ValueError: If auto-recovery fails (invalid branch, missing project)
         """
-        if not self.state_file.exists():
-            msg = f"State file not found. Initialize branch '{branch}' first."
-            raise ValueError(msg)
+        # Check if state.json exists, is not empty, and matches requested branch
+        if self.state_file.exists():
+            content = self.state_file.read_text(encoding="utf-8").strip()
+            if content:
+                try:
+                    state = cast(dict[str, Any], json.loads(content))
+                    if state.get("branch") == branch:
+                        return state
+                except json.JSONDecodeError:
+                    logger.warning("Invalid JSON in state.json, reconstructing")
 
-        states: dict[str, Any] = json.loads(self.state_file.read_text())
-        state: dict[str, Any] | None = states.get(branch)
-
-        if not state:
-            msg = f"Branch '{branch}' not found. Initialize branch first."
-            raise ValueError(msg)
-
+        # State doesn't exist/empty/invalid or is for different branch - reconstruct
+        state = self._reconstruct_branch_state(branch)
+        self._save_state(branch, state)
         return state
 
     def _save_state(self, branch: str, state: dict[str, Any]) -> None:
         """Save branch state to state.json.
+
+        Overwrites state.json with only the current branch state.
+        Uses atomic write (temp file + rename) to avoid file locking issues
+        on Windows (Issue #85).
 
         Args:
             branch: Branch name
@@ -247,17 +275,21 @@ class PhaseStateEngine:
         # Ensure .st3 directory exists
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Load existing states
-        if self.state_file.exists():
-            states = json.loads(self.state_file.read_text())
-        else:
-            states = {}
+        state["branch"] = branch
 
-        # Update branch state
-        states[branch] = state
-
-        # Write to file
-        self.state_file.write_text(json.dumps(states, indent=2))
+        # Atomic write: write to temp file then rename (avoids locking issues)
+        content = json.dumps(state, indent=2)
+        temp_file = self.state_file.parent / ".state.tmp"
+        try:
+            temp_file.write_text(content, encoding="utf-8")
+            # On Windows, need to remove target first if it exists
+            if self.state_file.exists():
+                self.state_file.unlink()
+            temp_file.rename(self.state_file)
+        except OSError:
+            # Fallback: direct write if atomic fails
+            temp_file.unlink(missing_ok=True)
+            self.state_file.write_text(content, encoding="utf-8")
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
         """Convert TransitionRecord to dict for JSON serialization.
@@ -276,3 +308,194 @@ class PhaseStateEngine:
             "forced": transition.forced,
             "skip_reason": transition.skip_reason
         }
+
+    # -------------------------------------------------------------------------
+    # Mode 2: Auto-recovery methods (Issue #39)
+    # -------------------------------------------------------------------------
+
+    def _reconstruct_branch_state(self, branch: str) -> dict[str, Any]:
+        """Reconstruct branch state from projects.json + git commits.
+
+        Mode 2: Cross-machine scenario - state.json missing after git pull.
+        Automatically reconstructs state using:
+        1. Issue number from branch name
+        2. Workflow definition from projects.json
+        3. Current phase from phase:label commits
+        4. Parent branch from projects.json (Issue #79)
+
+        Args:
+            branch: Branch name (e.g., 'fix/39-test')
+
+        Returns:
+            Reconstructed state dict with reconstructed=True flag,
+            includes parent_branch from projects.json
+
+        Raises:
+            ValueError: If branch format invalid or project not found
+        """
+        logger.info("Reconstructing state for branch '%s'...", branch)
+
+        # Step 1: Extract issue number from branch
+        issue_number = self._extract_issue_from_branch(branch)
+
+        # Step 2: Get project plan (SSOT for workflow)
+        project = self.project_manager.get_project_plan(issue_number)
+        if not project:
+            msg = f"Project plan not found for issue {issue_number}"
+            raise ValueError(msg)
+
+        # Step 3: Infer current phase from git commits
+        workflow_phases = project["required_phases"]
+        current_phase = self._infer_phase_from_git(branch, workflow_phases)
+
+        # Step 4: Extract parent_branch from project
+        parent_branch = project.get("parent_branch")
+
+        # Step 5: Create reconstructed state
+        state: dict[str, Any] = {
+            "branch": branch,
+            "issue_number": issue_number,
+            "workflow_name": project["workflow_name"],
+            "current_phase": current_phase,
+            "parent_branch": parent_branch,  # Reconstructed from projects.json
+            "transitions": [],  # Cannot reconstruct history
+            "created_at": datetime.now(UTC).isoformat(),
+            "reconstructed": True  # Audit flag
+        }
+
+        logger.info(
+            "Reconstructed state: issue=%s, phase=%s, workflow=%s, parent=%s",
+            issue_number, current_phase, project["workflow_name"], parent_branch
+        )
+
+        return state
+
+    def _extract_issue_from_branch(self, branch: str) -> int:
+        """Extract issue number from branch name.
+
+        Supports formats: feature/N-title, fix/N-title, etc.
+
+        Args:
+            branch: Branch name
+
+        Returns:
+            Issue number
+
+        Raises:
+            ValueError: If branch format invalid
+        """
+        # Match: (feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-(.+)
+        match = re.match(r'^(?:feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-', branch)
+        if not match:
+            msg = f"Cannot extract issue number from branch '{branch}'. "
+            msg += "Expected format: <type>/<number>-<title>"
+            raise ValueError(msg)
+
+        return int(match.group(1))
+
+    def _infer_phase_from_git(
+        self, branch: str, workflow_phases: list[str]
+    ) -> str:
+        """Infer current phase from git commit messages.
+
+        Searches for phase:label patterns in commits, validates against workflow.
+
+        Args:
+            branch: Branch name
+            workflow_phases: Valid phases from workflow definition
+
+        Returns:
+            Current phase (most recent valid phase:label or first phase)
+        """
+        try:
+            commits = self._get_git_commits(branch)
+            detected_phase = self._detect_phase_label(commits, workflow_phases)
+
+            if detected_phase:
+                logger.info("Detected phase '%s' from git commits", detected_phase)
+                return detected_phase
+
+        except RuntimeError as e:
+            logger.warning("Git command failed during phase detection: %s", e)
+
+        # Fallback: First phase of workflow
+        fallback_phase = workflow_phases[0]
+        logger.info("No valid phase detected, using fallback: %s", fallback_phase)
+        return fallback_phase
+
+    def _get_git_commits(self, branch: str, limit: int = 50) -> list[str]:
+        """Get commit messages from git log for branch.
+
+        Args:
+            branch: Branch name
+            limit: Maximum commits to retrieve
+
+        Returns:
+            List of commit messages (most recent first)
+
+        Raises:
+            RuntimeError: If git command fails
+        """
+        try:
+            env = os.environ.copy()
+            env.setdefault("GIT_TERMINAL_PROMPT", "0")
+            env.setdefault("GIT_PAGER", "cat")
+            env.setdefault("PAGER", "cat")
+
+            result = subprocess.run(
+                ["git", "log", f"--max-count={limit}", "--pretty=%s", branch],
+                cwd=self.workspace_root,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=2,  # Short timeout to avoid blocking MCP (Issue #85)
+                env=env,
+            )
+            commits = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            return commits
+
+        except subprocess.CalledProcessError as e:
+            msg = f"Git log failed: {e.stderr}"
+            raise RuntimeError(msg) from e
+        except subprocess.TimeoutExpired as e:
+            msg = "Git log command timed out"
+            raise RuntimeError(msg) from e
+
+    def _detect_phase_label(
+        self, commits: list[str], workflow_phases: list[str]
+    ) -> str | None:
+        """Detect phase from phase:label patterns in commits.
+
+        Labels.yaml SSOT: Only phase:label format supported (no backwards compat).
+        Handles TDD granularity: phase:red/green/refactor → 'tdd' in workflow.
+
+        Args:
+            commits: List of commit messages (most recent first)
+            workflow_phases: Valid phases from workflow
+
+        Returns:
+            Detected phase or None if no valid labels found
+        """
+        # TDD labels that map to 'tdd' phase
+        tdd_labels = {"red", "green", "refactor"}
+
+        for commit in commits:
+            # Search for phase:label pattern (case-insensitive)
+            match = re.search(r'phase:(\w+)', commit.lower())
+            if not match:
+                continue
+
+            detected_label = match.group(1)
+
+            # Handle TDD granularity
+            if detected_label in tdd_labels:
+                if "tdd" in workflow_phases:
+                    return "tdd"
+                continue
+
+            # Direct phase match
+            if detected_label in workflow_phases:
+                return detected_label
+
+        return None

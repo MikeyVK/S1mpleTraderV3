@@ -9,6 +9,8 @@ env/
 .venv/
 pip-selfcheck.json
 
+.mypy_cache/
+.tmp/
 # Build artifacts
 build/
 _build/
@@ -26,7 +28,28 @@ dist/
 *.swo
 *~
 
+# Legacy/alternate log folder (runtime)
+mcp_server/logs/
+# Logs
+.logs/
+mcp_server/logs/
+
 # Run results
+
+# Local QA / debug outputs (artifacts)
+.coverage
+coverage.json
+quality_report.json
+deep_report_output.md
+mcp_debug.log
+mcp_server.audit.log
+.mcp_server.lock
+mypy_report*.txt
+pylint_*.txt
+
+temp_*
+script.py
+test.py
 results/
 
 # Source data
@@ -34,4 +57,13 @@ source_data/
 Kraken_Trading_History/
 
 # Generated documents
-#docs/mcp_server.audit.log
+#docs/
+
+# ST3 Workflow - Runtime state (not version controlled)
+.st3/state.json
+
+# ST3 Workflow - Local debug artifacts
+.st3/popen_called.txt
+.st3/sync_debug.log
+.st3/test_sync.py
+.st3/.state_*.tmp

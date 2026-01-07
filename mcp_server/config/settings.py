@@ -11,7 +11,7 @@ class LogSettings(BaseModel):
     """Logging configuration settings."""
 
     level: str = "INFO"
-    audit_log: str = "logs/mcp_audit.log"
+    audit_log: str = ".logs/mcp_audit.log"
 
 
 class ServerSettings(BaseModel):

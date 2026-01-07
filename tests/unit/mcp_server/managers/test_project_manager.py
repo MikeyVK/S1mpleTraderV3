@@ -1,4 +1,4 @@
-"""Tests for ProjectManager with workflow-based initialization.
+﻿"""Tests for ProjectManager with workflow-based initialization.
 
 Issue #50: Tests migrated from PHASE_TEMPLATES to workflows.yaml.
 - Workflow selection from workflows.yaml
@@ -54,7 +54,7 @@ class TestProjectManagerWorkflows:
         """Test feature workflow from workflows.yaml."""
         workflow = workflow_config.get_workflow("feature")
         assert len(workflow.phases) == 6
-        expected = ["discovery", "planning", "design", "tdd", "integration", "documentation"]
+        expected = ["research", "planning", "design", "tdd", "integration", "documentation"]
         assert workflow.phases == expected
         assert workflow.default_execution_mode == "interactive"
 
@@ -133,7 +133,7 @@ class TestProjectManagerWorkflows:
         self, manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test initialize_project with custom phases."""
-        custom_phases = ("discovery", "planning", "design", "tdd", "integration", "documentation")
+        custom_phases = ("research", "planning", "design", "tdd", "integration", "documentation")
 
         result = manager.initialize_project(
             issue_number=50,
@@ -197,7 +197,7 @@ class TestProjectManagerWorkflows:
                 issue_number=777,
                 issue_title="Test",
                 workflow_name="feature",
-                options=ProjectInitOptions(custom_phases=("discovery", "tdd"))
+                options=ProjectInitOptions(custom_phases=("research", "tdd"))
             )
 
         error_msg = str(exc_info.value)
@@ -227,3 +227,46 @@ class TestProjectManagerWorkflows:
         """Test get_project_plan returns None for nonexistent project."""
         plan = manager.get_project_plan(issue_number=999)
         assert plan is None
+
+    def test_initialize_project_with_parent_branch(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test initializing project with explicit parent_branch.
+
+        Issue #79: parent_branch tracking for merge targets.
+        """
+        result = manager.initialize_project(
+            issue_number=79,
+            issue_title="Add parent branch tracking",
+            workflow_name="feature",
+            options=ProjectInitOptions(parent_branch="epic/76-quality-gates-tooling")
+        )
+
+        # Verify parent_branch in returned result
+        assert result["parent_branch"] == "epic/76-quality-gates-tooling"
+
+        # Verify persisted to projects.json
+        plan = manager.get_project_plan(issue_number=79)
+        assert plan is not None
+        assert plan["parent_branch"] == "epic/76-quality-gates-tooling"
+
+    def test_initialize_project_without_parent_branch(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test initializing project without parent_branch (backward compat).
+        
+        Issue #79: parent_branch is optional for existing workflows.
+        """
+        result = manager.initialize_project(
+            issue_number=80,
+            issue_title="Old style project",
+            workflow_name="bug"
+        )
+
+        # Verify parent_branch is None
+        assert result["parent_branch"] is None
+
+        # Verify persisted as None
+        plan = manager.get_project_plan(issue_number=80)
+        assert plan is not None
+        assert plan["parent_branch"] is None

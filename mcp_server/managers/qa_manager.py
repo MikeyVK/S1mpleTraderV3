@@ -46,20 +46,48 @@ class QAManager:
             })
             return results
 
+        python_files = [f for f in files if str(f).endswith(".py")]
+        non_python_files = [f for f in files if f not in python_files]
+
+        if non_python_files or not python_files:
+            issues: list[dict[str, Any]] = []
+            if not python_files:
+                results["overall_pass"] = False
+                issues.append({
+                    "message": "No Python (.py) files provided; quality gates support .py only"
+                })
+
+            for f in non_python_files:
+                issues.append({
+                    "file": f,
+                    "message": "Skipped non-Python file (quality gates support .py only)"
+                })
+
+            results["gates"].append({
+                "gate_number": 0,
+                "name": "File Filtering",
+                "passed": bool(python_files),
+                "score": "N/A",
+                "issues": issues,
+            })
+
+        if not python_files:
+            return results
+
         # Gate 1: Pylint (Whitespace/Imports/Line Length)
-        pylint_result = self._run_pylint(files)
+        pylint_result = self._run_pylint(python_files)
         results["gates"].append(pylint_result)
         if not pylint_result["passed"]:
             results["overall_pass"] = False
 
         # Gate 2: Mypy (Type Checking)
-        mypy_result = self._run_mypy(files)
+        mypy_result = self._run_mypy(python_files)
         results["gates"].append(mypy_result)
         if not mypy_result["passed"]:
             results["overall_pass"] = False
 
         # Gate 3: Pyright (Pylance parity)
-        pyright_result = self._run_pyright(files)
+        pyright_result = self._run_pyright(python_files)
         results["gates"].append(pyright_result)
         if not pyright_result["passed"]:
             results["overall_pass"] = False

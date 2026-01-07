@@ -54,18 +54,62 @@ class GitAdapter:
             "modified_files": [item.a_path for item in self.repo.index.diff(None)]
         }
 
-    def create_branch(self, branch_name: str, base: str = "main") -> None:
-        """Create a new branch."""
+    def create_branch(self, branch_name: str, base: str) -> None:
+        """Create a new branch from specified base.
+
+        Args:
+            branch_name: Name of the branch to create
+            base: Base reference - can be 'HEAD', branch name, or commit hash
+
+        Raises:
+            ExecutionError: If branch already exists or creation fails
+        """
+        from mcp_server.core.logging import get_logger  # pylint: disable=import-outside-toplevel
+        logger = get_logger("git_adapter")
+
+        # Resolve base reference
+        if base == "HEAD":
+            base_ref = self.repo.head.commit
+            resolved_base = f"HEAD ({base_ref.hexsha[:7]})"
+        else:
+            base_ref = base  # type: ignore[assignment]
+            resolved_base = base
+
+        logger.debug(
+            "Creating git branch",
+            extra={"props": {
+                "branch_name": branch_name,
+                "base": base,
+                "resolved_base": resolved_base,
+                "current_branch": self.get_current_branch()
+            }}
+        )
+
         try:
             if branch_name in self.repo.heads:
                 raise ExecutionError(f"Branch {branch_name} already exists")
 
-            # Ensure we have the base branch (in a real scenario, we might want to fetch first)
-            # For now, we assume local operation
-
-            new_branch = self.repo.create_head(branch_name, base)
+            new_branch = self.repo.create_head(branch_name, base_ref)
             new_branch.checkout()
+
+            logger.info(
+                "Created and checked out branch",
+                extra={"props": {
+                    "branch_name": branch_name,
+                    "base": resolved_base
+                }}
+            )
+        except ExecutionError:
+            raise
         except Exception as e:
+            logger.error(
+                "Failed to create branch",
+                extra={"props": {
+                    "branch_name": branch_name,
+                    "base": base,
+                    "error": str(e)
+                }}
+            )
             raise ExecutionError(f"Failed to create branch {branch_name}: {e}") from e
 
     def commit(self, message: str, files: list[str] | None = None) -> str:

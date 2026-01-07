@@ -1,6 +1,7 @@
 """Structured logging for the MCP server."""
 import json
 import logging
+from pathlib import Path
 import sys
 from typing import Any
 
@@ -40,15 +41,22 @@ def setup_logging() -> None:
 
     # Audit log file handler if configured
     if settings.logging.audit_log:
+        log_path = Path(settings.logging.audit_log)
         try:
-            file_handler = logging.FileHandler(
-                settings.logging.audit_log
-            )
+            # Ensure the parent directory exists (common failure on fresh checkouts)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+
+            file_handler = logging.FileHandler(str(log_path))
             file_handler.setFormatter(StructuredFormatter())
             logger.addHandler(file_handler)
-        except OSError:
-            # Fallback if file cannot be opened
-            pass
+        except OSError as exc:
+            # Fallback if file cannot be opened; still keep stderr logging.
+            logger.warning(
+                "Failed to configure audit log file: %s",
+                exc,
+                exc_info=True,
+                extra={"props": {"audit_log": str(log_path)}},
+            )
 
 
 def get_logger(name: str) -> logging.Logger:

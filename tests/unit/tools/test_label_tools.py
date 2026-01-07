@@ -1,6 +1,8 @@
 """Unit tests for label_tools.py."""
 import pytest
-from unittest.mock import MagicMock, patch
+from pathlib import Path
+from unittest.mock import MagicMock
+from mcp_server.config.label_config import LabelConfig
 from mcp_server.tools.label_tools import (
     ListLabelsTool, ListLabelsInput,
     CreateLabelTool, CreateLabelInput,
@@ -8,11 +10,31 @@ from mcp_server.tools.label_tools import (
     AddLabelsTool, AddLabelsInput,
     RemoveLabelsTool, RemoveLabelsInput
 )
-from mcp_server.tools.base import ToolResult
+from mcp_server.tools.tool_result import ToolResult
 
 @pytest.fixture
 def mock_github_manager():
     return MagicMock()
+
+@pytest.fixture
+def test_label_config(tmp_path):
+    """Create a temp label config with test labels."""
+    yaml_content = """version: "1.0"
+labels:
+  - name: "bug"
+    color: "d73a4a"
+  - name: "p1"
+    color: "0052cc"
+  - name: "new-label"
+    color: "0000ff"
+"""
+    yaml_file = tmp_path / "labels.yaml"
+    yaml_file.write_text(yaml_content)
+    
+    LabelConfig.reset()
+    LabelConfig.load(yaml_file)
+    yield
+    LabelConfig.reset()
 
 @pytest.mark.asyncio
 async def test_list_labels_tool(mock_github_manager):
@@ -29,19 +51,19 @@ async def test_list_labels_tool(mock_github_manager):
     assert "feat" in result.content[0]["text"]
 
 @pytest.mark.asyncio
-async def test_create_label_tool(mock_github_manager):
+async def test_create_label_tool(mock_github_manager, test_label_config):
     tool = CreateLabelTool(manager=mock_github_manager)
     label_mock = MagicMock()
-    label_mock.name = "new-label"  # Set attribute explicitly
+    label_mock.name = "type:hotfix"  # Must match pattern, not exist in config
     mock_github_manager.create_label.return_value = label_mock
     
-    params = CreateLabelInput(name="new-label", color="blue", description="New")
+    params = CreateLabelInput(name="type:hotfix", color="ff0000", description="Hotfix")
     result = await tool.execute(params)
     
     mock_github_manager.create_label.assert_called_with(
-        name="new-label", color="blue", description="New"
+        name="type:hotfix", color="ff0000", description="Hotfix"
     )
-    assert "Created label: **new-label**" in result.content[0]["text"]
+    assert "Created label: **type:hotfix**" in result.content[0]["text"]
 
 @pytest.mark.asyncio
 async def test_delete_label_tool(mock_github_manager):
@@ -54,7 +76,7 @@ async def test_delete_label_tool(mock_github_manager):
     assert "Deleted label: **old-label**" in result.content[0]["text"]
 
 @pytest.mark.asyncio
-async def test_add_labels_tool(mock_github_manager):
+async def test_add_labels_tool(mock_github_manager, test_label_config):
     tool = AddLabelsTool(manager=mock_github_manager)
     
     result = await tool.execute(AddLabelsInput(issue_number=10, labels=["bug", "p1"]))

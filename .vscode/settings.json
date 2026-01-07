@@ -1,48 +1,49 @@
 {
-    "chat.tools.terminal.autoApprove": {
-        "autoApprove": true,
-        "pytest": true,
-        "pylint": true,
-        "Set-Content": true,
-        "git merge": true,
-        "git add": true,
-        "git commit": true,
-        "git checkout": true
-    },
-    "chat.agent.maxRequests": 50,
-    "python-envs.pythonProjects": [
-        {
-            "path": "",
-            "envManager": "ms-python.python:venv",
-            "packageManager": "ms-python.python:pip"
-        }
-    ],
-    "python.analysis.enablePytestSupport": true,
-    "python.analysis.inlayHints.pytestParameters": true,
-    "python.analysis.autoImportCompletions": true,
-    "pylint.args": [
-        "--enable=all",
-        "--max-line-length=100"
-    ],
-    "github.copilot.chat.terminalChatLocation": "terminal",
-    "github.copilot.chat.runCommand.enabled": true,
-    "github.copilot.chat.runCommand.alwaysApprove": [
-        "python",
-        "pytest",
-        "pylint",
-        "pip",
-        "git"
-    ],
-    "chat.mcp.serverSampling": {
-        "SimpleTraderV3/.vscode/mcp.json: st3-workflow": {
-            "allowedModels": [
-                "copilot/claude-sonnet-4.5",
-                "copilot/claude-opus-4.5",
-                "copilot/gemini-2.5-pro",
-                "copilot/gemini-3-flash-preview",
-                "copilot/gemini-3-pro-preview",
-                "copilot/gpt-5.2"
-            ]
-        }
-    }
+    "chat.tools.terminal.autoApprove":  {
+                                            "autoApprove":  true,
+                                            "pytest":  true,
+                                            "pylint":  true,
+                                            "Set-Content":  true,
+                                            "git merge":  true,
+                                            "git add":  true,
+                                            "git commit":  true,
+                                            "git checkout":  true
+                                        },
+    "chat.agent.maxRequests":  50,
+    "python-envs.pythonProjects":  [
+                                       {
+                                           "path":  "",
+                                           "envManager":  "ms-python.python:venv",
+                                           "packageManager":  "ms-python.python:pip"
+                                       }
+                                   ],
+    "python.analysis.enablePytestSupport":  true,
+    "python.analysis.inlayHints.pytestParameters":  true,
+    "python.analysis.autoImportCompletions":  true,
+    "pylint.args":  [
+                        "--enable=all",
+                        "--max-line-length=100"
+                    ],
+    "github.copilot.chat.terminalChatLocation":  "terminal",
+    "github.copilot.chat.runCommand.enabled":  true,
+    "github.copilot.chat.runCommand.alwaysApprove":  [
+                                                         "python",
+                                                         "pytest",
+                                                         "pylint",
+                                                         "pip",
+                                                         "git"
+                                                     ],
+    "chat.mcp.serverSampling":  {
+                                    "SimpleTraderV3/.vscode/mcp.json: st3-workflow":  {
+                                                                                          "allowedModels":  [
+                                                                                                                "copilot/claude-sonnet-4.5",
+                                                                                                                "copilot/claude-opus-4.5",
+                                                                                                                "copilot/gemini-2.5-pro",
+                                                                                                                "copilot/gemini-3-flash-preview",
+                                                                                                                "copilot/gemini-3-pro-preview",
+                                                                                                                "copilot/gpt-5.2"
+                                                                                                            ]
+                                                                                      }
+                                },
+    "github.copilot.chat.cli.mcp.enabled":  true
 }

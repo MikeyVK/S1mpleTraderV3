@@ -1,10 +1,20 @@
 """Git tools."""
+
+import subprocess
+from pathlib import Path
 from typing import Any
 
+import anyio
 from pydantic import BaseModel, Field
 
+from mcp_server.core.exceptions import MCPError
+from mcp_server.core.logging import get_logger
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.tools.base import BaseTool, ToolResult
+from mcp_server.managers import phase_state_engine, project_manager
+from mcp_server.tools.base import BaseTool
+from mcp_server.tools.tool_result import ToolResult
+
+logger = get_logger("tools.git")
 
 
 def _input_schema(args_model: type[BaseModel] | None) -> dict[str, Any]:
@@ -19,15 +29,19 @@ class CreateBranchInput(BaseModel):
     branch_type: str = Field(
         default="feature",
         description="Branch type",
-        pattern="^(feature|fix|refactor|docs)$"
+        pattern="^(feature|fix|refactor|docs|epic)$"
+    )
+    base_branch: str = Field(
+        ...,
+        description="Base branch to create from (e.g., 'HEAD', 'main', 'refactor/51-labels-yaml')"
     )
 
 
 class CreateBranchTool(BaseTool):
-    """Tool to create a git branch."""
+    """Tool to create a git branch from specified base."""
 
-    name = "create_feature_branch"
-    description = "Create a new feature branch"
+    name = "create_branch"
+    description = "Create a new branch from specified base branch"
     args_model = CreateBranchInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
@@ -38,9 +52,31 @@ class CreateBranchTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: CreateBranchInput) -> ToolResult:
-        branch_name = self.manager.create_feature_branch(params.name, params.branch_type)
-        return ToolResult.text(f"Created and switched to branch: {branch_name}")
+        logger.info(
+            "Branch creation requested",
+            extra={"props": {
+                "name": params.name,
+                "branch_type": params.branch_type,
+                "base_branch": params.base_branch
+            }}
+        )
 
+        try:
+            branch_name = self.manager.create_branch(
+                params.name,
+                params.branch_type,
+                params.base_branch
+            )
+            return ToolResult.text(f"âœ… Created and switched to branch: {branch_name}")
+        except Exception as e:
+            logger.error(
+                "Branch creation failed",
+                extra={"props": {
+                    "name": params.name,
+                    "error": str(e)
+                }}
+            )
+            raise
 
 class GitStatusInput(BaseModel):
     """Input for GitStatusTool (empty)."""
@@ -156,7 +192,11 @@ class GitCheckoutInput(BaseModel):
 
 
 class GitCheckoutTool(BaseTool):
-    """Tool to checkout to a branch."""
+    """Tool to checkout to a branch.
+
+    Automatically synchronizes PhaseStateEngine state after branch switch
+    to ensure correct TDD phase tracking.
+    """
 
     name = "git_checkout"
     description = "Switch to an existing branch"
@@ -170,8 +210,41 @@ class GitCheckoutTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCheckoutInput) -> ToolResult:
-        self.manager.checkout(params.branch)
-        return ToolResult.text(f"Switched to branch: {params.branch}")
+        workspace_root = Path.cwd()
+
+        try:
+            # GitPython operations can block; run them in a worker thread.
+            await anyio.to_thread.run_sync(self.manager.checkout, params.branch)
+        except MCPError as exc:
+            logger.error(
+                "Branch checkout failed",
+                extra={"props": {"branch": params.branch, "error": str(exc)}},
+            )
+            return ToolResult.error(f"Checkout failed for branch: {params.branch}")
+
+        current_phase = "unknown"
+        state: dict[str, Any] = {}
+        try:
+            pm = project_manager.ProjectManager(workspace_root=workspace_root)
+            engine = phase_state_engine.PhaseStateEngine(
+                workspace_root=workspace_root,
+                project_manager=pm,
+            )
+            state = await anyio.to_thread.run_sync(engine.get_state, params.branch)
+            current_phase = state.get("current_phase") or "unknown"
+        except (MCPError, ValueError, OSError) as exc:
+            logger.warning(
+                "Phase state sync failed after checkout",
+                extra={"props": {"branch": params.branch, "error": str(exc)}},
+            )
+
+        parent_branch = state.get("parent_branch") if "state" in locals() else None
+
+        output = f"Switched to branch: {params.branch}\nCurrent phase: {current_phase}"
+        if parent_branch:
+            output += f"\nParent branch: {parent_branch}"
+
+        return ToolResult.text(output)
 
 
 class GitPushInput(BaseModel):
@@ -300,3 +373,50 @@ class GitStashTool(BaseTool):
                 return ToolResult.text("No stashes found")
             return ToolResult.text("\n".join(stashes))
         return ToolResult.text(f"Unknown action: {params.action}")
+
+
+
+class GetParentBranchInput(BaseModel):
+    """Input for GetParentBranchTool."""
+
+    branch: str | None = Field(
+        default=None,
+        description="Branch name to inspect (default: current branch)"
+    )
+
+
+class GetParentBranchTool(BaseTool):
+    """Tool to show a branch's configured parent branch.
+
+    Issue #79: Parent branch is tracked in PhaseStateEngine state.
+    """
+
+    name = "get_parent_branch"
+    description = "Detect parent branch for a branch (via PhaseStateEngine state)"
+    args_model = GetParentBranchInput
+
+    def __init__(self, workspace_root: Path | None = None) -> None:
+        self.workspace_root = workspace_root or Path.cwd()
+
+    @property
+    def input_schema(self) -> dict[str, Any]:
+        return _input_schema(self.args_model)
+
+    async def execute(self, params: GetParentBranchInput) -> ToolResult:
+        try:
+            git = GitManager()
+            branch = params.branch or git.get_current_branch()
+
+            pm = project_manager.ProjectManager(workspace_root=self.workspace_root)
+            engine = phase_state_engine.PhaseStateEngine(
+                workspace_root=self.workspace_root,
+                project_manager=pm,
+            )
+            state = await anyio.to_thread.run_sync(engine.get_state, branch)
+            parent = state.get("parent_branch")
+
+            if parent:
+                return ToolResult.text(f"Branch: {branch}\nParent branch: {parent}")
+            return ToolResult.text(f"Branch: {branch}\nParent branch: (not set)")
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
+            return ToolResult.error(f"Failed to get parent branch: {exc}")

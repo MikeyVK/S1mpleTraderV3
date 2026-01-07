@@ -10,7 +10,8 @@ from mcp_server.core.exceptions import MCPError
 from mcp_server.managers.doc_manager import DocManager
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.tools.base import BaseTool, ToolResult
+from mcp_server.tools.base import BaseTool
+from mcp_server.tools.tool_result import ToolResult
 
 
 class SearchDocumentationInput(BaseModel):

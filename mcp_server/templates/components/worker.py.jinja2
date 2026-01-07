@@ -1,3 +1,35 @@
+{# TEMPLATE_METADATA
+enforcement: ARCHITECTURAL
+level: content
+extends: base/base_component.py.jinja2
+version: "2.0"
+
+validates:
+  strict:
+    - rule: base_class
+      description: "Must inherit from BaseWorker[InputDTO, OutputDTO]"
+      pattern: "class \\w+\\(BaseWorker\\[\\w+, \\w+\\]\\)"
+      
+    - rule: required_methods
+      description: "Must implement process() method"
+      pattern: "async def process\\(self, input_data: \\w+\\) -> \\w+"
+      
+    - rule: required_imports
+      description: "Must import BaseWorker and IStrategyCache"
+      imports:
+        - "backend.core.interfaces.base_worker.BaseWorker"
+        - "backend.core.interfaces.strategy_cache.IStrategyCache"
+  
+  guidelines:
+    - rule: naming_convention
+      description: "Worker class name should describe processing action"
+      severity: WARNING
+      
+    - rule: docstring_format
+      description: "Docstring should include Responsibilities and Subscribes to/Publishes sections"
+      pattern: "Responsibilities:|Subscribes to:|Publishes:"
+      severity: WARNING
+#}
 # {{ output_path | default('backend/workers/' + worker_type + '/' + name.lower() + '.py') }}
 """
 {{ name }} - {{ description | default(name + ' worker implementation') }}.

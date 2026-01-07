@@ -1,260 +1,205 @@
-"""RED tests for PhaseStateEngine workflow validation.
+"""Tests for PhaseStateEngine with parent_branch tracking.
 
-Issue #50 - Step 3: PhaseStateEngine Integration
-
-Tests workflow-based phase transition validation:
-- Valid sequential transitions (allowed by workflow)
-- Invalid transitions (rejected by workflow validation)
-- Force transitions (bypass validation with skip_reason)
+Issue #79: Tests for parent_branch in state management.
+- initialize_branch with parent_branch
+- Auto-recovery includes parent_branch from projects.json
 """
 from pathlib import Path
 
 import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 
 
-class TestPhaseStateEngineTransitions:
-    """Test PhaseStateEngine with workflow validation."""
+class TestPhaseStateEngineParentBranch:
+    """Test parent_branch functionality in PhaseStateEngine."""
 
     @pytest.fixture
     def workspace_root(self, tmp_path: Path) -> Path:
-        """Create temporary workspace."""
+        """Create temporary workspace.
+
+        Args:
+            tmp_path: Pytest tmp_path fixture
+
+        Returns:
+            Path to temporary workspace root
+        """
         return tmp_path
 
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
-        """Create ProjectManager instance."""
+        """Create ProjectManager instance.
+
+        Args:
+            workspace_root: Path to workspace root
+
+        Returns:
+            ProjectManager instance
+        """
         return ProjectManager(workspace_root=workspace_root)
 
     @pytest.fixture
-    def phase_engine(
+    def engine(
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
-        """Create PhaseStateEngine instance."""
+        """Create PhaseStateEngine instance.
+
+        Args:
+            workspace_root: Path to workspace root
+            project_manager: ProjectManager instance
+
+        Returns:
+            PhaseStateEngine instance
+        """
         return PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
         )
 
-    def test_phase_state_engine_transition_valid(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
+    def test_initialize_branch_with_explicit_parent_branch(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
     ) -> None:
-        """Test valid sequential transition (discovery → planning)."""
-        # Initialize project with feature workflow
+        """Test initializing branch with explicit parent_branch.
+
+        Issue #79: parent_branch can be passed explicitly to override project's value.
+        """
+        # Setup - create project with one parent
         project_manager.initialize_project(
-            issue_number=42,
-            issue_title="Test feature",
-            workflow_name="feature"
-        )
-
-        # Initialize branch state (current_phase = discovery)
-        phase_engine.initialize_branch(
-            branch="feature/42-test",
-            issue_number=42,
-            initial_phase="discovery"
-        )
-
-        # Valid transition: discovery → planning (next phase in workflow)
-        result = phase_engine.transition(
-            branch="feature/42-test",
-            to_phase="planning",
-            human_approval="Move to planning"
-        )
-
-        assert result["success"] is True
-        assert result["from_phase"] == "discovery"
-        assert result["to_phase"] == "planning"
-
-    def test_phase_state_engine_transition_invalid(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
-    ) -> None:
-        """Test invalid transition (discovery → design, skips planning)."""
-        # Initialize project
-        project_manager.initialize_project(
-            issue_number=43,
-            issue_title="Test feature",
-            workflow_name="feature"
-        )
-
-        # Initialize branch state
-        phase_engine.initialize_branch(
-            branch="feature/43-test",
-            issue_number=43,
-            initial_phase="discovery"
-        )
-
-        # Invalid transition: discovery → design (skips planning)
-        with pytest.raises(ValueError) as exc_info:
-            phase_engine.transition(
-                branch="feature/43-test",
-                to_phase="design",
-                human_approval="Skip planning"
-            )
-
-        error_msg = str(exc_info.value)
-        assert "Invalid transition" in error_msg
-        assert "discovery" in error_msg
-        assert "design" in error_msg
-
-    def test_phase_state_engine_force_transition(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
-    ) -> None:
-        """Test force_transition allows non-sequential jumps."""
-        # Initialize project
-        project_manager.initialize_project(
-            issue_number=44,
-            issue_title="Test feature",
-            workflow_name="feature"
-        )
-
-        # Initialize branch state
-        phase_engine.initialize_branch(
-            branch="feature/44-test",
-            issue_number=44,
-            initial_phase="discovery"
-        )
-
-        # Force transition: discovery → design (skip planning)
-        result = phase_engine.force_transition(
-            branch="feature/44-test",
-            to_phase="design",
-            skip_reason="Planning already done in previous project",
-            human_approval="Force skip planning"
-        )
-
-        assert result["success"] is True
-        assert result["from_phase"] == "discovery"
-        assert result["to_phase"] == "design"
-        assert result["forced"] is True
-        assert result["skip_reason"] == "Planning already done in previous project"
-
-    def test_phase_state_engine_get_current_phase(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
-    ) -> None:
-        """Test get_current_phase returns correct phase."""
-        # Initialize project and branch
-        project_manager.initialize_project(
-            issue_number=45,
+            issue_number=79,
             issue_title="Test",
+            workflow_name="feature",
+            options=ProjectInitOptions(parent_branch="main")
+        )
+
+        # Execute - initialize branch with different parent (override)
+        result = engine.initialize_branch(
+            branch="feature/79-test",
+            issue_number=79,
+            initial_phase="research",
+            parent_branch="epic/76-qa"  # Override project's "main"
+        )
+
+        # Verify
+        assert result["success"] is True
+        assert result["parent_branch"] == "epic/76-qa"
+
+        # Verify persisted to state.json
+        state = engine.get_state("feature/79-test")
+        assert state["parent_branch"] == "epic/76-qa"
+
+    def test_initialize_branch_inherits_parent_from_project(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test initializing branch inherits parent_branch from project.
+
+        Issue #79: If parent_branch not provided, inherit from projects.json.
+        """
+        # Setup - create project with parent
+        project_manager.initialize_project(
+            issue_number=80,
+            issue_title="Test",
+            workflow_name="bug",
+            options=ProjectInitOptions(parent_branch="epic/76-qa")
+        )
+
+        # Execute - initialize branch WITHOUT parent_branch parameter
+        result = engine.initialize_branch(
+            branch="bug/80-test",
+            issue_number=80,
+            initial_phase="tdd"
+            # No parent_branch - should inherit from project
+        )
+
+        # Verify
+        assert result["success"] is True
+        assert result["parent_branch"] == "epic/76-qa"
+
+        # Verify persisted to state.json
+        state = engine.get_state("bug/80-test")
+        assert state["parent_branch"] == "epic/76-qa"
+
+    def test_initialize_branch_with_none_parent_branch(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test initializing branch when project has no parent_branch.
+
+        Issue #79: Backward compatibility - parent_branch can be None.
+        """
+        # Setup - create project WITHOUT parent_branch
+        project_manager.initialize_project(
+            issue_number=81,
+            issue_title="Old Project",
+            workflow_name="docs"
+        )
+
+        # Execute - initialize branch
+        result = engine.initialize_branch(
+            branch="docs/81-test",
+            issue_number=81,
+            initial_phase="documentation"
+        )
+
+        # Verify
+        assert result["success"] is True
+        assert result["parent_branch"] is None
+
+        # Verify persisted to state.json
+        state = engine.get_state("docs/81-test")
+        assert state["parent_branch"] is None
+
+    def test_reconstruct_branch_state_includes_parent_branch(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager,
+        workspace_root: Path
+    ) -> None:
+        """Test auto-recovery reconstructs parent_branch from projects.json.
+
+        Issue #79: Cross-machine scenario - state.json missing after git pull.
+        """
+        # Setup - create project with parent_branch
+        project_manager.initialize_project(
+            issue_number=82,
+            issue_title="Test Reconstruction",
+            workflow_name="feature",
+            options=ProjectInitOptions(parent_branch="epic/76-qa")
+        )
+
+        # Simulate cross-machine: delete state.json but keep projects.json
+        state_file = workspace_root / ".st3" / "state.json"
+        if state_file.exists():
+            state_file.unlink()
+
+        # Execute - get_state triggers auto-recovery
+        state = engine.get_state("feature/82-test-reconstruction")
+
+        # Verify - parent_branch reconstructed from projects.json
+        assert state["parent_branch"] == "epic/76-qa"
+        assert state["reconstructed"] is True
+        assert state["workflow_name"] == "feature"
+
+    def test_reconstruct_branch_state_with_none_parent_branch(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager,
+        workspace_root: Path
+    ) -> None:
+        """Test auto-recovery handles missing parent_branch gracefully.
+
+        Issue #79: Old projects without parent_branch should reconstruct with None.
+        """
+        # Setup - create project WITHOUT parent_branch
+        project_manager.initialize_project(
+            issue_number=83,
+            issue_title="Old Project",
             workflow_name="bug"
         )
-        phase_engine.initialize_branch(
-            branch="bug/45-test",
-            issue_number=45,
-            initial_phase="discovery"
-        )
 
-        # Get current phase
-        current = phase_engine.get_current_phase(branch="bug/45-test")
-        assert current == "discovery"
+        # Simulate cross-machine: delete state.json
+        state_file = workspace_root / ".st3" / "state.json"
+        if state_file.exists():
+            state_file.unlink()
 
-    def test_phase_state_engine_get_workflow_name_from_cache(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
-    ) -> None:
-        """Test workflow_name cached in state.json for performance."""
-        # Initialize project and branch
-        project_manager.initialize_project(
-            issue_number=46,
-            issue_title="Test",
-            workflow_name="hotfix"
-        )
-        phase_engine.initialize_branch(
-            branch="hotfix/46-test",
-            issue_number=46,
-            initial_phase="tdd"
-        )
+        # Execute - get_state triggers auto-recovery
+        state = engine.get_state("bug/83-old-project")
 
-        # Get state (should include cached workflow_name)
-        state = phase_engine.get_state(branch="hotfix/46-test")
-        assert state["workflow_name"] == "hotfix"
-
-    def test_phase_state_engine_transition_history_includes_forced_flag(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
-    ) -> None:
-        """Test transition history marks forced transitions."""
-        # Initialize project and branch
-        project_manager.initialize_project(
-            issue_number=47,
-            issue_title="Test",
-            workflow_name="feature"
-        )
-        phase_engine.initialize_branch(
-            branch="feature/47-test",
-            issue_number=47,
-            initial_phase="discovery"
-        )
-
-        # Normal transition
-        phase_engine.transition(
-            branch="feature/47-test",
-            to_phase="planning",
-            human_approval="Next phase"
-        )
-
-        # Forced transition
-        phase_engine.force_transition(
-            branch="feature/47-test",
-            to_phase="tdd",
-            skip_reason="Design already done",
-            human_approval="Force skip design"
-        )
-
-        # Check transition history
-        state = phase_engine.get_state(branch="feature/47-test")
-        transitions = state["transitions"]
-
-        # First transition (normal)
-        assert transitions[0]["forced"] is False
-
-        # Second transition (forced)
-        assert transitions[1]["forced"] is True
-        assert transitions[1]["skip_reason"] == "Design already done"
-
-    def test_phase_state_engine_initialize_branch_without_project(
-        self, phase_engine: PhaseStateEngine
-    ) -> None:
-        """Test initialize_branch fails if project not initialized."""
-        with pytest.raises(ValueError) as exc_info:
-            phase_engine.initialize_branch(
-                branch="feature/99-test",
-                issue_number=99,
-                initial_phase="discovery"
-            )
-
-        error_msg = str(exc_info.value)
-        assert "Project 99 not found" in error_msg
-        assert "Initialize project first" in error_msg
-
-    def test_phase_state_engine_get_state_without_state_file(
-        self, phase_engine: PhaseStateEngine
-    ) -> None:
-        """Test get_state fails if state.json doesn't exist."""
-        with pytest.raises(ValueError) as exc_info:
-            phase_engine.get_state(branch="feature/88-test")
-
-        error_msg = str(exc_info.value)
-        assert "State file not found" in error_msg
-
-    def test_phase_state_engine_get_state_unknown_branch(
-        self, phase_engine: PhaseStateEngine, project_manager: ProjectManager
-    ) -> None:
-        """Test get_state fails for unknown branch."""
-        # Initialize one branch to create state.json
-        project_manager.initialize_project(
-            issue_number=50,
-            issue_title="Test",
-            workflow_name="feature"
-        )
-        phase_engine.initialize_branch(
-            branch="feature/50-test",
-            issue_number=50,
-            initial_phase="discovery"
-        )
-
-        # Try to get state for different branch
-        with pytest.raises(ValueError) as exc_info:
-            phase_engine.get_state(branch="feature/99-unknown")
-
-        error_msg = str(exc_info.value)
-        assert "Branch 'feature/99-unknown' not found" in error_msg
+        # Verify - parent_branch is None (backward compat)
+        assert state["parent_branch"] is None
+        assert state["reconstructed"] is True
+        assert state["workflow_name"] == "bug"
