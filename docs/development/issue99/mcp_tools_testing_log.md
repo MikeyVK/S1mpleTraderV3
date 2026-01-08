@@ -100,12 +100,14 @@
 - Multiple insert_lines in one call: ✅ Success - Inserted at top and bottom
 
 ### 3.2 validate_template 🔒
-**Status:** ⏳ Pending
+**Status:** ✅ Tested
 **Parameters:**
 - `path` (string, required)
 - `template_type` (string, required, options: worker|tool|dto|adapter|base)
 
-**Test Results:** ⏳ All template types pending
+**Test Results:**
+- template_type=tool ✅ Success - Validated git_tools.py
+- Other template types: ⏳ Pending
 
 ---
 
@@ -323,14 +325,17 @@
 - On markdown file: ✅ Success - Correctly reports only .py files supported
 
 ### 9.2 run_tests 🔒/✏️
-**Status:** ⏳ Pending
+**Status:** ✅ Tested
 **Parameters:**
 - `path` (string, default: "tests/")
 - `markers` (string, optional) - pytest markers
 - `verbose` (bool, default: true)
 - `timeout` (int, default: 300) - seconds
 
-**Test Results:** ⏳ Pending
+**Test Results:**
+- Basic run (full suite): ✅ Success - 1050 tests passed in 42.27s
+- With custom timeout: ✅ Success (timeout=60)
+- Other configurations (markers, specific paths): ⏳ Pending
 
 ---
 
