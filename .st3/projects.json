@@ -275,5 +275,21 @@
     "skip_reason": null,
     "parent_branch": "main",
     "created_at": "2026-01-08T11:21:27.532220+00:00"
+  },
+  "99": {
+    "issue_title": "Re-evaluate + fix Claude-model compatibility regressions (tool schemas & SafeEditTool)",
+    "workflow_name": "bug",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-01-08T11:58:54.446871+00:00"
   }
 }
