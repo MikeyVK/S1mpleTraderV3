@@ -5,7 +5,7 @@ from git import InvalidGitRepositoryError, Repo
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
-from mcp_server.core.logging import get_logger
+from mcp_server.core import logging as core_logging
 
 class GitAdapter:
     """Adapter for interacting with local Git repository."""
@@ -64,7 +64,7 @@ class GitAdapter:
         Raises:
             ExecutionError: If branch already exists or creation fails
         """
-        logger = get_logger("git_adapter")
+        logger = core_logging.get_logger("git_adapter")
 
         # Resolve base reference
         if base == "HEAD":
