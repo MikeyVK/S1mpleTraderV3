@@ -7,6 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from mcp_server.config.quality_config import QualityConfig, QualityGate
+
 
 def _venv_script_path(script_name: str) -> str:
     """Return a best-effort path to a venv script.
@@ -74,20 +76,26 @@ class QAManager:
         if not python_files:
             return results
 
-        # Gate 1: Pylint (Whitespace/Imports/Line Length)
-        pylint_result = self._run_pylint(python_files)
+        quality_config = QualityConfig.load()
+
+        pylint_gate = self._require_gate(quality_config, "pylint")
+        mypy_gate = self._require_gate(quality_config, "mypy")
+        pyright_gate = self._require_gate(quality_config, "pyright")
+
+        # Gate 1: Pylint
+        pylint_result = self._run_pylint(pylint_gate, python_files)
         results["gates"].append(pylint_result)
         if not pylint_result["passed"]:
             results["overall_pass"] = False
 
-        # Gate 2: Mypy (Type Checking)
-        mypy_result = self._run_mypy(python_files)
+        # Gate 2: Mypy
+        mypy_result = self._run_mypy(mypy_gate, python_files)
         results["gates"].append(mypy_result)
         if not mypy_result["passed"]:
             results["overall_pass"] = False
 
-        # Gate 3: Pyright (Pylance parity)
-        pyright_result = self._run_pyright(python_files)
+        # Gate 3: Pyright
+        pyright_result = self._run_pyright(pyright_gate, python_files)
         results["gates"].append(pyright_result)
         if not pyright_result["passed"]:
             results["overall_pass"] = False
@@ -117,33 +125,42 @@ class QAManager:
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
 
-    def _run_pylint(self, files: list[str]) -> dict[str, Any]:
+    def _require_gate(self, quality_config: QualityConfig, gate_id: str) -> QualityGate:
+        gate = quality_config.gates.get(gate_id)
+        if gate is None:
+            raise KeyError(f"Missing required quality gate in .st3/quality.yaml: {gate_id}")
+        return gate
+
+    def _resolve_command(self, base_command: list[str], files: list[str]) -> list[str]:
+        cmd = list(base_command)
+
+        if cmd and cmd[0] == "python":
+            cmd[0] = sys.executable
+
+        if cmd and cmd[0] in {"pyright", "pyright.exe"}:
+            cmd[0] = _venv_script_path(_pyright_script_name())
+
+        return [*cmd, *files]
+
+    def _run_pylint(self, gate: QualityGate, files: list[str]) -> dict[str, Any]:
         """Run pylint checks on files."""
         result: dict[str, Any] = {
             "gate_number": 1,
-            "name": "Linting",
+            "name": gate.name,
             "passed": True,
             "score": "10/10",
             "issues": []
         }
 
         try:
-            # Run pylint with specific checks
-            python_exe = sys.executable
-            cmd = [
-                python_exe, "-m", "pylint",
-                *files,
-                "--enable=all",
-                "--max-line-length=100",
-                "--output-format=text"
-            ]
+            cmd = self._resolve_command(gate.execution.command, files)
 
             proc = subprocess.run(
                 cmd,
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=gate.execution.timeout_seconds,
                 check=False
             )
 
@@ -196,31 +213,25 @@ class QAManager:
             return f"{match.group(1)}/10"
         return "10/10"  # Default if no issues found
 
-    def _run_mypy(self, files: list[str]) -> dict[str, Any]:
+    def _run_mypy(self, gate: QualityGate, files: list[str]) -> dict[str, Any]:
         """Run mypy type checking on files."""
         result: dict[str, Any] = {
             "gate_number": 2,
-            "name": "Type Checking",
+            "name": gate.name,
             "passed": True,
             "score": "Pass",
             "issues": []
         }
 
         try:
-            python_exe = sys.executable
-            cmd = [
-                python_exe, "-m", "mypy",
-                *files,
-                "--strict",
-                "--no-error-summary"
-            ]
+            cmd = self._resolve_command(gate.execution.command, files)
 
             proc = subprocess.run(
                 cmd,
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=gate.execution.timeout_seconds,
                 check=False
             )
 
@@ -260,32 +271,28 @@ class QAManager:
 
         return issues
 
-    def _run_pyright(self, files: list[str]) -> dict[str, Any]:
+    def _run_pyright(self, gate: QualityGate, files: list[str]) -> dict[str, Any]:
         """Run pyright type checking on files.
 
         Note: pyright is a separate CLI (not `python -m pyright`).
         """
         result: dict[str, Any] = {
             "gate_number": 3,
-            "name": "Pyright",
+            "name": gate.name,
             "passed": True,
             "score": "Pass",
             "issues": [],
         }
 
         try:
-            cmd = [
-                _venv_script_path(_pyright_script_name()),
-                "--outputjson",
-                *files,
-            ]
+            cmd = self._resolve_command(gate.execution.command, files)
 
             proc = subprocess.run(
                 cmd,
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=gate.execution.timeout_seconds,
                 check=False,
             )
 
