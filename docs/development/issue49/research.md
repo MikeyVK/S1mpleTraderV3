@@ -729,7 +729,7 @@ PHASE_TEMPLATES = config["issue_types"]
 
 ## 9. Open Questions for Planning Phase
 
-1. Should config be split into multiple files (`workflows.yaml`, `labels.yaml`, `quality.yaml`) or monolithic?
+1. Should config be split into multiple files (`workflows.yaml`, `labels.yaml`, `.st3/quality.yaml`) or monolithic?
 2. Should there be environment-specific configs (dev/prod)?
 3. How to handle config migrations (v1.0 ÔåÆ v2.0)?
 4. Should validation happen at import time or on first use?

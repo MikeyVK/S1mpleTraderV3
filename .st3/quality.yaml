@@ -1,0 +1,133 @@
+version: "1.0"
+
+gates:
+  pylint:
+    name: "Pylint"
+    description: "Python linting"
+    execution:
+      command: ["python", "-m", "pylint"]
+      timeout_seconds: 60
+      working_dir: null
+    parsing:
+      strategy: "text_regex"
+      patterns:
+        - name: "rating"
+          regex: "Your code has been rated at ([\\d.]+)/10"
+          flags: ["MULTILINE"]
+          group: 1
+          required: true
+    success:
+      mode: "text_regex"
+      min_score: 10.0
+      require_no_issues: true
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: false
+      produces_json: false
+
+  pyright:
+    name: "Pyright"
+    description: "Type checking"
+    execution:
+      command: ["pyright", "--outputjson"]
+      timeout_seconds: 120
+      working_dir: null
+    parsing:
+      strategy: "json_field"
+      fields:
+        diagnostics: "/generalDiagnostics"
+        error_count: "/summary/errorCount"
+      diagnostics_path: "/generalDiagnostics"
+    success:
+      mode: "json_field"
+      max_errors: 0
+      require_no_issues: true
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: false
+      produces_json: true
+
+  ruff:
+    name: "Ruff"
+    description: "Fast linter"
+    execution:
+      command: ["ruff", "check"]
+      timeout_seconds: 60
+      working_dir: null
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: true
+      produces_json: false
+
+  black:
+    name: "Black"
+    description: "Python formatting (check mode)"
+    execution:
+      command: ["black", "--check", "."]
+      timeout_seconds: 60
+      working_dir: null
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: true
+      produces_json: false
+
+  mypy:
+    name: "Mypy"
+    description: "Static type checking"
+    execution:
+      command: ["mypy", "."]
+      timeout_seconds: 120
+      working_dir: null
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: false
+      produces_json: false
+
+  pytest:
+    name: "Pytest"
+    description: "Unit tests"
+    execution:
+      command: ["pytest", "tests/"]
+      timeout_seconds: 300
+      working_dir: null
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: false
+      produces_json: false
+
+  bandit:
+    name: "Bandit"
+    description: "Python security linting"
+    execution:
+      command: ["bandit", "-r", "."]
+      timeout_seconds: 120
+      working_dir: null
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: false
+      produces_json: false

@@ -400,7 +400,7 @@ engine.transition(branch="feature/42", from_phase="discovery", to_phase="integra
 
 **Explicitly NOT in workflows.yaml:**
 - Validation rules → Issue #52 (validation.yaml)
-- Quality gates → Issue #53 (quality.yaml)
+- Quality gates → Issue #53 (.st3/quality.yaml)
 - Scaffold rules → Issue #54 (scaffold.yaml)
 - Git conventions → Issue #55 (git.yaml)
 - Phase-specific tooling requirements
