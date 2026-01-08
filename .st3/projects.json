@@ -94,7 +94,7 @@
     "created_at": "2025-12-30T22:04:15.116679+00:00"
   },
   "53": {
-    "issue_title": "Config: Quality Gates Configuration (quality.yaml)",
+    "issue_title": "Refactor: QAManager loads/runs gates from .st3/quality.yaml",
     "workflow_name": "refactor",
     "execution_mode": "interactive",
     "required_phases": [
@@ -105,7 +105,8 @@
       "documentation"
     ],
     "skip_reason": null,
-    "created_at": "2026-01-01T20:34:05.382525+00:00"
+    "parent_branch": "main",
+    "created_at": "2026-01-08T10:37:37.661275+00:00"
   },
   "64": {
     "issue_title": "Bug: create_feature_branch has incorrect name and unsafe default base",
