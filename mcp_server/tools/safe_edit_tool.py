@@ -171,7 +171,8 @@ class SafeEditTool(BaseTool):
     ```python
     SafeEditInput(
         path="file.py",
-        search_replace=SearchReplace(search="old_name", replace="new_name"),
+        search="old_name",
+        replace="new_name",
         mode="strict"
     )
     ```
@@ -180,11 +181,10 @@ class SafeEditTool(BaseTool):
     ```python
     SafeEditInput(
         path="file.py",
-        search_replace=SearchReplace(
-            search=r"from typing import (\\w+)",
-            replace=r"from collections.abc import \\1",
-            regex=True
-        ),
+        search=r"from typing import (\\w+)",
+        replace=r"from collections.abc import \\1",
+        regex=True,
+        search_flags=re.IGNORECASE,
         mode="interactive"
     )
     ```
@@ -329,7 +329,7 @@ class SafeEditTool(BaseTool):
             return ToolResult.text(status)
 
         except OSError as e:
-            return ToolResult.text(f"❌ Failed to write file: {e}")
+            return ToolResult.error(f"❌ Failed to write file: {e}")
 
     def _apply_line_edits(self, content: str, edits: list[LineEdit]) -> str:
         """Apply line-based edits to content.
