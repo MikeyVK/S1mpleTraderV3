@@ -2,10 +2,10 @@ version: "1.0"
 
 gates:
   pylint:
-    name: "Pylint"
+    name: "Linting"
     description: "Python linting"
     execution:
-      command: ["python", "-m", "pylint"]
+      command: ["python", "-m", "pylint", "--enable=all", "--max-line-length=100", "--output-format=text"]
       timeout_seconds: 60
       working_dir: null
     parsing:
@@ -82,11 +82,11 @@ gates:
       produces_json: false
 
   mypy:
-    name: "Mypy"
+    name: "Type Checking"
     description: "Static type checking"
     execution:
-      command: ["mypy", "."]
-      timeout_seconds: 120
+      command: ["python", "-m", "mypy", "--strict", "--no-error-summary"]
+      timeout_seconds: 60
       working_dir: null
     parsing:
       strategy: "exit_code"
