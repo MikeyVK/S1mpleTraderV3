@@ -18,7 +18,7 @@ Based on research findings (150+ config items across 10 categories), we define *
 | **#50** | `config/workflows.yaml` | PHASE_TEMPLATES, issue types, phase sequences, execution modes | CRITICAL | #42 |
 | **#51** | `config/labels.yaml` | GitHub label definitions, type/priority/status/phase patterns, colors, sync mechanism | CRITICAL | #42 |
 | **#52** | `config/documents.yaml` | TEMPLATES dict, SCOPE_DIRS dict, template paths | MEDIUM | - |
-| **#53** | `config/quality.yaml` | Pylint/Mypy/Pyright configs, timeouts, thresholds, output patterns | HIGH | #18 |
+| **#53** | `.st3/quality.yaml` | Pylint/Mypy/Pyright configs, timeouts, thresholds, output patterns | HIGH | #18 |
 | **#54** | `config/validation.yaml` | RULES dict (5 template types), component validation rules | HIGH | #18 |
 | **#55** | `config/scaffold.yaml` | Valid component types, scaffold phases, file policies | HIGH | #18 |
 | **#56** | `config/git.yaml` | Branch types, TDD phases, commit prefixes, protected branches | MEDIUM | - |
@@ -37,7 +37,7 @@ Based on research findings (150+ config items across 10 categories), we define *
 - **workflows.yaml**: Core issue type definitions (needed for #42)
 - **labels.yaml**: GitHub integration (needed for #42)
 - **documents.yaml**: Documentation scaffolding (independent)
-- **quality.yaml**: Static analysis gates (needed for #18)
+- **.st3/quality.yaml**: Static analysis gates (needed for #18)
 - **validation.yaml**: Template validation (needed for #18)
 - **scaffold.yaml**: File creation policies (needed for #18)
 - **git.yaml**: Git conventions (independent)
@@ -62,7 +62,7 @@ Epic #49 (Planning)
 
 ```
 Epic #49 (Planning)
-├── Issue #53: quality.yaml (HIGH) → Enables #18 enforcement
+├── Issue #53: .st3/quality.yaml (HIGH) → Enables #18 enforcement
 ├── Issue #54: validation.yaml (HIGH) → Enables #18 enforcement
 └── Issue #55: scaffold.yaml (HIGH) → Enables #18 enforcement
 ```
@@ -201,7 +201,7 @@ The following issues already exist but need scope adjustment:
 | #50 | "Workflow & Issue Type Configuration" | `config/workflows.yaml` only | Update title + body |
 | #51 | "Label Management & GitHub Sync" | `config/labels.yaml` only | Update title + body |
 | #52 | "Validation Rules Configuration" | `config/validation.yaml` only | Update title + body |
-| #53 | "Quality Gates Configuration" | `config/quality.yaml` only | Update title + body |
+| #53 | "Quality Gates Configuration" | `.st3/quality.yaml` only | Update title + body |
 | #54 | "Scaffold Rules Configuration" | `config/scaffold.yaml` only | Update title + body |
 | #55 | "Git Conventions Configuration" | `config/git.yaml` only | Update title + body |
 
@@ -221,7 +221,7 @@ The following issues already exist but need scope adjustment:
 | #50 | `config/workflows.yaml` | PHASE_TEMPLATES, issue types, phases |
 | #51 | `config/labels.yaml` | GitHub labels, sync mechanism |
 | #52 | `config/validation.yaml` | Template validation rules |
-| #53 | `config/quality.yaml` | Quality gates (pylint/mypy/pyright) |
+| #53 | `.st3/quality.yaml` | Quality gates (pylint/mypy/pyright) |
 | #54 | `config/scaffold.yaml` | Scaffold rules, file policies |
 | #55 | `config/git.yaml` | Git conventions (branches, commits, TDD) |
 | NEW #56 | `config/documents.yaml` | Document templates, scopes |
@@ -248,7 +248,7 @@ The following issues already exist but need scope adjustment:
 
 ### Phase 2 - High Priority (Week 2)
 
-1. Complete Issue #53 (quality.yaml)
+1. Complete Issue #53 (.st3/quality.yaml)
 2. Complete Issue #52 (validation.yaml)
 3. Complete Issue #54 (scaffold.yaml)
 4. **Issue #18 enabled** ✅

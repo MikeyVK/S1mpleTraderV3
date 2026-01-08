@@ -1,6 +1,6 @@
 # Issue #53 Research: Quality Gates Configuration
 
-**Issue:** Create quality.yaml with quality gate definitions  
+**Issue:** Create .st3/quality.yaml with quality gate definitions  
 **Epic:** #76 - Quality Gates Tooling Implementation (child of Epic #49)  
 **Phase:** Research  
 **Date:** 2026-01-03
@@ -12,10 +12,10 @@
 Document quality gate **tool configurations** only - commands, parsing strategies, timeouts, and capabilities. This research focuses on **WHAT tools exist and HOW they work**, NOT when/where they are enforced.
 
 **SRP Separation:**
-- ✅ **This Issue (#53):** Tool configuration (quality.yaml)
+- ✅ **This Issue (#53):** Tool configuration (.st3/quality.yaml)
 - ❌ **Out of Scope:** Tool enforcement (Epic #18 - policy.yaml)
 
-**Goal:** Create comprehensive tool catalog for quality.yaml with all available gates (Pylint, Mypy, Pyright, Ruff, Coverage, Bandit, Black, etc.).
+**Goal:** Create comprehensive tool catalog for .st3/quality.yaml with all available gates (Pylint, Mypy, Pyright, Ruff, Coverage, Bandit, Black, etc.).
 
 ### 1.1 User-Facing Documentation
 
@@ -107,7 +107,7 @@ Document quality gate **tool configurations** only - commands, parsing strategie
 **File:** [docs/development/issue49/epic.md](../../issue49/epic.md)
 
 **What exists:**
-- **Issue #53** listed as child issue: "Quality gates configuration to quality.yaml"
+- **Issue #53** listed as child issue: "Quality gates configuration to .st3/quality.yaml"
 - Context: Part of MCP Platform Configurability epic
 - Quality Gates identified as hardcoded config item:
   - 150 lines in qa_manager.py
@@ -689,7 +689,7 @@ except Exception as e:
 - Immutable models (frozen=True)
 - No business logic in config file
 
-**Observation:** Successful pattern to follow for quality.yaml.
+**Observation:** Successful pattern to follow for .st3/quality.yaml.
 
 ---
 
@@ -905,7 +905,7 @@ except Exception as e:
 
 ### 13.2 Questions for Planning Phase
 
-1. **Scope:** Should quality.yaml replace 3 gates or all 5 from QUALITY_GATES.md?
+1. **Scope:** Should .st3/quality.yaml replace 3 gates or all 5 from QUALITY_GATES.md?
 2. **Pyright:** Should we document Pyright in user guide, or remove from QAManager?
 3. **Pytest:** Is test execution a quality gate, or separate concern?
 4. **Execution Mode:** Should continue-on-error be configurable, or always enabled?
@@ -969,7 +969,7 @@ except Exception as e:
 - ⏭️ Establish success criteria
 
 **What remains for Design:**
-- ⏭️ Design quality.yaml schema
+- ⏭️ Design .st3/quality.yaml schema
 - ⏭️ Design Pydantic models
 - ⏭️ Design generic gate execution architecture
 - ⏭️ Design output parser dispatch
