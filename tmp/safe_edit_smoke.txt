@@ -1,0 +1,12 @@
+hello world
+
+safe_edit ok (2026-01-08)
+
+Testing safe_edit tool - added line at 2026-01-08 23:59
+
+Testing after opt-out [2026-01-08 23:59]
+
+Testing after opt-out [2026-01-08 00:00:00]
+Testing after opt-out [2026-01-08 00:02]
+Testing after opt-out [2026-01-08 00:03]
+Testing after opt-out [2026-01-08 00:01]
