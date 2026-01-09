@@ -10,87 +10,184 @@
 
 ## Executive Summary
 
-Research phase for migrating hardcoded scaffold rules and file policies from `scaffold_tools.py` and `policy_engine.py` to `.st3/scaffold.yaml` configuration file.
+**Critical Finding:** "Scaffold configuration" is a misnomer. This issue encompasses THREE distinct configuration domains:
 
-**Key Findings:**
-- 9 component types hardcoded in ScaffoldComponentTool
-- 2 scaffold phases hardcoded in PolicyEngine (design, tdd)
-- 3 blocked patterns for Python files
-- 8 allowed file extensions  
-- 5 allowed directories
+1. **Component Registry** - What can be scaffolded (9 types)
+2. **File Creation Policies** - What requires scaffolding vs direct creation
+3. **Scaffolding Phase Policies** - When scaffolding is allowed (design/tdd phases)
 
-**Location:** `.st3/scaffold.yaml` (corrected from `config/` per user guidance)
+These domains have **different consumers**, **different purposes**, and **different reusability patterns**. Treating them as one "scaffold.yaml" would violate SRP.
+
+**Architectural Insight:** Scaffolding is not simple file creation - it's an **architectural enforcement system** that uses templates to encode project patterns and validates compliance through metadata-driven rules.
 
 ---
 
 ## Epic Context
 
-**Parent Issue:** Epic #49 - MCP Platform Configurability  
-**Related Issues:** #50 (workflows.yaml ✅), #51 (labels.yaml ✅), #52 (validation.yaml ✅), #53 (quality.yaml ✅)
+**Parent:** Epic #49 - MCP Platform Configurability  
+**Sibling Issues:**
+- #50 workflows.yaml ✅ Workflow definitions (feature/bug/docs/refactor/hotfix)
+- #51 labels.yaml ✅ GitHub label management
+- #52 validation.yaml ✅ Template validation rules  
+- #53 quality.yaml ✅ Quality gate configuration
 
-### Epic #49 Goal
-Externalize all hardcoded configuration to YAML files in `.st3/` directory, enabling:
-- Runtime configurability without code changes
-- Clear separation of policy from implementation
-- Easier customization for different projects
-- Centralized configuration management
+**Epic Goal:** Externalize all hardcoded configuration to YAML files in `.st3/` directory for runtime configurability without code changes.
 
-### Completed Sibling Issues
-1. **#50 - workflows.yaml** ✅ Closed
-2. **#51 - labels.yaml** ✅ Closed  
-3. **#52 - validation.yaml** ✅ Closed
-4. **#53 - quality.yaml** ✅ Closed
+**Progress:** 4/5 sibling issues closed, #54 remaining.
 
 ---
 
-## Lessons Learned from Sibling Issues
+## 1. What IS Scaffolding?
 
-### From Issue #51 (labels.yaml)
-**Pattern Established:**
-- Singleton pattern with `_instance` ClassVar
-- Pydantic models for validation
-- `load()` classmethod for lazy initialization
-- GitHub sync mechanism for external systems
-- Clear separation: config model + loader + consumer
+### 1.1 Scaffolding vs File Creation - Fundamental Distinction
 
-**Key Insight:** "Following WorkflowConfig pattern from Issue #50"
-- Reuse established patterns for consistency
-- Pydantic validation catches config errors early
-- Singleton ensures single source of truth
-- 100% test coverage requirement
+**Scaffolding is:**
+- **Template-driven:** Uses Jinja2 with inheritance (base templates)
+- **Metadata-enriched:** Templates contain YAML frontmatter with validation rules
+- **Architecturally enforced:** Generates code following project patterns
+- **Convention-applying:** Auto-derives values (e.g., id_prefix from DTO name)
+- **Type-specific:** Different logic for DTOs, Workers, Adapters, Tools, etc.
+- **Validated:** Output validated against template metadata (3-tier validation)
 
-**Branch Strategy:**
-- Initially branched from epic branch (refactor/49)
-- Later child issues branch from main (epic completed)
-- This issue (#54): branch from main
+**Simple File Creation (create_file) is:**
+- **Direct string → file:** No templates
+- **No validation:** No pattern enforcement
+- **Ad-hoc structure:** Manual convention application
+- **Deprecated reason:** Bypasses architectural standards
 
-### From Issue #52 (validation.yaml)
-**Pattern Established:**
-- Nested Pydantic models (TemplateRule → ValidationConfig)
-- Dict[str, Model] for type-specific rules
-- Removed RULES dict from code completely
-- Config loader in separate module
+**Key Insight:** Scaffolding is an **architectural enforcement system**, not a convenience wrapper around file I/O.
 
-**Key Insight:** "RULES dict removed from code"
-- Complete migration, no fallback to hardcoded values
-- All validation customizable via YAML
-- Tests ensure config loading works before deployment
+### 1.2 File Type Distinction
 
-### Common Patterns Across All Issues
-1. **File Location:** `.st3/` directory (not `config/`)
-2. **Pydantic Validation:** Always use Pydantic models
-3. **Singleton Pattern:** ClassVar + load() classmethod
-4. **Test Coverage:** 100% requirement
-5. **Documentation:** Reference docs in main documentation
-6. **No Fallbacks:** Remove hardcoded values completely
+| File Type | Directories | Tool | Rationale |
+|-----------|------------|------|-----------|
+| **Backend Code** | backend/**, mcp_server/** | scaffold_component | Architectural patterns (DTOs immutable, Workers executor pattern) |
+| **Test Code** | tests/** | scaffold_component | Consistency with CODE_STYLE.md standards |
+| **Documentation** | docs/** | scaffold_design_doc | Structure enforcement (frontmatter, sections) |
+| **Configuration** | .st3/**, config/** | create_file / safe_edit | No architectural patterns, external schemas (YAML, JSON) |
+| **Scripts** | scripts/** | create_file | Ad-hoc, experimental, no patterns |
+| **Proof of Concepts** | proof_of_concepts/** | create_file | Experimental, no constraints |
+
+**PolicyEngine Enforcement:**
+```python
+# Blocked: MUST use scaffold
+blocked_patterns = [
+    ("backend", ".py"),     # Backend code follows architecture
+    ("tests", ".py"),       # Tests follow conventions  
+    ("mcp_server", ".py"),  # MCP tools/workers follow patterns
+]
+
+# Allowed: CAN use create_file
+allowed_extensions = {".yml", ".yaml", ".json", ".toml", ".ini", ".txt", ".md", ".lock"}
+allowed_dirs = {"scripts", "proof_of_concepts", "docs", "config", ".st3"}
+```
 
 ---
 
-## Current Implementation Analysis
+## 2. Scaffolding System Architecture
 
-### scaffold_tools.py (Lines 100-150)
+### 2.1 Component Hierarchy
 
-**Hardcoded Component Types (9 types):**
+```
+mcp_server/scaffolding/
+├── base.py                    # BaseScaffolder, ScaffoldResult, ComponentScaffolder (Protocol)
+├── renderer.py                # JinjaRenderer (template engine)
+├── utils.py                   # validate_pascal_case(), write_scaffold_file()
+└── components/
+    ├── dto.py                 # DTOScaffolder - Immutable Pydantic models
+    ├── worker.py              # WorkerScaffolder - Background workers  
+    ├── adapter.py             # AdapterScaffolder - External service adapters
+    ├── tool.py                # ToolScaffolder - MCP tools
+    ├── resource.py            # ResourceScaffolder - MCP resources
+    ├── schema.py              # SchemaScaffolder - Pydantic schemas
+    ├── interface.py           # InterfaceScaffolder - Protocol definitions
+    ├── service.py             # ServiceScaffolder - Service layer (3 subtypes)
+    ├── generic.py             # GenericScaffolder - Generic Python from templates
+    ├── doc.py                 # DesignDocScaffolder - Markdown documents
+    └── test.py                # TestScaffolder - Test file generation
+```
+
+### 2.2 Template System
+
+**Templates Location:** `mcp_server/templates/`
+
+**Structure:**
+```
+templates/
+├── base/
+│   ├── base_component.py.jinja2   # All Python components extend this
+│   ├── base_document.md.jinja2    # All docs extend this
+│   └── base_test.py.jinja2        # All tests extend this
+├── components/
+│   ├── dto.py.jinja2              # DTO specific (extends base_component)
+│   ├── worker.py.jinja2
+│   ├── adapter.py.jinja2
+│   └── ...
+└── documents/
+    ├── design.md.jinja2
+    ├── architecture.md.jinja2
+    └── generic.md.jinja2
+```
+
+**Template Features:**
+1. **Inheritance:** `{% extends "base/base_component.py.jinja2" %}`
+2. **Metadata:** YAML frontmatter with validation rules
+3. **Variables:** Name, fields, docstring, layer, etc.
+
+**Template Metadata Example:**
+```jinja2
+{# TEMPLATE_METADATA
+enforcement: ARCHITECTURAL
+level: content
+extends: base/base_component.py.jinja2
+version: "2.0"
+
+validates:
+  strict:
+    - rule: base_class
+      description: "Must inherit from BaseModel"
+      pattern: "class \\w+\\(BaseModel\\)"
+      severity: ERROR
+
+purpose: |
+  Generate immutable Pydantic DTOs following project conventions.
+
+variables:
+  - name
+  - fields
+  - docstring
+#}
+```
+
+### 2.3 Data Flow
+
+```
+User Request (MCP)
+    ↓
+ScaffoldComponentTool / ScaffoldDesignDocTool
+    ↓
+ComponentScaffolder (dto, worker, adapter, etc.)
+    ↓
+JinjaRenderer.render(template_name, **variables)
+    ↓
+Template (components/dto.py.jinja2 extends base/base_component.py.jinja2)
+    ↓
+Generated Content (string)
+    ↓
+write_scaffold_file(path, content, overwrite)
+    ↓
+File Created on Disk
+    ↓
+(Later) ValidationService validates against template metadata
+```
+
+---
+
+## 3. Hardcoded Rules Inventory
+
+### 3.1 Component Types (scaffold_tools.py Lines 100-115)
+
+**9 Component Types:**
 ```python
 self.scaffolders: dict[str, ComponentScaffolder] = {
     "dto": DTOScaffolder(self.renderer),
@@ -105,32 +202,17 @@ self.scaffolders: dict[str, ComponentScaffolder] = {
 }
 ```
 
-**Handler Mapping (Lines 125-145):**
-```python
-handlers: dict[str, Callable] = {
-    "dto": self._scaffold_dto,
-    "worker": self._scaffold_worker,
-    # ... etc (9 handlers total)
-}
-```
+**Also Hardcoded:**
+- Handlers dict (Lines 125-145): Maps component_type to methods
+- Error message hints (Line 147): Lists all component types
 
-**Current Validation (Line 147):**
-```python
-if not handler:
-    raise ValidationError(
-        f"Unknown component type: {params.component_type}",
-        hints=["Use dto, worker, adapter, tool, resource, schema, interface, service, generic"]
-    )
-```
+**Consumer:** ScaffoldComponentTool (MCP tool)
 
-**Problem:** Component types are hardcoded in three places:
-1. Scaffolders dict initialization
-2. Handlers dict
-3. Error message hints
+**Configuration Scope:** Component registry - what CAN be scaffolded
 
-### policy_engine.py (Lines 120-200)
+### 3.2 Scaffold Phase Policies (policy_engine.py Lines 142-157)
 
-**Scaffold Phases (Lines 142-157):**
+**Allowed Phases:**
 ```python
 def _decide_scaffold(self, ctx: DecisionContext) -> PolicyDecision:
     allowed_phases = {"design", "tdd"}  # HARDCODED
@@ -140,7 +222,15 @@ def _decide_scaffold(self, ctx: DecisionContext) -> PolicyDecision:
     return PolicyDecision(allowed=False, ...)
 ```
 
-**File Creation Blocked Patterns (Lines 165-172):**
+**Rationale:** Scaffolding generates new components - only allowed during design/implementation, not research/documentation/integration phases.
+
+**Consumer:** PolicyEngine (core enforcement)
+
+**Configuration Scope:** Workflow policies - WHEN scaffolding is allowed
+
+### 3.3 File Creation Policies (policy_engine.py Lines 165-200)
+
+**Blocked Patterns (require scaffold):**
 ```python
 blocked_patterns = [
     ("backend", ".py"),      # backend/**/*.py must use scaffold
@@ -149,259 +239,600 @@ blocked_patterns = [
 ]
 ```
 
-**Allowed Extensions (Line 184):**
+**Allowed Extensions (can use create_file):**
 ```python
-allowed_extensions = {".yml", ".yaml", ".json", ".toml", ".ini", ".txt", ".md", ".lock"}  # 8 extensions
+allowed_extensions = {".yml", ".yaml", ".json", ".toml", ".ini", ".txt", ".md", ".lock"}
 ```
 
-**Allowed Directories (Line 185):**
+**Allowed Directories (can use create_file):**
 ```python
-allowed_dirs = {"scripts", "proof_of_concepts", "docs", "config", ".st3"}  # 5 directories
+allowed_dirs = {"scripts", "proof_of_concepts", "docs", "config", ".st3"}
 ```
 
-**Problem:** File policies scattered across PolicyEngine with no external configuration.
+**Consumer:** PolicyEngine._decide_create_file() (file creation enforcement)
+
+**Configuration Scope:** File policies - WHAT files require scaffolding vs direct creation
 
 ---
 
-## Hardcoded Rules Inventory
+## 4. Policy Analysis - Three Distinct Domains
 
-### Component Types (9 total)
-1. `dto` - Data Transfer Objects
-2. `worker` - Background workers
-3. `adapter` - External service adapters
-4. `tool` - MCP tools
-5. `resource` - MCP resources
-6. `schema` - Pydantic schemas
-7. `interface` - Protocol definitions
-8. `service` - Service layer (query/command/orchestrator subtypes)
-9. `generic` - Generic Python files from templates
+### 4.1 Domain 1: Component Registry
 
-### Scaffold Policies
+**What:** Mapping of component_type → ComponentScaffolder  
+**Purpose:** Define what CAN be scaffolded  
+**Current Location:** scaffold_tools.py (hardcoded dict)  
+**Consumer:** ScaffoldComponentTool  
 
-**Allowed Phases (2):**
-- `design` - Architecture and planning phase
-- `tdd` - Test-driven development phase
+**Characteristics:**
+- Dynamic: Could add new component types (e.g., "manager", "entity")
+- Type-specific: Each has unique scaffolder implementation
+- Tool-facing: Exposed via MCP tool schema
 
-**Rationale:** Scaffolding generates new code structure, should only happen during design/implementation, not during research or documentation phases.
+**Example:** User calls `scaffold_component(component_type="dto")` → routed to DTOScaffolder
 
-### File Creation Policies
+### 4.2 Domain 2: File Creation Policies
 
-**Blocked Patterns (3 rules):**
-1. `backend/**/*.py` → Must use scaffold tool
-2. `tests/**/*.py` → Must use scaffold tool
-3. `mcp_server/**/*.py` → Must use scaffold tool
+**What:** Rules for which files REQUIRE scaffolding vs allow direct creation  
+**Purpose:** Enforce architectural patterns on code, allow flexibility for config/scripts  
+**Current Location:** policy_engine.py (_decide_create_file method)  
+**Consumer:** PolicyEngine (validates all file creation operations)
 
-**Allowed Extensions (8 types):**
-- Configuration: `.yml`, `.yaml`, `.json`, `.toml`, `.ini`
-- Documentation: `.md`, `.txt`
-- Dependency: `.lock`
+**Characteristics:**
+- Path-based: Enforces based on directory + extension
+- Binary decision: Scaffold required OR create_file allowed
+- Security-adjacent: Prevents bypassing architectural standards
 
-**Allowed Directories (5 paths):**
-- `scripts/` - Utility scripts
-- `proof_of_concepts/` - POC code
-- `docs/` - Documentation
-- `config/` - Configuration (legacy)
-- `.st3/` - Platform configuration (current standard)
+**Example:** User tries `create_file("backend/foo.py")` → blocked, must use scaffold
+
+**Sub-domains:**
+1. **Blocked patterns** - Files that MUST use scaffold (backend/**.py, tests/**.py)
+2. **Allowed extensions** - File types that CAN use create_file (.yml, .json)
+3. **Allowed directories** - Paths that CAN use create_file (scripts/, docs/)
+
+### 4.3 Domain 3: Scaffolding Phase Policies
+
+**What:** Workflow phases where scaffolding is permitted  
+**Purpose:** Enforce scaffolding only during design/implementation, not maintenance  
+**Current Location:** policy_engine.py (_decide_scaffold method)  
+**Consumer:** PolicyEngine (validates scaffold operations against current phase)
+
+**Characteristics:**
+- Phase-based: Allowed in {design, tdd}, blocked in {research, integration, documentation}
+- Workflow-coupled: Depends on project workflow definition (Epic #49, Issue #50)
+- Temporal: Changes throughout issue lifecycle
+
+**Example:** Current phase = "research" → scaffold_component() blocked
 
 ---
 
-## Configuration Requirements
+## 5. SRP/DRY Analysis
 
-### Proposed .st3/scaffold.yaml Structure
+### 5.1 SRP Violations
 
-```yaml
-# Scaffold configuration
-version: "1.0"
+**Violation #1: ScaffoldComponentTool - Too Many Responsibilities**
 
-# Component types supported by scaffold tool
-component_types:
-  - dto
-  - worker
-  - adapter
-  - tool
-  - resource
-  - schema
-  - interface
-  - service
-  - generic
+**Location:** scaffold_tools.py  
+**Mixes 6 concerns:**
+1. **Routing:** component_type → handler method
+2. **Validation:** Required fields per component type
+3. **Execution:** Calling scaffolder
+4. **File writing:** write_scaffold_file()
+5. **Test generation:** DTOs get automatic test files
+6. **Result formatting:** Creating ToolResult
 
-# Phases where scaffolding is allowed
-allowed_phases:
-  - design
-  - tdd
+**Analysis:** Tool is a **coordinator** but does too much. Test generation should be in DTOScaffolder, file writing abstracted.
 
-# File creation policies
-file_policies:
-  # Python files in these directories must use scaffold tool
-  blocked_patterns:
-    - directory: backend
-      extension: .py
-      reason: "Backend code must follow architecture patterns"
-    - directory: tests
-      extension: .py
-      reason: "Test files must follow testing conventions"
-    - directory: mcp_server
-      extension: .py
-      reason: "MCP server code must follow platform patterns"
-  
-  # File extensions allowed for direct creation (create_file tool)
-  allowed_extensions:
-    - .yml
-    - .yaml
-    - .json
-    - .toml
-    - .ini
-    - .txt
-    - .md
-    - .lock
-  
-  # Directories where files can be created directly
-  allowed_directories:
-    - scripts
-    - proof_of_concepts
-    - docs
-    - config
-    - .st3
+**Violation #2: write_scaffold_file - Mixes I/O and Security**
+
+**Location:** scaffolding/utils.py  
+**Mixes 3 concerns:**
+1. **Path resolution:** workspace_root / relative_path
+2. **Security validation:** Overwrite checks, workspace boundaries
+3. **File system I/O:** mkdir, file write
+
+**Analysis:** Should delegate security to `WorkspaceSecurityValidator`, use generic `FileWriter`.
+
+**Violation #3: Component Scaffolders - Mixed Business Logic and Template Selection**
+
+**Location:** All scaffolders (dto.py, worker.py, etc.)  
+**Mixes 4 concerns:**
+1. **Name conventions:** Suffix logic (e.g., "Worker" suffix)
+2. **Auto-derivation:** id_prefix calculation, module paths
+3. **Template selection:** Main template + fallback
+4. **Rendering:** Delegates to JinjaRenderer
+
+**Analysis:** Template selection and fallback could be extracted to `TemplateResolver` class.
+
+### 5.2 DRY Violations
+
+**Duplication #1: Fallback Template Logic (8 instances)**
+
+**Location:** All component scaffolders
+
+**Pattern:**
+```python
+try:
+    return self.renderer.render("components/dto.py.jinja2", ...)
+except Exception as e:
+    if "not found" in str(e).lower():
+        return self.renderer.render("components/generic.py.jinja2", ...)
+    raise
 ```
 
-### Pydantic Model Structure
+**Repeated in:** dto.py, worker.py, adapter.py, tool.py, resource.py, schema.py, interface.py, service.py
 
+**Solution Opportunity:** Extract to BaseScaffolder.render_with_fallback()
+
+**Duplication #2: Name Suffix Logic (4 instances)**
+
+**Location:** WorkerScaffolder, AdapterScaffolder, ToolScaffolder, ServiceScaffolder
+
+**Pattern:**
 ```python
-# mcp_server/config/scaffold_config.py
+worker_name = name if name.endswith("Worker") else f"{name}Worker"
+adapter_name = name if name.endswith("Adapter") else f"{name}Adapter"
+tool_name = name if name.endswith("Tool") else f"{name}Tool"
+service_name = name if name.endswith("Service") else f"{name}Service"
+```
 
-from pydantic import BaseModel, Field
-from typing import ClassVar
+**Solution Opportunity:** Extract to utility function `ensure_suffix(name, suffix)`
 
-class BlockedPattern(BaseModel):
-    """Pattern for files that must use scaffold tool."""
-    directory: str
-    extension: str
-    reason: str = ""
+**Duplication #3: Test Path Derivation**
 
-class FilePolicies(BaseModel):
-    """File creation policies."""
-    blocked_patterns: list[BlockedPattern]
-    allowed_extensions: set[str]
-    allowed_directories: set[str]
+**Location:** ScaffoldComponentTool._scaffold_dto()
 
-class ScaffoldConfig(BaseModel):
-    """Scaffold configuration from .st3/scaffold.yaml."""
-    version: str = "1.0"
-    component_types: list[str]
-    allowed_phases: set[str]
-    file_policies: FilePolicies
+**Code:**
+```python
+test_path = params.output_path.replace(".py", "_test.py")
+if "backend/" in test_path:
+    test_path = test_path.replace("backend/", "tests/unit/")
+```
+
+**Analysis:** Project structure knowledge (backend/ → tests/unit/) hardcoded. Could be `PathResolver` utility.
+
+**Duplication #4: Module Path Derivation**
+
+**Location:** Multiple scaffolders
+
+**Code:**
+```python
+module_path = params.output_path.replace("/", ".").replace("\\", ".").rstrip(".py")
+```
+
+**Analysis:** Common transformation (file path → Python module path) appears in multiple contexts.
+
+---
+
+## 6. Reusability Analysis
+
+### 6.1 JinjaRenderer - HIGH Reusability
+
+**Current State:** Scaffolding-specific  
+**Potential Uses:**
+1. **safe_edit_tool:** Apply templates to fix code patterns
+   - Example: "Convert this class to DTO pattern" → render dto.py.jinja2
+2. **Quality tools:** Generate fix suggestions from templates
+   - Example: Pylint "Add docstring" → render docstring template
+3. **Documentation generators:** Already used for docs/, could expand
+4. **Test generators:** Generate tests from code analysis (beyond DTOs)
+
+**Extraction Path:**
+```
+mcp_server/scaffolding/renderer.py
+  → mcp_server/core/template_engine.py (generic)
+    → Used by: scaffolding, safe_edit, quality_tools, docs_tools
+```
+
+**Configuration Needs:**
+- Multiple template roots (scaffolding/, fixes/, docs/)
+- Template namespaces (avoid name collisions)
+- Custom Jinja2 filters (to_snake_case, to_pascal_case, derive_module_path)
+
+### 6.2 Validation System - ALREADY Reusable
+
+**Current State:** Decoupled from scaffolding
+
+**Components:**
+- **LayeredTemplateValidator:** Validates code against template metadata
+- **TemplateAnalyzer:** Extracts metadata from templates (YAML frontmatter)
+- **ValidationService:** Orchestrates multiple validators
+
+**Current Uses:**
+- safe_edit_tool: Validates edits before saving
+- (Future) Quality gates: Run as CI/CD check
+
+**Reusability Score:** HIGH - Already abstracted, just needs wider adoption
+
+### 6.3 File Operations - MEDIUM Reusability
+
+**Current State:** Scattered utilities
+
+**Consolidation Opportunity:**
+```python
+# mcp_server/core/file_operations.py
+class FileOperations:
+    @staticmethod
+    def write_file(path, content, workspace_root, overwrite=False):
+        """Generic file write with security checks"""
+        
+    @staticmethod
+    def derive_test_path(code_path):
+        """backend/foo.py → tests/unit/foo_test.py"""
+        
+    @staticmethod
+    def derive_module_path(file_path):
+        """backend/foo.py → backend.foo"""
+        
+    @staticmethod
+    def ensure_suffix(name, suffix):
+        """Ensure name ends with suffix"""
+```
+
+**Benefit:** DRY compliance, single source of truth for project structure knowledge
+
+### 6.4 Template Metadata - HIGH Reusability
+
+**Current State:** Used by LayeredTemplateValidator
+
+**Potential Uses:**
+1. **Documentation generation:** Extract template purpose/variables
+2. **IDE autocomplete:** Show available templates with metadata
+3. **Template linting:** Validate template metadata itself
+4. **Agent guidance:** Provide context on when to use each template
+
+**Already Abstracted:** Yes (TemplateAnalyzer in mcp_server/validation/)
+
+---
+
+## 7. Lessons Learned from Sibling Issues
+
+### 7.1 Issue #51 (labels.yaml) - Singleton Pattern
+
+**Pattern:**
+```python
+class LabelsConfig(BaseModel):
+    version: str
+    labels: dict[str, LabelDef]
     
-    _instance: ClassVar["ScaffoldConfig | None"] = None
+    _instance: ClassVar["LabelsConfig | None"] = None
     
     @classmethod
-    def load(cls, config_path: Path | None = None) -> "ScaffoldConfig":
-        """Load scaffold.yaml with Pydantic validation."""
-        # Singleton pattern from Issue #51
+    def load(cls, config_path: Path | None = None) -> "LabelsConfig":
         if cls._instance is None:
-            # Load YAML + validate with Pydantic
+            # Load YAML + Pydantic validation
             cls._instance = ...
         return cls._instance
 ```
 
-### Integration Points
+**Key Takeaways:**
+- Singleton ensures single source of truth
+- Pydantic validation catches config errors early
+- ClassVar + load() classmethod for lazy initialization
+- 100% test coverage requirement
 
-**1. ScaffoldComponentTool (scaffold_tools.py)**
-- Replace hardcoded component types with `ScaffoldConfig.load().component_types`
-- Update error hints dynamically from config
-- Validate component_type against config
+### 7.2 Issue #52 (validation.yaml) - Nested Models
 
-**2. PolicyEngine (policy_engine.py)**
-- Replace `allowed_phases = {"design", "tdd"}` with `ScaffoldConfig.load().allowed_phases`
-- Replace `blocked_patterns` list with `config.file_policies.blocked_patterns`
-- Replace `allowed_extensions` set with `config.file_policies.allowed_extensions`
-- Replace `allowed_dirs` set with `config.file_policies.allowed_directories`
+**Pattern:**
+```python
+class TemplateRule(BaseModel):
+    """Rule for single template type."""
+    required_sections: list[str]
+    optional_sections: list[str]
 
-**3. Tests**
-- Test config loading from YAML
-- Test policy enforcement with custom config
-- Test error handling for invalid config
-- Test migration from hardcoded to config-based
+class ValidationConfig(BaseModel):
+    """Validation rules for all templates."""
+    version: str
+    rules: dict[str, TemplateRule]  # Keyed by template type
+```
+
+**Key Takeaways:**
+- Nested Pydantic models for complex structures
+- Dict[str, Model] for type-specific rules
+- Complete migration - no hardcoded fallbacks
+- Tests ensure config loading works before deployment
+
+### 7.3 Common Patterns Across All Issues
+
+1. **File Location:** `.st3/` directory (NOT `config/`)
+2. **Pydantic Validation:** Always use Pydantic models
+3. **Singleton Pattern:** ClassVar + load() classmethod
+4. **Test Coverage:** 100% requirement
+5. **Documentation:** Reference docs in main documentation
+6. **No Fallbacks:** Remove hardcoded values completely after migration
 
 ---
 
-## Safe_Edit Tool Evaluation
+## 8. Critical Question: One Config or Three?
 
-### Evaluation Summary
+### 8.1 Current Assumption (Issue Title)
 
-**Attempt #1: Search/Replace Mode**
-- ❌ Failed - Pattern not found
-- Issue: Expected template structure didn't match actual scaffolded template
-- Root Cause: Generic template includes extensive HTML comments, metadata sections, and different structure than expected
+**Issue #54:** "Config: Scaffold Rules Configuration (scaffold.yaml)"
 
-**Attempt #2: Content Mode (Full Replacement)**
-- ✅ Success (this document)
-- Used `mode="strict"` with full `content` parameter (no search)
-- Completely replaced file with research findings
+**Implies:** Single `.st3/scaffold.yaml` file
 
-### Observations
+### 8.2 Three Distinct Configuration Domains
 
-**✅ What Worked:**
-1. **Content mode for full rewrites** - Clean, single-operation replacement
-2. **Scaffolding tool** - Created proper directory structure and template
-3. **Diff preview** - Shows changes clearly (when working)
+**Domain 1: Component Registry**
+- **Consumer:** ScaffoldComponentTool
+- **Purpose:** What can be scaffolded
+- **Structure:** Flat list or dict
+- **Coupling:** Tool-specific (MCP)
 
-**❌ Challenges Identified:**
-1. **Search pattern matching** - Whitespace/formatting must match exactly
-2. **Template structure complexity** - Generic templates have extensive boilerplate
-3. **No incremental editing** - Search/replace requires perfect pattern match
+**Domain 2: File Creation Policies**
+- **Consumer:** PolicyEngine
+- **Purpose:** What files require scaffolding vs allow direct creation
+- **Structure:** Nested (blocked_patterns, allowed_extensions, allowed_directories)
+- **Coupling:** Security/enforcement layer
 
-**Root Cause Analysis:**
-- Agents don't see the actual file content before attempting edits
-- Templates have more structure than expected (HTML comments, metadata)
-- Search/replace mode requires exact string matching (whitespace-sensitive)
-- No fuzzy matching or smart pattern detection
+**Domain 3: Scaffolding Phase Policies**
+- **Consumer:** PolicyEngine
+- **Purpose:** When scaffolding is allowed (workflow phases)
+- **Structure:** Set of phase names
+- **Coupling:** Workflow system (Issue #50)
 
-**Recommendations for Improving safe_edit:**
-1. **Add `read_first` parameter** - Tool should optionally read file before edit to show agent actual content
-2. **Improve search matching** - Consider fuzzy/regex matching for patterns
-3. **Better error messages** - Show portion of file where pattern was expected
-4. **Template-aware mode** - Special handling for scaffolded templates
-5. **Section-based editing** - Edit by markdown heading instead of raw text search
+### 8.3 Architectural Decision Required
 
-**Agent Workflow Improvement:**
-- Always read file first with `read_file` before complex edits
-- Use content mode for full rewrites instead of search/replace
-- For incremental edits, read exact text first to match pattern precisely
+**Option A: Single `.st3/scaffold.yaml`**
+```yaml
+# .st3/scaffold.yaml
+version: "1.0"
 
-### Impact on Issue #54
+component_types:  # Domain 1
+  - dto
+  - worker
+  - adapter
 
-**For this research phase:**
-- ✅ Research document completed successfully
-- ✅ Two attempts total (one failed, one succeeded)
-- ✅ Workaround: Use content mode for full replacement
+allowed_phases:   # Domain 3
+  - design
+  - tdd
 
-**For future phases:**
-- Will use content mode for document creation
-- Will read files first before attempting edits
-- Will prefer full replacements over incremental edits when practical
+file_policies:    # Domain 2
+  blocked_patterns: [...]
+  allowed_extensions: [...]
+```
+
+**Pros:** All scaffold-related config in one file  
+**Cons:** Mixes three responsibilities, violates SRP, different consumers
+
+**Option B: Three Separate Config Files**
+```yaml
+# .st3/components.yaml (Domain 1 - Component Registry)
+version: "1.0"
+scaffoldable_types:
+  - dto
+  - worker
+  - adapter
+
+# .st3/policies.yaml (Domain 2 - File Creation Policies)
+version: "1.0"
+file_creation:
+  require_scaffold: [...]
+  allow_create_file: [...]
+
+# .st3/workflows.yaml (Domain 3 - Already exists from Issue #50!)
+# Scaffolding phase policy is workflow-specific, already configured
+```
+
+**Pros:** SRP compliance, clear consumer boundaries  
+**Cons:** More files (but each focused)
+
+**Option C: Merge Domain 2 with Existing Policy System**
+```yaml
+# .st3/policies.yaml (NEW - file creation policies)
+# Domain 2 - File policies (blocked/allowed patterns)
+
+# .st3/components.yaml (NEW - component registry)
+# Domain 1 - Scaffoldable components
+
+# .st3/workflows.yaml (EXISTS - from Issue #50)
+# Domain 3 - Phase policies (scaffolding allowed in design/tdd)
+```
+
+**Pros:** Aligns with existing Epic #49 structure, no duplication  
+**Cons:** Domain 3 already solved by Issue #50
+
+---
+
+## 9. Relationship to Existing Configuration
+
+### 9.1 workflows.yaml (Issue #50) - ALREADY HANDLES PHASE POLICIES
+
+**Current Content:**
+```yaml
+# .st3/workflows.yaml
+workflows:
+  feature:
+    phases:
+      - research
+      - planning
+      - design       # ← Scaffolding allowed
+      - tdd          # ← Scaffolding allowed
+      - integration
+      - documentation
+```
+
+**Insight:** Scaffolding phase policies (Domain 3) are **already configured** via workflow definitions!
+
+**PolicyEngine Logic:**
+```python
+# Current (hardcoded):
+allowed_phases = {"design", "tdd"}
+
+# Should be (from workflow config):
+workflow = WorkflowConfig.load()
+current_workflow = workflow.workflows[project.workflow_name]
+allowed_phases = {"design", "tdd"}  # Still hardcoded, but could reference workflow phases
+```
+
+**Question:** Should scaffolding phase policies be:
+1. **Workflow-specific** - Each workflow defines scaffolding phases
+2. **Global** - Scaffolding always allowed in {"design", "tdd"} regardless of workflow
+3. **Hybrid** - Default {"design", "tdd"}, overridable per workflow
+
+### 9.2 validation.yaml (Issue #52) - ALREADY HANDLES TEMPLATE VALIDATION
+
+**Current Content:**
+```yaml
+# .st3/validation.yaml
+version: "1.0"
+rules:
+  dto:
+    required_sections: [...]
+  worker:
+    required_sections: [...]
+```
+
+**Insight:** Template validation rules are **already externalized** in Issue #52.
+
+**Not in Scope for Issue #54:** Template validation metadata (handled by validation.yaml + template YAML frontmatter).
+
+---
+
+## 10. Unresolved Questions for Planning Phase
+
+### 10.1 Configuration Scope
+
+**Q1:** Should Issue #54 cover:
+- ✅ Component registry (what can be scaffolded)
+- ✅ File creation policies (what requires scaffolding)
+- ❓ Scaffolding phase policies (when scaffolding allowed) - OR is this workflow-specific (Issue #50)?
+
+**Q2:** One config file (`.st3/scaffold.yaml`) or three (components.yaml, policies.yaml, workflows.yaml extension)?
+
+### 10.2 Policy Granularity
+
+**Q3:** File creation policies - should they be:
+- **Pattern-based** (current: directory + extension tuples)
+- **Glob-based** (e.g., `backend/**/*.py`)
+- **Regex-based** (e.g., `^backend/.*\.py$`)
+- **Path-based** (e.g., list of exact paths)
+
+**Q4:** Should policies support **exclusions**?  
+Example: `backend/**/*.py` requires scaffold EXCEPT `backend/utils/**/*.py` (utility scripts)
+
+### 10.3 Component Registry Extensibility
+
+**Q5:** How should custom component types be added?
+- **Via config** (register scaffolder class path)
+- **Via plugins** (dynamic loading)
+- **Manual** (code change + config update)
+
+**Q6:** Should component types have metadata in config?  
+Example:
+```yaml
+component_types:
+  dto:
+    description: "Data Transfer Objects"
+    scaffolder: "mcp_server.scaffolding.components.dto.DTOScaffolder"
+    template: "components/dto.py.jinja2"
+    generates_test: true
+```
+
+### 10.4 Herbruikbaarheid Template System
+
+**Q7:** Should JinjaRenderer be extracted to `mcp_server/core/template_engine.py` for reuse by:
+- safe_edit_tool (apply templates to fix code)
+- Quality tools (generate fix suggestions)
+- Documentation generators
+
+**Q8:** Should validation system be promoted to top-level service used by:
+- Scaffolding (current)
+- Quality gates (future)
+- CI/CD (future)
+- Pre-commit hooks (future)
+
+### 10.5 SRP/DRY Refactoring
+
+**Q9:** Should Issue #54 also address:
+- **DRY violations** (fallback logic, suffix logic)
+- **SRP violations** (ScaffoldComponentTool responsibilities)
+- **File operation consolidation** (test path derivation, module path)
+
+Or defer these to separate refactoring issue?
+
+**Q10:** Should file operations be extracted to `mcp_server/core/file_operations.py` with utilities:
+- `derive_test_path()`
+- `derive_module_path()`
+- `ensure_suffix()`
+- `write_file()` (with security)
+
+---
+
+## 11. Research Conclusions
+
+### 11.1 Core Findings
+
+1. **Scaffolding ≠ File Creation**
+   - Scaffolding is architectural enforcement through templates
+   - File creation is data output without patterns
+   - Distinction is clear and justified by project needs
+
+2. **Three Configuration Domains**
+   - Component registry (what can be scaffolded)
+   - File creation policies (what requires scaffolding)
+   - Scaffolding phase policies (when scaffolding allowed)
+   - These have different consumers and purposes
+
+3. **Domain 3 Already Solved**
+   - Scaffolding phase policies are workflow-specific
+   - Already configured in `.st3/workflows.yaml` (Issue #50)
+   - PolicyEngine should reference workflow config, not hardcode {"design", "tdd"}
+
+4. **Reusability Opportunities**
+   - JinjaRenderer: HIGH (template system for safe_edit, quality tools)
+   - Validation: HIGH (already abstracted, wider adoption needed)
+   - File operations: MEDIUM (consolidation opportunity)
+   - Template metadata: HIGH (documentation, IDE tooling)
+
+5. **SRP/DRY Violations Exist**
+   - Fallback template logic duplicated 8 times
+   - Suffix logic duplicated 4 times
+   - ScaffoldComponentTool mixes too many concerns
+   - write_scaffold_file mixes I/O and security
+
+### 11.2 Architectural Insights
+
+**Insight #1:** "Scaffold configuration" is too broad - encompasses component registry, file policies, and workflow policies.
+
+**Insight #2:** File creation policies (`blocked_patterns`, `allowed_extensions`) are **general enforcement**, not scaffold-specific - they determine when scaffolding is REQUIRED vs when direct creation is ALLOWED.
+
+**Insight #3:** Template system (Jinja2) is **highly reusable** - currently locked in scaffolding but could power safe_edit, quality tools, and documentation generation.
+
+**Insight #4:** Validation is already well-abstracted (LayeredTemplateValidator, TemplateAnalyzer) but underutilized - should be quality gate, CI/CD check, pre-commit hook.
+
+**Insight #5:** Project structure knowledge (backend/ → tests/unit/, file path → module path) is **scattered** - should be centralized in PathResolver utility.
+
+### 11.3 Planning Phase Prerequisites
+
+Before moving to planning, must resolve:
+
+1. **Configuration scope:** One file or three?
+2. **Domain 3 handling:** Extend workflows.yaml or new config?
+3. **Policy granularity:** Pattern vs glob vs regex?
+4. **Component extensibility:** Via config or manual?
+5. **Refactoring scope:** Address SRP/DRY in Issue #54 or defer?
 
 ---
 
 ## Next Steps
 
-1. **Research Complete** ✅
-   - Hardcoded rules identified and documented
-   - Lessons learned from sibling issues applied
-   - Requirements clearly defined
-   - Safe_edit tool evaluated with findings
+1. **User Decision Required:**
+   - Configuration structure (one file vs three)
+   - Scaffolding phase policy location (workflows.yaml vs separate)
+   - Refactoring scope (Issue #54 or separate)
 
-2. **Transition to Planning Phase**
-   - Use `transition_phase` tool to move to planning
-   - Design detailed .st3/scaffold.yaml schema
-   - Design ScaffoldConfig Pydantic model structure
-   - Plan migration strategy from hardcoded to config
-   - Define comprehensive test coverage requirements
+2. **Transition to Planning Phase:**
+   - Design chosen configuration structure
+   - Design Pydantic models (following Issue #51/52 patterns)
+   - Design migration strategy (hardcoded → config)
+   - Design test coverage plan (100% requirement)
 
-3. **Commit Research Work**
-   - Commit research.md with TDD phase (docs)
-   - Document safe_edit evaluation findings
-   - Prepare for planning phase
+3. **Documentation:**
+   - Update AGENT_PROMPT.md with configuration approach
+   - Document policy evaluation flow
+   - Document herbruikbare componenten (JinjaRenderer, validation)
 
 ---
 
-**End of Research Phase - Ready for Phase Transition**
+**End of Research Phase - Awaiting User Input for Planning**
