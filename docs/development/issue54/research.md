@@ -815,24 +815,521 @@ Before moving to planning, must resolve:
 
 ---
 
-## Next Steps
+## 12. Four Config Domains - Detailed Analysis
 
-1. **User Decision Required:**
-   - Configuration structure (one file vs three)
-   - Scaffolding phase policy location (workflows.yaml vs separate)
-   - Refactoring scope (Issue #54 or separate)
+Based on user vision: **"Wat waar mag en wanneer!"** - we need FOUR separate configs (SRP):
 
-2. **Transition to Planning Phase:**
-   - Design chosen configuration structure
-   - Design Pydantic models (following Issue #51/52 patterns)
-   - Design migration strategy (hardcoded → config)
-   - Design test coverage plan (100% requirement)
+### 12.1 Domain 1: WAT (Component Registry)
 
-3. **Documentation:**
-   - Update AGENT_PROMPT.md with configuration approach
-   - Document policy evaluation flow
-   - Document herbruikbare componenten (JinjaRenderer, validation)
+**Purpose:** Define what CAN be scaffolded  
+**Config File:** `.st3/components.yaml` (NEW)  
+**Consumer:** ScaffoldComponentTool
+
+**Current State:**
+- Hardcoded in scaffold_tools.py (9 types)
+- Dict maps component_type → ComponentScaffolder instance
+- Error hints list all types
+
+**Required Metadata per Component:**
+```yaml
+# .st3/components.yaml
+version: "1.0"
+
+component_types:
+  dto:
+    description: "Immutable Pydantic Data Transfer Objects"
+    scaffolder_class: "mcp_server.scaffolding.components.dto.DTOScaffolder"
+    template: "components/dto.py.jinja2"
+    generates_test: true
+    category: "backend"  # For grouping/filtering
+    
+  worker:
+    description: "Background workers following executor pattern"
+    scaffolder_class: "mcp_server.scaffolding.components.worker.WorkerScaffolder"
+    template: "components/worker.py.jinja2"
+    generates_test: false
+    category: "backend"
+```
+
+**Config References:**
+- ← Referenced by: project_structure.yaml (allowed_components per directory)
+- → References: None (leaf config)
+
+**Issue #54 Scope:**
+- ✅ Create components.yaml
+- ✅ ComponentRegistryConfig Pydantic model (singleton)
+- ✅ Refactor ScaffoldComponentTool to use registry
+
+### 12.2 Domain 2: WAAR (Project Structure)
+
+**Purpose:** Define what's allowed WHERE (directory policies)  
+**Config File:** `.st3/project_structure.yaml` (NEW)  
+**Consumer:** PolicyEngine._decide_create_file(), ScaffoldComponentTool (path validation)
+
+**Current State:**
+- Implicit structure (directories exist but not documented)
+- PolicyEngine has hardcoded blocked_patterns, allowed_extensions, allowed_dirs
+- No declarative definition of project layout
+
+**Current Project Structure:**
+```
+SimpleTraderV3/
+├── backend/        # Backend code (DTOs, Workers, Adapters, Services)
+├── mcp_server/     # MCP tools, scaffolding, validation, core
+├── tests/          # Test suite (unit, integration, e2e)
+├── docs/           # Documentation (coding standards, reference, development)
+├── scripts/        # Utility scripts (ad-hoc, no patterns)
+├── proof_of_concepts/  # Experimental code
+├── .st3/           # Platform configuration
+└── tmp/            # Temporary files
+```
+
+**Required Structure Definition:**
+```yaml
+# .st3/project_structure.yaml
+version: "1.0"
+
+directories:
+  backend:
+    description: "Backend application code (DTOs, Workers, Adapters, Services)"
+    allowed_component_types: [dto, worker, adapter, service]  # References components.yaml
+    allowed_extensions: [.py]
+    require_scaffold_for:
+      - pattern: "**/*.py"
+        reason: "Backend code must follow architectural patterns"
+    subdirectories:
+      dtos:
+        allowed_component_types: [dto]
+      workers:
+        allowed_component_types: [worker]
+      adapters:
+        allowed_component_types: [adapter]
+  
+  mcp_server:
+    description: "MCP server platform (tools, scaffolding, core)"
+    allowed_component_types: [tool, resource, worker]
+    allowed_extensions: [.py]
+    require_scaffold_for:
+      - pattern: "**/*.py"
+        reason: "MCP components must follow tool/resource patterns"
+  
+  tests:
+    description: "Test suite (unit, integration, e2e)"
+    allowed_component_types: [test]
+    allowed_extensions: [.py]
+    require_scaffold_for:
+      - pattern: "**/*.py"
+        reason: "Tests must follow project conventions"
+  
+  docs:
+    description: "Documentation (markdown, diagrams)"
+    allowed_component_types: [doc]  # scaffold_design_doc
+    allowed_extensions: [.md, .rst, .png, .svg, .drawio]
+    require_scaffold_for: []  # Markdown can be created directly
+  
+  .st3:
+    description: "Platform configuration (YAML/JSON only)"
+    allowed_component_types: []  # No scaffolding
+    allowed_extensions: [.yml, .yaml, .json]
+    require_scaffold_for: []
+  
+  scripts:
+    description: "Utility scripts (no restrictions)"
+    allowed_component_types: [generic]  # Generic scaffolding allowed
+    allowed_extensions: [.py, .sh, .ps1, .bat]
+    require_scaffold_for: []  # Ad-hoc scripts, no enforcement
+  
+  proof_of_concepts:
+    description: "Experimental code (no restrictions)"
+    allowed_component_types: [generic]
+    allowed_extensions: []  # Any extension
+    require_scaffold_for: []  # No enforcement
+```
+
+**Config References:**
+- → References: components.yaml (allowed_component_types)
+- ← Referenced by: policies.yaml (directory-specific phase policies - future)
+
+**Issue #54 Scope:**
+- ✅ Create project_structure.yaml (describe CURRENT project)
+- ✅ ProjectStructureConfig Pydantic model (singleton)
+- ✅ DirectoryPolicy model (nested)
+- ✅ Refactor PolicyEngine._decide_create_file() to use config
+- ✅ Add directory validation to ScaffoldComponentTool
+
+### 12.3 Domain 3: WANNEER (Phase Policies)
+
+**Purpose:** Define what's allowed WHEN (phase-based restrictions)  
+**Config File:** `.st3/policies.yaml` (NEW)  
+**Consumer:** PolicyEngine._decide_scaffold(), future enforcement tools
+
+**Current State:**
+- Workflows.yaml (Issue #50) defines phase sequences
+- PolicyEngine has hardcoded allowed_phases for scaffold (design, tdd)
+- No declarative phase policy mapping
+
+**Relationship to workflows.yaml:**
+```yaml
+# .st3/workflows.yaml (EXISTS - Issue #50)
+workflows:
+  feature:
+    phases: [research, planning, design, tdd, integration, documentation]
+  bug:
+    phases: [research, planning, design, tdd, integration, documentation]
+  refactor:
+    phases: [research, planning, tdd, integration, documentation]  # No design
+  hotfix:
+    phases: [tdd, integration, documentation]  # Emergency, minimal
+```
+
+**New policies.yaml:**
+```yaml
+# .st3/policies.yaml
+version: "1.0"
+
+# Operation policies (WHEN operations are allowed)
+operations:
+  scaffold:
+    description: "Component scaffolding (create new code structures)"
+    allowed_phases: [design, tdd]  # Scaffolding only during creation
+    reason: "Scaffolding is for new components, not maintenance"
+  
+  create_file:
+    description: "Direct file creation (config, scripts, docs)"
+    allowed_phases: []  # Empty = allowed in ALL phases
+    reason: "Config/script creation needed throughout workflow"
+  
+  commit:
+    description: "Git commit operations"
+    allowed_phases: []  # Empty = allowed in ALL phases
+    require_tdd_prefix: true  # Enforced via _decide_commit
+    valid_prefixes: [red, green, refactor, docs]
+
+# Future: Directory-specific phase policies (Epic #18)
+# directory_policies:
+#   backend:
+#     research:
+#       allowed_operations: []  # No code changes in research
+#     planning:
+#       allowed_operations: []  # No code changes in planning
+#     design:
+#       allowed_operations: [scaffold]  # Only scaffolding, no implementation
+#     tdd:
+#       allowed_operations: [scaffold, edit]  # Full implementation
+```
+
+**Config References:**
+- → References: workflows.yaml (phase names must exist in workflows)
+- ← Referenced by: PolicyEngine (enforcement)
+
+**Issue #54 Scope:**
+- ✅ Create policies.yaml (operation-level policies)
+- ✅ OperationPoliciesConfig Pydantic model (singleton)
+- ✅ Refactor PolicyEngine._decide_scaffold() to use config
+- ❌ DEFER: Directory-specific phase policies (Epic #18, Issue #42 completion)
+
+### 12.4 Domain 4: HOE (Scaffold Configuration)
+
+**Purpose:** Define HOW scaffolding works (templates, validation, rendering)  
+**Config Files:** Template metadata (YAML frontmatter), validation.yaml (Issue #52)  
+**Consumer:** Scaffolding system, ValidationService
+
+**Current State:**
+- ✅ Templates have YAML frontmatter (validation rules, purpose, variables)
+- ✅ validation.yaml exists (Issue #52) - template validation rules
+- ✅ JinjaRenderer handles template loading and rendering
+- ✅ LayeredTemplateValidator uses template metadata
+
+**Analysis:** This domain is ALREADY SOLVED by:
+1. Template YAML frontmatter (embedded in .jinja2 files)
+2. validation.yaml (Issue #52 - template-specific validation rules)
+3. JinjaRenderer (template rendering engine)
+
+**Issue #54 Scope:**
+- ❌ NO NEW CONFIG - already handled by Issue #52 + template metadata
+- ✅ Document relationship to other configs
+- ✅ Consider JinjaRenderer extraction for reusability (separate issue?)
 
 ---
 
-**End of Research Phase - Awaiting User Input for Planning**
+## 13. Config Cross-Reference Map
+
+**Dependency Graph:**
+```
+components.yaml (leaf - no dependencies)
+    ↑
+    │ referenced by
+    │
+project_structure.yaml
+    ↑                    ↑
+    │                    │ referenced by
+    │                    │
+    │                policies.yaml
+    │                    ↑
+    │                    │ uses
+    │                    │
+    └────────────────→ PolicyEngine
+                         (enforcement)
+
+workflows.yaml (Issue #50)
+    ↑
+    │ phase names referenced by
+    │
+policies.yaml
+```
+
+**Integration Points:**
+
+1. **ScaffoldComponentTool:**
+   - Reads: components.yaml (component registry)
+   - Reads: project_structure.yaml (validate output_path is in allowed directory)
+   - Enforced by: policies.yaml (via PolicyEngine - phase check)
+
+2. **PolicyEngine._decide_create_file():**
+   - Reads: project_structure.yaml (check blocked patterns, allowed extensions/dirs)
+   - Enforced by: policies.yaml (phase check - currently all phases allowed)
+
+3. **PolicyEngine._decide_scaffold():**
+   - Reads: policies.yaml (allowed_phases for scaffold operation)
+   - Context: workflows.yaml (current phase from project plan)
+
+4. **ValidationService:**
+   - Reads: validation.yaml (Issue #52)
+   - Reads: Template metadata (YAML frontmatter)
+   - Used by: safe_edit_tool, scaffolding (future)
+
+---
+
+## 14. PolicyEngine Integration Strategy
+
+**Current PolicyEngine Structure:**
+
+```python
+class PolicyEngine:
+    def decide(ctx: DecisionContext) -> PolicyDecision:
+        # 1. Validate project plan exists
+        # 2. Validate phase matches current_phase
+        # 3. Validate phase in required_phases
+        # 4. Delegate to operation-specific methods
+        
+    def _decide_commit(ctx) -> PolicyDecision:
+        # Hardcoded: TDD prefixes (red, green, refactor, docs)
+        
+    def _decide_scaffold(ctx) -> PolicyDecision:
+        # Hardcoded: allowed_phases = {"design", "tdd"}
+        
+    def _decide_create_file(ctx) -> PolicyDecision:
+        # Hardcoded: blocked_patterns, allowed_extensions, allowed_dirs
+```
+
+**Config-Driven Refactor Plan:**
+
+```python
+class PolicyEngine:
+    def __init__(self):
+        self.operation_policies = OperationPoliciesConfig.load()  # policies.yaml
+        self.project_structure = ProjectStructureConfig.load()    # project_structure.yaml
+        self.audit_trail = []
+    
+    def _decide_commit(ctx) -> PolicyDecision:
+        # Use: self.operation_policies.operations["commit"]
+        # Check: require_tdd_prefix, valid_prefixes
+        
+    def _decide_scaffold(ctx) -> PolicyDecision:
+        # Use: self.operation_policies.operations["scaffold"].allowed_phases
+        # Compare: ctx.phase in allowed_phases
+        
+    def _decide_create_file(ctx) -> PolicyDecision:
+        # Use: self.project_structure.get_directory_policy(path)
+        # Check: require_scaffold_for patterns, allowed_extensions
+```
+
+**Issue #54 Scope:**
+- ✅ Refactor PolicyEngine to load configs (singleton pattern)
+- ✅ Replace hardcoded rules with config lookups
+- ✅ Maintain audit trail functionality
+- ❌ DEFER: New decision methods (Epic #18 - architectural validation, phase activity)
+
+---
+
+## 15. Validation Role in Enforcement
+
+**Question:** Where does validation fit in "wat, waar, wanneer, hoe"?
+
+**Answer:** Validation is ORTHOGONAL to the four domains - it's a **quality gate** that runs AFTER operations.
+
+**Enforcement Pipeline:**
+```
+1. WAT: Component registry check
+   → Is this component type valid? (components.yaml)
+
+2. WAAR: Directory policy check
+   → Is this path allowed for this component? (project_structure.yaml)
+
+3. WANNEER: Phase policy check
+   → Is this operation allowed in current phase? (policies.yaml)
+
+4. HOE: Scaffolding execution
+   → Generate code from template (template metadata, JinjaRenderer)
+
+5. QUALITY: Validation check
+   → Does generated code comply with template rules? (validation.yaml, LayeredTemplateValidator)
+```
+
+**Validation is NOT config domain - it's ENFORCEMENT step.**
+
+**Relationship:**
+- **Domain 4 (HOE)** defines templates and metadata
+- **Validation** enforces compliance with templates
+- **policies.yaml** could define validation mode (strict, interactive, lenient) per phase
+
+**Issue #54 Scope:**
+- ✅ Document validation role in enforcement pipeline
+- ❌ NO NEW VALIDATION CONFIG - already handled by Issue #52
+- ✅ Consider validation.yaml integration with policies.yaml (future)
+
+---
+
+## 16. Issue #54 Scope - Final Definition
+
+**In Scope:**
+
+1. **Create components.yaml**
+   - Component registry (9 types)
+   - ComponentRegistryConfig Pydantic model (singleton)
+   - Refactor ScaffoldComponentTool to use registry
+
+2. **Create project_structure.yaml**
+   - Directory definitions (7 directories)
+   - DirectoryPolicy nested model
+   - ProjectStructureConfig Pydantic model (singleton)
+   - Refactor PolicyEngine._decide_create_file() to use config
+
+3. **Create policies.yaml**
+   - Operation policies (scaffold, create_file, commit)
+   - OperationPoliciesConfig Pydantic model (singleton)
+   - Refactor PolicyEngine._decide_scaffold() to use config
+
+4. **PolicyEngine Refactor**
+   - Load configs via singleton pattern
+   - Replace hardcoded rules with config lookups
+   - Maintain audit trail
+   - Add config validation (fail-fast on invalid config)
+
+5. **Tests**
+   - 100% coverage for config models
+   - PolicyEngine config integration tests
+   - ScaffoldComponentTool config integration tests
+
+6. **Documentation**
+   - Update AGENT_PROMPT.md with new configs
+   - Document config cross-references
+   - Document enforcement pipeline
+
+**Out of Scope (Defer to Epic #18 or separate issues):**
+
+1. ❌ Directory-specific phase policies (requires Issue #42 completion)
+2. ❌ Architectural pattern validation (Epic #18 child)
+3. ❌ Phase activity enforcement (Epic #18 child)
+4. ❌ SRP refactoring (ScaffoldComponentTool responsibilities split)
+5. ❌ DRY refactoring (fallback logic, suffix logic extraction)
+6. ❌ JinjaRenderer extraction to core (separate issue for reusability)
+7. ❌ File operations consolidation (PathResolver utility)
+8. ❌ Project scaffolding tool (empty dir → full project)
+
+---
+
+## 17. Answers to Unresolved Questions
+
+**Q1: Scope of Issue #54**
+✅ ANSWERED: Component registry, project structure, operation policies configs
+
+**Q2: Configuration structure**
+✅ ANSWERED: THREE separate files (components.yaml, project_structure.yaml, policies.yaml)
+
+**Q3: Component registry - separate or embedded**
+✅ ANSWERED: Separate components.yaml (SRP)
+
+**Q4: Phase policies - workflows.yaml or new**
+✅ ANSWERED: New policies.yaml (operation-level), workflows.yaml stays unchanged
+
+**Q5: PolicyEngine refactor scope**
+✅ ANSWERED: Config-driven only (no SRP extraction in Issue #54)
+
+**Q6: Backward compatibility**
+✅ CLARIFIED: Current project becomes valid config (describe existing structure)
+
+**Q7: Validation integration**
+✅ ANSWERED: Validation is enforcement step (orthogonal), already handled by Issue #52
+
+**Q8: Validation role**
+✅ ANSWERED: Quality gate after operations, not config domain
+
+**Q9: SRP/DRY refactoring**
+✅ ANSWERED: Defer to separate issues (out of Issue #54 scope)
+
+**Q10: File operations consolidation**
+✅ ANSWERED: Defer to separate issue (PathResolver utility)
+
+---
+
+## 18. Foundation for Epic #18
+
+**How Issue #54 Enables Epic #18:**
+
+1. **Config Infrastructure:**
+   - ✅ Components.yaml → What can be created
+   - ✅ Project_structure.yaml → Where it can be created
+   - ✅ Policies.yaml → When it can be created
+   - ✅ Template metadata + validation.yaml → How quality is enforced
+
+2. **Enforcement Hooks:**
+   - PolicyEngine.decide() → Entry point for ALL enforcement
+   - Config-driven decisions → Easy to extend (add new operations, directories, policies)
+   - Audit trail → Track all policy decisions for debugging
+
+3. **Future Epic #18 Features (enabled by Issue #54):**
+   - **Issue #42 (8-phase model):** Can add phase-specific directory policies to policies.yaml
+   - **Issue #41 (phase guidance):** Can reference configs for phase-appropriate instructions
+   - **Issue #46 (git sync):** Can add git_sync operation to policies.yaml
+   - **Architectural validation:** Can add architectural_validation operation with directory-specific rules
+   - **Phase activity enforcement:** Can extend directory policies with per-phase allowed_operations
+
+4. **Lego Block Pattern:**
+   ```
+   components.yaml → Defines WHAT
+        ↓
+   project_structure.yaml → Defines WHERE + references WHAT
+        ↓
+   policies.yaml → Defines WHEN + references WHERE
+        ↓
+   PolicyEngine → ENFORCES all above
+   ```
+
+**Composability:** Each config is SRP, references others declaratively, can be extended independently.
+
+---
+
+## Next Steps
+
+1. **Transition to Planning Phase**
+   - Design detailed YAML schemas (components, project_structure, policies)
+   - Design Pydantic models (ComponentRegistryConfig, ProjectStructureConfig, OperationPoliciesConfig)
+   - Design PolicyEngine refactor (config loading, decision method updates)
+   - Plan migration strategy (hardcoded → config)
+   - Plan test coverage (100% requirement)
+
+2. **User Confirmation Needed:**
+   - Confirm Issue #54 scope (3 configs + PolicyEngine refactor)
+   - Confirm out-of-scope items deferred to Epic #18 or separate issues
+   - Confirm config cross-reference approach
+   - Confirm validation placement (enforcement step, not config domain)
+
+3. **Epic #18 Preparation:**
+   - Document how Issue #54 enables Epic #18 enforcement features
+   - Identify PolicyEngine extension points for future operations
+   - Plan policies.yaml extension strategy (directory-specific, phase-specific)
+
+---
+
+**End of Research Phase - Ready for Planning Phase Transition**
