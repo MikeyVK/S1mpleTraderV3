@@ -1005,17 +1005,40 @@ operations:
     require_tdd_prefix: true  # Enforced via _decide_commit
     valid_prefixes: [red, green, refactor, docs]
 
-# Future: Directory-specific phase policies (Epic #18)
-# directory_policies:
-#   backend:
-#     research:
-#       allowed_operations: []  # No code changes in research
-#     planning:
-#       allowed_operations: []  # No code changes in planning
-#     design:
-#       allowed_operations: [scaffold]  # Only scaffolding, no implementation
-#     tdd:
-#       allowed_operations: [scaffold, edit]  # Full implementation
+# Directory-specific phase policies (CONFIG defined in Issue #54, ENFORCED in Epic #18)
+directory_policies:
+  backend:
+    research:
+      allowed_operations: []  # No code changes in research
+      reason: "Research phase is for analysis, not implementation"
+    planning:
+      allowed_operations: []  # No code changes in planning
+      reason: "Planning phase is for design decisions, not code"
+    design:
+      allowed_operations: [scaffold]  # Only scaffolding, no implementation
+      reason: "Design phase creates structure, not implementation"
+    tdd:
+      allowed_operations: [scaffold, edit, commit]  # Full implementation
+      reason: "TDD phase is for implementation with test-driven development"
+    integration:
+      allowed_operations: [edit, commit]  # No new scaffolding
+      reason: "Integration phase refines existing code"
+    documentation:
+      allowed_operations: []  # No code changes in documentation
+      reason: "Documentation phase is for docs/, not code"
+  
+  docs:
+    research:
+      allowed_operations: [create_file, edit, commit]  # Research docs
+    planning:
+      allowed_operations: [create_file, scaffold, edit, commit]  # Planning docs
+    design:
+      allowed_operations: [create_file, scaffold, edit, commit]  # Design docs
+    # All phases allow documentation
+    
+  .st3:
+    # Config changes allowed in all phases
+    allowed_operations: [create_file, edit, commit]
 ```
 
 **Config References:**
@@ -1026,7 +1049,8 @@ operations:
 - ✅ Create policies.yaml (operation-level policies)
 - ✅ OperationPoliciesConfig Pydantic model (singleton)
 - ✅ Refactor PolicyEngine._decide_scaffold() to use config
-- ❌ DEFER: Directory-specific phase policies (Epic #18, Issue #42 completion)
+- ✅ Include directory-specific phase policies in CONFIG (define the rules)
+- ❌ DEFER: ENFORCEMENT of directory-specific policies (Epic #18 - enforce the rules)
 
 ### 12.4 Domain 4: HOE (Scaffold Configuration)
 
@@ -1207,8 +1231,11 @@ class PolicyEngine:
 
 3. **Create policies.yaml**
    - Operation policies (scaffold, create_file, commit)
+   - Directory-specific phase policies (backend, docs, .st3, etc.)
    - OperationPoliciesConfig Pydantic model (singleton)
+   - DirectoryPhasePolicy nested model
    - Refactor PolicyEngine._decide_scaffold() to use config
+   - Note: CONFIG defined in Issue #54, ENFORCEMENT in Epic #18
 
 4. **PolicyEngine Refactor**
    - Load configs via singleton pattern
@@ -1228,7 +1255,7 @@ class PolicyEngine:
 
 **Out of Scope (Defer to Epic #18 or separate issues):**
 
-1. ❌ Directory-specific phase policies (requires Issue #42 completion)
+1. ❌ ENFORCEMENT of directory-specific phase policies (Epic #18 - using config to block operations)
 2. ❌ Architectural pattern validation (Epic #18 child)
 3. ❌ Phase activity enforcement (Epic #18 child)
 4. ❌ SRP refactoring (ScaffoldComponentTool responsibilities split)
