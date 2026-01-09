@@ -10,138 +10,239 @@
 
 **Running this protocol allows you to "download" the current project state into your context.**
 
-### 1.1 State Synchronization (Execute Immediately)
+### 1.1 Tool Activation (Execute FIRST)
+
+> **⚡ CRITICAL:** VS Code Copilot uses lazy loading for MCP tools. Tools appear "disabled" until activated.
+
+**Activate all tool categories before proceeding:**
+
+```
+activate_file_editing_tools              → create_file, safe_edit_file, scaffold_component
+activate_git_workflow_management_tools   → 15 git/PR tools (create_branch, git_status, etc.)
+activate_branch_phase_management_tools   → phase transition tools
+activate_issue_management_tools          → 6 issue tools (create_issue, list_issues, etc.)
+activate_label_management_tools          → 5 label tools
+activate_milestone_and_pr_management_tools → milestone + PR list tools
+activate_project_initialization_tools    → initialize_project, get_project_plan
+activate_code_validation_tools           → 4 validation tools
+```
+
+**Why:** Tools are dynamically loaded by VS Code based on semantic name analysis. Without activation, they appear as "disabled by user" (misleading error message). This is a VS Code 1.108+ feature (Dec 2025), not part of MCP specification.
+
+### 1.2 State Synchronization (Execute Immediately)
+
 Don't guess the phase or status. **Query the system:**
 
 1.  **Read Coding Standards:**
-    *   `read_resource("st3://rules/coding_standards")` -> *Loads TDD rules, Style, Quality Gates.*
+    *   `st3://rules/coding_standards` → *Loads TDD rules, Style, Quality Gates.*
 2.  **Check Development Phase:**
-    *   `read_resource("st3://status/phase")` -> *Tells you if we are Planning, Designing, or Implementing.*
-3.  **Check Implementation Status:**
-    *   `read_resource("st3://status/implementation")` -> *Shows what's done and what's failing.*
-4.  **Check Work Context:**
-    *   `call_tool("get_work_context")` -> *Retrieves active issue, blockers, and recent chages.*
+    *   `st3://status/phase` → *Tells you current_phase, active_branch, is_clean.*
+3.  **Check Work Context:**
+    *   `get_work_context` → *Retrieves active issue, blockers, and recent changes.*
 
 ---
 
-## 🛠️ Phase 2: Execution Protocols
+## 🔄 Phase 2: Issue-First Development Workflow
 
-**Use the specific protocol for your assigned task. DO NOT perform manual file operations where a tool exists.**
+**GOLDEN RULE:** Never commit directly to `main`. All work starts with an issue.
 
-### A. "Implement a New Component" (DTO, Worker, Adapter)
-1.  **Scaffold Code:**
-    *   `call_tool("scaffold_component", { "type": "...", "name": "..." })`
-    *   *Result:* Creates impl file AND test file. Updates `__init__.py`.
-2.  **TDD Loop (Strict):**
-    *   `RED`: Run tests -> Fail.
-    *   `GREEN`: Write code -> Pass.
-    *   `REFACTOR`: Run Quality Gates.
-3.  **Update Status:**
-    *   `call_tool("update_implementation_status", { ... })` -> *Critical for project tracking.*
+### 2.1 Starting New Work
 
-### B. "Create Documentation" (Architecture, Design, Plan)
-1.  **Select Template:**
-    *   Query `read_resource("st3://templates/list")` if unsure.
-2.  **Scaffold Document:**
-    *   `call_tool("scaffold_document", { "template": "design", "name": "..." })`
-    *   *Result:* Creates perfectly structured markdown file.
-3.  **Validate:**
-    *   `call_tool("validate_document_structure", { "path": "..." })`
+**Workflow Sequence:**
+```
+1. create_issue          → Create GitHub issue (labels validated against .st3/labels.yaml)
+2. create_branch         → Create feature/bug/docs/refactor/hotfix branch
+3. git_checkout          → Switch to new branch  
+4. initialize_project    → Set up workflow, phase state, parent tracking
+5. get_project_plan      → Verify workflow phases loaded
+```
 
-### C. "Manage Tasks" (Issues, Planning)
-1.  **Create Issue:**
-    *   `call_tool("create_issue", { "title": "...", "body": "..." })`
-2.  **Start Work:**
-    *   `call_tool("start_work_on_issue", { "issue_number": ... })` -> *Creates branch & updates board.*
+**Workflow Types (from `.st3/workflows.yaml`):**
 
----
+| Workflow | Phases | Use Case |
+|----------|--------|----------|
+| **feature** | 7 phases: planning → research → design → tdd → integration → documentation → ready | New functionality |
+| **bug** | 6 phases: triage → investigation → design → tdd → integration → ready | Bug fixes |
+| **docs** | 4 phases: research → draft → review → ready | Documentation work |
+| **refactor** | 5 phases: analysis → design → tdd → integration → ready | Code improvements |
+| **hotfix** | 3 phases: triage → tdd → ready | Urgent fixes |
 
-## ⚠️ Phase 3: Critical Directives (The "Prime Directives")
+**Epic Support:**
+- Large issues use `type:epic` label
+- Research phase identifies child issues
+- Child issues reference parent epic (parent branch tracking)
+- Epic hierarchy: `main → epic/76 → feature/77, feature/78`
 
-1.  **TDD is Non-Negotiable:** If you write code without a test, you are violating protocol.
-2.  **Tools > Manual:** Never manually create a file if `scaffold_*` exists. Never manually parse status if `st3://status/*` exists.
-3.  **English Artifacts, Dutch Chat:**
-    *   Write Code/Docs/Commits in **English**.
-    *   Talk to the User in **Dutch** (Nederlands).
-4.  **Objective Facts:** ContextWorkers produce data (Facts). Consumers interpret it (Opinions). Never mix them.
-5.  **No "Loose" Files:** Every new file must be part of the module structure (`__init__.py` export) and documented.
+### 2.2 Phase Progression
 
----
+**Sequential Transitions (Strict Enforcement):**
+```python
+transition_phase(branch="feature/42-name", to_phase="design")
+# Validates against workflow definition in .st3/workflows.yaml
+# Must follow sequential order defined in workflow
+```
 
-## 🔧 Phase 4: Tool Priority Matrix (MANDATORY)
+**Forced Transitions (Requires Human Approval):**
+```python
+force_phase_transition(
+    branch="feature/42-name",
+    to_phase="ready",
+    skip_reason="Skipping integration - already covered by epic tests",
+    human_approval="User: John approved on 2026-01-09"
+)
+# Creates audit trail in .st3/state.json
+# Only use when documented reason exists
+```
+
+### 2.3 TDD Cycle Within Phase
+
+**RED → GREEN → REFACTOR Loop (Multiple cycles within `tdd` phase):**
+
+1. **RED Phase:**
+   - Write failing test
+   - Commit: `git_add_or_commit(phase="red", message="add test for X")`
+
+2. **GREEN Phase:**
+   - Implement minimum code to pass
+   - Commit: `git_add_or_commit(phase="green", message="implement X")`
+
+3. **REFACTOR Phase:**
+   - Clean up code
+   - Run quality gates: `run_quality_gates(files=[...])`
+   - Commit: `git_add_or_commit(phase="refactor", message="refactor X")`
+
+4. **Test Execution:**
+   - **During TDD:** `run_tests(path="tests/specific_test.py")` for targeted tests
+   - **End of TDD phase:** `run_tests(path="tests/")` for full suite validation
+   - **Note:** Full suite (1000+ tests) generates significant output - see Issue #103 for enhancements
+
+5. **Phase Transition:**
+   - After TDD cycles complete: `transition_phase(to_phase="integration")`
+
+### 2.4 Documentation Phases
+
+**Pre-Development Documentation (research/planning/design phases):**
+- Output location: `docs/development/issueXX/` (XX = active issue number)
+- Tools: `scaffold_design_doc(doc_type="design|architecture|tracking")`
+- Validation: `validate_doc(path="...")`
+
+**Documentation Phase (after integration):**
+- Focus: Reference docs, project documentation updates
+- Tasks: Update issue content, generate PR description, finalize docs
+- Quality gate: `validate_architecture(scope="all")`
+
+
+## 🔧 Phase 5: Tool Priority Matrix (MANDATORY)
 
 > **🛑 CRITICAL RULE:** Use ST3 MCP tools for ALL operations. NEVER use terminal/CLI or create_file where an MCP tool exists.
 
+### Project Initialization & Planning
+| Action | ✅ USE THIS | ❌ NEVER USE |
+|--------|-------------|------------|
+| Initialize project | `initialize_project(issue_number, workflow_name)` | Manual branch setup |
+| Get workflow phases | `get_project_plan(issue_number)` | Read workflows.yaml manually |
+| Detect parent branch | `get_parent_branch(branch)` | Manual git reflog parsing |
+
+### Phase Management
+| Action | ✅ USE THIS | ❌ NEVER USE |
+|--------|-------------|------------|
+| Sequential transition | `transition_phase(branch, to_phase)` | Manual state update |
+| Forced transition | `force_phase_transition(branch, to_phase, skip_reason, human_approval)` | Skip validation |
+
 ### Git Operations
 | Action | ✅ USE THIS | ❌ NEVER USE |
-|--------|-------------|--------------|
-| Create branch | `mcp_st3-workflow_create_feature_branch` | `run_in_terminal("git checkout -b")` |
-| Switch branch | `mcp_st3-workflow_git_checkout_branch` | `run_in_terminal("git checkout")` |
-| Check status | `mcp_st3-workflow_git_status` | `run_in_terminal("git status")` |
-| Stage & Commit | `mcp_st3-workflow_git_add_or_commit` | `run_in_terminal("git add/commit")` |
-| Push to remote | `mcp_st3-workflow_git_push` | `run_in_terminal("git push")` |
-| Merge branches | `mcp_st3-workflow_git_merge` | `run_in_terminal("git merge")` |
-| Delete branch | `mcp_st3-workflow_git_delete_branch` | `run_in_terminal("git branch -d")` |
-| Stash changes | `mcp_st3-workflow_git_stash` | `run_in_terminal("git stash")` |
+|--------|-------------|------------|
+| Create branch | `create_branch(branch_type, name, base_branch)` | `run_in_terminal("git checkout -b")` |
+| Switch branch | `git_checkout(branch)` | `run_in_terminal("git checkout")` |
+| Check status | `git_status()` | `run_in_terminal("git status")` |
+| Stage & Commit | `git_add_or_commit(phase, message, files)` | `run_in_terminal("git add/commit")` |
+| List branches | `git_list_branches(verbose, remote)` | `run_in_terminal("git branch")` |
+| Push to remote | `git_push(set_upstream)` | `run_in_terminal("git push")` |
+| Pull from remote | `git_pull(rebase)` | `run_in_terminal("git pull")` |
+| Fetch from remote | `git_fetch(remote, prune)` | `run_in_terminal("git fetch")` |
+| Merge branches | `git_merge(branch)` | `run_in_terminal("git merge")` |
+| Delete branch | `git_delete_branch(branch, force)` | `run_in_terminal("git branch -d")` |
+| Stash changes | `git_stash(action, message, include_untracked)` | `run_in_terminal("git stash")` |
+| Restore files | `git_restore(files, source)` | `run_in_terminal("git restore")` |
+| Diff statistics | `git_diff_stat(source_branch, target_branch)` | `run_in_terminal("git diff --stat")` |
 
 ### GitHub Issues
 | Action | ✅ USE THIS | ❌ NEVER USE |
-|--------|-------------|--------------|
-| Create issue | `mcp_st3-workflow_create_issue` | GitHub CLI / manual |
-| List issues | `mcp_st3-workflow_list_issues` | `run_in_terminal("gh issue list")` |
-| Get issue details | `mcp_st3-workflow_get_issue` | `run_in_terminal("gh issue view")` |
-| Close issue | `mcp_st3-workflow_close_issue` | `run_in_terminal("gh issue close")` |
-| Add labels | `mcp_st3-workflow_add_labels` | GitHub CLI / manual |
+|--------|-------------|------------|
+| Create issue | `create_issue(title, body, labels, assignees, milestone)` | GitHub CLI / manual |
+| List issues | `list_issues(state, labels)` | `run_in_terminal("gh issue list")` |
+| Get issue details | `get_issue(issue_number)` | `run_in_terminal("gh issue view")` |
+| Update issue | `update_issue(issue_number, title, body, state, labels)` | GitHub CLI / manual |
+| Close issue | `close_issue(issue_number, comment)` | `run_in_terminal("gh issue close")` |
+
+### GitHub Labels
+| Action | ✅ USE THIS | ❌ NEVER USE |
+|--------|-------------|------------|
+| Create label | `create_label(name, color, description)` | GitHub CLI / manual |
+| Delete label | `delete_label(name)` | GitHub CLI / manual |
+| List labels | `list_labels()` | `run_in_terminal("gh label list")` |
+| Add labels to issue/PR | `add_labels(issue_number, labels)` | GitHub CLI / manual |
+| Remove labels | `remove_labels(issue_number, labels)` | GitHub CLI / manual |
+| Detect label drift | `detect_label_drift()` | Manual comparison |
+
+### GitHub Milestones
+| Action | ✅ USE THIS | ❌ NEVER USE |
+|--------|-------------|------------|
+| Create milestone | `create_milestone(title, description, due_on)` | GitHub CLI / manual |
+| List milestones | `list_milestones(state)` | `run_in_terminal("gh milestone list")` |
+| Close milestone | `close_milestone(milestone_number)` | GitHub CLI / manual |
 
 ### Pull Requests
 | Action | ✅ USE THIS | ❌ NEVER USE |
-|--------|-------------|--------------|
-| Create PR | `mcp_st3-workflow_create_pr` | `run_in_terminal("gh pr create")` |
+|--------|-------------|------------|
+| Create PR | `create_pr(title, body, head, base, draft)` | `run_in_terminal("gh pr create")` |
+| List PRs | `list_prs(state, base, head)` | `run_in_terminal("gh pr list")` |
+| Merge PR | `merge_pr(pr_number, commit_message, merge_method)` | `run_in_terminal("gh pr merge")` |
 
 ### Code Scaffolding (Jinja2 Templates)
 | Component Type | ✅ USE THIS | ❌ NEVER USE |
-|----------------|-------------|--------------|
-| DTO | `mcp_st3-workflow_scaffold_component(type="dto")` | `create_file` with manual code |
-| Worker | `mcp_st3-workflow_scaffold_component(type="worker")` | `create_file` with manual code |
-| Adapter | `mcp_st3-workflow_scaffold_component(type="adapter")` | `create_file` with manual code |
-| Interface | `mcp_st3-workflow_scaffold_component(type="interface")` | `create_file` with manual code |
-| Tool | `mcp_st3-workflow_scaffold_component(type="tool")` | `create_file` with manual code |
-| Resource | `mcp_st3-workflow_scaffold_component(type="resource")` | `create_file` with manual code |
-| Schema | `mcp_st3-workflow_scaffold_component(type="schema")` | `create_file` with manual code |
-| Service (Query) | `mcp_st3-workflow_scaffold_component(type="service_query")` | `create_file` with manual code |
-| Service (Command) | `mcp_st3-workflow_scaffold_component(type="service_command")` | `create_file` with manual code |
-| Service (Orchestrator) | `mcp_st3-workflow_scaffold_component(type="service_orchestrator")` | `create_file` with manual code |
-| Generic Python file | `mcp_st3-workflow_scaffold_component(type="generic")` | `create_file` with manual code |
+|----------------|-------------|------------|
+| DTO | `scaffold_component(component_type="dto", name="...", fields=[...])` | `create_file` with manual code |
+| Worker | `scaffold_component(component_type="worker", name="...", input_dto="...", output_dto="...")` | `create_file` with manual code |
+| Adapter | `scaffold_component(component_type="adapter", name="...", methods=[...])` | `create_file` with manual code |
+| Interface | `scaffold_component(component_type="interface", name="...", methods=[...])` | `create_file` with manual code |
+| Tool | `scaffold_component(component_type="tool", name="...", input_schema={...})` | `create_file` with manual code |
+| Resource | `scaffold_component(component_type="resource", name="...", uri_pattern="...")` | `create_file` with manual code |
+| Schema | `scaffold_component(component_type="schema", name="...", models=[...])` | `create_file` with manual code |
+| Service (Query) | `scaffold_component(component_type="service", service_type="query", name="...")` | `create_file` with manual code |
+| Service (Command) | `scaffold_component(component_type="service", service_type="command", name="...")` | `create_file` with manual code |
+| Service (Orchestrator) | `scaffold_component(component_type="service", service_type="orchestrator", name="...")` | `create_file` with manual code |
+| Generic Python file | `scaffold_component(component_type="generic", name="...", template_name="...")` | `create_file` with manual code |
 
 ### Document Scaffolding (Jinja2 Templates)
 | Document Type | ✅ USE THIS | ❌ NEVER USE |
-|---------------|-------------|--------------|
-| Architecture doc | `mcp_st3-workflow_scaffold_design_doc(template="architecture")` | `create_file` with markdown |
-| Design doc | `mcp_st3-workflow_scaffold_design_doc(template="design")` | `create_file` with markdown |
-| Reference doc | `mcp_st3-workflow_scaffold_design_doc(template="reference")` | `create_file` with markdown |
-| Tracking doc | `mcp_st3-workflow_scaffold_design_doc(template="tracking")` | `create_file` with markdown |
-| Generic doc | `mcp_st3-workflow_scaffold_design_doc(template="generic")` | `create_file` with markdown |
+|---------------|-------------|------------|
+| Architecture doc | `scaffold_design_doc(doc_type="architecture", title="...", output_path="...")` | `create_file` with markdown |
+| Design doc | `scaffold_design_doc(doc_type="design", title="...", output_path="...")` | `create_file` with markdown |
+| Tracking doc | `scaffold_design_doc(doc_type="tracking", title="...", output_path="...")` | `create_file` with markdown |
+| Generic doc | `scaffold_design_doc(doc_type="generic", title="...", output_path="...")` | `create_file` with markdown |
 
 ### Quality & Testing
 | Action | ✅ USE THIS | ❌ NEVER USE |
-|--------|-------------|--------------|
-| Run tests | `mcp_st3-workflow_run_tests` | `run_in_terminal("pytest")` |
-| Quality gates | `mcp_st3-workflow_run_quality_gates` | `run_in_terminal("ruff/mypy/pylint")` |
-| Validate DTO | `mcp_st3-workflow_validate_dto` | Manual validation |
-| Validate document | `mcp_st3-workflow_validate_document_structure` | Manual check |
-| Validate architecture | `mcp_st3-workflow_validate_architecture` | Manual review |
+|--------|-------------|------------|
+| Run tests | `run_tests(path, markers, timeout, verbose)` | `run_in_terminal("pytest")` |
+| Quality gates | `run_quality_gates(files)` | `run_in_terminal("ruff/mypy/pylint")` |
+| Validate template | `validate_template(path, template_type)` | Manual validation |
+| Validate document | `validate_doc(content, template_type)` | Manual check |
+| Validate architecture | `validate_architecture(scope)` | Manual review |
 
 ### Discovery & Context
 | Action | ✅ USE THIS | ❌ NEVER USE |
-|--------|-------------|--------------|
-| Get work context | `mcp_st3-workflow_get_work_context` | Manual file reading |
-| Search docs | `mcp_st3-workflow_search_documentation` | `grep_search` on docs/ |
-| Health check | `mcp_st3-workflow_health_check` | N/A |
+|--------|-------------|------------|
+| Get work context | `get_work_context(include_closed_recent)` | Manual file reading |
+| Search docs | `search_documentation(query, scope)` | `grep_search` on docs/ |
+| Health check | `health_check()` | N/A |
 
-### File Creation (Only when no scaffold exists)
+### File Editing
 | Action | ✅ USE THIS | ❌ NEVER USE |
-|--------|-------------|--------------|
-| Create generic file | `mcp_st3-workflow_create_file` | `create_file` (VS Code tool) |
+|--------|-------------|------------|
+| Edit file (multi-mode) | `safe_edit_file(path, content/line_edits/insert_lines/search+replace, mode)` | Manual file editing |
+| Create generic file | `create_file(path, content)` | VS Code create_file (deprecated) |
 
 > **📌 Remember:** The ST3 MCP tools use Jinja2 templates that ensure consistency, correct imports, proper structure, and automatic test file generation. Manual file creation bypasses all these benefits.
 
@@ -150,9 +251,65 @@ Don't guess the phase or status. **Query the system:**
 ## 🏁 Ready State
 
 **If you have run Phase 1: Orientation, you are now READY.**
-*   "What is my next task?" -> Check `get_work_context`.
-*   "How do I build X?" -> Check `st3://rules/coding_standards`.
-*   "Where is the plan?" -> Check `st3://status/phase`.
-*   "Which tool should I use?" -> **Consult Phase 4: Tool Priority Matrix.**
+*   "What is my next task?" → Check `get_work_context`.
+*   "How do I build X?" → Check `st3://rules/coding_standards`.
+*   "What phase am I in?" → Check `st3://status/phase`.
+*   "Which tool should I use?" → **Consult Phase 5: Tool Priority Matrix.**
+*   "How do I start work?" → **Follow Phase 2: Issue-First Development Workflow.**
 
 > **Start now by running Phase 1.**
+### 2.5 Work Completion
+
+**PR Creation & Merge:**
+```
+1. create_pr(head="feature/42", base="main", title="...", body="...")
+2. Wait for human approval (ALWAYS REQUIRED)
+3. merge_pr(pr_number=X) - only after human approval
+4. Branch cleanup - discuss with human (context-dependent)
+   - State cleanup (.st3/state.json) is automatic on git_checkout
+```
+
+---
+
+## 🛠️ Phase 3: Execution Protocols
+
+**Use the specific protocol for your assigned task. DO NOT perform manual file operations where a tool exists.**
+
+### A. "Implement a New Component" (DTO, Worker, Adapter)
+1.  **Scaffold Code:**
+    *   `scaffold_component(component_type="...", name="...", output_path="...")`
+    *   *Result:* Creates impl file AND test file. Updates `__init__.py`.
+2.  **TDD Loop (Strict):**
+    *   Follow Section 2.3 RED → GREEN → REFACTOR cycle
+3.  **Phase Transition:**
+    *   `transition_phase(to_phase="integration")` after TDD complete
+
+### B. "Create Documentation" (Architecture, Design, Plan)
+1.  **Scaffold Document:**
+    *   `scaffold_design_doc(doc_type="design", title="...", output_path="docs/development/issueXX/...")`
+    *   *Result:* Creates perfectly structured markdown file.
+2.  **Validate:**
+    *   `validate_doc(content="...", template_type="design")`
+
+### C. "Manage Labels & Milestones"
+1.  **Create Label:**
+    *   `create_label(name="type:feature", color="0e8a16", description="...")`
+    *   Labels validated against `.st3/labels.yaml`
+2.  **Detect Drift:**
+    *   `detect_label_drift()` - Compare repo labels with config (manual/quality gate)
+
+---
+
+## ⚠️ Phase 4: Critical Directives (The "Prime Directives")
+
+1.  **Issue-First Development:** Never work directly on `main`. Always start with `create_issue`.
+2.  **Workflow Enforcement:** Always `initialize_project` before work. Use `transition_phase` for progression.
+3.  **TDD is Non-Negotiable:** If you write code without a test, you are violating protocol.
+4.  **Tools > Manual:** Never manually create a file if `scaffold_*` exists. Never manually parse status if `st3://status/*` exists.
+5.  **English Artifacts, Dutch Chat:**
+    *   Write Code/Docs/Commits in **English**.
+    *   Talk to the User in **Dutch** (Nederlands).
+6.  **Human-in-the-Loop:** PR merge ALWAYS requires human approval. `force_phase_transition` requires approval + reason.
+7.  **Quality Gates:** Run before phase transitions and before PR creation.
+
+---
