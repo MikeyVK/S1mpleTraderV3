@@ -84,6 +84,7 @@ from mcp_server.tools.template_validation_tool import TemplateValidationTool
 # Initialize logging
 setup_logging()
 logger = get_logger("server")
+lifecycle_logger = get_logger("server_lifecycle")
 
 
 class MCPServer:
@@ -92,6 +93,9 @@ class MCPServer:
     def __init__(self) -> None:
         """Initialize the MCP server with resources and tools."""
         server_name = getattr(getattr(settings, "server"), "name")
+
+        # Log server startup
+        lifecycle_logger.info("MCP server starting")
 
         # Validate label configuration at startup
         validate_label_config_on_startup()
@@ -318,7 +322,18 @@ class MCPServer:
                             }}
                         )
                         return response_content
-                    except Exception as e:  # pylint: disable=broad-exception-caught
+                    except asyncio.CancelledError:
+                        duration_ms = (time.perf_counter() - start_time) * 1000.0
+                        logger.info(
+                            "Tool call cancelled",
+                            extra={"props": {
+                                "call_id": call_id,
+                                "tool_name": name,
+                                "duration_ms": duration_ms,
+                            }}
+                        )
+                        raise
+                    except Exception as e:
                         duration_ms = (time.perf_counter() - start_time) * 1000.0
                         logger.error(
                             "Tool execution failed: %s",
@@ -348,6 +363,8 @@ class MCPServer:
             "Starting MCP server: %s",
             server_name
         )
+        lifecycle_logger.info("MCP server running")
+
         # Force LF only on Windows to prevent "invalid trailing data"
         # and other CRLF issues in the JSON-RPC stream
         stdout = anyio.wrap_file(TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n"))
@@ -358,6 +375,12 @@ class MCPServer:
                 write_stream,
                 self.server.create_initialization_options()
             )
+
+        lifecycle_logger.info("MCP server shutting down")
+
+    async def shutdown(self) -> None:
+        """Shutdown the MCP server gracefully."""
+        lifecycle_logger.info("MCP server shutting down")
 
 
 def main() -> None:
