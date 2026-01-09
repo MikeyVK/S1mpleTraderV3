@@ -6,11 +6,14 @@ Issue #79: Parent branch tracking with auto-detection.
 """
 import json
 import logging
+import os
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
+import anyio
 from pydantic import BaseModel, Field
 
 from mcp_server.config.workflows import WorkflowConfig
@@ -87,37 +90,77 @@ class InitializeProjectTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return InitializeProjectInput.model_json_schema()
 
-    def _detect_parent_branch_from_reflog(self, current_branch: str) -> str | None:
+    def _detect_parent_branch_from_reflog_sync(self, current_branch: str) -> str | None:
         """Detect parent branch from git reflog.
 
-        Searches reflog for "checkout: moving from <parent> to <current>"
+        This is intentionally synchronous and must run in a worker thread. On Windows
+        we've observed that long-running git subprocesses can make MCP (stdio) look
+        "hung"; doing the subprocess work in a thread plus using robust kill logic
+        keeps the server responsive.
 
-        Args:
-            current_branch: Current branch name
-
-        Returns:
-            Parent branch name or None if not detectable
-
-        Example:
-            >>> _detect_parent_branch_from_reflog("feature/79-test")
-            'epic/76-quality-gates-tooling'
+        To keep reconciliation accurate without producing huge output, we read only
+        the reflog *subject* lines via `--pretty=%gs`.
         """
+        max_entries = 5000
+        timeout_s = 5.0
+
+        cmd = [
+            "git",
+            "--no-pager",
+            "reflog",
+            "show",
+            "--all",
+            "-n",
+            str(max_entries),
+            "--pretty=%gs",
+        ]
+
+        def kill_tree(pid: int) -> None:
+            if os.name == "nt":
+                # Kill the entire tree so `git` doesn't linger.
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(pid)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=2,
+                )
+                return
+            try:
+                os.kill(pid, 9)
+            except OSError:
+                return
+
         try:
-            # Get reflog output
-            result = subprocess.run(
-                ["git", "reflog", "show", "--all"],
-                cwd=self.workspace_root,
-                capture_output=True,
+            with subprocess.Popen(
+                cmd,
+                cwd=str(self.workspace_root),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
                 text=True,
-                check=True,
-                timeout=10
-            )
+                encoding="utf-8",
+                errors="replace",
+            ) as proc:
+                try:
+                    stdout, _stderr = proc.communicate(timeout=timeout_s)
+                except subprocess.TimeoutExpired:
+                    kill_tree(proc.pid)
+                    try:
+                        proc.communicate(timeout=1)
+                    except (OSError, subprocess.TimeoutExpired, ValueError):
+                        pass
+                    logger.warning(
+                        "Git reflog failed: Command timed out after %ss",
+                        timeout_s,
+                    )
+                    return None
 
-            # Pattern: "checkout: moving from <parent> to <current>"
+                if proc.returncode:
+                    logger.warning("Git reflog failed (exit %s)", proc.returncode)
+                    return None
+
             pattern = f"checkout: moving from (.+?) to {re.escape(current_branch)}"
-
-            # Search most recent first
-            for line in result.stdout.splitlines():
+            for line in stdout.splitlines():
                 match = re.search(pattern, line)
                 if match:
                     parent = match.group(1)
@@ -127,9 +170,15 @@ class InitializeProjectTool(BaseTool):
             logger.warning("No parent branch found in reflog for %s", current_branch)
             return None
 
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
+        except (OSError, ValueError) as e:
             logger.warning("Git reflog failed: %s", e)
             return None
+
+    async def _detect_parent_branch_from_reflog(self, current_branch: str) -> str | None:
+        return await anyio.to_thread.run_sync(
+            lambda: self._detect_parent_branch_from_reflog_sync(current_branch),
+            cancellable=True,
+        )
 
     async def execute(self, params: InitializeProjectInput) -> ToolResult:
         """Execute project initialization with atomic state creation.
@@ -147,15 +196,28 @@ class InitializeProjectTool(BaseTool):
             ValueError: If workflow_name invalid or custom_phases missing
         """
         try:
-            # Get current branch once and reuse (avoid duplicate Git calls)
-            branch = self.git_manager.get_current_branch()
+            start = time.perf_counter()
+
+            # Step 0: Get current branch once and reuse
+            branch_start = time.perf_counter()
+            with anyio.fail_after(5):
+                branch = await anyio.to_thread.run_sync(self.git_manager.get_current_branch)
+            logger.debug(
+                "initialize_project: got branch in %.1fms",
+                (time.perf_counter() - branch_start) * 1000.0,
+            )
 
             # Step 1: Determine parent_branch
             parent_branch = params.parent_branch
 
             if parent_branch is None:
                 # Auto-detect from git reflog
-                parent_branch = self._detect_parent_branch_from_reflog(branch)
+                parent_start = time.perf_counter()
+                parent_branch = await self._detect_parent_branch_from_reflog(branch)
+                logger.debug(
+                    "initialize_project: reflog parent detection in %.1fms",
+                    (time.perf_counter() - parent_start) * 1000.0,
+                )
 
                 if parent_branch:
                     logger.info(
@@ -172,21 +234,38 @@ class InitializeProjectTool(BaseTool):
                     parent_branch=parent_branch
                 )
 
-            result = self.manager.initialize_project(
-                issue_number=params.issue_number,
-                issue_title=params.issue_title,
-                workflow_name=params.workflow_name,
-                options=options
+            init_start = time.perf_counter()
+            with anyio.fail_after(20):
+                result = await anyio.to_thread.run_sync(
+                    lambda: self.manager.initialize_project(
+                        issue_number=params.issue_number,
+                        issue_title=params.issue_title,
+                        workflow_name=params.workflow_name,
+                        options=options,
+                    )
+                )
+            logger.debug(
+                "initialize_project: initialize_project() in %.1fms",
+                (time.perf_counter() - init_start) * 1000.0,
             )
 
             # Step 3: Determine first phase from workflow
             first_phase = result["required_phases"][0]
 
             # Step 5: Initialize branch state atomically
-            self.state_engine.initialize_branch(
-                branch=branch,
-                issue_number=params.issue_number,
-                initial_phase=first_phase
+            state_start = time.perf_counter()
+            with anyio.fail_after(10):
+                await anyio.to_thread.run_sync(
+                    lambda: self.state_engine.initialize_branch(
+                        branch=branch,
+                        issue_number=params.issue_number,
+                        initial_phase=first_phase,
+                    )
+                )
+            logger.debug(
+                "initialize_project: initialize_branch() in %.1fms (total %.1fms)",
+                (time.perf_counter() - state_start) * 1000.0,
+                (time.perf_counter() - start) * 1000.0,
             )
 
             # Step 6: Build success message
@@ -207,8 +286,7 @@ class InitializeProjectTool(BaseTool):
 
             # Add template info if not custom
             if params.workflow_name != "custom":
-                workflow_config = WorkflowConfig.load()
-                workflow = workflow_config.get_workflow(params.workflow_name)
+                workflow = WorkflowConfig.load().get_workflow(params.workflow_name)
                 success_message["description"] = workflow.description
 
             return ToolResult.text(json.dumps(success_message, indent=2))
