@@ -92,24 +92,25 @@
 
 **Target 1: PolicyEngine**
 - Location: `mcp_server/core/policy_engine.py`
+- Name: **PolicyEngine** (remains unchanged - "Policy Decision Service" is its role, not a rename)
 - Current Status: **UNUSED** (zero integration points found via grep)
 - Risk: **NONE** - No backward compatibility needed, full refactor allowed
-- SRP Role: **Policy Decision Service** - answers "is operation X allowed?" based on policies.yaml + context
+- SRP Role: Answers "is operation X allowed?" based on policies.yaml + context
 - Responsibilities:
   - Load OperationPoliciesConfig (policies.yaml) at startup
-  - Provide `decide(operation, context)` method returning PolicyDecision
+  - Provide `decide(operation, context)` method returning PolicyDecision(allowed: bool, reason: str)
   - Delegate directory lookups to DirectoryPolicyResolver (WAAR knowledge)
   - Maintain audit trail (all decisions logged with reason)
 - NOT Responsible For:
-  - Enforcement (blocking operations) - Epic #18 responsibility
-  - Directory structure knowledge - DirectoryPolicyResolver responsibility
-  - Config validation - Pydantic models responsibility
+  - Enforcement (blocking operations) - Epic #18 adds tool integration
+  - Directory structure knowledge - DirectoryPolicyResolver owns this
+  - Config validation - Pydantic models do this at load time
 - Changes: Complete refactor (no compatibility constraints)
   - New interface: `decide(operation: str, path: str, phase: str) -> PolicyDecision`
   - Load policies.yaml via OperationPoliciesConfig.load()
   - Delegate to DirectoryPolicyResolver for WAAR queries
   - Simplified decision methods (config-driven, no hardcoded rules)
-- Test strategy: New test suite (no behavior parity needed since unused)
+- Test strategy: New test suite focusing on config-driven decisions
 
 **Target 2: ScaffoldComponentTool**
 - Location: `mcp_server/tools/scaffold_tools.py`
@@ -472,20 +473,159 @@ Options:
 
 ## 7. Success Metrics
 
-### 7.1 Functional Requirements
+### 7.1 Functional Requirements - Concrete Test Cases
 
-- ✅ All 3 config files exist and load successfully
-- ✅ All 3 Pydantic models with cross-validation working
-- ✅ DirectoryPolicyResolver handles path matching + inheritance
-- ✅ PolicyEngine loads configs and uses them for decisions
-- ✅ ScaffoldComponentTool validates component_type and path via configs
-- ✅ Zero breaking changes (all existing operations work)
-- ✅ Hardcoded rules completely removed from code
+**1. ComponentRegistryConfig loads and validates components.yaml:**
+```python
+# Test case: Valid config loads successfully
+config = ComponentRegistryConfig.from_file(".st3/components.yaml")
+assert config.dto.base_path == "backend/dtos"
+assert config.dto.test_base_path == "tests/backend/dtos"
+assert "name" in config.dto.required_fields
+assert config.dto.template == "src/mcp_server/scaffolding/templates/dto.py.j2"
+
+# Test case: Invalid config raises ConfigError
+with pytest.raises(ConfigError, match="Unknown component type 'invalid_type'"):
+    ComponentRegistryConfig.from_file("invalid_components.yaml")
+```
+
+**2. ProjectStructureConfig loads and validates project_structure.yaml:**
+```python
+# Test case: Valid config with inheritance
+config = ProjectStructureConfig.from_file(".st3/project_structure.yaml")
+backend = config.get_directory("backend")
+assert backend.allowed_extensions == [".py"]
+assert backend.allowed_component_types == ["dto", "worker", "adapter"]
+
+# Test case: DirectoryPolicyResolver resolves child inheritance
+resolver = DirectoryPolicyResolver(config)
+dtos_dir = resolver.resolve("backend/dtos")
+assert dtos_dir.allowed_extensions == [".py"]  # Inherited from backend
+assert dtos_dir.allowed_component_types == ["dto"]  # Override
+
+# Test case: Glob pattern matching
+assert config.matches_pattern("backend/test.py", "**/*.py") is True
+assert config.matches_pattern("frontend/test.js", "**/*.py") is False
+```
+
+**3. PolicyConfig loads and validates policies.yaml:**
+```python
+# Test case: Valid phase rules
+config = PolicyConfig.from_file(".st3/policies.yaml")
+assert "design" in config.phases
+assert "scaffold" in config.phases["design"].allowed_operations
+assert "tdd" in config.phases["design"].allowed_phases_transition
+
+# Test case: Glob pattern validation
+assert config.validate_pattern("**/*.py") is True
+with pytest.raises(ConfigError, match="Invalid glob pattern"):
+    config.validate_pattern("[invalid")
+```
+
+**4. PolicyEngine answers "is operation X allowed?" (CRITICAL - Most Important)**
+
+**Core Responsibility:** PolicyEngine loads configs, makes policy decisions, delegates directory lookups to DirectoryPolicyResolver, maintains audit trail.
+
+**NOT Responsible:** Enforcement (Epic #18 adds this), directory knowledge (DirectoryPolicyResolver handles inheritance), config validation (Pydantic handles schema).
+
+**Test Case 1: Scaffold operation allowed in design phase**
+```python
+engine = PolicyEngine(config_dir=".st3")
+decision = engine.decide(
+    operation="scaffold",
+    path="backend/dtos/user_dto.py",
+    phase="design",
+    context={"component_type": "dto", "branch": "feature/54-scaffold-yaml"}
+)
+assert decision.allowed is True
+assert "scaffold allowed in design phase" in decision.reason
+assert decision.directory_policy.path == "backend/dtos"
+assert decision.directory_policy.allowed_component_types == ["dto"]
+```
+
+**Test Case 2: Scaffold operation blocked outside allowed phases**
+```python
+decision = engine.decide(
+    operation="scaffold",
+    path="backend/workers/process_trade.py",
+    phase="refactor",  # scaffold NOT allowed in refactor phase
+    context={"component_type": "worker"}
+)
+assert decision.allowed is False
+assert "scaffold not allowed in refactor phase" in decision.reason
+```
+
+**Test Case 3: Directory policy violation (wrong component type)**
+```python
+decision = engine.decide(
+    operation="scaffold",
+    path="backend/dtos/worker.py",  # Worker in dtos directory
+    phase="design",
+    context={"component_type": "worker"}
+)
+assert decision.allowed is False
+assert "worker not allowed in backend/dtos" in decision.reason
+assert decision.directory_policy.allowed_component_types == ["dto"]
+```
+
+**Test Case 4: Delegation to DirectoryPolicyResolver verified**
+```python
+# Verify PolicyEngine delegates directory lookup to resolver
+decision = engine.decide("scaffold", "backend/utils/helper.py", "design")
+# DirectoryPolicyResolver should have been called to resolve "backend/utils"
+assert decision.directory_policy is not None
+assert decision.directory_policy.path == "backend/utils"
+# NOT PolicyEngine's job to know directory structure (SRP)
+```
+
+**Test Case 5: Audit trail records every decision**
+```python
+engine.decide("scaffold", "backend/dto.py", "design", context={"user": "agent"})
+trail = engine.get_audit_trail()
+assert len(trail) == 1
+assert trail[0]["operation"] == "scaffold"
+assert trail[0]["path"] == "backend/dto.py"
+assert trail[0]["phase"] == "design"
+assert trail[0]["allowed"] in [True, False]
+assert "timestamp" in trail[0]
+assert "reason" in trail[0]
+assert trail[0]["context"]["user"] == "agent"
+```
+
+**Test Case 6: Config reload without restart**
+```python
+engine.reload_configs()
+# Verify configs reloaded from disk
+assert engine._component_config is not None
+assert engine._structure_config is not None
+assert engine._policy_config is not None
+```
+
+**Test Case 7: PolicyEngine handles missing configs gracefully (fail-fast)**
+```python
+with pytest.raises(ConfigError, match="Config file not found: .st3/policies.yaml"):
+    PolicyEngine(config_dir=".st3_missing")
+```
+
+**5. ScaffoldComponentTool uses ComponentRegistryConfig (no hardcoding):**
+```python
+# Before: hardcoded component_types = ["dto", "worker", ...]
+# After: component_types loaded from components.yaml
+tool = ScaffoldComponentTool(config_dir=".st3")
+assert tool.get_available_types() == list(ComponentRegistryConfig.from_file(".st3/components.yaml").component_types.keys())
+```
+
+**6. Validation tools use validation.yaml (Issue #52, no changes needed):**
+```python
+# Verify existing validation still works with new configs
+result = validate_document("docs/development/issue54/planning.md")
+assert result.is_valid is True
+```
 
 ### 7.2 Quality Requirements
 
 - ✅ 100% test coverage on new components (configs, models, DirectoryPolicyResolver)
-- ✅ Behavior parity tests pass (PolicyEngine refactor produces same decisions)
+- ✅ No behavior parity tests needed (PolicyEngine UNUSED - grep verified zero imports)
 - ✅ Integration tests pass (end-to-end scaffold operations work)
 - ✅ Performance benchmarks met (config loading <100ms, lookups <10ms)
 - ✅ Documentation updated (AGENT_PROMPT.md, config schemas)
@@ -629,31 +769,108 @@ Options:
 
 ---
 
-## 10. Open Questions (Must Resolve Before TDD)
+## 10. Open Questions - RESOLVED
 
-**Q1: Glob patterns vs regex for require_scaffold_for?**
-- Recommendation: Glob patterns (simpler, sufficient)
-- Decision: ❓ Awaiting user confirmation
+### Q1: Glob patterns vs regex for require_scaffold_for?
 
-**Q2: Support exclusion patterns?**
-- Recommendation: No (defer to future if needed)
-- Decision: ❓ Awaiting user confirmation
+**Decision: ✅ Glob patterns**
 
-**Q3: DirectoryPolicyResolver caching?**
-- Recommendation: No (measure first, add only if needed)
-- Decision: ❓ Awaiting user confirmation
+**What it means:**
+- In project_structure.yaml, patterns like `**/*.py` (glob) instead of `^backend/.*\.py$` (regex)
+- Glob = file path matching syntax (like .gitignore)
+- Examples:
+  - `**/*.py` = all Python files in any subdirectory
+  - `*.py` = Python files in current directory only
+  - `backend/**/*.py` = Python files under backend directory
 
-**Q4: Inheritance explicit or implicit?**
-- Recommendation: Implicit (DRY, easier maintenance)
-- Decision: ❓ Awaiting user confirmation
+**Why glob over regex:**
+- Simpler and more readable
+- Standard in many tools (gitignore, pytest, etc.)
+- Sufficient for current needs (can add regex later if needed)
 
-**Q5: Missing config file behavior?**
-- Recommendation: Fail-fast (strict, prevents invalid state)
-- Decision: ❓ Awaiting user confirmation
+### Q2: Support exclusion patterns?
 
-**Q6: Config validation errors block startup?**
-- Recommendation: Yes, strict (fail-fast principle)
-- Decision: ❓ Awaiting user confirmation
+**Decision: ✅ No exclusions for MVP**
+
+**What it means:**
+- NO support for "allow X EXCEPT Y" patterns in MVP
+- Example NOT supported: "backend/**/*.py requires scaffold EXCEPT backend/utils/**/*.py"
+- Keep policy rules simple: directories either require scaffolding or don't
+
+**Why no exclusions:**
+- Simpler to understand and debug
+- Sufficient for current project structure
+- Can add later as `exclude_patterns` field if needed (no breaking change)
+
+### Q3: DirectoryPolicyResolver caching?
+
+**Decision: ✅ No caching (measure first)**
+
+**What it means:**
+- DirectoryPolicyResolver lookups happen fresh every time
+- No LRU cache or memoization
+- If benchmark shows lookups >10ms, add caching in Issue #54 or separate issue
+
+**Why no caching initially:**
+- Simpler implementation (no cache invalidation logic)
+- Performance unknown until measured
+- Config loads once at startup, lookups are likely fast enough
+- YAGNI principle (You Aren't Gonna Need It - don't optimize prematurely)
+
+### Q4: Inheritance explicit or implicit?
+
+**Decision: ✅ Implicit inheritance**
+
+**What it means:**
+- Child directories automatically inherit parent policies
+- Example:
+  ```yaml
+  backend:
+    allowed_extensions: [.py]
+    allowed_component_types: [dto, worker]
+  
+  backend/dtos:
+    parent: backend  # Inherits allowed_extensions + allowed_component_types
+    allowed_component_types: [dto]  # Override: only DTOs in this subdirectory
+  ```
+- NO need to copy parent fields to child config (DRY principle)
+
+**Why implicit over explicit:**
+- Less config duplication (change parent, all children updated)
+- Easier maintenance (single source of truth)
+- Common pattern (CSS, file systems use implicit inheritance)
+
+### Q5: Missing config file behavior?
+
+**Decision: ✅ Fail-fast (raise error, block startup)**
+
+**What it means:**
+- If components.yaml, project_structure.yaml, or policies.yaml missing → ConfigError at startup
+- MCP server won't start without configs
+- Clear error message with file path
+
+**Why fail-fast:**
+- Prevents invalid state (configs are required for Epic #18)
+- Forces immediate fix (no silent degradation)
+- Clear error at startup better than runtime surprises
+
+### Q6: Config validation errors block startup?
+
+**Decision: ✅ Strict (validation errors block startup)**
+
+**What it means:**
+- Invalid config → ConfigError → server won't start
+- Examples of validation errors:
+  - Unknown component type in project_structure.yaml
+  - Unknown phase in policies.yaml
+  - Invalid YAML syntax
+- NO lenient mode (no warnings, must fix)
+
+**Why strict:**
+- Fail-fast principle (catch errors early)
+- Config errors should be fixed, not ignored
+- Prevents partial enforcement (confusing which rules are active)
+- Can add lenient mode later if needed (dev vs prod)
 
 ---
 
