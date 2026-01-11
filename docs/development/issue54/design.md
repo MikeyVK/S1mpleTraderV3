@@ -65,13 +65,19 @@
 ```yaml
 # Component Type Registry
 # Purpose: Define scaffoldable component types and their metadata
-# Used by: ScaffoldComponentTool for validation and template selection
+# Used by: ScaffoldComponentTool for validation and dynamic scaffolder loading
 # Cross-references: None (leaf config)
+# NOTE: Issue #107 will add dynamic loading using scaffolder_class + scaffolder_module
 
-components:
+component_types:
   dto:
-    description: "Data Transfer Object - immutable data container"
-    template: "mcp_server/scaffolding/templates/dto.py.j2"
+    type_id: "dto"
+    description: "Data Transfer Object - immutable data container (Pydantic BaseModel)"
+    scaffolder_class: "DTOScaffolder"  # NEW (Issue #107): Explicit class name for dynamic loading
+    scaffolder_module: "mcp_server.scaffolders.dto_scaffolder"  # NEW (Issue #107): Module path
+    template_path: "mcp_server/scaffolding/templates/dto.py.j2"
+    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"  # NEW (Issue #107): DRY fallback
+    name_suffix: null  # NEW (Issue #107): No suffix for DTOs
     base_path: "backend/dtos"
     test_base_path: "tests/backend/dtos"
     generate_test: true
@@ -81,10 +87,17 @@ components:
     optional_fields:
       - fields
       - validation_rules
+      - docstring
+      - generate_test
   
   worker:
-    description: "Worker - executes single domain operation"
-    template: "mcp_server/scaffolding/templates/worker.py.j2"
+    type_id: "worker"
+    description: "Worker - executes single domain operation (async task processor)"
+    scaffolder_class: "WorkerScaffolder"  # NEW (Issue #107)
+    scaffolder_module: "mcp_server.scaffolders.worker_scaffolder"  # NEW (Issue #107)
+    template_path: "mcp_server/scaffolding/templates/worker.py.j2"
+    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"  # NEW (Issue #107)
+    name_suffix: "Worker"  # NEW (Issue #107): Auto-append if missing
     base_path: "backend/workers"
     test_base_path: "tests/backend/workers"
     generate_test: true
@@ -94,10 +107,16 @@ components:
       - output_dto
     optional_fields:
       - dependencies
+      - docstring
   
   adapter:
-    description: "Adapter - integrates external systems"
-    template: "mcp_server/scaffolding/templates/adapter.py.j2"
+    type_id: "adapter"
+    description: "Adapter - integrates external systems (implements Interface)"
+    scaffolder_class: "AdapterScaffolder"  # NEW (Issue #107)
+    scaffolder_module: "mcp_server.scaffolders.adapter_scaffolder"  # NEW (Issue #107)
+    template_path: "mcp_server/scaffolding/templates/adapter.py.j2"
+    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"  # NEW (Issue #107)
+    name_suffix: "Adapter"  # NEW (Issue #107): Auto-append if missing
     base_path: "backend/adapters"
     test_base_path: "tests/backend/adapters"
     generate_test: true
@@ -107,10 +126,16 @@ components:
     optional_fields:
       - dependencies
       - methods
+      - docstring
   
   tool:
+    type_id: "tool"
     description: "MCP Tool - exposes functionality via MCP protocol"
-    template: "mcp_server/scaffolding/templates/tool.py.j2"
+    scaffolder_class: "ToolScaffolder"  # NEW (Issue #107)
+    scaffolder_module: "mcp_server.scaffolders.tool_scaffolder"  # NEW (Issue #107)
+    template_path: "mcp_server/scaffolding/templates/tool.py.j2"
+    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"  # NEW (Issue #107)
+    name_suffix: "Tool"  # NEW (Issue #107): Auto-append if missing
     base_path: "mcp_server/tools"
     test_base_path: "tests/mcp_server/tools"
     generate_test: true
@@ -119,10 +144,16 @@ components:
       - input_schema
     optional_fields:
       - dependencies
+      - docstring
   
   resource:
+    type_id: "resource"
     description: "MCP Resource - provides dynamic content"
-    template: "mcp_server/scaffolding/templates/resource.py.j2"
+    scaffolder_class: "ResourceScaffolder"  # NEW (Issue #107)
+    scaffolder_module: "mcp_server.scaffolders.resource_scaffolder"  # NEW (Issue #107)
+    template_path: "mcp_server/scaffolding/templates/resource.py.j2"
+    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"  # NEW (Issue #107)
+    name_suffix: null  # NEW (Issue #107): No suffix for resources
     base_path: "mcp_server/resources"
     test_base_path: "tests/mcp_server/resources"
     generate_test: true
@@ -131,10 +162,16 @@ components:
       - uri_pattern
     optional_fields:
       - mime_type
+      - docstring
   
   schema:
+    type_id: "schema"
     description: "Pydantic Schema - validation models"
-    template: "mcp_server/scaffolding/templates/schema.py.j2"
+    scaffolder_class: "SchemaScaffolder"  # NEW (Issue #107)
+    scaffolder_module: "mcp_server.scaffolders.schema_scaffolder"  # NEW (Issue #107)
+    template_path: "mcp_server/scaffolding/templates/schema.py.j2"
+    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"  # NEW (Issue #107)
+    name_suffix: null  # NEW (Issue #107): No suffix for schemas
     base_path: "mcp_server/schemas"
     test_base_path: "tests/mcp_server/schemas"
     generate_test: true
@@ -142,10 +179,16 @@ components:
       - name
     optional_fields:
       - models
+      - docstring
   
   interface:
+    type_id: "interface"
     description: "Interface - abstract protocol definition"
-    template: "mcp_server/scaffolding/templates/interface.py.j2"
+    scaffolder_class: "InterfaceScaffolder"  # NEW (Issue #107)
+    scaffolder_module: "mcp_server.scaffolders.interface_scaffolder"  # NEW (Issue #107)
+    template_path: "mcp_server/scaffolding/templates/interface.py.j2"
+    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"  # NEW (Issue #107)
+    name_suffix: null  # NEW (Issue #107): No suffix for interfaces
     base_path: "backend/interfaces"
     test_base_path: "tests/backend/interfaces"
     generate_test: true
@@ -153,10 +196,16 @@ components:
       - name
     optional_fields:
       - methods
+      - docstring
   
   service:
+    type_id: "service"
     description: "Service - orchestration or business logic"
-    template: "mcp_server/scaffolding/templates/service.py.j2"
+    scaffolder_class: "ServiceScaffolder"  # NEW (Issue #107)
+    scaffolder_module: "mcp_server.scaffolders.service_scaffolder"  # NEW (Issue #107)
+    template_path: "mcp_server/scaffolding/templates/service.py.j2"
+    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"  # NEW (Issue #107)
+    name_suffix: "Service"  # NEW (Issue #107): Auto-append if missing
     base_path: "backend/services"
     test_base_path: "tests/backend/services"
     generate_test: true
@@ -165,10 +214,16 @@ components:
     optional_fields:
       - service_type
       - dependencies
+      - docstring
   
   generic:
+    type_id: "generic"
     description: "Generic component from custom template"
-    template: null  # Dynamic, specified at scaffold time
+    scaffolder_class: "GenericScaffolder"  # NEW (Issue #107)
+    scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"  # NEW (Issue #107)
+    template_path: null  # Dynamic, specified at scaffold time
+    fallback_template: null  # No fallback for generic
+    name_suffix: null  # No suffix for generic
     base_path: null  # Dynamic, specified at scaffold time
     test_base_path: null  # Dynamic
     generate_test: false
@@ -178,16 +233,28 @@ components:
       - output_path
     optional_fields:
       - context
+      - docstring
 ```
 
 **Schema Constraints:**
-- `template`: Path relative to workspace root, must exist (validated at load time)
+- `type_id`: Unique component type identifier (dto, worker, adapter, etc.)
+- `scaffolder_class`: Class name for dynamic loading (e.g., "DTOScaffolder") - **Issue #107**
+- `scaffolder_module`: Module path for scaffolder class (e.g., "mcp_server.scaffolders.dto_scaffolder") - **Issue #107**
+- `template_path`: Path relative to workspace root, must exist (validated at load time)
+- `fallback_template`: Optional fallback template if primary not found - **Issue #107 DRY**
+- `name_suffix`: Optional auto-append suffix (e.g., "Worker") - **Issue #107 DRY**
 - `base_path`: Default directory for component type (can be overridden at scaffold time)
 - `test_base_path`: Default test directory (follows backend/tests mirror structure)
 - `generate_test`: Boolean flag (true = create test file, false = skip)
 - `required_fields`: List of mandatory scaffold parameters (enforced at scaffold time)
 - `optional_fields`: List of optional scaffold parameters (documented for tooling)
 - `generic` type: Special case with null defaults, all fields specified at runtime
+
+**Issue #107 Benefits:**
+- Add new component type = edit config only (no code change)
+- Scaffolder class loading is dynamic via `importlib.import_module(scaffolder_module)`
+- Fallback template eliminates 8 DRY violations across scaffolders
+- Name suffix logic eliminates 4 DRY violations (Worker, Adapter, Tool, Service)
 
 ---
 
@@ -232,9 +299,25 @@ class ComponentDefinition(BaseModel):
         ..., 
         description="Human-readable description of component purpose"
     )
-    template: Optional[str] = Field(
+    scaffolder_class: str = Field(
+        ..., 
+        description="Scaffolder class name for dynamic loading (e.g., 'DTOScaffolder')"
+    )
+    scaffolder_module: str = Field(
+        ..., 
+        description="Module path for scaffolder class (e.g., 'mcp_server.scaffolders.dto_scaffolder')"
+    )
+    template_path: Optional[str] = Field(
         None, 
         description="Path to Jinja2 template (relative to workspace root)"
+    )
+    fallback_template: Optional[str] = Field(
+        None, 
+        description="Fallback template if primary template not found (DRY for Issue #107)"
+    )
+    name_suffix: Optional[str] = Field(
+        None, 
+        description="Auto-append suffix if missing (e.g., 'Worker' for workers) - Issue #107"
     )
     base_path: Optional[str] = Field(
         None, 
@@ -249,28 +332,55 @@ class ComponentDefinition(BaseModel):
         description="Whether to generate test file by default"
     )
     required_fields: List[str] = Field(
-        default_factory=list,
-        description="Required parameters for scaffolding this component"
+        default_factory=list, 
+        description="Mandatory scaffold parameters"
     )
     optional_fields: List[str] = Field(
-        default_factory=list,
-        description="Optional parameters for scaffolding this component"
+        default_factory=list, 
+        description="Optional scaffold parameters"
     )
     
-    @field_validator("template")
+    @field_validator("template_path")
     @classmethod
     def validate_template_exists(cls, v: Optional[str]) -> Optional[str]:
         """Validate template file exists (if specified)."""
         if v is None:
-            return v  # Allowed for generic components
+            return v  # Allow null for generic type
         
-        template_path = Path(v)
-        if not template_path.exists():
+        template_file = Path(v)
+        if not template_file.exists():
             raise ValueError(
                 f"Template file not found: {v}. "
-                f"Ensure path is relative to workspace root."
+                f"Expected template at workspace root."
             )
         return v
+    
+    @field_validator("fallback_template")
+    @classmethod
+    def validate_fallback_exists(cls, v: Optional[str]) -> Optional[str]:
+        """Validate fallback template exists (if specified)."""
+        if v is None:
+            return v
+        
+        fallback_file = Path(v)
+        if not fallback_file.exists():
+            raise ValueError(
+                f"Fallback template not found: {v}. "
+                f"Expected template at workspace root."
+            )
+        return v
+    
+    def has_required_field(self, field_name: str) -> bool:
+        """Check if field is required for this component type."""
+        return field_name in self.required_fields
+    
+    def has_optional_field(self, field_name: str) -> bool:
+        """Check if field is optional for this component type."""
+        return field_name in self.optional_fields
+    
+    def all_fields(self) -> List[str]:
+        """Get all fields (required + optional)."""
+        return self.required_fields + self.optional_fields
     
     def validate_scaffold_fields(self, provided: Dict[str, any]) -> None:
         """Validate provided fields meet requirements.
