@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml  # type: ignore
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from mcp_server.core.errors import ConfigError
 
@@ -57,6 +57,36 @@ class ComponentDefinition(BaseModel):
     optional_fields: List[str] = Field(
         default_factory=list, description="Optional scaffold parameters"
     )
+
+    @field_validator("template_path")
+    @classmethod
+    def validate_template_exists(cls, v: Optional[str]) -> Optional[str]:
+        """Validate template file exists (if specified)."""
+        if v is None:
+            return v  # Allow null for generic type
+
+        template_file = Path(v)
+        if not template_file.exists():
+            raise ValueError(
+                f"Template file not found: {v}. "
+                f"Expected template at workspace root."
+            )
+        return v
+
+    @field_validator("fallback_template")
+    @classmethod
+    def validate_fallback_exists(cls, v: Optional[str]) -> Optional[str]:
+        """Validate fallback template exists (if specified)."""
+        if v is None:
+            return v
+
+        fallback_file = Path(v)
+        if not fallback_file.exists():
+            raise ValueError(
+                f"Fallback template not found: {v}. "
+                f"Expected template at workspace root."
+            )
+        return v
 
     def has_required_field(self, field_name: str) -> bool:
         """Check if field is required for this component type."""

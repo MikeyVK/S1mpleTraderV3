@@ -10,8 +10,8 @@ component_types:
     description: "Data Transfer Object - immutable data container (Pydantic BaseModel)"
     scaffolder_class: "DTOScaffolder"
     scaffolder_module: "mcp_server.scaffolders.dto_scaffolder"
-    template_path: "mcp_server/scaffolding/templates/dto.py.j2"
-    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"
+    template_path: null  # Issue #107: Templates not created yet
+    fallback_template: null
     name_suffix: null
     base_path: "backend/dtos"
     test_base_path: "tests/backend/dtos"
@@ -30,8 +30,8 @@ component_types:
     description: "Worker - executes single domain operation (async task processor)"
     scaffolder_class: "WorkerScaffolder"
     scaffolder_module: "mcp_server.scaffolders.worker_scaffolder"
-    template_path: "mcp_server/scaffolding/templates/worker.py.j2"
-    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"
+    template_path: null  # Issue #107: Templates not created yet
+    fallback_template: null
     name_suffix: "Worker"
     base_path: "backend/workers"
     test_base_path: "tests/backend/workers"
@@ -49,8 +49,8 @@ component_types:
     description: "Adapter - integrates external systems (implements Interface)"
     scaffolder_class: "AdapterScaffolder"
     scaffolder_module: "mcp_server.scaffolders.adapter_scaffolder"
-    template_path: "mcp_server/scaffolding/templates/adapter.py.j2"
-    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"
+    template_path: null  # Issue #107: Templates not created yet
+    fallback_template: null
     name_suffix: "Adapter"
     base_path: "backend/adapters"
     test_base_path: "tests/backend/adapters"
@@ -68,8 +68,8 @@ component_types:
     description: "MCP Tool - exposes functionality via MCP protocol"
     scaffolder_class: "ToolScaffolder"
     scaffolder_module: "mcp_server.scaffolders.tool_scaffolder"
-    template_path: "mcp_server/scaffolding/templates/tool.py.j2"
-    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"
+    template_path: null  # Issue #107: Templates not created yet
+    fallback_template: null
     name_suffix: "Tool"
     base_path: "mcp_server/tools"
     test_base_path: "tests/mcp_server/tools"
@@ -86,8 +86,8 @@ component_types:
     description: "MCP Resource - provides dynamic content"
     scaffolder_class: "ResourceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.resource_scaffolder"
-    template_path: "mcp_server/scaffolding/templates/resource.py.j2"
-    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"
+    template_path: null  # Issue #107: Templates not created yet
+    fallback_template: null
     name_suffix: null
     base_path: "mcp_server/resources"
     test_base_path: "tests/mcp_server/resources"
@@ -104,8 +104,8 @@ component_types:
     description: "Pydantic Schema - validation models"
     scaffolder_class: "SchemaScaffolder"
     scaffolder_module: "mcp_server.scaffolders.schema_scaffolder"
-    template_path: "mcp_server/scaffolding/templates/schema.py.j2"
-    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"
+    template_path: null  # Issue #107: Templates not created yet
+    fallback_template: null
     name_suffix: null
     base_path: "mcp_server/schemas"
     test_base_path: "tests/mcp_server/schemas"
@@ -121,8 +121,8 @@ component_types:
     description: "Interface - abstract protocol definition"
     scaffolder_class: "InterfaceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.interface_scaffolder"
-    template_path: "mcp_server/scaffolding/templates/interface.py.j2"
-    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"
+    template_path: null  # Issue #107: Templates not created yet
+    fallback_template: null
     name_suffix: null
     base_path: "backend/interfaces"
     test_base_path: "tests/backend/interfaces"
@@ -138,8 +138,8 @@ component_types:
     description: "Service - orchestration or business logic"
     scaffolder_class: "ServiceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.service_scaffolder"
-    template_path: "mcp_server/scaffolding/templates/service.py.j2"
-    fallback_template: "mcp_server/scaffolding/templates/generic.py.j2"
+    template_path: null  # Issue #107: Templates not created yet
+    fallback_template: null
     name_suffix: "Service"
     base_path: "backend/services"
     test_base_path: "tests/backend/services"
