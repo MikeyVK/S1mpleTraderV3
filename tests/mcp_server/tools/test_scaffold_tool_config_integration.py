@@ -32,8 +32,11 @@ class TestScaffoldToolConfigIntegration:
             output_path="backend/test.py"
         )
 
-        with pytest.raises(ValidationError, match="Unknown component type"):
-            await tool.execute(params)
+        result = await tool.execute(params)
+
+        # Should return error result (not raise - decorator catches ValidationError)
+        assert result.is_error is True
+        assert "Unknown component type" in str(result.content)
 
     @pytest.mark.asyncio
     async def test_component_type_in_wrong_directory_rejected(self):
@@ -47,8 +50,11 @@ class TestScaffoldToolConfigIntegration:
             output_dto="OutputDTO"
         )
 
-        with pytest.raises(ValidationError, match="not allowed"):
-            await tool.execute(params)
+        result = await tool.execute(params)
+
+        # Should return error result
+        assert result.is_error is True
+        assert "not allowed" in str(result.content)
 
     @pytest.mark.asyncio
     async def test_dto_in_correct_directory_allowed(self):
