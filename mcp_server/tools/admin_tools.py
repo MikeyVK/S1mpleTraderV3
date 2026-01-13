@@ -200,3 +200,95 @@ def restart_server(reason: str = "code changes") -> None:
     tool = RestartServerTool()
     params = RestartServerInput(reason=reason)
     asyncio.run(tool.execute(params))
+
+
+def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:
+    """Verify that server restarted after given timestamp.
+
+    **Purpose:** Allow agent to confirm restart completed before continuing.
+
+    Agent workflow:
+    1. Record timestamp: before_restart = time.time()
+    2. Call restart_server(reason="...")
+    3. [Wait for server to restart]
+    4. Call verify_server_restarted(since_timestamp=before_restart)
+    5. If restarted=True: Continue with testing
+    6. If restarted=False: Error - restart failed
+
+    Args:
+        since_timestamp: Unix timestamp before restart request.
+                         Server must have restarted AFTER this time.
+
+    Returns:
+        Dictionary with verification result:
+        {
+            "restarted": bool,           # True if restart confirmed
+            "restart_timestamp": float,  # When restart occurred
+            "current_pid": int,          # Current process ID
+            "previous_pid": int,         # PID before restart (from marker)
+            "reason": str,               # Restart reason (from marker)
+            "time_since_restart": float  # Seconds since restart
+        }
+
+    Example:
+        before = time.time()
+        restart_server(reason="Load changes")
+        # [Server restarts]
+        result = verify_server_restarted(since_timestamp=before)
+        if result["restarted"]:
+            print(f"Restart confirmed! Reason: {result['reason']}")
+            run_tests(...)
+        else:
+            raise Exception("Server restart failed!")
+    """
+    import time
+
+    logger = get_logger("tools.admin")
+
+    marker_path = _get_restart_marker_path()
+
+    # Check if marker exists
+    if not marker_path.exists():
+        return {
+            "restarted": False,
+            "error": "Restart marker not found",
+            "marker_path": str(marker_path)
+        }
+
+    # Parse marker
+    try:
+        with marker_path.open(encoding="utf-8") as f:
+            marker_data = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        return {
+            "restarted": False,
+            "error": f"Failed to parse restart marker: {e}"
+        }
+
+    restart_timestamp = marker_data["timestamp"]
+
+    # Check if restart happened after since_timestamp
+    restarted = restart_timestamp > since_timestamp
+
+    result = {
+        "restarted": restarted,
+        "restart_timestamp": restart_timestamp,
+        "current_pid": os.getpid(),
+        "previous_pid": marker_data["pid"],
+        "reason": marker_data["reason"],
+        "time_since_restart": time.time() - restart_timestamp,
+        "iso_time": marker_data["iso_time"]
+    }
+
+    # Audit log verification
+    logger.info(
+        "Server restart verification",
+        extra={
+            "props": {
+                "result": result,
+                "since_timestamp": since_timestamp
+            }
+        }
+    )
+
+    return result
