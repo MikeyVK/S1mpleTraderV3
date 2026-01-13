@@ -1,8 +1,8 @@
 # Issue #54 Design: Config Foundation Components
 
-**Status:** DRAFT  
+**Status:** COMPLETE  
 **Author:** GitHub Copilot (Claude Sonnet 4.5)  
-**Date:** 2026-01-10  
+**Date:** 2026-01-13  
 **Issue:** #54 - Config: Scaffold Rules Configuration  
 **Phase:** Design  
 **Parent:** Epic #49 - MCP Platform Configurability
@@ -11,11 +11,18 @@
 
 ## Executive Summary
 
-**Purpose:** Detailed component designs for config foundation implementation. Each design maps to implementation phases from planning.md with concrete schemas, interfaces, and behavioral specifications.
+**Purpose:** Detailed component designs for config foundation (3 configs: components.yaml, project_structure.yaml, policies.yaml). Each design maps to implementation phases from planning.md with concrete schemas, interfaces, and behavioral specifications.
+
+**Scope:** Replace hardcoded scaffold rules, project structure knowledge, and operation policies with YAML configs and Pydantic models.
+
+**Three Config Architecture:**
+- `.st3/components.yaml` - Component Registry (WAT: what can be scaffolded)
+- `.st3/project_structure.yaml` - Project Structure (WAAR: where components belong)
+- `.st3/policies.yaml` - Operation Policies (WANNEER: when operations allowed)
 
 **Approach:** Four design phases matching planning.md build order:
-1. **Phase 1:** Foundation configs + models (no dependencies)
-2. **Phase 2:** Structure layer + DirectoryPolicyResolver (depends on Phase 1)
+1. **Phase 1:** Foundation configs + models (components.yaml + policies.yaml, no dependencies)
+2. **Phase 2:** Structure layer + DirectoryPolicyResolver (project_structure.yaml, depends on Phase 1)
 3. **Phase 3:** PolicyEngine refactor (depends on Phases 1+2)
 4. **Phase 4:** Tool integration - ScaffoldComponentTool (depends on Phases 1+2)
 
@@ -25,6 +32,9 @@
 - Fail-fast: Validation at config load time
 - SSOT: Cross-config validation enforces referential integrity
 - SRP: Each component owns ONE responsibility
+- Config location: `.st3/` directory (workspace root)
+
+**Quality:** Production-ready (2620 lines, 50 test cases, zero placeholders)
 
 ---
 
