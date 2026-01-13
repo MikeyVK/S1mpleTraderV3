@@ -8,15 +8,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== MCP Server Wrapper ===" -ForegroundColor Cyan
-Write-Host "Monitoring for exit code 42 (auto-restart)" -ForegroundColor Gray
-Write-Host ""
+# Write status messages to stderr (VS Code expects only JSON-RPC on stdout)
+[Console]::Error.WriteLine("=== MCP Server Wrapper ===")
+[Console]::Error.WriteLine("Monitoring for exit code 42 (auto-restart)")
+[Console]::Error.WriteLine("")
 
 $restartCount = 0
 
 while ($true) {
     if ($restartCount -gt 0) {
-        Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Restart #$restartCount" -ForegroundColor Yellow
+        $timestamp = Get-Date -Format 'HH:mm:ss'
+        [Console]::Error.WriteLine("[$timestamp] Restart #$restartCount")
     }
     
     # Start server process
@@ -32,19 +34,22 @@ while ($true) {
     if ($exitCode -eq 42) {
         # Restart requested
         $restartCount++
-        Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Exit code 42 detected - Restarting server..." -ForegroundColor Green
+        $timestamp = Get-Date -Format 'HH:mm:ss'
+        [Console]::Error.WriteLine("[$timestamp] Exit code 42 detected - Restarting server...")
         Start-Sleep -Milliseconds 100
         continue
     } elseif ($exitCode -eq 0) {
         # Normal exit
-        Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Server exited normally (code 0)" -ForegroundColor Gray
+        $timestamp = Get-Date -Format 'HH:mm:ss'
+        [Console]::Error.WriteLine("[$timestamp] Server exited normally (code 0)")
         break
     } else {
         # Error exit
-        Write-Host "[$(Get-Date -Format 'HH:mm:ss')] Server exited with error code $exitCode" -ForegroundColor Red
+        $timestamp = Get-Date -Format 'HH:mm:ss'
+        [Console]::Error.WriteLine("[$timestamp] Server exited with error code $exitCode")
         break
     }
 }
 
-Write-Host ""
-Write-Host "=== MCP Server Stopped ===" -ForegroundColor Cyan
+[Console]::Error.WriteLine("")
+[Console]::Error.WriteLine("=== MCP Server Stopped ===")
