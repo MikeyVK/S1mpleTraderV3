@@ -6,6 +6,7 @@ Cross-validates allowed_component_types against components.yaml
 
 import pytest
 
+from mcp_server.config.component_registry import ComponentRegistryConfig
 from mcp_server.config.project_structure import (
     ProjectStructureConfig,
     DirectoryPolicy,
@@ -17,7 +18,8 @@ class TestProjectStructureConfig:
     """Test suite for ProjectStructureConfig."""
 
     def setup_method(self):
-        """Reset singleton before each test."""
+        """Reset singletons before each test."""
+        ComponentRegistryConfig.reset_instance()
         ProjectStructureConfig.reset_instance()
 
     def test_load_valid_config(self):
