@@ -2,6 +2,8 @@
 
 import json
 import os
+import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -102,6 +104,91 @@ def test_restart_events_logged_to_audit_trail(caplog):
     assert hasattr(exiting, "props")
     assert exiting.props["exit_code"] == 42
     assert exiting.props["reason"] == "Test audit logging"
+
+    # Cleanup
+    marker_path.unlink(missing_ok=True)
+
+
+def test_verify_server_restarted_with_valid_marker():
+    """RED: Test verify_server_restarted with valid marker.
+
+    Verifies:
+    - Returns restarted=True when marker timestamp > since_timestamp
+    - Returns restart details (timestamp, PID, reason)
+    - Returns current vs previous PID
+    """
+    from mcp_server.tools.admin_tools import verify_server_restarted
+
+    # Create marker from "past"
+    past_time = time.time() - 10  # 10 seconds ago
+    marker_path = Path(".st3/.restart_marker")
+    marker_path.parent.mkdir(exist_ok=True)
+    marker_data = {
+        "timestamp": past_time + 5,  # 5 seconds ago (after past_time)
+        "pid": 99999,  # Different PID
+        "reason": "Test restart verification",
+        "iso_time": datetime.now(UTC).isoformat()
+    }
+    marker_path.write_text(json.dumps(marker_data), encoding="utf-8")
+
+    # Verify restart happened after past_time
+    result = verify_server_restarted(since_timestamp=past_time)
+
+    assert result["restarted"] is True
+    assert result["previous_pid"] == 99999
+    assert result["reason"] == "Test restart verification"
+    assert result["restart_timestamp"] == past_time + 5
+    assert "current_pid" in result
+    assert "time_since_restart" in result
+
+    # Cleanup
+    marker_path.unlink(missing_ok=True)
+
+
+def test_verify_server_restarted_no_marker():
+    """RED: Test verify_server_restarted with missing marker.
+
+    Verifies:
+    - Returns restarted=False when marker doesn't exist
+    - Returns error message
+    """
+    from mcp_server.tools.admin_tools import verify_server_restarted
+
+    marker_path = Path(".st3/.restart_marker")
+    marker_path.unlink(missing_ok=True)  # Ensure no marker
+
+    result = verify_server_restarted(since_timestamp=time.time())
+
+    assert result["restarted"] is False
+    assert "error" in result
+    assert "not found" in result["error"].lower()
+
+
+def test_verify_server_restarted_old_marker():
+    """RED: Test verify_server_restarted with outdated marker.
+
+    Verifies:
+    - Returns restarted=False when marker timestamp < since_timestamp
+    """
+    from mcp_server.tools.admin_tools import verify_server_restarted
+
+    # Create marker from way in the past
+    old_time = time.time() - 100  # 100 seconds ago
+    marker_path = Path(".st3/.restart_marker")
+    marker_path.parent.mkdir(exist_ok=True)
+    marker_data = {
+        "timestamp": old_time,
+        "pid": 99999,
+        "reason": "Old restart",
+        "iso_time": datetime.now(UTC).isoformat()
+    }
+    marker_path.write_text(json.dumps(marker_data), encoding="utf-8")
+
+    # Check against recent time (should fail)
+    recent_time = time.time() - 10  # 10 seconds ago
+    result = verify_server_restarted(since_timestamp=recent_time)
+
+    assert result["restarted"] is False
 
     # Cleanup
     marker_path.unlink(missing_ok=True)
