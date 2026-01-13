@@ -105,13 +105,15 @@ class ScaffoldComponentTool(BaseTool):
         renderer: JinjaRenderer | None = None,
         config_dir: str = ".st3"
     ) -> None:
+        super().__init__()  # Initialize BaseTool
         self.renderer = renderer or JinjaRenderer()
 
         # Load config foundation (Issue #54)
-        self._config = ComponentRegistryConfig.from_file(
+        # Store in __dict__ to avoid Pydantic field interpretation
+        self.__dict__['_component_config'] = ComponentRegistryConfig.from_file(
             f"{config_dir}/components.yaml"
         )
-        self._directory_resolver = DirectoryPolicyResolver()
+        self.__dict__['_dir_resolver'] = DirectoryPolicyResolver()
 
         # Initialize component scaffolders map
         # Cast to ComponentScaffolder to satisfy Protocol typing
@@ -137,8 +139,8 @@ class ScaffoldComponentTool(BaseTool):
         Raises:
             ValidationError: If component type not in config
         """
-        if not self._config.has_component_type(component_type):
-            available = self._config.get_available_types()
+        if not self._component_config.has_component_type(component_type):
+            available = self._component_config.get_available_types()
             raise ValidationError(
                 f"Unknown component type: '{component_type}'",
                 hints=[f"Available types: {', '.join(available)}"]
@@ -154,7 +156,7 @@ class ScaffoldComponentTool(BaseTool):
         Raises:
             ValidationError: If component type not allowed in directory
         """
-        dir_policy = self._directory_resolver.resolve(output_path)
+        dir_policy = self._dir_resolver.resolve(output_path)
 
         if not dir_policy.allows_component_type(component_type):
             raise ValidationError(
