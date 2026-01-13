@@ -72,7 +72,7 @@ async def test_scaffold_component_unknown_type(mock_renderer):
     result = await tool.execute(params)
 
     assert result.is_error
-    assert "Unknown component type: unknown_type" in result.content[0]["text"]
+    assert "Unknown component type: 'unknown_type'" in result.content[0]["text"]
 
 @pytest.mark.asyncio
 async def test_scaffold_worker(mock_renderer, mock_write_file):
