@@ -51,6 +51,7 @@ tdd_phases:
   - red
   - green
   - refactor
+  - docs
 
 # Convention #3: TDD phase → Conventional Commit prefix mapping
 # MUST reference phases from tdd_phases (cross-validation)
@@ -58,6 +59,7 @@ commit_prefix_map:
   red: test
   green: feat
   refactor: refactor
+  docs: docs
 
 # Convention #4: Protected branches (cannot be deleted)
 protected_branches:
@@ -157,14 +159,14 @@ class GitConfig(BaseModel):
     
     # Convention #2: TDD phases
     tdd_phases: list[str] = Field(
-        default=["red", "green", "refactor"],
+        default=["red", "green", "refactor", "docs"],
         description="TDD phases for commit_tdd_phase()",
         min_length=1
     )
     
     # Convention #3: Commit prefix mapping
     commit_prefix_map: dict[str, str] = Field(
-        default={"red": "test", "green": "feat", "refactor": "refactor"},
+        default={"red": "test", "green": "feat", "refactor": "refactor", "docs": "docs"},
         description="TDD phase → Conventional Commit prefix mapping",
         min_length=1
     )
@@ -206,6 +208,13 @@ class GitConfig(BaseModel):
             raise ValueError(
                 f"commit_prefix_map contains invalid phases: {invalid_phases}. "
                 f"Must be subset of tdd_phases: {self.tdd_phases}"
+            )
+        
+        # Validate branch_name_pattern not empty
+        if not self.branch_name_pattern or not self.branch_name_pattern.strip():
+            raise ValueError(
+                "branch_name_pattern cannot be empty. "
+                "Provide a valid regex pattern (e.g., '^[a-z0-9-]+$' for kebab-case)"
             )
         
         # Compile and cache regex pattern (fail-fast)
@@ -355,10 +364,11 @@ def validate_cross_references(self) -> "GitConfig":
 |------|-----------|-----------------|---------|
 | **R1** | commit_prefix_map keys ⊆ tdd_phases | Invalid phase in mapping | `tdd_phases: [red]`, `commit_prefix_map: {blue: feat}` |
 | **R2** | branch_name_pattern valid regex | Regex compile error | `branch_name_pattern: "[unclosed"` |
-| **R3** | branch_types non-empty | Empty list | `branch_types: []` |
-| **R4** | tdd_phases non-empty | Empty list | `tdd_phases: []` |
-| **R5** | commit_prefix_map non-empty | Empty dict | `commit_prefix_map: {}` |
-| **R6** | protected_branches non-empty | Empty list | `protected_branches: []` |
+| **R3** | branch_name_pattern not empty | Empty string | `branch_name_pattern: ""` or `"  "` |
+| **R4** | branch_types non-empty | Empty list | `branch_types: []` |
+| **R5** | tdd_phases non-empty | Empty list | `tdd_phases: []` |
+| **R6** | commit_prefix_map non-empty | Empty dict | `commit_prefix_map: {}` |
+| **R7** | protected_branches non-empty | Empty list | `protected_branches: []` |
 
 ### 3.2 Error Messages
 
@@ -374,10 +384,33 @@ ValueError: Invalid branch_name_pattern regex: [unclosed.
 Error: unterminated character set at position 0
 ```
 
-**R3-R6 Violations (Pydantic):**
+**R3 Violation:**
+```
+ValueError: branch_name_pattern cannot be empty. 
+Provide a valid regex pattern (e.g., '^[a-z0-9-]+$' for kebab-case)
+```
+
+**R4-R7 Violations (Pydantic):**
 ```
 ValidationError: branch_types
   List should have at least 1 item after validation, not 0 [type=too_short]
+```
+
+### 3.3 Error Message Format Standards
+
+**Consistency Guidelines:**
+- **Lists:** Use comma-separated format: `"Allowed types: feature, fix, refactor"`
+- **Punctuation:** End hints with periods for readability
+- **Dynamic values:** Pull from config for accuracy: `self._git_config.branch_types`
+- **Technical terms:** Use plain quotes (backticks not supported in error framework)
+
+**Example Pattern:**
+```python
+if not self._git_config.has_branch_type(branch_type):
+    raise ValidationError(
+        f"Invalid branch type: {branch_type}",
+        hints=[f"Allowed types: {', '.join(self._git_config.branch_types)}."],
+    )
 ```
 
 ---
@@ -482,6 +515,19 @@ full_message = f"{prefix}: {message}"
 - Hardcoded dict → `git_config.get_prefix()`
 - Eliminates DRY violation with PolicyEngine
 - Single source of truth for prefixes
+
+**Note:** With "docs" added to tdd_phases (Convention #2) and commit_prefix_map (Convention #3), the separate `commit_docs()` method can be deprecated. All commit types now flow through `commit_tdd_phase()`.
+
+**Optional Refactor (During TDD):**
+```python
+# Old separate method (can be removed):
+def commit_docs(self, message: str, files: list[str] | None = None) -> str:
+    full_message = f"docs: {message}"
+    return self.adapter.commit(full_message, files=files)
+
+# New unified approach:
+# commit_tdd_phase("docs", "update README") generates "docs: update README"
+```
 
 #### Method 5: `delete_branch()` - Protected Branches (Convention #4)
 
@@ -829,7 +875,7 @@ base = base or _git_config.default_base_branch
 - No API changes to GitManager, PolicyEngine, or tools
 
 **Migration Path:**
-1. Create `.st3/git.yaml` with defaults
+1. Create `.st3/git.yaml` with defaults (see Section 9.4 Initial Configuration)
 2. Load config at startup (singleton)
 3. Refactor consumers to use config
 4. Validate: all tests pass, no hardcoded conventions remain
@@ -867,6 +913,41 @@ rm .st3/git.yaml
 # Validate
 pytest tests/  # Should show 1097 passed
 ```
+
+### 9.4 Initial Configuration
+
+**How to Create .st3/git.yaml:**
+
+**Option: Manual Creation (Recommended - Fail Fast)**
+
+GitConfig requires `.st3/git.yaml` to exist at startup. If missing, raises clear error:
+```python
+FileNotFoundError: Git config not found: .st3/git.yaml. 
+Create .st3/git.yaml with git conventions.
+```
+
+**Creation Steps:**
+1. Create `.st3/git.yaml` in workspace root
+2. Copy default schema from Section 1.1
+3. Customize values if needed (optional)
+4. Restart server to load config
+
+**Rationale:**
+- Explicit configuration (no magic auto-generation)
+- Fail-fast if config missing (better than silently using defaults)
+- Clear error message guides user to create file
+- Follows pattern of other .st3/ configs (workflows.yaml, labels.yaml)
+
+**Future Enhancement:**
+- Could add `scaffold_config` tool to generate .st3/git.yaml from template
+- Could add setup script to create all .st3/ configs at once
+- Current approach: Manual creation during Issue #55 implementation
+
+**Config Reload Behavior:**
+- Config loaded once at startup (singleton pattern)
+- Changes to .st3/git.yaml require **server restart** to take effect
+- No hot-reload support (future enhancement if needed)
+- Use `GitConfig.reset_instance()` in tests to force reload
 
 ---
 
