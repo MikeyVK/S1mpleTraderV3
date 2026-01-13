@@ -1,0 +1,50 @@
+# Operation Phase Policies
+# Purpose: Define when scaffold/create_file/commit operations are allowed
+# Used by: PolicyEngine for operation decisions
+# Cross-references: workflows.yaml (validates allowed_phases exist)
+
+operations:
+  scaffold:
+    description: "Create new component from template"
+    allowed_phases:
+      - design
+      - tdd
+    # Phases where scaffolding is permitted
+    # Empty list means: all phases allowed
+    
+  create_file:
+    description: "Create arbitrary file (non-scaffolded)"
+    allowed_phases: []  # All phases allowed
+    blocked_patterns:
+      # Glob patterns for paths where create_file is NOT allowed
+      # These paths MUST use scaffold operation instead
+      - "backend/**/*.py"
+      - "mcp_server/tools/**/*.py"
+      - "mcp_server/resources/**/*.py"
+      - "mcp_server/adapters/**/*.py"
+      - "mcp_server/workers/**/*.py"
+    allowed_extensions:
+      # File extensions allowed for create_file operation
+      # Empty list means: all extensions allowed
+      - ".md"
+      - ".txt"
+      - ".json"
+      - ".yaml"
+      - ".yml"
+      - ".sh"
+      - ".ps1"
+      - ".rst"
+      - ".toml"
+      - ".ini"
+      - ".cfg"
+    
+  commit:
+    description: "Git commit with message"
+    allowed_phases: []  # All phases allowed
+    require_tdd_prefix: true  # Commit messages must start with TDD phase
+    allowed_prefixes:
+      # Valid TDD prefixes for commit messages
+      - "red:"
+      - "green:"
+      - "refactor:"
+      - "docs:"
