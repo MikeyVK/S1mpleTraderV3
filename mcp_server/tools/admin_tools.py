@@ -36,6 +36,31 @@ def _get_restart_marker_path() -> Path:
     return RESTART_MARKER_PATH
 
 
+def _create_audit_props(
+    reason: str,
+    event_type: str,
+    **extra_props: Any
+) -> dict[str, Any]:
+    """Create structured props for audit logging.
+
+    Args:
+        reason: Restart reason
+        event_type: Type of restart event
+        **extra_props: Additional properties to include
+
+    Returns:
+        Dictionary with standard audit props
+    """
+    props = {
+        "reason": reason,
+        "pid": os.getpid(),
+        "timestamp": datetime.now(UTC).isoformat(),
+        "event_type": event_type
+    }
+    props.update(extra_props)
+    return props
+
+
 class RestartServerInput(BaseModel):
     """Input for RestartServerTool."""
 
@@ -98,12 +123,10 @@ class RestartServerTool(BaseTool):
         logger.info(
             "Server restart requested",
             extra={
-                "props": {
-                    "reason": params.reason,
-                    "pid": os.getpid(),
-                    "timestamp": restart_time.isoformat(),
-                    "event_type": "server_restart_requested"
-                }
+                "props": _create_audit_props(
+                    reason=params.reason,
+                    event_type="server_restart_requested"
+                )
             }
         )
 
@@ -126,10 +149,12 @@ class RestartServerTool(BaseTool):
         logger.info(
             "Restart marker written",
             extra={
-                "props": {
-                    "marker_path": str(marker_path),
-                    "marker_content": marker_content
-                }
+                "props": _create_audit_props(
+                    reason=params.reason,
+                    event_type="restart_marker_written",
+                    marker_path=str(marker_path),
+                    marker_content=marker_content
+                )
             }
         )
 
@@ -145,10 +170,11 @@ class RestartServerTool(BaseTool):
         logger.info(
             "Server exiting for restart",
             extra={
-                "props": {
-                    "exit_code": 42,
-                    "reason": params.reason
-                }
+                "props": _create_audit_props(
+                    reason=params.reason,
+                    event_type="server_exiting_for_restart",
+                    exit_code=42
+                )
             }
         )
 
