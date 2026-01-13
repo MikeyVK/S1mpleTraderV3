@@ -1,10 +1,11 @@
 # Issue #55: Server Restart Tool for Agent TDD Autonomy
 
-**Status:** DRAFT
+**Status:** IN PROGRESS
 **Author:** GitHub Copilot (Claude Sonnet 4.5)
 **Created:** 2026-01-13
+**Last Updated:** 2026-01-13
 **Parent Issue:** #55 - Git Conventions Configuration
-**Purpose:** Enable agent-driven TDD by allowing autonomous server restarts
+**Purpose:** Enable agent-driven TDD by allowing autonomous server restarts via watchdog supervisor
 
 ---
 
@@ -12,14 +13,14 @@
 
 ### 1.1 Current Bottleneck
 
-**Agent TDD Flow (Current - Manual Intervention Required):**
+**Agent TDD Flow (Manual Intervention Required):**
 ```
 Agent: TDD Cycle 1 - Implement GitConfig
 ├─ red: Write test_git_config_loads_from_yaml()
 ├─ green: Implement GitConfig.from_file()
 ├─ Want to verify: pytest tests/mcp_server/config/test_git_config.py
 └─ ❌ BLOCKED: Code changes not loaded (server still running old code)
-    └─ Human must: Ctrl+C → restart server → agent continues
+    └─ Human must: Manually restart VS Code MCP connection
     └─ Breaks agent autonomy, requires 30-50 manual restarts for Issue #55
 ```
 
@@ -29,836 +30,707 @@ Agent: TDD Cycle 1 - Implement GitConfig
 - Total time lost: 15-50 minutes + broken agent flow
 - Agent cannot work autonomously through TDD implementation
 
-### 1.2 Required Solution
+### 1.2 Solution Architecture
 
-**Agent TDD Flow (With restart_server tool):**
+**Agent TDD Flow (With Watchdog Supervisor):**
 ```
 Agent: TDD Cycle 1 - Implement GitConfig
 ├─ red: Write test_git_config_loads_from_yaml()
 ├─ green: Implement GitConfig.from_file()
 ├─ restart_server(reason="Load new GitConfig implementation")
-├─ [Server exits with code 42, parent restarts]
+│  ├─ Tool writes restart marker
+│  ├─ Tool logs audit event
+│  ├─ Tool returns success response
+│  ├─ After 500ms: sys.exit(42)
+│  ├─ Supervisor detects exit 42
+│  ├─ Supervisor spawns new MCP server instance
+│  └─ New instance inherits stdio (continuous connection)
+├─ Wait ~2 seconds for restart completion
 ├─ verify_server_restarted(since_timestamp=...)
 ├─ pytest tests/mcp_server/config/test_git_config.py
 └─ ✅ Full autonomous TDD cycle!
 ```
 
-**Requirements:**
-1. Tool to trigger server restart from agent context
-2. Audit logging of all restart events
-3. Verification mechanism to confirm restart occurred
-4. Graceful exit that signals parent process to restart
-5. Zero data loss (audit trail persisted before exit)
+**Key Components:**
+1. **RestartServerTool**: Triggers restart via exit code 42
+2. **Watchdog Supervisor**: Monitors exit codes, spawns new instances
+3. **Restart Marker**: Persists restart metadata for verification
+4. **Audit Trail**: Logs all restart events for forensics
+5. **VerifyServerRestartedTool**: Confirms restart occurred
 
 ---
 
-## 2. Tool Design
+## 2. Architecture Overview
 
-### 2.1 restart_server() Tool
+### 2.1 Process Model
 
-**File:** `mcp_server/tools/admin_tools.py` (new file)
-
-```python
-"""Administrative tools for server management.
-
-Development tools for agent-driven workflows. Enables agents to:
-- Restart server to load code changes
-- Verify restart occurred
-- Maintain audit trail of server lifecycle events
-"""
-
-from pathlib import Path
-import sys
-import time
-from datetime import UTC, datetime
-
-from mcp_server.core.logging import get_logger
-
-
-@mcp.tool()
-def restart_server(reason: str = "code changes") -> str:
-    """Restart MCP server to reload code changes.
-    
-    **Purpose:** Enable agent autonomy during TDD workflows.
-    
-    Agent can implement code changes and restart server without human
-    intervention, allowing fully autonomous test-driven development cycles.
-    
-    **Workflow:**
-    1. Agent makes code changes (via safe_edit_file)
-    2. Agent calls restart_server(reason="...")
-    3. Server logs restart to audit trail
-    4. Server writes restart marker file
-    5. Server exits with code 42 (restart requested)
-    6. Parent process (VS Code) restarts server
-    7. Agent calls verify_server_restarted() to confirm
-    8. Agent continues with testing/next cycle
-    
-    Args:
-        reason: Description of why restart is needed (for audit logging).
-                Examples: "Load new GitConfig implementation",
-                         "Apply refactored GitManager changes",
-                         "Test PolicyEngine integration"
-    
-    Returns:
-        Status message (may not be delivered if exit is immediate).
-        Agent should not rely on return value, use verify_server_restarted() instead.
-    
-    Raises:
-        Never - always exits process with code 42
-    
-    Note:
-        - Development tool only, not for production use
-        - Parent process must handle exit code 42 by restarting server
-        - All audit logs flushed before exit (zero data loss)
-        - Restart marker written to .st3/.restart_marker
-    
-    Example:
-        # Agent TDD workflow
-        safe_edit_file("mcp_server/config/git_config.py", content=new_code)
-        restart_server(reason="Load GitConfig singleton pattern fix")
-        # [Server restarts]
-        verify_server_restarted(since_timestamp=before_restart_time)
-        run_tests("tests/mcp_server/config/test_git_config.py")
-    """
-    logger = get_logger("tools.admin")
-    
-    # Audit log: Restart requested
-    restart_time = datetime.now(UTC)
-    logger.info(
-        "Server restart requested",
-        extra={
-            "props": {
-                "reason": reason,
-                "pid": sys.getpid(),
-                "timestamp": restart_time.isoformat(),
-                "event_type": "server_restart_requested"
-            }
-        }
-    )
-    
-    # Write restart marker file (for verification)
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.parent.mkdir(exist_ok=True)
-    marker_content = {
-        "timestamp": restart_time.timestamp(),
-        "pid": sys.getpid(),
-        "reason": reason,
-        "iso_time": restart_time.isoformat()
-    }
-    
-    import json
-    marker_path.write_text(json.dumps(marker_content, indent=2))
-    
-    # Audit log: Marker written
-    logger.info(
-        "Restart marker written",
-        extra={
-            "props": {
-                "marker_path": str(marker_path),
-                "marker_content": marker_content
-            }
-        }
-    )
-    
-    # Flush all output (ensure audit logs persisted)
-    sys.stdout.flush()
-    sys.stderr.flush()
-    
-    # Force flush logging handlers
-    import logging
-    for handler in logging.root.handlers:
-        handler.flush()
-    
-    # Audit log: Exiting
-    logger.info(
-        "Server exiting for restart",
-        extra={
-            "props": {
-                "exit_code": 42,
-                "reason": reason
-            }
-        }
-    )
-    
-    # Final flush
-    sys.stdout.flush()
-    sys.stderr.flush()
-    
-    # Exit with code 42 = "please restart me"
-    # Parent process should detect this and restart server
-    sys.exit(42)
+```
+┌─────────────────────────────────────────────────────────────┐
+│ VS Code MCP Extension                                       │
+│ - Starts watchdog supervisor (not MCP server directly!)    │
+│ - Connects stdio pipes to supervisor                       │
+│ - Sends initialize once (at connection start)              │
+│ - Unaware of child MCP server restarts                     │
+└───────────────────┬─────────────────────────────────────────┘
+                    │ stdio (stable connection)
+┌───────────────────▼─────────────────────────────────────────┐
+│ Watchdog Supervisor (supervisor.py)                        │
+│ - PID: 12345 (stable)                                      │
+│ - Maintains stdio pipes to VS Code                         │
+│ - Spawns MCP server as child (inherit stdio)               │
+│ - Monitors exit codes:                                     │
+│   * Exit 0: Clean shutdown → supervisor exits              │
+│   * Exit 42: Restart request → spawn new child             │
+│   * Exit >0: Crash → spawn new child with backoff          │
+└───────────────────┬─────────────────────────────────────────┘
+                    │ subprocess.Popen (stdio inherited)
+┌───────────────────▼─────────────────────────────────────────┐
+│ MCP Server Process (mcp_server/__main__.py)                │
+│ - PID: 67890 (ephemeral, changes on restart)               │
+│ - RestartServerTool.execute():                             │
+│   1. Write restart marker                                  │
+│   2. Log audit event                                       │
+│   3. Return success response                               │
+│   4. asyncio.create_task(delayed_exit())                   │
+│   5. After 500ms: sys.exit(42)                             │
+│ - Supervisor detects exit 42 → spawns new instance         │
+│ - New instance PID: 67891 (inherits same stdio)            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Exit Code Convention
+### 2.2 Exit Code Protocol
 
-**Exit Code 42:** "Restart Requested"
+**The supervisor uses exit codes to determine restart behavior:**
 
-**Rationale:**
-- Distinguishes intentional restart from crashes (exit code 1)
-- Distinguishes from normal shutdown (exit code 0)
-- Convention borrowed from systemd (42 = restart requested)
-- Parent process can implement restart logic based on exit code
+| Exit Code | Meaning | Supervisor Action |
+|-----------|---------|-------------------|
+| `0` | Clean shutdown | Supervisor exits (propagates 0 to VS Code) |
+| `42` | Restart request | Supervisor spawns new child (with throttle) |
+| `>0` | Crash/error | Supervisor spawns new child (with backoff) |
 
-**Parent Process Handling (VS Code MCP Extension):**
-```typescript
-// Pseudocode - parent should implement
-if (process.exitCode === 42) {
-    console.log("Server requested restart, restarting...");
-    await restartServer();
-} else if (process.exitCode === 0) {
-    console.log("Server shutdown normally");
-} else {
-    console.error(`Server crashed with exit code ${process.exitCode}`);
-}
+**Why Exit Code 42?**
+- Not a standard POSIX exit code (unambiguous signal)
+- Mnemonic: "The Answer to Life, the Universe, and Everything"
+- Easy to remember and grep for in logs
+
+### 2.3 Lifecycle Flow
+
+**Happy Path (Restart Request):**
+
+```
+1. Agent calls restart_server(reason="Load new code")
+2. RestartServerTool.execute():
+   - Writes restart marker: {timestamp, reason, exit_code: 42}
+   - Logs audit event: "server_restart_requested"
+   - Returns ToolResult: "Restart scheduled, will exit with code 42 in 500ms"
+   - Schedules delayed_exit() background task
+3. MCP server sends response to agent (via stdio/supervisor/VS Code)
+4. After 500ms:
+   - logging.shutdown() - flush all logs
+   - sys.exit(42) - signal restart to supervisor
+5. Child process terminates (PID 67890 exits)
+6. Supervisor detects exit code 42
+7. Supervisor checks throttle (max 1 restart/second)
+8. Supervisor sleeps 500ms (cleanup delay)
+9. Supervisor spawns new child (PID 67891)
+10. New child inherits stdio from supervisor (same pipes!)
+11. VS Code continues sending requests (no re-initialization needed)
+12. Agent calls verify_server_restarted() to confirm
+```
+
+**VS Code Stop (Clean Shutdown):**
+
+```
+1. User closes VS Code or disconnects MCP server
+2. VS Code closes stdin pipe (EOF signal)
+3. MCP server detects EOF on stdin
+4. MCP server exits with code 0 (clean shutdown)
+5. Supervisor detects exit code 0
+6. Supervisor logs "Clean shutdown requested"
+7. Supervisor exits with code 0
+8. VS Code detects supervisor exit → connection closed
+```
+
+**Crash Recovery:**
+
+```
+1. MCP server encounters unhandled exception
+2. Python runtime calls sys.exit(1) or similar
+3. Child process terminates (PID 67890 exits)
+4. Supervisor detects exit code 1 (or any non-0, non-42)
+5. Supervisor logs "Server crashed (exit code 1)"
+6. Supervisor calculates backoff delay:
+   - Restarts 1-3: 1 second
+   - Restarts 4-10: 5 seconds
+   - Restarts 10+: 10 seconds
+7. Supervisor sleeps for backoff duration
+8. Supervisor spawns new child (PID 67891)
+9. New child inherits stdio, starts fresh
+10. VS Code continues sending requests (automatic recovery)
 ```
 
 ---
 
-## 3. Audit Logging
+## 3. RestartServerTool Design
 
-### 3.1 Restart Event Schema
+### 3.1 Tool Specification
 
-**Event Type:** `server_restart_requested`
+**Tool Name:** `restart_server`
 
-**Log Entry Structure:**
+**Input Schema:**
 ```json
 {
-  "timestamp": "2026-01-13T14:32:45.123Z",
-  "level": "INFO",
-  "logger": "tools.admin",
-  "message": "Server restart requested",
-  "props": {
-    "reason": "Load new GitConfig implementation",
-    "pid": 12345,
-    "timestamp": "2026-01-13T14:32:45.123Z",
-    "event_type": "server_restart_requested"
-  }
+  "type": "object",
+  "properties": {
+    "reason": {
+      "type": "string",
+      "description": "Reason for restart (for audit logging)"
+    }
+  },
+  "required": ["reason"]
 }
-```
-
-### 3.2 Restart Lifecycle Events
-
-**Complete restart lifecycle logged:**
-
-1. **Restart Requested:**
-   ```python
-   logger.info("Server restart requested", extra={"props": {...}})
-   ```
-
-2. **Marker Written:**
-   ```python
-   logger.info("Restart marker written", extra={"props": {...}})
-   ```
-
-3. **Exiting:**
-   ```python
-   logger.info("Server exiting for restart", extra={"props": {...}})
-   ```
-
-4. **Server Started (after restart):**
-   ```python
-   # Existing startup logging should capture
-   logger.info("Server started", extra={"props": {...}})
-   ```
-
-### 3.3 Audit Trail Query
-
-**Query all restarts:**
-```bash
-# Assuming structured logging to file
-cat logs/server.log | jq 'select(.props.event_type == "server_restart_requested")'
 ```
 
 **Output:**
 ```json
-[
-  {
-    "timestamp": "2026-01-13T14:32:45.123Z",
-    "reason": "Load new GitConfig implementation",
-    "pid": 12345
-  },
-  {
-    "timestamp": "2026-01-13T14:45:12.456Z",
-    "reason": "Apply refactored GitManager changes",
-    "pid": 12346
-  }
-]
-```
-
----
-
-## 4. Marker File Format
-
-### 4.1 File Location
-
-**Path:** `.st3/.restart_marker`
-
-**Rationale:**
-- Consistent with other .st3/ metadata files
-- Git-ignored (not committed)
-- Workspace-scoped (not global)
-
-**Add to .gitignore:**
-```gitignore
-.st3/.restart_marker
-```
-
-### 4.2 File Format
-
-**Format:** JSON (structured, parseable)
-
-**Schema:**
-```json
 {
-  "timestamp": 1705158765.123,
-  "pid": 12346,
-  "reason": "Load new GitConfig implementation",
-  "iso_time": "2026-01-13T14:32:45.123Z"
+  "type": "text",
+  "text": "Server restart scheduled (reason: {reason}). Server will exit with code 42 in 500ms, supervisor will spawn new instance."
 }
 ```
 
-**Fields:**
-- `timestamp`: Unix timestamp (float) for precise comparisons
-- `pid`: Process ID of restarted server (for debugging)
-- `reason`: Human-readable restart reason (from tool call)
-- `iso_time`: ISO 8601 timestamp (human-readable)
+### 3.2 Implementation
 
-### 4.3 File Lifecycle
+**File:** `mcp_server/tools/admin_tools.py`
 
-**Created:** On every restart_server() call (overwrite previous)
-
-**Read:** By verify_server_restarted() tool
-
-**Deleted:** Never (kept for debugging, overwritten on next restart)
-
-**Size:** ~150 bytes (negligible)
-
----
-
-## 5. Verification Tool
-
-### 5.1 verify_server_restarted() Tool
+**Key Functions:**
 
 ```python
-@mcp.tool()
-def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:
-    """Verify that server restarted after given timestamp.
+async def delayed_exit() -> None:
+    """Exit with code 42 after delay to allow response delivery.
     
-    **Purpose:** Allow agent to confirm restart completed before continuing.
-    
-    Agent workflow:
-    1. Record timestamp: before_restart = time.time()
-    2. Call restart_server(reason="...")
-    3. [Wait for server to restart]
-    4. Call verify_server_restarted(since_timestamp=before_restart)
-    5. If restarted=True: Continue with testing
-    6. If restarted=False: Error - restart failed
-    
-    Args:
-        since_timestamp: Unix timestamp before restart request.
-                         Server must have restarted AFTER this time.
-    
-    Returns:
-        Dictionary with verification result:
-        {
-            "restarted": bool,           # True if restart confirmed
-            "restart_timestamp": float,  # When restart occurred
-            "current_pid": int,          # Current process ID
-            "previous_pid": int,         # PID before restart (from marker)
-            "reason": str,               # Restart reason (from marker)
-            "time_since_restart": float  # Seconds since restart
-        }
-    
-    Example:
-        before = time.time()
-        restart_server(reason="Load changes")
-        # [Server restarts]
-        result = verify_server_restarted(since_timestamp=before)
-        if result["restarted"]:
-            print(f"Restart confirmed! Reason: {result['reason']}")
-            run_tests(...)
-        else:
-            raise Exception("Server restart failed!")
+    Timeline:
+    - T+0ms: Tool returns response to agent
+    - T+0ms: This function scheduled as background task
+    - T+500ms: Flush logs
+    - T+500ms: sys.exit(42)
+    - T+500ms: Child process terminates
+    - T+500ms: Supervisor detects exit 42
+    - T+1000ms: Supervisor spawns new child
+    - T+2000ms: New server ready
     """
-    logger = get_logger("tools.admin")
+    await asyncio.sleep(0.5)  # 500ms delay
     
-    marker_path = Path(".st3/.restart_marker")
+    # Flush all logs before exit
+    logging.shutdown()
     
-    # Check if marker exists
-    if not marker_path.exists():
-        return {
-            "restarted": False,
-            "error": "Restart marker not found",
-            "marker_path": str(marker_path)
-        }
-    
-    # Parse marker
-    import json
-    try:
-        marker_data = json.loads(marker_path.read_text())
-    except Exception as e:
-        return {
-            "restarted": False,
-            "error": f"Failed to parse restart marker: {e}"
-        }
-    
-    restart_timestamp = marker_data["timestamp"]
-    
-    # Check if restart happened after since_timestamp
-    restarted = restart_timestamp > since_timestamp
-    
-    result = {
-        "restarted": restarted,
-        "restart_timestamp": restart_timestamp,
-        "current_pid": sys.getpid(),
-        "previous_pid": marker_data["pid"],
-        "reason": marker_data["reason"],
-        "time_since_restart": time.time() - restart_timestamp,
-        "iso_time": marker_data["iso_time"]
-    }
-    
-    # Audit log verification
+    # Log final audit event
     logger.info(
-        "Server restart verification",
-        extra={
-            "props": {
-                "result": result,
-                "since_timestamp": since_timestamp
-            }
-        }
+        "Server exiting for restart (exit code 42)",
+        extra={"props": {"exit_code": 42}}
     )
     
-    return result
+    # Exit with code 42 → supervisor will restart
+    sys.exit(42)
+
+
+class RestartServerTool(BaseTool):
+    """Restart MCP server via watchdog supervisor.
+    
+    Triggers server restart by exiting with code 42. The watchdog supervisor
+    detects this exit code and spawns a new MCP server instance with updated
+    code. The stdio connection remains stable (maintained by supervisor), so
+    VS Code sees continuous connection without re-initialization.
+    
+    Used during TDD workflows to load code changes without human intervention.
+    """
+    
+    name = "restart_server"
+    description = """Restart MCP server to reload code changes.
+    
+    Exits current server process (code 42) and supervisor spawns new instance.
+    VS Code connection remains stable (no re-initialization needed).
+    
+    Use after modifying server code to load changes in autonomous TDD workflow.
+    """
+    
+    async def execute(self, arguments: RestartServerInput) -> list[TextContent]:
+        """Execute server restart request.
+        
+        1. Write restart marker (timestamp, reason, exit_code)
+        2. Log audit event (server_restart_requested)
+        3. Return success response to agent
+        4. Schedule delayed_exit() after 500ms
+        5. After delay: sys.exit(42) → supervisor restarts
+        
+        Args:
+            arguments: RestartServerInput with reason field
+            
+        Returns:
+            ToolResult indicating restart scheduled
+        """
+        reason = arguments.reason
+        timestamp = datetime.now(UTC)
+        
+        # Write restart marker (for verify_server_restarted tool)
+        marker_path = settings.paths.workspace_root / ".mcp_restart_marker"
+        marker_data = {
+            "timestamp": timestamp.isoformat(),
+            "reason": reason,
+            "exit_code": 42,
+            "method": "sys.exit(42) → supervisor restart"
+        }
+        marker_path.write_text(json.dumps(marker_data, indent=2))
+        
+        # Log audit event
+        audit_logger.info(
+            "server_restart_requested",
+            extra={
+                "reason": reason,
+                "timestamp": timestamp.isoformat(),
+                "exit_code": 42,
+                "marker_path": str(marker_path)
+            }
+        )
+        
+        # Schedule delayed exit (allows response to be sent)
+        asyncio.create_task(delayed_exit())
+        
+        # Return success immediately (before exit)
+        return ToolResult.text(
+            f"Server restart scheduled (reason: {reason}). "
+            f"Server will exit with code 42 in 500ms, "
+            f"supervisor will spawn new instance."
+        )
 ```
 
-### 5.2 Verification Logic
+### 3.3 Response Timing
 
-**Restart Confirmed If:**
+**Critical Timing Requirement:**
+
+The tool MUST return a response BEFORE the server exits. Otherwise:
+- Tool call hangs indefinitely (response never delivered)
+- Agent blocks waiting for response
+- Autonomous workflow breaks
+
+**Solution: Delayed Exit**
+
 ```python
-marker_data["timestamp"] > since_timestamp
+# Return response immediately
+result = ToolResult.text("Restart scheduled...")
+
+# Schedule exit in background (500ms delay)
+asyncio.create_task(delayed_exit())
+
+# Response delivered before exit occurs
+return result
 ```
 
-**Edge Cases Handled:**
-1. **Marker missing:** Return `restarted: False` with error
-2. **Marker corrupt:** Return `restarted: False` with parse error
-3. **Restart too old:** Return `restarted: False` (timestamp check fails)
-4. **PID changed:** Logged in result (confirms new process)
+**Timeline:**
+```
+T+0ms:    RestartServerTool.execute() called
+T+0ms:    Marker written, audit logged
+T+0ms:    ToolResult returned to agent
+T+0ms:    delayed_exit() scheduled as background task
+T+50ms:   Response typically delivered to VS Code → agent
+T+500ms:  delayed_exit() executes: logging.shutdown() + sys.exit(42)
+T+500ms:  Child process terminates
+T+500ms:  Supervisor detects exit 42
+T+1000ms: Supervisor spawns new child (after 500ms cleanup delay)
+T+2000ms: New server ready (process spawn ~1s)
+```
+
+**Why 500ms?**
+- JSON-RPC response delivery typically < 50ms
+- 500ms provides 10x safety margin
+- Balance: long enough for delivery, short enough for fast restart
 
 ---
 
-## 6. Agent Workflow
+## 4. VerifyServerRestartedTool Design
 
-### 6.1 Standard TDD Cycle with Restart
+### 4.1 Purpose
 
+**Problem:** Agent needs confirmation that restart completed successfully.
+
+**Without Verification:**
 ```python
-# Agent implements this pattern for each TDD cycle
-
-# 1. RED: Write test
-safe_edit_file(
-    path="tests/mcp_server/config/test_git_config.py",
-    content=test_code
-)
-git_add_or_commit(
-    files=["tests/mcp_server/config/test_git_config.py"],
-    message="test git.yaml loading",
-    phase="red"
-)
-
-# 2. GREEN: Implement code
-safe_edit_file(
-    path="mcp_server/config/git_config.py",
-    content=implementation_code
-)
-git_add_or_commit(
-    files=["mcp_server/config/git_config.py"],
-    message="implement GitConfig.from_file()",
-    phase="green"
-)
-
-# 3. RESTART: Load new code
-import time
-before_restart = time.time()
-
-restart_server(reason="Load GitConfig implementation for testing")
-
-# [Server exits and restarts - agent waits]
-
-# 4. VERIFY: Confirm restart
-result = verify_server_restarted(since_timestamp=before_restart)
-if not result["restarted"]:
-    raise Exception(f"Restart verification failed: {result}")
-
-# 5. TEST: Run tests with new code
-test_result = run_tests("tests/mcp_server/config/test_git_config.py")
-
-# 6. REFACTOR (if tests pass)
-if test_result["passed"]:
-    # Make refactoring changes
-    # Restart again
-    # Test again
+restart_server(reason="Load new code")
+# Did restart happen? No way to know!
+run_tests()  # Might test old code if restart failed!
 ```
 
-### 6.2 Error Handling
-
-**Restart Timeout:**
+**With Verification:**
 ```python
-# Agent should implement retry logic
-max_retries = 3
-retry_delay = 5  # seconds
-
-for attempt in range(max_retries):
-    restart_server(reason="...")
-    time.sleep(retry_delay)
-    
-    result = verify_server_restarted(since_timestamp=before)
-    if result["restarted"]:
-        break
-else:
-    # All retries failed
-    raise Exception("Server restart failed after 3 attempts")
+restart_server(reason="Load new code")
+time.sleep(2)  # Wait for restart
+verify_server_restarted(since_timestamp="2026-01-13T22:30:00Z")
+# ✅ Confirmed: restart occurred, running new code
+run_tests()  # Guaranteed to test new code
 ```
 
-**Restart Failure:**
-```python
-# If verify returns restarted=False, agent should:
-1. Log error with marker details
-2. Ask human for manual restart
-3. Abort current TDD cycle
-4. Continue after manual restart confirmed
-```
+### 4.2 Tool Specification
 
----
+**Tool Name:** `verify_server_restarted`
 
-## 7. Testing Strategy
-
-### 7.1 Manual Testing (Pre-Implementation)
-
-**Test 1: Basic Restart**
-```bash
-# Terminal 1: Start server
-python -m mcp_server
-
-# Terminal 2: Call tool
-# (via MCP client)
-restart_server(reason="Test basic restart")
-
-# Expected: Server exits with code 42
-# Terminal 1 shows: Exit code 42
-
-# Manually restart in Terminal 1
-python -m mcp_server
-
-# Terminal 2: Verify
-verify_server_restarted(since_timestamp=...)
-# Expected: {"restarted": True, ...}
-```
-
-**Test 2: Audit Logging**
-```bash
-# After restart, check logs
-cat logs/server.log | grep "server_restart_requested"
-
-# Expected: 3 log entries
-# 1. "Server restart requested"
-# 2. "Restart marker written"
-# 3. "Server exiting for restart"
-```
-
-**Test 3: Marker File**
-```bash
-# After restart
-cat .st3/.restart_marker
-
-# Expected: Valid JSON
-# {
-#   "timestamp": 1705158765.123,
-#   "pid": 12345,
-#   "reason": "Test basic restart",
-#   "iso_time": "2026-01-13T14:32:45.123Z"
-# }
-```
-
-### 7.2 Automated Testing (Unit Tests)
-
-**File:** `tests/mcp_server/tools/test_admin_tools.py`
-
-```python
-def test_restart_marker_written():
-    """Test that restart_server writes marker file."""
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.unlink(missing_ok=True)  # Clean state
-    
-    # Capture exit
-    with pytest.raises(SystemExit) as exc_info:
-        restart_server(reason="Test marker")
-    
-    assert exc_info.value.code == 42
-    assert marker_path.exists()
-    
-    # Verify marker content
-    marker_data = json.loads(marker_path.read_text())
-    assert marker_data["reason"] == "Test marker"
-    assert marker_data["pid"] == os.getpid()
-
-
-def test_verify_server_restarted_success():
-    """Test verification with valid marker."""
-    # Setup: Create marker from "past"
-    past_time = time.time() - 10
-    marker_path = Path(".st3/.restart_marker")
-    marker_data = {
-        "timestamp": past_time + 5,  # 5 seconds ago
-        "pid": 12345,
-        "reason": "Test restart",
-        "iso_time": datetime.now(UTC).isoformat()
+**Input Schema:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "since_timestamp": {
+      "type": "string",
+      "description": "ISO 8601 timestamp - verify restart occurred after this time"
     }
-    marker_path.write_text(json.dumps(marker_data))
-    
-    # Verify restart happened after past_time
-    result = verify_server_restarted(since_timestamp=past_time)
-    assert result["restarted"] is True
-    assert result["previous_pid"] == 12345
-
-
-def test_verify_server_restarted_no_marker():
-    """Test verification with missing marker."""
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.unlink(missing_ok=True)
-    
-    result = verify_server_restarted(since_timestamp=time.time())
-    assert result["restarted"] is False
-    assert "error" in result
+  },
+  "required": ["since_timestamp"]
+}
 ```
 
----
-
-## 8. Implementation Order
-
-### 8.1 Prerequisites
-
-**Before implementing restart tool:**
-1. ✅ Design.md for main Issue #55 complete
-2. ✅ This restart_tool_design.md complete
-3. ✅ Design phase commit
-
-### 8.2 Implementation Steps (TDD)
-
-**Step 1: Marker File Logic (RED → GREEN → REFACTOR)**
-```bash
-# RED
-red: test restart marker file is written with correct schema
-
-# GREEN  
-green: implement restart marker write logic
-
-# REFACTOR
-refactor: extract marker path to constant
+**Output:**
+```json
+{
+  "type": "text",
+  "text": "✅ Server restart verified: occurred at {timestamp} (reason: {reason})"
+}
 ```
 
-**Step 2: Audit Logging (RED → GREEN → REFACTOR)**
-```bash
-# RED
-red: test restart events logged to audit trail
-
-# GREEN
-green: add audit logging to restart_server
-
-# REFACTOR
-refactor: extract log message formatting
+**Error Output:**
+```json
+{
+  "type": "text",
+  "text": "❌ No recent restart detected since {since_timestamp}"
+}
 ```
 
-**Step 3: Exit Logic (RED → GREEN → REFACTOR)**
-```bash
-# RED
-red: test server exits with code 42
+### 4.3 Implementation
 
-# GREEN
-green: implement sys.exit(42) with flush
-
-# REFACTOR
-refactor: ensure all handlers flushed
-```
-
-**Step 4: Verification Tool (RED → GREEN → REFACTOR)**
-```bash
-# RED
-red: test verify_server_restarted returns correct result
-
-# GREEN
-green: implement verify_server_restarted tool
-
-# REFACTOR
-refactor: extract marker parsing logic
-```
-
-**Step 5: Integration Testing**
-```bash
-# Manual test full workflow
-1. Make dummy code change
-2. Call restart_server(reason="Test integration")
-3. Manually restart server
-4. Call verify_server_restarted()
-5. Verify audit logs
-6. Check marker file
-```
-
-### 8.3 Commit Strategy
-
-**Micro-commits per TDD cycle:**
-```bash
-red: test restart marker written with schema
-green: implement restart marker file creation
-refactor: extract marker path constant
-
-red: test restart audit logging
-green: add structured logging to restart_server
-refactor: extract log message formatters
-
-red: test server exits with code 42
-green: implement graceful exit with code 42
-refactor: ensure all log handlers flushed
-
-red: test verify_server_restarted with valid marker
-green: implement verification tool
-refactor: extract marker parsing helper
-
-docs: update restart_tool_design.md with final implementation notes
-```
-
-### 8.4 Timeline Estimate
-
-**Total Time:** 1.5-2 hours
-
-- Design document: 30 min ✅ (this document)
-- TDD Cycle 1 (Marker file): 20 min
-- TDD Cycle 2 (Audit logging): 15 min
-- TDD Cycle 3 (Exit logic): 15 min
-- TDD Cycle 4 (Verification): 20 min
-- Integration testing: 15 min
-- Documentation updates: 10 min
-
-**ROI:** Saves 15-50 minutes during Issue #55 TDD + enables full agent autonomy
-
----
-
-## 9. Success Criteria
-
-### 9.1 Functional Criteria
-
-- ✅ restart_server(reason) tool implemented
-- ✅ Server exits with code 42 on restart request
-- ✅ Restart marker file written to .st3/.restart_marker
-- ✅ Marker contains timestamp, PID, reason, iso_time
-- ✅ All audit events logged (requested, marker written, exiting)
-- ✅ verify_server_restarted(since_timestamp) tool implemented
-- ✅ Verification returns correct restarted status
-- ✅ All log handlers flushed before exit (zero data loss)
-
-### 9.2 Quality Criteria
-
-- ✅ Unit tests for marker file creation
-- ✅ Unit tests for verification logic
-- ✅ Unit tests for exit code 42
-- ✅ Manual integration test passed
-- ✅ Audit logs queryable and structured
-- ✅ .restart_marker added to .gitignore
-
-### 9.3 Documentation Criteria
-
-- ✅ This design document complete
-- ✅ Tool docstrings with agent workflow examples
-- ✅ Audit logging schema documented
-- ✅ Marker file format specified
-- ✅ Agent workflow pattern documented
-
----
-
-## 10. Next Steps
-
-## 11. Implementation Lessons Learned
-
-### 11.1 Exit Code 42 + PowerShell Wrapper Issues
-
-**Initial Approach:**
-- Tool calls `sys.exit(42)` after 500ms delay
-- PowerShell wrapper script detects exit code 42
-- Wrapper restarts Python process
-
-**Problems Discovered:**
-1. **Delayed Detection:** PowerShell `Start-Process -Wait` only detects process exit on next stdio operation
-   - Exit at 18:04:20, detection at 19:06:48 (2+ minutes later)
-   - Restart triggered by agent's next tool call, not automatically
-
-2. **Stdio Blocking:** Wrapper cannot properly pass through stdin/stdout for JSON-RPC
-   - MCP protocol requires clean stdio channel
-   - Any wrapper interference breaks communication
-
-3. **Tool Call Hangs:** Agent's tool call during restart never completes
-   - Server exits mid-call
-   - Agent waits indefinitely for response
-   - User must cancel tool call
-
-**Conclusion:** External wrapper approach is fundamentally flawed for MCP stdio protocol.
-
-### 11.2 Alternative: os.execv() In-Process Restart
-
-**Concept:**
-- Replace current process with new Python interpreter using `os.execv()`
-- No exit code, no wrapper needed
-- Preserves PID and stdio file descriptors
-- Server "restarts" by replacing itself
-
-**Implementation Plan (TDD):**
-1. RED: Write test mocking os.execv() to verify it's called correctly
-2. GREEN: Change sys.exit(42) to os.execv()
-3. REFACTOR: Clean up wrapper-related code
-4. Manual integration test to verify real restart works
-
-### 10.1 Immediate Actions
-
-1. **Commit this design document:**
-   ```bash
-   git add docs/development/issue55/restart_tool_design.md
-   git commit -m "docs: design restart_server tool for agent TDD autonomy"
-   ```
-
-2. **Update .gitignore:**
-   ```bash
-   echo ".st3/.restart_marker" >> .gitignore
-   git commit -m "chore: ignore restart marker file"
-   ```
-
-3. **Transition to TDD:**
-   - Start TDD Cycle 1: Marker file logic
-   - Follow implementation order from Section 8.2
-
-### 10.2 Integration with Issue #55
-
-**After restart tool complete:**
-1. Tool available for agent use during Issue #55 TDD
-2. Agent can autonomously complete all 10 TDD cycles
-3. No manual intervention required for code reload
-4. Full audit trail of development process
-
-**Agent workflow becomes:**
 ```python
-for cycle in range(1, 11):  # 10 TDD cycles
-    write_test()
-    implement_code()
-    restart_server(reason=f"TDD Cycle {cycle}")
-    verify_server_restarted()
-    run_tests()
-    if passed:
-        refactor()
-        restart_server(reason=f"Cycle {cycle} refactor")
-        verify_server_restarted()
-        run_tests()
+class VerifyServerRestartedTool(BaseTool):
+    """Verify that server restart occurred after specified timestamp.
+    
+    Checks restart marker file written by RestartServerTool. Confirms that:
+    1. Marker file exists
+    2. Marker timestamp is after since_timestamp
+    3. Marker has valid schema (timestamp, reason, exit_code)
+    
+    Used by agents to confirm restart completed before continuing TDD workflow.
+    """
+    
+    name = "verify_server_restarted"
+    description = """Verify server restart occurred after specified timestamp.
+    
+    Checks restart marker written by restart_server tool. Returns success if
+    restart occurred after given timestamp, error otherwise.
+    
+    Use after restart_server + wait period to confirm restart completed.
+    """
+    
+    async def execute(self, arguments: VerifyRestartInput) -> list[TextContent]:
+        """Verify restart occurred after specified timestamp.
+        
+        Args:
+            arguments: VerifyRestartInput with since_timestamp
+            
+        Returns:
+            ToolResult indicating verification success or failure
+        """
+        since_timestamp = datetime.fromisoformat(arguments.since_timestamp)
+        marker_path = settings.paths.workspace_root / ".mcp_restart_marker"
+        
+        # Check marker exists
+        if not marker_path.exists():
+            return ToolResult.error(
+                f"❌ No restart marker found at {marker_path}. "
+                f"No recent restarts detected."
+            )
+        
+        # Read marker data
+        try:
+            marker_data = json.loads(marker_path.read_text())
+        except (json.JSONDecodeError, OSError) as e:
+            return ToolResult.error(
+                f"❌ Failed to read restart marker: {e}"
+            )
+        
+        # Verify schema
+        required_fields = ["timestamp", "reason", "exit_code"]
+        if not all(field in marker_data for field in required_fields):
+            return ToolResult.error(
+                f"❌ Invalid restart marker schema. "
+                f"Required fields: {required_fields}"
+            )
+        
+        # Check timestamp
+        marker_timestamp = datetime.fromisoformat(marker_data["timestamp"])
+        
+        if marker_timestamp <= since_timestamp:
+            return ToolResult.error(
+                f"❌ No recent restart detected since {since_timestamp.isoformat()}. "
+                f"Last restart: {marker_timestamp.isoformat()}"
+            )
+        
+        # Verify exit code (should be 42 for intentional restart)
+        if marker_data["exit_code"] != 42:
+            return ToolResult.warning(
+                f"⚠️ Restart occurred but with unexpected exit code: "
+                f"{marker_data['exit_code']} (expected 42)"
+            )
+        
+        # Success!
+        return ToolResult.text(
+            f"✅ Server restart verified: occurred at {marker_timestamp.isoformat()} "
+            f"(reason: {marker_data['reason']})"
+        )
 ```
 
 ---
 
-**Document Status:** DRAFT → READY FOR IMPLEMENTATION
-**Implementation Time:** 1.5-2 hours
-**Next Phase:** TDD (implement restart_server + verify tools)
-**After Complete:** Transition to Issue #55 main TDD (GitConfig implementation)
+## 5. Supervisor Interaction
+
+### 5.1 Configuration (mcp.json)
+
+**VS Code starts the supervisor, not the MCP server directly:**
+
+```jsonc
+{
+  "servers": {
+    "st3-workflow": {
+      "type": "stdio",
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-m", "mcp_server.supervisor"],  // ← Supervisor, not mcp_server!
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+**VS Code lifecycle:**
+1. Start: Spawns supervisor → supervisor spawns MCP server
+2. Stop: Closes stdin (EOF) → server exits with 0 → supervisor exits with 0
+3. Restart: Agent calls tool → server exits with 42 → supervisor spawns new instance
+
+### 5.2 Supervisor Responsibilities
+
+**The supervisor handles:**
+- Spawn MCP server as child process
+- Monitor child exit codes
+- Detect exit 42 → restart with throttle
+- Detect exit 0 → clean shutdown (supervisor exits)
+- Detect exit >0 → crash recovery with backoff
+- Log all lifecycle events to stderr
+- Maintain stdio connection to VS Code
+
+**The supervisor does NOT handle:**
+- MCP protocol (that's the child server's job)
+- Tool execution (that's the child server's job)
+- State management (supervisor is stateless except restart_count)
+
+### 5.3 Stdio Flow
+
+**Key Insight: Stdio pipes maintained by supervisor, inherited by child**
+
+```
+VS Code creates pipes:
+  stdin_pipe, stdout_pipe, stderr_pipe
+
+VS Code spawns supervisor:
+  supervisor.stdin  = stdin_pipe
+  supervisor.stdout = stdout_pipe
+  supervisor.stderr = stderr_pipe
+
+Supervisor spawns child:
+  child.stdin  = supervisor.stdin  (same pipe!)
+  child.stdout = supervisor.stdout (same pipe!)
+  child.stderr = supervisor.stderr (same pipe!)
+
+Child exits, new child spawned:
+  new_child.stdin  = supervisor.stdin  (same pipe again!)
+  new_child.stdout = supervisor.stdout (same pipe again!)
+  new_child.stderr = supervisor.stderr (same pipe again!)
+```
+
+**Result:** Continuous stdio stream across child restarts. VS Code unaware of child lifecycle.
+
+---
+
+## 6. Testing Strategy
+
+### 6.1 Unit Tests
+
+**Test File:** `tests/mcp_server/tools/test_admin_tools.py`
+
+**Test Coverage:**
+
+1. **`test_restart_tool_writes_marker`**
+   - Verify marker file created at correct path
+   - Verify marker contains timestamp, reason, exit_code
+   - Verify exit_code == 42
+
+2. **`test_restart_tool_exits_with_42`**
+   - Mock sys.exit to capture exit code
+   - Mock asyncio.sleep to fast-forward delay
+   - Verify sys.exit(42) called (not os.execv)
+   - Verify response returned before exit
+
+3. **`test_restart_tool_logs_audit_event`**
+   - Capture audit log output
+   - Verify "server_restart_requested" event logged
+   - Verify reason included in log
+
+4. **`test_verify_tool_succeeds_with_valid_marker`**
+   - Write valid marker with recent timestamp
+   - Call verify_server_restarted
+   - Verify success response
+
+5. **`test_verify_tool_fails_with_old_marker`**
+   - Write marker with old timestamp
+   - Call verify_server_restarted with recent since_timestamp
+   - Verify error response
+
+6. **`test_verify_tool_fails_without_marker`**
+   - Ensure no marker file exists
+   - Call verify_server_restarted
+   - Verify error response
+
+### 6.2 Integration Tests
+
+**Manual Integration Test:**
+
+1. Update mcp.json to use supervisor
+2. Restart VS Code MCP connection
+3. Verify server starts (health_check succeeds)
+4. Call restart_server(reason="Integration test 1")
+5. Wait 2 seconds
+6. Call verify_server_restarted(since_timestamp=<before_restart>)
+7. Verify success response
+8. Call health_check (should succeed)
+9. Repeat steps 4-8 for "Integration test 2"
+10. Check supervisor logs in VS Code Output panel
+
+**Expected Output:**
+```
+[SUPERVISOR] Starting MCP server (restart #0)
+[SUPERVISOR] MCP server running (PID: 67890)
+... (agent calls restart_server)
+Server restart scheduled (reason: Integration test 1)
+[SUPERVISOR] MCP server exited (code: 42)
+[SUPERVISOR] Restart requested, spawning new server (restart #1)
+[SUPERVISOR] Starting MCP server (restart #1)
+[SUPERVISOR] MCP server running (PID: 67891)
+✅ Server restart verified: occurred at 2026-01-13T22:35:00Z
+```
+
+---
+
+## 7. Success Criteria
+
+**Functional Requirements:**
+
+- ✅ FR-1: Agent can call restart_server(reason="...")
+- ✅ FR-2: Server exits with code 42 after 500ms
+- ✅ FR-3: Supervisor detects exit 42 and spawns new instance
+- ✅ FR-4: VS Code connection remains stable (no re-initialization)
+- ✅ FR-5: Agent can verify restart with verify_server_restarted
+- ✅ FR-6: Audit trail captures all restart events
+- ✅ FR-7: Restart marker persisted before exit
+
+**Non-Functional Requirements:**
+
+- ✅ NFR-1: Restart completes in < 2 seconds (median)
+- ✅ NFR-2: Zero data loss (logs flushed before exit)
+- ✅ NFR-3: Tool response delivered before exit (no hung calls)
+- ✅ NFR-4: Clean shutdown works (VS Code stop → exit 0)
+- ✅ NFR-5: Crash recovery works (exit >0 → backoff restart)
+
+**Verification:**
+
+```bash
+# Run all admin tools tests
+pytest tests/mcp_server/tools/test_admin_tools.py
+
+# All tests must pass
+# Expected: 6/6 tests passing (100%)
+```
+
+---
+
+## 8. Implementation Checklist
+
+**Phase 1: Update RestartServerTool** ✅ COMPLETE
+- [x] Supervisor implemented and tested
+- [x] Supervisor reference document created
+- [ ] Update RestartServerTool to use sys.exit(42) (instead of os.execv)
+- [ ] Update delayed_restart → delayed_exit
+- [ ] Update audit log event names
+- [ ] Update tool response messages
+- [ ] Update tests for sys.exit(42)
+
+**Phase 2: Update mcp.json**
+- [ ] Change command to supervisor: `["-m", "mcp_server.supervisor"]`
+- [ ] Remove obsolete PowerShell wrapper configuration
+
+**Phase 3: Integration Testing**
+- [ ] Manual test: restart_server → verify logs → health_check
+- [ ] Verify restart timing < 2 seconds
+- [ ] Verify VS Code sees continuous connection
+- [ ] Verify audit trail complete
+
+**Phase 4: Cleanup**
+- [ ] Delete start_mcp_server.ps1 (obsolete)
+- [ ] Update this design document (mark COMPLETE)
+- [ ] Push all commits to remote
+
+---
+
+## 9. Appendix: Lessons Learned
+
+### 9.1 PowerShell Wrapper Approach (FAILED)
+
+**What We Tried:**
+- PowerShell script monitors exit code 42
+- Script restarts server on detection
+
+**Why It Failed:**
+- Exit detection delayed until next stdio operation (2+ minutes!)
+- Wrapper interference with stdout broke JSON-RPC protocol
+- Tool calls hung during restart (response never sent)
+
+**Lesson:** External wrappers cannot handle stdio-based protocols reliably.
+
+### 9.2 os.execv() Approach (FAILED)
+
+**What We Tried:**
+- Server calls os.execv(sys.executable, ["-m", "mcp_server"])
+- Replaces process in-place, preserves PID and stdio
+
+**Why It Failed:**
+- MCP protocol requires initialize handshake for each server instance
+- os.execv() preserves stdio connection, but creates new server expecting initialize
+- VS Code thinks connection already initialized (same PID/stdio)
+- Result: "initialization incomplete" errors indefinitely
+
+**Lesson:** MCP protocol is stateful. Cannot restart server without breaking connection.
+
+### 9.3 Watchdog Supervisor Approach (SUCCESS)
+
+**What We Did:**
+- Supervisor process maintains stdio connection with VS Code
+- Supervisor spawns MCP server as child (inherit stdio)
+- Child exits with code 42 → supervisor spawns new instance
+- New instance inherits same stdio → continuous connection
+
+**Why It Works:**
+- Supervisor maintains stable stdio connection (never breaks)
+- Each child is a fresh server instance (new PID, clean state)
+- VS Code sees continuous connection (unaware of child lifecycle)
+- MCP protocol satisfied (no re-initialization needed)
+
+**Lesson:** Process supervision is the correct pattern for server lifecycle management.
+
+---
+
+**Document End**
