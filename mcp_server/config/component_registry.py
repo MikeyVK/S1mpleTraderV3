@@ -8,7 +8,7 @@ Cross-references: None (leaf config)
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import yaml  # type: ignore
+import yaml
 from pydantic import BaseModel, Field, field_validator
 
 from mcp_server.core.errors import ConfigError
