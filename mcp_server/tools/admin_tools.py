@@ -61,6 +61,24 @@ def _create_audit_props(
     return props
 
 
+def _parse_marker_file(marker_path: Path) -> dict[str, Any]:
+    """Parse restart marker file.
+
+    Args:
+        marker_path: Path to marker file
+
+    Returns:
+        Dictionary with marker data
+
+    Raises:
+        OSError: If file cannot be read
+        json.JSONDecodeError: If JSON is invalid
+    """
+    with marker_path.open(encoding="utf-8") as f:
+        marker_data: dict[str, Any] = json.load(f)
+        return marker_data
+
+
 class RestartServerInput(BaseModel):
     """Input for RestartServerTool."""
 
@@ -257,8 +275,7 @@ def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:
 
     # Parse marker
     try:
-        with marker_path.open(encoding="utf-8") as f:
-            marker_data = json.load(f)
+        marker_data = _parse_marker_file(marker_path)
     except (OSError, json.JSONDecodeError) as e:
         return {
             "restarted": False,
