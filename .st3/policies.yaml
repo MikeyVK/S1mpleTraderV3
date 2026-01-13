@@ -18,11 +18,11 @@ operations:
     blocked_patterns:
       # Glob patterns for paths where create_file is NOT allowed
       # These paths MUST use scaffold operation instead
-      - "backend/**/*.py"
-      - "mcp_server/tools/**/*.py"
-      - "mcp_server/resources/**/*.py"
-      - "mcp_server/adapters/**/*.py"
-      - "mcp_server/workers/**/*.py"
+      - "backend/**"
+      - "mcp_server/tools/**"
+      - "mcp_server/resources/**"
+      - "mcp_server/adapters/**"
+      - "mcp_server/workers/**"
     allowed_extensions:
       # File extensions allowed for create_file operation
       # Empty list means: all extensions allowed
