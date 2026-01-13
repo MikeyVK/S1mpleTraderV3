@@ -212,7 +212,73 @@ if any(message.startswith(prefix) for prefix in tdd_prefixes):
 
 ---
 
-### 2.3 Hardcoded Conventions Summary
+### 2.3 Git Tool Conventions
+
+**File:** `mcp_server/tools/git_tools.py` (200+ lines)
+
+#### Convention 7: Branch Type Regex (Line 153)
+```python
+match = re.search(r"(?:feature|fix|refactor|docs)/(\d+)-", branch_name)
+```
+
+**Impact:**
+- Hardcoded branch type regex for issue number extraction
+- Must be kept in sync with Convention #1 (branch_types list)
+- Adding new branch type requires updating regex pattern
+
+**Usage:** Helper function to parse issue numbers from branch names
+
+---
+
+#### Convention 8: Commit Prefix Detection (Lines 173-179)
+```python
+# Detect prefix from commit message
+if message.startswith("test:"):
+    prefix = "test"
+elif message.startswith("feat:"):
+    prefix = "feat"
+elif message.startswith("refactor:"):
+    prefix = "refactor"
+elif message.startswith("docs:"):
+    prefix = "docs"
+```
+
+**Impact:**
+- Hardcoded prefix detection logic (duplicates GitManager prefix_map)
+- Must be kept in sync with Convention #3 (commit_prefix_map)
+- Adding new prefix requires updating if-elif chain
+
+**Usage:** Parse commit messages to extract prefix type
+
+---
+
+### 2.4 PR Tool Conventions
+
+**File:** `mcp_server/tools/pr_tools.py`, `mcp_server/dtos/pr_dto.py`
+
+#### Convention 9-11: Default Base Branch "main"
+```python
+# pr_tools.py Line 69
+def create_pr(title: str, body: str, head: str, base: str = "main", draft: bool = False):
+
+# pr_tools.py Line 143
+def merge_pr(pr_number: int, merge_method: str = "merge", commit_message: str | None = None):
+    # ... uses "main" as implicit base
+
+# pr_dto.py Line 17
+base: str = Field(default="main", description="Target branch")
+```
+
+**Impact:**
+- Hardcoded "main" as default base branch (3 locations)
+- Organizations using `master`, `develop`, or `trunk` must always override
+- Inconsistent with Convention #4 (protected_branches includes main, master, develop)
+
+**Usage:** PR creation and merging default behavior
+
+---
+
+### 2.5 Hardcoded Conventions Summary
 
 | ID | Convention | Location | Type | Current Values | Extensibility Blocked |
 |----|-----------|----------|------|----------------|----------------------|
@@ -222,13 +288,31 @@ if any(message.startswith(prefix) for prefix in tdd_prefixes):
 | 4 | Protected Branches | `git_manager.py:206` | List | `["main", "master", "develop"]` | Cannot protect `staging`, `production` |
 | 5 | Branch Name Pattern | `git_manager.py:46` | Regex | `r"^[a-z0-9-]+$"` (kebab-case) | Cannot use snake_case, camelCase |
 | 6 | TDD Commit Prefixes | `policy_engine.py:123` | Tuple | `("red:", "green:", "refactor:", "docs:")` | Cannot customize prefix validation |
+| 7 | Branch Type Regex | `git_tools.py:153` | Regex | `r"(?:feature\|fix\|refactor\|docs)/(\d+)-"` | Must sync with Convention #1 |
+| 8 | Commit Prefix Detection | `git_tools.py:173-179` | If-elif chain | `test:`, `feat:`, `refactor:`, `docs:` | Must sync with Convention #3 |
+| 9 | Default Base Branch (PR create) | `pr_tools.py:69` | String | `"main"` | Cannot default to `master`/`develop` |
+| 10 | Default Base Branch (PR merge) | `pr_tools.py:143` | String | `"main"` (implicit) | Cannot default to `master`/`develop` |
+| 11 | Default Base Branch (PR DTO) | `pr_dto.py:17` | String | `"main"` | Cannot default to `master`/`develop` |
 
-**CRITICAL FINDING:** Convention #3 and #6 are **INCONSISTENT**:
-- GitManager generates: `test:`, `feat:`, `refactor:`, `docs:`
-- PolicyEngine validates: `red:`, `green:`, `refactor:`, `docs:`
-- Result: Commits created by `commit_tdd_phase("red", "...")` would be **BLOCKED** by PolicyEngine!
+**Total Hardcoded Conventions:** 11 (6 original + 5 new findings)
 
-**Root Cause:** TDD phase → prefix mapping lives in GitManager, but PolicyEngine validates against phase names directly. This is a **latent bug** - PolicyEngine likely not enforcing commit validation yet (Issue #TBD: Policy Enforcement).
+**CRITICAL FINDINGS:**
+
+1. **Prefix Inconsistency Bug (Convention #3 vs #6):**
+   - GitManager generates: `test:`, `feat:`, `refactor:`, `docs:`
+   - PolicyEngine validates: `red:`, `green:`, `refactor:`, `docs:`
+   - Result: Commits created by `commit_tdd_phase("red", "...")` would be **BLOCKED** by PolicyEngine!
+   - Root Cause: TDD phase → prefix mapping lives in GitManager, but PolicyEngine validates against phase names directly
+
+2. **DRY Violations:**
+   - Convention #1 (branch types list) duplicated in Convention #7 (regex)
+   - Convention #3 (prefix mapping) duplicated in Convention #8 (detection logic)
+   - Convention #9-11 (default base branch) hardcoded in 3 separate locations
+
+3. **Synchronization Risk:**
+   - Adding new branch type requires updating 2 locations (list + regex)
+   - Adding new commit prefix requires updating 3 locations (mapping + validation + detection)
+   - Changing default base branch requires updating 3 locations (2 tools + 1 DTO)
 
 ---
 

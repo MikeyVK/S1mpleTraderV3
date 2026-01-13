@@ -116,23 +116,24 @@ class RestartServerTool(BaseTool):
         2. Agent calls restart_server(reason="...")
         3. Server logs restart to audit trail
         4. Server writes restart marker file
-        5. Server exits with code 42 (restart requested)
-        6. Parent process (VS Code) restarts server
-        7. Agent calls verify_server_restarted() to confirm
-        8. Agent continues with testing/next cycle
+        5. Server returns success response
+        6. Server schedules exit with code 42 (delayed)
+        7. Parent process (VS Code) detects exit and restarts server
+        8. Agent calls verify_server_restarted() to confirm
+        9. Agent continues with testing/next cycle
 
         Args:
             params: RestartServerInput with reason field
 
         Returns:
-            ToolResult (may not be delivered if exit is immediate).
-            Agent should use verify_server_restarted() to confirm restart.
+            ToolResult with success message before server exits.
 
         Note:
             - Development tool only, not for production use
             - Parent process must handle exit code 42 by restarting server
             - All audit logs flushed before exit (zero data loss)
             - Restart marker written to .st3/.restart_marker
+            - Server exits 500ms after returning response (graceful)
         """
         logger = get_logger("tools.admin")
 
@@ -176,33 +177,48 @@ class RestartServerTool(BaseTool):
             }
         )
 
-        # Flush all output (ensure audit logs persisted)
-        sys.stdout.flush()
-        sys.stderr.flush()
+        # Schedule delayed exit in background
+        async def delayed_exit() -> None:
+            """Exit after short delay to allow response to be sent."""
+            await asyncio.sleep(0.5)  # 500ms delay for response to be sent
 
-        # Force flush logging handlers
-        for handler in logging.root.handlers:
-            handler.flush()
+            # Flush all output (ensure audit logs persisted)
+            sys.stdout.flush()
+            sys.stderr.flush()
 
-        # Audit log: Exiting
-        logger.info(
-            "Server exiting for restart",
-            extra={
-                "props": _create_audit_props(
-                    reason=params.reason,
-                    event_type="server_exiting_for_restart",
-                    exit_code=42
-                )
-            }
+            # Force flush logging handlers
+            for handler in logging.root.handlers:
+                handler.flush()
+
+            # Audit log: Exiting
+            logger.info(
+                "Server exiting for restart",
+                extra={
+                    "props": _create_audit_props(
+                        reason=params.reason,
+                        event_type="server_exiting_for_restart",
+                        exit_code=42
+                    )
+                }
+            )
+
+            # Final flush
+            sys.stdout.flush()
+            sys.stderr.flush()
+
+            # Exit with code 42 = "please restart me"
+            # Parent process should detect this and restart server
+            sys.exit(42)
+
+        # Start background exit task (fire-and-forget)
+        asyncio.create_task(delayed_exit())
+
+        # Return success immediately (before exit happens)
+        return ToolResult.success(
+            f"Server restart scheduled (reason: {params.reason}). "
+            f"Server will exit with code 42 in 500ms. "
+            f"Parent process should restart server automatically."
         )
-
-        # Final flush
-        sys.stdout.flush()
-        sys.stderr.flush()
-
-        # Exit with code 42 = "please restart me"
-        # Parent process should detect this and restart server
-        sys.exit(42)
 
 
 # Convenience function for backward compatibility and testing
