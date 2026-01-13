@@ -70,33 +70,24 @@
 
 ### 1.3 Configuration Files Overview
 
-**Completed (5 configs in `.st3/` directory):**
+**Workspace Configs (`.st3/` directory):**
 1. ✅ `.st3/workflows.yaml` - Workflow definitions (Issue #50)
-2. ✅ `.st3/labels.yaml` - GitHub label definitions (pre-existing)
-3. ✅ `.st3/quality.yaml` - Quality gate rules (pre-existing)
-4. ✅ `.st3/components.yaml` - Component registry (Issue #54 - NOT in `.st3/` but `mcp_server/config/`)
-5. ✅ `.st3/policies.yaml` - Operation policies (Issue #54 - NOT in `.st3/` but `mcp_server/config/`)
-6. ✅ `.st3/project_structure.yaml` - Directory structure (Issue #54 - NOT in `.st3/` but `mcp_server/config/`)
+2. ✅ `.st3/labels.yaml` - GitHub label definitions
+3. ✅ `.st3/quality.yaml` - Quality gate rules
+4. ⏳ `.st3/git.yaml` - Git conventions (Issue #55 - THIS ISSUE)
+5. ⏳ `.st3/documents.yaml` - Document templates (Issue #56)
+6. ⏳ `.st3/constants.yaml` - Magic numbers & regex patterns (Issue #57)
 
-**⚠️ CRITICAL DISCOVERY:** Issue #54 configs are NOT in `.st3/` directory!
+**MCP Server Configs (`mcp_server/config/` directory):**
+- `components.yaml` - Component registry
+- `policies.yaml` - Operation policies
+- `project_structure.yaml` - Directory structure
 
-**Actual Issue #54 Config Locations (Confirmed via git history):**
-```
-mcp_server/config/components.yaml        ❌ NOT in .st3/
-mcp_server/config/policies.yaml         ❌ NOT in .st3/
-mcp_server/config/project_structure.yaml ❌ NOT in .st3/
-```
+**Location Pattern:**
+- **Workspace configs** (.st3/): User-facing configuration (workflows, git, quality gates, labels)
+- **Server configs** (mcp_server/config/): Internal MCP server behavior (scaffolding, policies, validation)
 
-**Location Question for Issue #55:** Should `git.yaml` be in:
-- A) `.st3/git.yaml` (follows Issue #50/labels/quality pattern)
-- B) `mcp_server/config/git.yaml` (follows Issue #54 pattern)
-
-**Research Note:** config_location_investigation.md (Issue #54) documented this decision but location still inconsistent across Epic #49.
-
-**Planned (3 configs):**
-7. ⏳ `.st3/git.yaml` - Git conventions (Issue #55 - THIS ISSUE)
-8. ⏳ `.st3/documents.yaml` - Document templates (Issue #56)
-9. ⏳ `.st3/constants.yaml` - Magic numbers & regex patterns (Issue #57)
+**Decision for Issue #55:** Use `.st3/git.yaml` (workspace-level configuration)
 
 ---
 
