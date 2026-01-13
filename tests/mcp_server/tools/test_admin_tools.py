@@ -203,7 +203,8 @@ def test_restart_uses_os_execv_not_sys_exit(tmp_path, monkeypatch):
     - Proper in-process restart without exit code
     """
     import sys
-    from mcp_server.tools.admin_tools import restart_server
+    import asyncio
+    from mcp_server.tools.admin_tools import RestartServerTool, RestartServerInput
 
     # Track what was called
     execv_calls = []
@@ -218,16 +219,34 @@ def test_restart_uses_os_execv_not_sys_exit(tmp_path, monkeypatch):
         exit_calls.append(code)
         raise SystemExit(code)
 
+    async def mock_sleep(seconds):
+        # Fast-forward sleep for testing
+        pass
+
     # Apply mocks
     monkeypatch.setattr("os.execv", mock_execv)
     monkeypatch.setattr("sys.exit", mock_exit)
+    monkeypatch.setattr("asyncio.sleep", mock_sleep)
 
     # Change to tmp directory (for marker file)
     monkeypatch.chdir(tmp_path)
 
-    # Call restart - should use execv, not sys.exit
+    # Execute tool (async) - should schedule os.execv, not sys.exit
+    tool = RestartServerTool()
+    params = RestartServerInput(reason="test os.execv restart")
+    
+    # Run the tool and wait for background task
+    async def run_test():
+        result = await tool.execute(params)
+        # Wait a bit for background task to start
+        await asyncio.sleep(0.01)
+        # Process any pending tasks
+        await asyncio.sleep(0)
+        return result
+    
+    # Execute and expect SystemExit from mock_execv
     with pytest.raises(SystemExit) as exc_info:
-        restart_server("test os.execv restart")
+        asyncio.run(run_test())
 
     # Should exit cleanly (from mock_execv)
     assert not exc_info.value.code

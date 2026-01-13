@@ -177,9 +177,9 @@ class RestartServerTool(BaseTool):
             }
         )
 
-        # Schedule delayed exit in background
-        async def delayed_exit() -> None:
-            """Exit after short delay to allow response to be sent."""
+        # Schedule delayed restart in background
+        async def delayed_restart() -> None:
+            """Restart after short delay to allow response to be sent."""
             await asyncio.sleep(0.5)  # 500ms delay for response to be sent
 
             # Flush all output (ensure audit logs persisted)
@@ -190,14 +190,14 @@ class RestartServerTool(BaseTool):
             for handler in logging.root.handlers:
                 handler.flush()
 
-            # Audit log: Exiting
+            # Audit log: Restarting
             logger.info(
-                "Server exiting for restart",
+                "Server restarting via os.execv",
                 extra={
                     "props": _create_audit_props(
                         reason=params.reason,
-                        event_type="server_exiting_for_restart",
-                        exit_code=42
+                        event_type="server_restarting",
+                        method="os.execv"
                     )
                 }
             )
@@ -206,18 +206,21 @@ class RestartServerTool(BaseTool):
             sys.stdout.flush()
             sys.stderr.flush()
 
-            # Exit with code 42 = "please restart me"
-            # Parent process should detect this and restart server
-            sys.exit(42)
+            # Replace current process with new Python interpreter instance
+            # This preserves PID and stdio connections (no exit code needed)
+            python_exe = sys.executable
+            args = [python_exe, "-m", "mcp_server"]
+            
+            # os.execv replaces the current process - no return from this call
+            os.execv(python_exe, args)
 
-        # Start background exit task (fire-and-forget)
-        asyncio.create_task(delayed_exit())
+        # Start background restart task (fire-and-forget)
+        asyncio.create_task(delayed_restart())
 
-        # Return success immediately (before exit happens)
+        # Return success immediately (before restart happens)
         return ToolResult.text(
             f"Server restart scheduled (reason: {params.reason}). "
-            f"Server will exit with code 42 in 500ms. "
-            f"Parent process should restart server automatically."
+            f"Server will restart in-process via os.execv() in 500ms."
         )
 
 
