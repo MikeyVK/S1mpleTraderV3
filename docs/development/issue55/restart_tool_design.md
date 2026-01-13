@@ -776,6 +776,45 @@ docs: update restart_tool_design.md with final implementation notes
 
 ## 10. Next Steps
 
+## 11. Implementation Lessons Learned
+
+### 11.1 Exit Code 42 + PowerShell Wrapper Issues
+
+**Initial Approach:**
+- Tool calls `sys.exit(42)` after 500ms delay
+- PowerShell wrapper script detects exit code 42
+- Wrapper restarts Python process
+
+**Problems Discovered:**
+1. **Delayed Detection:** PowerShell `Start-Process -Wait` only detects process exit on next stdio operation
+   - Exit at 18:04:20, detection at 19:06:48 (2+ minutes later)
+   - Restart triggered by agent's next tool call, not automatically
+
+2. **Stdio Blocking:** Wrapper cannot properly pass through stdin/stdout for JSON-RPC
+   - MCP protocol requires clean stdio channel
+   - Any wrapper interference breaks communication
+
+3. **Tool Call Hangs:** Agent's tool call during restart never completes
+   - Server exits mid-call
+   - Agent waits indefinitely for response
+   - User must cancel tool call
+
+**Conclusion:** External wrapper approach is fundamentally flawed for MCP stdio protocol.
+
+### 11.2 Alternative: os.execv() In-Process Restart
+
+**Concept:**
+- Replace current process with new Python interpreter using `os.execv()`
+- No exit code, no wrapper needed
+- Preserves PID and stdio file descriptors
+- Server "restarts" by replacing itself
+
+**Implementation Plan (TDD):**
+1. RED: Write test mocking os.execv() to verify it's called correctly
+2. GREEN: Change sys.exit(42) to os.execv()
+3. REFACTOR: Clean up wrapper-related code
+4. Manual integration test to verify real restart works
+
 ### 10.1 Immediate Actions
 
 1. **Commit this design document:**
