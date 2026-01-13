@@ -229,4 +229,3 @@ class PolicyEngine:
             f"{self._config_dir}/policies.yaml"
         )
         # DirectoryResolver loads ProjectStructureConfig internally
-
