@@ -660,28 +660,33 @@ pytest tests/mcp_server/tools/test_admin_tools.py
 
 ## 8. Implementation Checklist
 
+## 8. Implementation Checklist
+
 **Phase 1: Update RestartServerTool** ✅ COMPLETE
-- [x] Supervisor implemented and tested
-- [x] Supervisor reference document created
-- [ ] Update RestartServerTool to use sys.exit(42) (instead of os.execv)
-- [ ] Update delayed_restart → delayed_exit
-- [ ] Update audit log event names
-- [ ] Update tool response messages
-- [ ] Update tests for sys.exit(42)
+- [x] Supervisor implemented and tested (5/5 tests passing)
+- [x] Supervisor reference document created (850+ lines)
+- [x] Update RestartServerTool to use sys.exit(42) (instead of os.execv)
+- [x] Update delayed_restart → delayed_exit
+- [x] Update audit log event names (server_exiting_for_restart)
+- [x] Update tool response messages (mentions exit code 42)
+- [x] Update tests for sys.exit(42) (all 6/6 tests passing)
+- [x] Commit: b18d609677280e8949fef4e1dd82c20ca064f355
 
-**Phase 2: Update mcp.json**
-- [ ] Change command to supervisor: `["-m", "mcp_server.supervisor"]`
-- [ ] Remove obsolete PowerShell wrapper configuration
+**Phase 2: Update mcp.json** ✅ COMPLETE
+- [x] Change command to supervisor: `["-m", "mcp_server.supervisor"]`
+- [x] Remove obsolete PowerShell wrapper configuration
+- [x] Verify supervisor starts correctly (manual test passed)
 
-**Phase 3: Integration Testing**
+**Phase 3: Integration Testing** 🔄 IN PROGRESS
+- [x] Supervisor starts MCP server successfully
 - [ ] Manual test: restart_server → verify logs → health_check
 - [ ] Verify restart timing < 2 seconds
 - [ ] Verify VS Code sees continuous connection
 - [ ] Verify audit trail complete
 
-**Phase 4: Cleanup**
+**Phase 4: Cleanup** ⏳ PENDING
 - [ ] Delete start_mcp_server.ps1 (obsolete)
-- [ ] Update this design document (mark COMPLETE)
+- [ ] Update this design document (mark Phase 3 complete)
 - [ ] Push all commits to remote
 
 ---
