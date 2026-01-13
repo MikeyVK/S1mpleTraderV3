@@ -214,7 +214,7 @@ class RestartServerTool(BaseTool):
         asyncio.create_task(delayed_exit())
 
         # Return success immediately (before exit happens)
-        return ToolResult.success(
+        return ToolResult.text(
             f"Server restart scheduled (reason: {params.reason}). "
             f"Server will exit with code 42 in 500ms. "
             f"Parent process should restart server automatically."
