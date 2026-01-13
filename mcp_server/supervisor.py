@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import time
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,6 +25,9 @@ def log(message: str) -> None:
 
     MCP protocol requires clean stdout for JSON-RPC messages.
     All supervisor logging goes to stderr.
+
+    Args:
+        message: Log message to write to stderr
     """
     timestamp = datetime.now(UTC).isoformat()
     print(f"[{timestamp}] [SUPERVISOR] {message}", file=sys.stderr, flush=True)
@@ -33,8 +37,16 @@ def run_server() -> int:
     """
     Start MCP server and monitor exit codes.
 
+    Implements lifecycle management:
+    - Spawns MCP server as child process
+    - Monitors exit codes
+    - Restarts on exit 42 (requested restart)
+    - Recovers from crashes (exit >0)
+    - Throttles rapid restarts (max 1/second)
+    - Applies exponential backoff for repeated crashes
+
     Returns:
-        int: Exit code to propagate (0 = clean shutdown, >0 = error)
+        int: Exit code to propagate (0 = clean shutdown)
     """
     restart_count = 0
     last_restart = None
@@ -44,6 +56,9 @@ def run_server() -> int:
         # Child inherits supervisor's stdio (VS Code pipe)
         log(f"Starting MCP server (restart #{restart_count})")
 
+        # Note: subprocess.Popen without 'with' is intentional here
+        # We need the process handle to persist across loop iterations
+        # pylint: disable=consider-using-with
         child = subprocess.Popen(
             [sys.executable, "-m", "mcp_server"],
             stdin=sys.stdin,    # Inherit VS Code stdin
@@ -59,7 +74,7 @@ def run_server() -> int:
         log(f"MCP server exited (code: {exit_code})")
 
         # Handle exit codes
-        if exit_code == 0:
+        if exit_code == 0:  # pylint: disable=use-implicit-booleaness-not-comparison-to-zero
             # Clean shutdown - supervisor exits
             log("Clean shutdown requested, supervisor exiting")
             return 0
@@ -112,9 +127,9 @@ def main() -> None:
     except KeyboardInterrupt:
         log("Keyboard interrupt received, shutting down")
         sys.exit(0)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
+        # Broad catch is intentional - supervisor must never crash
         log(f"FATAL ERROR: {e}")
-        import traceback
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)
 
