@@ -22,6 +22,20 @@ from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
 
+# Constants
+RESTART_MARKER_PATH = Path(".st3/.restart_marker")
+
+
+# Helper functions
+def _get_restart_marker_path() -> Path:
+    """Get the restart marker file path.
+
+    Returns:
+        Path to .st3/.restart_marker file
+    """
+    return RESTART_MARKER_PATH
+
+
 class RestartServerInput(BaseModel):
     """Input for RestartServerTool."""
 
@@ -94,7 +108,7 @@ class RestartServerTool(BaseTool):
         )
 
         # Write restart marker file (for verification)
-        marker_path = Path(".st3/.restart_marker")
+        marker_path = _get_restart_marker_path()
         marker_path.parent.mkdir(exist_ok=True)
         marker_content = {
             "timestamp": restart_time.timestamp(),
