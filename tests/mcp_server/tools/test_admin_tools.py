@@ -192,3 +192,50 @@ def test_verify_server_restarted_old_marker():
 
     # Cleanup
     marker_path.unlink(missing_ok=True)
+
+
+def test_restart_uses_os_execv_not_sys_exit(tmp_path, monkeypatch):
+    """RED: Test that restart tool uses os.execv() instead of sys.exit().
+
+    Verifies:
+    - os.execv is called with correct Python executable and args
+    - sys.exit is NOT called (replaced by execv)
+    - Proper in-process restart without exit code
+    """
+    import sys
+    from mcp_server.tools.admin_tools import restart_server
+
+    # Track what was called
+    execv_calls = []
+    exit_calls = []
+
+    def mock_execv(path, args):
+        execv_calls.append({"path": path, "args": args})
+        # Don't actually replace process - raise SystemExit to simulate restart
+        raise SystemExit(0)
+
+    def mock_exit(code):
+        exit_calls.append(code)
+        raise SystemExit(code)
+
+    # Apply mocks
+    monkeypatch.setattr("os.execv", mock_execv)
+    monkeypatch.setattr("sys.exit", mock_exit)
+
+    # Change to tmp directory (for marker file)
+    monkeypatch.chdir(tmp_path)
+
+    # Call restart - should use execv, not sys.exit
+    with pytest.raises(SystemExit) as exc_info:
+        restart_server("test os.execv restart")
+
+    # Should exit cleanly (from mock_execv)
+    assert not exc_info.value.code
+
+    # Verify os.execv was called with correct arguments
+    assert len(execv_calls) == 1, "os.execv should be called once"
+    assert execv_calls[0]["path"] == sys.executable
+    assert execv_calls[0]["args"] == [sys.executable, "-m", "mcp_server"]
+
+    # Verify sys.exit was NOT called
+    assert not exit_calls, "sys.exit should not be called (use os.execv instead)"
