@@ -6,7 +6,7 @@ Cross-references: None (leaf config)
 """
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, ClassVar
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -128,8 +128,8 @@ class ComponentRegistryConfig(BaseModel):
         ..., description="Component type definitions keyed by type_id"
     )
 
-    # Singleton pattern
-    _instance: Optional["ComponentRegistryConfig"] = None
+    # Singleton pattern - use ClassVar to prevent Pydantic field interpretation
+    singleton_instance: ClassVar[Optional["ComponentRegistryConfig"]] = None
 
     @classmethod
     def from_file(
@@ -147,8 +147,8 @@ class ComponentRegistryConfig(BaseModel):
             ConfigError: If file not found or YAML invalid
         """
         # Return cached instance if exists
-        if cls._instance is not None:
-            return cls._instance
+        if cls.singleton_instance is not None:
+            return cls.singleton_instance
 
         # Load and parse YAML
         path = Path(config_path)
@@ -186,13 +186,13 @@ class ComponentRegistryConfig(BaseModel):
                 ) from e
 
         # Create and cache instance
-        cls._instance = cls(components=components)
-        return cls._instance
+        cls.singleton_instance = cls(components=components)
+        return cls.singleton_instance
 
     @classmethod
     def reset_instance(cls) -> None:
         """Reset singleton instance (for testing only)."""
-        cls._instance = None
+        cls.singleton_instance = None
 
     def get_component(self, type_id: str) -> ComponentDefinition:
         """Get component definition by type ID.
