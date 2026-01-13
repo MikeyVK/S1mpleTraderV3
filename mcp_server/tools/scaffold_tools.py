@@ -4,6 +4,8 @@ from typing import Any, Callable, Awaitable, cast
 
 from pydantic import BaseModel, Field
 
+from mcp_server.config.component_registry import ComponentRegistryConfig
+from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
@@ -98,8 +100,19 @@ class ScaffoldComponentTool(BaseTool):
     description = "Generate a new component from template (dto, worker, adapter, manager, tool)"
     args_model = ScaffoldComponentInput
 
-    def __init__(self, renderer: JinjaRenderer | None = None) -> None:
+    def __init__(
+        self,
+        renderer: JinjaRenderer | None = None,
+        config_dir: str = ".st3"
+    ) -> None:
         self.renderer = renderer or JinjaRenderer()
+
+        # Load config foundation (Issue #54)
+        self._config = ComponentRegistryConfig.from_file(
+            f"{config_dir}/components.yaml"
+        )
+        self._directory_resolver = DirectoryPolicyResolver()
+
         # Initialize component scaffolders map
         # Cast to ComponentScaffolder to satisfy Protocol typing
         self.scaffolders: dict[str, ComponentScaffolder] = {
@@ -114,6 +127,43 @@ class ScaffoldComponentTool(BaseTool):
             "generic": cast(ComponentScaffolder, GenericScaffolder(self.renderer)),
         }
         self.test_scaffolder = TestScaffolder(self.renderer)
+
+    def _validate_component_type(self, component_type: str) -> None:
+        """Validate component type against ComponentRegistryConfig.
+
+        Args:
+            component_type: Type to validate
+
+        Raises:
+            ValidationError: If component type not in config
+        """
+        if not self._config.has_component_type(component_type):
+            available = self._config.get_available_types()
+            raise ValidationError(
+                f"Unknown component type: '{component_type}'",
+                hints=[f"Available types: {', '.join(available)}"]
+            )
+
+    def _validate_path(self, component_type: str, output_path: str) -> None:
+        """Validate path allows component type via DirectoryPolicyResolver.
+
+        Args:
+            component_type: Component type to validate
+            output_path: Path where component will be created
+
+        Raises:
+            ValidationError: If component type not allowed in directory
+        """
+        dir_policy = self._directory_resolver.resolve(output_path)
+
+        if not dir_policy.allows_component_type(component_type):
+            raise ValidationError(
+                f"Component type '{component_type}' not allowed in "
+                f"'{dir_policy.path}'",
+                hints=[
+                    f"Allowed types: {', '.join(dir_policy.allowed_component_types or ['all'])}"
+                ]
+            )
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -132,8 +182,16 @@ class ScaffoldComponentTool(BaseTool):
             "generic": self._scaffold_generic,
         }
 
+        # Validate component type against config (Issue #54)
+        self._validate_component_type(params.component_type)
+
+        # Validate path allows component type (Issue #54)
+        if params.output_path:
+            self._validate_path(params.component_type, params.output_path)
+
         handler = handlers.get(params.component_type)
         if not handler:
+            # Should not reach here after _validate_component_type
             raise ValidationError(
                 f"Unknown component type: {params.component_type}",
                 hints=[

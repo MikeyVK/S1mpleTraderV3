@@ -1,0 +1,122 @@
+# Project Structure Configuration
+# Purpose: Define directory structure and file policies
+# Used by: DirectoryPolicyResolver for path validation
+# Cross-references: components.yaml (validates allowed_component_types exist)
+
+directories:
+  backend:
+    parent: null  # Top-level directory
+    description: "Backend application code"
+    allowed_component_types:
+      - dto
+      - worker
+      - adapter
+      - interface
+      - service
+    allowed_extensions:
+      - ".py"
+    require_scaffold_for:
+      - "**/*.py"  # All Python files in backend must be scaffolded
+
+  backend/dtos:
+    parent: backend
+    description: "Data Transfer Objects"
+    allowed_component_types:
+      - dto  # Override: Only DTOs allowed in this subdirectory
+    # Inherits allowed_extensions from parent (implicit)
+    # Inherits require_scaffold_for from parent (cumulative)
+
+  backend/workers:
+    parent: backend
+    description: "Domain operation workers"
+    allowed_component_types:
+      - worker
+
+  backend/adapters:
+    parent: backend
+    description: "External system adapters"
+    allowed_component_types:
+      - adapter
+
+  backend/interfaces:
+    parent: backend
+    description: "Abstract protocol definitions"
+    allowed_component_types:
+      - interface
+
+  backend/services:
+    parent: backend
+    description: "Orchestration and business logic"
+    allowed_component_types:
+      - service
+
+  mcp_server:
+    parent: null
+    description: "MCP platform code"
+    allowed_component_types:
+      - tool
+      - resource
+      - schema
+    allowed_extensions:
+      - ".py"
+    require_scaffold_for:
+      - "tools/**/*.py"
+      - "resources/**/*.py"
+
+  mcp_server/tools:
+    parent: mcp_server
+    description: "MCP tool implementations"
+    allowed_component_types:
+      - tool
+
+  mcp_server/resources:
+    parent: mcp_server
+    description: "MCP resource providers"
+    allowed_component_types:
+      - resource
+
+  mcp_server/schemas:
+    parent: mcp_server
+    description: "Pydantic validation schemas"
+    allowed_component_types:
+      - schema
+
+  tests:
+    parent: null
+    description: "Test suite"
+    allowed_component_types: []  # No component types (manual test files)
+    allowed_extensions:
+      - ".py"
+    require_scaffold_for: []  # Tests not required to be scaffolded
+
+  docs:
+    parent: null
+    description: "Documentation"
+    allowed_component_types: []
+    allowed_extensions:
+      - ".md"
+      - ".rst"
+    require_scaffold_for: []
+
+  .st3:
+    parent: null
+    description: "Platform configuration"
+    allowed_component_types: []
+    allowed_extensions:
+      - ".yaml"
+      - ".yml"
+    require_scaffold_for: []
+
+  scripts:
+    parent: null
+    description: "Utility scripts (no restrictions)"
+    allowed_component_types: []
+    allowed_extensions: []  # All extensions allowed
+    require_scaffold_for: []
+
+  proof_of_concepts:
+    parent: null
+    description: "Experimental code (no restrictions)"
+    allowed_component_types: []
+    allowed_extensions: []
+    require_scaffold_for: []
