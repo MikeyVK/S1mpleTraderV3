@@ -50,6 +50,7 @@ from mcp_server.tools.git_tools import (
 )
 from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.health_tools import HealthCheckTool
+from mcp_server.tools.admin_tools import RestartServerTool
 
 # Tools
 from mcp_server.tools.issue_tools import (
@@ -135,6 +136,7 @@ class MCPServer:
             TemplateValidationTool(),
             # Development tools
             HealthCheckTool(),
+            RestartServerTool(),
             RunTestsTool(),
             CreateFileTool(),
             # Project tools (Phase 0.5)
