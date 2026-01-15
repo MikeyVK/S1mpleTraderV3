@@ -4,9 +4,16 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.config.git_config import GitConfig
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
+
+
+def _get_default_base_branch() -> str:
+    """Factory for default base branch from GitConfig (Convention #9-11)."""
+    git_config = GitConfig.from_file()
+    return git_config.default_base_branch
 
 
 class CreatePRInput(BaseModel):
@@ -14,7 +21,10 @@ class CreatePRInput(BaseModel):
     title: str = Field(..., description="PR title")
     body: str = Field(..., description="PR description")
     head: str = Field(..., description="Source branch")
-    base: str = Field(default="main", description="Target branch")
+    base: str = Field(
+        default_factory=_get_default_base_branch,
+        description="Target branch"
+    )
     draft: bool = Field(default=False, description="Create as draft")
 
 
