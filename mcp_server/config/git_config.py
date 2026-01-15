@@ -100,6 +100,68 @@ class GitConfig(BaseModel):
 
         return self
 
+    # REFACTOR: Helper methods for GitManager integration
+    def has_branch_type(self, branch_type: str) -> bool:
+        """Check if branch_type is valid (Convention #1).
+
+        Args:
+            branch_type: Branch type to check (e.g., "feature", "fix")
+
+        Returns:
+            True if branch_type in allowed types
+        """
+        return branch_type in self.branch_types
+
+    def validate_branch_name(self, name: str) -> bool:
+        """Validate branch name against pattern (Convention #5).
+
+        Args:
+            name: Branch name to validate
+
+        Returns:
+            True if name matches pattern (uses cached compiled regex)
+        """
+        if GitConfig._compiled_pattern is None:
+            # Fallback: compile if not cached (shouldn't happen after validation)
+            GitConfig._compiled_pattern = re.compile(self.branch_name_pattern)
+        return GitConfig._compiled_pattern.match(name) is not None
+
+    def has_phase(self, phase: str) -> bool:
+        """Check if phase is valid TDD phase (Convention #2).
+
+        Args:
+            phase: TDD phase to check (e.g., "red", "green")
+
+        Returns:
+            True if phase in allowed phases
+        """
+        return phase in self.tdd_phases
+
+    def get_prefix(self, phase: str) -> str:
+        """Get commit prefix for TDD phase (Convention #3).
+
+        Args:
+            phase: TDD phase (e.g., "red", "green")
+
+        Returns:
+            Conventional Commit prefix (e.g., "test", "feat")
+
+        Raises:
+            KeyError: If phase not in commit_prefix_map
+        """
+        return self.commit_prefix_map[phase]
+
+    def is_protected(self, branch_name: str) -> bool:
+        """Check if branch is protected (Convention #4).
+
+        Args:
+            branch_name: Branch name to check
+
+        Returns:
+            True if branch is protected (cannot be deleted)
+        """
+        return branch_name in self.protected_branches
+
     @classmethod
     def from_file(cls, path: str = ".st3/git.yaml") -> "GitConfig":
         """Load config from YAML file (singleton pattern).
