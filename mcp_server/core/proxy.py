@@ -221,18 +221,18 @@ class MCPProxy:
                     event_type="server_start_failed",
                     error=str(e))
 
-    def send_to_server(self, message: dict):
-        """Send JSON-RPC message to server.
+    def send_to_server(self, message_line: str):
+        """Send JSON-RPC message line to server.
 
         Args:
-            message: JSON-RPC message dict
+            message_line: Raw JSON-RPC message line (already Unicode-fixed)
         """
         if self.restarting:
             return  # Skip sends during restart
 
         if self.server_process and self.server_process.stdin:
             try:
-                self.server_process.stdin.write(json.dumps(message) + "\n")
+                self.server_process.stdin.write(message_line + "\n")
                 self.server_process.stdin.flush()
             except Exception as e:
                 self.log(f"Send error: {e}", level="ERROR",
@@ -377,8 +377,8 @@ class MCPProxy:
                         )
                         self.init_request = message
 
-                    # Forward to server
-                    self.send_to_server(message)
+                    # Forward to server (send fixed line, not re-serialized dict)
+                    self.send_to_server(fixed_line)
 
                 except json.JSONDecodeError as e:
                     self.log(f"Invalid JSON from VS Code: {e}", level="WARNING",
