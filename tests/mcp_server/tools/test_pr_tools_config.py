@@ -8,7 +8,7 @@ Convention tested:
 import tempfile
 from pathlib import Path
 
-import yaml
+import yaml  # type: ignore[import-untyped]
 
 from mcp_server.tools.pr_tools import CreatePRInput
 from mcp_server.config.git_config import GitConfig
@@ -41,9 +41,13 @@ class TestPRToolsConfigIntegration:
             "default_base_branch": "develop"  # Custom default
         }
 
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump(custom_config, f)
-            temp_path = f.name
+        with tempfile.NamedTemporaryFile(
+            mode='w',
+            suffix='.yaml',
+            delete=False
+        ) as temp_file:
+            yaml.dump(custom_config, temp_file)
+            temp_path = temp_file.name
 
         try:
             # Load custom config (needed to populate singleton)
@@ -57,10 +61,11 @@ class TestPRToolsConfigIntegration:
                 # base omitted - should use default_base_branch from git.yaml
             )
 
-            # After fix: should use "develop" from git.yaml, not hardcoded "main"
+            # After fix: should use "develop" from git.yaml
             assert pr_input.base == "develop", (
-                f"Expected base='develop' from git.yaml, got '{pr_input.base}'. "
-                "If this fails, the Field default is still hardcoded."
+                f"Expected base='develop' from git.yaml, got "
+                f"'{pr_input.base}'. If this fails, the Field default is "
+                "still hardcoded."
             )
 
         finally:

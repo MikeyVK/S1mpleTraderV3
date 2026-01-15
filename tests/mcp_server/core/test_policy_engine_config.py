@@ -66,17 +66,16 @@ class TestPolicyEngineConfigIntegration:
     def test_commit_rejects_phase_names(self):
         """Test that phase NAMES (red:, green:) are NOT accepted.
 
-        This is the bug: policies.yaml currently has 'red:', 'green:' as prefixes,
-        but GitManager never generates those - it generates 'test:', 'feat:' instead.
+        This is the bug: policies.yaml had 'red:', 'green:' as prefixes,
+        but GitManager never generates those - it generates 'test:', 'feat:'.
+        Convention #6 fix ensures PolicyEngine uses actual commit prefixes.
         """
         # These should be REJECTED (they're phase names, not prefixes)
-        result = self.engine.decide(
+        _ = self.engine.decide(
             operation="commit",
             context={"message": "red: this is a phase name not a prefix"}
         )
-        # After fix, this should FAIL because 'red:' is not in commit_prefix_map.values()
-        # Currently it PASSES because policies.yaml has 'red:' (the bug!)
-        # For now, we document that this is the bug being fixed.
-        # We'll update policies.yaml to use GitConfig-derived prefixes.
+        # After Convention #6 fix, PolicyEngine derives prefixes from GitConfig
+        # which maps red→test, so "red:" is correctly rejected.
         # Test passes because red: happens to also be rejected now that
         # we use GitConfig which maps red->test (not red->red)
