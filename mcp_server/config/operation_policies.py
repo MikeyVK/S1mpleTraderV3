@@ -7,7 +7,7 @@ Cross-references: workflows.yaml (validates allowed_phases exist)
 
 import fnmatch
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import ClassVar, Dict, List, Optional
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -124,8 +124,8 @@ class OperationPoliciesConfig(BaseModel):
         ..., description="Operation policy definitions keyed by operation_id"
     )
 
-    # Singleton pattern
-    _instance: Optional["OperationPoliciesConfig"] = None
+    # Singleton pattern (ClassVar prevents Pydantic v2 ModelPrivateAttr bug)
+    singleton_instance: ClassVar[Optional["OperationPoliciesConfig"]] = None
 
     @classmethod
     def from_file(
@@ -143,8 +143,8 @@ class OperationPoliciesConfig(BaseModel):
             ConfigError: If file not found, YAML invalid, or cross-validation fails
         """
         # Return cached instance if exists
-        if cls._instance is not None:
-            return cls._instance
+        if cls.singleton_instance is not None:
+            return cls.singleton_instance
 
         # Load and parse YAML
         path = Path(config_path)
@@ -186,8 +186,8 @@ class OperationPoliciesConfig(BaseModel):
         instance._validate_phases()
 
         # Cache and return
-        cls._instance = instance
-        return cls._instance
+        cls.singleton_instance = instance
+        return cls.singleton_instance
 
     def _validate_phases(self) -> None:
         """Cross-validate allowed_phases against workflows.yaml.
@@ -219,7 +219,7 @@ class OperationPoliciesConfig(BaseModel):
     @classmethod
     def reset_instance(cls) -> None:
         """Reset singleton instance (for testing only)."""
-        cls._instance = None
+        cls.singleton_instance = None
 
     def get_operation_policy(self, operation_id: str) -> OperationPolicy:
         """Get policy for specific operation.
