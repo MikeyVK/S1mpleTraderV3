@@ -305,5 +305,21 @@
     "skip_reason": null,
     "parent_branch": "main",
     "created_at": "2026-01-13T14:42:41.551792+00:00"
+  },
+  "113": {
+    "issue_title": "MCP Server Hot Restart via Transparent Proxy",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-01-15T15:21:09.931857+00:00"
   }
 }

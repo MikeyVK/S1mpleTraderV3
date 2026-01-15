@@ -30,6 +30,7 @@ Date: 2026-01-15
 Status: Production
 """
 import json
+import os # Added os import
 import re
 import subprocess
 import threading
@@ -59,7 +60,7 @@ def fix_json_surrogates(json_str: str) -> str:
     Returns:
         Fixed JSON string safe for Python json.loads()
     """
-    # Pattern: \\uD800-\\uDBFF (high surrogate) followed by \\uDC00-\\uDFFF (low surrogate)
+    # Pattern: \uD800-\uDBFF (high surrogate) followed by \uDC00-\uDFFF (low surrogate)
     surrogate_pattern = re.compile(
         r'\\u([dD][8-9a-bA-B][0-9a-fA-F]{2})\\u([dD][c-fC-F][0-9a-fA-F]{2})'
     )
@@ -92,6 +93,11 @@ def _setup_utf8_encoding():
     """
     if sys.platform == 'win32' and 'pytest' not in sys.modules:
         import io
+        # Reconfigure stdin to read UTF-8 bytes correctly
+        sys.stdin = io.TextIOWrapper(
+            sys.stdin.buffer, encoding='utf-8',
+            errors='replace'
+        )
         sys.stdout = io.TextIOWrapper(
             sys.stdout.buffer, encoding='utf-8',
             errors='replace', line_buffering=True
@@ -173,11 +179,16 @@ class MCPProxy:
 
             self.log(f"Starting MCP server (restart={is_restart}, attempt={attempt})")
 
+            # Create environment with PYTHONUTF8=1 to ensure server sees UTF-8 streams
+            env = os.environ.copy()
+            env["PYTHONUTF8"] = "1"
+
             self.server_process = subprocess.Popen(
                 [sys.executable, "-m", "mcp_server"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                env=env,
                 text=True,
                 bufsize=1,
                 encoding="utf-8",
@@ -287,6 +298,14 @@ class MCPProxy:
                     threading.Thread(target=self.trigger_restart).start()
                     continue
 
+                # Check for Pydantic validation errors (crash cause)
+                msg_lower = line.lower()
+                if "validation error" in msg_lower or "pydantic" in msg_lower:
+                    self.log(f"Server validation error detected: {line}",
+                            level="ERROR",
+                            event_type="validation_error_detected",
+                            raw_stderr=line)
+
                 # Forward server logs to VS Code Output (stderr)
                 print(f"[SERVER] {line}", file=sys.stderr, flush=True)
 
@@ -352,9 +371,38 @@ class MCPProxy:
                     continue
 
                 try:
-                    # Fix malformed Unicode surrogates from VS Code
-                    fixed_line = fix_json_surrogates(line)
+                    # Parse JSON first
+                    # fixed_line = fix_json_surrogates(line)  # DISABLED: Using generic validation instead
+                    fixed_line = line
                     message = json.loads(fixed_line)
+
+                    # GENERIC VALIDATION: Ensure message content is strictly valid UTF-8
+                    # Python's json.loads allows lone surrogates (e.g. \uD83D), but these 
+                    # can crash downstream libraries/servers trying to encode strict UTF-8.
+                    # We validate by attempting a strict encoding.
+                    try:
+                        json.dumps(message, ensure_ascii=False).encode('utf-8')
+                    except (UnicodeError, ValueError) as e:
+                        # Validation failed - Block message to prevent Server crash
+                        error_msg = f"Message validation failed (encoding error): {e}. Please ensure valid Unicode input."
+                        self.log(error_msg, level="ERROR", event_type="validation_blocked", raw_line=line)
+
+                        # Send error back to client
+                        msg_id = message.get("id")
+                        if msg_id is not None:
+                            err_response = {
+                                "jsonrpc": "2.0",
+                                "id": msg_id,
+                                "error": {
+                                    "code": -32602,
+                                    "message": error_msg
+                                }
+                            }
+                            print(json.dumps(err_response), flush=True)
+                        
+                        continue  # Skip sending to server
+
+                    # Capture initialize request for replay
 
                     # Capture initialize request for replay
                     if message.get("method") == "initialize":
