@@ -30,6 +30,7 @@ Date: 2026-01-15
 Status: Production
 """
 import json
+import re
 import subprocess
 import threading
 import sys
@@ -41,6 +42,46 @@ from datetime import datetime, timezone
 # RESTART_MARKER: Printed to stderr by server to signal restart request
 # Proxy detects this marker and triggers transparent server restart
 RESTART_MARKER = "__MCP_RESTART_REQUEST__"
+
+
+def fix_json_surrogates(json_str: str) -> str:
+    """Fix malformed Unicode surrogate pairs in JSON strings.
+
+    VS Code sometimes sends emoji as broken surrogate pairs (e.g. \\uD83D\\uDE80
+    split across encoding boundaries). This fixes those cases by:
+    1. Finding surrogate pair patterns
+    2. Converting to proper UTF-8
+    3. Re-encoding as valid JSON escape sequences
+
+    Args:
+        json_str: Raw JSON string potentially containing malformed surrogates
+
+    Returns:
+        Fixed JSON string safe for Python json.loads()
+    """
+    # Pattern: \\uD800-\\uDBFF (high surrogate) followed by \\uDC00-\\uDFFF (low surrogate)
+    surrogate_pattern = re.compile(
+        r'\\u([dD][8-9a-bA-B][0-9a-fA-F]{2})\\u([dD][c-fC-F][0-9a-fA-F]{2})'
+    )
+
+    def replace_surrogate_pair(match):
+        high = int(match.group(1), 16)
+        low = int(match.group(2), 16)
+
+        # Convert surrogate pair to Unicode codepoint
+        # Formula: (high - 0xD800) * 0x400 + (low - 0xDC00) + 0x10000
+        codepoint = (high - 0xD800) * 0x400 + (low - 0xDC00) + 0x10000
+
+        # Convert to UTF-8 character
+        try:
+            char = chr(codepoint)
+            # Re-encode as JSON escape sequence (or keep as UTF-8)
+            return char
+        except (ValueError, OverflowError):
+            # Invalid codepoint - replace with Unicode replacement character
+            return '\ufffd'
+
+    return surrogate_pattern.sub(replace_surrogate_pair, json_str)
 
 
 def _setup_utf8_encoding():
@@ -311,7 +352,9 @@ class MCPProxy:
                     continue
 
                 try:
-                    message = json.loads(line)
+                    # Fix malformed Unicode surrogates from VS Code
+                    fixed_line = fix_json_surrogates(line)
+                    message = json.loads(fixed_line)
 
                     # Capture initialize request for replay
                     if message.get("method") == "initialize":
@@ -337,8 +380,9 @@ class MCPProxy:
                     # Forward to server
                     self.send_to_server(message)
 
-                except json.JSONDecodeError:
-                    pass  # Ignore invalid JSON
+                except json.JSONDecodeError as e:
+                    self.log(f"Invalid JSON from VS Code: {e}", level="WARNING",
+                            event_type="json_decode_error")
 
         except KeyboardInterrupt:
             self.log("Interrupted by user", event_type="interrupted")
