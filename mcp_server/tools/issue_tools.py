@@ -36,9 +36,14 @@ class CreateIssueTool(BaseTool):
 
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
+            # Sanitize Unicode to prevent JSON-RPC encoding errors (lone surrogates)
+            # Remove emoji and other problematic Unicode characters
+            title_clean = params.title.encode('ascii', 'ignore').decode('ascii')
+            body_clean = params.body.encode('ascii', 'ignore').decode('ascii')
+
             issue = self.manager.create_issue(
-                title=params.title,
-                body=params.body,
+                title=title_clean,
+                body=body_clean,
                 labels=params.labels,
                 milestone=params.milestone,
                 assignees=params.assignees,

@@ -371,14 +371,29 @@ class MCPServer:
         # and other CRLF issues in the JSON-RPC stream
         stdout = anyio.wrap_file(TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n"))
 
-        async with stdio_server(stdout=stdout) as (read_stream, write_stream):
-            await self.server.run(
-                read_stream,
-                write_stream,
-                self.server.create_initialization_options()
+        try:
+            async with stdio_server(stdout=stdout) as (read_stream, write_stream):
+                await self.server.run(
+                    read_stream,
+                    write_stream,
+                    self.server.create_initialization_options()
+                )
+        except KeyboardInterrupt:
+            lifecycle_logger.info("MCP server interrupted by user")
+        except Exception as e:
+            lifecycle_logger.error(
+                "MCP server crashed: %s",
+                e,
+                exc_info=True,
+                extra={"props": {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e)
+                }}
             )
-
-        lifecycle_logger.info("MCP server shutting down")
+            # Re-raise to ensure proper exit code
+            raise
+        finally:
+            lifecycle_logger.info("MCP server shutting down")
 
     async def shutdown(self) -> None:
         """Shutdown the MCP server gracefully."""
