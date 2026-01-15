@@ -185,7 +185,7 @@ class RestartServerTool(BaseTool):
             and will spawn a new MCP server instance while maintaining the
             stdio connection to VS Code (no re-initialization needed).
             """
-            await asyncio.sleep(0.5)  # 500ms delay for response to be sent
+            await asyncio.sleep(0.1)  # 100ms delay - faster response for response to be sent
 
             # Flush all output (ensure audit logs persisted)
             sys.stdout.flush()
@@ -211,8 +211,13 @@ class RestartServerTool(BaseTool):
             sys.stdout.flush()
             sys.stderr.flush()
 
-            # Exit with code 42 to signal supervisor to restart
-            # Supervisor maintains stdio connection, spawns new child
+
+            # Signal proxy to restart by printing marker
+            print("__MCP_RESTART_REQUEST__", file=sys.stderr, flush=True)
+            sys.stdout.flush()
+            
+            # Exit with code 42 (legacy supervisor support)
+            # Note: Proxy intercepts marker above, exit code ignored
             sys.exit(42)
 
         # Start background exit task (fire-and-forget)
