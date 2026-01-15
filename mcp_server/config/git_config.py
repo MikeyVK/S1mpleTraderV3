@@ -162,6 +162,20 @@ class GitConfig(BaseModel):
         """
         return branch_name in self.protected_branches
 
+    def get_all_prefixes(self) -> list[str]:
+        """Get all commit prefixes with colons (Convention #6).
+
+        Returns:
+            List of prefixes with colons (e.g., ["test:", "feat:", "refactor:", "docs:"])
+
+        Purpose: For PolicyEngine commit message validation.
+        Replaces hardcoded prefix list in policies.yaml.
+        """
+        prefixes = []
+        for prefix_value in self.commit_prefix_map.values():
+            prefixes.append(f"{prefix_value}:")
+        return prefixes
+
     @classmethod
     def from_file(cls, path: str = ".st3/git.yaml") -> "GitConfig":
         """Load config from YAML file (singleton pattern).

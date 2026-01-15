@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
+from mcp_server.config.git_config import GitConfig
 from mcp_server.config.operation_policies import OperationPoliciesConfig
 from mcp_server.core.directory_policy_resolver import (
     DirectoryPolicyResolver,
@@ -38,11 +39,16 @@ class PolicyEngine:
     Delegates to OperationPoliciesConfig and DirectoryPolicyResolver.
     """
 
-    def __init__(self, config_dir: str = ".st3"):
+    def __init__(
+        self,
+        config_dir: str = ".st3",
+        git_config: GitConfig | None = None
+    ):
         """Initialize PolicyEngine with configs.
 
         Args:
             config_dir: Directory containing config files
+            git_config: Optional GitConfig (for testing), defaults to singleton
         """
         self._config_dir = config_dir
 
@@ -51,6 +57,7 @@ class PolicyEngine:
             f"{config_dir}/policies.yaml"
         )
         self._directory_resolver = DirectoryPolicyResolver()
+        self._git_config = git_config or GitConfig.from_file()
 
         # Audit trail
         self._audit_trail: List[Dict[str, Any]] = []
@@ -68,16 +75,15 @@ class PolicyEngine:
         1. Check operation-level phase policy (WANNEER)
         2. If path provided, check directory policy (WAAR)
         3. Combine results + provide reason
-        4. Log to audit trail
 
         Args:
-            operation: Operation identifier (scaffold, create_file, commit)
-            path: File path (optional, for path-based policies)
-            phase: Current phase (optional, for phase-based policies)
-            context: Additional context (component_type, branch, etc.)
+            operation: Operation ID (scaffold, create_file, commit)
+            path: Optional file path (for path-based policies)
+            phase: Optional workflow phase (for phase-based policies)
+            context: Optional context data (e.g., commit message)
 
         Returns:
-            PolicyDecision with allowed/blocked + reason
+            PolicyDecision with allowed/denied + reason
         """
         context = context or {}
 
@@ -85,14 +91,13 @@ class PolicyEngine:
             # Get operation policy
             op_policy = self._operation_config.get_operation_policy(operation)
 
-            # Check phase policy
+            # Check phase (if specified)
             if phase and not op_policy.is_allowed_in_phase(phase):
                 decision = PolicyDecision(
                     allowed=False,
                     reason=f"Operation '{operation}' not allowed in phase '{phase}'. "
                            f"Allowed phases: {op_policy.allowed_phases or 'all'}",
                     operation=operation,
-                    path=path,
                     phase=phase,
                     context=context
                 )
@@ -156,13 +161,16 @@ class PolicyEngine:
                     return decision
 
             # Check commit message (commit operation)
-            if operation == "commit":
+            # Convention #6: Use GitConfig-derived prefixes instead of hardcoded list
+            if operation == "commit" and op_policy.require_tdd_prefix:
                 message = context.get("message", "")
-                if not op_policy.validate_commit_message(message):
+                valid_prefixes = self._git_config.get_all_prefixes()
+
+                if not any(message.startswith(prefix) for prefix in valid_prefixes):
                     decision = PolicyDecision(
                         allowed=False,
                         reason=f"Commit message must start with TDD prefix. "
-                               f"Valid: {op_policy.allowed_prefixes}",
+                               f"Valid: {valid_prefixes}",
                         operation=operation,
                         phase=phase,
                         context=context
@@ -224,8 +232,10 @@ class PolicyEngine:
         """
         # Reset singleton instances
         OperationPoliciesConfig.reset_instance()
+        GitConfig.reset_instance()
         # Reload
         self._operation_config = OperationPoliciesConfig.from_file(
             f"{self._config_dir}/policies.yaml"
         )
+        self._git_config = GitConfig.from_file()
         # DirectoryResolver loads ProjectStructureConfig internally
