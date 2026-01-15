@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import Any
 
 import anyio
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
+from mcp_server.config.git_config import GitConfig
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers import phase_state_engine, project_manager
 from mcp_server.tools.base import BaseTool
@@ -28,13 +29,25 @@ class CreateBranchInput(BaseModel):
     name: str = Field(..., description="Branch name (kebab-case)")
     branch_type: str = Field(
         default="feature",
-        description="Branch type",
-        pattern="^(feature|fix|refactor|docs|epic)$"
+        description="Branch type"
     )
     base_branch: str = Field(
         ...,
         description="Base branch to create from (e.g., 'HEAD', 'main', 'refactor/51-labels-yaml')"
     )
+
+    @field_validator("branch_type")
+    @classmethod
+    def validate_branch_type(cls, value: str) -> str:
+        """Validate branch_type against GitConfig (Convention #7)."""
+        git_config = GitConfig.from_file()
+        if not git_config.has_branch_type(value):
+            valid_types = ", ".join(git_config.branch_types)
+            raise ValueError(
+                f"Invalid branch_type '{value}'. "
+                f"Valid types from git.yaml: {valid_types}"
+            )
+        return value
 
 
 class CreateBranchTool(BaseTool):
@@ -113,8 +126,7 @@ class GitCommitInput(BaseModel):
     """Input for GitCommitTool."""
     phase: str = Field(
         ...,
-        description="TDD phase (red=test, green=feat, refactor, docs)",
-        pattern="^(red|green|refactor|docs)$"
+        description="TDD phase (red=test, green=feat, refactor, docs)"
     )
     message: str = Field(..., description="Commit message (without prefix)")
     files: list[str] | None = Field(
@@ -123,6 +135,19 @@ class GitCommitInput(BaseModel):
             "Optional list of file paths to stage and commit. When omitted, commits all changes."
         )
     )
+
+    @field_validator("phase")
+    @classmethod
+    def validate_phase(cls, value: str) -> str:
+        """Validate phase against GitConfig (Convention #8)."""
+        git_config = GitConfig.from_file()
+        if not git_config.has_phase(value):
+            valid_phases = ", ".join(git_config.tdd_phases)
+            raise ValueError(
+                f"Invalid phase '{value}'. "
+                f"Valid phases from git.yaml: {valid_phases}"
+            )
+        return value
 
 
 class GitCommitTool(BaseTool):

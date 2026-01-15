@@ -176,6 +176,17 @@ class GitConfig(BaseModel):
             prefixes.append(f"{prefix_value}:")
         return prefixes
 
+    def build_branch_type_regex(self) -> str:
+        """Build regex pattern for branch type matching (Convention #7).
+
+        Returns:
+            Regex pattern like "(?:feature|fix|refactor|docs|epic)"
+
+        Purpose: For git_tools to extract issue numbers from branch names.
+        Eliminates DRY violation by deriving from branch_types.
+        """
+        return f"(?:{'|'.join(self.branch_types)})"
+
     @classmethod
     def from_file(cls, path: str = ".st3/git.yaml") -> "GitConfig":
         """Load config from YAML file (singleton pattern).
