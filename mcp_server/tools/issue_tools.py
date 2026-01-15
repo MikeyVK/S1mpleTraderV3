@@ -1,4 +1,5 @@
 """Issue management tools."""
+import unicodedata
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -9,6 +10,27 @@ from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
 IssueState = Literal["open", "closed", "all"]
+
+
+def normalize_unicode(text: str) -> str:
+    """Normalize Unicode text for safe JSON-RPC transmission.
+
+    Preserves emoji and other Unicode while fixing malformed surrogates.
+    """
+    # Step 1: Encode to UTF-8 bytes, handling surrogates
+    try:
+        utf8_bytes = text.encode('utf-8', errors='surrogatepass')
+    except UnicodeEncodeError:
+        # Fallback: replace bad surrogates
+        utf8_bytes = text.encode('utf-8', errors='replace')
+
+    # Step 2: Decode back to string
+    normalized = utf8_bytes.decode('utf-8', errors='replace')
+
+    # Step 3: Apply Unicode normalization (NFC = canonical composition)
+    normalized = unicodedata.normalize('NFC', normalized)
+
+    return normalized
 
 
 class CreateIssueInput(BaseModel):
@@ -36,9 +58,14 @@ class CreateIssueTool(BaseTool):
 
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
+            # Normalize Unicode to prevent JSON-RPC encoding errors
+            # This preserves emoji while fixing malformed surrogates
+            title_safe = normalize_unicode(params.title)
+            body_safe = normalize_unicode(params.body)
+
             issue = self.manager.create_issue(
-                title=params.title,
-                body=params.body,
+                title=title_safe,
+                body=body_safe,
                 labels=params.labels,
                 milestone=params.milestone,
                 assignees=params.assignees,

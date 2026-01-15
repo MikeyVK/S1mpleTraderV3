@@ -50,6 +50,7 @@ from mcp_server.tools.git_tools import (
 )
 from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.health_tools import HealthCheckTool
+from mcp_server.tools.admin_tools import RestartServerTool
 
 # Tools
 from mcp_server.tools.issue_tools import (
@@ -135,6 +136,7 @@ class MCPServer:
             TemplateValidationTool(),
             # Development tools
             HealthCheckTool(),
+            RestartServerTool(),
             RunTestsTool(),
             CreateFileTool(),
             # Project tools (Phase 0.5)
@@ -369,14 +371,29 @@ class MCPServer:
         # and other CRLF issues in the JSON-RPC stream
         stdout = anyio.wrap_file(TextIOWrapper(sys.stdout.buffer, encoding="utf-8", newline="\n"))
 
-        async with stdio_server(stdout=stdout) as (read_stream, write_stream):
-            await self.server.run(
-                read_stream,
-                write_stream,
-                self.server.create_initialization_options()
+        try:
+            async with stdio_server(stdout=stdout) as (read_stream, write_stream):
+                await self.server.run(
+                    read_stream,
+                    write_stream,
+                    self.server.create_initialization_options()
+                )
+        except KeyboardInterrupt:
+            lifecycle_logger.info("MCP server interrupted by user")
+        except Exception as e:
+            lifecycle_logger.error(
+                "MCP server crashed: %s",
+                e,
+                exc_info=True,
+                extra={"props": {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e)
+                }}
             )
-
-        lifecycle_logger.info("MCP server shutting down")
+            # Re-raise to ensure proper exit code
+            raise
+        finally:
+            lifecycle_logger.info("MCP server shutting down")
 
     async def shutdown(self) -> None:
         """Shutdown the MCP server gracefully."""

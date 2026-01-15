@@ -238,6 +238,11 @@ force_phase_transition(
 | Search docs | `search_documentation(query, scope)` | `grep_search` on docs/ |
 | Health check | `health_check()` | N/A |
 
+### MCP Server Management
+| Action | ✅ USE THIS | ❌ NEVER USE | Notes |
+|--------|-------------|------------|-------|
+| Hot-reload server | `restart_server()` | Manual process kill | **Use after code changes to MCP tools/server.** Zero client downtime (~2.3s). See [reference](docs/reference/mcp/proxy_restart.md) |
+
 ### File Editing
 | Action | ✅ USE THIS | ❌ NEVER USE |
 |--------|-------------|------------|
