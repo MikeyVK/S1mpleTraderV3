@@ -1,0 +1,36 @@
+# Git Conventions Configuration (Issue #55)
+# All git-related validations and defaults centralized here
+
+# Convention #1: Branch types (create_branch validation)
+branch_types:
+  - feature
+  - fix
+  - refactor
+  - docs
+  - epic
+
+# Convention #2: TDD phases (commit_tdd_phase validation)
+tdd_phases:
+  - red
+  - green
+  - refactor
+  - docs
+
+# Convention #3: Commit prefix mapping (TDD phase → Conventional Commit)
+commit_prefix_map:
+  red: test
+  green: feat
+  refactor: refactor
+  docs: docs
+
+# Convention #4: Protected branches (cannot be deleted)
+protected_branches:
+  - main
+  - master
+  - develop
+
+# Convention #5: Branch name pattern (kebab-case validation)
+branch_name_pattern: "^[a-z0-9-]+$"
+
+# Conventions #9-11: Default base branch for PR creation
+default_base_branch: main
