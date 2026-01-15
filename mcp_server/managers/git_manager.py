@@ -1,8 +1,8 @@
 """Git Manager for business logic."""
-import re
 from typing import Any
 
 from mcp_server.adapters.git_adapter import GitAdapter
+from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.core.logging import get_logger
 
@@ -12,6 +12,7 @@ class GitManager:
 
     def __init__(self, adapter: GitAdapter | None = None) -> None:
         self.adapter = adapter or GitAdapter()
+        self._git_config = GitConfig.from_file()
 
     def get_status(self) -> dict[str, Any]:
         """Get git status."""
@@ -34,17 +35,18 @@ class GitManager:
         """
         logger = get_logger("managers.git")
 
-        # Validation
-        if branch_type not in ["feature", "fix", "refactor", "docs", "epic"]:
+        # Convention #1: Branch type validation via GitConfig
+        if not self._git_config.has_branch_type(branch_type):
             raise ValidationError(
                 f"Invalid branch type: {branch_type}",
-                hints=["Use feature, fix, refactor, docs, or epic"],
+                hints=[f"Allowed types: {', '.join(self._git_config.branch_types)}"],
             )
 
-        if not re.match(r"^[a-z0-9-]+$", name):
+        # Convention #5: Branch name pattern via GitConfig
+        if not self._git_config.validate_branch_name(name):
             raise ValidationError(
                 f"Invalid branch name: {name}",
-                hints=["Use kebab-case (lowercase, numbers, hyphens only)"],
+                hints=[f"Must match pattern: {self._git_config.branch_name_pattern}"],
             )
 
         full_name = f"{branch_type}/{name}"
@@ -83,14 +85,15 @@ class GitManager:
         """Commit changes with TDD phase prefix.
 
         Args:
-            phase: TDD phase (red/green/refactor).
+            phase: TDD phase (red/green/refactor/docs).
             message: Commit message (without prefix).
             files: Optional list of file paths to stage + commit.
         """
-        if phase not in ["red", "green", "refactor"]:
+        # Convention #2: Phase validation via GitConfig
+        if not self._git_config.has_phase(phase):
             raise ValidationError(
                 f"Invalid TDD phase: {phase}",
-                hints=["Use red, green, or refactor"],
+                hints=[f"Allowed phases: {', '.join(self._git_config.tdd_phases)}"],
             )
 
         if files is not None and not files:
@@ -99,9 +102,9 @@ class GitManager:
                 hints=["Omit 'files' to commit everything, or provide at least one path"],
             )
 
-        prefix_map = {"red": "test", "green": "feat", "refactor": "refactor"}
-
-        full_message = f"{prefix_map[phase]}: {message}"
+        # Convention #3: Prefix mapping via GitConfig
+        prefix = self._git_config.get_prefix(phase)
+        full_message = f"{prefix}: {message}"
         return self.adapter.commit(full_message, files=files)
 
     def commit_docs(self, message: str, files: list[str] | None = None) -> str:
@@ -200,11 +203,11 @@ class GitManager:
 
     def delete_branch(self, branch_name: str, force: bool = False) -> None:
         """Delete a branch."""
-        protected_branches = ["main", "master", "develop"]
-        if branch_name in protected_branches:
+        # Convention #4: Protected branches via GitConfig
+        if self._git_config.is_protected(branch_name):
             raise ValidationError(
                 f"Cannot delete protected branch: {branch_name}",
-                hints=[f"Protected branches: {', '.join(protected_branches)}"],
+                hints=[f"Protected branches: {', '.join(self._git_config.protected_branches)}"],
             )
         self.adapter.delete_branch(branch_name, force=force)
 
