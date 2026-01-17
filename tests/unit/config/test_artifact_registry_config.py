@@ -276,6 +276,133 @@ class TestArtifactRegistryConfigMethods:
         assert doc_types == ["research"]
 
 
+class TestArtifactDefinitionFields:
+    """Test ArtifactDefinition field parsing (Cycle 2)."""
+
+    def test_parses_all_required_fields(
+        self, tmp_path: Path
+    ) -> None:  # type: ignore
+        """Parses artifact with all required fields."""
+        data = {
+            "version": "1.0",
+            "artifact_types": [
+                {
+                    "type": "code",
+                    "type_id": "dto",
+                    "name": "Data Transfer Object",
+                    "description": "DTO for data transfer",
+                    "file_extension": ".py",
+                    "state_machine": {
+                        "states": ["CREATED"],
+                        "initial_state": "CREATED",
+                    },
+                }
+            ],
+        }
+
+        file_path = tmp_path / "required.yaml"
+        with open(file_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f)
+
+        config = ArtifactRegistryConfig.from_file(file_path)
+        artifact = config.get_artifact("dto")
+
+        assert artifact.type == ArtifactType.CODE
+        assert artifact.type_id == "dto"
+        assert artifact.name == "Data Transfer Object"
+        assert artifact.description == "DTO for data transfer"
+        assert artifact.file_extension == ".py"
+        assert artifact.state_machine.states == ["CREATED"]
+
+    def test_optional_fields_work(
+        self, tmp_path: Path
+    ) -> None:  # type: ignore
+        """Optional fields (LEGACY, template, suffix) parse correctly."""
+        data = {
+            "version": "1.0",
+            "artifact_types": [
+                {
+                    "type": "code",
+                    "type_id": "worker",
+                    "name": "Worker",
+                    "description": "Test worker",
+                    "file_extension": ".py",
+                    # Optional LEGACY fields
+                    "scaffolder_class": "WorkerScaffolder",
+                    "scaffolder_module": "mcp_server.scaffolders.worker",
+                    # Optional template fields
+                    "template_path": "templates/worker.py.jinja2",
+                    "fallback_template": "templates/generic.py.jinja2",
+                    "name_suffix": "Worker",
+                    "generate_test": True,
+                    # Optional scaffolding fields
+                    "required_fields": ["name", "input_dto"],
+                    "optional_fields": ["dependencies"],
+                    "state_machine": {
+                        "states": ["CREATED"],
+                        "initial_state": "CREATED",
+                    },
+                }
+            ],
+        }
+
+        file_path = tmp_path / "optional.yaml"
+        with open(file_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f)
+
+        config = ArtifactRegistryConfig.from_file(file_path)
+        artifact = config.get_artifact("worker")
+
+        # LEGACY fields
+        assert artifact.scaffolder_class == "WorkerScaffolder"
+        assert artifact.scaffolder_module == "mcp_server.scaffolders.worker"
+        # Template fields
+        assert artifact.template_path == "templates/worker.py.jinja2"
+        assert artifact.fallback_template == "templates/generic.py.jinja2"
+        assert artifact.name_suffix == "Worker"
+        assert artifact.generate_test is True
+        # Scaffolding fields
+        assert artifact.required_fields == ["name", "input_dto"]
+        assert artifact.optional_fields == ["dependencies"]
+
+    def test_optional_fields_default_to_none_or_empty(
+        self, tmp_path: Path
+    ) -> None:  # type: ignore
+        """Optional fields have sensible defaults when omitted."""
+        data = {
+            "version": "1.0",
+            "artifact_types": [
+                {
+                    "type": "doc",
+                    "type_id": "reference",
+                    "name": "Reference",
+                    "description": "Test doc",
+                    "file_extension": ".md",
+                    "state_machine": {
+                        "states": ["DRAFT"],
+                        "initial_state": "DRAFT",
+                    },
+                }
+            ],
+        }
+
+        file_path = tmp_path / "defaults.yaml"
+        with open(file_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(data, f)
+
+        config = ArtifactRegistryConfig.from_file(file_path)
+        artifact = config.get_artifact("reference")
+
+        assert artifact.scaffolder_class is None
+        assert artifact.scaffolder_module is None
+        assert artifact.template_path is None
+        assert artifact.fallback_template is None
+        assert artifact.name_suffix is None
+        assert artifact.generate_test is False
+        assert artifact.required_fields == []
+        assert artifact.optional_fields == []
+
+
 class TestStateMachineDefinition:
     """Test state machine structure (Epic #18 will use)."""
 
