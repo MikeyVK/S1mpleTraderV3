@@ -25,3 +25,22 @@ class ConfigError(Exception):
         if self.file_path:
             return f"{self.message}\nFile: {self.file_path}"
         return self.message
+
+
+class ValidationError(Exception):
+    """Validation error for scaffolding operations.
+    
+    Raised when required fields are missing or invalid during
+    artifact scaffolding validation.
+    """
+    
+    def __init__(self, message: str, hints: list[str] | None = None):
+        """Initialize ValidationError.
+        
+        Args:
+            message: Error message describing validation failure
+            hints: Optional list of suggestions to fix the error
+        """
+        self.message = message
+        self.hints = hints or []
+        super().__init__(message)
