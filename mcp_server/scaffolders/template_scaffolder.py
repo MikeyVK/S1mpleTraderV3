@@ -1,4 +1,4 @@
-﻿"""Unified template-based scaffolder (Cycle 4).
+"""Unified template-based scaffolder (Cycle 4-5).
 
 Single scaffolder that replaces 9 separate scaffolder classes.
 Issue #56: Unified artifact system.
@@ -8,11 +8,8 @@ from typing import Any
 
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
-from mcp_server.config.artifact_registry_config import (
-    ArtifactRegistryConfig,
-    ConfigError,
-)
-from mcp_server.core.errors import ValidationError
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.core.errors import ConfigError, ValidationError
 
 
 class TemplateScaffolder(BaseScaffolder):
@@ -77,8 +74,9 @@ class TemplateScaffolder(BaseScaffolder):
                 f"No template defined for artifact type: {artifact_type}"
             )
 
-        # Render template (placeholder for Cycle 5)
-        rendered = self._render_template(artifact, **kwargs)
+        # Load and render template (Cycle 5)
+        template_path = artifact.template_path or artifact.fallback_template
+        rendered = self._load_and_render_template(template_path, **kwargs)
 
         # Construct filename
         name = kwargs.get("name", "unnamed")
@@ -88,8 +86,36 @@ class TemplateScaffolder(BaseScaffolder):
 
         return ScaffoldResult(content=rendered, file_name=file_name)
 
-    def _render_template(
-        self, artifact: Any, **kwargs: Any
+    def _load_and_render_template(
+        self, template_path: str, **kwargs: Any
     ) -> str:
-        """Placeholder for template rendering (Cycle 5)."""
-        return f"# Placeholder for {kwargs.get('name', 'artifact')}"
+        """Load template from filesystem and render (Cycle 5).
+        
+        Args:
+            template_path: Path to template file
+            **kwargs: Template context
+        
+        Returns:
+            Rendered template content
+        
+        Raises:
+            ConfigError: If template cannot be loaded
+        """
+        try:
+            # Read template file
+            with open(template_path, 'r', encoding='utf-8') as f:
+                template_content = f.read()
+            
+            # Simple placeholder rendering (actual Jinja2 in Cycle 6)
+            return template_content
+            
+        except FileNotFoundError as e:
+            raise ConfigError(
+                f"Template file not found: {template_path}",
+                file_path=template_path
+            ) from e
+        except (IOError, PermissionError) as e:
+            raise ConfigError(
+                f"Failed to read template: {template_path}\n{str(e)}",
+                file_path=template_path
+            ) from e
