@@ -616,6 +616,90 @@ class SearchService:
 
 ---
 
+### Pattern 9: Adapter Pattern
+
+**Current Implementation:**
+- GitAdapter (wraps GitPython library)
+- GitHubAdapter (wraps PyGithub library)
+- FilesystemAdapter (wraps file I/O operations)
+- Located in mcp_server/adapters/
+
+**Purpose:**
+Adapters wrap external systems/libraries to provide:
+- Stable domain interface (insulates from library changes)
+- Error translation (library exceptions → domain exceptions)
+- Testing seams (mockable external dependencies)
+- Security validation (path traversal protection)
+
+**Example:**
+```python
+class GitAdapter:
+    """Adapter for interacting with local Git repository."""
+    
+    def __init__(self, repo_path: str | None = None) -> None:
+        self.repo_path = repo_path or settings.server.workspace_root
+        self._repo: Repo | None = None  # Lazy initialization
+    
+    @property
+    def repo(self) -> Repo:
+        """Get git repository object (lazy loaded)."""
+        if not self._repo:
+            try:
+                self._repo = Repo(self.repo_path)
+            except InvalidGitRepositoryError as e:
+                raise MCPSystemError(...) from e
+        return self._repo
+    
+    def create_branch(self, branch_name: str, base: str) -> None:
+        """Create branch - wraps GitPython."""
+        base_ref = self.repo.commit(base)
+        self.repo.create_head(branch_name, base_ref)
+```
+
+**Architecture Layers:**
+```
+Tool → Manager → Adapter → External Library
+```
+
+**Example Flow:**
+1. **CreateBranchTool** - Validates MCP input
+2. **GitManager** - Applies business rules (branch naming conventions, pre-flight checks)
+3. **GitAdapter** - Wraps GitPython, translates errors
+4. **GitPython** - External library
+
+**Key Differences:**
+
+| Component | Responsibility | Example |
+|-----------|----------------|---------|
+| **Manager** | Business logic, conventions, orchestration | GitManager validates branch_type against git.yaml |
+| **Adapter** | External system interface, error translation | GitAdapter wraps GitPython, converts exceptions |
+
+**DI Pattern in Adapters:**
+```python
+class GitManager:
+    def __init__(self, adapter: GitAdapter | None = None):
+        self.adapter = adapter or GitAdapter()  # Optional injection
+```
+
+**Issue #56 Application:**
+- **Consider using FilesystemAdapter** for safe file operations
+- Template reading: fs.read_file(f"templates/{template}")
+- Output writing: fs.write_file(output, rendered)
+- Benefits: Path validation (workspace boundary), testable I/O, error translation
+
+**When to use Adapter:**
+- ✅ Wrapping external libraries (git, filesystem, APIs)
+- ✅ Need testable external system access (mock in tests)
+- ✅ Security validation required (path traversal, access control)
+- ✅ Error translation needed (library errors → domain exceptions)
+
+**When NOT to use Adapter:**
+- ❌ Pure transformations (data → data, no external systems)
+- ❌ Simple one-off operations in single location
+- ❌ Internal component coordination (use managers)
+
+---
+
 ## Design Pattern Summary
 
 | Pattern | Status | Issue #56 Action |
@@ -628,6 +712,7 @@ class SearchService:
 | **Error Pattern** | ✅ Established | Use existing exceptions |
 | **Testing Pattern** | ⚠️ Minimal units | Create unit tests |
 | **Service Pattern** | ❌ NEW | Introduce with SearchService |
+| **Adapter Pattern** | ✅ Established | Consider FilesystemAdapter for I/O |
 
 **Consistency Rules for Issue #56:**
 1. ✅ Manager constructors: `def __init__(self, dependency: Type | None = None)`
@@ -638,6 +723,18 @@ class SearchService:
 6. ✅ Docstrings: Google-style
 7. ✅ Testing: pytest + fixtures + MagicMock
 8. ✅ Services: NEW pattern, stateless, extracted from managers
+9. ✅ Adapters: Wrap external systems (filesystem, libraries), error translation
+
+**Architecture Layers:**
+```
+Tool (MCP Interface)
+  ↓
+Manager (Business Logic + Conventions)
+  ↓
+Adapter (External System Wrapper) ← Optional, when wrapping external library
+  ↓
+Service (Stateless Utilities) ← Optional, pure functions
+```
 
 ---
 
@@ -1041,24 +1138,26 @@ graph TD
 - **Scaffolder Pattern:** Create TemplateScaffolder extending BaseScaffolder
 - Follows ComponentScaffolder Protocol
 - **DI Pattern:** JinjaRenderer injected in constructor (| None = None)
+- **Adapter Pattern:** Consider FilesystemAdapter for template/output file I/O
 - Returns ScaffoldResult dataclass
 - Implement validate() and scaffold() methods
 - Load templates from ArtifactRegistryConfig
 - **Validation:** Use ValidationError for unknown artifact types
-- **Testing:** Unit tests for scaffolder, mock renderer, mock registry
+- **Testing:** Unit tests for scaffolder, mock renderer, mock registry, mock filesystem
 
 ### Phase 3: Manager Layer
 **TDD Cycles 7-8**
 - **Manager Pattern:** Create ArtifactManager
-- Constructor: `def __init__(self, workspace_root: Path | None = None, registry: ArtifactRegistryConfig | None = None)`
+- Constructor: `def __init__(self, workspace_root: Path | None = None, registry: ArtifactRegistryConfig | None = None, fs_adapter: FilesystemAdapter | None = None)`
 - Falls back to defaults if None (DI pattern)
 - Stores workspace_root as instance variable
 - Public methods: scaffold_artifact(), get_artifact_path(), validate_artifact()
 - Private methods: _load_template(), _resolve_directory()
 - Delegates to TemplateScaffolder for rendering
 - Delegates to DirectoryPolicyResolver for placement
+- **Adapter Pattern:** Uses FilesystemAdapter for safe file operations (path validation)
 - **NOT singleton** - instantiated per tool
-- **Testing:** Unit tests with mocked dependencies
+- **Testing:** Unit tests with mocked dependencies (scaffolder, resolver, filesystem)
 
 ### Phase 4: Search Extraction
 **TDD Cycles 9-10**
