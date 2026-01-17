@@ -2,7 +2,7 @@
 
 Purpose: Resolve directory policies with parent inheritance
 Responsibility: Single source of WAAR (where) knowledge
-Used by: PolicyEngine, ScaffoldComponentTool
+Used by: PolicyEngine, ScaffoldArtifactTool (was ScaffoldComponentTool)
 """
 
 from pathlib import Path
@@ -21,21 +21,30 @@ class ResolvedDirectoryPolicy:
         self,
         path: str,
         description: str,
-        allowed_component_types: List[str],
+        allowed_artifact_types: List[str],
         allowed_extensions: List[str],
         require_scaffold_for: List[str],
     ):
         self.path = path
         self.description = description
-        self.allowed_component_types = allowed_component_types
+        self.allowed_artifact_types = allowed_artifact_types
         self.allowed_extensions = allowed_extensions
         self.require_scaffold_for = require_scaffold_for
 
-    def allows_component_type(self, component_type: str) -> bool:
-        """Check if component type allowed in this directory."""
-        if not self.allowed_component_types:  # Empty = all allowed
+    @property
+    def allowed_component_types(self) -> List[str]:
+        """DEPRECATED: Backwards compatibility alias for allowed_artifact_types."""
+        return self.allowed_artifact_types
+
+    def allows_artifact_type(self, artifact_type: str) -> bool:
+        """Check if artifact type allowed in this directory."""
+        if not self.allowed_artifact_types:  # Empty = all allowed
             return True
-        return component_type in self.allowed_component_types
+        return artifact_type in self.allowed_artifact_types
+
+    def allows_component_type(self, component_type: str) -> bool:
+        """DEPRECATED: Use allows_artifact_type() instead."""
+        return self.allows_artifact_type(component_type)
 
     def allows_extension(self, file_path: str) -> bool:
         """Check if file extension allowed."""
@@ -137,7 +146,7 @@ class DirectoryPolicyResolver:
         return ResolvedDirectoryPolicy(
             path=normalized,
             description="Workspace root (no restrictions)",
-            allowed_component_types=[],  # Empty = all allowed
+            allowed_artifact_types=[],  # Empty = all allowed
             allowed_extensions=[],  # Empty = all allowed
             require_scaffold_for=[],  # Empty = no requirements
         )
@@ -149,12 +158,12 @@ class DirectoryPolicyResolver:
 
         Inheritance Rules (Q4 decision - implicit):
         - allowed_extensions: Inherit from parent unless overridden
-        - allowed_component_types: Override (no merge)
+        - allowed_artifact_types: Override (no merge)
         - require_scaffold_for: Cumulative (child adds to parent)
         """
         # Start with current policy values
         allowed_extensions = list(policy.allowed_extensions)
-        allowed_component_types = list(policy.allowed_component_types)
+        allowed_artifact_types = list(policy.allowed_artifact_types)
         require_scaffold_for = list(policy.require_scaffold_for)
 
         # Walk up parent chain
@@ -176,7 +185,7 @@ class DirectoryPolicyResolver:
         return ResolvedDirectoryPolicy(
             path=policy.path,
             description=policy.description,
-            allowed_component_types=allowed_component_types,
+            allowed_artifact_types=allowed_artifact_types,
             allowed_extensions=allowed_extensions,
             require_scaffold_for=require_scaffold_for,
         )

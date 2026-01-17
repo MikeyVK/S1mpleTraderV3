@@ -94,3 +94,52 @@ class TestDirectoryPolicyResolver:
         # Should resolve to backend/dtos directory
         assert policy.path == "backend/dtos"
         assert "dto" in policy.allowed_component_types
+
+
+class TestDocumentArtifactDirectories:
+    """Test document artifact directory configuration (Cycle 3)."""
+
+    def setup_method(self):
+        """Reset singletons before each test."""
+        ComponentRegistryConfig.reset_instance()
+        ProjectStructureConfig.reset_instance()
+
+    def test_docs_root_allows_document_types(self):
+        """docs/ directory allows document artifact types."""
+        resolver = DirectoryPolicyResolver()
+        policy = resolver.resolve("docs")
+
+        # Should allow document types (after allowed_artifact_types rename)
+        # NOTE: Will pass after component→artifact rename
+        assert "research" in policy.allowed_artifact_types
+        assert "planning" in policy.allowed_artifact_types
+        assert "design" in policy.allowed_artifact_types
+        assert "architecture" in policy.allowed_artifact_types
+        assert "tracking" in policy.allowed_artifact_types
+        assert "reference" in policy.allowed_artifact_types
+
+    def test_docs_development_subdirectory(self):
+        """docs/development allows phase documents."""
+        resolver = DirectoryPolicyResolver()
+        policy = resolver.resolve("docs/development")
+
+        assert "research" in policy.allowed_artifact_types
+        assert "planning" in policy.allowed_artifact_types
+        assert "design" in policy.allowed_artifact_types
+        assert "tracking" in policy.allowed_artifact_types
+
+    def test_docs_architecture_subdirectory(self):
+        """docs/architecture allows architecture docs."""
+        resolver = DirectoryPolicyResolver()
+        policy = resolver.resolve("docs/architecture")
+
+        assert "architecture" in policy.allowed_artifact_types
+        assert "reference" in policy.allowed_artifact_types
+
+    def test_markdown_extension_allowed_in_docs(self):
+        """Markdown files allowed in docs directories."""
+        resolver = DirectoryPolicyResolver()
+        policy = resolver.resolve("docs")
+
+        assert policy.allows_extension("test.md")
+        assert policy.allows_extension("test.rst")
