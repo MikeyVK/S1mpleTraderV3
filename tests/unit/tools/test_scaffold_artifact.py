@@ -1,6 +1,6 @@
 """Unit tests for ScaffoldArtifactTool (Cycle 11)."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -18,8 +18,9 @@ class TestScaffoldArtifactTool:
     def mock_manager(self):
         """Mock ArtifactManager."""
         manager = MagicMock()
-        manager.scaffold_artifact.return_value = "mcp_server/dtos/UserDTO.py"
-        manager.get_artifact_path.return_value = "mcp_server/dtos/UserDTO.py"
+        # scaffold_artifact is async, so use AsyncMock
+        manager.scaffold_artifact = AsyncMock(return_value="mcp_server/dtos/UserDTO.py")
+        manager.get_artifact_path = MagicMock(return_value="mcp_server/dtos/UserDTO.py")
         return manager
 
     @pytest.fixture
@@ -72,6 +73,7 @@ class TestScaffoldArtifactTool:
     @pytest.mark.asyncio
     async def test_scaffolds_document_artifact(self, tool, mock_manager):
         """Should scaffold document artifact (design)."""
+        # Update the async mock's return value
         mock_manager.scaffold_artifact.return_value = "docs/development/design.md"
 
         input_data = ScaffoldArtifactInput(

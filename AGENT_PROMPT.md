@@ -200,27 +200,15 @@ force_phase_transition(
 | Merge PR | `merge_pr(pr_number, commit_message, merge_method)` | `run_in_terminal("gh pr merge")` |
 
 ### Code Scaffolding (Jinja2 Templates)
-| Component Type | ✅ USE THIS | ❌ NEVER USE |
-|----------------|-------------|------------|
-| DTO | `scaffold_component(component_type="dto", name="...", fields=[...])` | `create_file` with manual code |
-| Worker | `scaffold_component(component_type="worker", name="...", input_dto="...", output_dto="...")` | `create_file` with manual code |
-| Adapter | `scaffold_component(component_type="adapter", name="...", methods=[...])` | `create_file` with manual code |
-| Interface | `scaffold_component(component_type="interface", name="...", methods=[...])` | `create_file` with manual code |
-| Tool | `scaffold_component(component_type="tool", name="...", input_schema={...})` | `create_file` with manual code |
-| Resource | `scaffold_component(component_type="resource", name="...", uri_pattern="...")` | `create_file` with manual code |
-| Schema | `scaffold_component(component_type="schema", name="...", models=[...])` | `create_file` with manual code |
-| Service (Query) | `scaffold_component(component_type="service", service_type="query", name="...")` | `create_file` with manual code |
-| Service (Command) | `scaffold_component(component_type="service", service_type="command", name="...")` | `create_file` with manual code |
-| Service (Orchestrator) | `scaffold_component(component_type="service", service_type="orchestrator", name="...")` | `create_file` with manual code |
-| Generic Python file | `scaffold_component(component_type="generic", name="...", template_name="...")` | `create_file` with manual code |
+| Action | ✅ USE THIS | ❌ NEVER USE |
+|--------|-------------|------------|
+| Any artifact (code or doc) | `scaffold_artifact(artifact_type="dto|worker|adapter|design|...", name="...", output_path="...", context={...})` | `create_file` with manual code |
 
-### Document Scaffolding (Jinja2 Templates)
-| Document Type | ✅ USE THIS | ❌ NEVER USE |
-|---------------|-------------|------------|
-| Architecture doc | `scaffold_design_doc(doc_type="architecture", title="...", output_path="...")` | `create_file` with markdown |
-| Design doc | `scaffold_design_doc(doc_type="design", title="...", output_path="...")` | `create_file` with markdown |
-| Tracking doc | `scaffold_design_doc(doc_type="tracking", title="...", output_path="...")` | `create_file` with markdown |
-| Generic doc | `scaffold_design_doc(doc_type="generic", title="...", output_path="...")` | `create_file` with markdown |
+**Common artifact types:**
+- **Code:** dto, worker, adapter, interface, tool, resource, schema, service
+- **Docs:** design, architecture, tracking, generic
+
+**Note:** Replaces legacy `scaffold_component` and `scaffold_design_doc` tools (removed in Issue #56).
 
 ### Quality & Testing
 | Action | ✅ USE THIS | ❌ NEVER USE |

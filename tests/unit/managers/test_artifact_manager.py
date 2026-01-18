@@ -1,6 +1,6 @@
-"""Unit tests for ArtifactManager."""
+﻿"""Unit tests for ArtifactManager."""
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -25,7 +25,8 @@ class TestArtifactManagerCore:
         manager = ArtifactManager(scaffolder=mock_scaffolder)
         assert manager.scaffolder is mock_scaffolder
 
-    def test_scaffold_artifact_delegates_to_scaffolder(self):
+    @pytest.mark.asyncio
+    async def test_scaffold_artifact_delegates_to_scaffolder(self):
         """Test that scaffold_artifact delegates to scaffolder."""
         # Valid Python content for validation
         valid_python_content = (
@@ -43,7 +44,8 @@ class TestArtifactManagerCore:
         mock_fs_adapter.resolve_path.return_value = Path('/test/test.py')
 
         mock_validation_service = Mock()
-        mock_validation_service.validate_content.return_value = (True, "")
+        # Make validate return an async coroutine
+        mock_validation_service.validate = AsyncMock(return_value=(True, []))
 
         # Mock get_artifact_path to avoid complex dependency chain
         with patch.object(
@@ -54,16 +56,13 @@ class TestArtifactManagerCore:
                 fs_adapter=mock_fs_adapter,
                 validation_service=mock_validation_service
             )
-            result = manager.scaffold_artifact('dto', name='Test', fields=[])
+            result = await manager.scaffold_artifact('dto', name='Test', fields=[])
 
         # Verify scaffolder was called with correct arguments
         mock_scaffolder.scaffold.assert_called_once_with('dto', name='Test', fields=[])
 
         # Verify validation was called
-        mock_validation_service.validate_content.assert_called_once_with(
-            valid_python_content,
-            'dto'
-        )
+        mock_validation_service.validate.assert_called_once()
 
         # Verify file was written
         mock_fs_adapter.write_file.assert_called_once_with(

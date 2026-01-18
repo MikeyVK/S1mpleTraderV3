@@ -98,7 +98,7 @@ class ScaffoldArtifactTool(BaseTool):
 
         # Scaffold artifact via manager
         # Exceptions (ValidationError, ConfigError, etc.) propagate to decorator
-        artifact_path = self.manager.scaffold_artifact(
+        artifact_path = await self.manager.scaffold_artifact(
             params.artifact_type,
             **kwargs
         )

@@ -1,4 +1,4 @@
-"""
+﻿"""
 @module: tests.integration.test_exception_propagation
 @layer: Test Infrastructure
 @dependencies: pytest, mcp_server.core.exceptions, mcp_server.managers
@@ -19,13 +19,14 @@ from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 
 
-def test_validation_error_propagates_from_scaffolder(
+@pytest.mark.asyncio
+async def test_validation_error_propagates_from_scaffolder(
     artifact_manager: ArtifactManager, temp_workspace: Path
 ) -> None:
     """ValidationError propagates from TemplateScaffolder through ArtifactManager."""
     # Missing required field should trigger ValidationError
     with pytest.raises(ValidationError) as exc_info:
-        artifact_manager.scaffold_artifact(
+        await artifact_manager.scaffold_artifact(
             artifact_type="design",
             output_path="docs/test.md",
             # Missing: issue_number, title, author
@@ -38,12 +39,13 @@ def test_validation_error_propagates_from_scaffolder(
     assert isinstance(error, ValidationError)
 
 
-def test_config_error_for_unknown_artifact_type(
+@pytest.mark.asyncio
+async def test_config_error_for_unknown_artifact_type(
     artifact_manager: ArtifactManager, temp_workspace: Path
 ) -> None:
     """ConfigError raised for unknown artifact type."""
     with pytest.raises(ConfigError) as exc_info:
-        artifact_manager.scaffold_artifact(
+        await artifact_manager.scaffold_artifact(
             artifact_type="nonexistent_type",
             output_path="docs/test.md",
         )
@@ -55,12 +57,13 @@ def test_config_error_for_unknown_artifact_type(
     assert isinstance(error, ConfigError)
 
 
-def test_validation_error_has_hints(
+@pytest.mark.asyncio
+async def test_validation_error_has_hints(
     artifact_manager: ArtifactManager, temp_workspace: Path
 ) -> None:
     """ValidationError includes actionable hints."""
     with pytest.raises(ValidationError) as exc_info:
-        artifact_manager.scaffold_artifact(
+        await artifact_manager.scaffold_artifact(
             artifact_type="design",
             output_path="docs/test.md",
         )
