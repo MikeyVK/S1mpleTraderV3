@@ -1,7 +1,17 @@
-"""SearchService provides stateless search functionality (Cycle 9).
+# mcp_server/services/search_service.py
+"""
+Search Service - Stateless documentation search functionality.
 
-NEW pattern for this project: Stateless service with @staticmethod.
+Provides pure functions for calculating relevance scores and ranking search results.
 Extracted from DocManager for better testability and reusability.
+
+@layer: Backend (Services)
+@dependencies: [typing]
+@responsibilities:
+    - Calculate relevance scores for documentation search
+    - Rank documents by relevance score
+    - Extract search result snippets with context
+    - Pure stateless functions (all @staticmethod)
 """
 
 from typing import Any
