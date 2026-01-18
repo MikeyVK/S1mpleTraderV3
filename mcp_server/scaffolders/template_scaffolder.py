@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 # Project modules
-from mcp_server.core.exceptions import ExecutionError, ValidationError
+from mcp_server.core.exceptions import ValidationError
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
@@ -184,17 +184,9 @@ class TemplateScaffolder(BaseScaffolder):
             Rendered template content
 
         Raises:
-            ValidationError: If template not found
+            ExecutionError: If template not found or rendering fails
+                          (raised by JinjaRenderer with recovery hints)
         """
-        try:
-            return self._renderer.render(template_name, **kwargs)
-        except ExecutionError as e:
-            # Re-raise as ValidationError with recovery hints
-            raise ValidationError(
-                message=f"Template not found: {template_name}",
-                hints=[
-                    f"Expected at mcp_server/templates/{template_name}",
-                    "Check template_path in .st3/artifacts.yaml",
-                    f"Original error: {str(e)}"
-                ]
-            ) from e
+        # Let ExecutionError propagate - semantically correct
+        # (template loading is execution/config, not input validation)
+        return self._renderer.render(template_name, **kwargs)

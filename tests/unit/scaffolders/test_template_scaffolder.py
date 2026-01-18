@@ -323,14 +323,15 @@ class TestScaffold:
         assert "fields" in render_kwargs
         assert render_kwargs["docstring"] == "Custom docstring"
 
-    def test_scaffold_template_not_found_raises_validation_error(
+    def test_scaffold_template_not_found_raises_execution_error(
         self,
         registry: ArtifactRegistryConfig
     ) -> None:
-        """Scaffold with missing template raises ValidationError."""
+        """Scaffold with missing template raises ExecutionError (not ValidationError)."""
         failing_renderer = Mock(spec=JinjaRenderer)
         failing_renderer.render.side_effect = ExecutionError(
-            "Template not found"
+            "Template not found",
+            recovery=["Check template path in artifacts.yaml"]
         )
 
         scaffolder = TemplateScaffolder(
@@ -338,7 +339,8 @@ class TestScaffold:
             renderer=failing_renderer
         )
 
-        with pytest.raises(ValidationError) as exc_info:
+        # ExecutionError propagates (semantically correct - template loading is execution)
+        with pytest.raises(ExecutionError) as exc_info:
             scaffolder.scaffold(
                 artifact_type="dto",
                 name="TestDTO",
