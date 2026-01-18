@@ -8,17 +8,19 @@ pattern for testability.
 
 @layer: Backend (Managers)
 @dependencies: [ArtifactRegistryConfig, TemplateScaffolder, ValidationService,
-               DirectoryPolicyResolver]
+               DirectoryPolicyResolver, FilesystemAdapter]
 @responsibilities:
     - Orchestrate artifact scaffolding workflow
     - Resolve output paths via DirectoryPolicyResolver
     - Handle generic artifact special cases
     - Validate scaffolded content before writing
+    - Write scaffolded content to filesystem
 """
 
 from pathlib import Path
 from typing import Any
 
+from mcp_server.adapters.filesystem import FilesystemAdapter
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.errors import ConfigError, ValidationError
@@ -33,12 +35,13 @@ class ArtifactManager:
     Provides dependency injection for all collaborators.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         workspace_root: Path | None = None,
         registry: ArtifactRegistryConfig | None = None,
         scaffolder: TemplateScaffolder | None = None,
-        validation_service: ValidationService | None = None
+        validation_service: ValidationService | None = None,
+        fs_adapter: FilesystemAdapter | None = None
     ) -> None:
         """Initialize manager with optional dependencies.
 
@@ -47,11 +50,13 @@ class ArtifactManager:
             registry: Artifact registry (default: singleton from file)
             scaffolder: Template scaffolder (default: new instance)
             validation_service: Validation service (default: new instance)
+            fs_adapter: Filesystem adapter (default: new instance)
         """
         self.workspace_root = workspace_root or Path.cwd()
         self.registry = registry or ArtifactRegistryConfig.from_file()
         self.scaffolder = scaffolder or TemplateScaffolder(registry=self.registry)
         self.validation_service = validation_service or ValidationService()
+        self.fs_adapter = fs_adapter or FilesystemAdapter()
 
     def scaffold_artifact(
         self,
@@ -74,14 +79,14 @@ class ArtifactManager:
             ConfigError: If template not found
         """
         # 1. Scaffold artifact
-        _result = self.scaffolder.scaffold(artifact_type, **context)  # noqa: F841
+        result = self.scaffolder.scaffold(artifact_type, **context)
 
         # 2. Validate rendered content (D10 - delegate to ValidationService)
         # Note: ValidationService currently validates against templates,
         # we'll use it for architectural validation
         # For now, skip validation step as ValidationService needs to be updated
         # to support artifact content validation
-        # TODO(Cycle 6): Add validation_service.validate_content(_result.content, artifact_type)
+        # TODO(Cycle 6): Add validation_service.validate_content(result.content, artifact_type)
 
         # 3. Resolve output path
         if output_path is None:
@@ -104,10 +109,15 @@ class ArtifactManager:
                 artifact_path = self.get_artifact_path(artifact_type, name)
                 output_path = str(artifact_path)
 
-        # 4. For now, return the path (file writing will be added later)
-        # TODO(Cycle 8): Write _result.content to output_path using FilesystemAdapter
+        # 4. Write file to filesystem (Gap 1 fix - CRITICAL)
         assert output_path is not None, "output_path should be set by this point"
-        return output_path
+        self.fs_adapter.write_file(output_path, result.content)
+
+        # Return absolute path to created file
+        # Note: We call _validate_path to get the absolute path
+        # This is acceptable as it's a utility method, not business logic
+        full_path = self.fs_adapter._validate_path(output_path)  # pylint: disable=protected-access
+        return str(full_path)
 
     def validate_artifact(
         self, artifact_type: str, **kwargs: Any

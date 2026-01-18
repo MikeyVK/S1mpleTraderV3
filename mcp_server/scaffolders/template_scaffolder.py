@@ -81,13 +81,15 @@ class TemplateScaffolder(BaseScaffolder):
         artifact = self.registry.get_artifact(artifact_type)
 
         # Check template exists
-        if not artifact.template_path and not artifact.fallback_template:
+        template_path = artifact.template_path or artifact.fallback_template
+        if not template_path:
             raise ConfigError(
                 f"No template defined for artifact type: {artifact_type}"
             )
 
         # Load and render template (Cycle 5)
-        template_path = artifact.template_path or artifact.fallback_template
+        # Note: template_path is guaranteed to be str here due to check above
+        assert template_path is not None
         rendered = self._load_and_render_template(template_path, **kwargs)
 
         # Construct filename

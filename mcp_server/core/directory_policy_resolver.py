@@ -1,13 +1,21 @@
-"""Directory policy resolution utility.
+# mcp_server/core/directory_policy_resolver.py
+"""
+Directory Policy Resolver - Where knowledge (WAAR).
 
-Purpose: Resolve directory policies with parent inheritance
-Responsibility: Single source of WAAR (where) knowledge
-Used by: PolicyEngine, ScaffoldArtifactTool (was ScaffoldComponentTool)
+Resolves directory policies with parent inheritance for artifact placement.
+Single source of truth for where artifacts can be scaffolded.
+
+@layer: Backend (Core)
+@dependencies: [ProjectStructureConfig, DirectoryPolicy]
+@responsibilities:
+    - Resolve directory policies with parent inheritance
+    - Match paths (exact and parent walk)
+    - Find valid directories for artifact types
+    - Policy lookup optimization (caching)
 """
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from mcp_server.config.project_structure import (
     DirectoryPolicy,
@@ -21,12 +29,12 @@ class ResolvedDirectoryPolicy:
 
     path: str
     description: str
-    allowed_artifact_types: List[str]
-    allowed_extensions: List[str]
-    require_scaffold_for: List[str]
+    allowed_artifact_types: list[str]
+    allowed_extensions: list[str]
+    require_scaffold_for: list[str]
 
     @property
-    def allowed_component_types(self) -> List[str]:
+    def allowed_component_types(self) -> list[str]:
         """DEPRECATED: Backwards compatibility alias for allowed_artifact_types."""
         return self.allowed_artifact_types
 
@@ -87,14 +95,14 @@ class DirectoryPolicyResolver:
     - Config validation (Pydantic does this)
     """
 
-    def __init__(self, config: Optional[ProjectStructureConfig] = None):
+    def __init__(self, config: ProjectStructureConfig | None = None):
         """Initialize resolver.
 
         Args:
             config: ProjectStructureConfig instance (loads default if None)
         """
         self._config = config or ProjectStructureConfig.from_file()
-        self._cache: Dict[str, ResolvedDirectoryPolicy] = {}  # Q3: No caching for MVP
+        self._cache: dict[str, ResolvedDirectoryPolicy] = {}  # Q3: No caching for MVP
 
     def resolve(self, path: str) -> ResolvedDirectoryPolicy:
         """Resolve directory policy for given path with inheritance.
@@ -184,7 +192,7 @@ class DirectoryPolicyResolver:
             require_scaffold_for=require_scaffold_for,
         )
 
-    def find_directories_for_artifact(self, artifact_type: str) -> List[str]:
+    def find_directories_for_artifact(self, artifact_type: str) -> list[str]:
         """Find all directories that allow specified artifact type.
 
         Args:

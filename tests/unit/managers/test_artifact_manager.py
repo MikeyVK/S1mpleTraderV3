@@ -35,18 +35,31 @@ class TestArtifactManagerCore:
     def test_scaffold_artifact_delegates_to_scaffolder(self):
         """Test that scaffold_artifact delegates to scaffolder."""
         from mcp_server.managers.artifact_manager import ArtifactManager
-        from unittest.mock import patch
+        from unittest.mock import patch, Mock
 
         mock_scaffolder = Mock(spec=TemplateScaffolder)
-        mock_scaffolder.scaffold.return_value = Mock(content='test', file_name='test.py')
+        mock_scaffolder.scaffold.return_value = Mock(content='test content', file_name='test.py')
+
+        mock_fs_adapter = Mock()
+        mock_fs_adapter._validate_path.return_value = Path('/test/test.py')
 
         # Mock get_artifact_path to avoid complex dependency chain
         with patch.object(ArtifactManager, 'get_artifact_path', return_value=Path('/test/test.py')):
-            manager = ArtifactManager(scaffolder=mock_scaffolder)
+            manager = ArtifactManager(
+                scaffolder=mock_scaffolder,
+                fs_adapter=mock_fs_adapter
+            )
             result = manager.scaffold_artifact('dto', name='Test', fields=[])
 
         # Verify scaffolder was called with correct arguments
         mock_scaffolder.scaffold.assert_called_once_with('dto', name='Test', fields=[])
+
+        # Verify file was written
+        mock_fs_adapter.write_file.assert_called_once_with(
+            str(Path('/test/test.py')),
+            'test content'
+        )
+
         # Verify path was returned (normalize for cross-platform)
         assert result == str(Path('/test/test.py'))
 
