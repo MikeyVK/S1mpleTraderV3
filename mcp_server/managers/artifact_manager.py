@@ -40,9 +40,15 @@ class ArtifactManager:
         registry: ArtifactRegistryConfig | None = None,
         scaffolder: TemplateScaffolder | None = None,
         validation_service: ValidationService | None = None,
-        fs_adapter: FilesystemAdapter | None = None
+        fs_adapter: FilesystemAdapter | None = None,
+        **kwargs: Any,
     ) -> None:
         """Initialize manager with optional dependencies.
+
+        Note:
+            The test harness and some callers may pass a legacy/compat keyword
+            argument `workspace_root`. When provided and fs_adapter is not passed,
+            this is used to scope the default FilesystemAdapter.
 
         Args:
             registry: Artifact registry (default: singleton from file)
@@ -50,9 +56,24 @@ class ArtifactManager:
             validation_service: Validation service (default: new instance)
             fs_adapter: Filesystem adapter (default: new instance)
         """
+        workspace_root = kwargs.pop("workspace_root", None)
+        if kwargs:
+            unexpected = ", ".join(sorted(kwargs.keys()))
+            raise TypeError(f"Unexpected keyword arguments: {unexpected}")
+
+        self.workspace_root = Path(workspace_root).resolve() if workspace_root else None
+
+        if registry is None and scaffolder is not None:
+            maybe_registry = getattr(scaffolder, "registry", None)
+            if isinstance(maybe_registry, ArtifactRegistryConfig):
+                registry = maybe_registry
+
         self.registry = registry or ArtifactRegistryConfig.from_file()
         self.scaffolder = scaffolder or TemplateScaffolder(registry=self.registry)
         self.validation_service = validation_service or ValidationService()
+
+        if fs_adapter is None and self.workspace_root is not None:
+            fs_adapter = FilesystemAdapter(root_path=str(self.workspace_root))
         self.fs_adapter = fs_adapter or FilesystemAdapter()
 
     def scaffold_artifact(
