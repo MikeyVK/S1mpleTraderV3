@@ -18,7 +18,7 @@ from pathlib import Path
 # Project imports
 from mcp_server.validation.base import BaseValidator
 from mcp_server.validation.registry import ValidatorRegistry
-from mcp_server.validation.python_validator import PythonValidator
+from mcp_server.validation.python_validator import PythonSyntaxValidator
 from mcp_server.validation.markdown_validator import MarkdownValidator
 from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
@@ -49,7 +49,8 @@ class ValidationService:
     def _setup_validators(self) -> None:
         """Register all validators with ValidatorRegistry."""
         # Register extension-based validators
-        ValidatorRegistry.register(".py", PythonValidator)
+        # For pre-write validation, use syntax-only mode (no quality.yaml needed)
+        ValidatorRegistry.register(".py", PythonSyntaxValidator)
         ValidatorRegistry.register(".md", MarkdownValidator)
 
         # Register pattern-based validators using LayeredTemplateValidator

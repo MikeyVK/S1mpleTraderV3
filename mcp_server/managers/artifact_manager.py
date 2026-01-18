@@ -128,9 +128,9 @@ class ArtifactManager:
 
         assert output_path is not None, "output_path should be set by this point"
 
-        # 4. Validate rendered content (lightweight syntax check for pre-write validation)
-        # Use validate_syntax() for fast pre-write checks (no heavy QA gates)
-        passed, issues = self.validation_service.validate_syntax(
+        # 4. Validate rendered content using full validator chain (DoD requirement)
+        # Use validate() to invoke registered validators (PythonSyntaxValidator, MarkdownValidator)
+        passed, issues = await self.validation_service.validate(
             output_path, result.content
         )
 

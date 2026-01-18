@@ -1,4 +1,5 @@
 """Python validator implementation."""
+import ast
 import os
 import tempfile
 from typing import Any
@@ -10,37 +11,81 @@ from .base import BaseValidator, ValidationResult, ValidationIssue
 class PythonValidator(BaseValidator):
     """Validator for Python files using QAManager (Pylint/MyPy)."""
 
-    def __init__(self) -> None:
-        """Initialize Python validator."""
-        self.qa_manager = QAManager()
+    def __init__(self, syntax_only: bool = False) -> None:
+        """
+        Initialize Python validator.
+
+        Args:
+            syntax_only: If True, only check syntax (for pre-write validation).
+                        If False, run full QA gates (for post-write validation).
+        """
+        self.syntax_only = syntax_only
+        if not syntax_only:
+            self.qa_manager = QAManager()
 
     def __repr__(self) -> str:
         """Return string representation."""
-        return "PythonValidator()"
+        mode = "syntax_only" if self.syntax_only else "full_qa"
+        return f"PythonValidator(mode={mode})"
 
     async def validate(self, path: str, content: str | None = None) -> ValidationResult:
         """
         Validate Python content.
 
         If content is provided, validates a temporary file to check before saving.
+        In syntax_only mode, uses ast.parse for fast syntax checking.
+        In full QA mode, runs quality gates (requires quality.yaml).
         """
+        # Read content if not provided
+        if content is None:
+            try:
+                with open(path, encoding="utf-8") as f:
+                    content = f.read()
+            except OSError as e:
+                return ValidationResult(
+                    passed=False,
+                    score=0.0,
+                    issues=[ValidationIssue(f"Failed to read file: {e}")]
+                )
+
+        # Syntax-only mode for pre-write validation (fast, no config needed)
+        if self.syntax_only:
+            return self._validate_syntax(path, content)
+
+        # Full QA mode for post-write validation (requires quality.yaml)
+        return await self._validate_full_qa(path, content)
+
+    def _validate_syntax(self, path: str, content: str) -> ValidationResult:
+        """Fast syntax-only validation using ast.parse."""
+        try:
+            ast.parse(content, filename=path)
+            return ValidationResult(passed=True, score=10.0, issues=[])
+        except SyntaxError as e:
+            issue = ValidationIssue(
+                message=f"Python syntax error: {e.msg}",
+                line=e.lineno,
+                column=e.offset,
+                severity="error"
+            )
+            return ValidationResult(passed=False, score=0.0, issues=[issue])
+
+    async def _validate_full_qa(self, path: str, content: str) -> ValidationResult:
+        """Full QA validation using quality gates (requires quality.yaml)."""
         scan_path = path
         temp_file = None
 
         try:
-            # If content provided, write to temp file
-            if content is not None:
-                # Create temp file in same directory to preserve import context if possible
-                dir_name = os.path.dirname(path)
-                # Create temp file with .py extension
-                fd, temp_file_path = tempfile.mkstemp(suffix=".py", dir=dir_name, text=True)
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    f.write(content)
-                scan_path = temp_file_path
-                temp_file = temp_file_path
+            # Write to temp file for QA gates
+            dir_name = os.path.dirname(path) or "."
+            os.makedirs(dir_name, exist_ok=True)
+
+            fd, temp_file_path = tempfile.mkstemp(suffix=".py", dir=dir_name, text=True)
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            scan_path = temp_file_path
+            temp_file = temp_file_path
 
             # Run QA Manager
-            # Note: run_quality_gates is synchronous (subprocess calls)
             result = self.qa_manager.run_quality_gates([scan_path])
 
             return self._parse_result(result, original_path=path, scanned_path=scan_path)
@@ -93,3 +138,11 @@ class PythonValidator(BaseValidator):
             score=score,
             issues=issues
         )
+
+
+class PythonSyntaxValidator(PythonValidator):  # pylint: disable=too-few-public-methods
+    """Python validator in syntax-only mode (for pre-write validation)."""
+
+    def __init__(self) -> None:
+        """Initialize with syntax_only=True."""
+        super().__init__(syntax_only=True)
