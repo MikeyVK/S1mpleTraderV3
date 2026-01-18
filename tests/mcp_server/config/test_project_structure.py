@@ -11,7 +11,7 @@ from mcp_server.config.project_structure import (
     ProjectStructureConfig,
     DirectoryPolicy,
 )
-from mcp_server.core.errors import ConfigError
+from mcp_server.core.exceptions import ConfigError
 
 
 class TestProjectStructureConfig:

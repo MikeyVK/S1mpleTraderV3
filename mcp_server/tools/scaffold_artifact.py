@@ -6,12 +6,12 @@ Replaces scaffold_component and scaffold_design_doc tools.
 Handles all artifact types (code + documents) via ArtifactManager.
 
 @layer: Backend (Tools)
-@dependencies: [ArtifactManager, BaseTool, ToolResult, ValidationError, ConfigError]
+@dependencies: [ArtifactManager, BaseTool, ToolResult]
 @responsibilities:
     - Accept artifact scaffolding requests from MCP clients
     - Delegate to ArtifactManager for orchestration
-    - Format success/error results for LLM consumption
-    - Handle ValidationError and ConfigError gracefully
+    - Format success results for LLM consumption
+    - Let tool_error_handler decorator handle all errors uniformly
 """
 
 from typing import Any
@@ -20,7 +20,6 @@ from pydantic import BaseModel, Field
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 from mcp_server.managers.artifact_manager import ArtifactManager
-from mcp_server.core.exceptions import ValidationError, ConfigError
 
 
 class ScaffoldArtifactInput(BaseModel):
@@ -77,49 +76,35 @@ class ScaffoldArtifactTool(BaseTool):
     async def execute(self, params: ScaffoldArtifactInput) -> ToolResult:
         """Execute artifact scaffolding.
 
+        All exceptions are handled by tool_error_handler decorator,
+        which preserves MCPError contract (error_code, hints, file_path).
+
         Args:
             params: Scaffolding parameters
 
         Returns:
-            ToolResult with success message or error
+            ToolResult with success message
         """
-        try:
-            # Prepare kwargs from context
-            context = params.context or {}
-            kwargs = {
-                "name": params.name,
-                **context
-            }
+        # Prepare kwargs from context
+        context = params.context or {}
+        kwargs = {
+            "name": params.name,
+            **context
+        }
 
-            # Add output_path if provided
-            if params.output_path:
-                kwargs["output_path"] = params.output_path
+        # Add output_path if provided
+        if params.output_path:
+            kwargs["output_path"] = params.output_path
 
-            # Scaffold artifact via manager
-            artifact_path = self.manager.scaffold_artifact(
-                params.artifact_type,
-                **kwargs
-            )
+        # Scaffold artifact via manager
+        # Exceptions (ValidationError, ConfigError, etc.) propagate to decorator
+        artifact_path = self.manager.scaffold_artifact(
+            params.artifact_type,
+            **kwargs
+        )
 
-            # Success result
-            return ToolResult.text(
-                f"✅ Scaffolded {params.artifact_type}: {artifact_path}"
-            )
+        # Success result
+        return ToolResult.text(
+            f"✅ Scaffolded {params.artifact_type}: {artifact_path}"
+        )
 
-        except ValidationError as e:
-            # Validation failed - return helpful error
-            error_msg = str(e)
-            if e.hints:
-                error_msg += "\n\n" + "\n".join(f"• {hint}" for hint in e.hints)
-            return ToolResult.error(error_msg)
-
-        except ConfigError as e:
-            # Configuration error - return with file path
-            error_msg = str(e)
-            if e.file_path:
-                error_msg += f"\n\nCheck configuration in: {e.file_path}"
-            return ToolResult.error(error_msg)
-
-        except Exception as e:
-            # Unexpected error
-            return ToolResult.error(f"Unexpected error: {e}")

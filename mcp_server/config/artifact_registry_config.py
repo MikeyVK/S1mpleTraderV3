@@ -22,7 +22,13 @@ from pathlib import Path
 from typing import ClassVar
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+)
 
 from mcp_server.core.exceptions import ConfigError
 
@@ -61,7 +67,7 @@ class StateMachine(BaseModel):
 
     @field_validator("initial_state")
     @classmethod
-    def validate_initial_state(cls, v: str, info) -> str:
+    def validate_initial_state(cls, v: str, info: ValidationInfo) -> str:
         """Validate initial_state is in states list."""
         states = info.data.get("states", [])
         if v not in states:
@@ -175,7 +181,8 @@ class ArtifactRegistryConfig(BaseModel):
                     f"Artifact registry not found: {file_path}. "
                     f"Expected: .st3/artifacts.yaml. "
                     f"Fix: Run scaffold_design_doc with "
-                    f"type='artifact_registry' or create manually."
+                    f"type='artifact_registry' or create manually.",
+                    file_path=str(file_path)
                 )
 
             with open(file_path, "r", encoding="utf-8") as f:
@@ -185,7 +192,8 @@ class ArtifactRegistryConfig(BaseModel):
                 raise ConfigError(
                     f"Empty artifact registry: {file_path}. "
                     f"Fix: Add artifact_types array with at least one "
-                    f"artifact definition."
+                    f"artifact definition.",
+                    file_path=str(file_path)
                 )
 
             instance = cls.model_validate(data)
@@ -195,17 +203,19 @@ class ArtifactRegistryConfig(BaseModel):
 
         except yaml.YAMLError as e:
             raise ConfigError(
-                f"Invalid YAML in {file_path}: {e}. "
+                f"Invalid YAML syntax: {e}. "
                 f"Fix: Check YAML syntax - common issues: incorrect "
                 f"indentation, missing colons, "
-                f"unquoted special characters. Use YAML validator."
+                f"unquoted special characters. Use YAML validator.",
+                file_path=str(file_path)
             ) from e
         except Exception as e:
             if isinstance(e, ConfigError):
                 raise
             raise ConfigError(
                 f"Failed to load artifact registry: {e}. "
-                f"Fix: Check file permissions and YAML structure."
+                f"Fix: Check file permissions and YAML structure.",
+                file_path=str(file_path)
             ) from e
 
     @classmethod
@@ -235,7 +245,8 @@ class ArtifactRegistryConfig(BaseModel):
             f"Artifact type '{type_id}' not found in registry. "
             f"Available types: {available}. "
             f"Fix: Check spelling or add new type to "
-            f".st3/artifacts.yaml."
+            f".st3/artifacts.yaml.",
+            file_path=str(self._file_path) if self._file_path else None
         )
 
     def list_type_ids(

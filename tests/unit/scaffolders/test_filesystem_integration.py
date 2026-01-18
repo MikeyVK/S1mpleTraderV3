@@ -1,8 +1,8 @@
-﻿import pytest
+import pytest
 from unittest.mock import Mock, patch
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-from mcp_server.core.errors import ConfigError
+from mcp_server.core.exceptions import ConfigError
 
 @pytest.fixture
 def mock_registry():

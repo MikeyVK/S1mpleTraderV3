@@ -20,7 +20,7 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 
 
 def test_validation_error_propagates_from_scaffolder(
-    artifact_manager: ArtifactManager, _temp_workspace: Path
+    artifact_manager: ArtifactManager, temp_workspace: Path
 ) -> None:
     """ValidationError propagates from TemplateScaffolder through ArtifactManager."""
     # Missing required field should trigger ValidationError
@@ -39,7 +39,7 @@ def test_validation_error_propagates_from_scaffolder(
 
 
 def test_config_error_for_unknown_artifact_type(
-    artifact_manager: ArtifactManager, _temp_workspace: Path
+    artifact_manager: ArtifactManager, temp_workspace: Path
 ) -> None:
     """ConfigError raised for unknown artifact type."""
     with pytest.raises(ConfigError) as exc_info:
@@ -56,7 +56,7 @@ def test_config_error_for_unknown_artifact_type(
 
 
 def test_validation_error_has_hints(
-    artifact_manager: ArtifactManager, _temp_workspace: Path
+    artifact_manager: ArtifactManager, temp_workspace: Path
 ) -> None:
     """ValidationError includes actionable hints."""
     with pytest.raises(ValidationError) as exc_info:

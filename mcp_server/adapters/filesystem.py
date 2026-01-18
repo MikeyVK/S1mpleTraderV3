@@ -1,4 +1,12 @@
-"""Filesystem adapter for safe operations."""
+"""Filesystem adapter for safe operations.
+
+@layer: Adapters
+@dependencies: [Path, settings, MCPSystemError, ValidationError]
+@responsibilities:
+    - Provide safe filesystem operations within workspace boundaries
+    - Validate paths to prevent directory traversal attacks
+    - Wrap filesystem errors in MCPSystemError
+"""
 from pathlib import Path
 
 from mcp_server.config.settings import settings
@@ -9,10 +17,20 @@ class FilesystemAdapter:
     """Adapter for safe filesystem operations."""
 
     def __init__(self, root_path: str | None = None) -> None:
-        self.root_path = Path(root_path or settings.server.workspace_root).resolve()  # pylint: disable=no-member
+        self.root_path = Path(root_path or settings.server.workspace_root).resolve()
 
-    def _validate_path(self, path: str | Path) -> Path:
-        """Ensure path is within workspace root."""
+    def resolve_path(self, path: str | Path) -> Path:
+        """Resolve path relative to workspace root and validate safety.
+
+        Args:
+            path: Relative path to resolve
+
+        Returns:
+            Absolute path within workspace
+
+        Raises:
+            ValidationError: If path resolves outside workspace
+        """
         full_path = (self.root_path / path).resolve()
         if not str(full_path).startswith(str(self.root_path)):
             raise ValidationError(f"Access denied: {path} is outside workspace")
@@ -20,7 +38,7 @@ class FilesystemAdapter:
 
     def read_file(self, path: str) -> str:
         """Read file content."""
-        full_path = self._validate_path(path)
+        full_path = self.resolve_path(path)
         try:
             return full_path.read_text(encoding="utf-8")
         except FileNotFoundError as e:
@@ -28,9 +46,10 @@ class FilesystemAdapter:
         except Exception as e:
             raise MCPSystemError(f"Failed to read file: {e}") from e
 
+
     def write_file(self, path: str, content: str) -> None:
         """Write file content."""
-        full_path = self._validate_path(path)
+        full_path = self.resolve_path(path)
         try:
             full_path.parent.mkdir(parents=True, exist_ok=True)
             full_path.write_text(content, encoding="utf-8")
@@ -39,7 +58,7 @@ class FilesystemAdapter:
 
     def list_files(self, path: str = ".") -> list[str]:
         """List files in directory."""
-        full_path = self._validate_path(path)
+        full_path = self.resolve_path(path)
         try:
             return [
                 str(p.relative_to(self.root_path))

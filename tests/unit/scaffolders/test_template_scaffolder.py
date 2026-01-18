@@ -11,7 +11,7 @@ from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-from mcp_server.core.errors import ValidationError
+from mcp_server.core.exceptions import ValidationError
 
 
 @pytest.fixture

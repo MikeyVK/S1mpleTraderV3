@@ -35,9 +35,8 @@ class ArtifactManager:
     Provides dependency injection for all collaborators.
     """
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
         self,
-        workspace_root: Path | None = None,
         registry: ArtifactRegistryConfig | None = None,
         scaffolder: TemplateScaffolder | None = None,
         validation_service: ValidationService | None = None,
@@ -46,13 +45,11 @@ class ArtifactManager:
         """Initialize manager with optional dependencies.
 
         Args:
-            workspace_root: Project root directory (default: cwd)
             registry: Artifact registry (default: singleton from file)
             scaffolder: Template scaffolder (default: new instance)
             validation_service: Validation service (default: new instance)
             fs_adapter: Filesystem adapter (default: new instance)
         """
-        self.workspace_root = workspace_root or Path.cwd()
         self.registry = registry or ArtifactRegistryConfig.from_file()
         self.scaffolder = scaffolder or TemplateScaffolder(registry=self.registry)
         self.validation_service = validation_service or ValidationService()
@@ -120,10 +117,8 @@ class ArtifactManager:
         self.fs_adapter.write_file(output_path, result.content)
 
         # Return absolute path to created file
-        # Note: We call _validate_path to get the absolute path
-        # This is acceptable as it's a utility method, not business logic
-        full_path = self.fs_adapter._validate_path(output_path)  # pylint: disable=protected-access
-        return str(full_path)
+        # Note: We call resolve_path to get the absolute path
+        return str(self.fs_adapter.resolve_path(output_path))
 
     def validate_artifact(
         self, artifact_type: str, **kwargs: Any
@@ -145,14 +140,14 @@ class ArtifactManager:
     def get_artifact_path(
         self, artifact_type: str, name: str
     ) -> Path:
-        """Get full path for artifact (Cycle 8).
+        """Get relative path for artifact (Cycle 8).
 
         Args:
             artifact_type: Artifact type_id from registry
             name: Artifact name (without suffix/extension)
 
         Returns:
-            Full path to artifact file
+            Relative path to artifact file (base_dir / filename)
 
         Raises:
             ConfigError: If no valid directory found
@@ -178,5 +173,5 @@ class ArtifactManager:
         extension = artifact.file_extension
         file_name = f"{name}{suffix}{extension}"
 
-        # Return full path
-        return self.workspace_root / base_dir / file_name
+        # Return relative path
+        return Path(base_dir) / file_name

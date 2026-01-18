@@ -10,7 +10,7 @@ from mcp_server.config.operation_policies import (
     OperationPoliciesConfig,
     OperationPolicy,
 )
-from mcp_server.core.errors import ConfigError
+from mcp_server.core.exceptions import ConfigError
 
 
 class TestOperationPoliciesConfig:

@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock
 
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool, ScaffoldArtifactInput
-from mcp_server.core.errors import ValidationError, ConfigError
+from mcp_server.core.exceptions import ValidationError, ConfigError
 
 
 class TestScaffoldArtifactTool:

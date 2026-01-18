@@ -6,7 +6,7 @@ Tests config loading, validation, and singleton pattern for components.yaml.
 import pytest
 
 from mcp_server.config.component_registry import ComponentRegistryConfig
-from mcp_server.core.errors import ConfigError
+from mcp_server.core.exceptions import ConfigError
 
 
 class TestComponentRegistryConfig:

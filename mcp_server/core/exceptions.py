@@ -1,4 +1,16 @@
-"""Core exceptions for the MCP server."""
+"""
+Core exceptions for the MCP server.
+
+Base exception hierarchy for the entire MCP server.
+Ensures consistent error handling across tools, managers, and adapters.
+
+@layer: Core
+@dependencies: [Standard Library]
+@responsibilities:
+    - Define base MCPError class
+    - Define specific error types (ConfigError, ValidationError, etc.)
+    - Provide standard error codes and hint structures
+"""
 
 
 class MCPError(Exception):
