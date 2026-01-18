@@ -21,6 +21,7 @@ from mcp_server.adapters.filesystem import FilesystemAdapter
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.validation.validation_service import ValidationService
 
 
@@ -175,8 +176,6 @@ def template_scaffolder(
 
     Uses temp workspace templates instead of production templates.
     """
-    from mcp_server.scaffolding.renderer import JinjaRenderer
-
     # Point renderer to temp workspace (hermetic)
     renderer = JinjaRenderer(template_dir=temp_workspace)
     return TemplateScaffolder(registry=artifact_registry, renderer=renderer)

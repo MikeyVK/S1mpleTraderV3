@@ -108,7 +108,7 @@ class TestScaffoldArtifactTool:
 
     @pytest.mark.asyncio
     async def test_validation_error_returns_error_result(self, tool, mock_manager):
-        """Should return error result on validation failure."""
+        """Should return error result on validation failure with hints in result.hints."""
         mock_manager.scaffold_artifact.side_effect = ValidationError(
             "Invalid artifact type: unknown",
             hints=["Available types: dto, worker, design"]
@@ -122,9 +122,16 @@ class TestScaffoldArtifactTool:
         result = await tool.execute(input_data)
 
         assert result.is_error
+        assert result.error_code == "ERR_VALIDATION"
+
+        # Check message in content
         text = result.content[0]["text"]
         assert "Invalid artifact type" in text
-        assert "Available types" in text
+
+        # Check hints in structured result.hints (not in text)
+        assert result.hints is not None
+        assert len(result.hints) > 0
+        assert any("Available types" in hint for hint in result.hints)
 
     @pytest.mark.asyncio
     async def test_config_error_returns_error_result(self, tool, mock_manager):
