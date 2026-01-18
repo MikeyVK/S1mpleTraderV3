@@ -79,7 +79,7 @@ artifact_types:
     type_id: dto
     name: "Data Transfer Object"
     description: "Pydantic DTO"
-    template_path: null
+    template_path: components/dto.py.jinja2
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -113,13 +113,29 @@ def artifacts_yaml_file(
     artifacts_file = st3_dir / "artifacts.yaml"
     artifacts_file.write_text(artifacts_yaml_content, encoding="utf-8")
 
-    # Create dummy template for testing
+    # Create dummy templates for testing
     template_dir = temp_workspace / "documents"
     template_dir.mkdir(parents=True)
 
-    dummy_template = template_dir / "design.md.jinja2"
-    dummy_template.write_text(
+    dummy_design_template = template_dir / "design.md.jinja2"
+    dummy_design_template.write_text(
         "# {{ title }}\n\nIssue: #{{ issue_number }}\nAuthor: {{ author }}\n",
+        encoding="utf-8"
+    )
+
+    # Create code template for dto
+    code_template_dir = temp_workspace / "components"
+    code_template_dir.mkdir(parents=True)
+
+    dummy_dto_template = code_template_dir / "dto.py.jinja2"
+    dummy_dto_template.write_text(
+        '"""{{ description }}"""\n'
+        'from pydantic import BaseModel\n\n'
+        'class {{ name }}(BaseModel):\n'
+        '    """{{ description }}"""\n'
+        '{% for field in fields %}'
+        '    {{ field.name }}: {{ field.type }}\n'
+        '{% endfor %}',
         encoding="utf-8"
     )
 
@@ -150,13 +166,20 @@ def artifact_registry(
 
 
 @pytest.fixture
-def template_scaffolder() -> TemplateScaffolder:
+def template_scaffolder(
+    artifact_registry: ArtifactRegistryConfig,
+    temp_workspace: Path,
+) -> TemplateScaffolder:
     """
-    TemplateScaffolder instance.
+    TemplateScaffolder instance with hermetic template directory.
 
-    Will be updated in Slice 2 to use JinjaRenderer.
+    Uses temp workspace templates instead of production templates.
     """
-    return TemplateScaffolder()
+    from mcp_server.scaffolding.renderer import JinjaRenderer
+
+    # Point renderer to temp workspace (hermetic)
+    renderer = JinjaRenderer(template_dir=temp_workspace)
+    return TemplateScaffolder(registry=artifact_registry, renderer=renderer)
 
 
 @pytest.fixture

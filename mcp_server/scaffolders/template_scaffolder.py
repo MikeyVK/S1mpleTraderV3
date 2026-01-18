@@ -189,8 +189,12 @@ class TemplateScaffolder(BaseScaffolder):
         try:
             return self._renderer.render(template_name, **kwargs)
         except ExecutionError as e:
-            # Re-raise as ValidationError for consistent error handling
+            # Re-raise as ValidationError with recovery hints
             raise ValidationError(
-                f"Template not found: {template_name}. "
-                f"Expected at mcp_server/templates/{template_name}"
+                message=f"Template not found: {template_name}",
+                hints=[
+                    f"Expected at mcp_server/templates/{template_name}",
+                    "Check template_path in .st3/artifacts.yaml",
+                    f"Original error: {str(e)}"
+                ]
             ) from e

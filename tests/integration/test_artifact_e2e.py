@@ -53,5 +53,57 @@ def test_artifact_scaffolding_smoke(
     content = output_file.read_text(encoding="utf-8")
     assert len(content) > 0
     assert "Test Design Document" in content
-    assert "#123" in content
+    assert "Issue: #123" in content  # Hermetic template format
     assert "Test Author" in content
+
+
+def test_artifact_scaffolding_code_to_disk(
+    artifact_manager: ArtifactManager, temp_workspace: Path
+) -> None:
+    """
+    E2E test: scaffold code artifact (DTO) to disk.
+
+    Validates Slice 2 requirement: scaffold code artifact via
+    JinjaRenderer to filesystem.
+
+    Tests:
+    - DTO template rendering
+    - Code artifact file creation
+    - Python file structure validation
+    """
+    # Arrange
+    artifact_type = "dto"
+    output_path = "mcp_server/dtos/user_dto.py"
+
+    # Act
+    result = artifact_manager.scaffold_artifact(
+        artifact_type=artifact_type,
+        output_path=output_path,
+        name="UserDTO",
+        description="User data transfer object",
+        fields=[
+            {"name": "id", "type": "int"},
+            {"name": "username", "type": "str"},
+            {"name": "email", "type": "str"},
+        ]
+    )
+
+    # Assert
+    assert result is not None
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+    # Verify file on disk
+    output_file = temp_workspace / output_path
+    assert output_file.exists()
+    assert output_file.is_file()
+
+    # Verify Python content structure
+    content = output_file.read_text(encoding="utf-8")
+    assert len(content) > 0
+    assert "class UserDTO" in content
+    assert "BaseModel" in content
+    assert "User data transfer object" in content
+    assert "id" in content
+    assert "username" in content
+    assert "email" in content
