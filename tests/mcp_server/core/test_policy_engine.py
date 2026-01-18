@@ -79,12 +79,12 @@ class TestPolicyEngineConfigDriven:
         assert "prefix" in decision.reason.lower()
 
     def test_commit_allowed_with_green_prefix(self):
-        """Test commit allowed with green: prefix."""
+        """Test commit allowed with feat: prefix (green phase maps to feat:)."""
         engine = PolicyEngine()
         decision = engine.decide(
             operation="commit",
             phase="tdd",
-            context={"message": "green: implement user dto"}
+            context={"message": "feat: implement user dto"}
         )
         assert decision.allowed is True
 
