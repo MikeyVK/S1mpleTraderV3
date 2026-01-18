@@ -5,6 +5,7 @@ Responsibility: Single source of WAAR (where) knowledge
 Used by: PolicyEngine, ScaffoldArtifactTool (was ScaffoldComponentTool)
 """
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -14,22 +15,15 @@ from mcp_server.config.project_structure import (
 )
 
 
+@dataclass
 class ResolvedDirectoryPolicy:
     """Directory policy with inheritance resolved."""
 
-    def __init__(
-        self,
-        path: str,
-        description: str,
-        allowed_artifact_types: List[str],
-        allowed_extensions: List[str],
-        require_scaffold_for: List[str],
-    ):
-        self.path = path
-        self.description = description
-        self.allowed_artifact_types = allowed_artifact_types
-        self.allowed_extensions = allowed_extensions
-        self.require_scaffold_for = require_scaffold_for
+    path: str
+    description: str
+    allowed_artifact_types: List[str]
+    allowed_extensions: List[str]
+    require_scaffold_for: List[str]
 
     @property
     def allowed_component_types(self) -> List[str]:
@@ -189,3 +183,19 @@ class DirectoryPolicyResolver:
             allowed_extensions=allowed_extensions,
             require_scaffold_for=require_scaffold_for,
         )
+
+    def find_directories_for_artifact(self, artifact_type: str) -> List[str]:
+        """Find all directories that allow specified artifact type.
+
+        Args:
+            artifact_type: Artifact type_id to search for
+
+        Returns:
+            List of directory paths that allow the artifact type (sorted)
+        """
+        valid_dirs = []
+        for dir_path in self._config.get_all_directories():
+            policy = self.resolve(dir_path)
+            if policy.allows_artifact_type(artifact_type):
+                valid_dirs.append(dir_path)
+        return sorted(valid_dirs)

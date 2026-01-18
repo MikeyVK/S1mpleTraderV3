@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.errors import ConfigError
+from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
 
 class ArtifactManager:
@@ -95,20 +95,17 @@ class ArtifactManager:
         artifact = self.registry.get_artifact(artifact_type)
 
         # Find directories that allow this artifact type
-        # Note: DirectoryPolicyResolver dynamic API - false positives suppressed
-        resolver = DirectoryPolicyResolver(
-            workspace_root=self.workspace_root  # type: ignore[call-arg]
-        )
-        directories = resolver.find_directories_for_artifact(artifact_type)
+        resolver = DirectoryPolicyResolver()
+        valid_dirs = resolver.find_directories_for_artifact(artifact_type)
 
-        if not directories:
+        if not valid_dirs:
             raise ConfigError(
                 f"No valid directory found for artifact type: {artifact_type}",
                 file_path=".st3/project_structure.yaml"
             )
 
         # Use first directory
-        base_dir = directories[0]
+        base_dir = valid_dirs[0]
 
         # Construct filename: name + suffix + extension
         suffix = artifact.name_suffix or ""
