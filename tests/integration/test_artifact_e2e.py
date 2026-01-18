@@ -11,11 +11,15 @@
 # Standard library
 from pathlib import Path
 
+# Third-party
+import pytest
+
 # Project
 from mcp_server.managers.artifact_manager import ArtifactManager
 
 
-def test_artifact_scaffolding_smoke(
+@pytest.mark.asyncio
+async def test_artifact_scaffolding_smoke(
     artifact_manager: ArtifactManager, temp_workspace: Path
 ) -> None:
     """
@@ -32,7 +36,7 @@ def test_artifact_scaffolding_smoke(
     output_path = "docs/design/test_design.md"
 
     # Act
-    result = artifact_manager.scaffold_artifact(
+    result = await artifact_manager.scaffold_artifact(
         artifact_type=artifact_type,
         output_path=output_path,
         issue_number="123",
@@ -57,7 +61,8 @@ def test_artifact_scaffolding_smoke(
     assert "Test Author" in content
 
 
-def test_artifact_scaffolding_code_to_disk(
+@pytest.mark.asyncio
+async def test_artifact_scaffolding_code_to_disk(
     artifact_manager: ArtifactManager, temp_workspace: Path
 ) -> None:
     """
@@ -76,7 +81,7 @@ def test_artifact_scaffolding_code_to_disk(
     output_path = "mcp_server/dtos/user_dto.py"
 
     # Act
-    result = artifact_manager.scaffold_artifact(
+    result = await artifact_manager.scaffold_artifact(
         artifact_type=artifact_type,
         output_path=output_path,
         name="UserDTO",

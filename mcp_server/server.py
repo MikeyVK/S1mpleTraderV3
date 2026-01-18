@@ -76,7 +76,7 @@ from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
 from mcp_server.tools.project_tools import InitializeProjectTool, GetProjectPlanTool
 from mcp_server.tools.phase_tools import TransitionPhaseTool, ForcePhaseTransitionTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
-from mcp_server.tools.scaffold_tools import ScaffoldComponentTool, ScaffoldDesignDocTool
+from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 from mcp_server.tools.safe_edit_tool import SafeEditTool
@@ -145,9 +145,8 @@ class MCPServer:
             # Phase tools (Phase B)
             TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
             ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
-            # Scaffold tools
-            ScaffoldComponentTool(),
-            ScaffoldDesignDocTool(),
+            # Scaffold tools (unified artifact scaffolding)
+            ScaffoldArtifactTool(),
             # Discovery tools
             SearchDocumentationTool(),
             GetWorkContextTool(),
