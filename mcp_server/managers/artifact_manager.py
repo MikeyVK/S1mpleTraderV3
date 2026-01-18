@@ -95,16 +95,11 @@ class ArtifactManager:
         artifact = self.registry.get_artifact(artifact_type)
 
         # Find directories that allow this artifact type
-        # False positive: DirectoryPolicyResolver accepts workspace_root
-        # pylint: disable=unexpected-keyword-arg
+        # Note: DirectoryPolicyResolver dynamic API - false positives suppressed
         resolver = DirectoryPolicyResolver(
             workspace_root=self.workspace_root  # type: ignore[call-arg]
         )
-        # False positive: find_directories_for_artifact exists
-        # pylint: disable=no-member
-        directories = resolver.find_directories_for_artifact(
-            artifact_type
-        )
+        directories = resolver.find_directories_for_artifact(artifact_type)
 
         if not directories:
             raise ConfigError(
