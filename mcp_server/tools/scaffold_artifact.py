@@ -60,6 +60,8 @@ class ScaffoldArtifactTool(BaseTool):
     @property
     def input_schema(self) -> dict[str, Any]:
         """Return JSON schema for input validation."""
+        if self.args_model is None:
+            return {}
         return self.args_model.model_json_schema()
 
     async def execute(self, params: ScaffoldArtifactInput) -> ToolResult:

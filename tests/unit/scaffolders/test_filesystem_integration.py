@@ -25,7 +25,7 @@ class TestTemplateReading:
     def test_template_loads_via_open(self, scaffolder):
         with patch('builtins.open') as mock_open:
             mock_open.return_value.__enter__.return_value.read.return_value = 'content'
-            result = scaffolder.scaffold('test', name='Test')
+            _result = scaffolder.scaffold('test', name='Test')
             mock_open.assert_called_once()
 
     def test_ioerror_becomes_config_error(self, scaffolder):

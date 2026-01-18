@@ -1,7 +1,6 @@
 """Integration tests for SearchService with DocumentIndexer (Cycle 10)."""
 
 import pytest
-from pathlib import Path
 
 from mcp_server.services.search_service import SearchService
 from mcp_server.services.document_indexer import DocumentIndexer
