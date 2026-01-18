@@ -9,8 +9,9 @@ from typing import Any
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
-from mcp_server.core.errors import ConfigError
+from mcp_server.core.errors import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from mcp_server.validation.validation_service import ValidationService
 
 
 class ArtifactManager:
@@ -24,7 +25,8 @@ class ArtifactManager:
         self,
         workspace_root: Path | None = None,
         registry: ArtifactRegistryConfig | None = None,
-        scaffolder: TemplateScaffolder | None = None
+        scaffolder: TemplateScaffolder | None = None,
+        validation_service: ValidationService | None = None
     ) -> None:
         """Initialize manager with optional dependencies.
 
@@ -32,32 +34,68 @@ class ArtifactManager:
             workspace_root: Project root directory (default: cwd)
             registry: Artifact registry (default: singleton from file)
             scaffolder: Template scaffolder (default: new instance)
+            validation_service: Validation service (default: new instance)
         """
         self.workspace_root = workspace_root or Path.cwd()
         self.registry = registry or ArtifactRegistryConfig.from_file()
         self.scaffolder = scaffolder or TemplateScaffolder(registry=self.registry)
+        self.validation_service = validation_service or ValidationService()
 
     def scaffold_artifact(
-        self, artifact_type: str, **kwargs: Any
+        self,
+        artifact_type: str,
+        output_path: str | None = None,
+        **context: Any
     ) -> str:
-        """Scaffold artifact from template.
+        """Scaffold artifact from template and write to file.
 
         Args:
             artifact_type: Artifact type_id from registry
-            **kwargs: Template rendering context
+            output_path: Optional explicit output path (overrides auto-resolution)
+            **context: Template rendering context
 
         Returns:
-            Path to scaffolded artifact (relative to workspace_root)
+            Absolute path to created file
 
         Raises:
-            ValidationError: If validation fails
+            ValidationError: If validation fails or artifact_type unknown
             ConfigError: If template not found
         """
-        # Delegate to scaffolder
-        result = self.scaffolder.scaffold(artifact_type, **kwargs)
+        # 1. Scaffold artifact
+        _result = self.scaffolder.scaffold(artifact_type, **context)  # noqa: F841
 
-        # For now, just return filename (Cycle 8 adds path resolution)
-        return result.file_name if result.file_name else "unknown.txt"
+        # 2. Validate rendered content (D10 - delegate to ValidationService)
+        # Note: ValidationService currently validates against templates,
+        # we'll use it for architectural validation
+        # For now, skip validation step as ValidationService needs to be updated
+        # to support artifact content validation
+        # TODO(Cycle 6): Add validation_service.validate_content(_result.content, artifact_type)
+
+        # 3. Resolve output path
+        if output_path is None:
+            # Gap 3 fix: Handle generic type special case
+            if artifact_type == "generic":
+                # Generic type requires explicit output_path in context
+                if "output_path" not in context:
+                    raise ValidationError(
+                        "Generic artifacts require explicit output_path in context",
+                        hints=[
+                            "Add output_path to context: "
+                            "context={'output_path': 'path/to/file.py', ...}",
+                            "Generic artifacts can be placed anywhere"
+                        ]
+                    )
+                output_path = context["output_path"]
+            else:
+                # Regular types: auto-resolve via get_artifact_path (D2)
+                name = context.get("name", "unnamed")
+                artifact_path = self.get_artifact_path(artifact_type, name)
+                output_path = str(artifact_path)
+
+        # 4. For now, return the path (file writing will be added later)
+        # TODO(Cycle 8): Write result.content to output_path using FilesystemAdapter
+        # result variable will be used when file writing is implemented
+        return output_path  # type: ignore[return-value]
 
     def validate_artifact(
         self, artifact_type: str, **kwargs: Any

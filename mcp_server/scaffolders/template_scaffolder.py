@@ -6,6 +6,8 @@ Issue #56: Unified artifact system.
 
 from typing import Any
 
+from jinja2 import Template, TemplateError
+
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
@@ -105,10 +107,18 @@ class TemplateScaffolder(BaseScaffolder):
             # Read template file
             with open(template_path, 'r', encoding='utf-8') as f:
                 template_content = f.read()
-            
-            # Simple placeholder rendering (actual Jinja2 in Cycle 6)
-            return template_content
-            
+
+            # Render template with Jinja2 (Cycle 6 complete)
+            try:
+                template = Template(template_content)
+                rendered = template.render(**kwargs)
+                return rendered
+            except TemplateError as e:
+                raise ConfigError(
+                    f"Template rendering failed: {template_path}\n{str(e)}",
+                    file_path=template_path
+                ) from e
+
         except FileNotFoundError as e:
             raise ConfigError(
                 f"Template file not found: {template_path}",
