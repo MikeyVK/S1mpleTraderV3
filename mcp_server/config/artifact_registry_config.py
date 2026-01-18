@@ -1,27 +1,18 @@
-"""Artifact Registry Configuration.
+# mcp_server/config/artifact_registry_config.py
+"""
+Artifact Registry Configuration - Unified artifact type definitions.
 
-This module provides configuration management for the unified artifact registry
-system (Issue #56). It loads and validates artifacts.yaml which defines all
-scaffoldable artifact types (code and documents).
+Loads artifacts.yaml and provides artifact type definitions for the entire
+scaffolding system. Replaces ComponentRegistryConfig with unified registry
+supporting both code and document artifacts.
 
-Design decisions:
-- D1: Single artifacts.yaml (unified registry)
-- D2: No base_path (DRY - use project_structure.yaml)
-- D8: State machine structure (execution in Epic #18)
-
-Architecture:
-- Singleton pattern: from_file() caches instance
-- Pydantic validation: Type safety and field validation
-- Cross-references: project_structure.yaml, policies.yaml, workflows.yaml
-
-Usage:
-    config = ArtifactRegistryConfig.from_file()
-    artifact = config.get_artifact("dto")
-    
-Author: AI Agent
-Created: 2024
-Epic: #49 (Platform Configurability)
-Issue: #56 (Unified Artifact System)
+@layer: Backend (Config)
+@dependencies: [pydantic, yaml, pathlib, typing]
+@responsibilities:
+    - Load and validate artifacts.yaml configuration
+    - Provide artifact definitions via singleton pattern
+    - Validate artifact type existence and field requirements
+    - Support dependency injection and testing (reset_instance)
 """
 
 from __future__ import annotations

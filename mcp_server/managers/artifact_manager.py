@@ -1,7 +1,19 @@
-"""ArtifactManager orchestrates artifact scaffolding (Cycles 7-8).
+# mcp_server/managers/artifact_manager.py
+"""
+ArtifactManager - Orchestrates artifact scaffolding operations.
 
-Manager pattern - NOT singleton, instantiated per tool.
-Delegates to TemplateScaffolder for actual scaffolding.
+Manages the complete artifact scaffolding workflow including template rendering,
+validation, directory resolution, and file writing. Implements dependency injection
+pattern for testability.
+
+@layer: Backend (Managers)
+@dependencies: [ArtifactRegistryConfig, TemplateScaffolder, ValidationService,
+               DirectoryPolicyResolver]
+@responsibilities:
+    - Orchestrate artifact scaffolding workflow
+    - Resolve output paths via DirectoryPolicyResolver
+    - Handle generic artifact special cases
+    - Validate scaffolded content before writing
 """
 
 from pathlib import Path

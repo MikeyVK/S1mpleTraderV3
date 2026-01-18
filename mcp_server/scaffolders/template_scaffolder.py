@@ -1,7 +1,17 @@
-"""Unified template-based scaffolder (Cycle 4-5).
+# mcp_server/scaffolders/template_scaffolder.py
+"""
+TemplateScaffolder - Unified template-based artifact scaffolding.
 
-Single scaffolder that replaces 9 separate scaffolder classes.
-Issue #56: Unified artifact system.
+Single scaffolder implementation that replaces 9 separate scaffolder classes.
+Uses Jinja2 for template rendering and artifact registry for configuration.
+
+@layer: Backend (Scaffolders)
+@dependencies: [jinja2, ArtifactRegistryConfig, BaseScaffolder]
+@responsibilities:
+    - Load templates from artifact registry
+    - Render templates with Jinja2
+    - Validate required fields
+    - Return scaffolded content as ScaffoldResult
 """
 
 from typing import Any
