@@ -1,24 +1,23 @@
 """
 @module: tests.integration.test_artifact_e2e
 @layer: Test Infrastructure
-@dependencies: pytest, tests.fixtures.artifact_test_harness
+@dependencies: tests.fixtures.artifact_test_harness
 @responsibilities:
   - E2E smoke test for unified artifact system
-  - Happy path validation (scaffold → disk)
+  - Happy path validation (scaffold -> disk)
   - Slice 0 acceptance test
 """
 
 # Standard library
 from pathlib import Path
 
-# Third-party
-import pytest
-
 # Project
 from mcp_server.managers.artifact_manager import ArtifactManager
 
 
-def test_artifact_scaffolding_smoke(artifact_manager: ArtifactManager, temp_workspace: Path) -> None:
+def test_artifact_scaffolding_smoke(
+    artifact_manager: ArtifactManager, temp_workspace: Path
+) -> None:
     """
     Smoke test: scaffold design doc to temp workspace.
 

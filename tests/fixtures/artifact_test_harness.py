@@ -25,25 +25,23 @@ from mcp_server.validation.validation_service import ValidationService
 
 
 @pytest.fixture
-def temp_workspace(tmp_path: Path) -> Generator[Path, None, None]:
+def temp_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Generator[Path, None, None]:
     """
     Hermetic workspace with temp directory.
 
     Automatically cleaned up after test.
     Changes CWD to temp workspace for template resolution.
+    Uses monkeypatch for safe CWD management in parallel tests.
     """
-    import os
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    
+
     # Change CWD to workspace (template paths are relative)
-    original_cwd = Path.cwd()
-    os.chdir(workspace)
-    
+    monkeypatch.chdir(workspace)
+
     yield workspace
-    
-    # Restore CWD
-    os.chdir(original_cwd)
 
 
 @pytest.fixture
@@ -118,7 +116,7 @@ def artifacts_yaml_file(
     # Create dummy template for testing
     template_dir = temp_workspace / "documents"
     template_dir.mkdir(parents=True)
-    
+
     dummy_template = template_dir / "design.md.jinja2"
     dummy_template.write_text(
         "# {{ title }}\n\nIssue: #{{ issue_number }}\nAuthor: {{ author }}\n",
@@ -141,19 +139,23 @@ def artifact_registry(
     """Load ArtifactRegistryConfig from temp artifacts.yaml."""
     # Reset singleton BEFORE loading
     ArtifactRegistryConfig.reset_instance()
-    
+
     # Load from test YAML
     registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
-    
+
     yield registry
-    
+
     # Cleanup: reset singleton after test
     ArtifactRegistryConfig.reset_instance()
 
 
 @pytest.fixture
 def template_scaffolder() -> TemplateScaffolder:
-    """TemplateScaffolder instance (will be updated in Slice 2 to use JinjaRenderer)."""
+    """
+    TemplateScaffolder instance.
+
+    Will be updated in Slice 2 to use JinjaRenderer.
+    """
     return TemplateScaffolder()
 
 
