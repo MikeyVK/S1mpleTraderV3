@@ -17,7 +17,7 @@
 **Activate all tool categories before proceeding:**
 
 ```
-activate_file_editing_tools              → create_file, safe_edit_file, scaffold_component
+activate_file_editing_tools              → create_file, safe_edit_file, scaffold_artifact
 activate_git_workflow_management_tools   → 15 git/PR tools (create_branch, git_status, etc.)
 activate_branch_phase_management_tools   → phase transition tools
 activate_issue_management_tools          → 6 issue tools (create_issue, list_issues, etc.)
@@ -123,7 +123,7 @@ force_phase_transition(
 
 **Pre-Development Documentation (research/planning/design phases):**
 - Output location: `docs/development/issueXX/` (XX = active issue number)
-- Tools: `scaffold_design_doc(doc_type="design|architecture|tracking")`
+- Tools: `scaffold_artifact(artifact_type="design|architecture|tracking", name="...", context={...})`
 - Validation: `validate_doc(path="...")`
 
 **Documentation Phase (after integration):**
@@ -270,8 +270,8 @@ force_phase_transition(
 
 ### A. "Implement a New Component" (DTO, Worker, Adapter)
 1.  **Scaffold Code:**
-    *   `scaffold_component(component_type="...", name="...", output_path="...")`
-    *   *Result:* Creates impl file AND test file. Updates `__init__.py`.
+    *   `scaffold_artifact(artifact_type="dto|worker|adapter", name="...", output_path="...", context={...})`
+    *   *Result:* Creates impl file with proper structure.
 2.  **TDD Loop (Strict):**
     *   Follow Section 2.3 RED → GREEN → REFACTOR cycle
 3.  **Phase Transition:**
@@ -279,7 +279,7 @@ force_phase_transition(
 
 ### B. "Create Documentation" (Architecture, Design, Plan)
 1.  **Scaffold Document:**
-    *   `scaffold_design_doc(doc_type="design", title="...", output_path="docs/development/issueXX/...")`
+    *   `scaffold_artifact(artifact_type="design|architecture|tracking", name="...", output_path="docs/development/issueXX/...", context={...})`
     *   *Result:* Creates perfectly structured markdown file.
 2.  **Validate:**
     *   `validate_doc(content="...", template_type="design")`

@@ -235,7 +235,7 @@ Implementation via strict TDD: RED → GREEN → REFACTOR.
 
 | Activity | Description | MCP Tool |
 |----------|-------------|----------|
-| Create Test File | In correct location | `scaffold_component` |
+| Create Test File | In correct location | `scaffold_artifact` |
 | Write Test Cases | Based on scenarios | Manual + AI assist |
 | Run Tests | Verify they fail | `run_tests` |
 
@@ -245,7 +245,7 @@ Implementation via strict TDD: RED → GREEN → REFACTOR.
 
 | Activity | Description | MCP Tool |
 |----------|-------------|----------|
-| Create Source File | In correct location | `scaffold_component` |
+| Create Source File | In correct location | `scaffold_artifact` |
 | Implement Minimal | Just enough to pass | Manual + AI assist |
 | Run Tests | Verify they pass | `run_tests` |
 

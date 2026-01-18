@@ -193,7 +193,7 @@ mcp_server/
 │   ├── discovery.py             # search_documentation, get_work_context
 │   ├── documentation.py         # scaffold_document, validate_structure
 │   ├── github_issues.py         # create_issue, update_issue, close_issue, etc.
-│   ├── implementation.py        # scaffold_component, scaffold_design_doc
+│   ├── scaffold_artifact.py     # scaffold_artifact (unified code/doc scaffolding)
 │   ├── quality.py               # run_quality_gates, fix_whitespace, count_tests
 │   └── git.py                   # create_feature_branch, commit_tdd_phase, etc.
 │
@@ -637,8 +637,8 @@ async def my_resource() -> MyResourceData:
 ### 13.3 Adding New Templates
 
 1. Create Jinja2 template in `mcp_server/templates/`
-2. Register in `ScaffoldManager.TEMPLATES`
-3. Add schema in `scaffold_component` tool
+2. Register in `.st3/artifacts.yaml` registry
+3. Use via `scaffold_artifact` tool with new artifact_type
 
 ---
 
