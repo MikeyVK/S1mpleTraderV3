@@ -4,7 +4,7 @@ Unit tests for ValidationService validation policy.
 
 Tests verify:
 - Code artifacts: Syntax validation (BLOCK on errors)
-- Doc artifacts: Pass validation (WARN policy - no blocking)
+- Doc artifacts: H1 title validation (WARN policy)
 
 @layer: Tests (Unit)
 @test_type: Unit
@@ -13,8 +13,8 @@ Tests verify:
 from mcp_server.validation.validation_service import ValidationService
 
 
-def test_validate_content_code_artifact_valid():
-    """GIVEN: Valid Python code, WHEN: validate_content("code"), THEN: passed=True."""
+def test_validate_syntax_python_valid():
+    """GIVEN: Valid Python code, WHEN: validate_syntax(.py), THEN: passed=True."""
     service = ValidationService()
 
     valid_python = """
@@ -23,14 +23,14 @@ from pydantic import BaseModel
 class TestDTO(BaseModel):
     name: str
 """
-    passed, issues = service.validate_content(valid_python, "code")
+    passed, issues = service.validate_syntax("test.py", valid_python)
 
     assert passed is True
     assert not issues
 
 
-def test_validate_content_code_artifact_invalid_syntax():
-    """GIVEN: Invalid Python syntax, WHEN: validate_content("code"), THEN: passed=False."""
+def test_validate_syntax_python_invalid():
+    """GIVEN: Invalid Python syntax, WHEN: validate_syntax(.py), THEN: passed=False."""
     service = ValidationService()
 
     invalid_python = """
@@ -38,56 +38,47 @@ class TestDTO:
     def __init__(self
         # Missing closing parenthesis
 """
-    passed, issues = service.validate_content(invalid_python, "code")
+    passed, issues = service.validate_syntax("test.py", invalid_python)
 
     assert passed is False
     assert "syntax error" in issues.lower()
     assert "line" in issues.lower()
 
 
-def test_validate_content_doc_artifact_always_passes():
-    """GIVEN: Any doc content, WHEN: validate_content("doc"), THEN: passed=True (WARN policy)."""
+def test_validate_syntax_markdown_valid():
+    """GIVEN: Markdown with H1, WHEN: validate_syntax(.md), THEN: passed=True."""
     service = ValidationService()
 
-    # Even "invalid" markdown should pass (WARN policy - no blocking)
-    doc_content = """
-# Incomplete Design
+    valid_md = """# My Document
 
-<!-- Missing sections -->
+Some content here.
 """
-    passed, issues = service.validate_content(doc_content, "doc")
+    passed, issues = service.validate_syntax("test.md", valid_md)
 
     assert passed is True
     assert not issues
 
 
-def test_validate_content_specific_type_id_dto():
-    """GIVEN: Valid Python, WHEN: validate_content("dto"), THEN: passed=True (backward compat)."""
+def test_validate_syntax_markdown_missing_h1():
+    """GIVEN: Markdown without H1, WHEN: validate_syntax(.md), THEN: passed=False."""
     service = ValidationService()
 
-    valid_dto = """
-from pydantic import BaseModel
+    invalid_md = """## Subtitle Only
 
-class UserDTO(BaseModel):
-    id: int
-    name: str
+No H1 title!
 """
-    passed, issues = service.validate_content(valid_dto, "dto")
-
-    assert passed is True
-    assert not issues
-
-
-def test_validate_content_specific_type_id_dto_invalid():
-    """GIVEN: Invalid Python, WHEN: validate_content("dto"), THEN: passed=False."""
-    service = ValidationService()
-
-    invalid_dto = """
-class UserDTO
-    # Missing colon after class name
-    pass
-"""
-    passed, issues = service.validate_content(invalid_dto, "dto")
+    passed, issues = service.validate_syntax("test.md", invalid_md)
 
     assert passed is False
-    assert "syntax error" in issues.lower()
+    assert "h1" in issues.lower() or "title" in issues.lower()
+
+
+def test_validate_syntax_unknown_filetype_passes():
+    """GIVEN: Unknown filetype, WHEN: validate_syntax(), THEN: passed=True (no validation)."""
+    service = ValidationService()
+
+    content = "any content"
+    passed, issues = service.validate_syntax("test.txt", content)
+
+    assert passed is True
+    assert not issues

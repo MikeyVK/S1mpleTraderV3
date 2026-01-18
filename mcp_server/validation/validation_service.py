@@ -12,6 +12,7 @@ Validation service for orchestrating file validation.
 """
 
 # Standard library
+import re
 from pathlib import Path
 
 # Project imports
@@ -84,6 +85,39 @@ class ValidationService:
         """
         validators = self._get_applicable_validators(path)
         return await self._run_validators(validators, path, content)
+
+    def validate_syntax(self, path: str, content: str) -> tuple[bool, str]:
+        """
+        Lightweight syntax validation for pre-write checks.
+
+        This performs fast syntax checks without heavy QA gates (no pylint/mypy).
+        Used by ArtifactManager before writing scaffolded content.
+
+        Args:
+            path: File path (used to determine file type)
+            content: Content to validate
+
+        Returns:
+            Tuple of (passed, issues_text)
+        """
+        # Determine validation based on file extension
+        if path.endswith(".py"):
+            # Python syntax check
+            try:
+                compile(content, path, "exec")
+                return True, ""
+            except SyntaxError as e:
+                return False, f"❌ Python syntax error at line {e.lineno}: {e.msg}"
+
+        elif path.endswith(".md"):
+            # Markdown validation: check for H1 title
+            h1_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+            if not h1_match:
+                return False, "❌ Markdown missing H1 title (line must start with '# ')"
+            return True, ""
+
+        # Other file types pass (no validation)
+        return True, ""
 
     def validate_content(self, content: str, artifact_type: str) -> tuple[bool, str]:
         """

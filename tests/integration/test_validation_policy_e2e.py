@@ -49,7 +49,9 @@ class {{ name }}DTO:
     create_template(temp_workspace, "components/dto_invalid.py.jinja2", invalid_template)
 
     # Reload registry
-    from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+    from mcp_server.config.artifact_registry_config import (  # pylint: disable=import-outside-toplevel
+        ArtifactRegistryConfig,
+    )
     ArtifactRegistryConfig.reset_instance()
     fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
 
@@ -62,7 +64,7 @@ class {{ name }}DTO:
 
     # WHEN: scaffold invalid code artifact
     with pytest.raises(ValidationError) as exc_info:
-        artifact_manager.scaffold_artifact(
+        await artifact_manager.scaffold_artifact(
             artifact_type="dto_invalid",
             output_path=str(output_path),
             name="Test",
@@ -97,15 +99,18 @@ async def test_invalid_doc_artifact_warns_writes_file(
         required_fields=["title"],
     )
 
-    # Create minimal doc template (could be considered "invalid" if validator checks structure)
-    minimal_template = """# {{ title }}
+    # Create minimal doc template (MISSING H1 - will trigger validation error)
+    minimal_template = """## {{ title }}
 
-<!-- Intentionally minimal - missing standard design doc sections -->
+<!-- INTENTIONALLY MISSING H1 TITLE (starts with ## instead of #) -->
+<!-- This will trigger MarkdownValidator error but WARN policy allows writing -->
 """
     create_template(temp_workspace, "documents/design_minimal.md.jinja2", minimal_template)
 
     # Reload registry
-    from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+    from mcp_server.config.artifact_registry_config import (  # pylint: disable=import-outside-toplevel
+        ArtifactRegistryConfig,
+    )
     ArtifactRegistryConfig.reset_instance()
     fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
 
@@ -118,7 +123,7 @@ async def test_invalid_doc_artifact_warns_writes_file(
     caplog.set_level(logging.WARNING)
 
     # WHEN: scaffold doc artifact (WARN policy)
-    result_path = artifact_manager.scaffold_artifact(
+    result_path = await artifact_manager.scaffold_artifact(
         artifact_type="design_minimal",
         output_path=str(output_path),
         title="Test Design",
@@ -129,7 +134,23 @@ async def test_invalid_doc_artifact_warns_writes_file(
         f"Doc artifact SHOULD be written even with warnings (WARN). Missing: {output_path}"
     )
 
-    # THEN: Returned path matches
+    # THEN: WARNING is explicitly logged (DoD requirement)
+    warning_records = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warning_records) > 0, (
+        "Expected explicit WARNING log for doc artifact validation issues (WARN policy). "
+        f"Got {len(warning_records)} warnings"
+    )
+
+    # THEN: Warning message mentions validation and artifact type
+    warning_text = " ".join([r.message for r in warning_records])
+    assert "validation" in warning_text.lower(), (
+        f"Expected 'validation' in warning message. Got: {warning_text}"
+    )
+    assert "design_minimal" in warning_text or "doc" in warning_text, (
+        f"Expected artifact type in warning message. Got: {warning_text}"
+    )
+
+    # THEN: Returned path matches what was written
     assert result_path == str(output_path.resolve())
 
 
@@ -163,7 +184,9 @@ class {{ name }}DTO(BaseModel):
     create_template(temp_workspace, "components/dto_valid.py.jinja2", valid_template)
 
     # Reload registry
-    from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+    from mcp_server.config.artifact_registry_config import (  # pylint: disable=import-outside-toplevel
+        ArtifactRegistryConfig,
+    )
     ArtifactRegistryConfig.reset_instance()
     fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
 
@@ -174,7 +197,7 @@ class {{ name }}DTO(BaseModel):
     output_path = temp_workspace / "mcp_server" / "dtos" / "test_dto.py"
 
     # WHEN: scaffold valid code artifact
-    result_path = artifact_manager.scaffold_artifact(
+    result_path = await artifact_manager.scaffold_artifact(
         artifact_type="dto_valid",
         output_path=str(output_path),
         name="Test",

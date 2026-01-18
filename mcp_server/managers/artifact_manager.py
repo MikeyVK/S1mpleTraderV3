@@ -17,6 +17,7 @@ pattern for testability.
     - Write scaffolded content to filesystem
 """
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,8 @@ from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.validation.validation_service import ValidationService
+
+logger = logging.getLogger(__name__)
 
 
 class ArtifactManager:
@@ -76,7 +79,7 @@ class ArtifactManager:
             fs_adapter = FilesystemAdapter(root_path=str(self.workspace_root))
         self.fs_adapter = fs_adapter or FilesystemAdapter()
 
-    def scaffold_artifact(
+    async def scaffold_artifact(
         self,
         artifact_type: str,
         output_path: str | None = None,
@@ -93,7 +96,7 @@ class ArtifactManager:
             Absolute path to created file
 
         Raises:
-            ValidationError: If validation fails or artifact_type unknown
+            ValidationError: If validation fails for code artifacts (BLOCK policy)
             ConfigError: If template not found
         """
         # 1. Scaffold artifact
@@ -102,23 +105,9 @@ class ArtifactManager:
         # 2. Get artifact definition to determine validation policy
         artifact = self.registry.get_artifact(artifact_type)
 
-        # 3. Validate rendered content based on artifact category
-        passed, issues = self.validation_service.validate_content(
-            result.content, artifact.type  # Pass artifact.type ("code" or "doc")
-        )
-        if not passed:
-            # BLOCK policy: Fail for code artifacts
-            raise ValidationError(
-                f"Generated {artifact_type} artifact failed validation:\n{issues}",
-                hints=[
-                    "Check template for syntax errors",
-                    "Verify template variables are correctly substituted"
-                ]
-            )
-
-        # 4. Resolve output path
+        # 3. Resolve output path (needed for path-based validation)
         if output_path is None:
-            # Gap 3 fix: Handle generic type special case
+            # Handle generic type special case
             if artifact_type == "generic":
                 # Generic type requires explicit output_path in context
                 if "output_path" not in context:
@@ -132,17 +121,42 @@ class ArtifactManager:
                     )
                 output_path = context["output_path"]
             else:
-                # Regular types: auto-resolve via get_artifact_path (D2)
+                # Regular types: auto-resolve via get_artifact_path
                 name = context.get("name", "unnamed")
                 artifact_path = self.get_artifact_path(artifact_type, name)
                 output_path = str(artifact_path)
 
-        # 4. Write file to filesystem (Gap 1 fix - CRITICAL)
         assert output_path is not None, "output_path should be set by this point"
+
+        # 4. Validate rendered content (lightweight syntax check for pre-write validation)
+        # Use validate_syntax() for fast pre-write checks (no heavy QA gates)
+        passed, issues = self.validation_service.validate_syntax(
+            output_path, result.content
+        )
+
+        if not passed:
+            if artifact.type == "code":
+                # BLOCK policy: Code artifacts must pass validation
+                raise ValidationError(
+                    f"Generated {artifact_type} artifact failed validation:\n{issues}",
+                    hints=[
+                        "Check template for syntax errors",
+                        "Verify template variables are correctly substituted"
+                    ]
+                )
+
+            # WARN policy: Doc artifacts emit warning but continue
+            logger.warning(
+                "Validation issues in %s artifact (type=%s), writing anyway:\n%s",
+                artifact_type,
+                artifact.type,
+                issues
+            )
+
+        # 5. Write file to filesystem
         self.fs_adapter.write_file(output_path, result.content)
 
         # Return absolute path to created file
-        # Note: We call resolve_path to get the absolute path
         return str(self.fs_adapter.resolve_path(output_path))
 
     def validate_artifact(
