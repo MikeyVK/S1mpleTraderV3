@@ -21,8 +21,8 @@ artifact_types:
     # LEGACY fields (Issue #107 - remove after unified TemplateScaffolder deployed)
     scaffolder_class: "DTOScaffolder"
     scaffolder_module: "mcp_server.scaffolders.dto_scaffolder"
-    # Template paths (Issue #107: Templates not created yet)
-    template_path: null
+    # Template paths
+    template_path: "components/dto.py.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -47,7 +47,7 @@ artifact_types:
     description: "Worker - executes single domain operation (async task processor)"
     scaffolder_class: "WorkerScaffolder"
     scaffolder_module: "mcp_server.scaffolders.worker_scaffolder"
-    template_path: null
+    template_path: "components/worker.py.jinja2"
     fallback_template: null
     name_suffix: "Worker"
     file_extension: ".py"
@@ -71,7 +71,7 @@ artifact_types:
     description: "Adapter - integrates external systems (implements Interface)"
     scaffolder_class: "AdapterScaffolder"
     scaffolder_module: "mcp_server.scaffolders.adapter_scaffolder"
-    template_path: null
+    template_path: "components/adapter.py.jinja2"
     fallback_template: null
     name_suffix: "Adapter"
     file_extension: ".py"
@@ -95,7 +95,7 @@ artifact_types:
     description: "MCP Tool - exposes functionality via MCP protocol"
     scaffolder_class: "ToolScaffolder"
     scaffolder_module: "mcp_server.scaffolders.tool_scaffolder"
-    template_path: null
+    template_path: "components/tool.py.jinja2"
     fallback_template: null
     name_suffix: "Tool"
     file_extension: ".py"
@@ -118,7 +118,7 @@ artifact_types:
     description: "MCP Resource - provides dynamic content"
     scaffolder_class: "ResourceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.resource_scaffolder"
-    template_path: null
+    template_path: "components/resource.py.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -141,7 +141,7 @@ artifact_types:
     description: "Pydantic Schema - validation models"
     scaffolder_class: "SchemaScaffolder"
     scaffolder_module: "mcp_server.scaffolders.schema_scaffolder"
-    template_path: null
+    template_path: "components/schema.py.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -163,7 +163,7 @@ artifact_types:
     description: "Interface - abstract protocol definition"
     scaffolder_class: "InterfaceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.interface_scaffolder"
-    template_path: null
+    template_path: "components/interface.py.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -185,7 +185,10 @@ artifact_types:
     description: "Service - orchestration or business logic"
     scaffolder_class: "ServiceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.service_scaffolder"
-    template_path: null
+    template_path: null  # SPECIAL: service_type context field selects template
+    # orchestrator -> service_orchestrator.py.jinja2
+    # command -> service_command.py.jinja2
+    # query -> service_query.py.jinja2
     fallback_template: null
     name_suffix: "Service"
     file_extension: ".py"
@@ -208,7 +211,8 @@ artifact_types:
     description: "Generic component from custom template"
     scaffolder_class: "GenericScaffolder"
     scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
-    template_path: null
+    template_path: null  # SPECIAL: template_name from context selects template
+    # User provides template_name field (relative to templates/)
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -232,7 +236,7 @@ artifact_types:
     type_id: research
     name: "Research Document"
     description: "Research phase findings and questions"
-    template_path: "documents/research.md.jinja2"
+    template_path: "documents/generic.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -257,7 +261,7 @@ artifact_types:
     type_id: planning
     name: "Planning Document"
     description: "Planning phase TDD cycle breakdown"
-    template_path: "documents/planning.md.jinja2"
+    template_path: "documents/generic.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"

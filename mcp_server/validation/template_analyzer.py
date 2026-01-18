@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 # Third-party
-import yaml  # type: ignore[import-untyped]
+import yaml
 from jinja2 import Environment, meta
 
 

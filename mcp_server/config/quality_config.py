@@ -15,7 +15,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Literal, TypeAlias
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
