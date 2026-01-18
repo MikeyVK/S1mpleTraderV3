@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional, ClassVar
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
-from mcp_server.core.errors import ConfigError
+from mcp_server.core.exceptions import ConfigError
 
 
 class ComponentDefinition(BaseModel):

@@ -23,7 +23,7 @@ from typing import Any
 from mcp_server.adapters.filesystem import FilesystemAdapter
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
-from mcp_server.core.errors import ConfigError, ValidationError
+from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.validation.validation_service import ValidationService
 

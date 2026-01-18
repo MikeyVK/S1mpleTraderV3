@@ -12,7 +12,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 from mcp_server.config.component_registry import ComponentRegistryConfig
-from mcp_server.core.errors import ConfigError
+from mcp_server.core.exceptions import ConfigError
 
 
 class DirectoryPolicy(BaseModel):

@@ -24,9 +24,7 @@ from typing import ClassVar
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
-class ConfigError(Exception):
-    """Configuration loading or validation error."""
+from mcp_server.core.exceptions import ConfigError
 
 
 class ArtifactType(str, Enum):

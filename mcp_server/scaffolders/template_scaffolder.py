@@ -21,7 +21,7 @@ from jinja2 import Template, TemplateError
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-from mcp_server.core.errors import ConfigError, ValidationError
+from mcp_server.core.exceptions import ConfigError, ValidationError
 
 
 class TemplateScaffolder(BaseScaffolder):

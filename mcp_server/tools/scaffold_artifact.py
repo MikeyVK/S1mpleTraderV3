@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 from mcp_server.managers.artifact_manager import ArtifactManager
-from mcp_server.core.errors import ValidationError, ConfigError
+from mcp_server.core.exceptions import ValidationError, ConfigError
 
 
 class ScaffoldArtifactInput(BaseModel):
