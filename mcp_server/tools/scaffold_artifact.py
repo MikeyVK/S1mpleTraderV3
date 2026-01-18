@@ -107,4 +107,3 @@ class ScaffoldArtifactTool(BaseTool):
         return ToolResult.text(
             f"✅ Scaffolded {params.artifact_type}: {artifact_path}"
         )
-

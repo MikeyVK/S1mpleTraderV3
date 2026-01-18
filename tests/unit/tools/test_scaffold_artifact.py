@@ -1,10 +1,14 @@
 """Unit tests for ScaffoldArtifactTool (Cycle 11)."""
 
-import pytest
 from unittest.mock import MagicMock
 
-from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool, ScaffoldArtifactInput
-from mcp_server.core.exceptions import ValidationError, ConfigError
+import pytest
+
+from mcp_server.core.exceptions import ConfigError, ValidationError
+from mcp_server.tools.scaffold_artifact import (
+    ScaffoldArtifactInput,
+    ScaffoldArtifactTool,
+)
 
 
 class TestScaffoldArtifactTool:
@@ -33,7 +37,7 @@ class TestScaffoldArtifactTool:
         """Input schema should require artifact_type and name."""
         # Pydantic model validation
         with pytest.raises(Exception):  # Missing required fields
-            ScaffoldArtifactInput()
+            ScaffoldArtifactInput()  # type: ignore[call-arg]
 
         # Valid input
         input_data = ScaffoldArtifactInput(
