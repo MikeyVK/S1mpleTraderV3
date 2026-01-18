@@ -1,17 +1,16 @@
 # mcp_server/services/search_service.py
 """
-Search Service - Stateless documentation search functionality.
+SearchService - Stateless documentation search.
 
-Provides pure functions for calculating relevance scores and ranking search results.
-Extracted from DocManager for better testability and reusability.
+Provides stateless search algorithms for documentation indexing and retrieval.
+Extracted from DocManager to separate logic (service) from data (index).
 
 @layer: Backend (Services)
 @dependencies: [typing]
 @responsibilities:
-    - Calculate relevance scores for documentation search
-    - Rank documents by relevance score
-    - Extract search result snippets with context
-    - Pure stateless functions (all @staticmethod)
+    - Index searching (stateless)
+    - Relevance calculation
+    - Snippet extraction
 """
 
 from typing import Any
@@ -133,7 +132,7 @@ class SearchService:
             relevance = SearchService.calculate_relevance(doc, query)
 
             # Skip documents with no matches
-            if relevance == 0.0:
+            if relevance <= 0.0:
                 continue
 
             # Create result with relevance and snippet
