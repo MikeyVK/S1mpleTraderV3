@@ -105,9 +105,9 @@ class ArtifactManager:
                 output_path = str(artifact_path)
 
         # 4. For now, return the path (file writing will be added later)
-        # TODO(Cycle 8): Write result.content to output_path using FilesystemAdapter
-        # result variable will be used when file writing is implemented
-        return output_path  # type: ignore[return-value]
+        # TODO(Cycle 8): Write _result.content to output_path using FilesystemAdapter
+        assert output_path is not None, "output_path should be set by this point"
+        return output_path
 
     def validate_artifact(
         self, artifact_type: str, **kwargs: Any
