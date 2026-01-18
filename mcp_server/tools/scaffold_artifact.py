@@ -1,7 +1,17 @@
-"""ScaffoldArtifactTool - Unified artifact scaffolding tool (Cycle 11).
+# mcp_server/tools/scaffold_artifact.py
+"""
+Scaffold Artifact Tool - Unified artifact scaffolding.
 
 Replaces scaffold_component and scaffold_design_doc tools.
 Handles all artifact types (code + documents) via ArtifactManager.
+
+@layer: Backend (Tools)
+@dependencies: [ArtifactManager, BaseTool, ToolResult, ValidationError, ConfigError]
+@responsibilities:
+    - Accept artifact scaffolding requests from MCP clients
+    - Delegate to ArtifactManager for orchestration
+    - Format success/error results for LLM consumption
+    - Handle ValidationError and ConfigError gracefully
 """
 
 from typing import Any

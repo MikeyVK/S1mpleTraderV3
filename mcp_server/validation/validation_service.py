@@ -85,6 +85,35 @@ class ValidationService:  # pylint: disable=too-few-public-methods
         validators = self._get_applicable_validators(path)
         return await self._run_validators(validators, path, content)
 
+    def validate_content(self, content: str, artifact_type: str) -> tuple[bool, str]:
+        """
+        Validate artifact content synchronously (for pre-write validation).
+
+        This is a simplified validation that checks basic Python syntax
+        and structure without requiring a file path. Used by ArtifactManager
+        before writing scaffolded content to disk.
+
+        Args:
+            content: Artifact content to validate.
+            artifact_type: Artifact type ID (e.g., 'dto', 'worker').
+
+        Returns:
+            Tuple of (passed, issues_text) where passed is True if validation
+            succeeds, and issues_text contains formatted issues if any.
+        """
+        # For Python artifacts, do basic syntax validation
+        if artifact_type in ["dto", "worker", "adapter", "tool", "base"]:
+            try:
+                # Try to compile the content to check for syntax errors
+                compile(content, f"<{artifact_type}>", "exec")
+                return True, ""
+            except SyntaxError as e:
+                return False, f"❌ Python syntax error at line {e.lineno}: {e.msg}"
+
+        # For non-Python artifacts (documents, etc.), skip validation
+        # This is acceptable as documents are markdown/text and harder to validate
+        return True, ""
+
     def _get_applicable_validators(self, path: str) -> list[BaseValidator]:
         """
         Get validators with context-specific filtering.

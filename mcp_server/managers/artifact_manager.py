@@ -82,11 +82,17 @@ class ArtifactManager:
         result = self.scaffolder.scaffold(artifact_type, **context)
 
         # 2. Validate rendered content (D10 - delegate to ValidationService)
-        # Note: ValidationService currently validates against templates,
-        # we'll use it for architectural validation
-        # For now, skip validation step as ValidationService needs to be updated
-        # to support artifact content validation
-        # TODO(Cycle 6): Add validation_service.validate_content(result.content, artifact_type)
+        passed, issues = self.validation_service.validate_content(
+            result.content, artifact_type
+        )
+        if not passed:
+            raise ValidationError(
+                f"Generated {artifact_type} artifact failed validation:\n{issues}",
+                hints=[
+                    "Check template for syntax errors",
+                    "Verify template variables are correctly substituted"
+                ]
+            )
 
         # 3. Resolve output path
         if output_path is None:

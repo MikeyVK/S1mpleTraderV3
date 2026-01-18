@@ -37,27 +37,43 @@ class TestArtifactManagerCore:
         from mcp_server.managers.artifact_manager import ArtifactManager
         from unittest.mock import patch, Mock
 
+        # Valid Python content for validation
+        valid_python_content = '"""Test DTO."""\n\nclass TestDTO:\n    """Test DTO class."""\n    pass\n'
+
         mock_scaffolder = Mock(spec=TemplateScaffolder)
-        mock_scaffolder.scaffold.return_value = Mock(content='test content', file_name='test.py')
+        mock_scaffolder.scaffold.return_value = Mock(
+            content=valid_python_content,
+            file_name='test.py'
+        )
 
         mock_fs_adapter = Mock()
         mock_fs_adapter._validate_path.return_value = Path('/test/test.py')
+
+        mock_validation_service = Mock()
+        mock_validation_service.validate_content.return_value = (True, "")
 
         # Mock get_artifact_path to avoid complex dependency chain
         with patch.object(ArtifactManager, 'get_artifact_path', return_value=Path('/test/test.py')):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
-                fs_adapter=mock_fs_adapter
+                fs_adapter=mock_fs_adapter,
+                validation_service=mock_validation_service
             )
             result = manager.scaffold_artifact('dto', name='Test', fields=[])
 
         # Verify scaffolder was called with correct arguments
         mock_scaffolder.scaffold.assert_called_once_with('dto', name='Test', fields=[])
 
+        # Verify validation was called
+        mock_validation_service.validate_content.assert_called_once_with(
+            valid_python_content,
+            'dto'
+        )
+
         # Verify file was written
         mock_fs_adapter.write_file.assert_called_once_with(
             str(Path('/test/test.py')),
-            'test content'
+            valid_python_content
         )
 
         # Verify path was returned (normalize for cross-platform)
