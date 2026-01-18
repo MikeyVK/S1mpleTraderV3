@@ -99,11 +99,15 @@ class ArtifactManager:
         # 1. Scaffold artifact
         result = self.scaffolder.scaffold(artifact_type, **context)
 
-        # 2. Validate rendered content (D10 - delegate to ValidationService)
+        # 2. Get artifact definition to determine validation policy
+        artifact = self.registry.get_artifact(artifact_type)
+
+        # 3. Validate rendered content based on artifact category
         passed, issues = self.validation_service.validate_content(
-            result.content, artifact_type
+            result.content, artifact.type  # Pass artifact.type ("code" or "doc")
         )
         if not passed:
+            # BLOCK policy: Fail for code artifacts
             raise ValidationError(
                 f"Generated {artifact_type} artifact failed validation:\n{issues}",
                 hints=[
@@ -112,7 +116,7 @@ class ArtifactManager:
                 ]
             )
 
-        # 3. Resolve output path
+        # 4. Resolve output path
         if output_path is None:
             # Gap 3 fix: Handle generic type special case
             if artifact_type == "generic":

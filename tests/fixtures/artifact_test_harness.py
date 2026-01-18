@@ -15,6 +15,7 @@ from typing import Generator
 
 # Third-party
 import pytest
+import yaml
 
 # Project
 from mcp_server.adapters.filesystem import FilesystemAdapter
@@ -207,3 +208,86 @@ def artifact_manager(
         validation_service=validation_service,
         fs_adapter=fs_adapter,
     )
+
+
+# Helper functions for dynamic artifact/template creation
+
+def add_artifact_to_yaml(
+    artifacts_yaml_path: Path,
+    type_id: str,
+    artifact_type: str,
+    name: str,
+    template_path: str,
+    file_extension: str,
+    description: str | None = None,
+    required_fields: list[str] | None = None,
+    optional_fields: list[str] | None = None,
+    generate_test: bool = False
+) -> None:
+    """
+    Add artifact type to existing artifacts.yaml.
+
+    Args:
+        artifacts_yaml_path: Path to artifacts.yaml
+        type_id: Artifact type ID (e.g., 'dto_invalid')
+        artifact_type: Type category ('code' or 'doc')
+        name: Display name
+        template_path: Relative template path
+        file_extension: File extension (e.g., '.py', '.md')
+        description: Artifact description
+        required_fields: Required template fields
+        optional_fields: Optional template fields
+        generate_test: Whether to generate test file
+    """
+    # Load existing YAML
+    with open(artifacts_yaml_path, encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    # Create new artifact definition
+    artifact_def = {
+        "type": artifact_type,
+        "type_id": type_id,
+        "name": name,
+        "description": description or f"{name} artifact",
+        "template_path": template_path,
+        "fallback_template": None,
+        "name_suffix": None,
+        "file_extension": file_extension,
+        "generate_test": generate_test,
+        "required_fields": required_fields or ["name"],
+        "optional_fields": optional_fields or [],
+        "state_machine": {
+            "states": ["CREATED"],
+            "initial_state": "CREATED",
+            "valid_transitions": []
+        }
+    }
+
+    # Append to artifact_types
+    data["artifact_types"].append(artifact_def)
+
+    # Write back
+    with open(artifacts_yaml_path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+
+def create_template(
+    workspace_root: Path,
+    template_relpath: str,
+    template_content: str
+) -> Path:
+    """
+    Create template file in workspace.
+
+    Args:
+        workspace_root: Workspace root path
+        template_relpath: Relative path (e.g., 'components/dto.py.jinja2')
+        template_content: Template content (Jinja2)
+
+    Returns:
+        Absolute path to created template
+    """
+    template_path = workspace_root / template_relpath
+    template_path.parent.mkdir(parents=True, exist_ok=True)
+    template_path.write_text(template_content, encoding="utf-8")
+    return template_path

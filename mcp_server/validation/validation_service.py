@@ -23,7 +23,7 @@ from mcp_server.validation.layered_template_validator import LayeredTemplateVali
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
 
 
-class ValidationService:  # pylint: disable=too-few-public-methods
+class ValidationService:
     """
     Orchestrates validation of files using registered validators.
 
@@ -95,14 +95,14 @@ class ValidationService:  # pylint: disable=too-few-public-methods
 
         Args:
             content: Artifact content to validate.
-            artifact_type: Artifact type ID (e.g., 'dto', 'worker').
+            artifact_type: Artifact category ("code" or "doc") or specific type_id
 
         Returns:
             Tuple of (passed, issues_text) where passed is True if validation
             succeeds, and issues_text contains formatted issues if any.
         """
-        # For Python artifacts, do basic syntax validation
-        if artifact_type in ["dto", "worker", "adapter", "tool", "base"]:
+        # For code artifacts, do Python syntax validation
+        if artifact_type == "code" or artifact_type in ["dto", "worker", "adapter", "tool", "base"]:
             try:
                 # Try to compile the content to check for syntax errors
                 compile(content, f"<{artifact_type}>", "exec")
@@ -110,8 +110,8 @@ class ValidationService:  # pylint: disable=too-few-public-methods
             except SyntaxError as e:
                 return False, f"❌ Python syntax error at line {e.lineno}: {e.msg}"
 
-        # For non-Python artifacts (documents, etc.), skip validation
-        # This is acceptable as documents are markdown/text and harder to validate
+        # For non-code artifacts (documents, etc.), skip validation
+        # This implements WARN policy: docs pass validation (manager can log warnings)
         return True, ""
 
     def _get_applicable_validators(self, path: str) -> list[BaseValidator]:
