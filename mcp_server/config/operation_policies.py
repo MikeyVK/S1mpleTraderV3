@@ -4,7 +4,7 @@ Purpose: Load and validate policies.yaml
 Domain: WANNEER (when operations are allowed)
 Cross-references: workflows.yaml (validates allowed_phases exist)
 """
-# pyright: reportAttributeAccessIssue=false  # Pydantic Field → runtime dict
+# pyright: reportAttributeAccessIssue=false
 
 import fnmatch
 from pathlib import Path
@@ -199,7 +199,7 @@ class OperationPoliciesConfig(BaseModel):
         # Collect all valid phases from all workflows
         valid_phases: set[str] = set()
         try:
-            for wf_template in workflow_config.workflows.values():
+            for wf_template in workflow_config.workflows.values():  # pylint: disable=no-member
                 valid_phases.update(wf_template.phases)
         except Exception as e:
             raise ConfigError(
@@ -207,7 +207,7 @@ class OperationPoliciesConfig(BaseModel):
                 file_path=".st3/workflows.yaml",
             ) from e
 
-        for op_id, policy in self.operations.items():
+        for op_id, policy in self.operations.items():  # pylint: disable=no-member
             invalid_phases = set(policy.allowed_phases) - valid_phases
             if invalid_phases:
                 raise ConfigError(
@@ -237,7 +237,7 @@ class OperationPoliciesConfig(BaseModel):
         if operation_id not in self.operations:
             raise ValueError(
                 f"Unknown operation: '{operation_id}'. "
-                f"Available operations: {sorted(self.operations.keys())}"
+                f"Available operations: {sorted(self.operations.keys())}"  # pylint: disable=no-member
             )
         return self.operations[operation_id]
 
@@ -247,4 +247,4 @@ class OperationPoliciesConfig(BaseModel):
         Returns:
             Sorted list of operation identifiers
         """
-        return sorted(self.operations.keys())
+        return sorted(self.operations.keys())  # pylint: disable=no-member

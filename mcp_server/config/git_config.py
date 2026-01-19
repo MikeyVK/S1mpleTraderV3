@@ -4,7 +4,7 @@ Purpose: Centralized git conventions configuration
 Source: .st3/git.yaml
 Pattern: Singleton with ClassVar (prevents Pydantic v2 ModelPrivateAttr bug)
 """
-# pyright: reportAttributeAccessIssue=false  # Pydantic Field → runtime dict
+# pyright: reportAttributeAccessIssue=false
 import re
 from pathlib import Path
 from typing import ClassVar, Optional
@@ -173,7 +173,7 @@ class GitConfig(BaseModel):
         Replaces hardcoded prefix list in policies.yaml.
         """
         # Direct comprehension avoids FieldInfo iteration issues
-        return [f"{prefix}:" for prefix in self.commit_prefix_map.values()]
+        return [f"{prefix}:" for prefix in self.commit_prefix_map.values()]  # pylint: disable=no-member
 
     def build_branch_type_regex(self) -> str:
         """Build regex pattern for branch type matching (Convention #7).

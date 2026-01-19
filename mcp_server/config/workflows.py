@@ -14,7 +14,7 @@ Quality Requirements:
 - Mypy: strict mode passing
 - Coverage: 100% for all functions
 """
-# pyright: reportAttributeAccessIssue=false  # Pydantic Field → runtime dict
+# pyright: reportAttributeAccessIssue=false
 
 from pathlib import Path
 from typing import Literal
@@ -126,7 +126,7 @@ class WorkflowConfig(BaseModel):
             ValueError: Unknown workflow name
         """
         if name not in self.workflows:
-            available = ", ".join(sorted(self.workflows.keys()))
+            available = ", ".join(sorted(self.workflows.keys()))  # pylint: disable=no-member
             raise ValueError(
                 f"Unknown workflow: '{name}'\n"
                 f"Available workflows: {available}\n"
