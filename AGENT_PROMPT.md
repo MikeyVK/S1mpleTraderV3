@@ -210,7 +210,7 @@ force_phase_transition(
 - **Code:** dto, worker, adapter, interface, tool, resource, schema, service
 - **Docs:** design, architecture, tracking, generic
 
-**Note:** Replaces legacy `scaffold_component` and `scaffold_design_doc` tools (removed in Issue #56).
+**Registry:** `.st3/artifacts.yaml` defines all artifact types and their templates.
 
 ### Quality & Testing
 | Action | ✅ USE THIS | ❌ NEVER USE |
@@ -273,7 +273,7 @@ force_phase_transition(
 ### A. "Implement a New Component" (DTO, Worker, Adapter)
 1.  **Scaffold Code:**
     *   `scaffold_artifact(artifact_type="dto|worker|adapter", name="ComponentName", context={...})`
-    *   Unified tool - replaces legacy scaffold_component/scaffold_design_doc
+    *   Unified tool for generating code and documentation artifacts
     *   Auto-resolves paths from artifacts.yaml registry
     *   *Result:* Creates impl file with proper structure.
 2.  **TDD Loop (Strict):**
