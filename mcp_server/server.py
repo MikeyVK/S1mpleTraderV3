@@ -318,7 +318,7 @@ class MCPServer:
                 for t in self.tools
             ]
 
-        @self.server.call_tool()  # type: ignore[no-untyped-call, untyped-decorator]
+        @self.server.call_tool()  # type: ignore[untyped-decorator]
         async def handle_call_tool(
             name: str,
             arguments: dict[str, Any] | None

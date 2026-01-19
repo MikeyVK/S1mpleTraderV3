@@ -17,7 +17,7 @@ phase transitions via PhaseStateEngine.
 
 # Standard library
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 # Third-party
 from pydantic import BaseModel, Field, field_validator
@@ -121,7 +121,7 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
 
         engine = self._create_engine()
 
-        def do_transition() -> dict:
+        def do_transition() -> dict[str, Any]:
             return engine.transition(
                 branch=params.branch,
                 to_phase=params.to_phase,
@@ -168,7 +168,7 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
 
         engine = self._create_engine()
 
-        def do_force_transition() -> dict:
+        def do_force_transition() -> dict[str, Any]:
             return engine.force_transition(
                 branch=params.branch,
                 to_phase=params.to_phase,

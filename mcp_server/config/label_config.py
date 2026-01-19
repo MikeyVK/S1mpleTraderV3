@@ -21,7 +21,7 @@ from typing import Optional, Any, ClassVar
 
 # Third-party
 from pydantic import BaseModel, Field, field_validator, ConfigDict, PrivateAttr
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 
 @dataclass(frozen=True)

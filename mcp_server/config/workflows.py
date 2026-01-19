@@ -18,7 +18,7 @@ Quality Requirements:
 from pathlib import Path
 from typing import Literal
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from pydantic import BaseModel, Field, model_validator
 
 

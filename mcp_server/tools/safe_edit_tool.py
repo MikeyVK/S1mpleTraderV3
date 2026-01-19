@@ -14,11 +14,12 @@ from mcp_server.validation.validation_service import ValidationService
 
 class LineEdit(BaseModel):
     """Represents a line-based edit operation."""
+
     start_line: int = Field(..., description="Starting line number (1-based, inclusive)")
     end_line: int = Field(..., description="Ending line number (1-based, inclusive)")
     new_content: str = Field(..., description="New content for the line range")
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_line_range(self) -> "LineEdit":
         """Validate that line range is valid."""
         if self.start_line < 1:
@@ -32,13 +33,13 @@ class LineEdit(BaseModel):
 
 class InsertLine(BaseModel):
     """Represents a line insert operation."""
+
     at_line: int = Field(
-        ...,
-        description="Insert before this line (1-based). Use file_lines+1 to append."
+        ..., description="Insert before this line (1-based). Use file_lines+1 to append."
     )
     content: str = Field(..., description="Content to insert")
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_at_line(self) -> "InsertLine":
         """Validate that at_line is valid."""
         if self.at_line < 1:
@@ -48,30 +49,34 @@ class InsertLine(BaseModel):
 
 class SafeEditInput(BaseModel):
     """Input for SafeEditTool."""
+
     path: str = Field(..., description="Absolute path to the file")
     content: str | None = Field(None, description="New content for the file (full rewrite)")
     line_edits: list[LineEdit] | None = Field(
-        None,
-        description="List of line-based edits (chirurgical edits)"
+        None, description="List of line-based edits (chirurgical edits)"
     )
     insert_lines: list[InsertLine] | None = Field(
-        None,
-        description="List of line insert operations"
+        None, description="List of line insert operations"
     )
     # Flattened search/replace parameters (no nested SearchReplace object)
     search: str | None = Field(None, description="Pattern to search for (search/replace mode)")
     replace: str | None = Field(None, description="Replacement text (search/replace mode)")
-    regex: bool = Field(default=False, description="Use regex pattern matching (search/replace mode)")
-    search_count: int | None = Field(None, description="Maximum number of replacements, None = all (search/replace mode)")
-    search_flags: int = Field(default=0, description="Regex flags e.g. re.IGNORECASE (search/replace mode)")
+    regex: bool = Field(
+        default=False, description="Use regex pattern matching (search/replace mode)"
+    )
+    search_count: int | None = Field(
+        None, description="Maximum number of replacements, None = all (search/replace mode)"
+    )
+    search_flags: int = Field(
+        default=0, description="Regex flags e.g. re.IGNORECASE (search/replace mode)"
+    )
     mode: str = Field(
         default="strict",
         description="Validation mode. 'strict' fails on error, 'interactive' writes but warns.",
-        pattern="^(strict|interactive|verify_only)$"
+        pattern="^(strict|interactive|verify_only)$",
     )
     show_diff: bool = Field(
-        default=True,
-        description="Show unified diff preview comparing original and new content"
+        default=True, description="Show unified diff preview comparing original and new content"
     )
 
     @field_validator("search_flags", mode="before")
@@ -81,39 +86,34 @@ class SafeEditInput(BaseModel):
             return 0
         return int(value)
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_edit_modes(self) -> "SafeEditInput":
         """Validate that exactly one edit mode is specified."""
         # Check if search/replace mode is active
         search_replace_active = self.search is not None or self.replace is not None
-        
-        modes = [
-            self.content,
-            self.line_edits,
-            self.insert_lines,
-            search_replace_active
-        ]
+
+        modes = [self.content, self.line_edits, self.insert_lines, search_replace_active]
 
         # Count non-None modes
         specified_modes = sum(1 for mode in modes if mode)
 
         if not specified_modes:
             raise ValueError(
-                'At least one edit mode must be specified: '
-                'content, line_edits, insert_lines, or search/replace (search + replace)'
+                "At least one edit mode must be specified: "
+                "content, line_edits, insert_lines, or search/replace (search + replace)"
             )
 
         if specified_modes > 1:
             raise ValueError(
-                'Only one edit mode can be specified at a time. '
-                'Choose one of: content, line_edits, insert_lines, or search/replace'
+                "Only one edit mode can be specified at a time. "
+                "Choose one of: content, line_edits, insert_lines, or search/replace"
             )
-        
+
         # If search/replace mode, both search and replace must be provided
         if search_replace_active:
             if self.search is None or self.replace is None:
                 raise ValueError(
-                    'Both search and replace parameters must be provided for search/replace mode'
+                    "Both search and replace parameters must be provided for search/replace mode"
                 )
 
         return self
@@ -121,20 +121,20 @@ class SafeEditInput(BaseModel):
 
 class SafeEditTool(BaseTool):
     """Tool for safely editing files with validation and multiple edit modes.
-    
+
     Supports four mutually exclusive edit modes:
     1. **content**: Full file rewrite
     2. **line_edits**: Replace specific line ranges (surgical edits)
     3. **insert_lines**: Insert content without replacing existing lines
     4. **search_replace**: Pattern-based find/replace (literal or regex)
-    
+
     All modes support:
     - Validation modes: strict (reject on error) / interactive (warn) / verify_only (dry-run)
     - Diff preview: Shows unified diff before applying changes (default: enabled)
     - Validator integration: PythonValidator, MarkdownValidator, TemplateValidator
-    
+
     Examples:
-    
+
     **Full content rewrite:**
     ```python
     SafeEditInput(
@@ -143,7 +143,7 @@ class SafeEditTool(BaseTool):
         mode="strict"
     )
     ```
-    
+
     **Line-based edits (replace specific lines):**
     ```python
     SafeEditInput(
@@ -154,7 +154,7 @@ class SafeEditTool(BaseTool):
         mode="interactive"
     )
     ```
-    
+
     **Insert lines (add without replacing):**
     ```python
     SafeEditInput(
@@ -166,7 +166,7 @@ class SafeEditTool(BaseTool):
         mode="interactive"
     )
     ```
-    
+
     **Search/replace (literal):**
     ```python
     SafeEditInput(
@@ -176,7 +176,7 @@ class SafeEditTool(BaseTool):
         mode="strict"
     )
     ```
-    
+
     **Search/replace (regex with capturing groups):**
     ```python
     SafeEditInput(
@@ -210,7 +210,9 @@ class SafeEditTool(BaseTool):
         """Return the input schema for the tool."""
         return SafeEditInput.model_json_schema()
 
-    async def execute(self, params: SafeEditInput) -> ToolResult:  # pylint: disable=too-many-return-statements,too-many-branches
+    async def execute(
+        self, params: SafeEditInput
+    ) -> ToolResult:
         """Execute the safe edit."""
         path = params.path
         mode = params.mode
@@ -261,6 +263,8 @@ class SafeEditTool(BaseTool):
                 return ToolResult.error(f"Insert lines failed: {e}")
         elif search_replace_active:
             # Search/replace mode - use flattened parameters
+            # Type narrowing: search_replace_active guarantees both are not None
+            assert params.search is not None and params.replace is not None
             try:
                 new_content, replacement_count = self._apply_search_replace_flat(
                     original_content,
@@ -268,13 +272,11 @@ class SafeEditTool(BaseTool):
                     replace=params.replace,
                     regex=params.regex,
                     count=params.search_count,
-                    flags=params.search_flags
+                    flags=params.search_flags,
                 )
                 # In strict mode, error if pattern not found
                 if mode == "strict" and not replacement_count:
-                    return ToolResult.error(
-                        f"Pattern '{params.search}' not found in file"
-                    )
+                    return ToolResult.error(f"Pattern '{params.search}' not found in file")
             except (ValueError, re.error) as e:
                 return ToolResult.error(f"Search/replace failed: {e}")
         else:
@@ -379,16 +381,16 @@ class SafeEditTool(BaseTool):
             new_lines = edit.new_content.splitlines(keepends=True)
 
             # Ensure last line has proper ending if original did
-            if new_lines and lines and not new_lines[-1].endswith(('\n', '\r\n')):
+            if new_lines and lines and not new_lines[-1].endswith(("\n", "\r\n")):
                 # Check if we're replacing lines that had endings
                 if end_idx <= len(lines) and any(lines[start_idx:end_idx]):
                     # Add newline if original lines had them
-                    new_lines[-1] = new_lines[-1] + '\n'
+                    new_lines[-1] = new_lines[-1] + "\n"
 
             # Replace the range
             lines[start_idx:end_idx] = new_lines
 
-        return ''.join(lines)
+        return "".join(lines)
 
     def _apply_insert_lines(self, content: str, inserts: list[InsertLine]) -> str:
         """Apply line insert operations to content.
@@ -427,13 +429,14 @@ class SafeEditTool(BaseTool):
             insert_lines = insert.content.splitlines(keepends=True)
 
             # Ensure last line has newline
-            if insert_lines and not insert_lines[-1].endswith(('\n', '\r\n')):
-                insert_lines[-1] = insert_lines[-1] + '\n'
+            if insert_lines and not insert_lines[-1].endswith(("\n", "\r\n")):
+                insert_lines[-1] = insert_lines[-1] + "\n"
 
             # Insert at position
             lines[insert_idx:insert_idx] = insert_lines
 
-        return ''.join(lines)
+        return "".join(lines)
+
     def _apply_search_replace_flat(
         self,
         content: str,
@@ -441,7 +444,7 @@ class SafeEditTool(BaseTool):
         replace: str,
         regex: bool = False,
         count: int | None = None,
-        flags: int = 0
+        flags: int = 0,
     ) -> tuple[str, int]:
         """Apply search and replace operation with flattened parameters.
 
@@ -465,13 +468,9 @@ class SafeEditTool(BaseTool):
             try:
                 pattern = re.compile(search, flags or 0)
                 if count is not None:
-                    new_content, replacement_count = pattern.subn(
-                        replace, content, count=count
-                    )
+                    new_content, replacement_count = pattern.subn(replace, content, count=count)
                 else:
-                    new_content, replacement_count = pattern.subn(
-                        replace, content
-                    )
+                    new_content, replacement_count = pattern.subn(replace, content)
                 return new_content, replacement_count
             except re.error as e:
                 raise ValueError(f"Invalid regex pattern: {e}") from e
@@ -487,7 +486,6 @@ class SafeEditTool(BaseTool):
                 replacement_count = content.count(search)
                 new_content = content.replace(search, replace)
 
-
             return new_content, replacement_count
 
     def _generate_diff(self, path: str, original_content: str, new_content: str) -> str:
@@ -502,11 +500,7 @@ class SafeEditTool(BaseTool):
         new_lines = new_content.splitlines(keepends=True)
 
         diff_lines = unified_diff(
-            original_lines,
-            new_lines,
-            fromfile=f"a/{filename}",
-            tofile=f"b/{filename}",
-            lineterm=""
+            original_lines, new_lines, fromfile=f"a/{filename}", tofile=f"b/{filename}", lineterm=""
         )
 
         return "".join(diff_lines)
