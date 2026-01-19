@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcp_server.services.search_service import SearchResult
 from mcp_server.tools.discovery_tools import (
     GetWorkContextTool, GetWorkContextInput,
     SearchDocumentationTool, SearchDocumentationInput
@@ -43,13 +42,13 @@ class TestSearchDocumentationTool:
     async def test_search_returns_results(self, tool: SearchDocumentationTool) -> None:
         """Should return search results from DocumentIndexer + SearchService."""
         mock_results = [
-            SearchResult(
-                file_path="docs/architecture/DATA_FLOW.md",
-                title="Data Flow",
-                snippet="DTOs flow through the pipeline...",
-                score=0.85,
-                scope="architecture"
-            )
+            {
+                "path": "docs/architecture/DATA_FLOW.md",
+                "title": "Data Flow",
+                "_snippet": "DTOs flow through the pipeline...",
+                "_relevance": 0.85,
+                "type": "architecture"
+            }
         ]
 
         with patch("mcp_server.tools.discovery_tools.DocumentIndexer.build_index") as mock_build, \
