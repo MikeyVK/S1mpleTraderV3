@@ -2,7 +2,7 @@
 """
 Scaffold Artifact Tool - Unified artifact scaffolding.
 
-Replaces scaffold_component and scaffold_design_doc tools.
+Unified scaffolding for all artifact types (code + documents).
 Handles all artifact types (code + documents) via ArtifactManager.
 
 @layer: Backend (Tools)
@@ -52,8 +52,7 @@ class ScaffoldArtifactTool(BaseTool):
 
     name = "scaffold_artifact"
     description = (
-        "Scaffold any artifact type (code or document) from unified registry. "
-        "Replaces scaffold_component and scaffold_design_doc tools."
+        "Scaffold any artifact type (code or document) from unified registry."
     )
     args_model = ScaffoldArtifactInput
 

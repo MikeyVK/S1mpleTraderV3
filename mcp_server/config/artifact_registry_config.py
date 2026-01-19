@@ -197,8 +197,7 @@ class ArtifactRegistryConfig(BaseModel):
                 raise ConfigError(
                     f"Artifact registry not found: {file_path}. "
                     f"Expected: .st3/artifacts.yaml. "
-                    f"Fix: Run scaffold_design_doc with "
-                    f"type='artifact_registry' or create manually.",
+                    f"Fix: Create .st3/artifacts.yaml manually or restore from backup.",
                     file_path=str(file_path)
                 )
 
