@@ -110,34 +110,33 @@ class TestDTO:  # Missing BaseModel inheritance
         tool: SafeEditTool,
         temp_dir: Path
     ) -> None:
-        """Test strict-mode behavior for lint "guideline" violations.
+        """Test strict-mode behavior for STRICT (architectural) violations.
 
-        Option 1 decision: `mode="strict"` rejects edits when QA gates fail.
-        A naming violation (pylint `invalid-name`) therefore blocks the save.
+        DTO template STRICT rules include base_class inheritance.
+        A DTO without BaseModel should be rejected in strict mode.
         """
-        # Valid DTO with naming violation (pylint invalid-name)
-        test_file = temp_dir / "test_dto.py"
-        valid_dto = '''"""Test DTO"""
-from pydantic import BaseModel
+        # DTO missing BaseModel inheritance (STRICT violation)
+        test_file = temp_dir / "sample_dto.py"
+        invalid_dto = '''"""Test DTO"""
 
-class lowercase_dto(BaseModel):  # Should be PascalCase
-    """Valid DTO with naming violation."""
+class TestDTO:  # Missing BaseModel - STRICT violation
+    """Invalid DTO without BaseModel."""
     model_config = {"frozen": True}
     name: str
 '''
 
         result = await tool.execute(SafeEditInput(
             path=str(test_file),
-            content=valid_dto,
+            content=invalid_dto,
             mode="strict"
         ))
 
         text = result.content[0]["text"].lower()
 
-        # Strict mode should block the save when QA fails
+        # Strict mode should block the save when STRICT rule fails
         assert not test_file.exists(), f"Expected strict rejection, but file was saved: {text}"
         assert "rejected" in text or "validation" in text
-        assert "invalid-name" in text or "class name" in text
+        assert "basemodel" in text or "base_class" in text
 
     @pytest.mark.asyncio
     async def test_safe_edit_includes_agent_hints(

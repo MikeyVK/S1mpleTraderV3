@@ -1,4 +1,16 @@
-"""Core exceptions for the MCP server."""
+"""
+Core exceptions for the MCP server.
+
+Base exception hierarchy for the entire MCP server.
+Ensures consistent error handling across tools, managers, and adapters.
+
+@layer: Core
+@dependencies: [Standard Library]
+@responsibilities:
+    - Define base MCPError class
+    - Define specific error types (ConfigError, ValidationError, etc.)
+    - Provide standard error codes and hint structures
+"""
 
 
 class MCPError(Exception):
@@ -15,6 +27,31 @@ class MCPError(Exception):
         self.message = message
         self.code = code
         self.hints = hints or []
+
+
+class ConfigError(MCPError):
+    """Configuration loading or validation error."""
+
+    def __init__(
+        self,
+        message: str,
+        file_path: str | None = None,
+        hints: list[str] | None = None
+    ) -> None:
+        """Initialize the configuration error.
+
+        Args:
+            message: Error message describing the problem
+            file_path: Optional path to config file with error
+            hints: Optional list of suggestions to fix the error
+        """
+        # Format message with file context if provided
+        formatted_message = message
+        if file_path:
+            formatted_message = f"{message}\nFile: {file_path}"
+
+        super().__init__(formatted_message, code="ERR_CONFIG", hints=hints)
+        self.file_path = file_path
 
 
 class ValidationError(MCPError):

@@ -12,18 +12,19 @@ Validation service for orchestrating file validation.
 """
 
 # Standard library
+import re
 from pathlib import Path
 
 # Project imports
 from mcp_server.validation.base import BaseValidator
 from mcp_server.validation.registry import ValidatorRegistry
-from mcp_server.validation.python_validator import PythonValidator
+from mcp_server.validation.python_validator import PythonSyntaxValidator
 from mcp_server.validation.markdown_validator import MarkdownValidator
 from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
 
 
-class ValidationService:  # pylint: disable=too-few-public-methods
+class ValidationService:
     """
     Orchestrates validation of files using registered validators.
 
@@ -48,7 +49,8 @@ class ValidationService:  # pylint: disable=too-few-public-methods
     def _setup_validators(self) -> None:
         """Register all validators with ValidatorRegistry."""
         # Register extension-based validators
-        ValidatorRegistry.register(".py", PythonValidator)
+        # For pre-write validation, use syntax-only mode (no quality.yaml needed)
+        ValidatorRegistry.register(".py", PythonSyntaxValidator)
         ValidatorRegistry.register(".md", MarkdownValidator)
 
         # Register pattern-based validators using LayeredTemplateValidator
@@ -84,6 +86,68 @@ class ValidationService:  # pylint: disable=too-few-public-methods
         """
         validators = self._get_applicable_validators(path)
         return await self._run_validators(validators, path, content)
+
+    def validate_syntax(self, path: str, content: str) -> tuple[bool, str]:
+        """
+        Lightweight syntax validation for pre-write checks.
+
+        This performs fast syntax checks without heavy QA gates (no pylint/mypy).
+        Used by ArtifactManager before writing scaffolded content.
+
+        Args:
+            path: File path (used to determine file type)
+            content: Content to validate
+
+        Returns:
+            Tuple of (passed, issues_text)
+        """
+        # Determine validation based on file extension
+        if path.endswith(".py"):
+            # Python syntax check
+            try:
+                compile(content, path, "exec")
+                return True, ""
+            except SyntaxError as e:
+                return False, f"❌ Python syntax error at line {e.lineno}: {e.msg}"
+
+        elif path.endswith(".md"):
+            # Markdown validation: check for H1 title
+            h1_match = re.search(r"^#\s+(.+)$", content, re.MULTILINE)
+            if not h1_match:
+                return False, "❌ Markdown missing H1 title (line must start with '# ')"
+            return True, ""
+
+        # Other file types pass (no validation)
+        return True, ""
+
+    def validate_content(self, content: str, artifact_type: str) -> tuple[bool, str]:
+        """
+        Validate artifact content synchronously (for pre-write validation).
+
+        This is a simplified validation that checks basic Python syntax
+        and structure without requiring a file path. Used by ArtifactManager
+        before writing scaffolded content to disk.
+
+        Args:
+            content: Artifact content to validate.
+            artifact_type: Artifact category ("code" or "doc") or specific type_id
+
+        Returns:
+            Tuple of (passed, issues_text) where passed is True if validation
+            succeeds, and issues_text contains formatted issues if any.
+        """
+        # For code artifacts, do Python syntax validation
+        if artifact_type == "code" or artifact_type in ["dto", "worker", "adapter", "tool", "base"]:
+            try:
+                # Try to compile the content to check for syntax errors
+                compile(content, f"<{artifact_type}>", "exec")
+                return True, ""
+            except SyntaxError as e:
+                return False, f"❌ Python syntax error at line {e.lineno}: {e.msg}"
+
+        # For non-code artifacts (documents, etc.), skip validation
+        # This implements WARN policy: docs pass validation (manager can log warnings)
+        return True, ""
 
     def _get_applicable_validators(self, path: str) -> list[BaseValidator]:
         """
@@ -138,7 +202,7 @@ class ValidationService:  # pylint: disable=too-few-public-methods
         Returns:
             Tuple of (passed, issues_text) with formatted issues.
         """
-        issues_text = ""
+        all_issues = []
         passed = True
 
         for validator in validators:
@@ -147,10 +211,15 @@ class ValidationService:  # pylint: disable=too-few-public-methods
                 passed = False
 
             if result.issues:
-                issues_text += "\n\n**Validation Issues:**\n"
-                for issue in result.issues:
-                    icon = "❌" if issue.severity == "error" else "⚠️"
-                    loc = f" (line {issue.line})" if issue.line else ""
-                    issues_text += f"{icon} {issue.message}{loc}\n"
+                all_issues.extend(result.issues)
+
+        # Format issues once at the end (avoid duplication)
+        issues_text = ""
+        if all_issues:
+            issues_text = "\n\n**Validation Issues:**\n"
+            for issue in all_issues:
+                icon = "❌" if issue.severity == "error" else "⚠️"
+                loc = f" (line {issue.line})" if issue.line else ""
+                issues_text += f"{icon} {issue.message}{loc}\n"
 
         return passed, issues_text

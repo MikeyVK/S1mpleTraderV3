@@ -13,21 +13,19 @@ phase transitions via PhaseStateEngine.
     - Validate input parameters
     - Format success/error messages
 """
-# pylint: disable=import-outside-toplevel
-
 # Standard library
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import Any
 
 # Third-party
+import anyio
 from pydantic import BaseModel, Field, field_validator
 
 # Project modules
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-
-if TYPE_CHECKING:
-    from mcp_server.managers.phase_state_engine import PhaseStateEngine
 
 
 class TransitionPhaseInput(BaseModel):
@@ -77,16 +75,12 @@ class _BasePhaseTransitionTool(BaseTool):
         super().__init__()
         self.workspace_root = Path(workspace_root)
 
-    def _create_engine(self) -> "PhaseStateEngine":
+    def _create_engine(self) -> PhaseStateEngine:
         """Create PhaseStateEngine instance.
 
         Returns:
             PhaseStateEngine instance with initialized managers
         """
-        # Import here to avoid circular dependency
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         project_manager = ProjectManager(workspace_root=self.workspace_root)
         return PhaseStateEngine(
             workspace_root=self.workspace_root,
@@ -117,11 +111,9 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
         Returns:
             ToolResult with success or error message
         """
-        import anyio  # noqa: PLC0415
-
         engine = self._create_engine()
 
-        def do_transition() -> dict:
+        def do_transition() -> dict[str, Any]:
             return engine.transition(
                 branch=params.branch,
                 to_phase=params.to_phase,
@@ -164,11 +156,9 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
         Returns:
             ToolResult with success or error message
         """
-        import anyio  # noqa: PLC0415
-
         engine = self._create_engine()
 
-        def do_force_transition() -> dict:
+        def do_force_transition() -> dict[str, Any]:
             return engine.force_transition(
                 branch=params.branch,
                 to_phase=params.to_phase,

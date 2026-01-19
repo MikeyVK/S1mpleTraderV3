@@ -193,7 +193,7 @@ mcp_server/
 │   ├── discovery.py             # search_documentation, get_work_context
 │   ├── documentation.py         # scaffold_document, validate_structure
 │   ├── github_issues.py         # create_issue, update_issue, close_issue, etc.
-│   ├── implementation.py        # scaffold_component, scaffold_design_doc
+│   ├── scaffold_artifact.py     # scaffold_artifact (unified code/doc scaffolding)
 │   ├── quality.py               # run_quality_gates, fix_whitespace, count_tests
 │   └── git.py                   # create_feature_branch, commit_tdd_phase, etc.
 │
@@ -294,12 +294,12 @@ sequenceDiagram
 
 | URI Pattern | Manager | Adapter | Cache TTL |
 |-------------|---------|---------|-----------|
-| `st3://status/implementation` | DocManager | FileSystem | 30s |
+| `st3://status/implementation` | DocumentIndexer | FileSystem | 30s |
 | `st3://status/phase` | GitManager + GHManager | Git + GitHub | 10s |
 | `st3://github/issues` | GHManager | GitHub | 60s |
 | `st3://github/project` | GHManager | GitHub | 120s |
-| `st3://rules/coding_standards` | DocManager | FileSystem | 60s |
-| `st3://templates/list` | DocManager | FileSystem | 300s |
+| `st3://rules/coding_standards` | DocumentIndexer | FileSystem | 60s |
+| `st3://artifacts/list` | ArtifactRegistry | FileSystem | 300s |
 
 ### 6.2 Resource Refresh Strategy
 
@@ -332,13 +332,13 @@ flowchart LR
 
 | Category | Manager | Tools Count | Side Effects |
 |----------|---------|-------------|--------------|
-| Discovery | DocManager | 2 | None (read-only) |
-| Documentation | DocManager, ScaffoldMgr | 3 | Creates/modifies files |
+| Discovery | DocumentIndexer | 2 | None (read-only) |
+| Documentation | ArtifactManager | 3 | Creates/modifies files |
 | GitHub Issues | GHManager | 7 | Creates/modifies issues, project board |
-| Implementation | ScaffoldMgr | 2 | Creates files |
-| Quality | QAManager | 3 | May modify files (auto-fix) |
+| Implementation | ArtifactManager | 2 | Creates files |
+| Quality | ValidationService | 3 | May modify files (auto-fix) |
 | Git | GitManager | 4 | Git operations, pushes |
-| Validation | DocManager | 3 | Validates structure, strictness, naming |
+| Validation | ValidationService | 3 | Validates structure, strictness, naming |
 
 ### 7.2 Tool Validation Pattern
 
@@ -637,8 +637,8 @@ async def my_resource() -> MyResourceData:
 ### 13.3 Adding New Templates
 
 1. Create Jinja2 template in `mcp_server/templates/`
-2. Register in `ScaffoldManager.TEMPLATES`
-3. Add schema in `scaffold_component` tool
+2. Register in `.st3/artifacts.yaml` registry
+3. Use via `scaffold_artifact` tool with new artifact_type
 
 ---
 

@@ -24,19 +24,21 @@ This directory contains the authoritative documentation for the SimpleTraderV3 M
 
 ## Standardized Development
 
-We provide automated scaffolding to ensure all components adhere to our [Coding Standards](../coding_standards/CODE_STYLE.md).
+We provide automated scaffolding via `scaffold_artifact` to ensure all components adhere to our [Coding Standards](../coding_standards/CODE_STYLE.md).
 
-### Creating Components
+### Creating Artifacts
 
-Use the `scaffold_component` tool to generate new files:
+Use the unified `scaffold_artifact` tool to generate ANY artifact (code or docs):
 
-| Component | Type | Example |
-| :--- | :--- | :--- |
-| **MCP Tool** | `tool` | `scaffold_component(type="tool", name="MyTool", ...)` |
-| **MCP Resource** | `resource` | `scaffold_component(type="resource", name="MyResource", ...)` |
-| **Service** | `service` | `scaffold_component(type="service", service_type="command", ...)` |
-| **Schema** | `schema` | `scaffold_component(type="schema", name="MyConfig", ...)` |
-| **Interface** | `interface` | `scaffold_component(type="interface", name="IMyContract", ...)` |
+| Artifact Type | Example Usage |
+| :--- | :--- |
+| **DTO** | `scaffold_artifact(artifact_type="dto", name="ExecutionRequest", context={...})` |
+| **Worker** | `scaffold_artifact(artifact_type="worker", name="MomentumScanner", context={...})` |
+| **Adapter** | `scaffold_artifact(artifact_type="adapter", name="IBAdapter", context={...})` |
+| **Design Doc** | `scaffold_artifact(artifact_type="design", name="momentum-scanner-design", context={...})` |
+| **Architecture Doc** | `scaffold_artifact(artifact_type="architecture", name="system-overview", context={...})` |
+
+All artifacts are generated from templates in `.st3/artifacts.yaml` registry.
 
 For detailed reference templates, see **[docs/reference/templates](../reference/templates/README.md)**.
 
@@ -51,8 +53,8 @@ For detailed reference templates, see **[docs/reference/templates](../reference/
 | Tool Category | Key Tools |
 |---------------|-----------|
 | **Discovery** | `search_documentation`, `get_work_context` |
-| **Documentation** | `scaffold_document`, `validate_document_structure` |
+| **Documentation** | `validate_doc` |
 | **GitHub** | `create_issue`, `submit_pr` |
-| **Implementation** | `scaffold_component`, `scaffold_design_doc` |
+| **Implementation** | `scaffold_artifact` (unified tool for code+docs) |
 | **Quality** | `run_quality_gates`, `fix_whitespace` |
 | **Git** | `create_feature_branch`, `commit_tdd_phase` |

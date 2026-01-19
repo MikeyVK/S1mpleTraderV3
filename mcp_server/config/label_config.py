@@ -13,6 +13,7 @@ Loads and validates label definitions from labels.yaml.
     - Support dynamic label patterns
 """
 
+# pylint: disable=broad-exception-caught  # GitHub API raises varied exceptions
 # Standard library
 import re
 from dataclasses import dataclass
@@ -21,7 +22,7 @@ from typing import Optional, Any, ClassVar
 
 # Third-party
 from pydantic import BaseModel, Field, field_validator, ConfigDict, PrivateAttr
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 
 @dataclass(frozen=True)
@@ -43,21 +44,17 @@ class Label:
     @staticmethod
     def _is_valid_color(color: str) -> bool:
         """Check if color is valid 6-char hex."""
-        return bool(re.match(r'^[0-9a-fA-F]{6}$', color))
+        return bool(re.match(r"^[0-9a-fA-F]{6}$", color))
 
     def to_github_dict(self) -> dict[str, str]:
         """Convert to GitHub API format."""
-        return {
-            "name": self.name,
-            "color": self.color,
-            "description": self.description
-        }
+        return {"name": self.name, "color": self.color, "description": self.description}
 
 
 @dataclass(frozen=True)
 class LabelPattern:
     """Dynamic label pattern definition.
-    
+
     Patterns allow validation of labels that follow a template
     (e.g., parent:issue-18, parent:issue-42) without pre-creating them.
     """
@@ -74,7 +71,7 @@ class LabelPattern:
 
 class LabelConfig(BaseModel):
     """Label configuration loaded from labels.yaml.
-    
+
     Example:
         >>> config = LabelConfig(
         ...     version="1.0",
@@ -91,18 +88,12 @@ class LabelConfig(BaseModel):
 
     version: str = Field(..., description="Schema version")
     labels: list[Label] = Field(..., description="Label definitions")
-    freeform_exceptions: list[str] = Field(
-        default_factory=list,
-        description="Non-pattern labels"
-    )
+    freeform_exceptions: list[str] = Field(default_factory=list, description="Non-pattern labels")
     label_patterns: list[LabelPattern] = Field(
-        default_factory=list,
-        description="Dynamic label patterns (validated but not pre-created)"
+        default_factory=list, description="Dynamic label patterns (validated but not pre-created)"
     )
 
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True  # Allow Label/LabelPattern dataclasses
-    )
+    model_config = ConfigDict(arbitrary_types_allowed=True)  # Allow Label/LabelPattern dataclasses
 
     # Singleton cache (class-level, shared across all instances)
     _instance: ClassVar[Optional["LabelConfig"]] = None
@@ -140,18 +131,16 @@ class LabelConfig(BaseModel):
 
         # Check if file exists (early fail)
         if not config_path.exists():
-            raise FileNotFoundError(
-                f"Label configuration not found: {config_path}"
-            )
+            raise FileNotFoundError(f"Label configuration not found: {config_path}")
 
         # Get current file mtime
         current_mtime = config_path.stat().st_mtime
 
         # Check if cache is still valid
         if (
-            cls._instance is not None and
-            cls._loaded_path == config_path and
-            cls._loaded_mtime == current_mtime
+            cls._instance is not None
+            and cls._loaded_path == config_path
+            and cls._loaded_mtime == current_mtime
         ):
             return cls._instance  # Cache hit - file unchanged
 
@@ -199,9 +188,7 @@ class LabelConfig(BaseModel):
             ValueError: Invalid YAML syntax or validation error
         """
         if not config_path.exists():
-            raise FileNotFoundError(
-                f"Label configuration not found: {config_path}"
-            )
+            raise FileNotFoundError(f"Label configuration not found: {config_path}")
 
         try:
             with open(config_path, "r", encoding="utf-8") as f:
@@ -224,7 +211,7 @@ class LabelConfig(BaseModel):
             version=data.get("version"),
             labels=labels,
             freeform_exceptions=data.get("freeform_exceptions", []),
-            label_patterns=patterns
+            label_patterns=patterns,
         )
 
         # Build internal caches
@@ -247,7 +234,7 @@ class LabelConfig(BaseModel):
 
     def validate_label_name(self, name: str) -> tuple[bool, str]:
         """Validate label name against pattern rules.
-        
+
         Checks in order:
         1. Freeform exceptions (always valid)
         2. Defined labels (exact match)
@@ -268,19 +255,21 @@ class LabelConfig(BaseModel):
                 return (True, "")
 
         # Check standard category:value pattern
-        pattern_str = r'^(type|priority|status|phase|scope|component|effort|parent):[a-z0-9-]+$'
+        pattern_str = r"^(type|priority|status|phase|scope|component|effort|parent):[a-z0-9-]+$"
         if not re.match(pattern_str, name):
             # Build helpful error with pattern examples
             pattern_examples = [p.example for p in self.label_patterns if p.example]
-            examples_str = f" Dynamic patterns: {', '.join(pattern_examples)}." if pattern_examples else ""
-            
+            examples_str = (
+                f" Dynamic patterns: {', '.join(pattern_examples)}." if pattern_examples else ""
+            )
+
             return (
                 False,
                 f"Label '{name}' does not match required pattern. "
                 f"Expected format: 'category:value' where category is one of "
                 f"[type, priority, status, phase, scope, component, effort, parent] "
                 f"and value is lowercase alphanumeric with hyphens.{examples_str} "
-                f"Freeform labels must be in freeform_exceptions list."
+                f"Freeform labels must be in freeform_exceptions list.",
             )
 
         return (True, "")
@@ -297,23 +286,14 @@ class LabelConfig(BaseModel):
         """Get all labels in a category."""
         return self._labels_by_category.get(category, [])
 
-    def sync_to_github(
-        self,
-        github_adapter: Any,
-        dry_run: bool = False
-    ) -> dict[str, list[str]]:
+    def sync_to_github(self, github_adapter: Any, dry_run: bool = False) -> dict[str, list[str]]:
         """Sync labels to GitHub repository."""
-        result: dict[str, list[str]] = {
-            "created": [],
-            "updated": [],
-            "skipped": [],
-            "errors": []
-        }
+        result: dict[str, list[str]] = {"created": [], "updated": [], "skipped": [], "errors": []}
 
         try:
             existing = github_adapter.list_labels()
             existing_by_name = {label["name"]: label for label in existing}
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except Exception as e:
             result["errors"].append(f"Failed to fetch labels: {e}")
             return result
 
@@ -322,9 +302,7 @@ class LabelConfig(BaseModel):
                 if label.name not in existing_by_name:
                     if not dry_run:
                         github_adapter.create_label(
-                            name=label.name,
-                            color=label.color,
-                            description=label.description
+                            name=label.name, color=label.color, description=label.description
                         )
                     result["created"].append(label.name)
                 else:
@@ -332,15 +310,13 @@ class LabelConfig(BaseModel):
                     if self._needs_update(label, existing_label):
                         if not dry_run:
                             github_adapter.update_label(
-                                name=label.name,
-                                color=label.color,
-                                description=label.description
+                                name=label.name, color=label.color, description=label.description
                             )
                         result["updated"].append(label.name)
                     else:
                         result["skipped"].append(label.name)
 
-            except Exception as e:  # pylint: disable=broad-exception-caught
+            except Exception as e:
                 result["errors"].append(f"{label.name}: {e}")
 
         return result
@@ -348,8 +324,8 @@ class LabelConfig(BaseModel):
     def _needs_update(self, yaml_label: Label, github_label: dict[str, Any]) -> bool:
         """Check if GitHub label needs update."""
         return bool(
-            yaml_label.color != github_label["color"] or
-            yaml_label.description != github_label.get("description", "")
+            yaml_label.color != github_label["color"]
+            or yaml_label.description != github_label.get("description", "")
         )
 
     @field_validator("labels")

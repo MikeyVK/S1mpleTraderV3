@@ -1,12 +1,21 @@
-"""Directory policy resolution utility.
+# mcp_server/core/directory_policy_resolver.py
+"""
+Directory Policy Resolver - Where knowledge (WAAR).
 
-Purpose: Resolve directory policies with parent inheritance
-Responsibility: Single source of WAAR (where) knowledge
-Used by: PolicyEngine, ScaffoldComponentTool
+Resolves directory policies with parent inheritance for artifact placement.
+Single source of truth for where artifacts can be scaffolded.
+
+@layer: Backend (Core)
+@dependencies: [ProjectStructureConfig, DirectoryPolicy]
+@responsibilities:
+    - Resolve directory policies with parent inheritance
+    - Match paths (exact and parent walk)
+    - Find valid directories for artifact types
+    - Policy lookup optimization (caching)
 """
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from mcp_server.config.project_structure import (
     DirectoryPolicy,
@@ -14,28 +23,30 @@ from mcp_server.config.project_structure import (
 )
 
 
+@dataclass
 class ResolvedDirectoryPolicy:
     """Directory policy with inheritance resolved."""
 
-    def __init__(
-        self,
-        path: str,
-        description: str,
-        allowed_component_types: List[str],
-        allowed_extensions: List[str],
-        require_scaffold_for: List[str],
-    ):
-        self.path = path
-        self.description = description
-        self.allowed_component_types = allowed_component_types
-        self.allowed_extensions = allowed_extensions
-        self.require_scaffold_for = require_scaffold_for
+    path: str
+    description: str
+    allowed_artifact_types: list[str]
+    allowed_extensions: list[str]
+    require_scaffold_for: list[str]
+
+    @property
+    def allowed_component_types(self) -> list[str]:
+        """DEPRECATED: Backwards compatibility alias for allowed_artifact_types."""
+        return self.allowed_artifact_types
+
+    def allows_artifact_type(self, artifact_type: str) -> bool:
+        """Check if artifact type allowed in this directory."""
+        if not self.allowed_artifact_types:  # Empty = all allowed
+            return True
+        return artifact_type in self.allowed_artifact_types
 
     def allows_component_type(self, component_type: str) -> bool:
-        """Check if component type allowed in this directory."""
-        if not self.allowed_component_types:  # Empty = all allowed
-            return True
-        return component_type in self.allowed_component_types
+        """DEPRECATED: Use allows_artifact_type() instead."""
+        return self.allows_artifact_type(component_type)
 
     def allows_extension(self, file_path: str) -> bool:
         """Check if file extension allowed."""
@@ -84,14 +95,14 @@ class DirectoryPolicyResolver:
     - Config validation (Pydantic does this)
     """
 
-    def __init__(self, config: Optional[ProjectStructureConfig] = None):
+    def __init__(self, config: ProjectStructureConfig | None = None):
         """Initialize resolver.
 
         Args:
             config: ProjectStructureConfig instance (loads default if None)
         """
         self._config = config or ProjectStructureConfig.from_file()
-        self._cache: Dict[str, ResolvedDirectoryPolicy] = {}  # Q3: No caching for MVP
+        self._cache: dict[str, ResolvedDirectoryPolicy] = {}  # Q3: No caching for MVP
 
     def resolve(self, path: str) -> ResolvedDirectoryPolicy:
         """Resolve directory policy for given path with inheritance.
@@ -137,7 +148,7 @@ class DirectoryPolicyResolver:
         return ResolvedDirectoryPolicy(
             path=normalized,
             description="Workspace root (no restrictions)",
-            allowed_component_types=[],  # Empty = all allowed
+            allowed_artifact_types=[],  # Empty = all allowed
             allowed_extensions=[],  # Empty = all allowed
             require_scaffold_for=[],  # Empty = no requirements
         )
@@ -149,12 +160,12 @@ class DirectoryPolicyResolver:
 
         Inheritance Rules (Q4 decision - implicit):
         - allowed_extensions: Inherit from parent unless overridden
-        - allowed_component_types: Override (no merge)
+        - allowed_artifact_types: Override (no merge)
         - require_scaffold_for: Cumulative (child adds to parent)
         """
         # Start with current policy values
         allowed_extensions = list(policy.allowed_extensions)
-        allowed_component_types = list(policy.allowed_component_types)
+        allowed_artifact_types = list(policy.allowed_artifact_types)
         require_scaffold_for = list(policy.require_scaffold_for)
 
         # Walk up parent chain
@@ -176,7 +187,23 @@ class DirectoryPolicyResolver:
         return ResolvedDirectoryPolicy(
             path=policy.path,
             description=policy.description,
-            allowed_component_types=allowed_component_types,
+            allowed_artifact_types=allowed_artifact_types,
             allowed_extensions=allowed_extensions,
             require_scaffold_for=require_scaffold_for,
         )
+
+    def find_directories_for_artifact(self, artifact_type: str) -> list[str]:
+        """Find all directories that allow specified artifact type.
+
+        Args:
+            artifact_type: Artifact type_id to search for
+
+        Returns:
+            List of directory paths that allow the artifact type (sorted)
+        """
+        valid_dirs = []
+        for dir_path in self._config.get_all_directories():
+            policy = self.resolve(dir_path)
+            if policy.allows_artifact_type(artifact_type):
+                valid_dirs.append(dir_path)
+        return sorted(valid_dirs)

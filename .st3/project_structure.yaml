@@ -1,13 +1,13 @@
 # Project Structure Configuration
 # Purpose: Define directory structure and file policies
 # Used by: DirectoryPolicyResolver for path validation
-# Cross-references: components.yaml (validates allowed_component_types exist)
+# Cross-references: artifacts.yaml (validates allowed_artifact_types exist)
 
 directories:
   backend:
     parent: null  # Top-level directory
     description: "Backend application code"
-    allowed_component_types:
+    allowed_artifact_types:
       - dto
       - worker
       - adapter
@@ -21,7 +21,7 @@ directories:
   backend/dtos:
     parent: backend
     description: "Data Transfer Objects"
-    allowed_component_types:
+    allowed_artifact_types:
       - dto  # Override: Only DTOs allowed in this subdirectory
     # Inherits allowed_extensions from parent (implicit)
     # Inherits require_scaffold_for from parent (cumulative)
@@ -29,34 +29,35 @@ directories:
   backend/workers:
     parent: backend
     description: "Domain operation workers"
-    allowed_component_types:
+    allowed_artifact_types:
       - worker
 
   backend/adapters:
     parent: backend
     description: "External system adapters"
-    allowed_component_types:
+    allowed_artifact_types:
       - adapter
 
   backend/interfaces:
     parent: backend
     description: "Abstract protocol definitions"
-    allowed_component_types:
+    allowed_artifact_types:
       - interface
 
   backend/services:
     parent: backend
     description: "Orchestration and business logic"
-    allowed_component_types:
+    allowed_artifact_types:
       - service
 
   mcp_server:
     parent: null
     description: "MCP platform code"
-    allowed_component_types:
+    allowed_artifact_types:
       - tool
       - resource
       - schema
+      - generic
     allowed_extensions:
       - ".py"
     require_scaffold_for:
@@ -66,42 +67,84 @@ directories:
   mcp_server/tools:
     parent: mcp_server
     description: "MCP tool implementations"
-    allowed_component_types:
+    allowed_artifact_types:
       - tool
 
   mcp_server/resources:
     parent: mcp_server
     description: "MCP resource providers"
-    allowed_component_types:
+    allowed_artifact_types:
       - resource
 
   mcp_server/schemas:
     parent: mcp_server
     description: "Pydantic validation schemas"
-    allowed_component_types:
+    allowed_artifact_types:
       - schema
 
   tests:
     parent: null
     description: "Test suite"
-    allowed_component_types: []  # No component types (manual test files)
+    allowed_artifact_types: []  # No artifact types (manual test files)
     allowed_extensions:
       - ".py"
     require_scaffold_for: []  # Tests not required to be scaffolded
 
   docs:
     parent: null
-    description: "Documentation"
-    allowed_component_types: []
+    description: "Documentation root"
+    allowed_artifact_types:
+      - research
+      - planning
+      - design
+      - architecture
+      - tracking
+      - reference
     allowed_extensions:
       - ".md"
       - ".rst"
     require_scaffold_for: []
 
+  docs/architecture:
+    parent: docs
+    description: "System architecture documentation"
+    allowed_artifact_types:
+      - architecture
+      - reference
+
+  docs/development:
+    parent: docs
+    description: "Development phase documents (research, planning, design)"
+    allowed_artifact_types:
+      - research
+      - planning
+      - design
+      - tracking
+
+  docs/reference:
+    parent: docs
+    description: "Reference documentation and guides"
+    allowed_artifact_types:
+      - reference
+      - architecture
+
+  docs/coding_standards:
+    parent: docs
+    description: "Coding standards and conventions"
+    allowed_artifact_types:
+      - reference
+
+  docs/implementation:
+    parent: docs
+    description: "Implementation tracking documents"
+    allowed_artifact_types:
+      - tracking
+      - reference
+
   .st3:
     parent: null
     description: "Platform configuration"
-    allowed_component_types: []
+    allowed_artifact_types: []
     allowed_extensions:
       - ".yaml"
       - ".yml"
@@ -110,13 +153,13 @@ directories:
   scripts:
     parent: null
     description: "Utility scripts (no restrictions)"
-    allowed_component_types: []
+    allowed_artifact_types: []
     allowed_extensions: []  # All extensions allowed
     require_scaffold_for: []
 
   proof_of_concepts:
     parent: null
     description: "Experimental code (no restrictions)"
-    allowed_component_types: []
+    allowed_artifact_types: []
     allowed_extensions: []
     require_scaffold_for: []

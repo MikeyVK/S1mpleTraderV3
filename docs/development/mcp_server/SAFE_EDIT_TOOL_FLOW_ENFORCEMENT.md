@@ -38,11 +38,11 @@ This document formalizes:
 
 ### 1.3 Related Documents
 
-- [Core Principles](docs/architecture/CORE_PRINCIPLES.md)
-- [Architectural Shifts](docs/architecture/ARCHITECTURAL_SHIFTS.md)
-- [TDD Workflow](docs/coding_standards/TDD_WORKFLOW.md)
-- [Quality Gates](docs/coding_standards/QUALITY_GATES.md)
-- [Agent Protocol](AGENT_PROMPT.md)
+- [Core Principles](../../architecture/CORE_PRINCIPLES.md)
+- [Architectural Shifts](../../architecture/ARCHITECTURAL_SHIFTS.md)
+- [Coding Standards](../../coding_standards/README.md)
+- [Quality Gates](../../coding_standards/QUALITY_GATES.md)
+- [Agent Protocol](../../../agent.md)
 
 ---
 
@@ -52,7 +52,7 @@ This document formalizes:
 
 Today, `safe_edit_tool` can run full QA validation per edit, which creates latency during rapid refactoring and discourages usage. Meanwhile, correctness of the workflow depends too much on whether an agent/human “chooses” the right tool.
 
-We already have a documented flow in [Agent Protocol](AGENT_PROMPT.md):
+We already have a documented flow in [Agent Protocol](../../../agent.md):
 - Use `scaffold_*` for creation.
 - Do TDD loop (RED → GREEN → REFACTOR).
 - Use tool priority matrix (never manual if a tool exists).
@@ -336,6 +336,6 @@ Tools use the policy decision to run the required gates and fail early with acti
 
 ## 8. References
 
-- [TDD Workflow](docs/coding_standards/TDD_WORKFLOW.md)
-- [Quality Gates](docs/coding_standards/QUALITY_GATES.md)
-- [Agent Protocol](AGENT_PROMPT.md)
+- [Coding Standards](../../coding_standards/README.md)
+- [Quality Gates](../../coding_standards/QUALITY_GATES.md)
+- [Agent Protocol](../../../agent.md)

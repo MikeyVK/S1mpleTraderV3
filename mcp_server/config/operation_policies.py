@@ -5,15 +5,19 @@ Domain: WANNEER (when operations are allowed)
 Cross-references: workflows.yaml (validates allowed_phases exist)
 """
 
+from __future__ import annotations
+
+# pyright: reportAttributeAccessIssue=false
+
 import fnmatch
 from pathlib import Path
-from typing import ClassVar, Dict, List, Optional
+from typing import ClassVar
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
 from mcp_server.config.workflows import workflow_config
-from mcp_server.core.errors import ConfigError
+from mcp_server.core.exceptions import ConfigError
 
 
 class OperationPolicy(BaseModel):
@@ -25,27 +29,27 @@ class OperationPolicy(BaseModel):
     description: str = Field(
         ..., description="Human-readable description of operation"
     )
-    allowed_phases: List[str] = Field(
+    allowed_phases: list[str] = Field(
         default_factory=list,
         description="Phases where operation allowed (empty = all phases)",
     )
-    blocked_patterns: List[str] = Field(
+    blocked_patterns: list[str] = Field(
         default_factory=list, description="Glob patterns for blocked file paths"
     )
-    allowed_extensions: List[str] = Field(
+    allowed_extensions: list[str] = Field(
         default_factory=list,
         description="File extensions allowed (empty = all extensions)",
     )
     require_tdd_prefix: bool = Field(
         False, description="Require TDD prefix in commit messages"
     )
-    allowed_prefixes: List[str] = Field(
+    allowed_prefixes: list[str] = Field(
         default_factory=list, description="Valid TDD prefixes for commit messages"
     )
 
     @field_validator("allowed_extensions")
     @classmethod
-    def validate_extension_format(cls, v: List[str]) -> List[str]:
+    def validate_extension_format(cls, v: list[str]) -> list[str]:
         """Validate extensions have leading dot."""
         for ext in v:
             if not ext.startswith("."):
@@ -120,17 +124,17 @@ class OperationPoliciesConfig(BaseModel):
     Cross-validates: allowed_phases against workflows.yaml
     """
 
-    operations: Dict[str, OperationPolicy] = Field(
+    operations: dict[str, OperationPolicy] = Field(
         ..., description="Operation policy definitions keyed by operation_id"
     )
 
     # Singleton pattern (ClassVar prevents Pydantic v2 ModelPrivateAttr bug)
-    singleton_instance: ClassVar[Optional["OperationPoliciesConfig"]] = None
+    singleton_instance: ClassVar[OperationPoliciesConfig | None] = None
 
     @classmethod
     def from_file(
         cls, config_path: str = ".st3/policies.yaml"
-    ) -> "OperationPoliciesConfig":
+    ) -> OperationPoliciesConfig:
         """Load config from YAML file with cross-validation.
 
         Args:
@@ -169,8 +173,8 @@ class OperationPoliciesConfig(BaseModel):
             )
 
         # Transform to OperationPolicy instances
-        operations = {}
-        for op_id, op_data in data["operations"].items():
+        operations: dict[str, OperationPolicy] = {}
+        for op_id, op_data in dict(data["operations"]).items():
             try:
                 operations[op_id] = OperationPolicy(operation_id=op_id, **op_data)
             except Exception as e:
@@ -198,7 +202,7 @@ class OperationPoliciesConfig(BaseModel):
         # Collect all valid phases from all workflows
         valid_phases: set[str] = set()
         try:
-            for wf_template in workflow_config.workflows.values():
+            for wf_template in workflow_config.workflows.values():  # pylint: disable=no-member
                 valid_phases.update(wf_template.phases)
         except Exception as e:
             raise ConfigError(
@@ -206,7 +210,7 @@ class OperationPoliciesConfig(BaseModel):
                 file_path=".st3/workflows.yaml",
             ) from e
 
-        for op_id, policy in self.operations.items():
+        for op_id, policy in self.operations.items():  # pylint: disable=no-member
             invalid_phases = set(policy.allowed_phases) - valid_phases
             if invalid_phases:
                 raise ConfigError(
@@ -234,10 +238,9 @@ class OperationPoliciesConfig(BaseModel):
             ValueError: If operation_id not found in config
         """
         if operation_id not in self.operations:
-            available = sorted(self.operations.keys())
             raise ValueError(
                 f"Unknown operation: '{operation_id}'. "
-                f"Available operations: {available}"
+                f"Available operations: {sorted(self.operations.keys())}"  # pylint: disable=no-member
             )
         return self.operations[operation_id]
 
@@ -247,4 +250,4 @@ class OperationPoliciesConfig(BaseModel):
         Returns:
             Sorted list of operation identifiers
         """
-        return sorted(self.operations.keys())
+        return sorted(self.operations.keys())  # pylint: disable=no-member

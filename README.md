@@ -13,7 +13,8 @@
 
 **Are you an AI Agent?**
 > **STOP.** Do not guess. Do not scan random files.
-> Read **[AGENT_PROMPT.md](AGENT_PROMPT.md)** immediately to initialize your cooperation protocol.
+> Read **[agent.md](agent.md)** immediately to initialize your cooperation protocol.
+> For MCP server vision/architecture, also see [docs/reference/mcp/mcp_vision_reference.md](docs/reference/mcp/mcp_vision_reference.md).
 
 ## Fundamental Architectural Shifts
 

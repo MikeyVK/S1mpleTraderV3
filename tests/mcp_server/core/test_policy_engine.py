@@ -3,12 +3,10 @@
 Tests Phase 4: Policy decision engine with config integration
 """
 
-import pytest
-
-from mcp_server.config.component_registry import ComponentRegistryConfig
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.operation_policies import OperationPoliciesConfig
 from mcp_server.config.project_structure import ProjectStructureConfig
-from mcp_server.core.policy_engine import PolicyDecision, PolicyEngine
+from mcp_server.core.policy_engine import PolicyEngine
 
 
 class TestPolicyEngineConfigDriven:
@@ -16,7 +14,7 @@ class TestPolicyEngineConfigDriven:
 
     def setup_method(self):
         """Reset singletons before each test."""
-        ComponentRegistryConfig.reset_instance()
+        ArtifactRegistryConfig.reset_instance()
         OperationPoliciesConfig.reset_instance()
         ProjectStructureConfig.reset_instance()
 
@@ -79,12 +77,12 @@ class TestPolicyEngineConfigDriven:
         assert "prefix" in decision.reason.lower()
 
     def test_commit_allowed_with_green_prefix(self):
-        """Test commit allowed with green: prefix."""
+        """Test commit allowed with feat: prefix (green phase maps to feat:)."""
         engine = PolicyEngine()
         decision = engine.decide(
             operation="commit",
             phase="tdd",
-            context={"message": "green: implement user dto"}
+            context={"message": "feat: implement user dto"}
         )
         assert decision.allowed is True
 

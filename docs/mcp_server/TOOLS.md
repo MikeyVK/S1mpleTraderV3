@@ -660,122 +660,122 @@ Tools for generating code structure and scaffolding.
 
 ---
 
-### 4.1 `scaffold_component`
+### 4.1 `scaffold_artifact` (Unified Scaffolding Tool)
 
-**Description:** Generates files for a new component (DTO, Worker, Adapter, or Config Schema). Creates implementation file, test file, and updates `__init__.py`.
+**Description:** Unified tool for generating ANY artifact (code or documentation) using templates from `.st3/artifacts.yaml` registry. Replaces legacy `scaffold_component` and `scaffold_design_doc` tools.
 
 **Category:** `implementation`
 
+**Status:** ✅ Active (replaces deprecated scaffold_component/scaffold_design_doc)
+
 ```yaml
 parameters:
-  - name: component_type
+  - name: artifact_type
     type: string
     required: true
-    validation: enum [dto, worker, adapter, config_schema]
+    description: "Type ID from artifacts.yaml registry"
+    examples: ["dto", "worker", "adapter", "design", "architecture", "tracking"]
   - name: name
     type: string
     required: true
-    description: "Component name in snake_case (e.g., 'execution_request', 'momentum_scanner')"
-  - name: category
-    type: string
-    required: true
-    description: "Subcategory within type (e.g., 'strategy', 'shared', 'state' for DTOs)"
-  - name: worker_type
+    description: "Artifact name (PascalCase for code, kebab-case for docs)"
+    examples: ["ExecutionRequest", "momentum-scanner-design"]
+  - name: output_path
     type: string
     required: false
-    validation: enum [context_worker, signal_detector, risk_monitor, planning_worker, strategy_planner, execution_worker]
-    description: "Required for component_type='worker'"
+    description: "Optional explicit path (auto-resolved from registry if omitted)"
+  - name: context
+    type: object
+    required: false
+    description: "Template-specific variables (varies by artifact_type)"
+    examples:
+      dto: { category: "strategy", fields: [...] }
+      design: { issue_number: "56", title: "...", author: "..." }
+      worker: { worker_type: "signal_detector", description: "..." }
 
 returns:
   success:
     schema:
       type: object
       properties:
-        files_created:
-          type: array
-          items: { type: string }
-        files_modified:
-          type: array
-          items: { type: string }
-        next_steps:
-          type: array
-          items: { type: string }
+        artifact_path:
+          type: string
+          description: "Path where artifact was created"
+        artifact_type:
+          type: string
+          description: "Type from registry"
+        validation_passed:
+          type: boolean
+          description: "Whether artifact passed validation"
 
 implementation:
-  steps:
-    - "Determine target paths based on component_type and category:"
-    - "  dto → backend/dtos/{category}/{name}.py"
-    - "  worker → backend/workers/{worker_type}/{name}.py"
-    - "  config_schema → backend/config/schemas/{name}_schema.py"
-    - "Generate implementation file with:"
-    - "  File header (# relative/path/to/file.py)"
-    - "  Module docstring with @layer, @dependencies, @responsibilities"
-    - "  Import sections (stdlib / third-party / project)"
-    - "  Base class stub with TODO comments"
-    - "Generate test file in tests/unit/{...}/test_{name}.py with:"
-    - "  RED phase test stubs"
-    - "  pytest markers"
-    - "Update __init__.py with export"
-  side_effects:
-    - "Creates 2 new files (impl + test)"
-    - "Modifies __init__.py"
+  - "Load artifacts.yaml registry configuration"
+  - "Resolve output_path (explicit or from artifact config path_template)"
+  - "Load Jinja2 template from artifact config template_path"
+  - "Render template with context variables"
+  - "Run validation chain: validate_syntax → validate_structure → validate_content"
+  - "Write artifact to disk"
+  - "Return ToolResult with success/error message"
+
+side_effects:
+  - "Creates new file at output_path"
+  - "Validation errors returned in ToolResult (no exception)"
 
 idempotency: false
-dry_run_support: true
+dry_run_support: false
 offline_capable: true
 ```
 
----
+**Migration from Legacy Tools:**
 
-### 4.2 `scaffold_design_doc`
+```python
+# OLD (deprecated - will fail):
+scaffold_component(
+    component_type="dto",
+    name="execution_request",
+    category="strategy"
+)
 
-**Description:** Creates a pre-implementation design document using DESIGN_TEMPLATE.md for a specific component.
-
-**Category:** `implementation`
-
-```yaml
-parameters:
-  - name: component_name
-    type: string
-    required: true
-    description: "Name of the component (e.g., 'MomentumScanner', 'ExecutionRequest')"
-  - name: component_type
-    type: string
-    required: true
-    validation: enum [dto, worker, adapter, service, config]
-  - name: implementation_phase
-    type: string
-    required: true
-    description: "Phase from TODO.md (e.g., 'Week 1', 'Phase 2.1')"
-
-returns:
-  success:
-    schema:
-      type: object
-      properties:
-        created_path: { type: string }
-        required_decisions:
-          type: array
-          items: { type: string }
-          description: "List of design decisions that must be filled in"
-
-implementation:
-  steps:
-    - "Read DESIGN_TEMPLATE.md"
-    - "Replace placeholders:"
-    - "  {COMPONENT_NAME} → component_name"
-    - "  {YYYY-MM-DD} → today's date"
-    - "  {IMPLEMENTATION_PHASE} → implementation_phase"
-    - "Determine target path:"
-    - "  DTO → docs/development/backend/dtos/{COMPONENT_NAME}_DESIGN.md"
-    - "  Worker → docs/development/backend/workers/{COMPONENT_NAME}_DESIGN.md"
-    - "Write file"
-  side_effects:
-    - "Creates new file in docs/development/"
-
-idempotency: false
-dry_run_support: true
+# NEW (unified tool):
+scaffold_artifact(
+    artifact_type="dto",
+    name="ExecutionRequest",
+    context={"category": "strategy", "fields": [...]}
+)
 ```
+
+```python
+# OLD (deprecated - will fail):
+scaffold_design_doc(
+    component_name="MomentumScanner",
+    component_type="worker",
+    implementation_phase="Week 1"
+)
+
+# NEW (unified tool):
+scaffold_artifact(
+    artifact_type="design",
+    name="momentum-scanner-design",
+    context={
+        "issue_number": "42",
+        "title": "Momentum Scanner Design",
+        "author": "Agent"
+    }
+)
+```
+
+**Common Artifact Types:**
+
+| artifact_type | Output Example | Template |
+|---------------|----------------|----------|
+| `dto` | `mcp_server/dtos/strategy/execution_request.py` | `templates/code/dto.py.jinja2` |
+| `worker` | `mcp_server/workers/signal_detector/momentum_scanner.py` | `templates/code/worker.py.jinja2` |
+| `adapter` | `mcp_server/adapters/ib_adapter.py` | `templates/code/adapter.py.jinja2` |
+| `design` | `docs/development/issue56/design.md` | `templates/docs/DESIGN_TEMPLATE.md.jinja2` |
+| `architecture` | `docs/development/issue56/architecture.md` | `templates/docs/ARCHITECTURE_TEMPLATE.md.jinja2` |
+| `tracking` | `docs/development/issue56/tracking.md` | `templates/docs/TRACKING_TEMPLATE.md.jinja2` |
+
+**Registry Configuration:** `.st3/artifacts.yaml`
 
 ---
 

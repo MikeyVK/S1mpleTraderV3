@@ -30,7 +30,7 @@ validates:
       pattern: "Responsibilities:|Subscribes to:|Publishes:"
       severity: WARNING
 #}
-# {{ output_path | default('backend/workers/' + worker_type + '/' + name.lower() + '.py') }}
+# {{ output_path | default('backend/workers/' + name.lower() + '_worker.py') }}
 """
 {{ name }} - {{ description | default(name + ' worker implementation') }}.
 
@@ -59,7 +59,8 @@ from pydantic import BaseModel
 from backend.core.interfaces.base_worker import BaseWorker
 from backend.core.interfaces.strategy_cache import IStrategyCache
 from backend.core.enums import DispositionType
-{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %}
+{% set wtype = worker_type | default('context_worker') %}
+{% if wtype == 'signal_detector' or wtype == 'risk_monitor' %}
 from backend.core.eventbus import EventBus
 {% endif %}
 
@@ -82,7 +83,7 @@ class {{ name }}(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
 {% endfor %}
 
     **Subscribes to:** {{ input_dto }}
-    **Publishes:** {{ output_dto }}{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %} (via EventBus){% else %} (via StrategyCache){% endif %}
+    **Publishes:** {{ output_dto }}{% if wtype == 'signal_detector' or wtype == 'risk_monitor' %} (via EventBus){% else %} (via StrategyCache){% endif %}
 
     """
 
@@ -135,7 +136,7 @@ class {{ name }}(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
         # TODO: Implement core processing logic
 
         # Step 3: Construct output DTO
-{% if worker_type == 'context_worker' %}
+{% if wtype == 'context_worker' %}
         # ContextWorkers produce OBJECTIVE FACTS only
         # NO subjective labels: "bullish", "strong", "good"
         # YES objective data: prices, ratios, counts, timestamps
@@ -150,7 +151,7 @@ class {{ name }}(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
 {% endif %}
         )
 
-{% if worker_type == 'context_worker' %}
+{% if wtype == 'context_worker' %}
         # Store in StrategyCache for downstream workers
         self._strategy_cache.set_result_dto(output)
 {% endif %}
@@ -160,9 +161,9 @@ class {{ name }}(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
     def get_disposition(self, output: {{ output_dto }}) -> DispositionType:
         """Determine disposition after processing.
 
-{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %}
+{% if wtype == 'signal_detector' or wtype == 'risk_monitor' %}
         Returns PUBLISH to emit event to EventBus.
-{% elif worker_type == 'context_worker' %}
+{% elif wtype == 'context_worker' %}
         Returns CONTINUE to trigger next worker in pipeline.
 {% else %}
         Returns appropriate disposition based on output.
@@ -174,9 +175,9 @@ class {{ name }}(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
         Returns:
             DispositionType indicating next action
         """
-{% if worker_type == 'signal_detector' or worker_type == 'risk_monitor' %}
+{% if wtype == 'signal_detector' or wtype == 'risk_monitor' %}
         return DispositionType.PUBLISH
-{% elif worker_type == 'context_worker' %}
+{% elif wtype == 'context_worker' %}
         return DispositionType.CONTINUE
 {% else %}
         # TODO: Implement disposition logic

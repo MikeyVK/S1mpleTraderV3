@@ -321,5 +321,20 @@
     "skip_reason": null,
     "parent_branch": "main",
     "created_at": "2026-01-15T15:21:09.931857+00:00"
+  },
+  "56": {
+    "issue_title": "Config: Document Templates Configuration (documents.yaml)",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-01-16T19:25:34.874376+00:00"
   }
 }

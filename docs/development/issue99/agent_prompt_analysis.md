@@ -1,8 +1,8 @@
-# AGENT_PROMPT.md Analysis - Issue #99
+# agent.md Analysis - Issue #99
 
 **Date:** 2026-01-09  
 **Analyst:** GitHub Copilot (Claude Sonnet 4.5)  
-**Purpose:** Comprehensive analysis of AGENT_PROMPT.md vs current MCP server implementation
+**Purpose:** Comprehensive analysis of agent.md vs current MCP server implementation
 
 ---
 
@@ -18,7 +18,7 @@
 
 ### ❌ Critical Mismatches (11 tools)
 
-| AGENT_PROMPT.md (Incorrect) | Actual MCP Tool Name | Impact |
+| agent.md (Incorrect) | Actual MCP Tool Name | Impact |
 |----------------------------|---------------------|---------|
 | `create_feature_branch` | `create_branch` | HIGH - Tool won't be found |
 | `git_checkout_branch` | `git_checkout` | HIGH - Tool won't be found |
@@ -90,7 +90,7 @@ Scaffold (1):
 | `st3://status/implementation` | ❌ NOT FOUND | No implementation status resource exists |
 
 **Recommendation:** Either:
-1. Remove reference from AGENT_PROMPT.md, OR
+1. Remove reference from agent.md, OR
 2. Implement ImplementationStatusResource if needed
 
 ---
@@ -113,7 +113,7 @@ Scaffold (1):
 - Each workflow has ordered phases
 - Supports custom phases with `skip_reason` requirement
 
-### ⚠️ AGENT_PROMPT.md Gaps
+### ⚠️ agent.md Gaps
 
 **Missing Workflow Guidance:**
 1. No mention of `initialize_project` tool (CRITICAL for workflow setup)
@@ -123,7 +123,7 @@ Scaffold (1):
 5. No mention of workflow selection (feature/bug/docs/refactor/hotfix)
 6. No mention of parent branch tracking
 
-**What AGENT_PROMPT.md Currently Says:**
+**What agent.md Currently Says:**
 - Section B mentions "start_work_on_issue" (does NOT exist)
 - TDD loop mentions RED/GREEN/REFACTOR but not phase transitions
 - No guidance on when/how to transition phases
@@ -132,7 +132,7 @@ Scaffold (1):
 
 ## Part 4: Missing Critical Functionality
 
-### 🚨 Not Documented in AGENT_PROMPT.md
+### 🚨 Not Documented in agent.md
 
 **Project Initialization Workflow:**
 1. `initialize_project` - Sets up workflow, creates branch, initializes state
@@ -241,7 +241,7 @@ Scaffold (1):
 
 ## Part 7: English vs Dutch Compliance
 
-**Current AGENT_PROMPT.md:** ✅ COMPLIANT
+**Current agent.md:** ✅ COMPLIANT
 - All technical content in English
 - Mentions Dutch for user interaction ("Talk to the User in **Dutch**")
 - Consistent with project standards
@@ -266,7 +266,7 @@ Based on the implementation, I can see these workflows exist:
 
 ### Questions for User:
 
-1. **Should AGENT_PROMPT.md enforce a specific workflow?**
+1. **Should agent.md enforce a specific workflow?**
    - Option A: Document all 5 standard workflows, let agent/user choose
    - Option B: Default to 'feature' workflow with option to override
    - Option C: Require explicit workflow selection per issue
@@ -327,7 +327,7 @@ Based on the implementation, I can see these workflows exist:
 | Lazy Loading | 0% | Not documented at all |
 | Overall Alignment | 70% | Usable but needs updates |
 
-**Recommendation:** Update AGENT_PROMPT.md before next agent session to avoid tool resolution errors.
+**Recommendation:** Update agent.md before next agent session to avoid tool resolution errors.
 
 ---
 

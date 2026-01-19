@@ -1,13 +1,15 @@
 """Discovery tools for AI self-orientation."""
 # pyright: reportIncompatibleMethodOverride=false
 import re
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from mcp_server.config.settings import settings
-from mcp_server.core.exceptions import MCPError
-from mcp_server.managers.doc_manager import DocManager
+from mcp_server.core.exceptions import ExecutionError, MCPError
+from mcp_server.services.document_indexer import DocumentIndexer
+from mcp_server.services.search_service import SearchService
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool
@@ -37,16 +39,33 @@ class SearchDocumentationTool(BaseTool):
     )
     args_model = SearchDocumentationInput
 
-    @property
-    def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
-
     async def execute(self, params: SearchDocumentationInput) -> ToolResult:
-        """Execute documentation search."""
-        manager = DocManager()
+        """Execute documentation search using DocumentIndexer + SearchService."""
+        # Build index from docs directory
+        docs_dir = Path(settings.server.workspace_root) / "docs"
+
+        if not docs_dir.exists():
+            raise ExecutionError(
+                "Documentation directory not found",
+                recovery=[
+                    f"Expected directory: {docs_dir}",
+                    "Create docs/ directory in workspace root",
+                    "Add markdown files to document project"
+                ]
+            )
+
+        index = DocumentIndexer.build_index(docs_dir)
+
+        # Map scope filter (None if 'all')
         scope_filter = None if params.scope == "all" else params.scope
 
-        results = manager.search(params.query, scope=scope_filter, max_results=10)
+        # Search index
+        results = SearchService.search_index(
+            index=index,
+            query=params.query,
+            max_results=10,
+            scope=scope_filter
+        )
 
         if not results:
             return ToolResult.text(
@@ -59,10 +78,9 @@ class SearchDocumentationTool(BaseTool):
 
         for i, result in enumerate(results, 1):
             output_lines.append(
-                f"{i}. **{result['title']}** ({result['file_path']})\n"
-                f"   Line {result['line_number']} | "
-                f"Score: {result['relevance_score']:.2f}\n"
-                f"   > {result['snippet']}\n"
+                f"{i}. **{result['title']}** ({result['path']})\n"
+                f"   Score: {result['_relevance']:.2f}\n"
+                f"   > {result['_snippet']}\n"
             )
 
         return ToolResult.text("\n".join(output_lines))
@@ -86,9 +104,6 @@ class GetWorkContextTool(BaseTool):
     )
     args_model = GetWorkContextInput
 
-    @property
-    def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
 
     async def execute(self, params: GetWorkContextInput) -> ToolResult:
         """Execute work context aggregation."""

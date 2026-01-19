@@ -27,7 +27,7 @@ This planning intentionally avoids detailed design (that follows in the next pha
 - New tools (module placement TBD by design, but likely `mcp_server/tools/git_tools.py`): `GitFetchTool`, `GitPullTool`.
 - Tools registered in `mcp_server/server.py` tool list.
 - Unit tests for adapter/manager/tools.
-- (Optional) Update `agent_prompt.md` tool matrix to include `fetch/pull` so CLI usage is no longer “required”.
+- (Optional) Update `agent.md` tool matrix to include `fetch/pull` so CLI usage is no longer “required”.
 
 ---
 

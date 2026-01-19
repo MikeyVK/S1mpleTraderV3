@@ -14,11 +14,12 @@ Quality Requirements:
 - Mypy: strict mode passing
 - Coverage: 100% for all functions
 """
+# pyright: reportAttributeAccessIssue=false
 
 from pathlib import Path
 from typing import Literal
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -124,16 +125,15 @@ class WorkflowConfig(BaseModel):
         Raises:
             ValueError: Unknown workflow name
         """
-        if name not in self.workflows:
-            # At runtime, self.workflows is a dict (Pydantic transforms Field to actual type)
-            workflow_names = list(self.workflows.keys())
-            available = ", ".join(sorted(workflow_names))
+        workflows_dict: dict[str, WorkflowTemplate] = dict(self.workflows)
+        if name not in workflows_dict:
+            available = ", ".join(sorted(workflows_dict.keys()))
             raise ValueError(
                 f"Unknown workflow: '{name}'\n"
                 f"Available workflows: {available}\n"
                 f"Hint: Add workflow definition to .st3/workflows.yaml"
             )
-        return self.workflows[name]
+        return workflows_dict[name]
 
     def validate_transition(
         self,

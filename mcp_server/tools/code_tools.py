@@ -21,26 +21,28 @@ class CreateFileTool(BaseTool):
     """Tool to create or overwrite a file.
 
     .. deprecated::
-        Use scaffold_component or scaffold_design_doc tools instead.
+        Use scaffold_artifact tool instead.
         This tool bypasses project templates and coding standards.
     """
 
     name = "create_file"
     description = (
         "[DEPRECATED] Create or overwrite a file with content. "
-        "Prefer scaffold_component for code generation."
+        "Prefer scaffold_artifact for code/document generation."
     )
     args_model = CreateFileInput
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        if self.args_model is None:
+            return {}
         return self.args_model.model_json_schema()
 
     async def execute(self, params: CreateFileInput) -> ToolResult:
         """Execute the tool."""
         # Emit deprecation warning
         warnings.warn(
-            "create_file is deprecated. Use scaffold_component or scaffold_design_doc instead.",
+            "create_file is deprecated. Use scaffold_artifact instead.",
             DeprecationWarning,
             stacklevel=2
         )
