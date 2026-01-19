@@ -14,9 +14,9 @@ This directory contains reference templates for Python code components. These se
 
 ## Automation
 
-These templates are automated via the `scaffold_component` tool.
+These templates are automated via the `scaffold_artifact` tool.
 Example:
 ```bash
-# Generate a new tool based on python_tool.md standards
-scaffold_component(type="tool", name="MyTool", ...)
+# Generate a new tool based on artifacts.yaml definitions
+scaffold_artifact artifact_type="tool" name="MyTool" context='{"description":"...", ...}'
 ```

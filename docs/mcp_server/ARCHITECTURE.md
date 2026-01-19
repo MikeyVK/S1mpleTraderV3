@@ -338,7 +338,7 @@ flowchart LR
 | Implementation | ArtifactManager | 2 | Creates files |
 | Quality | ValidationService | 3 | May modify files (auto-fix) |
 | Git | GitManager | 4 | Git operations, pushes |
-| Validation | DocManager | 3 | Validates structure, strictness, naming |
+| Validation | ValidationService | 3 | Validates structure, strictness, naming |
 
 ### 7.2 Tool Validation Pattern
 

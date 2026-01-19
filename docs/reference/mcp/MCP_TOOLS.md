@@ -325,7 +325,7 @@ DOCS:         git_commit "Update documentation" phase=docs
 
 ```
 1. search_documentation query="related topic"
-2. scaffold_design_doc title="New Feature Design"
+2. scaffold_artifact artifact_type="design" name="new-feature-design" context='{"issue_number":"42","title":"New Feature Design","author":"Developer"}'
 3. write content in created file
 4. validate_doc file_path=path/to/doc.md
 5. git_commit "docs: Add design document" phase=docs
