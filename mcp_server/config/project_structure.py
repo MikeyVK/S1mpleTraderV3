@@ -148,7 +148,7 @@ class ProjectStructureConfig(BaseModel):
         """
         directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
         for dir_path, policy in directories.items():
-            if policy.parent is not None and policy.parent not in directories:
+            if policy.parent is not None and policy.parent not in directories:  # pylint: disable=unsupported-membership-test
                 raise ConfigError(
                     f"Directory '{dir_path}' references unknown parent: "
                     f"'{policy.parent}'",

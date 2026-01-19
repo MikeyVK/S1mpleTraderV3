@@ -3,14 +3,9 @@
 Tests Phase 3: Directory policy resolution with inheritance
 """
 
-import pytest
-
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.project_structure import ProjectStructureConfig
-from mcp_server.core.directory_policy_resolver import (
-    DirectoryPolicyResolver,
-    ResolvedDirectoryPolicy,
-)
+from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 
 
 class TestDirectoryPolicyResolver:
