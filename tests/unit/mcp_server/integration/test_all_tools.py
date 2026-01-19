@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mcp_server.tools.code_tools import CreateFileTool, CreateFileInput
-from mcp_server.tools.docs_tools import ValidateDocTool, ValidateDocInput
 
 # Git Tools
 from mcp_server.tools.git_tools import (
@@ -206,25 +205,6 @@ class TestQualityToolsIntegration:
         assert "Pass" in result.content[0]["text"] or "pass" in result.content[0]["text"].lower()
 
     @pytest.mark.asyncio
-    async def test_validate_doc_tool_flow(self) -> None:
-        """Test validate doc tool complete flow."""
-        mock_manager = MagicMock()
-        mock_manager.validate_structure.return_value = {
-            "valid": True,
-            "errors": [],
-            "warnings": []
-        }
-
-        tool = ValidateDocTool(manager=mock_manager)
-        result = await tool.execute(ValidateDocInput(
-            content="# Title\n\n## Section",
-            template_type="design"
-        ))
-
-        # Tool returns validation result
-        assert result.content is not None
-
-    @pytest.mark.asyncio
     async def test_validation_tool_flow(self) -> None:
         """Test architecture validation tool complete flow."""
         tool = ValidationTool()
@@ -355,7 +335,6 @@ class TestToolSchemas:
         """Verify all Quality tools have input schemas."""
         tools = [
             RunQualityGatesTool(),
-            ValidateDocTool(),
             ValidationTool(),
             ValidateDTOTool(),
         ]
@@ -409,7 +388,6 @@ class TestToolNames:
             GitPushTool(),
             GitDeleteBranchTool(),
             RunQualityGatesTool(),
-            ValidateDocTool(),
             ValidationTool(),
             ValidateDTOTool(),
             HealthCheckTool(),
@@ -445,7 +423,6 @@ class TestToolNames:
             GitPushTool(),
             GitDeleteBranchTool(),
             RunQualityGatesTool(),
-            ValidateDocTool(),
             ValidationTool(),
             ValidateDTOTool(),
             HealthCheckTool(),

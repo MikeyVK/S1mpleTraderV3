@@ -30,7 +30,7 @@ validates:
       pattern: "Responsibilities:|Subscribes to:|Publishes:"
       severity: WARNING
 #}
-# {{ output_path | default('backend/workers/' + worker_type + '/' + name.lower() + '.py') }}
+# {{ output_path | default('backend/workers/' + name.lower() + '_worker.py') }}
 """
 {{ name }} - {{ description | default(name + ' worker implementation') }}.
 

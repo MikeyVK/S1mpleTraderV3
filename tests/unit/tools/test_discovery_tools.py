@@ -40,21 +40,23 @@ class TestSearchDocumentationTool:
 
     @pytest.mark.asyncio
     async def test_search_returns_results(self, tool: SearchDocumentationTool) -> None:
-        """Should return search results from DocManager."""
+        """Should return search results from DocumentIndexer + SearchService."""
+        from mcp_server.services.search_service import SearchResult
+
         mock_results = [
-            {
-                "file_path": "docs/architecture/DATA_FLOW.md",
-                "title": "Data Flow",
-                "snippet": "DTOs flow through the pipeline...",
-                "relevance_score": 0.85,
-                "line_number": 5
-            }
+            SearchResult(
+                file_path="docs/architecture/DATA_FLOW.md",
+                title="Data Flow",
+                snippet="DTOs flow through the pipeline...",
+                score=0.85,
+                scope="architecture"
+            )
         ]
 
-        with patch("mcp_server.tools.discovery_tools.DocManager") as mock_manager_class:
-            mock_instance = MagicMock()
-            mock_instance.search.return_value = mock_results
-            mock_manager_class.return_value = mock_instance
+        with patch("mcp_server.tools.discovery_tools.DocumentIndexer.build_index") as mock_build, \
+             patch("mcp_server.tools.discovery_tools.SearchService.search_index") as mock_search:
+            mock_build.return_value = {}  # Empty index dict
+            mock_search.return_value = mock_results
 
             result = await tool.execute(SearchDocumentationInput(query="DTO flow"))
 
@@ -63,29 +65,30 @@ class TestSearchDocumentationTool:
 
     @pytest.mark.asyncio
     async def test_search_with_scope(self, tool: SearchDocumentationTool) -> None:
-        """Should pass scope to DocManager."""
-        with patch("mcp_server.tools.discovery_tools.DocManager") as mock_manager_class:
-            mock_instance = MagicMock()
-            mock_instance.search.return_value = []
-            mock_manager_class.return_value = mock_instance
+        """Should pass scope to SearchService."""
+        with patch("mcp_server.tools.discovery_tools.DocumentIndexer.build_index") as mock_build, \
+             patch("mcp_server.tools.discovery_tools.SearchService.search_index") as mock_search:
+            mock_build.return_value = {}
+            mock_search.return_value = []
 
             await tool.execute(
                 SearchDocumentationInput(query="code style", scope="coding_standards")
             )
 
-        mock_instance.search.assert_called_once_with(
-            "code style",
-            scope="coding_standards",
-            max_results=10
+        mock_search.assert_called_once_with(
+            index={},
+            query="code style",
+            max_results=10,
+            scope="coding_standards"
         )
 
     @pytest.mark.asyncio
     async def test_search_empty_results(self, tool: SearchDocumentationTool) -> None:
         """Should handle no results gracefully."""
-        with patch("mcp_server.tools.discovery_tools.DocManager") as mock_manager_class:
-            mock_instance = MagicMock()
-            mock_instance.search.return_value = []
-            mock_manager_class.return_value = mock_instance
+        with patch("mcp_server.tools.discovery_tools.DocumentIndexer.build_index") as mock_build, \
+             patch("mcp_server.tools.discovery_tools.SearchService.search_index") as mock_search:
+            mock_build.return_value = {}
+            mock_search.return_value = []
 
             result = await tool.execute(SearchDocumentationInput(query="xyznonexistent"))
 
