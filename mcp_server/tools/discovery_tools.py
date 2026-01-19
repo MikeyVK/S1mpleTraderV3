@@ -7,7 +7,8 @@ from pydantic import BaseModel, Field
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import MCPError
-from mcp_server.managers.doc_manager import DocManager
+from mcp_server.services.document_indexer import DocumentIndexer
+from mcp_server.services.search_service import SearchService
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.tools.base import BaseTool
@@ -40,32 +41,44 @@ class SearchDocumentationTool(BaseTool):
     @property
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
-
     async def execute(self, params: SearchDocumentationInput) -> ToolResult:
-        """Execute documentation search."""
-        manager = DocManager()
-        scope_filter = None if params.scope == "all" else params.scope
+        """Execute documentation search using DocumentIndexer + SearchService."""
+        try:
+            # Build index from docs directory
+            docs_dir = settings.server.workspace_root / "docs"
+            index = DocumentIndexer.build_index(docs_dir)
 
-        results = manager.search(params.query, scope=scope_filter, max_results=10)
+            # Map scope filter (None if 'all')
+            scope_filter = None if params.scope == "all" else params.scope
 
-        if not results:
-            return ToolResult.text(
-                f"No results found for query: '{params.query}'\n"
-                "Try broader search terms or different scope."
+            # Search index
+            results = SearchService.search_index(
+                index=index,
+                query=params.query,
+                max_results=10,
+                scope=scope_filter
             )
 
-        # Format results for output
-        output_lines = [f"Found {len(results)} results for '{params.query}':\n"]
+            if not results:
+                return ToolResult.text(
+                    f"No results found for query: '{params.query}'\n"
+                    "Try broader search terms or different scope."
+                )
 
-        for i, result in enumerate(results, 1):
-            output_lines.append(
-                f"{i}. **{result['title']}** ({result['file_path']})\n"
-                f"   Line {result['line_number']} | "
-                f"Score: {result['relevance_score']:.2f}\n"
-                f"   > {result['snippet']}\n"
-            )
+            # Format results for output
+            output_lines = [f"Found {len(results)} results for '{params.query}':\n"]
 
-        return ToolResult.text("\n".join(output_lines))
+            for i, result in enumerate(results, 1):
+                output_lines.append(
+                    f"{i}. **{result['title']}** ({result['path']})\n"
+                    f"   Score: {result['_relevance']:.2f}\n"
+                    f"   > {result['_snippet']}\n"
+                )
+
+            return ToolResult.text("\n".join(output_lines))
+
+        except Exception as e:
+            return ToolResult.error(f"Search failed: {str(e)}")
 
 
 class GetWorkContextInput(BaseModel):

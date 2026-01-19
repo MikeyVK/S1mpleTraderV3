@@ -30,7 +30,6 @@ from mcp_server.config.label_startup import validate_label_config_on_startup
 # Resources
 from mcp_server.resources.standards import StandardsResource
 from mcp_server.resources.status import StatusResource
-from mcp_server.resources.templates import TemplatesResource
 from mcp_server.tools.code_tools import CreateFileTool
 from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
 from mcp_server.tools.docs_tools import ValidateDocTool
@@ -106,7 +105,6 @@ class MCPServer:
         # Core resources (always available)
         self.resources = [
             StandardsResource(),
-            TemplatesResource(),
             StatusResource(),
         ]
 
