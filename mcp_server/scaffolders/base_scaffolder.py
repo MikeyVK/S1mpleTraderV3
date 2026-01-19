@@ -17,7 +17,6 @@ class BaseScaffolder(ABC):
 
     def __init__(self) -> None:
         """Initialize scaffolder."""
-        pass
 
     @abstractmethod
     def validate(self, artifact_type: str, **kwargs: Any) -> bool:

@@ -4,6 +4,7 @@ Purpose: Centralized git conventions configuration
 Source: .st3/git.yaml
 Pattern: Singleton with ClassVar (prevents Pydantic v2 ModelPrivateAttr bug)
 """
+# pyright: reportAttributeAccessIssue=false  # Pydantic Field → runtime dict
 import re
 from pathlib import Path
 from typing import ClassVar, Optional
@@ -171,10 +172,8 @@ class GitConfig(BaseModel):
         Purpose: For PolicyEngine commit message validation.
         Replaces hardcoded prefix list in policies.yaml.
         """
-        prefixes = []
-        for prefix_value in self.commit_prefix_map.values():
-            prefixes.append(f"{prefix_value}:")
-        return prefixes
+        # Direct comprehension avoids FieldInfo iteration issues
+        return [f"{prefix}:" for prefix in self.commit_prefix_map.values()]
 
     def build_branch_type_regex(self) -> str:
         """Build regex pattern for branch type matching (Convention #7).

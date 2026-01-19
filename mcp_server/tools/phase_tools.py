@@ -13,8 +13,7 @@ phase transitions via PhaseStateEngine.
     - Validate input parameters
     - Format success/error messages
 """
-# pylint: disable=import-outside-toplevel
-
+# pylint: disable=import-outside-toplevel  # Circular dependency: PhaseStateEngine ↔ ProjectManager
 # Standard library
 from pathlib import Path
 from typing import TYPE_CHECKING, Any

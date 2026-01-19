@@ -4,6 +4,7 @@ Purpose: Load and validate policies.yaml
 Domain: WANNEER (when operations are allowed)
 Cross-references: workflows.yaml (validates allowed_phases exist)
 """
+# pyright: reportAttributeAccessIssue=false  # Pydantic Field → runtime dict
 
 import fnmatch
 from pathlib import Path
@@ -234,10 +235,9 @@ class OperationPoliciesConfig(BaseModel):
             ValueError: If operation_id not found in config
         """
         if operation_id not in self.operations:
-            available = sorted(self.operations.keys())
             raise ValueError(
                 f"Unknown operation: '{operation_id}'. "
-                f"Available operations: {available}"
+                f"Available operations: {sorted(self.operations.keys())}"
             )
         return self.operations[operation_id]
 
