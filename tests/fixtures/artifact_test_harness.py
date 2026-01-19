@@ -132,9 +132,10 @@ def artifacts_yaml_file(
     dummy_dto_template = code_template_dir / "dto.py.jinja2"
     dummy_dto_template.write_text(
         '"""{{ description }}"""\n'
-        'from pydantic import BaseModel\n\n'
+        'from pydantic import BaseModel, ConfigDict\n\n'
         'class {{ name }}(BaseModel):\n'
         '    """{{ description }}"""\n'
+        '    model_config = ConfigDict(frozen=True, extra="forbid")\n\n'
         '{% for field in fields %}'
         '    {{ field.name }}: {{ field.type }}\n'
         '{% endfor %}',

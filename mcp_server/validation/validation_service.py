@@ -202,7 +202,7 @@ class ValidationService:
         Returns:
             Tuple of (passed, issues_text) with formatted issues.
         """
-        issues_text = ""
+        all_issues = []
         passed = True
 
         for validator in validators:
@@ -211,10 +211,15 @@ class ValidationService:
                 passed = False
 
             if result.issues:
-                issues_text += "\n\n**Validation Issues:**\n"
-                for issue in result.issues:
-                    icon = "❌" if issue.severity == "error" else "⚠️"
-                    loc = f" (line {issue.line})" if issue.line else ""
-                    issues_text += f"{icon} {issue.message}{loc}\n"
+                all_issues.extend(result.issues)
+
+        # Format issues once at the end (avoid duplication)
+        issues_text = ""
+        if all_issues:
+            issues_text = "\n\n**Validation Issues:**\n"
+            for issue in all_issues:
+                icon = "❌" if issue.severity == "error" else "⚠️"
+                loc = f" (line {issue.line})" if issue.line else ""
+                issues_text += f"{icon} {issue.message}{loc}\n"
 
         return passed, issues_text

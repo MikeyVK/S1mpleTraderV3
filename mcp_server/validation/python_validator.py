@@ -33,10 +33,17 @@ class PythonValidator(BaseValidator):
         Validate Python content.
 
         If content is provided, validates a temporary file to check before saving.
-        In syntax_only mode, uses ast.parse for fast syntax checking.
-        In full QA mode, runs quality gates (requires quality.yaml).
+        If content is None:
+          - In syntax_only mode: Cannot validate without content
+          - In full QA mode: Runs quality gates on existing file at path
         """
-        # Read content if not provided
+        # Full QA mode with existing file (content=None, syntax_only=False)
+        if content is None and not self.syntax_only:
+            # Run quality gates directly on existing file
+            result = self.qa_manager.run_quality_gates([path])
+            return self._parse_result(result, original_path=path, scanned_path=path)
+
+        # Read content if not provided (syntax_only mode requires content)
         if content is None:
             try:
                 with open(path, encoding="utf-8") as f:

@@ -76,7 +76,7 @@ Instead of:
 > "DTOs should be immutable Pydantic models"
 
 We have:
-> `scaffold_component(type='dto')` → **Generates validated, frozen BaseModel**
+> `scaffold_artifact(artifact_type='dto')` → **Generates validated, frozen BaseModel**
 
 Instead of:
 > "Check quality before merging"
@@ -187,7 +187,7 @@ The MCP Server operates across three distinct domains with **fundamentally diffe
 - **No flexibility** → DTOs are frozen, Workers implement IWorkerLifecycle
 
 **Mechanisms**:
-- `scaffold_component` generates compliant code
+- `scaffold_artifact` generates compliant code from templates
 - `validate_architecture` checks DTO/Worker structure
 - Quality gates enforce style/typing
 - PolicyEngine **BLOCKS** non-scaffolded creation in backend/
@@ -198,7 +198,7 @@ The MCP Server operates across three distinct domains with **fundamentally diffe
 operations:
   create_file:
     blocked_patterns:
-      - "backend/**"  # Must use scaffold_component
+      - "backend/**"  # Must use scaffold_artifact
 ```
 
 **Result**: Code that doesn't follow patterns **CANNOT BE CREATED**
@@ -257,15 +257,16 @@ docs/
 .st3/
 ├── workflows.yaml      # 6 workflows (feature, bug, hotfix, etc.)
 ├── validation.yaml     # Template validation rules
-├── components.yaml     # 9 component types (DTO, Worker, Tool, etc.)
+├── artifacts.yaml      # Unified artifact registry (code + docs)
 ├── policies.yaml       # Operation policies (scaffold/create_file/commit)
 ├── project_structure.yaml  # 15 directory definitions
 ├── git.yaml           # Git conventions (branches, commits, TDD)
-├── documents.yaml     # Document templates (Issue #56 - planned)
 └── constants.yaml     # Magic numbers (planned)
 ```
 
 **Result**: Invalid configs **FAIL AT STARTUP**, zero runtime errors
+
+**Note**: `components.yaml` and `documents.yaml` have been unified into `artifacts.yaml` (Issue #56 complete)
 
 ### The Critical Architectural Distinction
 
@@ -356,14 +357,16 @@ SCAFFOLDERS = {"dto": DTOScaffolder(), "worker": WorkerScaffolder()}
 
 **After** (Config):
 ```yaml
-# components.yaml
-component_types:
-  dto:
-    scaffolder_module: "mcp_server.scaffolders.dto_scaffolder"
-    base_path: "backend/dtos"
+# artifacts.yaml (unified registry)
+artifact_types:
+  - type: code
+    type_id: dto
+    name: "Data Transfer Object"
+    template_path: "components/dto.py.jinja2"
+    required_fields: [name, description]
 ```
 
-**Impact**: Component registry is data
+**Impact**: Artifact registry unifies code and document scaffolding (Issue #56)
 
 #### Issue #55: Git Conventions
 
@@ -412,9 +415,13 @@ scope_directories:
 
 **Target**: Externalize 40+ magic numbers and regex patterns
 
-#### Issue #105: Dynamic Loading
+#### Issue #105: Dynamic Loading (OBSOLETE - Replaced by #56)
 
-**Target**: Load scaffolders dynamically from components.yaml
+**Status**: Superseded by unified artifacts.yaml registry
+
+**Original Target**: Load scaffolders dynamically from components.yaml
+
+**Actual Solution**: Issue #56 unified code + document scaffolding into single `scaffold_artifact` tool with artifacts.yaml registry
 
 ---
 
@@ -574,15 +581,17 @@ class GitConfig:
 
 ### The Correct Mental Model
 
-**Code (components.yaml + project_structure.yaml + policies.yaml)**:
-- "What can be scaffolded?"
-- "Where can it be created?"
-- "When is it allowed?"
-- **Result**: Enforcement - blocks invalid operations
+**Unified Artifacts (artifacts.yaml)**:
+- "What artifact types exist?" (code: dto/worker/adapter, docs: design/architecture/tracking)
+- "What templates are available?"
+- "Where should artifacts be created?" (path resolution)
+- "What validation rules apply?"
+- **Result**: Single source of truth for ALL scaffolding (Issue #56 complete)
 
-**Documents (documents.yaml)**:
-- "What template types exist?"
-- "What scopes are available?"
+**Policies (policies.yaml)**:
+- "When is scaffolding allowed vs blocked?"
+- "Which operations require validation?"
+- **Result**: Enforcement - blocks invalid operations
 - "What statuses are valid?"
 - **Result**: Metadata - supports lookup/categorization
 
