@@ -125,14 +125,15 @@ class WorkflowConfig(BaseModel):
         Raises:
             ValueError: Unknown workflow name
         """
-        if name not in self.workflows:
-            available = ", ".join(sorted(self.workflows.keys()))  # pylint: disable=no-member
+        workflows_dict: dict[str, WorkflowTemplate] = dict(self.workflows)
+        if name not in workflows_dict:
+            available = ", ".join(sorted(workflows_dict.keys()))
             raise ValueError(
                 f"Unknown workflow: '{name}'\n"
                 f"Available workflows: {available}\n"
                 f"Hint: Add workflow definition to .st3/workflows.yaml"
             )
-        return self.workflows[name]
+        return workflows_dict[name]
 
     def validate_transition(
         self,

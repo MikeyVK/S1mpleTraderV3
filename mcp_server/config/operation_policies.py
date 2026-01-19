@@ -1,190 +1,138 @@
-"""Operation policies configuration model.
+# mcp_server/config/operation_policies.py
+"""Operation policy configuration from policies.yaml.
 
-Purpose: Load and validate policies.yaml
-Domain: WANNEER (when operations are allowed)
-Cross-references: workflows.yaml (validates allowed_phases exist)
+Defines which operations (e.g., 'commit', 'push', 'merge') are allowed
+in which workflow phases (e.g., 'red', 'green', 'refactor').
+
+Supports:
+- Per-operation allowed_phases
+- Cross-validation against workflows.yaml
+- Human approval requirements
+- Policy inheritance (future)
+
+@layer: Backend (Configuration)
+@dependencies: [workflows.yaml, policies.yaml]
 """
-# pyright: reportAttributeAccessIssue=false
 
-import fnmatch
+from __future__ import annotations
+
 from pathlib import Path
-from typing import ClassVar, Dict, List, Optional
+from typing import Any, ClassVar
 
 import yaml
-from pydantic import BaseModel, Field, field_validator
-
-from mcp_server.config.workflows import workflow_config
+from pydantic import BaseModel, Field
+from mcp_server.config.workflows import WorkflowConfig, WorkflowTemplate
 from mcp_server.core.exceptions import ConfigError
+
+# Load workflows config once for cross-validation
+workflow_config = WorkflowConfig.load()
 
 
 class OperationPolicy(BaseModel):
     """Single operation policy definition."""
 
-    operation_id: str = Field(
-        ..., description="Operation identifier (scaffold, create_file, commit)"
+    allowed_phases: list[str] = Field(
+        ..., description="Phases where operation is allowed"
     )
-    description: str = Field(
-        ..., description="Human-readable description of operation"
+    requires_human_approval: bool = Field(
+        default=False, description="Human approval required"
     )
-    allowed_phases: List[str] = Field(
-        default_factory=list,
-        description="Phases where operation allowed (empty = all phases)",
-    )
-    blocked_patterns: List[str] = Field(
-        default_factory=list, description="Glob patterns for blocked file paths"
-    )
-    allowed_extensions: List[str] = Field(
-        default_factory=list,
-        description="File extensions allowed (empty = all extensions)",
-    )
-    require_tdd_prefix: bool = Field(
-        False, description="Require TDD prefix in commit messages"
-    )
-    allowed_prefixes: List[str] = Field(
-        default_factory=list, description="Valid TDD prefixes for commit messages"
-    )
-
-    @field_validator("allowed_extensions")
-    @classmethod
-    def validate_extension_format(cls, v: List[str]) -> List[str]:
-        """Validate extensions have leading dot."""
-        for ext in v:
-            if not ext.startswith("."):
-                raise ValueError(
-                    f"File extension must start with dot: '{ext}' should be '.{ext}'"
-                )
-        return v
-
-    def is_allowed_in_phase(self, phase: str) -> bool:
-        """Check if operation allowed in given phase.
-
-        Args:
-            phase: Phase name to check
-
-        Returns:
-            True if operation allowed in phase, False otherwise
-        """
-        if not self.allowed_phases:  # Empty = all phases allowed
-            return True
-        return phase in self.allowed_phases
-
-    def is_path_blocked(self, path: str) -> bool:
-        """Check if path matches any blocked pattern.
-
-        Args:
-            path: File path to check (workspace-relative)
-
-        Returns:
-            True if path is blocked, False otherwise
-        """
-        for pattern in self.blocked_patterns:
-            if fnmatch.fnmatch(path, pattern):
-                return True
-        return False
-
-    def is_extension_allowed(self, path: str) -> bool:
-        """Check if file extension is allowed.
-
-        Args:
-            path: File path to check
-
-        Returns:
-            True if extension allowed, False otherwise
-        """
-        if not self.allowed_extensions:  # Empty = all allowed
-            return True
-
-        ext = Path(path).suffix
-        return ext in self.allowed_extensions
-
-    def validate_commit_message(self, message: str) -> bool:
-        """Check if commit message has valid TDD prefix.
-
-        Args:
-            message: Commit message to validate
-
-        Returns:
-            True if message valid or prefix not required, False otherwise
-        """
-        if not self.require_tdd_prefix:
-            return True
-
-        return any(message.startswith(prefix) for prefix in self.allowed_prefixes)
+    description: str | None = Field(None, description="Policy description")
 
 
-class OperationPoliciesConfig(BaseModel):
-    """Operation policies configuration (WANNEER domain).
+class OperationPolicyConfig(BaseModel):
+    """Operation policy configuration from policies.yaml.
 
-    Purpose: Define when operations are allowed (phase-based policies)
-    Loaded from: .st3/policies.yaml
-    Used by: PolicyEngine for operation decisions
-    Cross-validates: allowed_phases against workflows.yaml
+    Singleton pattern: use from_file() to get cached instance.
+
+    Example:
+        config = OperationPolicyConfig.from_file()
+        commit_policy = config.get_operation_policy('commit')
     """
 
-    operations: Dict[str, OperationPolicy] = Field(
-        ..., description="Operation policy definitions keyed by operation_id"
+    version: str = Field(..., description="Schema version")
+    operations: dict[str, OperationPolicy] = Field(
+        ..., description="Operation policies"
     )
 
-    # Singleton pattern (ClassVar prevents Pydantic v2 ModelPrivateAttr bug)
-    singleton_instance: ClassVar[Optional["OperationPoliciesConfig"]] = None
+    singleton_instance: ClassVar[OperationPolicyConfig | None] = None
+
+    def __init__(self, **data: Any) -> None:
+        """Initialize and cross-validate against workflows.yaml."""
+        super().__init__(**data)
+        self._validate_phases()
 
     @classmethod
     def from_file(
-        cls, config_path: str = ".st3/policies.yaml"
-    ) -> "OperationPoliciesConfig":
-        """Load config from YAML file with cross-validation.
+        cls,
+        file_path: Path | None = None,
+    ) -> OperationPolicyConfig:
+        """Load configuration from policies.yaml (singleton).
 
         Args:
-            config_path: Path to policies.yaml file
+            file_path: Path to policies.yaml (default: .st3/policies.yaml)
 
         Returns:
-            Singleton instance of OperationPoliciesConfig
+            Cached configuration instance
 
         Raises:
-            ConfigError: If file not found, YAML invalid, or cross-validation fails
+            ConfigError: File not found, invalid YAML, or validation failed
         """
+        if file_path is None:
+            file_path = Path(".st3/policies.yaml")
+        else:
+            file_path = Path(file_path)
+
         # Return cached instance if exists
         if cls.singleton_instance is not None:
             return cls.singleton_instance
 
-        # Load and parse YAML
-        path = Path(config_path)
-        if not path.exists():
-            raise ConfigError(
-                f"Config file not found: {config_path}", file_path=config_path
-            )
-
+        # Load and validate
         try:
-            with open(path, encoding="utf-8") as f:
+            if not file_path.exists():
+                raise ConfigError(
+                    f"Policy config not found: {file_path}. "
+                    f"Expected: .st3/policies.yaml. "
+                    f"Fix: Restore config from backup.",
+                    file_path=str(file_path),
+                )
+
+            with open(file_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
+
+            if data is None:
+                raise ConfigError(
+                    f"Empty policy config: {file_path}. "
+                    f"Expected: 'version' and 'operations' keys. "
+                    f"Fix: Restore config from backup.",
+                    file_path=str(file_path),
+                )
+
+        except FileNotFoundError as e:
+            raise ConfigError(
+                f"Policy config not found: {file_path}",
+                file_path=str(file_path),
+            ) from e
         except yaml.YAMLError as e:
             raise ConfigError(
-                f"Invalid YAML in {config_path}: {e}", file_path=config_path
+                f"Invalid YAML in policy config: {e}",
+                file_path=str(file_path),
+            ) from e
+        except Exception as e:
+            raise ConfigError(
+                f"Failed to load policy config: {e}",
+                file_path=str(file_path),
             ) from e
 
-        # Validate structure
-        if "operations" not in data:
-            raise ConfigError(
-                f"Missing 'operations' key in {config_path}",
-                file_path=config_path,
-            )
-
-        # Transform to OperationPolicy instances
-        operations = {}
-        for op_id, op_data in data["operations"].items():
-            try:
-                operations[op_id] = OperationPolicy(operation_id=op_id, **op_data)
-            except Exception as e:
-                raise ConfigError(
-                    f"Invalid operation policy for '{op_id}': {e}",
-                    file_path=config_path,
-                ) from e
-
         # Create instance
-        instance = cls(operations=operations)
-
-        # Cross-validation: Check allowed_phases exist in workflows.yaml
-        instance._validate_phases()
+        try:
+            instance = cls(**data)
+        except Exception as e:
+            raise ConfigError(
+                f"Invalid policy config schema: {e}. "
+                f"Fix: Check policies.yaml structure matches schema.",
+                file_path=str(file_path),
+            ) from e
 
         # Cache and return
         cls.singleton_instance = instance
@@ -196,10 +144,11 @@ class OperationPoliciesConfig(BaseModel):
         Raises:
             ConfigError: If any operation references unknown phase
         """
-        # Collect all valid phases from all workflows
+        # Cast to concrete dicts for explicit typing
+        workflows_dict: dict[str, WorkflowTemplate] = dict(workflow_config.workflows)
         valid_phases: set[str] = set()
         try:
-            for wf_template in workflow_config.workflows.values():  # pylint: disable=no-member
+            for wf_template in workflows_dict.values():
                 valid_phases.update(wf_template.phases)
         except Exception as e:
             raise ConfigError(
@@ -207,7 +156,8 @@ class OperationPoliciesConfig(BaseModel):
                 file_path=".st3/workflows.yaml",
             ) from e
 
-        for op_id, policy in self.operations.items():  # pylint: disable=no-member
+        operations_dict: dict[str, OperationPolicy] = dict(self.operations)
+        for op_id, policy in operations_dict.items():
             invalid_phases = set(policy.allowed_phases) - valid_phases
             if invalid_phases:
                 raise ConfigError(
@@ -234,17 +184,19 @@ class OperationPoliciesConfig(BaseModel):
         Raises:
             ValueError: If operation_id not found in config
         """
-        if operation_id not in self.operations:
+        operations_dict: dict[str, OperationPolicy] = dict(self.operations)
+        if operation_id not in operations_dict:
             raise ValueError(
                 f"Unknown operation: '{operation_id}'. "
-                f"Available operations: {sorted(self.operations.keys())}"  # pylint: disable=no-member
+                f"Available operations: {sorted(operations_dict.keys())}"
             )
-        return self.operations[operation_id]
+        return operations_dict[operation_id]
 
-    def get_available_operations(self) -> List[str]:
+    def get_available_operations(self) -> list[str]:
         """Get list of all configured operation IDs.
 
         Returns:
             Sorted list of operation identifiers
         """
-        return sorted(self.operations.keys())  # pylint: disable=no-member
+        operations_dict: dict[str, OperationPolicy] = dict(self.operations)
+        return sorted(operations_dict.keys())

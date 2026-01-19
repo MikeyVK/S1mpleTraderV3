@@ -173,7 +173,9 @@ class GitConfig(BaseModel):
         Replaces hardcoded prefix list in policies.yaml.
         """
         # Direct comprehension avoids FieldInfo iteration issues
-        return [f"{prefix}:" for prefix in self.commit_prefix_map.values()]  # pylint: disable=no-member
+        # Cast to dict for explicit type - pylint understands concrete dict
+        prefix_dict: dict[str, str] = dict(self.commit_prefix_map)
+        return [f"{prefix}:" for prefix in prefix_dict.values()]
 
     def build_branch_type_regex(self) -> str:
         """Build regex pattern for branch type matching (Convention #7).
