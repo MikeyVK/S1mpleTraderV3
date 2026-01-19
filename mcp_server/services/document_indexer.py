@@ -8,11 +8,14 @@ from pathlib import Path
 from typing import Any
 
 
-class DocumentIndexer:
+class DocumentIndexer:  # pylint: disable=too-few-public-methods
     """Stateless service for building documentation index.
 
     All methods are static - no instance state required.
     Scans filesystem for markdown files and extracts metadata.
+    
+    Note: Single public method is intentional for stateless service pattern.
+    Follows SearchService design (services/search_service.py).
     """
 
     @staticmethod

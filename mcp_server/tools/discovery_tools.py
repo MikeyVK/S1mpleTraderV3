@@ -1,12 +1,13 @@
 """Discovery tools for AI self-orientation."""
 # pyright: reportIncompatibleMethodOverride=false
 import re
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 from mcp_server.config.settings import settings
-from mcp_server.core.exceptions import MCPError
+from mcp_server.core.exceptions import ExecutionError, MCPError
 from mcp_server.services.document_indexer import DocumentIndexer
 from mcp_server.services.search_service import SearchService
 from mcp_server.managers.git_manager import GitManager
@@ -38,47 +39,51 @@ class SearchDocumentationTool(BaseTool):
     )
     args_model = SearchDocumentationInput
 
-    @property
-    def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
     async def execute(self, params: SearchDocumentationInput) -> ToolResult:
         """Execute documentation search using DocumentIndexer + SearchService."""
-        try:
-            # Build index from docs directory
-            docs_dir = settings.server.workspace_root / "docs"
-            index = DocumentIndexer.build_index(docs_dir)
+        # Build index from docs directory
+        docs_dir = Path(settings.server.workspace_root) / "docs"
 
-            # Map scope filter (None if 'all')
-            scope_filter = None if params.scope == "all" else params.scope
-
-            # Search index
-            results = SearchService.search_index(
-                index=index,
-                query=params.query,
-                max_results=10,
-                scope=scope_filter
+        if not docs_dir.exists():
+            raise ExecutionError(
+                "Documentation directory not found",
+                recovery=[
+                    f"Expected directory: {docs_dir}",
+                    "Create docs/ directory in workspace root",
+                    "Add markdown files to document project"
+                ]
             )
 
-            if not results:
-                return ToolResult.text(
-                    f"No results found for query: '{params.query}'\n"
-                    "Try broader search terms or different scope."
-                )
+        index = DocumentIndexer.build_index(docs_dir)
 
-            # Format results for output
-            output_lines = [f"Found {len(results)} results for '{params.query}':\n"]
+        # Map scope filter (None if 'all')
+        scope_filter = None if params.scope == "all" else params.scope
 
-            for i, result in enumerate(results, 1):
-                output_lines.append(
-                    f"{i}. **{result['title']}** ({result['path']})\n"
-                    f"   Score: {result['_relevance']:.2f}\n"
-                    f"   > {result['_snippet']}\n"
-                )
+        # Search index
+        results = SearchService.search_index(
+            index=index,
+            query=params.query,
+            max_results=10,
+            scope=scope_filter
+        )
 
-            return ToolResult.text("\n".join(output_lines))
+        if not results:
+            return ToolResult.text(
+                f"No results found for query: '{params.query}'\n"
+                "Try broader search terms or different scope."
+            )
 
-        except Exception as e:
-            return ToolResult.error(f"Search failed: {str(e)}")
+        # Format results for output
+        output_lines = [f"Found {len(results)} results for '{params.query}':\n"]
+
+        for i, result in enumerate(results, 1):
+            output_lines.append(
+                f"{i}. **{result['title']}** ({result['path']})\n"
+                f"   Score: {result['_relevance']:.2f}\n"
+                f"   > {result['_snippet']}\n"
+            )
+
+        return ToolResult.text("\n".join(output_lines))
 
 
 class GetWorkContextInput(BaseModel):
@@ -99,9 +104,6 @@ class GetWorkContextTool(BaseTool):
     )
     args_model = GetWorkContextInput
 
-    @property
-    def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
 
     async def execute(self, params: GetWorkContextInput) -> ToolResult:
         """Execute work context aggregation."""

@@ -1,10 +1,9 @@
 """E2E tests for SearchDocumentationTool without DocManager dependency (Slice 5)."""
 import pytest
-from pathlib import Path
 
-from mcp_server.tools.discovery_tools import SearchDocumentationTool, SearchDocumentationInput
+from mcp_server.config.settings import settings
+from mcp_server.tools.discovery_tools import SearchDocumentationInput, SearchDocumentationTool
 from mcp_server.tools.tool_result import ToolResult
-
 
 class TestSearchDocumentationE2E:
     """End-to-end tests for SearchDocumentationTool using real filesystem."""
@@ -49,7 +48,6 @@ class TestSearchDocumentationE2E:
     async def test_tool_execute_with_real_docs(self, sample_docs_dir, monkeypatch):
         """Test tool.execute() with real filesystem docs (no mocks)."""
         # Point settings to our temp docs
-        from mcp_server.config.settings import settings
         monkeypatch.setattr(settings.server, "workspace_root", sample_docs_dir.parent)
 
         tool = SearchDocumentationTool()
@@ -71,7 +69,6 @@ class TestSearchDocumentationE2E:
     @pytest.mark.asyncio
     async def test_tool_execute_with_scope_filter(self, sample_docs_dir, monkeypatch):
         """Test tool.execute() with scope filter."""
-        from mcp_server.config.settings import settings
         monkeypatch.setattr(settings.server, "workspace_root", sample_docs_dir.parent)
 
         tool = SearchDocumentationTool()
@@ -91,7 +88,6 @@ class TestSearchDocumentationE2E:
     @pytest.mark.asyncio
     async def test_tool_execute_no_results(self, sample_docs_dir, monkeypatch):
         """Test tool.execute() when no results found."""
-        from mcp_server.config.settings import settings
         monkeypatch.setattr(settings.server, "workspace_root", sample_docs_dir.parent)
 
         tool = SearchDocumentationTool()
@@ -104,7 +100,6 @@ class TestSearchDocumentationE2E:
     @pytest.mark.asyncio
     async def test_tool_execute_relevance_ranking(self, sample_docs_dir, monkeypatch):
         """Test that results are ranked by relevance."""
-        from mcp_server.config.settings import settings
         monkeypatch.setattr(settings.server, "workspace_root", sample_docs_dir.parent)
 
         tool = SearchDocumentationTool()
@@ -123,7 +118,6 @@ class TestSearchDocumentationE2E:
     async def test_tool_handles_missing_docs_dir(self, tmp_path, monkeypatch):
         """Test tool gracefully handles missing docs directory."""
         # Point to directory without docs/ subdirectory
-        from mcp_server.config.settings import settings
         monkeypatch.setattr(settings.server, "workspace_root", tmp_path)
 
         tool = SearchDocumentationTool()
