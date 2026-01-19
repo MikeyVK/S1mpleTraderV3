@@ -17,7 +17,7 @@
 **Activate all tool categories before proceeding:**
 
 ```
-activate_file_editing_tools              → create_file, safe_edit_file, scaffold_artifact
+activate_file_editing_tools              → create_file, safe_edit_file, scaffold_artifact (unified tool for code+docs)
 activate_git_workflow_management_tools   → 15 git/PR tools (create_branch, git_status, etc.)
 activate_branch_phase_management_tools   → phase transition tools
 activate_issue_management_tools          → 6 issue tools (create_issue, list_issues, etc.)
@@ -123,7 +123,9 @@ force_phase_transition(
 
 **Pre-Development Documentation (research/planning/design phases):**
 - Output location: `docs/development/issueXX/` (XX = active issue number)
-- Tools: `scaffold_artifact(artifact_type="design|architecture|tracking", name="...", context={...})`
+- Tool: `scaffold_artifact(artifact_type="design|architecture|tracking", name="...", context={...})`
+  - Unified tool for ALL artifacts (code + docs)
+  - Auto-resolves paths from artifacts.yaml registry
 - Validation: `validate_doc(path="...")`
 
 **Documentation Phase (after integration):**
@@ -270,7 +272,9 @@ force_phase_transition(
 
 ### A. "Implement a New Component" (DTO, Worker, Adapter)
 1.  **Scaffold Code:**
-    *   `scaffold_artifact(artifact_type="dto|worker|adapter", name="...", output_path="...", context={...})`
+    *   `scaffold_artifact(artifact_type="dto|worker|adapter", name="ComponentName", context={...})`
+    *   Unified tool - replaces legacy scaffold_component/scaffold_design_doc
+    *   Auto-resolves paths from artifacts.yaml registry
     *   *Result:* Creates impl file with proper structure.
 2.  **TDD Loop (Strict):**
     *   Follow Section 2.3 RED → GREEN → REFACTOR cycle
@@ -279,7 +283,9 @@ force_phase_transition(
 
 ### B. "Create Documentation" (Architecture, Design, Plan)
 1.  **Scaffold Document:**
-    *   `scaffold_artifact(artifact_type="design|architecture|tracking", name="...", output_path="docs/development/issueXX/...", context={...})`
+    *   `scaffold_artifact(artifact_type="design|architecture|tracking", name="document-name", context={...})`
+    *   Same unified tool as code artifacts
+    *   Auto-resolves docs/development/issueXX/ from artifacts.yaml
     *   *Result:* Creates perfectly structured markdown file.
 2.  **Validate:**
     *   `validate_doc(content="...", template_type="design")`
