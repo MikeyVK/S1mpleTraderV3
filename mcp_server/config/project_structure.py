@@ -148,10 +148,11 @@ class ProjectStructureConfig(BaseModel):
         """
         directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
         for dir_path, policy in directories.items():
-            if policy.parent is not None and policy.parent not in directories:  # pylint: disable=unsupported-membership-test
+            parent = policy.parent
+            if parent is not None and directories.get(parent) is None:
                 raise ConfigError(
                     f"Directory '{dir_path}' references unknown parent: "
-                    f"'{policy.parent}'",
+                    f"'{parent}'",
                     file_path=".st3/project_structure.yaml",
                 )
 
