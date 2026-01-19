@@ -20,6 +20,9 @@ from mcp.types import (
     Tool,
 )
 
+from mcp_server.tools.base import BaseTool
+from mcp_server.tools.tool_result import ToolResult
+
 from mcp_server.config.settings import settings
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.resources.github import GitHubIssuesResource
@@ -191,10 +194,103 @@ class MCPServer:
 
         self.setup_handlers()
 
+    def _validate_tool_arguments(
+        self,
+        tool: BaseTool,
+        arguments: dict[str, Any] | None,
+        call_id: str,
+        name: str
+    ) -> BaseModel | dict[str, Any] | list[TextContent | ImageContent | EmbeddedResource]:
+        """Validate tool arguments against args_model.
+
+        Returns:
+            - Validated BaseModel instance if validation succeeds
+            - Raw arguments dict if no args_model
+            - List of content with error if validation fails
+        """
+        if not getattr(tool, "args_model", None):
+            return arguments or {}
+
+        model_cls = cast(Type[BaseModel], tool.args_model)
+        logger.debug(
+            "Validating tool arguments",
+            extra={"props": {
+                "call_id": call_id,
+                "tool_name": name,
+                "model": model_cls.__name__,
+            }}
+        )
+        try:
+            model_validated = model_cls(**(arguments or {}))
+            logger.debug(
+                "Arguments validated successfully",
+                extra={"props": {
+                    "call_id": call_id,
+                    "tool_name": name,
+                }}
+            )
+            return model_validated
+        except ValidationError as validation_error:
+            logger.warning(
+                "Argument validation failed: %s",
+                validation_error,
+                extra={"props": {
+                    "call_id": call_id,
+                    "tool_name": name,
+                    "model": model_cls.__name__,
+                    "arguments": arguments,
+                }}
+            )
+            error_details = str(validation_error)
+            return [TextContent(
+                type="text",
+                text=f"Invalid input for {name}: {error_details}"
+            )]
+
+    @staticmethod
+    def _augment_text_with_error_metadata(text: str, result: ToolResult) -> str:
+        """Add error_code and hints to text when result is error."""
+        if not result.is_error or not hasattr(result, "error_code"):
+            return text
+
+        if result.error_code:
+            text += f"\n\nError code: {result.error_code}"
+        if hasattr(result, "hints") and result.hints:
+            text += "\nHints:"
+            for hint in result.hints:
+                text += f"\n  - {hint}"
+        return text
+
+    def _convert_tool_result_to_content(
+        self,
+        result: ToolResult
+    ) -> list[TextContent | ImageContent | EmbeddedResource]:
+        """Convert ToolResult to MCP content list."""
+        response_content: list[TextContent | ImageContent | EmbeddedResource] = []
+
+        for content in result.content:
+            if content.get("type") == "text":
+                text = content["text"]
+                text = self._augment_text_with_error_metadata(text, result)
+                response_content.append(TextContent(type="text", text=text))
+            elif content.get("type") == "image":
+                response_content.append(ImageContent(
+                    type="image",
+                    data=content["data"],
+                    mimeType=content["mimeType"]
+                ))
+            elif content.get("type") == "resource":
+                response_content.append(EmbeddedResource(
+                    type="resource",
+                    resource=content["resource"]
+                ))
+
+        return response_content
+
     def setup_handlers(self) -> None:
         """Set up the MCP protocol handlers."""
 
-        @self.server.list_resources()  # type: ignore[no-untyped-call, misc]
+        @self.server.list_resources()  # type: ignore[no-untyped-call, untyped-decorator]
         async def handle_list_resources() -> list[Resource]:
             return [
                 Resource(
@@ -206,14 +302,14 @@ class MCPServer:
                 for r in self.resources
             ]
 
-        @self.server.read_resource()  # type: ignore[no-untyped-call, misc]
+        @self.server.read_resource()  # type: ignore[no-untyped-call, untyped-decorator]
         async def handle_read_resource(uri: str) -> str:
             for resource in self.resources:
                 if resource.matches(uri):
                     return await resource.read(uri)
             raise ValueError(f"Resource not found: {uri}")
 
-        @self.server.list_tools()  # type: ignore[no-untyped-call, misc]
+        @self.server.list_tools()  # type: ignore[no-untyped-call, untyped-decorator]
         async def handle_list_tools() -> list[Tool]:
             return [
                 Tool(
@@ -224,7 +320,7 @@ class MCPServer:
                 for t in self.tools
             ]
 
-        @self.server.call_tool()  # type: ignore[misc]
+        @self.server.call_tool()  # type: ignore[no-untyped-call, untyped-decorator]
         async def handle_call_tool(
             name: str,
             arguments: dict[str, Any] | None
@@ -245,86 +341,20 @@ class MCPServer:
             for tool in self.tools:
                 if tool.name == name:
                     try:
-                        # ALL tools now enforce args_model via BaseTool inheritance
-                        if getattr(tool, "args_model", None):
-                            # Validate args against model
-                            model_cls = cast(Type[BaseModel], tool.args_model)
-                            logger.debug(
-                                "Validating tool arguments",
-                                extra={"props": {
-                                    "call_id": call_id,
-                                    "tool_name": name,
-                                    "model": model_cls.__name__,
-                                }}
-                            )
-                            try:
-                                model_validated = model_cls(**(arguments or {}))
-                                logger.debug(
-                                    "Arguments validated successfully",
-                                    extra={"props": {
-                                        "call_id": call_id,
-                                        "tool_name": name,
-                                    }}
-                                )
-                            except ValidationError as validation_error:
-                                # Pydantic v2 ValidationError - convert to user-facing error
-                                logger.warning(
-                                    "Argument validation failed: %s",
-                                    validation_error,
-                                    extra={"props": {
-                                        "call_id": call_id,
-                                        "tool_name": name,
-                                        "model": model_cls.__name__,
-                                        "arguments": arguments,
-                                    }}
-                                )
-                                # Return structured error consistent with tool_error_handler
-                                error_details = str(validation_error)
-                                return [TextContent(
-                                    type="text",
-                                    text=f"Invalid input for {name}: {error_details}"
-                                )]
-                            result = await tool.execute(model_validated)
-                        else:
-                            # Fallback if somehow a tool is missed (should not happen)
-                            # Passing kwargs as a single dict if BaseTool expects Any
-                            # But legacy typically wanted spread kwargs.
-                            # We assume full migration.
-                            # Raising error here would be strict.
-                            # But for safety, we try passing as kwargs, which will fail types
-                            # if tool expects params.
-                            # Actually, BaseTool.execute(params) means we must pass an object.
-                            # If no model, we pass the dict?
-                            result = await tool.execute(arguments or {})
-                        response_content: list[
-                            TextContent | ImageContent | EmbeddedResource
-                        ] = []
-                        for content in result.content:
-                            if content.get("type") == "text":
-                                text = content["text"]
-                                
-                                # If this is an error result, include error_code and hints
-                                if result.is_error and hasattr(result, "error_code") and result.error_code:
-                                    text += f"\n\nError code: {result.error_code}"
-                                    if hasattr(result, "hints") and result.hints:
-                                        text += "\nHints:"
-                                        for hint in result.hints:
-                                            text += f"\n  - {hint}"
-                                
-                                response_content.append(
-                                    TextContent(type="text", text=text)
-                                )
-                            elif content.get("type") == "image":
-                                response_content.append(ImageContent(
-                                    type="image",
-                                    data=content["data"],
-                                    mimeType=content["mimeType"]
-                                ))
-                            elif content.get("type") == "resource":
-                                response_content.append(EmbeddedResource(
-                                    type="resource",
-                                    resource=content["resource"]
-                                ))
+                        # Validate arguments
+                        validated = self._validate_tool_arguments(
+                            tool, arguments, call_id, name
+                        )
+                        # Early return if validation failed
+                        if isinstance(validated, list):
+                            return validated
+
+                        # Execute tool
+                        result = await tool.execute(validated)
+
+                        # Convert result to MCP content
+                        response_content = self._convert_tool_result_to_content(result)
+
                         duration_ms = (time.perf_counter() - start_time) * 1000.0
                         logger.debug(
                             "Tool call completed",
@@ -346,10 +376,11 @@ class MCPServer:
                             }}
                         )
                         raise
-                    except Exception as e:
+                    except (KeyError, AttributeError, TypeError) as e:
+                        # Response processing error (dict access, attribute access, type issues)
                         duration_ms = (time.perf_counter() - start_time) * 1000.0
                         logger.error(
-                            "Tool execution failed: %s",
+                            "Response processing failed: %s",
                             e,
                             exc_info=True,
                             extra={"props": {
@@ -361,7 +392,7 @@ class MCPServer:
                         )
                         return [TextContent(
                             type="text",
-                            text=f"Error executing tool {name}: {e!s}"
+                            text=f"Error processing tool response: {e!s}"
                         )]
             raise ValueError(f"Tool not found: {name}")
 

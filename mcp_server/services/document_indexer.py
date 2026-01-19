@@ -8,14 +8,11 @@ from pathlib import Path
 from typing import Any
 
 
-class DocumentIndexer:  # pylint: disable=too-few-public-methods
+class DocumentIndexer:
     """Stateless service for building documentation index.
 
     All methods are static - no instance state required.
     Scans filesystem for markdown files and extracts metadata.
-    
-    Note: Single public method is intentional for stateless service pattern.
-    Follows SearchService design (services/search_service.py).
     """
 
     @staticmethod
@@ -62,6 +59,37 @@ class DocumentIndexer:  # pylint: disable=too-few-public-methods
                 continue
 
         return index
+
+    @staticmethod
+    def get_index_statistics(index: list[dict[str, Any]]) -> dict[str, Any]:
+        """Calculate statistics about documentation index.
+
+        Args:
+            index: List of document metadata from build_index()
+
+        Returns:
+            Dictionary with index statistics:
+            {
+                "total_documents": int,
+                "total_size": int,       # Total content bytes
+                "scopes": dict[str, int] # Document count per scope
+            }
+        """
+        if not index:
+            return {"total_documents": 0, "total_size": 0, "scopes": {}}
+
+        total_size = sum(len(doc.get("content", "")) for doc in index)
+        scopes: dict[str, int] = {}
+
+        for doc in index:
+            scope = doc.get("scope", "all")
+            scopes[scope] = scopes.get(scope, 0) + 1
+
+        return {
+            "total_documents": len(index),
+            "total_size": total_size,
+            "scopes": scopes
+        }
 
     @staticmethod
     def _extract_title(content: str, filename: str) -> str:

@@ -76,7 +76,7 @@ class TestExtractSnippet:
         """Should extract text around the query match."""
         content = "This is some text before the Python keyword and some text after it."
         snippet = SearchService.extract_snippet(content, "Python", context_chars=20)
-        
+
         # Should contain query and context
         assert "Python" in snippet
         # Verify it includes context text
@@ -87,7 +87,7 @@ class TestExtractSnippet:
         """Should add ... when content is truncated."""
         content = "A" * 200 + " Python " + "B" * 200
         snippet = SearchService.extract_snippet(content, "Python", context_chars=10)
-        
+
         assert snippet.startswith("...")
         assert snippet.endswith("...")
         assert "Python" in snippet
@@ -96,7 +96,7 @@ class TestExtractSnippet:
         """Should not add leading ... if match is at start."""
         content = "Python is great and wonderful"
         snippet = SearchService.extract_snippet(content, "Python", context_chars=10)
-        
+
         assert not snippet.startswith("...")
         assert "Python" in snippet
 
@@ -104,7 +104,7 @@ class TestExtractSnippet:
         """Should not add trailing ... if match is at end."""
         content = "This is all about Python"
         snippet = SearchService.extract_snippet(content, "Python", context_chars=10)
-        
+
         assert not snippet.endswith("...")
         assert "Python" in snippet
 
@@ -112,7 +112,7 @@ class TestExtractSnippet:
         """Should return full content if shorter than context."""
         content = "Python"
         snippet = SearchService.extract_snippet(content, "Python", context_chars=100)
-        
+
         assert snippet == "Python"
         assert "..." not in snippet
 
@@ -120,7 +120,7 @@ class TestExtractSnippet:
         """Should find query regardless of case."""
         content = "This is about PYTHON programming"
         snippet = SearchService.extract_snippet(content, "python", context_chars=10)
-        
+
         assert "PYTHON" in snippet
 
 
@@ -160,15 +160,15 @@ class TestSearchIndex:
     def test_returns_relevant_documents(self, sample_index):
         """Should return documents matching query."""
         results = SearchService.search_index(sample_index, "Python")
-        
+
         assert len(results) == 3  # 3 docs contain "Python"
-        assert all("Python" in r["title"] or "Python" in r["content"] 
+        assert all("Python" in r["title"] or "Python" in r["content"]
                   or "python" in r["path"] for r in results)
 
     def test_sorts_by_relevance_descending(self, sample_index):
         """Should sort results by relevance score (highest first)."""
         results = SearchService.search_index(sample_index, "Python")
-        
+
         # First result should have highest relevance
         scores = [r["_relevance"] for r in results]
         assert scores == sorted(scores, reverse=True)
@@ -176,7 +176,7 @@ class TestSearchIndex:
     def test_limits_max_results(self, sample_index):
         """Should respect max_results parameter."""
         results = SearchService.search_index(sample_index, "Python", max_results=2)
-        
+
         assert len(results) == 2
 
     def test_filters_by_scope(self, sample_index):
@@ -184,33 +184,33 @@ class TestSearchIndex:
         results = SearchService.search_index(
             sample_index, "Python", scope="architecture"
         )
-        
+
         assert len(results) == 1
         assert results[0]["type"] == "architecture"
 
     def test_adds_relevance_score(self, sample_index):
         """Should add _relevance field to results."""
         results = SearchService.search_index(sample_index, "Python")
-        
+
         assert all("_relevance" in r for r in results)
         assert all(isinstance(r["_relevance"], float) for r in results)
 
     def test_adds_snippet(self, sample_index):
         """Should add _snippet field to results."""
         results = SearchService.search_index(sample_index, "Python")
-        
+
         assert all("_snippet" in r for r in results)
-        assert all("Python" in r["_snippet"] or "python" in r["_snippet"] 
+        assert all("Python" in r["_snippet"] or "python" in r["_snippet"]
                   for r in results)
 
     def test_returns_empty_for_no_matches(self, sample_index):
         """Should return empty list when no matches found."""
         results = SearchService.search_index(sample_index, "Rust")
-        
+
         assert results == []
 
     def test_handles_empty_index(self):
         """Should handle empty index gracefully."""
         results = SearchService.search_index([], "Python")
-        
+
         assert results == []
