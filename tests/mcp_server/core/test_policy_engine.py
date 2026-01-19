@@ -3,12 +3,10 @@
 Tests Phase 4: Policy decision engine with config integration
 """
 
-import pytest
-
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.operation_policies import OperationPoliciesConfig
 from mcp_server.config.project_structure import ProjectStructureConfig
-from mcp_server.core.policy_engine import PolicyDecision, PolicyEngine
+from mcp_server.core.policy_engine import PolicyEngine
 
 
 class TestPolicyEngineConfigDriven:

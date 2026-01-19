@@ -6,7 +6,7 @@ Cross-references: artifacts.yaml (validates allowed_artifact_types)
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
 import yaml
 from pydantic import BaseModel, Field
@@ -125,7 +125,8 @@ class ProjectStructureConfig(BaseModel):
         artifact_config = ArtifactRegistryConfig.from_file()
         valid_types = set(artifact_config.list_type_ids())
 
-        for dir_path, policy in self.directories.items():
+        directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
+        for dir_path, policy in directories.items():
             invalid_types = set(policy.allowed_artifact_types) - valid_types
             if invalid_types:
                 raise ConfigError(
@@ -145,8 +146,9 @@ class ProjectStructureConfig(BaseModel):
         Raises:
             ConfigError: If directory references unknown parent
         """
-        for dir_path, policy in self.directories.items():
-            if policy.parent is not None and policy.parent not in self.directories:
+        directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
+        for dir_path, policy in directories.items():
+            if policy.parent is not None and policy.parent not in directories:
                 raise ConfigError(
                     f"Directory '{dir_path}' references unknown parent: "
                     f"'{policy.parent}'",
@@ -167,7 +169,8 @@ class ProjectStructureConfig(BaseModel):
         Returns:
             DirectoryPolicy if found, None otherwise
         """
-        return self.directories.get(path)
+        directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
+        return directories.get(path)
 
     def get_all_directories(self) -> List[str]:
         """Get sorted list of all directory paths.
@@ -175,4 +178,5 @@ class ProjectStructureConfig(BaseModel):
         Returns:
             Sorted list of directory paths
         """
-        return sorted(self.directories.keys())
+        directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
+        return sorted(directories.keys())

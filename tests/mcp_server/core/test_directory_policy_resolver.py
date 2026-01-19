@@ -5,7 +5,7 @@ Tests Phase 3: Directory policy resolution with inheritance
 
 import pytest
 
-from mcp_server.config.component_registry import ComponentRegistryConfig
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.project_structure import ProjectStructureConfig
 from mcp_server.core.directory_policy_resolver import (
     DirectoryPolicyResolver,
@@ -18,7 +18,7 @@ class TestDirectoryPolicyResolver:
 
     def setup_method(self):
         """Reset singletons before each test."""
-        ComponentRegistryConfig.reset_instance()
+        ArtifactRegistryConfig.reset_instance()
         ProjectStructureConfig.reset_instance()
 
     def test_exact_path_match(self):
@@ -63,8 +63,8 @@ class TestDirectoryPolicyResolver:
         resolver = DirectoryPolicyResolver()
         policy = resolver.resolve("unknown/path")
         # Should return permissive default (all allowed)
-        assert policy.allowed_component_types == []  # Empty = all allowed
-        assert policy.allowed_extensions == []
+        assert not policy.allowed_component_types  # Empty = all allowed
+        assert not policy.allowed_extensions
 
     def test_allows_component_type(self):
         """Test component type validation."""
@@ -101,7 +101,7 @@ class TestDocumentArtifactDirectories:
 
     def setup_method(self):
         """Reset singletons before each test."""
-        ComponentRegistryConfig.reset_instance()
+        ArtifactRegistryConfig.reset_instance()
         ProjectStructureConfig.reset_instance()
 
     def test_docs_root_allows_document_types(self):

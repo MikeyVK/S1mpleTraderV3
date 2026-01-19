@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import yaml
 from pydantic import (
@@ -120,7 +120,7 @@ class ArtifactDefinition(BaseModel):
         ..., description="Lifecycle state machine"
     )
 
-    def validate_artifact_fields(self, provided: dict[str, any]) -> None:
+    def validate_artifact_fields(self, provided: dict[str, Any]) -> None:
         """Validate provided fields meet requirements.
 
         Args:

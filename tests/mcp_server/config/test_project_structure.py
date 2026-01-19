@@ -8,10 +8,7 @@ import pytest
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.operation_policies import OperationPoliciesConfig
-from mcp_server.config.project_structure import (
-    ProjectStructureConfig,
-    DirectoryPolicy,
-)
+from mcp_server.config.project_structure import ProjectStructureConfig
 from mcp_server.core.exceptions import ConfigError
 
 
