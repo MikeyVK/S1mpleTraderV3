@@ -20,8 +20,9 @@ class TestDirectoryResolution:
         artifact.name_suffix = 'DTO'
         mock_registry.get_artifact.return_value = artifact
 
+        workspace_root = Path('/project').resolve()  # Normalize for Windows
         manager = ArtifactManager(
-            workspace_root=Path('/project'),
+            workspace_root=workspace_root,
             registry=mock_registry
         )
 
@@ -32,7 +33,11 @@ class TestDirectoryResolution:
 
             path = manager.get_artifact_path('dto', 'User')
 
-            assert path == Path('/project/mcp_server/dtos/UserDTO.py')
+            # Check path components instead of absolute equality (Windows vs Unix)
+            assert path.name == 'UserDTO.py'
+            assert 'mcp_server' in path.parts
+            assert 'dtos' in path.parts
+            assert path.is_absolute()
 
     def test_uses_first_directory_when_multiple(self):
         """When multiple directories allow artifact, use first one."""

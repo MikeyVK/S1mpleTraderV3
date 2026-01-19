@@ -179,14 +179,14 @@ class ArtifactManager:
     def get_artifact_path(
         self, artifact_type: str, name: str
     ) -> Path:
-        """Get relative path for artifact (Cycle 8).
+        """Get full path for artifact.
 
         Args:
             artifact_type: Artifact type_id from registry
             name: Artifact name (without suffix/extension)
 
         Returns:
-            Relative path to artifact file (base_dir / filename)
+            Absolute path to artifact file (workspace_root / base_dir / filename)
 
         Raises:
             ConfigError: If no valid directory found
@@ -212,5 +212,5 @@ class ArtifactManager:
         extension = artifact.file_extension
         file_name = f"{name}{suffix}{extension}"
 
-        # Return relative path
-        return Path(base_dir) / file_name
+        # Return absolute path: workspace_root / base_dir / filename
+        return self.workspace_root / base_dir / file_name
