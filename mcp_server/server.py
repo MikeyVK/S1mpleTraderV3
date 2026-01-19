@@ -7,7 +7,7 @@ import time
 from typing import Any, cast, Type
 import uuid
 
-from pydantic import AnyUrl, BaseModel
+from pydantic import AnyUrl, BaseModel, ValidationError
 import anyio
 
 from mcp.server import Server
@@ -266,20 +266,24 @@ class MCPServer:
                                         "tool_name": name,
                                     }}
                                 )
-                            except Exception as validation_error:
-                                logger.error(
+                            except ValidationError as validation_error:
+                                # Pydantic v2 ValidationError - convert to user-facing error
+                                logger.warning(
                                     "Argument validation failed: %s",
                                     validation_error,
-                                    exc_info=True,
                                     extra={"props": {
                                         "call_id": call_id,
                                         "tool_name": name,
                                         "model": model_cls.__name__,
                                         "arguments": arguments,
-                                        "error_type": type(validation_error).__name__
                                     }}
                                 )
-                                raise
+                                # Return structured error consistent with tool_error_handler
+                                error_details = str(validation_error)
+                                return [TextContent(
+                                    type="text",
+                                    text=f"Invalid input for {name}: {error_details}"
+                                )]
                             result = await tool.execute(model_validated)
                         else:
                             # Fallback if somehow a tool is missed (should not happen)
@@ -297,8 +301,18 @@ class MCPServer:
                         ] = []
                         for content in result.content:
                             if content.get("type") == "text":
+                                text = content["text"]
+                                
+                                # If this is an error result, include error_code and hints
+                                if result.is_error and hasattr(result, "error_code") and result.error_code:
+                                    text += f"\n\nError code: {result.error_code}"
+                                    if hasattr(result, "hints") and result.hints:
+                                        text += "\nHints:"
+                                        for hint in result.hints:
+                                            text += f"\n  - {hint}"
+                                
                                 response_content.append(
-                                    TextContent(type="text", text=content["text"])
+                                    TextContent(type="text", text=text)
                                 )
                             elif content.get("type") == "image":
                                 response_content.append(ImageContent(
