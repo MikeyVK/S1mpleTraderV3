@@ -120,6 +120,21 @@ class ArtifactDefinition(BaseModel):
         ..., description="Lifecycle state machine"
     )
 
+    def validate_artifact_fields(self, provided: dict[str, any]) -> None:
+        """Validate provided fields meet requirements.
+
+        Args:
+            provided: Dict of field names to values provided for scaffolding
+
+        Raises:
+            ValueError: If required fields are missing
+        """
+        missing = set(self.required_fields) - set(provided.keys())
+        if missing:
+            raise ValueError(
+                f"Missing required fields for {self.type_id}: {sorted(missing)}"
+            )
+
     @field_validator("type_id")
     @classmethod
     def validate_type_id(cls, v: str) -> str:
@@ -169,6 +184,8 @@ class ArtifactRegistryConfig(BaseModel):
         """
         if file_path is None:
             file_path = Path(".st3/artifacts.yaml")
+        else:
+            file_path = Path(file_path)
 
         # Return cached instance if same file
         if cls._instance is not None and cls._file_path == file_path:
@@ -252,18 +269,29 @@ class ArtifactRegistryConfig(BaseModel):
     def list_type_ids(
         self, artifact_type: ArtifactType | None = None
     ) -> list[str]:
-        """List all artifact type_ids.
-        
+        """List all artifact type_ids (sorted).
+
         Args:
             artifact_type: Filter by ArtifactType.CODE or .DOC (optional)
-            
+
         Returns:
-            List of type_ids
+            Sorted list of type_ids
         """
         if artifact_type is None:
-            return [a.type_id for a in self.artifact_types]
-        return [
+            return sorted([a.type_id for a in self.artifact_types])
+        return sorted([
             a.type_id
             for a in self.artifact_types
             if a.type == artifact_type
-        ]
+        ])
+
+    def has_artifact_type(self, type_id: str) -> bool:
+        """Check if artifact type exists.
+
+        Args:
+            type_id: Artifact type identifier
+
+        Returns:
+            True if type exists, False otherwise
+        """
+        return any(a.type_id == type_id for a in self.artifact_types)

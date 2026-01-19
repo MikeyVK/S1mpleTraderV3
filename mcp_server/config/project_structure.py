@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 import yaml
 from pydantic import BaseModel, Field
 
-from mcp_server.config.component_registry import ComponentRegistryConfig
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ConfigError
 
 
@@ -122,18 +122,8 @@ class ProjectStructureConfig(BaseModel):
         Raises:
             ConfigError: If directory references unknown artifact type
         """
-        # Try artifacts.yaml first, fallback to components.yaml
-        try:
-            from mcp_server.config.artifact_registry_config import (
-                ArtifactRegistryConfig,
-            )
-
-            artifact_config = ArtifactRegistryConfig.from_file()
-            valid_types = set(artifact_config.list_type_ids())
-        except (ConfigError, ImportError):
-            # Fallback to components.yaml during migration
-            component_config = ComponentRegistryConfig.from_file()
-            valid_types = set(component_config.get_available_types())
+        artifact_config = ArtifactRegistryConfig.from_file()
+        valid_types = set(artifact_config.list_type_ids())
 
         for dir_path, policy in self.directories.items():
             invalid_types = set(policy.allowed_artifact_types) - valid_types

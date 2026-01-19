@@ -6,7 +6,8 @@ Cross-validates allowed_component_types against components.yaml
 
 import pytest
 
-from mcp_server.config.component_registry import ComponentRegistryConfig
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.operation_policies import OperationPoliciesConfig
 from mcp_server.config.project_structure import (
     ProjectStructureConfig,
     DirectoryPolicy,
@@ -19,7 +20,7 @@ class TestProjectStructureConfig:
 
     def setup_method(self):
         """Reset singletons before each test."""
-        ComponentRegistryConfig.reset_instance()
+        ArtifactRegistryConfig.reset_instance()
         ProjectStructureConfig.reset_instance()
 
     def test_load_valid_config(self):
@@ -139,19 +140,22 @@ class TestProjectStructureIntegration:
 
     def setup_method(self):
         """Reset singletons before each test."""
-        ComponentRegistryConfig.reset_instance()
+        ArtifactRegistryConfig.reset_instance()
         ProjectStructureConfig.reset_instance()
 
     def test_all_three_configs_load(self):
         """Test all three foundation configs load successfully."""
-        from mcp_server.config.operation_policies import OperationPoliciesConfig
-
         OperationPoliciesConfig.reset_instance()
 
-        component_config = ComponentRegistryConfig.from_file()
+        component_config = ArtifactRegistryConfig.from_file()
         operation_config = OperationPoliciesConfig.from_file()
         structure_config = ProjectStructureConfig.from_file()
 
-        assert len(component_config.components) == 9
+        # Verify artifact types loaded
+        type_ids = component_config.list_type_ids()
+        assert len(type_ids) > 0
+        assert "dto" in type_ids
+        assert "worker" in type_ids
+
         assert len(operation_config.operations) == 3
         assert len(structure_config.directories) >= 10
