@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.services.search_service import SearchResult
 from mcp_server.tools.discovery_tools import (
     GetWorkContextTool, GetWorkContextInput,
     SearchDocumentationTool, SearchDocumentationInput
@@ -41,8 +42,6 @@ class TestSearchDocumentationTool:
     @pytest.mark.asyncio
     async def test_search_returns_results(self, tool: SearchDocumentationTool) -> None:
         """Should return search results from DocumentIndexer + SearchService."""
-        from mcp_server.services.search_service import SearchResult
-
         mock_results = [
             SearchResult(
                 file_path="docs/architecture/DATA_FLOW.md",
