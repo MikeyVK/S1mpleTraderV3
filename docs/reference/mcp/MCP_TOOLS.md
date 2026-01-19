@@ -142,21 +142,22 @@ Find documentation and understand current work context.
 2. search_documentation query="how to implement worker" → Returns: Ranked docs with examples
 ```
 
-### 8. Scaffolding Tools (2 tools)
+### 8. Scaffolding Tools (1 tool)
 
-Generate new components from templates.
+Generate new artifacts from templates (unified system).
 
 | Tool | Purpose | Parameters | Returns |
 |------|---------|------------|---------|
-| **ScaffoldComponentTool** | Generate DTOs/workers/adapters | `component_type` (dto/worker/adapter/manager/tool), `name`, `fields`/`methods` (varies by type), `create_test` (optional) | Generated file path |
-| **ScaffoldDesignDocTool** | Generate design document | `title`, `sections` (optional list), `status` (optional) | Generated doc file path |
+| **ScaffoldArtifactTool** | Generate code/docs from artifacts.yaml | `artifact_type` (dto/worker/design/etc), `name`, context fields (varies by type), `output_path` (optional) | Generated file path |
 
-**Component Types:**
+**Artifact Types (from artifacts.yaml):**
 - `dto` - Data Transfer Object with Pydantic
 - `worker` - Background job/processor
+- `design` - Design document
 - `adapter` - External API integration
-- `manager` - Business logic orchestration
 - `tool` - MCP tool
+
+See `.st3/artifacts.yaml` for complete list and required fields per type.
 
 ### 9. Development & File Tools (2 tools)
 
@@ -164,7 +165,7 @@ Manage files and check server health.
 
 | Tool | Purpose | Parameters | Returns |
 |------|---------|------------|---------|
-| **CreateFileTool** | Create new file | `path`, `content` | File created (deprecated, use ScaffoldComponentTool) |
+| **CreateFileTool** | Create new file | `path`, `content` | File created (deprecated) |
 | **HealthCheckTool** | Check MCP server | None | OK if healthy |
 
 ## Architecture
