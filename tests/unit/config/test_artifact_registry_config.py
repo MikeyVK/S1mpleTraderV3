@@ -1,3 +1,4 @@
+# pylint: disable=redefined-outer-name  # pytest fixtures
 """Unit tests for ArtifactRegistryConfig (Issue #56, Cycle 1).
 
 Tests configuration loading from artifacts.yaml with:
@@ -9,9 +10,8 @@ Tests configuration loading from artifacts.yaml with:
 Author: AI Agent
 Created: 2024
 """
-
+from typing import Any, Generator
 from pathlib import Path
-from typing import Any
 
 import pytest
 import yaml
@@ -20,9 +20,9 @@ from mcp_server.config.artifact_registry_config import (
     ArtifactDefinition,
     ArtifactRegistryConfig,
     ArtifactType,
-    ConfigError,
     StateMachine,
 )
+from mcp_server.core.exceptions import ConfigError
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ def minimal_yaml() -> dict[str, Any]:
 @pytest.fixture
 def temp_yaml_file(
     minimal_yaml: dict[str, Any], tmp_path: Path
-) -> Path:  # type: ignore
+) -> Path:
     """Create temporary artifacts.yaml file."""
     file_path = tmp_path / "artifacts.yaml"
     with open(file_path, "w", encoding="utf-8") as f:
@@ -61,7 +61,7 @@ def temp_yaml_file(
 
 
 @pytest.fixture(autouse=True)
-def reset_singleton() -> None:  # type: ignore
+def reset_singleton() -> Generator[None, None, None]:
     """Reset singleton before each test."""
     ArtifactRegistryConfig.reset_instance()
     yield
@@ -73,7 +73,7 @@ class TestArtifactRegistryConfigLoading:
 
     def test_loads_from_file(
         self, temp_yaml_file: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """Config loads from artifacts.yaml."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
 
@@ -83,7 +83,7 @@ class TestArtifactRegistryConfigLoading:
 
     def test_singleton_pattern(
         self, temp_yaml_file: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """Subsequent calls return cached instance."""
         config1 = ArtifactRegistryConfig.from_file(temp_yaml_file)
         config2 = ArtifactRegistryConfig.from_file(temp_yaml_file)
@@ -92,7 +92,7 @@ class TestArtifactRegistryConfigLoading:
 
     def test_reset_instance_clears_singleton(
         self, temp_yaml_file: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """reset_instance() clears cached instance."""
         config1 = ArtifactRegistryConfig.from_file(temp_yaml_file)
         ArtifactRegistryConfig.reset_instance()
@@ -102,7 +102,7 @@ class TestArtifactRegistryConfigLoading:
 
     def test_missing_file_raises_config_error(
         self,
-    ) -> None:  # type: ignore
+    ) -> None:
         """ConfigError raised when file not found."""
         with pytest.raises(ConfigError) as exc_info:
             ArtifactRegistryConfig.from_file(Path("nonexistent.yaml"))
@@ -112,7 +112,7 @@ class TestArtifactRegistryConfigLoading:
 
     def test_empty_file_raises_config_error(
         self, tmp_path: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """ConfigError raised on empty YAML."""
         empty_file = tmp_path / "empty.yaml"
         empty_file.write_text("")
@@ -124,7 +124,7 @@ class TestArtifactRegistryConfigLoading:
 
     def test_invalid_yaml_syntax(
         self, tmp_path: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """ConfigError raised on invalid YAML syntax."""
         invalid_file = tmp_path / "invalid.yaml"
         invalid_file.write_text("invalid: yaml: syntax: error:")
@@ -141,7 +141,7 @@ class TestArtifactDefinitionValidation:
 
     def test_validates_required_fields(
         self, tmp_path: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """Missing required field raises validation error."""
         invalid_data = {
             "version": "1.0",
@@ -164,7 +164,7 @@ class TestArtifactDefinitionValidation:
         with pytest.raises(Exception):  # Pydantic validation error
             ArtifactRegistryConfig.from_file(invalid_file)
 
-    def test_type_id_must_be_lowercase(self) -> None:  # type: ignore
+    def test_type_id_must_be_lowercase(self) -> None:
         """type_id must be lowercase with underscores."""
         with pytest.raises(ValueError) as exc_info:
             ArtifactDefinition(
@@ -173,6 +173,12 @@ class TestArtifactDefinitionValidation:
                 name="Test",
                 description="Test",
                 file_extension=".py",
+                scaffolder_class=None,
+                scaffolder_module=None,
+                template_path=None,
+                fallback_template=None,
+                name_suffix=None,
+                generate_test=False,
                 state_machine=StateMachine(
                     states=["CREATED"], initial_state="CREATED"
                 ),
@@ -183,7 +189,7 @@ class TestArtifactDefinitionValidation:
 
     def test_initial_state_must_be_in_states(
         self,
-    ) -> None:  # type: ignore
+    ) -> None:
         """initial_state must exist in states list."""
         with pytest.raises(ValueError) as exc_info:
             StateMachine(
@@ -201,7 +207,7 @@ class TestArtifactRegistryConfigMethods:
 
     def test_get_artifact_by_type_id(
         self, temp_yaml_file: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """get_artifact() returns definition by type_id."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
         artifact = config.get_artifact("dto")
@@ -211,7 +217,7 @@ class TestArtifactRegistryConfigMethods:
 
     def test_get_artifact_not_found(
         self, temp_yaml_file: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """get_artifact() raises ConfigError for unknown type_id."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
 
@@ -224,7 +230,7 @@ class TestArtifactRegistryConfigMethods:
 
     def test_list_type_ids_all(
         self, temp_yaml_file: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """list_type_ids() returns all type_ids."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
         type_ids = config.list_type_ids()
@@ -233,7 +239,7 @@ class TestArtifactRegistryConfigMethods:
 
     def test_list_type_ids_filtered(
         self, tmp_path: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """list_type_ids() filters by ArtifactType."""
         mixed_data = {
             "version": "1.0",
@@ -281,7 +287,7 @@ class TestArtifactDefinitionFields:
 
     def test_parses_all_required_fields(
         self, tmp_path: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """Parses artifact with all required fields."""
         data = {
             "version": "1.0",
@@ -316,7 +322,7 @@ class TestArtifactDefinitionFields:
 
     def test_optional_fields_work(
         self, tmp_path: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """Optional fields (LEGACY, template, suffix) parse correctly."""
         data = {
             "version": "1.0",
@@ -367,7 +373,7 @@ class TestArtifactDefinitionFields:
 
     def test_optional_fields_default_to_none_or_empty(
         self, tmp_path: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """Optional fields have sensible defaults when omitted."""
         data = {
             "version": "1.0",
@@ -408,7 +414,7 @@ class TestStateMachineDefinition:
 
     def test_state_machine_parsed(
         self, temp_yaml_file: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """State machine definitions parsed correctly."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
         artifact = config.get_artifact("dto")
@@ -419,7 +425,7 @@ class TestStateMachineDefinition:
 
     def test_state_transitions_parsed(
         self, tmp_path: Path
-    ) -> None:  # type: ignore
+    ) -> None:
         """State transitions with from/to parsed correctly."""
         data = {
             "version": "1.0",

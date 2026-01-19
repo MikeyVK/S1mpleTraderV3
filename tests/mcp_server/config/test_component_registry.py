@@ -3,6 +3,8 @@
 Tests config loading, validation, and singleton pattern for artifacts.yaml.
 """
 
+from pathlib import Path
+
 import pytest
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
@@ -21,7 +23,7 @@ class TestArtifactRegistryConfig:
 
         Tests that config loads all artifact types correctly.
         """
-        config = ArtifactRegistryConfig.from_file(".st3/artifacts.yaml")
+        config = ArtifactRegistryConfig.from_file(Path(".st3/artifacts.yaml"))
 
         # Should load artifact types (code + doc)
         type_ids = config.list_type_ids()
@@ -44,8 +46,8 @@ class TestArtifactRegistryConfig:
 
         Tests that from_file() caches and returns the same instance.
         """
-        config1 = ArtifactRegistryConfig.from_file(".st3/artifacts.yaml")
-        config2 = ArtifactRegistryConfig.from_file(".st3/artifacts.yaml")
+        config1 = ArtifactRegistryConfig.from_file(Path(".st3/artifacts.yaml"))
+        config2 = ArtifactRegistryConfig.from_file(Path(".st3/artifacts.yaml"))
 
         # Should return exact same object (not just equal)
         assert config1 is config2
@@ -56,7 +58,7 @@ class TestArtifactRegistryConfig:
         Should raise ConfigError with clear message about missing file.
         """
         with pytest.raises(ConfigError, match="Artifact registry not found"):
-            ArtifactRegistryConfig.from_file(".st3/nonexistent.yaml")
+            ArtifactRegistryConfig.from_file(Path(".st3/nonexistent.yaml"))
 
     def test_get_artifact_valid(self):
         """Test get_artifact with valid type.
