@@ -2,8 +2,9 @@
 
 **Document Type:** Vision & Architecture Reference  
 **Status:** DEFINITIVE  
-**Version:** 1.0  
+**Version:** 1.1  
 **Created:** 2026-01-16  
+**Last Updated:** 2026-01-19  
 **Purpose:** Comprehensive reference for understanding MCP server vision, architecture, and roadmap  
 **Audience:** New agents, developers, maintainers  
 **Context:** Created during Issue #56 research to establish foundational understanding
@@ -90,35 +91,50 @@ We have:
 
 ### The Three-Layer Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CLIENT LAYER                             │
-│  (Claude Desktop, IDE, CLI Tools)                          │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ JSON-RPC (stdio)
-┌──────────────────────▼──────────────────────────────────────┐
-│                    MCP SERVER CORE                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐  │
-│  │   Router     │  │     Auth     │  │  Config Manager │  │
-│  └──────────────┘  └──────────────┘  └─────────────────┘  │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│              BUSINESS LOGIC LAYER                           │
-│  ┌─────────────┐ ┌──────────────┐ ┌──────────────────┐    │
-│  │ GitManager  │ │ QAManager    │ │ ScaffoldManager  │    │
-│  │ GHManager   │ │ DocManager   │ │ PolicyEngine     │    │
-│  │ PhaseState  │ │ ProjectMgr   │ │ DirectoryResolver│    │
-│  └─────────────┘ └──────────────┘ └──────────────────┘    │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│                 ADAPTER LAYER                               │
-│  ┌────────────┐ ┌──────────────┐ ┌────────────────┐       │
-│  │    Git     │ │   GitHub     │ │   FileSystem   │       │
-│  │ (GitPython)│ │  (PyGithub)  │ │  (pathlib)     │       │
-│  └────────────┘ └──────────────┘ └────────────────┘       │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph CLIENT["Client Layer"]
+        CD[Claude Desktop]
+        IDE[VS Code / IDE]
+        CLI[CLI Tools]
+    end
+    
+    subgraph SERVER["MCP Server Core"]
+        Router[Router]
+        Auth[Authentication]
+        ConfigMgr[Config Manager]
+    end
+    
+    subgraph LOGIC["Business Logic Layer"]
+        GitMgr[GitManager]
+        GHMgr[GitHubManager]
+        QAMgr[QAManager]
+        ProjMgr[ProjectManager]
+        PhaseState[PhaseStateEngine]
+        Policy[PolicyEngine]
+        DirResolv[DirectoryResolver]
+        ArtifactMgr[ArtifactManager]
+    end
+    
+    subgraph ADAPTER["Adapter Layer"]
+        GitAdapter[Git<br/>GitPython]
+        GHAdapter[GitHub<br/>PyGithub]
+        FSAdapter[FileSystem<br/>pathlib]
+    end
+    
+    CLIENT -->|JSON-RPC stdio| SERVER
+    SERVER --> LOGIC
+    LOGIC --> ADAPTER
+    
+    classDef clientStyle fill:#e1f5ff,stroke:#333,stroke-width:2px
+    classDef serverStyle fill:#fff4e1,stroke:#333,stroke-width:2px
+    classDef logicStyle fill:#e8f5e9,stroke:#333,stroke-width:2px
+    classDef adapterStyle fill:#f3e5f5,stroke:#333,stroke-width:2px
+    
+    class CLIENT clientStyle
+    class SERVER serverStyle
+    class LOGIC logicStyle
+    class ADAPTER adapterStyle
 ```
 
 ### Key Architectural Decisions
@@ -151,7 +167,7 @@ We have:
 - Policies enforceable at config level
 - Extensible without modifying Python code
 
-**Consequence**: 8 YAML files control all server behavior
+**Consequence**: 7 YAML files control all server behavior
 
 #### Decision 3: Strict Separation of Tooling vs Enforcement
 
@@ -217,7 +233,7 @@ operations:
 - **Evolutionary** → docs evolve with understanding
 
 **Mechanisms**:
-- `scaffold_document` generates from templates
+- `scaffold_artifact` generates documents from templates (unified with code scaffolding)
 - `validate_document_structure` checks sections/format (**warnings**, not errors)
 - Template hierarchy (BASE → Architecture/Design/Reference)
 - Status lifecycle (DRAFT → PRELIMINARY → APPROVED → DEFINITIVE)
@@ -247,7 +263,7 @@ docs/
 - **Fail-fast** → startup errors, not runtime surprises
 
 **Mechanisms**:
-- 8 YAML files define all behavior
+- 7 YAML files define all behavior
 - Pydantic models validate at load time
 - Cross-validation ensures consistency
 - Singleton pattern for config access
@@ -255,18 +271,18 @@ docs/
 **Configuration Files**:
 ```yaml
 .st3/
-├── workflows.yaml      # 6 workflows (feature, bug, hotfix, etc.)
-├── validation.yaml     # Template validation rules
-├── artifacts.yaml      # Unified artifact registry (code + docs)
-├── policies.yaml       # Operation policies (scaffold/create_file/commit)
-├── project_structure.yaml  # 15 directory definitions
-├── git.yaml           # Git conventions (branches, commits, TDD)
-└── constants.yaml     # Magic numbers (planned)
+├── workflows.yaml           # 6 workflows (feature, bug, hotfix, etc.)
+├── validation.yaml          # Template validation rules
+├── artifacts.yaml           # Unified artifact registry (code + docs)
+├── policies.yaml            # Operation policies (scaffold/create_file/commit)
+├── project_structure.yaml   # 15 directory definitions
+├── quality.yaml             # Quality gate definitions
+└── git.yaml                 # Git conventions (branches, commits, TDD)
 ```
 
 **Result**: Invalid configs **FAIL AT STARTUP**, zero runtime errors
 
-**Note**: `components.yaml` and `documents.yaml` have been unified into `artifacts.yaml` (Issue #56 complete)
+**Note**: `artifacts.yaml` unifies code and document scaffolding (Issue #56 complete, January 2026)
 
 ### The Critical Architectural Distinction
 
@@ -280,25 +296,28 @@ docs/
 | **Error Impact** | Runtime crash | Hard to find | Server won't start |
 | **Change Cost** | High (review, tests) | Low (edit, validate) | Medium (reload) |
 
-**Key Insight for Issue #56**:
-
-`documents.yaml` is **NOT** like `project_structure.yaml` (which enforces WHERE code goes).
-
-`documents.yaml` is **ORGANIZATIONAL METADATA** for:
-- Template selection
-- Scope categorization
-- Status workflows
-- Search/filtering
-
-**DirectoryPolicyResolver pattern does NOT apply** because documents have no enforcement policies!
-
 ---
 
 ## The Configuration Revolution (Epic #49)
 
 ### Vision: Transform Hardcoded Rules into Declarative YAML
 
-**Progress**: 4/8 issues complete (50%)
+**Progress**: 5/7 issues complete (71%)
+
+```mermaid
+gantt
+    title Epic #49: Platform Configurability Progress
+    dateFormat YYYY-MM-DD
+    section Completed
+    Issue #50 Workflows           :done, 2026-01-01, 2026-01-05
+    Issue #52 Template Validation :done, 2026-01-06, 2026-01-10
+    Issue #54 Config Foundation   :done, 2026-01-11, 2026-01-13
+    Issue #55 Git Conventions     :done, 2026-01-14, 2026-01-15
+    Issue #56 Unified Artifacts   :done, 2026-01-16, 2026-01-19
+    section Planned
+    Issue #57 Constants           :active, 2026-01-20, 2026-01-25
+    Issue #105 OBSOLETE           :crit, 2026-01-16, 2026-01-16
+```
 
 ### Completed Transformations ✅
 
@@ -388,65 +407,109 @@ tdd_phases:
 
 **Impact**: Git workflow customizable per project
 
-### Planned Transformations ⏳
+#### Issue #56: Unified Artifacts ✅ COMPLETE
 
-#### Issue #56: Document Templates (THIS ISSUE)
+**Status**: Completed January 19, 2026
 
-**Target**: Remove hardcoded `TEMPLATES` and `SCOPE_DIRS` dicts from DocManager
+**Achievement**: Unified code and document scaffolding into single `artifacts.yaml` registry
 
-**Vision**:
+**Before** (Scattered):
+- `components.yaml` for code artifacts (dto, worker, adapter)
+- Hardcoded `TEMPLATES` dict in DocManager
+- Hardcoded `SCOPE_DIRS` dict in DocManager
+- Separate tools: `scaffold_component`, `scaffold_design_doc`
+
+**After** (Unified):
 ```yaml
-# documents.yaml
-template_types:
-  architecture:
-    jinja_template: documents/architecture.md.jinja2
-    default_scope: architecture
-    allowed_statuses: [DRAFT, PRELIMINARY, APPROVED, DEFINITIVE]
-
-scope_directories:
-  architecture:
-    path: architecture
-    description: "System architecture and design principles"
+# artifacts.yaml
+artifact_types:
+  # Code artifacts
+  - type: code
+    type_id: dto
+    template_path: "components/dto.py.jinja2"
+  
+  # Document artifacts
+  - type: document
+    type_id: design
+    template_path: "documents/design.md.jinja2"
+    scope: development
 ```
 
-**Purpose**: **ORGANIZATIONAL METADATA**, not enforcement policies
+**Tools Unified**:
+- Single `scaffold_artifact` tool replaces both `scaffold_component` and `scaffold_design_doc`
+- Unified template resolution logic
+- Consistent validation across code and documents
+
+**Impact**: 
+- ✅ Zero hardcoded template metadata
+- ✅ Single source of truth for all scaffolding
+- ✅ Extensible without code changes
+- ✅ Consistent mental model
+
+### Planned Transformations ⏳
 
 #### Issue #57: Constants
 
 **Target**: Externalize 40+ magic numbers and regex patterns
 
-#### Issue #105: Dynamic Loading (OBSOLETE - Replaced by #56)
+**Status**: Next in queue
 
-**Status**: Superseded by unified artifacts.yaml registry
+#### Issue #105: Dynamic Loading ❌ OBSOLETE
 
-**Original Target**: Load scaffolders dynamically from components.yaml
+**Status**: Superseded by Issue #56 (January 2026)
 
-**Actual Solution**: Issue #56 unified code + document scaffolding into single `scaffold_artifact` tool with artifacts.yaml registry
+**Original Target**: Load scaffolders dynamically from `components.yaml`
+
+**Actual Solution**: Issue #56 unified code + document scaffolding into single `scaffold_artifact` tool with `artifacts.yaml` registry
+
+**Reason for Obsolescence**: The unified artifacts approach eliminates the need for dynamic scaffolder loading by treating all artifacts (code and documents) uniformly through a single registry and tool
 
 ---
 
 ## Epic Roadmap & Critical Path
 
-### Epic Dependency Graph
-
-```
-Epic #49: Platform Configurability (50% complete)
-  ├─> Issue #50: Workflows ✅
-  ├─> Issue #52: Template Validation ✅
-  ├─> Issue #54: Config Foundation ✅
-  ├─> Issue #55: Git Conventions ✅
-  ├─> Issue #56: Document Templates ⏳ CURRENT
-  ├─> Issue #57: Constants ⏳
-  └─> Issue #105: Dynamic Loading ⏳
-
-Epic #18: TDD & Policy Enforcement (30% complete)
-  ├─> Issue #42: 8-Phase Model (BLOCKED) 🔴
-  └─> Quality Gate Enforcement (BLOCKED by Epic #76)
-
-Epic #76: Quality Gates Tooling (80% complete)
-  ├─> QAManager ✅
-  ├─> quality.yaml ✅
-  └─> Gate catalog ✅
+```mermaid
+graph LR
+    subgraph Epic49["Epic #49: Platform Configurability<br/>71% Complete"]
+        I50[Issue #50<br/>Workflows<br/>✅]
+        I52[Issue #52<br/>Validation<br/>✅]
+        I54[Issue #54<br/>Foundation<br/>✅]
+        I55[Issue #55<br/>Git<br/>✅]
+        I56[Issue #56<br/>Artifacts<br/>✅]
+        I57[Issue #57<br/>Constants<br/>⏳]
+        I105[Issue #105<br/>OBSOLETE<br/>❌]
+    end
+    
+    subgraph Epic18["Epic #18: TDD Enforcement<br/>30% Complete"]
+        I42[Issue #42<br/>8-Phase Model<br/>🔴 BLOCKED]
+        QGE[Quality Gates<br/>Enforcement<br/>🔴 BLOCKED]
+    end
+    
+    subgraph Epic76["Epic #76: Quality Gates<br/>80% Complete"]
+        QAM[QAManager<br/>✅]
+        QY[quality.yaml<br/>✅]
+        GC[Gate Catalog<br/>✅]
+    end
+    
+    I50 --> I52
+    I52 --> I54
+    I54 --> I55
+    I55 --> I56
+    I56 --> I57
+    I56 -.obsoletes.-> I105
+    
+    Epic76 -.blocks.-> I42
+    I42 -.blocks.-> QGE
+    
+    classDef done fill:#c8e6c9,stroke:#4caf50,stroke-width:2px
+    classDef active fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    classDef blocked fill:#ffcdd2,stroke:#f44336,stroke-width:2px
+    classDef obsolete fill:#e0e0e0,stroke:#9e9e9e,stroke-width:2px,stroke-dasharray: 5 5
+    
+    class I50,I52,I54,I55,I56,QAM,QY,GC done
+    class I57 active
+    class I42,QGE blocked
+    class I105 obsolete
 ```
 
 ### Blocker Chain
@@ -454,9 +517,9 @@ Epic #76: Quality Gates Tooling (80% complete)
 **Critical Path**:
 1. Issue #42 (8-phase model) **BLOCKED** → contradicts TDD principles
 2. Epic #18 enforcement **BLOCKED** → needs Issue #42 foundation
-3. Quality Gate Enforcement **BLOCKED** → needs Epic #76 tools
+3. Quality Gate Enforcement **BLOCKED** → needs Epic #76 tools (80% complete)
 
-**Issue #56 is UNBLOCKED** - can proceed independently
+**Issue #56 is COMPLETE** ✅
 
 ---
 
@@ -467,6 +530,7 @@ Epic #76: Quality Gates Tooling (80% complete)
 **Evidence**:
 - Issue #50: 6 workflows in 80 lines YAML
 - Issue #55: 11 conventions in 60 lines YAML
+- Issue #56: 15 artifact types in 120 lines YAML
 - Config load time: 17.91ms (well under 100ms target)
 
 **Implication**: Continue Epic #49
@@ -496,7 +560,24 @@ class WorkflowConfig:
 
 **Benefits**: Single load, cross-validation, fail-fast, thread-safe
 
-### Learning 4: MCP SDK Limitations Exist
+### Learning 4: Unified Registries Beat Specialized Systems
+
+**Context**: Issue #56 unified code + document scaffolding
+
+**Discovery**:
+- Separate systems (`scaffold_component`, `scaffold_design_doc`) created mental overhead
+- Unified `scaffold_artifact` tool simplified mental model
+- Single `artifacts.yaml` registry easier to extend
+- Consistent validation logic across artifact types
+
+**Benefit**:
+- Zero context switching between code and docs
+- New artifact type: Add to artifacts.yaml, zero code changes
+- Testing simplified (one scaffolding path)
+
+**Implication**: Seek unification opportunities in future work
+
+### Learning 5: MCP SDK Limitations Exist
 
 **Discovery**: Claude Desktop caches MCP tool schemas
 - Changed git.yaml → server reloaded correctly
@@ -545,89 +626,73 @@ class GitConfig:
 
 **Key Principle**: Policies are data, engine is logic
 
----
+### 5. Unified Registry Pattern
 
-## Implications for Issue #56
+**Usage**: artifacts.yaml (Issue #56)
 
-### What Issue #56 IS:
+**Principle**: Single source of truth for all related entities
 
-**Organizational Metadata Configuration**
+**Structure**:
+```yaml
+# artifacts.yaml
+artifact_types:
+  - type: code|document
+    type_id: unique_identifier
+    template_path: path/to/template.jinja2
+    # ... metadata
+```
 
-- ✅ Template type definitions (what templates exist)
-- ✅ Scope directory mappings (where docs live)
-- ✅ Status workflows (document lifecycle)
-- ✅ Default values (sensible defaults)
-- ✅ Search/filter metadata (categorization)
-
-**Purpose**: Enable DocManager to:
-- Look up template metadata
-- Map scopes to directories
-- Validate status transitions
-- Support search/filter operations
-
-**Enforcement Level**: **SOFT** (warnings, not blocking)
-
-### What Issue #56 IS NOT:
-
-**Hard Policy Enforcement**
-
-- ❌ DirectoryPolicyResolver pattern (that's for code enforcement)
-- ❌ PolicyEngine integration (documents aren't enforced)
-- ❌ Blocking operations (docs are flexible)
-- ❌ Architectural validation (docs don't have dependencies)
-- ❌ Phase restrictions (docs can be created anytime)
-
-**Anti-Pattern**: Treating `documents.yaml` like `project_structure.yaml`
-
-### The Correct Mental Model
-
-**Unified Artifacts (artifacts.yaml)**:
-- "What artifact types exist?" (code: dto/worker/adapter, docs: design/architecture/tracking)
-- "What templates are available?"
-- "Where should artifacts be created?" (path resolution)
-- "What validation rules apply?"
-- **Result**: Single source of truth for ALL scaffolding (Issue #56 complete)
-
-**Policies (policies.yaml)**:
-- "When is scaffolding allowed vs blocked?"
-- "Which operations require validation?"
-- **Result**: Enforcement - blocks invalid operations
-- "What statuses are valid?"
-- **Result**: Metadata - supports lookup/categorization
-
-**Configuration (all .yaml files)**:
-- "What structure is required?"
-- "What cross-references are valid?"
-- "What values are allowed?"
-- **Result**: Validation - fails at startup if invalid
+**Benefits**:
+- Zero hardcoded metadata
+- Consistent lookup mechanism
+- Easy extensibility
+- Simplified mental model
 
 ---
 
-## Next Steps for Issue #56
+## Current Architecture Status (January 2026)
 
-### Research Phase Completion
+### What's Complete ✅
 
-1. **Restore original research content** (section 1-5 from first commit)
-2. **Add architectural context** from this vision document
-3. **Focus on findings**, NOT design
-4. **No code examples** in research (save for planning)
+**Configuration System**:
+- 7 YAML config files operational
+- Pydantic validation for all configs
+- Singleton pattern for config access
+- Cross-validation between configs
+- Fail-fast startup validation
 
-### Key Questions to Answer in Research
+**Scaffolding System**:
+- Unified `scaffold_artifact` tool
+- Single `artifacts.yaml` registry
+- 15 artifact types (code + documents)
+- Template-based generation
+- Validation integration
 
-1. **What hardcoded values exist?** (TEMPLATES, SCOPE_DIRS)
-2. **Where are they used?** (DocManager, tools, resources)
-3. **What's the scope?** (5 templates, 5 scopes)
-4. **What patterns apply?** (Singleton, cross-validation)
-5. **What's the impact?** (7 files, ~480 lines)
-6. **What are the risks?** (MCP caching, breaking changes)
+**Quality System**:
+- QAManager operational
+- quality.yaml gate definitions
+- 8 quality gates implemented
+- Integration with validation system
 
-### What NOT to Include in Research
+**Git Workflow**:
+- TDD phase enforcement (red/green/refactor)
+- Branch naming conventions
+- Commit message format enforcement
+- Phase transition validation
 
-- ❌ Full Pydantic model designs (planning phase)
-- ❌ Integration code examples (planning phase)
-- ❌ Implementation details (TDD phase)
-- ❌ DirectoryPolicyResolver patterns (wrong domain)
-- ❌ Enforcement logic (not applicable)
+### What's Next ⏳
+
+**Issue #57: Constants**:
+- Externalize magic numbers
+- Create constants.yaml
+- Update code to load from config
+- Timeline: Q1 2026
+
+**Epic #18: TDD Enforcement**:
+- Resolve Issue #42 blocker
+- Implement phase-based enforcement
+- Quality gate requirements
+- Timeline: Q2 2026
 
 ---
 
@@ -638,13 +703,16 @@ The ST3 Workflow MCP Server is transforming software development by:
 1. **Encoding standards as executable constraints**
 2. **Automating ceremony through intelligent tooling**
 3. **Separating concerns across three domains** (Code/Documents/Config)
-4. **Using configuration to drive behavior** (Epic #49)
+4. **Using configuration to drive behavior** (Epic #49 at 71%)
 5. **Enforcing quality where it matters** (Code hard, Docs soft)
+6. **Unifying scattered systems** (artifacts.yaml, Issue #56 complete)
 
-**Issue #56 Role**: Complete the configuration transformation by externalizing document metadata, enabling flexible document organization without over-engineering enforcement.
+**Recent Achievement**: Issue #56 completed January 19, 2026 - unified code and document scaffolding into single `artifacts.yaml` registry with `scaffold_artifact` tool, eliminating all hardcoded template metadata.
 
 ---
 
 **Document Status**: DEFINITIVE  
+**Version**: 1.1  
+**Last Updated**: 2026-01-19  
 **Maintenance**: Update when major architectural decisions are made  
 **Next Review**: 2026-02-16 (monthly)
