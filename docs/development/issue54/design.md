@@ -2539,7 +2539,7 @@ recent_decisions = [d for d in engine.get_audit_trail() if parse_time(d["timesta
 
 **Testing:** TDD approach (red → green → refactor) for each phase
 
-**Documentation:** Update AGENT_PROMPT.md after each phase with:
+**Documentation:** Update agent.md after each phase with:
 - New configs location and purpose
 - Config cross-references
 - Usage examples
@@ -2615,7 +2615,7 @@ recent_decisions = [d for d in engine.get_audit_trail() if parse_time(d["timesta
 
 **Testing:** TDD approach (red → green → refactor)
 
-**Documentation:** Update AGENT_PROMPT.md after each phase
+**Documentation:** Update agent.md after each phase
 
 **Migration:** No breaking changes (PolicyEngine loads but doesn't enforce)
 

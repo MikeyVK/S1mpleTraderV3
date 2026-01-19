@@ -14,7 +14,8 @@ This directory contains **templates, examples, and reference implementations** f
 🔧 **Maintenance:**
 - [MAINTENANCE_SCRIPTS.md](MAINTENANCE_SCRIPTS.md) - PowerShell maintenance scripts
 - [AI_DOC_PROMPTS.md](templates/AI_DOC_PROMPTS.md) - AI-assisted documentation prompts
-- [MCP_TOOLS.md](../mcp/MCP_TOOLS.md) - ⭐ MCP server tools reference
+- [MCP_TOOLS.md](mcp/MCP_TOOLS.md) - ⭐ MCP server tools reference
+- [mcp_vision_reference.md](mcp/mcp_vision_reference.md) - MCP server vision & architecture
 
 📚 **Examples:**
 - [signal.md](dtos/signal.md) - Signal DTO with causality
@@ -87,7 +88,8 @@ reference/
 - Need structure for validator tests
 
 **Related:**
-- [TDD_WORKFLOW.md](../coding_standards/TDD_WORKFLOW.md) - TDD cycle
+- [QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md) - Quality gates
+- [CODE_STYLE.md](../coding_standards/CODE_STYLE.md) - Code style
 - [QUALITY_GATES.md](../coding_standards/QUALITY_GATES.md) - Quality gates
 
 ## Examples

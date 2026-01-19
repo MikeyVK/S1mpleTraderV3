@@ -20,7 +20,7 @@ Development of a transparent proxy architecture that enables hot-reloading of th
 **Deliverables:**
 - `mcp_server/core/proxy.py` (467 lines)
 - Reference documentation: `docs/reference/mcp/proxy_restart.md`
-- Agent protocol update: `AGENT_PROMPT.md`
+- Agent protocol update: `agent.md`
 
 ---
 
@@ -251,7 +251,7 @@ except (UnicodeError, ValueError):
 ## Related Documentation
 
 - **Reference:** [`docs/reference/mcp/proxy_restart.md`](../../reference/mcp/proxy_restart.md) - Technical reference for users
-- **Agent Protocol:** `AGENT_PROMPT.md` - Updated with `restart_server()` tool usage
+- **Agent Protocol:** `agent.md` - Updated with `restart_server()` tool usage
 - **Research Docs:**
   - [`01_restart_tool_research.md`](01_restart_tool_research.md) - Initial problem analysis
   - [`02_watchdog_supervisor_research.md`](02_watchdog_supervisor_research.md) - Failed watchdog approach

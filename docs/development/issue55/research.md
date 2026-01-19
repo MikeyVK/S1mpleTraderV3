@@ -29,7 +29,7 @@
 - [Issue #50](https://github.com/MikeyVK/SimpleTraderV3/issues/50) - Workflow Configuration (COMPLETE)
 - [Issue #52](https://github.com/MikeyVK/SimpleTraderV3/issues/52) - Validation Configuration (COMPLETE)
 - [Issue #54](https://github.com/MikeyVK/SimpleTraderV3/issues/54) - Config Foundation (COMPLETE)
-- [agent_prompt.md](../../../agent_prompt.md) - Agent Cooperation Protocol
+- [agent.md](../../../agent.md) - Agent Cooperation Protocol
 
 ---
 
@@ -429,7 +429,7 @@ base: str = Field(default="main", description="Target branch")
 
 ---
 
-### 3.4 Agent Workflow Protocol (agent_prompt.md)
+### 3.4 Agent Workflow Protocol (agent.md)
 
 **Critical Requirements:**
 1. **Tool-First:** Use MCP tools for ALL operations (NEVER terminal/CLI where tool exists)

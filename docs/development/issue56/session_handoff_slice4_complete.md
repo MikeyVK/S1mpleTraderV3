@@ -28,7 +28,7 @@
 - Unit tests updated to use `AsyncMock` for async methods
 
 ✅ **Documentation Clean-Break:**
-- `AGENT_PROMPT.md` - ZERO legacy tool references
+- `agent.md` - ZERO legacy tool references
 - `docs/mcp_server/TOOLS.md` - Sections 4.1-4.2 completely rewritten
 - `docs/mcp_server/README.md` - Examples updated to scaffold_artifact
 - `docs/mcp_server/PHASE_WORKFLOWS.md` - Already clean
@@ -49,7 +49,7 @@ Status: Ready to push + continue with Slice 5
 
 ### Recent Commits
 ```
-2d2da0b - docs(slice-4): Remove ALL legacy tool references from AGENT_PROMPT.md
+2d2da0b - docs(slice-4): Remove ALL legacy tool references from agent.md
 5e3b28e - docs(slice-4): COMPLETE agent guidance clean-break  
 6ca310c - refactor(slice-4): FINAL doc clean-break - scaffold_artifact guidance
 ca32979 - refactor(slice-4): E2E tests + bug fix (await missing)
@@ -66,7 +66,7 @@ ca1bc59 - refactor(slice-3): Validation alignment (PLAN-CONFORM)
 - `tests/unit/tools/test_scaffold_artifact.py` - AsyncMock fixes
 
 **Documentation:**
-- `AGENT_PROMPT.md` - Lines 20, 126, 213, 276 updated
+- `agent.md` - Lines 20, 126, 213, 276 updated
 - `docs/mcp_server/TOOLS.md` - Sections 4.1-4.2 rewritten (lines 663-717)
 - `docs/mcp_server/README.md` - Creating Components → Creating Artifacts
 
@@ -88,7 +88,7 @@ ca1bc59 - refactor(slice-3): Validation alignment (PLAN-CONFORM)
 | Unit tests (args parsing, contract) | ✅ | 9 tests in test_scaffold_artifact.py |
 | Integration tests (server registration) | ✅ | 3 tests in test_server_tool_registration.py |
 | **E2E tests (tool.execute with file creation)** | ✅ | 2 tests in test_scaffold_tool_execute_e2e.py |
-| Documentation updates | ✅ | AGENT_PROMPT.md + docs/mcp_server/*.md |
+| Documentation updates | ✅ | agent.md + docs/mcp_server/*.md |
 | Clean-break (no legacy routing) | ✅ | grep shows 0 matches in agent guidance |
 
 ### Critical Bug Fixed
@@ -351,7 +351,7 @@ scaffold_artifact(
 
 ```bash
 # Check for legacy tool references
-grep -r "scaffold_component\|scaffold_design_doc" AGENT_PROMPT.md
+grep -r "scaffold_component\|scaffold_design_doc" agent.md
 # Expected: NO MATCHES
 
 grep -r "scaffold_component\|scaffold_design_doc" docs/mcp_server/README.md
@@ -371,7 +371,7 @@ grep -r "scaffold_component\|scaffold_design_doc" docs/mcp_server/TOOLS.md
 
 | File | Legacy Mentions | Status |
 |------|----------------|--------|
-| AGENT_PROMPT.md | 0 | ✅ CLEAN |
+| agent.md | 0 | ✅ CLEAN |
 | docs/mcp_server/README.md | 0 | ✅ CLEAN |
 | docs/mcp_server/PHASE_WORKFLOWS.md | 0 | ✅ CLEAN |
 | docs/mcp_server/ARCHITECTURE.md | 0 | ✅ CLEAN |
@@ -476,7 +476,7 @@ If legacy references found:
 - `.st3/artifacts.yaml` - Registry configuration
 - `mcp_server/services/artifact_manager.py` - Core scaffolding logic
 - `mcp_server/services/validation_service.py` - Validation chain
-- `AGENT_PROMPT.md` - Primary agent guidance
+- `agent.md` - Primary agent guidance
 
 ---
 

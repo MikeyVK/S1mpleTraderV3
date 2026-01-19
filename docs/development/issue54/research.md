@@ -314,7 +314,7 @@ sequenceDiagram
 - ScaffoldComponentTool config integration
 
 **7. Documentation:**
-- Update AGENT_PROMPT.md (new configs, enforcement pipeline)
+- Update agent.md (new configs, enforcement pipeline)
 - Document config cross-references and SSOT validation
 - Document DirectoryPolicyResolver usage patterns
 

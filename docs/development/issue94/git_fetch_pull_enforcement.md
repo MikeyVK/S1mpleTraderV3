@@ -32,7 +32,7 @@ This document focuses on:
 
 ### 1.3 Related Documents
 
-- [Agent protocol (tool-first)](../../../agent_prompt.md)
+- [Agent protocol (tool-first)](../../../agent.md)
 - [MCP server architecture](../../mcp_server/ARCHITECTURE.md)
 - [SafeEditTool enforcement model (policy + choke points)](../mcp_server/SAFE_EDIT_TOOL_FLOW_ENFORCEMENT.md)
 
@@ -65,7 +65,7 @@ This makes it especially important that *enforcement* lives in choke points and 
 ### 2.3 Problem Statement
 
 We want enforcement tooling that is:
-- **Tool-first** (agent_prompt.md): developers should not need CLI for routine operations.
+- **Tool-first** (agent.md): developers should not need CLI for routine operations.
 - **Deterministic**: choke points decide what gates must pass.
 - **Safe-by-default**: avoid destructive operations and avoid “silent merges”.
 
@@ -219,7 +219,7 @@ All failures should be actionable and tool-first:
    - pull blocks on dirty tree.
 3) Expose tools `git_fetch` and `git_pull`.
 4) Add a sync gate module (policy layer) and wire it into `transition_phase` and `create_pr` first (highest ROI).
-5) Update agent_prompt.md tool matrix to include fetch/pull (removes incentive to CLI).
+5) Update agent.md tool matrix to include fetch/pull (removes incentive to CLI).
 
 ---
 
@@ -248,6 +248,6 @@ All failures should be actionable and tool-first:
 
 ## 8. References
 
-- [Agent protocol](../../../agent_prompt.md)
+- [Agent protocol](../../../agent.md)
 - [Issue #18](https://github.com/) (see repository issue tracker)
 - [Issue #42](https://github.com/) (see repository issue tracker)

@@ -153,7 +153,7 @@ graph TD
 **Phase 4: Validation**
 - Integration tests (end-to-end config loading + usage)
 - Behavior parity tests (PolicyEngine produces same decisions)
-- Documentation updates (AGENT_PROMPT.md)
+- Documentation updates (agent.md)
 
 ### 2.2 Test-Driven Development Approach
 
@@ -173,7 +173,7 @@ graph TD
 - Remove hardcoded rules from PolicyEngine
 - Remove hardcoded component type hints from ScaffoldComponentTool
 - Document config relationships
-- Update AGENT_PROMPT.md
+- Update agent.md
 
 ### 2.3 Risk Mitigation
 
@@ -311,7 +311,7 @@ graph TD
 - Validation: All tests still pass (configs are SSOT now)
 
 **Step 7: Documentation**
-- Update AGENT_PROMPT.md (new configs, enforcement pipeline)
+- Update agent.md (new configs, enforcement pipeline)
 - Document config relationships and cross-references
 - Document DirectoryPolicyResolver usage patterns
 
@@ -628,7 +628,7 @@ assert result.is_valid is True
 - ✅ No behavior parity tests needed (PolicyEngine UNUSED - grep verified zero imports)
 - ✅ Integration tests pass (end-to-end scaffold operations work)
 - ✅ Performance benchmarks met (config loading <100ms, lookups <10ms)
-- ✅ Documentation updated (AGENT_PROMPT.md, config schemas)
+- ✅ Documentation updated (agent.md, config schemas)
 
 ### 7.3 Non-Functional Requirements
 
@@ -662,7 +662,7 @@ assert result.is_valid is True
 - Buffer (2 hours)
 
 **Phase 4: Documentation (2-3 hours)**
-- Update AGENT_PROMPT.md (1 hour)
+- Update agent.md (1 hour)
 - Document config schemas and relationships (1 hour)
 - Buffer (1 hour)
 

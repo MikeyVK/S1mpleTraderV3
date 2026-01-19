@@ -50,8 +50,8 @@ All commands were executed in the repo root with the project venv active.
 ## Agent Guidance (clean break expectation)
 The project’s agent-facing guidance was rechecked for the specific “must be clean break” set:
 
-- `agent_prompt.md` now recommends `scaffold_artifact` (unified) and does not reference legacy scaffold tools.
-  - Evidence: [agent_prompt.md](../../..//agent_prompt.md)
+- `agent.md` now recommends `scaffold_artifact` (unified) and does not reference legacy scaffold tools.
+  - Evidence: [agent.md](../../..//agent.md)
 - `docs/mcp_server/ARCHITECTURE.md` references `scaffold_artifact` and does not reference legacy scaffold tools.
   - Evidence: [docs/mcp_server/ARCHITECTURE.md](../../..//docs/mcp_server/ARCHITECTURE.md)
 - `docs/mcp_server/README.md` and `docs/mcp_server/TOOLS.md` include `scaffold_artifact` as the unified mechanism.
