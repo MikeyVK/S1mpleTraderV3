@@ -1,4 +1,4 @@
-"""E2E tests for SearchDocumentationTool without DocManager dependency (Slice 5)."""
+"""E2E tests for SearchDocumentationTool with production docs."""
 import pytest
 
 from mcp_server.config.settings import settings

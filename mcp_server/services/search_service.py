@@ -3,7 +3,6 @@
 SearchService - Stateless documentation search.
 
 Provides stateless search algorithms for documentation indexing and retrieval.
-Extracted from DocManager to separate logic (service) from data (index).
 
 @layer: Backend (Services)
 @dependencies: [typing]
