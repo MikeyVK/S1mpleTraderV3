@@ -66,7 +66,7 @@ class TestCalculateRelevance:
             "content": "JavaScript is great"
         }
         score = SearchService.calculate_relevance(doc, "Python")
-        assert score == 0.0
+        assert not score
 
 
 class TestExtractSnippet:
@@ -207,10 +207,10 @@ class TestSearchIndex:
         """Should return empty list when no matches found."""
         results = SearchService.search_index(sample_index, "Rust")
 
-        assert results == []
+        assert not results
 
     def test_handles_empty_index(self):
         """Should handle empty index gracefully."""
         results = SearchService.search_index([], "Python")
 
-        assert results == []
+        assert not results
