@@ -6,7 +6,7 @@ Cross-references: artifacts.yaml (validates allowed_artifact_types)
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, cast
+from typing import ClassVar, Dict, List, Optional, cast
 
 import yaml
 from pydantic import BaseModel, Field
@@ -54,7 +54,7 @@ class ProjectStructureConfig(BaseModel):
     )
 
     # Singleton pattern
-    _instance: Optional["ProjectStructureConfig"] = None
+    _instance: ClassVar[Optional["ProjectStructureConfig"]] = None
 
     @classmethod
     def from_file(
