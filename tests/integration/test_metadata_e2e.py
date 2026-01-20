@@ -135,10 +135,10 @@ class TestMetadataEndToEnd:
         assert "Option 1:" in error_msg or "Option 2:" in error_msg or "Option 3:" in error_msg
 
     @pytest.mark.asyncio
-    async def test_scaffold_ephemeral_artifact_returns_content(
+    async def test_scaffold_ephemeral_returns_temp_path(
         self, manager: ArtifactManager
     ) -> None:
-        """E2E: Scaffold ephemeral artifact → returns content string (no file)."""
+        """E2E: Scaffold ephemeral artifact → writes to .st3/temp/ and returns path."""
         result = await manager.scaffold_artifact(
             "commit_message",
             type="feat",
@@ -146,17 +146,20 @@ class TestMetadataEndToEnd:
             description="Detailed description of the feature"
         )
 
-        # Should return content string (not path)
+        # Should return temp file path string
         assert isinstance(result, str)
-        # Should NOT be a file path
-        assert not Path(result).exists()
-        # Should contain the content we passed
-        assert "feat:" in result
-        assert "Add new feature" in result
+        assert result.startswith(".st3" + str(Path("/")) + "temp" + str(Path("/")))
+        assert "commit_message_" in result
+        # Temp file should exist
+        temp_file = Path(result)
+        assert temp_file.exists()
+        # Read and verify content from file
+        content = temp_file.read_text(encoding="utf-8")
+        assert "feat:" in content
+        assert "Add new feature" in content
 
-        # Ephemeral artifacts have no path in metadata
+        # Ephemeral artifacts now have path in metadata (temp path)
         parser = ScaffoldMetadataParser()
-        metadata = parser.parse(result, ".txt")
+        metadata = parser.parse(content, ".txt")
         assert metadata is not None
         assert metadata["template"] == "commit_message"
-        assert "path" not in metadata  # Ephemeral = no path
