@@ -1,4 +1,4 @@
-﻿"""
+"""
 Configuration models for scaffold metadata system.
 
 Loads and validates .st3/scaffold_metadata.yaml which defines:
@@ -8,11 +8,20 @@ Loads and validates .st3/scaffold_metadata.yaml which defines:
 Used by ScaffoldMetadataParser to detect and validate SCAFFOLD comments.
 """
 
+import re
 from pathlib import Path
 from typing import Literal, Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+class ConfigError(Exception):
+    """Custom exception for configuration errors with helpful hints."""
+
+    def __init__(self, message: str, hint: Optional[str] = None):
+        self.hint = hint
+        super().__init__(f"{message}\n💡 {hint}" if hint else message)
 
 
 class CommentPattern(BaseModel):
@@ -39,6 +48,16 @@ class CommentPattern(BaseModel):
         description="Regex pattern matching full metadata line"
     )
 
+    @field_validator("prefix", "metadata_line_regex")
+    @classmethod
+    def validate_regex_pattern(cls, v: str) -> str:
+        """Ensure pattern is a valid compilable regex."""
+        try:
+            re.compile(v)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {v}\nError: {e}") from e
+        return v
+
 
 class MetadataField(BaseModel):
     """
@@ -64,6 +83,16 @@ class MetadataField(BaseModel):
         description="Whether field must be present"
     )
 
+    @field_validator("format_regex")
+    @classmethod
+    def validate_regex_pattern(cls, v: str) -> str:
+        """Ensure pattern is a valid compilable regex."""
+        try:
+            re.compile(v)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {v}\nError: {e}") from e
+        return v
+
 
 class ScaffoldMetadataConfig(BaseModel):
     """
@@ -72,6 +101,10 @@ class ScaffoldMetadataConfig(BaseModel):
     Loaded from .st3/scaffold_metadata.yaml.
     """
 
+    version: str = Field(
+        default="1.0",
+        description="Config schema version for future migrations"
+    )
     comment_patterns: list[CommentPattern] = Field(
         min_length=1,
         description="Supported comment syntaxes"
@@ -93,18 +126,32 @@ class ScaffoldMetadataConfig(BaseModel):
             Validated configuration
 
         Raises:
-            FileNotFoundError: If config file doesn't exist
-            yaml.YAMLError: If YAML is invalid
-            ValidationError: If config doesn't match schema
+            ConfigError: If config file is missing, invalid YAML, or validation fails
         """
         if path is None:
             path = Path(".st3/scaffold_metadata.yaml")
 
         if not path.exists():
-            raise FileNotFoundError(f"Config file not found: {path}")
+            raise ConfigError(
+                f"Config file not found: {path}",
+                hint="Create .st3/scaffold_metadata.yaml with comment_patterns and metadata_fields"
+            )
 
-        data = yaml.safe_load(path.read_text(encoding="utf-8"))
-        return cls(**data)
+        try:
+            data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except yaml.YAMLError as e:
+            raise ConfigError(
+                f"Invalid YAML in {path}",
+                hint=f"Check YAML syntax: {e}"
+            ) from e
+
+        try:
+            return cls(**data)
+        except Exception as e:
+            raise ConfigError(
+                f"Config validation failed for {path}",
+                hint=f"Check schema compliance: {e}"
+            ) from e
 
     def get_pattern(self, syntax: str) -> Optional[CommentPattern]:
         """

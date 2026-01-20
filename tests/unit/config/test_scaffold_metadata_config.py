@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from mcp_server.config.scaffold_metadata_config import (
     CommentPattern,
+    ConfigError,
     MetadataField,
     ScaffoldMetadataConfig,
 )
@@ -52,6 +53,15 @@ class TestCommentPattern:
             CommentPattern(
                 syntax="hash",
                 prefix="",
+                metadata_line_regex="^#.*$"
+            )
+
+    def test_invalid_regex_pattern_fails(self):
+        """Regex pattern must be compilable."""
+        with pytest.raises(ValidationError, match="Invalid regex pattern"):
+            CommentPattern(
+                syntax="hash",
+                prefix="[invalid(regex",  # Unclosed bracket
                 metadata_line_regex="^#.*$"
             )
 
@@ -105,6 +115,15 @@ class TestMetadataField:
                 required=True
             )
 
+    def test_invalid_regex_pattern_fails(self):
+        """Field regex must be compilable."""
+        with pytest.raises(ValidationError, match="Invalid regex pattern"):
+            MetadataField(
+                name="template",
+                format_regex="(?P<incomplete",  # Incomplete named group
+                required=True
+            )
+
 
 class TestScaffoldMetadataConfig:
     """Test main configuration model."""
@@ -113,6 +132,8 @@ class TestScaffoldMetadataConfig:
         """RED: Should load valid YAML config."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("""
+version: "1.0"
+
 comment_patterns:
   - syntax: hash
     prefix: "#\\\\s*"
@@ -239,15 +260,22 @@ metadata_fields:
         assert field is None
 
     def test_invalid_yaml_fails(self, tmp_path):
-        """RED: Invalid YAML should raise error."""
+        """RED: Invalid YAML should raise ConfigError with hint."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("invalid: [yaml", encoding="utf-8")
 
-        with pytest.raises(Exception):  # Could be yaml.YAMLError or similar
+        with pytest.raises(ConfigError, match="Invalid YAML"):
             ScaffoldMetadataConfig.from_file(config_file)
 
+    def test_missing_file_raises_config_error(self, tmp_path):
+        """Missing config file should raise ConfigError with hint."""
+        nonexistent = tmp_path / "nonexistent.yaml"
+
+        with pytest.raises(ConfigError, match="Config file not found"):
+            ScaffoldMetadataConfig.from_file(nonexistent)
+
     def test_missing_required_fields_fails(self, tmp_path):
-        """RED: Missing required config keys should fail validation."""
+        """RED: Missing required config keys should fail with ConfigError."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("""
 comment_patterns:
@@ -257,11 +285,11 @@ comment_patterns:
 # metadata_fields missing!
 """, encoding="utf-8")
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ConfigError, match="Config validation failed"):
             ScaffoldMetadataConfig.from_file(config_file)
 
     def test_empty_patterns_list_fails(self, tmp_path):
-        """RED: Empty comment patterns should fail validation."""
+        """RED: Empty comment patterns should fail with ConfigError."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("""
 comment_patterns: []
@@ -272,5 +300,5 @@ metadata_fields:
     required: true
 """, encoding="utf-8")
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(ConfigError, match="Config validation failed"):
             ScaffoldMetadataConfig.from_file(config_file)

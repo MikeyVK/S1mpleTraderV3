@@ -3,6 +3,8 @@
 # Defines patterns for detecting and validating metadata in scaffolded files.
 # Used by ScaffoldMetadataParser to parse SCAFFOLD comments.
 
+version: "1.0"
+
 # Comment patterns for different file types
 comment_patterns:
   # Python, YAML, Shell scripts
