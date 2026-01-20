@@ -155,7 +155,7 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
    - Test: Parse TypeScript metadata (double-slash)
    - Test: Parse Jinja2 metadata (jinja comment)
    - Test: Non-scaffolded file returns None
-   - Test: Invalid timestamp format raises ValueError
+   - Test: Invalid timestamp format raises MetadataParseError
    - Test: Ephemeral artifact (no path) is valid
    
 2. **Implement parser (GREEN)** - 90 min

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from mcp_server.config.scaffold_metadata_config import (
+    CommentPattern,
     MetadataField,
     ScaffoldMetadataConfig,
 )
@@ -43,20 +44,22 @@ class ScaffoldMetadataParser:
             config_path: Path to config file (defaults to .st3/scaffold_metadata.yaml)
         """
         self.config = ScaffoldMetadataConfig.from_file(config_path)
-        self._extension_map = self._build_extension_map()
 
-    def _build_extension_map(self) -> dict[str, str]:
-        """Build mapping of file extensions to comment syntax."""
-        return {
-            # Hash comments
-            **{ext: "hash" for ext in [".py", ".yaml", ".sh", ".txt"]},
-            # Double-slash comments
-            **{ext: "double_slash" for ext in [".ts", ".js", ".java", ".cs"]},
-            # HTML comments
-            **{ext: "html_comment" for ext in [".md", ".html", ".xml"]},
-            # Jinja2 comments
-            **{ext: "jinja_comment" for ext in [".jinja2", ".j2"]},
-        }
+    def _filter_patterns(self, extension: str) -> list[CommentPattern]:
+        """
+        Filter comment patterns by file extension.
+
+        Args:
+            extension: File extension (e.g., ".py", ".ts")
+
+        Returns:
+            List of CommentPattern objects matching the extension
+        """
+        return [
+            pattern
+            for pattern in self.config.comment_patterns
+            if extension in pattern.extensions
+        ]
 
     def parse(self, content: str, extension: str) -> Optional[dict[str, str]]:
         """
@@ -80,30 +83,28 @@ class ScaffoldMetadataParser:
         if not first_line:
             return None
 
-        # Find matching pattern for extension
-        syntax = self._extension_map.get(extension)
-        if not syntax:
-            return None
+        # Filter patterns by extension
+        patterns = self._filter_patterns(extension)
+        if not patterns:
+            return None  # Unknown extension
 
-        pattern = self.config.get_pattern(syntax)
-        if not pattern:
-            return None
+        # Try each matching pattern
+        for pattern in patterns:
+            match = re.match(pattern.metadata_line_regex, first_line)
+            if match:
+                # Extract metadata string
+                metadata_str = match.group(1).strip()
 
-        # Check if first line matches SCAFFOLD pattern
-        match = re.match(pattern.metadata_line_regex, first_line)
-        if not match:
-            return None
+                # Parse key=value pairs
+                metadata = self._parse_key_value_pairs(metadata_str)
 
-        # Extract metadata string
-        metadata_str = match.group(1).strip()
+                # Validate metadata
+                self._validate_metadata(metadata)
 
-        # Parse key=value pairs
-        metadata = self._parse_key_value_pairs(metadata_str)
+                return metadata
 
-        # Validate metadata
-        self._validate_metadata(metadata)
-
-        return metadata
+        # No pattern matched
+        return None
 
     def _parse_key_value_pairs(self, metadata_str: str) -> dict[str, str]:
         """
@@ -141,6 +142,14 @@ class ScaffoldMetadataParser:
 
         Raises:
             MetadataParseError: If validation fails
+
+        Note:
+            Path validation is NOT conditionality checked here against artifact
+            output_type (ephemeral vs file). That validation happens in Phase 0.3
+            during ArtifactManager integration when artifact definitions are available.
+            
+            Current behavior: path field is optional per config (required: false),
+            allowing both file artifacts without path and ephemeral artifacts.
         """
         # Check required fields
         for field_def in self.config.metadata_fields:

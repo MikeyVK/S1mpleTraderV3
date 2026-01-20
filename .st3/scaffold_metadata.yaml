@@ -11,21 +11,25 @@ comment_patterns:
   - syntax: hash
     prefix: "#\\s*"
     metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+    extensions: [".py", ".yaml", ".yml", ".sh", ".bash", ".zsh", ".txt"]
   
   # JavaScript, TypeScript, C-style languages
   - syntax: double_slash
     prefix: "//\\s*"
     metadata_line_regex: "^//\\s*SCAFFOLD:\\s*(.+)$"
+    extensions: [".js", ".ts", ".jsx", ".tsx", ".java", ".c", ".cpp", ".cs", ".go"]
   
   # HTML, XML
   - syntax: html_comment
     prefix: "<!--\\s*"
     metadata_line_regex: "^<!--\\s*SCAFFOLD:\\s*(.+)\\s*-->$"
+    extensions: [".html", ".xml", ".md", ".markdown", ".svg"]
   
   # Jinja2 templates
   - syntax: jinja_comment
     prefix: "\\{#\\s*"
     metadata_line_regex: "^\\{#\\s*SCAFFOLD:\\s*(.+)\\s*#\\}$"
+    extensions: [".jinja2", ".j2"]
 
 # Metadata field definitions
 metadata_fields:

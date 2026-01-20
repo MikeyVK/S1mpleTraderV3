@@ -32,7 +32,8 @@ class CommentPattern(BaseModel):
         CommentPattern(
             syntax="hash",
             prefix=r"#\\s*",
-            metadata_line_regex=r"^#\\s*SCAFFOLD:\\s*(.+)$"
+            metadata_line_regex=r"^#\\s*SCAFFOLD:\\s*(.+)$",
+            extensions=[".py", ".yaml", ".sh"]
         )
     """
 
@@ -46,6 +47,10 @@ class CommentPattern(BaseModel):
     metadata_line_regex: str = Field(
         min_length=1,
         description="Regex pattern matching full metadata line"
+    )
+    extensions: list[str] = Field(
+        default_factory=list,
+        description="File extensions this pattern applies to (e.g., ['.py', '.yaml'])"
     )
 
     @field_validator("prefix", "metadata_line_regex")
