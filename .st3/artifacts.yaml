@@ -405,3 +405,28 @@ artifact_types:
           to: [APPROVED, DEFINITIVE]
         - from: APPROVED
           to: [DEFINITIVE]
+  
+  # ===== EPHEMERAL ARTIFACTS =====
+  
+  - type: doc
+    type_id: commit_message
+    name: "Git Commit Message"
+    description: "Git commit message (ephemeral, not saved to disk)"
+    version: "1.0"
+    output_type: "ephemeral"
+    template_path: "documents/commit-message.txt.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".txt"
+    generate_test: false
+    required_fields:
+      - type
+      - description
+    optional_fields:
+      - scope
+      - breaking_change
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+

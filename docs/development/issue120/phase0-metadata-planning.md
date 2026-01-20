@@ -79,7 +79,7 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
    - Add `output_type: "ephemeral"` to git commit artifacts (if any)
    
 2. **Update ArtifactDefinition model** - 10 min
-   - Verify `mcp_server/config/artifact_config.py` supports these fields
+   - Verify `mcp_server/config/artifact_registry_config.py` supports these fields
    - Add fields to Pydantic model if missing
    - Update type hints
    

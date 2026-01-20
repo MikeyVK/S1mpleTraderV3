@@ -147,7 +147,7 @@ metadata_fields:
   - name: "template"
     required: true
     description: "Artifact type ID from artifacts.yaml"
-    format: "^[a-z0-9-]+$"
+    format: "^[a-z0-9_-]+$"
     
   - name: "version"
     required: true
@@ -283,7 +283,7 @@ artifacts:
   - id: "dto"
     output_type: "file"  # → path field required
     
-  - id: "commit-message"
+  - id: "commit_message"
     output_type: "ephemeral"  # → path field omitted
 ```
 
@@ -467,7 +467,7 @@ def test_context_enrichment_with_timestamps():
 def test_ephemeral_artifact_no_path():
     """RED: Ephemeral artifacts shouldn't get path field."""
     manager = ArtifactManager()
-    context = await manager._enrich_context("commit-message", {"type": "feat"})
+    context = await manager._enrich_context("commit_message", {"type": "feat"})
     
     assert "output_path" not in context  # Ephemeral = no path
 ```
@@ -538,7 +538,7 @@ def test_parse_invalid_timestamp_format():
 
 def test_parse_ephemeral_no_path():
     """Ephemeral artifacts without path are valid."""
-    content = "# SCAFFOLD: template=commit-message version=1.0 created=2026-01-20T14:35:42Z\n..."
+    content = "# SCAFFOLD: template=commit_message version=1.0 created=2026-01-20T14:35:42Z\n..."
     parser = ScaffoldMetadataParser()
     result = parser.parse(content, ".txt")
     assert "path" not in result
@@ -576,14 +576,14 @@ async def test_scaffold_git_commit_ephemeral():
     manager = ArtifactManager()
     
     # 1. Scaffold commit message
-    result = await manager.scaffold_artifact("commit-message", type="feat", description="Add auth")
+    result = await manager.scaffold_artifact("commit_message", type="feat", description="Add auth")
     
     # 2. Parse metadata from result
     parser = ScaffoldMetadataParser()
     metadata = parser.parse(result, ".txt")
     
     # 3. Validate - no path for ephemeral
-    assert metadata["template"] == "commit-message"
+    assert metadata["template"] == "commit_message"
     assert "path" not in metadata
 ```
 
