@@ -174,6 +174,28 @@ metadata_fields:
 
 **Rationale:** Templates know their target language and appropriate comment syntax.
 
+**SSOT Principle - Division of Responsibility:**
+
+**artifacts.yaml = Catalog/Registry (Metadata ABOUT templates)**
+```yaml
+artifacts:
+  - id: "dto"
+    version: "2.0"  # ← SSOT for template version
+    output_type: "file"  # ← SSOT for path requirement logic
+    template_path: "templates/components/dto.py.jinja2"
+```
+
+**Templates = Content/Implementation (USE metadata from artifacts.yaml)**
+```jinja
+{# Template USES enriched context vars from artifacts.yaml #}
+# SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }}
+          ↑                    ↑                           ↑
+    artifact_def.id    artifact_def.version         datetime.now()
+          |____________________|___________________________|
+                              Context enrichment
+                         (ArtifactManager reads artifacts.yaml)
+```
+
 **Examples:**
 
 **Python DTO:**
@@ -203,6 +225,11 @@ export interface {{ name }} {
 # SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }}
 {{ type }}: {{ description }}
 ```
+
+**Why Template-Driven:**
+- ✅ Templates are SSOT for output format and syntax
+- ✅ No duplication: templates USE metadata, don't define it
+- ✅ Version updates: Change artifacts.yaml only, templates stay unchanged
 
 ### 3. Key-Value Format
 
@@ -248,6 +275,24 @@ def parse_key_value_pairs(kv_string: str) -> dict:
 - ✅ **Template-driven** - artifacts.yaml defines output_type (file vs ephemeral)
 - ✅ **Validation logic** - Parser checks artifacts.yaml to determine if path required
 - ✅ **SSOT principle** - No duplication of type info in metadata
+
+**SSOT Division:**
+```yaml
+# artifacts.yaml is SSOT for output classification
+artifacts:
+  - id: "dto"
+    output_type: "file"  # → path field required
+    
+  - id: "commit-message"
+    output_type: "ephemeral"  # → path field omitted
+```
+
+```python
+# ArtifactManager enforces based on artifacts.yaml
+if artifact_def.output_type == "file":
+    context['output_path'] = ...  # Template will inject path
+# Ephemeral: no output_path in context, template omits path field
+```
 
 **Checksum decision:** Still deferred to future phase due to:
 - Breaks on every edit (formatting, comments, typo fixes)

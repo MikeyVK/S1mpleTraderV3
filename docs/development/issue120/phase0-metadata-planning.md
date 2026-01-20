@@ -165,6 +165,8 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
    - Update `scaffold_artifact()` method
    - Add timestamp generation (UTC)
    - Conditional path field (based on artifacts.yaml output_type)
+   - **Data source:** Read `artifact_def.version` and `artifact_def.output_type` from artifacts.yaml
+   - **No duplication:** Templates receive enriched context, don't define metadata
    
 3. **Refactor** - 45 min
    - Extract enrichment to `._enrich_context()` method
@@ -244,10 +246,35 @@ Phase 0.3 (Integration)
 Phase 0.4 (E2E Tests)
 ```
 
-**External Dependencies:**
+**Dependencies:**
 - artifacts.yaml must have `output_type` field (or default to "file")
 - Templates must use new context vars: `{{ scaffold_created }}`, `{{ output_path }}`
 - Python environment with pytest installed
+
+**SSOT Architecture:**
+
+| Aspect | Owner | Role | Reason |
+|--------|-------|------|--------|
+| Template version | artifacts.yaml | Defines `version: "2.0"` | SSOT for compatibility tracking |
+| Output type | artifacts.yaml | Defines `output_type: "file"` | SSOT for path logic |
+| Template path | artifacts.yaml | Defines `template_path: "..."` | SSOT for discovery |
+| Comment syntax | Template (.jinja2) | Injects own syntax | Templates know target language |
+| Metadata injection | Template | Uses `{{ template_version }}` | Templates USE artifacts.yaml data |
+
+**Data Flow:**
+```
+1. ArtifactManager reads artifacts.yaml
+   ↓
+2. Context enrichment (template_id, template_version, scaffold_created)
+   ↓
+3. Conditional path (if output_type == "file")
+   ↓
+4. Template renders using enriched context
+   ↓
+5. Metadata line: template=dto version=2.0 created=... path=...
+```
+
+**No Duplication:** Templates never define version/output_type, they only USE enriched context vars.
 
 ---
 
