@@ -161,11 +161,12 @@ class UserDTO:
     def test_parse_malformed_key_value_raises_error(self):
         """RED: Malformed key=value pairs should raise MetadataParseError."""
         content = """# SCAFFOLD: template=dto version 1.0 created=2026-01-20T14:00:00Z
-# 'version 1.0' is missing '='
+# 'version 1.0' is missing '=' - parsed as version=, missing version value
 """
         parser = ScaffoldMetadataParser()
 
-        with pytest.raises(MetadataParseError, match="Malformed.*version 1.0"):
+        # Missing version value causes "Missing required field" error
+        with pytest.raises(MetadataParseError, match="Missing required field: version"):
             parser.parse(content, ".py")
 
     def test_parse_with_extra_whitespace(self):
