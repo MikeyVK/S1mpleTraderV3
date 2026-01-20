@@ -222,22 +222,24 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
 
 ---
 
-### Phase 0.4: End-to-End Tests ⏱️ 2-3 hours
+### Phase 0.4: End-to-End Tests + Ephemeral Support ⏱️ 2-3 hours
 
-**Objective:** Validate full scaffold → parse → validate flow
+**Objective:** Validate full scaffold → parse → validate flow AND implement ephemeral support
 
 **Tasks:**
 1. **Write E2E tests (RED)** - 60 min
    - `tests/integration/test_metadata_e2e.py`
    - Test: Scaffold DTO → read → parse → validate metadata
-   - Test: Scaffold git commit (ephemeral) → parse → no path
+   - Test: Scaffold git commit (ephemeral) → returns content string (no file write)
+   - Test: Scaffold file artifact → returns path string (file written)
    - Test: Invalid metadata format fails gracefully
    - Test: Manual file (no metadata) returns None
    
-2. **Fix integration issues (GREEN)** - 45 min
-   - Run E2E tests
-   - Fix discovered bugs
-   - Adjust parsers/validators
+2. **Implement ephemeral support (GREEN)** - 45 min
+   - Modify `scaffold_artifact()` in ArtifactManager
+   - Conditional write: if `output_type == "ephemeral"` → return content string
+   - File artifacts: write to disk → return path string
+   - Improve workspace_root error message with hints (Issue #120 requirement)
    
 3. **Refactor + Coverage** - 45 min
    - Verify 100% coverage for new code
@@ -248,12 +250,28 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
 
 **Acceptance Criteria:**
 - ✅ E2E test: scaffold DTO has metadata
-- ✅ E2E test: scaffold git commit has no path
+- ✅ E2E test: scaffold git commit returns content string (no file)
+- ✅ E2E test: scaffold file artifact returns path (file written)
+- ✅ Ephemeral artifacts don't write to disk
+- ✅ Workspace_root error has helpful hints
 - ✅ 100% test coverage for new code
 - ✅ All tests pass (unit + integration)
 
 **Risks:**
 - ⚠️ Template updates needed → Mitigate: Out of scope, separate task
+
+---
+
+## Follow-Up Work (Post Phase 0)
+
+**Issue: Path Resolution Refactor**
+- **Problem:** ArtifactManager currently requires workspace_root for path resolution, mixing business logic with path concerns
+- **Solution:** Move path resolution to tool layer (ScaffoldArtifactTool), manager works with absolute paths only
+- **Benefits:** Cleaner separation of concerns, easier testing, aligns with MCP architecture
+- **Priority:** Medium (current quick fix in Phase 0.4 addresses immediate error message issue)
+- **Estimate:** 1-2 days
+- **Dependencies:** Phase 0 complete
+- **Action:** Create separate issue after Phase 0 completion
 
 ---
 

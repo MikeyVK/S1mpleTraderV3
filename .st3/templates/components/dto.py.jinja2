@@ -1,0 +1,20 @@
+# SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }}{% if output_path %} path={{ output_path }}{% endif %}
+"""
+{{ description }}
+
+Auto-generated DTO via scaffold_artifact.
+"""
+
+# pyright: basic
+
+from pydantic import BaseModel
+
+
+class {{ name }}(BaseModel):
+    """{{ description }}"""
+{% if fields %}
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }}
+{% endfor %}
+{% endif %}
+    pass

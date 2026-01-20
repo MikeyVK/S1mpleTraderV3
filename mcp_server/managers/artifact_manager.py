@@ -198,10 +198,13 @@ class ArtifactManager:
                 issues
             )
 
-        # 5. Write file to filesystem
-        self.fs_adapter.write_file(output_path, result.content)
+        # 5. Handle ephemeral vs file artifacts
+        if artifact.output_type == "ephemeral":
+            # Ephemeral artifacts: return content string directly (no file write)
+            return result.content
 
-        # Return absolute path to created file
+        # File artifacts: write to disk and return path
+        self.fs_adapter.write_file(output_path, result.content)
         return str(self.fs_adapter.resolve_path(output_path))
 
     def validate_artifact(
@@ -260,7 +263,14 @@ class ArtifactManager:
         # Return absolute path: workspace_root / base_dir / filename
         if self.workspace_root is None:
             raise ConfigError(
-                "workspace_root not configured",
-                hints=["Initialize ArtifactManager with workspace_root parameter"]
+                "workspace_root not configured - cannot resolve artifact paths automatically",
+                hints=[
+                    "Option 1: Initialize ArtifactManager with workspace_root "
+                    "parameter: ArtifactManager(workspace_root='/path/to/workspace')",
+                    "Option 2: Provide explicit output_path in "
+                    "scaffold_artifact() call",
+                    "Option 3: For MCP tools, workspace_root should be passed "
+                    "from server initialization"
+                ]
             )
         return self.workspace_root / base_dir / file_name

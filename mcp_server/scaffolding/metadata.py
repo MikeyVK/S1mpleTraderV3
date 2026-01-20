@@ -18,13 +18,10 @@ from mcp_server.config.scaffold_metadata_config import (
     MetadataField,
     ScaffoldMetadataConfig,
 )
+from mcp_server.core.exceptions import MetadataParseError
 
 
-class MetadataParseError(Exception):
-    """Raised when metadata parsing fails validation."""
-
-
-class ScaffoldMetadataParser:
+class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
     """
     Parses SCAFFOLD metadata from first line of scaffolded files.
 

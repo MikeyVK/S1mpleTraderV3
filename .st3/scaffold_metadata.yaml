@@ -55,5 +55,5 @@ metadata_fields:
   
   # File path (optional - only for output_type="file")
   - name: path
-    format_regex: "^[a-zA-Z0-9_/.-]+$"
+    format_regex: "^[a-zA-Z0-9_/:. \\\\-]+$"
     required: false
