@@ -66,6 +66,40 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
 
 ## Implementation Plan
 
+### Phase 0.0: artifacts.yaml Schema Update ⏱️ 30 minutes
+
+**Objective:** Add required metadata fields to artifacts.yaml for Phase 0.1-0.4
+
+**Blocker Resolution:** Current artifacts.yaml lacks `version` and `output_type` per artifact, which Phase 0.3 needs.
+
+**Tasks:**
+1. **Add fields to each artifact** - 15 min
+   - Add `version: "1.0"` to each artifact (template version)
+   - Add `output_type: "file"` to all code/document artifacts
+   - Add `output_type: "ephemeral"` to git commit artifacts (if any)
+   
+2. **Update ArtifactDefinition model** - 10 min
+   - Verify `mcp_server/config/artifact_config.py` supports these fields
+   - Add fields to Pydantic model if missing
+   - Update type hints
+   
+3. **Validate** - 5 min
+   - Test artifacts.yaml loads without errors
+   - Verify `artifact_def.version` and `artifact_def.output_type` accessible
+
+**Dependencies:** Phase 0.0 complete (prerequisite for all other phases)
+
+**Acceptance Criteria:**
+- ✅ All artifacts have `version` field
+- ✅ All artifacts have `output_type` field (`"file"` or `"ephemeral"`)
+- ✅ artifacts.yaml loads successfully
+- ✅ ArtifactDefinition model includes version and output_type fields
+
+**Risks:**
+- ⚠️ Breaking existing code → Mitigate: Make fields optional in Pydantic model initially
+
+---
+
 ### Phase 0.1: Config Infrastructure ⏱️ 2-3 hours
 
 **Objective:** Create config file + Pydantic models with validation
@@ -94,7 +128,7 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
    - Optimize YAML loading
    - Add error messages
 
-**Dependencies:** None
+**Dependencies:** Phase 0.0 complete
 
 **Acceptance Criteria:**
 - ✅ Config loads without errors
@@ -225,18 +259,21 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
 
 | Sub-Phase | Estimate | Cumulative |
 |-----------|----------|------------|
-| 0.1: Config Infrastructure | 2-3h | 2-3h |
-| 0.2: Metadata Parser | 3-4h | 5-7h |
-| 0.3: ArtifactManager Integration | 2-3h | 7-10h |
-| 0.4: End-to-End Tests | 2-3h | 9-13h |
+| 0.0: artifacts.yaml Update | 30min | 30min |
+| 0.1: Config Infrastructure | 2-3h | 2.5-3.5h |
+| 0.2: Metadata Parser | 3-4h | 5.5-7.5h |
+| 0.3: ArtifactManager Integration | 2-3h | 7.5-10.5h |
+| 0.4: End-to-End Tests | 2-3h | 9.5-13.5h |
 
-**Total: 9-13 hours** (1-2 work days)
+**Total: 9.5-13.5 hours** (~2 work days)
 
 ---
 
 ## Dependencies
 
 ```
+Phase 0.0 (artifacts.yaml Update)
+    ↓
 Phase 0.1 (Config)
     ↓
 Phase 0.2 (Parser)
