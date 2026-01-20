@@ -100,9 +100,11 @@ Phase 0 implements a config-driven metadata system for scaffolded artifacts. We 
 
 ---
 
-### Phase 0.1: Config Infrastructure ⏱️ 2-3 hours
+### Phase 0.1: Config Infrastructure ⏱️ 2-3 hours ✅ DESIGN COMPLETE
 
 **Objective:** Create config file + Pydantic models with validation
+
+**Design Document:** [phase0.1-config-infrastructure.md](phase0.1-config-infrastructure.md)
 
 **Tasks:**
 1. **Write tests FIRST (RED)** - 30 min
