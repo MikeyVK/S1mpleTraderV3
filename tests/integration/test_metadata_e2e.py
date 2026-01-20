@@ -133,3 +133,30 @@ class TestMetadataEndToEnd:
         error_msg = str(exc_info.value)
         assert "workspace_root not configured" in error_msg
         assert "Option 1:" in error_msg or "Option 2:" in error_msg or "Option 3:" in error_msg
+
+    @pytest.mark.asyncio
+    async def test_scaffold_ephemeral_artifact_returns_content(
+        self, manager: ArtifactManager
+    ) -> None:
+        """E2E: Scaffold ephemeral artifact → returns content string (no file)."""
+        result = await manager.scaffold_artifact(
+            "commit_message",
+            type="feat",
+            summary="Add new feature",
+            description="Detailed description of the feature"
+        )
+
+        # Should return content string (not path)
+        assert isinstance(result, str)
+        # Should NOT be a file path
+        assert not Path(result).exists()
+        # Should contain the content we passed
+        assert "feat:" in result
+        assert "Add new feature" in result
+
+        # Ephemeral artifacts have no path in metadata
+        parser = ScaffoldMetadataParser()
+        metadata = parser.parse(result, ".txt")
+        assert metadata is not None
+        assert metadata["template"] == "commit_message"
+        assert "path" not in metadata  # Ephemeral = no path

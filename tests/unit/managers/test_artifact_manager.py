@@ -58,8 +58,15 @@ class TestArtifactManagerCore:
             )
             result = await manager.scaffold_artifact('dto', name='Test', fields=[])
 
-        # Verify scaffolder was called with correct arguments
-        mock_scaffolder.scaffold.assert_called_once_with('dto', name='Test', fields=[])
+        # Verify scaffolder was called with metadata fields
+        call_args = mock_scaffolder.scaffold.call_args
+        assert call_args[0] == ('dto',)
+        assert call_args[1]['name'] == 'Test'
+        assert call_args[1]['fields'] == []
+        assert 'template_id' in call_args[1]
+        assert 'template_version' in call_args[1]
+        assert 'scaffold_created' in call_args[1]
+        assert 'output_path' in call_args[1]
 
         # Verify validation was called
         mock_validation_service.validate.assert_called_once()
