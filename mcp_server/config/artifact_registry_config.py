@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 import yaml
 from pydantic import (
@@ -89,6 +89,12 @@ class ArtifactDefinition(BaseModel):
     )
     name: str = Field(..., description="Display name")
     description: str = Field(..., description="Purpose description")
+    
+    # Phase 0: Template metadata support (Issue #120)
+    version: str = Field("1.0", description="Template version for compatibility tracking")
+    output_type: Literal["file", "ephemeral"] = Field(
+        "file", description="Output type: 'file' for disk artifacts, 'ephemeral' for in-memory (e.g. git commits)"
+    )
 
     # LEGACY fields (Issue #107 will remove after unified TemplateScaffolder)
     scaffolder_class: str | None = Field(
