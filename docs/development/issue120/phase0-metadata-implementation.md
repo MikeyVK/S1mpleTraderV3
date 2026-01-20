@@ -90,11 +90,26 @@ class UserDTO(BaseModel):
 
 **Desired State:**
 ```python
-# SCAFFOLD: template=dto version=2.0 date=2026-01-20 path=src/dto/user_dto.py
+# SCAFFOLD: template=dto version=2.0 created=2026-01-20T14:32:15Z path=src/dto/user_dto.py
 from pydantic import BaseModel, Field
 
 class UserDTO(BaseModel):
     """User data transfer object."""
+```
+
+**After Migration:**
+```python
+# SCAFFOLD: template=dto version=2.1 created=2026-01-20T14:32:15Z updated=2026-01-21T09:15:00Z path=src/dto/user_dto.py
+from pydantic import BaseModel, Field
+
+class UserDTO(BaseModel):
+    """User data transfer object (migrated to v2.1)."""
+```
+
+**Git Commit (no path):**
+```bash
+# SCAFFOLD: template=commit-message version=1.0 created=2026-01-20T14:35:42Z
+feat: Implement user authentication
 ```
 
 ## Design Decisions
@@ -132,19 +147,27 @@ metadata_fields:
   - name: "template"
     required: true
     description: "Artifact type ID from artifacts.yaml"
+    format: "^[a-z0-9-]+$"
     
   - name: "version"
     required: true
     description: "Template version from artifacts.yaml"
+    format: "^\d+\.\d+(\.\d+)?$"
     
-  - name: "date"
+  - name: "created"
     required: true
-    description: "Scaffold creation date (ISO 8601 format)"
-    format: "YYYY-MM-DD"
+    description: "Scaffold creation timestamp (ISO 8601 UTC)"
+    format: "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+    
+  - name: "updated"
+    required: false
+    description: "Last migration/update timestamp (ISO 8601 UTC)"
+    format: "^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
     
   - name: "path"
-    required: true
-    description: "Relative path from workspace root"
+    required: false
+    description: "Relative workspace path with extension (file artifacts only, determined by artifacts.yaml)"
+    format: "^.+\..+$"
 ```
 
 ### 2. Template-Driven Syntax
@@ -156,22 +179,29 @@ metadata_fields:
 **Python DTO:**
 ```jinja
 {# components/dto.py.jinja2 #}
-# SCAFFOLD: template={{ template_id }} version={{ template_version }} date={{ scaffold_date }} path={{ output_path }}
+# SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }} path={{ output_path }}
 from pydantic import BaseModel, Field
 ```
 
 **TypeScript Interface:**
 ```jinja
 {# components/interface.ts.jinja2 #}
-// SCAFFOLD: template={{ template_id }} version={{ template_version }} date={{ scaffold_date }} path={{ output_path }}
+// SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }} path={{ output_path }}
 export interface {{ name }} {
 ```
 
 **Markdown Document:**
 ```jinja
 {# documents/design.md.jinja2 #}
-<!-- SCAFFOLD: template={{ template_id }} version={{ template_version }} date={{ scaffold_date }} path={{ output_path }} -->
+<!-- SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }} path={{ output_path }} -->
 # Design: {{ title }}
+```
+
+**Git Commit (no path):**
+```jinja
+{# documents/commit-message.txt.jinja2 #}
+# SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }}
+{{ type }}: {{ description }}
 ```
 
 ### 3. Key-Value Format
@@ -182,7 +212,7 @@ export interface {{ name }} {
 
 **Example:**
 ```
-template=dto version=2.0 date=2026-01-20 path=src/dto/user_dto.py
+template=dto version=2.0 created=2026-01-20T14:32:15Z path=src/dto/user_dto.py
 ```
 
 **Parser:**
@@ -196,15 +226,30 @@ def parse_key_value_pairs(kv_string: str) -> dict:
     return result
 ```
 
-### 4. Four Core Fields (No Checksum Yet)
+### 4. Five Fields with Timestamps
 
 **Fields:**
 - `template`: Artifact type_id from artifacts.yaml
 - `version`: Template version from artifacts.yaml
-- `date`: Scaffold creation date (ISO 8601)
-- `path`: Relative path from workspace root
+- `created`: Scaffold creation timestamp (ISO 8601 UTC)
+- `updated`: Last migration/update timestamp (ISO 8601 UTC, optional)
+- `path`: Relative workspace path with extension (optional, template-driven)
 
-**Checksum decision:** Deferred to future phase due to:
+**Timestamp rationale:**
+- ✅ **Staleness detection** - Issue #121 can warn if template updated after file created
+- ✅ **Migration tracking** - `updated` timestamp shows when file was migrated
+- ✅ **Conflict detection** - Compare file mtime vs metadata.updated
+- ✅ **Audit trail** - Exact chronology for debugging/forensics
+- ✅ **Low cost** - `datetime.now(timezone.utc).isoformat()` is cheap
+- ✅ **Future-proof** - Adding later would break existing metadata
+
+**Path optional rationale:**
+- ✅ **Ephemeral artifacts** - Git commits, REPL snippets have no file path
+- ✅ **Template-driven** - artifacts.yaml defines output_type (file vs ephemeral)
+- ✅ **Validation logic** - Parser checks artifacts.yaml to determine if path required
+- ✅ **SSOT principle** - No duplication of type info in metadata
+
+**Checksum decision:** Still deferred to future phase due to:
 - Breaks on every edit (formatting, comments, typo fixes)
 - Requires complex "what to hash" decision
 - Adds implementation complexity
@@ -236,26 +281,45 @@ class ScaffoldMetadataParser:
 
 ## Implementation Plan
 
-### Phase 0.1: Config Infrastructure
+### Phase 0.1: Config Infrastructure (TDD: RED)
 
 **Files to create:**
 1. `.st3/scaffold_metadata.yaml` - Pattern definitions
 2. `mcp_server/config/scaffold_metadata_config.py` - Pydantic models
-3. `mcp_server/scaffolding/metadata.py` - Parser implementation
+3. `tests/unit/config/test_scaffold_metadata_config.py` - Unit tests
 
-**Models:**
+**TDD Approach - Tests FIRST:**
 ```python
-class CommentPattern(BaseModel):
-    name: str
-    description: str
-    pattern: str
-    extensions: list[str]
+# tests/unit/config/test_scaffold_metadata_config.py
+def test_load_config_from_yaml():
+    """RED: Test fails - config loader doesn't exist yet."""
+    config = ScaffoldMetadataConfig.from_file(".st3/scaffold_metadata.yaml")
+    assert config.version == "1.0"
+    assert len(config.comment_patterns) == 4
 
+def test_validate_metadata_field_formats():
+    """RED: Test fails - field validation doesn't exist yet."""
+    field = MetadataField(
+        name="created",
+        required=True,
+        format=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"
+    )
+    assert field.validate("2026-01-20T14:32:15Z") == True
+    assert field.validate("2026-01-20") == False
+```
+
+**Implementation (GREEN):**
+```python
 class MetadataField(BaseModel):
     name: str
     required: bool
     description: str
     format: str | None = None
+    
+    def validate(self, value: str) -> bool:
+        if self.format:
+            return bool(re.match(self.format, value))
+        return True
 
 class ScaffoldMetadataConfig(BaseModel):
     version: str
@@ -264,90 +328,254 @@ class ScaffoldMetadataConfig(BaseModel):
     
     @classmethod
     def from_file(cls, path: str = ".st3/scaffold_metadata.yaml"):
-        # Load and validate config
+        with open(path, 'r') as f:
+            data = yaml.safe_load(f)
+        return cls(**data)
 ```
 
-### Phase 0.2: Metadata Parser
+**Refactor:** Clean up, extract helpers, optimize
+
+---
+
+### Phase 0.2: Metadata Parser (TDD: RED → GREEN → REFACTOR)
 
 **File:** `mcp_server/scaffolding/metadata.py`
+**Tests:** `tests/unit/scaffolding/test_metadata_parser.py`
 
-**Functions:**
+**TDD Approach - Tests FIRST (RED):**
+```python
+def test_parse_python_metadata():
+    """RED: Parser doesn't exist yet."""
+    content = "# SCAFFOLD: template=dto version=2.0 created=2026-01-20T14:32:15Z path=src/dto/user.py\n..."
+    parser = ScaffoldMetadataParser()
+    result = parser.parse(content, ".py")
+    assert result == {
+        "template": "dto",
+        "version": "2.0",
+        "created": "2026-01-20T14:32:15Z",
+        "path": "src/dto/user.py"
+    }
+
+def test_parse_no_metadata():
+    """RED: Parser doesn't handle non-scaffolded files."""
+    content = "from pydantic import BaseModel\n..."
+    parser = ScaffoldMetadataParser()
+    assert parser.parse(content, ".py") is None
+```
+
+**Implementation (GREEN):**
 ```python
 class ScaffoldMetadataParser:
     def __init__(self, config: ScaffoldMetadataConfig | None = None):
         self.config = config or ScaffoldMetadataConfig.from_file()
     
     def parse(self, file_content: str, file_extension: str | None = None) -> dict | None:
-        """Parse metadata from first line."""
+        """Parse metadata from first line. Returns None if not scaffolded."""
+        first_line = file_content.split('\n')[0].strip()
         
+        # Filter patterns by extension (performance)
+        patterns = self._filter_patterns(file_extension)
+        
+        # Try each pattern
+        for pattern in patterns:
+            match = re.match(pattern.pattern, first_line)
+            if match:
+                return self._parse_key_value_pairs(match.group(1))
+        
+        return None  # Not a scaffolded file
+    
     def _parse_key_value_pairs(self, kv_string: str) -> dict:
-        """Parse 'key=value key2=value2' format."""
+        """Parse 'key=value key2=value2' format with validation."""
+        result = {}
+        for pair in kv_string.split():
+            if '=' in pair:
+                key, value = pair.split('=', 1)
+                # Validate against config field formats
+                field_def = self._get_field_def(key)
+                if field_def and not field_def.validate(value):
+                    raise ValueError(f"Invalid format for {key}: {value}")
+                result[key] = value
+        return result
 ```
 
-### Phase 0.3: ArtifactManager Integration
+**Refactor:** Extract validators, optimize pattern matching
+
+---
+
+### Phase 0.3: ArtifactManager Integration (TDD: RED → GREEN → REFACTOR)
 
 **Update:** `mcp_server/managers/artifact_manager.py`
+**Tests:** `tests/unit/managers/test_artifact_manager_metadata.py`
 
-**Changes:**
+**TDD Approach - Tests FIRST (RED):**
 ```python
+def test_context_enrichment_with_timestamps():
+    """RED: Context enrichment doesn't add timestamp fields yet."""
+    manager = ArtifactManager()
+    context = await manager._enrich_context("dto", {"name": "User"})
+    
+    assert "template_id" in context
+    assert "template_version" in context
+    assert "scaffold_created" in context  # ISO 8601 UTC timestamp
+    assert "output_path" in context
+
+def test_ephemeral_artifact_no_path():
+    """RED: Ephemeral artifacts shouldn't get path field."""
+    manager = ArtifactManager()
+    context = await manager._enrich_context("commit-message", {"type": "feat"})
+    
+    assert "output_path" not in context  # Ephemeral = no path
+```
+
+**Implementation (GREEN):**
+```python
+from datetime import datetime, timezone
+
 async def scaffold_artifact(self, artifact_type: str, output_path: str | None = None, **context: Any) -> str:
     # 1. Get artifact definition
     artifact = self.registry.get_artifact(artifact_type)
     
-    # 2. Enrich context with metadata
+    # 2. Enrich context with metadata fields
     context['template_id'] = artifact_type
-    context['template_version'] = artifact.version  # from artifacts.yaml
-    context['scaffold_date'] = datetime.now().strftime('%Y-%m-%d')
-    context['output_path'] = output_path or self.get_artifact_path(artifact_type, context['name'])
+    context['template_version'] = artifact.version
+    context['scaffold_created'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
     
-    # 3. Scaffold artifact (template uses enriched context)
+    # 3. Path only for file artifacts
+    if artifact.output_type == "file":
+        context['output_path'] = output_path or self._resolve_path(artifact_type, context.get('name'))
+    
+    # 4. Scaffold (template uses enriched context)
     result = self.scaffolder.scaffold(artifact_type, **context)
     
-    # 4-7. Existing validation and write logic...
+    # 5-8. Existing validation and write logic...
 ```
 
-### Phase 0.4: Unit Tests
+**Refactor:** Extract enrichment to separate method, add type hints
 
-**Test file:** `tests/unit/scaffolding/test_metadata_parser.py`
+---
 
-**Test cases:**
+### Phase 0.4: End-to-End Tests
+
+**Test files:**
+- `tests/integration/test_metadata_e2e.py` - Full scaffold → parse → validate flow
+- `tests/unit/scaffolding/test_metadata_parser.py` - Parser unit tests
+
+**Unit Test Coverage (100% target):**
 ```python
+# Parser unit tests
 def test_parse_python_metadata():
-    content = "# SCAFFOLD: template=dto version=2.0 date=2026-01-20 path=src/dto/user.py\n..."
+    content = "# SCAFFOLD: template=dto version=2.0 created=2026-01-20T14:32:15Z path=src/dto/user.py\n..."
     parser = ScaffoldMetadataParser()
     result = parser.parse(content, ".py")
     assert result == {
         "template": "dto",
-        "version": "2.0", 
-        "date": "2026-01-20",
+        "version": "2.0",
+        "created": "2026-01-20T14:32:15Z",
         "path": "src/dto/user.py"
     }
 
 def test_parse_markdown_metadata():
-    content = "<!-- SCAFFOLD: template=design version=1.0 date=2026-01-20 path=docs/design/x.md -->\n..."
-    ...
+    content = "<!-- SCAFFOLD: template=design version=1.0 created=2026-01-20T14:32:15Z path=docs/design/x.md -->\n..."
+    # ... similar assertions
 
 def test_parse_no_metadata():
+    """Graceful handling of non-scaffolded files."""
     content = "from pydantic import BaseModel\n..."
     parser = ScaffoldMetadataParser()
-    result = parser.parse(content, ".py")
-    assert result is None
+    assert parser.parse(content, ".py") is None
+
+def test_parse_invalid_timestamp_format():
+    """Validation rejects invalid timestamp."""
+    content = "# SCAFFOLD: template=dto version=2.0 created=2026-01-20 path=src/dto/user.py\n..."
+    parser = ScaffoldMetadataParser()
+    with pytest.raises(ValueError, match="Invalid format for created"):
+        parser.parse(content, ".py")
+
+def test_parse_ephemeral_no_path():
+    """Ephemeral artifacts without path are valid."""
+    content = "# SCAFFOLD: template=commit-message version=1.0 created=2026-01-20T14:35:42Z\n..."
+    parser = ScaffoldMetadataParser()
+    result = parser.parse(content, ".txt")
+    assert "path" not in result
 ```
+
+**E2E Integration Tests:**
+```python
+# tests/integration/test_metadata_e2e.py
+@pytest.mark.asyncio
+async def test_scaffold_dto_with_metadata():
+    """Full flow: scaffold → read → parse → validate."""
+    manager = ArtifactManager()
+    
+    # 1. Scaffold DTO
+    result = await manager.scaffold_artifact("dto", name="User")
+    
+    # 2. Read generated file
+    file_path = Path("src/dto/user_dto.py")
+    assert file_path.exists()
+    content = file_path.read_text()
+    
+    # 3. Parse metadata
+    parser = ScaffoldMetadataParser()
+    metadata = parser.parse(content, ".py")
+    
+    # 4. Validate metadata
+    assert metadata["template"] == "dto"
+    assert metadata["version"] == "2.0"  # from artifacts.yaml
+    assert re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$", metadata["created"])
+    assert metadata["path"] == "src/dto/user_dto.py"
+
+@pytest.mark.asyncio
+async def test_scaffold_git_commit_ephemeral():
+    """E2E for ephemeral artifact (no path)."""
+    manager = ArtifactManager()
+    
+    # 1. Scaffold commit message
+    result = await manager.scaffold_artifact("commit-message", type="feat", description="Add auth")
+    
+    # 2. Parse metadata from result
+    parser = ScaffoldMetadataParser()
+    metadata = parser.parse(result, ".txt")
+    
+    # 3. Validate - no path for ephemeral
+    assert metadata["template"] == "commit-message"
+    assert "path" not in metadata
+```
+
+**Coverage Target:** 100% for new code (config, parser, enrichment logic)
+
+---
 
 ## Success Criteria
 
 **Phase 0 complete when:**
-- ✅ Config file loads without errors
+- ✅ Config file (`.st3/scaffold_metadata.yaml`) loads without errors
+- ✅ Config models validate all field formats (template, version, created, updated, path)
 - ✅ Parser correctly identifies all 4 comment syntaxes
-- ✅ Parser returns None for non-scaffolded files
-- ✅ Context enrichment adds all 4 fields
-- ✅ Unit tests pass (100% coverage for new code)
-- ✅ Integration test: scaffold DTO → verify metadata line exists
+- ✅ Parser returns `None` for non-scaffolded files (graceful degradation)
+- ✅ Parser validates metadata field formats at runtime
+- ✅ Parser handles ephemeral artifacts (no path field) correctly
+- ✅ Context enrichment adds 5 fields with correct formats:
+  - `template_id` (from artifact type)
+  - `template_version` (from artifacts.yaml)
+  - `scaffold_created` (ISO 8601 UTC timestamp)
+  - `output_path` (only for file artifacts, based on artifacts.yaml)
+  - Note: `updated` only added during migrations (future phase)
+- ✅ **TDD workflow followed:** RED → GREEN → REFACTOR for all phases
+- ✅ **100% test coverage** for new code (config, parser, enrichment)
+- ✅ **E2E integration tests** pass for both file and ephemeral artifacts
+- ✅ Unit tests cover:
+  - Valid metadata parsing (all 4 syntaxes)
+  - Invalid format rejection
+  - Non-scaffolded files (graceful None)
+  - Ephemeral artifacts (no path)
+  - Timestamp validation
 
 **Not required for Phase 0:**
-- Template file updates (separate task)
-- Migration of existing files
-- Discovery tool implementation
+- ❌ Template file updates (separate task after research approval)
+- ❌ Migration of existing files (future phase)
+- ❌ Discovery tool implementation (Issue #121)
+- ❌ `updated` field population (only during migrations)
 
 
 
