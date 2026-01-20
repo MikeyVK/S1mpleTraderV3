@@ -18,6 +18,7 @@ pattern for testability.
 """
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -114,10 +115,14 @@ class ArtifactManager:
 
         # Conditionally add output_path for file artifacts only
         if artifact.output_type == "file":
-            # Resolve output path via get_artifact_path()
-            name = context.get("name", "unnamed")
-            artifact_path = self.get_artifact_path(artifact_type, name)
-            enriched["output_path"] = str(artifact_path)
+            if "output_path" in context:
+                # Use explicitly provided output_path (test override, explicit path)
+                enriched["output_path"] = context["output_path"]
+            else:
+                # Resolve output path via get_artifact_path() (auto-resolution)
+                name = context.get("name", "unnamed")
+                artifact_path = self.get_artifact_path(artifact_type, name)
+                enriched["output_path"] = str(artifact_path)
 
         return enriched
 
@@ -141,6 +146,10 @@ class ArtifactManager:
             ValidationError: If validation fails for code artifacts (BLOCK policy)
             ConfigError: If template not found
         """
+        # 0. If output_path provided, add to context before enrichment
+        if output_path is not None:
+            context = {**context, "output_path": output_path}
+
         # 1. Enrich context with metadata fields
         enriched_context = self._enrich_context(artifact_type, context)
 
@@ -200,9 +209,19 @@ class ArtifactManager:
 
         # 5. Handle ephemeral vs file artifacts
         if artifact.output_type == "ephemeral":
-            # Ephemeral artifacts: return content string directly (no file write)
-            return result.content
+            # Ephemeral artifacts: write to temp file (consistent with Issue #121)
+            # Enables: ScaffoldEdit operations, validation, agent fill cycle
+            temp_dir = Path(".st3/temp")
+            temp_dir.mkdir(parents=True, exist_ok=True)
 
+            # Generate unique temp filename with correct extension
+            ext = artifact.file_extension  # .txt, .md, etc
+            temp_filename = f"{artifact_type}_{uuid.uuid4().hex[:8]}{ext}"
+            temp_path = temp_dir / temp_filename
+
+            # Write temp file with scaffolded content
+            temp_path.write_text(result.content, encoding="utf-8")
+            return str(temp_path)
         # File artifacts: write to disk and return path
         self.fs_adapter.write_file(output_path, result.content)
         return str(self.fs_adapter.resolve_path(output_path))

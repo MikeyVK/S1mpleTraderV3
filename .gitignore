@@ -62,6 +62,7 @@ Kraken_Trading_History/
 # ST3 Workflow - Runtime state (not version controlled)
 .st3/state.json
 .st3/.restart_marker
+.st3/temp/  # Ephemeral artifacts temp files
 
 # ST3 Workflow - Local debug artifacts
 .st3/popen_called.txt

@@ -269,7 +269,12 @@ class ArtifactRegistryConfig(BaseModel):
             f"Available types: {available}. "
             f"Fix: Check spelling or add new type to "
             f".st3/artifacts.yaml.",
-            file_path=str(self._file_path) if self._file_path else None
+            file_path=str(self._file_path) if self._file_path else None,
+            hints=[
+                f"Check spelling: '{type_id}' not found",
+                f"Available types: {available}",
+                "Add new type to .st3/artifacts.yaml if needed"
+            ]
         )
 
     def list_type_ids(
