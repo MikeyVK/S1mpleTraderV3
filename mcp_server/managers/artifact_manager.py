@@ -18,6 +18,7 @@ pattern for testability.
 """
 
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -79,6 +80,47 @@ class ArtifactManager:
             fs_adapter = FilesystemAdapter(root_path=str(self.workspace_root))
         self.fs_adapter = fs_adapter or FilesystemAdapter()
 
+    def _enrich_context(
+        self, artifact_type: str, context: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Enrich template context with scaffold metadata fields.
+
+        Adds metadata fields to support template-embedded metadata headers:
+        - template_id: Artifact type identifier
+        - template_version: Version from artifacts.yaml
+        - scaffold_created: ISO 8601 UTC timestamp with Z suffix
+        - output_path: File path (conditional - only for file artifacts)
+
+        Args:
+            artifact_type: Artifact type_id from registry
+            context: Original template rendering context
+
+        Returns:
+            Enriched context dict (preserves original + adds metadata)
+        """
+        # Get artifact definition to read version and output_type
+        artifact = self.registry.get_artifact(artifact_type)
+
+        # Create enriched context (copy original to preserve)
+        enriched = dict(context)
+
+        # Add metadata fields
+        enriched["template_id"] = artifact_type
+        enriched["template_version"] = artifact.version
+
+        # Generate ISO 8601 UTC timestamp with Z suffix
+        now_utc = datetime.now(timezone.utc)
+        enriched["scaffold_created"] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # Conditionally add output_path for file artifacts only
+        if artifact.output_type == "file":
+            # Resolve output path via get_artifact_path()
+            name = context.get("name", "unnamed")
+            artifact_path = self.get_artifact_path(artifact_type, name)
+            enriched["output_path"] = str(artifact_path)
+
+        return enriched
+
     async def scaffold_artifact(
         self,
         artifact_type: str,
@@ -99,10 +141,13 @@ class ArtifactManager:
             ValidationError: If validation fails for code artifacts (BLOCK policy)
             ConfigError: If template not found
         """
-        # 1. Scaffold artifact
-        result = self.scaffolder.scaffold(artifact_type, **context)
+        # 1. Enrich context with metadata fields
+        enriched_context = self._enrich_context(artifact_type, context)
 
-        # 2. Get artifact definition to determine validation policy
+        # 2. Scaffold artifact with enriched context
+        result = self.scaffolder.scaffold(artifact_type, **enriched_context)
+
+        # 3. Get artifact definition to determine validation policy
         artifact = self.registry.get_artifact(artifact_type)
 
         # 3. Resolve output path (needed for path-based validation)
@@ -110,7 +155,7 @@ class ArtifactManager:
             # Handle generic type special case
             if artifact_type == "generic":
                 # Generic type requires explicit output_path in context
-                if "output_path" not in context:
+                if "output_path" not in enriched_context:
                     raise ValidationError(
                         "Generic artifacts require explicit output_path in context",
                         hints=[
@@ -119,10 +164,10 @@ class ArtifactManager:
                             "Generic artifacts can be placed anywhere"
                         ]
                     )
-                output_path = context["output_path"]
+                output_path = enriched_context["output_path"]
             else:
                 # Regular types: auto-resolve via get_artifact_path
-                name = context.get("name", "unnamed")
+                name = enriched_context.get("name", "unnamed")
                 artifact_path = self.get_artifact_path(artifact_type, name)
                 output_path = str(artifact_path)
 
@@ -213,4 +258,9 @@ class ArtifactManager:
         file_name = f"{name}{suffix}{extension}"
 
         # Return absolute path: workspace_root / base_dir / filename
+        if self.workspace_root is None:
+            raise ConfigError(
+                "workspace_root not configured",
+                hints=["Initialize ArtifactManager with workspace_root parameter"]
+            )
         return self.workspace_root / base_dir / file_name
