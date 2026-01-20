@@ -114,11 +114,17 @@ class ScaffoldMetadataConfig(BaseModel):
         
         Returns:
             Matching pattern or None if not found
+        
+        Example:
+            >>> config = ScaffoldMetadataConfig.from_file()
+            >>> pattern = config.get_pattern("hash")
+            >>> pattern.prefix
+            '#\\\\s*'
         """
-        for pattern in self.comment_patterns:
-            if pattern.syntax == syntax:
-                return pattern
-        return None
+        return next(
+            (p for p in self.comment_patterns if p.syntax == syntax),
+            None
+        )
     
     def get_field(self, name: str) -> Optional[MetadataField]:
         """
@@ -129,8 +135,14 @@ class ScaffoldMetadataConfig(BaseModel):
         
         Returns:
             Matching field or None if not found
+        
+        Example:
+            >>> config = ScaffoldMetadataConfig.from_file()
+            >>> field = config.get_field("path")
+            >>> field.required
+            False
         """
-        for field in self.metadata_fields:
-            if field.name == name:
-                return field
-        return None
+        return next(
+            (f for f in self.metadata_fields if f.name == name),
+            None
+        )
