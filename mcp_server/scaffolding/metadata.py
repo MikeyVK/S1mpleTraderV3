@@ -13,13 +13,14 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from mcp_server.config.scaffold_metadata_config import ScaffoldMetadataConfig
+from mcp_server.config.scaffold_metadata_config import (
+    MetadataField,
+    ScaffoldMetadataConfig,
+)
 
 
 class MetadataParseError(Exception):
     """Raised when metadata parsing fails validation."""
-
-    pass
 
 
 class ScaffoldMetadataParser:
@@ -42,6 +43,20 @@ class ScaffoldMetadataParser:
             config_path: Path to config file (defaults to .st3/scaffold_metadata.yaml)
         """
         self.config = ScaffoldMetadataConfig.from_file(config_path)
+        self._extension_map = self._build_extension_map()
+
+    def _build_extension_map(self) -> dict[str, str]:
+        """Build mapping of file extensions to comment syntax."""
+        return {
+            # Hash comments
+            **{ext: "hash" for ext in [".py", ".yaml", ".sh", ".txt"]},
+            # Double-slash comments
+            **{ext: "double_slash" for ext in [".ts", ".js", ".java", ".cs"]},
+            # HTML comments
+            **{ext: "html_comment" for ext in [".md", ".html", ".xml"]},
+            # Jinja2 comments
+            **{ext: "jinja_comment" for ext in [".jinja2", ".j2"]},
+        }
 
     def parse(self, content: str, extension: str) -> Optional[dict[str, str]]:
         """
@@ -66,21 +81,11 @@ class ScaffoldMetadataParser:
             return None
 
         # Find matching pattern for extension
-        pattern = None
-        for comment_pattern in self.config.comment_patterns:
-            if extension in [".py", ".yaml", ".sh", ".txt"] and comment_pattern.syntax == "hash":
-                pattern = comment_pattern
-                break
-            elif extension in [".ts", ".js", ".java", ".cs"] and comment_pattern.syntax == "double_slash":
-                pattern = comment_pattern
-                break
-            elif extension in [".md", ".html", ".xml"] and comment_pattern.syntax == "html_comment":
-                pattern = comment_pattern
-                break
-            elif extension in [".jinja2", ".j2"] and comment_pattern.syntax == "jinja_comment":
-                pattern = comment_pattern
-                break
+        syntax = self._extension_map.get(extension)
+        if not syntax:
+            return None
 
+        pattern = self.config.get_pattern(syntax)
         if not pattern:
             return None
 
@@ -143,19 +148,21 @@ class ScaffoldMetadataParser:
                 raise MetadataParseError(f"Missing required field: {field_def.name}")
 
         # Filter to known fields only and validate
-        validated = {}
+        validated: dict[str, str] = {}
         for field_name, field_value in metadata.items():
-            field_def = self.config.get_field(field_name)
+            field_config: Optional[MetadataField] = self.config.get_field(field_name)
 
             # Skip unknown fields (silently ignored)
-            if not field_def:
+            if field_config is None:
                 continue
+            # Type narrowing: field_config is non-None past this point
+            assert field_config is not None
 
             # Validate against regex
-            if not re.match(field_def.format_regex, field_value):
+            if not re.match(field_config.format_regex, field_value):
                 raise MetadataParseError(
                     f"Invalid value '{field_value}' for field '{field_name}'. "
-                    f"Expected pattern: {field_def.format_regex}"
+                    f"Expected pattern: {field_config.format_regex}"
                 )
 
             validated[field_name] = field_value
