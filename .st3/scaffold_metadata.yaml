@@ -1,0 +1,53 @@
+# Scaffold Metadata Configuration
+#
+# Defines patterns for detecting and validating metadata in scaffolded files.
+# Used by ScaffoldMetadataParser to parse SCAFFOLD comments.
+
+# Comment patterns for different file types
+comment_patterns:
+  # Python, YAML, Shell scripts
+  - syntax: hash
+    prefix: "#\\s*"
+    metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+  
+  # JavaScript, TypeScript, C-style languages
+  - syntax: double_slash
+    prefix: "//\\s*"
+    metadata_line_regex: "^//\\s*SCAFFOLD:\\s*(.+)$"
+  
+  # HTML, XML
+  - syntax: html_comment
+    prefix: "<!--\\s*"
+    metadata_line_regex: "^<!--\\s*SCAFFOLD:\\s*(.+)\\s*-->$"
+  
+  # Jinja2 templates
+  - syntax: jinja_comment
+    prefix: "\\{#\\s*"
+    metadata_line_regex: "^\\{#\\s*SCAFFOLD:\\s*(.+)\\s*#\\}$"
+
+# Metadata field definitions
+metadata_fields:
+  # Template identifier (required)
+  - name: template
+    format_regex: "^[a-z0-9_-]+$"
+    required: true
+  
+  # Template version (required)
+  - name: version
+    format_regex: "^\\d+\\.\\d+$"
+    required: true
+  
+  # Creation timestamp (required)
+  - name: created
+    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    required: true
+  
+  # Last update timestamp (optional)
+  - name: updated
+    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    required: false
+  
+  # File path (optional - only for output_type="file")
+  - name: path
+    format_regex: "^[a-zA-Z0-9_/.-]+$"
+    required: false

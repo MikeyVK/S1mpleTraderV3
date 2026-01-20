@@ -116,12 +116,12 @@ class TestScaffoldMetadataConfig:
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
-    prefix: "#\\s*"
-    metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+    prefix: "#\\\\s*"
+    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
   
   - syntax: double_slash
-    prefix: "//\\s*"
-    metadata_line_regex: "^//\\s*SCAFFOLD:\\s*(.+)$"
+    prefix: "//\\\\s*"
+    metadata_line_regex: "^//\\\\s*SCAFFOLD:\\\\s*(.+)$"
 
 metadata_fields:
   - name: template
@@ -129,15 +129,15 @@ metadata_fields:
     required: true
   
   - name: version
-    format_regex: "^\\d+\\.\\d+$"
+    format_regex: "^\\\\d+\\\\.\\\\d+$"
     required: true
   
   - name: created
-    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    format_regex: "^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}Z$"
     required: true
   
   - name: updated
-    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    format_regex: "^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}Z$"
     required: false
   
   - name: path
@@ -158,8 +158,8 @@ metadata_fields:
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
-    prefix: "#\\s*"
-    metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+    prefix: "#\\\\s*"
+    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
 
 metadata_fields:
   - name: template
@@ -179,8 +179,8 @@ metadata_fields:
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
-    prefix: "#\\s*"
-    metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+    prefix: "#\\\\s*"
+    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
 
 metadata_fields:
   - name: template
@@ -199,8 +199,8 @@ metadata_fields:
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
-    prefix: "#\\s*"
-    metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+    prefix: "#\\\\s*"
+    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
 
 metadata_fields:
   - name: template
@@ -225,8 +225,8 @@ metadata_fields:
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
-    prefix: "#\\s*"
-    metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+    prefix: "#\\\\s*"
+    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
 
 metadata_fields:
   - name: template
@@ -253,8 +253,8 @@ metadata_fields:
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
-    prefix: "#\\s*"
-    metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+    prefix: "#\\\\s*"
+    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
 # metadata_fields missing!
 """, encoding="utf-8")
         
