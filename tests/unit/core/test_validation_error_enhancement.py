@@ -1,5 +1,4 @@
 # artifact: type=unit_test, version=1.0, created=2026-01-21T22:04:10Z
-# pylint: disable=redefined-outer-name  # pytest fixtures
 """
 Unit tests for ValidationError to_resource_dict() enhancement.
 

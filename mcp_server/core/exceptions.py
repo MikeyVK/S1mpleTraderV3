@@ -81,6 +81,35 @@ class ValidationError(MCPError):
         """
         super().__init__(message, code="ERR_VALIDATION", hints=hints)
         self.schema = schema
+        self.missing: list[str] = []
+        self.provided: list[str] = []
+
+    def to_resource_dict(self, artifact_type: str) -> dict[str, Any]:
+        """Generate structured resource data for ToolResult.
+        
+        Used by MCP tools to add resource content item with complete
+        schema and validation details for agent consumption.
+        
+        Args:
+            artifact_type: Artifact type identifier (e.g., "dto")
+
+        Returns:
+            Dict suitable for ToolResult resource content item
+        """
+        data: dict[str, Any] = {
+            "artifact_type": artifact_type,
+        }
+
+        if self.schema:
+            data["schema"] = self.schema.to_dict()
+
+        if self.missing or self.provided:
+            data["validation"] = {
+                "missing": self.missing,
+                "provided": self.provided
+            }
+
+        return data
 
 
 class MetadataParseError(ValidationError):

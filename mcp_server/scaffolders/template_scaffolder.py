@@ -106,7 +106,7 @@ class TemplateScaffolder(BaseScaffolder):
         missing = [f for f in schema.required if f not in provided]
 
         if missing:
-            raise ValidationError(
+            error = ValidationError(
                 f"Missing required fields for {artifact_type}: "
                 f"{', '.join(missing)}",
                 hints=[
@@ -116,6 +116,10 @@ class TemplateScaffolder(BaseScaffolder):
                 ],
                 schema=schema
             )
+            # Track missing/provided for structured response
+            error.missing = missing
+            error.provided = list(provided)
+            raise error
 
         return True
 
