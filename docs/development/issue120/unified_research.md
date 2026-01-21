@@ -219,14 +219,18 @@ Nu weten we: Dit bestand kwam van `dto` template v1.0, dus validatie-regels van 
 
 **Deliverables:**
 1. **Discovery Capability**:
-   - Find scaffolded files by template type
+   - Find scaffolded files by template type (via SCAFFOLD metadata)
    - Query: "Geef alle dto files" → parsed SCAFFOLD metadata
    - Staleness check: template versie vs file versie
 
 2. **Template-Aware Editing**:
    - Weet van welke template file komt (via metadata)
    - Valideer edit tegen template-structuur
-   - Voorbeeld: DTO field toevoegen → check tegen template
+   - **Semantic Validation** (Python AST parsing):
+     - DTO field moet Field() syntax gebruiken
+     - Field() moet description parameter hebben
+     - DTO moet model_config dict hebben
+   - Voorbeeld: DTO field toevoegen → parse Python AST → check Field() structuur
 
 3. **VS Code Integration** (Als nodig):
    - Position/Range API voor exacte edits
@@ -234,14 +238,20 @@ Nu weten we: Dit bestand kwam van `dto` template v1.0, dus validatie-regels van 
 
 4. **Validation on Edit**:
    - Hergebruik template introspection uit #120
-   - Check: blijft file valid volgens template?
+   - Parse edited file as Python AST
+   - Check: blijft file valid volgens template structural requirements?
    - Error hints consistent met scaffolding errors
 
 **Overlap Met #120:**
-- **Shared**: Template introspection, schema generation
-- **Shared**: Validation logic (template = SSOT)
-- **Verschil #120**: Bij creatie - valideer context
-- **Verschil #121**: Bij edit - valideer mutatie
+- **Shared**: Template introspection (Jinja2 AST), schema generation
+- **Shared**: Validation logic (template = SSOT for structure)
+- **Verschil #120**: Bij creatie - valideer agent context (template variables)
+- **Verschil #121**: Bij edit - valideer Python AST (artifact structure)
+
+**Validation Depth:**
+- #120 validatie: Template variables aanwezig in context
+- #121 validatie: Generated Python code voldoet aan semantic rules
+- Voorbeeld DTO: Field() met description, model_config aanwezig
 
 **Niet In Scope #121:**
 - Scaffolding nieuwe files (dat is bestaand)
@@ -407,24 +417,45 @@ Agent: Wil DTO field toevoegen
 
 **Vraag**: Hoe detecteren we betrouwbaar of een template variabele required of optional is?
 
-**Standaard Jinja2 Tooling Beschikbaar:**
-- Jinja2 heeft `jinja2.meta.find_undeclared_variables(ast)` - officiële API
-- Huidig systeem gebruikt dit al in TemplateAnalyzer.extract_jinja_variables()
-- Geeft ALLE undeclared variabelen - geen required/optional onderscheid
+**Hoe Jinja2 Introspectie Werkt (Statische Analyse):**
 
-**Patronen Te Detecteren:**
-- `{{ name }}` → Required (unconditional use)
-- `{% if fields %}{{ fields }}{% endif %}` → Optional (conditional)
-- `{{ fields | default([]) }}` → Optional (default filter)
-- `{% for f in fields %}` → Required? Optional? (loop over undefined = error)
+```python
+# GEEN test scaffold nodig - parse template source direct:
+source = template_path.read_text()          # 1. Lees template als text
+ast = env.parse(source)                     # 2. Parse naar AST (geen rendering!)
+vars = meta.find_undeclared_variables(ast)  # 3. Statische analyse van AST
+# Resultaat: set van variabelen die template GEBRUIKT maar niet DEFINIEERT
+```
 
-**Mogelijke Aanpak:**
-1. Basis: Use `meta.find_undeclared_variables()` voor lijst
-2. Parse AST voor If nodes → vars in condition test = optional
-3. Parse AST voor Filter nodes → vars met default filter = optional  
-4. Conservatieve fallback: Onbekend = required (veiliger voor agent)
+**Voorbeeld Template:**
+```jinja2
+class {{ name }}(BaseModel):
+    """{{ description }}"""
+    {% if fields %}
+    {% for field in fields %}
+    {{ field.name }}: {{ field.type }}
+    {% endfor %}
+    {% endif %}
+```
+
+**find_undeclared_variables() output:** `{'name', 'description', 'fields'}`
+
+**Required vs Optional Detectie (AST Analyse):**
+- `name` / `description` → unconditional use → **required**
+- `fields` → inside `{% if fields %}` → **optional** (conditional block)
+- `{{ var | default(...) }}` → **optional** (has default filter)
+
+**Implementatie Strategie:**
+1. Basis: `meta.find_undeclared_variables()` voor complete lijst
+2. Walk AST nodes:
+   - If nodes → vars in test condition = optional
+   - Filter nodes met "default" → var = optional
+   - Loops over undefined → conservatief: required (fail fast)
+3. Rest = required (veiliger voor agent)
 
 **BESLISSING (User):** Start simpel (If nodes + default filters only), extend iteratief
+
+**Geen Test Scaffold Nodig:** Dit is statische code analyse, niet runtime introspection!
 
 ### Q2: Schema Representation Format
 
@@ -451,21 +482,54 @@ Agent: Wil DTO field toevoegen
 
 **Vraag**: Hoe "template-aware" moet editing zijn?
 
-**Scenarios:**
-1. **Minimal**: Valideer alleen dat file nog valid is na edit
-2. **Structural**: Check dat edit binnen template structure blijft
-3. **Semantic**: Understand artifact semantics (DTO field = bepaalde syntax)
+**CORRECTIE: DTO Field Structuur (User Feedback)**
+
+Een "field" is NIET zomaar een variable, maar een **Pydantic Field() definitie met vaste structuur**:
+
+```python
+# STRUCTUUR van een geldig DTO field:
+field_name: type = Field(
+    ...,                          # required indicator of default value
+    description="...",            # VERPLICHT (self-documenting code!)
+    # Optionele Field() attributen (agent invulling):
+    ge=0,                        # constraints  
+    pattern="...",               # validation patterns
+    # etc.
+)
+```
+
+**Template Valideert (Semantic Level):**
+- ✅ Field MOET `Field()` call syntax gebruiken
+- ✅ Field MOET `description` parameter hebben (self-documenting requirement)
+- ✅ DTO MOET `model_config` dict hebben (defines DTO behavior)
+- ❌ Template valideert NIET welke fields gebruikt worden (inhoud = creatief)
 
 **Voorbeeld - DTO Field Toevoegen:**
-- Minimal: File parse-t nog als Python ✓
-- Structural: Field staat in fields lijst ✓  
-- Semantic: Field heeft name/type/description attributen ✓
 
-**BESLISSING (User):** Semantic validation - templates definiëren field STRUCTUUR, niet inhoud
-- Template zegt: "DTO field MOET name/type/description hebben"
+```python
+# Agent voegt toe:
+symbol: str = Field(..., description="Trading pair (e.g., BTC_USDT)")
+
+# Validation checks:
+# ✅ Gebruikt Field() syntax
+# ✅ Heeft description parameter  
+# ✅ Voldoet aan DTO field structuur
+# ✓ Inhoud (symbol naam, type str) = agent keuze (creatief)
+```
+
+**Validation Scenarios:**
+1. **Minimal**: File parse-t nog als Python ✓
+2. **Structural**: Field gebruikt Field() syntax ✓  
+3. **Semantic**: Field heeft verplichte attributen (description) ✓
+
+**BESLISSING (User):** Semantic validation - templates definiëren field STRUCTUUR
+- Template requirement: "DTO field MOET Field() met description gebruiken"
+- Template requirement: "DTO MOET model_config hebben"
 - Template zegt NIET: "DTO MOET exact deze 5 fields hebben"
-- Inhoud (welke fields) = creatief proces, structure (hoe fields eruitzien) = template regel
-- Voorbeeld: `example` field in DTO is eigen toevoeging (self-documenting code) - moet wel aan structure voldoen
+- Inhoud (welke fields, namen, types) = creatief proces
+- Structuur (hoe fields gedefinieerd zijn) = template regel
+
+**Key Insight:** Dit is dieper dan "check of field in lijst staat" - dit is parse-niveau validatie van Python AST om Field() structuur te verifiëren!
 
 ### Q4: Integration met Bestaande safe_edit_file
 
