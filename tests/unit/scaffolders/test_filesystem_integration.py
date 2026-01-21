@@ -1,8 +1,10 @@
 import pytest
-from unittest.mock import Mock, patch
-from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from unittest.mock import Mock
+
+import pytest
+
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-from mcp_server.core.exceptions import ConfigError
+from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
 @pytest.fixture
 def mock_registry():
@@ -32,7 +34,8 @@ class TestTemplateReading:
 
     def test_ioerror_becomes_config_error(self, scaffolder, mock_registry):
         # Test with non-existent template
-        # Note: JinjaRenderer raises ExecutionError, not ConfigError
+        # Template introspection now raises Jinja2 TemplateNotFound during validation
+        from jinja2.exceptions import TemplateNotFound
         artifact = Mock()
         artifact.type_id = 'test'
         artifact.required_fields = ['name']
@@ -40,7 +43,6 @@ class TestTemplateReading:
         artifact.fallback_template = None
         mock_registry.get_artifact.return_value = artifact
         
-        # ExecutionError is acceptable for template not found
-        from mcp_server.core.exceptions import ExecutionError
-        with pytest.raises((ConfigError, ExecutionError)):
+        # TemplateNotFound raised during introspection
+        with pytest.raises(TemplateNotFound):
             scaffolder.scaffold('test', name='Test')

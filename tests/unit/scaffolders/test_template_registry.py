@@ -43,13 +43,15 @@ class TestTemplateRegistryLoading:
         artifact.file_extension = '.py'
         mock_registry.get_artifact.return_value = artifact
         
-        # Worker template needs input_dto/output_dto context
+        # Worker template needs all required fields from template introspection
         result = scaffolder.scaffold(
             'worker',
             name='TestWorker',
             description='Test worker',
             input_dto='TestInput',
-            output_dto='TestOutput'
+            output_dto='TestOutput',
+            dependencies=["SomeService"],
+            responsibilities=["Process data"]
         )
         assert result is not None
         assert hasattr(result, 'content')
