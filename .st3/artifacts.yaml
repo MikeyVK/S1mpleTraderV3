@@ -280,6 +280,35 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
+  - type: code
+    type_id: integration_test
+    name: "Integration Test"
+    description: "Integration/E2E test file with @module structure"
+    version: "1.0"
+    output_type: "file"
+    scaffolder_class: "GenericScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
+    template_path: "tests/integration_test.py.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: false
+    base_path: "tests/"
+    required_fields:
+      - test_module
+      - purpose
+      - responsibilities
+    optional_fields:
+      - dependencies
+      - fixtures
+      - test_methods
+      - test_private_methods
+      - extra_third_party_imports
+      - extra_project_imports
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
   
   # ===== DOCUMENT ARTIFACTS =====
   
