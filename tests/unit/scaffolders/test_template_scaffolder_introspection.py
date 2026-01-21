@@ -1,5 +1,4 @@
 # artifact: type=unit_test, version=1.0, created=2026-01-21T21:59:47Z
-# pylint: disable=redefined-outer-name  # pytest fixtures
 """
 Unit tests for TemplateScaffolder introspection integration.
 

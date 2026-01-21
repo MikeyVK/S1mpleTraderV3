@@ -24,11 +24,12 @@ from pathlib import Path
 from typing import Any
 
 # Project modules
-from mcp_server.core.exceptions import ValidationError
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.scaffolding.renderer import JinjaRenderer
+from mcp_server.scaffolding.template_introspector import introspect_template
 
 
 class TemplateScaffolder(BaseScaffolder):
@@ -58,7 +59,7 @@ class TemplateScaffolder(BaseScaffolder):
         self._renderer = renderer
 
     def validate(self, artifact_type: str, **kwargs: Any) -> bool:
-        """Validate scaffolding arguments.
+        """Validate scaffolding arguments using template introspection.
 
         Args:
             artifact_type: Artifact type_id from registry
@@ -69,17 +70,51 @@ class TemplateScaffolder(BaseScaffolder):
 
         Raises:
             ValidationError: If artifact_type unknown or required
-                           fields missing
+                           fields missing (with schema attached)
         """
         # Get artifact definition (raises ConfigError if unknown)
         artifact = self.registry.get_artifact(artifact_type)
 
+        # Get template path
+        template_path = self._resolve_template_path(
+            artifact_type,
+            artifact,
+            kwargs
+        )
+
+        if not template_path:
+            raise ValidationError(
+                f"No template configured for artifact type: {artifact_type}"
+            )
+
+        # Load template source for introspection
+        if self._renderer.env.loader is None:
+            raise ValidationError(
+                f"Template loader not configured for {artifact_type}"
+            )
+
+        template_source = self._renderer.env.loader.get_source(
+            self._renderer.env,
+            template_path
+        )[0]
+
+        # Extract schema from template via introspection
+        schema = introspect_template(self._renderer.env, template_source)
+
         # Check required fields present
-        missing = [f for f in artifact.required_fields if f not in kwargs]
+        provided = set(kwargs.keys())
+        missing = [f for f in schema.required if f not in provided]
+
         if missing:
             raise ValidationError(
                 f"Missing required fields for {artifact_type}: "
-                f"{', '.join(missing)}"
+                f"{', '.join(missing)}",
+                hints=[
+                    f"Required: {', '.join(schema.required)}",
+                    f"Optional: {', '.join(schema.optional)}",
+                    f"Missing: {', '.join(missing)}"
+                ],
+                schema=schema
             )
 
         return True

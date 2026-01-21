@@ -12,6 +12,8 @@ Ensures consistent error handling across tools, managers, and adapters.
     - Provide standard error codes and hint structures
 """
 
+from typing import Any
+
 
 class MCPError(Exception):
     """Base class for all MCP server exceptions."""
@@ -64,9 +66,21 @@ class ConfigError(MCPError):
 class ValidationError(MCPError):
     """Raised when input validation fails."""
 
-    def __init__(self, message: str, hints: list[str] | None = None) -> None:
-        """Initialize the validation error."""
+    def __init__(
+        self,
+        message: str,
+        hints: list[str] | None = None,
+        schema: Any = None
+    ) -> None:
+        """Initialize the validation error.
+        
+        Args:
+            message: Error message describing the validation failure
+            hints: Optional list of suggestions to fix the error
+            schema: Optional TemplateSchema with required/optional fields
+        """
         super().__init__(message, code="ERR_VALIDATION", hints=hints)
+        self.schema = schema
 
 
 class MetadataParseError(ValidationError):
