@@ -91,15 +91,17 @@ Hints:
 2. **Unknown artifact type** - Already has good hints:
 ```python
 ConfigError: Artifact type 'dto_invalid' not found in registry.
-Available types: dto, worker, adapter, design, architecture, tracking, generic.
+Available types: {dynamically_loaded_from_artifacts_yaml}.
 Fix: Check spelling or add new type to .st3/artifacts.yaml.
 
 Hints:
   Check spelling: 'dto_invalid' not found
-  Available types: dto, worker, adapter, design, architecture, tracking, generic
+  Available types: {', '.join(a.type_id for a in self.artifact_types)}  # FROM artifacts.yaml
   Add new type to .st3/artifacts.yaml if needed
 ```
-✅ Shows available options, ✅ Actionable fixes
+✅ Shows available options (dynamically from artifacts.yaml), ✅ Actionable fixes
+
+**Implementation Note:** `ArtifactRegistryConfig.get_artifact()` already loads available types dynamically - NO hardcoding!
 
 **What Needs Improvement:**
 
@@ -200,7 +202,7 @@ age
 **Out of Scope (Already Works or Not Needed):**
 - ❌ New error infrastructure (already excellent with @tool_error_handler)
 - ❌ workspace_root errors (already have comprehensive hints)
-- ❌ Unknown artifact type (already lists all available types)
+- ❌ Unknown artifact type (already lists all available types dynamically from artifacts.yaml)
 - ❌ Early validation (Jinja2 rendering is fine, just need better wrapping)
 
 
@@ -326,6 +328,7 @@ def _format_context_help(
 - Schema extracted from template AST (not manual config)
 - Example in artifacts.yaml is OK (shows usage, doesn't define schema)
 - Required vs Optional determined by template structure
+- **CONSISTENCY PRINCIPLE:** Available types from artifacts.yaml (dynamic), schema from templates (introspection) - each source has clear responsibility
 
 #### 3. Enhanced Error Sites (2 Locations)
 
@@ -446,7 +449,7 @@ except jinja2.UndefinedError as e:
 - Cannot provide human-readable descriptions in hints (acceptable - field names should be descriptive)
 - Cannot show type information unless parsed from template (acceptable - examples show types)
 - Requires template parsing on error (minimal overhead - already cached)
-- **BENEFIT:** Zero duplication, templates remain SSOT
+- **BENEFIT:** Zero duplication, templates remain SSOT, consistent with existing patterns (e.g., available types from artifacts.yaml)
 
 ### Decision 2: Where to Add Helper Method
 
@@ -506,6 +509,36 @@ except jinja2.UndefinedError as e:
 - Small duplication (acceptable - examples demonstrate, don't define)
 - Manual maintenance (acceptable - examples rarely change)
 - **CRITICAL:** Schema NEVER in artifacts.yaml - only examples
+
+### Decision 5: No Hardcoded Values - Dynamic Lookups Only
+
+**Options:**
+1. Hardcode example values in error messages
+2. Load all dynamic data from configuration sources
+3. Mix of hardcoded and dynamic
+
+**Decision:** Option 2 - All dynamic from config sources
+
+**Rationale:**
+- **Existing pattern:** `available types` already loaded from artifacts.yaml (NOT hardcoded)
+- **New pattern:** Schema variables loaded from templates via introspection
+- **Consistency:** All hints reflect current configuration state
+- **Maintainability:** Config changes → error messages update automatically
+
+**Configuration Source Mapping:**
+```
+artifacts.yaml → Available artifact types (registry.artifact_types)
+templates/*.jinja2 → Required/optional variables (AST introspection)
+scaffold_metadata.yaml → Metadata patterns (not used in hints yet)
+```
+
+**Implementation Rule:**
+- ❌ `hints = ["Available types: dto, worker, adapter"]`  # WRONG - hardcoded
+- ✅ `hints = [f"Available types: {', '.join(registry.list_type_ids())}"]`  # CORRECT - dynamic
+
+**Trade-offs:**
+- Slightly more runtime overhead (minimal - configs cached)
+- **BENEFIT:** Zero drift between config and error messages
 
 
 ## Open Questions
