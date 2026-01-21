@@ -1,12 +1,12 @@
 # artifact: type=unit_test, version=1.0, created=2026-01-21T21:31:54Z
-# pylint: disable=redefined-outer-name  # pytest fixtures
 """
 Unit tests for TemplateIntrospector.
 
 Tests template AST parsing and schema extraction for validation
 Following TDD: These tests are written BEFORE implementation (RED phase).
 @layer: Tests (Unit)
-@dependencies: [pytest, jinja2.Environment, jinja2.meta, mcp_server.scaffolding.template_introspector]
+@dependencies: [pytest, jinja2.Environment, jinja2.meta,
+                mcp_server.scaffolding.template_introspector]
 @responsibilities:
     - Test TemplateSchema dataclass structure and defaults
     - Test introspect_template() with various Jinja2 patterns
@@ -17,28 +17,19 @@ Following TDD: These tests are written BEFORE implementation (RED phase).
 """
 # pyright: basic, reportPrivateUsage=false
 # Standard library
-from pathlib import Path
-from typing import Any
-from unittest.mock import Mock, MagicMock
+# (no standard library imports needed)
 
 # Third-party
-import pytest
 import jinja2
+import pytest
 
 # Project modules
-from mcp_server.scaffolding.template_introspector import (
-    TemplateIntrospector,
-)
-from mcp_server.core.exceptions import (
-    ExecutionError,
-    ValidationError,
-)
-from mcp_server.scaffolding.template_introspector import TemplateSchema
+from mcp_server.core.exceptions import ExecutionError
+from mcp_server.scaffolding.template_introspector import introspect_template
 
 @pytest.fixture(name="jinja2_env")
 def fixture_jinja2_env() -> jinja2.Environment:
     """Provides configured Jinja2 environment for template parsing"""
-    import jinja2
     return jinja2.Environment()
 
 @pytest.fixture(name="sample_dto_template")
@@ -67,7 +58,7 @@ class TestTemplateIntrospector:
     ) -> None:
         """RED: introspect_template() identifies required variables (no defaults)"""
         # Arrange
-        from mcp_server.scaffolding.template_introspector import introspect_template
+        # (sample_dto_template fixture provides template)
 
         # Act
         schema = introspect_template(jinja2_env, sample_dto_template)
@@ -84,7 +75,7 @@ class TestTemplateIntrospector:
     ) -> None:
         """RED: introspect_template() identifies optional variables (with defaults)"""
         # Arrange
-        from mcp_server.scaffolding.template_introspector import introspect_template
+        # (sample_dto_template fixture provides template)
 
         # Act
         schema = introspect_template(jinja2_env, sample_dto_template)
@@ -100,12 +91,12 @@ class TestTemplateIntrospector:
     ) -> None:
         """RED: introspect_template() excludes system-injected fields from schema"""
         # Arrange
-        from mcp_server.scaffolding.template_introspector import introspect_template
-        template_with_system_fields = '''
-        # artifact: type={{ template_id }}, version={{ template_version }}, created={{ scaffold_created }}
+        template_with_system_fields = """
+        # artifact: type={{ template_id }}, version={{ template_version }}
+        # created={{ scaffold_created }}
         class {{ name }}:
             path = "{{ output_path }}"
-        '''
+        """
 
         # Act
         schema = introspect_template(jinja2_env, template_with_system_fields)
@@ -123,14 +114,13 @@ class TestTemplateIntrospector:
     ) -> None:
         """RED: introspect_template() returns fields in sorted order"""
         # Arrange
-        from mcp_server.scaffolding.template_introspector import introspect_template
-        template = '''
+        template = """
         {{ zebra }}
         {{ alpha }}
         {{ middle }}
         {% if optional_z %}{% endif %}
         {% if optional_a %}{% endif %}
-        '''
+        """
 
         # Act
         schema = introspect_template(jinja2_env, template)
@@ -145,11 +135,10 @@ class TestTemplateIntrospector:
     ) -> None:
         """RED: introspect_template() raises ExecutionError for invalid Jinja2 syntax"""
         # Arrange
-        from mcp_server.scaffolding.template_introspector import introspect_template
-        invalid_template = '''
+        invalid_template = """
         {{ unclosed_variable
         {% if broken %}
-        '''
+        """
 
         # Act & Assert
         with pytest.raises(ExecutionError) as exc_info:
