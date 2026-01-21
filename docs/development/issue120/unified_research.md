@@ -210,6 +210,16 @@ Nu weten we: Dit bestand kwam van `dto` template v1.0, dus validatie-regels van 
 - Content-aware editing (dat is #121)
 - Type validation (alleen aanwezigheid van velden)
 - Nested schema validation (dat komt later)
+- **Python code structure validation** (Field() syntax, description aanwezig)
+  → Templates zijn pre-productie getest = output correctheid gegarandeerd
+  → Agent context validatie ≠ gegenereerde code validatie
+
+**Waarom Jinja2 Parsing Voldoet:**
+- #120 valideert: "Heeft agent de juiste template variabelen gegeven?"
+- Template rendering produceert altijd correcte Python structuur (als template getest is)
+- Voorbeeld: Agent geeft `fields=[...]` → template genereert `Field(..., description="...")`
+- Validatie verschuift naar **template testen** (pre-productie), niet runtime scaffolding
+- Python AST validatie (Field() structure) hoort bij **#121 editing**, niet scaffolding
 
 ### Issue #121: Content-Aware Editing van Gescaffold Files
 
@@ -272,16 +282,24 @@ Een centrale service die template-kennis beschikbaar maakt:
 **Output**: Schema, validation rules, examples, metadata
 
 **Capabilities:**
-1. **Schema Extraction**: Parse template → required/optional vars
-2. **Example Provision**: Return example_context from artifacts.yaml
+1. **Schema Extraction**: Parse template → required/optional vars (Jinja2 AST)
+2. **Example Provision**: Return example_context from artifacts.yaml (DEPRECATED - kan driften)
 3. **Validation**: Check context/edit against template requirements
 4. **Discovery**: List all templates, find files by template
 
+**Validation Split:**
+- **Scaffolding (#120)**: Valideer agent context tegen template schema (Jinja2)
+  - Check: Heeft agent `name`, `fields`, `description` gegeven?
+  - Template rendering = black box (getest = correct output gegarandeerd)
+- **Editing (#121)**: Valideer Python code structure (Python AST)
+  - Check: Gebruikt Field() syntax? Heeft description? model_config aanwezig?
+  - Parse edited file, niet template
+
 **Consumers:**
-- TemplateScaffolder (bij creatie validatie)
-- safe_edit_file (bij edit validatie - Issue #121)
-- get_artifact_schema tool (query interface)
-- Content-aware edit tool (structured mutations)
+- TemplateScaffolder (bij creatie validatie) → Jinja2 context check
+- safe_edit_file (bij edit validatie - Issue #121) → Python AST check
+- get_artifact_schema tool (query interface) → Jinja2 schema extraction
+- Content-aware edit tool (structured mutations) → Python AST validation
 
 ### Validation Points
 
