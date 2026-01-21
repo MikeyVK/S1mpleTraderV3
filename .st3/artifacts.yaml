@@ -30,14 +30,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - description
-    optional_fields:
-      - fields
-      - validation_rules
-      - docstring
-      - generate_test
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -57,13 +49,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - input_dto
-      - output_dto
-    optional_fields:
-      - dependencies
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -83,13 +68,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - interface
-    optional_fields:
-      - dependencies
-      - methods
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -109,12 +87,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - input_schema
-    optional_fields:
-      - dependencies
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -134,12 +106,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - uri_pattern
-    optional_fields:
-      - mime_type
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -159,11 +125,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-    optional_fields:
-      - models
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -183,11 +144,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-    optional_fields:
-      - methods
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -210,12 +166,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-    optional_fields:
-      - service_type
-      - dependencies
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -236,13 +186,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: false
     # NOTE: NO base_path (generic can be placed anywhere via output_path context field)
-    required_fields:
-      - name
-      - template_name
-      - output_path
-    optional_fields:
-      - context
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -262,20 +205,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: false
     base_path: "tests/"
-    required_fields:
-      - component_name
-      - purpose
-      - module_path
-      - responsibilities
-    optional_fields:
-      - dependencies
-      - exception_imports
-      - fixtures
-      - tdd_mode
-      - test_private_methods
-      - extra_third_party_imports
-      - extra_project_imports
-      - test_methods
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -294,17 +223,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: false
     base_path: "tests/"
-    required_fields:
-      - test_module
-      - purpose
-      - responsibilities
-    optional_fields:
-      - dependencies
-      - fixtures
-      - test_methods
-      - test_private_methods
-      - extra_third_party_imports
-      - extra_project_imports
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -323,13 +241,6 @@ artifact_types:
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - issue_number
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -350,13 +261,6 @@ artifact_types:
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - issue_number
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -377,13 +281,6 @@ artifact_types:
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - issue_number
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -404,12 +301,6 @@ artifact_types:
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, REVIEW, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -432,11 +323,6 @@ artifact_types:
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - title
-      - author
-    optional_fields:
-      - sections
     state_machine:
       states: [LIVING DOCUMENT]
       initial_state: LIVING DOCUMENT
@@ -453,12 +339,6 @@ artifact_types:
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -481,12 +361,6 @@ artifact_types:
     name_suffix: null
     file_extension: ".txt"
     generate_test: false
-    required_fields:
-      - type
-      - description
-    optional_fields:
-      - scope
-      - breaking_change
     state_machine:
       states: [CREATED]
       initial_state: CREATED
