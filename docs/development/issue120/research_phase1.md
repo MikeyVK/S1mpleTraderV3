@@ -233,69 +233,99 @@ VS Code chat shows structured error
 
 ### Component Design
 
-#### 1. Schema Storage in artifacts.yaml (Minimal Addition)
+#### 1. Schema Generation from Templates (SSOT Compliance)
 
-Add **two simple fields** to each artifact definition:
+**NO manual schema in artifacts.yaml** - Extract directly from templates:
 
-```yaml
-artifacts:
-  dto:
-    # ... existing fields ...
+```python
+# TemplateScaffolder gets TemplateAnalyzer helper
+def _extract_template_schema(self, artifact_type: str) -> dict[str, Any]:
+    """Extract required/optional variables from template.
     
-    # NEW: Simple schema description (plain text, not JSON Schema)
-    context_schema:
-      name: "string (required) - DTO class name in PascalCase"
-      fields: "array (required) - List of field definitions with name, type, description"
-      frozen: "boolean (optional, default=true) - Whether DTO is immutable"
+    Uses TemplateAnalyzer.extract_jinja_variables() to parse template AST.
+    Returns: {"required": [...], "optional": [...]}
+    """
+    artifact = self.registry.get_artifact(artifact_type)
+    template_path = self.template_root / artifact.template_path
     
-    # NEW: Working example
-    example_context:
-      name: TradeSignal
-      fields:
-        - name: symbol
-          type: str
-          description: Trading symbol
-      frozen: true
+    # Extract ALL undeclared variables from template
+    all_vars = self.analyzer.extract_jinja_variables(template_path)
+    
+    # Detect which are conditional (optional)
+    optional_vars = self._detect_conditional_variables(template_path)
+    
+    return {
+        "required": [v for v in all_vars if v not in optional_vars],
+        "optional": list(optional_vars)
+    }
+
+def _detect_conditional_variables(self, template_path: Path) -> set[str]:
+    """Detect variables used inside {% if %} blocks.
+    
+    Returns set of variable names that are conditional (optional).
+    """
+    source = template_path.read_text()
+    # Parse for {% if varname %} patterns
+    # Variables in conditionals are optional
+    # Implementation uses regex or Jinja2 AST walker
 ```
 
-**Why plain text schema vs JSON Schema?**
-- Simpler to write and maintain
-- Easier to read in error messages
-- Sufficient for hints (not doing validation)
+**Why This Works:**
+- Templates = SSOT (single source of truth)
+- Template changes → automatic schema updates
+- No duplication in artifacts.yaml
+- Zero drift/sync issues
 
-#### 2. Hint Formatting Helper (Simple Method)
+#### 2. Hint Formatting Helper (Generates Schema from Template)
 
-Add to `TemplateScaffolder` (NOT ArtifactManager - keep it where errors happen):
+Add to `TemplateScaffolder`:
 
 ```python
 def _format_context_help(
     self,
     artifact_type: str,
-    missing_fields: list[str] | None = None
+    missing_fields: list[str] | None = None,
+    provided_fields: list[str] | None = None
 ) -> list[str]:
-    """Format hints with schema and example.
+    """Format hints with template-derived schema.
     
-    Returns list of hint strings (MCPError already supports this).
+    Generates schema dynamically from template analysis (SSOT).
+    Shows example from artifacts.yaml if available.
     """
-    artifact = self.registry.get_artifact(artifact_type)
+    # Extract schema from template (SSOT)
+    schema = self._extract_template_schema(artifact_type)
     
     hints = []
     
-    # Show schema
-    if hasattr(artifact, 'context_schema') and artifact.context_schema:
-        hints.append("Expected Schema:")
-        for field, desc in artifact.context_schema.items():
-            marker = " * " if field in (missing_fields or []) else "   "
-            hints.append(f"{marker}{field}: {desc}")
-        hints.append("")
+    # Show required variables from template
+    hints.append("Template expects these variables:")
+    hints.append("")
+    hints.append("Required:")
+    for var in schema["required"]:
+        marker = " ✗ " if var in (missing_fields or []) else " ✓ "
+        provided_marker = marker if var in (provided_fields or []) else " ✗ "
+        hints.append(f"  {provided_marker}{var}")
     
-    # Show example
+    if schema["optional"]:
+        hints.append("")
+        hints.append("Optional:")
+        for var in schema["optional"]:
+            hints.append(f"    {var}")
+    
+    # Show example if available in artifacts.yaml
+    artifact = self.registry.get_artifact(artifact_type)
     if hasattr(artifact, 'example_context') and artifact.example_context:
+        hints.append("")
         hints.append("Example Context:")
         hints.append(json.dumps(artifact.example_context, indent=2))
     
     return hints
 ```
+
+**Key Points:**
+- Schema extracted from template AST (not manual config)
+- Example in artifacts.yaml is OK (shows usage, doesn't define schema)
+- Required vs Optional determined by template structure
 
 #### 3. Enhanced Error Sites (2 Locations)
 
@@ -333,71 +363,90 @@ except jinja2.UndefinedError as e:
     ) from e
 ```
 
-### Implementation Plan (SIMPLIFIED)
+### Implementation Plan (REVISED FOR SSOT)
 
-**Task 1: Add schema + example to 5 artifact types** (2-3 hours)
-- dto, worker, adapter (code artifacts)
-- design, architecture (doc artifacts)  
-- Add as plain text in artifacts.yaml
+**Task 1: Implement template introspection methods** (2-3 hours)
+- Add `_extract_template_schema()` to TemplateScaffolder
+- Add `_detect_conditional_variables()` helper
+- Inject TemplateAnalyzer dependency into TemplateScaffolder
+- Add tests verifying correct required/optional detection
 
-**Task 2: Implement _format_context_help()** (1-2 hours)
-- Add method to TemplateScaffolder
-- Format schema and example as hint list
+**Task 2: Update _format_context_help() to use introspection** (1 hour)
+- Generate schema from template analysis
+- Show required vs optional variables
+- Add example from artifacts.yaml if present
 - Add tests
 
-**Task 3: Enhance missing field errors** (1 hour)
+**Task 3: Add example_context to artifacts.yaml** (1 hour)
+- Add example_context (NOT schema) to 3-5 artifact types
+- Examples show **usage**, templates define **schema**
+- Examples help agents understand structure
+
+**Task 4: Enhance missing field errors** (1 hour)
 - Update TemplateScaffolder.validate()
-- Add formatted hints
+- Add template-derived hints
 - Add tests
 
-**Task 4: Wrap Jinja2 errors** (1-2 hours)
+**Task 5: Wrap Jinja2 errors** (1-2 hours)
 - Catch UndefinedError in _load_and_render_template()
-- Extract field name, format hints
+- Extract field name, show template schema in hints
 - Add tests
 
-**Total Estimate:** 5-8 hours (NOT 12-18!)
+**Total Estimate:** 6-8 hours (adjusted for template introspection complexity)
 
 ### Testing Strategy
 
 **Unit Tests (per task):**
-- Test _format_context_help() with various artifact types
-- Test missing field error formatting
+- Test _extract_template_schema() with various templates (dto, worker, documents)
+- Test _detect_conditional_variables() identifies optional fields correctly
+- Test _format_context_help() generates readable hints from template analysis
 - Test Jinja2 error wrapping and field extraction
 - Verify hints are properly structured as list[str]
 
 **Integration Tests:**
-- Test scaffold_artifact with missing fields → get schema + example in hints
-- Test scaffold_artifact with undefined template var → get helpful error  
+- Test scaffold_artifact with missing fields → get template-derived schema in hints
+- Test scaffold_artifact with undefined template var → get helpful error
+- Test template changes automatically update schema in errors
 - Verify ToolResult.error() preserves hints correctly
 
 **Manual Testing:**
-- Trigger missing field error, verify schema shows
-- Trigger undefined template var, verify field identified
+- Trigger missing field error, verify schema extracted from template
+- Trigger undefined template var, verify field identified correctly
+- Modify template, verify error message reflects changes
 - Check error readability in VS Code chat
 
 
 
 ## Design Decisions
 
-### Decision 1: Plain Text Schema vs JSON Schema
+### Decision 1: Schema Source - Template Introspection vs Manual Config
 
 **Options:**
-1. Full JSON Schema specification
-2. Plain text descriptions (field: "type (required/optional) - description")
-3. Custom schema format
+1. Manual schema in artifacts.yaml (violates DRY/SSOT)
+2. Generate schema from template analysis (templates as SSOT)
+3. Hybrid: Manual descriptions + template variable extraction
 
-**Decision:** Option 2 - Plain text descriptions
+**Decision:** Option 2 - Template introspection as SSOT
 
-**Rationale:**
-- Not doing validation, just showing hints
-- Plain text is easier to read in error messages
-- Simpler to write and maintain in artifacts.yaml
-- Can always add JSON Schema later if needed
+**Rationale (Critical SRP/DRY/SSOT Compliance):**
+- **Templates are already the SSOT** for what variables are needed
+- `TemplateAnalyzer.extract_jinja_variables()` already extracts all template variables via Jinja2 AST
+- Adding schema to artifacts.yaml would **duplicate** what templates define
+- Violates DRY principle - schema would drift from template reality
+- Template changes → automatic schema updates (no sync issues)
+
+**Architecture:**
+```python
+# Template IS the schema:
+{{ name }}  # → Required variable
+{% if fields %}...{% endif %}  # → Optional variable (conditional)
+```
 
 **Trade-offs:**
-- No machine validation of schema structure
-- Manual formatting required
-- Sufficient for current use case (error hints)
+- Cannot provide human-readable descriptions in hints (acceptable - field names should be descriptive)
+- Cannot show type information unless parsed from template (acceptable - examples show types)
+- Requires template parsing on error (minimal overhead - already cached)
+- **BENEFIT:** Zero duplication, templates remain SSOT
 
 ### Decision 2: Where to Add Helper Method
 
@@ -437,62 +486,62 @@ except jinja2.UndefinedError as e:
 - Some Jinja2 errors still leak through (acceptable - they're rare)
 - Requires checking exception type (simple)
 
-### Decision 4: Schema Completeness
+### Decision 4: Example Storage Location
 
 **Options:**
-1. Minimal: Just required field names
-2. Medium: Required + optional with types and descriptions
-3. Detailed: Add validation rules, patterns, constraints
+1. No examples at all (rely on template schema only)
+2. Examples in artifacts.yaml (usage guidance only)
+3. Examples in separate file
 
-**Decision:** Option 2 - Medium detail
+**Decision:** Option 2 - Examples in artifacts.yaml (acceptable duplication)
 
 **Rationale:**
-- Enough info to construct correct context
-- Not duplicating template validation logic
-- Easy to maintain manually
+- Examples show **usage**, templates define **schema** (different responsibilities)
+- Examples are documentation, not schema definition
+- Helps agents construct correct context structure
+- Single file lookup (no extra file reads)
+- Can validate examples in tests (scaffold with example_context)
 
 **Trade-offs:**
-- Won't catch all validation errors (that's fine - template catches those)
-- Manual updates when template changes (acceptable - infrequent)
+- Small duplication (acceptable - examples demonstrate, don't define)
+- Manual maintenance (acceptable - examples rarely change)
+- **CRITICAL:** Schema NEVER in artifacts.yaml - only examples
 
 
 ## Open Questions
 
-### Question 1: Should example_context be validated against templates?
+### Question 1: How to detect optional vs required template variables?
 
 **Context:**
-- example_context in artifacts.yaml might get out of sync with templates
-- No automated check if examples actually work
+- `{{ name }}` is clearly required (direct usage)
+- `{% if fields %}{{ fields }}{% endif %}` is optional (conditional)
+- Need algorithm to distinguish these cases
 
 **Options:**
-1. No validation (trust manual maintenance)
-2. Add test that scaffolds with example_context
-3. Generate examples from template analysis
+1. Simple heuristic: variables in `{% if var %}` blocks are optional
+2. Full AST analysis: trace variable usage in conditional contexts
+3. Manual annotation in TEMPLATE_METADATA
 
-**Recommendation:** Option 2 - Add test per artifact type
-- Simple pytest that calls scaffold_artifact(type, **example_context)
-- Catches schema/template mismatches during test runs
-- Minimal maintenance overhead
+**Recommendation:** Option 2 - AST analysis with fallback
+- Jinja2 AST provides `If`, `Test`, and `Name` nodes
+- Can detect if variable only used inside conditionals
+- Fallback: assume required if unsure (safe - agent provides field, gets better error)
 
-**Decision Point:** After implementing 2-3 artifacts, assess if test needed
+**Decision Point:** During implementation - test with dto/worker templates
 
-### Question 2: How to handle nested context structures?
+### Question 2: Should TemplateAnalyzer cache introspection results?
 
 **Context:**
-- dto.fields is array of objects
-- Plain text schema might be unclear for nesting
+- Template parsing happens on every error
+- Templates rarely change during session
+- TemplateAnalyzer already has `_metadata_cache`
 
-**Options:**
-1. Flatten description (current approach)
-2. Use indentation to show nesting
-3. Show example first, schema second
+**Recommendation:** Yes - extend existing cache
+- Add `_schema_cache: dict[Path, dict]` to TemplateAnalyzer
+- Cache result of `extract_jinja_variables()` + conditional analysis
+- Minimal code change, significant performance gain
 
-**Recommendation:** Option 3 - Example-first
-- Example is clearer than schema for nested structures
-- Schema provides type/requirement info
-- Most agents learn better from examples
-
-**Decision Point:** After first manual test, evaluate clarity
+**Decision Point:** Implement caching during Task 1
 
 
 ## Next Steps
@@ -521,38 +570,43 @@ except jinja2.UndefinedError as e:
    - Document Jinja2 UndefinedError wrapping pattern
    - Show before/after error message examples
 
-### TDD Phase Approach (Realistic)
+**TDD Phase Approach (Realistic):**
 
 **RED Phase:** (1-2 hours)
-- Write test: scaffold_artifact(dto, name="Test") → expect "missing fields" with schema hints
+- Write test: _extract_template_schema(dto) → expect {"required": ["name", "description"], "optional": ["fields"]}
+- Write test: scaffold_artifact(dto, name="Test") → expect "missing fields" with template-derived hints
 - Write test: scaffold with undefined var → expect wrapped error with field name
-- Write test: _format_context_help() returns proper hint structure
+- Write test: _format_context_help() returns proper hint structure with template variables
 
 **GREEN Phase:** (3-4 hours)
-- Implement _format_context_help() method
-- Add context_schema + example_context to 3 artifacts (dto, worker, design)
+- Implement _extract_template_schema() using TemplateAnalyzer
+- Implement _detect_conditional_variables() via AST analysis
+- Update _format_context_help() to use template introspection
+- Add example_context to 3 artifacts (dto, worker, design)
 - Wrap ValidationError in TemplateScaffolder.validate()
 - Wrap UndefinedError in _load_and_render_template()
 
 **REFACTOR Phase:** (1-2 hours)
-- Extract schema formatting logic if duplicated
+- Add caching to TemplateAnalyzer for schema results
 - Improve hint readability
 - Add docstrings and type hints
 - Run quality gates
 
-### Success Criteria (Achievable)
+### Success Criteria (Updated)
 
 **Phase 1 Complete When:**
-- [ ] 3-5 artifact types have context_schema and example_context
-- [ ] Missing field errors show schema + example in hints
-- [ ] Jinja2 UndefinedError wrapped with helpful context
-- [ ] Tests verify hint structure and content
-- [ ] Manual test confirms readability in VS Code chat
+- [ ] TemplateScaffolder extracts schema from template AST (templates = SSOT)
+- [ ] 3-5 artifact types have example_context (NOT schema) in artifacts.yaml
+- [ ] Missing field errors show template-derived required/optional variables
+- [ ] Jinja2 UndefinedError wrapped with template schema context
+- [ ] Tests verify schema extraction correctness
+- [ ] Manual test confirms: template change → error message updates automatically
 
 **Quality Gates:**
-- All tests passing (including new error scenario tests)
+- All tests passing (including template introspection tests)
+- No duplication: schema only in templates, examples only in artifacts.yaml
 - No regressions in existing error handling
-- Documentation updated with error message examples
+- Documentation updated with SSOT principle explanation
 
 
 
@@ -575,3 +629,4 @@ except jinja2.UndefinedError as e:
 |---------|------|--------|---------|
 | 0.1 | 2026-01-21 | AI | Initial research: problem analysis, solution design, implementation plan |
 | 0.2 | 2026-01-21 | AI | **MAJOR REVISION**: Corrected scope after deep codebase analysis - removed duplicate infrastructure, focused on hint quality improvements only (5-8h vs 12-18h) |
+| 0.3 | 2026-01-21 | AI | **ARCHITECTURAL CORRECTION**: Removed schema duplication in artifacts.yaml after SRP/DRY/SSOT feedback. Templates are now SSOT for schema, using TemplateAnalyzer introspection. Examples remain in artifacts.yaml (usage guidance only). Estimate: 6-8h |
