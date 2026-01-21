@@ -56,51 +56,99 @@ Research and design self-documenting error messages for scaffold_artifact tool. 
 
 ## Overview
 
-Phase 1 focuses on transforming cryptic Python exceptions into self-documenting, actionable error messages. When scaffold_artifact fails, agents should receive:
+Phase 1 focuses on **enhancing existing error messages** with better context, not building new infrastructure. The codebase already has:
 
-1. **What went wrong** - Clear problem description in domain language
-2. **What was expected** - Complete context schema with types and descriptions
-3. **What was provided** - Diff showing expected vs actual context
-4. **How to fix it** - Step-by-step solutions with examples
-5. **Why it matters** - Context about the artifact type and its requirements
+✅ **Centralized error handling**: `@tool_error_handler` decorator catches all exceptions  
+✅ **Structured error responses**: `ToolResult.error()` with `error_code`, `hints`, `file_path`  
+✅ **MCPError hierarchy**: All domain exceptions support hints out of the box  
+✅ **No server crashes**: Errors return as tool responses to VS Code chat  
 
-This research identifies current pain points, proposes enhancement strategies, and defines an implementation plan for 6 tasks estimated at 12-18 hours of work.
+**What's Missing (Issue #120 Goal):**
+- Context schema information when scaffolding fails
+- Example contexts showing correct structure
+- Better hints for missing required fields
+- Clearer guidance when workspace_root not configured
+
+**Key Insight**: This is about improving **hint quality and context**, NOT adding new error infrastructure. The plumbing exists, we just need better content in the hints.
 
 ## Problem Analysis
 
 ### Current Error Messages
 
-**Example 1: Missing workspace_root**
+**What Already Works:**
+
+1. **workspace_root errors** - Already have good hints:
 ```python
-TypeError: unsupported operand type(s) for /: 'NoneType' and 'str'
+ConfigError: workspace_root not configured - cannot resolve artifact paths automatically
+
+Hints:
+  Option 1: Initialize ArtifactManager with workspace_root parameter: ArtifactManager(workspace_root='/path/to/workspace')
+  Option 2: Provide explicit output_path in scaffold_artifact() call  
+  Option 3: For MCP tools, workspace_root should be passed from server initialization
+```
+✅ Clear problem, ✅ Multiple solutions, ✅ Context-aware
+
+2. **Unknown artifact type** - Already has good hints:
+```python
+ConfigError: Artifact type 'dto_invalid' not found in registry.
+Available types: dto, worker, adapter, design, architecture, tracking, generic.
+Fix: Check spelling or add new type to .st3/artifacts.yaml.
+
+Hints:
+  Check spelling: 'dto_invalid' not found
+  Available types: dto, worker, adapter, design, architecture, tracking, generic
+  Add new type to .st3/artifacts.yaml if needed
+```
+✅ Shows available options, ✅ Actionable fixes
+
+**What Needs Improvement:**
+
+3. **Missing required fields** - Minimal context:
+```python
+ValidationError: Missing required fields for dto: ['fields']
+```
+❌ No schema shown, ❌ No example, ❌ No type info
+
+**Should be:**
+```python
+ValidationError: Missing required fields for dto: ['fields']
+
+Expected Schema:
+  name: string (required) - DTO class name in PascalCase
+  fields: array (required) - List of field definitions
+    - name: string - Field name
+    - type: string - Python type hint
+    - description: string - Field purpose
+  frozen: boolean (optional, default=true) - Immutable DTO
+
+Example Context:
+  {
+    "name": "TradeSignal",
+    "fields": [
+      {"name": "symbol", "type": "str", "description": "Trading symbol"},
+      {"name": "price", "type": "Decimal", "description": "Current price"}
+    ],
+    "frozen": true
+  }
 ```
 
-**Problems:**
-- Generic Python exception, no domain context
-- Stack trace points to internal code, not user error
-- No hint about what's wrong or how to fix it
-- Agent has to debug through stack trace
-
-**Example 2: Missing context field**
+4. **Template rendering errors** - Python traceback leaks through:
 ```python
 jinja2.exceptions.UndefinedError: 'name' is undefined
 ```
+❌ Implementation detail exposed, ❌ No guidance
 
-**Problems:**
-- Error happens during template rendering (late failure)
-- No info about required schema
-- No example of correct context
-- Trial-and-error required
-
-**Example 3: Invalid artifact type**
+**Should be:**
 ```python
-ConfigError: Unknown artifact type: 'dto_invalid'
-```
+ValidationError: Template rendering failed - required context field missing
 
-**Better than above, but still lacks:**
-- List of valid artifact types
-- Did you mean? suggestions (fuzzy matching)
-- Link to registry or documentation
+Template expects field: 'name'
+Artifact type: dto
+Required fields: name, fields
+Provided fields: fields
+
+See schema above for complete requirements.
+```
 
 ### What Good Error Messages Look Like
 
@@ -136,163 +184,122 @@ age
 
 ### Requirements for Phase 1
 
-**Must Have:**
-1. **Schema-rich errors** - Show complete expected schema when context validation fails
-2. **Example contexts** - Provide working examples for each artifact type
-3. **Clear solutions** - Step-by-step fix instructions
-4. **Workspace_root errors** - Special handling for common configuration issue
-5. **Type information** - Show expected types for each field
-6. **Required vs Optional** - Distinguish mandatory vs optional fields
+**Must Have (Core Improvements):**
+1. **Schema in hints** - Add context schema to missing field errors
+2. **Example contexts** - Provide working example for each artifact type
+3. **Template error wrapping** - Catch Jinja2 errors, show which field is undefined
 
-**Nice to Have:**
-7. **Diff highlighting** - Visual comparison of expected vs provided
-8. **Fuzzy matching** - "Did you mean?" for typos
-9. **Links to docs** - Direct links to relevant documentation
-10. **Error codes** - Structured error codes for programmatic handling
+**Should Have (Quality Improvements):**
+4. **Better validation errors** - Show which fields were provided vs expected
+5. **Type information** - Show expected types for each field in schema
+
+**Nice to Have (Future):**
+6. **Diff highlighting** - Visual comparison when context provided but incomplete
+7. **Fuzzy matching** - "Did you mean?" for artifact type typos (may already work via hints)
+
+**Out of Scope (Already Works or Not Needed):**
+- ❌ New error infrastructure (already excellent with @tool_error_handler)
+- ❌ workspace_root errors (already have comprehensive hints)
+- ❌ Unknown artifact type (already lists all available types)
+- ❌ Early validation (Jinja2 rendering is fine, just need better wrapping)
 
 
 
 ## Proposed Solution
 
+### What We're Actually Doing
+
+**NOT building new error infrastructure** - Just enhancing existing hints in 2 places:
+
+1. **TemplateScaffolder.validate()** - When required fields missing
+2. **TemplateScaffolder._load_and_render_template()** - When Jinja2 rendering fails
+
 ### Architecture Overview
 
-**Error Enhancement Strategy:**
+**Current Flow (Already Good):**
 ```
-Original Exception (e.g., TypeError, UndefinedError)
+TemplateScaffolder raises ValidationError
          ↓
-  Error Detection Layer (ArtifactManager/TemplateScaffolder)
+@tool_error_handler catches it  
          ↓
-  Error Formatting Layer (_format_schema_for_error)
+ToolResult.error(message, hints=...)
          ↓
-  Enhanced Exception (ValidationError/ConfigError with rich context)
-         ↓
-  User sees actionable error message
+VS Code chat shows structured error
 ```
+
+**What Changes:**
+- ValidationError gets **better hints** (schema + example)
+- Jinja2 errors get **wrapped** instead of leaking through
 
 ### Component Design
 
-#### 1. Schema Enhancement in artifacts.yaml
+#### 1. Schema Storage in artifacts.yaml (Minimal Addition)
 
-**Add to ArtifactDefinition:**
+Add **two simple fields** to each artifact definition:
+
 ```yaml
 artifacts:
   dto:
-    type_id: dto
-    type: code
     # ... existing fields ...
     
-    # NEW: Context schema (JSON Schema subset)
+    # NEW: Simple schema description (plain text, not JSON Schema)
     context_schema:
-      type: object
-      required:
-        - name
-        - fields
-      properties:
-        name:
-          type: string
-          description: DTO class name (PascalCase)
-          example: TradeSignal
-        fields:
-          type: array
-          description: List of DTO fields with name, type, and description
-          example:
-            - name: symbol
-              type: str
-              description: Trading symbol
-        frozen:
-          type: boolean
-          description: Whether DTO should be immutable
-          default: true
+      name: "string (required) - DTO class name in PascalCase"
+      fields: "array (required) - List of field definitions with name, type, description"
+      frozen: "boolean (optional, default=true) - Whether DTO is immutable"
     
-    # NEW: Example context (complete working example)
+    # NEW: Working example
     example_context:
       name: TradeSignal
       fields:
         - name: symbol
           type: str
-          description: Trading symbol (e.g., AAPL)
-        - name: price
-          type: Decimal
-          description: Current price
+          description: Trading symbol
       frozen: true
 ```
 
-**Design Decisions:**
-- Use JSON Schema subset (simpler than full JSON Schema)
-- Include inline examples in schema
-- Provide complete working example_context
-- Keep schema simple (avoid advanced validation rules)
+**Why plain text schema vs JSON Schema?**
+- Simpler to write and maintain
+- Easier to read in error messages
+- Sufficient for hints (not doing validation)
 
-#### 2. Error Formatting Helper
+#### 2. Hint Formatting Helper (Simple Method)
 
-**New method in ArtifactManager:**
+Add to `TemplateScaffolder` (NOT ArtifactManager - keep it where errors happen):
+
 ```python
-def _format_schema_for_error(
+def _format_context_help(
     self,
     artifact_type: str,
-    missing_fields: list[str] | None = None,
-    provided_context: dict[str, Any] | None = None
-) -> str:
-    """Format schema information for error messages.
+    missing_fields: list[str] | None = None
+) -> list[str]:
+    """Format hints with schema and example.
     
-    Args:
-        artifact_type: Artifact type_id
-        missing_fields: List of missing required fields (optional)
-        provided_context: Context that was provided (optional)
-    
-    Returns:
-        Formatted error message with schema, examples, and suggestions
+    Returns list of hint strings (MCPError already supports this).
     """
     artifact = self.registry.get_artifact(artifact_type)
     
-    # Build error message parts
-    parts = [
-        f"Scaffolding error for artifact type: {artifact_type}",
-        "",
-        "Expected Context Schema:",
-        self._format_schema(artifact.context_schema),
-        "",
-    ]
+    hints = []
     
-    # Show missing fields if provided
-    if missing_fields:
-        parts.extend([
-            "Missing Required Fields:",
-            *[f"  - {field}" for field in missing_fields],
-            "",
-        ])
+    # Show schema
+    if hasattr(artifact, 'context_schema') and artifact.context_schema:
+        hints.append("Expected Schema:")
+        for field, desc in artifact.context_schema.items():
+            marker = " * " if field in (missing_fields or []) else "   "
+            hints.append(f"{marker}{field}: {desc}")
+        hints.append("")
     
     # Show example
-    parts.extend([
-        "Example Context:",
-        self._format_example(artifact.example_context),
-        "",
-    ])
+    if hasattr(artifact, 'example_context') and artifact.example_context:
+        hints.append("Example Context:")
+        hints.append(json.dumps(artifact.example_context, indent=2))
     
-    # Show diff if context was provided
-    if provided_context:
-        parts.extend([
-            "Provided Context:",
-            self._format_example(provided_context),
-            "",
-            "Comparison:",
-            self._format_diff(artifact.example_context, provided_context),
-        ])
-    
-    return "\n".join(parts)
+    return hints
 ```
 
-#### 3. Exception Wrapping Points
+#### 3. Enhanced Error Sites (2 Locations)
 
-**Locations to enhance error messages:**
-
-1. **TemplateScaffolder.validate()** - Missing required fields
-2. **TemplateScaffolder._load_and_render_template()** - Template rendering errors
-3. **ArtifactManager.scaffold_artifact()** - Generic artifacts without output_path
-4. **ArtifactManager.__init__()** - Missing workspace_root
-5. **ArtifactRegistryConfig.get_artifact()** - Unknown artifact type
-
-**Example Enhancement:**
+**Location 1: TemplateScaffolder.validate()** - Missing fields
 ```python
 # BEFORE:
 if missing:
@@ -302,338 +309,250 @@ if missing:
 
 # AFTER:
 if missing:
-    schema_info = self._format_schema_for_error(
-        artifact_type,
-        missing_fields=missing,
-        provided_context=kwargs
-    )
+    hints = self._format_context_help(artifact_type, missing_fields=missing)
     raise ValidationError(
-        f"Missing required fields for {artifact_type}\n\n{schema_info}"
+        f"Missing required fields for {artifact_type}: {', '.join(missing)}",
+        hints=hints
     )
 ```
 
-#### 4. Workspace Root Error Enhancement
-
-**Special case for common configuration error:**
+**Location 2: TemplateScaffolder._load_and_render_template()** - Jinja2 errors
 ```python
-# In ArtifactManager.get_artifact_path()
-if self.workspace_root is None:
-    raise ConfigError(
-        "workspace_root not configured in ArtifactManager",
-        hints=[
-            "ArtifactManager requires workspace_root to resolve artifact paths",
-            "",
-            "Solution 1: Pass workspace_root when initializing:",
-            "  manager = ArtifactManager(workspace_root=Path('/project/root'))",
-            "",
-            "Solution 2: Use FilesystemAdapter with root_path:",
-            "  fs = FilesystemAdapter(root_path='/project/root')",
-            "  manager = ArtifactManager(fs_adapter=fs)",
-            "",
-            "Current configuration:",
-            f"  workspace_root: {self.workspace_root}",
-            f"  fs_adapter.root_path: {getattr(self.fs_adapter, 'root_path', 'N/A')}",
-        ]
-    )
+# NEW: Wrap around existing Jinja2 rendering
+try:
+    rendered = env.get_template(template_name).render(**render_context)
+except jinja2.UndefinedError as e:
+    # Extract field name from error message
+    field_match = re.search(r"'(\w+)' is undefined", str(e))
+    field_name = field_match.group(1) if field_match else "unknown"
+    
+    hints = self._format_context_help(artifact_type, missing_fields=[field_name])
+    raise ValidationError(
+        f"Template rendering failed - required field '{field_name}' not provided",
+        hints=hints
+    ) from e
 ```
 
-### Implementation Plan
+### Implementation Plan (SIMPLIFIED)
 
-**Task Breakdown:**
+**Task 1: Add schema + example to 5 artifact types** (2-3 hours)
+- dto, worker, adapter (code artifacts)
+- design, architecture (doc artifacts)  
+- Add as plain text in artifacts.yaml
 
-**Task 1.1: Enhance artifacts.yaml with schemas** (2-3 hours)
-- Add context_schema to 3-5 common artifact types (dto, worker, design)
-- Add example_context to same types
-- Validate YAML syntax
-- Document schema format in artifacts.yaml comments
+**Task 2: Implement _format_context_help()** (1-2 hours)
+- Add method to TemplateScaffolder
+- Format schema and example as hint list
+- Add tests
 
-**Task 1.2: Implement _format_schema_for_error helper** (3-4 hours)
-- Create formatting methods in ArtifactManager
-- Handle required vs optional fields
-- Format nested structures (arrays, objects)
-- Add tests for formatting output
+**Task 3: Enhance missing field errors** (1 hour)
+- Update TemplateScaffolder.validate()
+- Add formatted hints
+- Add tests
 
-**Task 1.3: Enhance TemplateScaffolder errors** (2-3 hours)
-- Wrap missing field errors with schema info
-- Wrap template rendering errors with context
-- Add tests for error scenarios
+**Task 4: Wrap Jinja2 errors** (1-2 hours)
+- Catch UndefinedError in _load_and_render_template()
+- Extract field name, format hints
+- Add tests
 
-**Task 1.4: Enhance ArtifactManager errors** (2-3 hours)
-- Wrap workspace_root errors with solutions
-- Wrap generic artifact errors with requirements
-- Add tests for configuration errors
-
-**Task 1.5: Enhance ConfigError in registry** (1-2 hours)
-- Add fuzzy matching for unknown artifact types
-- List available types in error message
-- Add tests for typo detection
-
-**Task 1.6: Add diff highlighting** (2-3 hours)
-- Implement context comparison
-- Highlight missing/extra/mismatched fields
-- Format diff for readability
-- Add tests for diff scenarios
-
-**Total Estimate:** 12-18 hours (1.5-2.5 days)
+**Total Estimate:** 5-8 hours (NOT 12-18!)
 
 ### Testing Strategy
 
 **Unit Tests (per task):**
-- Test error formatting with various schemas
-- Test missing field detection
-- Test workspace_root error messages
-- Test fuzzy matching for typos
-- Test diff highlighting
+- Test _format_context_help() with various artifact types
+- Test missing field error formatting
+- Test Jinja2 error wrapping and field extraction
+- Verify hints are properly structured as list[str]
 
 **Integration Tests:**
-- Test end-to-end scaffold with invalid context
-- Test error messages in real scenarios
-- Verify error messages are actionable
+- Test scaffold_artifact with missing fields → get schema + example in hints
+- Test scaffold_artifact with undefined template var → get helpful error  
+- Verify ToolResult.error() preserves hints correctly
 
 **Manual Testing:**
-- Trigger each error scenario manually
-- Verify error messages are clear
-- Check that suggestions work
-- Validate examples are correct
+- Trigger missing field error, verify schema shows
+- Trigger undefined template var, verify field identified
+- Check error readability in VS Code chat
 
 
 
 ## Design Decisions
 
-### Decision 1: JSON Schema Subset vs Full JSON Schema
+### Decision 1: Plain Text Schema vs JSON Schema
 
 **Options:**
 1. Full JSON Schema specification
-2. Simplified subset (type, required, properties, description, example)
+2. Plain text descriptions (field: "type (required/optional) - description")
 3. Custom schema format
 
-**Decision:** Option 2 - Simplified subset
+**Decision:** Option 2 - Plain text descriptions
 
 **Rationale:**
-- Full JSON Schema is overkill for our use case
-- We only need basic validation info for error messages
-- Simpler format is easier to maintain in artifacts.yaml
-- Can extend later if needed
+- Not doing validation, just showing hints
+- Plain text is easier to read in error messages
+- Simpler to write and maintain in artifacts.yaml
+- Can always add JSON Schema later if needed
 
 **Trade-offs:**
-- Less expressive than full JSON Schema
-- No validation of schemas themselves (YAGNI for now)
-- Manual schema maintenance (acceptable for ~20 artifact types)
+- No machine validation of schema structure
+- Manual formatting required
+- Sufficient for current use case (error hints)
 
-### Decision 2: Schema Location
+### Decision 2: Where to Add Helper Method
 
 **Options:**
-1. Inline in artifacts.yaml (context_schema field)
-2. Separate schema files (.st3/schemas/*.json)
-3. Python dataclasses with type hints
+1. ArtifactManager (where I originally thought)
+2. TemplateScaffolder (where errors actually happen)
+3. Separate formatter utility
 
-**Decision:** Option 1 - Inline in artifacts.yaml
+**Decision:** Option 2 - TemplateScaffolder
 
 **Rationale:**
-- Keeps schema close to artifact definition
-- Single source of truth in artifacts.yaml
-- Easy to view schema when editing artifact config
-- No need for schema file synchronization
+- Errors happen in TemplateScaffolder.validate() and .render()
+- Keep error formatting close to error raising
+- No need to pass context between managers
+- Simpler dependency chain
 
 **Trade-offs:**
-- artifacts.yaml becomes larger (acceptable - still readable)
-- No schema validation tooling (can add later)
-- Harder to share schemas between artifact types (rare need)
+- TemplateScaffolder gets slightly larger
+- Could be reused elsewhere later (acceptable - YAGNI for now)
 
-### Decision 3: Error Enhancement Strategy
+### Decision 3: Jinja2 Error Handling
 
 **Options:**
-1. Catch and wrap all exceptions with enhanced errors
-2. Enhance only domain exceptions (ValidationError, ConfigError)
-3. Let Python exceptions bubble up unchanged
+1. Catch and wrap all Jinja2 errors
+2. Only wrap UndefinedError (undefined variables)
+3. Let Jinja2 errors bubble up unchanged
 
-**Decision:** Option 2 - Enhance domain exceptions only
+**Decision:** Option 2 - Only UndefinedError
 
 **Rationale:**
-- Domain exceptions are under our control
-- Python exceptions (TypeError, etc.) indicate bugs, not user errors
-- Wrapping Python exceptions can hide bugs
-- Focus on errors agents can fix
+- UndefinedError is most common agent mistake
+- Other Jinja2 errors (syntax) indicate template bugs, not user errors
+- Template bugs should be visible in stack trace
+- Focus on agent-fixable errors
 
 **Trade-offs:**
-- Some cryptic errors remain (e.g., Jinja2 syntax errors)
-- Requires careful exception handling in code
-- Bug vs user error boundary is sometimes unclear
+- Some Jinja2 errors still leak through (acceptable - they're rare)
+- Requires checking exception type (simple)
 
-### Decision 4: Example Context Format
+### Decision 4: Schema Completeness
 
 **Options:**
-1. Inline in artifacts.yaml (example_context field)
-2. Separate example files (.st3/examples/*.yaml)
-3. Generated from schema defaults
+1. Minimal: Just required field names
+2. Medium: Required + optional with types and descriptions
+3. Detailed: Add validation rules, patterns, constraints
 
-**Decision:** Option 1 - Inline in artifacts.yaml
-
-**Rationale:**
-- Examples are small (20-50 lines)
-- Keeps examples visible when editing artifact config
-- Easy to update when schema changes
-- Single file to maintain
-
-**Trade-offs:**
-- artifacts.yaml becomes larger
-- Examples can't be executed/tested directly (acceptable)
-- Duplication if multiple artifacts share structure (rare)
-
-### Decision 5: Diff Highlighting Implementation
-
-**Options:**
-1. Terminal color codes (ANSI escape sequences)
-2. Plain text with markers (+ / - / ~)
-3. No diff, just show expected vs provided separately
-
-**Decision:** Option 2 - Plain text with markers
+**Decision:** Option 2 - Medium detail
 
 **Rationale:**
-- Works in all environments (VS Code, terminal, logs)
-- No dependency on terminal capabilities
-- Simple to implement and test
-- Still clearly shows differences
+- Enough info to construct correct context
+- Not duplicating template validation logic
+- Easy to maintain manually
 
 **Trade-offs:**
-- Less visually appealing than colors
-- Requires parsing both contexts to compare
-- Manual alignment of output formatting
+- Won't catch all validation errors (that's fine - template catches those)
+- Manual updates when template changes (acceptable - infrequent)
 
 
 ## Open Questions
 
-### Question 1: How detailed should context_schema be?
+### Question 1: Should example_context be validated against templates?
 
 **Context:**
-- Simple schemas just list required fields
-- Detailed schemas include types, validation rules, examples
-- Very detailed schemas duplicate template logic
+- example_context in artifacts.yaml might get out of sync with templates
+- No automated check if examples actually work
 
 **Options:**
-1. Minimal: Just required field names
-2. Medium: Field names + types + descriptions
-3. Detailed: Add validation rules, patterns, constraints
+1. No validation (trust manual maintenance)
+2. Add test that scaffolds with example_context
+3. Generate examples from template analysis
 
-**Recommendation:** Start with Medium (Option 2)
-- Provides enough info for good error messages
-- Doesn't duplicate template validation logic
-- Can extend to detailed later if needed
+**Recommendation:** Option 2 - Add test per artifact type
+- Simple pytest that calls scaffold_artifact(type, **example_context)
+- Catches schema/template mismatches during test runs
+- Minimal maintenance overhead
 
-**Decision Point:** After implementing 2-3 artifact schemas, evaluate if more detail needed
+**Decision Point:** After implementing 2-3 artifacts, assess if test needed
 
-### Question 2: Should we validate context_schema in artifacts.yaml?
+### Question 2: How to handle nested context structures?
 
 **Context:**
-- Schemas are currently unvalidated YAML
-- Typos in schemas lead to broken error messages
-- Validation adds complexity
+- dto.fields is array of objects
+- Plain text schema might be unclear for nesting
 
 **Options:**
-1. No validation (trust developers)
-2. Validate on load (fail fast if schema invalid)
-3. Validate in tests only
+1. Flatten description (current approach)
+2. Use indentation to show nesting
+3. Show example first, schema second
 
-**Recommendation:** Option 3 - Validate in tests only
-- Catches schema errors during development
-- Doesn't slow down runtime
-- Can add runtime validation later if needed
+**Recommendation:** Option 3 - Example-first
+- Example is clearer than schema for nested structures
+- Schema provides type/requirement info
+- Most agents learn better from examples
 
-**Decision Point:** After Phase 1 implementation, assess schema error rate
-
-### Question 3: How to handle nested schema structures?
-
-**Context:**
-- Some artifacts have nested context (e.g., dto.fields is array of objects)
-- Nested structures are harder to format in errors
-- Examples need to show nested structure clearly
-
-**Options:**
-1. Flatten everything to top-level fields
-2. Support one level of nesting (sufficient for current needs)
-3. Support arbitrary nesting depth
-
-**Recommendation:** Option 2 - One level of nesting
-- Handles current artifact types (dto, worker, etc.)
-- Simpler formatting logic
-- Can extend later if deeper nesting needed
-
-**Decision Point:** After implementing dto and worker schemas, evaluate nesting needs
+**Decision Point:** After first manual test, evaluate clarity
 
 
 ## Next Steps
 
 ### Immediate Actions (This Research Phase)
 
-1. **Review this research document**
-   - Validate problem analysis
-   - Confirm design decisions
-   - Identify gaps or concerns
+1. **Commit updated research document** ✅ DONE
+   - Corrected scope based on actual codebase analysis
+   - Removed duplicate/unnecessary infrastructure
+   - Focused on real pain points
 
 2. **Transition to Design Phase**
-   - Create detailed design document
-   - Define exact schema format
-   - Specify error message templates
-   - Document API changes
+   - Create design document with exact schema format examples
+   - Define _format_context_help() signature and behavior
+   - Document Jinja2 error wrapping approach
 
-3. **Get Approval**
-   - Review with stakeholders
-   - Address feedback
-   - Finalize approach
+### Design Phase Tasks (Simplified)
 
-### Design Phase Tasks
+1. **Schema Format Examples**
+   - Show 2-3 complete artifact definitions with context_schema + example_context
+   - Document plain text format conventions
+   - Provide template for adding new artifact schemas
 
-1. **Schema Format Specification**
-   - Define JSON Schema subset
-   - Document field types and constraints
-   - Provide schema examples
+2. **Error Enhancement Patterns**
+   - Document exact code changes for TemplateScaffolder.validate()
+   - Document Jinja2 UndefinedError wrapping pattern
+   - Show before/after error message examples
 
-2. **Error Message Templates**
-   - Define structure of enhanced errors
-   - Create message templates
-   - Specify formatting conventions
+### TDD Phase Approach (Realistic)
 
-3. **API Design**
-   - Define _format_schema_for_error signature
-   - Specify helper methods
-   - Document exception hierarchy changes
+**RED Phase:** (1-2 hours)
+- Write test: scaffold_artifact(dto, name="Test") → expect "missing fields" with schema hints
+- Write test: scaffold with undefined var → expect wrapped error with field name
+- Write test: _format_context_help() returns proper hint structure
 
-### TDD Phase Approach
+**GREEN Phase:** (3-4 hours)
+- Implement _format_context_help() method
+- Add context_schema + example_context to 3 artifacts (dto, worker, design)
+- Wrap ValidationError in TemplateScaffolder.validate()
+- Wrap UndefinedError in _load_and_render_template()
 
-**RED Phase:**
-- Write tests for enhanced error messages
-- Tests expect schema-rich errors with examples
-- Tests verify workspace_root error handling
-- Tests check diff highlighting
+**REFACTOR Phase:** (1-2 hours)
+- Extract schema formatting logic if duplicated
+- Improve hint readability
+- Add docstrings and type hints
+- Run quality gates
 
-**GREEN Phase:**
-- Implement _format_schema_for_error
-- Add context_schema to artifacts.yaml
-- Wrap exceptions with enhanced messages
-- Implement diff highlighting
-
-**REFACTOR Phase:**
-- Extract common formatting logic
-- Improve error message readability
-- Add helper methods for schema formatting
-- Clean up exception handling code
-
-### Success Criteria
+### Success Criteria (Achievable)
 
 **Phase 1 Complete When:**
-- [ ] 5+ artifact types have context_schema and example_context
-- [ ] All scaffolding errors include schema information
-- [ ] Workspace_root errors have clear solutions
-- [ ] Missing field errors show expected schema
-- [ ] Diff highlighting shows expected vs provided
-- [ ] Tests verify error message quality
-- [ ] Documentation updated with error examples
+- [ ] 3-5 artifact types have context_schema and example_context
+- [ ] Missing field errors show schema + example in hints
+- [ ] Jinja2 UndefinedError wrapped with helpful context
+- [ ] Tests verify hint structure and content
+- [ ] Manual test confirms readability in VS Code chat
 
 **Quality Gates:**
-- Error messages tested with real scenarios
-- Schema format validated across artifact types
-- Error message readability reviewed
-- Examples verified to work with templates
+- All tests passing (including new error scenario tests)
+- No regressions in existing error handling
+- Documentation updated with error message examples
 
 
 
@@ -655,3 +574,4 @@ if self.workspace_root is None:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 0.1 | 2026-01-21 | AI | Initial research: problem analysis, solution design, implementation plan |
+| 0.2 | 2026-01-21 | AI | **MAJOR REVISION**: Corrected scope after deep codebase analysis - removed duplicate infrastructure, focused on hint quality improvements only (5-8h vs 12-18h) |
