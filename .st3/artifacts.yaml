@@ -248,6 +248,39 @@ artifact_types:
       initial_state: CREATED
       valid_transitions: []
   
+  - type: code
+    type_id: unit_test
+    name: "Unit Test"
+    description: "Unit test file with proper structure and quality gates"
+    version: "1.0"
+    output_type: "file"
+    scaffolder_class: "GenericScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
+    template_path: "tests/unit_test.py.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: false
+    base_path: "tests/"
+    required_fields:
+      - component_name
+      - purpose
+      - module_path
+      - responsibilities
+    optional_fields:
+      - dependencies
+      - exception_imports
+      - fixtures
+      - tdd_mode
+      - test_private_methods
+      - extra_third_party_imports
+      - extra_project_imports
+      - test_methods
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  
   # ===== DOCUMENT ARTIFACTS =====
   
   - type: doc
