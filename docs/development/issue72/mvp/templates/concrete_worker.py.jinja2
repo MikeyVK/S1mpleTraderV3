@@ -27,7 +27,7 @@
             ExecutionError: If execution fails
         """
         {%- if worker_logic %}
-        {{ worker_logic | indent(8, first=False) }}
+{{ worker_logic | indent(8, first=True) }}
         {%- else %}
         # TODO: Implement worker logic
         raise NotImplementedError("Worker logic not implemented")

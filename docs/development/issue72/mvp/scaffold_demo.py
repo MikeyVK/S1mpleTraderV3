@@ -134,20 +134,18 @@ def demo_successful_scaffold():
     output_file = scaffold_worker(
         worker_name="DataProcessor",
         worker_description="Processes incoming data streams with validation and transformation.",
-        worker_logic="""
-        # Validate input data
-        if 'data' not in context:
-            raise ExecutionError("Missing 'data' in context")
-        
-        # Process data
-        processed = {
-            'status': 'success',
-            'processed_data': context['data'],
-            'timestamp': context.get('timestamp', 'unknown')
-        }
-        
-        return processed
-        """,
+        worker_logic="""# Validate input data
+if 'data' not in context:
+    raise ExecutionError("Missing 'data' in context")
+
+# Process data
+processed = {
+    'status': 'success',
+    'processed_data': context['data'],
+    'timestamp': context.get('timestamp', 'unknown')
+}
+
+return processed""",
         worker_dependencies="[DataValidator, DataTransformer]",
         output_dir="docs/development/issue72/mvp/output"
     )
@@ -223,10 +221,10 @@ def demo_minimal_scaffold():
 
 if __name__ == "__main__":
     print("""
-╔══════════════════════════════════════════════════════════════════════╗
-║  MVP: Complete Scaffolding Flow (Introspection → Validation → Render)║
-║  Issue #72 Research - End-to-End Proof of Concept                    ║
-╚══════════════════════════════════════════════════════════════════════╝
+========================================================================
+  MVP: Complete Scaffolding Flow (Introspection -> Validation -> Render)
+  Issue #72 Research - End-to-End Proof of Concept
+========================================================================
 """)
     
     try:

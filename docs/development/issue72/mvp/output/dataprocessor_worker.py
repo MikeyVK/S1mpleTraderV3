@@ -23,17 +23,15 @@ class DataProcessorWorker:
         Raises:
             ExecutionError: If execution fails
         """
-        
-                # Validate input data
-                if 'data' not in context:
-                    raise ExecutionError("Missing 'data' in context")
-                
-                # Process data
-                processed = {
-                    'status': 'success',
-                    'processed_data': context['data'],
-                    'timestamp': context.get('timestamp', 'unknown')
-                }
-                
-                return processed
-                
+        # Validate input data
+        if 'data' not in context:
+            raise ExecutionError("Missing 'data' in context")
+
+        # Process data
+        processed = {
+            'status': 'success',
+            'processed_data': context['data'],
+            'timestamp': context.get('timestamp', 'unknown')
+        }
+
+        return processed
