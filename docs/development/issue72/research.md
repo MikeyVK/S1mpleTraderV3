@@ -1706,12 +1706,27 @@ worker:
    - Safe execution framework
    - Testing
 
-**USER INPUT NEEDED:** Which option?
-- **Option A:** Full versioning now (+6-8h, blocks #72)
-- **Option B:** Version metadata only (+1h), migration later
-- **Option C:** Skip versioning entirely (remove from SCAFFOLD)
+**USER DECISION:** ✅ **Option B** - Version metadata only, migration later
 
-**Recommendation:** **Option B** - Version metadata now, migration later. Balances completeness with scope control.
+**Rationale:**
+- Migration logic CANNOT be built without actual v2.0 templates to migrate to
+- Current scope only has v1.0 templates (no v2.0 exists yet)
+- Building migration infrastructure without test cases = premature engineering
+- Version metadata in SCAFFOLD enables future migration (registry lookup)
+
+**Implementation for Issue #72:**
+1. ✅ SCAFFOLD metadata includes template_version (compound format - see Q8b)
+2. ✅ Registry stores version history for all tiers
+3. ✅ Version comparison utility (`compare_versions(a, b)`)
+4. ✅ Documentation: "Migration not yet supported"
+5. ❌ NO migration script API (deferred to future issue)
+6. ❌ NO migration execution framework (deferred to future issue)
+
+**LATER (Issue #XXX - Template Migration):**
+- Create v2.0 templates with breaking changes
+- Build migration scripts with actual test cases
+- Implement safe execution framework
+- Test with real-world scenarios
 
 ---
 
@@ -1834,9 +1849,110 @@ Concrete: worker.py.jinja2 v1.0.0
 **Cons:**
 - ❌ Two-line format
 
-**USER INPUT NEEDED:** Which option for compound versions?
+**USER DECISION:** ✅ **Option 5** - Ultra-Compact Single-Line + Registry Lookup
 
-**Recommendation:** **Option 4** - Semantic compound. Balances completeness with readability.
+**Rationale:**
+- User preference: "alle scaffold metadata op 1 regel!"
+- Registry serves as **type+version lookup** - hashes encode entire tier chain
+- Scaffolded files remain minimal and clean
+- Full traceability via registry (hash → complete tier version history)
+
+**Format:**
+```
+{comment_syntax} SCAFFOLD: {artifact_type}:{version_hash} | {timestamp} | {output_path}
+```
+
+**Examples:**
+
+**Python Worker:**
+```python
+# SCAFFOLD: worker:a3f7b2c1 | 2026-01-22T10:30:00Z | src/workers/ProcessWorker.py
+```
+
+**YAML Config:**
+```yaml
+# SCAFFOLD: config:b2e4f891 | 2026-01-22T10:30:00Z | config/app.yaml
+```
+
+**Markdown Document:**
+```markdown
+<!-- SCAFFOLD: document:c5a7d3e2 | 2026-01-22T10:30:00Z | docs/design/feature-spec.md -->
+```
+
+**Registry Structure:**
+```yaml
+# .st3/template_registry.yaml
+version_hashes:
+  a3f7b2c1:  # worker v2.3.1 chain
+    artifact_type: worker
+    concrete: {template_id: concrete_worker, version: 2.3.1}
+    tier0: {template_id: tier0_base_artifact, version: 1.0.0}
+    tier1: {template_id: tier1_base_code, version: 1.0.0}
+    tier2: {template_id: tier2_base_python, version: 1.1.0}
+    tier3: {template_id: tier3_base_python_component, version: 1.0.0}
+    hash_algorithm: SHA256
+    created: 2026-01-22T10:30:00Z
+```
+
+**Implementation:**
+
+**During Scaffolding:**
+```python
+# 1. Resolve tier chain versions from registry
+artifact_entry = registry.get_artifact("worker")
+
+# 2. Calculate compound hash
+tier_versions = [
+    artifact_entry['tier0']['version'],  # 1.0.0
+    artifact_entry['tier1']['version'],  # 1.0.0
+    artifact_entry['tier2']['version'],  # 1.1.0
+    artifact_entry['tier3']['version'],  # 1.0.0
+    artifact_entry['concrete']['version']  # 2.3.1
+]
+version_string = "|".join(tier_versions)
+hash_full = hashlib.sha256(version_string.encode()).hexdigest()
+hash_short = hash_full[:8]  # a3f7b2c1
+
+# 3. Store hash in registry (if new)
+if hash_short not in registry['version_hashes']:
+    registry.add_hash(hash_short, artifact_entry, tier_versions)
+    registry.save()
+
+# 4. Embed compact metadata in generated file
+scaffold_line = f"# SCAFFOLD: worker:{hash_short} | {timestamp} | {output_path}"
+```
+
+**During Introspection/Migration:**
+```python
+# 1. Parse SCAFFOLD metadata from file
+metadata = parse_scaffold_line(file_content)
+# {'artifact_type': 'worker', 'version_hash': 'a3f7b2c1', 'timestamp': '...', 'path': '...'}
+
+# 2. Lookup full version chain in registry
+version_chain = registry.decode_hash(metadata['version_hash'])
+
+# 3. Compare against current template versions
+current_versions = registry.get_artifact(metadata['artifact_type'])
+if version_chain != current_versions:
+    print(f"Migration available: {version_chain} → {current_versions}")
+```
+
+**Key Properties:**
+- ✅ **Compact:** 1 line per file (56-80 chars typical)
+- ✅ **Complete:** Hash encodes entire tier chain
+- ✅ **Traceable:** Registry provides full history
+- ✅ **Extensible:** Add new fields without breaking format
+- ✅ **Language-agnostic:** Works with any comment syntax
+- ⚠️ **Registry dependency:** Hash useless without registry (but registry is SSOT anyway)
+
+**CRITICAL:** During scaffolding, **calculate and register hash if not exists**. Registry must be updated before writing SCAFFOLD metadata.
+
+**Action for Planning:**
+1. Define registry schema (version_hashes section)
+2. Implement hash calculation utility
+3. Implement registry lookup utility
+4. Update template_metadata block to emit compact format
+5. Test round-trip: scaffold → parse → lookup → validate
 
 **Action for Planning:**
 1. Introspection returns INPUT variables only (exclude computed)
@@ -1856,15 +1972,11 @@ Concrete: worker.py.jinja2 v1.0.0
 | Q4: Language depth | ✅ DECIDED | Syntax + standards | Include coding_standards |
 | Q5: = Q1 | ✅ DECIDED | See Q1 | - |
 | Q6: Composition | ⚠️ DEFERRED | Later issue | Keep test_template metadata |
-| Q7: Versioning | 🔴 NEEDS INPUT | NOW or LATER? | See options A/B/C |
+| Q7: Versioning | ✅ DECIDED | Version metadata only | Defer migration to future |
 | Q8: Edit schema | ✅ DECIDED | Flattened, no computed | Separate input/computed |
-| Q8b: Compound version | 🔴 NEEDS INPUT | Which format? | See options 1-4 |
+| Q8b: Compound version | ✅ DECIDED | Ultra-compact 1-line | Registry-backed hash |
 
-**Blocking Decisions Needed:**
-1. **Q7:** Template versioning scope (NOW vs LATER)
-2. **Q8b:** Compound version format (Option 1-4)
-
-**Ready for Planning Once Decided.**
+**All Research Decisions Complete - Ready for Planning Phase.**
 
 **Exploration:**
 - **BINARY/ASSETS:** Images, fonts, compiled files → out of scope for text templating?
@@ -2101,8 +2213,8 @@ worker:
 ---
 
 **Research Status:** ✅ COMPLETE  
-**Key Findings:** 4 orthogonal dimensions, multi-tier hierarchy pattern, ephemeral = documents  
-**Open Questions:** 7 questions for Planning phase  
-**Recommendation:** Multi-tier base template architecture for DRY + extensibility
+**Key Findings:** 4 orthogonal dimensions, 5-level hierarchy (Tier 0→3→Concrete), ultra-compact 1-line SCAFFOLD metadata with registry-backed version hashing  
+**Decisions Made:** 8/8 questions answered, CONFIG=Tier1, Ephemeral=DOCUMENT, 5 levels optimal, version metadata only (migration deferred), flattened schema excluding computed vars, registry-backed hash encoding  
+**Recommendation:** Multi-tier base template architecture for DRY + extensibility + language-agnostic scaling
 
 **Ready for Planning Phase.**
