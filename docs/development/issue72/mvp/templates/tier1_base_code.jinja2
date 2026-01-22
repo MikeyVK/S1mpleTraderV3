@@ -1,0 +1,25 @@
+{% extends "tier0_base_artifact.jinja2" %}
+
+{#
+TIER 1: Code Format Base
+Adds code-specific structure (imports, body, etc.)
+#}
+
+{% block artifact_header %}
+{# Code artifacts need file-level docstrings #}
+"""{{ module_docstring }}"""
+{% endblock %}
+
+{% block artifact_content %}
+{% block code_imports %}
+{# Import statements #}
+{% endblock %}
+
+{% block code_body %}
+{# Main code body - MUST be overridden #}
+{% endblock %}
+{% endblock %}
+
+{% block artifact_footer %}
+{# Code artifacts typically don't need footers #}
+{% endblock %}
