@@ -43,23 +43,19 @@ class TestTemplateRegistryLoading:
         artifact.file_extension = '.py'
         mock_registry.get_artifact.return_value = artifact
         
-        # Worker template needs input_dto/output_dto context
+        # Worker template needs all required fields from template introspection
         result = scaffolder.scaffold(
             'worker',
             name='TestWorker',
             description='Test worker',
             input_dto='TestInput',
-            output_dto='TestOutput'
+            output_dto='TestOutput',
+            dependencies=["SomeService"],
+            responsibilities=["Process data"]
         )
         assert result is not None
         assert hasattr(result, 'content')
         assert 'TestWorker' in result.content
-    
-    def test_uses_fallback_when_primary_none(self, scaffolder, mock_registry):
-        # Fallback template logic currently doesn't work in TemplateScaffolder
-        # This is a known Issue #56 implementation gap
-        # Skip for now - will be fixed in Slice 2 completion
-        pytest.skip("Fallback template logic not yet implemented")
     
     def test_error_when_no_template_defined(self, scaffolder, mock_registry):
         artifact = Mock()

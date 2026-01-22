@@ -34,6 +34,9 @@ mcp_server/logs/
 .logs/
 mcp_server/logs/
 
+# Local configuration (machine-specific paths)
+mcp_config.yaml
+
 # Run results
 
 # Local QA / debug outputs (artifacts)
@@ -62,6 +65,7 @@ Kraken_Trading_History/
 # ST3 Workflow - Runtime state (not version controlled)
 .st3/state.json
 .st3/.restart_marker
+.st3/temp/  # Ephemeral artifacts temp files
 
 # ST3 Workflow - Local debug artifacts
 .st3/popen_called.txt

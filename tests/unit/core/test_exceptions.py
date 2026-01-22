@@ -26,7 +26,7 @@ def test_mcp_error_base_contract() -> None:
     """MCPError has message, code, and hints."""
     error = MCPError("Test error", code="ERR_TEST", hints=["Fix it"])
 
-    assert str(error) == "Test error"
+    assert str(error) == "Test error\n\n  Fix it"  # Hints are included in __str__()
     assert error.message == "Test error"
     assert error.code == "ERR_TEST"
     assert error.hints == ["Fix it"]

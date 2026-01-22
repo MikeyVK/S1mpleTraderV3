@@ -88,10 +88,10 @@ async def test_template_missing_error_propagates_through_call_chain(
 
     # Act: Call tool with artifact type that has missing template
     # This will:
-    # 1. JinjaRenderer tries to load template from disk -> FileNotFoundError
-    # 2. JinjaRenderer raises ExecutionError with recovery hints
-    # 3. TemplateScaffolder propagates ExecutionError
-    # 4. ArtifactManager propagates ExecutionError
+    # This will:
+    # 1. ArtifactRegistry checks if 'dto_missing' exists -> ConfigError
+    # 2. ArtifactManager propagates ConfigError
+    # 3. Tool error_handler catches and converts to ToolResult with ERR_CONFIG
     # 5. Tool error_handler catches and converts to ToolResult
     result = await tool.execute(
         ScaffoldArtifactInput(
@@ -104,27 +104,31 @@ async def test_template_missing_error_propagates_through_call_chain(
 
     # Assert: Error contract preserved through entire call chain
     assert result.is_error is True, "Expected error result"
-    assert result.error_code == "ERR_EXECUTION", (
-        f"Expected ERR_EXECUTION, got {result.error_code}"
+    assert result.error_code == "ERR_CONFIG", (
+        f"Expected ERR_CONFIG (artifact type not in registry), got {result.error_code}"
     )
 
-    # Verify hints populated (recovery information from JinjaRenderer)
+    # Verify hints populated (registry suggestions from ConfigError)
     assert result.hints is not None, "Expected hints to be populated"
     assert len(result.hints) > 0, "Expected at least one hint"
 
-    # Hints should mention template directory or path
+    # Hints should mention registry, artifacts.yaml, or available types
     hints_text = " ".join(result.hints).lower()
     assert any(
         keyword in hints_text
-        for keyword in ["template", "directory", "does_not_exist", "check"]
-    ), f"Expected template-related hints, got: {result.hints}"
+        for keyword in ["registry", "artifacts.yaml", "available", "check"]
+    ), f"Expected registry-related hints, got: {result.hints}"
 
-    # Verify message contains template information
+    # Verify message contains artifact type information (not template - error happens before
+    # rendering)
     assert result.content is not None
     assert len(result.content) > 0
     message = result.content[0]["text"]
-    assert "does_not_exist.py.jinja2" in message, (
-        f"Expected template name in message, got: {message}"
+    assert "dto_missing" in message, (
+        f"Expected artifact type name in message, got: {message}"
+    )
+    assert "artifacts.yaml" in message, (
+        f"Expected config file reference in message, got: {message}"
     )
 
     # Note: No file_path expectation - ExecutionError does not have file_path

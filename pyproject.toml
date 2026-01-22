@@ -35,7 +35,9 @@ where = ["."]
 include = ["backend*", "tests*", "mcp_server*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+pythonpath = ["."]
+testpaths = ["tests", "plugins"]
+norecursedirs = [".git", ".vscode", "__pycache__", "docs", "results", "source_data", "frontends", "locales"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -46,6 +48,11 @@ addopts = [
     "--cov=backend",
     "--cov-report=term-missing",
     "--cov-report=html",
+]
+markers = [
+    "integration: Integration tests requiring real dependencies",
+    "slow: Tests that take more than 5 seconds to complete",
+    "manual: Manual tests requiring full environment setup and explicit enablement (RUN_MANUAL_TESTS=1)",
 ]
 
 [tool.mypy]

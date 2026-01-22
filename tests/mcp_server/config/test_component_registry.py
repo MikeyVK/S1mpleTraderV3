@@ -116,14 +116,3 @@ class TestArtifactRegistryConfig:
 
         # Should not raise
         dto.validate_artifact_fields({"name": "User", "description": "User DTO"})
-
-    def test_validate_artifact_fields_missing(self):
-        """Test field validation with missing required fields.
-
-        Should raise ValueError listing missing fields.
-        """
-        config = ArtifactRegistryConfig.from_file()
-        dto = config.get_artifact("dto")
-
-        with pytest.raises(ValueError, match="Missing required fields"):
-            dto.validate_artifact_fields({"name": "User"})  # Missing description

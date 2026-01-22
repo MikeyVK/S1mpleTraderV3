@@ -8,6 +8,7 @@ Unexpected exceptions still propagate (so we don't blanket-catch everything).
 """
 
 import functools
+import json
 import logging
 from typing import Any, Awaitable, Callable, TypeVar, cast
 
@@ -71,15 +72,40 @@ def tool_error_handler(func: Callable[..., Awaitable[T]]) -> Callable[..., Await
                 message = f"Configuration error: {exc}"
                 logger.error("[CONFIG ERROR] %s: %s", func.__name__, message)
 
-            result = cast(
-                T,
-                ToolResult.error(
-                    message=message,
-                    error_code=error_code,
-                    hints=hints,
-                    file_path=file_path,
-                ),
-            )
+            # Special handling for ValidationError with schema
+            if isinstance(exc, ValidationError) and hasattr(exc, "schema") and exc.schema:
+                # Create ToolResult with resource content containing schema
+                content: list[dict[str, Any]] = [
+                    {"type": "text", "text": message},
+                    {
+                        "type": "resource",
+                        "resource": {
+                            "uri": "schema://validation",
+                            "mimeType": "application/json",
+                            "text": json.dumps(exc.schema.to_dict(), indent=2)
+                        }
+                    }
+                ]
+                result = cast(
+                    T,
+                    ToolResult(
+                        content=content,
+                        is_error=True,
+                        error_code=error_code,
+                        hints=hints,
+                        file_path=file_path,
+                    ),
+                )
+            else:
+                result = cast(
+                    T,
+                    ToolResult.error(
+                        message=message,
+                        error_code=error_code,
+                        hints=hints,
+                        file_path=file_path,
+                    ),
+                )
         except Exception as exc:  # noqa: BLE001
             message = f"Unexpected error: {type(exc).__name__}: {exc}"
             logger.exception("[BUG] %s: %s", func.__name__, message)

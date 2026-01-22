@@ -18,6 +18,8 @@ artifact_types:
     type_id: dto
     name: "Data Transfer Object"
     description: "Data Transfer Object - immutable data container (Pydantic BaseModel)"
+    version: "1.0"
+    output_type: "file"
     # LEGACY fields (Issue #107 - remove after unified TemplateScaffolder deployed)
     scaffolder_class: "DTOScaffolder"
     scaffolder_module: "mcp_server.scaffolders.dto_scaffolder"
@@ -28,14 +30,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - description
-    optional_fields:
-      - fields
-      - validation_rules
-      - docstring
-      - generate_test
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -45,6 +39,8 @@ artifact_types:
     type_id: worker
     name: "Worker"
     description: "Worker - executes single domain operation (async task processor)"
+    version: "1.0"
+    output_type: "file"
     scaffolder_class: "WorkerScaffolder"
     scaffolder_module: "mcp_server.scaffolders.worker_scaffolder"
     template_path: "components/worker.py.jinja2"
@@ -53,13 +49,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - input_dto
-      - output_dto
-    optional_fields:
-      - dependencies
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -69,6 +58,8 @@ artifact_types:
     type_id: adapter
     name: "Adapter"
     description: "Adapter - integrates external systems (implements Interface)"
+    version: "1.0"
+    output_type: "file"
     scaffolder_class: "AdapterScaffolder"
     scaffolder_module: "mcp_server.scaffolders.adapter_scaffolder"
     template_path: "components/adapter.py.jinja2"
@@ -77,13 +68,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - interface
-    optional_fields:
-      - dependencies
-      - methods
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -93,6 +77,8 @@ artifact_types:
     type_id: tool
     name: "MCP Tool"
     description: "MCP Tool - exposes functionality via MCP protocol"
+    version: "1.0"
+    output_type: "file"
     scaffolder_class: "ToolScaffolder"
     scaffolder_module: "mcp_server.scaffolders.tool_scaffolder"
     template_path: "components/tool.py.jinja2"
@@ -101,12 +87,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - input_schema
-    optional_fields:
-      - dependencies
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -116,6 +96,8 @@ artifact_types:
     type_id: resource
     name: "MCP Resource"
     description: "MCP Resource - provides dynamic content"
+    version: "1.0"
+    output_type: "file"
     scaffolder_class: "ResourceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.resource_scaffolder"
     template_path: "components/resource.py.jinja2"
@@ -124,12 +106,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-      - uri_pattern
-    optional_fields:
-      - mime_type
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -139,6 +115,8 @@ artifact_types:
     type_id: schema
     name: "Pydantic Schema"
     description: "Pydantic Schema - validation models"
+    version: "1.0"
+    output_type: "file"
     scaffolder_class: "SchemaScaffolder"
     scaffolder_module: "mcp_server.scaffolders.schema_scaffolder"
     template_path: "components/schema.py.jinja2"
@@ -147,11 +125,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-    optional_fields:
-      - models
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -161,6 +134,8 @@ artifact_types:
     type_id: interface
     name: "Interface"
     description: "Interface - abstract protocol definition"
+    version: "1.0"
+    output_type: "file"
     scaffolder_class: "InterfaceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.interface_scaffolder"
     template_path: "components/interface.py.jinja2"
@@ -169,11 +144,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-    optional_fields:
-      - methods
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -183,6 +153,8 @@ artifact_types:
     type_id: service
     name: "Service"
     description: "Service - orchestration or business logic"
+    version: "1.0"
+    output_type: "file"
     scaffolder_class: "ServiceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.service_scaffolder"
     template_path: null  # SPECIAL: service_type context field selects template
@@ -194,12 +166,6 @@ artifact_types:
     file_extension: ".py"
     generate_test: true
     # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
-    required_fields:
-      - name
-    optional_fields:
-      - service_type
-      - dependencies
-      - docstring
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -209,6 +175,8 @@ artifact_types:
     type_id: generic
     name: "Generic Component"
     description: "Generic component from custom template"
+    version: "1.0"
+    output_type: "file"
     scaffolder_class: "GenericScaffolder"
     scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
     template_path: null  # SPECIAL: template_name from context selects template
@@ -218,13 +186,43 @@ artifact_types:
     file_extension: ".py"
     generate_test: false
     # NOTE: NO base_path (generic can be placed anywhere via output_path context field)
-    required_fields:
-      - name
-      - template_name
-      - output_path
-    optional_fields:
-      - context
-      - docstring
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  
+  - type: code
+    type_id: unit_test
+    name: "Unit Test"
+    description: "Unit test file with proper structure and quality gates"
+    version: "1.0"
+    output_type: "file"
+    scaffolder_class: "GenericScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
+    template_path: "tests/unit_test.py.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: false
+    base_path: "tests/"
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: integration_test
+    name: "Integration Test"
+    description: "Integration/E2E test file with @module structure"
+    version: "1.0"
+    output_type: "file"
+    scaffolder_class: "GenericScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
+    template_path: "tests/integration_test.py.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: false
+    base_path: "tests/"
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -236,18 +234,13 @@ artifact_types:
     type_id: research
     name: "Research Document"
     description: "Research phase findings and questions"
+    version: "1.0"
+    output_type: "file"
     template_path: "documents/generic.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - issue_number
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -261,18 +254,13 @@ artifact_types:
     type_id: planning
     name: "Planning Document"
     description: "Planning phase TDD cycle breakdown"
+    version: "1.0"
+    output_type: "file"
     template_path: "documents/generic.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - issue_number
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -286,18 +274,13 @@ artifact_types:
     type_id: design
     name: "Design Document"
     description: "Design phase schemas and specifications"
+    version: "1.0"
+    output_type: "file"
     template_path: "documents/design.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - issue_number
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -311,17 +294,13 @@ artifact_types:
     type_id: architecture
     name: "Architecture Document"
     description: "System architecture documentation"
+    version: "1.0"
+    output_type: "file"
     template_path: "documents/architecture.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, REVIEW, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -337,16 +316,13 @@ artifact_types:
     type_id: tracking
     name: "Tracking Document"
     description: "Living document for tracking project status"
+    version: "1.0"
+    output_type: "file"
     template_path: "documents/tracking.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - title
-      - author
-    optional_fields:
-      - sections
     state_machine:
       states: [LIVING DOCUMENT]
       initial_state: LIVING DOCUMENT
@@ -356,17 +332,13 @@ artifact_types:
     type_id: reference
     name: "Reference Document"
     description: "Reference documentation"
+    version: "1.0"
+    output_type: "file"
     template_path: "documents/reference.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-    required_fields:
-      - title
-      - author
-    optional_fields:
-      - sections
-      - status
     state_machine:
       states: [DRAFT, APPROVED, DEFINITIVE]
       initial_state: DRAFT
@@ -375,3 +347,22 @@ artifact_types:
           to: [APPROVED, DEFINITIVE]
         - from: APPROVED
           to: [DEFINITIVE]
+  
+  # ===== EPHEMERAL ARTIFACTS =====
+  
+  - type: doc
+    type_id: commit_message
+    name: "Git Commit Message"
+    description: "Git commit message (ephemeral, not saved to disk)"
+    version: "1.0"
+    output_type: "ephemeral"
+    template_path: "documents/commit-message.txt.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".txt"
+    generate_test: false
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+
