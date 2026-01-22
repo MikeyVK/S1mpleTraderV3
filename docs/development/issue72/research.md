@@ -1,4 +1,4 @@
-# Template Library Management - Base Template Architecture Redesign
+# Template Library Management - Base Template Architecture Research
 
 <!-- SCAFFOLD: template=research version=1.0 created=2026-01-22T17:00:00Z path=docs/development/issue72/research.md -->
 
@@ -12,31 +12,48 @@
 
 ## Executive Summary
 
-**Problem:** Issue #120 Phase 0 incomplete (8% done) + current base template architecture violates DRY principle by requiring SCAFFOLD metadata duplication across 3 base templates.
+**Problem:** Current base template architecture violates DRY by requiring SCAFFOLD metadata duplication across multiple base templates, limiting extensibility to new languages and artifact types.
 
-**Root Cause:** Base template architecture was designed tactically (per-language) rather than strategically (universal artifact taxonomy).
+**Research Scope:**
+1. Analyze current template architecture limitations
+2. Study existing template systems (Cookiecutter, Copier, Yeoman)
+3. Define universal artifact taxonomy via dimensional analysis
+4. Identify architectural patterns for DRY + extensibility
+5. Explore ephemeral artifact types and their classification
 
-**Decision:** Redesign base template hierarchy using **universal artifact dimensions** to enable:
-- ✅ **Single SCAFFOLD metadata definition** (DRY - define once, inherit everywhere)
-- ✅ **Language-agnostic extensibility** (Python today, C#/TypeScript/Go tomorrow)
-- ✅ **Template inheritance without duplication** (DRY between bases)
-- ✅ **Config Over Code** (templates as SSOT, not hardcoded logic)
+**Key Findings:**
+- Current architecture: tactical (per-language) not strategic (universal)
+- Existing tools: limited inheritance, file-based templating, no SSOT validation
+- Artifact dimensions: 4 orthogonal axes (lifecycle, format, language, specialization)
+- Ephemeral types (commits, PRs) are documents with temporary storage (no special handling needed)
+- Open question: Are code/document the ONLY Tier 1 categories? Research explores alternatives.
 
-**Solution:** Multi-tier base template architecture with **orthogonal dimensions**:
-1. **Tier 0 (Universal):** `base_artifact.jinja2` - SCAFFOLD metadata + lifecycle (ALL artifacts)
-2. **Tier 1 (Format):** `base_code.jinja2`, `base_document.jinja2` - Format-specific structure
-3. **Tier 2 (Language):** `base_python.jinja2`, `base_markdown.jinja2` - Syntax-specific features
-4. **Tier 3 (Specialization):** Current templates extend appropriate tier
-
-**Impact:** 24 templates → 1 SCAFFOLD definition (DRY), extensible to 100+ templates across languages.
+**Recommendation:** Multi-tier base template hierarchy using orthogonal dimensions enables DRY + language-agnostic extensibility.
 
 ---
 
 ## Problem Analysis
 
-### Current Architecture: Tactical Design
+### Current State: Issue #120 Phase 0 Incomplete
 
-**Existing base templates (3):**
+**Deliverable:** "All scaffolded files have `template`, `version` in YAML frontmatter"
+
+**Reality:**
+```powershell
+Get-ChildItem mcp_server\templates -Recurse -Filter *.jinja2 | 
+  Select-String "SCAFFOLD:" | Measure-Object
+
+Count: 2/24 (8%)
+```
+
+**Impact:**
+- query_file_schema() fails for 91% of files (Issue #121 blocked)
+- Templates not functioning as SSOT
+- Validation infrastructure incomplete (Issue #52 gap)
+
+### Current Template Architecture
+
+**Base templates (3):**
 ```
 base/
 ├── base_component.py.jinja2    # Python components (9 children)
@@ -44,45 +61,222 @@ base/
 └── base_test.py.jinja2         # Python tests (0 children - orphaned)
 ```
 
-**Issues with current design:**
+**Template inventory (24 total):**
+- Components: 13 templates (dto, worker, adapter, tool, service_*, etc.)
+- Documents: 6 templates (research, planning, design, architecture, etc.)
+- Tests: 3 templates (unit_test, integration_test, dto_test)
+- Ephemeral: 2 templates (commit-message.txt, tracking.md)
 
-1. **DRY Violation:** SCAFFOLD metadata must be duplicated 3 times
-   ```jinja
-   {# base_component.py.jinja2 #}
-   # SCAFFOLD: template={{ template_id }} ...
-   
-   {# base_document.md.jinja2 #}
-   <!-- SCAFFOLD: template={{ template_id }} ... -->
-   
-   {# base_test.py.jinja2 #}
-   # SCAFFOLD: template={{ template_id }} ...  # DUPLICATE!
-   ```
+### DRY Violation Analysis
 
-2. **Limited Extensibility:** What about TypeScript? C#? Java? Go?
-   - Need `base_typescript.jinja2` → duplicate SCAFFOLD metadata AGAIN
-   - Need `base_csharp.jinja2` → duplicate SCAFFOLD metadata AGAIN
-   - Result: N languages = N duplications (anti-pattern!)
+**Current approach:** SCAFFOLD metadata duplicated in each base template
 
-3. **Missing Orthogonal Dimensions:** Current bases mix concerns:
-   - `base_component.py` = Python syntax + code structure + component specifics
-   - Should separate: artifact metadata ← code structure ← language syntax ← specialization
+```jinja
+{# base_component.py.jinja2 #}
+# SCAFFOLD: template={{ template_id }} version={{ version }} ...
 
-4. **No Cross-Language Reuse:** Document concepts (research, design, architecture) are universal but implementation is language-specific
+{# base_document.md.jinja2 #}
+<!-- SCAFFOLD: template={{ template_id }} version={{ version }} ... -->
 
-### Core Architectural Principles (docs/coding_standards/)
+{# base_test.py.jinja2 #}
+# SCAFFOLD: template={{ template_id }} version={{ version }} ...
+```
 
-**From CORE_PRINCIPLES.md:**
-- **Config Over Code:** Configuration drives behavior, not hardcoded logic
-- **DRY (Don't Repeat Yourself):** Single source of truth, no duplication
-- **SRP (Single Responsibility Principle):** Each template has ONE concern
-- **Contract-Driven Development:** Types and interfaces define contracts
+**Problem:** Adding TypeScript/C#/Go requires duplicating SCAFFOLD metadata N times (N languages = N duplications).
 
-**From ARCHITECTURAL_SHIFTS.md:**
-- Templates are SSOT for both scaffolding AND validation
-- Configuration files (artifacts.yaml) drive template selection
-- Inheritance enables reuse without duplication
+**Question:** How can we define SCAFFOLD metadata ONCE and inherit across all templates?
 
-**Issue #72 must align with these principles!**
+### Extensibility Limitations
+
+**Current base templates mix concerns:**
+- `base_component.py` = Python syntax + code structure + component patterns + SCAFFOLD metadata
+- No separation between language-agnostic concepts and language-specific syntax
+
+**Problem:** Cannot reuse base logic across languages.
+
+**Example:** Worker concept exists in Python, TypeScript, C#, Go → must duplicate worker patterns per language.
+
+**Question:** What are the orthogonal dimensions that enable cross-language reuse?
+
+### Architectural Principles (from docs/coding_standards/)
+
+**Config Over Code:**
+- Templates as SSOT (not hardcoded RULES dict)
+- Configuration drives behavior
+
+**DRY (Don't Repeat Yourself):**
+- Single source of truth
+- No duplication
+
+**SRP (Single Responsibility Principle):**
+- Each template has ONE concern
+- Separation of concerns
+
+**Contract-Driven Development:**
+- Types and interfaces define contracts
+- SCAFFOLD metadata = typed contract
+
+**Issue #72 Research Question:** How do existing template systems achieve these principles? What can we learn?
+
+---
+
+## Existing Template Systems Analysis
+
+### Research Methodology
+
+Study 3 major templating systems to understand:
+1. How they handle template inheritance
+2. How they manage metadata and configuration
+3. Whether they support multi-language extensibility
+4. What patterns enable DRY and reusability
+
+### Cookiecutter (Python)
+
+**Architecture:**
+- File-based templating using Jinja2
+- Single cookiecutter.json for project-wide variables
+- No template inheritance (each template is standalone)
+- Directory structure is the template
+
+**Example:**
+```
+{{cookiecutter.project_name}}/
+├── setup.py
+├── {{cookiecutter.package_name}}/
+│   ├── __init__.py
+│   └── {{cookiecutter.module_name}}.py
+└── tests/
+```
+
+**Strengths:**
+- Simple mental model (directory = template)
+- Jinja2 integration (familiar syntax)
+- Hooks for pre/post generation logic
+
+**Weaknesses:**
+- No template inheritance (duplication across similar templates)
+- No built-in validation
+- No SSOT for template metadata
+- File-based only (not artifact-type aware)
+
+**Learnings:**
+- ✅ Jinja2 is powerful for templating
+- ❌ No inheritance = duplication problem
+- ❌ No validation integration
+
+### Copier (Python)
+
+**Architecture:**
+- Similar to Cookiecutter but with template updates
+- copier.yml for configuration
+- Supports Jinja2 extensions
+- Template update workflow (not just initial generation)
+
+**Example copier.yml:**
+```yaml
+_templates_suffix: .jinja
+_subdirectory: template
+
+project_name:
+  type: str
+  help: What is your project name?
+
+license:
+  type: str
+  default: MIT
+  choices:
+    - MIT
+    - Apache-2.0
+```
+
+**Strengths:**
+- Template updates (not just one-time generation)
+- Type-safe configuration (type: str, choices)
+- Jinja2 extensions support
+- Migration support (template versioning)
+
+**Weaknesses:**
+- Still no template inheritance
+- No SSOT validation
+- File-based approach
+- No language-agnostic abstractions
+
+**Learnings:**
+- ✅ Template versioning is important
+- ✅ Type-safe configuration prevents errors
+- ✅ Update workflow (not just create)
+- ❌ Still lacks inheritance for DRY
+
+### Yeoman (JavaScript/TypeScript)
+
+**Architecture:**
+- Generator-based (code over templates)
+- Composable generators (can invoke sub-generators)
+- Programmatic file generation
+- EJS templating (similar to Jinja2)
+
+**Example generator structure:**
+```
+generators/
+├── app/
+│   ├── index.js           # Main generator
+│   └── templates/         # EJS templates
+├── component/             # Sub-generator
+│   ├── index.js
+│   └── templates/
+└── router/                # Sub-generator
+```
+
+**Strengths:**
+- Composable generators (sub-generators = reusability)
+- Programmatic control (conditional logic in code)
+- Extensible (generator inheritance via prototype)
+- Rich ecosystem (many community generators)
+
+**Weaknesses:**
+- Code-based (not config-driven) → violates Config Over Code
+- Templates scattered across generators
+- No centralized metadata/validation
+- JavaScript-specific
+
+**Learnings:**
+- ✅ Composability enables reusability
+- ✅ Sub-generators = inheritance pattern
+- ❌ Code-based violates Config Over Code principle
+- ❌ No SSOT for templates
+
+### Comparison Matrix
+
+| Feature | Cookiecutter | Copier | Yeoman | SimpleTrader (Current) |
+|---------|-------------|--------|--------|----------------------|
+| **Templating Engine** | Jinja2 | Jinja2 | EJS | Jinja2 |
+| **Inheritance** | ❌ None | ❌ None | ⚠️ Code-based | ⚠️ Limited (3 bases) |
+| **Config-Driven** | ⚠️ Partial | ✅ Yes | ❌ Code-based | ✅ Yes (artifacts.yaml) |
+| **Validation** | ❌ None | ❌ None | ❌ None | ⚠️ Partial (TEMPLATE_METADATA) |
+| **Versioning** | ❌ None | ✅ Yes | ❌ None | ⚠️ Partial (version field) |
+| **Multi-language** | ⚠️ Manual | ⚠️ Manual | ⚠️ Manual | ❌ Python-only |
+| **DRY** | ❌ Duplication | ❌ Duplication | ⚠️ Via code | ❌ Metadata duplicated |
+| **SSOT** | ❌ None | ❌ None | ❌ None | ⚠️ Templates (incomplete) |
+
+### Key Insights
+
+**No existing system achieves all our goals:**
+1. Template inheritance (DRY)
+2. Config-driven (Config Over Code)
+3. SSOT for validation
+4. Multi-language extensibility
+5. Typed metadata contracts
+
+**Patterns to adopt:**
+- Yeoman's composability (sub-generators)
+- Copier's type-safe configuration
+- Copier's template versioning
+- Jinja2 inheritance (all use it, we need to leverage better)
+
+**Patterns to avoid:**
+- Cookiecutter's flat templates (no reuse)
+- Yeoman's code-based approach (violates Config Over Code)
+- No validation integration (all 3 tools)
 
 ---
 
@@ -90,933 +284,612 @@ base/
 
 ### Research Question
 
-**What are the FUNDAMENTAL dimensions of artifacts that software development agents scaffold?**
+**What are the FUNDAMENTAL dimensions that classify artifacts in software development?**
 
-Context:
+**Context:**
 - Current: 17 artifact types (Python-only)
-- Future: 100+ artifact types (multi-language)
-- Scope: MCP server as compiled VS Code extension (C#, TypeScript, Java, Go, Rust, etc.)
+- Future: 100+ artifact types (multi-language, multi-format)
+- Scope: MCP server as compiled extension (C#, TypeScript, Java, Go, Rust, etc.)
 
-### Artifact Dimension Analysis
+### Dimensional Analysis Methodology
 
-**Dimension 1: Artifact Lifecycle** (UNIVERSAL - all artifacts)
-```
-Properties:
-- template_id: Artifact type identifier
-- version: Template semantic version
-- created: Scaffolding timestamp
-- path: File system location
-- state: Lifecycle state (CREATED, MODIFIED, DEPRECATED)
-```
+**Approach:** Identify orthogonal axes that classify artifacts independently.
 
-**Dimension 2: Format Category** (CODE vs DOCUMENT)
-```
-CODE:
-- Executable/compilable
+**Criteria for valid dimension:**
+1. **Orthogonal:** Independent from other dimensions
+2. **Universal:** Applies to ALL artifact types
+3. **Exhaustive:** Every artifact fits in one category per dimension
+4. **Extensible:** New categories can be added without restructuring
+
+### Dimension 1: Artifact Lifecycle (UNIVERSAL)
+
+**Definition:** Metadata about artifact creation, versioning, and state.
+
+**Properties (all artifacts):**
+- `template_id`: Which template created this artifact
+- `version`: Template semantic version used
+- `created`: Timestamp when scaffolded
+- `path`: File system location
+- `state`: Lifecycle state (CREATED, MODIFIED, DEPRECATED)
+
+**Universality:** Python worker, TypeScript service, Markdown doc → ALL have lifecycle metadata.
+
+**Key Insight:** This is currently MISSING from our base templates! Each base duplicates lifecycle logic instead of inheriting from universal base.
+
+### Dimension 2: Format Category (CODE vs DOCUMENT vs CONFIG vs ?)
+
+**Definition:** High-level artifact purpose and structure.
+
+**Identified categories:**
+
+**CODE:**
+- Executable/compilable source code
 - Has imports/dependencies
-- Type-checked
-- Test coverage required
-- Examples: Python, C#, TypeScript
+- Type-checked or linted
+- Test coverage expected
+- Examples: Python, C#, TypeScript, Go, Rust
 
-DOCUMENT:
-- Human-readable
-- Structured sections
-- Links/references
-- Version control metadata
+**DOCUMENT:**
+- Human-readable knowledge artifacts
+- Structured sections (headings)
+- Links and cross-references
+- Version-controlled but not executable
 - Examples: Markdown, reStructuredText, AsciiDoc
+
+**CONFIG:**
+- Machine-readable configuration
+- Schema-validated
+- No imports (declarative)
+- Examples: YAML, JSON, TOML, XML
+
+**EPHEMERAL:** (User question - classification needed!)
+- Temporary/transient artifacts
+- Used in external systems (Git, GitHub API)
+- Examples: commit messages, PR descriptions, issue bodies
+- **Research question:** Are these DOCUMENTS or separate category?
+
+**DATA:**
+- Structured data files
+- Schema-defined
+- Examples: CSV, SQL, Protobuf
+- **Research question:** Do we scaffold data files?
+
+**BINARY/ASSETS:**
+- Non-text artifacts
+- Examples: images, fonts, compiled binaries
+- **Research question:** Out of scope for text templating?
+
+### Dimension 2 Deep Dive: Ephemeral Artifacts
+
+**User question:** "Moeten we hier nog apart rekening mee houden of zeggen we, dit zijn in feite docs?"
+
+**Analysis:**
+
+**Ephemeral examples in current system:**
+- `commit-message.txt` → Git commit body
+- PR descriptions → GitHub API
+- Issue bodies → GitHub API
+- Labels, milestones → GitHub API
+
+**Properties:**
+- Structure: Like documents (sections, formatting)
+- Storage: Temporary (not persisted in project files)
+- Lifecycle: Used once, then consumed by external system
+- Validation: Same as documents (required sections, format)
+
+**Hypothesis:** Ephemeral artifacts are **documents with temporary storage**.
+
+**Template perspective:**
+```jinja
+{# commit-message.txt.jinja2 #}
+<!-- SCAFFOLD: template=commit-message version=1.0 ... -->
+
+# {{ type }}: {{ summary }}
+
+{{ description }}
+
+{% if breaking_changes %}
+BREAKING CHANGE: {{ breaking_changes }}
+{% endif %}
 ```
 
-**Dimension 3: Language/Syntax** (Python, C#, TypeScript, Markdown, etc.)
-```
-PYTHON:
-- Comment: #
-- Docstring: """
-- Imports: from/import
-- Type hints: : Type
+**After scaffolding:**
+- Scaffold creates file in `.st3/tmp/commit-message.txt`
+- Tool reads file and passes to `git commit -F`
+- File deleted after use
 
-C#:
-- Comment: //
-- Docstring: ///
-- Imports: using
-- Type hints: Type name
+**Conclusion:** From template POV, ephemeral = document. Storage/lifecycle is tool responsibility, NOT template responsibility.
 
-TYPESCRIPT:
-- Comment: //
-- Docstring: /** */
-- Imports: import/from
-- Type hints: : Type
+**Recommendation:** No separate Tier 1 category for ephemeral. Classify as DOCUMENT subtype.
 
-MARKDOWN:
-- Comment: <!-- -->
-- Sections: ##
-- Links: [text](url)
-- Code blocks: ```
-```
+### Dimension 2 Revisited: Are CODE/DOCUMENT Sufficient?
 
-**Dimension 4: Artifact Specialization** (Component, Document, Test)
-```
-COMPONENT (business logic):
-- Worker, Adapter, Service, DTO
-- Has dependencies
-- Lifecycle methods
-- Domain-specific contracts
+**Research question:** "Blijft mijn vraag zijn code en documenten de enige twee domein 2 (tier 1) categorieën?"
 
-DOCUMENT (knowledge):
-- Research, Planning, Design, Architecture
-- Structured sections
-- Decision records
-- Cross-references
+**Analysis:**
 
-TEST (validation):
-- Unit, Integration, E2E
-- Fixtures/mocks
-- Assertions
-- Coverage tracking
-```
+**Current inventory:**
+- CODE: 13 templates (Python .py files)
+- DOCUMENT: 9 templates (Markdown .md, .txt)
+- CONFIG: 0 templates (none yet - but .st3/*.yaml are scaffolded externally)
+- DATA: 0 templates (none yet)
 
-### Cross-Dimensional Matrix
+**Future scenarios:**
+
+**CONFIG scaffolding:**
+- User: "Add new workflow to workflows.yaml"
+- Scaffold: Insert YAML block with validation
+- Template: `config/workflow.yaml.jinja2`
+- Question: Is CONFIG different enough from DOCUMENT to be Tier 1?
+
+**Differences:**
+| Property | DOCUMENT | CONFIG |
+|----------|----------|--------|
+| Purpose | Human-readable knowledge | Machine-readable settings |
+| Sections | Freeform headings | Fixed schema keys |
+| Validation | Structural (headers exist) | Schema (types, required fields) |
+| Editing | Prose/markdown | Key-value pairs |
+
+**Hypothesis:** CONFIG is distinct enough to warrant Tier 1 category.
+
+**DATA scaffolding:**
+- Example: "Scaffold database migration SQL"
+- Example: "Generate Protobuf schema"
+- Question: Do we scaffold data definitions?
+
+**Analysis:** Data definitions (SQL schemas, Protobuf) are CODE (they're DSLs). Raw data (CSV) is not scaffolded.
+
+**Conclusion:** DATA is NOT a Tier 1 category (data *definitions* are CODE).
+
+**Proposed Tier 1 Categories:**
+1. CODE - Executable/compilable source
+2. DOCUMENT - Human-readable knowledge
+3. CONFIG - Machine-readable configuration
+
+**Open question:** Are there other Tier 1 categories we're missing?
+
+### Dimension 3: Language/Syntax
+
+**Definition:** Concrete syntax and tooling for a format category.
+
+**CODE languages:**
+- Python (# comments, """ docstrings, from/import, type hints)
+- TypeScript (// comments, /** */ docstrings, import/from, : Type)
+- C# (// comments, /// docstrings, using, Type name)
+- Go (// comments, /* */ docstrings, import, var name Type)
+- Java (// comments, /** */ docstrings, import, Type name)
+- Rust (// comments, /// docstrings, use, let name: Type)
+
+**DOCUMENT languages:**
+- Markdown (<!-- comments, ## sections, [links], ``` code blocks)
+- reStructuredText (.rst - .. comments, === sections, `links`_)
+- AsciiDoc (.adoc - // comments, == sections, link:url[])
+
+**CONFIG languages:**
+- YAML (# comments, key: value, indentation-based)
+- JSON (no comments, {"key": "value"}, strict syntax)
+- TOML (# comments, key = value, sections)
+- XML (<!-- comments, <key>value</key>, tags)
+
+**Key Insight:** Language defines syntax (comments, imports, type hints) but NOT structure (component patterns, document sections).
+
+### Dimension 4: Artifact Specialization
+
+**Definition:** Domain-specific patterns within a language.
+
+**CODE specializations:**
+- **Component:** Business logic (Worker, Service, Adapter)
+  - Has dependencies
+  - Lifecycle methods
+  - Domain contracts
+  
+- **Data Model:** Data structures (DTO, Schema, Interface)
+  - Immutable or validated
+  - No business logic
+  - Type definitions
+  
+- **Tool/Integration:** External interfaces (MCP Tool, Resource)
+  - API contracts
+  - Protocol adapters
+  
+- **Test:** Validation logic (Unit, Integration, E2E)
+  - Fixtures/mocks
+  - Assertions
+  - Coverage tracking
+
+**DOCUMENT specializations:**
+- **Knowledge:** Information artifacts (Research, Planning, Design)
+  - Structured analysis
+  - Decision records
+  - Cross-references
+  
+- **Architecture:** System design (Architecture, Reference)
+  - Diagrams
+  - Principles
+  - Patterns
+  
+- **Tracking:** Progress artifacts (Tracking, Issue templates)
+  - Status updates
+  - Checklists
+
+**CONFIG specializations:**
+- **Policy:** Rules and constraints (workflows.yaml, quality.yaml)
+- **Registry:** Artifact definitions (artifacts.yaml, labels.yaml)
+- **Structure:** Project layout (project_structure.yaml)
+
+### Dimensional Classification Matrix
 
 | Artifact | Lifecycle | Format | Language | Specialization |
 |----------|-----------|---------|----------|----------------|
-| Worker | ✅ | CODE | Python | Component |
-| DTO | ✅ | CODE | Python | Component |
-| Research | ✅ | DOCUMENT | Markdown | Document |
-| Unit Test | ✅ | CODE | Python | Test |
+| Worker.py | ✅ | CODE | Python | Component |
+| DTO.py | ✅ | CODE | Python | Data Model |
+| Research.md | ✅ | DOCUMENT | Markdown | Knowledge |
+| Planning.md | ✅ | DOCUMENT | Markdown | Knowledge |
+| Unit Test.py | ✅ | CODE | Python | Test |
+| Commit Message.txt | ✅ | DOCUMENT | Markdown | Ephemeral (Knowledge subtype) |
 | TypeScript Worker | ✅ | CODE | TypeScript | Component |
 | C# Service | ✅ | CODE | C# | Component |
 | Go Adapter | ✅ | CODE | Go | Component |
+| workflows.yaml | ✅ | CONFIG | YAML | Policy |
 
-**Key Insight:** Current base templates mix Dimension 2 (Format) + Dimension 3 (Language) + Dimension 4 (Specialization), **missing Dimension 1 (Lifecycle) entirely!**
+**Key Findings:**
+1. **All artifacts share Dimension 1 (Lifecycle)** → Universal base needed!
+2. **Dimension 2 (Format):** CODE, DOCUMENT, CONFIG are orthogonal categories
+3. **Dimension 3 (Language):** Syntax-specific, independent of specialization
+4. **Dimension 4 (Specialization):** Domain patterns, independent of language
 
----
+**Orthogonality Test:**
+- Can you have a Component in Python? Yes → Worker.py
+- Can you have a Component in TypeScript? Yes → Worker.ts
+- Can you have a Test in Python? Yes → test_worker.py
+- Can you have Knowledge in Markdown? Yes → research.md
+- Can you have Knowledge in reStructuredText? Yes → research.rst
 
-## Proposed Solution: Multi-Tier Base Template Hierarchy
-
-### Architecture Design
-
-```
-Tier 0 (Universal - ALL artifacts)
-├── base_artifact.jinja2
-│   └── SCAFFOLD metadata (template_id, version, created, path)
-│   └── Artifact lifecycle contract
-│   └── NO language/format specifics
-│
-Tier 1 (Format Category)
-├── base_code.jinja2 (extends base_artifact)
-│   └── Code-specific: imports, dependencies, type hints
-│   └── Test generation hooks
-│
-└── base_document.jinja2 (extends base_artifact)
-    └── Document-specific: sections, links, metadata headers
-    └── NO base_code concepts (orthogonal!)
-
-Tier 2 (Language/Syntax)
-├── base_python.jinja2 (extends base_code)
-│   └── Python syntax: # comments, """ docstrings, from/import
-│   └── Python tooling: type hints, Pylint pragmas
-│
-├── base_typescript.jinja2 (extends base_code)
-│   └── TypeScript syntax: // comments, /** */ docstrings, import/from
-│   └── TypeScript tooling: type annotations, ESLint pragmas
-│
-└── base_markdown.jinja2 (extends base_document)
-    └── Markdown syntax: <!-- comments, ## sections, [links]
-    └── Frontmatter: YAML/TOML metadata
-
-Tier 3 (Specialization)
-├── base_python_component.jinja2 (extends base_python)
-│   └── Component patterns: dependencies, layer annotations
-│
-├── base_python_test.jinja2 (extends base_python)
-│   └── Test patterns: fixtures, assertions, coverage
-│
-└── Current 24 templates extend appropriate tier
-```
-
-### Inheritance Flow Example: Worker Template
-
-```jinja
-{# components/worker.py.jinja2 #}
-{% extends "base/base_python_component.jinja2" %}
-
-{# Inherits from base_python_component:
-   - Component patterns (dependencies, layer annotations)
-   
-   Which extends base_python:
-   - Python syntax (# comments, """ docstrings, imports)
-   
-   Which extends base_code:
-   - Code structure (imports section, type hints)
-   
-   Which extends base_artifact:
-   - SCAFFOLD metadata (template_id, version, created, path) ← DRY!
-#}
-
-{% block template_id %}worker{% endblock %}
-{% block specialization %}
-class {{ name }}Worker(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
-    """{{ description }}."""
-    
-    async def process(self, input_data: {{ input_dto }}) -> {{ output_dto }}:
-        # Worker logic
-{% endblock %}
-```
-
-**Result:** Worker template gets SCAFFOLD metadata **automatically** without duplication!
-
-### DRY Achievement: Single SCAFFOLD Definition
-
-**Current (3 duplications):**
-```jinja
-{# base_component.py.jinja2 #}
-# SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }}
-
-{# base_document.md.jinja2 #}
-<!-- SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }} -->
-
-{# base_test.py.jinja2 #}
-# SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }}
-```
-
-**Proposed (1 definition):**
-```jinja
-{# base/base_artifact.jinja2 #}
-{% block scaffold_metadata -%}
-{%- if format == 'code' -%}
-# SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }}
-{%- elif format == 'document' -%}
-<!-- SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }} -->
-{%- endif -%}
-{% endblock %}
-```
-
-**All children inherit this ONE definition!**
+**Conclusion:** 4 dimensions are orthogonal and exhaustive.
 
 ---
 
-## Template Redesign Strategy
+## Architectural Pattern Research
 
-### Phase 1: Create Tier 0 - Universal Base
+### Research Question
 
-**File:** `base/base_artifact.jinja2` (NEW)
+**How can we structure base templates to achieve DRY across 4 orthogonal dimensions?**
 
-```jinja
-{# base_artifact.jinja2 - Universal base for ALL artifacts
-   
-   Enforces:
-   - SCAFFOLD metadata (template_id, version, created, path)
-   - Artifact lifecycle contract
-   - NO language/format specifics
-   
-   Children: base_code.jinja2, base_document.jinja2
-#}
+### Pattern 1: Flat Inheritance (Current Approach)
 
-{# TEMPLATE_METADATA
-enforcement: STRICT
-level: lifecycle
-version: "3.0"
-
-validates:
-  strict:
-    - rule: scaffold_metadata_presence
-      description: "All artifacts must have SCAFFOLD metadata"
-      pattern: "SCAFFOLD: template=\\w+ version=[\\d.]+ created=[\\d\\-T:Z]+ path=.+"
-      
-    - rule: template_version_semantic
-      description: "Template version must follow semver (X.Y.Z)"
-      pattern: "version=[\\d]+\\.[\\d]+(?:\\.[\\d]+)?"
-
-purpose: |
-  Universal base template providing lifecycle metadata for ALL artifacts.
-  Defines SCAFFOLD metadata structure that all templates inherit (DRY principle).
-
-variables:
-  - template_id: Artifact type identifier (from artifacts.yaml)
-  - version: Template semantic version
-  - created: ISO 8601 timestamp when scaffolded
-  - path: Absolute file system path
-  - format: 'code' or 'document' (determines comment syntax)
-#}
-
-{# ═══════════════════════════════════════════════════════════════════════════
-   SCAFFOLD METADATA - SINGLE SOURCE OF TRUTH
-   ═══════════════════════════════════════════════════════════════════════════ #}
-{% block scaffold_metadata -%}
-{%- if format == 'code' -%}
-# SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }}
-{%- elif format == 'document' -%}
-<!-- SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }} -->
-{%- else -%}
-{# SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }} #}
-{%- endif -%}
-{% endblock %}
-
-{# ═══════════════════════════════════════════════════════════════════════════
-   ARTIFACT CONTENT (override in children)
-   ═══════════════════════════════════════════════════════════════════════════ #}
-{% block artifact_content %}
-{# Children override this block #}
-{% endblock %}
+**Structure:**
+```
+base_component.py → worker.py, adapter.py, ...
+base_document.md → research.md, design.md, ...
+base_test.py → (no children)
 ```
 
-### Phase 2: Create Tier 1 - Format Bases
+**Analysis:**
+- Each base mixes all 4 dimensions
+- Adding language requires duplicating ALL bases
+- DRY violation: SCAFFOLD metadata repeated 3+ times
 
-**File:** `base/base_code.jinja2` (NEW)
+**Verdict:** Does NOT scale to multi-language.
 
-```jinja
-{# base_code.jinja2 - Base for all code artifacts
-   
-   Extends: base_artifact.jinja2
-   Children: base_python.jinja2, base_typescript.jinja2, base_csharp.jinja2, etc.
-#}
-{% extends "base/base_artifact.jinja2" %}
+### Pattern 2: Multi-Tier Hierarchy (Orthogonal Dimensions)
 
-{# Set format for SCAFFOLD metadata #}
-{% set format = 'code' %}
+**Hypothesis:** Separate each dimension into its own tier.
 
-{% block artifact_content %}
-{# ═══════════════════════════════════════════════════════════════════════════
-   FILE HEADER (language-agnostic structure)
-   ═══════════════════════════════════════════════════════════════════════════ #}
-{% block file_header %}
-{% block module_docstring %}{{ description }}{% endblock %}
-{% endblock %}
-
-{# ═══════════════════════════════════════════════════════════════════════════
-   IMPORTS SECTION (language defines syntax)
-   ═══════════════════════════════════════════════════════════════════════════ #}
-{% block imports %}
-{% block stdlib_imports %}{% endblock %}
-{% block thirdparty_imports %}{% endblock %}
-{% block project_imports %}{% endblock %}
-{% endblock %}
-
-{# ═══════════════════════════════════════════════════════════════════════════
-   MAIN CONTENT
-   ═══════════════════════════════════════════════════════════════════════════ #}
-{% block code_content %}
-{# Children define code structure #}
-{% endblock %}
-{% endblock %}
+**Structure (conceptual):**
+```
+Tier 0 (Lifecycle - Universal)
+└── base_artifact
+    ├── Tier 1 (Format)
+    │   ├── base_code
+    │   ├── base_document
+    │   └── base_config
+    │       ├── Tier 2 (Language)
+    │       │   ├── base_python
+    │       │   ├── base_typescript
+    │       │   ├── base_markdown
+    │       │   └── base_yaml
+    │       │       └── Tier 3 (Specialization)
+    │       │           ├── base_python_component
+    │       │           ├── base_python_test
+    │       │           └── base_markdown_knowledge
 ```
 
-**File:** `base/base_document.jinja2` (REFACTOR)
+**DRY Achievement:**
+- SCAFFOLD metadata: Defined ONCE in `base_artifact` (Tier 0)
+- Code structure: Defined ONCE in `base_code` (Tier 1)
+- Python syntax: Defined ONCE in `base_python` (Tier 2)
+- Component patterns: Defined ONCE in `base_python_component` (Tier 3)
 
-```jinja
-{# base_document.jinja2 - Base for all document artifacts
-   
-   Extends: base_artifact.jinja2
-   Children: base_markdown.jinja2, base_restructuredtext.jinja2, etc.
-#}
-{% extends "base/base_artifact.jinja2" %}
+**Extensibility:**
+- Add TypeScript: Create `base_typescript` (Tier 2) → reuses Tier 0+1
+- Add C#: Create `base_csharp` (Tier 2) → reuses Tier 0+1
+- Add reStructuredText: Create `base_rst` (Tier 2) → reuses Tier 0+1
 
-{# Set format for SCAFFOLD metadata #}
-{% set format = 'document' %}
+**Open Question:** Is 4-tier hierarchy too complex? What's the cognitive load?
 
-{% block artifact_content %}
-{# ═══════════════════════════════════════════════════════════════════════════
-   DOCUMENT STRUCTURE (language-agnostic)
-   ═══════════════════════════════════════════════════════════════════════════ #}
-{% block document_header %}
-{% block title %}{{ title }}{% endblock %}
-{% block metadata %}
-**Status:** {{ status }}
-**Version:** {{ version }}
-**Last Updated:** {{ updated }}
-{% endblock %}
-{% block separator %}---{% endblock %}
-{% endblock %}
+### Pattern 3: Mixin Composition (Alternative)
 
-{% block document_sections %}
-{% block purpose_section %}
-## Purpose
-{{ purpose }}
-{% endblock %}
+**Hypothesis:** Instead of linear inheritance, use composition (mixins).
 
-{% block scope_section %}
-## Scope
-{{ scope }}
-{% endblock %}
+**Structure (conceptual):**
+```python
+# worker.py template includes:
+{% include "mixins/scaffold_metadata.jinja2" %}
+{% include "mixins/python_header.jinja2" %}
+{% include "mixins/component_imports.jinja2" %}
 
-{% block content_sections %}
-{# Children define document-specific sections #}
-{% endblock %}
-{% endblock %}
-
-{% block document_footer %}
-{% block related_docs %}
-## Related Documentation
-{% endblock %}
-{% endblock %}
-{% endblock %}
-```
-
-### Phase 3: Create Tier 2 - Language Bases
-
-**File:** `base/base_python.jinja2` (NEW)
-
-```jinja
-{# base_python.jinja2 - Base for all Python code
-   
-   Extends: base_code.jinja2
-   Children: base_python_component.jinja2, base_python_test.jinja2
-#}
-{% extends "base/base_code.jinja2" %}
-
-{# Python-specific template ID #}
-{% block template_id %}python_{{ super() }}{% endblock %}
-
-{% block file_header %}
-# {{ path }}
-"""
-{{ name }} - {{ description }}.
-
-{{ extended_description | default('') }}
-
-@layer: {{ layer | default('Platform') }}
-@dependencies: [{{ dependencies | join(', ') }}]
-"""
-{% block pyright_suppressions %}{% endblock %}
-{% endblock %}
-
-{# Python import syntax #}
-{% block stdlib_imports %}
-# Standard library
-from datetime import datetime, timezone
-from typing import Any
-{% endblock %}
-
-{% block thirdparty_imports %}
-# Third-party
-{% endblock %}
-
-{% block project_imports %}
-# Project modules
-{% endblock %}
-```
-
-**File:** `base/base_markdown.jinja2` (NEW - extends base_document)
-
-```jinja
-{# base_markdown.jinja2 - Base for all Markdown documents
-   
-   Extends: base_document.jinja2
-   Children: research.md, planning.md, design.md, etc.
-#}
-{% extends "base/base_document.jinja2" %}
-
-{# Markdown-specific comment syntax #}
-{% block scaffold_metadata %}
-<!-- SCAFFOLD: template={{ template_id }} version={{ version }} created={{ created }} path={{ path }} -->
-{% endblock %}
-
-{# Markdown title syntax #}
-{% block title %}# {{ title }}{% endblock %}
-
-{# Markdown section syntax #}
-{% block purpose_section %}
-## Purpose
-
-{{ purpose }}
-{% endblock %}
-```
-
-### Phase 4: Create Tier 3 - Specialization Bases
-
-**File:** `base/base_python_component.jinja2` (REFACTOR existing base_component)
-
-```jinja
-{# base_python_component.jinja2 - Base for Python components
-   
-   Extends: base_python.jinja2
-   Children: worker, adapter, service_*, tool, etc.
-#}
-{% extends "base/base_python.jinja2" %}
-
-{# Component-specific patterns #}
-{% block code_content %}
-{% block component_class %}
-class {{ name }}:
-    """{{ description }}."""
-    
-    {% block component_methods %}
-    # Component methods
-    {% endblock %}
-{% endblock %}
-{% endblock %}
-```
-
-**File:** `base/base_python_test.jinja2` (REFACTOR existing base_test)
-
-```jinja
-{# base_python_test.jinja2 - Base for Python tests
-   
-   Extends: base_python.jinja2
-   Children: unit_test, integration_test, etc.
-#}
-{% extends "base/base_python.jinja2" %}
-
-{% block stdlib_imports %}
-{{ super() }}
-from unittest.mock import Mock, patch
-{% endblock %}
-
-{% block thirdparty_imports %}
-import pytest
-{% endblock %}
-
-{% block code_content %}
-{% block test_fixtures %}
-# Test fixtures
-{% endblock %}
-
-{% block test_cases %}
-# Test cases
-{% endblock %}
-{% endblock %}
-```
-
-### Phase 5: Refactor Current Templates
-
-All 24 existing templates change `{% extends %}` to point to appropriate tier:
-
-**Before:**
-```jinja
-{# components/worker.py.jinja2 #}
-# SCAFFOLD: template=worker ...  # Duplicate metadata!
-# worker.py content
-```
-
-**After:**
-```jinja
-{# components/worker.py.jinja2 #}
-{% extends "base/base_python_component.jinja2" %}
-
-{% block template_id %}worker{% endblock %}
-{% block component_class %}
-class {{ name }}Worker(BaseWorker[{{ input_dto }}, {{ output_dto }}]):
+class Worker:
     # Worker-specific content
-{% endblock %}
-
-{# SCAFFOLD metadata inherited from base_artifact! NO DUPLICATION! #}
 ```
 
-**Template Refactor Matrix:**
+**Pros:**
+- Flexible composition (pick mixins as needed)
+- No deep inheritance chains
 
-| Current Template | New Extends | Tier Level |
-|-----------------|-------------|------------|
-| worker.py | base_python_component | 3 |
-| adapter.py | base_python_component | 3 |
-| dto.py | base_python_component | 3 |
-| tool.py | base_python_component | 3 |
-| service_*.py | base_python_component | 3 |
-| unit_test.py | base_python_test | 3 |
-| integration_test.py | base_python_test | 3 |
-| research.md | base_markdown | 2 |
-| planning.md | base_markdown | 2 |
-| design.md | base_markdown | 2 |
-| architecture.md | base_markdown | 2 |
+**Cons:**
+- Jinja2 `{% include %}` doesn't support inheritance (no `super()`)
+- Harder to override mixin behavior
+- Less DRY (each template must include all mixins)
+
+**Verdict:** Mixins don't solve DRY problem (each template still includes N mixins).
+
+### Pattern Comparison
+
+| Pattern | DRY | Extensibility | Complexity | Jinja2 Support |
+|---------|-----|---------------|------------|----------------|
+| Flat Inheritance | ❌ Low | ❌ Low | ✅ Simple | ✅ Native |
+| Multi-Tier | ✅ High | ✅ High | ⚠️ Medium | ✅ Native |
+| Mixin Composition | ⚠️ Medium | ✅ High | ⚠️ Medium | ⚠️ Limited |
+
+**Recommendation (Hypothesis):** Multi-tier hierarchy best balances DRY + extensibility.
+
+**Open Question:** How many tiers is optimal? 4? 3? 5?
 
 ---
 
-## Extensibility: Future Language Support
+## Open Research Questions
 
-### Adding TypeScript Support (Example)
+### Q1: Tier 1 Categories - Complete?
 
-**Step 1:** Create `base/base_typescript.jinja2`
-```jinja
-{% extends "base/base_code.jinja2" %}
+**Question:** Are CODE, DOCUMENT, CONFIG the only Tier 1 format categories?
 
-{% block file_header %}
-// {{ path }}
-/**
- * {{ name }} - {{ description }}.
- * @module {{ module_name }}
- */
-{% endblock %}
+**Exploration:**
+- **BINARY/ASSETS:** Images, fonts, compiled files → out of scope for text templating?
+- **DATA:** CSV, SQL dumps → not scaffolded (data *definitions* are CODE)
+- **SCRIPTS:** Shell scripts, build files → are these CODE or separate category?
 
-{% block imports %}
-{% block stdlib_imports %}
-// Node.js standard library
-import { EventEmitter } from 'events';
-{% endblock %}
+**Hypothesis:** SCRIPTS are CODE (Bash = programming language).
 
-{% block thirdparty_imports %}
-// Third-party
-{% endblock %}
+**Need:** Validate with real-world scaffolding scenarios.
 
-{% block project_imports %}
-// Project modules
-{% endblock %}
-{% endblock %}
+### Q2: Ephemeral Artifact Handling
+
+**Question:** Do ephemeral artifacts (commit messages, PR bodies) need special treatment?
+
+**Analysis:**
+- Template POV: Same as documents (structure, validation)
+- Storage POV: Temporary location (`.st3/tmp/`)
+- Lifecycle POV: One-time use, then deleted
+
+**Hypothesis:** Ephemeral = DOCUMENT subtype (no Tier 1 category needed).
+
+**Validation:** Scaffold commit message → verify it's treated like document template.
+
+### Q3: Optimal Tier Count
+
+**Question:** Is 4-tier hierarchy (Lifecycle → Format → Language → Specialization) optimal?
+
+**Alternatives:**
+- **3-tier:** Merge Lifecycle + Format into single tier?
+- **5-tier:** Add Environment tier (dev/test/prod templates)?
+
+**Trade-offs:**
+- More tiers = more DRY but higher complexity
+- Fewer tiers = simpler but more duplication
+
+**Need:** Prototype both 3-tier and 4-tier to compare.
+
+### Q4: Language-Specific Features
+
+**Question:** How deep should language tiers go? Python has type hints, Rust has ownership → tier per feature?
+
+**Examples:**
+- Python: Type hints, async/await, decorators, context managers
+- TypeScript: Generics, decorators, type guards
+- Rust: Ownership, lifetimes, traits
+
+**Risk:** Too many language-specific tiers → complexity explosion.
+
+**Hypothesis:** Language tier handles syntax only (comments, imports, docstrings). Advanced features go in Specialization tier (e.g., `base_python_async_component`).
+
+**Need:** Research Python-specific vs language-agnostic patterns.
+
+### Q5: CONFIG as Tier 1 Category
+
+**Question:** Is CONFIG distinct enough from DOCUMENT to be separate Tier 1?
+
+**Differences:**
+- CONFIG: Schema-validated, key-value, machine-readable
+- DOCUMENT: Structural validation, sections, human-readable
+
+**Scenarios:**
+- Scaffold new workflow in `workflows.yaml` → CONFIG template
+- Scaffold new research doc → DOCUMENT template
+
+**Hypothesis:** CONFIG is separate Tier 1 (different validation, editing patterns).
+
+**Need:** Prototype CONFIG template to validate hypothesis.
+
+### Q6: Existing System Patterns
+
+**Question:** Can we adopt Yeoman's sub-generator composability without code-based approach?
+
+**Yeoman pattern:**
+```javascript
+this.composeWith('generator-name:sub-generator');
 ```
 
-**Step 2:** Create `base/base_typescript_component.jinja2`
-```jinja
-{% extends "base/base_typescript.jinja2" %}
-
-{% block code_content %}
-export class {{ name }} {
-    {% block component_methods %}
-    // Component methods
-    {% endblock %}
-}
-{% endblock %}
+**Our equivalent (hypothesis):**
+```yaml
+# artifacts.yaml
+worker:
+  template: components/worker.py.jinja2
+  sub_templates:
+    - test: tests/worker_test.py.jinja2  # Auto-generate test
 ```
 
-**Step 3:** Create `components/worker.ts.jinja2`
-```jinja
-{% extends "base/base_typescript_component.jinja2" %}
+**Question:** Does sub-template composition belong in research or planning phase?
 
-{% block template_id %}typescript_worker{% endblock %}
-{% block component_methods %}
-async process(input: {{ input_dto }}): Promise<{{ output_dto }}> {
-    // TypeScript worker logic
-}
-{% endblock %}
+### Q7: Template Versioning Strategy
 
-{# SCAFFOLD metadata inherited from base_artifact! ZERO DUPLICATION! #}
-```
+**Question:** Copier has template migration support. Do we need this?
 
-**Result:** TypeScript workers get SAME SCAFFOLD metadata as Python workers, NO NEW CODE!
+**Scenarios:**
+- Template v1.0 → v2.0 (breaking changes)
+- Existing files scaffolded with v1.0
+- User runs "update template" → migrate to v2.0?
 
-### Language Support Matrix (Extensibility Proof)
+**Current:** Version in SCAFFOLD metadata but no migration logic.
 
-| Language | Tier 2 Base | Effort | Reuses base_artifact? |
-|----------|-------------|--------|----------------------|
-| Python | base_python.jinja2 | ✅ Done | ✅ Yes |
-| TypeScript | base_typescript.jinja2 | 2-4h | ✅ Yes |
-| C# | base_csharp.jinja2 | 2-4h | ✅ Yes |
-| Go | base_golang.jinja2 | 2-4h | ✅ Yes |
-| Java | base_java.jinja2 | 2-4h | ✅ Yes |
-| Rust | base_rust.jinja2 | 2-4h | ✅ Yes |
+**Hypothesis:** Out of scope for Issue #72 (future enhancement).
 
-**Key insight:** SCAFFOLD metadata defined ONCE in `base_artifact.jinja2`, works for ALL languages!
+**Need:** Document as future work, not blocking.
 
 ---
 
-## Architectural Principles Validation
+## Findings Summary
 
-### Config Over Code ✅
+### Problem Statement (Validated)
 
-**Before (hardcoded RULES dict):**
-```python
-RULES = {
-    "worker": {"required_methods": ["execute"]},  # Code
-    "dto": {...},
-}
-```
+1. **DRY Violation:** SCAFFOLD metadata duplicated across base templates
+2. **Limited Extensibility:** Python-only, adding languages requires duplication
+3. **Mixed Concerns:** Base templates combine lifecycle + format + language + specialization
+4. **Incomplete Coverage:** Only 8% of templates have SCAFFOLD metadata
 
-**After (templates as SSOT):**
-```jinja
-{# TEMPLATE_METADATA in template #}
-validates:
-  strict:
-    - rule: required_methods
-```
+### Existing Systems (Lessons Learned)
 
-**Issue #72 completion:** All templates have metadata → Config Over Code achieved!
+**Cookiecutter:**
+- ❌ No inheritance (duplication problem)
+- ✅ Jinja2 is powerful
 
-### DRY (Don't Repeat Yourself) ✅
+**Copier:**
+- ✅ Template versioning
+- ✅ Type-safe configuration
+- ❌ Still no inheritance
 
-**Before:** SCAFFOLD metadata duplicated in 3 base templates (+ N languages = 3N duplications)
+**Yeoman:**
+- ✅ Composability (sub-generators)
+- ❌ Code-based (violates Config Over Code)
 
-**After:** SCAFFOLD metadata defined ONCE in `base_artifact.jinja2`, inherited by ALL
+**Conclusion:** No existing system achieves our goals (DRY + SSOT + multi-language + config-driven).
 
-**Proof:**
-- Current: 24 templates × 1 SCAFFOLD line = 24 duplications
-- Proposed: 1 `base_artifact.jinja2` × 1 SCAFFOLD line = 1 definition
-- **Reduction: 24→1 = 96% duplication eliminated**
+### Artifact Taxonomy (Discovered)
 
-### SRP (Single Responsibility Principle) ✅
+**4 Orthogonal Dimensions:**
+1. **Lifecycle:** Universal metadata (template_id, version, created, path)
+2. **Format:** CODE, DOCUMENT, CONFIG (possibly others)
+3. **Language:** Python, TypeScript, Markdown, YAML, etc.
+4. **Specialization:** Component, Test, Knowledge, Policy, etc.
 
-**Before:** `base_component.py` mixed concerns:
-- SCAFFOLD metadata (lifecycle concern)
-- Python syntax (language concern)
-- Component patterns (specialization concern)
+**Key Insight:** Current base templates mix all 4 dimensions → prevents DRY.
 
-**After:** Separated into 4 tiers:
-- Tier 0: Lifecycle (SCAFFOLD metadata)
-- Tier 1: Format (code vs document)
-- Tier 2: Language (Python syntax)
-- Tier 3: Specialization (component patterns)
+### Ephemeral Artifacts (Classified)
 
-**Each tier has ONE responsibility!**
+**Conclusion:** Ephemeral artifacts (commit messages, PR bodies) are DOCUMENTS with temporary storage. No special template handling needed (storage is tool responsibility).
 
-### Templates as SSOT ✅
+### Architectural Pattern (Hypothesis)
 
-**Before:** TemplateIntrospector extracts metadata from 2 templates (8%)
+**Multi-tier hierarchy:** Separate each dimension into its own tier.
 
-**After:** TemplateIntrospector extracts metadata from ALL templates (100%)
+**Pros:**
+- SCAFFOLD metadata defined ONCE (Tier 0)
+- Language-agnostic extensibility
+- DRY across all dimensions
 
-**Result:** query_file_schema() works for ALL artifact types (Issue #121 unblocked)
+**Cons:**
+- Higher complexity (4 tiers vs 1)
+- Cognitive load of inheritance chain
 
----
-
-## Implementation Plan
-
-### Goal 1: Multi-Tier Base Template Architecture (6-8h)
-
-**Tasks:**
-1. Create `base/base_artifact.jinja2` (Tier 0 - universal) - 1h
-2. Refactor `base/base_code.jinja2` (Tier 1 - extends base_artifact) - 1h
-3. Refactor `base/base_document.md.jinja2` (Tier 1 - extends base_artifact) - 1h
-4. Create `base/base_python.jinja2` (Tier 2 - extends base_code) - 1h
-5. Create `base/base_markdown.jinja2` (Tier 2 - extends base_document) - 1h
-6. Refactor `base/base_python_component.jinja2` (Tier 3 - extends base_python) - 1h
-7. Create `base/base_python_test.jinja2` (Tier 3 - extends base_python) - 1h
-8. Write unit tests for inheritance chain - 1-2h
-
-**Success Criteria:**
-- SCAFFOLD metadata defined ONCE in base_artifact.jinja2
-- All tiers tested and working
-- Inheritance chain validated (Tier 0 → 1 → 2 → 3)
-
-### Goal 2: Refactor Existing Templates (4-6h)
-
-**Tasks:**
-1. Update 9 component templates (worker, adapter, dto, tool, service_*, generic) - 2h
-2. Update 5 document templates (research, planning, design, architecture, reference) - 1h
-3. Update 3 test templates (unit_test, integration_test, dto_test) - 1h
-4. Update standalone templates (commit-message, tracking, generic.md) - 1h
-5. Verify all templates scaffold correctly - 1-2h
-
-**Success Criteria:**
-- All 24 templates use new inheritance hierarchy
-- All scaffolded files have SCAFFOLD metadata
-- No template contains duplicate SCAFFOLD definitions
-
-### Goal 3: Validation & Documentation (2-3h)
-
-**Tasks:**
-1. Run audit script: verify 24/24 templates have metadata - 0.5h
-2. Test TemplateIntrospector with new hierarchy - 1h
-3. Update template documentation (reference/templates/) - 1h
-4. Create extensibility guide (TypeScript example) - 0.5h
-
-**Success Criteria:**
-- 100% template metadata coverage (was 8%)
-- TemplateIntrospector works with all templates
-- Documentation shows how to add new languages
-
-### Goal 4: Issue #74 - Template Quality Fixes (included)
-
-**Tasks:**
-1. Fix DTO template validation failures - 1h
-2. Fix Tool template validation failures - 1h
-3. Run E2E tests (scaffold → validate cycle) - 0.5h
-
-**Success Criteria:**
-- E2E tests pass (was 1/3, should be 3/3)
-- All scaffolded code passes validation
+**Need:** Validate in Planning/Design phase.
 
 ---
 
-## Testing Strategy
+## Recommendations for Planning Phase
 
-### Unit Tests (Base Template Inheritance)
+### 1. Prototype Multi-Tier Hierarchy
 
-```python
-def test_base_artifact_scaffold_metadata():
-    """Test SCAFFOLD metadata inherited by all templates."""
-    template = env.get_template("base/base_artifact.jinja2")
-    rendered = template.render(
-        template_id="test",
-        version="1.0",
-        created="2026-01-22T17:00:00Z",
-        path="/tmp/test.py",
-        format="code"
-    )
-    assert "# SCAFFOLD: template=test version=1.0" in rendered
+**Goal:** Validate 4-tier vs 3-tier architecture with real templates.
 
-def test_worker_inherits_scaffold_metadata():
-    """Test worker template inherits SCAFFOLD from base_artifact."""
-    template = env.get_template("components/worker.py.jinja2")
-    rendered = template.render(name="Test", input_dto="Input", output_dto="Output")
-    assert "# SCAFFOLD:" in rendered  # Inherited!
-    assert "class TestWorker(BaseWorker" in rendered
+**Approach:**
+- Create `base_artifact.jinja2` (Tier 0)
+- Create `base_code.jinja2`, `base_document.jinja2` (Tier 1)
+- Create `base_python.jinja2`, `base_markdown.jinja2` (Tier 2)
+- Refactor 1 template (e.g., worker.py) to use 4-tier chain
+- Measure: DRY achievement, complexity, rendering time
 
-def test_research_inherits_scaffold_metadata():
-    """Test research.md inherits SCAFFOLD from base_artifact."""
-    template = env.get_template("documents/research.md.jinja2")
-    rendered = template.render(title="Test Research")
-    assert "<!-- SCAFFOLD:" in rendered  # Inherited, different syntax!
-```
+### 2. Validate CONFIG as Tier 1
 
-### Integration Tests (TemplateIntrospector)
+**Goal:** Determine if CONFIG needs separate tier or can merge with DOCUMENT.
 
-```python
-def test_introspector_extracts_metadata_all_templates():
-    """Test TemplateIntrospector extracts metadata from ALL 24 templates."""
-    introspector = TemplateIntrospector()
-    
-    for artifact_type in artifacts.yaml:
-        template_id = artifact_type["type_id"]
-        metadata = introspector.get_metadata(template_id)
-        
-        assert metadata is not None, f"{template_id} missing metadata"
-        assert "template_id" in metadata
-        assert "version" in metadata
+**Approach:**
+- Identify CONFIG scaffolding scenarios (workflows.yaml, labels.yaml)
+- Compare validation patterns: CONFIG (schema) vs DOCUMENT (structure)
+- Decide: Separate tier or DOCUMENT subtype?
 
-def test_query_file_schema_all_artifacts():
-    """Test query_file_schema() works for all artifact types (Issue #121)."""
-    for artifact_type in ["worker", "dto", "research", "planning", "tool"]:
-        schema = query_file_schema(f"test_{artifact_type}.py")
-        assert schema["file_type"] == "scaffolded"
-        assert schema["template_id"] == artifact_type
-```
+### 3. Explore Language-Agnostic Patterns
 
-### E2E Tests (Scaffold → Validate Cycle)
+**Goal:** Identify what belongs in language tier vs specialization tier.
 
-```python
-def test_scaffold_validate_all_artifact_types():
-    """Test all artifact types scaffold with metadata and pass validation."""
-    test_cases = [
-        ("worker", "TestWorker", {"input_dto": "Input", "output_dto": "Output"}),
-        ("dto", "TestDTO", {"fields": [{"name": "field1", "type": "str"}]}),
-        ("research", "test-research", {"title": "Test Research"}),
-        ("planning", "test-planning", {"title": "Test Planning"}),
-    ]
-    
-    for artifact_type, name, context in test_cases:
-        # Scaffold
-        result = scaffold_artifact(artifact_type, name, **context)
-        assert result.success
-        
-        # Validate metadata present
-        content = read_file(result.path)
-        assert "SCAFFOLD:" in content
-        
-        # Validate template introspection works
-        schema = query_file_schema(result.path)
-        assert schema["template_id"] == artifact_type
-        
-        # Validate code passes validation (if code artifact)
-        if artifact_type in ["worker", "dto", "tool"]:
-            validation = run_quality_gates([result.path])
-            assert validation.success
-```
+**Approach:**
+- List Python-specific features (type hints, async, decorators)
+- List language-agnostic patterns (component lifecycle, dependency injection)
+- Classify: Which tier owns which pattern?
+
+### 4. Quantify DRY Improvement
+
+**Goal:** Measure duplication reduction with multi-tier approach.
+
+**Metrics:**
+- Lines of SCAFFOLD metadata: Current (N bases) vs Proposed (1 base)
+- Effort to add TypeScript: Current (duplicate all bases) vs Proposed (add 1 language tier)
+- Template count to achieve 100% coverage: Current vs Proposed
+
+### 5. Risk Assessment
+
+**Goal:** Identify risks of 4-tier architecture.
+
+**Risks:**
+- Cognitive load (understanding inheritance chain)
+- Debugging complexity (which tier defines what?)
+- Performance (4 templates loaded vs 1)
+- Migration effort (refactor 24 existing templates)
 
 ---
 
-## Success Metrics
+## Next Phase: Planning
 
-### Quantitative Metrics
+**Research Complete:** Problem analyzed, existing systems studied, taxonomy defined, patterns explored.
 
-| Metric | Before | After | Target |
-|--------|--------|-------|--------|
-| Templates with SCAFFOLD metadata | 2/24 (8%) | 24/24 (100%) | 100% |
-| SCAFFOLD definition duplications | 3 | 1 | 1 |
-| Base templates (Python) | 3 | 7 (4 tiers) | 7 |
-| Lines to add new language | N/A | ~100 | <200 |
-| query_file_schema() coverage | 8% | 100% | 100% |
-| E2E test pass rate | 1/3 (33%) | 3/3 (100%) | 100% |
+**Planning Phase Goals:**
+1. Select architecture (3-tier vs 4-tier)
+2. Define Tier 1 categories (CODE, DOCUMENT, CONFIG?)
+3. Specify base template contracts (what blocks each tier provides)
+4. Map existing 24 templates to new hierarchy
+5. Estimate effort for refactoring + new language support
+6. Create testing strategy (validate DRY + extensibility)
 
-### Qualitative Metrics
-
-- ✅ **DRY:** SCAFFOLD metadata defined once, inherited everywhere
-- ✅ **SRP:** Each tier has single responsibility (lifecycle, format, language, specialization)
-- ✅ **Extensibility:** Adding TypeScript requires <200 lines, reuses base_artifact
-- ✅ **Config Over Code:** Templates are SSOT, no hardcoded RULES dict
-- ✅ **Issue #121 Unblocked:** Discovery tool works for all artifact types
-
----
-
-## Risks & Mitigations
-
-### Risk 1: Breaking Changes to Existing Templates
-
-**Risk:** Refactoring 24 templates could break existing scaffolding workflows.
-
-**Mitigation:**
-- Incremental migration: Test each tier before refactoring children
-- Comprehensive test suite: Unit + integration + E2E tests
-- Rollback plan: Git branch, can revert if issues found
-
-### Risk 2: Jinja2 Inheritance Complexity
-
-**Risk:** 4-tier inheritance might be hard to debug or maintain.
-
-**Mitigation:**
-- Clear documentation: Inheritance chain diagrams
-- Block naming convention: `scaffold_metadata`, `code_content`, `component_class`
-- Template analyzer tool: Visualize inheritance chain
-
-### Risk 3: Performance Impact of Deep Inheritance
-
-**Risk:** 4-tier inheritance might slow down template rendering.
-
-**Mitigation:**
-- Benchmark: Measure rendering time before/after
-- Jinja2 caching: Template compilation cached automatically
-- Expected: <1ms overhead (Jinja2 inheritance is fast)
-
----
-
-## Related Work
-
-### Issue #52 - Template-Driven Validation
-
-**Status:** CLOSED (infrastructure complete)
-**Deliverable:** TemplateIntrospector, LayeredTemplateValidator
-**Gap:** Only 2/24 templates have metadata → Issue #72 completes this!
-
-### Issue #120 - Template Introspection
-
-**Status:** CLOSED (Phase 1 complete)
-**Deliverable:** ScaffoldMetadataParser, TemplateIntrospector
-**Gap:** Phase 0 incomplete (8% metadata coverage) → Issue #72 completes this!
-
-### Issue #121 - Content-Aware Edit Tool
-
-**Status:** OPEN (blocked by Issue #72)
-**Dependency:** Requires query_file_schema() to work for all artifact types
-**Unblock:** Issue #72 completion enables 100% discovery coverage
-
-### Epic #73 - Template Governance
-
-**Status:** OPEN (depends on Issue #72)
-**Dependency:** Template limits and review process need stable base architecture
-**Unblock:** Issue #72 completion establishes foundation for governance
-
----
-
-## Conclusion
-
-### Summary
-
-**Issue #72 is NOT "add metadata to templates"** - it's a **fundamental architecture redesign** to achieve:
-
-1. **DRY:** SCAFFOLD metadata defined ONCE (base_artifact.jinja2), inherited by ALL
-2. **SRP:** Separation of concerns across 4 tiers (lifecycle, format, language, specialization)
-3. **Extensibility:** Multi-language support without duplication (Python today, TypeScript/C#/Go tomorrow)
-4. **Config Over Code:** Templates as SSOT, eliminating hardcoded logic
-5. **Issue #121 Unblocked:** Discovery tool works for 100% of artifact types
-
-### Key Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Multi-tier hierarchy (4 tiers) | Orthogonal dimensions: lifecycle → format → language → specialization |
-| base_artifact.jinja2 as Tier 0 | SCAFFOLD metadata defined ONCE, universal across all languages |
-| Format split (code vs document) | Different validation concerns, orthogonal to language |
-| Language tier (Python, TypeScript, etc.) | Syntax-specific features without duplicating lifecycle/format logic |
-| Specialization tier (component, test) | Domain patterns without duplicating language features |
-
-### Next Steps
-
-1. ✅ **Research complete** - Multi-tier architecture designed
-2. → **Transition to Planning** - Break down implementation into TDD goals
-3. → **Design Phase** - Technical specifications, interface contracts
-4. → **TDD Phase** - Implement Tier 0 → 1 → 2 → 3, refactor 24 templates
-5. → **Integration** - E2E tests, Issue #121 unblocked
-6. → **Documentation** - Extensibility guide, template reference updates
+**Open Questions to Answer in Planning:**
+- How many tiers? (3, 4, or 5)
+- Is CONFIG separate Tier 1?
+- Which patterns belong in which tier?
+- What's the migration strategy for 24 existing templates?
+- How do we test multi-tier inheritance?
 
 ---
 
 **Research Status:** ✅ COMPLETE  
-**Architectural Alignment:** Config Over Code, SSOT, DRY, SRP  
-**Scope:** Universal artifact taxonomy + multi-tier base template hierarchy  
-**Impact:** 24 templates → 1 SCAFFOLD definition, extensible to 100+ templates across languages
+**Key Findings:** 4 orthogonal dimensions, multi-tier hierarchy pattern, ephemeral = documents  
+**Open Questions:** 7 questions for Planning phase  
+**Recommendation:** Multi-tier base template architecture for DRY + extensibility
 
 **Ready for Planning Phase.**
