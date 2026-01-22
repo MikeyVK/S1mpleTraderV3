@@ -352,5 +352,21 @@
     "skip_reason": null,
     "parent_branch": null,
     "created_at": "2026-01-22T14:05:06.656035+00:00"
+  },
+  "121": {
+    "issue_title": "Content-Aware Edit Tool: VS Code Position/Range API + ScaffoldEdit Extensions",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-01-22T15:36:48.520935+00:00"
   }
 }
