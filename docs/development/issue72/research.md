@@ -1053,6 +1053,448 @@ ScaffoldEdit.insert_method("validate_signal", "async def validate_signal(...):")
 - How to communicate tier violations to agent?
 - Should TemplateIntrospector cache be global or per-template?
 
+## Migration Impact Analysis: Breaking Changes Assessment
+
+### Critical Discovery
+
+**User Insight:** "Alle scaffolding code breekt bij dit nieuwe 4 tier model"
+
+**Research Question:** What breaks in current scaffolding implementation with multi-tier architecture?
+
+### Current Scaffolding Architecture
+
+**Key Components:**
+1. **TemplateScaffolder** - Main scaffolding orchestrator
+2. **JinjaRenderer** - Template loading and rendering
+3. **TemplateIntrospector** - Schema extraction via AST parsing
+4. **ScaffoldMetadataParser** - SCAFFOLD comment parsing (Issue #120)
+5. **ArtifactRegistryConfig** - artifacts.yaml configuration
+
+**Current Flow:**
+```
+scaffold_artifact(type="worker", name="Signal")
+    ↓
+TemplateScaffolder.scaffold()
+    ↓
+registry.get_artifact("worker")  # Returns: template_path="components/worker.py.jinja2"
+    ↓
+TemplateIntrospector.introspect(template_source)  # Extract schema from single template
+    ↓
+JinjaRenderer.render("components/worker.py.jinja2", **context)  # Render single template
+    ↓
+ScaffoldResult(content, file_name)
+```
+
+### Current Template Loading (NO Inheritance Resolution)
+
+**JinjaRenderer.get_template():**
+```python
+def get_template(self, template_name: str) -> Any:
+    """Load a template by name."""
+    try:
+        return self.env.get_template(template_name)  # ← FileSystemLoader
+    except TemplateNotFound as e:
+        raise ExecutionError(...)
+```
+
+**Key Behavior:**
+- Loads SINGLE template file
+- Jinja2 Environment with FileSystemLoader
+- `{% extends %}` **IS** resolved by Jinja2 automatically during rendering
+- BUT introspection **DOES NOT** follow extends chain!
+
+### Current Introspection (BROKEN for Multi-Tier)
+
+**TemplateIntrospector.introspect_template():**
+```python
+def introspect_template(env: jinja2.Environment, template_source: str) -> TemplateSchema:
+    """Extract validation schema from Jinja2 template source."""
+    # 1. Parse template into AST
+    ast = env.parse(template_source)  # ← Single template AST only!
+    
+    # 2. Extract undeclared variables
+    undeclared = meta.find_undeclared_variables(ast)  # ← Only from this template!
+    
+    # 3. Filter system fields
+    agent_vars = undeclared - SYSTEM_FIELDS
+    
+    # 4. Classify as required/optional
+    required, optional = _classify_variables(ast, agent_vars)
+    
+    return TemplateSchema(required=sorted(required), optional=sorted(optional))
+```
+
+**Problem:** Parses ONLY the concrete template (e.g., worker.py.jinja2), **IGNORES** base templates!
+
+**Example:**
+```jinja
+{# base_artifact.jinja2 #}
+{{ template_id }}  {# Variable used in Tier 0 #}
+{{ version }}      {# Variable used in Tier 0 #}
+
+{# base_code.jinja2 extends base_artifact #}
+{{ description }}  {# Variable used in Tier 1 #}
+
+{# worker.py.jinja2 extends base_code #}
+{{ name }}         {# Variable used in Tier 4 #}
+{{ input_dto }}    {# Variable used in Tier 4 #}
+```
+
+**Current introspection result (WRONG):**
+```python
+TemplateSchema(
+    required=["name", "input_dto"],  # Only Tier 4 variables!
+    optional=[]
+)
+```
+
+**Correct result (multi-tier):**
+```python
+TemplateSchema(
+    required=["template_id", "version", "description", "name", "input_dto"],  # ALL tiers!
+    optional=[]
+)
+```
+
+**Impact:** Validation FAILS because base template variables (template_id, version, description) are missing from schema!
+
+### Breaking Change #1: Schema Extraction
+
+**Current:** `introspect_template()` parses single template AST
+
+**Multi-Tier Requirement:** Must parse ALL templates in inheritance chain
+
+**Breaking Change:**
+```python
+# BEFORE (single template):
+template_source = loader.get_source(env, "components/worker.py.jinja2")[0]
+schema = introspect_template(env, template_source)
+
+# AFTER (multi-tier - BREAKS):
+template_source = loader.get_source(env, "components/worker.py.jinja2")[0]
+schema = introspect_template(env, template_source)  # Missing base template variables!
+```
+
+**Fix Required:**
+```python
+# NEW: Resolve inheritance chain
+def introspect_template_with_inheritance(
+    env: jinja2.Environment,
+    template_name: str
+) -> TemplateSchema:
+    """Extract schema from template + all bases."""
+    # 1. Load template
+    template = env.get_template(template_name)
+    
+    # 2. Resolve inheritance chain via Jinja2 internals
+    chain = _resolve_inheritance_chain(env, template)
+    # Returns: ["base/base_artifact.jinja2", "base/base_code.jinja2", ..., "components/worker.py.jinja2"]
+    
+    # 3. Load all template sources
+    sources = [loader.get_source(env, t)[0] for t in chain]
+    
+    # 4. Parse all ASTs
+    asts = [env.parse(source) for source in sources]
+    
+    # 5. Merge undeclared variables from all tiers
+    all_vars = set()
+    for ast in asts:
+        all_vars.update(meta.find_undeclared_variables(ast))
+    
+    # 6. Filter system fields and classify
+    agent_vars = all_vars - SYSTEM_FIELDS
+    required, optional = _classify_variables_multi_tier(asts, agent_vars)
+    
+    return TemplateSchema(required=sorted(required), optional=sorted(optional))
+```
+
+**Migration Complexity:** **HIGH**
+- Requires inheritance chain resolution
+- Must parse N ASTs instead of 1
+- Must merge variables across tiers
+- Classification logic more complex (which tier defines optional?)
+
+### Breaking Change #2: Variable Classification
+
+**Current:** Classify variables from single AST
+
+**Multi-Tier Problem:** Variable may be required in Tier 0 but optional in Tier 4!
+
+**Example:**
+```jinja
+{# base_artifact.jinja2 (Tier 0) #}
+{{ template_id }}  {# Required - no default, no conditional #}
+
+{# worker.py.jinja2 (Tier 4) #}
+{{ worker_type|default("context_worker") }}  {# Optional - has default filter #}
+```
+
+**Classification Challenge:** Must track which tier defines optional behavior.
+
+**Current Algorithm:**
+```python
+def _classify_variables(ast: nodes.Template, variables: Set[str]) -> tuple[list, list]:
+    """Classify from single AST."""
+    optional_vars = set()
+    
+    # Detect |default(...) filter
+    for node in ast.find_all(nodes.Filter):
+        if node.name == "default":
+            optional_vars.add(node.node.name)
+    
+    required_vars = variables - optional_vars
+    return list(required_vars), list(optional_vars)
+```
+
+**Multi-Tier Algorithm (NEW):**
+```python
+def _classify_variables_multi_tier(
+    asts: list[nodes.Template],
+    variables: Set[str]
+) -> tuple[list, list]:
+    """Classify from multiple ASTs (inheritance chain)."""
+    optional_vars = set()
+    
+    # Check ALL tiers for optional patterns
+    for ast in asts:
+        for node in ast.find_all(nodes.Filter):
+            if node.name == "default":
+                var_name = node.node.name
+                if var_name in variables:
+                    optional_vars.add(var_name)  # Optional in ANY tier → optional overall
+    
+    # If variable has default in ANY tier, it's optional
+    # If variable required in ALL tiers, it's required
+    required_vars = variables - optional_vars
+    return list(required_vars), list(optional_vars)
+```
+
+**Migration Complexity:** **MEDIUM**
+- Logic similar to current, but loop over multiple ASTs
+- "Optional in any tier → optional overall" is safe heuristic
+
+### Breaking Change #3: Rendering Context
+
+**Current:** Pass context variables directly to template
+
+**Multi-Tier Issue:** System fields (template_id, version) must be injected at Tier 0!
+
+**Current Rendering:**
+```python
+# TemplateScaffolder._load_and_render_template()
+rendered = self._renderer.render(
+    "components/worker.py.jinja2",
+    name="Signal",
+    input_dto="MarketData",
+    output_path="backend/workers/signal_worker.py"  # System field
+)
+```
+
+**Multi-Tier Problem:** Who provides `template_id` and `version` for Tier 0?
+
+**Solution:** ArtifactManager must inject system fields before rendering:
+```python
+# ArtifactManager (or TemplateScaffolder)
+def scaffold_with_system_fields(artifact_type: str, **agent_context):
+    # 1. Get artifact definition
+    artifact = registry.get_artifact(artifact_type)
+    
+    # 2. Inject system fields (Tier 0 requirements)
+    system_context = {
+        "template_id": artifact_type,
+        "version": artifact.version,
+        "scaffold_created": datetime.now(timezone.utc).isoformat(),
+        "output_path": compute_output_path(...),
+        "format": "code" if artifact.type == "code" else "document"
+    }
+    
+    # 3. Merge agent context + system context
+    full_context = {**agent_context, **system_context}
+    
+    # 4. Render with complete context
+    return renderer.render(artifact.template_path, **full_context)
+```
+
+**Migration Complexity:** **LOW**
+- Already have system field injection logic (SYSTEM_FIELDS constant)
+- Just need to ensure all Tier 0 fields provided
+
+### Breaking Change #4: SCAFFOLD Metadata Generation
+
+**Current:** Each template generates SCAFFOLD metadata independently
+
+**Multi-Tier:** Tier 0 (base_artifact) generates SCAFFOLD metadata for ALL children
+
+**Current (per-template):**
+```jinja
+{# components/worker.py.jinja2 #}
+# SCAFFOLD: template=worker version=2.0 created={{ scaffold_created }} path={{ output_path }}
+```
+
+**Multi-Tier (Tier 0):**
+```jinja
+{# base/base_artifact.jinja2 #}
+{% block scaffold_metadata -%}
+{%- if format == 'code' -%}
+# SCAFFOLD: template={{ template_id }} version={{ version }} created={{ scaffold_created }} path={{ output_path }}
+{%- elif format == 'document' -%}
+<!-- SCAFFOLD: template={{ template_id }} version={{ version }} created={{ scaffold_created }} path={{ output_path }} -->
+{%- endif -%}
+{% endblock %}
+```
+
+**Impact:** NO breaking change to scaffolding CODE! Jinja2 inheritance handles this automatically during rendering.
+
+**BUT:** ScaffoldMetadataParser (Issue #120) still works because output format is identical!
+
+**Migration Complexity:** **NONE** (Jinja2 inheritance handles it)
+
+### Breaking Change #5: Template Path Resolution
+
+**Current:** Direct template path from artifacts.yaml
+
+**Multi-Tier:** May need to resolve inheritance chain for introspection
+
+**artifacts.yaml:**
+```yaml
+worker:
+  template_path: "components/worker.py.jinja2"  # Unchanged!
+```
+
+**Scaffolding:** No change needed (path still points to concrete template)
+
+**Introspection:** Must resolve extends chain from concrete template
+
+**Migration Complexity:** **LOW** (affects introspection only, not scaffolding)
+
+### Inheritance Chain Resolution Research
+
+**Question:** How to resolve `{% extends %}` chain programmatically?
+
+**Jinja2 Internals:**
+```python
+def _resolve_inheritance_chain(env: jinja2.Environment, template_name: str) -> list[str]:
+    """Resolve template inheritance chain bottom-up."""
+    chain = []
+    current = template_name
+    
+    while current:
+        chain.append(current)
+        
+        # Load template source
+        source, _, _ = env.loader.get_source(env, current)
+        
+        # Parse AST
+        ast = env.parse(source)
+        
+        # Find {% extends %} node
+        extends_node = None
+        for node in ast.find_all(jinja2.nodes.Extends):
+            extends_node = node
+            break
+        
+        if extends_node and isinstance(extends_node.template, jinja2.nodes.Const):
+            # Get parent template name
+            current = extends_node.template.value
+        else:
+            # No more parents
+            current = None
+    
+    # Return in top-down order (base → child)
+    return list(reversed(chain))
+```
+
+**Example Result:**
+```python
+chain = _resolve_inheritance_chain(env, "components/worker.py.jinja2")
+# Returns: [
+#     "base/base_artifact.jinja2",
+#     "base/base_code.jinja2",
+#     "base/base_python.jinja2",
+#     "base/base_python_component.jinja2",
+#     "components/worker.py.jinja2"
+# ]
+```
+
+**Migration Complexity:** **MEDIUM**
+- Jinja2 provides AST nodes for extends
+- Must handle Const nodes (static template names)
+- Recursive resolution straightforward
+
+### Migration Complexity Summary
+
+| Component | Impact | Complexity | Reason |
+|-----------|--------|------------|--------|
+| **JinjaRenderer** | ✅ No Change | NONE | Jinja2 handles extends during rendering automatically |
+| **TemplateIntrospector** | 🔴 Breaking | HIGH | Must parse ALL tiers, merge variables, resolve inheritance |
+| **Variable Classification** | ⚠️ Update | MEDIUM | Loop over multiple ASTs instead of one |
+| **System Field Injection** | ⚠️ Update | LOW | Already have logic, just ensure Tier 0 fields provided |
+| **SCAFFOLD Metadata** | ✅ No Change | NONE | Jinja2 inheritance handles automatically |
+| **artifacts.yaml** | ✅ No Change | NONE | Template paths unchanged (point to concrete templates) |
+| **ScaffoldMetadataParser** | ✅ No Change | NONE | Parses generated files, not templates |
+
+### Key Insight: Rendering vs Introspection
+
+**Rendering (Scaffolding):** 
+- ✅ **NO BREAKING CHANGES!**
+- Jinja2's `env.get_template()` + `.render()` **automatically resolves extends**
+- Output is identical to current system
+- Workers, DTOs, docs all scaffold correctly with multi-tier templates
+
+**Introspection (Validation):**
+- 🔴 **BREAKS COMPLETELY!**
+- Current code only parses concrete template
+- Missing all base template variables
+- Validation fails with "missing required fields" errors
+
+**Why This Asymmetry?**
+- **Rendering:** Jinja2 Environment does ALL the work (loads bases, merges blocks, renders final output)
+- **Introspection:** We manually parse template source → must manually resolve inheritance!
+
+### Migration Strategy Recommendation
+
+**Phase 1: Keep Scaffolding Working (Rendering)**
+- ✅ NO CODE CHANGES NEEDED!
+- Multi-tier templates work with existing JinjaRenderer
+- Jinja2 inheritance resolves automatically
+
+**Phase 2: Fix Introspection (Validation)**
+- 🔧 REQUIRES REWRITE of TemplateIntrospector
+- Implement `_resolve_inheritance_chain()`
+- Parse all tier ASTs
+- Merge undeclared variables
+- Update classification logic
+
+**Phase 3: Testing & Validation**
+- Test rendering: Verify worker.py.jinja2 with 4-tier inheritance produces same output
+- Test introspection: Verify schema includes ALL tier variables
+- Test validation: Verify missing Tier 0 fields caught correctly
+
+### Open Questions for Planning
+
+**Q1:** Should we refactor TemplateIntrospector NOW (blocking Issue #72) or later?
+- Option A: Refactor now → Issue #72 complete + introspection works
+- Option B: Defer → Issue #72 templates only, introspection in Issue #121
+
+**Q2:** Can we cache inheritance chains globally?
+- Templates don't change at runtime
+- Chain resolution expensive (N file loads + AST parses)
+- Cache key: template_name → chain list
+
+**Q3:** Should artifacts.yaml store inheritance chain explicitly?
+```yaml
+worker:
+  template_path: "components/worker.py.jinja2"
+  inheritance_chain:  # NEW: Precomputed for performance?
+    - "base/base_artifact.jinja2"
+    - "base/base_code.jinja2"
+    - "base/base_python.jinja2"
+    - "base/base_python_component.jinja2"
+    - "components/worker.py.jinja2"
+```
+
+**Hypothesis:** NO - violates DRY (chain is derivable from templates). Cache at runtime instead.
+
 ## Open Research Questions
 
 ### Q1: Tier 1 Categories - Complete?
