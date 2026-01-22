@@ -1,23 +1,20 @@
-{#
-TIER 0: Universal Base Artifact
-All artifacts inherit from this - defines SCAFFOLD metadata contract
-#}
+{#- TIER 0: Universal Base Artifact -#}
+{#- All artifacts inherit from this - defines SCAFFOLD metadata contract -#}
 
-{# SCAFFOLD metadata - universal for ALL artifacts #}
-{# SCAFFOLD:output_path: {{ output_path }} #}
-{# SCAFFOLD:template_id: {{ template_id }} #}
-{# SCAFFOLD:template_version: {{ template_version }} #}
-{# SCAFFOLD:scaffold_created: {{ scaffold_created }} #}
+{#- SCAFFOLD metadata - universal for ALL artifacts -#}
+{#- SCAFFOLD:output_path: {{ output_path }} -#}
+{#- SCAFFOLD:template_id: {{ template_id }} -#}
+{#- SCAFFOLD:template_version: {{ template_version }} -#}
+{#- SCAFFOLD:scaffold_created: {{ scaffold_created }} -#}
 
-{# Universal blocks - every artifact can override #}
-{% block artifact_header %}
-{# Generated artifact header #}
-{% endblock %}
+{%- block artifact_header -%}
+{#- Generated artifact header -#}
+{%- endblock %}
 
-{% block artifact_content %}
-{# Main artifact content - MUST be overridden #}
-{% endblock %}
+{%- block artifact_content -%}
+{#- Main artifact content - MUST be overridden -#}
+{%- endblock %}
 
-{% block artifact_footer %}
-{# Generated artifact footer #}
-{% endblock %}
+{%- block artifact_footer -%}
+{#- Generated artifact footer -#}
+{%- endblock -%}

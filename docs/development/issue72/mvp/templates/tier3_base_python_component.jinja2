@@ -1,27 +1,27 @@
 {% extends "tier2_base_python.jinja2" %}
 
-{#
-TIER 3: Python Component Specialization
-Adds component-specific patterns (class structure, decorators, etc.)
-#}
+{#- TIER 3: Python Component Specialization -#}
+{#- Adds component-specific patterns (class structure, decorators, etc.) -#}
 
-{% block python_classes %}
+{%- block python_classes %}
 class {{ class_name }}:
     """{{ class_docstring }}
     
     @layer: {{ layer }}
-    {% if dependencies %}@dependencies: {{ dependencies }}{% endif %}
+    {%- if dependencies %}
+    @dependencies: {{ dependencies }}
+    {%- endif %}
     """
     
-    {% block component_init %}
+    {%- block component_init %}
     def __init__(self{% if init_params %}, {{ init_params }}{% endif %}):
         """Initialize {{ class_name }}."""
-        {% block init_body %}
+        {%- block init_body %}
         pass
-        {% endblock %}
-    {% endblock %}
+        {%- endblock %}
+    {%- endblock %}
     
-    {% block component_methods %}
-    {# Component-specific methods #}
-    {% endblock %}
-{% endblock %}
+    {%- block component_methods -%}
+    {#- Component-specific methods -#}
+    {%- endblock %}
+{%- endblock -%}
