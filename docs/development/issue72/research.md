@@ -2225,11 +2225,11 @@ worker:
 
 ---
 
-## Worker Lifecycle Pattern Analysis
+## Worker Lifecycle Pattern Analysis (Hypothesis)
 
 **Context:** Issue #72 AC requires "Worker template uses IWorkerLifecycle pattern".
 
-**Research Gap:** Current research establishes tier architecture but doesn't analyze how IWorkerLifecycle fits within dimensional model.
+**Research Gap:** Current research establishes tier architecture but needs to validate lifecycle pattern fit and identify concrete backend contracts requiring this pattern.
 
 ### Pattern Description
 
@@ -2253,11 +2253,11 @@ class MyWorker(IWorkerLifecycle):
 
 **Rationale:** Separates sync construction (fast, testable) from async resource acquisition (I/O-bound).
 
-### Dimensional Analysis
+### Dimensional Analysis (Working Hypothesis)
 
 **Question:** Which tier owns lifecycle pattern?
 
-**Hypothesis 1: Tier 3 (Specialization) - Python Component**
+**Hypothesis 1: Tier 3 (Specialization) - Python Component** ⭐ RECOMMENDED FOR VALIDATION
 - **Pro:** Lifecycle is component-specific (not all Python code needs lifecycle)
 - **Pro:** Test templates don't need lifecycle, Data Models don't need it
 - **Pro:** Aligns with "Component" specialization (business logic with dependencies)
@@ -2272,24 +2272,31 @@ class MyWorker(IWorkerLifecycle):
 - **Pro:** Lifecycle is a mixin pattern, could be composed
 - **Con:** Template composition out of scope for #72 (Q6 deferred)
 
-**Recommendation:** **Hypothesis 1 - Tier 3 Specialization**
+**Working Recommendation:** **Hypothesis 1 - Tier 3 Specialization**
 
 **Rationale:**
-- Lifecycle is a **domain pattern**, not a language feature
+- Lifecycle is likely a **domain pattern**, not a language feature
 - TypeScript/C#/Go also have lifecycle patterns (constructor + init() + dispose())
 - Each language implements lifecycle differently (Python async, C# IDisposable, Go defer)
 - Tier 2 provides syntax (async/await keywords), Tier 3 applies pattern to component type
 
-**Tier Assignment:**
+**Missing Evidence (Critical for Planning):**
+1. 🔴 **Audit `src/workers/`:** Which workers actually implement IWorkerLifecycle? How many?
+2. 🔴 **Backend contract:** Is IWorkerLifecycle an actual interface in codebase? Where defined?
+3. 🔴 **Pattern necessity:** Why is two-phase init required? What breaks with single-phase?
+4. 🔴 **Template impact:** Does current `worker.py.jinja2` template generate IWorkerLifecycle code?
+5. 🔴 **Cross-language:** Do TypeScript/other components in repo follow similar patterns?
+
+**Tier Assignment (Tentative):**
 ```
 Tier 0: base_artifact.jinja2           → SCAFFOLD metadata
 Tier 1: base_code.jinja2                → Code-specific formatting
 Tier 2: base_python.jinja2              → async/await syntax, type hints
-Tier 3: base_python_component.jinja2    → IWorkerLifecycle pattern  ← HERE
+Tier 3: base_python_component.jinja2    → IWorkerLifecycle pattern  ← HYPOTHESIS
 Concrete: worker.py.jinja2              → Worker-specific logic
 ```
 
-**Implementation Impact:**
+**Implementation Impact (If Hypothesis Valid):**
 - `tier3_base_python_component.jinja2` defines:
   - `{% block lifecycle_interface %}IWorkerLifecycle{% endblock %}`
   - `{% block init_method %}` (Phase 1 pattern)
@@ -2301,7 +2308,7 @@ Concrete: worker.py.jinja2              → Worker-specific logic
   - Specific resources to initialize
   - Worker-specific business logic
 
-**Cross-Language Comparison:**
+**Cross-Language Comparison (Theoretical):**
 | Language | Tier 2 (Syntax) | Tier 3 (Lifecycle Pattern) |
 |----------|-----------------|---------------------------|
 | Python | async/await | IWorkerLifecycle (async init/shutdown) |
@@ -2309,13 +2316,180 @@ Concrete: worker.py.jinja2              → Worker-specific logic
 | C# | async/await, Task | IAsyncDisposable (InitializeAsync/DisposeAsync) |
 | Go | goroutines, channels | Init()/Close() methods |
 
-**Conclusion:** IWorkerLifecycle belongs in **Tier 3 (Specialization)** as domain pattern, implemented per language.
+**Planning Input (Critical Actions):**
+1. **VALIDATE HYPOTHESIS:** Audit actual codebase (src/workers/, src/adapters/) for lifecycle usage
+2. **IDENTIFY CONTRACTS:** Find IWorkerLifecycle interface definition, usage patterns
+3. **ASSESS NECESSITY:** Document why two-phase init is architectural requirement
+4. **VERIFY TEMPLATE:** Check if worker.py.jinja2 currently generates lifecycle code
+5. **IF VALIDATED:** Define `tier3_base_python_component.jinja2` with lifecycle blocks
+6. **IF INVALIDATED:** Reassess tier placement or remove from AC
 
-**Planning Input:**
-1. Define `tier3_base_python_component.jinja2` with IWorkerLifecycle pattern
-2. Define `tier3_base_typescript_component.jinja2` with ILifecycle pattern (future)
-3. Refactor `worker.py.jinja2` to extend Tier 3 (not duplicate lifecycle code)
-4. Document pattern in template usage guide
+---
+
+## Issue #52 Alignment (Template Validation Integration)
+
+**Context:** Issue #72 depends on Issue #52 (template validation infrastructure). Critical to understand actual implementation, not hypothetical design.
+
+### Issue #52 Reality Check
+
+**What #52 Actually IS:**
+- ✅ **Template-driven validation** via `TEMPLATE_METADATA` in template files
+- ✅ **Three-tier enforcement:** STRICT → ARCH → GUIDELINE (see `layered_template_validator.py`)
+- ✅ **Inheritance-aware:** `TemplateAnalyzer.get_base_template()` walks `{% extends %}` chains
+- ✅ **Integrated in SafeEdit:** `safe_edit_tool.py` → `ValidationService` → `LayeredTemplateValidator`
+
+**What #52 is NOT:**
+- ❌ **NO `validation.yaml` file** - validation rules live IN templates (SSOT principle)
+- ❌ **NO standalone validation tool** - `template_validator.py` is deprecated, "always passes"
+- ❌ **NO `validate_template` MCP tool reliability** - uses deprecated validator, gives false confidence
+
+**Key Implementation Files:**
+```
+mcp_server/template/
+├── template_analyzer.py              # Parses TEMPLATE_METADATA, walks {% extends %}
+├── layered_template_validator.py     # Three-tier rule enforcement
+└── validation_service.py             # Orchestrates validation flow
+
+mcp_server/tools/
+└── safe_edit_tool.py                 # Integration point (SafeEditTool → ValidationService)
+
+templates/base/
+└── base_document.md.jinja2           # Example: Contains TEMPLATE_METADATA with STRICT rules
+```
+
+**Evidence from #52 Research:**
+> "Geen validation.yaml, dat zou duplicate SSOT zijn" - [docs/development/issue52/research.md]
+
+### Current CODE Template Gap
+
+**Problem:** DOCUMENT templates have TEMPLATE_METADATA, CODE templates don't.
+
+**Evidence:**
+```python
+# templates/base/base_document.md.jinja2 - HAS TEMPLATE_METADATA ✅
+{# TEMPLATE_METADATA:
+  tier: STRICT
+  format_rules:
+    - "^# " (title required)
+    - "^## " (sections required)
+#}
+
+# templates/base/base_component.py.jinja2 - NO TEMPLATE_METADATA ❌
+# (Currently lacks validation metadata)
+```
+
+**Impact:** LayeredTemplateValidator cannot enforce format rules for CODE templates.
+
+**Issue #72 Opportunity:** Multi-tier architecture is PERFECT place to add TEMPLATE_METADATA systematically.
+
+### Alignment Strategy for Issue #72
+
+**Principle:** Issue #72 multi-tier templates MUST be {% extends %}-based AND carry TEMPLATE_METADATA per tier.
+
+**Tier-to-Validation Mapping:**
+
+| Tier | Validation Tier | TEMPLATE_METADATA Content | Example Rules |
+|------|----------------|---------------------------|---------------|
+| **Tier 0: base_artifact** | STRICT | Universal constraints (SCAFFOLD format) | "^# SCAFFOLD: " or "^<!-- SCAFFOLD: " |
+| **Tier 1: base_code/document/config** | STRICT | Format-specific structure | CODE: imports/classes, DOCUMENT: headings, CONFIG: schema |
+| **Tier 2: base_python/markdown/yaml** | ARCH | Language syntax patterns | Python: type hints, Markdown: link format, YAML: indent |
+| **Tier 3: base_python_component** | ARCH | Specialization patterns | Component: lifecycle methods, Test: fixtures |
+| **Concrete: worker.py** | GUIDELINE | Artifact-specific hints | Worker: error handling, logging |
+
+**Critical Design Rules:**
+
+1. **Each tier defines TEMPLATE_METADATA:**
+   ```jinja2
+   {# TEMPLATE_METADATA:
+     tier: STRICT  # or ARCH, or GUIDELINE
+     format_rules:
+       - "pattern1"
+       - "pattern2"
+     inherited: true  # Allows child templates to see these rules
+   #}
+   ```
+
+2. **Use {% extends %} consistently:**
+   ```jinja2
+   {% extends "tier3_base_python_component.jinja2" %}
+   {# This allows TemplateAnalyzer.get_base_template() to work #}
+   ```
+
+3. **ValidationService merges rules from chain:**
+   - Worker.py → Tier 3 → Tier 2 → Tier 1 → Tier 0
+   - All STRICT rules enforced first
+   - Then ARCH rules
+   - Then GUIDELINE warnings
+
+4. **NO validation.yaml:**
+   - Registry (`.st3/template_registry.yaml`) = provenance/versioning
+   - TEMPLATE_METADATA = validation contract
+   - These are orthogonal concerns
+
+### Planning Actions (Critical for Success)
+
+**PA-1: Define TEMPLATE_METADATA for All Base Tiers**
+- [ ] Tier 0: SCAFFOLD metadata format rules
+- [ ] Tier 1 CODE: Import/class/function structure
+- [ ] Tier 1 DOCUMENT: Heading hierarchy
+- [ ] Tier 1 CONFIG: Schema validation hooks
+- [ ] Tier 2 Python: Type hints, docstrings, async patterns
+- [ ] Tier 2 Markdown: Link format, code block syntax
+- [ ] Tier 2 YAML: Indentation, key format
+- [ ] Tier 3+ : Specialization-specific patterns
+
+**PA-2: Verify {% extends %} Chain Compatibility**
+- [ ] Test: TemplateAnalyzer can walk 5-level inheritance
+- [ ] Test: TEMPLATE_METADATA merges correctly across tiers
+- [ ] Test: SafeEditTool enforces rules from all tiers
+
+**PA-3: Coordinate with #52 Implementation Status**
+- [ ] Check: Is LayeredTemplateValidator finalized?
+- [ ] Check: Are DOCUMENT templates fully validated?
+- [ ] Gap: Extend validation to CODE templates (Tier 1+ in #72)
+- [ ] Test: E2E validation with multi-tier templates
+
+**PA-4: Update Validation Tooling**
+- [ ] Deprecate: Remove misleading `validate_template` tool OR fix to use LayeredTemplateValidator
+- [ ] Document: SafeEditTool is canonical validation route
+- [ ] Document: TEMPLATE_METADATA authoring guide for template designers
+
+**PA-5: Test Strategy (Coordinate with #74)**
+- [ ] Unit test: Each tier's TEMPLATE_METADATA rules
+- [ ] Integration test: Multi-tier rule merging
+- [ ] E2E test: Scaffolded code passes LayeredTemplateValidator
+- [ ] Regression test: Existing templates don't break
+
+### Risk Assessment
+
+**HIGH: CODE template validation is currently unimplemented**
+- Mitigation: Issue #72 Tier 1 CODE must include TEMPLATE_METADATA from day 1
+- Timeline: Cannot ship #72 without CODE validation (use #74 as test bed)
+
+**MEDIUM: 5-level inheritance may stress TemplateAnalyzer**
+- Mitigation: Test with MVP's 5-level chain, profile performance
+- Fallback: Flatten some tiers if analysis too slow
+
+**LOW: TEMPLATE_METADATA format may evolve**
+- Mitigation: #52 defines format, #72 consumes it (not our decision)
+- Coordination: Sync with #52 owner if format changes needed
+
+### Open Questions for Planning
+
+**OQ-V1: TEMPLATE_METADATA Inheritance Semantics**
+- Question: Do child templates override or merge parent rules?
+- Current assumption: Merge (child adds rules, doesn't remove parent rules)
+- Needs verification: Check TemplateAnalyzer.merge_metadata() implementation
+
+**OQ-V2: Validation Performance**
+- Question: Does 5-tier validation add significant overhead to scaffolding?
+- Test: Benchmark single-tier vs multi-tier validation
+- Threshold: <100ms acceptable for interactive use
+
+**OQ-V3: Rule Conflict Resolution**
+- Question: What if Tier 2 rule contradicts Tier 1 rule?
+- Example: Tier 1 requires "class X:", Tier 2 requires "class X(Base):"
+- Resolution strategy: STRICT tier wins? Or error?
 
 ---
 
@@ -2517,24 +2691,23 @@ def introspect_template_with_inheritance(env, template_name):
 
 ---
 
-## Next Phase: Planning
+## Planning Phase Handoff
 
-**Research Complete:** Problem analyzed, existing systems studied, taxonomy defined, patterns explored.
+**Research Complete:** All architectural questions answered, MVP validated, acceptance criteria mapped.
 
-**Planning Phase Goals:**
-1. Select architecture (3-tier vs 4-tier)
-2. Define Tier 1 categories (CODE, DOCUMENT, CONFIG?)
-3. Specify base template contracts (what blocks each tier provides)
-4. Map existing 24 templates to new hierarchy
-5. Estimate effort for refactoring + new language support
-6. Create testing strategy (validate DRY + extensibility)
+**Critical Inputs for Planning:**
+1. ✅ **Architecture decided:** 5-level hierarchy (Tier 0→1→2→3→Concrete)
+2. ✅ **Tier 1 categories decided:** CODE, DOCUMENT, CONFIG
+3. ⚠️ **Base template contracts:** Define TEMPLATE_METADATA + blocks per tier (see Issue #52 Alignment)
+4. ✅ **Migration inventory:** 24 templates mapped (see Legacy Template Migration Inventory)
+5. ⚠️ **Effort estimate:** ~65h (13 work days) - needs validation
+6. ⚠️ **Testing strategy:** Multi-tier introspection + E2E validation (coordinate with #52/#74)
 
-**Open Questions to Answer in Planning:**
-- How many tiers? (3, 4, or 5)
-- Is CONFIG separate Tier 1?
-- Which patterns belong in which tier?
-- What's the migration strategy for 24 existing templates?
-- How do we test multi-tier inheritance?
+**Must-Resolve Before Implementation:**
+- OQ-P1: Backend Pattern Inventory (audit required)
+- OQ-P2: Agent Hint Format (prototype + validate)
+- OQ-P3: Template Validation Integration (coordinate with #52 - see Issue #52 Alignment section)
+- Blocker #1: Inheritance-aware introspection (critical path)
 
 ---
 
