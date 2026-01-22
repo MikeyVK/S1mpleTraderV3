@@ -1,11 +1,10 @@
 {#- TIER 0: Universal Base Artifact -#}
 {#- All artifacts inherit from this - defines SCAFFOLD metadata contract -#}
 
+{%- block scaffold_metadata -%}
 {#- SCAFFOLD metadata - universal for ALL artifacts -#}
-{#- SCAFFOLD:output_path: {{ output_path }} -#}
-{#- SCAFFOLD:template_id: {{ template_id }} -#}
-{#- SCAFFOLD:template_version: {{ template_version }} -#}
-{#- SCAFFOLD:scaffold_created: {{ scaffold_created }} -#}
+{#- Child templates should override this with language-specific comment syntax -#}
+{%- endblock %}
 
 {%- block artifact_header -%}
 {#- Generated artifact header -#}

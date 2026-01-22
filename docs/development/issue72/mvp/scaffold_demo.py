@@ -40,7 +40,7 @@ def scaffold_worker(worker_name: str, worker_description: str,
     template_name = 'concrete_worker.py.jinja2'
     
     # Step 2: Introspect template to get schema
-    print("\n📋 Step 1: Introspecting template...")
+    print("\n[*] Step 1: Introspecting template...")
     schema = introspect_template_with_inheritance(env, template_name)
     
     print(f"  Inheritance chain: {len(schema.inheritance_chain)} tiers")
@@ -48,7 +48,7 @@ def scaffold_worker(worker_name: str, worker_description: str,
     print(f"  Optional fields: {len(schema.optional)}")
     
     # Step 3: Build context
-    print("\n🔧 Step 2: Building context...")
+    print("\n[*] Step 2: Building context...")
     context = {
         # System fields (Tier 0)
         "output_path": f"mcp_server/workers/{worker_name.lower()}_worker.py",
@@ -78,7 +78,7 @@ def scaffold_worker(worker_name: str, worker_description: str,
     }
     
     # Step 4: Validate context against schema
-    print("\n✅ Step 3: Validating context...")
+    print("\n[*] Step 3: Validating context...")
     validation_errors = []
     
     # NOTE: Template uses {% set %} to compute some variables from others
@@ -88,39 +88,39 @@ def scaffold_worker(worker_name: str, worker_description: str,
     # For MVP simplicity, we skip validation and let Jinja2 handle it
     # Production version would need smarter validation that understands {% set %}
     
-    print("  ℹ️  Template uses {% set %} for computed fields - skipping strict validation")
-    print("  ℹ️  Jinja2 will raise clear errors if required inputs are missing")
+    print("  [i] Template uses {% set %} for computed fields - skipping strict validation")
+    print("  [i] Jinja2 will raise clear errors if required inputs are missing")
     
     for field in ['worker_name', 'worker_description']:
         if field in context and context[field] is not None:
-            print(f"  ✓ {field}: {str(context[field])[:50]}...")
+            print(f"  [+] {field}: {str(context[field])[:50]}...")
         else:
             validation_errors.append(f"Missing required user input: {field}")
     
     if validation_errors:
-        print("\n❌ Validation failed:")
+        print("\n[X] Validation failed:")
         for error in validation_errors:
             print(f"  - {error}")
         raise ValueError("Context validation failed")
     
-    print("\n✅ Validation successful!")
+    print("\n[OK] Validation successful!")
     
     # Step 5: Render template
-    print("\n🎨 Step 4: Rendering template...")
+    print("\n[*] Step 4: Rendering template...")
     template = env.get_template(template_name)
     output = template.render(**context)
     
     print(f"  Generated {len(output)} characters")
     
     # Step 6: Write output
-    print("\n💾 Step 5: Writing output file...")
+    print("\n[*] Step 5: Writing output file...")
     output_path = Path(output_dir)
     output_path.mkdir(exist_ok=True)
     
     output_file = output_path / f"{worker_name.lower()}_worker.py"
     output_file.write_text(output, encoding='utf-8')
     
-    print(f"  ✓ Written to: {output_file}")
+    print(f"  [OK] Written to: {output_file}")
     
     return output_file
 
@@ -150,12 +150,12 @@ return processed""",
         output_dir="docs/development/issue72/mvp/output"
     )
     
-    print("\n✅ Scaffolding complete!")
-    print(f"📄 Generated file: {output_file}")
+    print("\n[OK] Scaffolding complete!")
+    print(f"[*] Generated file: {output_file}")
     
     # Show preview
     content = output_file.read_text(encoding='utf-8')
-    print(f"\n📖 Preview (first 600 chars):")
+    print(f"\n[*] Preview (first 600 chars):")
     print("-" * 70)
     print(content[:600])
     print("..." if len(content) > 600 else "")
@@ -176,9 +176,9 @@ def demo_validation_failure():
             worker_description=None,  # Missing required field!
             output_dir="docs/development/issue72/mvp/output"
         )
-        print("\n❌ Expected validation error but scaffolding succeeded!")
+        print("\n[X] Expected validation error but scaffolding succeeded!")
     except ValueError as e:
-        print(f"\n✅ Validation correctly failed: {e}")
+        print(f"\n[OK] Validation correctly failed: {e}")
 
 
 def demo_minimal_scaffold():
@@ -195,12 +195,12 @@ def demo_minimal_scaffold():
         output_dir="docs/development/issue72/mvp/output"
     )
     
-    print("\n✅ Minimal scaffolding complete!")
-    print(f"📄 Generated file: {output_file}")
+    print("\n[OK] Minimal scaffolding complete!")
+    print(f"[*] Generated file: {output_file}")
     
     # Show that it still generates valid code
     content = output_file.read_text(encoding='utf-8')
-    print(f"\n📖 Preview (showing execute method):")
+    print(f"\n[*] Preview (showing execute method):")
     print("-" * 70)
     # Find execute method
     lines = content.split('\n')
@@ -238,17 +238,17 @@ if __name__ == "__main__":
         demo_minimal_scaffold()
         
         print("\n" + "="*70)
-        print("✅ ALL SCAFFOLDING DEMOS COMPLETE!")
+        print("[OK] ALL SCAFFOLDING DEMOS COMPLETE!")
         print("="*70)
         print("\nKey Validations:")
-        print("  1. ✅ Introspection extracts correct schema (12 variables)")
-        print("  2. ✅ Validation enforces required fields")
-        print("  3. ✅ Validation allows missing optional fields")
-        print("  4. ✅ Rendering produces valid Python code")
-        print("  5. ✅ End-to-end flow works: introspect → validate → render → write")
-        print("\n🎯 CONCLUSION: 4-tier architecture is production-ready!")
+        print("  1. [OK] Introspection extracts correct schema (12 variables)")
+        print("  2. [OK] Validation enforces required fields")
+        print("  3. [OK] Validation allows missing optional fields")
+        print("  4. [OK] Rendering produces valid Python code")
+        print("  5. [OK] End-to-end flow works: introspect -> validate -> render -> write")
+        print("\n[*] CONCLUSION: 4-tier architecture is production-ready!")
         
     except Exception as e:
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n[X] ERROR: {e}")
         import traceback
         traceback.print_exc()

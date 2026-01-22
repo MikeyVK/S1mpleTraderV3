@@ -1,3 +1,9 @@
+
+# SCAFFOLD:output_path: mcp_server/workers/dataprocessor_worker.py
+# SCAFFOLD:template_id: worker
+# SCAFFOLD:template_version: 1.0.0
+# SCAFFOLD:scaffold_created: 2026-01-22T10:30:00Z
+
 """Processes incoming data streams with validation and transformation."""
 from typing import Dict, Any
 from mcp_server.workers.base_worker import BaseWorker
