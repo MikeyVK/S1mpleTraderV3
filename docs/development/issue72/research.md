@@ -647,6 +647,412 @@ class Worker:
 
 ---
 
+## Post-Generation Editing & Validation Research
+
+### Research Question
+
+**How does multi-tier base template architecture affect post-generation workflows?**
+
+**Context:** Issue #121 (Content-Aware Edit Tool) requires:
+1. **Introspection:** Agent queries file schema to understand structure
+2. **Validation:** After edits, validate artifact against original template
+
+**Key Insight:** Generation uses Jinja2 AST (template), editing uses Artifact AST (generated file). Multi-tier inheritance affects both.
+
+### Use Case: Agent Edits Scaffolded File
+
+**Scenario:**
+```python
+# Day 1: Agent scaffolds worker
+scaffold_artifact("worker", name="Signal", input_dto="MarketData", output_dto="SignalDTO")
+# Creates: backend/workers/signal_worker.py (from 4-tier inheritance chain)
+
+# Day 7: Agent needs to edit worker (add new method)
+# Agent receives: path="backend/workers/signal_worker.py" (no context!)
+# Agent must: 1. Discover template, 2. Understand structure, 3. Edit safely
+```
+
+**Questions:**
+1. How does agent discover file came from 4-tier template chain?
+2. What schema does agent receive? (Tier 0 only? All 4 tiers merged?)
+3. How does validation work? (Against which tier's rules?)
+
+### Introspection Analysis: Template Schema Presentation
+
+**Hypothetical 4-tier worker.py inheritance:**
+```
+base_artifact (Tier 0)
+└── base_code (Tier 1)
+    └── base_python (Tier 2)
+        └── base_python_component (Tier 3)
+            └── worker.py (Tier 4 - concrete template)
+```
+
+**SCAFFOLD metadata in generated file:**
+```python
+# SCAFFOLD: template=worker version=2.0 created=2026-01-22T10:00:00Z path=backend/workers/signal_worker.py
+```
+
+**Introspection workflow (Issue #121):**
+```python
+# Agent calls:
+schema = query_file_schema("backend/workers/signal_worker.py")
+
+# System must:
+# 1. Parse SCAFFOLD metadata → template_id="worker"
+# 2. Load template: worker.py.jinja2
+# 3. Resolve inheritance chain: worker → base_python_component → base_python → base_code → base_artifact
+# 4. Build merged schema from ALL tiers
+```
+
+**Research Question 1:** What does `schema` contain?
+
+**Option A: Flattened Schema (All Tiers Merged)**
+```python
+schema = {
+    "template_id": "worker",  # From concrete template
+    "template_chain": ["base_artifact", "base_code", "base_python", "base_python_component", "worker"],
+    "lifecycle": {...},       # From Tier 0
+    "format": "code",         # From Tier 1
+    "language": "python",     # From Tier 2
+    "specialization": "component",  # From Tier 3
+    "structure": {
+        # Merged from all tiers:
+        "sections": {
+            "imports": {...},          # From base_python
+            "class_definition": {...}, # From base_python_component
+            "process_method": {...}    # From worker.py
+        }
+    },
+    "edit_capabilities": ["ScaffoldEdit", "TextEdit"]
+}
+```
+
+**Pros:**
+- Agent sees complete picture (all tiers)
+- No need to understand inheritance hierarchy
+- Single schema for validation
+
+**Cons:**
+- Complex schema (4 tiers merged)
+- Hard to identify which tier defines what
+- May expose too much detail
+
+**Option B: Tier-Specific Schemas (Layered)**
+```python
+schema = {
+    "template_id": "worker",
+    "tiers": {
+        "tier_0_lifecycle": {
+            "metadata": ["template_id", "version", "created", "path"]
+        },
+        "tier_1_format": {
+            "type": "code",
+            "sections": ["imports", "content"]
+        },
+        "tier_2_language": {
+            "language": "python",
+            "syntax": {"comment": "#", "docstring": '"""'}
+        },
+        "tier_3_specialization": {
+            "type": "component",
+            "patterns": ["dependencies", "layer_annotations"]
+        },
+        "tier_4_concrete": {
+            "type": "worker",
+            "required_methods": ["process"],
+            "base_class": "BaseWorker"
+        }
+    },
+    "edit_capabilities": ["ScaffoldEdit", "TextEdit"]
+}
+```
+
+**Pros:**
+- Clear separation (agent can query specific tier)
+- Easier debugging (know which tier defines what)
+- Extensible (add tiers without breaking schema)
+
+**Cons:**
+- More complex for agent (must understand tiers)
+- Validation must check all tiers
+- Higher cognitive load
+
+**Research Hypothesis:** Option A (flattened) is better for agents (simpler mental model), Option B (layered) is better for debugging/maintenance.
+
+**Open Question:** Which schema presentation enables best editing workflows?
+
+### Validation Analysis: Artifact AST vs Jinja2 AST
+
+**Core Problem:** Generated file != template anymore after edits.
+
+**Scenario:**
+```python
+# Original (generated from template):
+class SignalWorker(BaseWorker[MarketData, SignalDTO]):
+    """Signal detection worker."""
+    
+    async def process(self, input_data: MarketData) -> SignalDTO:
+        # Process market data
+        pass
+
+# After agent edit (added new method):
+class SignalWorker(BaseWorker[MarketData, SignalDTO]):
+    """Signal detection worker."""
+    
+    async def process(self, input_data: MarketData) -> SignalDTO:
+        # Process market data
+        pass
+    
+    async def validate_signal(self, signal: SignalDTO) -> bool:  # NEW!
+        """Validate signal quality."""
+        return True
+```
+
+**Validation challenge:** File is no longer pure template output. How do we validate?
+
+**Jinja2 AST (Template):**
+- Defined in worker.py.jinja2
+- Has blocks: {% block process_method %}
+- Static structure (known at template design time)
+
+**Artifact AST (Generated File):**
+- Parsed from actual Python file
+- Has AST nodes: ClassDef, FunctionDef, etc.
+- Dynamic structure (agent added `validate_signal` method)
+
+**Validation Approaches:**
+
+**Approach 1: Template-Based Validation (Strict)**
+```python
+# Validate file matches template structure exactly
+template_ast = parse_jinja2("worker.py.jinja2")
+artifact_ast = parse_python("signal_worker.py")
+
+# Check: Does artifact have all required blocks from template?
+required_blocks = ["process_method"]
+for block in required_blocks:
+    if block not in artifact_ast:
+        error(f"Missing required block: {block}")
+
+# Problem: New method `validate_signal` not in template → FAIL!
+```
+
+**Pros:**
+- Enforces template contract strictly
+- Prevents drift from template structure
+
+**Cons:**
+- **BLOCKS LEGITIMATE EDITS!**
+- Agent can't add new methods/fields
+- Files become frozen (can't evolve)
+
+**Approach 2: Rule-Based Validation (Flexible)**
+```python
+# Validate file matches RULES from TEMPLATE_METADATA, not structure
+rules = get_template_metadata("worker").validates
+
+# Example rules from worker.py.jinja2:
+# - Must have BaseWorker base class
+# - Must have process() method
+# - Must have type hints
+
+# Check rules against artifact AST:
+check_base_class(artifact_ast, "BaseWorker")  # PASS
+check_method_exists(artifact_ast, "process")  # PASS
+check_method_exists(artifact_ast, "validate_signal")  # Not required, so OK!
+```
+
+**Pros:**
+- Allows agent to add new methods/fields
+- Validates contract, not structure
+- Files can evolve beyond template
+
+**Cons:**
+- Looser validation (may miss issues)
+- Rules must be carefully designed
+- Need TEMPLATE_METADATA in all tiers
+
+**Research Hypothesis:** Approach 2 (rule-based) is correct. Templates define CONTRACTS (what must exist), not STRUCTURE (what can exist).
+
+**Multi-Tier Validation:**
+
+**Question:** Which tier's rules apply?
+
+**Scenario:** Agent edits worker.py
+
+**Tier 0 (Lifecycle) rules:**
+- SCAFFOLD metadata must be present ✅
+- Version must be valid semver ✅
+
+**Tier 1 (Format=CODE) rules:**
+- Must have imports section ✅
+- Must be valid Python syntax ✅
+
+**Tier 2 (Language=Python) rules:**
+- Must have docstrings ✅
+- Must have type hints ✅
+
+**Tier 3 (Specialization=Component) rules:**
+- Must have layer annotation ✅
+- Must list dependencies ✅
+
+**Tier 4 (Concrete=Worker) rules:**
+- Must inherit BaseWorker ✅
+- Must have process() method ✅
+
+**Validation workflow:**
+```python
+# Validate against ALL tiers (bottom-up):
+validate_tier_0(artifact)  # Lifecycle rules
+validate_tier_1(artifact)  # Format rules
+validate_tier_2(artifact)  # Language rules
+validate_tier_3(artifact)  # Specialization rules
+validate_tier_4(artifact)  # Concrete template rules
+
+# If all pass → artifact is valid!
+```
+
+**Key Insight:** Multi-tier validation = layered contracts. Each tier adds constraints, none remove them.
+
+**Open Question:** How does agent know which tier a validation error came from?
+
+### Introspection Implementation Research
+
+**Question:** How does TemplateIntrospector handle 4-tier inheritance?
+
+**Current (Issue #120):**
+```python
+class TemplateIntrospector:
+    def get_schema(self, template_id: str) -> dict:
+        # Load template
+        template = env.get_template(f"components/{template_id}.py.jinja2")
+        
+        # Parse Jinja2 AST
+        ast = env.parse(template.source)
+        
+        # Extract blocks
+        blocks = extract_blocks(ast)
+        
+        return {"blocks": blocks, ...}
+```
+
+**Problem:** Single template load, no inheritance resolution!
+
+**Multi-Tier (Hypothesis):**
+```python
+class TemplateIntrospector:
+    def get_schema(self, template_id: str) -> dict:
+        # 1. Load concrete template
+        template = env.get_template(f"components/{template_id}.py.jinja2")
+        
+        # 2. Resolve inheritance chain
+        chain = self._resolve_inheritance(template)
+        # Returns: [base_artifact, base_code, base_python, base_python_component, worker]
+        
+        # 3. Load all templates in chain
+        templates = [env.get_template(t) for t in chain]
+        
+        # 4. Merge blocks from all tiers
+        merged_blocks = {}
+        for t in templates:
+            blocks = extract_blocks(env.parse(t.source))
+            merged_blocks.update(blocks)  # Child overrides parent
+        
+        # 5. Extract metadata from all tiers
+        merged_metadata = {}
+        for t in templates:
+            metadata = extract_metadata(t.source)
+            merged_metadata = deep_merge(merged_metadata, metadata)
+        
+        return {
+            "template_id": template_id,
+            "inheritance_chain": chain,
+            "blocks": merged_blocks,
+            "metadata": merged_metadata
+        }
+```
+
+**Key Changes:**
+- Must resolve `{% extends %}` directives recursively
+- Must merge blocks from all tiers (child overrides parent)
+- Must merge TEMPLATE_METADATA from all tiers
+
+**Performance Concern:** Loading 5 templates instead of 1. 
+
+**Mitigation:** Cache inheritance chains (templates don't change at runtime).
+
+### Edit Capability Discovery
+
+**Question:** How does agent know if file supports ScaffoldEdit?
+
+**Current (Issue #121 hypothesis):**
+```python
+schema = query_file_schema("signal_worker.py")
+
+if schema["template_id"]:
+    # File was scaffolded → supports ScaffoldEdit
+    capabilities = ["ScaffoldEdit", "TextEdit"]
+else:
+    # File not scaffolded → TextEdit only
+    capabilities = ["TextEdit"]
+```
+
+**Multi-Tier Context:**
+
+**ScaffoldEdit requires:**
+- SCAFFOLD metadata (Tier 0) ✅
+- Template blocks identified (Tier 1-4) ✅
+- Current artifact state parsed (AST) ✅
+
+**ScaffoldEdit operations (hypothetical):**
+```python
+# Append to imports block (defined in Tier 2: base_python)
+ScaffoldEdit.append_to_block("imports", "from decimal import Decimal")
+
+# Append to process method (defined in Tier 4: worker.py)
+ScaffoldEdit.append_to_method("process", "# Additional logic")
+
+# Add new method (NOT in template - allowed?)
+ScaffoldEdit.insert_method("validate_signal", "async def validate_signal(...):")
+```
+
+**Research Question:** Which blocks can agent edit?
+
+**Option A: Template-defined blocks only**
+- Agent can only edit blocks explicitly defined in template
+- New blocks require template update
+- Strict control
+
+**Option B: Any block in artifact AST**
+- Agent can edit any Python AST node (class, method, etc.)
+- Template blocks are hints, not constraints
+- Flexible editing
+
+**Hypothesis:** Option B (flexible) aligns with rule-based validation approach.
+
+### Key Findings
+
+**Introspection:**
+1. Multi-tier inheritance requires recursive template loading
+2. Schema presentation: Flattened (simple for agents) vs Layered (clear for debugging)
+3. Performance: Cache inheritance chains to avoid repeated template loading
+
+**Validation:**
+1. Rule-based validation (contracts) NOT structure-based (exact match)
+2. Multi-tier validation: Each tier adds constraints
+3. Agent can add new methods/fields as long as required contracts satisfied
+
+**Edit Capabilities:**
+1. ScaffoldEdit works on both template-defined AND agent-added blocks
+2. Template blocks are semantic hints (imports, class, methods)
+3. Validation after edit checks ALL tier rules
+
+**Open Questions for Planning:**
+- Which schema presentation? (Flattened vs Layered)
+- How to communicate tier violations to agent?
+- Should TemplateIntrospector cache be global or per-template?
+
 ## Open Research Questions
 
 ### Q1: Tier 1 Categories - Complete?
