@@ -24,7 +24,7 @@
 ```python
 # SCAFFOLD: worker:a3f7b2c1 | 2026-01-22T10:30:00Z | src/workers/ProcessWorker.py
 ```
-- Hash (`a3f7b2c1`) = SHA256 of all tier versions (8-char hex)
+- Hash (`a3f7b2c1`) = SHA256 of artifact_type + template_id@version per tier (8-char hex for collision safety)
 - Registry (`.st3/template_registry.yaml`) maps hash → full version chain
 - Single-line, adapts to any comment syntax (Python `#`, Markdown `<!--`, YAML `#`)
 
@@ -349,9 +349,12 @@ Concrete: worker.py.jinja2              → Worker-specific logic
 
 **What #52 Actually IS:**
 - ✅ **Template-driven validation** via `TEMPLATE_METADATA` in template files (SSOT principle)
-- ✅ **Three-tier enforcement:** STRICT → ARCH → GUIDELINE (see `layered_template_validator.py`)
+- ✅ **Two-tier enforcement:** validates.strict (errors) and validates.guidelines (warnings)
+- ✅ **Rule-level categorization:** Format vs architectural rules determined by rule names, not separate tiers
 - ✅ **Inheritance-aware:** `TemplateAnalyzer.get_base_template()` walks `{% extends %}` chains
 - ✅ **Integrated in SafeEdit:** `safe_edit_tool.py` → `ValidationService` → `LayeredTemplateValidator`
+
+**Note:** While tiers are often described as "STRICT → ARCH → GUIDELINE", the actual implementation uses `validates.strict` (blocking errors) and `validates.guidelines` (non-blocking warnings). The distinction between format and architectural rules is encoded in rule names/descriptions, not as a separate validation tier.
 
 **What #52 is NOT:**
 - ❌ **NO `validation.yaml` file** - validation rules live IN templates (Config Over Code)
@@ -360,7 +363,7 @@ Concrete: worker.py.jinja2              → Worker-specific logic
 
 **Key Implementation Files:**
 ```
-mcp_server/template/
+mcp_server/validation/
 ├── template_analyzer.py              # Parses TEMPLATE_METADATA, walks {% extends %}
 ├── layered_template_validator.py     # Three-tier rule enforcement
 └── validation_service.py             # Orchestrates validation flow
@@ -377,13 +380,23 @@ templates/base/
 **Problem:** DOCUMENT templates have `TEMPLATE_METADATA`, CODE templates don't.
 
 **Evidence:**
-```python
+```jinja2
 # templates/base/base_document.md.jinja2 - HAS TEMPLATE_METADATA ✅
 {# TEMPLATE_METADATA:
-  tier: STRICT
-  format_rules:
-    - "^# " (title required)
-    - "^## " (sections required)
+  enforcement: STRICT
+  level: format
+  version: "2.0"
+  validates:
+    strict:
+      - rule: "title_required"
+        description: "Document must have a title"
+        pattern: "^# "
+      - rule: "sections_required"
+        description: "Document must have sections"
+        pattern: "^## "
+    guidelines:
+      - "Use clear section names"
+      - "Document rationale for decisions"
 #}
 
 # templates/base/base_component.py.jinja2 - NO TEMPLATE_METADATA ❌
@@ -400,16 +413,18 @@ templates/base/
 
 **Tier-to-Validation Mapping:**
 
-| Tier | Validation Tier | TEMPLATE_METADATA Content | Example Rules |
-|------|----------------|---------------------------|---------------|
-| **Tier 0: base_artifact** | STRICT | Universal constraints (SCAFFOLD format) | `"^# SCAFFOLD: "` or `"^<!-- SCAFFOLD: "` |
-| **Tier 1: base_code** | STRICT | Format-specific structure | `"^from ", "^import ", "^class ", "^def "` |
-| **Tier 1: base_document** | STRICT | Heading hierarchy | `"^# ", "^## ", "^### "` |
-| **Tier 1: base_config** | STRICT | Schema validation hooks | YAML indent, key format |
-| **Tier 2: base_python** | ARCH | Language syntax patterns | Type hints, docstrings, async patterns |
-| **Tier 2: base_markdown** | ARCH | Link format, code blocks | `[text](url)`, ` ``` ` fences |
-| **Tier 3: base_python_component** | ARCH | Specialization patterns | Lifecycle methods, @layer decorator |
-| **Concrete: worker.py** | GUIDELINE | Artifact-specific hints | Error handling, logging |
+| Tier | Enforcement Level | TEMPLATE_METADATA Content | Example Rules |
+|------|------------------|---------------------------|---------------|
+| **Tier 0: base_artifact** | STRICT (errors) | Universal constraints (SCAFFOLD format) | `"^# SCAFFOLD: "` or `"^<!-- SCAFFOLD: "` |
+| **Tier 1: base_code** | STRICT (errors) | Format-specific structure | `"^from ", "^import ", "^class ", "^def "` |
+| **Tier 1: base_document** | STRICT (errors) | Heading hierarchy | `"^# ", "^## ", "^### "` |
+| **Tier 1: base_config** | STRICT (errors) | Schema validation hooks | YAML indent, key format |
+| **Tier 2: base_python** | STRICT (errors) | Language syntax patterns (format-level) | Type hints, docstrings, async patterns |
+| **Tier 2: base_markdown** | STRICT (errors) | Link format, code blocks (format-level) | `[text](url)`, ` ``` ` fences |
+| **Tier 3: base_python_component** | GUIDELINES (warnings) | Architectural best practices | Lifecycle methods, @layer decorator usage |
+| **Concrete: worker.py** | GUIDELINES (warnings) | Artifact-specific best practices | Error handling patterns, logging conventions |
+
+**Note:** Tier 2 language rules are format-level enforcement (STRICT) because syntax correctness is mandatory. Tier 3+ rules are architectural guidance (GUIDELINES) because implementation patterns are recommendations.
 
 **Critical Design Rules:**
 
