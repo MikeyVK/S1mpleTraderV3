@@ -2,7 +2,7 @@
 
 **Purpose:** Compact planning input - Final decisions, blockers, and action items  
 **Full Analysis:** [research.md](research.md) (2500+ lines with exploration details)  
-**Status:** ✅ COMPLETE - All 8/8 questions answered, MVP validated  
+**Status:** ✅ Research Complete (Implementation blocked by 4 critical items - see Critical Blockers section)  
 **Date:** January 2026
 
 ---
@@ -12,7 +12,7 @@
 **Problem:**
 - DRY violation: SCAFFOLD metadata duplicated across base templates
 - Python-only architecture: Adding TypeScript requires duplicating 13+ templates
-- Incomplete coverage: Only 8% of templates have SCAFFOLD metadata
+- Incomplete coverage: Only 21% (6 of 29) templates have SCAFFOLD metadata
 - Mixed concerns: Base templates combine lifecycle + format + language + specialization
 
 **Solution:**
@@ -117,14 +117,22 @@ version_hashes:
 # 1. Resolve tier chain versions from registry
 artifact_entry = registry.get_artifact("worker")
 
-# 2. Calculate compound hash
-tier_versions = [t0_ver, t1_ver, t2_ver, t3_ver, concrete_ver]
-version_string = "|".join(tier_versions)
-hash_short = hashlib.sha256(version_string.encode()).hexdigest()[:8]
+# 2. Calculate compound hash (artifact_type + template_id@version per tier)
+# Format: "worker|tier0_base_artifact@1.0.0|tier1_base_code@1.0.0|..."
+hash_components = [artifact_entry['artifact_type']]
+for tier in ['tier0', 'tier1', 'tier2', 'tier3', 'concrete']:
+    if tier in artifact_entry:
+        template_id = artifact_entry[tier]['template_id']
+        version = artifact_entry[tier]['version']
+        hash_components.append(f"{template_id}@{version}")
+
+version_string = "|".join(hash_components)
+hash_full = hashlib.sha256(version_string.encode()).hexdigest()
+hash_short = hash_full[:8]  # a3f7b2c1
 
 # 3. Store hash in registry (if new) ← CRITICAL
 if hash_short not in registry['version_hashes']:
-    registry.add_hash(hash_short, artifact_entry, tier_versions)
+    registry.add_hash(hash_short, artifact_entry, version_string)
     registry.save()
 
 # 4. Embed compact metadata in generated file
@@ -199,19 +207,20 @@ schema = {
 
 ## Critical Blockers for Planning
 
-### Blocker #1: Inheritance-Aware Introspection (MUST FIX BEFORE ROLLOUT)
+### Blocker #1: Inheritance-Aware Schema Introspection (MUST FIX BEFORE ROLLOUT)
 
-**Problem:** Current `TemplateIntrospector` analyzes single template files, missing variables defined in parent templates.
+**Problem:** Current template introspection in `mcp_server/scaffolding/template_introspector.py` analyzes single template files, missing variables defined in parent templates via `{% extends %}`.
 
 **Evidence:** MVP demonstrates 67% variable miss rate:
 ```python
-# Single-template introspection (CURRENT)
-schema = introspect_template("worker.py.jinja2")
+# Single-template introspection (CURRENT - template_introspector.py:44)
+schema = introspect_template(env, "worker.py.jinja2")
 # Returns: ['worker_name', 'worker_description']  (2 vars)
 # MISSES: 'timestamp', 'output_path', 'template_version', etc (6 vars from parents)
+# Note: SYSTEM_FIELDS (template_introspector.py:26-33) are correctly filtered
 
 # Multi-tier introspection (REQUIRED)
-schema = introspect_template_with_inheritance("worker.py.jinja2")
+schema = introspect_template_with_inheritance(env, "worker.py.jinja2")
 # Returns: ALL 8 variables (2 from concrete + 6 from tiers 0-3)
 ```
 
@@ -240,7 +249,8 @@ def introspect_template_with_inheritance(env, template_name):
 ```
 
 **Definition of Done:**
-- [ ] Integrate `introspect_template_with_inheritance()` into `TemplateIntrospector` class
+- [ ] Integrate `introspect_template_with_inheritance()` into `template_introspector.py` module
+- [ ] Update `introspect_template()` function to walk {% extends %} chain
 - [ ] Unit test: 5-tier worker template returns all 8 variables
 - [ ] E2E test: Scaffolding validates against complete schema
 - [ ] Documentation: Introspection algorithm explained in architecture guide
@@ -403,16 +413,26 @@ templates/base/
 
 **Critical Design Rules:**
 
-1. **Each tier defines TEMPLATE_METADATA:**
+1. **Each tier defines TEMPLATE_METADATA (using Issue #52 format):**
    ```jinja2
    {# TEMPLATE_METADATA:
-     tier: STRICT  # or ARCH, or GUIDELINE
-     format_rules:
-       - "pattern1"
-       - "pattern2"
-     inherited: true  # Allows child templates to see these rules
+     enforcement: STRICT  # or ARCH, or GUIDELINE
+     level: format  # or syntax, or architecture
+     version: "1.0"
+     validates:
+       strict:
+         - rule: "scaffold_metadata"
+           description: "SCAFFOLD metadata must be present"
+           pattern: "^# SCAFFOLD: "
+         - rule: "heading_hierarchy"
+           description: "Document must have title and sections"
+           pattern: "^## "
+       guidelines:
+         - "Use clear section names"
+         - "Document rationale for decisions"
    #}
    ```
+   **Note:** This matches existing `base_document.md.jinja2` format (enforcement, level, validates.strict/guidelines).
 
 2. **Use {% extends %} consistently:**
    ```jinja2
@@ -647,7 +667,7 @@ templates/base/
 
 ### Issue #120 (SCAFFOLD Metadata)
 
-**Status:** Incomplete (8% coverage)  
+**Status:** Incomplete (21% coverage: 6 of 29 templates have SCAFFOLD metadata)  
 **Needs:** Ultra-compact format in all templates  
 **Blocker:** Parser update required for new format  
 **Action:** Update `ScaffoldMetadataParser` in Phase 1
@@ -687,31 +707,32 @@ templates/base/
 
 ## Research Status
 
-**Status:** ✅ COMPLETE (with QA improvements applied)
+**Status:** ✅ Research Complete (Implementation blocked by 4 critical items - see Critical Blockers)
 
 **Key Findings:**
 - 4 orthogonal dimensions, 5-level hierarchy (Tier 0→3→Concrete)
-- Ultra-compact 1-line SCAFFOLD metadata with registry-backed version hashing
-- IWorkerLifecycle pattern hypothesis: Tier 3 (Specialization) - requires validation
-- Inheritance-aware introspection critical (67% coverage improvement proven)
+- Ultra-compact 1-line SCAFFOLD metadata with registry-backed version hashing (artifact_type + template_id@version per tier for collision safety)
+- IWorkerLifecycle pattern hypothesis: Tier 3 (Specialization) - requires validation via codebase audit
+- Inheritance-aware schema introspection critical (67% coverage improvement proven in MVP)
 
 **Decisions Made:**
 - 8/8 research questions answered
 - CONFIG=Tier1, Ephemeral=DOCUMENT, 5 levels optimal
 - Version metadata only (migration deferred to future issue)
 - Flattened schema excluding computed vars
-- Registry-backed hash encoding (auto-register during scaffolding)
+- Registry-backed hash encoding (auto-register during scaffolding with collision-safe format)
+- TEMPLATE_METADATA format matches Issue #52 (enforcement, level, validates.strict/guidelines)
 
 **Acceptance Criteria:**
 - 9/13 designed/proven (69%) - Architecture + extensibility
 - 2/13 partial/gaps (15%) - Worker lifecycle, validation dependency
 - 2/13 not covered (15%) - Backend patterns inventory, agent hints, documentation
 
-**Critical Blockers:**
-1. ⚠️ Inheritance-aware introspection (must implement before rollout)
-2. 🔴 IWorkerLifecycle pattern validation (audit `src/workers/` required)
-3. 🔴 Backend pattern inventory (planning input, audit required)
-4. 🔴 Agent hint format (planning input, prototype required)
+**Critical Blockers (Must Resolve Before Implementation):**
+1. ⚠️ Inheritance-aware schema introspection in `mcp_server/scaffolding/template_introspector.py` (must implement before rollout)
+2. 🔴 IWorkerLifecycle pattern validation (audit `src/workers/` to confirm existence + Tier 3 placement)
+3. 🔴 Backend pattern inventory (audit `src/workers/adapters/services/` for complete pattern catalog)
+4. 🔴 Agent hint format (define syntax, prototype in research.md template, validate with agent)
 
 **Recommendation:** Multi-tier base template architecture for DRY + extensibility + language-agnostic scaling
 
