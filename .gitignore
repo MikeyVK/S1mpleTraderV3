@@ -34,6 +34,9 @@ mcp_server/logs/
 .logs/
 mcp_server/logs/
 
+# Local configuration (machine-specific paths)
+mcp_config.yaml
+
 # Run results
 
 # Local QA / debug outputs (artifacts)
