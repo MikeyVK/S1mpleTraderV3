@@ -57,12 +57,6 @@ class TestTemplateRegistryLoading:
         assert hasattr(result, 'content')
         assert 'TestWorker' in result.content
     
-    def test_uses_fallback_when_primary_none(self, scaffolder, mock_registry):
-        # Fallback template logic currently doesn't work in TemplateScaffolder
-        # This is a known Issue #56 implementation gap
-        # Skip for now - will be fixed in Slice 2 completion
-        pytest.skip("Fallback template logic not yet implemented")
-    
     def test_error_when_no_template_defined(self, scaffolder, mock_registry):
         artifact = Mock()
         artifact.type_id = 'broken'

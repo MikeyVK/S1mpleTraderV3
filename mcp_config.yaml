@@ -4,7 +4,7 @@
 server:
   name: "st3-workflow"
   version: "1.0.0"
-  workspace_root: "D:/dev/SimpleTraderV3"
+  workspace_root: "c:/temp/st3"
 
 logging:
   level: "DEBUG"
