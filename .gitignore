@@ -1,3 +1,5 @@
+# Local-only MCP config
+mcp_config.yaml
 # Python
 __pycache__/
 *.pytest_cache
