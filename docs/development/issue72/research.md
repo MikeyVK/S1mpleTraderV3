@@ -1495,11 +1495,376 @@ worker:
 
 **Hypothesis:** NO - violates DRY (chain is derivable from templates). Cache at runtime instead.
 
-## Open Research Questions
+## Open Research Questions - USER RESPONSES
 
-### Q1: Tier 1 Categories - Complete?
+### Q1: Tier 1 Categories - Complete? ✅ ANSWERED
 
 **Question:** Are CODE, DOCUMENT, CONFIG the only Tier 1 format categories?
+
+**USER DECISION:** ✅ **CONFIG moet aparte Tier 1 categorie worden**
+
+**Rationale:**
+- CONFIG: Schema-validated (workflows.yaml, labels.yaml)
+- DOCUMENT: Structure-validated (research.md, design.md)
+- CODE: Syntax-validated (Python, TypeScript, etc.)
+
+**Action for Planning:** Create `base_config.jinja2` as Tier 1 alongside `base_code.jinja2` and `base_document.jinja2`.
+
+---
+
+### Q2: Ephemeral Artifact Handling ✅ ANSWERED
+
+**Question:** Do ephemeral artifacts (commit messages, PR bodies) need special treatment?
+
+**USER DECISION:** ✅ **Blijven DOCUMENT subtype**
+
+**Rationale:** No special template handling needed. Storage is tool responsibility.
+
+**Action for Planning:** No special tier or handling. Ephemeral artifacts use `base_document.jinja2`.
+
+---
+
+### Q3: Optimal Tier Count ✅ ANSWERED - CRITICAL SRP ANALYSIS
+
+**Question:** Is 4-tier hierarchy optimal?
+
+**USER DECISION:** ✅ **MVP's 5 levels (0→1→2→3→Concrete) is optimal**
+
+**MVP Architecture - SRP Analysis:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 0: base_artifact.jinja2                               │
+│ RESPONSIBILITY: Universal Lifecycle Metadata                │
+│ WHY: ALL artifacts need SCAFFOLD metadata (SSOT)           │
+│ DEFINES: template_id, version, created, output_path        │
+│ BLOCKS: scaffold_metadata (abstract)                       │
+└─────────────────────────────────────────────────────────────┘
+                           │ extends
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 1: base_code.jinja2                                   │
+│ RESPONSIBILITY: Format-Specific Structure                  │
+│ WHY: CODE ≠ DOCUMENT ≠ CONFIG (different sections)        │
+│ DEFINES: Python # comment format for metadata             │
+│ BLOCKS: artifact_header (docstring), code_imports, body   │
+└─────────────────────────────────────────────────────────────┘
+                           │ extends
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 2: base_python.jinja2                                 │
+│ RESPONSIBILITY: Language-Specific Syntax                   │
+│ WHY: Python ≠ TypeScript (typing, imports, docstrings)    │
+│ DEFINES: from typing import ..., docstring format         │
+│ BLOCKS: python_classes, python_functions, python_main     │
+└─────────────────────────────────────────────────────────────┘
+                           │ extends
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ TIER 3: base_python_component.jinja2                       │
+│ RESPONSIBILITY: Domain Pattern Specialization              │
+│ WHY: Component ≠ Test ≠ Knowledge (different structure)   │
+│ DEFINES: class structure, @layer, @dependencies           │
+│ BLOCKS: component_init, component_methods                 │
+└─────────────────────────────────────────────────────────────┘
+                           │ extends
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ CONCRETE: worker.py.jinja2                                 │
+│ RESPONSIBILITY: Specific Artifact Implementation           │
+│ WHY: Worker ≠ DTO ≠ Tool (different methods/fields)       │
+│ DEFINES: async execute(), BaseWorker inheritance          │
+│ BLOCKS: component_methods (implements execute)            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Why Each Tier Exists (SRP):**
+
+1. **Tier 0 (Universal):** Every artifact needs metadata, regardless of format/language
+2. **Tier 1 (Format):** CODE needs imports section, DOCUMENT needs sections, CONFIG needs key-value structure
+3. **Tier 2 (Language):** Python needs typing imports, Markdown needs heading syntax, YAML needs indent rules
+4. **Tier 3 (Specialization):** Components need class structure, Tests need test methods, Knowledge needs question/answer format
+5. **Concrete:** Worker needs execute(), DTO needs validate(), Tool needs input/output schemas
+
+**Merging Would Violate SRP:**
+- Merge 0+1: Universal metadata tied to format? Python-specific lifecycle? ❌
+- Merge 1+2: Code structure tied to language? TypeScript imports in base_code? ❌
+- Merge 2+3: Language syntax tied to domain? Component pattern in language tier? ❌
+
+**Conclusion:** 5 levels (4 tiers + concrete) is optimal. Each tier has single, clear responsibility.
+
+**Action for Planning:** Use 5-level hierarchy (0→1→2→3→Concrete).
+
+---
+
+### Q4: Language-Specific Features Depth ✅ ANSWERED
+
+**Question:** How deep should language tiers go?
+
+**USER DECISION:** ✅ **Hypothese correct: Language tier = syntax only**
+
+**Clarification:** "Structuur" = content from `docs/coding_standards/` (header format, etc.)
+
+**Tier 2 Scope (Language):**
+- ✅ Syntax: Comments, imports, docstrings, type hints
+- ✅ Standards: Header format from coding_standards
+- ❌ Advanced features: async/await, decorators → Tier 3 (e.g., `base_python_async_component`)
+
+**Action for Planning:** 
+1. Language tier includes coding_standards compliance
+2. Advanced language features go in Specialization tier
+3. Reference `docs/coding_standards/` in Tier 2 templates
+
+---
+
+### Q5: CONFIG as Separate Tier 1 ✅ ANSWERED
+
+**See Q1** - CONFIG is separate Tier 1 category.
+
+---
+
+### Q6: Sub-Template Composition ⚠️ DEFERRED
+
+**Question:** Should templates auto-scaffold related templates?
+
+**USER INSIGHT:** TDD workflow: RED (tests first) → GREEN (implementation) → REFACTOR
+
+**Current State:** `artifacts.yaml` already has optional `test_template`:
+```yaml
+worker:
+  template: components/worker.py.jinja2
+  test_template: tests/worker_test.py.jinja2  # Optional
+```
+
+**USER DECISION:** ⚠️ **Sufficient for high-level enforcement tools (later issue)**
+
+**Implication:** Scaffolding follows TDD order:
+1. Agent scaffolds test first (RED phase)
+2. Agent scaffolds implementation (GREEN phase)
+3. Agent refactors (REFACTOR phase)
+
+**Current artifacts.yaml supports this:** Test template is metadata, not auto-triggered.
+
+**Action for Planning:** 
+- Keep current `test_template` metadata approach
+- No automatic composition (preserves TDD workflow control)
+- Enforcement tools can use metadata (future issue)
+
+---
+
+### Q7: Template Versioning & Migration - Impact Analysis ⚠️ CRITICAL
+
+**Question:** What's the impact of implementing template versioning NOW vs LATER?
+
+**Scenario:** Template v1.0 → v2.0 (breaking changes), existing files need migration
+
+**OPTION A: Implement NOW (Issue #72 scope)**
+
+**Pros:**
+- ✅ Complete SCAFFOLD metadata from day 1
+- ✅ Future-proof (no retrofitting later)
+- ✅ Migration logic easier with fresh codebase
+
+**Cons:**
+- ❌ Scope creep (+6-8h effort)
+- ❌ Blocks Issue #72 completion
+- ❌ No immediate use case (all templates v1.0)
+
+**Components Needed:**
+1. Version comparison logic (`1.0.0` < `2.0.0`)
+2. Migration script API (`migrate_v1_to_v2(file)`)
+3. Migration registry (which templates have migrations)
+4. Safe migration execution (backup, rollback)
+5. Testing framework for migrations
+
+**Effort:** ~6-8 hours (vs Issue #72 estimate: 12-16h = 50% increase)
+
+**OPTION B: Implement LATER (Future Issue)**
+
+**Pros:**
+- ✅ Keeps Issue #72 focused (base template architecture)
+- ✅ Real-world use case first (v2.0 actually exists)
+- ✅ Learn from v1.0 → v2.0 patterns before building migration
+
+**Cons:**
+- ❌ SCAFFOLD metadata has `version` but no migration logic
+- ❌ Retrofitting migration later might be harder
+- ❌ Early adopters face manual migration
+
+**Compromise: VERSION NOW, MIGRATION LATER**
+
+**Implementation:**
+1. **NOW (Issue #72):**
+   - `template_version` in SCAFFOLD metadata ✅
+   - Version stored in generated files ✅
+   - Version comparison utility (`compare_versions(a, b)`) ✅
+   - Documentation: "Migration not yet supported" ✅
+
+2. **LATER (Issue #XXX - Template Migration):**
+   - Migration script API
+   - Migration registry
+   - Safe execution framework
+   - Testing
+
+**USER INPUT NEEDED:** Which option?
+- **Option A:** Full versioning now (+6-8h, blocks #72)
+- **Option B:** Version metadata only (+1h), migration later
+- **Option C:** Skip versioning entirely (remove from SCAFFOLD)
+
+**Recommendation:** **Option B** - Version metadata now, migration later. Balances completeness with scope control.
+
+---
+
+### Q8: Post-Generation Editing Schema - CRITICAL DESIGN ✅ ANSWERED
+
+**Question:** Which schema to present to editing tools for validation?
+
+**USER DECISION:** ✅ **Flattened schema, EXCLUDE computed variables**
+
+**Rationale:** 
+- Agent has no control over computed vars (`{% set class_name = worker_name + "Worker" %}`)
+- Computed vars are template implementation details
+- Schema is for detecting which template was used
+
+**Implementation:**
+
+**BEFORE (MVP - includes computed):**
+```python
+schema = TemplateSchema(
+    required=['worker_name', 'worker_description', 'class_name', 'module_docstring', ...],
+    optional=['worker_logic', 'worker_dependencies', ...]
+)
+# 12 variables total (includes 8 computed)
+```
+
+**AFTER (User Decision - excludes computed):**
+```python
+schema = TemplateSchema(
+    required=['worker_name', 'worker_description'],  # Input only
+    optional=['worker_logic', 'worker_dependencies'],  # Input only
+    computed=['class_name', 'module_docstring', 'layer', ...]  # For documentation
+)
+# 4 input variables + 8 computed (separated)
+```
+
+**Detection Algorithm:**
+```python
+def detect_template(file_path):
+    metadata = parse_scaffold_metadata(file_path)
+    template_id = metadata['template_id']  # e.g., "worker"
+    
+    # Get INPUT schema only (not computed)
+    schema = get_template_input_schema(template_id)
+    
+    # Validate file has all required inputs
+    # (computed vars are derived, no validation needed)
+    return validate_against_schema(file_path, schema)
+```
+
+**NEW CHALLENGE: Compound Version in Multi-Tier Templates** 🔴
+
+**USER QUESTION:** "Welke versie van welke template komt in SCAFFOLD metadata bij multi-tier opbouw?"
+
+**Problem:**
+```
+Tier 0: base_artifact.jinja2 v2.1.0
+Tier 1: base_code.jinja2 v1.5.0
+Tier 2: base_python.jinja2 v3.0.0
+Tier 3: base_python_component.jinja2 v1.2.0
+Concrete: worker.py.jinja2 v1.0.0
+
+→ What goes in SCAFFOLD:template_version?
+```
+
+**OPTION 1: Concrete Template Version Only**
+```python
+# SCAFFOLD:template_version: 1.0.0  (worker.py.jinja2 version)
+```
+
+**Pros:**
+- ✅ Simple
+- ✅ Matches user's mental model (worker template v1.0)
+
+**Cons:**
+- ❌ Loses tier version information
+- ❌ Can't detect base template breaking changes
+
+**OPTION 2: Compound Version (All Tiers)**
+```python
+# SCAFFOLD:template_version: 1.0.0
+# SCAFFOLD:template_version_base_artifact: 2.1.0
+# SCAFFOLD:template_version_base_code: 1.5.0
+# SCAFFOLD:template_version_base_python: 3.0.0
+# SCAFFOLD:template_version_base_python_component: 1.2.0
+```
+
+**Pros:**
+- ✅ Complete version history
+- ✅ Can detect base template changes
+
+**Cons:**
+- ❌ Verbose (5 lines per file)
+- ❌ Complex comparison
+
+**OPTION 3: Version Chain (Hierarchical)**
+```python
+# SCAFFOLD:template_version: 1.0.0+2.1.0+1.5.0+3.0.0+1.2.0
+# Format: concrete+tier0+tier1+tier2+tier3
+```
+
+**Pros:**
+- ✅ Complete info in one line
+- ✅ Parseable
+
+**Cons:**
+- ❌ Cryptic format
+- ❌ Order-dependent
+
+**OPTION 4: Semantic Compound Version**
+```python
+# SCAFFOLD:template_version: 1.0.0
+# SCAFFOLD:template_base_versions: artifact:2.1.0,code:1.5.0,python:3.0.0,component:1.2.0
+```
+
+**Pros:**
+- ✅ Clear separation (concrete vs bases)
+- ✅ Human-readable
+- ✅ Parseable
+
+**Cons:**
+- ❌ Two-line format
+
+**USER INPUT NEEDED:** Which option for compound versions?
+
+**Recommendation:** **Option 4** - Semantic compound. Balances completeness with readability.
+
+**Action for Planning:**
+1. Introspection returns INPUT variables only (exclude computed)
+2. Computed variables documented separately (for reference)
+3. SCAFFOLD metadata uses semantic compound version (Option 4)
+4. Version comparison compares concrete version only (bases are implementation details)
+
+---
+
+## Research Decisions Summary
+
+| Question | Status | Decision | Action |
+|----------|--------|----------|--------|
+| Q1: CONFIG Tier 1 | ✅ DECIDED | Yes, separate | Create base_config.jinja2 |
+| Q2: Ephemeral | ✅ DECIDED | DOCUMENT subtype | No special handling |
+| Q3: Tier count | ✅ DECIDED | 5 levels (4 tiers) | Use 0→1→2→3→Concrete |
+| Q4: Language depth | ✅ DECIDED | Syntax + standards | Include coding_standards |
+| Q5: = Q1 | ✅ DECIDED | See Q1 | - |
+| Q6: Composition | ⚠️ DEFERRED | Later issue | Keep test_template metadata |
+| Q7: Versioning | 🔴 NEEDS INPUT | NOW or LATER? | See options A/B/C |
+| Q8: Edit schema | ✅ DECIDED | Flattened, no computed | Separate input/computed |
+| Q8b: Compound version | 🔴 NEEDS INPUT | Which format? | See options 1-4 |
+
+**Blocking Decisions Needed:**
+1. **Q7:** Template versioning scope (NOW vs LATER)
+2. **Q8b:** Compound version format (Option 1-4)
+
+**Ready for Planning Once Decided.**
 
 **Exploration:**
 - **BINARY/ASSETS:** Images, fonts, compiled files → out of scope for text templating?
