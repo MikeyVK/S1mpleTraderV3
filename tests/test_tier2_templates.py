@@ -14,7 +14,7 @@ class TestTier2PythonTemplate:
     """Tests for tier2_base_python.jinja2."""
 
     @staticmethod
-    def get_env():
+    def get_env() -> Environment:
         """Get Jinja2 environment with templates directory."""
         templates_dir = Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
         return Environment(loader=FileSystemLoader(str(templates_dir)))
@@ -105,7 +105,7 @@ class TestTier2MarkdownTemplate:
     """Tests for tier2_base_markdown.jinja2."""
 
     @staticmethod
-    def get_env():
+    def get_env() -> Environment:
         """Get Jinja2 environment with templates directory."""
         templates_dir = Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
         return Environment(loader=FileSystemLoader(str(templates_dir)))
@@ -169,7 +169,7 @@ class TestTier2YAMLTemplate:
     """Tests for tier2_base_yaml.jinja2."""
 
     @staticmethod
-    def get_env():
+    def get_env() -> Environment:
         """Get Jinja2 environment with templates directory."""
         templates_dir = Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
         return Environment(loader=FileSystemLoader(str(templates_dir)))
