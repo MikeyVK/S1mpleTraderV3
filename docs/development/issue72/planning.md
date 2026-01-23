@@ -1,0 +1,773 @@
+# Issue #72 Template Library Management - Planning
+
+<!-- SCAFFOLD: planning:draft_v1 | 2026-01-22 | docs/development/issue72/planning.md -->
+
+**Status:** DRAFT  
+**Phase:** Planning (Transitioned from Research)  
+**Date:** 2026-01-22  
+**Input:** [research_summary.md](research_summary.md) (719 lines)
+
+---
+
+## Purpose
+
+Break down research findings from Issue #72 into **actionable implementation tasks** with clear sequencing, effort estimation, dependencies, and risk mitigation.
+
+**Scope Clarity:**
+- ✅ **Planning = WHAT to build + WHEN + HOW MUCH effort**
+- ❌ **Planning ≠ Design (HOW to architect/implement)**
+
+---
+
+## Scope
+
+### In Scope
+- Task breakdown with clear acceptance criteria
+- Dependency mapping (blockers, prerequisites)
+- Implementation sequencing (phases, critical path)
+- Effort estimation (hours per task, total timeline)
+- Risk identification and mitigation strategies
+- Success criteria and rollback plans
+- Validation strategy for acceptance criteria
+
+### Out of Scope (Reserved for Design Phase)
+- Detailed technical architecture
+- API specifications and contracts
+- Algorithm implementations
+- Code structure and patterns
+- Database schema design
+- Performance optimization strategies
+
+---
+
+## Prerequisites
+
+1. ✅ Research phase complete:
+   - [research.md](research.md) - Full exploration with alternatives (2500+ lines)
+   - [research_summary.md](research_summary.md) - Final decisions and blockers (719 lines)
+   
+2. ✅ MVP validation complete:
+   - [docs/development/issue72/mvp/](mvp/) - 5-tier template proof-of-concept
+   - 67% variable coverage improvement demonstrated
+   
+3. ✅ Issue #52 alignment confirmed:
+   - TEMPLATE_METADATA format documented
+   - Validation integration strategy defined
+
+4. ⚠️ **Critical Blockers Identified (3):**
+   - Template inheritance introspection (must fix before rollout)
+   - IWorkerLifecycle pattern validation (audit required)
+   - Backend pattern inventory (24 templates, 65h baseline)
+
+---
+
+## Acceptance Criteria Validation Strategy
+
+### Coverage Summary (from Research)
+
+| Category | Status | Count | Planning Action |
+|----------|--------|-------|-----------------|
+| **Architecture** (hierarchy, registry, SCAFFOLD) | ✅ Designed | 4/4 | Implementation tasks ready |
+| **Template Quality** (lifecycle, patterns, hints) | ⚠️ Partial/Gap | 1/5 proven, 4/5 gaps | Requires audit & prototype |
+| **Extensibility** (language/format addition) | ✅ Proven | 3/3 | Proof tasks ready |
+
+**Planning Priority:**
+1. **Phase 1 (Foundation):** Implement 4/4 proven architecture criteria
+2. **Phase 2 (Validation):** Address 3 critical blockers
+3. **Phase 3 (Quality):** Complete 4/5 remaining gaps
+
+### AC-by-AC Validation Plan
+
+#### AC1: 5-level template hierarchy implemented
+- **Status:** ✅ Designed (MVP proven)
+- **Tasks:** Create Tier 0-3 base templates (9 templates estimated)
+- **Validation:** Introspection returns 5-tier chain for concrete template
+- **Effort:** 2h + 6h + 9h + 24h = 41h
+
+#### AC2: Base templates cover 3 Tier 1 categories
+- **Status:** ✅ Designed (CODE/DOCUMENT proven, CONFIG extrapolated)
+- **Tasks:** Create `base_code.jinja2`, `base_document.jinja2`, `base_config.jinja2`
+- **Validation:** Each Tier 1 template provides format-specific structure blocks
+- **Effort:** 6h
+
+#### AC3: Template registry operational with hash-based versioning
+- **Status:** ✅ Designed (format defined)
+- **Tasks:** Build `.st3/template_registry.yaml` + read/write utilities
+- **Validation:** `scaffold_artifact()` writes registry, hash lookup succeeds
+- **Effort:** 8h
+
+#### AC4: SCAFFOLD metadata = 1 line
+- **Status:** ✅ Designed (ultra-compact format)
+- **Tasks:** Tier 0 provides `scaffold_metadata` block
+- **Validation:** All scaffolded files have 1-line header
+- **Effort:** Included in Tier 0 creation (2h)
+
+#### AC5: Worker uses IWorkerLifecycle
+- **Status:** ⚠️ BLOCKER - Hypothesis unvalidated
+- **Tasks:** **MUST AUDIT** actual backend usage before planning
+- **Validation:** Cannot define until pattern confirmed
+- **Effort:** TBD after audit (estimate 8-16h)
+
+#### AC6: All backend patterns reflected
+- **Status:** 🔴 BLOCKER - No inventory exists
+- **Tasks:** **MUST COMPLETE** pattern audit (Blocker #3)
+- **Validation:** Cannot define until inventory complete
+- **Effort:** TBD after inventory (estimate 24h pattern catalog)
+
+#### AC7: Research/planning/test with agent hints
+- **Status:** 🔴 GAP - Format undefined
+- **Tasks:** Define hint syntax, prototype in research.md (OQ-P2)
+- **Validation:** Agent run with hinted template improves content quality
+- **Effort:** 4h prototype + 8h rollout = 12h
+
+#### AC8: Documentation covers usage/patterns
+- **Status:** 🔴 GAP - Structure undefined
+- **Tasks:** Define docs structure, write template usage guide
+- **Validation:** Developer can scaffold new artifact following guide
+- **Effort:** 16h (architecture guide + usage examples)
+
+#### AC9: All scaffolded code passes validation
+- **Status:** ⚠️ DEPENDENCY - Requires Issue #52 completion
+- **Tasks:** Coordinate with #52, integrate validation hooks
+- **Validation:** E2E test with #74 (DTO/Tool validation)
+- **Effort:** 8h coordination + testing
+
+#### AC10: Adding new language = 1 Tier 2 template
+- **Status:** ✅ Proven (TypeScript extrapolation)
+- **Tasks:** Create `base_typescript.jinja2` as proof
+- **Validation:** TypeScript worker scaffolds with 1 new template
+- **Effort:** 4h (Tier 2 TypeScript)
+
+#### AC11: Adding new format = 1 Tier 1 template
+- **Status:** ✅ Proven (CONFIG identified)
+- **Tasks:** Create `base_config.jinja2` + `base_yaml.jinja2`
+- **Validation:** YAML workflow scaffolds with new tier chain
+- **Effort:** 5h (Tier 1 CONFIG + Tier 2 YAML)
+
+#### AC12: SCAFFOLD defined once (Tier 0), inherited by all
+- **Status:** ✅ Proven (MVP demonstrates)
+- **Tasks:** All concrete templates extend Tier 0 chain
+- **Validation:** Introspection shows `scaffold_metadata` from Tier 0
+- **Effort:** Included in migration (24h)
+
+#### AC13: Template library documented
+- **Status:** Linked to AC8
+- **Tasks:** Same as AC8 documentation
+- **Effort:** Included in AC8 (16h)
+
+---
+
+## Critical Path Analysis
+
+### Critical Blocker #1: Inheritance-Aware Introspection
+**Impact:** Without this, multi-tier templates cannot validate user input (67% variable miss rate)  
+**Dependencies:** None (can start immediately)  
+**Effort:** 8h implementation + 4h testing = 12h  
+**Priority:** P0 (blocks all multi-tier scaffolding)
+
+**Tasks:**
+1. Integrate `introspect_template_with_inheritance()` from MVP into `TemplateIntrospector`
+2. Unit test: 5-tier worker template returns all 8 variables (concrete + inherited)
+3. E2E test: Scaffolding validates against complete schema
+4. Document introspection algorithm in architecture guide
+
+**Definition of Done:**
+- [ ] `introspect_template(template_name, with_inheritance=True)` returns inherited variables
+- [ ] Test: `introspect_template("worker.py.jinja2", with_inheritance=True)` returns 8 vars (not 2)
+- [ ] Scaffolding rejects missing inherited variables with clear error
+
+---
+
+### Critical Blocker #2: IWorkerLifecycle Pattern Audit
+**Impact:** Cannot design Tier 3 `base_python_component.jinja2` without pattern validation  
+**Dependencies:** None (research/audit task)  
+**Effort:** 4h audit + 2h documentation = 6h  
+**Priority:** P0 (blocks Tier 3 specialization design)
+
+**Tasks:**
+1. **Audit codebase:** Search `src/workers/` for IWorkerLifecycle implementations
+2. **Find contract:** Locate IWorkerLifecycle interface definition (if exists)
+3. **Assess necessity:** Document why two-phase init is architectural requirement
+4. **Verify template:** Check if `worker.py.jinja2` currently generates lifecycle code
+5. **Cross-language check:** Do other components (TypeScript?) follow similar patterns?
+
+**Definition of Done:**
+- [ ] Document: "X out of Y workers implement IWorkerLifecycle"
+- [ ] Document: IWorkerLifecycle interface location and contract
+- [ ] Document: Rationale for two-phase init (or reasons to remove from AC)
+- [ ] Decision: Confirm/reject Tier 3 placement for lifecycle pattern
+
+**Possible Outcomes:**
+- ✅ **Validated:** Add lifecycle blocks to `tier3_base_python_component.jinja2`
+- ❌ **Invalidated:** Remove AC5 from requirements, notify stakeholders
+
+---
+
+### Critical Blocker #3: Backend Pattern Inventory
+**Impact:** Cannot complete AC6 "all backend patterns reflected" without exhaustive list  
+**Dependencies:** None (research task)  
+**Effort:** 8h audit + 4h catalog + 4h tier assignment = 16h  
+**Priority:** P1 (blocks Tier 2/3 completeness, but doesn't block MVP)
+
+**Tasks:**
+1. Audit `src/workers/`, `src/adapters/`, `src/services/` for architectural patterns
+2. List patterns: Dependency injection, error handling, logging, config, lifecycle, etc
+3. Assign each pattern to Tier 2 (syntax) or Tier 3 (specialization)
+4. Document pattern rationale and usage examples
+5. Create "Backend Pattern Catalog" in design docs
+
+**Definition of Done:**
+- [ ] Exhaustive pattern list with examples
+- [ ] Tier assignment rationale per pattern
+- [ ] Template coverage: Map patterns to Tier 2/3 templates
+- [ ] Documentation: Pattern usage guide for template authors
+
+---
+
+## Task Breakdown with Dependencies
+
+### Phase 1: Foundation (Infrastructure)
+**Goal:** Implement proven architecture without blockers  
+**Duration:** ~2 weeks (80h)  
+**Dependencies:** None (can start immediately)
+
+#### Task 1.1: Template Registry Infrastructure
+- **Description:** Build `.st3/template_registry.yaml` read/write utilities
+- **Input:** Research Q8b (registry structure)
+- **Output:** 
+  - `TemplateRegistry` class with `save_version()`, `lookup_hash()`, `get_chain()`
+  - Unit tests for hash collision detection
+- **Acceptance:** `scaffold_artifact()` writes registry entry, lookup returns full chain
+- **Effort:** 8h
+- **Assignee:** Backend Engineer
+
+#### Task 1.2: Tier 0 Base (Universal SCAFFOLD)
+- **Description:** Create `tier0_base_artifact.jinja2` with 1-line SCAFFOLD block
+- **Input:** Ultra-compact format from research
+- **Output:** 
+  - `{%- block scaffold_metadata -%}` with dynamic comment syntax
+  - Works for Python `#`, Markdown `<!--`, YAML `#`
+- **Acceptance:** All formats inherit correct SCAFFOLD line
+- **Effort:** 2h
+- **Assignee:** Template Author
+
+#### Task 1.3: Tier 1 Bases (Format Categories)
+- **Description:** Create 3 Tier 1 templates: CODE, DOCUMENT, CONFIG
+- **Input:** Dimensional analysis from research
+- **Output:**
+  - `tier1_base_code.jinja2` (imports, classes, functions structure)
+  - `tier1_base_document.jinja2` (heading hierarchy)
+  - `tier1_base_config.jinja2` (schema validation hooks)
+- **Acceptance:** Each provides format-specific structure blocks
+- **Effort:** 2h × 3 = 6h
+- **Assignee:** Template Author
+- **Dependency:** Tier 0 complete
+
+#### Task 1.4: Tier 2 Bases (Language Syntax)
+- **Description:** Create 3 Tier 2 templates: Python, Markdown, YAML
+- **Input:** Language-specific syntax patterns from research
+- **Output:**
+  - `tier2_base_python.jinja2` (type hints, async/await, docstrings)
+  - `tier2_base_markdown.jinja2` (link format, code blocks)
+  - `tier2_base_yaml.jinja2` (indentation, key format)
+- **Acceptance:** Language syntax blocks available for inheritance
+- **Effort:** 3h × 3 = 9h
+- **Assignee:** Template Author
+- **Dependency:** Tier 1 complete
+
+#### Task 1.5: Issue #52 Alignment (TEMPLATE_METADATA)
+- **Description:** Add TEMPLATE_METADATA to Tier 1-2 templates
+- **Input:** Issue #52 Alignment section from research
+- **Output:** Each base template has enforcement/level/validates structure
+- **Acceptance:** Validation infrastructure recognizes base templates
+- **Effort:** 1h × 6 templates = 6h
+- **Assignee:** Template Author + Validation Engineer
+- **Dependency:** Tier 1-2 complete
+
+### Phase 2: Blocker Resolution (Critical Path)
+**Goal:** Unblock Tier 3 design and multi-tier scaffolding  
+**Duration:** ~1 week (40h)  
+**Dependencies:** None (parallel with Phase 1 if resources available)
+
+#### Task 2.1: Fix Inheritance Introspection (Blocker #1)
+- **Description:** Integrate MVP introspection into template_introspector.py
+- **Input:** MVP `introspect_template_with_inheritance()` code
+- **Output:**
+  - Enhanced `introspect_template()` function with inheritance support (AST walking)
+  - Unit test: worker.py returns 8 vars (not 2)
+  - E2E test: Scaffolding validates complete schema
+- **Acceptance:** Multi-tier templates validate user input correctly
+- **Effort:** 8h implementation + 4h testing = 12h
+- **Assignee:** Backend Engineer
+- **Priority:** P0 (blocks Phase 3)
+
+#### Task 2.2: IWorkerLifecycle Audit (Blocker #2)
+- **Description:** Validate lifecycle pattern hypothesis
+- **Input:** Research "Worker Lifecycle Analysis" section
+- **Output:**
+  - Audit report: X/Y workers use lifecycle, interface location, rationale
+  - Decision: Confirm or reject Tier 3 placement
+- **Acceptance:** Clear evidence for Tier 3 design decision
+- **Effort:** 4h audit + 2h documentation = 6h
+- **Assignee:** System Architect
+- **Priority:** P0 (blocks Tier 3 design)
+
+#### Task 2.3: Backend Pattern Inventory (Blocker #3)
+- **Description:** Catalog all backend architectural patterns
+- **Input:** Research OQ-P1 (pattern categories)
+- **Output:**
+  - Backend Pattern Catalog with tier assignments
+  - Template coverage map (patterns → Tier 2/3 templates)
+- **Acceptance:** Exhaustive pattern list with examples and rationale
+- **Effort:** 8h audit + 4h catalog + 4h tier assignment = 16h
+- **Assignee:** System Architect + Senior Engineers
+- **Priority:** P1 (blocks AC6 completeness, but not MVP)
+
+#### Task 2.4: Agent Hint Format Prototype (OQ-P2)
+- **Description:** Define and test agent guidance syntax
+- **Input:** Research OQ-P2 example
+- **Output:**
+  - Hint syntax specification (comment format, keywords)
+  - Prototype in `research.md.jinja2`
+  - Agent validation run (quality improvement test)
+- **Acceptance:** Agent generates better content with hints
+- **Effort:** 4h prototype + 2h validation = 6h
+- **Assignee:** Agent Developer + Template Author
+- **Priority:** P2 (nice-to-have, not blocking)
+
+### Phase 3: Tier 3 Specialization (Quality)
+**Goal:** Complete template quality acceptance criteria  
+**Duration:** ~1.5 weeks (60h)  
+**Dependencies:** Phase 2 (blocker resolution) complete
+
+#### Task 3.1: Tier 3 Python Component Template
+- **Description:** Create `tier3_base_python_component.jinja2`
+- **Input:** Blocker #2 audit results
+- **Output:**
+  - Lifecycle blocks (if validated): `__init__`, `initialize()`, `shutdown()`
+  - Dependency injection patterns
+  - Error handling structure
+- **Acceptance:** Worker template inherits lifecycle + DI patterns
+- **Effort:** 8h (depends on Blocker #2 outcome)
+- **Assignee:** Template Author
+- **Dependency:** Task 2.2 complete
+
+#### Task 3.2: Tier 3 Python Data Model Template
+- **Description:** Create `tier3_base_python_data_model.jinja2`
+- **Input:** DTO patterns from backend inventory
+- **Output:**
+  - Immutable data class structure
+  - Validation hooks (Pydantic/dataclass)
+  - Serialization blocks
+- **Acceptance:** DTO template generates validated, immutable models
+- **Effort:** 6h
+- **Assignee:** Template Author
+- **Dependency:** Task 2.3 complete
+
+#### Task 3.3: Tier 3 Python Tool Template
+- **Description:** Create `tier3_base_python_tool.jinja2`
+- **Input:** MCP tool patterns from backend
+- **Output:**
+  - API contract structure
+  - Input/output validation
+  - Error response format
+- **Acceptance:** MCP tool template passes Issue #74 validation
+- **Effort:** 6h
+- **Assignee:** Template Author
+- **Dependency:** Task 2.3 complete
+
+#### Task 3.4: Tier 3 Markdown Knowledge Template
+- **Description:** Create `tier3_base_markdown_knowledge.jinja2`
+- **Input:** Research/planning doc patterns
+- **Output:**
+  - Section structure (Purpose, Scope, Analysis, Conclusion)
+  - Agent hints for content generation
+  - Cross-reference blocks
+- **Acceptance:** Research.md template scaffolds complete structure
+- **Effort:** 4h
+- **Assignee:** Template Author
+- **Dependency:** Task 2.4 complete (agent hints)
+
+#### Task 3.5: Tier 3 Markdown Ephemeral Template
+- **Description:** Create `tier3_base_markdown_ephemeral.jinja2`
+- **Input:** Commit message / PR body patterns
+- **Output:**
+  - Conventional commit structure
+  - PR body sections (problem, solution, testing)
+- **Acceptance:** Commit message template generates valid format
+- **Effort:** 3h
+- **Assignee:** Template Author
+
+#### Task 3.6: Tier 3 YAML Policy Template
+- **Description:** Create `tier3_base_yaml_policy.jinja2`
+- **Input:** Workflow/label patterns from `.github/`
+- **Output:**
+  - GitHub Actions workflow structure
+  - Label definition format
+- **Acceptance:** Workflow template scaffolds valid YAML
+- **Effort:** 3h
+- **Assignee:** Template Author
+
+#### Task 3.7: Documentation (AC8/AC13)
+- **Description:** Write template library usage guide
+- **Input:** All Tier 0-3 templates complete
+- **Output:**
+  - Architecture guide: tier system, extensibility, SCAFFOLD format
+  - Usage guide: scaffolding new artifact, adding language/format
+  - Pattern guide: backend patterns and tier assignments
+- **Acceptance:** Developer can scaffold new artifact following guide
+- **Effort:** 16h
+- **Assignee:** Technical Writer + Architect
+
+### Phase 4: Migration (Legacy Conversion)
+**Goal:** Migrate 24 existing templates to multi-tier architecture  
+**Duration:** ~1.5 weeks (60h)  
+**Dependencies:** Phase 3 complete (all base templates ready)
+
+#### Task 4.1: Migration Script
+- **Description:** Automate mechanical refactoring
+- **Input:** Legacy template structure
+- **Output:**
+  - Script converts single-file template to multi-tier extends chain
+  - Preserves custom blocks, updates SCAFFOLD format
+- **Acceptance:** Script migrates simple template without manual edits
+- **Effort:** 12h
+- **Assignee:** Automation Engineer
+
+#### Task 4.2: Migrate CODE Templates (13)
+- **Description:** Refactor 13 Python templates to extend Tier 3
+- **Input:** Migration script output
+- **Output:** Each template extends appropriate Tier 3 (component/data_model/tool)
+- **Acceptance:** All CODE templates scaffold correctly, pass validation
+- **Effort:** 1h × 13 = 13h (assumes script handles 80% of work)
+- **Assignee:** Template Author
+- **Dependency:** Task 4.1 complete
+
+#### Task 4.3: Migrate DOCUMENT Templates (9)
+- **Description:** Refactor 9 Markdown templates to extend Tier 3
+- **Input:** Migration script output
+- **Output:** Each template extends knowledge/ephemeral tier
+- **Acceptance:** All DOCUMENT templates scaffold correctly
+- **Effort:** 1h × 9 = 9h
+- **Assignee:** Template Author
+- **Dependency:** Task 4.1 complete
+
+#### Task 4.4: Create CONFIG Templates (2 new)
+- **Description:** Create workflows.yaml and labels.yaml templates
+- **Input:** Tier 3 YAML policy template
+- **Output:** New CONFIG concrete templates
+- **Acceptance:** YAML artifacts scaffold with full tier chain
+- **Effort:** 2h × 2 = 4h
+- **Assignee:** Template Author
+
+#### Task 4.5: E2E Testing (Coordinate with Issue #74)
+- **Description:** Validate all migrated templates
+- **Input:** Issue #74 test suite
+- **Output:**
+  - All templates pass validation
+  - DTO/Tool templates fix #74 failures
+- **Acceptance:** Zero validation failures for scaffolded code
+- **Effort:** 16h (4h × 4 template categories)
+- **Assignee:** QA Engineer + Template Author
+- **Dependency:** All migrations complete
+
+#### Task 4.6: Feature Flag Cleanup
+- **Description:** Remove legacy template support
+- **Input:** E2E tests passing
+- **Output:**
+  - Delete old single-file templates
+  - Remove `use_legacy_templates` flag
+  - Update docs to reference multi-tier only
+- **Acceptance:** Codebase uses only multi-tier templates
+- **Effort:** 4h
+- **Assignee:** Backend Engineer
+
+### Phase 5: Extensibility Proof (Final Validation)
+**Goal:** Prove AC10/AC11 (language/format addition)  
+**Duration:** ~3 days (24h)  
+**Dependencies:** Phase 4 complete
+
+#### Task 5.1: Add TypeScript Language (AC10)
+- **Description:** Create Tier 2 TypeScript template as proof
+- **Input:** Python Tier 2 structure
+- **Output:** `tier2_base_typescript.jinja2` with TS syntax patterns
+- **Acceptance:** TypeScript worker scaffolds with 1 new template
+- **Effort:** 4h
+- **Assignee:** TypeScript Developer
+
+#### Task 5.2: Add CONFIG Format (AC11)
+- **Description:** Already done in Task 4.4
+- **Acceptance:** YAML workflow validates extensibility
+- **Effort:** 0h (counted in Phase 4)
+
+#### Task 5.3: Extensibility Documentation
+- **Description:** Document language/format addition process
+- **Input:** TypeScript example
+- **Output:**
+  - Guide: "How to Add a New Language" (step-by-step)
+  - Guide: "How to Add a New Format" (Tier 1 creation)
+- **Acceptance:** External contributor can add language following guide
+- **Effort:** 4h
+- **Assignee:** Technical Writer
+
+---
+
+## Implementation Sequencing
+
+### Critical Path (Longest Chain)
+```
+Task 2.1 (Introspection 12h)
+  → Task 1.4 (Tier 2 9h)
+    → Task 3.1 (Tier 3 Component 8h)
+      → Task 4.2 (Migrate CODE 13h)
+        → Task 4.5 (E2E Testing 16h)
+          → Task 4.6 (Cleanup 4h)
+= 62h critical path (1.5 weeks with 1 engineer)
+```
+
+### Parallel Workstreams (If 3+ Engineers Available)
+
+**Engineer 1: Infrastructure (Backend)**
+- Week 1: Task 1.1 (Registry 8h) → Task 2.1 (Introspection 12h)
+- Week 2: Task 1.5 (Metadata 6h) → Task 4.1 (Migration Script 12h)
+- Week 3: Task 4.5 (E2E Testing 16h)
+
+**Engineer 2: Template Author (Primary)**
+- Week 1: Task 1.2-1.4 (Tier 0-2 17h)
+- Week 2: Task 3.1-3.3 (Tier 3 CODE 20h)
+- Week 3: Task 4.2 (Migrate CODE 13h) → Task 5.1 (TypeScript 4h)
+
+**Engineer 3: Template Author (Secondary)**
+- Week 1: Task 2.2 (Audit 6h) → Task 2.3 (Inventory 16h)
+- Week 2: Task 3.4-3.6 (Tier 3 DOCUMENT/CONFIG 10h) → Task 2.4 (Hints 6h)
+- Week 3: Task 4.3-4.4 (Migrate DOC/CONFIG 13h)
+
+**Engineer 4: Documentation + QA**
+- Week 1: Support audits (Task 2.2-2.3)
+- Week 2: Task 3.7 (Documentation 16h)
+- Week 3: Task 4.5 (E2E Testing 16h) → Task 5.3 (Extensibility docs 4h)
+
+**Total Timeline with 4 Engineers: 3 weeks**
+
+---
+
+## Effort Estimation Summary
+
+| Phase | Tasks | Total Hours | Duration (1 eng) | Duration (4 eng) |
+|-------|-------|-------------|------------------|------------------|
+| **Phase 1: Foundation** | 5 tasks | 31h | 4 days | 2 days |
+| **Phase 2: Blockers** | 4 tasks | 40h | 5 days | 3 days |
+| **Phase 3: Tier 3** | 7 tasks | 46h | 6 days | 3 days |
+| **Phase 4: Migration** | 6 tasks | 58h | 7 days | 4 days |
+| **Phase 5: Extensibility** | 2 tasks | 8h | 1 day | 1 day |
+| **TOTAL** | **24 tasks** | **183h** | **23 days** | **13 days (3 weeks)** |
+
+**Assumptions:**
+- 1 engineer = 8h/day focus time (no meetings/interruptions)
+- 4 engineers = ideal parallelization (tasks are independent enough)
+- No scope creep or unexpected blockers
+- Issue #52 validation infrastructure ready for integration
+
+**Contingency:**
+- Add 20% buffer: 183h × 1.2 = **220h (5.5 weeks with 1 eng, 4 weeks with 4 eng)**
+
+---
+
+## Risk Mitigation Plan
+
+### Risk #1: Issue #52 Incomplete (Validation Dependency)
+**Probability:** Medium (30%)  
+**Impact:** **CRITICAL** - AC9 is **hard requirement** for release, blocks shipment  
+
+**Mitigation:**
+- **Early coordination:** Task 1.5 requires #52 status check (Week 1)
+- **Parallel work:** Implement #72 templates while #52 validation completes
+- **Integration checkpoint:** Week 2 validation hook integration (Task 1.5)
+- **E2E validation:** Week 3 full test suite (Task 4.5)
+
+**Hard Constraint:**
+- **#72 cannot ship without AC9 (validation integration) complete**
+- If #52 delayed: **Delay #72 release** until validation ready
+- **Cost:** Release blocked until #52 delivers CODE validation infrastructure
+
+**Coordination Plan:**
+1. Week 1: Confirm #52 delivery date and scope
+2. Week 2: Daily sync with #52 team on TEMPLATE_METADATA integration
+3. Week 3: Joint testing session (Task 4.5 depends on #52 completion)
+4. **Go/No-Go Decision:** End of Week 2 - confirm #52 on track or escalate
+
+---
+
+### Risk #2: Blocker #2 Invalidates IWorkerLifecycle
+**Probability:** Low (15%)  
+**Impact:** Medium (AC5 removed, Tier 3 redesign)  
+
+**Mitigation:**
+- **Early audit:** Task 2.2 in Week 1 (before Tier 3 design)
+- **Decision checkpoint:** Stakeholder approval before Task 3.1
+
+**Contingency Plan:**
+- If lifecycle not used: Remove AC5, simplify Tier 3 component template
+- **Cost:** No timeline impact (discovered early), possible scope reduction
+
+---
+
+### Risk #3: Backend Pattern Inventory Too Large
+**Probability:** Medium (40%)  
+**Impact:** Medium (scope creep, Phase 3 extends)  
+
+**Mitigation:**
+- **Timeboxing:** Task 2.3 capped at 16h (prioritize top 10 patterns)
+- **MVP mindset:** Cover 80% of patterns, defer edge cases to future issue
+
+**Contingency Plan:**
+- If >20 patterns found: Create Phase 3B for low-priority patterns
+- **Cost:** +1 week for comprehensive coverage (optional)
+
+---
+
+### Risk #4: Migration Breaks Existing Workflows
+**Probability:** High (60%)  
+**Impact:** High (production scaffolding failures)  
+
+**Mitigation:**
+- **Feature flag:** `use_legacy_templates=true` during migration (Task 4.1)
+- **Dual-mode scaffolding:** Support both old and new templates (2 weeks)
+- **Phased rollout:** Migrate 1 template, validate, iterate
+- **Rollback plan:** Revert to legacy templates if E2E tests fail
+
+**Contingency Plan:**
+- If migration failures: Extend dual-mode period to 4 weeks
+- **Cost:** +2 weeks for safe rollout
+
+---
+
+### Risk #5: Introspection Performance Impact
+**Probability:** Low (10%)  
+**Impact:** Low (scaffolding slowdown)  
+
+**Mitigation:**
+- **Benchmarking:** Task 2.1 includes performance test (5-tier chain <100ms)
+- **Caching:** Introspection results cached per template
+
+**Contingency Plan:**
+- If >500ms overhead: Optimize AST walking or flatten some tiers
+- **Cost:** +3 days optimization work
+
+---
+
+## Success Criteria
+
+### Functional Success (Must-Have)
+- [ ] All 13 AC criteria pass validation
+- [ ] 24 legacy templates migrated to multi-tier
+- [ ] Inheritance introspection returns complete variable schema
+- [ ] Template registry operational (hash lookup, version tracking)
+- [ ] E2E tests pass for all template categories
+- [ ] TypeScript Tier 2 proves language extensibility
+- [ ] CONFIG Tier 1 proves format extensibility
+
+### Quality Success (Should-Have)
+- [ ] Documentation complete (architecture + usage guides)
+- [ ] Agent hints improve content generation quality (subjective test)
+- [ ] Zero validation failures for scaffolded code (coordinate with #74)
+- [ ] Backend pattern catalog covers ≥80% of common patterns
+
+### Operational Success (Nice-to-Have)
+- [ ] Migration script automates ≥80% of refactoring work
+- [ ] Feature flag removed (legacy templates deprecated)
+- [ ] Performance: 5-tier introspection <100ms per template
+- [ ] Zero production incidents during rollout
+
+---
+
+## Rollback Plan
+
+### Trigger Conditions
+1. **Critical bug:** Scaffolding generates invalid code (syntax errors)
+2. **Performance regression:** Introspection >500ms (10x slowdown)
+3. **Validation failures:** >50% of templates fail E2E tests
+4. **Production incident:** Scaffolding blocks development workflow
+
+### Rollback Steps
+1. **Immediate:** Enable `use_legacy_templates=true` feature flag (5 minutes)
+2. **Short-term:** Revert to pre-migration commit (git revert, 1 hour)
+3. **Communication:** Notify team of rollback, gather failure data
+4. **Root cause:** Debug issue, fix in development branch
+5. **Re-deploy:** Test fix in staging, retry rollout with monitoring
+
+### Rollback Cost
+- **Time:** 1-2 days to revert, debug, and re-deploy
+- **Risk:** Minimal (legacy templates proven stable)
+
+---
+
+## Coordination Points
+
+### Issue #52 (Template Validation)
+- **Week 1:** Status check (Task 1.5) - Is CODE validation ready?
+- **Week 2:** TEMPLATE_METADATA integration (Task 1.5)
+- **Week 3:** E2E validation testing (Task 4.5)
+- **Contact:** Issue #52 owner
+
+### Issue #74 (E2E Template Tests)
+- **Week 3:** Use #74 test suite for validation (Task 4.5)
+- **Goal:** Fix DTO/Tool validation failures with multi-tier templates
+- **Contact:** QA team
+
+### Issue #120 (SCAFFOLD Metadata)
+- **Week 1:** Tier 0 SCAFFOLD format (Task 1.2)
+- **Week 3:** Increase coverage from 8% to 100% (all migrations)
+- **Contact:** Template registry owner
+
+---
+
+## Open Questions (Require Planning Decision)
+
+### OQ-P1: Backend Pattern Inventory Priority
+**Question:** Which patterns are P0 (must-have) vs P1 (nice-to-have) for MVP?  
+**Decisor:** System Architect  
+**Deadline:** End of Week 1 (before Task 3.1 starts)  
+**Impact:** Determines Tier 3 template scope
+
+### OQ-P2: Agent Hint Format Mandatory?
+**Question:** Should agent hints block MVP or ship as enhancement?  
+**Decisor:** Product Owner  
+**Deadline:** End of Week 1  
+**Impact:** Affects AC7 priority (P0 vs P2)
+
+### OQ-P3: TypeScript Tier 2 Scope
+**Question:** Full TypeScript support or minimal proof (AC10)?  
+**Decisor:** Tech Lead  
+**Deadline:** Before Task 5.1 (Week 3)  
+**Impact:** Extensibility proof depth
+
+### OQ-P4: Migration Automation Threshold
+**Question:** How many templates must migration script handle (80%? 100%)?  
+**Decisor:** Automation Engineer  
+**Deadline:** Before Task 4.1 (Week 2)  
+**Impact:** Script complexity vs manual effort tradeoff
+
+---
+
+## Next Steps (Immediate Actions)
+
+1. **Approve planning doc:** Stakeholder review and sign-off
+2. **Assign engineers:** Map 4 parallel workstreams to team members
+3. **Setup environment:** Create feature branch, enable feature flags
+4. **Week 1 kickoff:**
+   - Start Task 1.1 (Registry infrastructure)
+   - Start Task 2.1 (Introspection fix)
+   - Start Task 2.2 (Lifecycle audit)
+5. **Daily standups:** Track critical path progress (introspection → Tier 2 → Tier 3)
+
+---
+
+## Related Documents
+
+- [research.md](research.md) - Full research with alternatives exploration
+- [research_summary.md](research_summary.md) - Final decisions and blockers
+- [mvp/](mvp/) - 5-tier template proof-of-concept
+- Issue #52 - Template validation infrastructure
+- Issue #74 - E2E template tests
+- Issue #120 - SCAFFOLD metadata coverage
