@@ -22,10 +22,9 @@ class TestTemplateRegistryInitialization:
         registry_path = tmp_path / ".st3" / "template_registry.yaml"
         registry = TemplateRegistry(registry_path)
 
-        assert registry._data["version"] == "1.0"  # pylint: disable=protected-access
-        assert registry._data["version_hashes"] == {}  # pylint: disable=protected-access
-        assert registry._data["current_versions"] == {}  # pylint: disable=protected-access
-        assert registry._data["templates"] == {}  # pylint: disable=protected-access
+        # Verify using public API
+        assert not registry.get_all_hashes()
+        assert not registry.get_all_artifact_types()
 
     def test_load_existing_registry(self, tmp_path):
         """Should load existing registry from disk."""
@@ -52,9 +51,38 @@ class TestTemplateRegistryInitialization:
             yaml.safe_dump(existing_data, f)
 
         registry = TemplateRegistry(registry_path)
-        # pylint: disable=protected-access
-        assert registry._data["version_hashes"]["abc12345"]["artifact_type"] == "worker"
-        assert registry._data["current_versions"]["worker"] == "abc12345"
+        # Verify using public API
+        entry = registry.lookup_hash("abc12345")
+        assert entry is not None
+        assert entry["artifact_type"] == "worker"
+        assert registry.get_current_version("worker") == "abc12345"
+
+    def test_load_empty_yaml_file(self, tmp_path):
+        """Should handle empty YAML file gracefully."""
+        registry_path = tmp_path / ".st3" / "template_registry.yaml"
+        registry_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create empty file
+        registry_path.touch()
+
+        registry = TemplateRegistry(registry_path)
+        # Should initialize with empty registry
+        assert not registry.get_all_hashes()
+        assert not registry.get_all_artifact_types()
+
+    def test_load_invalid_yaml_file(self, tmp_path):
+        """Should handle invalid YAML content (non-dict) gracefully."""
+        registry_path = tmp_path / ".st3" / "template_registry.yaml"
+        registry_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create file with non-dict content
+        with registry_path.open("w", encoding="utf-8") as f:
+            f.write("just a string")
+
+        registry = TemplateRegistry(registry_path)
+        # Should initialize with empty registry
+        assert not registry.get_all_hashes()
+        assert not registry.get_all_artifact_types()
 
 
 class TestTemplateRegistrySaveVersion:
@@ -75,10 +103,10 @@ class TestTemplateRegistrySaveVersion:
 
         registry.save_version("worker", "abc12345", tier_versions)
 
-        # Verify in-memory state
-        # pylint: disable=protected-access
-        assert "abc12345" in registry._data["version_hashes"]
-        entry = registry._data["version_hashes"]["abc12345"]
+        # Verify using public API
+        assert "abc12345" in registry.get_all_hashes()
+        entry = registry.lookup_hash("abc12345")
+        assert entry is not None
         assert entry["artifact_type"] == "worker"
         assert entry["hash_algorithm"] == "SHA256"
         assert entry["concrete"]["template_id"] == "worker.py"
@@ -87,7 +115,8 @@ class TestTemplateRegistrySaveVersion:
         assert entry["tier0"]["version"] == "1.0.0"
 
         # Verify current_versions updated
-        assert registry._data["current_versions"]["worker"] == "abc12345"
+        assert registry.get_current_version("worker") == "abc12345"
+        assert "worker" in registry.get_all_artifact_types()
 
         # Verify persisted to disk
         assert registry_path.exists()
@@ -110,8 +139,7 @@ class TestTemplateRegistrySaveVersion:
         registry.save_version("worker", "abc12345", tier_versions)
 
         # Should not raise, should be no-op
-        # pylint: disable=protected-access
-        assert registry._data["current_versions"]["worker"] == "abc12345"
+        assert registry.get_current_version("worker") == "abc12345"
 
     def test_save_version_collision_different_artifact_type(self, tmp_path):
         """Should raise ValueError when hash collision across artifact types."""
@@ -231,9 +259,9 @@ class TestTemplateRegistryCurrentVersions:
         assert registry.get_current_version("worker") == "def67890"
 
         # Both versions should be in registry
-        # pylint: disable=protected-access
-        assert "abc12345" in registry._data["version_hashes"]
-        assert "def67890" in registry._data["version_hashes"]
+        all_hashes = registry.get_all_hashes()
+        assert "abc12345" in all_hashes
+        assert "def67890" in all_hashes
 
 
 class TestTemplateRegistryPersistence:

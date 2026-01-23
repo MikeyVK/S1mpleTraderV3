@@ -36,15 +36,23 @@ class TemplateRegistry:
     def _load(self) -> dict[str, Any]:
         """Load registry YAML or initialize if missing."""
         if not self.registry_path.exists():
-            return {
-                "version": "1.0",
-                "version_hashes": {},  # Matches YAML schema (not "hashes")
-                "current_versions": {},
-                "templates": {}
-            }
+            return self._empty_registry()
+
         with self.registry_path.open(encoding="utf-8") as f:
             data = yaml.safe_load(f)
+            # Guard against empty/invalid YAML files
+            if data is None or not isinstance(data, dict):
+                return self._empty_registry()
             return cast(dict[str, Any], data)
+
+    def _empty_registry(self) -> dict[str, Any]:
+        """Return empty registry structure."""
+        return {
+            "version": "1.0",
+            "version_hashes": {},  # Matches YAML schema (not "hashes")
+            "current_versions": {},
+            "templates": {}
+        }
 
     def save_version(
         self,
@@ -125,6 +133,14 @@ class TemplateRegistry:
         """Get current hash for artifact type."""
         result = self._data["current_versions"].get(artifact_type)
         return cast(str | None, result)
+
+    def get_all_hashes(self) -> list[str]:
+        """Get all registered version hashes."""
+        return list(self._data["version_hashes"].keys())
+
+    def get_all_artifact_types(self) -> list[str]:
+        """Get all artifact types with current versions."""
+        return list(self._data["current_versions"].keys())
 
     def _persist(self) -> None:
         """Write registry to disk."""
