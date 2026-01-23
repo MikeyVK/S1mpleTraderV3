@@ -649,6 +649,10 @@ class TemplateRegistry:
     - Lookup hash → tier chain mapping
     - Save new version entry (after scaffolding)
     - Detect hash collisions (within artifact_type namespace)
+    
+    Note:
+        Internal representation matches YAML schema exactly (no transformation).
+        Uses version_hashes: top-level key with concrete/tier0/tier1/tier2/tier3 structure.
     """
     
     def __init__(self, registry_path: Path = Path(".st3/template_registry.yaml")):
@@ -658,7 +662,12 @@ class TemplateRegistry:
     def _load(self) -> dict[str, Any]:
         """Load registry YAML or initialize if missing."""
         if not self.registry_path.exists():
-            return {"version": "1.0", "hashes": {}, "current_versions": {}, "templates": {}}
+            return {
+                "version": "1.0",
+                "version_hashes": {},  # Matches YAML schema (not "hashes")
+                "current_versions": {},
+                "templates": {}
+            }
         with self.registry_path.open() as f:
             return yaml.safe_load(f)
     
@@ -666,7 +675,7 @@ class TemplateRegistry:
         self,
         artifact_type: str,
         version_hash: str,
-        tier_chain: list[tuple[str, str]],  # [(template_name, version), ...]
+        tier_versions: dict[str, tuple[str, str]],  # {tier_name: (template_id, version)}
     ) -> None:
         """
         Save new version entry to registry.
@@ -674,25 +683,33 @@ class TemplateRegistry:
         Args:
             artifact_type: "worker", "research", etc.
             version_hash: 8-char hex hash
-            tier_chain: Full tier chain with versions
+            tier_versions: Tier chain with versions
+                Example: {
+                    "concrete": ("worker.py", "3.1.0"),
+                    "tier0": ("tier0_base_artifact", "1.0.0"),
+                    "tier1": ("tier1_base_code", "1.1.0"),
+                    "tier2": ("tier2_base_python", "2.0.0"),
+                    "tier3": ("tier3_base_python_component", "1.2.0"),
+                }
         
         Raises:
             ValueError: If hash collision detected (different tier chain for same hash)
         """
         # Check collision
-        if version_hash in self._data["hashes"]:
-            existing = self._data["hashes"][version_hash]
+        if version_hash in self._data["version_hashes"]:
+            existing = self._data["version_hashes"][version_hash]
             if existing["artifact_type"] != artifact_type:
                 # Collision across artifact types (CRITICAL ERROR)
                 raise ValueError(
                     f"Hash collision: {version_hash} used by {existing['artifact_type']} and {artifact_type}"
                 )
             # Same artifact type, check if tier chain matches
-            existing_chain = [
-                (tier["template"], tier["version"])
-                for tier in existing["tier_versions"]
-            ]
-            if existing_chain == tier_chain:
+            existing_tiers = {
+                tier: (existing[tier]["template_id"], existing[tier]["version"])
+                for tier in ["concrete", "tier0", "tier1", "tier2", "tier3"]
+                if tier in existing
+            }
+            if existing_tiers == tier_versions:
                 # Exact match, no-op
                 return
             else:
@@ -701,16 +718,18 @@ class TemplateRegistry:
                     f"Hash collision: {version_hash} for {artifact_type} maps to different tier versions"
                 )
         
-        # Save entry
-        self._data["hashes"][version_hash] = {
+        # Save entry (matches YAML schema structure exactly)
+        entry = {
             "artifact_type": artifact_type,
             "created": datetime.now().isoformat(),
-            "tier_versions": [
-                {"template": name, "version": ver, "checksum": get_checksum(name)}
-                for name, ver in tier_chain
-            ],
-            "hash_input": self._build_hash_input(artifact_type, tier_chain),
+            "hash_algorithm": "SHA256",
         }
+        
+        # Add tier version entries (concrete, tier0, tier1, tier2, tier3)
+        for tier_name, (template_id, version) in tier_versions.items():
+            entry[tier_name] = {"template_id": template_id, "version": version}
+        
+        self._data["version_hashes"][version_hash] = entry
         self._data["current_versions"][artifact_type] = version_hash
         self._persist()
     
@@ -719,10 +738,10 @@ class TemplateRegistry:
         Lookup tier chain by hash.
         
         Returns:
-            Dict with artifact_type, tier_versions, created timestamp
+            Dict with artifact_type, concrete, tier0-3 entries, created timestamp
             or None if hash not found
         """
-        return self._data["hashes"].get(version_hash)
+        return self._data["version_hashes"].get(version_hash)
     
     def get_current_version(self, artifact_type: str) -> str | None:
         """Get current hash for artifact type."""
