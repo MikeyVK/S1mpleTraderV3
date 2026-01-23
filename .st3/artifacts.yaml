@@ -22,7 +22,7 @@ artifact_types:
     scaffolder_class: "DTOScaffolder"
     scaffolder_module: "mcp_server.scaffolders.dto_scaffolder"
     # Template paths
-    template_path: "components/dto.py.jinja2"
+    template_path: "concrete/dto.py.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -39,7 +39,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "WorkerScaffolder"
     scaffolder_module: "mcp_server.scaffolders.worker_scaffolder"
-    template_path: "components/worker.py.jinja2"
+    template_path: "concrete/worker.py.jinja2"
     fallback_template: null
     name_suffix: "Worker"
     file_extension: ".py"
@@ -141,9 +141,10 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "ServiceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.service_scaffolder"
-    template_path: null  # SPECIAL: service_type context field selects template
+    template_path: "concrete/service_command.py.jinja2"  # Default: service_command pattern
+    # DYNAMIC: service_type context field can select:
     # orchestrator -> service_orchestrator.py.jinja2
-    # command -> service_command.py.jinja2
+    # command -> service_command.py.jinja2 (default)
     # query -> service_query.py.jinja2
     fallback_template: null
     name_suffix: "Service"
@@ -161,7 +162,8 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "GenericScaffolder"
     scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
-    template_path: null  # SPECIAL: template_name from context selects template
+    template_path: "concrete/generic.py.jinja2"  # Default: minimal class
+    # DYNAMIC: template_name from context can override
     # User provides template_name field (relative to templates/)
     fallback_template: null
     name_suffix: null
@@ -248,7 +250,7 @@ artifact_types:
     name: "Design Document"
     description: "Design phase schemas and specifications"
     output_type: "file"
-    template_path: "documents/design.md.jinja2"
+    template_path: "concrete/design.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
