@@ -34,10 +34,16 @@ class TestTier2PythonTemplate:
             "artifact_type": "dto",
             "format": "python",
             "class_name": "TestDTO",
+            "version_hash": "abc12345",
+            "timestamp": "2026-01-23T10:00:00",
+            "output_path": "backend/dtos/test_dto.py",
         }
         result = template.render(context)
         assert "SCAFFOLD" in result
         assert "dto:" in result  # Compact format: "# SCAFFOLD: dto: |  | "
+        assert "abc12345" in result  # version_hash propagated
+        assert "2026-01-23T10:00:00" in result  # timestamp propagated
+        assert "backend/dtos/test_dto.py" in result  # output_path propagated
 
     def test_renders_python_typing_imports(self):
         """Tier 2 Python should render typing imports."""
@@ -125,10 +131,16 @@ class TestTier2MarkdownTemplate:
             "artifact_type": "design",
             "format": "markdown",
             "title": "Test Design",
+            "version_hash": "def67890",
+            "timestamp": "2026-01-23T11:00:00",
+            "output_path": "docs/designs/test_design.md",
         }
         result = template.render(context)
         assert "SCAFFOLD" in result
         assert "design:" in result  # Compact format: "<!-- SCAFFOLD: design: |  |  -->"
+        assert "def67890" in result
+        assert "2026-01-23T11:00:00" in result
+        assert "docs/designs/test_design.md" in result
 
     def test_renders_yaml_frontmatter(self):
         """Tier 2 Markdown should render YAML frontmatter."""
@@ -188,11 +200,17 @@ class TestTier2YAMLTemplate:
         context = {
             "artifact_type": "config",
             "format": "yaml",
-            "name": "test_config",
+            "config_name": "test_config",
+            "version_hash": "ghi24680",
+            "timestamp": "2026-01-23T12:00:00",
+            "output_path": "config/test_config.yaml",
         }
         result = template.render(context)
         assert "SCAFFOLD" in result
         assert "config:" in result  # Compact format: "# SCAFFOLD: config: |  | "
+        assert "ghi24680" in result
+        assert "2026-01-23T12:00:00" in result
+        assert "config/test_config.yaml" in result
 
     def test_renders_header_comment(self):
         """Tier 2 YAML should render header comment."""
@@ -201,7 +219,7 @@ class TestTier2YAMLTemplate:
         context = {
             "artifact_type": "config",
             "format": "yaml",
-            "name": "test_config",
+            "config_name": "test_config",
             "header_comment": "Configuration file for testing",
         }
         result = template.render(context)
@@ -214,7 +232,7 @@ class TestTier2YAMLTemplate:
         context = {
             "artifact_type": "config",
             "format": "yaml",
-            "name": "test_config",
+            "config_name": "test_config",
             "nested_structures": [
                 {
                     "key": "database",
