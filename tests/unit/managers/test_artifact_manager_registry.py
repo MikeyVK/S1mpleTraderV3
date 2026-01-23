@@ -51,15 +51,13 @@ class TestArtifactManagerRegistryIntegration:
                 validation_service=mock_validation_service
             )
             
-            # TODO: Inject mock_registry into manager (requires API change)
-            # For now, this test documents the requirement
+            # Inject mock_registry into manager
+            manager.template_registry = mock_registry
             
             await manager.scaffold_artifact('dto', name='Test', fields=[])
         
-        # REQUIREMENT: registry.save_version() should be called
-        # Currently FAILS - registry not integrated yet
-        # After Task 1.1c fix, uncomment:
-        # mock_registry.save_version.assert_called_once()
+        # After Task 1.1c GREEN:
+        mock_registry.save_version.assert_called_once()
         
     @pytest.mark.asyncio
     async def test_scaffold_artifact_computes_version_hash_before_rendering(self):
@@ -95,10 +93,9 @@ class TestArtifactManagerRegistryIntegration:
         # REQUIREMENT: scaffolder.scaffold() should receive version_hash in context
         call_args = mock_scaffolder.scaffold.call_args
         
-        # Currently FAILS - version_hash not in context
-        # After Task 1.1c fix, uncomment:
-        # assert 'version_hash' in call_args[1]
-        # assert len(call_args[1]['version_hash']) == 8  # 8-char hash
+        # After Task 1.1c GREEN:
+        assert 'version_hash' in call_args[1]
+        assert len(call_args[1]['version_hash']) == 8  # 8-char hash
         
     @pytest.mark.asyncio
     async def test_scaffold_artifact_includes_artifact_type_in_context(self):

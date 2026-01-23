@@ -46,6 +46,7 @@ class ArtifactManager:
         scaffolder: TemplateScaffolder | None = None,
         validation_service: ValidationService | None = None,
         fs_adapter: FilesystemAdapter | None = None,
+        template_registry: Any | None = None,  # TemplateRegistry - late import to avoid circular
         **kwargs: Any,
     ) -> None:
         """Initialize manager with optional dependencies.
@@ -60,6 +61,7 @@ class ArtifactManager:
             scaffolder: Template scaffolder (default: new instance)
             validation_service: Validation service (default: new instance)
             fs_adapter: Filesystem adapter (default: new instance)
+            template_registry: Template version registry (Task 1.1c - optional)
         """
         workspace_root = kwargs.pop("workspace_root", None)
         if kwargs:
@@ -80,6 +82,9 @@ class ArtifactManager:
         if fs_adapter is None and self.workspace_root is not None:
             fs_adapter = FilesystemAdapter(root_path=str(self.workspace_root))
         self.fs_adapter = fs_adapter or FilesystemAdapter()
+        
+        # Task 1.1c: Template registry for provenance (lazy init if not provided)
+        self.template_registry = template_registry
 
     def _enrich_context(
         self, artifact_type: str, context: dict[str, Any]
@@ -150,6 +155,33 @@ class ArtifactManager:
         if output_path is not None:
             context = {**context, "output_path": output_path}
 
+        # Task 1.1c: Compute version_hash before rendering (for SCAFFOLD header)
+        artifact = self.registry.get_artifact(artifact_type)
+        template_file = artifact.template_path
+        
+        # Get tier chain (empty for now - will be filled by introspection in Task 1.6b)
+        tier_chain: list[tuple[str, str]] = []
+        
+        # Compute version hash
+        from mcp_server.scaffolding.version_hash import compute_version_hash
+        version_hash = compute_version_hash(
+            artifact_type=artifact_type,
+            template_file=template_file or "",
+            tier_chain=tier_chain
+        )
+        
+        # Generate timestamp for SCAFFOLD header
+        now_utc = datetime.now(timezone.utc)
+        timestamp = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+        # Inject SCAFFOLD metadata into context (Task 1.1c)
+        context = {
+            **context,
+            "artifact_type": artifact_type,
+            "version_hash": version_hash,
+            "timestamp": timestamp,
+        }
+
         # 1. Enrich context with metadata fields
         enriched_context = self._enrich_context(artifact_type, context)
 
@@ -158,8 +190,18 @@ class ArtifactManager:
 
         # 3. Get artifact definition to determine validation policy
         artifact = self.registry.get_artifact(artifact_type)
+        
+        # Task 1.1c: Save to registry for provenance tracking
+        if self.template_registry is not None:
+            self.template_registry.save_version(
+                artifact_type=artifact_type,
+                version_hash=version_hash,
+                tier_chain=tier_chain,
+                concrete_template=template_file,
+                timestamp=timestamp
+            )
 
-        # 3. Resolve output path (needed for path-based validation)
+        # 4. Resolve output path (needed for path-based validation)
         if output_path is None:
             # Handle generic type special case
             if artifact_type == "generic":
@@ -182,7 +224,7 @@ class ArtifactManager:
 
         assert output_path is not None, "output_path should be set by this point"
 
-        # 4. Validate rendered content using full validator chain (DoD requirement)
+        # 5. Validate rendered content using full validator chain (DoD requirement)
         # Use validate() to invoke registered validators (PythonSyntaxValidator, MarkdownValidator)
         passed, issues = await self.validation_service.validate(
             output_path, result.content
@@ -207,7 +249,7 @@ class ArtifactManager:
                 issues
             )
 
-        # 5. Handle ephemeral vs file artifacts
+        # 6. Handle ephemeral vs file artifacts
         if artifact.output_type == "ephemeral":
             # Ephemeral artifacts: write to temp file (consistent with Issue #121)
             # Enables: ScaffoldEdit operations, validation, agent fill cycle
