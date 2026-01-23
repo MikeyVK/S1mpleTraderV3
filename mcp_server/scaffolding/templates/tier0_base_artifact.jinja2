@@ -1,0 +1,28 @@
+{#- tier0_base_artifact.jinja2 - Universal base template for all artifacts -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Provides SCAFFOLD metadata header that adapts to output format -#}
+{#-
+TEMPLATE_METADATA:
+  template_id: tier0_base_artifact
+  version: "1.0.0"
+  tier: 0
+  description: "Universal base for all artifacts - provides SCAFFOLD metadata"
+  variables:
+    required:
+      - artifact_type
+      - version_hash
+      - timestamp
+      - output_path
+      - format
+  exports_blocks:
+    - scaffold_metadata
+    - content
+-#}
+{%- block scaffold_metadata -%}
+{%- set comment_start = "#" if format in ["python", "yaml", "shell"] else "<!--" -%}
+{%- set comment_end = "" if format in ["python", "yaml", "shell"] else " -->" -%}
+{{comment_start}} SCAFFOLD: {{artifact_type}}:{{version_hash}} | {{timestamp}} | {{output_path}}{{comment_end}}
+{%- endblock -%}
+{%- block content -%}
+{#- Child templates override this block -#}
+{%- endblock -%}
