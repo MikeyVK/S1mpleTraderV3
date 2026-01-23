@@ -20,7 +20,6 @@ Uses JinjaRenderer with FileSystemLoader for safe template loading.
 """
 
 # Standard library
-from pathlib import Path
 from typing import Any
 
 # Project modules
@@ -46,15 +45,15 @@ class TemplateScaffolder(BaseScaffolder):
             registry: Artifact registry configuration.
                      Defaults to loading from .st3/artifacts.yaml.
             renderer: Jinja2 template renderer.
-                     Defaults to JinjaRenderer with mcp_server/templates.
+                     Defaults to JinjaRenderer with tier-root (mcp_server/scaffolding/templates).
         """
         super().__init__()
         self.registry = registry or ArtifactRegistryConfig.from_file()
 
-        # Initialize renderer with safe FileSystemLoader
+        # Initialize renderer with configurable template root (fail-fast)
         if renderer is None:
-            # Default template directory: mcp_server/templates
-            template_dir = Path(__file__).parent.parent / "templates"
+            from mcp_server.config.template_config import get_template_root
+            template_dir = get_template_root()
             renderer = JinjaRenderer(template_dir=template_dir)
         self._renderer = renderer
 

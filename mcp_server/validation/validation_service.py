@@ -41,8 +41,9 @@ class ValidationService:
 
     def __init__(self) -> None:
         """Initialize validation service and register validators."""
+        from mcp_server.config.template_config import get_template_root
         self.template_analyzer = TemplateAnalyzer(
-            template_root=Path("mcp_server/templates")
+            template_root=get_template_root()
         )
         self._setup_validators()
 
