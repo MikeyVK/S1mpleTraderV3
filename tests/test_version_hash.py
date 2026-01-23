@@ -5,8 +5,6 @@ RED phase: Tests for version hash computation with collision safety,
 artifact_type prefix, and tier chain hashing.
 """
 
-import pytest
-
 # Module under test does not exist yet (RED phase)
 from mcp_server.scaffolding.version_hash import compute_version_hash
 
