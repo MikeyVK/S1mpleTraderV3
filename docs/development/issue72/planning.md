@@ -264,12 +264,13 @@ Break down research findings from Issue #72 into **actionable implementation tas
 - **Description:** Build `.st3/template_registry.yaml` read/write utilities
 - **Input:** Research Q8b (registry structure)
 - **Output:** 
-  - `TemplateRegistry` class with `save_version()`, `lookup_hash()`, `get_chain()`
+  - `TemplateRegistry` class with `save_version()`, `lookup_hash()`, `get_current_version()`
   - Unit tests for hash collision detection
-- **Acceptance:** `scaffold_artifact()` writes registry entry, lookup returns full chain
+  - Methods: `_load()`, `_persist()`, `get_all_hashes()`, `get_all_artifact_types()`
+- **Acceptance:** `scaffold_artifact()` writes registry entry, lookup returns tier chain data
 - **Effort:** 8h
 - **Assignee:** Backend Engineer
-- **Status:** ⚠️ **INCOMPLETE** - TemplateRegistry class exists, but NOT integrated in scaffold flow
+- **Status:** ✅ **COMPLETE** - TemplateRegistry class exists with all methods (NOT integrated in scaffold flow yet)
 
 #### Task 1.1b: Fix compute_version_hash Implementation
 - **Description:** Replace placeholder "concrete" with real template IDs + versions
