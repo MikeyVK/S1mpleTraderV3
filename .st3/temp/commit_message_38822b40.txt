@@ -1,4 +1,0 @@
-# SCAFFOLD: template=commit_message version=1.0 created=2026-01-23T09:49:49Z
-feat: Add new feature
-
-Detailed description of the feature
