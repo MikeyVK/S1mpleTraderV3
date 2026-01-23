@@ -1,0 +1,65 @@
+{#- tier2_base_python.jinja2 - Language base for Python code -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Adds Python-specific patterns (typing, docstrings, dunder methods) -#}
+{%- extends "tier1_base_code.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  template_id: tier2_base_python
+  version: "1.0.0"
+  tier: 2
+  parent: tier1_base_code
+  description: "Language base for Python - adds typing, docstrings, dunder methods"
+  variables:
+    required:
+      - class_name
+    optional:
+      - base_classes
+      - type_imports
+      - docstring
+      - init_params
+      - dunder_methods
+  exports_blocks:
+    - type_imports
+    - class_docstring
+    - init_method
+    - dunder_section
+-#}
+
+{%- block imports_section -%}
+{%- block type_imports -%}
+{%- if type_imports -%}
+from typing import {{ type_imports | join(', ') }}
+{%- endif -%}
+{%- endblock %}
+
+{{ super() }}
+{%- endblock %}
+
+{%- block class_structure -%}
+class {{ class_name }}{% if base_classes %}({{ base_classes | join(', ') }}){% endif %}:
+{%- block class_docstring %}
+    """{{ docstring | default(class_name + ' class.') }}"""
+{%- endblock %}
+
+{%- block init_method %}
+{%- if init_params %}
+    def __init__(self{% for param in init_params %}, {{ param.name }}: {{ param.type }}{% endfor %}):
+        """Initialize {{ class_name }}."""
+{%- for param in init_params %}
+        self.{{ param.name }} = {{ param.name }}
+{%- endfor %}
+{%- endif %}
+{%- endblock %}
+
+{%- block dunder_section %}
+{%- if dunder_methods %}
+{%- for method in dunder_methods %}
+
+    def __{{ method.name }}__(self{% if method.params %}, {{ method.params }}{% endif %}){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
+        """{{ method.docstring | default('Implement __' + method.name + '__.') }}"""
+        {{ method.body | default('pass') }}
+{%- endfor %}
+{%- endif %}
+{%- endblock %}
+{%- endblock %}

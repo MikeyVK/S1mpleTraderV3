@@ -1,0 +1,49 @@
+{#- tier2_base_markdown.jinja2 - Language base for Markdown documents -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Adds Markdown-specific patterns (frontmatter, code blocks, links) -#}
+{%- extends "tier1_base_document.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  template_id: tier2_base_markdown
+  version: "1.0.0"
+  tier: 2
+  parent: tier1_base_document
+  description: "Language base for Markdown - adds frontmatter, code blocks, link formatting"
+  variables:
+    required:
+      - title
+    optional:
+      - frontmatter
+      - sections
+      - code_blocks
+  exports_blocks:
+    - frontmatter_block
+    - code_section
+-#}
+
+{%- block content -%}
+{%- block frontmatter_block -%}
+{%- if frontmatter -%}
+---
+{%- for key, value in frontmatter.items() %}
+{{ key }}: {{ value }}
+{%- endfor %}
+---
+
+{%- endif -%}
+{%- endblock %}
+
+{{ super() }}
+
+{%- block code_section -%}
+{%- if code_blocks -%}
+{%- for block in code_blocks %}
+
+```{{ block.language | default('') }}
+{{ block.code }}
+```
+{%- endfor -%}
+{%- endif -%}
+{%- endblock %}
+{%- endblock -%}
