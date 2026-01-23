@@ -211,9 +211,66 @@ force_phase_transition(
 
 **Common artifact types:**
 - **Code:** dto, worker, adapter, interface, tool, resource, schema, service
-- **Docs:** design, architecture, tracking, generic
+- **Docs:** design, architecture, tracking, generic, research, planning
 
 **Registry:** `.st3/artifacts.yaml` defines all artifact types and their templates.
+
+**Template System (Issue #72 - Multi-Tier Architecture):**
+- **5-tier Jinja2 hierarchy:** Tier 0 (universal SCAFFOLD) → Tier 1 (CODE/DOCUMENT/CONFIG format) → Tier 2 (Python/Markdown/YAML language) → Tier 3 (component/data/tool specialization) → Concrete (worker.py, research.md)
+- **Inheritance-aware introspection:** `introspect_template(name, with_inheritance=True)` returns complete variable schema (all tiers)
+- **SCAFFOLD metadata:** All scaffolded files include 1-line header: `# SCAFFOLD: {type}:{hash} | {timestamp} | {path}`
+- **Template registry:** `.st3/template_registry.yaml` maps version hashes to tier chains
+- **Validation integration:** All generated code passes Issue #52 validation (TEMPLATE_METADATA enforcement)
+
+**Context Requirements:**
+- **Code artifacts:** Variables from all tiers (concrete + Tier 3 + Tier 2 + Tier 1 + Tier 0)
+- **Document artifacts:** Standard sections (purpose, scope, related_docs) + artifact-specific fields
+- **Missing variables:** Scaffolding will fail with clear error listing required fields
+- **System variables:** Auto-populated (timestamp, version_hash, output_path, artifact_type)
+
+**Example:**
+```python
+# Worker scaffolding (Python CODE artifact)
+scaffold_artifact(
+    artifact_type="worker",
+    name="ProcessWorker",
+    context={
+        # Tier 4 (concrete): worker-specific
+        "worker_name": "ProcessWorker",
+        "worker_description": "Processes incoming events",
+        "input_type": "EventDTO",
+        "output_type": "ResultDTO",
+        
+        # Tier 3 (component): lifecycle pattern (if IWorkerLifecycle validated)
+        "config_type": "WorkerConfig",
+        "uses_async": True,
+        
+        # Tier 2 (language): Python syntax (often inferred from tier 3)
+        # Tier 1 (format): CODE structure (auto-provided by template)
+        # Tier 0 (universal): SCAFFOLD metadata (auto-generated)
+    }
+)
+
+# Research doc scaffolding (Markdown DOCUMENT artifact)
+scaffold_artifact(
+    artifact_type="research",
+    name="multi-tier-templates",
+    context={
+        # Document-specific
+        "title": "Issue #72 Multi-Tier Template Research",
+        "purpose": "Investigate template hierarchy to eliminate DRY violations",
+        "scope_in": "5-tier architecture, inheritance introspection, registry format",
+        "scope_out": "Implementation details, performance optimization",
+        "prerequisites": ["Research questions defined", "MVP validated"],
+        "related_docs": ["planning.md", "design.md"],
+        
+        # Optional: Custom sections
+        "sections": ["Background", "Alternatives", "Decision Rationale"],
+    }
+)
+```
+
+**Design Reference:** [docs/development/issue72/design.md](docs/development/issue72/design.md) - Complete 5-tier architecture specification
 
 ### Quality & Testing
 | Action | ✅ USE THIS | ❌ NEVER USE |
