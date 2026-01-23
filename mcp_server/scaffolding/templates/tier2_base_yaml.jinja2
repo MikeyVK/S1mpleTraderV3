@@ -5,21 +5,30 @@
 
 {#-
 TEMPLATE_METADATA:
-  template_id: tier2_base_yaml
+  enforcement: ARCHITECTURAL
+  level: content
+  validates:
+    guidelines:
+      - "Use 2-space indentation"
+      - "Key format: lowercase_with_underscores"
+      - "Consider comments for complex structures"
+  extends: tier1_base_config.jinja2
+  purpose: "Language base for YAML - adds nested structures, comments, anchors"
   version: "1.0.0"
-  tier: 2
-  parent: tier1_base_config
-  description: "Language base for YAML - adds nested structures, comments, anchors"
-  variables:
-    required:
-      - config_name
-    optional:
-      - config_entries
-      - nested_structures
-      - header_comment
-  exports_blocks:
-    - header_comment_block
-    - nested_section
+  introspection:
+    template_id: tier2_base_yaml
+    tier: 2
+    parent: tier1_base_config
+    variables:
+      required:
+        - config_name
+      optional:
+        - config_entries
+        - nested_structures
+        - header_comment
+    exports_blocks:
+      - header_comment_block
+      - nested_section
 -#}
 
 {%- block content -%}

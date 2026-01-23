@@ -5,21 +5,30 @@
 
 {#-
 TEMPLATE_METADATA:
-  template_id: tier2_base_markdown
+  enforcement: ARCHITECTURAL
+  level: content
+  validates:
+    guidelines:
+      - "Use [text](url) for links"
+      - "Use ```language for code blocks"
+      - "Consider YAML frontmatter for metadata"
+  extends: tier1_base_document.jinja2
+  purpose: "Language base for Markdown - adds frontmatter, code blocks, link formatting"
   version: "1.0.0"
-  tier: 2
-  parent: tier1_base_document
-  description: "Language base for Markdown - adds frontmatter, code blocks, link formatting"
-  variables:
-    required:
-      - title
-    optional:
-      - frontmatter
-      - sections
-      - code_blocks
-  exports_blocks:
-    - frontmatter_block
-    - code_section
+  introspection:
+    template_id: tier2_base_markdown
+    tier: 2
+    parent: tier1_base_document
+    variables:
+      required:
+        - title
+      optional:
+        - frontmatter
+        - sections
+        - code_blocks
+    exports_blocks:
+      - frontmatter_block
+      - code_section
 -#}
 
 {%- block content -%}

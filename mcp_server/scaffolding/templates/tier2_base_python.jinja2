@@ -5,25 +5,34 @@
 
 {#-
 TEMPLATE_METADATA:
-  template_id: tier2_base_python
+  enforcement: ARCHITECTURAL
+  level: content
+  validates:
+    guidelines:
+      - '"""Docstrings recommended for all classes/methods"""'
+      - "Type hints recommended (: str, -> int)"
+      - "Consider async/await for I/O operations"
+  extends: tier1_base_code.jinja2
+  purpose: "Language base for Python - adds typing, docstrings, dunder methods"
   version: "1.0.0"
-  tier: 2
-  parent: tier1_base_code
-  description: "Language base for Python - adds typing, docstrings, dunder methods"
-  variables:
-    required:
-      - class_name
-    optional:
-      - base_classes
+  introspection:
+    template_id: tier2_base_python
+    tier: 2
+    parent: tier1_base_code
+    variables:
+      required:
+        - class_name
+      optional:
+        - base_classes
+        - type_imports
+        - docstring
+        - init_params
+        - dunder_methods
+    exports_blocks:
       - type_imports
-      - docstring
-      - init_params
-      - dunder_methods
-  exports_blocks:
-    - type_imports
-    - class_docstring
-    - init_method
-    - dunder_section
+      - class_docstring
+      - init_method
+      - dunder_section
 -#}
 
 {%- block imports_section -%}

@@ -5,28 +5,32 @@
 
 {#-
 TEMPLATE_METADATA:
-  template_id: tier1_base_code
+  enforcement: STRICT
+  level: format
+  validates:
+    strict:
+      - "^import "
+      - "^from "
+      - "^class "
+      - "^def "
+      - "^async def "
+  extends: tier0_base_artifact.jinja2
+  purpose: "Format base for code artifacts - provides structural blocks"
   version: "1.1.0"
-  tier: 1
-  parent: tier0_base_artifact
-  description: "Format base for code artifacts - provides structural blocks"
-  variables:
-    required:
-      - class_name
-      - class_docstring
-    optional:
-      - imports
-  exports_blocks:
-    - imports_section
-    - class_structure
-    - methods
-  validation:
-    enforcement: STRICT
-    level: format
-    validates:
-      strict:
-        - rule: "imports_at_top"
-          message: "Imports must be at top of file"
+  introspection:
+    template_id: tier1_base_code
+    tier: 1
+    parent: tier0_base_artifact
+    variables:
+      required:
+        - class_name
+        - class_docstring
+      optional:
+        - imports
+    exports_blocks:
+      - imports_section
+      - class_structure
+      - methods
 -#}
 
 {%- block content -%}

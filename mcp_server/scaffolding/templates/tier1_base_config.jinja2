@@ -5,19 +5,27 @@
 
 {#-
 TEMPLATE_METADATA:
-  template_id: tier1_base_config
+  enforcement: STRICT
+  level: format
+  validates:
+    strict:
+      - "^[a-zA-Z_][a-zA-Z0-9_]*:"
+      - "^  [a-zA-Z_][a-zA-Z0-9_]*:"
+  extends: tier0_base_artifact.jinja2
+  purpose: "Format base for config artifacts - provides key-value structure"
   version: "1.0.0"
-  tier: 1
-  parent: tier0_base_artifact
-  description: "Format base for config artifacts - provides key-value structure"
-  variables:
-    required:
-      - config_name
-    optional:
-      - config_entries
-  exports_blocks:
-    - config_root
-    - config_entries_block
+  introspection:
+    template_id: tier1_base_config
+    tier: 1
+    parent: tier0_base_artifact
+    variables:
+      required:
+        - config_name
+      optional:
+        - config_entries
+    exports_blocks:
+      - config_root
+      - config_entries_block
 -#}
 
 {%- block content -%}
