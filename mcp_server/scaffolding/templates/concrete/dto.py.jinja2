@@ -1,0 +1,67 @@
+{#- concrete/dto.py.jinja2 - Data Transfer Object (Pydantic BaseModel) -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Generate Pydantic DTOs for data transfer between layers -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: REQUIRED
+  level: structure
+  validates:
+    patterns:
+      - "Pydantic BaseModel inheritance"
+      - "Field definitions with type hints"
+      - "Immutable by default (frozen=True optional)"
+  extends: tier2_base_python.jinja2
+  purpose: "Concrete template for Data Transfer Objects (Pydantic)"
+  version: "1.0.0"
+  introspection:
+    template_id: dto
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - name
+        - fields
+      optional:
+        - description
+        - frozen
+        - validators
+-#}
+
+{%- block type_imports -%}
+from pydantic import BaseModel, Field
+{%- endblock %}
+
+{%- block class_structure -%}
+class {{ name }}(BaseModel):
+{%- block class_docstring %}
+    """{{ description | default(name + ' DTO.') }}
+    
+    Data Transfer Object for {{ name | lower }}.
+    """
+{%- endblock %}
+
+{%- block field_definitions %}
+{%- if fields %}
+{%- for field in fields %}
+    {{ field.name }}: {{ field.type }}{% if field.default is defined %} = {{ field.default }}{% elif field.field_args %} = Field({{ field.field_args }}){% endif %}
+{%- endfor %}
+{%- else %}
+    pass
+{%- endif %}
+{%- endblock %}
+
+{%- block validators_section %}
+{%- if validators %}
+{%- for validator in validators %}
+
+    @validator('{{ validator.field }}')
+    def {{ validator.name }}(cls, v):
+        """{{ validator.docstring | default('Validate ' + validator.field + '.') }}"""
+        {{ validator.body | indent(8) }}
+        return v
+{%- endfor %}
+{%- endif %}
+{%- endblock %}
+{%- endblock %}
