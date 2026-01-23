@@ -357,7 +357,7 @@ class {{ class_name }}:
 
 **Solution:** AST walking via `jinja2.nodes.Extends` to build complete schema.
 
-**API Signature:**
+**API Signature (NEW wrapper over existing implementation):**
 
 ```python
 def introspect_template(
@@ -368,6 +368,10 @@ def introspect_template(
 ) -> dict[str, Any]:
     """
     Introspect Jinja2 template to extract variable schema.
+    
+    This is a NEW high-level API that wraps the existing low-level
+    introspect_template(env, template_source) function from
+    template_introspector.py (line 52).
     
     Args:
         template_name: Template filename (e.g., "worker.py.jinja2")
@@ -383,6 +387,13 @@ def introspect_template(
         - "tier_chain": List[str] - Parent template names (if with_inheritance)
         - "blocks": List[str] - Block names defined in template
         - "system_fields": Set[str] - Auto-provided vars (timestamp, version_hash, etc.)
+    
+    Implementation Note:
+        Internally calls existing introspect_template(env, template_source)
+        for each tier in the inheritance chain, then merges results.
+        
+        Current code signature: introspect_template(env, template_source) -> TemplateSchema
+        New wrapper adds: template_name resolution + inheritance walking
     
     Example:
         >>> schema = introspect_template("worker.py.jinja2", with_inheritance=True)
@@ -428,8 +439,13 @@ def introspect_template_with_inheritance(env, template_name):
         else:
             current = None  # Reached root (Tier 0 has no parent)
     
-    # Filter out system-provided variables (auto-populated by scaffolding)
-    SYSTEM_FIELDS = {"timestamp", "version_hash", "output_path", "artifact_type"}
+    # Filter out system-provided variables (auto-populated by ArtifactManager)
+    # NOTE: Current codebase uses different system fields (template_introspector.py:26-33)
+    # Issue #72 introduces NEW system fields for multi-tier SCAFFOLD metadata
+    # CURRENT (pre-#72): {"template_id", "template_version", "scaffold_created", "output_path"}
+    # NEW (#72): {"timestamp", "version_hash", "artifact_type", "output_path"}
+    # Implementation: Update ArtifactManager to inject new fields + update SYSTEM_FIELDS constant
+    SYSTEM_FIELDS = {"timestamp", "version_hash", "artifact_type", "output_path"}
     user_vars = all_vars - SYSTEM_FIELDS
     
     return {
@@ -517,50 +533,28 @@ def test_scaffolding_rejects_missing_parent_var():
 version: 1.0  # Registry format version
 last_updated: "2026-01-23T10:30:00Z"
 
-# Hash → Tier Version Chain Mapping
-hashes:
+# Hash → Tier Version Chain Mapping (schema from research_summary.md)
+version_hashes:
   a3f7b2c1:  # 8-char SHA256 hex (collision-safe per artifact_type)
     artifact_type: "worker"
     created: "2026-01-22T15:45:00Z"
-    tier_versions:
-      - template: "tier0_base_artifact.jinja2"
-        version: "1.0.0"
-        checksum: "e8f3a1b9c2d4..."  # Full SHA256 of template file
-      - template: "tier1_base_code.jinja2"
-        version: "1.1.0"
-        checksum: "d4c2b1a9e8f3..."
-      - template: "tier2_base_python.jinja2"
-        version: "2.0.0"
-        checksum: "c1b2a3e4f5d6..."
-      - template: "tier3_base_python_component.jinja2"
-        version: "1.2.0"
-        checksum: "b3c4d5e6f7a8..."
-      - template: "worker.py.jinja2"
-        version: "3.1.0"
-        checksum: "a1b2c3d4e5f6..."
-    # Hash input: "worker|tier0_base_artifact.jinja2@1.0.0|tier1_base_code.jinja2@1.1.0|tier2_base_python.jinja2@2.0.0|tier3_base_python_component.jinja2@1.2.0|worker.py.jinja2@3.1.0"
-    hash_input: "worker|tier0@1.0.0|tier1_code@1.1.0|tier2_python@2.0.0|tier3_component@1.2.0|worker@3.1.0"
+    concrete: {template_id: "worker.py", version: "3.1.0"}
+    tier0: {template_id: "tier0_base_artifact", version: "1.0.0"}
+    tier1: {template_id: "tier1_base_code", version: "1.1.0"}
+    tier2: {template_id: "tier2_base_python", version: "2.0.0"}
+    tier3: {template_id: "tier3_base_python_component", version: "1.2.0"}
+    hash_algorithm: SHA256
+    # Hash input: "worker|tier0@1.0.0|tier1_code@1.1.0|tier2_python@2.0.0|tier3_component@1.2.0|worker@3.1.0"
 
   b4e8f3c2:  # Different hash for research.md
     artifact_type: "research"
     created: "2026-01-23T09:15:00Z"
-    tier_versions:
-      - template: "tier0_base_artifact.jinja2"
-        version: "1.0.0"
-        checksum: "e8f3a1b9c2d4..."  # Same Tier 0 as worker
-      - template: "tier1_base_document.jinja2"
-        version: "1.0.0"
-        checksum: "f5d4c3b2a1e9..."  # Different Tier 1 (DOCUMENT not CODE)
-      - template: "tier2_base_markdown.jinja2"
-        version: "1.5.0"
-        checksum: "a2b3c4d5e6f7..."
-      - template: "tier3_base_markdown_knowledge.jinja2"
-        version: "1.0.0"
-        checksum: "c5d6e7f8a9b1..."
-      - template: "research.md.jinja2"
-        version: "2.0.0"
-        checksum: "e7f8a9b1c2d3..."
-    hash_input: "research|tier0@1.0.0|tier1_document@1.0.0|tier2_markdown@1.5.0|tier3_knowledge@1.0.0|research@2.0.0"
+    concrete: {template_id: "research.md", version: "2.0.0"}
+    tier0: {template_id: "tier0_base_artifact", version: "1.0.0"}  # Same Tier 0 as worker
+    tier1: {template_id: "tier1_base_document", version: "1.0.0"}  # Different Tier 1 (DOCUMENT not CODE)
+    tier2: {template_id: "tier2_base_markdown", version: "1.5.0"}
+    tier3: {template_id: "tier3_base_markdown_knowledge", version: "1.0.0"}
+    hash_algorithm: SHA256
 
 # Artifact Type → Current Hash Mapping (quick lookup)
 current_versions:
@@ -578,7 +572,6 @@ templates:
     version_history:
       - version: "1.0.0"
         released: "2026-01-20"
-        checksum: "e8f3a1b9c2d4..."
         changes: "Initial release - SCAFFOLD metadata block"
   
   tier1_base_code.jinja2:
@@ -586,11 +579,9 @@ templates:
     version_history:
       - version: "1.1.0"
         released: "2026-01-22"
-        checksum: "d4c2b1a9e8f3..."
         changes: "Add async import block"
       - version: "1.0.0"
         released: "2026-01-20"
-        checksum: "c3b2a1e9f8d4..."
         changes: "Initial release - imports/class/function structure"
   
   # ... (37 templates total: 1 Tier 0 + 3 Tier 1 + 3 Tier 2 + 6 Tier 3 + 24 Concrete)
@@ -599,24 +590,32 @@ templates:
 **Hash Calculation Algorithm:**
 
 ```python
-def compute_version_hash(template_file: str, tier_chain: list[str]) -> str:
+def compute_version_hash(
+    artifact_type: str,  # Explicit parameter (not derived from template_file)
+    template_file: str,
+    tier_chain: list[str]
+) -> str:
     """
     Compute 8-char SHA256 hash of tier version chain.
     
     Collision safety: Includes artifact_type prefix, unique per type.
     
     Args:
+        artifact_type: Artifact type (e.g., "worker", "research") from artifacts.yaml
         template_file: Concrete template (e.g., "worker.py.jinja2")
         tier_chain: Parent template chain from introspection
     
     Returns:
         8-character hex hash (e.g., "a3f7b2c1")
+        
+    Note:
+        artifact_type MUST be passed explicitly to avoid extraction bugs.
+        Previous attempt: artifact_type = template_file.replace(".jinja2", "").split("/")[-1]
+        Bug: "worker.py.jinja2" → "worker.py" (not "worker")
+        Fix: ArtifactManager provides artifact_type from artifacts.yaml registry
     """
     # Build full chain (parents + concrete)
     full_chain = tier_chain + [template_file]
-    
-    # Get artifact type from concrete template filename
-    artifact_type = template_file.replace(".jinja2", "").split("/")[-1]
     
     # Build hash input: "{type}|{tier}@{version}|..."
     parts = [artifact_type]
@@ -633,7 +632,7 @@ def compute_version_hash(template_file: str, tier_chain: list[str]) -> str:
 
 
 # Example:
-# Input: template_file="worker.py.jinja2", tier_chain=[...]
+# Input: artifact_type="worker", template_file="worker.py.jinja2", tier_chain=[...]
 # Output: "worker|tier0@1.0.0|tier1_code@1.1.0|tier2_python@2.0.0|tier3_component@1.2.0|worker@3.1.0"
 # Hash: SHA256("worker|...") → "a3f7b2c14e5f6789abcdef..." → "a3f7b2c1" (first 8 chars)
 ```
@@ -817,7 +816,11 @@ TEMPLATE_METADATA:
 
 ```python
 # After scaffolding, validate output
-def validate_scaffolded_file(output_path: Path, artifact_type: str) -> ValidationResult:
+async def validate_scaffolded_file(
+    output_path: Path,
+    content: str,
+    artifact_type: str
+) -> ValidationResult:
     """
     Validate scaffolded file against TEMPLATE_METADATA rules.
     
@@ -825,24 +828,30 @@ def validate_scaffolded_file(output_path: Path, artifact_type: str) -> Validatio
     
     Args:
         output_path: Generated file path
+        content: Scaffolded file content
         artifact_type: "worker", "research", etc.
     
     Returns:
         ValidationResult with errors (STRICT failures) and warnings (GUIDELINE suggestions)
+        
+    Implementation Note:
+        Current ValidationService API (validation_service.py:74):
+        async def validate(self, path: str, content: str) -> tuple[bool, str]
+        
+        Design uses this actual API (not a hypothetical validate_file method).
+        ValidationService internally extracts TEMPLATE_METADATA from templates.
     """
-    # Load TEMPLATE_METADATA from template
+    # Load TEMPLATE_METADATA from template (Issue #52 responsibility)
     template_file = artifacts_registry[artifact_type]["template"]
-    metadata = extract_template_metadata(template_file)
     
-    # Validate against rules (Issue #52 API)
-    result = validation_service.validate_file(
-        file_path=output_path,
-        enforcement=metadata["enforcement"],  # STRICT or ARCH or GUIDELINE
-        level=metadata["level"],              # format, syntax, architecture
-        rules=metadata["validates"]["strict"],  # Error rules
+    # Validate using Issue #52 API (actual signature from codebase)
+    validation_service = ValidationService()
+    passed, issues_text = await validation_service.validate(
+        path=str(output_path),
+        content=content
     )
     
-    return result
+    return ValidationResult(passed=passed, issues=issues_text)
 ```
 
 **Validation Tiers (from Issue #52 Alignment section):**
