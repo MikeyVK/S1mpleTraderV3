@@ -1,0 +1,39 @@
+{#- tier1_base_document.jinja2 - Base template for document artifacts -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Provides heading hierarchy, sections -#}
+{%- extends "tier0_base_artifact.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  template_id: tier1_base_document
+  version: "1.0.0"
+  tier: 1
+  parent: tier0_base_artifact
+  description: "Format base for document artifacts - provides heading structure"
+  variables:
+    required:
+      - title
+    optional:
+      - sections
+  exports_blocks:
+    - document_title
+    - document_body
+    - section_content
+-#}
+
+{%- block content -%}
+{%- block document_title -%}
+# {{ title }}
+{%- endblock %}
+
+{%- block document_body -%}
+{%- if sections -%}
+{%- for section in sections -%}
+
+## {{ section.heading }}
+
+{{ section.content }}
+{%- endfor -%}
+{%- endif -%}
+{%- endblock -%}
+{%- endblock -%}
