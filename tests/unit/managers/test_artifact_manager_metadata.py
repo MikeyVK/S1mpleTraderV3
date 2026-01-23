@@ -32,14 +32,6 @@ class TestArtifactManagerMetadataEnrichment:
         assert "template_id" in enriched
         assert enriched["template_id"] == "dto"
 
-    def test_enrichment_adds_template_version(self, manager: ArtifactManager) -> None:
-        """RED: Context should include template_version from artifacts.yaml."""
-        context = {"name": "UserDTO"}
-        enriched = manager._enrich_context("dto", context)  # pylint: disable=protected-access
-
-        assert "template_version" in enriched
-        assert enriched["template_version"] == "1.0"
-
     def test_enrichment_adds_scaffold_created_timestamp(
         self, manager: ArtifactManager
     ) -> None:
@@ -97,8 +89,8 @@ class TestArtifactManagerMetadataEnrichment:
 
         # Plus new metadata fields
         assert "template_id" in enriched
-        assert "template_version" in enriched
         assert "scaffold_created" in enriched
+        # NOTE (Task 1.5b): template_version removed - comes from registry hash now
 
     def test_timestamp_format_is_consistent(self, manager: ArtifactManager) -> None:
         """RED: Timestamps should always use same ISO 8601 format."""

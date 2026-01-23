@@ -13,12 +13,10 @@ version: "1.0"
 
 artifact_types:
   # ===== CODE ARTIFACTS =====
-  
   - type: code
     type_id: dto
     name: "Data Transfer Object"
     description: "Data Transfer Object - immutable data container (Pydantic BaseModel)"
-    version: "1.0"
     output_type: "file"
     # LEGACY fields (Issue #107 - remove after unified TemplateScaffolder deployed)
     scaffolder_class: "DTOScaffolder"
@@ -34,12 +32,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: worker
     name: "Worker"
     description: "Worker - executes single domain operation (async task processor)"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "WorkerScaffolder"
     scaffolder_module: "mcp_server.scaffolders.worker_scaffolder"
@@ -53,12 +49,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: adapter
     name: "Adapter"
     description: "Adapter - integrates external systems (implements Interface)"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "AdapterScaffolder"
     scaffolder_module: "mcp_server.scaffolders.adapter_scaffolder"
@@ -72,12 +66,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: tool
     name: "MCP Tool"
     description: "MCP Tool - exposes functionality via MCP protocol"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "ToolScaffolder"
     scaffolder_module: "mcp_server.scaffolders.tool_scaffolder"
@@ -91,12 +83,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: resource
     name: "MCP Resource"
     description: "MCP Resource - provides dynamic content"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "ResourceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.resource_scaffolder"
@@ -110,12 +100,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: schema
     name: "Pydantic Schema"
     description: "Pydantic Schema - validation models"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "SchemaScaffolder"
     scaffolder_module: "mcp_server.scaffolders.schema_scaffolder"
@@ -129,12 +117,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: interface
     name: "Interface"
     description: "Interface - abstract protocol definition"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "InterfaceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.interface_scaffolder"
@@ -148,12 +134,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: service
     name: "Service"
     description: "Service - orchestration or business logic"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "ServiceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.service_scaffolder"
@@ -170,12 +154,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: generic
     name: "Generic Component"
     description: "Generic component from custom template"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "GenericScaffolder"
     scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
@@ -190,12 +172,10 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   - type: code
     type_id: unit_test
     name: "Unit Test"
     description: "Unit test file with proper structure and quality gates"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "GenericScaffolder"
     scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
@@ -213,7 +193,6 @@ artifact_types:
     type_id: integration_test
     name: "Integration Test"
     description: "Integration/E2E test file with @module structure"
-    version: "1.0"
     output_type: "file"
     scaffolder_class: "GenericScaffolder"
     scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
@@ -227,14 +206,11 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-  
   # ===== DOCUMENT ARTIFACTS =====
-  
   - type: doc
     type_id: research
     name: "Research Document"
     description: "Research phase findings and questions"
-    version: "1.0"
     output_type: "file"
     template_path: "documents/generic.md.jinja2"
     fallback_template: null
@@ -249,12 +225,10 @@ artifact_types:
           to: [APPROVED, DEFINITIVE]
         - from: APPROVED
           to: [DEFINITIVE]
-  
   - type: doc
     type_id: planning
     name: "Planning Document"
     description: "Planning phase TDD cycle breakdown"
-    version: "1.0"
     output_type: "file"
     template_path: "documents/generic.md.jinja2"
     fallback_template: null
@@ -269,12 +243,10 @@ artifact_types:
           to: [APPROVED, DEFINITIVE]
         - from: APPROVED
           to: [DEFINITIVE]
-  
   - type: doc
     type_id: design
     name: "Design Document"
     description: "Design phase schemas and specifications"
-    version: "1.0"
     output_type: "file"
     template_path: "documents/design.md.jinja2"
     fallback_template: null
@@ -289,12 +261,10 @@ artifact_types:
           to: [APPROVED, DEFINITIVE]
         - from: APPROVED
           to: [DEFINITIVE]
-  
   - type: doc
     type_id: architecture
     name: "Architecture Document"
     description: "System architecture documentation"
-    version: "1.0"
     output_type: "file"
     template_path: "documents/architecture.md.jinja2"
     fallback_template: null
@@ -311,12 +281,10 @@ artifact_types:
           to: [APPROVED, DRAFT]
         - from: APPROVED
           to: [DEFINITIVE]
-  
   - type: doc
     type_id: tracking
     name: "Tracking Document"
     description: "Living document for tracking project status"
-    version: "1.0"
     output_type: "file"
     template_path: "documents/tracking.md.jinja2"
     fallback_template: null
@@ -327,12 +295,10 @@ artifact_types:
       states: [LIVING DOCUMENT]
       initial_state: LIVING DOCUMENT
       valid_transitions: []
-  
   - type: doc
     type_id: reference
     name: "Reference Document"
     description: "Reference documentation"
-    version: "1.0"
     output_type: "file"
     template_path: "documents/reference.md.jinja2"
     fallback_template: null
@@ -347,14 +313,11 @@ artifact_types:
           to: [APPROVED, DEFINITIVE]
         - from: APPROVED
           to: [DEFINITIVE]
-  
   # ===== EPHEMERAL ARTIFACTS =====
-  
   - type: doc
     type_id: commit_message
     name: "Git Commit Message"
     description: "Git commit message (ephemeral, not saved to disk)"
-    version: "1.0"
     output_type: "ephemeral"
     template_path: "documents/commit-message.txt.jinja2"
     fallback_template: null
@@ -365,4 +328,3 @@ artifact_types:
       states: [CREATED]
       initial_state: CREATED
       valid_transitions: []
-

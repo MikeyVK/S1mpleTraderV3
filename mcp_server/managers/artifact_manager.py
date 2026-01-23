@@ -93,9 +93,12 @@ class ArtifactManager:
 
         Adds metadata fields to support template-embedded metadata headers:
         - template_id: Artifact type identifier
-        - template_version: Version from artifacts.yaml
         - scaffold_created: ISO 8601 UTC timestamp with Z suffix
         - output_path: File path (conditional - only for file artifacts)
+        
+        NOTE (Task 1.5b): Version comes from registry hash (version_hash field),
+        not from artifacts.yaml. Version is injected separately in scaffold_artifact()
+        before rendering (see Task 1.1c).
 
         Args:
             artifact_type: Artifact type_id from registry
@@ -104,7 +107,7 @@ class ArtifactManager:
         Returns:
             Enriched context dict (preserves original + adds metadata)
         """
-        # Get artifact definition to read version and output_type
+        # Get artifact definition to read output_type
         artifact = self.registry.get_artifact(artifact_type)
 
         # Create enriched context (copy original to preserve)
@@ -112,7 +115,6 @@ class ArtifactManager:
 
         # Add metadata fields
         enriched["template_id"] = artifact_type
-        enriched["template_version"] = artifact.version
 
         # Generate ISO 8601 UTC timestamp with Z suffix
         now_utc = datetime.now(timezone.utc)
