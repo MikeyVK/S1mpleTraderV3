@@ -23,7 +23,7 @@ class TestNoHardcodedServiceFallback:
         """Service artifact moet template_path uit artifacts.yaml gebruiken."""
         # Arrange: Service artifact zoals in artifacts.yaml
         artifact = ArtifactDefinition(
-            type="code",
+            type="code",  # type: ignore[arg-type]
             type_id="service",
             name="Service",
             description="Service artifact",
@@ -35,7 +35,7 @@ class TestNoHardcodedServiceFallback:
             name_suffix="Service",
             file_extension=".py",
             generate_test=True,
-            state_machine={
+            state_machine={  # type: ignore[arg-type]
                 "states": ["CREATED"],
                 "initial_state": "CREATED",
                 "valid_transitions": [],
@@ -68,7 +68,7 @@ class TestNoHardcodedServiceFallback:
         """Service met template_path=None returnt None (moet uit artifacts.yaml komen)."""
         # Arrange: Service met template_path=None
         artifact = ArtifactDefinition(
-            type="code",
+            type="code",  # type: ignore[arg-type]
             type_id="service",
             name="Service",
             description="Service artifact",
@@ -80,7 +80,7 @@ class TestNoHardcodedServiceFallback:
             name_suffix="Service",
             file_extension=".py",
             generate_test=True,
-            state_machine={
+            state_machine={  # type: ignore[arg-type]
                 "states": ["CREATED"],
                 "initial_state": "CREATED",
                 "valid_transitions": [],
@@ -113,7 +113,7 @@ class TestNoHardcodedServiceFallback:
         """Generic: template_name uit context krijgt PRIORITY over artifact.template_path."""
         # Arrange: Generic artifact met default template_path
         artifact = ArtifactDefinition(
-            type="code",
+            type="code",  # type: ignore[arg-type]
             type_id="generic",
             name="Generic Component",
             description="Generic component from custom template",
@@ -125,7 +125,7 @@ class TestNoHardcodedServiceFallback:
             name_suffix=None,
             file_extension=".py",
             generate_test=False,
-            state_machine={
+            state_machine={  # type: ignore[arg-type]
                 "states": ["CREATED"],
                 "initial_state": "CREATED",
                 "valid_transitions": [],
@@ -157,7 +157,7 @@ class TestNoHardcodedServiceFallback:
         """Generic: Zonder template_name in context, gebruik artifact.template_path."""
         # Arrange: Generic met default template_path
         artifact = ArtifactDefinition(
-            type="code",
+            type="code",  # type: ignore[arg-type]
             type_id="generic",
             name="Generic Component",
             description="Generic component from custom template",
@@ -169,7 +169,7 @@ class TestNoHardcodedServiceFallback:
             name_suffix=None,
             file_extension=".py",
             generate_test=False,
-            state_machine={
+            state_machine={  # type: ignore[arg-type]
                 "states": ["CREATED"],
                 "initial_state": "CREATED",
                 "valid_transitions": [],
@@ -184,7 +184,7 @@ class TestNoHardcodedServiceFallback:
         scaffolder = TemplateScaffolder(registry=registry)
 
         # Act: Resolve ZONDER template_name in context
-        context = {}  # Geen template_name!
+        context: dict[str, str] = {}  # Geen template_name!
         resolved_path = scaffolder._resolve_template_path(
             artifact_type="generic",
             artifact=artifact,
@@ -198,7 +198,7 @@ class TestNoHardcodedServiceFallback:
         """Generic: Met artifact.template_path=None vereist template_name in context."""
         # Arrange: Generic zonder default template_path
         artifact = ArtifactDefinition(
-            type="code",
+            type="code",  # type: ignore[arg-type]
             type_id="generic",
             name="Generic Component",
             description="Generic component from custom template",
@@ -210,7 +210,7 @@ class TestNoHardcodedServiceFallback:
             name_suffix=None,
             file_extension=".py",
             generate_test=False,
-            state_machine={
+            state_machine={  # type: ignore[arg-type]
                 "states": ["CREATED"],
                 "initial_state": "CREATED",
                 "valid_transitions": [],

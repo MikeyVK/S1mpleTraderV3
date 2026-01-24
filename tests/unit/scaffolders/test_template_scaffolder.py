@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 # Project modules
-from mcp_server.core.exceptions import ExecutionError, ValidationError
+from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
@@ -50,22 +50,21 @@ def scaffolder_with_real_renderer(
 
 
 @pytest.fixture(name="test_custom_template")
-def test_custom_template_fixture(real_renderer: JinjaRenderer) -> str:
+def test_custom_template_fixture(real_renderer: JinjaRenderer):  # type: ignore[no-untyped-def]
     """Create temporary custom template for testing generic artifacts.
-    
+
     Creates a minimal test template in mcp_server/templates/test_custom/
     and cleans it up after the test completes.
-    
-    Returns:
+
+    Yields:
         Template path relative to templates root (e.g., "test_custom/component.py.jinja2")
     """
-    from pathlib import Path
-    
+
     # Get template root from renderer
     template_root = Path(real_renderer.template_dir)
     custom_dir = template_root / "test_custom"
     custom_dir.mkdir(exist_ok=True)
-    
+
     # Write minimal test template
     template_file = custom_dir / "test_component.py.jinja2"
     template_file.write_text(
@@ -77,10 +76,10 @@ def test_custom_template_fixture(real_renderer: JinjaRenderer) -> str:
         '    """{{ description }}."""\n'
         "    pass\n"
     )
-    
+
     template_path = "test_custom/test_component.py.jinja2"
     yield template_path
-    
+
     # Cleanup
     template_file.unlink()
     if not any(custom_dir.iterdir()):
@@ -281,7 +280,7 @@ class TestScaffold:
         test_custom_template: str
     ) -> None:
         """Scaffold generic artifact uses template_name from context.
-        
+
         Tests that:
         - Generic artifact type accepts template_name parameter
         - Custom user-defined templates can be loaded
@@ -293,7 +292,7 @@ class TestScaffold:
             template_name=test_custom_template,  # User-specified custom template
             description="Test custom component"
         )
-        
+
         # Verify custom template was used and rendered correctly
         assert "class TestCustomComponent" in result.content
         assert "Test custom component" in result.content

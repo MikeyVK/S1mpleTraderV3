@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import Mock
+
+import pytest
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ConfigError
@@ -23,16 +24,16 @@ class TestTemplateRegistryLoading:
         artifact.name_suffix = ''
         artifact.file_extension = '.py'
         mock_registry.get_artifact.return_value = artifact
-        
+
         # TemplateScaffolder now uses JinjaRenderer and returns ScaffoldResult
         result = scaffolder.scaffold('dto', name='TestDto', description='Test DTO')
-        
+
         assert result is not None
         assert hasattr(result, 'content')
         assert len(result.content) > 0
         # Called in validate() and scaffold()
         assert mock_registry.get_artifact.call_count == 2
-    
+
     def test_uses_template_path_from_artifact(self, scaffolder, mock_registry):
         artifact = Mock()
         artifact.type_id = 'worker'
@@ -42,7 +43,7 @@ class TestTemplateRegistryLoading:
         artifact.name_suffix = ''
         artifact.file_extension = '.py'
         mock_registry.get_artifact.return_value = artifact
-        
+
         # Worker template needs all required fields from template introspection
         result = scaffolder.scaffold(
             'worker',
@@ -56,7 +57,7 @@ class TestTemplateRegistryLoading:
         assert result is not None
         assert hasattr(result, 'content')
         assert 'TestWorker' in result.content
-    
+
     def test_error_when_no_template_defined(self, scaffolder, mock_registry):
         artifact = Mock()
         artifact.type_id = 'broken'
@@ -64,7 +65,7 @@ class TestTemplateRegistryLoading:
         artifact.template_path = None
         artifact.fallback_template = None
         mock_registry.get_artifact.return_value = artifact
-        
+
         # ValidationError is raised, not ConfigError
         from mcp_server.core.exceptions import ValidationError
         with pytest.raises((ConfigError, ValidationError)) as exc:

@@ -190,8 +190,8 @@ class TemplateScaffolder(BaseScaffolder):
         # SPECIAL CASE: Generic can override via template_name in context
         if artifact_type == "generic":
             template_name = context.get("template_name")
-            if template_name:
-                return template_name  # PRIORITY: context overrides artifacts.yaml
+            if template_name and isinstance(template_name, str):
+                return str(template_name)  # PRIORITY: context overrides artifacts.yaml
 
         # DEFAULT: Use template_path from artifacts.yaml
         template_path: str | None = artifact.template_path

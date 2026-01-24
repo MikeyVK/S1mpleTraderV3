@@ -10,9 +10,10 @@ Tests cover:
 Coverage goal: 100% of get_template_root() function.
 """
 import os
-import pytest
-from pathlib import Path
 from unittest.mock import patch
+
+import pytest
+
 from mcp_server.config.template_config import get_template_root
 
 
@@ -25,10 +26,10 @@ class TestGetTemplateRoot:
         with patch.dict(os.environ, {}, clear=False):
             if "TEMPLATE_ROOT" in os.environ:
                 del os.environ["TEMPLATE_ROOT"]
-            
+
             # Act
             result = get_template_root()
-            
+
             # Assert
             assert result.is_absolute(), "get_template_root() must return absolute path"
             assert result.name == "templates", f"Expected 'templates' directory, got: {result.name}"
@@ -42,10 +43,10 @@ class TestGetTemplateRoot:
         with patch.dict(os.environ, {}, clear=False):
             if "TEMPLATE_ROOT" in os.environ:
                 del os.environ["TEMPLATE_ROOT"]
-            
+
             # Act
             result = get_template_root()
-            
+
             # Assert
             assert result.is_absolute(), (
                 f"get_template_root() must return absolute path, got: {result}"
@@ -58,11 +59,11 @@ class TestGetTemplateRoot:
         # Arrange: Create temp template directory
         custom_template_root = tmp_path / "custom_templates"
         custom_template_root.mkdir()
-        
+
         # Act: Set TEMPLATE_ROOT env var
         with patch.dict(os.environ, {"TEMPLATE_ROOT": str(custom_template_root)}):
             result = get_template_root()
-            
+
             # Assert
             assert result == custom_template_root.resolve(), (
                 f"Expected TEMPLATE_ROOT env var path: {custom_template_root}, got: {result}"
@@ -75,17 +76,17 @@ class TestGetTemplateRoot:
         # Arrange: Create nested temp structure within current directory
         # Change to tmp_path to avoid cross-drive issues on Windows
         monkeypatch.chdir(tmp_path)
-        
+
         custom_root = tmp_path / "project" / "templates"
         custom_root.mkdir(parents=True)
-        
+
         # Use relative path in env var
         relative_path = "project/templates"  # Relative to tmp_path (current dir)
-        
+
         # Act
         with patch.dict(os.environ, {"TEMPLATE_ROOT": relative_path}):
             result = get_template_root()
-            
+
             # Assert
             assert result.is_absolute(), "Relative env var path must be resolved to absolute"
             assert result == custom_root.resolve()
@@ -94,7 +95,7 @@ class TestGetTemplateRoot:
         """Fail-fast: Raises FileNotFoundError if TEMPLATE_ROOT path doesn't exist."""
         # Arrange: Non-existent path
         nonexistent_path = "/this/path/does/not/exist/anywhere"
-        
+
         # Act & Assert
         with patch.dict(os.environ, {"TEMPLATE_ROOT": nonexistent_path}):
             with pytest.raises(FileNotFoundError, match="TEMPLATE_ROOT env var does not exist"):
@@ -105,12 +106,12 @@ class TestGetTemplateRoot:
         # Arrange: Change working directory to empty temp dir
         # This simulates default path not existing
         monkeypatch.chdir(tmp_path)
-        
+
         # Ensure TEMPLATE_ROOT is not set
         with patch.dict(os.environ, {}, clear=False):
             if "TEMPLATE_ROOT" in os.environ:
                 del os.environ["TEMPLATE_ROOT"]
-            
+
             # Act & Assert
             with pytest.raises(FileNotFoundError, match="Default template root does not exist"):
                 get_template_root()
@@ -120,19 +121,19 @@ class TestGetTemplateRoot:
         # Arrange: Create real directory and symlink
         real_dir = tmp_path / "real_templates"
         real_dir.mkdir()
-        
+
         symlink_dir = tmp_path / "link_to_templates"
-        
+
         # Create symlink (skip on Windows if privileges missing)
         try:
             symlink_dir.symlink_to(real_dir)
         except OSError:
             pytest.skip("Symlink creation requires elevated privileges on Windows")
-        
+
         # Act
         with patch.dict(os.environ, {"TEMPLATE_ROOT": str(symlink_dir)}):
             result = get_template_root()
-            
+
             # Assert: resolve() should resolve symlinks
             assert result.exists()
             assert result.is_absolute()
@@ -143,11 +144,11 @@ class TestGetTemplateRoot:
         # Arrange: Create custom template root
         custom_root = tmp_path / "priority_templates"
         custom_root.mkdir()
-        
+
         # Act
         with patch.dict(os.environ, {"TEMPLATE_ROOT": str(custom_root)}):
             result = get_template_root()
-            
+
             # Assert: Should use env var, NOT default mcp_server/scaffolding/templates
             assert "priority_templates" in str(result)
             assert result == custom_root.resolve()
@@ -160,11 +161,11 @@ class TestGetTemplateRoot:
         with patch.dict(os.environ, {}, clear=False):
             if "TEMPLATE_ROOT" in os.environ:
                 del os.environ["TEMPLATE_ROOT"]
-            
+
             # Act
             result1 = get_template_root()
             result2 = get_template_root()
-            
+
             # Assert
             assert result1 == result2, (
                 "get_template_root() should be deterministic"
@@ -173,13 +174,16 @@ class TestGetTemplateRoot:
     def test_error_message_includes_path_when_missing(self):
         """FileNotFoundError includes the problematic path in error message."""
         # Arrange: Use Windows-compatible path (no leading slash on Windows)
-        missing_path = "C:\\missing\\templates\\path" if os.name == "nt" else "/missing/templates/path"
-        
+        if os.name == "nt":
+            missing_path = "C:\\missing\\templates\\path"
+        else:
+            missing_path = "/missing/templates/path"
+
         # Act & Assert
         with patch.dict(os.environ, {"TEMPLATE_ROOT": missing_path}):
             with pytest.raises(FileNotFoundError) as exc_info:
                 get_template_root()
-            
+
             # Verify error message contains the path (normalize path separators for comparison)
             error_message = str(exc_info.value)
             assert "missing" in error_message and "templates" in error_message, (
