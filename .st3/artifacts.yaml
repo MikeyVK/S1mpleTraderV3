@@ -56,7 +56,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "AdapterScaffolder"
     scaffolder_module: "mcp_server.scaffolders.adapter_scaffolder"
-    template_path: "components/adapter.py.jinja2"
+    template_path: null  # No template needed - adapter uses legacy scaffolder
     fallback_template: null
     name_suffix: "Adapter"
     file_extension: ".py"
@@ -73,7 +73,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "ToolScaffolder"
     scaffolder_module: "mcp_server.scaffolders.tool_scaffolder"
-    template_path: "components/tool.py.jinja2"
+    template_path: null  # No template needed - tool uses legacy scaffolder
     fallback_template: null
     name_suffix: "Tool"
     file_extension: ".py"
@@ -90,7 +90,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "ResourceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.resource_scaffolder"
-    template_path: "components/resource.py.jinja2"
+    template_path: null  # No template needed - resource uses legacy scaffolder
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -107,7 +107,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "SchemaScaffolder"
     scaffolder_module: "mcp_server.scaffolders.schema_scaffolder"
-    template_path: "components/schema.py.jinja2"
+    template_path: null  # No template needed - schema uses legacy scaffolder
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -124,7 +124,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "InterfaceScaffolder"
     scaffolder_module: "mcp_server.scaffolders.interface_scaffolder"
-    template_path: "components/interface.py.jinja2"
+    template_path: null  # No template needed - interface uses legacy scaffolder
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -181,7 +181,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "GenericScaffolder"
     scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
-    template_path: "tests/unit_test.py.jinja2"
+    template_path: "concrete/test_unit.py.jinja2"  # Clean break: concrete/test_* instead of tests/
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -198,7 +198,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "GenericScaffolder"
     scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
-    template_path: "tests/integration_test.py.jinja2"
+    template_path: "concrete/test_integration.py.jinja2"  # Clean break: concrete/test_* instead of tests/
     fallback_template: null
     name_suffix: null
     file_extension: ".py"
@@ -214,7 +214,7 @@ artifact_types:
     name: "Research Document"
     description: "Research phase findings and questions"
     output_type: "file"
-    template_path: "documents/generic.md.jinja2"
+    template_path: "docs/generic.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -232,7 +232,7 @@ artifact_types:
     name: "Planning Document"
     description: "Planning phase TDD cycle breakdown"
     output_type: "file"
-    template_path: "documents/generic.md.jinja2"
+    template_path: "docs/generic.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -268,7 +268,7 @@ artifact_types:
     name: "Architecture Document"
     description: "System architecture documentation"
     output_type: "file"
-    template_path: "documents/architecture.md.jinja2"
+    template_path: "docs/architecture.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -288,7 +288,7 @@ artifact_types:
     name: "Tracking Document"
     description: "Living document for tracking project status"
     output_type: "file"
-    template_path: "documents/tracking.md.jinja2"
+    template_path: "docs/tracking.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -302,7 +302,7 @@ artifact_types:
     name: "Reference Document"
     description: "Reference documentation"
     output_type: "file"
-    template_path: "documents/reference.md.jinja2"
+    template_path: "docs/reference.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -321,7 +321,7 @@ artifact_types:
     name: "Git Commit Message"
     description: "Git commit message (ephemeral, not saved to disk)"
     output_type: "ephemeral"
-    template_path: "documents/commit-message.txt.jinja2"
+    template_path: "docs/commit-message.txt.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".txt"
