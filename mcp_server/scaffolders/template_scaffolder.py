@@ -172,11 +172,12 @@ class TemplateScaffolder(BaseScaffolder):
         artifact: Any,
         context: dict[str, Any]
     ) -> str | None:
-        """Resolve template path for artifact type.
+        """Resolve template path from artifact definition or context.
 
-        Handles special cases:
-        - service: Uses service_type to select template
-        - generic: Uses template_name from context
+        Resolution order:
+        1. Generic artifacts: Check template_name in context (PRIORITY override)
+        2. Default: Use artifact.template_path from artifacts.yaml
+        3. Validation: Generic with no template_path AND no template_name = error
 
         Args:
             artifact_type: Artifact type_id
@@ -186,20 +187,21 @@ class TemplateScaffolder(BaseScaffolder):
         Returns:
             Relative template path or None
         """
+        # SPECIAL CASE: Generic can override via template_name in context
+        if artifact_type == "generic":
+            template_name = context.get("template_name")
+            if template_name:
+                return template_name  # PRIORITY: context overrides artifacts.yaml
+
+        # DEFAULT: Use template_path from artifacts.yaml
         template_path: str | None = artifact.template_path
 
-        # SPECIAL CASE: Service type selects template
-        if artifact_type == "service" and template_path is None:
-            service_type = context.get("service_type", "orchestrator")
-            template_path = f"components/service_{service_type}.py.jinja2"
-
-        # SPECIAL CASE: Generic uses template_name from context
-        elif artifact_type == "generic" and template_path is None:
-            template_path = context.get("template_name")
-            if not template_path:
-                raise ValidationError(
-                    "Generic artifacts require 'template_name' in context"
-                )
+        # VALIDATION: Generic without template_path requires template_name
+        if artifact_type == "generic" and template_path is None:
+            raise ValidationError(
+                "Generic artifacts require 'template_name' in context or "
+                "template_path in artifacts.yaml"
+            )
 
         return template_path
 
