@@ -62,17 +62,19 @@ class TestTemplateScaffolderIntrospection:
         scaffolder: TemplateScaffolder
     ) -> None:
         """RED: validate() raises ValidationError with schema when fields missing"""
-        # Arrange - DTO requires name and description
+        # Arrange - Concrete DTO template requires only 'name' (fields is optional)
 
         # Act & Assert
         with pytest.raises(ValidationError) as exc_info:
-            scaffolder.validate("dto", name="TestDTO")  # Missing description
+            scaffolder.validate("dto")  # Missing name (required)
 
         # Assert - error should have schema attribute with template-derived fields
         error = exc_info.value
         assert hasattr(error, "schema"), "ValidationError should have schema attribute"
-        assert "description" in error.schema.required
+        # Concrete DTO template: name=required, fields/description/validators=optional
         assert "name" in error.schema.required
+        assert "fields" in error.schema.optional
+        assert "description" in error.schema.optional
 
     def test_validate_allows_optional_fields_omitted(
         self,

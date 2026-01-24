@@ -35,7 +35,8 @@ def artifact_registry() -> ArtifactRegistryConfig:
 @pytest.fixture(name="real_renderer")
 def real_jinja_renderer() -> JinjaRenderer:
     """Provide real JinjaRenderer using production templates."""
-    template_dir = Path(__file__).parent.parent.parent.parent / "mcp_server" / "templates"
+    from mcp_server.config.template_config import get_template_root
+    template_dir = get_template_root()
     return JinjaRenderer(template_dir=template_dir)
 
 
@@ -150,14 +151,13 @@ class TestValidate:
 
         with pytest.raises(ValidationError) as exc_info:
             scaffolder.validate(
-                artifact_type="dto",
-                name="TestDTO"
-                # Missing 'description' required field
+                artifact_type="dto"
+                # Missing 'name' required field (description is optional in concrete templates)
             )
 
         error_msg = str(exc_info.value)
         assert "Missing required fields" in error_msg
-        assert "description" in error_msg
+        assert "name" in error_msg
 
     def test_validate_allows_optional_fields_to_be_missing(
         self,
@@ -212,8 +212,9 @@ class TestScaffold:
 
         # Verify suffix logic (from artifacts.yaml: name_suffix="Worker")
         assert result.file_name == "ProcessWorker.py"
-        # Class name is just "Process" (without suffix)
-        assert "class Process(BaseWorker[" in result.content
+        # Concrete template uses plain class (not BaseWorker inheritance)
+        assert "class Process:" in result.content
+        assert "async def execute" in result.content
 
     def test_scaffold_design_doc_uses_markdown_extension(
         self,
@@ -299,21 +300,21 @@ class TestScaffold:
         assert "user-defined template" in result.content  # From template comment
         assert result.file_name == "TestCustomComponent.py"
 
-    def test_scaffold_generic_without_template_name_fails(
+    def test_scaffold_generic_without_template_name_uses_default(
         self,
         scaffolder: TemplateScaffolder
     ) -> None:
-        """Scaffold generic without template_name raises ValidationError."""
-        # Generic requires template_name in context
-        with pytest.raises(ValidationError) as exc_info:
-            scaffolder.scaffold(
-                artifact_type="generic",
-                name="Broken",
-                output_path="broken.py"
-                # Missing: template_name
-            )
+        """Scaffold generic without template_name uses default from artifacts.yaml."""
+        # Generic has default template_path in artifacts.yaml: "concrete/generic.py.jinja2"
+        # Without template_name in context, uses that default
+        result = scaffolder.scaffold(
+            artifact_type="generic",
+            name="DefaultGeneric"
+        )
 
-        assert "template_name" in str(exc_info.value).lower()
+        # Should use default concrete/generic.py.jinja2
+        assert result.file_name == "DefaultGeneric.py"
+        assert "class DefaultGeneric:" in result.content
 
     def test_scaffold_passes_all_context_to_renderer(
         self,

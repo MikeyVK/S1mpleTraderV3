@@ -18,7 +18,7 @@ class TestTemplateRegistryLoading:
         artifact = Mock()
         artifact.type_id = 'dto'
         artifact.required_fields = ['name', 'description']
-        artifact.template_path = 'components/dto.py.jinja2'
+        artifact.template_path = 'concrete/dto.py.jinja2'
         artifact.fallback_template = None
         artifact.name_suffix = ''
         artifact.file_extension = '.py'
@@ -37,7 +37,7 @@ class TestTemplateRegistryLoading:
         artifact = Mock()
         artifact.type_id = 'worker'
         artifact.required_fields = ['name', 'description']
-        artifact.template_path = 'components/worker.py.jinja2'
+        artifact.template_path = 'concrete/worker.py.jinja2'
         artifact.fallback_template = None
         artifact.name_suffix = ''
         artifact.file_extension = '.py'
