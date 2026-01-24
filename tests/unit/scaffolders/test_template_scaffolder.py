@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 # Project modules
-from mcp_server.core.exceptions import ValidationError
+from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
@@ -345,7 +345,6 @@ class TestScaffold:
         )
 
         # Try to scaffold with an unknown artifact type
-        from mcp_server.core.exceptions import ConfigError
         with pytest.raises(ConfigError):
             scaffolder.scaffold(
                 artifact_type="non_existent_type",

@@ -20,7 +20,7 @@ Uses JinjaRenderer with FileSystemLoader for safe template loading.
 """
 
 # Standard library
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # Project modules
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
@@ -29,6 +29,9 @@ from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.scaffolding.template_introspector import introspect_template
+
+if TYPE_CHECKING:
+    pass  # TYPE_CHECKING block for future type-only imports
 
 
 class TemplateScaffolder(BaseScaffolder):
