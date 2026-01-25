@@ -272,3 +272,53 @@ class TestSafeEditTool:
             Path(temp_path).unlink(missing_ok=True)
             # Cleanup
             Path(temp_path).unlink(missing_ok=True)
+
+    @pytest.mark.asyncio
+    async def test_concurrent_edits_blocked(self, tool: SafeEditTool, tmp_path) -> None:
+        """Test that concurrent edits on same file are blocked (mutex protection)."""
+        import asyncio
+        from pathlib import Path
+        
+        # Create test file
+        test_file = tmp_path / "concurrent_test.py"
+        test_file.write_text("line 1\nline 2\nline 3\n")
+        
+        # Track edit order
+        edit_results = []
+        
+        async def edit_task(task_id: int, delay: float) -> None:
+            """Simulate concurrent edit."""
+            await asyncio.sleep(delay)
+            try:
+                result = await tool.execute(
+                    SafeEditInput(
+                        path=str(test_file),
+                        content=f"task {task_id} content\n",
+                        mode="strict"
+                    )
+                )
+                edit_results.append({"task": task_id, "success": True, "result": result})
+            except Exception as e:
+                edit_results.append({"task": task_id, "success": False, "error": str(e)})
+        
+        # Launch 3 concurrent edits with slight delays
+        tasks = [
+            edit_task(1, 0.0),
+            edit_task(2, 0.01),
+            edit_task(3, 0.02)
+        ]
+        
+        await asyncio.gather(*tasks)
+        
+        # At least one should succeed
+        # At least one should succeed, but NOT all if mutex works
+        successes = [r for r in edit_results if r["success"]]
+        failures = [r for r in edit_results if not r["success"]]
+        
+        # Without mutex: all 3 succeed
+        # With mutex: only 1 succeeds, 2 are blocked
+        assert len(failures) >= 2, (
+            f"Expected at least 2 concurrent edits to be blocked by mutex, "
+            f"but got {len(failures)} failures and {len(successes)} successes. "
+            f"Results: {edit_results}"
+        )
