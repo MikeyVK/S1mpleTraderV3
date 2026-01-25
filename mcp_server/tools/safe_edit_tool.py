@@ -54,7 +54,7 @@ class SearchReplaceParams:
 
 class LineEdit(BaseModel):
     """Represents a line-based edit operation.
-    
+
     IMPORTANT: new_content must include trailing newline (\\n) to replace the line correctly.
     Without it, the next line will be appended to the edited line.
     """
@@ -190,7 +190,7 @@ class SafeEditTool(BaseTool):
     - Validation modes: strict (reject on error) / interactive (warn) / verify_only (dry-run)
     - Diff preview: Shows unified diff before applying changes (default: enabled)
     - Validator integration: PythonValidator, MarkdownValidator, TemplateValidator
-    
+
     **IMPORTANT - Concurrent Edit Protection:**
     - File-level mutex prevents race conditions
     - Bundle multiple edits in ONE call using line_edits list
@@ -222,7 +222,7 @@ class SafeEditTool(BaseTool):
 
     async def execute(self, params: SafeEditInput) -> ToolResult:
         """Execute the safe edit with validation.
-        
+
         Uses file-level locking to prevent concurrent edits on the same file.
         Multiple edits for the same file should be batched in line_edits list.
         """
@@ -479,11 +479,11 @@ class SafeEditTool(BaseTool):
         params: SearchReplaceParams,
     ) -> tuple[str, int]:
         """Apply search and replace operation.
-        
+
         Args:
             content: Content to search in.
             params: Search/replace parameters.
-            
+
         Returns:
             Tuple of (new_content, replacement_count).
         """
@@ -532,7 +532,7 @@ class SafeEditTool(BaseTool):
 
     def _build_file_context_preview(self, content: str, max_lines: int = 10) -> str:
         """Build file preview for error messages (DRY helper).
-        
+
         Args:
             content: File content to preview.
             max_lines: Maximum number of lines to show.
