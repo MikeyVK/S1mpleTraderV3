@@ -29,6 +29,7 @@ from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.version_hash import compute_version_hash
+from mcp_server.validation.template_analyzer import TemplateAnalyzer
 from mcp_server.validation.validation_service import ValidationService
 
 logger = logging.getLogger(__name__)
@@ -147,6 +148,61 @@ class ArtifactManager:
 
         return enriched
 
+    def _extract_tier_chain(self, template_file: str) -> list[tuple[str, str]]:
+        """Extract tier chain from template inheritance hierarchy (QA-4).
+        
+        Uses TemplateAnalyzer to walk inheritance chain and extract tier info.
+        
+        Args:
+            template_file: Relative path to template (e.g., "concrete/dto.py.jinja2")
+            
+        Returns:
+            List of (tier, template_id) tuples from concrete to tier0.
+            Example: [("concrete", "dto"), ("tier2", "tier2_base_python"), ...]
+            
+        Note:
+            Returns empty list if template_analyzer fails (pragmatic fallback).
+        """
+        try:
+            # Get templates root
+            parent = Path(__file__).parent.parent
+            template_root = parent / "scaffolding" / "templates"
+            
+            # Initialize analyzer
+            analyzer = TemplateAnalyzer(template_root=template_root)
+            
+            # Get full inheritance chain
+            template_path = template_root / template_file
+            if not template_path.exists():
+                logger.warning(f"Template not found for tier extraction: {template_file}")
+                return []
+            
+            chain_paths = analyzer.get_inheritance_chain(template_path)
+            
+            # Extract tier info from each path
+            tier_chain: list[tuple[str, str]] = []
+            for path in chain_paths:
+                relative = path.relative_to(template_root)
+                parts = relative.parts
+                
+                # Determine tier from path structure
+                if len(parts) >= 2 and parts[0] in ("concrete", "tier1", "tier2", "tier3", "tier0"):
+                    tier = parts[0]
+                    template_id = path.stem  # Remove .jinja2 suffix
+                    tier_chain.append((tier, template_id))
+                else:
+                    # Fallback: use filename as tier
+                    tier = "unknown"
+                    template_id = path.stem
+                    tier_chain.append((tier, template_id))
+            
+            return tier_chain
+            
+        except Exception as e:
+            # Pragmatic: log and return empty list (don't block scaffolding)
+            logger.warning(f"Failed to extract tier chain for {template_file}: {e}")
+            return []
+
     async def scaffold_artifact(
         self,
         artifact_type: str,
@@ -182,8 +238,8 @@ class ArtifactManager:
                 f"This artifact type is not yet implemented."
             )
         
-        # Get tier chain (empty for now - will be filled by introspection in Task 1.6b)
-        tier_chain: list[tuple[str, str]] = []
+        # QA-4: Extract real tier chain via introspection (replaces placeholder)
+        tier_chain = self._extract_tier_chain(template_file)
         
         # Compute version hash
         version_hash = compute_version_hash(
