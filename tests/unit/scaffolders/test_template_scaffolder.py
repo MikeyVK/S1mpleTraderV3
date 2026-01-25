@@ -19,11 +19,11 @@ from pathlib import Path
 # Third-party
 import pytest
 
-# Project modules
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 
 
 @pytest.fixture(name="registry")
@@ -35,7 +35,6 @@ def artifact_registry() -> ArtifactRegistryConfig:
 @pytest.fixture(name="real_renderer")
 def real_jinja_renderer() -> JinjaRenderer:
     """Provide real JinjaRenderer using production templates."""
-    from mcp_server.config.template_config import get_template_root
     template_dir = get_template_root()
     return JinjaRenderer(template_dir=template_dir)
 
@@ -200,11 +199,10 @@ class TestScaffold:
         scaffolder: TemplateScaffolder
     ) -> None:
         """Scaffold Worker raises ValidationError when template_path is null (fail-fast)."""
-        from mcp_server.core.exceptions import ValidationError
-        
         # Worker template not yet implemented (template_path=null in artifacts.yaml)
         # Should fail-fast with clear error message (QA-2 null guard)
-        with pytest.raises(ValidationError, match=r"No template configured for artifact type: worker"):
+        expected_msg = r"No template configured for artifact type: worker"
+        with pytest.raises(ValidationError, match=expected_msg):
             scaffolder.scaffold(
                 artifact_type="worker",
                 name="Process",

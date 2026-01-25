@@ -1,0 +1,4 @@
+﻿d:/dev/SimpleTraderV3/mcp_server/managers/artifact_manager.py
+d:/dev/SimpleTraderV3/mcp_server/scaffolding/version_hash.py
+d:/dev/SimpleTraderV3/tests/unit/managers/test_artifact_manager_metadata.py
+d:/dev/SimpleTraderV3/tests/unit/scaffolders/test_template_scaffolder.py

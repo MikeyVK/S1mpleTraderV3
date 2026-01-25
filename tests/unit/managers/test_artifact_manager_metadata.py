@@ -13,6 +13,7 @@ from unittest.mock import Mock
 
 import pytest
 
+from mcp_server.core.exceptions import ConfigError
 from mcp_server.managers.artifact_manager import ArtifactManager
 
 
@@ -115,7 +116,8 @@ class TestArtifactManagerMetadataEnrichment:
         """RED: scaffold_artifact() should call _enrich_context()."""
         # Mock scaffolder to return content WITH valid SCAFFOLD header (for validation)
         manager.scaffolder = Mock()
-        mock_content = "# SCAFFOLD: template=dto version=1.0 created=2026-01-24T10:00:00Z path=test.py\nclass UserDTO: pass"
+        header = "# SCAFFOLD: template=dto version=1.0 created=2026-01-24T10:00:00Z path=test.py"
+        mock_content = f"{header}\nclass UserDTO: pass"
         manager.scaffolder.scaffold.return_value = Mock(content=mock_content)
 
         context = {"name": "UserDTO"}
@@ -143,10 +145,9 @@ class TestArtifactManagerNullTemplate:
         self, manager: ArtifactManager
     ) -> None:
         """QA-2: scaffold_artifact should fail fast if template_path is null."""
-        from mcp_server.core.exceptions import ConfigError
-
         # Worker artifact has template_path = null in artifacts.yaml
-        with pytest.raises(ConfigError, match=r"Artifact type 'worker' has no template configured"):
+        expected_msg = r"Artifact type 'worker' has no template configured"
+        with pytest.raises(ConfigError, match=expected_msg):
             await manager.scaffold_artifact("worker", name="TestWorker")
 
 
@@ -161,32 +162,33 @@ class TestArtifactManagerTierChainExtraction:
     def test_extract_tier_chain_reads_real_versions_from_metadata(
         self, manager: ArtifactManager
     ) -> None:
-        """CRITICAL: Verify tier_chain extracts actual versions from TEMPLATE_METADATA, not fallback "1.0"."""
-        # Use dto.py.jinja2 which extends tier2_base_python → tier1_base_code → tier0_base_artifact
-        tier_chain = manager._extract_tier_chain("concrete/dto.py.jinja2")  # pylint: disable=protected-access
-        
+        """CRITICAL: Verify tier_chain extracts versions from TEMPLATE_METADATA."""
+        # Use dto.py.jinja2 which extends tier2 â†' tier1 â†' tier0
+        template_path = "concrete/dto.py.jinja2"
+        tier_chain = manager._extract_tier_chain(template_path)  # pylint: disable=protected-access
+
         # Should extract real versions from TEMPLATE_METADATA in each template
-        assert len(tier_chain) > 0, "Tier chain should not be empty for dto template"
-        
+        assert len(tier_chain) > 0, "Tier chain should not be empty"
+
         # Verify structure: list of (template_name, version) tuples
         for template_name, version in tier_chain:
-            assert isinstance(template_name, str), f"Template name should be string, got {type(template_name)}"
-            assert isinstance(version, str), f"Version should be string, got {type(version)}"
-            assert template_name != "", "Template name should not be empty"
-            assert version != "", "Version should not be empty"
-        
+            assert isinstance(template_name, str)
+            assert isinstance(version, str)
+            assert template_name
+            assert version
+
         # CRITICAL: At least one template should have non-"1.0" version if metadata is present
         # This prevents silent regression where all versions fall back to "1.0"
         template_names = [name for name, _ in tier_chain]
         versions = [ver for _, ver in tier_chain]
-        
+
         # Verify expected templates in chain
         assert "dto.py" in template_names, "Chain should contain concrete dto template"
-        
+
         # Log extracted versions for debugging
         print(f"\nExtracted tier chain: {tier_chain}")
         print(f"Versions: {versions}")
-        
+
         # NOTE: This test verifies API correctness (Path not string) and extraction logic
         # If all versions are "1.0", it means either:
         # 1. Templates truly don't have version metadata (legitimate)
