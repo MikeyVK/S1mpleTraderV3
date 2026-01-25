@@ -2,7 +2,6 @@
   "include": [
     "backend",
     "tests",
-    "frontends",
     "mcp_server"
   ],
   "exclude": [
@@ -22,16 +21,13 @@
   "typeCheckingMode": "strict",
   "executionEnvironments": [
     {
-      "root": "./backend",
-      "typeCheckingMode": "strict"
+      "root": "./backend"
     },
     {
-      "root": "./mcp_server",
-      "typeCheckingMode": "strict"
+      "root": "./mcp_server"
     },
     {
-      "root": "./tests",
-      "typeCheckingMode": "basic"
+      "root": "./tests"
     }
   ],
   "useLibraryCodeForTypes": true,
