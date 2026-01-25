@@ -39,16 +39,15 @@ class TestTemplateAnalyzer:
         # Arrange
         template_file = template_root / "test.jinja2"
         template_file.write_text("""
-{# TEMPLATE_METADATA
-enforcement: STRICT
-level: format
-version: "2.0"
-
-validates:
-  strict:
-    - rule: test_rule
-      description: "Test rule"
-#}
+{#- TEMPLATE_METADATA:
+  enforcement: STRICT
+  level: format
+  version: "2.0"
+  validates:
+    strict:
+      - rule: test_rule
+        description: "Test rule"
+-#}
 {# Regular comment #}
 <div>{{ content }}</div>
 """)
@@ -87,9 +86,9 @@ validates:
         # Arrange
         template_file = template_root / "test.jinja2"
         template_file.write_text("""
-{# TEMPLATE_METADATA
-invalid: yaml: content:
-#}
+{#- TEMPLATE_METADATA:
+  invalid: [unclosed
+-#}
 """)
 
         # Act & Assert

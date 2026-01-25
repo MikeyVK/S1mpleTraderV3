@@ -2,10 +2,24 @@
 
 <!-- SCAFFOLD: planning:draft_v1 | 2026-01-22 | docs/development/issue72/planning.md -->
 
-**Status:** DRAFT  
-**Phase:** Planning (Transitioned from Research)  
-**Date:** 2026-01-22  
+**Status:** REVISED (Post-TDD Analysis + Phase 1 Completion Audit)  
+**Phase:** Phase 1 INCOMPLETE - Registry/Provenance Not Integrated  
+**Date:** 2026-01-23 (revised from 2026-01-22)  
 **Input:** [research_summary.md](research_summary.md) (719 lines)
+
+**⚠️ CRITICAL UPDATE #1:** After commit 2ee9228 analysis, discovered **forceful cutover** broke legacy scaffolding. See [cutover-analysis.md](cutover-analysis.md) for complete findings. Planning revised to reflect:
+- ✅ Phase 1 Tier 0-2 templates **COMPLETE** 
+- ⚠️ Phase 1 Registry/hash/provenance **INCOMPLETE** - NOT integrated in scaffold flow
+- ⏭️ **Tasks 1.1b/c (registry completion) MUST finish BEFORE Task 1.6** - prevents non-traceable artifacts
+- ❌ Phase 4 (Migration) **OBSOLETE** - legacy templates already unreachable
+- 💰 **Net change: -48h vs original 183h** (less savings due to registry work)
+
+**⚠️ CRITICAL UPDATE #2:** Phase 1 Definition-of-Done NOT met:
+- ❌ `.st3/template_registry.yaml` never created (no save_version() calls)
+- ❌ `compute_version_hash()` uses placeholder "concrete" (not traceable)
+- ❌ `ArtifactDefinition.version` conflicts with registry-based versioning
+- ❌ No E2E test for scaffold → header → registry roundtrip
+- **Impact:** Cannot proceed to Task 1.6 without fixing - would produce untraceable artifacts
 
 ---
 
@@ -228,18 +242,71 @@ Break down research findings from Issue #72 into **actionable implementation tas
 
 ### Phase 1: Foundation (Infrastructure)
 **Goal:** Implement proven architecture without blockers  
-**Duration:** ~2 weeks (80h)  
+**Duration:** ~2 weeks (80h → **revised 95h**)  
 **Dependencies:** None (can start immediately)
+
+**✅ PROGRESS UPDATE (2026-01-25):**
+Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA alignment done:
+- ✅ Task 1.1: TemplateRegistry class complete (all methods: save_version, lookup_hash, get_current_version)
+- ✅ Task 1.1b: compute_version_hash() fixed - extracts real template versions (no "concrete" placeholder)
+- ✅ Task 1.1c: Registry integrated in scaffold_artifact() flow - computes hash, injects context, saves registry
+- ✅ Task 1.5b: ArtifactDefinition.version removed - conceptual clarity (artifacts.yaml = selection, registry = provenance)
+- ✅ QA Alignment: Quality gates 10/10 achieved - pytest fixture aliasing pattern, dataclass refactor
+
+**⚠️ REMAINING GAPS (P0 for Phase 1 DoD):**
+- ❌ tier_chain still empty (`[]`) in scaffold flow - hash not fully traceable yet
+- ❌ template_registry default is None - .st3/template_registry.yaml not auto-created in normal flow
+- ❌ template_path: null for service/generic → template_file = "" fallback → hash semantics unclear
+- ❌ Task 1.6 (concrete templates) still missing - tests broken, cannot validate E2E provenance
+
+**Phase 1 Definition-of-Done:**
+- [x] Quality gates pass (lint/typecheck/tests) - **6/6 core tests pass**
+- [ ] Registry operational: scaffold creates `.st3/template_registry.yaml` entries - **PARTIAL: only if injected**
+- [ ] Version hash traceable: no placeholders, reproducible from tier chain - **PARTIAL: tier_chain empty**
+- [ ] SCAFFOLD header format: `artifact_type:version_hash | timestamp | output_path` - **READY: context has all fields**
+- [ ] E2E test: scaffold → parse header → registry lookup roundtrip works - **BLOCKED: no concrete templates**
+- [x] Zero conceptual conflicts (artifacts.yaml = variants, registry = provenance) - **COMPLETE**
 
 #### Task 1.1: Template Registry Infrastructure
 - **Description:** Build `.st3/template_registry.yaml` read/write utilities
 - **Input:** Research Q8b (registry structure)
 - **Output:** 
-  - `TemplateRegistry` class with `save_version()`, `lookup_hash()`, `get_chain()`
+  - `TemplateRegistry` class with `save_version()`, `lookup_hash()`, `get_current_version()`
   - Unit tests for hash collision detection
-- **Acceptance:** `scaffold_artifact()` writes registry entry, lookup returns full chain
+  - Methods: `_load()`, `_persist()`, `get_all_hashes()`, `get_all_artifact_types()`
+- **Acceptance:** `scaffold_artifact()` writes registry entry, lookup returns tier chain data
 - **Effort:** 8h
 - **Assignee:** Backend Engineer
+- **Status:** ✅ **COMPLETE** (original implementation)
+
+#### Task 1.1b: Fix compute_version_hash Implementation
+- **Description:** Replace placeholder "concrete" with real template IDs + versions
+- **Input:** Design spec (design.md:590-639) for hash computation
+- **Output:**
+  - `compute_version_hash()` reads template IDs from tier chain
+  - Hash format: `artifact_type|tier0@v1|tier1@v1|...|concrete@v1` → SHA256 → 8 chars
+  - Template version extraction from SCAFFOLD metadata or registry
+  - Added `extract_template_version()` to parse TEMPLATE_METADATA YAML block
+- **Acceptance:** Hash is reproducible from tier chain, no placeholders
+- **Effort:** 4h
+- **Assignee:** Backend Engineer
+- **Priority:** **P0** - blocks provenance traceability
+- **Status:** ✅ **COMPLETE** (commits 1226de6 RED, 0df997e GREEN)
+
+#### Task 1.1c: Integrate Registry in scaffold_artifact() Flow
+- **Description:** Add registry save to ArtifactManager.scaffold_artifact()
+- **Output:**
+  - Compute version_hash BEFORE rendering
+  - Call `registry.save_version(artifact_type, version_hash, tier_chain)` 
+  - Inject version_hash into template context
+  - Create `.st3/template_registry.yaml` if not exists
+- **Acceptance:** Every scaffold operation writes registry entry
+- **Effort:** 3h
+- **Assignee:** Backend Engineer
+- **Priority:** **P0** - blocks provenance
+- **Status:** ✅ **COMPLETE** (commits c65441a RED, 45d7563 GREEN)
+- **⚠️ Known Gap:** tier_chain = [] (empty), template_registry default None → registry not auto-created
+- **Follow-up:** Task 1.6 concrete templates + tier introspection will fill tier_chain
 
 #### Task 1.2: Tier 0 Base (Universal SCAFFOLD)
 - **Description:** Create `tier0_base_artifact.jinja2` with 1-line SCAFFOLD block
@@ -250,6 +317,7 @@ Break down research findings from Issue #72 into **actionable implementation tas
 - **Acceptance:** All formats inherit correct SCAFFOLD line
 - **Effort:** 2h
 - **Assignee:** Template Author
+- **Status:** ⏳ **PENDING** (blocked by Task 1.6 concrete templates)
 
 #### Task 1.3: Tier 1 Bases (Format Categories)
 - **Description:** Create 3 Tier 1 templates: CODE, DOCUMENT, CONFIG
@@ -283,6 +351,73 @@ Break down research findings from Issue #72 into **actionable implementation tas
 - **Effort:** 1h × 6 templates = 6h
 - **Assignee:** Template Author + Validation Engineer
 - **Dependency:** Tier 1-2 complete
+- **Status:** ✅ **COMPLETE** (commit 10a3c9d)
+
+#### Task 1.5b: Remove ArtifactDefinition.version (Cleanup Conflict)
+- **Description:** Eliminate conceptual conflict between artifacts.yaml version and registry-based versioning
+- **Output:**
+  - Remove `version` field from `ArtifactDefinition` dataclass
+  - Remove from `.st3/artifacts.yaml` schema (per-artifact version entries)
+  - Remove `template_version` context injection (version comes from registry)
+  - Update docs: "artifacts.yaml = selection config (variants), registry.yaml = version/hash provenance"
+- **Acceptance:** Zero references to artifact version outside registry
+- **Effort:** 2h
+- **Assignee:** Backend Engineer
+- **Priority:** **P1** - architectural hygiene
+- **Status:** ✅ **COMPLETE** (commits cf46670 RED, e4e0b16 GREEN)
+- **Impact:** 
+  - Removed ArtifactDefinition.version field (artifact_registry_config.py:95)
+  - Removed template_version context injection (artifact_manager.py:115)
+  - Removed all per-artifact version: "1.0" entries from .st3/artifacts.yaml
+  - Tests updated: 6/7 pass (1 pre-existing layered_template_validator bug)
+
+#### Task 1.5c: Add Artifact Variants to artifacts.yaml
+- **Description:** Support multiple concrete templates per artifact_type (selection config)
+- **Input:** Design concept: artifacts.yaml = WHAT to scaffold (variants), registry = HOW it was built (provenance)
+- **Output:**
+  - `ArtifactDefinition` supports `variants: [{id, template_path, description}]`
+  - Default variant if single template
+  - Scaffold tool accepts `variant` parameter
+- **Acceptance:** Can scaffold `dto` with variant "pydantic" vs "dataclass"
+- **Effort:** 4h
+- **Assignee:** Backend Engineer
+- **Priority:** P2 - extensibility enhancement
+- **Dependency:** Task 1.5b complete
+
+#### Task 1.6: Create Minimal Concrete Templates (UNBLOCK TESTING)
+- **Description:** Create 5 concrete templates to fix broken scaffolding after commit 2ee9228
+- **Input:** Test suite artifact type usage analysis ([cutover-analysis.md](cutover-analysis.md))
+- **Output:** 
+  - `concrete/dto.py.jinja2` (Pydantic BaseModel, extends Tier 2 Python)
+  - `concrete/worker.py.jinja2` (async worker class, extends Tier 2 Python)
+  - `concrete/service_command.py.jinja2` (service pattern, extends Tier 2 Python)
+  - `concrete/generic.py.jinja2` (minimal class, extends Tier 2 Python)
+  - `concrete/design.md.jinja2` (design doc structure, extends Tier 2 Markdown)
+  - Updated `.st3/artifacts.yaml` (5 template path mappings)
+  - Fixed test hardcoded paths to use `get_template_root()`
+- **Acceptance:** All existing unit and E2E tests pass with new templates
+- **Effort:** 5h templates + 30min config + 1h test fixes + 30min validation = **7h**
+- **Assignee:** Template Author
+- **Priority:** **P0 (BLOCKER)** - tests currently broken due to template path mismatch
+- **Dependency:** **Task 1.1c complete (registry operational)** - prevents non-traceable artifacts
+- **Context:** Commit 2ee9228 redirected `TemplateScaffolder` to new tier templates without creating concrete templates, breaking all 24 legacy artifact types. This task creates minimal set needed to unblock testing.
+- **Note:** Template base path is ALREADY configurable via `get_template_root()` (✅ complete)
+- **⚠️ CRITICAL:** Templates MUST inherit Tier 0 SCAFFOLD block AND registry flow must work, otherwise produced artifacts have untraceable hashes
+
+#### Task 1.6b: E2E Provenance Regression Test
+- **Description:** Validate scaffold → parse header → registry lookup roundtrip
+- **Input:** Task 1.6 concrete templates + operational registry
+- **Output:**
+  - E2E test: scaffold each artifact type (dto, worker, service, generic, design)
+  - Parse SCAFFOLD header from generated file
+  - Lookup version_hash in `.st3/template_registry.yaml`
+  - Assert tier chain matches template inheritance
+  - Assert header format: `artifact_type:version_hash | timestamp | output_path`
+- **Acceptance:** All 5 artifact types pass roundtrip validation
+- **Effort:** 3h
+- **Assignee:** QA Engineer + Backend
+- **Priority:** **P0** - validates Phase 1 completeness
+- **Dependency:** Task 1.6 complete
 
 ### Phase 2: Blocker Resolution (Critical Path)
 **Goal:** Unblock Tier 3 design and multi-tier scaffolding  
@@ -419,10 +554,27 @@ Break down research findings from Issue #72 into **actionable implementation tas
 - **Effort:** 16h
 - **Assignee:** Technical Writer + Architect
 
-### Phase 4: Migration (Legacy Conversion)
-**Goal:** Migrate 24 existing templates to multi-tier architecture  
-**Duration:** ~1.5 weeks (60h)  
-**Dependencies:** Phase 3 complete (all base templates ready)
+### Phase 4: Migration (Legacy Conversion) - ⚠️ **OBSOLETE**
+**Goal:** ~~Migrate 24 existing templates to multi-tier architecture~~  
+**Duration:** ~~1.5 weeks (60h)~~  
+**Dependencies:** ~~Phase 3 complete (all base templates ready)~~
+
+**STATUS:** This phase is **OBSOLETE** due to commit 2ee9228 forceful cutover. Legacy templates are already unreachable (TemplateScaffolder now uses `get_template_root()` → `mcp_server/scaffolding/templates/`). See [cutover-analysis.md](cutover-analysis.md) for details.
+
+**NEW APPROACH:** 
+- Delete legacy templates immediately (git rm -r mcp_server/templates/)
+- Task 1.6 creates minimal concrete templates (5 vs 24)
+- Future templates created directly in tier system
+- **Savings:** 65h migration effort eliminated
+
+~~#### Task 4.1: Migration Script~~
+~~#### Task 4.2: Migrate CODE Templates (13)~~
+~~#### Task 4.3: Migrate DOCUMENT Templates (9)~~
+~~#### Task 4.4: Create CONFIG Templates (2 new)~~
+~~#### Task 4.5: E2E Testing (Coordinate with Issue #74)~~
+~~#### Task 4.6: Feature Flag Cleanup~~
+
+**See Task 1.6 for replacement approach** (7h vs 65h)
 
 #### Task 4.1: Migration Script
 - **Description:** Automate mechanical refactoring
@@ -553,14 +705,39 @@ Task 2.1 (Introspection 12h)
 
 ## Effort Estimation Summary
 
-| Phase | Tasks | Total Hours | Duration (1 eng) | Duration (4 eng) |
-|-------|-------|-------------|------------------|------------------|
-| **Phase 1: Foundation** | 5 tasks | 31h | 4 days | 2 days |
-| **Phase 2: Blockers** | 4 tasks | 40h | 5 days | 3 days |
-| **Phase 3: Tier 3** | 7 tasks | 46h | 6 days | 3 days |
-| **Phase 4: Migration** | 6 tasks | 58h | 7 days | 4 days |
-| **Phase 5: Extensibility** | 2 tasks | 8h | 1 day | 1 day |
-| **TOTAL** | **24 tasks** | **183h** | **23 days** | **13 days (3 weeks)** |
+**⚠️ REVISED** after commit 2ee9228 analysis (see [cutover-analysis.md](cutover-analysis.md))
+
+| Phase | Tasks | Total Hours | Duration (1 eng) | Duration (4 eng) | Status |
+|-------|-------|-------------|------------------|------------------|--------|
+| **Phase 1: Foundation** | 10 tasks (was 6) | **55h** (was 38h) | 7 days | 3 days | ⚠️ **INCOMPLETE** |
+| **Phase 2: Blockers** | 4 tasks | 40h | 5 days | 3 days | Not started |
+| **Phase 3: Tier 3** | 7 tasks | 46h | 6 days | 3 days | Not started |
+| ~~**Phase 4: Migration**~~ | ~~6 tasks~~ | ~~58h~~ | ~~7 days~~ | ~~4 days~~ | **OBSOLETE** |
+| **Phase 5: Extensibility** | 2 tasks | 8h | 1 day | 1 day | Not started |
+| **TOTAL** | **23 tasks** (was 19) | **149h** (was 132h) | **19 days** (was 17) | **10 days (2 weeks)** (was 9 days) |
+
+**Key Changes:**
+- ⚠️ **Phase 1 +17h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) - foundation NOT done
+- ✅ **Phase 4 -65h:** Migration obsolete (legacy templates unreachable after commit 2ee9228)
+- ⚠️ **Net change: -48h vs original 183h** but Phase 1 must complete FIRST
+- ✅ **Timeline: 23 days → 19 days** (1 engineer) or **13 days → 10 days** (4 engineers)
+
+**Phase 1 Revised Breakdown:**
+- Task 1.1: Registry infrastructure (8h) ✅
+- **Task 1.1b: Fix compute_version_hash (4h)** ← NEW
+- **Task 1.1c: Integrate registry in scaffold flow (3h)** ← NEW
+- Task 1.2: Tier 0 base (2h) ✅
+- Task 1.3: Tier 1 bases (6h) ✅
+- Task 1.4: Tier 2 bases (9h) ✅
+- Task 1.5: Issue #52 alignment (6h) ✅
+- **Task 1.5b: Remove ArtifactDefinition.version conflict (2h)** ← NEW
+- **Task 1.5c: Add artifact variants support (4h)** ← NEW (P2 optional)
+- **Task 1.6: Concrete templates (7h)** ← BLOCKED until 1.1c done
+- **Task 1.6b: E2E provenance test (3h)** ← NEW (validates Phase 1 DoD)
+
+**Critical Path Update:**
+- OLD: Phase 1 done → Phase 2 || Phase 3
+- **NEW: Phase 1 incomplete → MUST complete registry (tasks 1.1b/c) → THEN Task 1.6 → THEN Phase 2**
 
 **Assumptions:**
 - 1 engineer = 8h/day focus time (no meetings/interruptions)
@@ -569,7 +746,8 @@ Task 2.1 (Introspection 12h)
 - Issue #52 validation infrastructure ready for integration
 
 **Contingency:**
-- Add 20% buffer: 183h × 1.2 = **220h (5.5 weeks with 1 eng, 4 weeks with 4 eng)**
+- Add 20% buffer: 132h × 1.2 = **158h (4 weeks with 1 eng, 2.5 weeks with 4 eng)**
+- Original with buffer: 220h → **Revised with buffer: 158h** (-62h savings)
 
 ---
 

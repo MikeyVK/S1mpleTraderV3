@@ -64,7 +64,7 @@ class TestArtifactManagerCore:
         assert call_args[1]['name'] == 'Test'
         assert call_args[1]['fields'] == []
         assert 'template_id' in call_args[1]
-        assert 'template_version' in call_args[1]
+        assert 'version_hash' in call_args[1]  # Task 1.1c
         assert 'scaffold_created' in call_args[1]
         assert 'output_path' in call_args[1]
 

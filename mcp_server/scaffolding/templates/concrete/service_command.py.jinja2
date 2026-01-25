@@ -1,0 +1,59 @@
+{#- concrete/service_command.py.jinja2 - Service Command Pattern -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Generate service command classes (execute pattern) -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: REQUIRED
+  level: structure
+  validates:
+    patterns:
+      - "Command pattern with execute() method"
+      - "Result/Error return types"
+  extends: tier2_base_python.jinja2
+  purpose: "Concrete template for service command pattern"
+  version: "1.0.0"
+  introspection:
+    template_id: service_command
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - name
+      optional:
+        - description
+        - parameters
+        - return_type
+-#}
+
+{%- block type_imports -%}
+from typing import Any
+{%- endblock %}
+
+{%- block class_structure -%}
+class {{ name }}:
+{%- block class_docstring %}
+    """{{ description | default(name + ' service command.') }}
+    
+    Service command following execute pattern.
+    """
+{%- endblock %}
+
+{%- block execute_method %}
+
+    async def execute(self{% if parameters %}{% for param in parameters %}, {{ param.name }}: {{ param.type }}{% endfor %}{% endif %}){% if return_type %} -> {{ return_type }}{% else %} -> Any{% endif %}:
+        """Execute service command.
+        {% if parameters %}
+        Args:
+{%- for param in parameters %}
+            {{ param.name }}: {{ param.description | default('Parameter') }}
+{%- endfor %}
+        {% endif %}
+        Returns:
+            {{ return_type | default('Any') }}
+        """
+        # TODO: Implement service logic
+        pass
+{%- endblock %}
+{%- endblock %}

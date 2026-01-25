@@ -83,6 +83,10 @@ from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 from mcp_server.tools.safe_edit_tool import SafeEditTool
 from mcp_server.tools.template_validation_tool import TemplateValidationTool
 
+# Scaffolding infrastructure (Issue #72)
+from mcp_server.scaffolding.template_registry import TemplateRegistry
+from mcp_server.managers.artifact_manager import ArtifactManager
+
 # Initialize logging
 setup_logging()
 logger = get_logger("server")
@@ -101,6 +105,18 @@ class MCPServer:
 
         # Validate label configuration at startup
         validate_label_config_on_startup()
+
+        # Initialize template registry (Issue #72 Task 1.6)
+        workspace_root = Path(settings.server.workspace_root)
+        registry_path = workspace_root / ".st3" / "template_registry.yaml"
+
+        # Bootstrap registry file if missing
+        if not registry_path.exists():
+            registry_path.parent.mkdir(parents=True, exist_ok=True)
+            lifecycle_logger.info("Bootstrapping template registry: %s", registry_path)
+
+        self.template_registry = TemplateRegistry(registry_path=registry_path)
+        lifecycle_logger.info("Template registry initialized")
 
         self.server = Server(server_name)
 
@@ -145,7 +161,12 @@ class MCPServer:
             TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
             ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
             # Scaffold tools (unified artifact scaffolding)
-            ScaffoldArtifactTool(),
+            ScaffoldArtifactTool(
+                manager=ArtifactManager(
+                    workspace_root=workspace_root,
+                    template_registry=self.template_registry
+                )
+            ),
             # Discovery tools
             SearchDocumentationTool(),
             GetWorkContextTool(),

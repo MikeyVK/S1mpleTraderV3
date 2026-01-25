@@ -33,7 +33,8 @@ TEMPLATE_METADATA:
       - methods
 -#}
 
-{%- block content -%}
+{% block content -%}
+{{ super() }}
 {%- block imports_section -%}
 {# Standard library imports #}
 {%- if imports and imports.stdlib -%}

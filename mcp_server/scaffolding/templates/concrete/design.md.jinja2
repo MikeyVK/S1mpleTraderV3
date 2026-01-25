@@ -1,0 +1,85 @@
+{#- concrete/design.md.jinja2 - Design Document -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Generate design documents for features/issues -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: RECOMMENDED
+  level: structure
+  validates:
+    patterns:
+      - "Title + Purpose + Requirements sections"
+      - "Decision records (optional)"
+  extends: tier2_base_markdown.jinja2
+  purpose: "Concrete template for design documents"
+  version: "1.0.0"
+  introspection:
+    template_id: design
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+      optional:
+        - purpose
+        - requirements
+        - decisions
+        - related_issues
+-#}
+
+{%- block frontmatter_block -%}
+---
+title: {{ title }}
+type: design
+created: {{ timestamp | default('YYYY-MM-DD') }}
+{% if related_issues -%}
+related_issues: {{ related_issues | join(', ') }}
+{%- endif %}
+---
+
+{%- endblock %}
+
+{%- block content -%}
+# {{ title }}
+
+## Purpose
+
+{{ purpose | default('Document the design for ' + title + '.') }}
+
+## Requirements
+
+{% if requirements -%}
+{%- for req in requirements %}
+- {{ req }}
+{%- endfor %}
+{%- else -%}
+- (To be defined)
+{%- endif %}
+
+## Design
+
+(Design details go here)
+
+{% if decisions -%}
+## Decision Records
+
+{%- for decision in decisions %}
+
+### {{ decision.title }}
+
+**Status:** {{ decision.status | default('Proposed') }}
+
+**Context:** {{ decision.context }}
+
+**Decision:** {{ decision.decision }}
+
+{% if decision.consequences -%}
+**Consequences:**
+{%- for consequence in decision.consequences %}
+- {{ consequence }}
+{%- endfor %}
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{%- endblock %}

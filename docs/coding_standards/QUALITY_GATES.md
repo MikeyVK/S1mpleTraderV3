@@ -229,6 +229,48 @@ assert getattr(dt, "tzinfo") is not None
 
 **Status:** Systematically suppressed at workspace level - no action needed.
 
+### 4. Pytest Fixture Redefined Names (W0621)
+
+**Issue:** Fixtures that depend on other fixtures trigger `redefined-outer-name` when fixture names exist at module scope.
+
+**Pattern:**
+```python
+@pytest.fixture
+def temp_workspace(...) -> Path:
+    ...
+
+@pytest.fixture
+def artifact_manager(
+    temp_workspace: Path,  # ❌ W0621: redefines 'temp_workspace' from outer scope
+    ...
+) -> ArtifactManager:
+    ...
+```
+
+**Preferred fix:** Fixture aliasing with `name=` parameter:
+```python
+# ✅ BEST - Private function name + public fixture name
+@pytest.fixture(name="temp_workspace")
+def _temp_workspace(...) -> Path:
+    """Hermetic workspace fixture."""
+    ...
+
+@pytest.fixture(name="artifact_manager")
+def _artifact_manager(
+    temp_workspace: Path,  # ✅ No conflict - 'temp_workspace' is only a fixture name
+    ...
+) -> ArtifactManager:
+    ...
+```
+
+**Benefits:**
+- Zero suppressions needed
+- Test code unchanged (uses public fixture name)
+- Pylint sees no module-scope symbol collision
+- Standard pytest pattern for fixture composition
+
+**Status:** Use this pattern for all fixtures that inject other fixtures as parameters.
+
 ## Code Review Rejection Criteria
 
 **REJECT if any of these conditions:**

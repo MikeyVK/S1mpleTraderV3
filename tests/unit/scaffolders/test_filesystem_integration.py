@@ -12,7 +12,7 @@ def mock_registry():
     artifact = Mock()
     artifact.type_id = 'test'
     artifact.required_fields = ['name']
-    artifact.template_path = 'components/dto.py.jinja2'  # Real template path
+    artifact.template_path = 'concrete/dto.py.jinja2'  # Updated template path (Task 1.6)
     artifact.fallback_template = None
     artifact.name_suffix = ''
     artifact.file_extension = '.py'
