@@ -173,8 +173,10 @@ async def test_valid_code_artifact_writes_successfully(
         file_extension=".py",
     )
 
-    # Create VALID Python template
-    valid_template = """'''{{ description }}'''
+    # Create VALID Python template (with SCAFFOLD header for validation)
+    # pylint: disable=line-too-long
+    valid_template = """# SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }}{% if output_path %} path={{ output_path }}{% endif %}
+'''{{ description }}'''
 from pydantic import BaseModel
 
 class {{ name }}DTO(BaseModel):
