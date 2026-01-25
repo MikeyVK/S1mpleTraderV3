@@ -12,7 +12,7 @@ Quality Requirements:
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Annotated, Literal, TypeAlias
 
 import yaml
@@ -138,6 +138,56 @@ class SuccessCriteria(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class GateScope(BaseModel):
+    """File scope filtering for quality gates.
+
+    Defines which files a gate should apply to using glob patterns.
+    Empty scope means "apply to all files".
+    """
+
+    include_globs: list[str] = Field(default_factory=list)
+    exclude_globs: list[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    def filter_files(self, files: list[str]) -> list[str]:
+        """Filter files based on include/exclude globs.
+
+        Args:
+            files: List of file paths (absolute or relative)
+
+        Returns:
+            Filtered list of files matching scope rules
+        """
+        if not self.include_globs and not self.exclude_globs:
+            return files  # No filtering
+
+        filtered = []
+        for file_path in files:
+            # Normalize to POSIX for glob matching
+            posix_path = Path(file_path).as_posix()
+
+            # Include matching
+            if self.include_globs:
+                if not any(
+                    PurePosixPath(posix_path).match(pattern)
+                    for pattern in self.include_globs
+                ):
+                    continue  # Skip if not in include list
+
+            # Exclude matching
+            if self.exclude_globs:
+                if any(
+                    PurePosixPath(posix_path).match(pattern)
+                    for pattern in self.exclude_globs
+                ):
+                    continue  # Skip if in exclude list
+
+            filtered.append(file_path)
+
+        return filtered
+
+
 class CapabilitiesMetadata(BaseModel):
     """Metadata about what a gate applies to / can do."""
 
@@ -157,6 +207,7 @@ class QualityGate(BaseModel):
     parsing: ParsingConfig
     success: SuccessCriteria
     capabilities: CapabilitiesMetadata
+    scope: GateScope | None = Field(default=None)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
