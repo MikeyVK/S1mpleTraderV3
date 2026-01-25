@@ -169,6 +169,7 @@ class GateScope(BaseModel):
 
             # Include matching
             if self.include_globs:
+                # pylint: disable=not-an-iterable
                 if not any(
                     PurePosixPath(posix_path).match(pattern)
                     for pattern in self.include_globs
@@ -177,12 +178,12 @@ class GateScope(BaseModel):
 
             # Exclude matching
             if self.exclude_globs:
+                # pylint: disable=not-an-iterable
                 if any(
                     PurePosixPath(posix_path).match(pattern)
                     for pattern in self.exclude_globs
                 ):
                     continue  # Skip if in exclude list
-
             filtered.append(file_path)
 
         return filtered

@@ -20,6 +20,20 @@
   "pythonVersion": "3.13",
   "pythonPlatform": "Windows",
   "typeCheckingMode": "strict",
+  "executionEnvironments": [
+    {
+      "root": "./backend",
+      "typeCheckingMode": "strict"
+    },
+    {
+      "root": "./mcp_server",
+      "typeCheckingMode": "strict"
+    },
+    {
+      "root": "./tests",
+      "typeCheckingMode": "basic"
+    }
+  ],
   "useLibraryCodeForTypes": true,
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,

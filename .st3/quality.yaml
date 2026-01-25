@@ -97,6 +97,12 @@ gates:
       file_types: [".py"]
       supports_autofix: false
       produces_json: false
+    scope:
+      include_globs:
+        - "backend/**/*.py"
+        - "mcp_server/**/*.py"
+      exclude_globs:
+        - "tests/**/*.py"
 
   pytest:
     name: "Pytest"

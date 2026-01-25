@@ -1,10 +1,5 @@
 """Unit tests for GateScope model and scope filtering (QA Alignment)."""
 
-from pathlib import Path
-
-import pytest
-from pydantic import ValidationError
-
 from mcp_server.config.quality_config import GateScope
 
 
@@ -30,7 +25,7 @@ class TestGateScopeModel:
         )
 
         assert len(scope.include_globs) == 1
-        assert len(scope.exclude_globs) == 0
+        assert not scope.exclude_globs
 
     def test_empty_scope_defaults(self) -> None:
         """Empty GateScope should default to empty lists."""

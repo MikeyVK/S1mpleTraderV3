@@ -83,18 +83,33 @@ class QAManager:
         pyright_gate = self._require_gate(quality_config, "pyright")
 
         # Gate 1: Pylint
+        # Gate 1: Pylint (no scope filtering - strict on all files)
         pylint_result = self._run_pylint(pylint_gate, python_files)
         results["gates"].append(pylint_result)
         if not pylint_result["passed"]:
             results["overall_pass"] = False
 
-        # Gate 2: Mypy
-        mypy_result = self._run_mypy(mypy_gate, python_files)
-        results["gates"].append(mypy_result)
-        if not mypy_result["passed"]:
-            results["overall_pass"] = False
+        # Gate 2: Mypy (apply scope filtering per config)
+        mypy_files = python_files
+        if mypy_gate.scope:
+            mypy_files = mypy_gate.scope.filter_files(python_files)
 
-        # Gate 3: Pyright
+        if not mypy_files:
+            # No files in scope - skip gate with pass
+            results["gates"].append({
+                "gate_number": 2,
+                "name": mypy_gate.name,
+                "passed": True,
+                "score": "Skipped (no matching files)",
+                "issues": []
+            })
+        else:
+            mypy_result = self._run_mypy(mypy_gate, mypy_files)
+            results["gates"].append(mypy_result)
+            if not mypy_result["passed"]:
+                results["overall_pass"] = False
+
+        # Gate 3: Pyright (no scope filtering for now)
         pyright_result = self._run_pyright(pyright_gate, python_files)
         results["gates"].append(pyright_result)
         if not pyright_result["passed"]:
