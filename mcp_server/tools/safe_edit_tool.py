@@ -33,11 +33,22 @@ class SearchReplaceParams:
 
 
 class LineEdit(BaseModel):
-    """Represents a line-based edit operation."""
+    """Represents a line-based edit operation.
+    
+    IMPORTANT: new_content must include trailing newline (\\n) to replace the line correctly.
+    Without it, the next line will be appended to the edited line.
+    """
 
     start_line: int = Field(..., description="Starting line number (1-based, inclusive)")
     end_line: int = Field(..., description="Ending line number (1-based, inclusive)")
-    new_content: str = Field(..., description="New content for the line range")
+    new_content: str = Field(
+        ...,
+        description=(
+            "New content for the line range. "
+            "⚠️ MUST include trailing newline (\\n) unless intentionally joining with next line. "
+            "Example: 'def foo():\\n' not 'def foo():'"
+        )
+    )
 
     @model_validator(mode="after")
     def validate_line_range(self) -> "LineEdit":
