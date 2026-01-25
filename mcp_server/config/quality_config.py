@@ -162,26 +162,28 @@ class GateScope(BaseModel):
         if not self.include_globs and not self.exclude_globs:
             return files  # No filtering
 
+        # Make iteration explicit for pylint
+        include_patterns: list[str] = list(self.include_globs)
+        exclude_patterns: list[str] = list(self.exclude_globs)
+
         filtered = []
         for file_path in files:
             # Normalize to POSIX for glob matching
             posix_path = Path(file_path).as_posix()
 
             # Include matching
-            if self.include_globs:
-                # pylint: disable=not-an-iterable
+            if include_patterns:
                 if not any(
                     PurePosixPath(posix_path).match(pattern)
-                    for pattern in self.include_globs
+                    for pattern in include_patterns
                 ):
                     continue  # Skip if not in include list
 
             # Exclude matching
-            if self.exclude_globs:
-                # pylint: disable=not-an-iterable
+            if exclude_patterns:
                 if any(
                     PurePosixPath(posix_path).match(pattern)
-                    for pattern in self.exclude_globs
+                    for pattern in exclude_patterns
                 ):
                     continue  # Skip if in exclude list
             filtered.append(file_path)

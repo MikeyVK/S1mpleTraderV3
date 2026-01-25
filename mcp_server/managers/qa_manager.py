@@ -28,6 +28,31 @@ def _pyright_script_name() -> str:
 class QAManager:
     """Manager for quality assurance and gates."""
 
+    def _filter_files(
+        self, files: list[str]
+    ) -> tuple[list[str], list[dict[str, Any]]]:
+        """Filter Python files and generate pre-gate issues for non-Python files.
+        
+        Returns:
+            (python_files, pre_gate_issues)
+        """
+        python_files = [f for f in files if str(f).endswith(".py")]
+        non_python_files = [f for f in files if f not in python_files]
+
+        issues: list[dict[str, Any]] = []
+        if not python_files:
+            issues.append({
+                "message": "No Python (.py) files provided; quality gates support .py only"
+            })
+
+        for f in non_python_files:
+            issues.append({
+                "file": f,
+                "message": "Skipped non-Python file (quality gates support .py only)"
+            })
+
+        return python_files, issues
+
     def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
         """Run quality gates on specified files."""
         results: dict[str, Any] = {
@@ -48,30 +73,18 @@ class QAManager:
             })
             return results
 
-        python_files = [f for f in files if str(f).endswith(".py")]
-        non_python_files = [f for f in files if f not in python_files]
+        python_files, pre_gate_issues = self._filter_files(files)
 
-        if non_python_files or not python_files:
-            issues: list[dict[str, Any]] = []
-            if not python_files:
-                results["overall_pass"] = False
-                issues.append({
-                    "message": "No Python (.py) files provided; quality gates support .py only"
-                })
-
-            for f in non_python_files:
-                issues.append({
-                    "file": f,
-                    "message": "Skipped non-Python file (quality gates support .py only)"
-                })
-
+        if pre_gate_issues or not python_files:
             results["gates"].append({
                 "gate_number": 0,
                 "name": "File Filtering",
                 "passed": bool(python_files),
                 "score": "N/A",
-                "issues": issues,
+                "issues": pre_gate_issues,
             })
+            if not python_files:
+                results["overall_pass"] = False
 
         if not python_files:
             return results
@@ -250,8 +263,9 @@ class QAManager:
                 check=False
             )
 
-            # Parse mypy output
-            issues = self._parse_mypy_output(proc.stdout)
+            # Parse mypy output from both stdout and stderr
+            combined_output = proc.stdout + proc.stderr
+            issues = self._parse_mypy_output(combined_output)
             result["issues"] = issues
             result["passed"] = not issues
             result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
