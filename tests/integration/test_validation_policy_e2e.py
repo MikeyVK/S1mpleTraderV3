@@ -13,8 +13,12 @@ Tests verify:
 import logging
 import pytest
 
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
 from tests.fixtures.artifact_test_harness import (
+    ArtifactIdentity,
+    ArtifactSpec,
+    TemplateFields,
     add_artifact_to_yaml,
     create_template,
 )
@@ -32,11 +36,12 @@ async def test_invalid_code_artifact_blocks_no_file(
     # Add dto_invalid artifact type
     add_artifact_to_yaml(
         artifacts_yaml_path=artifacts_yaml_file,
-        type_id="dto_invalid",
-        artifact_type="code",
-        name="Invalid DTO",
-        template_path="components/dto_invalid.py.jinja2",
-        file_extension=".py",
+        spec=ArtifactSpec(
+            identity=ArtifactIdentity(type_id="dto_invalid", artifact_type="code"),
+            name="Invalid DTO",
+            template_path="components/dto_invalid.py.jinja2",
+            file_extension=".py",
+        )
     )
 
     # Create template with INVALID Python (syntax error)
@@ -49,9 +54,6 @@ class {{ name }}DTO:
     create_template(temp_workspace, "components/dto_invalid.py.jinja2", invalid_template)
 
     # Reload registry
-    from mcp_server.config.artifact_registry_config import (  # pylint: disable=import-outside-toplevel
-        ArtifactRegistryConfig,
-    )
     ArtifactRegistryConfig.reset_instance()
     fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
 
@@ -91,12 +93,13 @@ async def test_invalid_doc_artifact_warns_writes_file(
     # Add design_minimal artifact type
     add_artifact_to_yaml(
         artifacts_yaml_path=artifacts_yaml_file,
-        type_id="design_minimal",
-        artifact_type="doc",
-        name="Minimal Design",
-        template_path="documents/design_minimal.md.jinja2",
-        file_extension=".md",
-        required_fields=["title"],
+        spec=ArtifactSpec(
+            identity=ArtifactIdentity(type_id="design_minimal", artifact_type="doc"),
+            name="Minimal Design",
+            template_path="documents/design_minimal.md.jinja2",
+            file_extension=".md",
+            template_fields=TemplateFields(required=["title"]),
+        )
     )
 
     # Create minimal doc template (MISSING H1 - will trigger validation error)
@@ -108,9 +111,6 @@ async def test_invalid_doc_artifact_warns_writes_file(
     create_template(temp_workspace, "documents/design_minimal.md.jinja2", minimal_template)
 
     # Reload registry
-    from mcp_server.config.artifact_registry_config import (  # pylint: disable=import-outside-toplevel
-        ArtifactRegistryConfig,
-    )
     ArtifactRegistryConfig.reset_instance()
     fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
 
@@ -166,29 +166,30 @@ async def test_valid_code_artifact_writes_successfully(
     # Add dto_valid artifact type
     add_artifact_to_yaml(
         artifacts_yaml_path=artifacts_yaml_file,
-        type_id="dto_valid",
-        artifact_type="code",
-        name="Valid DTO",
-        template_path="components/dto_valid.py.jinja2",
-        file_extension=".py",
+        spec=ArtifactSpec(
+            identity=ArtifactIdentity(type_id="dto_valid", artifact_type="code"),
+            name="Valid DTO",
+            template_path="components/dto_valid.py.jinja2",
+            file_extension=".py",
+        )
     )
 
     # Create VALID Python template (with SCAFFOLD header for validation)
-    # pylint: disable=line-too-long
-    valid_template = """# SCAFFOLD: template={{ template_id }} version={{ template_version }} created={{ scaffold_created }}{% if output_path %} path={{ output_path }}{% endif %}
-'''{{ description }}'''
+    scaffold_header = (
+        "# SCAFFOLD: template={{ template_id }} version={{ template_version }} "
+        "created={{ scaffold_created }}{% if output_path %} path={{ output_path }}{% endif %}"
+    )
+    valid_template = f"""{scaffold_header}
+'''{{{{ description }}}}'''
 from pydantic import BaseModel
 
-class {{ name }}DTO(BaseModel):
-    '''{{ description }}'''
+class {{{{ name }}}}DTO(BaseModel):
+    '''{{{{ description }}}}'''
     pass
 """
     create_template(temp_workspace, "components/dto_valid.py.jinja2", valid_template)
 
     # Reload registry
-    from mcp_server.config.artifact_registry_config import (  # pylint: disable=import-outside-toplevel
-        ArtifactRegistryConfig,
-    )
     ArtifactRegistryConfig.reset_instance()
     fresh_registry = ArtifactRegistryConfig.from_file(artifacts_yaml_file)
 
