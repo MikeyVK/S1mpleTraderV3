@@ -11,6 +11,9 @@ Tests according to TDD principles with comprehensive coverage.
 # Suppress Pydantic FieldInfo false positives
 
 # Standard library
+import asyncio
+import tempfile
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 # Third-party
@@ -19,7 +22,6 @@ import pytest
 # Module under test
 from pydantic import ValidationError
 from mcp_server.tools.safe_edit_tool import SafeEditTool, SafeEditInput
-from mcp_server.validation.base import ValidationResult, ValidationIssue
 
 
 class TestSafeEditTool:
@@ -31,13 +33,13 @@ class TestSafeEditTool:
         return SafeEditTool()
 
     @pytest.mark.asyncio
-    async def test_missing_arguments(self, tool: SafeEditTool) -> None:
+    async def test_missing_arguments(self) -> None:
         """Test execution with missing arguments."""
-        # Missing content key raises ValidationError
+        # Missing content/edit mode raises ValidationError
         with pytest.raises(ValidationError):
             SafeEditInput(path="test.py")
 
-        # Missing path key raises ValidationError
+        # Missing path raises ValidationError
         with pytest.raises(ValidationError):
             SafeEditInput(content="code")
 
@@ -195,14 +197,12 @@ class TestSafeEditTool:
     @pytest.mark.asyncio
     async def test_no_duplicate_real_validation(self, tool: SafeEditTool) -> None:
         """Test with REAL validation (no mocks) to catch duplicate bug."""
-        import tempfile
-        from pathlib import Path
-        
+
         # Create temp file with invalid Python
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write("valid = True\n")
             temp_path = f.name
-        
+
         try:
             # Try to write invalid Python syntax (should fail validation)
             result = await tool.execute(
@@ -213,18 +213,18 @@ class TestSafeEditTool:
                     show_diff=True
                 )
             )
-            
+
             # Check response
             text = result.content[0]["text"]
             print(f"\n\n=== RESPONSE TEXT ===\n{text}\n=== END ===\n\n")
-            
+
             # Count occurrences
             diff_count = text.count("**Diff Preview:**")
             issues_count = text.count("**Validation Issues:**")
-            
+
             assert diff_count == 1, f"Expected 1 diff block, found {diff_count}\n{text}"
             assert issues_count == 1, f"Expected 1 issues block, found {issues_count}\n{text}"
-            
+
         finally:
             # Cleanup
             Path(temp_path).unlink(missing_ok=True)
@@ -232,15 +232,13 @@ class TestSafeEditTool:
     @pytest.mark.asyncio
     async def test_pattern_not_found_shows_context(self, tool: SafeEditTool) -> None:
         """Test that 'Pattern not found' error shows file context (Issue #125 - Priority 2)."""
-        import tempfile
-        from pathlib import Path
-        
+
         # Create temp file with content
         content = """# Header\nline 1\nline 2\nline 3\nline 4\nline 5\n"""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write(content)
             temp_path = f.name
-        
+
         try:
             # Try to replace pattern that doesn't exist
             result = await tool.execute(
@@ -251,21 +249,21 @@ class TestSafeEditTool:
                     mode="strict"
                 )
             )
-            
+
             # Check error message includes context
             assert result.is_error, "Expected error result"
             text = result.content[0]["text"]
             print(f"\n\n=== ERROR TEXT ===\n{text}\n=== END ===\n\n")
-            
+
             # Should mention pattern not found
             assert "not found" in text.lower(), f"Expected 'not found' in error\n{text}"
-            
+
             # NEW: Should show file preview (first N lines)
             # This is the FAILING part - current code doesn't show context
             assert "# Header" in text or "line 1" in text, (
                 f"Expected file context in error message\n{text}"
             )
-            
+
         finally:
             # Cleanup
             Path(temp_path).unlink(missing_ok=True)
@@ -276,13 +274,11 @@ class TestSafeEditTool:
     @pytest.mark.asyncio
     async def test_concurrent_edits_blocked(self, tool: SafeEditTool, tmp_path) -> None:
         """Test that concurrent edits on same file are blocked (mutex protection)."""
-        import asyncio
-        from pathlib import Path
-        
+
         # Create test file
         test_file = tmp_path / "concurrent_test.py"
         test_file.write_text("line 1\nline 2\nline 3\n")
-        
+
         # Track edit order
         edit_results = []
         async def edit_task(task_id: int) -> None:
@@ -300,40 +296,40 @@ class TestSafeEditTool:
                     )
                 )
                 edit_results.append({"task": task_id, "success": True, "result": result})
-            except Exception as e:
+            except (TimeoutError, ValueError, OSError) as e:
+                # Catch specific expected exceptions: timeout, validation, or file errors
                 edit_results.append({"task": task_id, "success": False, "error": str(e)})
-        
-        
+
         # Launch 3 concurrent edits
         tasks = [edit_task(1), edit_task(2), edit_task(3)]
         await asyncio.gather(*tasks)
-        
+
         #  Verify mutex behavior: edits should run sequentially
         # Each task modifies line 1, so if concurrent we'd see race conditions
         # With mutex: task 1 → task 2 → task 3 (clean sequence)
         # Without mutex: overlapping edits, unpredictable results
-        
+
         # All should succeed (mutex allows waiting, not instant fail)
         assert len(edit_results) == 3, f"Expected 3 results, got {len(edit_results)}"
         assert all(r["success"] for r in edit_results), (
             f"Expected all edits to succeed with mutex, "
             f"but got failures: {[r for r in edit_results if not r['success']]}"
         )
-        
+
         # Verify sequential execution by checking the diffs
         # Task 1: line 1 → task 1 line 1
         # Task 2: task 1 line 1 → task 2 line 1  (proves task 1 finished first)
         # Task 3: task 2 line 1 → task 3 line 1  (proves task 2 finished second)
-        #  task1_diff would check task 1 vs original, but sequential execution is proven by task2/task3
+        # Sequential execution proven by task2/task3 seeing previous changes
         task2_diff = edit_results[1]["result"].content[0]["text"]
         task3_diff = edit_results[2]["result"].content[0]["text"]
-        
+
         # Task 2 should see task 1's changes (sequential execution)
         assert "task 1 line 1" in task2_diff, (
             f"Task 2 should see task 1's changes, proving sequential execution.\n"
             f"Task 2 diff: {task2_diff}"
         )
-        
+
         # Task 3 should see task 2's changes
         assert "task 2 line 1" in task3_diff, (
             f"Task 3 should see task 2's changes, proving sequential execution.\n"

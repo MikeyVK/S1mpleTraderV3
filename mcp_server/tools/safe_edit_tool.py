@@ -5,12 +5,31 @@ import asyncio
 from difflib import unified_diff
 from pathlib import Path
 from typing import Any
+from dataclasses import dataclass
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 from mcp_server.validation.validation_service import ValidationService
+
+
+@dataclass
+class EditResponse:
+    """Parameters for building edit response."""
+    passed: bool
+    issues: str
+    diff: str
+
+
+@dataclass
+class SearchReplaceParams:
+    """Parameters for search/replace operation."""
+    search: str
+    replace: str
+    regex: bool = False
+    count: int | None = None
+    flags: int = 0
 
 
 class LineEdit(BaseModel):
@@ -208,18 +227,23 @@ class SafeEditTool(BaseTool):
                     # Validate new content
                     passed, issues_text = await self._validate(params.path, new_content)
 
+                    # Build response object
+                    response = EditResponse(
+                        passed=passed,
+                        issues=issues_text,
+                        diff=diff_output
+                    )
+
                     # Handle verify_only mode
                     if params.mode == "verify_only":
-                        return self._build_verify_response(passed, issues_text, diff_output)
+                        return self._build_verify_response(response)
 
                     # Handle strict mode with validation failure
                     if params.mode == "strict" and not passed:
-                        return self._build_rejection_response(issues_text, diff_output)
+                        return self._build_rejection_response(response)
 
                     # Write file (strict+passed or interactive)
-                    return self._write_and_respond(
-                        params.path, new_content, passed, issues_text, diff_output
-                    )
+                    return self._write_and_respond(params.path, new_content, response)
         except TimeoutError:
             return ToolResult.error(
                 f"❌ File '{params.path}' is already being edited. "
@@ -256,67 +280,78 @@ class SafeEditTool(BaseTool):
         """Generate new content based on edit mode."""
         if params.content is not None:
             return params.content
-
         if params.line_edits is not None:
-            try:
-                return self._apply_line_edits(original, params.line_edits)
-            except ValueError as e:
-                return ToolResult.error(f"Line edit failed: {e}")
-
+            return self._handle_line_edits(original, params.line_edits)
         if params.insert_lines is not None:
-            try:
-                return self._apply_insert_lines(original, params.insert_lines)
-            except ValueError as e:
-                return ToolResult.error(f"Insert lines failed: {e}")
-
+            return self._handle_insert_lines(original, params.insert_lines)
         if params.search is not None and params.replace is not None:
-            try:
-                new_content, count = self._apply_search_replace(params, original)
-                if params.mode == "strict" and not count:
-                    # Build error with context
-                    error_msg = f"❌ Pattern '{params.search}' not found in file\n\n"
-                    error_msg += self._build_file_context_preview(original)
-                    return ToolResult.error(error_msg)
-                return new_content
-            except (ValueError, re.error) as e:
-                return ToolResult.error(f"Search/replace failed: {e}")
+            return self._handle_search_replace(params, original)
         return ToolResult.error(
             "Must provide 'content', 'line_edits', 'insert_lines', or 'search' + 'replace'"
         )
 
+    def _handle_line_edits(
+        self, original: str, line_edits: list[LineEdit]
+    ) -> str | ToolResult:
+        """Handle line_edits mode."""
+        try:
+            return self._apply_line_edits(original, line_edits)
+        except ValueError as e:
+            return ToolResult.error(f"Line edit failed: {e}")
+
+    def _handle_insert_lines(
+        self, original: str, insert_lines: list[InsertLine]
+    ) -> str | ToolResult:
+        """Handle insert_lines mode."""
+        try:
+            return self._apply_insert_lines(original, insert_lines)
+        except ValueError as e:
+            return ToolResult.error(f"Insert lines failed: {e}")
+
+    def _handle_search_replace(self, params: SafeEditInput, original: str) -> str | ToolResult:
+        """Handle search/replace mode."""
+        try:
+            new_content, count = self._apply_search_replace(params, original)
+            if params.mode == "strict" and not count:
+                error_msg = f"❌ Pattern '{params.search}' not found in file\n\n"
+                error_msg += self._build_file_context_preview(original)
+                return ToolResult.error(error_msg)
+            return new_content
+        except (ValueError, re.error) as e:
+            return ToolResult.error(f"Search/replace failed: {e}")
+
     def _apply_search_replace(self, params: SafeEditInput, content: str) -> tuple[str, int]:
         """Apply search/replace with params."""
         assert params.search is not None and params.replace is not None
-        return self._apply_search_replace_flat(
-            content,
+        srp = SearchReplaceParams(
             search=params.search,
             replace=params.replace,
             regex=params.regex,
             count=params.search_count,
             flags=params.search_flags,
-
         )
+        return self._apply_search_replace_flat(content, srp)
 
-    def _build_verify_response(self, passed: bool, issues: str, diff: str) -> ToolResult:
+    def _build_verify_response(self, response: EditResponse) -> ToolResult:
         """Build response for verify_only mode."""
-        status = "✅ Validation Passed" if passed else "❌ Validation Failed"
-        text = f"{status}{issues}"
-        if diff:
-            text = f"**Diff Preview:**\n```diff\n{diff}\n```\n\n{text}"
+        status = "✅ Validation Passed" if response.passed else "❌ Validation Failed"
+        text = f"{status}{response.issues}"
+        if response.diff:
+            text = f"**Diff Preview:**\n```diff\n{response.diff}\n```\n\n{text}"
         return ToolResult.text(text)
 
-    def _build_rejection_response(self, issues: str, diff: str) -> ToolResult:
+    def _build_rejection_response(self, response: EditResponse) -> ToolResult:
         """Build response for strict mode rejection."""
         text = (
-            f"❌ Edit rejected due to validation errors (Mode: strict):{issues}\n"
+            f"❌ Edit rejected due to validation errors (Mode: strict):{response.issues}\n"
             "Use mode='interactive' to force save if necessary, or fix the content."
         )
-        if diff:
-            text = f"**Diff Preview:**\n```diff\n{diff}\n```\n\n{text}"
+        if response.diff:
+            text = f"**Diff Preview:**\n```diff\n{response.diff}\n```\n\n{text}"
         return ToolResult.text(text)
 
     def _write_and_respond(
-        self, path: str, content: str, passed: bool, issues: str, diff: str
+        self, path: str, content: str, response: EditResponse
     ) -> ToolResult:
         """Write file and build success response."""
         try:
@@ -325,13 +360,16 @@ class SafeEditTool(BaseTool):
             file_path.write_text(content, encoding="utf-8")
 
             status = "✅ File saved successfully."
-            if not passed:
-                status += f"\n⚠️ Saved with validation warnings (Mode: interactive):{issues}"
-            elif issues:
-                status += f"\nℹ️ Saved with non-blocking issues:{issues}"
+            if not response.passed:
+                status += (
+                    f"\n⚠️ Saved with validation warnings (Mode: interactive):"
+                    f"{response.issues}"
+                )
+            elif response.issues:
+                status += f"\nℹ️ Saved with non-blocking issues:{response.issues}"
 
-            if diff:
-                status = f"**Diff Preview:**\n```diff\n{diff}\n```\n\n{status}"
+            if response.diff:
+                status = f"**Diff Preview:**\n```diff\n{response.diff}\n```\n\n{status}"
 
             return ToolResult.text(status)
         except OSError as e:
@@ -406,46 +444,40 @@ class SafeEditTool(BaseTool):
     def _apply_search_replace_flat(
         self,
         content: str,
-        search: str,
-        replace: str,
-        regex: bool = False,
-        count: int | None = None,
-        flags: int = 0,
+        params: SearchReplaceParams,
     ) -> tuple[str, int]:
-        """Apply search and replace operation with flattened parameters.
+        """Apply search and replace operation.
         
         Args:
             content: Content to search in.
-            search: Pattern to search for.
-            replace: Replacement text.
-            regex: Use regex matching.
-            count: Max replacements (None = all).
-            flags: Regex flags.
+            params: Search/replace parameters.
             
         Returns:
             Tuple of (new_content, replacement_count).
         """
-        if regex:
+        if params.regex:
             try:
-                pattern = re.compile(search, flags or 0)
-                if count is not None:
-                    new_content, replacement_count = pattern.subn(replace, content, count=count)
+                pattern = re.compile(params.search, params.flags or 0)
+                if params.count is not None:
+                    new_content, replacement_count = pattern.subn(
+                        params.replace, content, count=params.count
+                    )
                 else:
-                    new_content, replacement_count = pattern.subn(replace, content)
+                    new_content, replacement_count = pattern.subn(params.replace, content)
                 return new_content, replacement_count
             except re.error as e:
                 raise ValueError(f"Invalid regex pattern: {e}") from e
-        else:
-            # Literal string matching
-            if count is not None:
-                parts = content.split(search, count)
-                new_content = replace.join(parts)
-                replacement_count = len(parts) - 1
-            else:
-                replacement_count = content.count(search)
-                new_content = content.replace(search, replace)
 
-            return new_content, replacement_count
+        # Literal string matching
+        if params.count is not None:
+            parts = content.split(params.search, params.count)
+            new_content = params.replace.join(parts)
+            replacement_count = len(parts) - 1
+        else:
+            replacement_count = content.count(params.search)
+            new_content = content.replace(params.search, params.replace)
+
+        return new_content, replacement_count
 
     def _generate_diff(self, path: str, original_content: str, new_content: str) -> str:
         """Generate unified diff between original and new content."""
