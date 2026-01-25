@@ -68,9 +68,11 @@ Kraken_Trading_History/
 .st3/state.json
 .st3/.restart_marker
 .st3/temp/  # Ephemeral artifacts temp files
+.st3/template_registry.yaml  # Generated with timestamps
 
 # ST3 Workflow - Local debug artifacts
 .st3/popen_called.txt
 .st3/sync_debug.log
 .st3/test_sync.py
 .st3/.state_*.tmp
+.st3/pyright_test.json  # Test output
