@@ -1,14 +1,34 @@
 # mcp_server/tools/safe_edit_tool.py
-"""Safe file editing tool with validation."""
-import re
+"""
+Safe File Editing Tool with Validation and Mutex Protection.
+
+Multi-mode file editing tool supporting full rewrites, line-based edits,
+line insertions, and search/replace operations. Includes file-level mutex
+protection to prevent concurrent edit race conditions, integrated validation,
+and diff preview capabilities.
+
+@layer: Service (MCP Tools)
+@dependencies: [re, asyncio, difflib, pathlib, typing, dataclasses, pydantic]
+@responsibilities:
+    - Provide safe multi-mode file editing (content/line_edits/insert_lines/search_replace)
+    - Enforce file-level mutex to prevent concurrent edit race conditions
+    - Validate edited content before writing (strict/interactive/verify_only modes)
+    - Generate unified diff previews for transparency
+    - Handle edge cases (new files, encoding, line range validation)
+"""
+
+# Standard library
 import asyncio
+import re
+from dataclasses import dataclass
 from difflib import unified_diff
 from pathlib import Path
 from typing import Any
-from dataclasses import dataclass
 
+# Third-party
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+# Project modules
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 from mcp_server.validation.validation_service import ValidationService
@@ -452,6 +472,7 @@ class SafeEditTool(BaseTool):
             lines[insert_idx:insert_idx] = insert_lines
 
         return "".join(lines)
+
     def _apply_search_replace_flat(
         self,
         content: str,

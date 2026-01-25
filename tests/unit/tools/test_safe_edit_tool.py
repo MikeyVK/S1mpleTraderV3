@@ -1,14 +1,20 @@
-# tests/unit/mcp_server/tools/test_safe_edit_tool.py
+# tests/unit/tools/test_safe_edit_tool.py
 """
 Unit tests for SafeEditTool.
 
-Tests according to TDD principles with comprehensive coverage.
+Tests safe file editing with validation according to TDD principles.
+Covers multi-mode editing (content/line_edits/insert_lines/search_replace),
+mutex protection, validation modes, and edge cases.
 
 @layer: Tests (Unit)
-@dependencies: [pytest]
+@dependencies: [pytest, pydantic, asyncio, tempfile, pathlib, unittest.mock,
+                mcp_server.tools.safe_edit_tool]
+@responsibilities:
+    - Test all edit modes (content, line_edits, insert_lines, search/replace)
+    - Verify validation modes (strict/interactive/verify_only)
+    - Test mutex protection prevents concurrent edit race conditions
+    - Cover edge cases (missing args, pattern not found, validation failures)
 """
-# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
-# Suppress Pydantic FieldInfo false positives
 
 # Standard library
 import asyncio
@@ -18,9 +24,9 @@ from unittest.mock import MagicMock, patch
 
 # Third-party
 import pytest
-
-# Module under test
 from pydantic import ValidationError
+
+# Project modules
 from mcp_server.tools.safe_edit_tool import SafeEditTool, SafeEditInput
 
 
@@ -216,7 +222,6 @@ class TestSafeEditTool:
 
             # Check response
             text = result.content[0]["text"]
-            print(f"\n\n=== RESPONSE TEXT ===\n{text}\n=== END ===\n\n")
 
             # Count occurrences
             diff_count = text.count("**Diff Preview:**")
@@ -253,13 +258,11 @@ class TestSafeEditTool:
             # Check error message includes context
             assert result.is_error, "Expected error result"
             text = result.content[0]["text"]
-            print(f"\n\n=== ERROR TEXT ===\n{text}\n=== END ===\n\n")
 
             # Should mention pattern not found
             assert "not found" in text.lower(), f"Expected 'not found' in error\n{text}"
 
-            # NEW: Should show file preview (first N lines)
-            # This is the FAILING part - current code doesn't show context
+            # Should show file preview for context
             assert "# Header" in text or "line 1" in text, (
                 f"Expected file context in error message\n{text}"
             )
@@ -272,7 +275,9 @@ class TestSafeEditTool:
             Path(temp_path).unlink(missing_ok=True)
 
     @pytest.mark.asyncio
-    async def test_concurrent_edits_blocked(self, tool: SafeEditTool, tmp_path) -> None:
+    async def test_concurrent_edits_blocked(
+        self, tool: SafeEditTool, tmp_path: Path
+    ) -> None:
         """Test that concurrent edits on same file are blocked (mutex protection)."""
 
         # Create test file
