@@ -213,12 +213,14 @@ class TemplateScaffolder(BaseScaffolder):
         # SPECIAL CASE 1: Service can select subtype via service_type context
         if artifact_type == "service":
             service_type = context.get("service_type", "command")  # Default: command
-            service_template_map = {
+            service_template_map: dict[str, str] = {
                 "orchestrator": "concrete/service_orchestrator.py.jinja2",
                 "command": "concrete/service_command.py.jinja2",
                 "query": "concrete/service_query.py.jinja2",
             }
-            return service_template_map.get(service_type, artifact.template_path)
+            # Get template from map or fall back to artifact.template_path
+            template = service_template_map.get(service_type)
+            return template if template else artifact.template_path
 
         # SPECIAL CASE 2: Generic can override via template_name in context
         if artifact_type == "generic":

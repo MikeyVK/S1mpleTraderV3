@@ -1,4 +1,5 @@
-# SCAFFOLD: template=test version=1.0 created=2026-01-25T00:00:00Z path=tests/integration/test_provenance_e2e.py
+# SCAFFOLD: template=test_provenance_e2e version=1.0
+# created=2026-01-25 path=tests/integration/test_provenance_e2e.py
 """
 E2E tests for Task 1.6b: Provenance regression testing.
 
@@ -20,7 +21,6 @@ Validates complete scaffold → parse → registry lookup roundtrip:
 # Standard library
 import re
 from datetime import datetime
-from pathlib import Path
 
 # Third-party
 import pytest
@@ -30,18 +30,64 @@ from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.template_config import get_template_root
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
-from mcp_server.scaffolding.template_registry import TemplateRegistry
 
 
 class TestProvenanceE2E:
     """E2E tests for scaffold provenance tracking (Task 1.6b)."""
+
+    def _parse_scaffold_header(
+        self,
+        first_line: str,
+        expected_extension: str,
+        artifact_type: str
+    ) -> tuple[str, str, str, str]:
+        """Extract SCAFFOLD header metadata from first line.
+
+        Returns:
+            Tuple of (template_name, version, timestamp, output_path)
+        """
+        if expected_extension == ".py":
+            # Python format: # SCAFFOLD: ...
+            assert first_line.startswith("# SCAFFOLD:"), \
+                f"{artifact_type}: SCAFFOLD header must start with '# SCAFFOLD:'"
+
+            pattern = r"# SCAFFOLD: template=(\S+) version=(\S+) created=(\S+) path=(.+)"
+            match = re.match(pattern, first_line)
+            assert match, \
+                f"{artifact_type}: SCAFFOLD header format invalid. Got: {first_line}"
+
+            template_name, version, timestamp, output_path = match.groups()
+            return template_name, version, timestamp, output_path.strip()
+
+        # Markdown format: <!-- SCAFFOLD: ... -->
+        assert first_line.startswith("<!-- SCAFFOLD:"), \
+            f"{artifact_type}: SCAFFOLD header must start with '<!-- SCAFFOLD:'"
+        assert first_line.endswith("-->"), \
+            f"{artifact_type}: SCAFFOLD header must end with '-->'"
+
+        pattern = (
+            r"<!-- SCAFFOLD: template=(\S+) version=(\S+) "
+            r"created=(\S+) path=(.+) -->"
+        )
+        match = re.match(pattern, first_line)
+        assert match, \
+            f"{artifact_type}: SCAFFOLD header format invalid. Got: {first_line}"
+
+        template_name, version, timestamp, output_path = match.groups()
+        return template_name, version, timestamp, output_path.strip()
 
     @pytest.mark.parametrize("artifact_type,expected_extension", [
         ("dto", ".py"),
         ("worker", ".py"),
         ("service", ".py"),  # Use 'service' instead of 'service_command'
         ("generic", ".py"),
-        pytest.param("design", ".md", marks=pytest.mark.skip(reason="Design template needs SCAFFOLD block restructure - tier2_markdown overrides content")),
+        pytest.param(
+            "design", ".md",
+            marks=pytest.mark.skip(
+                reason="Design template needs SCAFFOLD block restructure "
+                       "- tier2_markdown overrides content"
+            )
+        ),
     ])
     def test_scaffold_produces_valid_scaffold_header(
         self,
@@ -69,62 +115,33 @@ class TestProvenanceE2E:
             responsibilities=["Test responsibility"]
         )
 
-        content = result.content
-        lines = content.split("\n")
+        # Get SCAFFOLD header metadata
+        first_line = result.content.split("\n")[0]
+        template_name, version, timestamp, output_path = self._parse_scaffold_header(
+            first_line, expected_extension, artifact_type
+        )
 
-        # REQUIREMENT: First line must be SCAFFOLD header
-        first_line = lines[0]
+        # REQUIREMENT 1: template_name matches artifact type
+        assert (
+            template_name == artifact_type
+        ), f"{artifact_type}: Expected template={artifact_type}, got {template_name}"
 
-        if expected_extension == ".py":
-            # Python format: # SCAFFOLD: ...
-            assert first_line.startswith("# SCAFFOLD:"), \
-                f"{artifact_type}: SCAFFOLD header must start with '# SCAFFOLD:'"
-
-            # Extract metadata (flexible matching for spaces in path)
-            header_pattern = r"# SCAFFOLD: template=(\S+) version=(\S+) created=(\S+) path=(.+)"
-            match = re.match(header_pattern, first_line)
-            assert match, \
-                f"{artifact_type}: SCAFFOLD header format invalid. Got: {first_line}"
-
-            template_name, version, timestamp, output_path = match.groups()
-            output_path = output_path.strip()  # Remove trailing whitespace
-
-        elif expected_extension == ".md":
-            # Markdown format: <!-- SCAFFOLD: ... -->
-            assert first_line.startswith("<!-- SCAFFOLD:"), \
-                f"{artifact_type}: SCAFFOLD header must start with '<!-- SCAFFOLD:'"
-            assert first_line.endswith("-->"), \
-                f"{artifact_type}: SCAFFOLD header must end with '-->'"
-
-            # Extract metadata (flexible matching for spaces in path)
-            header_pattern = r"<!-- SCAFFOLD: template=(\S+) version=(\S+) created=(\S+) path=(.+) -->"
-            match = re.match(header_pattern, first_line)
-            assert match, \
-                f"{artifact_type}: SCAFFOLD header format invalid. Got: {first_line}"
-
-            template_name, version, timestamp, output_path = match.groups()
-            output_path = output_path.strip()  # Remove trailing whitespace
-
-        # REQUIREMENT: template name must match artifact_type
-        assert template_name == artifact_type, \
-            f"{artifact_type}: template name mismatch. Expected: {artifact_type}, Got: {template_name}"
-
-        # REQUIREMENT: version must be present (format: X.Y or X.Y.Z)
+        # REQUIREMENT 2: version must be present (format: X.Y or X.Y.Z)
         version_pattern = r"^\d+\.\d+(\.\d+)?$"
-        assert re.match(version_pattern, version), \
-            f"{artifact_type}: version format invalid. Expected: X.Y or X.Y.Z, Got: {version}"
+        assert (
+            re.match(version_pattern, version)
+        ), f"{artifact_type}: version invalid: {version}"
 
-        # REQUIREMENT: timestamp must be ISO 8601 format
+        # REQUIREMENT 3: timestamp must be ISO 8601 format
         try:
             datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
         except ValueError as exc:
-            pytest.fail(
-                f"{artifact_type}: timestamp format invalid. Expected ISO 8601, Got: {timestamp}. Error: {exc}"
-            )
+            pytest.fail(f"{artifact_type}: timestamp invalid: {timestamp} ({exc})")
 
-        # REQUIREMENT: output_path must have correct extension
-        assert output_path.endswith(expected_extension), \
-            f"{artifact_type}: output_path extension mismatch. Expected: {expected_extension}, Got: {output_path}"
+        # REQUIREMENT 4: output_path must have correct extension
+        assert (
+            output_path.endswith(expected_extension)
+        ), f"{artifact_type}: path extension mismatch: {output_path}"
 
     @pytest.mark.parametrize("artifact_type", [
         "dto",
@@ -144,8 +161,8 @@ class TestProvenanceE2E:
         renderer = JinjaRenderer(template_dir=template_root)
         scaffolder = TemplateScaffolder(registry=registry_config, renderer=renderer)
 
-        # Scaffold artifact
-        result = scaffolder.scaffold(
+        # Scaffold artifact (result not needed - just verify templates exist)
+        _ = scaffolder.scaffold(
             artifact_type=artifact_type,
             name=f"Test{artifact_type.title()}",
             title=f"Test {artifact_type.title()} Document" if artifact_type == "design" else None,
@@ -197,8 +214,8 @@ class TestProvenanceE2E:
         renderer = JinjaRenderer(template_dir=template_root)
         scaffolder = TemplateScaffolder(registry=registry_config, renderer=renderer)
 
-        # Scaffold design doc
-        result = scaffolder.scaffold(
+        # Scaffold design doc (result not needed - just verify templates exist)
+        _ = scaffolder.scaffold(
             artifact_type="design",
             name="TestDesign",
             title="Test Design Document",
