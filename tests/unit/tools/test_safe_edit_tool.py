@@ -324,7 +324,7 @@ class TestSafeEditTool:
         # Task 1: line 1 → task 1 line 1
         # Task 2: task 1 line 1 → task 2 line 1  (proves task 1 finished first)
         # Task 3: task 2 line 1 → task 3 line 1  (proves task 2 finished second)
-        task1_diff = edit_results[0]["result"].content[0]["text"]
+        #  task1_diff would check task 1 vs original, but sequential execution is proven by task2/task3
         task2_diff = edit_results[1]["result"].content[0]["text"]
         task3_diff = edit_results[2]["result"].content[0]["text"]
         

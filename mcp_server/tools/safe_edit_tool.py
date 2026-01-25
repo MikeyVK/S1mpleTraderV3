@@ -54,7 +54,13 @@ class SafeEditInput(BaseModel):
     path: str = Field(..., description="Absolute path to the file")
     content: str | None = Field(None, description="New content for the file (full rewrite)")
     line_edits: list[LineEdit] | None = Field(
-        None, description="List of line-based edits (chirurgical edits)"
+        None,
+        description=(
+            "List of line-based edits (chirurgical edits). "
+            "⚠️ CRITICAL: Bundle ALL edits for the same file in ONE call! "
+            "Multiple sequential calls will cause race conditions. "
+            "File-level mutex protection enforces sequential execution."
+        )
     )
     insert_lines: list[InsertLine] | None = Field(
         None, description="List of line insert operations"
@@ -134,6 +140,12 @@ class SafeEditTool(BaseTool):
     - Validation modes: strict (reject on error) / interactive (warn) / verify_only (dry-run)
     - Diff preview: Shows unified diff before applying changes (default: enabled)
     - Validator integration: PythonValidator, MarkdownValidator, TemplateValidator
+    
+    **IMPORTANT - Concurrent Edit Protection:**
+    - File-level mutex prevents race conditions
+    - Bundle multiple edits in ONE call using line_edits list
+    - Sequential calls on same file will wait for lock (10ms timeout)
+    - Example: [{"start_line": 1, "end_line": 1, "new_content": "..."}, ...]
     """
 
     name = "safe_edit_file"
@@ -166,13 +178,10 @@ class SafeEditTool(BaseTool):
         """
         # Normalize path for lock key
         file_key = str(Path(params.path).resolve())
-        
         # Get or create lock for this file
         if file_key not in self._file_locks:
             self._file_locks[file_key] = asyncio.Lock()
-        
         file_lock = self._file_locks[file_key]
-        
         # Try to acquire lock with timeout
         try:
             async with asyncio.timeout(0.01):  # 10ms timeout - very aggressive
@@ -192,7 +201,9 @@ class SafeEditTool(BaseTool):
                     # Generate diff if requested
                     diff_output = ""
                     if params.show_diff:
-                        diff_output = self._generate_diff(params.path, original_content, new_content)
+                        diff_output = self._generate_diff(
+                            params.path, original_content, new_content
+                        )
 
                     # Validate new content
                     passed, issues_text = await self._validate(params.path, new_content)
@@ -206,7 +217,9 @@ class SafeEditTool(BaseTool):
                         return self._build_rejection_response(issues_text, diff_output)
 
                     # Write file (strict+passed or interactive)
-                    return self._write_and_respond(params.path, new_content, passed, issues_text, diff_output)
+                    return self._write_and_respond(
+                        params.path, new_content, passed, issues_text, diff_output
+                    )
         except TimeoutError:
             return ToolResult.error(
                 f"❌ File '{params.path}' is already being edited. "
@@ -467,9 +480,9 @@ class SafeEditTool(BaseTool):
         preview = "**File Preview (first 10 lines):**\n"
         for i, line in enumerate(lines, 1):
             preview += f"{i:3}: {line}\n"
-        
+
         total_lines = len(content.splitlines())
         if total_lines > max_lines:
             preview += f"... ({total_lines} total lines)\n"
-        
+
         return preview
