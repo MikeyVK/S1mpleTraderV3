@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 # Project modules
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
@@ -55,7 +56,6 @@ class TemplateScaffolder(BaseScaffolder):
 
         # Initialize renderer with configurable template root (fail-fast)
         if renderer is None:
-            from mcp_server.config.template_config import get_template_root
             template_dir = get_template_root()
             renderer = JinjaRenderer(template_dir=template_dir)
         self._renderer = renderer
@@ -251,7 +251,7 @@ class TemplateScaffolder(BaseScaffolder):
             Format string: "python", "yaml", "markdown", "shell", etc.
         """
         extension = artifact.file_extension.lstrip(".")
-        
+
         # Map file extensions to format names
         format_map = {
             "py": "python",
@@ -261,5 +261,5 @@ class TemplateScaffolder(BaseScaffolder):
             "sh": "shell",
             "bash": "shell",
         }
-        
+
         return format_map.get(extension, "markdown")  # Default to markdown (<!-- -->)
