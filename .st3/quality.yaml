@@ -29,7 +29,7 @@ gates:
     name: "Pyright"
     description: "Type checking"
     execution:
-      command: ["pyright", "--outputjson"]
+      command: ["pyright", "--project", "pyrightconfig.json", "--outputjson"]
       timeout_seconds: 120
       working_dir: null
     parsing:

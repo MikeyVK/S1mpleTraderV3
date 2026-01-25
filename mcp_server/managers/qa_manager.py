@@ -325,10 +325,29 @@ class QAManager:
                 check=False,
             )
 
-            issues = self._parse_pyright_output(proc.stdout or "")
-            result["issues"] = issues
-            result["passed"] = not issues
-            result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
+            # Combine stdout + stderr for robust parsing
+            combined_output = (proc.stdout or "") + (proc.stderr or "")
+
+            # Fail hard on non-zero exit code
+            if proc.returncode:
+                result["passed"] = False
+                # Parse output for specific errors, but always mark as failed
+                issues = self._parse_pyright_output(combined_output)
+                if not issues:
+                    # No diagnostics parsed - add generic failure message with context
+                    preview = "\n".join(combined_output.split("\n")[:20])
+                    issues = [{
+                        "message": f"Pyright failed (exit code {proc.returncode})",
+                        "details": preview if preview else "No output captured"
+                    }]
+                result["issues"] = issues
+                result["score"] = f"Fail ({len(issues)} errors)"
+            else:
+                # Exit code 0 - parse diagnostics normally
+                issues = self._parse_pyright_output(combined_output)
+                result["issues"] = issues
+                result["passed"] = not issues
+                result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
 
         except subprocess.TimeoutExpired:
             result["passed"] = False
