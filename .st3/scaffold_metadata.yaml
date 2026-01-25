@@ -38,9 +38,9 @@ metadata_fields:
     format_regex: "^[a-z0-9_-]+$"
     required: true
   
-  # Template version (required)
+  # Template version (required) - now version_hash (Issue #72)
   - name: version
-    format_regex: "^\\d+\\.\\d+$"
+    format_regex: "^[0-9a-f]{8}$"
     required: true
   
   # Creation timestamp (required)
