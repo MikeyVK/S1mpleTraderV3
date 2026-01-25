@@ -18,19 +18,18 @@ TEMPLATE_METADATA:
     variables:
       required:
         - artifact_type
-        - version_hash
         - timestamp
         - output_path
         - format
+      optional:
+        - template_version
     exports_blocks:
-      - scaffold_metadata
       - content
 -#}
-{%- block scaffold_metadata -%}
+{% block content %}
 {%- set comment_start = "#" if format in ["python", "yaml", "shell"] else "<!--" -%}
 {%- set comment_end = "" if format in ["python", "yaml", "shell"] else " -->" -%}
-{{comment_start}} SCAFFOLD: {{artifact_type}}:{{version_hash}} | {{timestamp}} | {{output_path}}{{comment_end}}
-{%- endblock -%}
-{%- block content -%}
-{#- Child templates override this block -#}
-{%- endblock -%}
+{{comment_start}} SCAFFOLD: template={{artifact_type}} version={{template_version | default("1.0")}} created={{timestamp}} path={{output_path}}{{comment_end}}{{ "\n" }}
+
+{#- Child templates extend content here -#}
+{% endblock %}

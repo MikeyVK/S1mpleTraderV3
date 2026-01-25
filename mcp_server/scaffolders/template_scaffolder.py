@@ -157,8 +157,12 @@ class TemplateScaffolder(BaseScaffolder):
             )
 
         # Render template via JinjaRenderer (safe FileSystemLoader)
+        # Add artifact_type to render context (needed by Tier 0 SCAFFOLD block)
         # Remove template_name from context to avoid conflict
-        render_context = {k: v for k, v in kwargs.items() if k != "template_name"}
+        render_context = {
+            **{k: v for k, v in kwargs.items() if k != "template_name"},
+            "artifact_type": artifact_type
+        }
         rendered = self._load_and_render_template(template_path, **render_context)
 
         # Construct filename (docs use 'title', code uses 'name')

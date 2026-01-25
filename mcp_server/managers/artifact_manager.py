@@ -116,6 +116,19 @@ class ArtifactManager:
         # Add metadata fields
         enriched["template_id"] = artifact_type
 
+        # Determine format from file extension (for SCAFFOLD comment syntax)
+        extension = artifact.file_extension
+        if extension in [".py"]:
+            enriched["format"] = "python"
+        elif extension in [".yaml", ".yml"]:
+            enriched["format"] = "yaml"
+        elif extension in [".sh", ".bash"]:
+            enriched["format"] = "shell"
+        elif extension in [".md"]:
+            enriched["format"] = "markdown"
+        else:
+            enriched["format"] = "python"  # Default to Python comment style
+
         # Generate ISO 8601 UTC timestamp with Z suffix
         now_utc = datetime.now(timezone.utc)
         enriched["scaffold_created"] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -188,19 +201,24 @@ class ArtifactManager:
         enriched_context = self._enrich_context(artifact_type, context)
 
         # 2. Scaffold artifact with enriched context
-        result = self.scaffolder.scaffold(artifact_type, **enriched_context)
+        # NOTE: artifact_type is passed as positional arg, so remove from kwargs to avoid duplicate
+        scaffold_kwargs = {k: v for k, v in enriched_context.items() if k != "artifact_type"}
+        result = self.scaffolder.scaffold(artifact_type, **scaffold_kwargs)
 
         # 3. Get artifact definition to determine validation policy
         artifact = self.registry.get_artifact(artifact_type)
         
         # Task 1.1c: Save to registry for provenance tracking
         if self.template_registry is not None:
+            # Convert tier_chain to tier_versions dict format
+            # tier_chain: list[tuple[str, str]] = [("concrete", "dto"), ("tier2", "tier2_base_python"), ...]
+            # tier_versions: dict[str, tuple[str, str]] = {"concrete": ("dto", "1.0"), "tier2": ("tier2_base_python", "1.0"), ...}
+            tier_versions = {tier: (template_id, "1.0") for tier, template_id in tier_chain}
+            
             self.template_registry.save_version(
                 artifact_type=artifact_type,
                 version_hash=version_hash,
-                tier_chain=tier_chain,
-                concrete_template=template_file,
-                timestamp=timestamp
+                tier_versions=tier_versions
             )
 
         # 4. Resolve output path (needed for path-based validation)

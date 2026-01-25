@@ -113,9 +113,10 @@ class TestArtifactManagerMetadataEnrichment:
         self, manager: ArtifactManager
     ) -> None:
         """RED: scaffold_artifact() should call _enrich_context()."""
-        # Mock scaffolder to avoid template rendering
+        # Mock scaffolder to return content WITH valid SCAFFOLD header (for validation)
         manager.scaffolder = Mock()
-        manager.scaffolder.scaffold.return_value = Mock(content="# Generated content")
+        mock_content = "# SCAFFOLD: template=dto version=1.0 created=2026-01-24T10:00:00Z path=test.py\nclass UserDTO: pass"
+        manager.scaffolder.scaffold.return_value = Mock(content=mock_content)
 
         context = {"name": "UserDTO"}
         await manager.scaffold_artifact("dto", **context)
@@ -125,5 +126,5 @@ class TestArtifactManagerMetadataEnrichment:
         call_kwargs = call_args[1]  # Keyword arguments
 
         assert "template_id" in call_kwargs
-        assert "template_version" in call_kwargs
+        assert "version_hash" in call_kwargs  # Manager injects version_hash (not template_version)
         assert "scaffold_created" in call_kwargs
