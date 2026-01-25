@@ -149,19 +149,20 @@ class ArtifactManager:
         return enriched
 
     def _extract_tier_chain(self, template_file: str) -> list[tuple[str, str]]:
-        """Extract tier chain from template inheritance hierarchy (QA-4).
+        """Extract tier chain with real template names and versions from TEMPLATE_METADATA.
         
-        Uses TemplateAnalyzer to walk inheritance chain and extract tier info.
+        CRITICAL: compute_version_hash() expects [(template_name, version), ...]
+        NOT [(tier, template_id), ...]. We must extract version from TEMPLATE_METADATA.
         
         Args:
             template_file: Relative path to template (e.g., "concrete/dto.py.jinja2")
             
         Returns:
-            List of (tier, template_id) tuples from concrete to tier0.
-            Example: [("concrete", "dto"), ("tier2", "tier2_base_python"), ...]
+            List of (template_name, version) tuples from concrete to tier0.
+            Example: [("dto", "1.0"), ("tier2_base_python", "2.0"), ...]
             
         Note:
-            Returns empty list if template_analyzer fails (pragmatic fallback).
+            Returns empty list if extraction fails (pragmatic fallback to avoid blocking).
         """
         try:
             # Get templates root
@@ -179,22 +180,27 @@ class ArtifactManager:
             
             chain_paths = analyzer.get_inheritance_chain(template_path)
             
-            # Extract tier info from each path
+            # Extract (template_name, version) from TEMPLATE_METADATA in each template
             tier_chain: list[tuple[str, str]] = []
             for path in chain_paths:
-                relative = path.relative_to(template_root)
-                parts = relative.parts
-                
-                # Determine tier from path structure
-                if len(parts) >= 2 and parts[0] in ("concrete", "tier1", "tier2", "tier3", "tier0"):
-                    tier = parts[0]
-                    template_id = path.stem  # Remove .jinja2 suffix
-                    tier_chain.append((tier, template_id))
-                else:
-                    # Fallback: use filename as tier
-                    tier = "unknown"
-                    template_id = path.stem
-                    tier_chain.append((tier, template_id))
+                # Read template content to extract TEMPLATE_METADATA
+                try:
+                    template_content = path.read_text(encoding="utf-8")
+                    metadata = analyzer.extract_metadata(template_content)
+                    
+                    # Get template name (stem without .jinja2 suffix)
+                    template_name = path.stem
+                    
+                    # Get version from metadata (default to "1.0" if missing)
+                    version = metadata.get("version", "1.0") if metadata else "1.0"
+                    
+                    tier_chain.append((template_name, version))
+                    
+                except Exception as e:
+                    # Log but continue - use fallback for this template
+                    logger.warning(f"Failed to read metadata from {path}: {e}")
+                    template_name = path.stem
+                    tier_chain.append((template_name, "1.0"))
             
             return tier_chain
             
@@ -202,6 +208,60 @@ class ArtifactManager:
             # Pragmatic: log and return empty list (don't block scaffolding)
             logger.warning(f"Failed to extract tier chain for {template_file}: {e}")
             return []
+
+    def _build_tier_versions_dict(
+        self,
+        template_file: str,
+        tier_chain: list[tuple[str, str]]
+    ) -> dict[str, tuple[str, str]]:
+        """Build tier_versions dict for registry from tier_chain.
+        
+        Args:
+            template_file: Relative template path for tier inference
+            tier_chain: List of (template_name, version) tuples
+            
+        Returns:
+            Dict mapping tier names to (template_id, version) tuples.
+            Example: {"concrete": ("dto", "1.0"), "tier2": ("tier2_base_python", "2.0")}
+        """
+        tier_versions: dict[str, tuple[str, str]] = {}
+        
+        try:
+            parent = Path(__file__).parent.parent
+            template_root = parent / "scaffolding" / "templates"
+            analyzer = TemplateAnalyzer(template_root=template_root)
+            
+            template_path = template_root / template_file
+            if not template_path.exists():
+                return {}
+            
+            chain_paths = analyzer.get_inheritance_chain(template_path)
+            
+            # Map each path to its tier and combine with version from tier_chain
+            for idx, path in enumerate(chain_paths):
+                if idx >= len(tier_chain):
+                    break
+                    
+                relative = path.relative_to(template_root)
+                parts = relative.parts
+                
+                # Determine tier from path structure
+                if len(parts) >= 2 and parts[0] in ("concrete", "tier0", "tier1", "tier2", "tier3"):
+                    tier = parts[0]
+                elif len(parts) == 1:
+                    # Top-level template (unlikely but handle gracefully)
+                    tier = "tier0"
+                else:
+                    # Unknown structure - skip
+                    continue
+                
+                template_name, version = tier_chain[idx]
+                tier_versions[tier] = (template_name, version)
+                
+        except Exception as e:
+            logger.warning(f"Failed to build tier_versions dict: {e}")
+            
+        return tier_versions
 
     async def scaffold_artifact(
         self,
@@ -273,10 +333,9 @@ class ArtifactManager:
         
         # Task 1.1c: Save to registry for provenance tracking
         if self.template_registry is not None:
-            # Convert tier_chain to tier_versions dict format
-            # tier_chain: list[tuple[str, str]] = [("concrete", "dto"), ("tier2", "tier2_base_python"), ...]
-            # tier_versions: dict[str, tuple[str, str]] = {"concrete": ("dto", "1.0"), "tier2": ("tier2_base_python", "1.0"), ...}
-            tier_versions = {tier: (template_id, "1.0") for tier, template_id in tier_chain}
+            # Build tier_versions dict with real versions from TEMPLATE_METADATA
+            # Uses _build_tier_versions_dict to map tier names to (template_id, version)
+            tier_versions = self._build_tier_versions_dict(template_file, tier_chain)
             
             self.template_registry.save_version(
                 artifact_type=artifact_type,

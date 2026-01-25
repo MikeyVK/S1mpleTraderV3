@@ -199,23 +199,20 @@ class TestScaffold:
         self,
         scaffolder: TemplateScaffolder
     ) -> None:
-        """Scaffold Worker appends name_suffix to filename."""
-        # Skip: Worker template not yet implemented (template_path=null)
-        pytest.skip("Worker template not yet implemented - template_path=null in artifacts.yaml")
-        result = scaffolder.scaffold(
-            artifact_type="worker",
-            name="Process",
-            input_dto="InputDTO",
-            output_dto="OutputDTO",
-            dependencies=[],  # Required by worker template
-            responsibilities="Process input data"  # Required by worker template
-        )
-
-        # Verify suffix logic (from artifacts.yaml: name_suffix="Worker")
-        assert result.file_name == "ProcessWorker.py"
-        # Concrete template uses plain class (not BaseWorker inheritance)
-        assert "class Process:" in result.content
-        assert "async def execute" in result.content
+        """Scaffold Worker raises ValidationError when template_path is null (fail-fast)."""
+        from mcp_server.core.exceptions import ValidationError
+        
+        # Worker template not yet implemented (template_path=null in artifacts.yaml)
+        # Should fail-fast with clear error message (QA-2 null guard)
+        with pytest.raises(ValidationError, match=r"No template configured for artifact type: worker"):
+            scaffolder.scaffold(
+                artifact_type="worker",
+                name="Process",
+                input_dto="InputDTO",
+                output_dto="OutputDTO",
+                dependencies=[],
+                responsibilities="Process input data"
+            )
 
     def test_scaffold_design_doc_uses_markdown_extension(
         self,
