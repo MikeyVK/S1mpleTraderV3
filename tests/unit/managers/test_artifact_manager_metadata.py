@@ -128,3 +128,23 @@ class TestArtifactManagerMetadataEnrichment:
         assert "template_id" in call_kwargs
         assert "version_hash" in call_kwargs  # Manager injects version_hash (not template_version)
         assert "scaffold_created" in call_kwargs
+
+
+class TestArtifactManagerNullTemplate:
+    """Test fail-fast guard for null template_path (QA-2)."""
+
+    @pytest.fixture
+    def manager(self, tmp_path: Path) -> ArtifactManager:
+        """Create manager with workspace_root set."""
+        return ArtifactManager(workspace_root=str(tmp_path))
+
+    @pytest.mark.asyncio
+    async def test_scaffold_raises_config_error_for_null_template_path(
+        self, manager: ArtifactManager
+    ) -> None:
+        """QA-2: scaffold_artifact should fail fast if template_path is null."""
+        from mcp_server.core.exceptions import ConfigError
+
+        # Worker artifact has template_path = null in artifacts.yaml
+        with pytest.raises(ConfigError, match=r"Artifact type 'worker' has no template configured"):
+            await manager.scaffold_artifact("worker", name="TestWorker")

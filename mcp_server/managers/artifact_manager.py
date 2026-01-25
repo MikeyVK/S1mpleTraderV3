@@ -174,6 +174,13 @@ class ArtifactManager:
         artifact = self.registry.get_artifact(artifact_type)
         template_file = artifact.template_path
         
+        # QA-2: Fail-fast if template_path is null (not yet implemented)
+        if template_file is None:
+            raise ConfigError(
+                f"Artifact type '{artifact_type}' has no template configured (template_path=null). "
+                f"This artifact type is not yet implemented."
+            )
+        
         # Get tier chain (empty for now - will be filled by introspection in Task 1.6b)
         tier_chain: list[tuple[str, str]] = []
         
