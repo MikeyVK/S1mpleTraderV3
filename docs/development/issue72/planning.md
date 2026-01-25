@@ -245,12 +245,13 @@ Break down research findings from Issue #72 into **actionable implementation tas
 **Duration:** ~2 weeks (80h → **revised 95h**)  
 **Dependencies:** None (can start immediately)
 
-**✅ PROGRESS UPDATE (2026-01-23):**
-Phase 1 is **75% complete** - core registry/hash/provenance infrastructure implemented:
+**✅ PROGRESS UPDATE (2026-01-25):**
+Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA alignment done:
 - ✅ Task 1.1: TemplateRegistry class complete (all methods: save_version, lookup_hash, get_current_version)
 - ✅ Task 1.1b: compute_version_hash() fixed - extracts real template versions (no "concrete" placeholder)
 - ✅ Task 1.1c: Registry integrated in scaffold_artifact() flow - computes hash, injects context, saves registry
 - ✅ Task 1.5b: ArtifactDefinition.version removed - conceptual clarity (artifacts.yaml = selection, registry = provenance)
+- ✅ QA Alignment: Quality gates 10/10 achieved - pytest fixture aliasing pattern, dataclass refactor
 
 **⚠️ REMAINING GAPS (P0 for Phase 1 DoD):**
 - ❌ tier_chain still empty (`[]`) in scaffold flow - hash not fully traceable yet
