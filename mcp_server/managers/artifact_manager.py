@@ -183,10 +183,9 @@ class ArtifactManager:
             # Extract (template_name, version) from TEMPLATE_METADATA in each template
             tier_chain: list[tuple[str, str]] = []
             for path in chain_paths:
-                # Read template content to extract TEMPLATE_METADATA
+                # Extract metadata from template file (API expects Path, not string)
                 try:
-                    template_content = path.read_text(encoding="utf-8")
-                    metadata = analyzer.extract_metadata(template_content)
+                    metadata = analyzer.extract_metadata(path)
                     
                     # Get template name (stem without .jinja2 suffix)
                     template_name = path.stem
