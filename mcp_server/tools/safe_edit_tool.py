@@ -235,17 +235,11 @@ class SafeEditTool(BaseTool):
                 if params.mode == "strict" and not count:
                     # Build error with context
                     error_msg = f"❌ Pattern '{params.search}' not found in file\n\n"
-                    error_msg += "**File Preview (first 10 lines):**\n"
-                    lines = original.splitlines()[:10]
-                    for i, line in enumerate(lines, 1):
-                        error_msg += f"{i:3}: {line}\n"
-                    if len(original.splitlines()) > 10:
-                        error_msg += f"... ({len(original.splitlines())} total lines)\n"
+                    error_msg += self._build_file_context_preview(original)
                     return ToolResult.error(error_msg)
                 return new_content
             except (ValueError, re.error) as e:
                 return ToolResult.error(f"Search/replace failed: {e}")
-
         return ToolResult.error(
             "Must provide 'content', 'line_edits', 'insert_lines', or 'search' + 'replace'"
         )
@@ -418,3 +412,24 @@ class SafeEditTool(BaseTool):
     async def _validate(self, path: str, content: str) -> tuple[bool, str]:
         """Delegate validation to ValidationService."""
         return await self.validation_service.validate(path, content)
+
+    def _build_file_context_preview(self, content: str, max_lines: int = 10) -> str:
+        """Build file preview for error messages (DRY helper).
+        
+        Args:
+            content: File content to preview.
+            max_lines: Maximum number of lines to show.
+            
+        Returns:
+            Formatted preview string with line numbers.
+        """
+        lines = content.splitlines()[:max_lines]
+        preview = "**File Preview (first 10 lines):**\n"
+        for i, line in enumerate(lines, 1):
+            preview += f"{i:3}: {line}\n"
+        
+        total_lines = len(content.splitlines())
+        if total_lines > max_lines:
+            preview += f"... ({total_lines} total lines)\n"
+        
+        return preview
