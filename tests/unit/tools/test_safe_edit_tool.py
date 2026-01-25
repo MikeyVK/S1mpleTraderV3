@@ -228,3 +228,44 @@ class TestSafeEditTool:
         finally:
             # Cleanup
             Path(temp_path).unlink(missing_ok=True)
+
+    @pytest.mark.asyncio
+    async def test_pattern_not_found_shows_context(self, tool: SafeEditTool) -> None:
+        """Test that 'Pattern not found' error shows file context (Issue #125 - Priority 2)."""
+        import tempfile
+        from pathlib import Path
+        
+        # Create temp file with content
+        content = """# Header\nline 1\nline 2\nline 3\nline 4\nline 5\n"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write(content)
+            temp_path = f.name
+        
+        try:
+            # Try to replace pattern that doesn't exist
+            result = await tool.execute(
+                SafeEditInput(
+                    path=temp_path,
+                    search="this pattern does not exist",
+                    replace="new text",
+                    mode="strict"
+                )
+            )
+            
+            # Check error message includes context
+            assert result.is_error, "Expected error result"
+            text = result.content[0]["text"]
+            print(f"\n\n=== ERROR TEXT ===\n{text}\n=== END ===\n\n")
+            
+            # Should mention pattern not found
+            assert "not found" in text.lower(), f"Expected 'not found' in error\n{text}"
+            
+            # NEW: Should show file preview (first N lines)
+            # This is the FAILING part - current code doesn't show context
+            assert "# Header" in text or "line 1" in text, (
+                f"Expected file context in error message\n{text}"
+            )
+            
+        finally:
+            # Cleanup
+            Path(temp_path).unlink(missing_ok=True)
