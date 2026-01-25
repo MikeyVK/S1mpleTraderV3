@@ -233,7 +233,15 @@ class SafeEditTool(BaseTool):
             try:
                 new_content, count = self._apply_search_replace(params, original)
                 if params.mode == "strict" and not count:
-                    return ToolResult.error(f"Pattern '{params.search}' not found in file")
+                    # Build error with context
+                    error_msg = f"❌ Pattern '{params.search}' not found in file\n\n"
+                    error_msg += "**File Preview (first 10 lines):**\n"
+                    lines = original.splitlines()[:10]
+                    for i, line in enumerate(lines, 1):
+                        error_msg += f"{i:3}: {line}\n"
+                    if len(original.splitlines()) > 10:
+                        error_msg += f"... ({len(original.splitlines())} total lines)\n"
+                    return ToolResult.error(error_msg)
                 return new_content
             except (ValueError, re.error) as e:
                 return ToolResult.error(f"Search/replace failed: {e}")
