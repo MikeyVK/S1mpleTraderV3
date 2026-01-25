@@ -28,6 +28,7 @@ from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from mcp_server.scaffolding.version_hash import compute_version_hash
 from mcp_server.validation.validation_service import ValidationService
 
 logger = logging.getLogger(__name__)
@@ -185,7 +186,6 @@ class ArtifactManager:
         tier_chain: list[tuple[str, str]] = []
         
         # Compute version hash
-        from mcp_server.scaffolding.version_hash import compute_version_hash
         version_hash = compute_version_hash(
             artifact_type=artifact_type,
             template_file=template_file or "",
