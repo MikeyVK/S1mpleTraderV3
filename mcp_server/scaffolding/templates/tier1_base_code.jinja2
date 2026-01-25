@@ -1,6 +1,6 @@
 {#- tier1_base_code.jinja2 - Base template for code artifacts -#}
-{#- Version: 1.1.0 -#}
-{#- Purpose: Provides imports, class structure, function blocks -#}
+{#- Version: 1.2.0 -#}
+{#- Purpose: Provides module docstring, imports, class structure, function blocks -#}
 {%- extends "tier0_base_artifact.jinja2" -%}
 
 {#-
@@ -15,8 +15,8 @@ TEMPLATE_METADATA:
       - "^def "
       - "^async def "
   extends: tier0_base_artifact.jinja2
-  purpose: "Format base for code artifacts - provides structural blocks"
-  version: "1.1.0"
+  purpose: "Format base for code artifacts - provides module docstring, imports, and structural blocks"
+  version: "1.2.0"
   introspection:
     template_id: tier1_base_code
     tier: 1
@@ -27,7 +27,13 @@ TEMPLATE_METADATA:
         - class_docstring
       optional:
         - imports
+        - layer
+        - dependencies
+        - responsibilities
+        - module_title
+        - module_description
     exports_blocks:
+      - module_docstring
       - imports_section
       - class_structure
       - methods
@@ -35,26 +41,60 @@ TEMPLATE_METADATA:
 
 {% block content -%}
 {{ super() }}
+
+{%- block module_docstring -%}
+"""
+{%- if module_title %}
+{{ module_title }}.
+{%- else %}
+{{ class_name }} module.
+{%- endif %}
+
+{%- if module_description %}
+
+{{ module_description }}
+{%- endif %}
+
+{%- if layer %}
+
+@layer: {{ layer }}
+{%- endif %}
+{%- if dependencies %}
+@dependencies: [{{ dependencies | join(', ') }}]
+{%- endif %}
+{%- if responsibilities %}
+@responsibilities:
+{%- for responsibility in responsibilities %}
+    - {{ responsibility }}
+{%- endfor %}
+{%- endif %}
+"""
+
+{%- endblock -%}
+
 {%- block imports_section -%}
-{# Standard library imports #}
+{%- if imports and (imports.stdlib or imports.third_party or imports.project) %}
+
+# Standard library
 {%- if imports and imports.stdlib -%}
 {%- for imp in imports.stdlib %}
 {{ imp }}
 {%- endfor -%}
 {%- endif %}
 
-{# Third-party imports #}
+# Third-party
 {%- if imports and imports.third_party -%}
 {%- for imp in imports.third_party %}
 {{ imp }}
 {%- endfor -%}
 {%- endif %}
 
-{# Project imports #}
+# Project modules
 {%- if imports and imports.project -%}
 {%- for imp in imports.project %}
 {{ imp }}
 {%- endfor -%}
+{%- endif -%}
 {%- endif -%}
 {%- endblock -%}
 

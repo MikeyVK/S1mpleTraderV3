@@ -158,10 +158,13 @@ class TemplateScaffolder(BaseScaffolder):
 
         # Render template via JinjaRenderer (safe FileSystemLoader)
         # Add artifact_type to render context (needed by Tier 0 SCAFFOLD block)
+        # Add format (determines comment style in SCAFFOLD header)
         # Remove template_name from context to avoid conflict
+        format_value = self._determine_format(artifact)
         render_context = {
             **{k: v for k, v in kwargs.items() if k != "template_name"},
-            "artifact_type": artifact_type
+            "artifact_type": artifact_type,
+            "format": format_value
         }
         rendered = self._load_and_render_template(template_path, **render_context)
 
@@ -237,3 +240,26 @@ class TemplateScaffolder(BaseScaffolder):
         # Let ExecutionError propagate - semantically correct
         # (template loading is execution/config, not input validation)
         return self._renderer.render(template_name, **kwargs)
+
+    def _determine_format(self, artifact: Any) -> str:
+        """Determine format for SCAFFOLD header comment style.
+
+        Args:
+            artifact: Artifact definition
+
+        Returns:
+            Format string: "python", "yaml", "markdown", "shell", etc.
+        """
+        extension = artifact.file_extension.lstrip(".")
+        
+        # Map file extensions to format names
+        format_map = {
+            "py": "python",
+            "yaml": "yaml",
+            "yml": "yaml",
+            "md": "markdown",
+            "sh": "shell",
+            "bash": "shell",
+        }
+        
+        return format_map.get(extension, "markdown")  # Default to markdown (<!-- -->)

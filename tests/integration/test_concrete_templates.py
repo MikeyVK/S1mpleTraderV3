@@ -199,13 +199,18 @@ class TestScaffoldedOutputCodingStandards:
         renderer = JinjaRenderer(template_dir=get_template_root())
         scaffolder = TemplateScaffolder(registry=registry, renderer=renderer)
         
-        # Scaffold generic class
+        # Scaffold generic class WITH imports to test section headers
         result = scaffolder.scaffold(
             artifact_type="generic",
             name="TestClass",
             layer="Backend (Utils)",
             dependencies=["os", "sys"],
-            responsibilities=["Utility functionality"]
+            responsibilities=["Utility functionality"],
+            imports={
+                "stdlib": ["import os", "import sys"],
+                "third_party": ["from typing import Any"],
+                "project": ["from backend.core import Something"]
+            }
         )
         
         content = result.content
@@ -215,7 +220,7 @@ class TestScaffoldedOutputCodingStandards:
         assert "@dependencies:" in content
         assert "@responsibilities:" in content
         
-        # REQUIREMENT 2: Import section headers
+        # REQUIREMENT 2: Import section headers (only when imports present)
         assert "# Standard library" in content
         assert "# Third-party" in content
         assert "# Project modules" in content
