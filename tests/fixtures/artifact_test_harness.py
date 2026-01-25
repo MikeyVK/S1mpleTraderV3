@@ -40,6 +40,11 @@ def temp_workspace(
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
+    # Set TEMPLATE_ROOT to actual project templates (not relative to temp CWD)
+    project_root = Path(__file__).parent.parent.parent
+    template_root = project_root / "mcp_server" / "scaffolding" / "templates"
+    monkeypatch.setenv("TEMPLATE_ROOT", str(template_root))
+
     # Change CWD to workspace (template paths are relative)
     monkeypatch.chdir(workspace)
 
