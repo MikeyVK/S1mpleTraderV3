@@ -11,7 +11,10 @@ Documents requirement that 5 concrete templates must exist and scaffold successf
 
 import pytest
 
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.template_config import get_template_root
+from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from mcp_server.scaffolding.renderer import JinjaRenderer
 
 
 class TestConcreteTemplateExistence:
@@ -72,11 +75,6 @@ class TestScaffoldedOutputCodingStandards:
         
         RED: This test WILL FAIL until tier1_base_code adds module_docstring block.
         """
-        from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
-        from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-        from mcp_server.scaffolding.renderer import JinjaRenderer
-        from mcp_server.config.template_config import get_template_root
-
         # Setup scaffolder
         registry = ArtifactRegistryConfig.from_file()
         renderer = JinjaRenderer(template_dir=get_template_root())
@@ -148,11 +146,6 @@ class TestScaffoldedOutputCodingStandards:
         
         RED: This test WILL FAIL until tier1_base_code adds section headers.
         """
-        from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
-        from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-        from mcp_server.scaffolding.renderer import JinjaRenderer
-        from mcp_server.config.template_config import get_template_root
-
         # Setup scaffolder
         registry = ArtifactRegistryConfig.from_file()
         renderer = JinjaRenderer(template_dir=get_template_root())
@@ -187,11 +180,6 @@ class TestScaffoldedOutputCodingStandards:
         
         RED: This test WILL FAIL until both features are implemented.
         """
-        from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
-        from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
-        from mcp_server.scaffolding.renderer import JinjaRenderer
-        from mcp_server.config.template_config import get_template_root
-
         # Setup scaffolder
         registry = ArtifactRegistryConfig.from_file()
         renderer = JinjaRenderer(template_dir=get_template_root())
