@@ -39,7 +39,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "WorkerScaffolder"
     scaffolder_module: "mcp_server.scaffolders.worker_scaffolder"
-    template_path: null  # TODO Task 1.6: Create concrete/worker.py.jinja2
+    template_path: "concrete/worker.py.jinja2"
     fallback_template: null
     name_suffix: "Worker"
     file_extension: ".py"

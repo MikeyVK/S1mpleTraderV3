@@ -157,7 +157,12 @@ class TestScaffoldedOutputCodingStandards:
             name="TestWorker",
             layer="Backend (Workers)",
             dependencies=["typing", "asyncio"],
-            responsibilities=["Process background tasks"]
+            responsibilities=["Process background tasks"],
+            imports={
+                "stdlib": ["asyncio", "typing"],
+                "third_party": [],
+                "project": []
+            }
         )
 
         content = result.content
