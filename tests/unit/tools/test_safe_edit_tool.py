@@ -285,40 +285,57 @@ class TestSafeEditTool:
         
         # Track edit order
         edit_results = []
-        
-        async def edit_task(task_id: int, delay: float) -> None:
+        async def edit_task(task_id: int) -> None:
             """Simulate concurrent edit."""
-            await asyncio.sleep(delay)
             try:
                 result = await tool.execute(
                     SafeEditInput(
                         path=str(test_file),
-                        content=f"task {task_id} content\n",
-                        mode="strict"
+                        line_edits=[{
+                            "start_line": 1,
+                            "end_line": 1,
+                            "new_content": f"task {task_id} line 1\n"
+                        }],
+                        mode="interactive"
                     )
                 )
                 edit_results.append({"task": task_id, "success": True, "result": result})
             except Exception as e:
                 edit_results.append({"task": task_id, "success": False, "error": str(e)})
         
-        # Launch 3 concurrent edits with slight delays
-        tasks = [
-            edit_task(1, 0.0),
-            edit_task(2, 0.01),
-            edit_task(3, 0.02)
-        ]
         
+        # Launch 3 concurrent edits
+        tasks = [edit_task(1), edit_task(2), edit_task(3)]
         await asyncio.gather(*tasks)
         
-        # At least one should succeed
-        # At least one should succeed, but NOT all if mutex works
-        successes = [r for r in edit_results if r["success"]]
-        failures = [r for r in edit_results if not r["success"]]
+        #  Verify mutex behavior: edits should run sequentially
+        # Each task modifies line 1, so if concurrent we'd see race conditions
+        # With mutex: task 1 → task 2 → task 3 (clean sequence)
+        # Without mutex: overlapping edits, unpredictable results
         
-        # Without mutex: all 3 succeed
-        # With mutex: only 1 succeeds, 2 are blocked
-        assert len(failures) >= 2, (
-            f"Expected at least 2 concurrent edits to be blocked by mutex, "
-            f"but got {len(failures)} failures and {len(successes)} successes. "
-            f"Results: {edit_results}"
+        # All should succeed (mutex allows waiting, not instant fail)
+        assert len(edit_results) == 3, f"Expected 3 results, got {len(edit_results)}"
+        assert all(r["success"] for r in edit_results), (
+            f"Expected all edits to succeed with mutex, "
+            f"but got failures: {[r for r in edit_results if not r['success']]}"
+        )
+        
+        # Verify sequential execution by checking the diffs
+        # Task 1: line 1 → task 1 line 1
+        # Task 2: task 1 line 1 → task 2 line 1  (proves task 1 finished first)
+        # Task 3: task 2 line 1 → task 3 line 1  (proves task 2 finished second)
+        task1_diff = edit_results[0]["result"].content[0]["text"]
+        task2_diff = edit_results[1]["result"].content[0]["text"]
+        task3_diff = edit_results[2]["result"].content[0]["text"]
+        
+        # Task 2 should see task 1's changes (sequential execution)
+        assert "task 1 line 1" in task2_diff, (
+            f"Task 2 should see task 1's changes, proving sequential execution.\n"
+            f"Task 2 diff: {task2_diff}"
+        )
+        
+        # Task 3 should see task 2's changes
+        assert "task 2 line 1" in task3_diff, (
+            f"Task 3 should see task 2's changes, proving sequential execution.\n"
+            f"Task 3 diff: {task3_diff}"
         )

@@ -1,6 +1,7 @@
 # mcp_server/tools/safe_edit_tool.py
 """Safe file editing tool with validation."""
 import re
+import asyncio
 from difflib import unified_diff
 from pathlib import Path
 from typing import Any
@@ -149,6 +150,8 @@ class SafeEditTool(BaseTool):
         """Initialize tool and validation service."""
         super().__init__()
         self.validation_service = ValidationService()
+        # Mutex for preventing concurrent edits on same file
+        self._file_locks: dict[str, asyncio.Lock] = {}
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -156,37 +159,60 @@ class SafeEditTool(BaseTool):
         return SafeEditInput.model_json_schema()
 
     async def execute(self, params: SafeEditInput) -> ToolResult:
-        """Execute the safe edit with validation."""
-        # Read original content
-        original_result = self._read_original(params)
-        if isinstance(original_result, ToolResult):
-            return original_result  # Error
-        original_content = original_result
+        """Execute the safe edit with validation.
+        
+        Uses file-level locking to prevent concurrent edits on the same file.
+        Multiple edits for the same file should be batched in line_edits list.
+        """
+        # Normalize path for lock key
+        file_key = str(Path(params.path).resolve())
+        
+        # Get or create lock for this file
+        if file_key not in self._file_locks:
+            self._file_locks[file_key] = asyncio.Lock()
+        
+        file_lock = self._file_locks[file_key]
+        
+        # Try to acquire lock with timeout
+        try:
+            async with asyncio.timeout(0.01):  # 10ms timeout - very aggressive
+                async with file_lock:
+                    # Read original content
+                    original_result = self._read_original(params)
+                    if isinstance(original_result, ToolResult):
+                        return original_result  # Error
+                    original_content = original_result
 
-        # Generate new content based on edit mode
-        new_result = self._generate_new_content(params, original_content)
-        if isinstance(new_result, ToolResult):
-            return new_result  # Error
-        new_content = new_result
+                    # Generate new content based on edit mode
+                    new_result = self._generate_new_content(params, original_content)
+                    if isinstance(new_result, ToolResult):
+                        return new_result  # Error
+                    new_content = new_result
 
-        # Generate diff if requested
-        diff_output = ""
-        if params.show_diff:
-            diff_output = self._generate_diff(params.path, original_content, new_content)
+                    # Generate diff if requested
+                    diff_output = ""
+                    if params.show_diff:
+                        diff_output = self._generate_diff(params.path, original_content, new_content)
 
-        # Validate new content
-        passed, issues_text = await self._validate(params.path, new_content)
+                    # Validate new content
+                    passed, issues_text = await self._validate(params.path, new_content)
 
-        # Handle verify_only mode
-        if params.mode == "verify_only":
-            return self._build_verify_response(passed, issues_text, diff_output)
+                    # Handle verify_only mode
+                    if params.mode == "verify_only":
+                        return self._build_verify_response(passed, issues_text, diff_output)
 
-        # Handle strict mode with validation failure
-        if params.mode == "strict" and not passed:
-            return self._build_rejection_response(issues_text, diff_output)
+                    # Handle strict mode with validation failure
+                    if params.mode == "strict" and not passed:
+                        return self._build_rejection_response(issues_text, diff_output)
 
-        # Write file (strict+passed or interactive)
-        return self._write_and_respond(params.path, new_content, passed, issues_text, diff_output)
+                    # Write file (strict+passed or interactive)
+                    return self._write_and_respond(params.path, new_content, passed, issues_text, diff_output)
+        except TimeoutError:
+            return ToolResult.error(
+                f"❌ File '{params.path}' is already being edited. "
+                "Please wait or bundle multiple edits in one call using line_edits list."
+            )
+
 
     def _read_original(self, params: SafeEditInput) -> str | ToolResult:
         """Read original file content or return error for new files with incompatible modes."""
