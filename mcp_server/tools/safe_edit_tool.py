@@ -70,6 +70,7 @@ class SafeEditInput(BaseModel):
     search_flags: int = Field(
         default=0, description="Regex flags e.g. re.IGNORECASE (search/replace mode)"
     )
+
     mode: str = Field(
         default="strict",
         description="Validation mode. 'strict' fails on error, 'interactive' writes but warns.",
@@ -254,6 +255,7 @@ class SafeEditTool(BaseTool):
             regex=params.regex,
             count=params.search_count,
             flags=params.search_flags,
+
         )
 
     def _build_verify_response(self, passed: bool, issues: str, diff: str) -> ToolResult:
@@ -362,7 +364,6 @@ class SafeEditTool(BaseTool):
             lines[insert_idx:insert_idx] = insert_lines
 
         return "".join(lines)
-
     def _apply_search_replace_flat(
         self,
         content: str,
@@ -372,7 +373,19 @@ class SafeEditTool(BaseTool):
         count: int | None = None,
         flags: int = 0,
     ) -> tuple[str, int]:
-        """Apply search and replace operation with flattened parameters."""
+        """Apply search and replace operation with flattened parameters.
+        
+        Args:
+            content: Content to search in.
+            search: Pattern to search for.
+            replace: Replacement text.
+            regex: Use regex matching.
+            count: Max replacements (None = all).
+            flags: Regex flags.
+            
+        Returns:
+            Tuple of (new_content, replacement_count).
+        """
         if regex:
             try:
                 pattern = re.compile(search, flags or 0)
@@ -384,6 +397,7 @@ class SafeEditTool(BaseTool):
             except re.error as e:
                 raise ValueError(f"Invalid regex pattern: {e}") from e
         else:
+            # Literal string matching
             if count is not None:
                 parts = content.split(search, count)
                 new_content = replace.join(parts)

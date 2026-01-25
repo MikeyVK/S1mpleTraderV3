@@ -269,3 +269,6 @@ class TestSafeEditTool:
         finally:
             # Cleanup
             Path(temp_path).unlink(missing_ok=True)
+            Path(temp_path).unlink(missing_ok=True)
+            # Cleanup
+            Path(temp_path).unlink(missing_ok=True)
