@@ -165,6 +165,10 @@ class ArtifactManager:
         now_utc = datetime.now(timezone.utc)
         enriched["scaffold_created"] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+        # Add version_hash as template_version (template compatibility)
+        if "version_hash" in context:
+            enriched["template_version"] = context["version_hash"]
+
         # Conditionally add output_path for file artifacts only
         if artifact.output_type == "file":
             if "output_path" in context:
