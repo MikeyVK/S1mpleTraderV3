@@ -29,6 +29,7 @@ from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from mcp_server.scaffolding.template_registry import TemplateRegistry
 from mcp_server.scaffolding.version_hash import compute_version_hash
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
 from mcp_server.validation.validation_service import ValidationService
@@ -118,8 +119,6 @@ class ArtifactManager:
         # Task 1.1c: Template registry for provenance (lazy init if not provided)
         if template_registry is None:
             # Lazy initialize registry in workspace root or .st3/
-            # Import here to avoid circular dependency (pylint: disable=import-outside-toplevel)
-            from mcp_server.scaffolding.template_registry import TemplateRegistry
             if self.workspace_root:
                 registry_path = self.workspace_root / ".st3" / "template_registry.yaml"
             else:
