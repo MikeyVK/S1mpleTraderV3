@@ -1,30 +1,42 @@
-{#- tier0_base_artifact.jinja2 - Universal base template for all artifacts -#}
-{#- Version: 2.0.0 (Issue #72 Cycle 2: 2-line SCAFFOLD format) -#}
-{#- Purpose: Provides 2-line SCAFFOLD metadata header (filepath + metadata, NO "SCAFFOLD:" prefix) -#}
+{#- tier0_base_artifact.jinja2 - SCAFFOLD Metadata Header -#}
+{#- Version: 2.1.0 -#}
+{#- Purpose: Provides 2-line SCAFFOLD metadata comment at top of all artifacts -#}
+
 {#-
 TEMPLATE_METADATA:
   enforcement: STRICT
-  level: format
+  level: tier0
   validates:
     strict:
-      - "^# .+$"
-      - "^<!-- .+ -->$"
-  extends: null
-  purpose: "Universal base for all artifacts - provides format-adaptive 2-line SCAFFOLD metadata"
-  version: "2.0.0"
+      - "SCAFFOLD metadata comment must be lines 1-2"
+      - "Format-adaptive comment syntax (# or <!-- -->)"
+      - "Blank line after SCAFFOLD before content"
+  purpose: "Base tier for all artifacts - provides SCAFFOLD metadata"
+  version: "2.1.0"
+  changelog:
+    - version: "2.1.0"
+      date: "2026-01-26"
+      changes: "Added title line after SCAFFOLD metadata per BASE_TEMPLATE pattern"
+    - version: "2.0.0"
+      date: "2026-01-26"
+      changes: "Format-adaptive SCAFFOLD with 2-line comment (Issue #72 Cycle 2)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with basic SCAFFOLD structure"
   introspection:
-    template_id: tier0_base_artifact
-    tier: 0
+    template_id: base_artifact
+    tier: tier0
     variables:
       required:
+        - output_path
         - artifact_type
         - version_hash
         - timestamp
-        - output_path
         - format
-      optional: []
-    exports_blocks:
-      - content
+        - title
+      provides:
+        - SCAFFOLD metadata
+        - format-adaptive comment syntax
 -#}
 
 {#- WHITESPACE STRATEGY (Issue #72):
@@ -34,11 +46,10 @@ TEMPLATE_METADATA:
 {%- if format == "markdown" -%}
 <!-- {{ output_path }} -->
 <!-- template={{ artifact_type }} version={{ version_hash }} created={{ timestamp }} updated= -->
-
 {%- else -%}
 # {{ output_path }}
 # template={{ artifact_type }} version={{ version_hash }} created={{ timestamp }} updated=
-
 {%- endif %}
-{% block content -%}
+
+{% block content %}
 {%- endblock %}

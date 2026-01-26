@@ -1,0 +1,119 @@
+{#- concrete/architecture.md.jinja2 - Architecture Document Template -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: ARCHITECTURE_TEMPLATE.md implementation - system architecture concepts -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Numbered sections for architectural concepts (1, 1.1, 1.2)"
+      - "Mermaid diagrams for visualization"
+      - "NO implementation code (link to source instead)"
+      - "Focus on WHAT and WHY, not HOW"
+  extends: tier2_base_markdown.jinja2
+  purpose: "Concrete template for architecture documents per ARCHITECTURE_TEMPLATE.md"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-01-27"
+      changes: "Initial version with agent hints and architecture structure"
+  introspection:
+    template_id: architecture
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - concepts
+      optional:
+        - constraints
+        - decisions
+  agent_hints:
+    phase: "architecture"
+    purpose: "Document stable architectural concepts and system design philosophy"
+    belongs_here:
+      - "Conceptual system design (WHAT and WHY)"
+      - "Architectural patterns and principles"
+      - "Component relationships and boundaries"
+      - "Mermaid diagrams for visualization"
+      - "System-level constraints and decisions"
+      - "Architectural trade-offs and rationale"
+    does_not_belong:
+      - "Implementation code (link to source files instead)"
+      - "API reference details → reference.md"
+      - "Design decisions for specific features → design.md"
+      - "TDD cycle breakdown → planning.md"
+      - "Implementation HOW (focus on conceptual WHAT/WHY)"
+    tone: "Conceptual: explain principles, relationships, and architectural thinking"
+    common_pitfalls:
+      - "Including implementation code (this is conceptual only)"
+      - "Mixing architecture with feature design (different levels)"
+      - "Over-detailing implementation (link to source instead)"
+      - "Skipping the 'why' behind architectural choices"
+      - "Documenting unstable implementation details (architecture should be stable)"
+    workflow_context:
+      - "Status lifecycle: DRAFT → PRELIMINARY → APPROVED → DEFINITIVE"
+      - "Architecture should be stable before extensive implementation"
+      - "Changes to DEFINITIVE architecture require careful review"
+    related_phases:
+      before: "research.md (if architectural investigation needed)"
+      after: "design.md (applies architecture to specific features)"
+      parallel: "reference.md (documents the implemented architecture)"
+-#}
+
+{#- Architecture documents use BASE header (no extra fields) -#}
+{%- block header_fields %}
+
+**Status:** {{ status | default("DRAFT") }}  
+**Version:** {{ version | default("1.0") }}  
+**Last Updated:** {{ last_updated | default(timestamp[:10]) }}  
+{% endblock -%}
+
+{#- Architecture content: numbered sections with Mermaid diagrams -#}
+{%- block document_content -%}
+
+---
+
+{% for concept in concepts %}
+
+## {{ loop.index }}. {{ concept.name }}
+
+{{ concept.description }}
+
+{% if concept.diagram -%}
+
+```mermaid
+{{ concept.diagram }}
+```
+
+{% endif -%}
+{% if concept.subsections -%}
+{% for subsection in concept.subsections %}
+
+### {{ loop.parent.loop.index }}.{{ loop.index }}. {{ subsection.name }}
+
+{{ subsection.description }}
+
+{% endfor -%}
+{% endif -%}
+
+---
+
+{% endfor -%}
+{% if decisions -%}
+
+## Constraints & Decisions
+
+| Decision | Rationale | Alternatives Rejected |
+|----------|-----------|----------------------|
+{% for decision in decisions -%}
+| {{ decision.decision }} | {{ decision.rationale }} | {{ decision.alternatives }} |
+{% endfor %}
+
+---
+
+{% endif -%}
+{%- endblock %}

@@ -1,0 +1,133 @@
+{#- concrete/research.md.jinja2 - Research Document Template -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Research phase documentation - investigation and learning -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Focus on investigation, not design or implementation"
+      - "Document findings, questions, and knowledge gaps"
+      - "No code examples or design decisions"
+  extends: tier2_base_markdown.jinja2
+  purpose: "Concrete template for research phase documents"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-01-27"
+      changes: "Initial version with agent hints and research structure"
+  introspection:
+    template_id: research
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - problem_statement
+        - goals
+      optional:
+        - background
+        - findings
+        - questions
+        - references
+  agent_hints:
+    phase: "research"
+    purpose: "Investigate and understand the problem domain before planning or design"
+    belongs_here:
+      - "Problem understanding and context"
+      - "Background investigation and domain knowledge"
+      - "Existing solutions and prior art analysis"
+      - "Key concepts and terminology definitions"
+      - "Open questions that need answers"
+      - "Knowledge gaps identified"
+      - "Links to external resources and references"
+    does_not_belong:
+      - "TDD cycle breakdown or task planning → planning.md"
+      - "Design decisions or options comparison → design.md"
+      - "Code examples (illustrative or production) → not in research phase"
+      - "Implementation details → source files"
+      - "Architectural concepts → architecture.md (if concepts solidify, move there)"
+    tone: "Investigative: ask questions, explore alternatives, identify unknowns"
+    common_pitfalls:
+      - "Jumping to solutions before understanding the problem"
+      - "Including design decisions or code examples"
+      - "Mixing research with planning (separate phases)"
+      - "Not documenting 'what we don't know' (questions are valuable!)"
+      - "Skipping existing solutions research (reinventing the wheel)"
+    workflow_context:
+      - "Status lifecycle: DRAFT → APPROVED → DEFINITIVE"
+      - "Research should be approved before moving to planning phase"
+      - "Unanswered questions may require more research"
+    related_phases:
+      before: "none (research is the first phase)"
+      after: "planning.md (breaks down the work based on research findings)"
+      parallel: "none (research is focused investigation)"
+-#}
+
+{#- Research documents use BASE header (no Created/Implementation Phase) -#}
+{%- block header_fields %}
+
+**Status:** {{ status | default("DRAFT") }}  
+**Version:** {{ version | default("1.0") }}  
+**Last Updated:** {{ last_updated | default(timestamp[:10]) }}  
+{% endblock -%}
+
+{#- Research content structure -#}
+{%- block document_content -%}
+
+---
+
+## Problem Statement
+
+{{ problem_statement }}
+
+## Research Goals
+
+{% for goal in goals -%}
+- {{ goal }}
+{% endfor %}
+
+{% if background -%}
+
+---
+
+## Background
+
+{{ background }}
+
+{% endif -%}
+{% if findings -%}
+
+---
+
+## Findings
+
+{{ findings }}
+
+{% endif -%}
+{% if questions -%}
+
+---
+
+## Open Questions
+
+{% for question in questions -%}
+- ❓ {{ question }}
+{% endfor %}
+
+{% endif -%}
+{% if references -%}
+
+---
+
+## References
+
+{% for ref in references -%}
+- {{ ref }}
+{% endfor %}
+
+{% endif -%}
+{%- endblock %}

@@ -1,0 +1,117 @@
+{#- concrete/reference.md.jinja2 - Reference Document Template -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: REFERENCE_TEMPLATE.md implementation - post-implementation API reference -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Post-implementation documentation only"
+      - "Always link to source and test files"
+      - "Include working code examples"
+      - "Status should be DEFINITIVE"
+  extends: tier2_base_markdown.jinja2
+  purpose: "Concrete template for reference documents per REFERENCE_TEMPLATE.md"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-01-27"
+      changes: "Initial version with agent hints and reference structure"
+  introspection:
+    template_id: reference
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - source_file
+        - test_file
+        - api_reference
+      optional:
+        - usage_examples
+        - test_count
+  agent_hints:
+    phase: "reference"
+    purpose: "Document implemented components with API details and usage examples"
+    belongs_here:
+      - "API reference with method signatures and parameters"
+      - "Working code examples (tested, production-ready)"
+      - "Links to source and test files"
+      - "Usage patterns and best practices"
+      - "Parameter descriptions and return types"
+      - "Error handling and exceptions"
+    does_not_belong:
+      - "Design rationale or decision-making → design.md"
+      - "Architectural concepts → architecture.md"
+      - "Implementation tutorials (focus on reference)"
+      - "Pre-implementation design → design.md"
+    tone: "Technical reference: precise, complete, example-driven"
+    common_pitfalls:
+      - "Writing reference docs before implementation (POST-implementation only)"
+      - "Missing links to source/test files"
+      - "Incomplete API documentation (all public methods required)"
+      - "Non-working code examples"
+      - "Mixing design rationale with reference (keep separate)"
+    workflow_context:
+      - "Status is always DEFINITIVE (implementation exists)"
+      - "Reference docs created AFTER implementation"
+      - "Must link to actual source code"
+    related_phases:
+      before: "design.md + implementation (reference documents existing code)"
+      after: "none (reference is final documentation)"
+      parallel: "architecture.md (describes concepts, reference documents implementation)"
+-#}
+
+{#- Reference documents add Source and Tests fields -#}
+{%- block header_fields %}
+
+**Status:** {{ status | default("DEFINITIVE") }}  
+**Version:** {{ version | default("1.0") }}  
+**Last Updated:** {{ last_updated | default(timestamp[:10]) }}  
+
+**Source:** [{{ source_file }}][source]  
+**Tests:** [{{ test_file }}][tests]{% if test_count %} ({{ test_count }} tests){% endif %}  
+{% endblock -%}
+
+{#- Reference content: API reference and usage examples -#}
+{%- block document_content -%}
+
+---
+
+## API Reference
+
+{% for item in api_reference -%}
+### {{ item.name }}
+
+{{ item.description }}
+
+{% if item.methods -%}
+**Methods:**
+
+{% for method in item.methods -%}
+- `{{ method.signature }}`
+  - **Parameters:** {{ method.params }}
+  - **Returns:** {{ method.returns }}
+{% endfor -%}
+{% endif -%}
+{% endfor %}
+
+{% if usage_examples -%}
+
+---
+
+## Usage Examples
+
+{% for example in usage_examples -%}
+**{{ example.description }}**
+
+```python
+{{ example.code }}
+```
+
+{% endfor -%}
+{% endif -%}
+{%- endblock %}

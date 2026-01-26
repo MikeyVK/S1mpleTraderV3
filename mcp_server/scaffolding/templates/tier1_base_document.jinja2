@@ -1,24 +1,45 @@
-{#- tier1_base_document.jinja2 - Base template for document artifacts -#}
-{#- Version: 2.0.0 (Issue #72 Cycle 3: Universal document structure) -#}
-{#- Purpose: Provides Status/Purpose/Scope/Prerequisites/Related/Version History -#}
+{#- tier1_base_document.jinja2 - Universal Document Structure -#}
+{#- Version: 3.1.0 -#}
+{#- Purpose: Implements BASE_TEMPLATE.md structure - foundation for all document types -#}
 {%- extends "tier0_base_artifact.jinja2" -%}
 
 {#-
 TEMPLATE_METADATA:
   enforcement: STRICT
-  level: format
+  level: structure
   validates:
-    strict:
-      - "^# "
-      - "^## "
-      - "^\\*\\*Status:\\*\\*"
-      - "^\\*\\*Phase:\\*\\*"
-  extends: tier0_base_artifact.jinja2
-  purpose: "Universal base for document artifacts - provides standard sections"
-  version: "2.0.0"
+    required_blocks:
+      - header_fields
+      - document_content
+      - link_definitions
+    structure:
+      - "Multi-line header (Status, Version, Last Updated)"
+      - "Purpose section (single paragraph)"
+      - "Scope section (In Scope / Out of Scope)"
+      - "Optional Prerequisites (numbered list)"
+      - "Document content block (concrete template responsibility)"
+      - "Related Documentation with link references"
+      - "Link definitions block"
+      - "Version History table"
+  extends: tier0_base_artifact
+  purpose: "Universal document structure per BASE_TEMPLATE.md"
+  version: "3.1.0"
+  changelog:
+    - version: "3.1.0"
+      date: "2026-01-26"
+      changes: "Fixed link definitions order (before Related Documentation), added divider before Version History"
+    - version: "3.0.0"
+      date: "2026-01-26"
+      changes: "BREAKING: Multi-line header, removed phase, numbered prerequisites, bold Markdown links"
+    - version: "2.0.0"
+      date: "2026-01-26"
+      changes: "Complete BASE_TEMPLATE structure with all sections (Issue #72 Cycle 3)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with basic document structure"
   introspection:
-    template_id: tier1_base_document
-    tier: 1
+    template_id: base_document
+    tier: tier1
     parent: tier0_base_artifact
     variables:
       required:
@@ -28,37 +49,59 @@ TEMPLATE_METADATA:
         - scope_out
       optional:
         - status
-        - phase
+        - version
+        - last_updated
         - prerequisites
         - related_docs
-    exports_blocks:
-      - document_content
+    exports:
+      blocks:
+        - header_fields
+        - document_content
+        - link_definitions
 -#}
 
 {%- block content -%}
-# {{ title }}
+# {{ title | default(name) }}
 
-**Status:** {{ status | default("Draft") }} | **Phase:** {{ phase | default("Design") }}
+{%- block header_fields %}
+
+**Status:** {{ status | default("DRAFT") }}  
+**Version:** {{ version | default("1.0") }}  
+**Last Updated:** {{ last_updated | default(timestamp[:10]) }}  
+{% endblock %}
+
+{% if purpose or scope_in or scope_out -%}
 
 ---
 
+{% endif -%}
+{% if purpose -%}
 ## Purpose
 
 {{ purpose }}
 
+{% endif -%}
+{% if scope_in or scope_out -%}
 ## Scope
 
+{% if scope_in -%}
 **In Scope:**
 {{ scope_in }}
 
+{% endif -%}
+{% if scope_out -%}
 **Out of Scope:**
 {{ scope_out }}
+
+{% endif -%}
+{% endif -%}
 
 {% if prerequisites -%}
 ## Prerequisites
 
+Read these first:
 {% for prereq in prerequisites -%}
-- {{ prereq }}
+{{ loop.index }}. {{ prereq }}
 {% endfor -%}
 {%- endif %}
 
@@ -66,11 +109,23 @@ TEMPLATE_METADATA:
 
 ## Related Documentation
 
-{{ related_docs | default("None") }}
+{%- if related_docs %}
+
+{% for doc in related_docs -%}
+- **[{{ doc }}][related-{{ loop.index }}]**
+{% endfor -%}
+{%- else %}
+
+None
+{%- endif %}
+
+{% block link_definitions -%}{%- endblock %}
+
+---
 
 ## Version History
 
-| Version | Date | Changes | Author |
-|---------|------|---------|--------|
-| 0.1 | {{ timestamp }} | Initial draft | Agent |
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| {{ version | default("1.0") }} | {{ last_updated | default(timestamp[:10]) }} | Agent | Initial draft |
 {%- endblock -%}

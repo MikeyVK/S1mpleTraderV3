@@ -214,7 +214,7 @@ artifact_types:
     name: "Research Document"
     description: "Research phase findings and questions"
     output_type: "file"
-    template_path: "docs/generic.md.jinja2"
+    template_path: "concrete/research.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -232,7 +232,7 @@ artifact_types:
     name: "Planning Document"
     description: "Planning phase TDD cycle breakdown"
     output_type: "file"
-    template_path: "docs/generic.md.jinja2"
+    template_path: "concrete/planning.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -268,7 +268,7 @@ artifact_types:
     name: "Architecture Document"
     description: "System architecture documentation"
     output_type: "file"
-    template_path: "docs/architecture.md.jinja2"
+    template_path: "concrete/architecture.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"
@@ -302,7 +302,7 @@ artifact_types:
     name: "Reference Document"
     description: "Reference documentation"
     output_type: "file"
-    template_path: "docs/reference.md.jinja2"
+    template_path: "concrete/reference.md.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".md"

@@ -1,0 +1,149 @@
+{#- concrete/planning.md.jinja2 - Planning Document Template -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Planning phase documentation - TDD cycle breakdown -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Focus on TDD cycle breakdown and task sequencing"
+      - "Define test cycles, not implementation details"
+      - "No code examples or design decisions"
+  extends: tier2_base_markdown.jinja2
+  purpose: "Concrete template for planning phase documents"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-01-27"
+      changes: "Initial version with agent hints and TDD planning structure"
+  introspection:
+    template_id: planning
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - summary
+        - tdd_cycles
+      optional:
+        - dependencies
+        - risks
+        - milestones
+  agent_hints:
+    phase: "planning"
+    purpose: "Break down work into TDD cycles before design or implementation"
+    belongs_here:
+      - "TDD cycle breakdown (Red → Green → Refactor)"
+      - "Test cycle sequencing and dependencies"
+      - "Task estimation and milestone planning"
+      - "Risk identification and mitigation strategies"
+      - "Success criteria for each cycle"
+      - "Dependencies between cycles"
+    does_not_belong:
+      - "Research findings or problem investigation → research.md"
+      - "Design decisions or options comparison → design.md"
+      - "Code examples (test or production) → not in planning phase"
+      - "Implementation details → source files"
+      - "Architectural concepts → architecture.md"
+    tone: "Pragmatic: focus on 'what to build' and 'in what order', not 'how to build it'"
+    common_pitfalls:
+      - "Including code examples or design decisions"
+      - "Mixing planning with research (research comes first)"
+      - "Over-detailed task breakdown (keep it at cycle level)"
+      - "Skipping dependencies between cycles"
+      - "Not defining success criteria per cycle"
+    workflow_context:
+      - "Status lifecycle: DRAFT → APPROVED → DEFINITIVE"
+      - "Planning should be approved before moving to design/implementation"
+      - "TDD cycles may be refined during execution"
+    related_phases:
+      before: "research.md (provides problem understanding for planning)"
+      after: "design.md (design decisions for specific cycles) OR implementation (if design not needed)"
+      parallel: "none (planning is focused breakdown)"
+-#}
+
+{#- Planning documents use BASE header (no Created/Implementation Phase) -#}
+{%- block header_fields %}
+
+**Status:** {{ status | default("DRAFT") }}  
+**Version:** {{ version | default("1.0") }}  
+**Last Updated:** {{ last_updated | default(timestamp[:10]) }}  
+{% endblock -%}
+
+{#- Planning content structure -#}
+{%- block document_content -%}
+
+---
+
+## Summary
+
+{{ summary }}
+
+{% if dependencies -%}
+
+---
+
+## Dependencies
+
+{% for dep in dependencies -%}
+- {{ dep }}
+{% endfor %}
+
+{% endif -%}
+
+---
+
+## TDD Cycles
+
+{% for cycle in tdd_cycles %}
+
+### Cycle {{ loop.index }}: {{ cycle.name }}
+
+**Goal:** {{ cycle.goal }}
+
+**Tests:**
+{% for test in cycle.tests -%}
+- {{ test }}
+{% endfor %}
+
+**Success Criteria:**
+{% if cycle.success_criteria is string -%}
+{{ cycle.success_criteria }}
+{% else -%}
+{% for criterion in cycle.success_criteria -%}
+- {{ criterion }}
+{% endfor -%}
+{% endif %}
+
+{% if cycle.dependencies -%}
+**Dependencies:** {{ cycle.dependencies | join(", ") }}
+{% endif %}
+
+{% endfor -%}
+{% if risks -%}
+
+---
+
+## Risks & Mitigation
+
+{% for risk in risks %}
+- **Risk:** {{ risk.description }}
+  - **Mitigation:** {{ risk.mitigation }}
+{% endfor %}
+
+{% endif -%}
+{% if milestones -%}
+
+---
+
+## Milestones
+
+{% for milestone in milestones -%}
+- {{ milestone }}
+{% endfor %}
+
+{% endif -%}
+{%- endblock %}
