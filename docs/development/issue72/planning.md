@@ -274,7 +274,7 @@ Break down research findings from Issue #72 into **actionable implementation tas
 De volgende deliverables van tdd-planning zijn **vereiste dependencies** voor continuation:
 
 #### Cycle 1 Output: artifacts.yaml type field
-- **Deliverable:** `.st3/artifacts.yaml` heeft `type: code|doc|tracking|config` voor alle artifacts
+- **Deliverable:** `.st3/artifacts.yaml` heeft `type: code|doc|tracking|config` voor alle artifacts (⚠️ Note: tracking is post-TDD extension per [tracking-type-architecture.md](tracking-type-architecture.md), not part of tdd-planning Cycle 1 SSOT which adds `code|doc|config` only)
 - **Planning impact:** Enables type-based tier routing voor CODE/TRACKING/CONFIG templates (beyond DOCUMENT)
 - **Mapping:** Niet expliciet als Task in planning.md; **required before Phase 3 (Tier 3 templates)**
 
@@ -366,7 +366,7 @@ Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA 
 - [x] Quality gates pass (lint/typecheck/tests) - **6/6 core tests pass**
 - [ ] Registry operational: scaffold creates `.st3/template_registry.yaml` entries - **PARTIAL: only if injected**
 - [ ] Version hash traceable: no placeholders, reproducible from tier chain - **PARTIAL: tier_chain empty**
-- [ ] SCAFFOLD header format: `artifact_type:version_hash | timestamp | output_path` - **READY: context has all fields**
+- [ ] SCAFFOLD header format: 2-line format per [tdd-planning.md](tdd-planning.md) Cycle 2 - **READY: context has all fields** (⚠️ SUPERSEDED: original 1-line pipe format `artifact_type:version_hash | timestamp | output_path`)
 - [ ] E2E test: scaffold → parse header → registry lookup roundtrip works - **BLOCKED: no concrete templates**
 - [x] Zero conceptual conflicts (artifacts.yaml = variants, registry = provenance) - **COMPLETE**
 
