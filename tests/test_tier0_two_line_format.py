@@ -11,7 +11,6 @@ RED phase: Tests for tier0_base_artifact.jinja2 2-line SCAFFOLD format:
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
-import pytest
 
 # Template directory
 TEMPLATE_DIR = (
