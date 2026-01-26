@@ -1,5 +1,5 @@
 {#- concrete/design.md.jinja2 - Design Document -#}
-{#- Version: 2.0.0 -#}
+{#- Version: 2.1.0 -#}
 {#- Purpose: Generate design documents with Context/Options/Decision structure -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
 
@@ -15,8 +15,11 @@ TEMPLATE_METADATA:
       - "Optional Open Questions section"
   extends: tier2_base_markdown.jinja2
   purpose: "Concrete template for design documents with full DESIGN_TEMPLATE structure"
-  version: "2.0.0"
+  version: "2.1.0"
   changelog:
+    - version: "2.1.0"
+      date: "2026-01-26"
+      changes: "Fixed frontmatter newline handling"
     - version: "2.0.0"
       date: "2026-01-26"
       changes: "Full DESIGN_TEMPLATE structure (Issue #72 Cycle 5)"
@@ -42,7 +45,7 @@ TEMPLATE_METADATA:
         - related_issues
 -#}
 
-{%- block frontmatter_block -%}
+{%- block frontmatter_block %}
 ---
 title: {{ title }}
 type: design
@@ -52,24 +55,27 @@ related_issues: {{ related_issues | join(', ') }}
 {%- endif %}
 ---
 
-{%- endblock %}
+{% endblock %}
 
 {%- block document_content %}
 
 ## 1. Context & Requirements
 
 ### Problem Statement
+
 {{ problem_statement }}
 
 ### Requirements
+
 {{ requirements }}
 
 ### Constraints
+
 {{ constraints | default("None") }}
 
 ## 2. Design Options
-
 {% for option in options %}
+
 ### Option {{ loop.index }}: {{ option.name }}
 
 {{ option.description }}
@@ -83,14 +89,16 @@ related_issues: {{ related_issues | join(', ') }}
 {% for con in option.cons -%}
 - {{ con }}
 {% endfor %}
-{% endfor %}
+{%- endfor %}
 
 ## 3. Chosen Design
 
 ### Decision
+
 {{ decision }}
 
 ### Rationale
+
 {{ rationale }}
 
 ### Key Decisions
@@ -100,11 +108,11 @@ related_issues: {{ related_issues | join(', ') }}
 {% for kd in key_decisions -%}
 | {{ kd.decision }} | {{ kd.rationale }} | {{ kd.tradeoffs }} |
 {% endfor %}
-
 {% if open_questions -%}
+
 ## 4. Open Questions
 {% for question in open_questions -%}
 - {{ question }}
 {% endfor -%}
-{%- endif %}
+{%- endif -%}
 {%- endblock %}

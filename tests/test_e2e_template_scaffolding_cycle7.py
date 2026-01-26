@@ -138,12 +138,12 @@ class TestScaffoldDesignDocumentE2E:
         assert "type: design" in result
         assert "created: 2026-01-26" in result
 
-        # Link definitions
-        assert "[research.md]: docs/development/issue72/research.md" in result
-        assert "[planning.md]: docs/development/issue72/planning.md" in result
+        # Link definitions (without .md extension in IDs for cleaner references)
+        assert "[research]: docs/development/issue72/research.md" in result
+        assert "[planning]: docs/development/issue72/planning.md" in result
 
         # Verify link definitions come BEFORE Version History
-        link_pos = result.find("[research.md]:")
+        link_pos = result.find("[research]:")
         history_pos = result.find("## Version History")
         assert link_pos < history_pos, "Link definitions must come before Version History"
 

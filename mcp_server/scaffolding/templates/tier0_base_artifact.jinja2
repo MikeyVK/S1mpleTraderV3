@@ -34,9 +34,11 @@ TEMPLATE_METADATA:
 {%- if format == "markdown" -%}
 <!-- {{ output_path }} -->
 <!-- template={{ artifact_type }} version={{ version_hash }} created={{ timestamp }} updated= -->
+
 {%- else -%}
 # {{ output_path }}
 # template={{ artifact_type }} version={{ version_hash }} created={{ timestamp }} updated=
+
 {%- endif %}
 {% block content -%}
 {%- endblock %}

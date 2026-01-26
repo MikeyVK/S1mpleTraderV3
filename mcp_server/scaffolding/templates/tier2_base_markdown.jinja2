@@ -1,5 +1,5 @@
 {#- tier2_base_markdown.jinja2 - Language base for Markdown documents -#}
-{#- Version: 2.1.0 -#}
+{#- Version: 2.3.0 -#}
 {#- Purpose: Adds Markdown-specific patterns (frontmatter, code blocks, link definitions) -#}
 {%- extends "tier1_base_document.jinja2" -%}
 
@@ -14,8 +14,14 @@ TEMPLATE_METADATA:
       - "^---$"
   extends: tier1_base_document.jinja2
   purpose: "Language base for Markdown - adds frontmatter, code blocks, link definitions"
-  version: "2.1.0"
+  version: "2.3.0"
   changelog:
+    - version: "2.3.0"
+      date: "2026-01-26"
+      changes: "Fixed whitespace in Related Documentation section"
+    - version: "2.2.0"
+      date: "2026-01-26"
+      changes: "Fixed whitespace: newline after frontmatter, proper link definition spacing"
     - version: "2.1.0"
       date: "2026-01-26"
       changes: "Changed enforcement from ARCHITECTURAL to STRICT (tier2 = BASE template)"
@@ -44,7 +50,7 @@ TEMPLATE_METADATA:
 -#}
 
 {%- block content -%}
-{%- block frontmatter_block -%}
+{%- block frontmatter_block %}
 {%- if frontmatter -%}
 ---
 {%- for key, value in frontmatter.items() %}
@@ -95,22 +101,32 @@ TEMPLATE_METADATA:
 {%- endblock %}
 
 {%- block link_definitions -%}
-{%- if related_docs -%}
+{%- if related_docs %}
 
 <!-- Link definitions -->
-{%- for doc in related_docs %}
-[{{ doc.split('/')[-1] }}]: {{ doc }}
-{%- endfor -%}
+
+{% for doc in related_docs -%}
+[{{ doc.split('/')[-1].replace('.md', '') }}]: {{ doc }}
+{% endfor -%}
 {%- endif -%}
 {%- endblock %}
 
 ## Related Documentation
 
-{{ related_docs | default("None") }}
+{%- if related_docs %}
+
+{% for doc in related_docs -%}
+- [{{ doc.split('/')[-1].replace('.md', '') }}][{{ doc.split('/')[-1].replace('.md', '') }}]
+{% endfor -%}
+{%- else %}
+
+None
+{%- endif %}
 
 ## Version History
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 0.1 | {{ timestamp }} | Initial draft | Agent |
-{%- endblock -%}
+
+{%- endblock %}
