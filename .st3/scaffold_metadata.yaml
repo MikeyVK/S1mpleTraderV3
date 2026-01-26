@@ -43,9 +43,9 @@ metadata_fields:
     format_regex: "^[0-9a-f]{8}$"
     required: true
   
-  # Creation timestamp (required)
+  # Creation timestamp (required) - ISO 8601 UTC, minute precision
   - name: created
-    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}Z$"
     required: true
   
   # Last update timestamp (optional)

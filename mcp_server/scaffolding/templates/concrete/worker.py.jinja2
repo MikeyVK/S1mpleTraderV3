@@ -1,5 +1,5 @@
 {#- concrete/worker.py.jinja2 - Async Worker Class -#}
-{#- Version: 1.0.0 -#}
+{#- Version: 1.1.0 -#}
 {#- Purpose: Generate async worker classes for background task processing -#}
 {%- extends "tier2_base_python.jinja2" -%}
 
@@ -14,7 +14,7 @@ TEMPLATE_METADATA:
       - "Type hints for all methods"
   extends: tier2_base_python.jinja2
   purpose: "Concrete template for async worker classes"
-  version: "1.0.0"
+  version: "1.1.0"
   introspection:
     template_id: worker
     tier: concrete
@@ -28,30 +28,28 @@ TEMPLATE_METADATA:
         - lifecycle_methods
 -#}
 
-{%- block type_imports -%}
+{% block type_imports -%}
 from typing import Any
-{%- endblock %}
+{% endblock -%}
 
-{%- block class_structure -%}
+{% block class_structure %}
 class {{ name }}:
-{%- block class_docstring %}
+{% block class_docstring %}
     """{{ description | default(name + ' worker.') }}
     
     Async worker for background task processing.
     """
-{%- endblock %}
-
-{%- block init_method %}
-    def __init__(self{% if dependencies %}{% for dep in dependencies %}, {{ dep.name }}: {{ dep.type }}{% endfor %}{% endif %}):
+{% endblock -%}
+{% block init_method -%}
+{% if dependencies %}
+    def __init__(self{% for dep in dependencies %}, {{ dep.name }}: {{ dep.type }}{% endfor %}):
         """Initialize {{ name }}."""
-{%- if dependencies %}
-{%- for dep in dependencies %}
+{% for dep in dependencies %}
         self.{{ dep.name }} = {{ dep.name }}
-{%- endfor %}
-{%- endif %}
-{%- endblock %}
-
-{%- block execute_method %}
+{% endfor -%}
+{% endif -%}
+{% endblock -%}
+{% block execute_method %}
 
     async def execute(self, **kwargs: Any) -> Any:
         """Execute worker task.
@@ -64,16 +62,15 @@ class {{ name }}:
         """
         # TODO: Implement worker logic
         pass
-{%- endblock %}
-
-{%- block lifecycle_methods %}
-{%- if lifecycle_methods %}
-{%- for method in lifecycle_methods %}
+{% endblock -%}
+{% block lifecycle_methods -%}
+{% if lifecycle_methods -%}
+{% for method in lifecycle_methods %}
 
     async def {{ method.name }}(self{% if method.params %}, {{ method.params }}{% endif %}){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
         """{{ method.docstring | default(method.name + ' lifecycle hook.') }}"""
         {{ method.body | default('pass') | indent(8) }}
-{%- endfor %}
-{%- endif %}
-{%- endblock %}
-{%- endblock %}
+{% endfor -%}
+{% endif -%}
+{% endblock -%}
+{% endblock %}

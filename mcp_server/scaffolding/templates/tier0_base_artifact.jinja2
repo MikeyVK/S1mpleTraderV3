@@ -1,5 +1,5 @@
 {#- tier0_base_artifact.jinja2 - Universal base template for all artifacts -#}
-{#- Version: 1.0.0 -#}
+{#- Version: 1.1.0 -#}
 {#- Purpose: Provides SCAFFOLD metadata header that adapts to output format -#}
 {#-
 TEMPLATE_METADATA:
@@ -11,7 +11,7 @@ TEMPLATE_METADATA:
       - "^<!-- SCAFFOLD:"
   extends: null
   purpose: "Universal base for all artifacts - provides format-adaptive SCAFFOLD metadata"
-  version: "1.0.0"
+  version: "1.1.0"
   introspection:
     template_id: tier0_base_artifact
     tier: 0
@@ -26,10 +26,15 @@ TEMPLATE_METADATA:
     exports_blocks:
       - content
 -#}
-{% block content %}
-{%- set comment_start = "#" if format in ["python", "yaml", "shell"] else "<!--" -%}
-{%- set comment_end = "" if format in ["python", "yaml", "shell"] else " -->" -%}
-{{comment_start}} SCAFFOLD: template={{artifact_type}} version={{template_version | default("1.0")}} created={{timestamp}} path={{output_path}}{{comment_end}}{{ "\n" }}
 
-{#- Child templates extend content here -#}
-{% endblock %}
+{#- WHITESPACE STRATEGY (Issue #72):
+    Block opening with right-trim ({% block content -%}) prevents extra blank lines
+-#}
+
+{%- if format == "markdown" -%}
+<!-- SCAFFOLD: template={{ artifact_type }} version={{ template_version }} created={{ timestamp }} path={{ output_path }} -->
+{%- else -%}
+# SCAFFOLD: template={{ artifact_type }} version={{ template_version }} created={{ timestamp }} path={{ output_path }}
+{%- endif %}
+{% block content -%}
+{%- endblock %}

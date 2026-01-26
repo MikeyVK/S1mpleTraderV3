@@ -1,5 +1,5 @@
 {#- tier1_base_code.jinja2 - Base template for code artifacts -#}
-{#- Version: 1.2.0 -#}
+{#- Version: 1.4.0 -#}
 {#- Purpose: Provides module docstring, imports, class structure, function blocks -#}
 {%- extends "tier0_base_artifact.jinja2" -%}
 
@@ -16,7 +16,7 @@ TEMPLATE_METADATA:
       - "^async def "
   extends: tier0_base_artifact.jinja2
   purpose: "Format base for code artifacts - provides module docstring, imports, and structural blocks"
-  version: "1.2.0"
+  version: "1.4.0"
   introspection:
     template_id: tier1_base_code
     tier: 1
@@ -37,72 +37,73 @@ TEMPLATE_METADATA:
       - imports_section
       - class_structure
       - methods
+
+WHITESPACE STRATEGY (Issue #72):
+- Block boundaries ({% block %}) produce natural newlines
+- Trim ({%- -%}) only for internal content (if/for loops, variable substitution)
+- super() MUST be right-trimmed ({{ super() -}}) to prevent extra blank line
+- Result: SCAFFOLD directly followed by docstring (no gap), then proper spacing
 -#}
 
-{% block content -%}
+{%- block content %}
 {{ super() }}
-
-{%- block module_docstring -%}
+{% block module_docstring %}
 """
-{%- if module_title %}
+{% if module_title -%}
 {{ module_title }}.
-{%- else %}
+{% else -%}
 {{ class_name }} module.
-{%- endif %}
-
-{%- if module_description %}
+{% endif %}
+{% if module_description %}
 
 {{ module_description }}
-{%- endif %}
-
-{%- if layer %}
+{% endif %}
+{% if layer %}
 
 @layer: {{ layer }}
-{%- endif %}
-{%- if dependencies %}
+{% endif -%}
+{% if dependencies %}
 @dependencies: [{{ dependencies | join(', ') }}]
-{%- endif %}
-{%- if responsibilities %}
+{% endif -%}
+{% if responsibilities %}
 @responsibilities:
-{%- for responsibility in responsibilities %}
+{% for responsibility in responsibilities -%}
     - {{ responsibility }}
-{%- endfor %}
-{%- endif %}
+{% endfor -%}
+{% endif -%}
 """
+{% endblock %}
 
-{%- endblock -%}
-
-{%- block imports_section -%}
+{% block imports_section %}
 {%- if imports and (imports.stdlib or imports.third_party or imports.project) %}
-
 # Standard library
-{%- if imports and imports.stdlib -%}
+{%- if imports and imports.stdlib %}
 {%- for imp in imports.stdlib %}
 {{ imp }}
-{%- endfor -%}
+{%- endfor %}
 {%- endif %}
 
 # Third-party
-{%- if imports and imports.third_party -%}
+{%- if imports and imports.third_party %}
 {%- for imp in imports.third_party %}
 {{ imp }}
-{%- endfor -%}
+{%- endfor %}
 {%- endif %}
 
 # Project modules
-{%- if imports and imports.project -%}
+{%- if imports and imports.project %}
 {%- for imp in imports.project %}
 {{ imp }}
-{%- endfor -%}
-{%- endif -%}
-{%- endif -%}
-{%- endblock -%}
+{%- endfor %}
+{%- endif %}
+{%- endif %}
+{% endblock %}
 
-{%- block class_structure -%}
+{% block class_structure %}
 class {{ class_name }}:
     """{{ class_docstring }}"""
-    {%- block methods -%}
+{% block methods %}
     pass
-    {%- endblock -%}
-{%- endblock -%}
-{%- endblock -%}
+{% endblock %}
+{% endblock %}
+{% endblock %}

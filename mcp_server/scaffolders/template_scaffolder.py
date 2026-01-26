@@ -171,14 +171,27 @@ class TemplateScaffolder(BaseScaffolder):
         extension = artifact.file_extension
         output_path = kwargs.get("output_path") or f"{name}{suffix}{extension}"
 
-        # Generate ISO 8601 timestamp
-        timestamp = datetime.now(timezone.utc).isoformat()
+        # Use provided timestamp or generate ISO 8601 with Z suffix (UTC, minute precision)
+        timestamp = kwargs.get("timestamp") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+
+        # Compute template_version (hash) if not provided
+        if "template_version" not in kwargs:
+            from mcp_server.scaffolding.version_hash import compute_version_hash
+            tier_chain = artifact.get_tier_chain(template_path)
+            template_version = compute_version_hash(
+                artifact_type=artifact_type,
+                template_file=template_path.name,
+                tier_chain=tier_chain
+            )
+        else:
+            template_version = kwargs["template_version"]
 
         render_context = {
             **{k: v for k, v in kwargs.items() if k not in ("template_name", "output_path")},
             "artifact_type": artifact_type,
             "format": format_value,
             "timestamp": timestamp,
+            "template_version": template_version,
             "output_path": output_path
         }
         rendered = self._load_and_render_template(template_path, **render_context)
