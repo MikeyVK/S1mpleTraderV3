@@ -1,6 +1,6 @@
 {#- tier2_base_markdown.jinja2 - Language base for Markdown documents -#}
-{#- Version: 1.0.0 -#}
-{#- Purpose: Adds Markdown-specific patterns (frontmatter, code blocks, links) -#}
+{#- Version: 2.0.0 -#}
+{#- Purpose: Adds Markdown-specific patterns (frontmatter, code blocks, link definitions) -#}
 {%- extends "tier1_base_document.jinja2" -%}
 
 {#-
@@ -12,9 +12,17 @@ TEMPLATE_METADATA:
       - "Use [text](url) for links"
       - "Use ```language for code blocks"
       - "Consider YAML frontmatter for metadata"
+      - "Use [id]: url 'title' for link definitions"
   extends: tier1_base_document.jinja2
-  purpose: "Language base for Markdown - adds frontmatter, code blocks, link formatting"
-  version: "1.0.0"
+  purpose: "Language base for Markdown - adds frontmatter, code blocks, link definitions"
+  version: "2.0.0"
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-26"
+      changes: "Added link definitions section before Version History"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with frontmatter and code blocks"
   introspection:
     template_id: tier2_base_markdown
     tier: 2
@@ -26,9 +34,11 @@ TEMPLATE_METADATA:
         - frontmatter
         - sections
         - code_blocks
+        - related_docs
     exports_blocks:
       - frontmatter_block
       - code_section
+      - link_definitions
 -#}
 
 {%- block content -%}
@@ -43,7 +53,33 @@ TEMPLATE_METADATA:
 {%- endif -%}
 {%- endblock %}
 
-{{ super() }}
+# {{ title }}
+
+**Status:** {{ status | default("Draft") }} | **Phase:** {{ phase | default("Design") }}
+
+---
+
+## Purpose
+
+{{ purpose }}
+
+## Scope
+
+**In Scope:**
+{{ scope_in }}
+
+**Out of Scope:**
+{{ scope_out }}
+
+{% if prerequisites -%}
+## Prerequisites
+
+{% for prereq in prerequisites -%}
+- {{ prereq }}
+{% endfor -%}
+{%- endif %}
+
+{%- block document_content %}{% endblock %}
 
 {%- block code_section -%}
 {%- if code_blocks -%}
@@ -55,4 +91,24 @@ TEMPLATE_METADATA:
 {%- endfor -%}
 {%- endif -%}
 {%- endblock %}
+
+{%- block link_definitions -%}
+{%- if related_docs -%}
+
+<!-- Link definitions -->
+{%- for doc in related_docs %}
+[{{ doc.split('/')[-1] }}]: {{ doc }}
+{%- endfor -%}
+{%- endif -%}
+{%- endblock %}
+
+## Related Documentation
+
+{{ related_docs | default("None") }}
+
+## Version History
+
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 0.1 | {{ timestamp }} | Initial draft | Agent |
 {%- endblock -%}
