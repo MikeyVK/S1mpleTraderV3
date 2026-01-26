@@ -7,6 +7,26 @@
 **Date:** 2026-01-23 (revised from 2026-01-22)  
 **Input:** [research_summary.md](research_summary.md) (719 lines)
 
+---
+
+## Chronologie / SSOT (Source of Truth)
+
+**Leesvolgorde voor template implementation:**
+1. **planning.md** (dit document, tot "Design phase complete" context) - Overall strategy, effort estimates, task breakdown
+2. **[tdd-planning.md](tdd-planning.md)** (Cycles 1-7, dated 2026-01-26) - **DETAILED implementation** for DOCUMENT templates (design.md MVP)
+3. **planning.md** (vanaf "Post-TDD continuation" sectie) - Generalization beyond design.md (dto/worker/service/generic, tracking, CONFIG)
+
+**Superseded assumptions (as of 2026-01-26):**
+- ⚠️ **SCAFFOLD format:** planning.md originally described 1-line format; **tdd-planning.md Cycle 2 defines 2-line format as SSOT**
+- ⚠️ **Document tier implementation order:** tdd-planning.md Cycles 3-5 define detailed sequence; **follow tdd-planning for tier1_base_document → tier2_base_markdown → concrete/design.md**
+- ⚠️ **Tracking scope:** tdd-planning.md marks tracking as "future work"; **tracking implementation deferred until post-TDD continuation**
+
+**Handoff boundary:**
+- Complete tdd-planning.md Cycle 7 (E2E test for design.md) before resuming planning.md tasks
+- Cycle outputs become **required inputs** for planning.md continuation (see "Post-TDD continuation" section)
+
+---
+
 **⚠️ CRITICAL UPDATE #1:** After commit 2ee9228 analysis, discovered **forceful cutover** broke legacy scaffolding. See [cutover-analysis.md](cutover-analysis.md) for complete findings. Planning revised to reflect:
 - ✅ Phase 1 Tier 0-2 templates **COMPLETE** 
 - ⚠️ Phase 1 Registry/hash/provenance **INCOMPLETE** - NOT integrated in scaffold flow
@@ -117,9 +137,10 @@ Break down research findings from Issue #72 into **actionable implementation tas
 - **Effort:** 8h
 
 #### AC4: SCAFFOLD metadata = 1 line
-- **Status:** ✅ Designed (ultra-compact format)
+- **Status:** ⚠️ **SUPERSEDED** (pre-2026-01-26 assumption)
+- **Superseded by:** [tdd-planning.md](tdd-planning.md) Cycle 2 defines **2-line format** as SSOT
 - **Tasks:** Tier 0 provides `scaffold_metadata` block
-- **Validation:** All scaffolded files have 1-line header
+- **Validation:** All scaffolded files have 2-line header (line 1: filepath, line 2: metadata)
 - **Effort:** Included in Tier 0 creation (2h)
 
 #### AC5: Worker uses IWorkerLifecycle
@@ -244,6 +265,82 @@ Break down research findings from Issue #72 into **actionable implementation tas
 
 ---
 
+## Post-TDD Continuation (Resume Point)
+
+**Context:** Na succesvolle afronding van [tdd-planning.md](tdd-planning.md) Cycle 7 (E2E test voor design.md MVP), hervat dit document met generalisatie en uitbreiding.
+
+### Required Inputs from tdd-planning.md
+
+De volgende deliverables van tdd-planning zijn **vereiste dependencies** voor continuation:
+
+#### Cycle 1 Output: artifacts.yaml type field
+- **Deliverable:** `.st3/artifacts.yaml` heeft `type: code|doc|tracking|config` voor alle artifacts
+- **Planning impact:** Enables type-based tier routing voor CODE/TRACKING/CONFIG templates (beyond DOCUMENT)
+- **Mapping:** Niet expliciet als Task in planning.md; **required before Phase 3 (Tier 3 templates)**
+
+#### Cycle 2 Output: tier0_base_artifact.jinja2 (2-line SCAFFOLD)
+- **Deliverable:** Universal base met 2-line SCAFFOLD format (filepath + metadata)
+- **Planning impact:** Supersedes AC4; validates planning Task 1.2 implementation
+- **Mapping:** ✅ planning.md Task 1.2 already updated to reference tdd-planning Cycle 2
+
+#### Cycle 3 Output: tier1_base_document.jinja2
+- **Deliverable:** Universal document structure (Status/Purpose/Scope/Prerequisites/Related/Version History)
+- **Planning impact:** Defines document-lane tier1 structure
+- **Mapping:** ✅ planning.md Task 1.3 includes tier1_base_document (detailed impl in tdd-planning)
+
+#### Cycle 4 Output: tier2_base_markdown.jinja2
+- **Deliverable:** Markdown syntax (HTML comments, link definitions, code blocks)
+- **Planning impact:** Enables Markdown document types beyond design.md
+- **Mapping:** ✅ planning.md Task 1.4 includes tier2_base_markdown
+
+#### Cycle 5 Output: concrete/design.md.jinja2
+- **Deliverable:** Full DESIGN_TEMPLATE with numbered sections, options, decisions
+- **Planning impact:** Proves concrete template pattern; **planning Task 1.6 extends to dto/worker/service/generic**
+- **Mapping:** planning.md Task 1.6 is **broader** (5 concrete templates); tdd does design.md MVP, planning continues with CODE concretes
+
+#### Cycle 6 Output: Validation integration (Issue #52 enforcement)
+- **Deliverable:** TEMPLATE_METADATA enforcement behavior for DOCUMENT tier chain
+- **Planning impact:** Proves STRICT enforcement for tiers; **planning extends to all artifact types**
+- **Mapping:** planning.md Task 1.5 (Issue #52 alignment) covers metadata structure; Cycle 6 adds runtime enforcement
+
+#### Cycle 7 Output: E2E test (design.md scenario)
+- **Deliverable:** Complete scaffold → parse → validate roundtrip for design.md
+- **Planning impact:** Proves provenance chain; **planning Task 1.6b generalizes to multiple artifact types**
+- **Mapping:** planning.md Task 1.6b (provenance regression) = E2E for dto/worker/service/generic + registry roundtrip
+
+### Post-TDD Task Sequencing
+
+**IMMEDIATE (Phase 1 DoD completion):**
+1. **Task 1.6: Extend concrete templates beyond design.md**
+   - Input: Cycle 5 design.md pattern
+   - Extend: dto.py.jinja2, worker.py.jinja2, service_command.py.jinja2, generic.py.jinja2
+   - Effort: 3h × 4 = 12h (design.md proves pattern, CODE templates follow)
+
+2. **Task 1.6b: Generalize E2E provenance test**
+   - Input: Cycle 7 design.md E2E test
+   - Extend: Multiple artifact types (dto/worker/service/generic) + registry lookup roundtrip
+   - Effort: 8h (already partially done, extend test matrix)
+
+**DEFERRED (until post-Cycle 7):**
+3. **Tracking templates (Tier 1 + concretes)**
+   - Input: [tracking-type-architecture.md](tracking-type-architecture.md)
+   - Scope: tier1_base_tracking.jinja2 + concrete/commit.md, pr.md, issue.md, etc.
+   - Rationale: tdd-planning marks tracking as "future work"; defer to avoid scope creep
+   - Mapping: planning.md Task 3.5 (renamed from ephemeral → tracking)
+   - Effort: 3h (tier1) + 2h × 6 concretes = 15h
+
+4. **CONFIG templates (Tier 3 + concretes)**
+   - Scope: tier3_base_yaml_policy.jinja2 + workflows.yaml, labels.yaml
+   - Mapping: planning.md Task 3.6 + Task 4.4
+   - Effort: 3h (tier3) + 4h (concretes) = 7h
+
+5. **Extensibility (TypeScript, Rust)**
+   - Scope: tier2_base_typescript.jinja2, tier2_base_rust.jinja2
+   - Mapping: planning.md Phase 5 (Tasks 5.1-5.3)
+   - Effort: 8h
+
+---
+
 ## Task Breakdown with Dependencies
 
 ### Phase 1: Foundation (Infrastructure)
@@ -333,12 +430,14 @@ Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA 
   - `tier1_base_code.jinja2` (imports, classes, functions structure)
   - `tier1_base_document.jinja2` (heading hierarchy) - See [tdd-planning.md](tdd-planning.md) Cycle 3 for detailed implementation
   - `tier1_base_config.jinja2` (schema validation hooks)
-  - `tier1_base_tracking.jinja2` (VCS workflow structure)
+  - `tier1_base_tracking.jinja2` (VCS workflow structure) - **DEFERRED to Post-TDD continuation**
 - **Acceptance:** Each provides format-specific structure blocks
-- **Effort:** 2h × 4 = 8h
+- **Effort:** 2h × 3 = 6h (DOCUMENT via tdd-planning; CODE/CONFIG in planning; TRACKING post-TDD)
 - **Assignee:** Template Author
 - **Dependency:** Tier 0 complete
-- **Note:** DOCUMENT templates have detailed TDD cycles in tdd-planning.md (7 cycles, focus on design.md MVP)
+- **Note:** 
+  - DOCUMENT templates follow [tdd-planning.md](tdd-planning.md) Cycles 3-5 (design.md MVP focus)
+  - TRACKING marked as "future work" in tdd-planning.md; deferred to avoid scope creep (see Post-TDD continuation)
 
 #### Task 1.4: Tier 2 Bases (Language Syntax)
 - **Description:** Create 3 Tier 2 templates: Python, Markdown, YAML
@@ -697,7 +796,7 @@ Task 2.1 (Introspection 12h)
 - Week 3: Task 4.5 (E2E Testing 16h)
 
 **Engineer 2: Template Author (Primary)**
-- Week 1: Task 1.2-1.4 (Tier 0-2 19h) ← +2h for tier1_base_tracking
+- Week 1: Task 1.2-1.4 (Tier 0-2 17h) ← DOCUMENT via tdd-planning; CODE/CONFIG in planning
 - Week 2: Task 3.1-3.3 (Tier 3 CODE 20h)
 - Week 3: Task 4.2 (Migrate CODE 13h) → Task 5.1 (TypeScript 4h)
 
@@ -721,26 +820,27 @@ Task 2.1 (Introspection 12h)
 
 | Phase | Tasks | Total Hours | Duration (1 eng) | Duration (4 eng) | Status |
 |-------|-------|-------------|------------------|------------------|--------|
-| **Phase 1: Foundation** | 10 tasks (was 6) | **57h** (was 38h) | 7 days | 3 days | ⚠️ **INCOMPLETE** |
+| **Phase 1: Foundation** | 10 tasks (was 6) | **55h** (was 38h) | 7 days | 3 days | ⚠️ **INCOMPLETE** |
 | **Phase 2: Blockers** | 4 tasks | 40h | 5 days | 3 days | Not started |
 | **Phase 3: Tier 3** | 7 tasks | 46h | 6 days | 3 days | Not started |
 | ~~**Phase 4: Migration**~~ | ~~6 tasks~~ | ~~58h~~ | ~~7 days~~ | ~~4 days~~ | **OBSOLETE** |
 | **Phase 5: Extensibility** | 2 tasks | 8h | 1 day | 1 day | Not started |
-| **TOTAL** | **23 tasks** (was 19) | **151h** (was 132h) | **19 days** (was 17) | **10 days (2 weeks)** (was 9 days) |
+| **TOTAL** | **23 tasks** (was 19) | **149h** (was 132h) | **19 days** (was 17) | **10 days (2 weeks)** (was 9 days) |
 
 **Key Changes:**
-- ⚠️ **Phase 1 +19h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) + tier1_base_tracking (+2h) - foundation NOT done
+- ⚠️ **Phase 1 +17h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) - foundation NOT done
 - ✅ **Phase 4 -65h:** Migration obsolete (legacy templates unreachable after commit 2ee9228)
-- ⚠️ **Net change: -46h vs original 183h** but Phase 1 must complete FIRST
+- ⚠️ **Net change: -48h vs original 183h** but Phase 1 must complete FIRST
 - ✅ **Timeline: 23 days → 19 days** (1 engineer) or **13 days → 10 days** (4 engineers)
 - 📚 **Design docs complete:** See [tdd-planning.md](tdd-planning.md) for document template implementation (7 TDD cycles)
+- ⏸️ **Tracking deferred:** tier1_base_tracking moved to Post-TDD continuation (tdd-planning marks as "future work")
 
 **Phase 1 Revised Breakdown:**
 - Task 1.1: Registry infrastructure (8h) ✅
 - **Task 1.1b: Fix compute_version_hash (4h)** ← NEW
 - **Task 1.1c: Integrate registry in scaffold flow (3h)** ← NEW
 - Task 1.2: Tier 0 base (2h) ✅
-- Task 1.3: Tier 1 bases (8h) ✅ ← +2h for tier1_base_tracking
+- Task 1.3: Tier 1 bases (6h) ← DOCUMENT via tdd-planning Cycles 3-5; CODE/CONFIG in planning; TRACKING post-TDD
 - Task 1.4: Tier 2 bases (9h) ✅
 - Task 1.5: Issue #52 alignment (6h) ✅
 - **Task 1.5b: Remove ArtifactDefinition.version conflict (2h)** ← NEW
