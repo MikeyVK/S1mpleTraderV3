@@ -38,7 +38,7 @@ class TestValidationEnforcementConsistency:
         )
 
     def test_tier2_has_architectural_enforcement(self):
-        """tier2_base_markdown must have ARCHITECTURAL enforcement."""
+        """tier2_base_markdown must have STRICT enforcement."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
 
@@ -46,9 +46,9 @@ class TestValidationEnforcementConsistency:
         metadata = analyzer.extract_metadata(tier2_path)
 
         assert "enforcement" in metadata
-        # tier2 uses ARCHITECTURAL (content patterns, warnings only)
-        assert metadata["enforcement"] == "ARCHITECTURAL", (
-            "tier2 templates must use ARCHITECTURAL enforcement (pattern validation)"
+        # tier2 is BASE template - same as tier0/1, must be STRICT
+        assert metadata["enforcement"] == "STRICT", (
+            "tier2 templates must use STRICT enforcement (BASE template = structural)"
         )
 
     def test_design_template_has_guideline_enforcement(self):

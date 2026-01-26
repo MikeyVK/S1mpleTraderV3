@@ -1,20 +1,27 @@
 {#- tier2_base_python.jinja2 - Language base for Python code -#}
-{#- Version: 1.1.0 -#}
+{#- Version: 1.2.0 -#}
 {#- Purpose: Adds Python-specific patterns (typing, docstrings, dunder methods) -#}
 {%- extends "tier1_base_code.jinja2" -%}
 
 {#-
 TEMPLATE_METADATA:
-  enforcement: ARCHITECTURAL
-  level: content
+  enforcement: STRICT
+  level: format
   validates:
-    guidelines:
-      - '"""Docstrings recommended for all classes/methods"""'
-      - "Type hints recommended (: str, -> int)"
-      - "Consider async/await for I/O operations"
+    strict:
+      - "^class "
+      - "^def "
+      - "^    \"\"\""
   extends: tier1_base_code.jinja2
   purpose: "Language base for Python - adds typing, docstrings, dunder methods"
-  version: "1.1.0"
+  version: "1.2.0"
+  changelog:
+    - version: "1.2.0"
+      date: "2026-01-26"
+      changes: "Changed enforcement from ARCHITECTURAL to STRICT (tier2 = BASE template)"
+    - version: "1.1.0"
+      date: "2026-01-25"
+      changes: "Initial version"
   introspection:
     template_id: tier2_base_python
     tier: 2
