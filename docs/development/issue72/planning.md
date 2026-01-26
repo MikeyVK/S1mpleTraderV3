@@ -68,7 +68,13 @@ Break down research findings from Issue #72 into **actionable implementation tas
    - TEMPLATE_METADATA format documented
    - Validation integration strategy defined
 
-4. ⚠️ **Critical Blockers Identified (3):**
+4. ✅ Design phase complete (2026-01-26):
+   - [document-tier-allocation.md](document-tier-allocation.md) - Complete tier specs for DOCUMENT artifacts
+   - [tracking-type-architecture.md](tracking-type-architecture.md) - Tracking as base type (not ephemeral)
+   - [whitespace_strategy.md](whitespace_strategy.md) - Jinja2 whitespace control rules
+   - [tdd-planning.md](tdd-planning.md) - 7 TDD cycles for document template implementation
+
+5. ⚠️ **Critical Blockers Identified (3):**
    - Template inheritance introspection (must fix before rollout)
    - IWorkerLifecycle pattern validation (audit required)
    - Backend pattern inventory (24 templates, 65h baseline)
@@ -309,27 +315,30 @@ Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA 
 - **Follow-up:** Task 1.6 concrete templates + tier introspection will fill tier_chain
 
 #### Task 1.2: Tier 0 Base (Universal SCAFFOLD)
-- **Description:** Create `tier0_base_artifact.jinja2` with 1-line SCAFFOLD block
-- **Input:** Ultra-compact format from research
+- **Description:** Create `tier0_base_artifact.jinja2` with 2-line SCAFFOLD format
+- **Input:** 2-line format from [tdd-planning.md](tdd-planning.md) Cycle 2
 - **Output:** 
-  - `{%- block scaffold_metadata -%}` with dynamic comment syntax
+  - Line 1: `# {filepath}` (language-adaptive comment)
+  - Line 2: `# template={type} version={hash} created={iso8601} updated=`
   - Works for Python `#`, Markdown `<!--`, YAML `#`
-- **Acceptance:** All formats inherit correct SCAFFOLD line
+- **Acceptance:** All formats inherit correct 2-line SCAFFOLD header
 - **Effort:** 2h
 - **Assignee:** Template Author
 - **Status:** ⏳ **PENDING** (blocked by Task 1.6 concrete templates)
 
 #### Task 1.3: Tier 1 Bases (Format Categories)
-- **Description:** Create 3 Tier 1 templates: CODE, DOCUMENT, CONFIG
-- **Input:** Dimensional analysis from research
+- **Description:** Create 4 Tier 1 templates: CODE, DOCUMENT, CONFIG, TRACKING
+- **Input:** Dimensional analysis from research + [tracking-type-architecture.md](tracking-type-architecture.md)
 - **Output:**
   - `tier1_base_code.jinja2` (imports, classes, functions structure)
-  - `tier1_base_document.jinja2` (heading hierarchy)
+  - `tier1_base_document.jinja2` (heading hierarchy) - See [tdd-planning.md](tdd-planning.md) Cycle 3 for detailed implementation
   - `tier1_base_config.jinja2` (schema validation hooks)
+  - `tier1_base_tracking.jinja2` (VCS workflow structure)
 - **Acceptance:** Each provides format-specific structure blocks
-- **Effort:** 2h × 3 = 6h
+- **Effort:** 2h × 4 = 8h
 - **Assignee:** Template Author
 - **Dependency:** Tier 0 complete
+- **Note:** DOCUMENT templates have detailed TDD cycles in tdd-planning.md (7 cycles, focus on design.md MVP)
 
 #### Task 1.4: Tier 2 Bases (Language Syntax)
 - **Description:** Create 3 Tier 2 templates: Python, Markdown, YAML
@@ -523,15 +532,17 @@ Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA 
 - **Assignee:** Template Author
 - **Dependency:** Task 2.4 complete (agent hints)
 
-#### Task 3.5: Tier 3 Markdown Ephemeral Template
-- **Description:** Create `tier3_base_markdown_ephemeral.jinja2`
-- **Input:** Commit message / PR body patterns
+#### Task 3.5: Tier 1 Tracking Base Template (VCS Workflows)
+- **Description:** Create `tier1_base_tracking.jinja2` for VCS workflow artifacts
+- **Input:** [tracking-type-architecture.md](tracking-type-architecture.md) - tracking as BASE TYPE (4th category: code/doc/config/tracking)
 - **Output:**
-  - Conventional commit structure
-  - PR body sections (problem, solution, testing)
-- **Acceptance:** Commit message template generates valid format
+  - Tracking-specific structure (no version history, workflow-driven)
+  - Type IDs: commit, pr, issue, milestone, changelog, release_notes
+  - VCS-agnostic terminology (not "git_commit")
+- **Acceptance:** Tracking artifacts have distinct lifecycle from documents
 - **Effort:** 3h
 - **Assignee:** Template Author
+- **Note:** Tracking is NOT a document subtype - it's a top-level base type with fundamentally different characteristics
 
 #### Task 3.6: Tier 3 YAML Policy Template
 - **Description:** Create `tier3_base_yaml_policy.jinja2`
@@ -598,11 +609,12 @@ Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA 
 #### Task 4.3: Migrate DOCUMENT Templates (9)
 - **Description:** Refactor 9 Markdown templates to extend Tier 3
 - **Input:** Migration script output
-- **Output:** Each template extends knowledge/ephemeral tier
+- **Output:** Each template extends document/tracking tier (see [tracking-type-architecture.md](tracking-type-architecture.md))
 - **Acceptance:** All DOCUMENT templates scaffold correctly
 - **Effort:** 1h × 9 = 9h
 - **Assignee:** Template Author
 - **Dependency:** Task 4.1 complete
+- **Note:** Tracking templates (commit, pr, issue) extend tier1_base_tracking, NOT tier1_base_document
 
 #### Task 4.4: Create CONFIG Templates (2 new)
 - **Description:** Create workflows.yaml and labels.yaml templates
@@ -685,7 +697,7 @@ Task 2.1 (Introspection 12h)
 - Week 3: Task 4.5 (E2E Testing 16h)
 
 **Engineer 2: Template Author (Primary)**
-- Week 1: Task 1.2-1.4 (Tier 0-2 17h)
+- Week 1: Task 1.2-1.4 (Tier 0-2 19h) ← +2h for tier1_base_tracking
 - Week 2: Task 3.1-3.3 (Tier 3 CODE 20h)
 - Week 3: Task 4.2 (Migrate CODE 13h) → Task 5.1 (TypeScript 4h)
 
@@ -709,25 +721,26 @@ Task 2.1 (Introspection 12h)
 
 | Phase | Tasks | Total Hours | Duration (1 eng) | Duration (4 eng) | Status |
 |-------|-------|-------------|------------------|------------------|--------|
-| **Phase 1: Foundation** | 10 tasks (was 6) | **55h** (was 38h) | 7 days | 3 days | ⚠️ **INCOMPLETE** |
+| **Phase 1: Foundation** | 10 tasks (was 6) | **57h** (was 38h) | 7 days | 3 days | ⚠️ **INCOMPLETE** |
 | **Phase 2: Blockers** | 4 tasks | 40h | 5 days | 3 days | Not started |
 | **Phase 3: Tier 3** | 7 tasks | 46h | 6 days | 3 days | Not started |
 | ~~**Phase 4: Migration**~~ | ~~6 tasks~~ | ~~58h~~ | ~~7 days~~ | ~~4 days~~ | **OBSOLETE** |
 | **Phase 5: Extensibility** | 2 tasks | 8h | 1 day | 1 day | Not started |
-| **TOTAL** | **23 tasks** (was 19) | **149h** (was 132h) | **19 days** (was 17) | **10 days (2 weeks)** (was 9 days) |
+| **TOTAL** | **23 tasks** (was 19) | **151h** (was 132h) | **19 days** (was 17) | **10 days (2 weeks)** (was 9 days) |
 
 **Key Changes:**
-- ⚠️ **Phase 1 +17h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) - foundation NOT done
+- ⚠️ **Phase 1 +19h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) + tier1_base_tracking (+2h) - foundation NOT done
 - ✅ **Phase 4 -65h:** Migration obsolete (legacy templates unreachable after commit 2ee9228)
-- ⚠️ **Net change: -48h vs original 183h** but Phase 1 must complete FIRST
+- ⚠️ **Net change: -46h vs original 183h** but Phase 1 must complete FIRST
 - ✅ **Timeline: 23 days → 19 days** (1 engineer) or **13 days → 10 days** (4 engineers)
+- 📚 **Design docs complete:** See [tdd-planning.md](tdd-planning.md) for document template implementation (7 TDD cycles)
 
 **Phase 1 Revised Breakdown:**
 - Task 1.1: Registry infrastructure (8h) ✅
 - **Task 1.1b: Fix compute_version_hash (4h)** ← NEW
 - **Task 1.1c: Integrate registry in scaffold flow (3h)** ← NEW
 - Task 1.2: Tier 0 base (2h) ✅
-- Task 1.3: Tier 1 bases (6h) ✅
+- Task 1.3: Tier 1 bases (8h) ✅ ← +2h for tier1_base_tracking
 - Task 1.4: Tier 2 bases (9h) ✅
 - Task 1.5: Issue #52 alignment (6h) ✅
 - **Task 1.5b: Remove ArtifactDefinition.version conflict (2h)** ← NEW
