@@ -1,28 +1,28 @@
 {#- tier0_base_artifact.jinja2 - Universal base template for all artifacts -#}
-{#- Version: 1.1.0 -#}
-{#- Purpose: Provides SCAFFOLD metadata header that adapts to output format -#}
+{#- Version: 2.0.0 (Issue #72 Cycle 2: 2-line SCAFFOLD format) -#}
+{#- Purpose: Provides 2-line SCAFFOLD metadata header (filepath + metadata, NO "SCAFFOLD:" prefix) -#}
 {#-
 TEMPLATE_METADATA:
   enforcement: STRICT
   level: format
   validates:
     strict:
-      - "^# SCAFFOLD:"
-      - "^<!-- SCAFFOLD:"
+      - "^# .+$"
+      - "^<!-- .+ -->$"
   extends: null
-  purpose: "Universal base for all artifacts - provides format-adaptive SCAFFOLD metadata"
-  version: "1.1.0"
+  purpose: "Universal base for all artifacts - provides format-adaptive 2-line SCAFFOLD metadata"
+  version: "2.0.0"
   introspection:
     template_id: tier0_base_artifact
     tier: 0
     variables:
       required:
         - artifact_type
+        - version_hash
         - timestamp
         - output_path
         - format
-      optional:
-        - template_version
+      optional: []
     exports_blocks:
       - content
 -#}
@@ -32,9 +32,11 @@ TEMPLATE_METADATA:
 -#}
 
 {%- if format == "markdown" -%}
-<!-- SCAFFOLD: template={{ artifact_type }} version={{ template_version }} created={{ timestamp }} path={{ output_path }} -->
+<!-- {{ output_path }} -->
+<!-- template={{ artifact_type }} version={{ version_hash }} created={{ timestamp }} updated= -->
 {%- else -%}
-# SCAFFOLD: template={{ artifact_type }} version={{ template_version }} created={{ timestamp }} path={{ output_path }}
+# {{ output_path }}
+# template={{ artifact_type }} version={{ version_hash }} created={{ timestamp }} updated=
 {%- endif %}
 {% block content -%}
 {%- endblock %}
