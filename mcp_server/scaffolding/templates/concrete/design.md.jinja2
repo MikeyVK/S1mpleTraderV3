@@ -1,19 +1,28 @@
 {#- concrete/design.md.jinja2 - Design Document -#}
-{#- Version: 1.0.0 -#}
-{#- Purpose: Generate design documents for features/issues -#}
+{#- Version: 2.0.0 -#}
+{#- Purpose: Generate design documents with Context/Options/Decision structure -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
 
 {#-
 TEMPLATE_METADATA:
-  enforcement: RECOMMENDED
-  level: structure
+  enforcement: GUIDELINE
+  level: content
   validates:
-    patterns:
-      - "Title + Purpose + Requirements sections"
-      - "Decision records (optional)"
+    guidelines:
+      - "Context & Requirements section with Problem/Requirements/Constraints"
+      - "Design Options with pros/cons comparison"
+      - "Chosen Design with Decision/Rationale/Key Decisions table"
+      - "Optional Open Questions section"
   extends: tier2_base_markdown.jinja2
-  purpose: "Concrete template for design documents"
-  version: "1.0.0"
+  purpose: "Concrete template for design documents with full DESIGN_TEMPLATE structure"
+  version: "2.0.0"
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-26"
+      changes: "Full DESIGN_TEMPLATE structure (Issue #72 Cycle 5)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with basic structure"
   introspection:
     template_id: design
     tier: concrete
@@ -21,10 +30,15 @@ TEMPLATE_METADATA:
     variables:
       required:
         - title
-      optional:
-        - purpose
+        - problem_statement
         - requirements
-        - decisions
+        - decision
+        - rationale
+      optional:
+        - constraints
+        - options
+        - key_decisions
+        - open_questions
         - related_issues
 -#}
 
@@ -40,46 +54,57 @@ related_issues: {{ related_issues | join(', ') }}
 
 {%- endblock %}
 
-{%- block content -%}
-# {{ title }}
+{%- block document_content %}
 
-## Purpose
+## 1. Context & Requirements
 
-{{ purpose | default('Document the design for ' + title + '.') }}
+### Problem Statement
+{{ problem_statement }}
 
-## Requirements
+### Requirements
+{{ requirements }}
 
-{% if requirements -%}
-{%- for req in requirements %}
-- {{ req }}
-{%- endfor %}
-{%- else -%}
-- (To be defined)
-{%- endif %}
+### Constraints
+{{ constraints | default("None") }}
 
-## Design
+## 2. Design Options
 
-(Design details go here)
+{% for option in options %}
+### Option {{ loop.index }}: {{ option.name }}
 
-{% if decisions -%}
-## Decision Records
+{{ option.description }}
 
-{%- for decision in decisions %}
+**Pros:**
+{% for pro in option.pros -%}
+- {{ pro }}
+{% endfor %}
 
-### {{ decision.title }}
+**Cons:**
+{% for con in option.cons -%}
+- {{ con }}
+{% endfor %}
+{% endfor %}
 
-**Status:** {{ decision.status | default('Proposed') }}
+## 3. Chosen Design
 
-**Context:** {{ decision.context }}
+### Decision
+{{ decision }}
 
-**Decision:** {{ decision.decision }}
+### Rationale
+{{ rationale }}
 
-{% if decision.consequences -%}
-**Consequences:**
-{%- for consequence in decision.consequences %}
-- {{ consequence }}
-{%- endfor %}
-{%- endif %}
-{%- endfor %}
+### Key Decisions
+
+| Decision | Rationale | Trade-offs |
+|----------|-----------|------------|
+{% for kd in key_decisions -%}
+| {{ kd.decision }} | {{ kd.rationale }} | {{ kd.tradeoffs }} |
+{% endfor %}
+
+{% if open_questions -%}
+## 4. Open Questions
+{% for question in open_questions -%}
+- {{ question }}
+{% endfor -%}
 {%- endif %}
 {%- endblock %}
