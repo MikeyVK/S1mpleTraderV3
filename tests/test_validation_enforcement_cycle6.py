@@ -61,8 +61,29 @@ class TestValidationEnforcementConsistency:
 
         assert "enforcement" in metadata
         assert metadata["enforcement"] == "GUIDELINE", (
-            "Concrete templates must use GUIDELINE enforcement (warnings only, no blocking)"
+            "Concrete DOC templates must use GUIDELINE enforcement "
+            "(content guidance, warnings only)"
         )
+
+    def test_concrete_code_templates_have_architectural_enforcement(self):
+        """Concrete code templates (worker, dto) must have ARCHITECTURAL enforcement."""
+        template_root = Path("mcp_server/scaffolding/templates")
+        analyzer = TemplateAnalyzer(template_root)
+
+        code_templates = ["worker.py.jinja2", "dto.py.jinja2", "service_command.py.jinja2"]
+
+        for template_name in code_templates:
+            template_path = template_root / "concrete" / template_name
+            if not template_path.exists():
+                continue
+
+            metadata = analyzer.extract_metadata(template_path)
+
+            assert "enforcement" in metadata, f"{template_name} missing enforcement"
+            assert metadata["enforcement"] == "ARCHITECTURAL", (
+                f"Concrete CODE templates must use ARCHITECTURAL enforcement (code patterns), "
+                f"but {template_name} has {metadata.get('enforcement')}"
+            )
 
     def test_strict_enforcement_blocks_on_missing_sections(self):
         """STRICT enforcement should block save when required sections missing."""

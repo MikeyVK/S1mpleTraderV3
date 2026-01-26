@@ -5,16 +5,23 @@
 
 {#-
 TEMPLATE_METADATA:
-  enforcement: REQUIRED
-  level: structure
+  enforcement: ARCHITECTURAL
+  level: content
   validates:
-    patterns:
+    guidelines:
       - "Pydantic BaseModel inheritance"
       - "Field definitions with type hints"
       - "Immutable by default (frozen=True optional)"
   extends: tier2_base_python.jinja2
   purpose: "Concrete template for Data Transfer Objects (Pydantic)"
-  version: "1.1.0"
+  version: "1.2.0"
+  changelog:
+    - version: "1.2.0"
+      date: "2026-01-26"
+      changes: "Changed enforcement from REQUIRED to ARCHITECTURAL (code patterns)"
+    - version: "1.1.0"
+      date: "2026-01-25"
+      changes: "Initial version"
   introspection:
     template_id: dto
     tier: concrete
