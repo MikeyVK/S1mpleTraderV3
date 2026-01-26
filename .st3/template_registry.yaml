@@ -7,7 +7,22 @@ version_hashes:
     concrete:
       template_id: dto.py
       version: 1.0.0
+  90e38d36:
+    artifact_type: dto
+    created: '2026-01-26T15:16:06.495027'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: dto.py
+      version: 1.1.0
+  e1bfa313:
+    artifact_type: worker
+    created: '2026-01-26T15:16:15.708544'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: worker.py
+      version: 1.1.0
 current_versions:
-  dto: 65005d3d
+  dto: 90e38d36
+  worker: e1bfa313
 templates: {}
-last_updated: '2026-01-25T21:07:14.598670'
+last_updated: '2026-01-26T15:16:15.708553'
