@@ -1,6 +1,6 @@
 {#- tier1_base_document.jinja2 - Base template for document artifacts -#}
-{#- Version: 1.0.0 -#}
-{#- Purpose: Provides heading hierarchy, sections -#}
+{#- Version: 2.0.0 (Issue #72 Cycle 3: Universal document structure) -#}
+{#- Purpose: Provides Status/Purpose/Scope/Prerequisites/Related/Version History -#}
 {%- extends "tier0_base_artifact.jinja2" -%}
 
 {#-
@@ -11,10 +11,11 @@ TEMPLATE_METADATA:
     strict:
       - "^# "
       - "^## "
-      - "^### "
+      - "^\\*\\*Status:\\*\\*"
+      - "^\\*\\*Phase:\\*\\*"
   extends: tier0_base_artifact.jinja2
-  purpose: "Format base for document artifacts - provides heading structure"
-  version: "1.0.0"
+  purpose: "Universal base for document artifacts - provides standard sections"
+  version: "2.0.0"
   introspection:
     template_id: tier1_base_document
     tier: 1
@@ -22,26 +23,54 @@ TEMPLATE_METADATA:
     variables:
       required:
         - title
+        - purpose
+        - scope_in
+        - scope_out
       optional:
-        - sections
+        - status
+        - phase
+        - prerequisites
+        - related_docs
     exports_blocks:
-      - document_title
-      - document_body
+      - document_content
 -#}
 
 {%- block content -%}
-{%- block document_title -%}
 # {{ title }}
-{%- endblock %}
 
-{%- block document_body -%}
-{%- if sections -%}
-{%- for section in sections -%}
+**Status:** {{ status | default("Draft") }} | **Phase:** {{ phase | default("Design") }}
 
-## {{ section.heading }}
+---
 
-{{ section.content }}
-{%- endfor -%}
-{%- endif -%}
-{%- endblock -%}
+## Purpose
+
+{{ purpose }}
+
+## Scope
+
+**In Scope:**
+{{ scope_in }}
+
+**Out of Scope:**
+{{ scope_out }}
+
+{% if prerequisites -%}
+## Prerequisites
+
+{% for prereq in prerequisites -%}
+- {{ prereq }}
+{% endfor -%}
+{%- endif %}
+
+{%- block document_content %}{% endblock %}
+
+## Related Documentation
+
+{{ related_docs | default("None") }}
+
+## Version History
+
+| Version | Date | Changes | Author |
+|---------|------|---------|--------|
+| 0.1 | {{ timestamp }} | Initial draft | Agent |
 {%- endblock -%}
