@@ -116,6 +116,14 @@ class ArtifactManager:
         self.fs_adapter = fs_adapter or FilesystemAdapter()
 
         # Task 1.1c: Template registry for provenance (lazy init if not provided)
+        if template_registry is None:
+            # Lazy initialize registry in workspace root or .st3/
+            from mcp_server.scaffolding.template_registry import TemplateRegistry
+            if self.workspace_root:
+                registry_path = self.workspace_root / ".st3" / "template_registry.yaml"
+            else:
+                registry_path = Path(".st3/template_registry.yaml")
+            template_registry = TemplateRegistry(registry_path=registry_path)
         self.template_registry = template_registry
 
     def _enrich_context(

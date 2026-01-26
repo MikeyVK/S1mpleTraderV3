@@ -53,7 +53,9 @@ markers = [
     "integration: Integration tests requiring real dependencies",
     "slow: Tests that take more than 5 seconds to complete",
     "manual: Manual tests requiring full environment setup and explicit enablement (RUN_MANUAL_TESTS=1)",
+    "asyncio: Mark async tests for pytest-asyncio",
 ]
+asyncio_mode = "auto"
 
 [tool.mypy]
 python_version = "3.11"
