@@ -1,0 +1,222 @@
+"""End-to-End test for complete template scaffolding (TDD Cycle 7).
+
+Tests full template chain: tier0 → tier1 → tier2 → concrete design.
+Validates SCAFFOLD metadata, link definitions, Version History, and GUIDELINE enforcement.
+"""
+
+from pathlib import Path
+from jinja2 import Environment, FileSystemLoader
+from mcp_server.validation.template_analyzer import TemplateAnalyzer
+
+
+class TestScaffoldDesignDocumentE2E:
+    """Test complete design document scaffolding end-to-end (Cycle 7)."""
+
+    # pylint: disable=too-many-statements
+    def test_scaffold_design_document_e2e(self):
+        """Scaffold complete design document and validate all template chain elements."""
+        template_dir = Path("mcp_server/scaffolding/templates")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("concrete/design.md.jinja2")
+
+        # Render with full realistic context
+        result = template.render(
+            # tier0 variables (SCAFFOLD metadata)
+            artifact_type="design",
+            version_hash="abc123def456",
+            timestamp="2026-01-26T15:30:00Z",
+            output_path="docs/development/issue72/template-hierarchy-design.md",
+            format="markdown",
+            # tier1 variables (universal document structure)
+            title="Template Hierarchy Design",
+            status="Draft",
+            phase="Design",
+            purpose="Define 5-tier template hierarchy for artifact generation",
+            scope_in="Template structure, inheritance chain, metadata enforcement",
+            scope_out="Specific concrete templates, runtime scaffolding logic",
+            prerequisites=["Issue #52 validation framework", "Jinja2 knowledge"],
+            related_docs=[
+                "docs/development/issue72/research.md",
+                "docs/development/issue72/planning.md",
+            ],
+            # tier2 variables (Markdown-specific)
+            frontmatter={
+                "title": "Template Hierarchy Design",
+                "type": "design",
+                "created": "2026-01-26",
+            },
+            # concrete/design variables (DESIGN_TEMPLATE structure)
+            problem_statement="Need structured, maintainable template system",
+            requirements="5-tier hierarchy, metadata enforcement, inheritance",
+            constraints="Must work with existing Jinja2, backward compatible SCAFFOLD",
+            options=[
+                {
+                    "name": "Flat Templates",
+                    "description": "Single template per artifact type",
+                    "pros": ["Simple", "Easy to understand"],
+                    "cons": ["Duplication", "Hard to maintain"],
+                },
+                {
+                    "name": "5-Tier Hierarchy",
+                    "description": "Layered templates with inheritance",
+                    "pros": ["DRY", "Maintainable", "Extensible"],
+                    "cons": ["More complexity", "Learning curve"],
+                },
+            ],
+            decision="Use 5-tier hierarchy (tier0→tier1→tier2→tier3→concrete)",
+            rationale="Best balance of maintainability and flexibility",
+            key_decisions=[
+                {
+                    "decision": "Use Jinja2 extends",
+                    "rationale": "Native template inheritance",
+                    "tradeoffs": "Tight coupling to Jinja2",
+                },
+                {
+                    "decision": "STRICT enforcement for BASE",
+                    "rationale": "Structural integrity",
+                    "tradeoffs": "Less flexibility",
+                },
+            ],
+            open_questions=[
+                "How to handle template versioning?",
+                "Migration path for existing files?",
+            ],
+        )
+
+        # === TIER0 ASSERTIONS (SCAFFOLD metadata) ===
+        # 2-line format: Line 1 = filepath, Line 2 = metadata
+        expected_path = "<!-- docs/development/issue72/template-hierarchy-design.md -->"
+        assert expected_path in result
+
+        expected_meta = (
+            "<!-- template=design version=abc123def456 "
+            "created=2026-01-26T15:30:00Z updated= -->"
+        )
+        assert expected_meta in result
+        # NO "SCAFFOLD:" prefix
+        assert "SCAFFOLD:" not in result
+
+        # === TIER1 ASSERTIONS (universal document structure) ===
+        assert "# Template Hierarchy Design" in result
+        assert "**Status:** Draft | **Phase:** Design" in result
+        assert "## Purpose" in result
+        assert "Define 5-tier template hierarchy for artifact generation" in result
+        assert "## Scope" in result
+        assert "**In Scope:**" in result
+        assert "Template structure, inheritance chain, metadata enforcement" in result
+        assert "**Out of Scope:**" in result
+        assert "Specific concrete templates, runtime scaffolding logic" in result
+        assert "## Prerequisites" in result
+        assert "Issue #52 validation framework" in result
+        assert "Jinja2 knowledge" in result
+        assert "## Related Documentation" in result
+        assert "## Version History" in result
+        assert "| Version | Date | Changes | Author |" in result
+
+        # === TIER2 ASSERTIONS (Markdown-specific patterns) ===
+        # Frontmatter
+        assert "---" in result
+        assert "title: Template Hierarchy Design" in result
+        assert "type: design" in result
+        assert "created: 2026-01-26" in result
+
+        # Link definitions (before Version History)
+        assert "[research.md]: docs/development/issue72/research.md" in result
+        assert "[planning.md]: docs/development/issue72/planning.md" in result
+
+        # Verify link definitions come BEFORE Version History
+        link_pos = result.find("[research.md]:")
+        history_pos = result.find("## Version History")
+        assert link_pos < history_pos, "Link definitions must come before Version History"
+
+        # === CONCRETE ASSERTIONS (DESIGN_TEMPLATE structure) ===
+        # Section 1: Context & Requirements
+        assert "## 1. Context & Requirements" in result
+        assert "### Problem Statement" in result
+        assert "Need structured, maintainable template system" in result
+        assert "### Requirements" in result
+        assert "5-tier hierarchy, metadata enforcement, inheritance" in result
+        assert "### Constraints" in result
+        assert "Must work with existing Jinja2" in result
+
+        # Section 2: Design Options
+        assert "## 2. Design Options" in result
+        assert "### Option 1: Flat Templates" in result
+        assert "Single template per artifact type" in result
+        assert "**Pros:**" in result
+        assert "- Simple" in result
+        assert "**Cons:**" in result
+        assert "- Duplication" in result
+        assert "### Option 2: 5-Tier Hierarchy" in result
+        assert "Layered templates with inheritance" in result
+
+        # Section 3: Chosen Design
+        assert "## 3. Chosen Design" in result
+        assert "### Decision" in result
+        assert "Use 5-tier hierarchy (tier0→tier1→tier2→tier3→concrete)" in result
+        assert "### Rationale" in result
+        assert "Best balance of maintainability and flexibility" in result
+        assert "### Key Decisions" in result
+        assert "| Decision | Rationale | Trade-offs |" in result
+        expected_row = (
+            "| Use Jinja2 extends | Native template inheritance | "
+            "Tight coupling to Jinja2 |"
+        )
+        assert expected_row in result
+
+        # Section 4: Open Questions (optional)
+        assert "## 4. Open Questions" in result
+        assert "- How to handle template versioning?" in result
+        assert "- Migration path for existing files?" in result
+
+    def test_e2e_with_missing_optional_fields(self):
+        """E2E test with minimal required fields (edge case)."""
+        template_dir = Path("mcp_server/scaffolding/templates")
+        env = Environment(loader=FileSystemLoader(template_dir))
+        template = env.get_template("concrete/design.md.jinja2")
+
+        result = template.render(
+            # Required fields only
+            artifact_type="design",
+            version_hash="test123",
+            timestamp="2026-01-26T10:00:00Z",
+            output_path="docs/test.md",
+            format="markdown",
+            title="Minimal Design",
+            purpose="Test",
+            scope_in="X",
+            scope_out="Y",
+            problem_statement="Problem",
+            requirements="Requirements",
+            decision="Decision",
+            rationale="Rationale",
+            options=[],
+            key_decisions=[],
+        )
+
+        # Should still have all required sections
+        assert "# Minimal Design" in result
+        assert "## Purpose" in result
+        assert "## 1. Context & Requirements" in result
+        assert "## 2. Design Options" in result
+        assert "## 3. Chosen Design" in result
+
+        # Optional sections should be omitted or show defaults
+        assert "## Prerequisites" not in result  # No prerequisites provided
+        assert "## 4. Open Questions" not in result  # No open_questions provided
+        assert "None" in result  # related_docs defaults to "None"
+
+    def test_e2e_guideline_enforcement(self):
+        """Validate that design template uses GUIDELINE enforcement (not STRICT)."""
+        template_root = Path("mcp_server/scaffolding/templates")
+        analyzer = TemplateAnalyzer(template_root)
+
+        design_path = template_root / "concrete" / "design.md.jinja2"
+        metadata = analyzer.extract_metadata(design_path)
+
+        # GUIDELINE enforcement means violations are warnings, not errors
+        assert metadata["enforcement"] == "GUIDELINE"
+        assert "guidelines" in metadata["validates"]
+
+        strict_rules = metadata["validates"].get("strict", [])
+        assert "strict" not in metadata["validates"] or not strict_rules
