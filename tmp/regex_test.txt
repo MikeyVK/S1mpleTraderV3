@@ -1,6 +1,0 @@
-=== INSERT AT TOP ===
-Test voor regex replacement.
-Regel 1: EDITED VIA BATCH
-Regel 2: SECOND REPLACED here.
-Regel 3: ALSO EDITED VIA BATCH
-=== INSERT AT BOTTOM ===

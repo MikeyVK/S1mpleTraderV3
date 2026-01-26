@@ -103,9 +103,11 @@ class TestScaffoldDesignDocumentE2E:
         """Validate tier1 universal document structure elements."""
         result = _render_full_design_doc()
 
-        # Title and status
+        # Title and multi-line header fields (no frontmatter)
         assert "# Template Hierarchy Design" in result
-        assert "**Status:** Draft | **Phase:** Design" in result
+        assert "**Status:** Draft" in result
+        assert "**Version:** 1.0" in result
+        assert "**Last Updated:** 2026-01-26" in result
 
         # Purpose section
         assert "## Purpose" in result
@@ -126,24 +128,24 @@ class TestScaffoldDesignDocumentE2E:
         # Related Documentation and Version History
         assert "## Related Documentation" in result
         assert "## Version History" in result
-        assert "| Version | Date | Changes | Author |" in result
+        assert "| Version | Date | Author | Changes |" in result
 
     def test_e2e_tier2_markdown_patterns(self):
-        """Validate tier2 Markdown-specific patterns (frontmatter, link definitions)."""
+        """Validate tier2 Markdown-specific patterns (NO frontmatter, link definitions)."""
         result = _render_full_design_doc()
 
-        # Frontmatter
-        assert "---" in result
-        assert "title: Template Hierarchy Design" in result
-        assert "type: design" in result
-        assert "created: 2026-01-26" in result
+        # NO frontmatter (removed per BASE_TEMPLATE alignment)
+        lines = result.split("\n")
+        non_comment_lines = [l for l in lines if l.strip() and not l.strip().startswith("<!--")]
+        # First non-comment line should be title
+        assert non_comment_lines[0].startswith("# ")
 
-        # Link definitions (without .md extension in IDs for cleaner references)
-        assert "[research]: docs/development/issue72/research.md" in result
-        assert "[planning]: docs/development/issue72/planning.md" in result
+        # Link definitions (still present)
+        assert "[related-1]: docs/development/issue72/research.md" in result
+        assert "[related-2]: docs/development/issue72/planning.md" in result
 
         # Verify link definitions come BEFORE Version History
-        link_pos = result.find("[research]:")
+        link_pos = result.find("[related-1]:")
         history_pos = result.find("## Version History")
         assert link_pos < history_pos, "Link definitions must come before Version History"
 
@@ -151,50 +153,45 @@ class TestScaffoldDesignDocumentE2E:
         """Validate concrete DESIGN_TEMPLATE numbered sections."""
         result = _render_full_design_doc()
 
-        # Section 1: Context & Requirements
+        # Section 1: Context & Requirements with numbered subsections
         assert "## 1. Context & Requirements" in result
-        assert "### Problem Statement" in result
+        assert "### 1.1. Problem Statement" in result
         assert "Need structured, maintainable template system" in result
-        assert "### Requirements" in result
-        assert "5-tier hierarchy, metadata enforcement, inheritance" in result
-        assert "### Constraints" in result
+        assert "### 1.2. Requirements" in result
+        assert "**Functional:**" in result  # Requirements subsections
+        assert "### 1.3. Constraints" in result
         assert "Must work with existing Jinja2" in result
 
-        # Section 2: Design Options
+        # Section 2: Design Options with numbered subsections
         assert "## 2. Design Options" in result
-        assert "### Option 1: Flat Templates" in result
+        assert "### 2.1. Option A: Flat Templates" in result
         assert "Single template per artifact type" in result
         assert "**Pros:**" in result
-        assert "- Simple" in result
+        assert "- ✅ Simple" in result  # Checkmark format
         assert "**Cons:**" in result
-        assert "- Duplication" in result
-        assert "### Option 2: 5-Tier Hierarchy" in result
+        assert "- ❌ Duplication" in result  # X format
+        assert "### 2.2. Option B: 5-Tier Hierarchy" in result
         assert "Layered templates with inheritance" in result
 
     def test_e2e_concrete_design_chosen_design_section(self):
         """Validate concrete DESIGN_TEMPLATE Chosen Design section."""
         result = _render_full_design_doc()
 
-        # Section 3: Chosen Design
+        # Section 3: Chosen Design (not subsections, but **Decision:** format)
         assert "## 3. Chosen Design" in result
-        assert "### Decision" in result
-        assert "Use 5-tier hierarchy (tier0→tier1→tier2→tier3→concrete)" in result
-        assert "### Rationale" in result
-        assert "Best balance of maintainability and flexibility" in result
+        assert "**Decision:** Use 5-tier hierarchy (tier0→tier1→tier2→tier3→concrete)" in result
+        assert "**Rationale:** Best balance of maintainability and flexibility" in result
 
-        # Key Decisions table
-        assert "### Key Decisions" in result
-        assert "| Decision | Rationale | Trade-offs |" in result
-        expected_row = (
-            "| Use Jinja2 extends | Native template inheritance | "
-            "Tight coupling to Jinja2 |"
-        )
-        assert expected_row in result
+        # Key Decisions table (2 columns now)
+        assert "### 3.1. Key Design Decisions" in result
+        assert "| Decision | Rationale |" in result
+        assert "Use Jinja2 extends" in result
 
-        # Section 4: Open Questions
+        # Section 4: Open Questions (table format)
         assert "## 4. Open Questions" in result
-        assert "- How to handle template versioning?" in result
-        assert "- Migration path for existing files?" in result
+        assert "| Question | Options | Status |" in result
+        assert "How to handle template versioning?" in result
+        assert "Migration path for existing files?" in result
 
     def test_e2e_with_missing_optional_fields(self):
         """E2E test with minimal required fields (edge case)."""

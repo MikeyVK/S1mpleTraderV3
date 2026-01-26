@@ -1,4 +1,0 @@
-Dit is een *** \1 *** bestand.
-=== *** \1 *** REGEL ===
-Gemaakt via de safe_edit_file tool.
-Regel 3 - NU *** \1 *** met line_edits!
