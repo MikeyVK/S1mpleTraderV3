@@ -376,11 +376,12 @@ tests/integration/
 
 **Risk 1: Template inheritance chain breaks**
 - Mitigation: Test each tier independently before integration
-- Fallback: Keep old templates in archive/ until E2E passes
+- **BREAKING CHANGE:** Old templates replaced completely (no fallback)
 
 **Risk 2: SCAFFOLD format breaks existing parsers**
-- Mitigation: 2-line format is backwards compatible (first line is standard comment)
-- Test: Verify existing scaffold_artifact calls still work
+- **BREAKING CHANGE:** 2-line format replaces old 1-line format completely
+- Action: Update all existing scaffolded files to new format (separate cleanup task)
+- Test: Verify new format parses correctly
 
 **Risk 3: Validation too strict (blocks valid documents)**
 - Mitigation: Start with GUIDELINE enforcement, tighten after data collection
@@ -392,7 +393,10 @@ tests/integration/
 2. **Context Variables:** Ensure all required variables documented in design.md
 3. **Error Messages:** Provide clear errors for missing context variables
 4. **Template Registry:** Update `.st3/template_registry.yaml` after each tier
-5. **Backwards Compat:** Existing artifacts should still scaffold (no breaking changes)
+5. **BREAKING CHANGES:** No backwards compatibility - clean slate approach
+   - Old SCAFFOLD format (1-line) replaced by new format (2-line)
+   - Existing scaffolded files need manual update (separate cleanup task)
+   - Old templates fully replaced (no archive/fallback)
 
 ## Related Documentation
 
