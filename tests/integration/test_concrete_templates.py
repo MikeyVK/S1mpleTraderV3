@@ -88,9 +88,11 @@ class TestScaffoldedOutputCodingStandards:
             dependencies=["pydantic", "typing"],
             responsibilities=["Define data contract", "Validate input"],
             fields=[
-                {"name": "id", "type": "str"},
-                {"name": "value", "type": "int"}
-            ]
+                {"name": "id", "type": "str", "description": "Unique identifier"},
+                {"name": "value", "type": "int", "description": "Numeric value"}
+            ],
+            frozen=True,
+            examples=[{"id": "test-123", "value": 42}]
         )
 
         # REQUIREMENT: Module docstring must exist after SCAFFOLD header (2-line format)

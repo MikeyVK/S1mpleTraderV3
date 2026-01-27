@@ -42,6 +42,9 @@ TEMPLATE_METADATA:
       optional:
         - description
         - validators
+        - layer (architectural layer, e.g. "DTOs (Strategy)")
+        - dependencies (list of dependencies, defaults to pydantic.BaseModel)
+        - responsibilities (list of responsibilities, defaults to data validation)
 -#}
 
 {% block module_docstring %}
@@ -49,9 +52,9 @@ TEMPLATE_METADATA:
 
 Data Transfer Object for {{ name | lower }}.
 
-@layer: Domain
-@dependencies: pydantic.BaseModel
-@responsibilities: Data validation, type safety{% if frozen %}, immutability{% endif %}
+@layer: {{ layer | default("Domain") }}
+@dependencies: {{ dependencies | join(", ") if dependencies is iterable and dependencies is not string else (dependencies if dependencies else "pydantic.BaseModel") }}
+@responsibilities: {{ responsibilities | join(", ") if responsibilities is iterable and responsibilities is not string else (responsibilities if responsibilities else "Data validation, type safety" + (", immutability" if frozen else "")) }}
 """
 {% endblock %}
 
