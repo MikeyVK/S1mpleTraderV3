@@ -22,7 +22,7 @@ class TestTier2MarkdownLinkDefinitions:
     """Test tier2_base_markdown.jinja2 link definitions (Cycle 4)."""
 
     def test_renders_link_definitions_section(self):
-        """Markdown documents must have link definitions section."""
+        """Markdown documents must have link definitions section with auto-generated IDs."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier2_base_markdown.jinja2")
 
@@ -42,17 +42,17 @@ class TestTier2MarkdownLinkDefinitions:
             ],
         )
 
-        # Link definitions should appear BEFORE Version History
-        assert "[research.md]: docs/research.md" in result
-        assert "[planning.md]: docs/planning.md" in result
+        # Link definitions use auto-generated IDs: [related-1], [related-2], etc.
+        assert "[related-1]: docs/research.md" in result
+        assert "[related-2]: docs/planning.md" in result
 
         # Verify they come before Version History
-        link_pos = result.find("[research.md]:")
+        link_pos = result.find("[related-1]:")
         history_pos = result.find("## Version History")
         assert link_pos < history_pos, "Link definitions must come before Version History"
 
     def test_link_definitions_use_markdown_reference_format(self):
-        """Link definitions must use Markdown reference format."""
+        """Link definitions must use Markdown reference format with auto-generated IDs."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier2_base_markdown.jinja2")
 
@@ -71,8 +71,8 @@ class TestTier2MarkdownLinkDefinitions:
             ],
         )
 
-        # Format: [id]: path/to/file.md
-        assert "[research.md]: docs/development/issue72/research.md" in result
+        # Format: [related-N]: path/to/file.md (auto-generated ID)
+        assert "[related-1]: docs/development/issue72/research.md" in result
 
     def test_omits_link_definitions_when_no_related_docs(self):
         """Link definitions section should be omitted when no related docs."""
@@ -91,11 +91,11 @@ class TestTier2MarkdownLinkDefinitions:
             scope_out="Y",
         )
 
-        # No link definitions section
-        assert "[" not in result or "## Version History" in result
+        # No link definitions when no related docs
+        assert "<!-- Link definitions -->" not in result or "None" in result
 
     def test_link_definitions_render_as_invisible_references(self):
-        """Link definitions should render as invisible Markdown references."""
+        """Link definitions should render as invisible Markdown references with auto-generated IDs."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier2_base_markdown.jinja2")
 
@@ -114,7 +114,7 @@ class TestTier2MarkdownLinkDefinitions:
             ],
         )
 
-        # Link definition format (invisible in rendered Markdown)
-        assert "[planning.md]: docs/planning.md" in result
-        # Should NOT be a visible link like [text](url)
-        assert "](docs/planning.md)" not in result or "[planning.md]:" in result
+        # Link definition format (invisible in rendered Markdown) with auto-generated ID
+        assert "[related-1]: docs/planning.md" in result
+        # Related docs section uses reference-style links
+        assert "**[docs/planning.md][related-1]**" in result or "[related-1]" in result
