@@ -39,7 +39,16 @@ class TestTemplateRegistryLoading:
         mock_registry.get_artifact.return_value = artifact
 
         # TemplateScaffolder now uses JinjaRenderer and returns ScaffoldResult
-        result = scaffolder.scaffold('dto', name='TestDto', description='Test DTO')
+        result = scaffolder.scaffold(
+            'dto',
+            name='TestDto',
+            description='Test DTO',
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
+        )
 
         assert result is not None
         assert hasattr(result, 'content')

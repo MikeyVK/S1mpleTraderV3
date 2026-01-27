@@ -143,7 +143,14 @@ class TestProvenanceE2E:
         }
 
         if artifact_type == "dto":
-            context["fields"] = [{"name": "id", "type": "int"}]
+            context["fields"] = [
+                {"name": "id", "type": "int", "description": "Identifier"},
+                {"name": "name", "type": "str", "description": "Name"}
+            ]
+            context["frozen"] = True
+            context["examples"] = [{"id": 1, "name": "Test"}]
+            context["dependencies"] = ["pydantic"]
+            context["responsibilities"] = ["Data validation", "Type safety"]
 
         if artifact_type == "design":
             context.update({
@@ -213,7 +220,14 @@ class TestProvenanceE2E:
         }
 
         if artifact_type == "dto":
-            context["fields"] = [{"name": "id", "type": "int"}]
+            context["fields"] = [
+                {"name": "id", "type": "int", "description": "Identifier"},
+                {"name": "name", "type": "str", "description": "Name"}
+            ]
+            context["frozen"] = True
+            context["examples"] = [{"id": 1, "name": "Test"}]
+            context["dependencies"] = ["pydantic"]
+            context["responsibilities"] = ["Data validation", "Type safety"]
 
         file_path = await manager.scaffold_artifact(artifact_type, **context)
 

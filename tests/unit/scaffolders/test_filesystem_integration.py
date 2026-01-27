@@ -27,7 +27,16 @@ class TestTemplateReading:
     def test_template_loads_via_open(self, scaffolder):
         # Template loading now uses JinjaRenderer, not open()
         # scaffold() returns ScaffoldResult, not str
-        result = scaffolder.scaffold('test', name='TestDto', description='Test')
+        result = scaffolder.scaffold(
+            'test',
+            name='TestDto',
+            description='Test',
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test"}],
+            dependencies=["pydantic"],
+            responsibilities=["Test validation"]
+        )
         assert result is not None
         assert hasattr(result, 'content')
         assert len(result.content) > 0

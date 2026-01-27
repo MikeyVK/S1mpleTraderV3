@@ -43,7 +43,14 @@ class TestMetadataEndToEnd:
             "dto",
             name="UserDTO",
             description="User data transfer object",
-            fields=[{"name": "id", "type": "int"}, {"name": "name", "type": "str"}]
+            frozen=False,  # User state is mutable
+            examples=[{"id": 123, "name": "John Doe"}],
+            fields=[
+                {"name": "id", "type": "int", "description": "User ID"},
+                {"name": "name", "type": "str", "description": "User name"}
+            ],
+            dependencies=["pydantic"],
+            responsibilities=["User data validation"]
         )
 
         # Should return path (file artifact)
@@ -76,7 +83,12 @@ class TestMetadataEndToEnd:
         result = await manager.scaffold_artifact(
             "dto",
             name="TestDTO",
-            description="Test DTO"
+            description="Test DTO",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test field"}],
+            dependencies=["pydantic"],
+            responsibilities=["Data validation"]
         )
 
         # Should return path string
@@ -130,7 +142,12 @@ class TestMetadataEndToEnd:
             await manager.scaffold_artifact(
                 "dto",
                 name="TestDTO",
-                description="Test"
+                description="Test",
+                frozen=True,
+                examples=[{"test": "data"}],
+                fields=[{"name": "test", "type": "str", "description": "Test field"}],
+                dependencies=["pydantic"],
+                responsibilities=["Validation"]
             )
 
         # Error should have helpful hints
@@ -195,7 +212,12 @@ class TestMetadataEndToEnd:
         result = await manager.scaffold_artifact(
             "dto",
             name="ProvenanceDto",
-            description="Test provenance tracking"
+            description="Test provenance tracking",
+            frozen=True,
+            examples=[{"tracking_id": "test-123"}],
+            fields=[{"name": "tracking_id", "type": "str", "description": "Tracking ID"}],
+            dependencies=["pydantic"],
+            responsibilities=["Provenance data validation"]
         )
 
         # Verify file was created

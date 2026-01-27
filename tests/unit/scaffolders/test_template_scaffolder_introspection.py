@@ -52,7 +52,12 @@ class TestTemplateScaffolderIntrospection:
         result = scaffolder.validate(
             "dto",
             name="TestDTO",
-            description="Test description"
+            description="Test description",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
         )
 
         # Assert - validation passes (frozen is optional, system fields not required)
@@ -88,8 +93,13 @@ class TestTemplateScaffolderIntrospection:
         result = scaffolder.validate(
             "dto",
             name="TestDTO",
-            description="Test"
-            # frozen omitted - should be OK
+            description="Test",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
+            # validators omitted - should be OK (optional)
         )
 
         # Assert
@@ -107,7 +117,12 @@ class TestTemplateScaffolderIntrospection:
         result = scaffolder.validate(
             "dto",
             name="TestDTO",
-            description="Test"
+            description="Test",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
             # NO template_id, template_version, scaffold_created, output_path
         )
 

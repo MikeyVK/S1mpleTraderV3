@@ -103,7 +103,15 @@ class TestConstructor:
         result = scaffolder.scaffold(
             artifact_type="dto",
             name="TestDTO",
-            description="Test DTO"
+            description="Test DTO",
+            frozen=True,
+            examples=[{"id": "test-1", "name": "Test"}],
+            fields=[
+                {"name": "id", "type": "str", "description": "Unique identifier"},
+                {"name": "name", "type": "str", "description": "Test name"}
+            ],
+            dependencies=["pydantic"],
+            responsibilities=["Data validation", "Type safety"]
         )
 
         # Assert on structure (not exact content which may evolve)
@@ -135,7 +143,12 @@ class TestValidate:
         result = scaffolder.validate(
             artifact_type="dto",
             name="TestDTO",
-            description="Test DTO"
+            description="Test DTO",
+            frozen=True,
+            examples=[{"id": "test-1"}],
+            fields=[{"name": "id", "type": "str", "description": "ID"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
         )
 
         assert result is True
@@ -167,8 +180,13 @@ class TestValidate:
         result = scaffolder.validate(
             artifact_type="dto",
             name="TestDTO",
-            description="Test"
-            # Optional fields like 'fields', 'docstring' not provided
+            description="Test",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test field"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
+            # Optional fields like 'validators', 'layer' not provided
         )
 
         assert result is True
@@ -185,7 +203,15 @@ class TestScaffold:
         result = scaffolder.scaffold(
             artifact_type="dto",
             name="TestDTO",
-            description="Test DTO"
+            description="Test DTO",
+            frozen=True,
+            examples=[{"id": 1, "data": "test"}],
+            fields=[
+                {"name": "id", "type": "int", "description": "ID field"},
+                {"name": "data", "type": "str", "description": "Data field"}
+            ],
+            dependencies=["pydantic"],
+            responsibilities=["Data validation"]
         )
 
         # Assert on structure (production template)
@@ -332,7 +358,14 @@ class TestScaffold:
             artifact_type="dto",
             name="UserDTO",
             description="User data",
-            fields=[{"name": "id", "type": "int"}],
+            frozen=False,  # User state is mutable
+            examples=[{"id": 123, "username": "john"}],
+            fields=[
+                {"name": "id", "type": "int", "description": "User ID"},
+                {"name": "username", "type": "str", "description": "Username"}
+            ],
+            dependencies=["pydantic"],
+            responsibilities=["User data validation"],
             docstring="Custom docstring"
         )
 
