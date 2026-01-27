@@ -104,10 +104,11 @@ class TestMetadataEndToEnd:
         self, parser: ScaffoldMetadataParser, tmp_path: Path
     ) -> None:
         """E2E: Invalid metadata format → MetadataParseError raised."""
-        # Create file with invalid metadata (invalid version format)
+        # Create file with invalid metadata (invalid version format) using 2-line format
         invalid_file = tmp_path / "invalid.py"
         invalid_file.write_text(
-            "# SCAFFOLD: template=dto version=NOT_A_VERSION created=2026-01-20T14:00:00Z\n",
+            "# backend/dtos/invalid.py\n"
+            "# template=dto version=NOT_A_VERSION created=2026-01-20T14:00:00Z updated=\n",
             encoding="utf-8"
         )
 

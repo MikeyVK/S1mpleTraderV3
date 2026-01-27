@@ -96,11 +96,16 @@ class TestValidationEnforcementConsistency:
         # STRICT means violations should block
         assert metadata["enforcement"] == "STRICT"
 
-        # Check that validates.strict rules exist
+        # Document templates use required_blocks + structure (not strict regex patterns)
         assert "validates" in metadata
-        assert "strict" in metadata["validates"]
-        assert len(metadata["validates"]["strict"]) > 0, (
-            "STRICT templates must define strict validation rules"
+        assert "required_blocks" in metadata["validates"], (
+            "STRICT document templates must define required_blocks validation"
+        )
+        assert "structure" in metadata["validates"], (
+            "STRICT document templates must define structure validation"
+        )
+        assert len(metadata["validates"]["required_blocks"]) > 0, (
+            "STRICT templates must define required blocks"
         )
 
     def test_guideline_enforcement_shows_warnings_only(self):
