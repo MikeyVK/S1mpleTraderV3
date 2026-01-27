@@ -90,29 +90,32 @@ Your code has been rated at 5.00/10
     @pytest.mark.asyncio
     async def test_run_quality_gates_mypy_fail(self, manager: QAManager) -> None:
         """Test quality gates fail on Mypy errors."""
-        mypy_output = "test.py:12: error: Incompatible types"
+        mypy_output = "mcp_server/test.py:12: error: Incompatible types"
 
         with patch("pathlib.Path.exists", return_value=True), \
              patch("subprocess.run") as mock_run:
 
             # Pylint Pass
             mock_proc_pylint = MagicMock()
+            mock_proc_pylint.returncode = 0
             mock_proc_pylint.stdout = "Your code has been rated at 10.00/10"
             mock_proc_pylint.stderr = ""
 
             # Mypy Fail
             mock_proc_mypy = MagicMock()
+            mock_proc_mypy.returncode = 1
             mock_proc_mypy.stdout = mypy_output
             mock_proc_mypy.stderr = ""
 
             # Pyright pass output (JSON)
             mock_proc_pyright = MagicMock()
+            mock_proc_pyright.returncode = 0
             mock_proc_pyright.stdout = '{"generalDiagnostics": []}'
             mock_proc_pyright.stderr = ""
 
             mock_run.side_effect = [mock_proc_pylint, mock_proc_mypy, mock_proc_pyright]
 
-            result = manager.run_quality_gates(["test.py"])
+            result = manager.run_quality_gates(["mcp_server/test.py"])
 
             assert result["overall_pass"] is False
             mypy_gate = next(g for g in result["gates"] if g["name"] == "Type Checking")
@@ -127,16 +130,19 @@ Your code has been rated at 5.00/10
 
             # Pylint Pass
             mock_proc_pylint = MagicMock()
+            mock_proc_pylint.returncode = 0
             mock_proc_pylint.stdout = "Your code has been rated at 10.00/10"
             mock_proc_pylint.stderr = ""
 
             # Mypy Pass
             mock_proc_mypy = MagicMock()
+            mock_proc_mypy.returncode = 0
             mock_proc_mypy.stdout = ""
             mock_proc_mypy.stderr = ""
 
             # Pyright Pass
             mock_proc_pyright = MagicMock()
+            mock_proc_pyright.returncode = 0
             mock_proc_pyright.stdout = '{"generalDiagnostics": []}'
             mock_proc_pyright.stderr = ""
 
@@ -155,11 +161,13 @@ Your code has been rated at 5.00/10
 
             # Pylint runs ok
             mock_proc_pylint = MagicMock()
+            mock_proc_pylint.returncode = 0
             mock_proc_pylint.stdout = "Your code has been rated at 10.00/10"
             mock_proc_pylint.stderr = ""
 
-            # Mypy times out
+            # Mypy times out - rest continues
             mock_proc_pyright = MagicMock()
+            mock_proc_pyright.returncode = 0
             mock_proc_pyright.stdout = '{"generalDiagnostics": []}'
             mock_proc_pyright.stderr = ""
 
@@ -169,10 +177,10 @@ Your code has been rated at 5.00/10
                 mock_proc_pyright,
             ]
 
-            result = manager.run_quality_gates(["test.py"])
+            result = manager.run_quality_gates(["mcp_server/test.py"])
             mypy_gate = next(g for g in result["gates"] if g["name"] == "Type Checking")
             assert mypy_gate["passed"] is False
-            assert "timed out" in mypy_gate["issues"][0]["message"]
+            assert "timed out" in mypy_gate["issues"][0]["message"].lower()
 
     @pytest.mark.asyncio
     async def test_subprocess_not_found(self, manager: QAManager) -> None:
@@ -196,28 +204,32 @@ Your code has been rated at 5.00/10
         """Test quality gates fail on Pyright errors."""
         pyright_output = (
             '{"generalDiagnostics": ['
-            '{"file":"test.py","severity":"error","message":"Bad type","range":'
+            '{"file":"mcp_server/test.py","severity":"error","message":"Bad type","range":'
             '{"start":{"line":11,"character":0},"end":{"line":11,"character":3}}}'
             ']}'
         )
 
         with patch("pathlib.Path.exists", return_value=True), \
              patch("subprocess.run") as mock_run:
+
             mock_proc_pylint = MagicMock()
+            mock_proc_pylint.returncode = 0
             mock_proc_pylint.stdout = "Your code has been rated at 10.00/10"
             mock_proc_pylint.stderr = ""
 
             mock_proc_mypy = MagicMock()
+            mock_proc_mypy.returncode = 0
             mock_proc_mypy.stdout = ""
             mock_proc_mypy.stderr = ""
 
             mock_proc_pyright = MagicMock()
+            mock_proc_pyright.returncode = 1
             mock_proc_pyright.stdout = pyright_output
             mock_proc_pyright.stderr = ""
 
             mock_run.side_effect = [mock_proc_pylint, mock_proc_mypy, mock_proc_pyright]
 
-            result = manager.run_quality_gates(["test.py"])
+            result = manager.run_quality_gates(["mcp_server/test.py"])
             assert result["overall_pass"] is False
 
             pyright_gate = next(g for g in result["gates"] if g["name"] == "Pyright")

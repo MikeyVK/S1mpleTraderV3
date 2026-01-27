@@ -140,7 +140,7 @@ class TestTier1DocumentTemplate:
         assert "# Template Library Design" in result
 
     def test_renders_sections(self):
-        """Should render sections with H2 headings."""
+        """tier1_base_document renders BASE_TEMPLATE structure (Purpose, Scope, Related Docs, Version History)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
 
@@ -151,16 +151,19 @@ class TestTier1DocumentTemplate:
             output_path="docs/research.md",
             format="markdown",
             title="Research Doc",
-            sections=[
-                {"heading": "Background", "content": "Context for this research"},
-                {"heading": "Findings", "content": "Results from investigation"}
-            ]
+            purpose="Research purpose",
+            scope_in="In scope content",
+            scope_out="Out of scope content",
         )
 
-        assert "## Background" in result
-        assert "Context for this research" in result
-        assert "## Findings" in result
-        assert "Results from investigation" in result
+        # BASE_TEMPLATE structure
+        assert "## Purpose" in result
+        assert "Research purpose" in result
+        assert "## Scope" in result
+        assert "**In Scope:**" in result
+        assert "**Out of Scope:**" in result
+        assert "## Related Documentation" in result
+        assert "## Version History" in result
 
 
 class TestTier1ConfigTemplate:
@@ -248,13 +251,13 @@ class TestTier1MetadataStructure:
         assert "parent: tier0_base_artifact" in content
 
     def test_document_template_has_metadata(self):
-        """Should have TEMPLATE_METADATA with tier=1."""
+        """tier1_base_document should have template_id: base_document (not tier1_base_document)."""
         template_path = TEMPLATE_DIR / "tier1_base_document.jinja2"
         content = template_path.read_text(encoding="utf-8")
 
         assert "TEMPLATE_METADATA:" in content
-        assert "template_id: tier1_base_document" in content
-        assert "tier: 1" in content
+        assert "template_id: base_document" in content
+        assert "tier: tier1" in content
 
     def test_config_template_has_metadata(self):
         """Should have TEMPLATE_METADATA with tier=1."""
