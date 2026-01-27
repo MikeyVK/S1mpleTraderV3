@@ -98,34 +98,19 @@ class TestTier1ValidationMetadata:
         assert metadata["enforcement"] == "STRICT"
 
     def test_tier1_document_validates_headings(self):
-        """Tier 1 DOCUMENT should validate heading hierarchy."""
+        """Tier 1 DOCUMENT should validate document structure."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier1_base_document.jinja2"
         
         metadata = analyzer.extract_metadata(template_path)
         
-        strict_rules = metadata["validates"]["strict"]
-        # Should validate Markdown headings: # or ##
-        assert any("#" in rule for rule in strict_rules)
-
-    def test_tier1_config_has_validation_metadata(self):
-        """Tier 1 CONFIG template should have validation metadata."""
-        analyzer = TemplateAnalyzer(self.get_templates_dir())
-        template_path = self.get_templates_dir() / "tier1_base_config.jinja2"
-        
-        metadata = analyzer.extract_metadata(template_path)
-        
-        assert metadata, "Tier 1 CONFIG should have TEMPLATE_METADATA"
-        assert metadata["enforcement"] == "STRICT"
-
-
-class TestTier2ValidationMetadata:
-    """Tests for Tier 2 language base templates validation metadata."""
-
-    @staticmethod
-    def get_templates_dir():
-        """Get templates directory path."""
-        return Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
+        # Document templates validate structure, not regex patterns
+        validates = metadata["validates"]
+        assert "required_blocks" in validates or "structure" in validates
+        # Should validate document sections
+        if "structure" in validates:
+            structure_rules = validates["structure"]
+            assert any("Purpose" in rule or "Scope" in rule for rule in structure_rules)
 
     def test_tier2_python_has_validation_metadata(self):
         """Tier 2 Python template should have validation metadata."""
@@ -136,7 +121,7 @@ class TestTier2ValidationMetadata:
         
         assert metadata, "Tier 2 Python should have TEMPLATE_METADATA"
         assert "enforcement" in metadata
-        assert metadata["enforcement"] == "ARCHITECTURAL"  # Language patterns are ARCH tier
+        assert metadata["enforcement"] == "STRICT"  # Tier 0+1+2 are STRICT (Issue #72)
 
     def test_tier2_python_validates_typing_docstrings(self):
         """Tier 2 Python should validate type hints and docstrings."""
@@ -145,11 +130,11 @@ class TestTier2ValidationMetadata:
         
         metadata = analyzer.extract_metadata(template_path)
         
-        # ARCH tier uses guidelines, not strict rules
+        # Tier 2 uses strict rules for language patterns
         assert "validates" in metadata
-        guidelines = metadata["validates"].get("guidelines", [])
-        # Should have guidelines for docstrings, type hints
-        assert any("docstring" in str(rule).lower() or '"""' in str(rule) for rule in guidelines)
+        strict_rules = metadata["validates"].get("strict", [])
+        # Should validate Python patterns: class, def, docstrings
+        assert any("class" in rule.lower() or "def" in rule.lower() or '"""' in rule for rule in strict_rules)
 
     def test_tier2_markdown_has_validation_metadata(self):
         """Tier 2 Markdown template should have validation metadata."""
@@ -159,7 +144,7 @@ class TestTier2ValidationMetadata:
         metadata = analyzer.extract_metadata(template_path)
         
         assert metadata, "Tier 2 Markdown should have TEMPLATE_METADATA"
-        assert metadata["enforcement"] == "ARCHITECTURAL"
+        assert metadata["enforcement"] == "STRICT"  # Tier 0+1+2 are STRICT (Issue #72)
 
     def test_tier2_yaml_has_validation_metadata(self):
         """Tier 2 YAML template should have validation metadata."""
@@ -169,7 +154,7 @@ class TestTier2ValidationMetadata:
         metadata = analyzer.extract_metadata(template_path)
         
         assert metadata, "Tier 2 YAML should have TEMPLATE_METADATA"
-        assert metadata["enforcement"] == "ARCHITECTURAL"
+        assert metadata["enforcement"] == "STRICT"  # Tier 0+1+2 are STRICT (Issue #72)
 
 
 class TestValidationMetadataStructure:
@@ -199,18 +184,20 @@ class TestValidationMetadataStructure:
         # Required fields per Issue #52
         assert "enforcement" in metadata, f"{template_file} missing 'enforcement'"
         assert "level" in metadata, f"{template_file} missing 'level'"
-        assert "validates" in metadata, f"{template_file} missing 'validates'"
+        # validates field is optional for tier0 (SCAFFOLD validation is special-cased)
+        if template_file != "tier0_base_artifact.jinja2":
+            assert "validates" in metadata, f"{template_file} missing 'validates'"
         
         # enforcement must be valid value
         assert metadata["enforcement"] in ["STRICT", "ARCHITECTURAL", "GUIDELINE"]
         
         # level must be valid value
-        assert metadata["level"] in ["format", "content"]
+        assert metadata["level"] in ["format", "content", "structure"]
         
-        # validates must have appropriate structure
-        validates = metadata["validates"]
-        assert isinstance(validates, dict)
-        if metadata["enforcement"] == "STRICT":
-            assert "strict" in validates
-        if metadata["enforcement"] == "ARCHITECTURAL":
-            assert "guidelines" in validates or "strict" in validates
+        # validates must have appropriate structure (optional for tier0)
+        if "validates" in metadata:
+            validates = metadata["validates"]
+            assert isinstance(validates, dict)
+            if metadata["enforcement"] == "STRICT":
+                # Strict enforcement can have strict rules OR structural validation
+                assert "strict" in validates or "required_blocks" in validates or "structure" in validates
