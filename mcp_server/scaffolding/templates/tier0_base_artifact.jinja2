@@ -1,19 +1,17 @@
 {#- tier0_base_artifact.jinja2 - SCAFFOLD Metadata Header -#}
-{#- Version: 2.2.0 -#}
+{#- Version: 2.3.0 -#}
 {#- Purpose: Provides 2-line SCAFFOLD metadata comment at top of all artifacts -#}
 
 {#-
 TEMPLATE_METADATA:
   enforcement: STRICT
   level: tier0
-  validates:
-    strict:
-      - "SCAFFOLD metadata comment must be lines 1-2"
-      - "Format-adaptive comment syntax (# or <!-- -->)"
-      - "NO blank line required after SCAFFOLD metadata"
   purpose: "Base tier for all artifacts - provides SCAFFOLD metadata"
-  version: "2.2.0"
+  version: "2.3.0"
   changelog:
+    - version: "2.3.0"
+      date: "2026-01-27"
+      changes: "Removed validates.strict (descriptive strings, not machine-readable patterns)"
     - version: "2.2.0"
       date: "2026-01-27"
       changes: "Removed blank line requirement after SCAFFOLD metadata per user requirement"
@@ -40,6 +38,10 @@ TEMPLATE_METADATA:
       provides:
         - SCAFFOLD metadata
         - format-adaptive comment syntax
+  notes:
+    - "SCAFFOLD format: Line 1 = filepath, Line 2 = metadata (template=X version=Y created=Z updated=)"
+    - "NO blank line required after SCAFFOLD metadata"
+    - "Format-adaptive: # for Python/YAML, <!-- --> for Markdown"
 -#}
 
 {#- WHITESPACE STRATEGY (Issue #72):

@@ -46,37 +46,74 @@ class TestProvenanceE2E:
 
     def _parse_scaffold_header(
         self,
-        first_line: str,
+        content: str,
         expected_extension: str,
         artifact_type: str
     ) -> tuple[str, str, str, str]:
-        """Extract SCAFFOLD header metadata from first line.
+        """Extract SCAFFOLD header metadata from 2-line format.
 
         Returns:
             Tuple of (template_name, version, timestamp, output_path)
         """
+        lines = content.split("\n")
+        
         if expected_extension == ".py":
-            # Python format: # SCAFFOLD: ...
-            assert first_line.startswith("# SCAFFOLD:"), \
-                f"{artifact_type}: SCAFFOLD header must start with '# SCAFFOLD:'"
+            # Python format (2-line):
+            # Line 1: # /path/to/file.py
+            # Line 2: # template=X version=Y created=Z updated=
+            assert lines[0].startswith("#"), \
+                f"{artifact_type}: Line 1 must start with '#' (filepath comment)"
+            
+            # Extract filepath from line 1
+            output_path = lines[0][1:].strip()  # Remove leading '#'
+            
+            # Parse metadata from line 2
+            assert "template=" in lines[1], \
+                f"{artifact_type}: Line 2 must contain metadata. Got: {lines[1]}"
+            
+            # Extract metadata fields using regex
+            metadata_line = lines[1]
+            template_match = re.search(r"template=(\S+)", metadata_line)
+            version_match = re.search(r"version=(\S+)", metadata_line)
+            created_match = re.search(r"created=(\S+)", metadata_line)
+            
+            assert template_match and version_match and created_match, \
+                f"{artifact_type}: Invalid metadata format. Got: {metadata_line}"
+            
+            return (
+                template_match.group(1),
+                version_match.group(1),
+                created_match.group(1),
+                output_path
+            )
 
-            pattern = r"# SCAFFOLD: template=(\S+) version=(\S+) created=(\S+) path=(.+)"
-            match = re.match(pattern, first_line)
-            assert match, \
-                f"{artifact_type}: SCAFFOLD header format invalid. Got: {first_line}"
-
-            template_name, version, timestamp, output_path = match.groups()
-            return template_name, version, timestamp, output_path.strip()
-
-        # Markdown format: <!-- SCAFFOLD: ... -->
-        assert first_line.startswith("<!-- SCAFFOLD:"), \
-            f"{artifact_type}: SCAFFOLD header must start with '<!-- SCAFFOLD:'"
-        assert first_line.endswith("-->"), \
-            f"{artifact_type}: SCAFFOLD header must end with '-->'"
-
-        pattern = (
-            r"<!-- SCAFFOLD: template=(\S+) version=(\S+) "
-            r"created=(\S+) path=(.+) -->"
+        # Markdown format (2-line HTML comments):
+        # Line 1: <!-- /path/to/file.md -->
+        # Line 2: <!-- template=X version=Y created=Z updated= -->
+        assert lines[0].startswith("<!--") and lines[0].endswith("-->"), \
+            f"{artifact_type}: Line 1 must be HTML comment with filepath"
+        
+        # Extract filepath from line 1
+        output_path = lines[0][4:-3].strip()  # Remove <!-- and -->
+        
+        # Parse metadata from line 2
+        assert "<!-- template=" in lines[1] and lines[1].endswith("-->"), \
+            f"{artifact_type}: Line 2 must be HTML comment with metadata. Got: {lines[1]}"
+        
+        # Extract metadata fields
+        metadata_line = lines[1][4:-3]  # Remove <!-- and -->
+        template_match = re.search(r"template=(\S+)", metadata_line)
+        version_match = re.search(r"version=(\S+)", metadata_line)
+        created_match = re.search(r"created=(\S+)", metadata_line)
+        
+        assert template_match and version_match and created_match, \
+            f"{artifact_type}: Invalid metadata format. Got: {metadata_line}"
+        
+        return (
+            template_match.group(1),
+            version_match.group(1),
+            created_match.group(1),
+            output_path
         )
         match = re.match(pattern, first_line)
         assert match, \
@@ -128,10 +165,9 @@ class TestProvenanceE2E:
         
         # Read generated file
         content = Path(file_path).read_text()
-        first_line = content.split("\n")[0]
         
         template_name, version, timestamp, output_path = self._parse_scaffold_header(
-            first_line, expected_extension, artifact_type
+            content, expected_extension, artifact_type
         )
 
         # REQUIREMENT 1: template_name matches artifact type
@@ -187,11 +223,13 @@ class TestProvenanceE2E:
         # Read generated file
         content = Path(file_path).read_text()
 
-        # Verify content shows inheritance chain
+        # Verify content shows inheritance chain (2-line SCAFFOLD format)
         # (tier0 → tier1 → tier2 → concrete all contribute to output)
-        assert "# SCAFFOLD:" in content, "tier0 SCAFFOLD header missing"
-        assert '"""' in content, "tier1 module docstring missing"
-        assert "class " in content, "tier2 class structure missing"
+        lines = content.split("\n")
+        assert lines[0].startswith("#"), "tier0: Line 1 must be filepath comment"
+        assert "template=" in lines[1], "tier0: Line 2 must have metadata"
+        assert '"""' in content, "tier1: module docstring missing"
+        assert "class " in content, "tier2: class structure missing"
 
     @pytest.mark.asyncio
     async def test_scaffold_design_doc_tier_chain_traceable(
@@ -215,6 +253,10 @@ class TestProvenanceE2E:
         # Read generated file
         content = Path(file_path).read_text()
         
-        # Verify content shows inheritance chain
-        assert "<!-- SCAFFOLD:" in content, "tier0 SCAFFOLD header missing"
-        assert "# " in content, "tier2 markdown structure missing"
+        # Verify content shows inheritance chain (2-line HTML comment format)
+        lines = content.split("\n")
+        assert lines[0].startswith("<!--") and lines[0].endswith("-->"), \
+            "tier0: Line 1 must be HTML comment with filepath"
+        assert "<!-- template=" in lines[1] and lines[1].endswith("-->"), \
+            "tier0: Line 2 must be HTML comment with metadata"
+        assert "# " in content, "tier2: markdown structure missing"
