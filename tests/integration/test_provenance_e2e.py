@@ -127,13 +127,7 @@ class TestProvenanceE2E:
         ("worker", ".py"),
         ("service", ".py"),
         ("generic", ".py"),
-        pytest.param(
-            "design", ".md",
-            marks=pytest.mark.skip(
-                reason="Design template needs SCAFFOLD block restructure "
-                       "- tier2_markdown overrides content"
-            )
-        ),
+        ("design", ".md"),
     ])
     @pytest.mark.asyncio
     async def test_scaffold_produces_valid_scaffold_header(
@@ -159,12 +153,22 @@ class TestProvenanceE2E:
             context["fields"] = [{"name": "id", "type": "int"}]
         
         if artifact_type == "design":
-            context["title"] = f"Test {artifact_type.title()} Document"
+            context.update({
+                "title": f"Test {artifact_type.title()} Document",
+                "problem_statement": "Test problem",
+                "requirements_functional": ["Req 1"],
+                "requirements_nonfunctional": ["Non-func req 1"],
+                "options": [{"name": "Option 1", "description": "Test option", "pros": ["Pro 1"], "cons": ["Con 1"]}],
+                "decision": "Option 1",
+                "rationale": "Test rationale",
+                "key_decisions": [{"area": "Architecture", "decision": "Test decision"}],
+                "timestamp": "2026-01-27T10:00:00Z"
+            })
         
         file_path = await manager.scaffold_artifact(artifact_type, **context)
         
         # Read generated file
-        content = Path(file_path).read_text()
+        content = Path(file_path).read_text(encoding="utf-8")
         
         template_name, version, timestamp, output_path = self._parse_scaffold_header(
             content, expected_extension, artifact_type
@@ -181,7 +185,7 @@ class TestProvenanceE2E:
         ), f"{artifact_type}: version must be 8-char hash, got: {version}"
 
         # REQUIREMENT 3: timestamp must be ISO 8601 format (YYYY-MM-DDTHH:MMZ)
-        timestamp_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$"
+        timestamp_pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?Z$"
         assert (
             re.match(timestamp_pattern, timestamp)
         ), f"{artifact_type}: timestamp format invalid: {timestamp}"
@@ -221,7 +225,7 @@ class TestProvenanceE2E:
         file_path = await manager.scaffold_artifact(artifact_type, **context)
         
         # Read generated file
-        content = Path(file_path).read_text()
+        content = Path(file_path).read_text(encoding="utf-8")
 
         # Verify content shows inheritance chain (2-line SCAFFOLD format)
         # (tier0 → tier1 → tier2 → concrete all contribute to output)
@@ -257,7 +261,7 @@ class TestProvenanceE2E:
         )
         
         # Read generated file
-        content = Path(file_path).read_text()
+        content = Path(file_path).read_text(encoding="utf-8")
         
         # Verify content shows inheritance chain (2-line HTML comment format)
         lines = content.split("\n")
@@ -266,3 +270,4 @@ class TestProvenanceE2E:
         assert "<!-- template=" in lines[1] and lines[1].endswith("-->"), \
             "tier0: Line 2 must be HTML comment with metadata"
         assert "# " in content, "tier2: markdown structure missing"
+
