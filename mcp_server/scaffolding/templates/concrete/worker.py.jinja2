@@ -35,9 +35,15 @@ TEMPLATE_METADATA:
         - lifecycle_methods
 -#}
 
-{% block type_imports -%}
+{% block imports_section %}
+# Standard library
 from typing import Any
-{% endblock -%}
+
+# Third-party
+
+# Project modules
+
+{% endblock %}
 
 {% block class_structure %}
 class {{ name }}:
@@ -49,10 +55,10 @@ class {{ name }}:
 {% endblock -%}
 {% block init_method -%}
 {% if dependencies %}
-    def __init__(self{% for dep in dependencies %}, {{ dep.name }}: {{ dep.type }}{% endfor %}):
+    def __init__(self{% for dep in dependencies %}, {{ dep.name if dep is mapping else (dep | lower | replace(' ', '_')) }}: {{ dep.type if dep is mapping else dep }}{% endfor %}):
         """Initialize {{ name }}."""
 {% for dep in dependencies %}
-        self.{{ dep.name }} = {{ dep.name }}
+        self.{{ dep.name if dep is mapping else (dep | lower | replace(' ', '_')) }} = {{ dep.name if dep is mapping else (dep | lower | replace(' ', '_')) }}
 {% endfor -%}
 {% endif -%}
 {% endblock -%}

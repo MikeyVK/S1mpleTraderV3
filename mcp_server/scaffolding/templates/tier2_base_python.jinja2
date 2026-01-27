@@ -43,12 +43,30 @@ TEMPLATE_METADATA:
 -#}
 
 {% block imports_section %}
-{% block type_imports -%}
-{% if type_imports -%}
+# Standard library
+{%- if type_imports %}
 from typing import {{ type_imports | join(', ') }}
-{% endif -%}
-{% endblock -%}
-{{ super() -}}
+{%- endif %}
+{%- if imports and imports.stdlib %}
+{%- for imp in imports.stdlib %}
+{{ imp }}
+{%- endfor %}
+{%- endif %}
+
+# Third-party
+{%- if imports and imports.third_party %}
+{%- for imp in imports.third_party %}
+{{ imp }}
+{%- endfor %}
+{%- endif %}
+
+# Project modules
+{%- if imports and imports.project %}
+{%- for imp in imports.project %}
+{{ imp }}
+{%- endfor %}
+{%- endif %}
+
 {% endblock %}
 
 {% block class_structure %}

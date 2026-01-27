@@ -34,9 +34,15 @@ TEMPLATE_METADATA:
         - return_type
 -#}
 
-{% block type_imports -%}
+{% block imports_section %}
+# Standard library
 from typing import Any
-{% endblock -%}
+
+# Third-party
+
+# Project modules
+
+{% endblock %}
 
 {% block class_structure %}
 class {{ name }}:

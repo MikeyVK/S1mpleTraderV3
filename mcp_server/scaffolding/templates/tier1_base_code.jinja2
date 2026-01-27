@@ -60,24 +60,21 @@ WHITESPACE STRATEGY (Issue #72):
 
 {{ module_description }}
 {% endif %}
-{% if layer %}
 
-@layer: {{ layer }}
-{% endif -%}
-{% if dependencies %}
-@dependencies: [{{ dependencies | join(', ') }}]
-{% endif -%}
-{% if responsibilities %}
+@layer: {{ layer | default('Unknown') }}
+@dependencies: [{{ dependencies | join(', ') if dependencies else 'None' }}]
 @responsibilities:
+{% if responsibilities -%}
 {% for responsibility in responsibilities -%}
     - {{ responsibility }}
 {% endfor -%}
+{% else -%}
+    - [To be defined]
 {% endif -%}
 """
 {% endblock %}
 
 {% block imports_section %}
-{%- if imports and (imports.stdlib or imports.third_party or imports.project) %}
 # Standard library
 {%- if imports and imports.stdlib %}
 {%- for imp in imports.stdlib %}
@@ -98,7 +95,7 @@ WHITESPACE STRATEGY (Issue #72):
 {{ imp }}
 {%- endfor %}
 {%- endif %}
-{%- endif %}
+
 {% endblock %}
 
 {% block class_structure %}

@@ -58,9 +58,15 @@ Data Transfer Object for {{ name | lower }}.
 """
 {% endblock %}
 
-{% block type_imports -%}
+{% block imports_section %}
+# Standard library
+
+# Third-party
 from pydantic import BaseModel, Field
-{% endblock -%}
+
+# Project modules
+
+{% endblock %}
 
 {% block class_structure %}
 class {{ name }}(BaseModel):
