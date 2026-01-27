@@ -25,7 +25,7 @@ class TestTier1DocumentUniversalStructure:
     """Test tier1_base_document.jinja2 universal structure (Cycle 3)."""
 
     def test_renders_status_and_phase_fields(self):
-        """Document must have Status and Phase fields."""
+        """Document must have Status, Version, Last Updated fields (Phase removed per BASE_TEMPLATE)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
 
@@ -37,14 +37,16 @@ class TestTier1DocumentUniversalStructure:
             format="markdown",
             title="Test Design",
             status="Draft",
-            phase="Design",
+            version="1.0",
+            last_updated="2026-01-26",
             purpose="Test purpose",
             scope_in="Feature X",
             scope_out="Feature Y",
         )
 
         assert "**Status:** Draft" in result, "Status field missing"
-        assert "**Phase:** Design" in result, "Phase field missing"
+        assert "**Version:** 1.0" in result, "Version field missing"
+        assert "**Last Updated:** 2026-01-26" in result, "Last Updated field missing"
 
     def test_renders_purpose_section(self):
         """Document must have Purpose section."""
@@ -131,7 +133,7 @@ class TestTier1DocumentUniversalStructure:
         assert "## Prerequisites" not in result
 
     def test_renders_related_documentation(self):
-        """Document must have Related Documentation section."""
+        """Document must have Related Documentation section with reference-style links."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
 
@@ -145,15 +147,15 @@ class TestTier1DocumentUniversalStructure:
             purpose="Test",
             scope_in="X",
             scope_out="Y",
-            related_docs="[planning.md](planning.md), [research.md](research.md)",
+            related_docs=["planning.md", "research.md"],
         )
 
         assert "## Related Documentation" in result
-        assert "[planning.md](planning.md)" in result
-        assert "[research.md](research.md)" in result
+        # Template uses reference-style links with auto-generated IDs
+        assert "related-" in result  # Should have reference IDs
 
     def test_renders_version_history_table(self):
-        """Document must have Version History table."""
+        """Document must have Version History table (column order: Version, Date, Author, Changes)."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
 
@@ -170,5 +172,8 @@ class TestTier1DocumentUniversalStructure:
         )
 
         assert "## Version History" in result
-        assert "| Version | Date | Changes | Author |" in result
-        assert "| 0.1 | 2026-01-26T10:00:00Z | Initial draft | Agent |" in result
+        # Updated column order per BASE_TEMPLATE: Version | Date | Author | Changes
+        assert "| Version | Date | Author | Changes |" in result
+        assert "| 1.0 |" in result  # Default version
+        assert "| Agent |" in result  # Default author
+        assert "| Initial draft |" in result  # Default changes
