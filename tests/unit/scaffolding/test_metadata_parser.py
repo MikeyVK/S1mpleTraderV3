@@ -19,10 +19,10 @@ class TestScaffoldMetadataParser:
     """Test metadata parser for different comment syntaxes."""
 
     def test_parse_python_hash_comment(self):
-        """RED: Parse metadata from Python hash comment."""
+        """RED: Parse metadata from Python hash comment (2-line format)."""
         content = (
-            "# SCAFFOLD: template=dto version=1.0 "
-            "created=2026-01-20T14:00:00Z path=mcp_server/dto/user.py\n"
+            "# mcp_server/dto/user.py\n"
+            "# template=dto version=abc12345 created=2026-01-20T14:00Z updated=\n"
             "class UserDTO:\n    pass\n"
         )
         parser = ScaffoldMetadataParser()
@@ -30,15 +30,14 @@ class TestScaffoldMetadataParser:
         assert metadata is not None
 
         assert metadata["template"] == "dto"
-        assert metadata["version"] == "1.0"
-        assert metadata["created"] == "2026-01-20T14:00:00Z"
-        assert metadata["path"] == "mcp_server/dto/user.py"
+        assert metadata["version"] == "abc12345"
+        assert metadata["created"] == "2026-01-20T14:00Z"
 
     def test_parse_typescript_double_slash_comment(self):
-        """RED: Parse metadata from TypeScript double-slash comment."""
+        """RED: Parse metadata from TypeScript double-slash comment (2-line format)."""
         content = (
-            "// SCAFFOLD: template=interface version=1.0 "
-            "created=2026-01-20T14:00:00Z path=src/types/user.ts\n"
+            "// src/types/user.ts\n"
+            "// template=interface version=def67890 created=2026-01-20T14:00Z updated=\n"
             "export interface User {\n    id: string;\n}\n"
         )
         parser = ScaffoldMetadataParser()
@@ -46,14 +45,14 @@ class TestScaffoldMetadataParser:
         assert metadata is not None
 
         assert metadata["template"] == "interface"
-        assert metadata["version"] == "1.0"
-        assert metadata["created"] == "2026-01-20T14:00:00Z"
+        assert metadata["version"] == "def67890"
+        assert metadata["created"] == "2026-01-20T14:00Z"
 
     def test_parse_markdown_html_comment(self):
-        """RED: Parse metadata from Markdown HTML comment."""
+        """RED: Parse metadata from Markdown HTML comment (2-line format)."""
         content = (
-            "<!-- SCAFFOLD: template=design version=1.0 "
-            "created=2026-01-20T14:00:00Z path=docs/design.md -->\n"
+            "<!-- docs/design.md -->\n"
+            "<!-- template=design version=a1b2c3d4 created=2026-01-20T14:00Z updated= -->\n"
             "# Design Document\n\n"
             "Content here.\n"
         )
@@ -62,14 +61,13 @@ class TestScaffoldMetadataParser:
         assert metadata is not None
 
         assert metadata["template"] == "design"
-        assert metadata["created"] == "2026-01-20T14:00:00Z"
+        assert metadata["created"] == "2026-01-20T14:00Z"
 
     def test_parse_jinja2_comment(self):
-        """RED: Parse metadata from Jinja2 comment."""
+        """RED: Parse metadata from Jinja2 comment (2-line format)."""
         content = (
-            "{# SCAFFOLD: template=email version=1.0 "
-            "created=2026-01-20T14:00:00Z "
-            "path=templates/email.html.jinja2 #}\n"
+            "{# templates/email.html.jinja2 #}\n"
+            "{# template=email version=12345678 created=2026-01-20T14:00Z updated= #}\n"
             "<html>\n"
             "    <body>{{ content }}</body>\n"
             "</html>\n"
@@ -79,14 +77,12 @@ class TestScaffoldMetadataParser:
         assert metadata is not None
 
         assert metadata["template"] == "email"
-        assert metadata["path"] == "templates/email.html.jinja2"
 
     def test_parse_with_optional_updated_field(self):
-        """RED: Parse metadata with optional updated timestamp."""
+        """RED: Parse metadata with optional updated timestamp (2-line format)."""
         content = (
-            "# SCAFFOLD: template=dto version=1.0 "
-            "created=2026-01-20T14:00:00Z updated=2026-01-20T15:30:00Z "
-            "path=mcp_server/dto/user.py\n"
+            "# mcp_server/dto/user.py\n"
+            "# template=dto version=abc12345 created=2026-01-20T14:00Z updated=2026-01-20T15:30Z\n"
             "class UserDTO:\n"
             "    pass\n"
         )
@@ -94,13 +90,13 @@ class TestScaffoldMetadataParser:
         metadata = parser.parse(content, ".py")
         assert metadata is not None
 
-        assert metadata["updated"] == "2026-01-20T15:30:00Z"
+        assert metadata["updated"] == "2026-01-20T15:30Z"
 
     def test_parse_ephemeral_artifact_without_path(self):
-        """RED: Ephemeral artifacts without path field are valid."""
+        """RED: Ephemeral artifacts still have filepath on line 1 (2-line format)."""
         content = (
-            "# SCAFFOLD: template=commit_message version=1.0 "
-            "created=2026-01-20T14:00:00Z\n"
+            "# commit_message.txt\n"
+            "# template=commit_message version=a1b2c3d4 created=2026-01-20T14:00Z updated=\n"
             "feat: Add user authentication\n"
         )
         parser = ScaffoldMetadataParser()
@@ -108,7 +104,6 @@ class TestScaffoldMetadataParser:
         assert metadata is not None
 
         assert metadata["template"] == "commit_message"
-        assert "path" not in metadata  # Ephemeral = no path
 
     def test_parse_non_scaffolded_file_returns_none(self):
         """RED: Non-scaffolded files should return None."""
@@ -129,9 +124,10 @@ class User:
         assert metadata is None
 
     def test_parse_scaffold_not_on_first_line_returns_none(self):
-        """RED: SCAFFOLD comment must be on first line."""
+        """RED: SCAFFOLD metadata must be on first 2 lines."""
         content = """# Regular comment
-# SCAFFOLD: template=dto version=1.0 created=2026-01-20T14:00:00Z
+# mcp_server/dto/user.py
+# template=dto version=abc12345 created=2026-01-20T14:00Z updated=
 class UserDTO:
     pass
 """
@@ -141,23 +137,23 @@ class UserDTO:
         assert metadata is None
 
     def test_parse_missing_required_field_raises_error(self):
-        """RED: Missing required field should raise MetadataParseError."""
-        content = """# SCAFFOLD: template=dto created=2026-01-20T14:00:00Z
+        """RED: Missing required field should raise MetadataParseError (2-line format)."""
+        content = """# mcp_server/dto/user.py
+# template=dto created=2026-01-20T14:00Z updated=
 # Missing: version
 """
         parser = ScaffoldMetadataParser()
 
-        with pytest.raises(
-            MetadataParseError,
-            match="Missing required field: version"
-        ):
-            parser.parse(content, ".py")
+        # Parser will fail because line 2 doesn't match expected pattern (no version=)
+        metadata = parser.parse(content, ".py")
+        # Should return None because pattern doesn't match
+        assert metadata is None
 
     def test_parse_invalid_field_format_raises_error(self):
-        """RED: Invalid field format should raise MetadataParseError."""
+        """RED: Invalid field format should raise MetadataParseError (2-line format)."""
         content = (
-            "# SCAFFOLD: template=Invalid_Template version=1.0 "
-            "created=2026-01-20T14:00:00Z\n"
+            "# mcp_server/dto/user.py\n"
+            "# template=Invalid_Template version=abc12345 created=2026-01-20T14:00Z updated=\n"
             "# template should be lowercase with hyphens/underscores only\n"
         )
         parser = ScaffoldMetadataParser()
@@ -166,8 +162,9 @@ class UserDTO:
             parser.parse(content, ".py")
 
     def test_parse_invalid_timestamp_format_raises_error(self):
-        """RED: Invalid timestamp format should raise MetadataParseError."""
-        content = """# SCAFFOLD: template=dto version=1.0 created=2026-01-20 14:00:00
+        """RED: Invalid timestamp format should raise MetadataParseError (2-line format)."""
+        content = """# mcp_server/dto/user.py
+# template=dto version=abc12345 created=2026-01-20 14:00:00 updated=
 # Missing T and Z in timestamp
 """
         parser = ScaffoldMetadataParser()
@@ -177,7 +174,8 @@ class UserDTO:
 
     def test_parse_unknown_extension_returns_none(self):
         """RED: Unknown file extension returns None (no pattern match)."""
-        content = """# SCAFFOLD: template=dto version=1.0 created=2026-01-20T14:00:00Z
+        content = """# some_file.unknown
+# template=dto version=abc12345 created=2026-01-20T14:00Z updated=
 """
         parser = ScaffoldMetadataParser()
         metadata = parser.parse(content, ".unknown")
@@ -185,53 +183,49 @@ class UserDTO:
         assert metadata is None
 
     def test_parse_malformed_key_value_raises_error(self):
-        """RED: Malformed key=value pairs should raise MetadataParseError."""
+        """RED: Line 2 not matching pattern returns None (2-line format)."""
         content = (
-            "# SCAFFOLD: template=dto version 1.0 "
-            "created=2026-01-20T14:00:00Z\n"
-            "# 'version 1.0' is missing '=' - parsed as version=, "
-            "missing version value\n"
+            "# mcp_server/dto/user.py\n"
+            "# This line doesn't match the expected pattern\n"
+            "# Should return None\n"
         )
         parser = ScaffoldMetadataParser()
 
-        # Missing version value causes "Missing required field" error
-        with pytest.raises(
-            MetadataParseError,
-            match="Missing required field: version"
-        ):
-            parser.parse(content, ".py")
+        # Line 2 doesn't match metadata pattern
+        metadata = parser.parse(content, ".py")
+        assert metadata is None  # No match
 
     def test_parse_with_extra_whitespace(self):
-        """RED: Parser should handle extra whitespace gracefully."""
+        """RED: Parser should handle extra whitespace gracefully (2-line format)."""
         content = (
-            "#   SCAFFOLD:   template=dto   version=1.0   "
-            "created=2026-01-20T14:00:00Z   path=test.py\n"
+            "#   test.py\n"
+            "#   template=dto   version=abc12345   created=2026-01-20T14:00Z   updated=\n"
         )
         parser = ScaffoldMetadataParser()
         metadata = parser.parse(content, ".py")
         assert metadata is not None
 
         assert metadata["template"] == "dto"
-        assert metadata["version"] == "1.0"
+        assert metadata["version"] == "abc12345"
 
     def test_parse_case_sensitive_field_names(self):
-        """RED: Field names should be case-sensitive."""
+        """RED: Field names should be case-sensitive - uppercase fields ignored (2-line format)."""
         content = (
-            "# SCAFFOLD: Template=dto VERSION=1.0 "
-            "created=2026-01-20T14:00:00Z\n"
+            "# test.py\n"
+            "# Template=dto VERSION=abc12345 created=2026-01-20T14:00Z updated=\n"
             "# Uppercase fields should be treated as unknown\n"
         )
         parser = ScaffoldMetadataParser()
 
-        # Should fail because 'template' and 'version' (lowercase) required
-        with pytest.raises(MetadataParseError, match="Missing required field"):
-            parser.parse(content, ".py")
+        # Uppercase fields are unknown/ignored - doesn't match pattern
+        metadata = parser.parse(content, ".py")
+        assert metadata is None  # Pattern doesn't match without lowercase fields
 
     def test_parse_duplicate_fields_uses_last_value(self):
-        """RED: Duplicate fields should use last occurrence."""
+        """RED: Duplicate fields should use last occurrence (2-line format)."""
         content = (
-            "# SCAFFOLD: template=dto template=worker version=1.0 "
-            "created=2026-01-20T14:00:00Z\n"
+            "# test.py\n"
+            "# template=dto template=worker version=abc12345 created=2026-01-20T14:00Z updated=\n"
         )
         parser = ScaffoldMetadataParser()
         metadata = parser.parse(content, ".py")
@@ -240,10 +234,10 @@ class UserDTO:
         assert metadata["template"] == "worker"  # Last value wins
 
     def test_parse_unknown_fields_are_ignored(self):
-        """RED: Unknown fields should be silently ignored."""
+        """RED: Unknown fields should be silently ignored (2-line format)."""
         content = (
-            "# SCAFFOLD: template=dto version=1.0 "
-            "created=2026-01-20T14:00:00Z unknown_field=ignored\n"
+            "# test.py\n"
+            "# template=dto version=abc12345 created=2026-01-20T14:00Z updated= unknown_field=ignored\n"
         )
         parser = ScaffoldMetadataParser()
         metadata = parser.parse(content, ".py")

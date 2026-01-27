@@ -2,58 +2,63 @@
 #
 # Defines patterns for detecting and validating metadata in scaffolded files.
 # Used by ScaffoldMetadataParser to parse SCAFFOLD comments.
+#
+# NEW FORMAT (Issue #72): 2-line format without "SCAFFOLD:" prefix
+# Line 1: filepath only
+# Line 2: metadata fields
 
-version: "1.0"
+version: "2.0"
 
 # Comment patterns for different file types
 comment_patterns:
-  # Python, YAML, Shell scripts
+  # Python, YAML, Shell scripts - 2 line format
   - syntax: hash
     prefix: "#\\s*"
-    metadata_line_regex: "^#\\s*SCAFFOLD:\\s*(.+)$"
+    # Line 1: filepath
+    filepath_line_regex: "^#\\s*(.+\\.(py|yaml|yml|sh|bash|zsh|txt))$"
+    # Line 2: metadata
+    metadata_line_regex: "^#\\s*template=.+\\s+version=.+\\s+created=.+\\s+updated=.*$"
     extensions: [".py", ".yaml", ".yml", ".sh", ".bash", ".zsh", ".txt"]
   
-  # JavaScript, TypeScript, C-style languages
+  # JavaScript, TypeScript, C-style languages - 2 line format
   - syntax: double_slash
     prefix: "//\\s*"
-    metadata_line_regex: "^//\\s*SCAFFOLD:\\s*(.+)$"
+    filepath_line_regex: "^//\\s*(.+\\.(js|ts|jsx|tsx|java|c|cpp|cs|go))$"
+    metadata_line_regex: "^//\\s*template=.+\\s+version=.+\\s+created=.+\\s+updated=.*$"
     extensions: [".js", ".ts", ".jsx", ".tsx", ".java", ".c", ".cpp", ".cs", ".go"]
   
-  # HTML, XML
+  # HTML, XML, Markdown - 2 line HTML comment format
   - syntax: html_comment
     prefix: "<!--\\s*"
-    metadata_line_regex: "^<!--\\s*SCAFFOLD:\\s*(.+)\\s*-->$"
+    filepath_line_regex: "^<!--\\s*(.+\\.(html|xml|md|markdown|svg))\\s*-->$"
+    metadata_line_regex: "^<!--\\s*template=.+\\s+version=.+\\s+created=.+\\s+updated=.*\\s*-->$"
     extensions: [".html", ".xml", ".md", ".markdown", ".svg"]
   
-  # Jinja2 templates
+  # Jinja2 templates - 2 line format
   - syntax: jinja_comment
     prefix: "\\{#\\s*"
-    metadata_line_regex: "^\\{#\\s*SCAFFOLD:\\s*(.+)\\s*#\\}$"
+    filepath_line_regex: "^\\{#\\s*(.+\\.(jinja2|j2))\\s*#\\}$"
+    metadata_line_regex: "^\\{#\\s*template=.+\\s+version=.+\\s+created=.+\\s+updated=.*\\s*#\\}$"
     extensions: [".jinja2", ".j2"]
 
-# Metadata field definitions
+# Metadata field definitions (for line 2 key=value parsing)
 metadata_fields:
   # Template identifier (required)
   - name: template
     format_regex: "^[a-z0-9_-]+$"
     required: true
   
-  # Template version (required) - now version_hash (Issue #72)
+  # Template version (required) - version_hash (8 hex chars or empty)
   - name: version
-    format_regex: "^[0-9a-f]{8}$"
+    format_regex: "^[0-9a-f]{8}$|^$"
     required: true
   
-  # Creation timestamp (required) - ISO 8601 UTC, minute precision
+  # Creation timestamp (required) - ISO 8601 UTC format (seconds or minutes precision)
   - name: created
-    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}Z$"
+    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?Z$"
     required: true
   
-  # Last update timestamp (optional)
+  # Last update timestamp (optional) - can be empty
   - name: updated
-    format_regex: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
-    required: false
-  
-  # File path (optional - only for output_type="file")
-  - name: path
-    format_regex: "^[a-zA-Z0-9_/:. \\\\-]+$"
+    format_regex: "^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?Z)?$"
     required: false
