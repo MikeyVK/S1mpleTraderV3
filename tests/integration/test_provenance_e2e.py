@@ -246,8 +246,14 @@ class TestProvenanceE2E:
             "design",
             name="TestDesign",
             title="Test Design Document",
-            layer="Documentation",
-            responsibilities=["Document design decisions"]
+            problem_statement="Define architecture",
+            decision="Use layered architecture",
+            rationale="Separation of concerns",
+            options=["Layered", "Microservices"],
+            key_decisions=["Use MVC pattern"],
+            requirements_functional=["Feature X"],
+            requirements_nonfunctional=["Performance Y"],
+            timestamp="2026-01-27T10:00:00Z"
         )
         
         # Read generated file

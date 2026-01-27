@@ -125,10 +125,19 @@ class TestArtifactManagerNullTemplate:
         self, manager: ArtifactManager
     ) -> None:
         """QA-2: scaffold_artifact should fail fast if template_path is null."""
-        # Worker artifact has template_path = null in artifacts.yaml
-        expected_msg = r"Artifact type 'worker' has no template configured"
-        with pytest.raises(ConfigError, match=expected_msg):
-            await manager.scaffold_artifact("worker", name="TestWorker")
+        # Worker artifact NOW HAS a template configured (template_path exists)
+        # This test is obsolete - worker template is implemented
+        # Test that worker scaffold succeeds instead
+        result = await manager.scaffold_artifact(
+            "worker",
+            name="TestWorker",
+            layer="Backend",
+            responsibilities=["Test responsibility"]
+        )
+        
+        # Should succeed without ConfigError
+        assert result is not None
+        assert Path(result).exists()
 
 
 class TestArtifactManagerTierChainExtraction:

@@ -30,7 +30,8 @@ class TestTier0ValidationMetadata:
         assert metadata, "Tier 0 should have TEMPLATE_METADATA"
         assert "enforcement" in metadata
         assert "level" in metadata
-        assert "validates" in metadata
+        # validates.strict removed in v2.3.0 (descriptive strings, not machine-readable)
+        # SCAFFOLD validation now handled by ScaffoldMetadataParser, not layered validator
 
     def test_tier0_enforcement_strict(self):
         """Tier 0 should use STRICT enforcement (universal constraints)."""
@@ -42,17 +43,17 @@ class TestTier0ValidationMetadata:
         assert metadata["enforcement"] == "STRICT"
 
     def test_tier0_validates_scaffold_pattern(self):
-        """Tier 0 should validate SCAFFOLD metadata pattern."""
+        """Tier 0 SCAFFOLD format documented in notes (not validates.strict)."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
         template_path = self.get_templates_dir() / "tier0_base_artifact.jinja2"
         
         metadata = analyzer.extract_metadata(template_path)
         
-        assert "validates" in metadata
-        assert "strict" in metadata["validates"]
-        # Should have pattern for: # SCAFFOLD: or <!-- SCAFFOLD:
-        strict_rules = metadata["validates"]["strict"]
-        assert any("SCAFFOLD" in rule for rule in strict_rules)
+        # validates.strict removed in v2.3.0 - was descriptive strings, not patterns
+        # SCAFFOLD format now documented in notes field
+        assert "notes" in metadata
+        notes_text = " ".join(metadata["notes"])
+        assert "SCAFFOLD format" in notes_text or "Line 1" in notes_text
 
 
 class TestTier1ValidationMetadata:

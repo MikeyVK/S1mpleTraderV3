@@ -111,7 +111,7 @@ class TestTier0BaseArtifactBlocks:
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier0_base_artifact.jinja2")
 
-        # Verify block exists by checking rendering works
+        # Verify block exists by checking rendering works (2-line format)
         result = template.render(
             artifact_type="test",
             version_hash="12345678",
@@ -120,7 +120,12 @@ class TestTier0BaseArtifactBlocks:
             format="python"
         )
 
-        assert "SCAFFOLD:" in result
+        lines = result.strip().split("\n")
+        # Line 1: filepath
+        assert lines[0] == "# test.py"
+        # Line 2: metadata (no SCAFFOLD: prefix)
+        assert "template=test" in lines[1]
+        assert "version=12345678" in lines[1]
 
     def test_has_content_block(self):
         """Should define empty content block for child templates."""

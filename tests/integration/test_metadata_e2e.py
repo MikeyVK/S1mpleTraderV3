@@ -57,14 +57,16 @@ class TestMetadataEndToEnd:
         # Parse metadata from file (content, extension)
         metadata = parser.parse(content, file_path.suffix)
 
-        # Validate metadata fields
+        # Validate metadata fields (2-line format: path on line 1, metadata on line 2)
         assert metadata is not None
         assert metadata["template"] == "dto"
         assert len(metadata["version"]) == 8  # 8-char hex hash (Issue #72)
         assert "created" in metadata
         assert metadata["created"].endswith("Z")  # UTC timestamp
-        assert "path" in metadata  # File artifact has path
-        assert Path(metadata["path"]).suffix == ".py"
+        # Path is on line 1 in 2-line format (not in metadata dict)
+        lines = content.split("\n")
+        assert lines[0].startswith("#"), "Line 1 should be filepath comment"
+        assert ".py" in lines[0], "Filepath should have .py extension"
 
     @pytest.mark.asyncio
     async def test_scaffold_file_artifact_returns_path(

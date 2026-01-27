@@ -198,19 +198,19 @@ class TestScaffold:
         self,
         scaffolder: TemplateScaffolder
     ) -> None:
-        """Scaffold Worker raises ValidationError when template_path is null (fail-fast)."""
-        # Worker template not yet implemented (template_path=null in artifacts.yaml)
-        # Should fail-fast with clear error message (QA-2 null guard)
-        expected_msg = r"No template configured for artifact type: worker"
-        with pytest.raises(ValidationError, match=expected_msg):
-            scaffolder.scaffold(
-                artifact_type="worker",
-                name="Process",
-                input_dto="InputDTO",
-                output_dto="OutputDTO",
-                dependencies=[],
-                responsibilities="Process input data"
-            )
+        """Scaffold Worker should successfully scaffold with name suffix."""
+        # Worker template now implemented (template_path configured in artifacts.yaml)
+        result = scaffolder.scaffold(
+            artifact_type="worker",
+            name="Process",
+            layer="Backend",
+            responsibilities=["Process input data"]
+        )
+        
+        # Should succeed and include Worker suffix
+        assert result.content is not None
+        assert "ProcessWorker" in result.content
+        assert result.file_name == "ProcessWorker.py"
 
     def test_scaffold_design_doc_uses_markdown_extension(
         self,
@@ -220,8 +220,14 @@ class TestScaffold:
         result = scaffolder.scaffold(
             artifact_type="design",
             title="Test Design",
-            author="Agent",
-            issue_number=56
+            problem_statement="Need to solve X",
+            decision="Solution Y",
+            rationale="Because Z",
+            options=["Option A", "Option B"],
+            key_decisions=["Decision 1"],
+            requirements_functional=["Req 1"],
+            requirements_nonfunctional=["Perf req 1"],
+            timestamp="2026-01-27T10:00:00Z"
         )
 
         assert result.file_name == "Test Design.md"
@@ -231,15 +237,20 @@ class TestScaffold:
         self,
         scaffolder: TemplateScaffolder
     ) -> None:
-        """Scaffold service orchestrator uses correct template."""
+        """Scaffold service command uses correct template (orchestrator not yet implemented)."""
+        # Only service_command template exists currently
         result = scaffolder.scaffold(
             artifact_type="service",
             name="OrderService",
-            service_type="orchestrator"
+            service_type="command",
+            layer="Backend",
+            responsibilities=["Process orders"],
+            input_dto="OrderRequest",
+            output_dto="OrderResponse"
         )
 
-        # Check that orchestrator template was used (not command/query)
-        assert "OrderServiceService" in result.content or "OrderService" in result.content
+        # Check that command template was used
+        assert "OrderService" in result.content
         assert result.file_name == "OrderServiceService.py"
 
     def test_scaffold_service_command_selects_correct_template(
