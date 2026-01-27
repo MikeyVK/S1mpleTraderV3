@@ -41,8 +41,10 @@ class TestServiceTemplateResolution:
         assert len(result.content) > 0
         assert "ProcessOrder" in result.content
         assert "Process customer orders" in result.content
-        # Verify template metadata shows correct template used
-        assert "SCAFFOLD:" in result.content
+        # Verify template metadata is present (2-line format)
+        lines = result.content.strip().split("\n")
+        assert lines[0].startswith("# "), "Line 1 should be commented filepath"
+        assert "template=" in lines[1], "Line 2 should have metadata"
         # If hardcoded fallback to components/ was active, this would fail
         # because template wouldn't exist or would have different structure
 class TestGenericTemplateResolution:

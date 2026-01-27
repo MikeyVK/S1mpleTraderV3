@@ -93,23 +93,25 @@ class TestScaffoldedOutputCodingStandards:
             ]
         )
 
-        # REQUIREMENT: Module docstring must exist after SCAFFOLD header
+        # REQUIREMENT: Module docstring must exist after SCAFFOLD header (2-line format)
         content = result.content
         lines = content.split("\n")
 
-        # Find SCAFFOLD line
-        scaffold_line_idx = None
-        for idx, line in enumerate(lines):
-            if line.startswith("# SCAFFOLD:"):
-                scaffold_line_idx = idx
-                break
+        # In 2-line format:
+        # Line 0: # filepath
+        # Line 1: # template=... metadata
+        # Line 2: (blank or docstring start)
+        assert lines[0].startswith("#"), "Line 0 should be filepath comment"
+        assert "template=" in lines[1], "Line 1 should have metadata"
 
-        assert scaffold_line_idx is not None, "SCAFFOLD header missing"
+        # Module docstring should follow SCAFFOLD metadata (line 2 or after blank line)
+        docstring_start_idx = 2
+        # Skip blank line if present
+        if lines[docstring_start_idx].strip() == "":
+            docstring_start_idx = 3
 
-        # Module docstring should be next (after SCAFFOLD)
-        docstring_start_idx = scaffold_line_idx + 1
         assert lines[docstring_start_idx].strip().startswith('"""'), \
-            "Module docstring must follow SCAFFOLD header"
+            f"Module docstring must follow SCAFFOLD header, found: {lines[docstring_start_idx]}"
 
         # Collect full docstring
         docstring_lines = []

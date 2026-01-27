@@ -24,7 +24,7 @@ class TestTier1CodeTemplate:
         assert 'extends "tier0_base_artifact.jinja2"' in content
 
     def test_renders_with_scaffold_metadata(self):
-        """Should include SCAFFOLD metadata from Tier 0."""
+        """Should include SCAFFOLD metadata from Tier 0 in 2-line format."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_code.jinja2")
 
@@ -38,8 +38,13 @@ class TestTier1CodeTemplate:
             class_docstring="Test worker class"
         )
 
-        assert result.startswith("# SCAFFOLD: worker:12345678")
-        assert "2026-01-23T10:00:00Z" in result
+        lines = result.strip().split("\n")
+        # Line 1: filepath only
+        assert lines[0] == "# src/workers/test.py"
+        # Line 2: metadata (no SCAFFOLD: prefix)
+        assert "template=worker" in lines[1]
+        assert "version=12345678" in lines[1]
+        assert "2026-01-23T10:00:00Z" in lines[1]
 
     def test_renders_class_structure(self):
         """Should render class structure block."""
@@ -97,7 +102,7 @@ class TestTier1DocumentTemplate:
         assert 'extends "tier0_base_artifact.jinja2"' in content
 
     def test_renders_with_scaffold_metadata(self):
-        """Should include SCAFFOLD metadata from Tier 0."""
+        """Should include SCAFFOLD metadata from Tier 0 in 2-line format."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
 
@@ -110,8 +115,13 @@ class TestTier1DocumentTemplate:
             title="Issue #72 Research"
         )
 
-        assert result.startswith("<!-- SCAFFOLD: research:abcd1234")
-        assert " -->" in result
+        lines = result.strip().split("\n")
+        # Line 1: HTML comment with filepath only
+        assert lines[0] == "<!-- docs/research.md -->"
+        # Line 2: HTML comment with metadata (no SCAFFOLD: prefix)
+        assert "<!-- template=research" in lines[1]
+        assert "version=abcd1234" in lines[1]
+        assert "-->" in lines[1]
 
     def test_renders_document_title(self):
         """Should render document title as H1."""
@@ -164,7 +174,7 @@ class TestTier1ConfigTemplate:
         assert 'extends "tier0_base_artifact.jinja2"' in content
 
     def test_renders_with_scaffold_metadata(self):
-        """Should include SCAFFOLD metadata from Tier 0."""
+        """Should include SCAFFOLD metadata from Tier 0 in 2-line format."""
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_config.jinja2")
 
@@ -177,7 +187,12 @@ class TestTier1ConfigTemplate:
             config_name="CI Pipeline"
         )
 
-        assert result.startswith("# SCAFFOLD: workflow:ef123456")
+        lines = result.strip().split("\n")
+        # Line 1: filepath only
+        assert lines[0] == "# .github/workflows/ci.yaml"
+        # Line 2: metadata (no SCAFFOLD: prefix)
+        assert "template=workflow" in lines[1]
+        assert "version=ef123456" in lines[1]
 
     def test_renders_config_name(self):
         """Should render config name field."""

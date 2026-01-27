@@ -1,5 +1,5 @@
 {#- tier0_base_artifact.jinja2 - SCAFFOLD Metadata Header -#}
-{#- Version: 2.1.0 -#}
+{#- Version: 2.2.0 -#}
 {#- Purpose: Provides 2-line SCAFFOLD metadata comment at top of all artifacts -#}
 
 {#-
@@ -10,10 +10,13 @@ TEMPLATE_METADATA:
     strict:
       - "SCAFFOLD metadata comment must be lines 1-2"
       - "Format-adaptive comment syntax (# or <!-- -->)"
-      - "Blank line after SCAFFOLD before content"
+      - "NO blank line required after SCAFFOLD metadata"
   purpose: "Base tier for all artifacts - provides SCAFFOLD metadata"
-  version: "2.1.0"
+  version: "2.2.0"
   changelog:
+    - version: "2.2.0"
+      date: "2026-01-27"
+      changes: "Removed blank line requirement after SCAFFOLD metadata per user requirement"
     - version: "2.1.0"
       date: "2026-01-26"
       changes: "Added title line after SCAFFOLD metadata per BASE_TEMPLATE pattern"

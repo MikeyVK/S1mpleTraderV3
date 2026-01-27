@@ -35,15 +35,17 @@ class TestTier2PythonTemplate:
             "format": "python",
             "class_name": "TestDTO",
             "version_hash": "abc12345",
-            "timestamp": "2026-01-23T10:00:00",
+            "timestamp": "2026-01-23T10:00:00Z",
             "output_path": "backend/dtos/test_dto.py",
         }
         result = template.render(context)
-        assert "SCAFFOLD" in result
-        assert "dto:" in result  # Compact format: "# SCAFFOLD: dto: |  | "
-        assert "abc12345" in result  # version_hash propagated
-        assert "2026-01-23T10:00:00" in result  # timestamp propagated
-        assert "backend/dtos/test_dto.py" in result  # output_path propagated
+        lines = result.strip().split("\n")
+        # Line 1: filepath only
+        assert lines[0] == "# backend/dtos/test_dto.py"
+        # Line 2: metadata in key=value format
+        assert "template=dto" in lines[1]
+        assert "version=abc12345" in lines[1]
+        assert "2026-01-23T10:00:00Z" in lines[1]
 
     def test_renders_python_typing_imports(self):
         """Tier 2 Python should render typing imports."""
@@ -132,15 +134,18 @@ class TestTier2MarkdownTemplate:
             "format": "markdown",
             "title": "Test Design",
             "version_hash": "def67890",
-            "timestamp": "2026-01-23T11:00:00",
+            "timestamp": "2026-01-23T11:00:00Z",
             "output_path": "docs/designs/test_design.md",
         }
         result = template.render(context)
-        assert "SCAFFOLD" in result
-        assert "design:" in result  # Compact format: "<!-- SCAFFOLD: design: |  |  -->"
-        assert "def67890" in result
-        assert "2026-01-23T11:00:00" in result
-        assert "docs/designs/test_design.md" in result
+        lines = result.strip().split("\n")
+        # Line 1: HTML comment with filepath
+        assert lines[0] == "<!-- docs/designs/test_design.md -->"
+        # Line 2: HTML comment with metadata
+        assert "<!-- template=design" in lines[1]
+        assert "version=def67890" in lines[1]
+        assert "2026-01-23T11:00:00Z" in lines[1]
+        assert "-->" in lines[1]
 
     def test_renders_yaml_frontmatter(self):
         """Tier 2 Markdown should render YAML frontmatter."""
@@ -202,15 +207,17 @@ class TestTier2YAMLTemplate:
             "format": "yaml",
             "config_name": "test_config",
             "version_hash": "ghi24680",
-            "timestamp": "2026-01-23T12:00:00",
+            "timestamp": "2026-01-23T12:00:00Z",
             "output_path": "config/test_config.yaml",
         }
         result = template.render(context)
-        assert "SCAFFOLD" in result
-        assert "config:" in result  # Compact format: "# SCAFFOLD: config: |  | "
-        assert "ghi24680" in result
-        assert "2026-01-23T12:00:00" in result
-        assert "config/test_config.yaml" in result
+        lines = result.strip().split("\n")
+        # Line 1: filepath only
+        assert lines[0] == "# config/test_config.yaml"
+        # Line 2: metadata
+        assert "template=config" in lines[1]
+        assert "version=ghi24680" in lines[1]
+        assert "2026-01-23T12:00:00Z" in lines[1]
 
     def test_renders_header_comment(self):
         """Tier 2 YAML should render header comment."""
