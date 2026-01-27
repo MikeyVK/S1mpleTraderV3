@@ -324,10 +324,12 @@ De volgende deliverables van tdd-planning zijn **vereiste dependencies** voor co
 **DEFERRED (until post-Cycle 7):**
 3. **Tracking templates (Tier 1 + concretes)**
    - Input: [tracking-type-architecture.md](tracking-type-architecture.md)
-   - Scope: tier1_base_tracking.jinja2 + concrete/commit.md, pr.md, issue.md, etc.
+   - Scope: tier1_base_tracking.jinja2 + concrete/commit.txt, pr.md, issue.md, etc.
+   - **Blocker:** Migrate legacy `commit-message.txt.jinja2` from `mcp_server/templates/` to tier-based structure
+   - Test currently skipped: `test_scaffold_ephemeral_returns_temp_path` (see test_metadata_e2e.py)
    - Rationale: tdd-planning marks tracking as "future work"; defer to avoid scope creep
    - Mapping: planning.md Task 3.5 (renamed from ephemeral → tracking)
-   - Effort: 3h (tier1) + 2h × 6 concretes = 15h
+   - Effort: 3h (tier1) + 2h × 6 concretes + 1h (migration) = 16h
 
 4. **CONFIG templates (Tier 3 + concretes)**
    - Scope: tier3_base_yaml_policy.jinja2 + workflows.yaml, labels.yaml
