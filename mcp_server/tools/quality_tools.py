@@ -25,6 +25,9 @@ class RunQualityGatesTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
+        """Get input schema for the tool."""
+        if self.args_model is None:
+            return {}
         return self.args_model.model_json_schema()
 
     async def execute(self, params: RunQualityGatesInput) -> ToolResult:

@@ -33,7 +33,9 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
 
     Example:
         >>> parser = ScaffoldMetadataParser()
-        >>> content = "# backend/dtos/user_dto.py\\n# template=dto version=abc12345 created=2026-01-27T10:00Z updated=\\n..."
+        >>> line1 = "# backend/dtos/user_dto.py"
+        >>> line2 = "# template=dto version=abc12345 created=2026-01-27T10:00Z updated="
+        >>> content = f"{line1}\\n{line2}\\n..."
         >>> metadata = parser.parse(content, ".py")
         >>> metadata["template"]
         'dto'

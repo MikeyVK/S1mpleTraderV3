@@ -40,8 +40,11 @@ class ValidationService:
     """
 
     def __init__(self) -> None:
-        """Initialize validation service and register validators."""
-        from mcp_server.config.template_config import get_template_root
+        """Initialize validation service and register validators.
+        
+        Note: Lazy import of get_template_root to avoid circular dependency.
+        """
+        from mcp_server.config.template_config import get_template_root  # pylint: disable=import-outside-toplevel
         self.template_analyzer = TemplateAnalyzer(
             template_root=get_template_root()
         )

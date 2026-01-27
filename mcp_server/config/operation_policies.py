@@ -244,7 +244,7 @@ class OperationPoliciesConfig(BaseModel):
             )
         return self.operations[operation_id]
 
-    def get_available_operations(self) -> List[str]:
+    def get_available_operations(self) -> list[str]:
         """Get list of all configured operation IDs.
 
         Returns:
