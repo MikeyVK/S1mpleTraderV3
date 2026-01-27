@@ -12,22 +12,24 @@ from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
 
-@pytest.fixture
-def mock_registry():
+@pytest.fixture(name="registry")
+def mock_registry_fixture():
     """Provide mock artifact registry for testing."""
     return Mock(spec=ArtifactRegistryConfig)
 
 
-@pytest.fixture
-def scaffolder(mock_registry):
+@pytest.fixture(name="scaffolder_fixture")
+def scaffolder_with_registry(registry):
     """Provide TemplateScaffolder with mock registry."""
-    return TemplateScaffolder(registry=mock_registry)
+    return TemplateScaffolder(registry=registry)
 
 
 class TestTemplateRegistryLoading:
     """Tests for artifact registry integration."""
 
-    def test_loads_artifact_from_registry(self, scaffolder, mock_registry):
+    def test_loads_artifact_from_registry(
+        self, scaffolder_fixture, registry
+    ):
         """Should load artifact definition from registry."""
         artifact = Mock()
         artifact.type_id = 'dto'
@@ -36,10 +38,10 @@ class TestTemplateRegistryLoading:
         artifact.fallback_template = None
         artifact.name_suffix = ''
         artifact.file_extension = '.py'
-        mock_registry.get_artifact.return_value = artifact
+        registry.get_artifact.return_value = artifact
 
         # TemplateScaffolder now uses JinjaRenderer and returns ScaffoldResult
-        result = scaffolder.scaffold(
+        result = scaffolder_fixture.scaffold(
             'dto',
             name='TestDto',
             description='Test DTO',
@@ -54,9 +56,11 @@ class TestTemplateRegistryLoading:
         assert hasattr(result, 'content')
         assert len(result.content) > 0
         # Called in validate() and scaffold()
-        assert mock_registry.get_artifact.call_count == 2
+        assert registry.get_artifact.call_count == 2
 
-    def test_uses_template_path_from_artifact(self, scaffolder, mock_registry):
+    def test_uses_template_path_from_artifact(
+        self, scaffolder_fixture, registry
+    ):
         """Should use template_path from artifact definition."""
         artifact = Mock()
         artifact.type_id = 'worker'
@@ -65,10 +69,10 @@ class TestTemplateRegistryLoading:
         artifact.fallback_template = None
         artifact.name_suffix = ''
         artifact.file_extension = '.py'
-        mock_registry.get_artifact.return_value = artifact
+        registry.get_artifact.return_value = artifact
 
         # Worker template needs all required fields from template introspection
-        result = scaffolder.scaffold(
+        result = scaffolder_fixture.scaffold(
             'worker',
             name='TestWorker',
             description='Test worker',
@@ -81,16 +85,18 @@ class TestTemplateRegistryLoading:
         assert hasattr(result, 'content')
         assert 'TestWorker' in result.content
 
-    def test_error_when_no_template_defined(self, scaffolder, mock_registry):
+    def test_error_when_no_template_defined(
+        self, scaffolder_fixture, registry
+    ):
         """Should raise error when artifact has no template defined."""
         artifact = Mock()
         artifact.type_id = 'broken'
         artifact.required_fields = []
         artifact.template_path = None
         artifact.fallback_template = None
-        mock_registry.get_artifact.return_value = artifact
+        registry.get_artifact.return_value = artifact
 
         # ValidationError is raised, not ConfigError
         with pytest.raises((ConfigError, ValidationError)) as exc:
-            scaffolder.scaffold('broken', name='Test')
+            scaffolder_fixture.scaffold('broken', name='Test')
         assert 'No template' in str(exc.value)

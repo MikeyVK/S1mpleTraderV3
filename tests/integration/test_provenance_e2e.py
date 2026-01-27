@@ -1,4 +1,4 @@
-﻿# SCAFFOLD: template=test_provenance_e2e version=1.0
+# SCAFFOLD: template=test_provenance_e2e version=1.0
 # created=2026-01-25 path=tests/integration/test_provenance_e2e.py
 """
 E2E tests for Task 1.6b: Provenance regression testing.
@@ -158,14 +158,21 @@ class TestProvenanceE2E:
                 "problem_statement": "Test problem",
                 "requirements_functional": ["Req 1"],
                 "requirements_nonfunctional": ["Non-func req 1"],
-                "options": [{"name": "Option 1", "description": "Test option", "pros": ["Pro 1"], "cons": ["Con 1"]}],
+                "options": [{
+                    "name": "Option 1",
+                    "description": "Test option",
+                    "pros": ["Pro 1"],
+                    "cons": ["Con 1"]
+                }],
                 "decision": "Option 1",
                 "rationale": "Test rationale",
                 "key_decisions": [{"area": "Architecture", "decision": "Test decision"}],
                 "timestamp": "2026-01-27T10:00:00Z"
             })
 
-        file_path = await manager.scaffold_artifact(artifact_type, **context)
+        file_path = await manager.scaffold_artifact(
+            artifact_type, **context
+        )
 
         # Read generated file
         content = Path(file_path).read_text(encoding="utf-8")
@@ -229,7 +236,9 @@ class TestProvenanceE2E:
             context["dependencies"] = ["pydantic"]
             context["responsibilities"] = ["Data validation", "Type safety"]
 
-        file_path = await manager.scaffold_artifact(artifact_type, **context)
+        file_path = await manager.scaffold_artifact(
+            artifact_type, **context
+        )
 
         # Read generated file
         content = Path(file_path).read_text(encoding="utf-8")
@@ -277,4 +286,3 @@ class TestProvenanceE2E:
         assert "<!-- template=" in lines[1] and lines[1].endswith("-->"), \
             "tier0: Line 2 must be HTML comment with metadata"
         assert "# " in content, "tier2: markdown structure missing"
-

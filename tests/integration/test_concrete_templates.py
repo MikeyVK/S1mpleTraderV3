@@ -109,7 +109,7 @@ class TestScaffoldedOutputCodingStandards:
         # Module docstring should follow SCAFFOLD metadata (line 2 or after blank line)
         docstring_start_idx = 2
         # Skip blank line if present
-        if lines[docstring_start_idx].strip() == "":
+        if not lines[docstring_start_idx].strip():
             docstring_start_idx = 3
 
         assert lines[docstring_start_idx].strip().startswith('"""'), \
