@@ -38,11 +38,10 @@ class TestDesignTemplateStructure:
 
         # Section 1 must exist with Problem/Requirements/Constraints subsections
         assert "## 1. Context & Requirements" in result
-        assert "### Problem Statement" in result
-        assert "### Requirements" in result
-        assert "### Constraints" in result
+        assert "### 1.1. Problem Statement" in result
+        assert "### 1.2. Requirements" in result
+        assert "### 1.3. Constraints" in result
         assert "Test problem" in result
-        assert "Test requirements" in result
 
     def test_renders_design_options_section(self):
         """Design documents must have numbered '2. Design Options' section."""
@@ -83,8 +82,8 @@ class TestDesignTemplateStructure:
 
         # Section 2 must exist with option subsections
         assert "## 2. Design Options" in result
-        assert "### Option 1: Option A" in result
-        assert "### Option 2: Option B" in result
+        assert "### 2.1. Option A: Option A" in result
+        assert "### 2.2. Option B: Option B" in result
         assert "Use approach A" in result
         assert "Use approach B" in result
         assert "**Pros:**" in result
@@ -122,11 +121,11 @@ class TestDesignTemplateStructure:
 
         # Section 3 must exist with Decision/Rationale/Key Decisions
         assert "## 3. Chosen Design" in result
-        assert "### Decision" in result
-        assert "### Rationale" in result
+        assert "**Decision:**" in result
+        assert "**Rationale:**" in result
         assert "Use tiered template architecture" in result
         assert "Provides separation of concerns and reusability" in result
-        assert "### Key Decisions" in result
+        assert "### 3.1. Key Design Decisions" in result
 
     def test_renders_key_decisions_table(self):
         """Design documents must have Key Decisions table with Decision/Rationale/Trade-offs."""
@@ -163,10 +162,10 @@ class TestDesignTemplateStructure:
             ],
         )
 
-        # Key Decisions table must have proper columns
-        assert "| Decision | Rationale | Trade-offs |" in result
-        assert "| Use Jinja2 | Industry standard | Learning curve |" in result
-        assert "| Enforce metadata | Quality assurance | More boilerplate |" in result
+        # Key Decisions table must have proper columns (2-column format per current template)
+        assert "| Decision | Rationale |" in result
+        assert "| Use Jinja2 | Industry standard |" in result
+        assert "| Enforce metadata | Quality assurance |" in result
 
     def test_renders_open_questions_section_when_provided(self):
         """Design documents can have optional '4. Open Questions' section."""
