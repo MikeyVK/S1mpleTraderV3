@@ -15,8 +15,11 @@ TEMPLATE_METADATA:
       - "Immutable by default (frozen=True optional)"
   extends: tier2_base_python.jinja2
   purpose: "Concrete template for Data Transfer Objects (Pydantic)"
-  version: "1.3.0"
+  version: "1.4.0"
   changelog:
+    - version: "1.4.0"
+      date: "2026-01-27"
+      changes: "Make examples REQUIRED for consistent self-documenting DTOs"
     - version: "1.3.0"
       date: "2026-01-27"
       changes: "Add field descriptions and json_schema_extra for self-documentation"
@@ -34,12 +37,23 @@ TEMPLATE_METADATA:
       required:
         - name
         - fields (each field must have: name, type, description)
+        - frozen (True for immutable DTOs, False for state objects)
+        - examples (list of example objects for json_schema_extra)
       optional:
         - description
-        - frozen
         - validators
-        - examples (for json_schema_extra)
 -#}
+
+{% block module_docstring %}
+"""{{ name }} DTO module.
+
+Data Transfer Object for {{ name | lower }}.
+
+@layer: Domain
+@dependencies: pydantic.BaseModel
+@responsibilities: Data validation, type safety{% if frozen %}, immutability{% endif %}
+"""
+{% endblock %}
 
 {% block type_imports -%}
 from pydantic import BaseModel, Field

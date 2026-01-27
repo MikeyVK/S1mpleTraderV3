@@ -91,13 +91,27 @@ version_hashes:
     concrete:
       template_id: dto.py
       version: 1.3.0
+  0f06069b:
+    artifact_type: design
+    created: '2026-01-27T13:28:45.355129+00:00'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: design.md
+      version: 3.2.0
+  6fefd064:
+    artifact_type: dto
+    created: '2026-01-27T13:42:22.549142+00:00'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: dto.py
+      version: 1.4.0
 current_versions:
-  dto: f95ad6a7
+  dto: 6fefd064
   generic: 6f1837e9
-  design: 89c6c82d
+  design: 0f06069b
   research: d994bd87
   planning: cdbd5bc4
   architecture: 145239fd
   reference: ab4c6f43
 templates: {}
-last_updated: '2026-01-27T12:48:00.745876+00:00'
+last_updated: '2026-01-27T13:42:22.549158+00:00'
