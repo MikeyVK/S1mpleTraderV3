@@ -18,7 +18,6 @@ from typing import Annotated, Literal, TypeAlias
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-
 RegexFlag = Literal["IGNORECASE", "MULTILINE", "DOTALL"]
 
 
@@ -172,20 +171,18 @@ class GateScope(BaseModel):
             posix_path = Path(file_path).as_posix()
 
             # Include matching
-            if include_patterns:
-                if not any(
-                    PurePosixPath(posix_path).match(pattern)
-                    for pattern in include_patterns
-                ):
-                    continue  # Skip if not in include list
+            if include_patterns and not any(
+                PurePosixPath(posix_path).match(pattern)
+                for pattern in include_patterns
+            ):
+                continue  # Skip if not in include list
 
             # Exclude matching
-            if exclude_patterns:
-                if any(
-                    PurePosixPath(posix_path).match(pattern)
-                    for pattern in exclude_patterns
-                ):
-                    continue  # Skip if in exclude list
+            if exclude_patterns and any(
+                PurePosixPath(posix_path).match(pattern)
+                for pattern in exclude_patterns
+            ):
+                continue  # Skip if in exclude list
             filtered.append(file_path)
 
         return filtered
@@ -215,7 +212,7 @@ class QualityGate(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     @model_validator(mode="after")
-    def validate_success_matches_strategy(self) -> "QualityGate":
+    def validate_success_matches_strategy(self) -> QualityGate:
         """Enforce A2: success.mode must match parsing.strategy."""
         if self.success.mode != self.parsing.strategy:
             raise ValueError(
@@ -234,7 +231,7 @@ class QualityConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     @classmethod
-    def load(cls, path: Path | None = None) -> "QualityConfig":
+    def load(cls, path: Path | None = None) -> QualityConfig:
         """Load configuration from YAML.
 
         Args:
@@ -257,7 +254,7 @@ class QualityConfig(BaseModel):
                 "Hint: Add .st3/quality.yaml to define available gate tools"
             )
 
-        with open(path, "r", encoding="utf-8") as file_handle:
+        with open(path, encoding="utf-8") as file_handle:
             data = yaml.safe_load(file_handle)
 
         return cls(**data)

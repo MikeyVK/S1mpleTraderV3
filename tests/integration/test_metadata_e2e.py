@@ -14,10 +14,10 @@ from pathlib import Path
 
 import pytest
 
+from mcp_server.core.exceptions import ConfigError, MetadataParseError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolding.metadata import ScaffoldMetadataParser
 from mcp_server.scaffolding.template_registry import TemplateRegistry
-from mcp_server.core.exceptions import ConfigError, MetadataParseError
 
 
 class TestMetadataEndToEnd:

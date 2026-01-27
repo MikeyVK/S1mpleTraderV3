@@ -13,8 +13,8 @@ import pytest
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
-from mcp_server.tools.git_tools import CreateBranchInput, GitCommitInput
 from mcp_server.config.git_config import GitConfig
+from mcp_server.tools.git_tools import CreateBranchInput, GitCommitInput
 
 
 class TestGitToolsConfigIntegration:

@@ -17,10 +17,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from backend.dtos.strategy.execution_plan import (
-    ExecutionPlan,
-    ExecutionAction
-)
+from backend.dtos.strategy.execution_plan import ExecutionAction, ExecutionPlan
 
 
 class TestExecutionPlanCreation:

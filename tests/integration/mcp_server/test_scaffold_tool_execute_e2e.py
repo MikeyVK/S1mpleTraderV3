@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from mcp_server.managers.artifact_manager import ArtifactManager
-from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool, ScaffoldArtifactInput
+from mcp_server.tools.scaffold_artifact import ScaffoldArtifactInput, ScaffoldArtifactTool
 
 
 @pytest.mark.asyncio

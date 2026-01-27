@@ -10,7 +10,7 @@ from typing import Any
 
 class BaseScaffolder(ABC):
     """Abstract base class for scaffolders.
-    
+
     All scaffolder implementations must extend this class and implement
     validate() and scaffold() methods.
     """
@@ -21,14 +21,14 @@ class BaseScaffolder(ABC):
     @abstractmethod
     def validate(self, artifact_type: str, **kwargs: Any) -> bool:
         """Validate scaffolding arguments before execution.
-        
+
         Args:
             artifact_type: Type of artifact to scaffold
             **kwargs: Context data for scaffolding
-            
+
         Returns:
             True if validation passes
-            
+
         Raises:
             ValidationError: If validation fails
         """
@@ -36,14 +36,14 @@ class BaseScaffolder(ABC):
     @abstractmethod
     def scaffold(self, artifact_type: str, **kwargs: Any) -> Any:
         """Execute scaffolding operation.
-        
+
         Args:
             artifact_type: Type of artifact to scaffold
             **kwargs: Context data for scaffolding
-            
+
         Returns:
             Scaffolding result (implementation-specific)
-            
+
         Raises:
             ValidationError: If validation fails
             ConfigError: If configuration invalid

@@ -27,6 +27,7 @@ import pytest
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.scaffolding.template_introspector import introspect_template
 
+
 @pytest.fixture(name="jinja2_env")
 def fixture_jinja2_env() -> jinja2.Environment:
     """Provides configured Jinja2 environment for template parsing"""

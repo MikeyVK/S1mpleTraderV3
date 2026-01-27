@@ -4,6 +4,7 @@ Phase 0.5: Project initialization with workflow selection.
 Issue #39: Atomic initialization of projects.json + state.json.
 Issue #79: Parent branch tracking with auto-detection.
 """
+import contextlib
 import json
 import logging
 import os
@@ -71,7 +72,7 @@ class InitializeProjectTool(BaseTool):
     )
     args_model = InitializeProjectInput
 
-    def __init__(self, workspace_root: Path | str):
+    def __init__(self, workspace_root: Path | str) -> None:
         """Initialize tool with atomic state management.
 
         Args:
@@ -145,10 +146,8 @@ class InitializeProjectTool(BaseTool):
                     stdout, _stderr = proc.communicate(timeout=timeout_s)
                 except subprocess.TimeoutExpired:
                     kill_tree(proc.pid)
-                    try:
+                    with contextlib.suppress(OSError, subprocess.TimeoutExpired, ValueError):
                         proc.communicate(timeout=1)
-                    except (OSError, subprocess.TimeoutExpired, ValueError):
-                        pass
                     logger.warning(
                         "Git reflog failed: Command timed out after %ss",
                         timeout_s,
@@ -308,7 +307,7 @@ class GetProjectPlanTool(BaseTool):
     description = "Get project phase plan for issue number"
     args_model = GetProjectPlanInput
 
-    def __init__(self, workspace_root: Path | str):
+    def __init__(self, workspace_root: Path | str) -> None:
         """Initialize tool.
 
         Args:

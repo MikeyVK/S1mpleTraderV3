@@ -44,7 +44,7 @@ class ArtifactType(str, Enum):
 
 class StateMachineTransition(BaseModel):
     """State machine transition definition.
-    
+
     Epic #18 will use this for validation.
     """
 
@@ -56,7 +56,7 @@ class StateMachineTransition(BaseModel):
 
 class StateMachine(BaseModel):
     """State machine definition for artifact lifecycle.
-    
+
     Epic #18 will execute transitions.
     Issue #56 provides structure only.
     """
@@ -94,8 +94,11 @@ class ArtifactDefinition(BaseModel):
 
     # Phase 0: Template metadata support (Issue #120)
     output_type: Literal["file", "ephemeral"] = Field(
-        "file", description="Output type: 'file' for disk artifacts, " \
-        "'ephemeral' for in-memory (e.g. git commits)"
+        "file",
+        description=(
+            "Output type: 'file' for disk artifacts, "
+            "'ephemeral' for in-memory (e.g. git commits)"
+        )
     )
 
     # LEGACY fields (Issue #107 will remove after unified TemplateScaffolder)
@@ -159,9 +162,9 @@ class ArtifactDefinition(BaseModel):
 
 class ArtifactRegistryConfig(BaseModel):
     """Artifact registry configuration loaded from artifacts.yaml.
-    
+
     Singleton pattern: Use from_file() to get cached instance.
-    
+
     Example:
         config = ArtifactRegistryConfig.from_file()
         dto_artifact = config.get_artifact("dto")
@@ -180,20 +183,17 @@ class ArtifactRegistryConfig(BaseModel):
         cls, file_path: Path | None = None
     ) -> ArtifactRegistryConfig:
         """Load configuration from artifacts.yaml (singleton).
-        
+
         Args:
             file_path: Path to artifacts.yaml (default: .st3/artifacts.yaml)
-            
+
         Returns:
             Cached configuration instance
-            
+
         Raises:
             ConfigError: File not found, invalid YAML, or validation failed
         """
-        if file_path is None:
-            file_path = Path(".st3/artifacts.yaml")
-        else:
-            file_path = Path(file_path)
+        file_path = Path(".st3/artifacts.yaml") if file_path is None else Path(file_path)
 
         # Return cached instance if same file
         if cls._instance is not None and cls._file_path == file_path:
@@ -209,7 +209,7 @@ class ArtifactRegistryConfig(BaseModel):
                     file_path=str(file_path)
                 )
 
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
 
             if data is None:
@@ -250,13 +250,13 @@ class ArtifactRegistryConfig(BaseModel):
 
     def get_artifact(self, type_id: str) -> ArtifactDefinition:
         """Get artifact definition by type_id.
-        
+
         Args:
             type_id: Artifact type identifier (e.g. 'dto', 'worker')
-            
+
         Returns:
             Artifact definition
-            
+
         Raises:
             ConfigError: Artifact not found
         """

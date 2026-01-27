@@ -3,8 +3,8 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from mcp_server.tools.tool_result import ToolResult
 from mcp_server.tools.git_tools import GitCheckoutTool
+from mcp_server.tools.tool_result import ToolResult
 
 
 class TestGitCheckoutAsync:

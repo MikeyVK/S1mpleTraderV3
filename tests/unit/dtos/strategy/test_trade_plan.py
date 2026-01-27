@@ -9,13 +9,16 @@ Verifies the behavior of the TradePlan execution anchor, including:
 - Immutability of identifiers
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import pytest
 from pydantic import ValidationError
 
+from backend.core.enums import TradeStatus
+
 # We expect these to be implemented
 from backend.dtos.strategy.trade_plan import TradePlan
-from backend.core.enums import TradeStatus
+
 
 class TestTradePlan:
     """Test cases for TradePlan DTO."""
@@ -26,14 +29,14 @@ class TestTradePlan:
             plan_id="TPL_20251030_120000_abc12",
             strategy_instance_id="STRAT_GRID_BTC_01",
             status=TradeStatus.ACTIVE,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(UTC)
         )
 
         assert plan.plan_id == "TPL_20251030_120000_abc12"
         assert plan.strategy_instance_id == "STRAT_GRID_BTC_01"
         assert plan.status == TradeStatus.ACTIVE
         # Use getattr to avoid Pylance false positive on FieldInfo
-        assert getattr(plan.created_at, "tzinfo") == timezone.utc
+        assert plan.created_at.tzinfo == UTC
 
     def test_invalid_plan_id_format(self):
         """Test that validation fails for incorrect plan_id format."""
@@ -42,7 +45,7 @@ class TestTradePlan:
                 plan_id="INVALID_ID_FORMAT",
                 strategy_instance_id="STRAT_TEST",
                 status=TradeStatus.ACTIVE,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(UTC)
             )
 
         assert "plan_id" in str(excinfo.value)
@@ -53,7 +56,7 @@ class TestTradePlan:
             plan_id="TPL_20251030_120000_abc12",
             strategy_instance_id="STRAT_GRID_BTC_01",
             status=TradeStatus.ACTIVE,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(UTC)
         )
 
         plan.status = TradeStatus.CLOSED

@@ -18,7 +18,7 @@ from jinja2 import Environment, meta
 class TemplateAnalyzer:
     """Analyzes Jinja2 templates to extract validation metadata."""
 
-    def __init__(self, template_root: Path):
+    def __init__(self, template_root: Path) -> None:
         """
         Initialize analyzer with template directory root.
 
@@ -122,7 +122,7 @@ class TemplateAnalyzer:
             source = template_path.read_text(encoding="utf-8")
             ast = self.env.parse(source)
             variables = meta.find_undeclared_variables(ast)
-            return sorted(list(variables))
+            return sorted(variables)
         except (OSError, UnicodeDecodeError, ValueError):
             # If reading or parsing fails, return empty list
             return []
@@ -235,6 +235,6 @@ class TemplateAnalyzer:
         # Union of variables
         child_vars = set(child.get("variables", []))
         parent_vars = set(parent.get("variables", []))
-        merged["variables"] = sorted(list(child_vars | parent_vars))
+        merged["variables"] = sorted(child_vars | parent_vars)
 
         return merged

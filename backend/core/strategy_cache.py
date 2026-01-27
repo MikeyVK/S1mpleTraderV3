@@ -16,7 +16,6 @@ strategy run state and DTO caching with RunAnchor validation.
 
 # Standard library
 from datetime import datetime
-from typing import Dict, Type
 
 # Third-party
 from pydantic import BaseModel
@@ -38,7 +37,7 @@ class StrategyCache:
     service that gets reconfigured for each new run.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize with no active run."""
         self._current_cache: StrategyCacheType | None = None
         self._current_anchor: RunAnchor | None = None
@@ -63,7 +62,7 @@ class StrategyCache:
     def get_required_dtos(
         self,
         requesting_worker
-    ) -> Dict[Type[BaseModel], BaseModel]:
+    ) -> dict[type[BaseModel], BaseModel]:
         """
         Retrieve DTOs required by worker from cache.
 
@@ -97,7 +96,7 @@ class StrategyCache:
         dto_type = type(result_dto)
         self._current_cache[dto_type] = result_dto
 
-    def has_dto(self, dto_type: Type[BaseModel]) -> bool:
+    def has_dto(self, dto_type: type[BaseModel]) -> bool:
         """Check if DTO type is present in cache."""
         if self._current_cache is None:
             return False

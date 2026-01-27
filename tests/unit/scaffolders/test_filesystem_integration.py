@@ -1,10 +1,10 @@
-import pytest
 from unittest.mock import Mock
 
 import pytest
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+
 
 @pytest.fixture
 def mock_registry():
@@ -42,7 +42,7 @@ class TestTemplateReading:
         artifact.template_path = 'nonexistent/template.jinja2'
         artifact.fallback_template = None
         mock_registry.get_artifact.return_value = artifact
-        
+
         # TemplateNotFound raised during introspection
         with pytest.raises(TemplateNotFound):
             scaffolder.scaffold('test', name='Test')

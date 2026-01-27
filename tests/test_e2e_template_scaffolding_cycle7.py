@@ -5,7 +5,9 @@ Validates SCAFFOLD metadata, link definitions, Version History, and GUIDELINE en
 """
 
 from pathlib import Path
+
 from jinja2 import Environment, FileSystemLoader
+
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
 
 
@@ -136,7 +138,10 @@ class TestScaffoldDesignDocumentE2E:
 
         # NO frontmatter (removed per BASE_TEMPLATE alignment)
         lines = result.split("\n")
-        non_comment_lines = [l for l in lines if l.strip() and not l.strip().startswith("<!--")]
+        non_comment_lines = [
+            line for line in lines
+            if line.strip() and not line.strip().startswith("<!--")
+        ]
         # First non-comment line should be title
         assert non_comment_lines[0].startswith("# ")
 

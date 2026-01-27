@@ -10,8 +10,8 @@ Following TDD: These tests are written BEFORE implementation (RED phase).
 import pytest
 
 from mcp_server.scaffolding.metadata import (
-    ScaffoldMetadataParser,
     MetadataParseError,
+    ScaffoldMetadataParser,
 )
 
 

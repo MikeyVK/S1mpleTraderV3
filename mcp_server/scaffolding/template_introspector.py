@@ -15,7 +15,6 @@ Templates are the Single Source of Truth - no manual field lists needed.
 """
 
 from dataclasses import dataclass, field
-from typing import Set
 
 import jinja2
 from jinja2 import meta, nodes
@@ -23,7 +22,7 @@ from jinja2 import meta, nodes
 from mcp_server.core.exceptions import ExecutionError
 
 # System fields injected by ArtifactManager - NOT agent responsibility
-SYSTEM_FIELDS: Set[str] = {
+SYSTEM_FIELDS: set[str] = {
     "template_id",
     "template_version",
     "scaffold_created",
@@ -34,7 +33,7 @@ SYSTEM_FIELDS: Set[str] = {
 @dataclass
 class TemplateSchema:
     """Schema extracted from template via AST introspection.
-    
+
     Represents agent-input requirements (system fields filtered out).
     """
 
@@ -98,7 +97,7 @@ def introspect_template(env: jinja2.Environment, template_source: str) -> Templa
 
 
 def _classify_variables(
-    ast: nodes.Template, variables: Set[str]
+    ast: nodes.Template, variables: set[str]
 ) -> tuple[list[str], list[str]]:
     """Classify variables as required or optional based on AST usage patterns.
 
@@ -115,8 +114,8 @@ def _classify_variables(
     Returns:
         Tuple of (required_list, optional_list)
     """
-    optional_vars: Set[str] = set()
-    required_vars: Set[str] = set()
+    optional_vars: set[str] = set()
+    required_vars: set[str] = set()
 
     # Walk AST to detect optional patterns
     for node in ast.find_all((nodes.If, nodes.Filter)):

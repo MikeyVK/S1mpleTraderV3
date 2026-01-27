@@ -168,11 +168,10 @@ class SafeEditInput(BaseModel):
             )
 
         # If search/replace mode, both search and replace must be provided
-        if search_replace_active:
-            if self.search is None or self.replace is None:
-                raise ValueError(
-                    "Both search and replace parameters must be provided for search/replace mode"
-                )
+        if search_replace_active and (self.search is None or self.replace is None):
+            raise ValueError(
+                "Both search and replace parameters must be provided for search/replace mode"
+            )
 
         return self
 
@@ -536,7 +535,7 @@ class SafeEditTool(BaseTool):
         Args:
             content: File content to preview.
             max_lines: Maximum number of lines to show.
-            
+
         Returns:
             Formatted preview string with line numbers.
         """

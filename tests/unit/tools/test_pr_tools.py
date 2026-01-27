@@ -1,12 +1,17 @@
 """Unit tests for pr_tools.py."""
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
+
 from mcp_server.tools.pr_tools import (
-    CreatePRTool, CreatePRInput,
-    ListPRsTool, ListPRsInput,
-    MergePRTool, MergePRInput
+    CreatePRInput,
+    CreatePRTool,
+    ListPRsInput,
+    ListPRsTool,
+    MergePRInput,
+    MergePRTool,
 )
-from mcp_server.tools.tool_result import ToolResult
+
 
 @pytest.fixture
 def mock_github_manager():
@@ -18,10 +23,10 @@ async def test_create_pr_tool(mock_github_manager):
     mock_github_manager.create_pr.return_value = {
         "number": 1, "url": "http://github.com/pr/1"
     }
-    
+
     params = CreatePRInput(title="New PR", body="Desc", head="feature", base="main")
     result = await tool.execute(params)
-    
+
     mock_github_manager.create_pr.assert_called_with(
         title="New PR", body="Desc", head="feature", base="main", draft=False
     )
@@ -34,12 +39,12 @@ async def test_list_prs_tool(mock_github_manager):
     pr1 = MagicMock(number=10, title="PR 10", state="open")
     pr1.base.ref = "main"
     pr1.head.ref = "feature/10"
-    
+
     mock_github_manager.list_prs.return_value = [pr1]
-    
+
     params = ListPRsInput(state="open")
     result = await tool.execute(params)
-    
+
     mock_github_manager.list_prs.assert_called_with(
         state="open", base=None, head=None
     )
@@ -50,10 +55,10 @@ async def test_list_prs_tool(mock_github_manager):
 async def test_merge_pr_tool(mock_github_manager):
     tool = MergePRTool(manager=mock_github_manager)
     mock_github_manager.merge_pr.return_value = {"sha": "commitsHA123"}
-    
+
     params = MergePRInput(pr_number=20, merge_method="squash")
     result = await tool.execute(params)
-    
+
     mock_github_manager.merge_pr.assert_called_with(
         pr_number=20, commit_message=None, merge_method="squash"
     )

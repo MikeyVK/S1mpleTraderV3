@@ -9,7 +9,7 @@ Following TDD workflow - these tests define the expected behavior.
 @tests: backend/dtos/state/order.py
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -17,7 +17,6 @@ from pydantic import ValidationError
 
 from backend.core.enums import OrderStatus, OrderType
 from backend.dtos.state.order import Order
-
 
 # =============================================================================
 # FIXTURES
@@ -35,8 +34,8 @@ def valid_order_data() -> dict:
         "quantity": Decimal("0.5"),
         "price": Decimal("95000.00"),
         "status": OrderStatus.PENDING,
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
     }
 
 
@@ -50,8 +49,8 @@ def market_order_data() -> dict:
         "order_type": OrderType.MARKET,
         "quantity": Decimal("2.0"),
         "status": OrderStatus.PENDING,
-        "created_at": datetime.now(timezone.utc),
-        "updated_at": datetime.now(timezone.utc),
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
     }
 
 
@@ -69,7 +68,7 @@ class TestOrderCreation:
         """Should create limit Order with required fields."""
         order = Order(**valid_order_data)
 
-        assert getattr(order, "order_id").startswith("ORD_")
+        assert order.order_id.startswith("ORD_")
         assert order.parent_group_id == "EXG_20251201_145955_xyz789"
         assert order.symbol == "BTC_USDT"
         assert order.side == "BUY"
@@ -93,7 +92,7 @@ class TestOrderCreation:
     ) -> None:
         """Should auto-generate ID with ORD_ prefix."""
         order = Order(**valid_order_data)
-        order_id = getattr(order, "order_id")
+        order_id = order.order_id
         assert order_id.startswith("ORD_")
         # Format: ORD_YYYYMMDD_HHMMSS_hash
         parts = order_id.split("_")
@@ -226,7 +225,7 @@ class TestOrderMutability:
     ) -> None:
         """Should allow updated_at timestamp changes."""
         order = Order(**valid_order_data)
-        new_time = datetime.now(timezone.utc)
+        new_time = datetime.now(UTC)
         order.updated_at = new_time
         assert order.updated_at == new_time
 

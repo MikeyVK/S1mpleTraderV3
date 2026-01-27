@@ -1,12 +1,11 @@
 """Unit tests for ArtifactManager metadata enrichment via public API."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from mcp_server.core.exceptions import ConfigError
 from mcp_server.managers.artifact_manager import ArtifactManager
 
 
@@ -50,7 +49,7 @@ class TestArtifactManagerMetadataEnrichment:
         timestamp = call_kwargs["scaffold_created"]
         assert timestamp.endswith("Z")
         parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-        assert parsed.tzinfo == timezone.utc
+        assert parsed.tzinfo == UTC
 
     @pytest.mark.asyncio
     async def test_enrichment_adds_output_path_for_file_artifacts(
@@ -134,7 +133,7 @@ class TestArtifactManagerNullTemplate:
             layer="Backend",
             responsibilities=["Test responsibility"]
         )
-        
+
         # Should succeed without ConfigError
         assert result is not None
         assert Path(result).exists()

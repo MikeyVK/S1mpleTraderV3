@@ -1,6 +1,6 @@
 """Test server lifecycle audit logging."""
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -19,8 +19,8 @@ async def test_server_startup_logged_to_audit(tmp_path):
 
             # Import after patching
             # pylint: disable=import-outside-toplevel
-            from mcp_server.server import MCPServer
             from mcp_server.core.logging import setup_logging
+            from mcp_server.server import MCPServer
 
             # Setup logging with our temp path
             setup_logging()
@@ -59,8 +59,8 @@ async def test_server_shutdown_logged_to_audit(tmp_path):
             mock_adapter_class.return_value = mock_adapter
 
             # pylint: disable=import-outside-toplevel
-            from mcp_server.server import MCPServer
             from mcp_server.core.logging import setup_logging
+            from mcp_server.server import MCPServer
 
             setup_logging()
             server = MCPServer()

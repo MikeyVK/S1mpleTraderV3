@@ -8,9 +8,10 @@ Responsibilities:
 - Manage current versions per artifact type
 """
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
-from datetime import datetime
+
 import yaml
 
 
@@ -29,7 +30,7 @@ class TemplateRegistry:
         Uses version_hashes: top-level key with concrete/tier0/tier1/tier2/tier3 structure.
     """
 
-    def __init__(self, registry_path: Path = Path(".st3/template_registry.yaml")):
+    def __init__(self, registry_path: Path = Path(".st3/template_registry.yaml")) -> None:
         self.registry_path = registry_path
         self._data: dict[str, Any] = self._load()
 
@@ -106,7 +107,7 @@ class TemplateRegistry:
         # Save entry (matches YAML schema structure exactly)
         entry: dict[str, Any] = {
             "artifact_type": artifact_type,
-            "created": datetime.now().isoformat(),
+            "created": datetime.now(UTC).isoformat(),
             "hash_algorithm": "SHA256",
         }
 
@@ -144,7 +145,7 @@ class TemplateRegistry:
 
     def _persist(self) -> None:
         """Write registry to disk."""
-        self._data["last_updated"] = datetime.now().isoformat()
+        self._data["last_updated"] = datetime.now(UTC).isoformat()
 
         # Ensure parent directory exists
         self.registry_path.parent.mkdir(parents=True, exist_ok=True)

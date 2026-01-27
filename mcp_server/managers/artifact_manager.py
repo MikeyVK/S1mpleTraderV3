@@ -20,7 +20,7 @@ pattern for testability.
 import logging
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -170,7 +170,7 @@ class ArtifactManager:
             enriched["format"] = "python"  # Default to Python comment style
 
         # Generate ISO 8601 UTC timestamp with Z suffix
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         enriched["scaffold_created"] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Add version_hash as template_version (template compatibility)

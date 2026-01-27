@@ -64,7 +64,7 @@ class TestConcreteTemplateExistence:
 
 class TestScaffoldedOutputCodingStandards:
     """Test that scaffolded output adheres to coding standards (Task 1.6 RED).
-    
+
     REQUIREMENT: Generated code must include:
     - Module docstring with @layer, @dependencies, @responsibilities
     - Import section headers: "# Standard library", "# Third-party", "# Project modules"
@@ -72,7 +72,7 @@ class TestScaffoldedOutputCodingStandards:
 
     def test_scaffolded_dto_has_module_docstring_with_annotations(self):
         """Scaffolded DTO must have module docstring with @layer/@dependencies/@responsibilities.
-        
+
         RED: This test WILL FAIL until tier1_base_code adds module_docstring block.
         """
         # Setup scaffolder
@@ -145,7 +145,7 @@ class TestScaffoldedOutputCodingStandards:
 
     def test_scaffolded_worker_has_import_section_headers(self):
         """Scaffolded worker must have import section headers.
-        
+
         RED: This test WILL FAIL until tier1_base_code adds section headers.
         """
         # Setup scaffolder
@@ -184,7 +184,7 @@ class TestScaffoldedOutputCodingStandards:
 
     def test_scaffolded_generic_has_complete_coding_standards(self):
         """Scaffolded generic class must have both module docstring AND import headers.
-        
+
         RED: This test WILL FAIL until both features are implemented.
         """
         # Setup scaffolder
@@ -230,7 +230,7 @@ class TestConcreteTemplateStructure:
     ])
     def test_python_templates_have_scaffold_metadata(self, template_name: str):
         """Python concrete templates must have SCAFFOLD metadata block.
-        
+
         REQUIREMENT (Task 1.6): Templates MUST inherit Tier 0 SCAFFOLD block
         for provenance tracking.
         """

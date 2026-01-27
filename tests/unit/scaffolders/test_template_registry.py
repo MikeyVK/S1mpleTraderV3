@@ -7,16 +7,15 @@ from unittest.mock import Mock
 
 import pytest
 
-from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ConfigError, ValidationError
+from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
 
 @pytest.fixture
 def mock_registry():
     """Provide mock artifact registry for testing."""
-    registry = Mock(spec=ArtifactRegistryConfig)
-    return registry
+    return Mock(spec=ArtifactRegistryConfig)
 
 
 @pytest.fixture

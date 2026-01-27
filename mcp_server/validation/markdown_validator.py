@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-from .base import BaseValidator, ValidationResult, ValidationIssue
+from .base import BaseValidator, ValidationIssue, ValidationResult
 
 
 class MarkdownValidator(BaseValidator):

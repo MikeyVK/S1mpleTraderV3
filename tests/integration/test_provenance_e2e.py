@@ -1,9 +1,9 @@
-# SCAFFOLD: template=test_provenance_e2e version=1.0
+﻿# SCAFFOLD: template=test_provenance_e2e version=1.0
 # created=2026-01-25 path=tests/integration/test_provenance_e2e.py
 """
 E2E tests for Task 1.6b: Provenance regression testing.
 
-Validates complete scaffold → parse → registry lookup roundtrip:
+Validates complete scaffold â†’ parse â†’ registry lookup roundtrip:
 1. Scaffold each artifact type (dto, worker, service, generic, design)
 2. Parse SCAFFOLD header from generated content
 3. Lookup version_hash in .st3/template_registry.yaml
@@ -20,7 +20,6 @@ Validates complete scaffold → parse → registry lookup roundtrip:
 
 # Standard library
 import re
-from datetime import datetime
 from pathlib import Path
 
 # Third-party
@@ -56,30 +55,30 @@ class TestProvenanceE2E:
             Tuple of (template_name, version, timestamp, output_path)
         """
         lines = content.split("\n")
-        
+
         if expected_extension == ".py":
             # Python format (2-line):
             # Line 1: # /path/to/file.py
             # Line 2: # template=X version=Y created=Z updated=
             assert lines[0].startswith("#"), \
                 f"{artifact_type}: Line 1 must start with '#' (filepath comment)"
-            
+
             # Extract filepath from line 1
             output_path = lines[0][1:].strip()  # Remove leading '#'
-            
+
             # Parse metadata from line 2
             assert "template=" in lines[1], \
                 f"{artifact_type}: Line 2 must contain metadata. Got: {lines[1]}"
-            
+
             # Extract metadata fields using regex
             metadata_line = lines[1]
             template_match = re.search(r"template=(\S+)", metadata_line)
             version_match = re.search(r"version=(\S+)", metadata_line)
             created_match = re.search(r"created=(\S+)", metadata_line)
-            
+
             assert template_match and version_match and created_match, \
                 f"{artifact_type}: Invalid metadata format. Got: {metadata_line}"
-            
+
             return (
                 template_match.group(1),
                 version_match.group(1),
@@ -92,35 +91,29 @@ class TestProvenanceE2E:
         # Line 2: <!-- template=X version=Y created=Z updated= -->
         assert lines[0].startswith("<!--") and lines[0].endswith("-->"), \
             f"{artifact_type}: Line 1 must be HTML comment with filepath"
-        
+
         # Extract filepath from line 1
         output_path = lines[0][4:-3].strip()  # Remove <!-- and -->
-        
+
         # Parse metadata from line 2
         assert "<!-- template=" in lines[1] and lines[1].endswith("-->"), \
             f"{artifact_type}: Line 2 must be HTML comment with metadata. Got: {lines[1]}"
-        
+
         # Extract metadata fields
         metadata_line = lines[1][4:-3]  # Remove <!-- and -->
         template_match = re.search(r"template=(\S+)", metadata_line)
         version_match = re.search(r"version=(\S+)", metadata_line)
         created_match = re.search(r"created=(\S+)", metadata_line)
-        
+
         assert template_match and version_match and created_match, \
             f"{artifact_type}: Invalid metadata format. Got: {metadata_line}"
-        
+
         return (
             template_match.group(1),
             version_match.group(1),
             created_match.group(1),
             output_path
         )
-        match = re.match(pattern, first_line)
-        assert match, \
-            f"{artifact_type}: SCAFFOLD header format invalid. Got: {first_line}"
-
-        template_name, version, timestamp, output_path = match.groups()
-        return template_name, version, timestamp, output_path.strip()
 
     @pytest.mark.parametrize("artifact_type,expected_extension", [
         ("dto", ".py"),
@@ -148,10 +141,10 @@ class TestProvenanceE2E:
             "layer": "Backend",
             "responsibilities": ["Test responsibility"]
         }
-        
+
         if artifact_type == "dto":
             context["fields"] = [{"name": "id", "type": "int"}]
-        
+
         if artifact_type == "design":
             context.update({
                 "title": f"Test {artifact_type.title()} Document",
@@ -164,12 +157,12 @@ class TestProvenanceE2E:
                 "key_decisions": [{"area": "Architecture", "decision": "Test decision"}],
                 "timestamp": "2026-01-27T10:00:00Z"
             })
-        
+
         file_path = await manager.scaffold_artifact(artifact_type, **context)
-        
+
         # Read generated file
         content = Path(file_path).read_text(encoding="utf-8")
-        
+
         template_name, version, timestamp, output_path = self._parse_scaffold_header(
             content, expected_extension, artifact_type
         )
@@ -210,7 +203,7 @@ class TestProvenanceE2E:
         """Scaffolded artifacts must have traceable tier chain through template inheritance.
 
         REQUIREMENT (Task 1.6b): Tier chain for Python artifacts should be:
-        tier0_base_artifact → tier1_base_code → tier2_base_python → concrete template
+        tier0_base_artifact â†’ tier1_base_code â†’ tier2_base_python â†’ concrete template
         """
         # Scaffold artifact via artifact_manager
         context = {
@@ -218,17 +211,17 @@ class TestProvenanceE2E:
             "layer": "Backend",
             "responsibilities": ["Test responsibility"]
         }
-        
+
         if artifact_type == "dto":
             context["fields"] = [{"name": "id", "type": "int"}]
-        
+
         file_path = await manager.scaffold_artifact(artifact_type, **context)
-        
+
         # Read generated file
         content = Path(file_path).read_text(encoding="utf-8")
 
         # Verify content shows inheritance chain (2-line SCAFFOLD format)
-        # (tier0 → tier1 → tier2 → concrete all contribute to output)
+        # (tier0 â†’ tier1 â†’ tier2 â†’ concrete all contribute to output)
         lines = content.split("\n")
         assert lines[0].startswith("#"), "tier0: Line 1 must be filepath comment"
         assert "template=" in lines[1], "tier0: Line 2 must have metadata"
@@ -243,7 +236,7 @@ class TestProvenanceE2E:
         """Design doc must have traceable tier chain through markdown templates.
 
         REQUIREMENT (Task 1.6b): Tier chain for Markdown artifacts should be:
-        tier0_base_artifact → tier1_base_document → tier2_base_markdown → concrete template
+        tier0_base_artifact â†’ tier1_base_document â†’ tier2_base_markdown â†’ concrete template
         """
         # Scaffold design doc via artifact_manager
         file_path = await manager.scaffold_artifact(
@@ -259,10 +252,10 @@ class TestProvenanceE2E:
             requirements_nonfunctional=["Performance Y"],
             timestamp="2026-01-27T10:00:00Z"
         )
-        
+
         # Read generated file
         content = Path(file_path).read_text(encoding="utf-8")
-        
+
         # Verify content shows inheritance chain (2-line HTML comment format)
         lines = content.split("\n")
         assert lines[0].startswith("<!--") and lines[0].endswith("-->"), \

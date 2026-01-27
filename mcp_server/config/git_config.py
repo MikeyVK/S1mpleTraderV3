@@ -64,7 +64,7 @@ class GitConfig(BaseModel):
     )
 
     # Compiled regex (cached after validation)
-    _compiled_pattern: ClassVar[Optional[re.Pattern[str]]] = None
+    _compiled_pattern: ClassVar[re.Pattern[str] | None] = None
 
     @model_validator(mode="after")
     def validate_cross_references(self) -> "GitConfig":

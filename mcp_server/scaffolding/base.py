@@ -1,6 +1,7 @@
 """Result types for scaffolding operations."""
 from dataclasses import dataclass
-from typing import Protocol, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol
+
 from mcp_server.scaffolding.utils import validate_pascal_case
 
 if TYPE_CHECKING:

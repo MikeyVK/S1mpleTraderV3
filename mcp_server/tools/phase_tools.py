@@ -66,7 +66,7 @@ class _BasePhaseTransitionTool(BaseTool):
     Provides common manager creation logic to avoid duplication.
     """
 
-    def __init__(self, workspace_root: Path | str):
+    def __init__(self, workspace_root: Path | str) -> None:
         """Initialize tool.
 
         Args:

@@ -30,15 +30,14 @@ Date: 2026-01-15
 Status: Production
 """
 import json
-import os # Added os import
+import os  # Added os import
 import re
 import subprocess
-import threading
 import sys
+import threading
 import time
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
-
 
 # RESTART_MARKER: Printed to stderr by server to signal restart request
 # Proxy detects this marker and triggers transparent server restart
@@ -75,9 +74,8 @@ def fix_json_surrogates(json_str: str) -> str:
 
         # Convert to UTF-8 character
         try:
-            char = chr(codepoint)
+            return chr(codepoint)
             # Re-encode as JSON escape sequence (or keep as UTF-8)
-            return char
         except (ValueError, OverflowError):
             # Invalid codepoint - replace with Unicode replacement character
             return '\ufffd'
@@ -85,7 +83,7 @@ def fix_json_surrogates(json_str: str) -> str:
     return surrogate_pattern.sub(replace_surrogate_pair, json_str)
 
 
-def _setup_utf8_encoding():
+def _setup_utf8_encoding() -> None:
     """Force UTF-8 encoding on Windows stdout/stderr.
 
     CRITICAL: Prevents 'charmap' codec errors when forwarding Unicode.
@@ -115,7 +113,7 @@ class MCPProxy:
     breaking the MCP protocol initialization handshake.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize proxy state."""
         # Setup UTF-8 encoding (Windows compatibility)
         _setup_utf8_encoding()
@@ -127,7 +125,7 @@ class MCPProxy:
         self.restart_count = 0
         self.proxy_pid = subprocess.os.getpid()
 
-    def audit_log(self, message: str, level: str = "INFO", **extra):
+    def audit_log(self, message: str, level: str = "INFO", **extra) -> None:
         """Write structured log entry to mcp_audit.log.
 
         Args:
@@ -141,7 +139,7 @@ class MCPProxy:
             audit_file = log_dir / "mcp_audit.log"
 
             entry = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "level": level,
                 "logger": "mcp_proxy",
                 "message": message,
@@ -156,7 +154,7 @@ class MCPProxy:
         except Exception as e:
             print(f"[PROXY ERROR] Audit log failed: {e}", file=sys.stderr, flush=True)
 
-    def log(self, message: str, level: str = "INFO", **extra):
+    def log(self, message: str, level: str = "INFO", **extra) -> None:
         """Log to both stderr (VS Code Output) and audit log.
 
         Args:
@@ -167,7 +165,7 @@ class MCPProxy:
         print(f"[PROXY] {message}", file=sys.stderr, flush=True)
         self.audit_log(message, level, **extra)
 
-    def start_server(self, is_restart: bool = False):
+    def start_server(self, is_restart: bool = False) -> None:
         """Start MCP server subprocess.
 
         Args:
@@ -215,7 +213,7 @@ class MCPProxy:
                     server_version = server_info.get("version", "unknown")
                     self.log(f"Initialize handshake completed ({server_name} v{server_version})",
                             event_type="initialize_replayed")
-                except:
+                except Exception:  # Catch all JSON parsing errors
                     self.log("Initialize response received (non-JSON)")
 
             # Start output reader threads AFTER initialize replay
@@ -232,7 +230,7 @@ class MCPProxy:
                     event_type="server_start_failed",
                     error=str(e))
 
-    def send_to_server(self, message_line: str):
+    def send_to_server(self, message_line: str) -> None:
         """Send JSON-RPC message line to server.
 
         Args:
@@ -250,7 +248,7 @@ class MCPProxy:
                         event_type="send_failed",
                         error=str(e))
 
-    def read_server_output(self):
+    def read_server_output(self) -> None:
         """Read server stdout and forward JSON-RPC to VS Code."""
         while self.server_process:
             try:
@@ -276,7 +274,7 @@ class MCPProxy:
                         error=str(e))
                 break
 
-    def read_server_stderr(self):
+    def read_server_stderr(self) -> None:
         """Read server stderr and monitor for restart marker."""
         while self.server_process:
             try:
@@ -315,7 +313,7 @@ class MCPProxy:
                         error=str(e))
                 break
 
-    def trigger_restart(self):
+    def trigger_restart(self) -> None:
         """Perform transparent server restart."""
         with self.lock:
             self.restarting = True
@@ -334,7 +332,7 @@ class MCPProxy:
 
                 try:
                     self.server_process.wait(timeout=5)
-                    self.log(f"Old server terminated gracefully",
+                    self.log("Old server terminated gracefully",
                             event_type="server_terminated")
                 except subprocess.TimeoutExpired:
                     self.log(f"Force killing old server (PID={old_pid})",
@@ -355,11 +353,11 @@ class MCPProxy:
                     restart_duration_ms=elapsed_ms,
                     new_server_pid=self.server_process.pid if self.server_process else None)
 
-    def run(self):
+    def run(self) -> None:
         """Main proxy loop - read from VS Code stdin and forward to server."""
         self.log(f"MCP Proxy starting (PID={self.proxy_pid})",
                 event_type="proxy_started")
-        self.log(f"Mode: Transparent restart without VS Code disconnect")
+        self.log("Mode: Transparent restart without VS Code disconnect")
 
         self.start_server(is_restart=False)
 
@@ -372,20 +370,29 @@ class MCPProxy:
 
                 try:
                     # Parse JSON first
-                    # fixed_line = fix_json_surrogates(line)  # DISABLED: Using generic validation instead
+                    # DISABLED: Using generic validation
+                    # fixed_line = fix_json_surrogates(line)
                     fixed_line = line
                     message = json.loads(fixed_line)
 
                     # GENERIC VALIDATION: Ensure message content is strictly valid UTF-8
-                    # Python's json.loads allows lone surrogates (e.g. \uD83D), but these 
+                    # Python's json.loads allows lone surrogates (e.g. \uD83D), but these
                     # can crash downstream libraries/servers trying to encode strict UTF-8.
                     # We validate by attempting a strict encoding.
                     try:
                         json.dumps(message, ensure_ascii=False).encode('utf-8')
                     except (UnicodeError, ValueError) as e:
                         # Validation failed - Block message to prevent Server crash
-                        error_msg = f"Message validation failed (encoding error): {e}. Please ensure valid Unicode input."
-                        self.log(error_msg, level="ERROR", event_type="validation_blocked", raw_line=line)
+                        error_msg = (
+                            f"Message validation failed (encoding error): {e}. "
+                            "Please ensure valid Unicode input."
+                        )
+                        self.log(
+                            error_msg,
+                            level="ERROR",
+                            event_type="validation_blocked",
+                            raw_line=line
+                        )
 
                         # Send error back to client
                         msg_id = message.get("id")
@@ -399,7 +406,7 @@ class MCPProxy:
                                 }
                             }
                             print(json.dumps(err_response), flush=True)
-                        
+
                         continue  # Skip sending to server
 
                     # Capture initialize request for replay
@@ -441,7 +448,7 @@ class MCPProxy:
         finally:
             self.cleanup()
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup on exit."""
         self.log(f"Proxy shutting down (total restarts: {self.restart_count})",
                 event_type="proxy_stopping")
@@ -450,13 +457,13 @@ class MCPProxy:
             self.server_process.terminate()
             try:
                 self.server_process.wait(timeout=2)
-            except:
+            except Exception:  # Timeout - force kill
                 self.server_process.kill()
 
         self.log("Proxy stopped", event_type="proxy_stopped")
 
 
-def main():
+def main() -> None:
     """Entry point for python -m mcp_server.core.proxy"""
     proxy = MCPProxy()
     proxy.run()

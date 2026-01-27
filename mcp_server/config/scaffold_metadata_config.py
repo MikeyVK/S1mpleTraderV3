@@ -10,7 +10,7 @@ Used by ScaffoldMetadataParser to detect and validate SCAFFOLD comments.
 
 import re
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, field_validator
 class ConfigError(Exception):
     """Custom exception for configuration errors with helpful hints."""
 
-    def __init__(self, message: str, hint: Optional[str] = None):
+    def __init__(self, message: str, hint: str | None = None) -> None:
         self.hint = hint
         super().__init__(f"{message}\n💡 {hint}" if hint else message)
 
@@ -128,7 +128,7 @@ class ScaffoldMetadataConfig(BaseModel):
     )
 
     @classmethod
-    def from_file(cls, path: Optional[Path] = None) -> "ScaffoldMetadataConfig":
+    def from_file(cls, path: Path | None = None) -> "ScaffoldMetadataConfig":
         """
         Load configuration from YAML file.
 
@@ -166,7 +166,7 @@ class ScaffoldMetadataConfig(BaseModel):
                 hint=f"Check schema compliance: {e}"
             ) from e
 
-    def get_pattern(self, syntax: str) -> Optional[CommentPattern]:
+    def get_pattern(self, syntax: str) -> CommentPattern | None:
         """
         Retrieve comment pattern by syntax identifier.
 
@@ -187,7 +187,7 @@ class ScaffoldMetadataConfig(BaseModel):
             None
         )
 
-    def get_field(self, name: str) -> Optional[MetadataField]:
+    def get_field(self, name: str) -> MetadataField | None:
         """
         Retrieve metadata field definition by name.
 

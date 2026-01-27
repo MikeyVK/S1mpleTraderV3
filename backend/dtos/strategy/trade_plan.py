@@ -10,10 +10,12 @@ strategic intent (Journal) with market reality (Ledger).
 
 import re
 from datetime import datetime
+
 from pydantic import BaseModel, Field, field_validator
 
 from backend.core.enums import TradeStatus
 from backend.utils.id_generators import generate_trade_plan_id
+
 
 class TradePlan(BaseModel):
     """

@@ -4,9 +4,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from mcp_server.core.exceptions import ValidationError
-from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.scaffolding.components.dto import DTOScaffolder
 from mcp_server.scaffolding.components.worker import WorkerScaffolder
+from mcp_server.scaffolding.renderer import JinjaRenderer
 
 
 @pytest.fixture(name="renderer_mock")

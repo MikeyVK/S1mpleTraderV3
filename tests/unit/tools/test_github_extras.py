@@ -6,8 +6,15 @@ import pytest
 
 from mcp_server.config.label_config import LabelConfig
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.tools.label_tools import AddLabelsTool, AddLabelsInput
-from mcp_server.tools.pr_tools import CreatePRTool, CreatePRInput, ListPRsTool, ListPRsInput, MergePRTool, MergePRInput
+from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
+from mcp_server.tools.pr_tools import (
+    CreatePRInput,
+    CreatePRTool,
+    ListPRsInput,
+    ListPRsTool,
+    MergePRInput,
+    MergePRTool,
+)
 
 
 @pytest.fixture
@@ -27,7 +34,7 @@ labels:
 """
     yaml_file = tmp_path / "labels.yaml"
     yaml_file.write_text(yaml_content)
-    
+
     LabelConfig.reset()
     LabelConfig.load(yaml_file)
     yield

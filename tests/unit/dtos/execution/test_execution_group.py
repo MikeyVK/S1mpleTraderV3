@@ -14,7 +14,7 @@ Test Categories:
 """
 # pylint: disable=unsubscriptable-object,no-member
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -23,7 +23,7 @@ from pydantic import ValidationError
 from backend.dtos.execution.execution_group import (
     ExecutionGroup,
     ExecutionStrategyType,
-    GroupStatus
+    GroupStatus,
 )
 
 
@@ -38,8 +38,8 @@ class TestExecutionGroupCreation:
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=[],
             status=GroupStatus.PENDING,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
         )
 
         assert group.group_id == "EXG_20251028_143022_a8f3c"
@@ -62,8 +62,8 @@ class TestExecutionGroupCreation:
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123", "binance_124", "binance_125"],
             status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC),
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("30.0"),
             cancelled_at=None,
@@ -90,8 +90,8 @@ class TestExecutionGroupValidation:
                 execution_strategy=ExecutionStrategyType.SINGLE,
                 order_ids=[],
                 status=GroupStatus.PENDING,
-                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
+                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
             )
 
     def test_parent_command_id_format_validation(self):
@@ -104,8 +104,8 @@ class TestExecutionGroupValidation:
                 execution_strategy=ExecutionStrategyType.SINGLE,
                 order_ids=[],
                 status=GroupStatus.PENDING,
-                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
+                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
             )
 
     def test_unique_order_ids_validation(self):
@@ -117,8 +117,8 @@ class TestExecutionGroupValidation:
                 execution_strategy=ExecutionStrategyType.TWAP,
                 order_ids=["binance_123", "binance_123"],  # Duplicate!
                 status=GroupStatus.ACTIVE,
-                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
+                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
             )
 
     def test_fill_ratio_validation(self):
@@ -130,8 +130,8 @@ class TestExecutionGroupValidation:
                 execution_strategy=ExecutionStrategyType.TWAP,
                 order_ids=[],
                 status=GroupStatus.ACTIVE,
-                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
+                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
                 target_quantity=Decimal("100.0"),
                 filled_quantity=Decimal("150.0")  # Exceeds target!
             )
@@ -145,10 +145,10 @@ class TestExecutionGroupValidation:
                 execution_strategy=ExecutionStrategyType.TWAP,
                 order_ids=[],
                 status=GroupStatus.COMPLETED,
-                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-                updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=timezone.utc),
-                cancelled_at=datetime(2025, 10, 28, 14, 35, 0, tzinfo=timezone.utc),
-                completed_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=timezone.utc)
+                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+                updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC),
+                cancelled_at=datetime(2025, 10, 28, 14, 35, 0, tzinfo=UTC),
+                completed_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC)
             )
 
     def test_target_quantity_positive_validation(self):
@@ -160,8 +160,8 @@ class TestExecutionGroupValidation:
                 execution_strategy=ExecutionStrategyType.TWAP,
                 order_ids=[],
                 status=GroupStatus.PENDING,
-                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
+                created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
                 target_quantity=Decimal("-100.0")  # Negative!
             )
 
@@ -177,11 +177,11 @@ class TestExecutionGroupStrategies:
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=["binance_500"],
             status=GroupStatus.COMPLETED,
-            created_at=datetime(2025, 10, 28, 12, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 12, 0, 1, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 12, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 12, 0, 1, tzinfo=UTC),
             target_quantity=Decimal("10.0"),
             filled_quantity=Decimal("10.0"),
-            completed_at=datetime(2025, 10, 28, 12, 0, 1, tzinfo=timezone.utc)
+            completed_at=datetime(2025, 10, 28, 12, 0, 1, tzinfo=UTC)
         )
 
         assert group.execution_strategy == ExecutionStrategyType.SINGLE
@@ -195,8 +195,8 @@ class TestExecutionGroupStrategies:
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123", "binance_124", "binance_125"],
             status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC),
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("30.0")
         )
@@ -212,8 +212,8 @@ class TestExecutionGroupStrategies:
             execution_strategy=ExecutionStrategyType.ICEBERG,
             order_ids=["binance_200"],
             status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=UTC),
             target_quantity=Decimal("500.0"),
             filled_quantity=Decimal("0.0")
         )
@@ -229,8 +229,8 @@ class TestExecutionGroupStrategies:
             execution_strategy=ExecutionStrategyType.LAYERED,
             order_ids=["binance_400", "binance_401", "binance_402"],
             status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 10, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 12, 0, 0, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 10, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 12, 0, 0, tzinfo=UTC),
             target_quantity=Decimal("50.0"),
             filled_quantity=Decimal("30.0")
         )
@@ -246,8 +246,8 @@ class TestExecutionGroupStrategies:
             execution_strategy=ExecutionStrategyType.VWAP,
             order_ids=[],
             status=GroupStatus.PENDING,
-            created_at=datetime(2025, 10, 28, 11, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 11, 0, 0, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 11, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 11, 0, 0, tzinfo=UTC)
         )
 
         assert group.execution_strategy == ExecutionStrategyType.VWAP
@@ -260,8 +260,8 @@ class TestExecutionGroupStrategies:
             execution_strategy=ExecutionStrategyType.POV,
             order_ids=[],
             status=GroupStatus.PENDING,
-            created_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC)
         )
 
         assert group.execution_strategy == ExecutionStrategyType.POV
@@ -279,8 +279,8 @@ class TestExecutionGroupStatus:
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=[],
             status=GroupStatus.PENDING,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
         )
 
         assert group.status == GroupStatus.PENDING
@@ -293,8 +293,8 @@ class TestExecutionGroupStatus:
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123"],
             status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 30, 25, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 30, 25, tzinfo=UTC)
         )
 
         assert active_group.status == GroupStatus.ACTIVE
@@ -307,11 +307,11 @@ class TestExecutionGroupStatus:
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=["binance_400", "binance_401"],
             status=GroupStatus.COMPLETED,
-            created_at=datetime(2025, 10, 28, 10, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 10, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC),
             target_quantity=Decimal("50.0"),
             filled_quantity=Decimal("50.0"),
-            completed_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=timezone.utc)
+            completed_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC)
         )
 
         assert group.status == GroupStatus.COMPLETED
@@ -326,11 +326,11 @@ class TestExecutionGroupStatus:
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_300", "binance_301"],
             status=GroupStatus.CANCELLED,
-            created_at=datetime(2025, 10, 28, 16, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 16, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=UTC),
             target_quantity=Decimal("200.0"),
             filled_quantity=Decimal("40.0"),
-            cancelled_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=timezone.utc)
+            cancelled_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=UTC)
         )
 
         assert group.status == GroupStatus.CANCELLED
@@ -345,8 +345,8 @@ class TestExecutionGroupStatus:
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=[],
             status=GroupStatus.FAILED,
-            created_at=datetime(2025, 10, 28, 17, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 17, 0, 5, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 17, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 17, 0, 5, tzinfo=UTC)
         )
 
         assert group.status == GroupStatus.FAILED
@@ -359,8 +359,8 @@ class TestExecutionGroupStatus:
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_700", "binance_701"],
             status=GroupStatus.PARTIAL,
-            created_at=datetime(2025, 10, 28, 18, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 18, 10, 0, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 18, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 18, 10, 0, tzinfo=UTC),
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("45.0")
         )
@@ -381,9 +381,9 @@ class TestExecutionGroupStatus:
             execution_strategy=ExecutionStrategyType.SINGLE,
             order_ids=["binance_800"],
             status=GroupStatus.COMPLETED,
-            created_at=datetime(2025, 10, 28, 19, 0, 0, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 19, 0, 1, tzinfo=timezone.utc),
-            completed_at=datetime(2025, 10, 28, 19, 0, 1, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 19, 0, 0, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 19, 0, 1, tzinfo=UTC),
+            completed_at=datetime(2025, 10, 28, 19, 0, 1, tzinfo=UTC)
         )
 
         assert group.status == GroupStatus.COMPLETED
@@ -401,8 +401,8 @@ class TestExecutionGroupMutation:
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=[],
             status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
         )
 
         # Initial state
@@ -425,8 +425,8 @@ class TestExecutionGroupMutation:
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123"],
             status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("0.0")
         )
@@ -458,8 +458,8 @@ class TestExecutionGroupSerialization:  # pylint: disable=too-few-public-methods
             execution_strategy=ExecutionStrategyType.TWAP,
             order_ids=["binance_123", "binance_124", "binance_125"],
             status=GroupStatus.ACTIVE,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
-            updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
+            updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC),
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("30.0"),
             cancelled_at=None,

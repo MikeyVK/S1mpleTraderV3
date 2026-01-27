@@ -61,10 +61,9 @@ Causal Traceability Examples:
     - Maintain ID format consistency
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from hashlib import sha256
 from uuid import uuid4
-
 
 __all__ = [
     'generate_tick_id',
@@ -91,20 +90,20 @@ __all__ = [
 def _generate_id(prefix: str) -> str:
     """
     Generate uniform ID with military datetime format.
-    
+
     Format: {PREFIX}_{YYYYMMDD}_{HHMMSS}_{hash}
-    
+
     Args:
         prefix: 3-letter type identifier (e.g., 'TCK', 'OPP', 'STR')
-    
+
     Returns:
         Formatted ID string
-    
+
     Example:
         >>> _generate_id('TCK')
         'TCK_20251026_143052_a1b2c3d4'
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     date_str = now.strftime('%Y%m%d')
     time_str = now.strftime('%H%M%S')
 
@@ -269,8 +268,8 @@ def extract_id_timestamp(typed_id: str) -> datetime:
     try:
         # Parse YYYYMMDD_HHMMSS
         dt_str = f"{date_str}_{time_str}"
-        dt = datetime.strptime(dt_str, '%Y%m%d_%H%M%S')
-        return dt.replace(tzinfo=timezone.utc)
+        dt = datetime.strptime(dt_str, '%Y%m%d_%H%M%S').replace(tzinfo=UTC)
+        return dt
     except ValueError as e:
         raise ValueError(
             f"Invalid timestamp in ID {typed_id}: {date_str}_{time_str}"

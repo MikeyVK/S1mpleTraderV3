@@ -50,7 +50,7 @@ class ProjectPlan:
     """Project phase plan data structure.
 
     Field order: identifier → core data → optional → metadata
-    
+
     Note: Has 8 fields which exceeds pylint's default of 7,
     but all fields are necessary for complete project metadata.
     """
@@ -76,7 +76,7 @@ class ProjectManager:
     Uses workflows.yaml for workflow definitions and phase sequences.
     """
 
-    def __init__(self, workspace_root: Path | str):
+    def __init__(self, workspace_root: Path | str) -> None:
         """Initialize ProjectManager.
 
         Args:
@@ -193,10 +193,7 @@ class ProjectManager:
         self.projects_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Load existing projects
-        if self.projects_file.exists():
-            projects = json.loads(self.projects_file.read_text())
-        else:
-            projects = {}
+        projects = json.loads(self.projects_file.read_text()) if self.projects_file.exists() else {}
 
         # Store plan (convert tuple to list for JSON)
         projects[str(plan.issue_number)] = {

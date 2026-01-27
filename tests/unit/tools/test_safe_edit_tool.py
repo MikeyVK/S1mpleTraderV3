@@ -27,7 +27,7 @@ import pytest
 from pydantic import ValidationError
 
 # Project modules
-from mcp_server.tools.safe_edit_tool import SafeEditTool, SafeEditInput
+from mcp_server.tools.safe_edit_tool import SafeEditInput, SafeEditTool
 
 
 class TestSafeEditTool:

@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 # Module under test
-from mcp_server.tools.safe_edit_tool import SafeEditTool, SafeEditInput
+from mcp_server.tools.safe_edit_tool import SafeEditInput, SafeEditTool
 
 
 class TestSafeEditValidationIntegration:
@@ -212,7 +212,7 @@ from backend.core.interfaces.base_worker import BaseWorker
 
 class TestWorker(BaseWorker[dict, dict]):
     """Valid worker."""
-    
+
     async def process(self, data: dict) -> dict:
         """Process data."""
         return data

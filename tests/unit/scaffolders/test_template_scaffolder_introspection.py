@@ -25,6 +25,7 @@ from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
+
 @pytest.fixture(name="registry")
 def fixture_registry() -> ArtifactRegistryConfig:
     """Provides artifact registry configuration"""

@@ -5,6 +5,7 @@ and concrete templates have GUIDELINE enforcement.
 """
 
 from pathlib import Path
+
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
 
 

@@ -206,7 +206,7 @@ class TestScaffold:
             layer="Backend",
             responsibilities=["Process input data"]
         )
-        
+
         # Should succeed and include Worker suffix
         assert result.content is not None
         assert "ProcessWorker" in result.content

@@ -514,11 +514,10 @@ class StrategyDirective(BaseModel):
                 raise ValueError(
                     f"target_plan_ids must not be empty for scope {scope.value}"
                 )
-        elif scope == DirectiveScope.NEW_TRADE:
-            if v:
-                raise ValueError(
-                    "target_plan_ids must be empty for NEW_TRADE scope"
-                )
+        elif scope == DirectiveScope.NEW_TRADE and v:
+            raise ValueError(
+                "target_plan_ids must be empty for NEW_TRADE scope"
+            )
         return v
 
     model_config = {

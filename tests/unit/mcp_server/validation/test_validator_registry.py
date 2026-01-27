@@ -11,15 +11,16 @@ Tests according to TDD principles with comprehensive coverage.
 # Suppress Pydantic FieldInfo false positives
 
 # Standard library
-from typing import Generator, Type
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 # Third-party
 import pytest
 
+from mcp_server.validation.base import BaseValidator
+
 # Module under test
 from mcp_server.validation.registry import ValidatorRegistry
-from mcp_server.validation.base import BaseValidator
 
 
 class MockValidator(BaseValidator):
@@ -41,7 +42,7 @@ class TestValidatorRegistry:
         # Using patch.dict to modify the class attributes safely without
         # strictly triggering protected-access or polluting global state.
 
-        new_ext_map: dict[str, Type[BaseValidator]] = {}
+        new_ext_map: dict[str, type[BaseValidator]] = {}
         new_pattern_map: list[tuple[str, BaseValidator]] = []
 
         # We patch the PRIVATE attributes. Pylint might still flag this if string-based

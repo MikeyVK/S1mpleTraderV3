@@ -1,8 +1,8 @@
 """Structured logging for the MCP server."""
 import json
 import logging
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Any
 
 from mcp_server.config.settings import settings

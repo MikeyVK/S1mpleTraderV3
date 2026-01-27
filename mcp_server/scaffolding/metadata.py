@@ -13,7 +13,6 @@ Line 2: # template=dto version=abc12345 created=2026-01-27T10:00Z updated=
 
 import re
 from pathlib import Path
-from typing import Optional
 
 from mcp_server.config.scaffold_metadata_config import (
     CommentPattern,
@@ -41,7 +40,7 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
         'dto'
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None) -> None:
         """
         Initialize parser with configuration.
 
@@ -66,7 +65,7 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
             if extension in pattern.extensions
         ]
 
-    def parse(self, content: str, extension: str) -> Optional[dict[str, str]]:
+    def parse(self, content: str, extension: str) -> dict[str, str] | None:
         """
         Parse 2-line metadata from file content (Issue #72 format).
 
@@ -170,7 +169,7 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
         # Filter to known fields only and validate
         validated: dict[str, str] = {}
         for field_name, field_value in metadata.items():
-            field_config: Optional[MetadataField] = self.config.get_field(field_name)
+            field_config: MetadataField | None = self.config.get_field(field_name)
 
             # Skip unknown fields (silently ignored)
             if field_config is None:

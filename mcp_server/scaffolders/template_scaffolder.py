@@ -20,7 +20,7 @@ Uses JinjaRenderer with FileSystemLoader for safe template loading.
 """
 
 # Standard library
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 # Project modules
@@ -174,7 +174,7 @@ class TemplateScaffolder(BaseScaffolder):
         # Use provided timestamp or generate ISO 8601 (UTC, minute precision)
         timestamp = (
             kwargs.get("timestamp") or
-            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+            datetime.now(UTC).strftime("%Y-%m-%dT%H:%MZ")
         )
 
         # template_version must be provided by caller (artifact_manager injects version_hash)

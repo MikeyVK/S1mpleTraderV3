@@ -19,8 +19,12 @@ import pytest
 
 # Module under test
 from pydantic import ValidationError
-from mcp_server.tools.template_validation_tool import TemplateValidationTool, TemplateValidationInput
-from mcp_server.validation.base import ValidationResult, ValidationIssue
+
+from mcp_server.tools.template_validation_tool import (
+    TemplateValidationInput,
+    TemplateValidationTool,
+)
+from mcp_server.validation.base import ValidationIssue, ValidationResult
 
 
 class TestTemplateValidationTool:

@@ -6,6 +6,7 @@ via BaseTool.__init_subclass__.
 """
 
 from typing import Any
+
 import pytest
 
 from mcp_server.tools.base import BaseTool

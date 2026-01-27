@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 # Module imports
-from .base import BaseValidator, ValidationResult, ValidationIssue
+from .base import BaseValidator, ValidationIssue, ValidationResult
 from .template_analyzer import TemplateAnalyzer
 
 
@@ -39,7 +39,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
         self,
         template_type: str,
         template_analyzer: TemplateAnalyzer
-    ):
+    ) -> None:
         """
         Initialize validator for specific template type.
 
@@ -149,15 +149,22 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
         # Group SCAFFOLD patterns for OR logic (any one must match)
         scaffold_patterns = [r for r in strict_rules if isinstance(r, str) and "SCAFFOLD:" in r]
         other_rules = [r for r in strict_rules if not (isinstance(r, str) and "SCAFFOLD:" in r)]
-        
+
         # Check SCAFFOLD patterns with OR logic
         if scaffold_patterns:
             import re
-            scaffold_found = any(re.search(pattern, content, re.MULTILINE) for pattern in scaffold_patterns)
+            scaffold_found = any(
+                re.search(pattern, content, re.MULTILINE)
+                for pattern in scaffold_patterns
+            )
             if not scaffold_found:
+                patterns_list = ', '.join(scaffold_patterns)
                 issues.append(ValidationIssue(
-                    message=f"Required SCAFFOLD header not found (expected one of: {', '.join(scaffold_patterns)})",
-                    code=f"scaffold_header_missing",
+                    message=(
+                        f"Required SCAFFOLD header not found "
+                        f"(expected one of: {patterns_list})"
+                    ),
+                    code="scaffold_header_missing",
                     severity="error",
                     line=0
                 ))
@@ -171,7 +178,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
                 if not re.search(rule, content, re.MULTILINE):
                     issues.append(ValidationIssue(
                         message=f"Required pattern not found: {rule}",
-                        code=f"pattern_match",
+                        code="pattern_match",
                         severity="error",
                         line=0
                     ))
@@ -207,7 +214,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
             # Skip string patterns (handled in _validate_format)
             if isinstance(rule, str):
                 continue
-            
+
             if isinstance(rule, dict):
                 rule_name = rule.get("rule", "")
                 if rule_name in ["base_class", "required_properties",
@@ -241,7 +248,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
             # Skip string patterns (for now - guidelines typically use dict format)
             if isinstance(rule, str):
                 continue
-                
+
             if isinstance(rule, dict):
                 issue = self._check_pattern(content, rule, severity="warning")
                 if issue:

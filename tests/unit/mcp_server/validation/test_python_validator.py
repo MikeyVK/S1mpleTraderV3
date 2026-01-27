@@ -11,15 +11,16 @@ Tests according to TDD principles with comprehensive coverage.
 # Suppress Pydantic FieldInfo false positives
 
 # Standard library
-from typing import Generator
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 # Third-party
 import pytest
 
+from mcp_server.validation.base import ValidationResult
+
 # Module under test
 from mcp_server.validation.python_validator import PythonValidator
-from mcp_server.validation.base import ValidationResult
 
 
 class TestPythonValidator:

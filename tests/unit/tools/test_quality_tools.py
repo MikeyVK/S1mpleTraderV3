@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 import pytest
 
 # Module under test
-from mcp_server.tools.quality_tools import RunQualityGatesTool, RunQualityGatesInput
+from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 
 
 class TestRunQualityGatesTool:

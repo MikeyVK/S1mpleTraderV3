@@ -30,7 +30,6 @@ adds plan IDs to create ExecutionDirective with complete chain.
 
 # Standard Library Imports
 from decimal import Decimal
-from typing import Optional
 
 # Third-Party Imports
 from pydantic import BaseModel, Field, field_validator
@@ -86,7 +85,7 @@ class ExitPlan(BaseModel):
         max_digits=20
     )
 
-    take_profit_price: Optional[Decimal] = Field(
+    take_profit_price: Decimal | None = Field(
         None,
         description="Take profit price level (optional profit target)",
         gt=0,
@@ -96,7 +95,7 @@ class ExitPlan(BaseModel):
 
     @field_validator("stop_loss_price", "take_profit_price")
     @classmethod
-    def validate_positive_prices(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+    def validate_positive_prices(cls, v: Decimal | None) -> Decimal | None:
         """Ensure price levels are positive when provided."""
         if v is not None and v <= 0:
             raise ValueError("Price must be greater than 0")

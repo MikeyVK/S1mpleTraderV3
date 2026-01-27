@@ -12,7 +12,7 @@ FlowInitiator is a Platform-within-Strategy worker that:
 """
 
 # Standard library
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock, call
 
 # Third-party
@@ -23,9 +23,9 @@ from pydantic import BaseModel, ConfigDict
 from backend.core.flow_initiator import FlowInitiator
 from backend.core.interfaces.strategy_cache import IStrategyCache
 from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInitializationError
+from backend.dtos.shared import Origin, OriginType
 from backend.dtos.shared.disposition_envelope import DispositionEnvelope
 from backend.dtos.shared.platform_data import PlatformDataDTO
-from backend.dtos.shared import Origin, OriginType
 
 
 def create_test_origin(origin_type: OriginType = OriginType.TICK) -> Origin:
@@ -161,7 +161,7 @@ class TestFlowInitiatorDataHandling:
     @pytest.fixture
     def test_timestamp(self) -> datetime:
         """Provide test timestamp."""
-        return datetime(2025, 11, 6, 10, 0, 0, tzinfo=timezone.utc)
+        return datetime(2025, 11, 6, 10, 0, 0, tzinfo=UTC)
 
     def test_on_data_ready_starts_new_run(
         self,
@@ -288,7 +288,7 @@ class TestFlowInitiatorErrorHandling:
     @pytest.fixture
     def test_timestamp(self) -> datetime:
         """Provide test timestamp."""
-        return datetime(2025, 11, 6, 10, 0, 0, tzinfo=timezone.utc)
+        return datetime(2025, 11, 6, 10, 0, 0, tzinfo=UTC)
 
     def test_on_data_ready_raises_on_unknown_payload_type(
         self,

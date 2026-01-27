@@ -38,7 +38,7 @@ class CausalityChain(BaseModel):
     Workers use model_copy(update={...}) to extend chain:
     ```python
     from backend.dtos.shared import Origin, OriginType
-    
+
     # Origin copied from PlatformDataDTO
     extended = input_dto.causality.model_copy(update={
         "strategy_directive_id": "STR_20251026_100002_abc1d2e3"

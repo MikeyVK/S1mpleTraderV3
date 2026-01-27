@@ -21,7 +21,6 @@ from mcp_server.core.logging import get_logger
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
-
 # Constants
 RESTART_MARKER_PATH = Path(".st3/.restart_marker")
 
@@ -215,7 +214,7 @@ class RestartServerTool(BaseTool):
             # Signal proxy to restart by printing marker
             print("__MCP_RESTART_REQUEST__", file=sys.stderr, flush=True)
             sys.stdout.flush()
-            
+
             # Exit with code 42 (legacy supervisor support)
             # Note: Proxy intercepts marker above, exit code ignored
             sys.exit(42)

@@ -12,16 +12,9 @@ Any change to enum members will cause tests to fail, forcing impact analysis.
 # Standard Library Imports
 import re
 from enum import Enum
-from typing import Type
 
 # Our Application Imports
-from backend.core.enums import (
-    ContextType,
-    SignalType,
-    RiskType,
-    PlanningPhase,
-    ExecutionType
-)
+from backend.core.enums import ContextType, ExecutionType, PlanningPhase, RiskType, SignalType
 
 
 class TestContextType:
@@ -171,7 +164,7 @@ class TestEnumCrossCutting:
 
     def test_no_duplicate_values_within_enums(self):
         """Test that each enum has unique values."""
-        enums_to_test: list[Type[Enum]] = [
+        enums_to_test: list[type[Enum]] = [
             ContextType,
             SignalType,
             RiskType,
@@ -189,7 +182,7 @@ class TestEnumCrossCutting:
         """Test that all enum values follow UPPER_SNAKE_CASE."""
         pattern = re.compile(r'^[A-Z][A-Z0-9_]*$')
 
-        enums_to_test: list[Type[Enum]] = [
+        enums_to_test: list[type[Enum]] = [
             ContextType,
             SignalType,
             RiskType,

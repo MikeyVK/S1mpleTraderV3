@@ -64,10 +64,10 @@ class IWorkerLifecycle(Protocol):
     Worker Scopes (strategy_cache usage):
         - Platform Workers: Don't use strategy_cache (pass None)
           Examples: DataProvider (singleton, no strategy context)
-        
+
         - Strategy Workers: Require strategy_cache (per-strategy instance)
           Examples: SignalDetector, RiskMonitor, PlanningWorker
-        
+
         - Platform-within-Strategy: Singleton but strategy-aware
           Examples: FlowInitiator (singleton, routes to strategies)
 

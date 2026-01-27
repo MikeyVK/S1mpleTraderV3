@@ -10,8 +10,8 @@ from pathlib import Path
 
 import yaml  # type: ignore[import-untyped]
 
-from mcp_server.tools.pr_tools import CreatePRInput
 from mcp_server.config.git_config import GitConfig
+from mcp_server.tools.pr_tools import CreatePRInput
 
 
 class TestPRToolsConfigIntegration:

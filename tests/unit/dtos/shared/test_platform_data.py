@@ -10,15 +10,16 @@ Focus on essential behavior: structure, immutability, validation.
 """
 
 # Standard Library Imports
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Third-Party Imports
 import pytest
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from backend.dtos.shared.origin import Origin, OriginType
+
 # Our Application Imports
 from backend.dtos.shared.platform_data import PlatformDataDTO
-from backend.dtos.shared.origin import Origin, OriginType
 
 
 class MockCandleWindow(BaseModel):
@@ -56,7 +57,7 @@ class TestPlatformDataDTOStructure:
 
     def test_create_with_all_required_fields(self):
         """Test successful creation with origin, timestamp, payload."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin(OriginType.TICK)
 
@@ -72,7 +73,7 @@ class TestPlatformDataDTOStructure:
 
     def test_different_payload_types(self):
         """Test payload accepts any BaseModel subtype."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         origin = create_test_origin(OriginType.TICK)
 
         # CandleWindow payload
@@ -97,7 +98,7 @@ class TestPlatformDataDTOValidation:
 
     def test_missing_origin(self):
         """Test that missing origin raises ValidationError."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
 
         with pytest.raises(ValidationError) as exc_info:
@@ -119,7 +120,7 @@ class TestPlatformDataDTOValidation:
 
     def test_missing_payload(self):
         """Test that missing payload raises ValidationError."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         origin = create_test_origin()
 
         with pytest.raises(ValidationError) as exc_info:
@@ -145,7 +146,7 @@ class TestPlatformDataDTOValidation:
 
     def test_invalid_payload_type(self):
         """Test that non-BaseModel payload raises ValidationError."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         origin = create_test_origin()
 
         with pytest.raises(ValidationError) as exc_info:
@@ -164,7 +165,7 @@ class TestPlatformDataDTOImmutability:
 
     def test_cannot_modify_origin(self):
         """Test that origin cannot be modified after creation."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin(OriginType.TICK)
         dto = PlatformDataDTO(
@@ -179,7 +180,7 @@ class TestPlatformDataDTOImmutability:
 
     def test_cannot_modify_timestamp(self):
         """Test that timestamp cannot be modified after creation."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin()
         dto = PlatformDataDTO(
@@ -188,13 +189,13 @@ class TestPlatformDataDTOImmutability:
             payload=payload
         )
 
-        new_timestamp = datetime(2025, 11, 6, 15, 0, 0, tzinfo=timezone.utc)
+        new_timestamp = datetime(2025, 11, 6, 15, 0, 0, tzinfo=UTC)
         with pytest.raises(ValidationError, match="frozen"):
             dto.timestamp = new_timestamp  # type: ignore
 
     def test_cannot_modify_payload(self):
         """Test that payload cannot be modified after creation."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin()
         dto = PlatformDataDTO(
@@ -213,7 +214,7 @@ class TestPlatformDataDTOEdgeCases:
 
     def test_different_origin_types(self):
         """Test that all origin types work correctly."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
 
         for origin_type in [OriginType.TICK, OriginType.NEWS, OriginType.SCHEDULE]:
@@ -227,7 +228,7 @@ class TestPlatformDataDTOEdgeCases:
 
     def test_timestamp_with_microseconds(self):
         """Test timestamp preserves microsecond precision."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, 123456, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, 123456, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin()
 
@@ -241,7 +242,7 @@ class TestPlatformDataDTOEdgeCases:
 
     def test_multiple_instances_independent(self):
         """Test multiple DTO instances are independent (frozen enforcement)."""
-        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload1 = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         payload2 = MockCandleWindow(symbol="ETH", timeframe="4h", close=3000.0)
 
@@ -265,7 +266,7 @@ class TestPlatformDataDTOOriginIntegration:
 
     def test_create_with_tick_origin(self):
         """Test PlatformDataDTO with TICK origin."""
-        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = Origin(id="TCK_20251109_143000_abc123", type=OriginType.TICK)
 
@@ -281,7 +282,7 @@ class TestPlatformDataDTOOriginIntegration:
 
     def test_create_with_news_origin(self):
         """Test PlatformDataDTO with NEWS origin."""
-        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = Origin(id="NWS_20251109_143000_def456", type=OriginType.NEWS)
 
@@ -296,7 +297,7 @@ class TestPlatformDataDTOOriginIntegration:
 
     def test_create_with_schedule_origin(self):
         """Test PlatformDataDTO with SCHEDULE origin."""
-        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = Origin(id="SCH_20251109_143000_ghi789", type=OriginType.SCHEDULE)
 
@@ -311,7 +312,7 @@ class TestPlatformDataDTOOriginIntegration:
 
     def test_origin_is_required(self):
         """Test that origin field is required (cannot be None)."""
-        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
 
         with pytest.raises(ValidationError, match="origin"):
@@ -322,7 +323,7 @@ class TestPlatformDataDTOOriginIntegration:
 
     def test_origin_immutability(self):
         """Test that origin cannot be modified after creation."""
-        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = Origin(id="TCK_20251109_143000_abc123", type=OriginType.TICK)
 
@@ -338,7 +339,7 @@ class TestPlatformDataDTOOriginIntegration:
 
     def test_origin_validation_enforced(self):
         """Test that Origin validation rules are enforced."""
-        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 11, 9, 14, 30, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
 
         # Invalid: wrong prefix for type

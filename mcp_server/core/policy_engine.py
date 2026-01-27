@@ -8,7 +8,7 @@ Used by: MCP tools for operation validation
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from mcp_server.config.git_config import GitConfig
 from mcp_server.config.operation_policies import OperationPoliciesConfig
@@ -25,10 +25,10 @@ class PolicyDecision:
     allowed: bool
     reason: str
     operation: str
-    path: Optional[str] = None
-    phase: Optional[str] = None
-    directory_policy: Optional[ResolvedDirectoryPolicy] = None
-    context: Dict[str, Any] = field(default_factory=dict)
+    path: str | None = None
+    phase: str | None = None
+    directory_policy: ResolvedDirectoryPolicy | None = None
+    context: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
@@ -43,7 +43,7 @@ class PolicyEngine:
         self,
         config_dir: str = ".st3",
         git_config: GitConfig | None = None
-    ):
+    ) -> None:
         """Initialize PolicyEngine with configs.
 
         Args:
@@ -60,14 +60,14 @@ class PolicyEngine:
         self._git_config = git_config or GitConfig.from_file()
 
         # Audit trail
-        self._audit_trail: List[Dict[str, Any]] = []
+        self._audit_trail: list[dict[str, Any]] = []
 
     def decide(
         self,
         operation: str,
-        path: Optional[str] = None,
-        phase: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        path: str | None = None,
+        phase: str | None = None,
+        context: dict[str, Any] | None = None
     ) -> PolicyDecision:
         """Make policy decision for operation.
 
@@ -217,7 +217,7 @@ class PolicyEngine:
             "context": decision.context
         })
 
-    def get_audit_trail(self) -> List[Dict[str, Any]]:
+    def get_audit_trail(self) -> list[dict[str, Any]]:
         """Get complete audit trail.
 
         Returns:

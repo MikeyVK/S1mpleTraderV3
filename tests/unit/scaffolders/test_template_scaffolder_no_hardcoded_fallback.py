@@ -13,13 +13,17 @@ This approach tests behavior, not implementation details, making tests:
 """
 from pathlib import Path
 from unittest.mock import Mock
+
 import pytest
+
+from mcp_server.config.artifact_registry_config import (
+    ArtifactDefinition,
+    ArtifactRegistryConfig,
+)
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
-from mcp_server.config.artifact_registry_config import (
-    ArtifactRegistryConfig,
-    ArtifactDefinition,
-)
+
+
 class TestServiceTemplateResolution:
     """Service artifacts use ONLY artifacts.yaml template paths."""
     def test_service_scaffolds_successfully_with_artifacts_yaml_template(self):

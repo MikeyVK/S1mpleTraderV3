@@ -10,7 +10,7 @@ run lifecycle, DTO storage/retrieval, and RunAnchor validation.
 """
 
 # Standard library
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Third-party
 import pytest
@@ -60,7 +60,7 @@ class TestStrategyCache:
     @pytest.fixture
     def test_timestamp(self):
         """Provide test timestamp."""
-        return datetime(2025, 10, 28, 10, 30, 0, tzinfo=timezone.utc)
+        return datetime(2025, 10, 28, 10, 30, 0, tzinfo=UTC)
 
     @pytest.fixture
     def empty_strategy_cache(self) -> StrategyCacheType:
@@ -123,7 +123,7 @@ class TestStrategyCache:
         cache.start_new_strategy_run(empty_strategy_cache, first_timestamp)
 
         # Start second run
-        second_timestamp = datetime(2025, 10, 28, 11, 0, 0, tzinfo=timezone.utc)
+        second_timestamp = datetime(2025, 10, 28, 11, 0, 0, tzinfo=UTC)
         new_cache = {}
         cache.start_new_strategy_run(new_cache, second_timestamp)
 
@@ -165,7 +165,7 @@ class TestStrategyCache:
 
         # Should not be able to modify
         with pytest.raises(Exception):  # Pydantic raises ValidationError
-            anchor.timestamp = datetime.now(timezone.utc)
+            anchor.timestamp = datetime.now(UTC)
 
     # --- set_result_dto Tests ---
 

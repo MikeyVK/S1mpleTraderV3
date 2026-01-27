@@ -23,7 +23,7 @@ class TestArtifactsYamlTypeField:
     @pytest.fixture
     def artifacts_data(self, artifacts_yaml_path):
         """Load artifacts.yaml data."""
-        with open(artifacts_yaml_path, "r", encoding="utf-8") as f:
+        with open(artifacts_yaml_path, encoding="utf-8") as f:
             return yaml.safe_load(f)
 
     def test_all_artifacts_have_type_field(self, artifacts_data):

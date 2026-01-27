@@ -41,7 +41,7 @@ def test_structured_formatter() -> None:
         args=(),
         exc_info=None,
     )
-    setattr(record, "props", {"key": "value"})
+    record.props = {"key": "value"}
 
     log_output = formatter.format(record)
     data = json.loads(log_output)

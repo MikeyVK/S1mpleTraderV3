@@ -10,7 +10,8 @@ Unexpected exceptions still propagate (so we don't blanket-catch everything).
 import functools
 import json
 import logging
-from typing import Any, Awaitable, Callable, TypeVar, cast
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar, cast
 
 from mcp_server.core.exceptions import (
     ConfigError,

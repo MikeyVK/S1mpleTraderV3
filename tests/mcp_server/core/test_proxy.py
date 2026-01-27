@@ -8,7 +8,8 @@ Tests:
 - Transparent restart flow
 """
 import pytest
-from mcp_server.core.proxy import MCPProxy, RESTART_MARKER
+
+from mcp_server.core.proxy import RESTART_MARKER, MCPProxy
 
 
 class TestMCPProxyInitialization:
@@ -93,47 +94,47 @@ class TestTransparentRestart:
 @pytest.mark.manual
 class TestProxyIntegration:
     """Manual integration tests for MCPProxy.
-    
+
     These tests verify end-to-end server restart behavior and require
     a full runtime environment with actual MCP server subprocess.
-    
+
     **Test Scope:**
     - MCPProxy transparent restart mechanism
     - Process lifecycle management (start/stop/restart)
     - Initialize handshake capture and replay
     - Stderr restart marker detection
     - Client connection preservation during restart
-    
+
     **When to run:**
     - Before releasing proxy functionality changes
     - When debugging restart issues
     - After OS-specific changes (Windows/Linux/macOS process handling)
     - During pre-release validation
-    
+
     **How to run manually:**
-    
+
     Method 1 - Environment variable:
     ```bash
     # Set environment variable to enable manual tests
     export RUN_MANUAL_TESTS=1  # Linux/macOS
     set RUN_MANUAL_TESTS=1     # Windows
-    
+
     # Run specific test
     pytest tests/mcp_server/core/test_proxy.py::TestProxyIntegration -v
     ```
-    
+
     Method 2 - Manual test script:
     ```bash
     # Terminal 1: Start MCP server with audit logging
     python -m mcp_server --log-level DEBUG
-    
+
     # Terminal 2: Run manual validation script
     python tests/manual/test_proxy_restart_manual.py
-    
+
     # Terminal 3: Monitor restart events
     tail -f .st3/audit/restart.log
     ```
-    
+
     **CI Integration:**
     Dedicated job in `.github/workflows/integration.yml`:
     ```yaml
@@ -145,13 +146,13 @@ class TestProxyIntegration:
             RUN_MANUAL_TESTS: "1"
           run: pytest tests/ -m integration --timeout=300
     ```
-    
+
     **Expected Environment:**
     - Python 3.11+ installed
     - MCP server package installed (pip install -e .)
     - Write access to .st3/audit/ directory
     - No other MCP server instances running (port conflicts)
-    
+
     **Manual Verification Checklist:**
     □ Server process PID changes after restart
     □ No client error or disconnect during restart
@@ -160,7 +161,7 @@ class TestProxyIntegration:
     □ Initialize parameters preserved across restart
     □ Stderr restart marker detected correctly
     □ Process cleanup on failure (no zombies)
-    
+
     See: docs/testing/integration_tests.md (if created)
     """
 
@@ -175,37 +176,37 @@ class TestProxyIntegration:
         - New process startup with same configuration
         - Initialize handshake replay to new process
         - Client remains connected throughout (transparent to client)
-        
+
         Validation Points:
         1. proxy.server_process.pid changes after restart
         2. proxy.restart_count == 1 after first restart
         3. No exceptions or errors raised
         4. Initialize request is identical before/after
         5. Audit log contains restart event
-        
+
         Environment Requirements:
         - RUN_MANUAL_TESTS=1 environment variable
         - MCP server runnable as subprocess
         - Clean .st3/audit/ directory
-        
+
         Raises:
             pytest.skip: If RUN_MANUAL_TESTS not set (default behavior)
         """
         import os
-        
+
         if not os.getenv('RUN_MANUAL_TESTS'):
             pytest.skip(
                 "Manual integration test - requires full MCP server environment.\n"
                 "To run: export RUN_MANUAL_TESTS=1 && pytest tests/mcp_server/core/test_proxy.py::TestProxyIntegration\n"
                 "See TestProxyIntegration class docstring for detailed instructions."
             )
-        
+
         # Actual test implementation would go here
         # Only executed when RUN_MANUAL_TESTS=1
         # Example implementation:
         #
         # import subprocess, sys
-        # 
+        #
         # # Start real MCP server
         # server_cmd = [sys.executable, "-m", "mcp_server"]
         # process = subprocess.Popen(
@@ -215,10 +216,10 @@ class TestProxyIntegration:
         #     stderr=subprocess.PIPE,
         #     text=True
         # )
-        # 
+        #
         # try:
         #     proxy = MCPProxy(server_process=process)
-        #     
+        #
         #     # Capture initialize
         #     init_req = {
         #         "jsonrpc": "2.0",
@@ -227,17 +228,17 @@ class TestProxyIntegration:
         #         "params": {"protocolVersion": "2025-11-25"}
         #     }
         #     proxy.init_request = init_req
-        #     
+        #
         #     old_pid = process.pid
-        #     
+        #
         #     # Trigger restart
         #     proxy.trigger_restart()
-        #     
+        #
         #     # Verify
         #     assert proxy.restart_count == 1
         #     assert proxy.server_process.pid != old_pid
         #     assert proxy.init_request == init_req
-        #     
+        #
         # finally:
         #     if process.poll() is None:
         #         process.terminate()

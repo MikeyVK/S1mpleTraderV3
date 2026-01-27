@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.core.exceptions import ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
-from mcp_server.core.exceptions import ValidationError
 
 
 class TestArtifactManagerCore:

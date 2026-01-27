@@ -11,6 +11,7 @@ Tests creation, validation, and type-safe origin reference functionality.
 # Justification: Test classes group related tests, no minimum method requirement
 
 import pytest
+
 from backend.dtos.shared.origin import Origin, OriginType
 
 

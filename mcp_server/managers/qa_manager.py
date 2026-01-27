@@ -32,7 +32,7 @@ class QAManager:
         self, files: list[str]
     ) -> tuple[list[str], list[dict[str, Any]]]:
         """Filter Python files and generate pre-gate issues for non-Python files.
-        
+
         Returns:
             (python_files, pre_gate_issues)
         """

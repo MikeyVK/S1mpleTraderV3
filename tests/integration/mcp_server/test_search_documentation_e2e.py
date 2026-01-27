@@ -5,6 +5,7 @@ from mcp_server.config.settings import settings
 from mcp_server.tools.discovery_tools import SearchDocumentationInput, SearchDocumentationTool
 from mcp_server.tools.tool_result import ToolResult
 
+
 class TestSearchDocumentationE2E:
     """End-to-end tests for SearchDocumentationTool using real filesystem."""
 

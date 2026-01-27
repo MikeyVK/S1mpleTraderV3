@@ -13,14 +13,13 @@ Single source of truth for categorical values.
 # Standard Library Imports
 from enum import Enum
 
-
 # =============================================================================
 # ORIGIN ENUMS
 # =============================================================================
 
 class OriginType(str, Enum):
     """Platform data origin types.
-    
+
     Used in Origin DTO and CausalityChain for data source tracking.
     """
     TICK = "TICK"

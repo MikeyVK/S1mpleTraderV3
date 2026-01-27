@@ -9,9 +9,9 @@
 """
 
 # Standard library
+from collections.abc import Generator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Generator
 
 # Third-party
 import pytest

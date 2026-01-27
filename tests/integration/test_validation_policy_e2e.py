@@ -11,6 +11,7 @@ Tests verify:
 """
 
 import logging
+
 import pytest
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig

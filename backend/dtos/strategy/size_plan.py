@@ -28,22 +28,22 @@ from backend.utils.id_generators import generate_size_plan_id
 class SizePlan(BaseModel):
     """
     Position sizing output from SizePlanner.
-    
+
     LEAN PHILOSOPHY:
     - Contains ONLY absolute sizing values for execution
     - NO account percentages (input constraints, not execution params)
     - NO max limits (planner constraints, not execution values)
-    
+
     SizePlanner workers use account_risk_pct/max_position_value as INPUTS
     to calculate these OUTPUTS (position_size, position_value, risk_amount).
-    
+
     Fields:
         plan_id: Unique identifier (SIZ_YYYYMMDD_HHMMSS_hash)
         position_size: Absolute position size in base asset (e.g., 0.5 BTC)
         position_value: Position value in quote asset (e.g., 50000 USDT)
         risk_amount: Absolute risk in quote asset (e.g., 1000 USDT)
         leverage: Leverage multiplier (default 1.0 = no leverage)
-    
+
     Examples:
         Fixed 1% risk:
         >>> plan = SizePlan(
@@ -51,7 +51,7 @@ class SizePlan(BaseModel):
         ...     position_value=Decimal("25000.00"),
         ...     risk_amount=Decimal("1000.00")  # 1% of 100k account
         ... )
-        
+
         With leverage:
         >>> plan = SizePlan(
         ...     position_size=Decimal("1.0"),

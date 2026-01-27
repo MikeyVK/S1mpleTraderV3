@@ -237,9 +237,8 @@ class TestGitCheckoutEncapsulation:
         save_state_calls = []
 
         for node in ast.walk(tree):
-            if isinstance(node, ast.Attribute):
-                if node.attr == '_save_state':
-                    save_state_calls.append(node)
+            if isinstance(node, ast.Attribute) and node.attr == '_save_state':
+                save_state_calls.append(node)
 
         assert not save_state_calls, (
             f"GitCheckoutTool should NOT call engine._save_state() directly. "

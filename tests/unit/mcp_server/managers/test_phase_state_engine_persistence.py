@@ -56,28 +56,28 @@ class TestPhaseStateEnginePersistence:
         self, state_engine: PhaseStateEngine, workspace_root: Path
     ) -> None:
         """Test that state.json contains ONLY the current branch state.
-        
+
         GIVEN: Two branches exist (feature/1-first, feature/2-second)
         WHEN: get_state() is called for feature/1-first
         THEN: state.json should contain ONLY feature/1-first state (top-level dict)
         AND: state.json should NOT contain nested branch dictionaries
         """
         # Get state for first branch
-        state = state_engine.get_state("feature/1-first-feature")
-        
+        state_engine.get_state("feature/1-first-feature")
+
         # Read state.json directly from disk
         state_file = workspace_root / ".st3" / "state.json"
         assert state_file.exists(), "state.json should be created"
-        
-        with open(state_file, 'r', encoding='utf-8') as f:
+
+        with open(state_file, encoding='utf-8') as f:
             disk_state = json.load(f)
-        
+
         # Verify single-branch model: top-level dict should BE the branch state
         assert disk_state.get("branch") == "feature/1-first-feature", \
             "state.json should contain the current branch at top level"
         assert disk_state.get("issue_number") == 1, \
             "state.json should contain branch fields at top level"
-        
+
         # Verify no nested branch dictionaries
         assert "feature/1-first-feature" not in disk_state, \
             "state.json should NOT contain branch name as nested key"
@@ -88,7 +88,7 @@ class TestPhaseStateEnginePersistence:
         self, state_engine: PhaseStateEngine, workspace_root: Path
     ) -> None:
         """Test that switching branches completely overwrites state.json.
-        
+
         GIVEN: state.json contains feature/1-first state
         WHEN: get_state() is called for feature/2-second
         THEN: state.json should be completely replaced with feature/2-second state
@@ -96,21 +96,21 @@ class TestPhaseStateEnginePersistence:
         """
         # Set up: Get state for first branch
         state_engine.get_state("feature/1-first-feature")
-        
+
         # Switch to second branch
         state_engine.get_state("feature/2-second-feature")
-        
+
         # Read state.json
         state_file = workspace_root / ".st3" / "state.json"
-        with open(state_file, 'r', encoding='utf-8') as f:
+        with open(state_file, encoding='utf-8') as f:
             disk_state = json.load(f)
-        
+
         # Verify complete overwrite
         assert disk_state.get("branch") == "feature/2-second-feature", \
             "state.json should contain new branch"
         assert disk_state.get("issue_number") == 2, \
             "state.json should contain new issue number"
-        
+
         # Verify old branch is gone
         assert disk_state.get("issue_number") != 1, \
             "Old branch data should be completely removed"
@@ -121,7 +121,7 @@ class TestPhaseStateEnginePersistence:
         self, state_engine: PhaseStateEngine, workspace_root: Path
     ) -> None:
         """Test that state.json is immediately readable after get_state().
-        
+
         GIVEN: No state.json exists
         WHEN: get_state() is called
         THEN: state.json should be immediately readable from disk
@@ -129,14 +129,14 @@ class TestPhaseStateEnginePersistence:
         """
         # Get state
         returned_state = state_engine.get_state("feature/1-first-feature")
-        
+
         # Immediately read from disk (no delay, no flush needed)
         state_file = workspace_root / ".st3" / "state.json"
         assert state_file.exists(), "state.json should exist immediately"
-        
-        with open(state_file, 'r', encoding='utf-8') as f:
+
+        with open(state_file, encoding='utf-8') as f:
             disk_state = json.load(f)
-        
+
         # Verify content matches
         assert disk_state == returned_state, \
             "Disk state should match returned state immediately"

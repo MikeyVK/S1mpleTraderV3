@@ -17,6 +17,7 @@ FlowInitiator is a Platform-within-Strategy worker that:
 
 # Standard library
 from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 # Third-party
@@ -37,13 +38,13 @@ __all__ = ["FlowInitiator"]
 class FlowInitiator(IWorker, IWorkerLifecycle):
     """
     Per-strategy data ingestion and cache initialization component.
-    
+
     Architecture:
     - EventAdapter-compliant: Standard IWorker + IWorkerLifecycle pattern
     - Platform-within-Strategy: Singleton but requires strategy_cache
     - Type-safe: DTO types injected via ConfigTranslator
     - Generic: Single handler for all data types
-    
+
     Flow:
     1. DataProvider publishes PlatformDataDTO
     2. EventAdapter calls on_data_ready()
@@ -56,7 +57,7 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
     def __init__(self, name: str) -> None:
         """
         Construct FlowInitiator with name.
-        
+
         Args:
             name: Worker name (typically "flow_initiator_{strategy_id}")
         """
@@ -76,12 +77,12 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
     ) -> None:
         """
         Initialize with runtime dependencies.
-        
+
         Args:
             strategy_cache: StrategyCache instance (REQUIRED - Platform-within-Strategy)
             **capabilities: Required capabilities:
                 - dto_types: Dict[str, Type[BaseModel]] - DTO type mappings
-        
+
         Raises:
             WorkerInitializationError: If strategy_cache is None or dto_types missing
         """
@@ -104,19 +105,19 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
     def on_data_ready(self, data: PlatformDataDTO) -> DispositionEnvelope:
         """
         Handle data ready event from DataProvider.
-        
+
         Flow:
         1. Initialize StrategyCache with RunAnchor (start_new_strategy_run)
         2. Validate payload type has DTO type mapping
         3. Store payload in cache by TYPE (set_result_dto)
         4. Return CONTINUE disposition for EventAdapter
-        
+
         Args:
             data: PlatformDataDTO from DataProvider
-        
+
         Returns:
             DispositionEnvelope with CONTINUE disposition
-        
+
         Raises:
             ValueError: If payload type has no DTO type mapping
         """
@@ -145,7 +146,7 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
     def shutdown(self) -> None:
         """
         Graceful shutdown (no resources to cleanup).
-        
+
         FlowInitiator has no persistent resources to release.
         Implements IWorkerLifecycle requirement.
         """

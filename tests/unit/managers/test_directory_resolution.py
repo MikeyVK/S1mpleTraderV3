@@ -1,11 +1,13 @@
 """Tests for directory resolution (Cycle 8)."""
 
-import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from mcp_server.managers.artifact_manager import ArtifactManager
+
+import pytest
+
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ConfigError
+from mcp_server.managers.artifact_manager import ArtifactManager
 
 
 class TestDirectoryResolution:

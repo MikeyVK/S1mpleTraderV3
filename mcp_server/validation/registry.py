@@ -1,7 +1,6 @@
 """Registry for looking up validators."""
 import os
 import re
-from typing import Type
 
 from .base import BaseValidator
 
@@ -9,11 +8,11 @@ from .base import BaseValidator
 class ValidatorRegistry:
     """Registry to map file types/patterns to validators."""
 
-    _extension_map: dict[str, Type[BaseValidator]] = {}
+    _extension_map: dict[str, type[BaseValidator]] = {}
     _pattern_map: list[tuple[str, BaseValidator]] = []
 
     @classmethod
-    def register(cls, extension: str, validator: Type[BaseValidator]) -> None:
+    def register(cls, extension: str, validator: type[BaseValidator]) -> None:
         """Register a validator class for an extension."""
         cls._extension_map[extension] = validator
 

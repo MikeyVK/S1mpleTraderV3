@@ -14,7 +14,6 @@ from pydantic import BaseModel, model_validator
 
 from backend.core.enums import OriginType
 
-
 # Re-export for backwards compatibility
 __all__ = ["Origin", "OriginType"]
 
