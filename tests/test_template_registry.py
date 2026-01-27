@@ -5,7 +5,7 @@ RED phase: Tests for TemplateRegistry CRUD operations, hash collision detection,
 and current version tracking.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 import yaml
@@ -284,11 +284,11 @@ class TestTemplateRegistryPersistence:
         registry_path = tmp_path / ".st3" / "template_registry.yaml"
         registry = TemplateRegistry(registry_path)
 
-        before = datetime.now()
+        before = datetime.now(UTC)
         registry.save_version("worker", "abc12345", {
             "concrete": ("worker.py", "3.1.0"),
         })
-        after = datetime.now()
+        after = datetime.now(UTC)
 
         with registry_path.open(encoding="utf-8") as f:
             persisted = yaml.safe_load(f)
