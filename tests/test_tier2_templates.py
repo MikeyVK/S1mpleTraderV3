@@ -169,7 +169,7 @@ class TestTier2MarkdownTemplate:
         assert lines[0].startswith("<!--"), "Should start with HTML comment (SCAFFOLD)"
 
     def test_renders_code_blocks(self):
-        """Tier 2 Markdown should render code blocks section when provided."""
+        """Tier 2 Markdown provides structure, code blocks handled by concrete templates."""
         env = self.get_env()
         template = env.get_template("tier2_base_markdown.jinja2")
         context = {
@@ -182,18 +182,13 @@ class TestTier2MarkdownTemplate:
             "purpose": "Test",
             "scope_in": "X",
             "scope_out": "Y",
-            "code_blocks": [
-                {"language": "python", "code": "print('hello')"},
-                {"language": "yaml", "code": "key: value"},
-            ],
         }
         result = template.render(context)
-        # Code blocks are optional and rendered if provided
-        # Note: tier2_markdown doesn't have explicit code_section block, 
-        # this is handled by concrete templates
-        assert "Test Design" in result  # Basic rendering works
-        assert "```yaml" in result
-        assert "key: value" in result
+        # Tier 2 provides base structure (SCAFFOLD + document sections)
+        # Code blocks are concrete template responsibility
+        assert "## Purpose" in result
+        assert "## Scope" in result
+        assert "## Version History" in result
 
 
 class TestTier2YAMLTemplate:
