@@ -30,7 +30,7 @@ from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.scaffolding.renderer import JinjaRenderer
-from mcp_server.scaffolding.template_introspector import introspect_template
+from mcp_server.scaffolding.template_introspector import introspect_template_with_inheritance
 
 if TYPE_CHECKING:
     pass  # TYPE_CHECKING block for future type-only imports
@@ -90,19 +90,12 @@ class TemplateScaffolder(BaseScaffolder):
                 f"No template configured for artifact type: {artifact_type}"
             )
 
-        # Load template source for introspection
-        if self._renderer.env.loader is None:
-            raise ValidationError(
-                f"Template loader not configured for {artifact_type}"
-            )
+        # Extract schema from template via inheritance-aware introspection (Task 2.1)
+        # This resolves the entire inheritance chain to detect ALL variables
+        from pathlib import Path
 
-        template_source = self._renderer.env.loader.get_source(
-            self._renderer.env,
-            template_path
-        )[0]
-
-        # Extract schema from template via introspection
-        schema = introspect_template(self._renderer.env, template_source)
+        template_root = Path(self._renderer.env.loader.searchpath[0])
+        schema = introspect_template_with_inheritance(template_root, template_path)
 
         # Check required fields present
         provided = set(kwargs.keys())
