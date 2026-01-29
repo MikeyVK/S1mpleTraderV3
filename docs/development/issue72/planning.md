@@ -249,19 +249,28 @@ Break down research findings from Issue #72 into **actionable implementation tas
 **Dependencies:** None (research task)  
 **Effort:** 8h audit + 4h catalog + 4h tier assignment = 16h  
 **Priority:** P1 (blocks Tier 2/3 completeness, but doesn't block MVP)
+**Status:** ✅ **RESOLVED** (2026-01-29)
 
 **Tasks:**
-1. Audit `src/workers/`, `src/adapters/`, `src/services/` for architectural patterns
-2. List patterns: Dependency injection, error handling, logging, config, lifecycle, etc
-3. Assign each pattern to Tier 2 (syntax) or Tier 3 (specialization)
-4. Document pattern rationale and usage examples
-5. Create "Backend Pattern Catalog" in design docs
+1. ✅ Audit `src/workers/`, `src/adapters/`, `src/services/` for architectural patterns
+2. ✅ List patterns: Dependency injection, error handling, logging, config, lifecycle, etc
+3. ✅ Assign each pattern to Tier 2 (syntax) or Tier 3 (specialization)
+4. ✅ Document pattern rationale and usage examples
+5. ✅ Create "Backend Pattern Catalog" in design docs
 
 **Definition of Done:**
-- [ ] Exhaustive pattern list with examples
-- [ ] Tier assignment rationale per pattern
-- [ ] Template coverage: Map patterns to Tier 2/3 templates
-- [ ] Documentation: Pattern usage guide for template authors
+- [x] Exhaustive pattern list with examples
+- [x] Tier assignment rationale per pattern
+- [x] Template coverage: Map patterns to Tier 2/3 templates
+- [x] Documentation: Pattern usage guide for template authors
+
+**Outcomes:**
+- **12 patterns cataloged:** 9 MANDATORY (75%), 1 OPTIONAL (8%), 2 RECOMMENDED (17%)
+- **Tier 2 patterns (4):** Module Header, Import Organization, Type Hinting, Async/Await
+- **Tier 3 patterns (8):** IWorkerLifecycle, Pydantic DTO, Error Handling, Logging, Typed ID, DI via Capabilities, LogEnricher, Translator/i18n
+- **Template Coverage Map:** Worker (8 patterns), DTO (6), Adapter (6), Service (6)
+- **Documentation:** [phase2-task23-backend-pattern-catalog.md](phase2-task23-backend-pattern-catalog.md) (875 lines)
+- **Phase 3 Ready:** All blockers resolved, proceed to Tier 3 template design
 
 ---
 
@@ -533,6 +542,7 @@ Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA 
 **Goal:** Unblock Tier 3 design and multi-tier scaffolding  
 **Duration:** ~1 week (40h)  
 **Dependencies:** None (parallel with Phase 1 if resources available)
+**Status:** ✅ **COMPLETE** (2026-01-29) - All 3 critical blockers resolved
 
 #### Task 2.1: Fix Inheritance Introspection (Blocker #1)
 - **Description:** Integrate MVP introspection into template_introspector.py
@@ -567,6 +577,17 @@ Phase 1 is **85% complete** - core registry/hash/provenance infrastructure + QA 
 - **Effort:** 8h audit + 4h catalog + 4h tier assignment = 16h
 - **Assignee:** System Architect + Senior Engineers
 - **Priority:** P1 (blocks AC6 completeness, but not MVP)
+- **Status:** ✅ **COMPLETE** (2026-01-29)
+- **Deliverable:** [phase2-task23-backend-pattern-catalog.md](phase2-task23-backend-pattern-catalog.md) (875 lines)
+- **Outcomes:**
+  - 12 patterns cataloged (9 MANDATORY, 1 OPTIONAL, 2 RECOMMENDED)
+  - 4 Tier 2 patterns (syntax/language-level)
+  - 8 Tier 3 patterns (specialization/architecture)
+  - Template Coverage Map for Worker/DTO/Adapter/Service templates
+  - 75% MANDATORY pattern coverage achieved (9/12)
+  - Infrastructure patterns (LogEnricher #11, Translator #12) documented with V2 reference
+  - All patterns aligned with Core Principles
+  - Pattern catalog includes code examples, rationale, template implications
 
 #### Task 2.4: Agent Hint Format Prototype (OQ-P2)
 - **Description:** Define and test agent guidance syntax
