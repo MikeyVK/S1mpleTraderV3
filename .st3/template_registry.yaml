@@ -119,6 +119,13 @@ version_hashes:
     concrete:
       template_id: service_command.py
       version: 1.2.0
+  8cdef4f5:
+    artifact_type: worker
+    created: '2026-01-29T16:33:36.084140+00:00'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: worker.py
+      version: 3.0.0
 current_versions:
   dto: 6fefd064
   generic: 6f1837e9
@@ -127,7 +134,7 @@ current_versions:
   planning: cdbd5bc4
   architecture: 145239fd
   reference: ab4c6f43
-  worker: 0f7309e4
+  worker: 8cdef4f5
   service: 7ced7a58
 templates: {}
-last_updated: '2026-01-27T15:13:52.842689+00:00'
+last_updated: '2026-01-29T16:33:36.084248+00:00'

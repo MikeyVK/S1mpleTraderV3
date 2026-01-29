@@ -161,44 +161,44 @@ class {{ name }}(IWorker, IWorkerLifecycle):
         Raises:
             WorkerInitializationError: If requirements not met
         """
-{%- if worker_scope == 'platform' %}
+{% if worker_scope == 'platform' %}
         # Validate strategy_cache is None (Platform worker)
         if strategy_cache is not None:
             raise WorkerInitializationError(
                 f"{self._name}: Platform worker must not receive strategy_cache "
                 f"(got {type(strategy_cache).__name__})",
             )
-{%- elif worker_scope == 'platform_within_strategy' %}
+{% elif worker_scope == 'platform_within_strategy' %}
         # Validate strategy_cache is present (Platform-within-Strategy worker)
         if strategy_cache is None:
             raise WorkerInitializationError(
                 f"{self._name}: Platform-within-Strategy worker requires strategy_cache",
             )
-{%- else %}
+{% else %}
         # Validate strategy_cache is present (Strategy worker)
         if strategy_cache is None:
             raise WorkerInitializationError(
                 f"{self._name}: Strategy worker requires strategy_cache",
             )
-{%- endif %}
+{% endif %}
 
-{%- if capabilities %}
+{% if capabilities %}
         # Validate required capabilities
-{%- for capability in capabilities %}
+{% for capability in capabilities %}
         if "{{ capability }}" not in capabilities:
             raise WorkerInitializationError(
                 f"{self._name}: Required capability '{{ capability }}' not provided",
             )
-{%- endfor %}
-{%- endif %}
+{% endfor %}
+{% endif %}
 
         # Store dependencies
         self._cache = strategy_cache
-{%- if capabilities %}
-{%- for capability in capabilities %}
+{% if capabilities %}
+{% for capability in capabilities %}
         self._{{ capability }} = capabilities["{{ capability }}"]
-{%- endfor %}
-{%- endif %}
+{% endfor %}
+{% endif %}
 
         # Perform additional initialization here
 
