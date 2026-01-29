@@ -63,13 +63,11 @@ TEMPLATE_METADATA:
     - [To be defined]
 {%- endif %}
 """
-{%- endblock %}
+{% endblock %}
 
-{#- Imports section -#}
-{%- block imports_section %}
+{% block imports_section %}
 # Standard library
 from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 # Third-party
@@ -81,12 +79,9 @@ from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInit
 if TYPE_CHECKING:
     from backend.core.interfaces.cache import IStrategyCache
     from backend.core.interfaces.config import BuildSpec
+{% endblock %}
 
-{%- endblock %}
-
-{#- Class structure -#}
-{%- block class_structure %}
-
+{% block class_structure %}
 __all__ = ["{{ name }}"]
 
 
@@ -97,18 +92,17 @@ class {{ name }}(IWorker, IWorkerLifecycle):
     Architecture:
     - EventAdapter-compliant: Standard IWorker + IWorkerLifecycle pattern
     - Worker scope: {{ worker_scope | default('strategy') }}
-{%- if worker_scope == 'platform' %}
+{% if worker_scope == 'platform' %}
     - Platform worker: Does NOT require strategy_cache (expects None)
-{%- elif worker_scope == 'platform_within_strategy' %}
+{% elif worker_scope == 'platform_within_strategy' %}
     - Platform-within-Strategy: Requires strategy_cache (singleton per strategy)
-{%- else %}
+{% else %}
     - Strategy worker: Requires strategy_cache for runtime state
-{%- endif %}
-{%- if capabilities %}
+{% endif %}
+{% if capabilities %}
     - Required capabilities: {{ capabilities | join(', ') }}
-{%- endif %}
+{% endif %}
     """
-
     def __init__(self, build_spec: BuildSpec) -> None:
         """
         Construct {{ name }} with configuration.
@@ -142,21 +136,21 @@ class {{ name }}(IWorker, IWorkerLifecycle):
 
         Args:
             strategy_cache: StrategyCache instance or None
-{%- if worker_scope == 'platform' %}
+{% if worker_scope == 'platform' %}
                 - Platform worker: Expects None (validates cache is None)
-{%- elif worker_scope == 'platform_within_strategy' %}
+{% elif worker_scope == 'platform_within_strategy' %}
                 - Platform-within-Strategy: REQUIRED (validates cache not None)
-{%- else %}
+{% else %}
                 - Strategy worker: REQUIRED (validates cache not None)
-{%- endif %}
+{% endif %}
             **capabilities: Optional capabilities injected by platform:
-{%- if capabilities %}
-{%- for capability in capabilities %}
+{% if capabilities %}
+{% for capability in capabilities %}
                 - {{ capability }}: [Description of capability]
-{%- endfor %}
-{%- else %}
+{% endfor %}
+{% else %}
                 - (No capabilities required for this worker)
-{%- endif %}
+{% endif %}
 
         Raises:
             WorkerInitializationError: If requirements not met
@@ -181,8 +175,8 @@ class {{ name }}(IWorker, IWorkerLifecycle):
                 f"{self._name}: Strategy worker requires strategy_cache",
             )
 {% endif %}
-
 {% if capabilities %}
+
         # Validate required capabilities
 {% for capability in capabilities %}
         if "{{ capability }}" not in capabilities:
@@ -215,7 +209,4 @@ class {{ name }}(IWorker, IWorkerLifecycle):
         - Flush buffers
         - Clear caches
         """
-        # Idempotent implementation - no resources to cleanup yet
-        ...
-
-{%- endblock %}
+{% endblock %}
