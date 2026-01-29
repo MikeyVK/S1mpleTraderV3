@@ -1,89 +1,227 @@
-{#- concrete/worker.py.jinja2 - Async Worker Class -#}
-{#- Version: 1.1.0 -#}
-{#- Purpose: Generate async worker classes for background task processing -#}
-{%- extends "tier2_base_python.jinja2" -%}
+{#- worker.py.jinja2 - Concrete template for IWorkerLifecycle workers -#}
+{#- Version: 3.0.0 -#}
+{#- Purpose: Generate V3 two-phase initialization workers (IWorker + IWorkerLifecycle) -#}
+{%- extends "tier1_base_code.jinja2" -%}
 
 {#-
 TEMPLATE_METADATA:
-  enforcement: ARCHITECTURAL
-  level: content
+  enforcement: STRICT
+  level: concrete
+  artifact_type: worker
+  pattern: IWorkerLifecycle
   validates:
-    guidelines:
-      - "Async/await for execute() method"
-      - "Optional lifecycle hooks (setup, teardown)"
-      - "Type hints for all methods"
-  extends: tier2_base_python.jinja2
-  purpose: "Concrete template for async worker classes"
-  version: "1.2.0"
-  changelog:
-    - version: "1.2.0"
-      date: "2026-01-26"
-      changes: "Changed enforcement from REQUIRED to ARCHITECTURAL (code patterns)"
-    - version: "1.1.0"
-      date: "2026-01-25"
-      changes: "Initial version"
+    strict:
+      - "class.*\\(IWorker, IWorkerLifecycle\\):"
+      - "def __init__\\(self, build_spec: BuildSpec\\)"
+      - "def initialize\\(self, strategy_cache.*\\*\\*capabilities\\)"
+      - "def shutdown\\(self\\)"
+      - "@property"
+      - "def name\\(self\\)"
+  extends: tier1_base_code.jinja2
+  purpose: "Worker implementation with IWorkerLifecycle pattern (V3 two-phase initialization)"
+  version: "3.0.0"
   introspection:
-    template_id: worker
+    template_id: concrete_worker
     tier: concrete
-    parent: tier2_base_python
+    parent: tier1_base_code
     variables:
       required:
         - name
+        - layer
+        - worker_scope  # platform|strategy|platform_within_strategy
+        - responsibilities
       optional:
-        - description
-        - dependencies
-        - lifecycle_methods
+        - module_description
+        - capabilities  # List of required capabilities
+    pattern: IWorkerLifecycle
+    rationale: |
+      V3 two-phase initialization pattern:
+      1. Construction: __init__(build_spec) - Config only, no dependencies
+      2. Runtime init: initialize(strategy_cache, **capabilities) - DI injection
+      3. Cleanup: shutdown() - Graceful resource release
+      
+      Benefits:
+      - No circular dependencies (V2 problem)
+      - Flexible bootstrap order
+      - Testable in isolation
+      - Standardized lifecycle
 -#}
 
-{% block imports_section %}
+{#- Module docstring customization -#}
+{%- block module_docstring %}
+"""
+{{ name }} - {{ module_description | default('Worker implementation') }}.
+
+@layer: {{ layer }}
+@dependencies: [backend.core.interfaces, backend.dtos]
+@responsibilities:
+{%- if responsibilities %}
+{%- for responsibility in responsibilities %}
+    - {{ responsibility }}
+{%- endfor %}
+{%- else %}
+    - [To be defined]
+{%- endif %}
+"""
+{%- endblock %}
+
+{#- Imports section -#}
+{%- block imports_section %}
 # Standard library
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 # Third-party
+# (Add third-party imports here if needed)
 
 # Project modules
+from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInitializationError
 
-{% endblock %}
+if TYPE_CHECKING:
+    from backend.core.interfaces.cache import IStrategyCache
+    from backend.core.interfaces.config import BuildSpec
 
-{% block class_structure %}
-class {{ name }}:
-{% block class_docstring %}
-    """{{ description | default(name + ' worker.') }}
-    
-    Async worker for background task processing.
+{%- endblock %}
+
+{#- Class structure -#}
+{%- block class_structure %}
+
+__all__ = ["{{ name }}"]
+
+
+class {{ name }}(IWorker, IWorkerLifecycle):
     """
-{% endblock -%}
-{% block init_method -%}
-{% if dependencies %}
-    def __init__(self{% for dep in dependencies %}, {{ dep.name if dep is mapping else (dep | lower | replace(' ', '_')) }}: {{ dep.type if dep is mapping else dep }}{% endfor %}):
-        """Initialize {{ name }}."""
-{% for dep in dependencies %}
-        self.{{ dep.name if dep is mapping else (dep | lower | replace(' ', '_')) }} = {{ dep.name if dep is mapping else (dep | lower | replace(' ', '_')) }}
-{% endfor -%}
-{% endif -%}
-{% endblock -%}
-{% block execute_method %}
+    {{ name }} worker implementation.
 
-    async def execute(self, **kwargs: Any) -> Any:
-        """Execute worker task.
-        
-        Args:
-            **kwargs: Task-specific parameters
-            
-        Returns:
-            Task result
+    Architecture:
+    - EventAdapter-compliant: Standard IWorker + IWorkerLifecycle pattern
+    - Worker scope: {{ worker_scope | default('strategy') }}
+{%- if worker_scope == 'platform' %}
+    - Platform worker: Does NOT require strategy_cache (expects None)
+{%- elif worker_scope == 'platform_within_strategy' %}
+    - Platform-within-Strategy: Requires strategy_cache (singleton per strategy)
+{%- else %}
+    - Strategy worker: Requires strategy_cache for runtime state
+{%- endif %}
+{%- if capabilities %}
+    - Required capabilities: {{ capabilities | join(', ') }}
+{%- endif %}
+    """
+
+    def __init__(self, build_spec: BuildSpec) -> None:
         """
-        # TODO: Implement worker logic
-        pass
-{% endblock -%}
-{% block lifecycle_methods -%}
-{% if lifecycle_methods -%}
-{% for method in lifecycle_methods %}
+        Construct {{ name }} with configuration.
 
-    async def {{ method.name }}(self{% if method.params %}, {{ method.params }}{% endif %}){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
-        """{{ method.docstring | default(method.name + ' lifecycle hook.') }}"""
-        {{ method.body | default('pass') | indent(8) }}
-{% endfor -%}
-{% endif -%}
-{% endblock -%}
-{% endblock %}
+        V3 Pattern: Construction phase accepts BuildSpec only (no dependencies).
+        Dependencies injected via initialize() during runtime initialization.
+
+        Args:
+            build_spec: Worker configuration (from manifest.yaml)
+        """
+        self._name: str = build_spec.name
+        self._config = build_spec.config
+        self._cache: IStrategyCache | None = None
+        # Store other initialization state here
+
+    @property
+    def name(self) -> str:
+        """Get worker name (IWorker requirement)."""
+        return self._name
+
+    def initialize(
+        self,
+        strategy_cache: IStrategyCache | None = None,
+        **capabilities: Any
+    ) -> None:
+        """
+        Initialize with runtime dependencies.
+
+        V3 Pattern: Runtime initialization phase injects dependencies.
+        Platform assembles workers in any order, then calls initialize() with DI.
+
+        Args:
+            strategy_cache: StrategyCache instance or None
+{%- if worker_scope == 'platform' %}
+                - Platform worker: Expects None (validates cache is None)
+{%- elif worker_scope == 'platform_within_strategy' %}
+                - Platform-within-Strategy: REQUIRED (validates cache not None)
+{%- else %}
+                - Strategy worker: REQUIRED (validates cache not None)
+{%- endif %}
+            **capabilities: Optional capabilities injected by platform:
+{%- if capabilities %}
+{%- for capability in capabilities %}
+                - {{ capability }}: [Description of capability]
+{%- endfor %}
+{%- else %}
+                - (No capabilities required for this worker)
+{%- endif %}
+
+        Raises:
+            WorkerInitializationError: If requirements not met
+        """
+{%- if worker_scope == 'platform' %}
+        # Validate strategy_cache is None (Platform worker)
+        if strategy_cache is not None:
+            raise WorkerInitializationError(
+                f"{self._name}: Platform worker must not receive strategy_cache "
+                f"(got {type(strategy_cache).__name__})"
+            )
+{%- elif worker_scope == 'platform_within_strategy' %}
+        # Validate strategy_cache is present (Platform-within-Strategy worker)
+        if strategy_cache is None:
+            raise WorkerInitializationError(
+                f"{self._name}: Platform-within-Strategy worker requires strategy_cache"
+            )
+{%- else %}
+        # Validate strategy_cache is present (Strategy worker)
+        if strategy_cache is None:
+            raise WorkerInitializationError(
+                f"{self._name}: Strategy worker requires strategy_cache"
+            )
+{%- endif %}
+
+{%- if capabilities %}
+        # Validate required capabilities
+{%- for capability in capabilities %}
+        if "{{ capability }}" not in capabilities:
+            raise WorkerInitializationError(
+                f"{self._name}: Required capability '{{ capability }}' not provided"
+            )
+{%- endfor %}
+{%- endif %}
+
+        # Store dependencies
+        self._cache = strategy_cache
+{%- if capabilities %}
+{%- for capability in capabilities %}
+        self._{{ capability }} = capabilities["{{ capability }}"]
+{%- endfor %}
+{%- endif %}
+
+        # Perform additional initialization here
+
+    def shutdown(self) -> None:
+        """
+        Graceful shutdown and resource cleanup.
+
+        IWorkerLifecycle requirement: Must be idempotent (safe to call multiple times).
+        Must complete within 5 seconds and never raise exceptions.
+
+        Release resources:
+        - Close connections
+        - Cancel async tasks
+        - Flush buffers
+        - Clear caches
+        """
+        # Implement cleanup logic here
+        # Example:
+        # if self._connection:
+        #     self._connection.close()
+        #     self._connection = None
+        
+        # Idempotent implementation - no resources to cleanup yet
+        ...
+
+{%- endblock %}
