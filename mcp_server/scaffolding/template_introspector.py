@@ -136,3 +136,89 @@ def _classify_variables(
     required_vars = variables - optional_vars
 
     return list(required_vars), list(optional_vars)
+
+
+def introspect_template_with_inheritance(
+    template_root: "Path", template_path: str
+) -> TemplateSchema:
+    """Extract validation schema from template WITH inheritance chain resolution.
+
+    This is the Task 2.1 implementation - resolves entire inheritance chain
+    and merges variables from all parent templates.
+
+    Algorithm:
+    1. Resolve inheritance chain (concrete → tier2 → tier1 → tier0)
+    2. Load and parse each template in chain
+    3. Extract variables from each template
+    4. Merge all variables (union)
+    5. Filter system fields
+    6. Classify as required/optional
+    7. Sort alphabetically
+
+    Args:
+        template_root: Root directory containing templates
+        template_path: Relative path to template (e.g., "concrete/worker.py.jinja2")
+
+    Returns:
+        TemplateSchema with merged variables from entire inheritance chain
+
+    Raises:
+        ExecutionError: If template has invalid syntax or chain cannot be resolved
+    """
+    from pathlib import Path
+
+    from mcp_server.validation.template_analyzer import TemplateAnalyzer
+
+    # Resolve full path
+    full_path = template_root / template_path
+
+    if not full_path.exists():
+        raise ExecutionError(
+            f"Template not found: {full_path}",
+            recovery=["Check template path", "Verify template_root is correct"],
+        )
+
+    # Get inheritance chain using TemplateAnalyzer
+    analyzer = TemplateAnalyzer(template_root)
+    chain = analyzer.get_inheritance_chain(full_path)
+
+    # Create Jinja2 environment with template loader
+    env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(template_root),
+    )
+
+    # Collect all variables from entire chain
+    all_variables: set[str] = set()
+
+    for template_file in chain:
+        # Read template source
+        template_source = template_file.read_text(encoding="utf-8")
+
+        # Parse and extract variables
+        try:
+            ast = env.parse(template_source)
+        except jinja2.TemplateSyntaxError as e:
+            raise ExecutionError(
+                f"Template syntax error in {template_file}: {e}",
+                recovery=["Check template for valid Jinja2 syntax"],
+            ) from e
+
+        # Extract undeclared variables from this template
+        undeclared = meta.find_undeclared_variables(ast)
+        all_variables.update(undeclared)
+
+    # Filter out system fields
+    agent_vars = all_variables - SYSTEM_FIELDS
+
+    # Classify variables as required or optional
+    # NOTE: We use the CONCRETE template AST for classification (most specific)
+    # This is because parent templates may have different usage patterns
+    concrete_source = chain[0].read_text(encoding="utf-8")
+    concrete_ast = env.parse(concrete_source)
+    required, optional = _classify_variables(concrete_ast, agent_vars)
+
+    # Sort alphabetically
+    return TemplateSchema(
+        required=sorted(required),
+        optional=sorted(optional),
+    )
