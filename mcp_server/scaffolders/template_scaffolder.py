@@ -21,6 +21,7 @@ Uses JinjaRenderer with FileSystemLoader for safe template loading.
 
 # Standard library
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 # Project modules
@@ -92,9 +93,19 @@ class TemplateScaffolder(BaseScaffolder):
 
         # Extract schema from template via inheritance-aware introspection (Task 2.1)
         # This resolves the entire inheritance chain to detect ALL variables
-        from pathlib import Path
+        if self._renderer.env.loader is None:
+            raise ValidationError(
+                f"Template loader not configured for {artifact_type}"
+            )
 
-        template_root = Path(self._renderer.env.loader.searchpath[0])
+        # Type guard: loader is FileSystemLoader with searchpath
+        loader = self._renderer.env.loader
+        if not hasattr(loader, "searchpath"):
+            raise ValidationError(
+                f"Template loader does not support searchpath for {artifact_type}"
+            )
+
+        template_root = Path(loader.searchpath[0])
         schema = introspect_template_with_inheritance(template_root, template_path)
 
         # Check required fields present

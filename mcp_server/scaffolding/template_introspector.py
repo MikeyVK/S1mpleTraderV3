@@ -13,13 +13,16 @@ Templates are the Single Source of Truth - no manual field lists needed.
     - Filter system-injected fields from agent schema
     - Return structured TemplateSchema
 """
+# pylint: disable=too-many-locals
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import jinja2
 from jinja2 import meta, nodes
 
 from mcp_server.core.exceptions import ExecutionError
+from mcp_server.validation.template_analyzer import TemplateAnalyzer
 
 # System fields injected by ArtifactManager - NOT agent responsibility
 SYSTEM_FIELDS: set[str] = {
@@ -139,7 +142,7 @@ def _classify_variables(
 
 
 def introspect_template_with_inheritance(
-    template_root: "Path", template_path: str
+    template_root: Path, template_path: str
 ) -> TemplateSchema:
     """Extract validation schema from template WITH inheritance chain resolution.
 
@@ -165,10 +168,6 @@ def introspect_template_with_inheritance(
     Raises:
         ExecutionError: If template has invalid syntax or chain cannot be resolved
     """
-    from pathlib import Path
-
-    from mcp_server.validation.template_analyzer import TemplateAnalyzer
-
     # Resolve full path
     full_path = template_root / template_path
 
@@ -188,15 +187,15 @@ def introspect_template_with_inheritance(
     )
 
     # Collect all variables from entire chain
-    all_variables: set[str] = set()
+    all_vars: set[str] = set()
 
     for template_file in chain:
         # Read template source
-        template_source = template_file.read_text(encoding="utf-8")
+        src = template_file.read_text(encoding="utf-8")
 
         # Parse and extract variables
         try:
-            ast = env.parse(template_source)
+            ast = env.parse(src)
         except jinja2.TemplateSyntaxError as e:
             raise ExecutionError(
                 f"Template syntax error in {template_file}: {e}",
@@ -205,16 +204,16 @@ def introspect_template_with_inheritance(
 
         # Extract undeclared variables from this template
         undeclared = meta.find_undeclared_variables(ast)
-        all_variables.update(undeclared)
+        all_vars.update(undeclared)
 
     # Filter out system fields
-    agent_vars = all_variables - SYSTEM_FIELDS
+    agent_vars = all_vars - SYSTEM_FIELDS
 
     # Classify variables as required or optional
     # NOTE: We use the CONCRETE template AST for classification (most specific)
     # This is because parent templates may have different usage patterns
-    concrete_source = chain[0].read_text(encoding="utf-8")
-    concrete_ast = env.parse(concrete_source)
+    concrete_src = chain[0].read_text(encoding="utf-8")
+    concrete_ast = env.parse(concrete_src)
     required, optional = _classify_variables(concrete_ast, agent_vars)
 
     # Sort alphabetically
