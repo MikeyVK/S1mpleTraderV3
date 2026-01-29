@@ -37,12 +37,12 @@ Phase 2 of Issue #72 requires resolving 3 critical blockers before Phase 3 (Tier
 
 ## Open Questions
 
-- ✅ Q1: **Which patterns are Tier 2 vs Tier 3?** → 4 Tier 2 (syntax), 6 Tier 3 (specialization)
-- ✅ Q2: **Are all Core Principles reflected?** → Yes, all 4 principles validated
-- ✅ Q3: **Which patterns are mandatory vs optional?** → 7 MANDATORY, 1 RECOMMENDED, 2 OPTIONAL
+- ✅ Q1: **Which patterns are Tier 2 vs Tier 3?** → 4 Tier 2 (syntax), 8 Tier 3 (specialization)
+- ✅ Q2: **Are all Core Principles reflected?** → Yes, all 4 principles validated (Observability principle implicit)
+- ✅ Q3: **Which patterns are mandatory vs optional?** → 9 MANDATORY, 0 RECOMMENDED, 1 OPTIONAL
 - ✅ Q4: **Do coding standards conflict with patterns?** → No conflicts, full alignment
-- ✅ Q5: **Which patterns missing from templates?** → DI via Capabilities, Typed IDs, Error Handling
-
+- ✅ Q5: **Which patterns missing from templates?** → 8 patterns missing (including LogEnricher, Translator)
+- ✅ Q6: **When to implement infrastructure patterns?** → Post-Issue #72, templates scaffold infrastructure-ready code
 ## Related Documentation
 - **[[Issue #72 Planning](planning.md) - Task 2.3 definition][related-1]**
 - **[[Task 2.2 IWorkerLifecycle Audit](phase2-task22-iworkerlifecycle-audit.md) - lifecycle pattern analysis][related-2]**
@@ -72,17 +72,27 @@ Phase 2 of Issue #72 requires resolving 3 critical blockers before Phase 3 (Tier
 
 | Pattern | Tier | Status | Template Impact |
 |---------|------|--------|----------------|
+| Pattern | Tier | Status | Template Impact |
+|---------|------|--------|----------------|
 | 1. Module Header Pattern | 2 | MANDATORY | All templates |
 | 2. Import Organization | 2 | MANDATORY | All templates |
 | 3. Type Hinting | 2 | MANDATORY | All templates |
 | 4. IWorkerLifecycle Two-Phase Init | 3 | MANDATORY | Worker templates |
 | 5. Pydantic DTO Pattern | 3 | MANDATORY | DTO templates |
 | 6. Error Handling | 3 | MANDATORY | Worker/Adapter templates |
-| 7. Logging | 3 | RECOMMENDED | Worker/Service templates |
+| 7. Logging | 3 | MANDATORY | All templates |
 | 8. Typed ID Generation | 3 | MANDATORY | DTO templates |
 | 9. Async/Await | 2 | OPTIONAL | Service templates |
 | 10. DI via Capabilities | 3 | MANDATORY | Worker templates |
+| 11. LogEnricher Infrastructure | 3 | MANDATORY | Worker/Service templates |
+| 12. Translator/i18n | 3 | MANDATORY | All templates |
 
+**Coverage Analysis:**
+- **9/12 patterns MANDATORY** (75% compliance requirement)
+- **0/12 patterns RECOMMENDED** (logging upgraded to MANDATORY)
+- **1/12 patterns OPTIONAL** (8% context-dependent)
+- **Tier 2 patterns:** 4 (syntax/language-level)
+- **Tier 3 patterns:** 8 (specialization/architecture)
 **Coverage Analysis:**
 - **7/10 patterns MANDATORY** (70% compliance requirement)
 - **1/10 patterns RECOMMENDED** (10% best practice)
@@ -507,6 +517,213 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
         
         Required capabilities:
             - dto_types: Dict[str, Type[BaseModel]] - DTO type mappings
+
+---
+
+### Pattern 11: LogEnricher Infrastructure
+
+**Description:**  
+Structured logging wrapper providing context injection, indentation support, custom log levels, and i18n compliance. Extends Python's `logging.LoggerAdapter` to enrich log records with contextual metadata.
+
+**Tier Classification:** Tier 3 (MANDATORY)  
+**Rationale:** Architecture-specific observability pattern. Required for production-ready logging with context traceability, visual hierarchy, and internationalization.
+
+**Code Example:**
+```python
+# backend/utils/app_logger.py (V2 reference)
+class LogEnricher(logging.LoggerAdapter):
+    def __init__(self, logger: logging.Logger, indent: int = 0):
+        super().__init__(logger, {'indent': indent})
+    
+    def process(self, msg, kwargs):
+        kwargs["extra"] = kwargs.get("extra", {})
+        kwargs["extra"].update(self.extra)
+        if 'values' in kwargs:
+            kwargs['extra']['values'] = kwargs.pop('values')
+        return msg, kwargs
+    
+    # Custom log levels
+    def setup(self, key: str, **values): 
+        self.log(15, key, values=values)  # SETUP level
+    
+    def match(self, key: str, **values): 
+        self.log(22, key, values=values)  # MATCH level
+    
+    def filter(self, key: str, **values): 
+        self.log(23, key, values=values)  # FILTER level
+    
+    def policy(self, key: str, **values): 
+        self.log(24, key, values=values)  # POLICY level
+    
+    def result(self, key: str, **values): 
+        self.log(25, key, values=values)  # RESULT level
+    
+    def trade(self, key: str, **values): 
+        self.log(26, key, values=values)  # TRADE level
+
+# Worker usage
+class EMADetector(IWorker, IWorkerLifecycle):
+    def __init__(self, name: str, logger: LogEnricher):
+        self._name = name
+        self.logger = logger
+    
+    def process(self, context):
+        # Translation key + formatted values
+        self.logger.setup(
+            'ema_detector.process_start',
+            period=self.params.period,
+            pair=context.pair
+        )
+        
+        ema = self._calculate_ema(context)
+        
+        self.logger.result(
+            'ema_detector.ema_calculated',
+            value=ema,
+            timestamp=context.timestamp
+        )
+```
+
+**Custom Log Levels:**
+- `SETUP = 15` (below INFO, plugin initialization)
+- `MATCH = 22` (signal matching)
+- `FILTER = 23` (filter decisions)
+- `POLICY = 24` (policy enforcement)
+- `RESULT = 25` (execution results)
+- `TRADE = 26` (trade events, highest INFO variant)
+
+**Alignment with Core Principles:**
+- **Observability:** Enables runtime monitoring and debugging with structured context
+- **Testability:** Mockable logger injection for isolated unit testing
+- **Maintainability:** Consistent logging interface across all components
+
+**Template Implications:**
+- Worker templates MUST include `logger: LogEnricher` parameter in `__init__`
+- Template scaffolding generates proper logger injection pattern
+- All log statements use translation keys (dot-notation)
+- Nested components receive logger with increased indent level
+- Custom log level methods (setup, match, filter, etc.) available
+
+**Implementation Status:**
+- ✅ V2 proven implementation available (`S1mpleTraderV2/backend/utils/app_logger.py`)
+- ✅ Design documented (`docs/architecture/LOGENRICHER_DESIGN.md`)
+- ⏳ V3 implementation deferred (post-Issue #72)
+- ✅ Templates scaffold infrastructure-ready code
+
+---
+
+### Pattern 12: Translator/i18n
+
+**Description:**  
+Internationalization infrastructure loading translated strings from YAML files. Supports dot-notation key lookup for log messages, Pydantic field descriptions, and plugin manifest fields.
+
+**Tier Classification:** Tier 3 (MANDATORY)  
+**Rationale:** Architecture-specific i18n pattern. Required for multi-language support, user-facing text consistency, and maintainable translation management.
+
+**Code Example:**
+```python
+# backend/utils/translator.py (V2 reference)
+from pathlib import Path
+import yaml
+
+class Translator:
+    def __init__(self, platform_config: PlatformConfig, project_root: Path):
+        lang_path = project_root / 'locales' / f"{platform_config.core.language}.yaml"
+        self.strings = yaml.safe_load(open(lang_path, 'r', encoding='utf-8')) or {}
+    
+    def get(self, key: str, default: str | None = None) -> str:
+        """Dot-notation lookup: 'worker.process_start'"""
+        try:
+            value = self.strings
+            for part in key.split('.'):
+                value = value[part]
+            return value if isinstance(value, str) else (default or key)
+        except (KeyError, TypeError):
+            return default or key
+    
+    def get_param_name(self, param_path: str, default: str | None = None) -> str:
+        """Flat lookup for parameter display names"""
+        param_dict = self.strings.get('params_display_names', {})
+        return param_dict.get(param_path, default or param_path)
+
+# LogFormatter integration
+class LogFormatter(logging.Formatter):
+    def __init__(self, translator: Translator):
+        self.translator = translator
+    
+    def format(self, record):
+        key = record.msg
+        # Translate if valid key (contains dot, no spaces)
+        if '.' in key and ' ' not in key:
+            translated = self.translator.get(key, default=key)
+        # Format with values
+        values = getattr(record, 'values', {})
+        final_message = translated.format(**values)
+        return super().format(final_message)
+```
+
+**Translation File Structure** (`locales/en.yaml`):
+```yaml
+# Log messages - component.action
+worker:
+  process_start: "Worker {name} processing {pair}"
+  process_complete: "Processing complete: {result}"
+
+ema_detector:
+  ema_calculated: "EMA calculated: {value:.5f} at {timestamp}"
+
+# Pydantic field descriptions - model.field.desc
+ledger_state:
+  equity:
+    desc: "Total current value of the ledger."
+  available_cash:
+    desc: "Cash available for new positions."
+
+# Plugin manifest fields
+plugins:
+  ema_detector:
+    display_name: "EMA Detector"
+    description: "Calculates Exponential Moving Average."
+
+# Parameter display names (flat lookup)
+params_display_names:
+  "ema_detector.period": "EMA Period"
+  "risk_monitor.max_position_pct": "Max Position %"
+```
+
+**i18n Compliance Rules:**
+
+✅ **MUST use translation keys:**
+- User-facing logs (INFO level and above)
+- Pydantic field descriptions: `Field(description="model.field.desc")`
+- Plugin manifest fields (display_name, description)
+
+❌ **MAY hardcode:**
+- Developer-only DEBUG logs
+- Exception messages (already in English)
+- Internal validation errors
+
+**Translation Key Format:**
+- **Log messages:** `component.action` (e.g., `worker.process_start`)
+- **Field descriptions:** `model.field.desc` (e.g., `ledger_state.equity.desc`)
+- **Plugin fields:** `plugins.plugin_name.field` (e.g., `plugins.ema_detector.display_name`)
+
+**Alignment with Core Principles:**
+- **Maintainability:** Centralized translation management in YAML files
+- **User Experience:** Multi-language support for international users
+- **Consistency:** All user-facing text follows same translation pattern
+
+**Template Implications:**
+- DTO templates use translation keys in `Field(description="key.desc")`
+- Worker templates use translation keys in all log statements
+- Plugin manifest templates reference translation keys
+- Template validation enforces i18n compliance (reject hardcoded user-facing text)
+
+**Implementation Status:**
+- ✅ V2 proven implementation available (`S1mpleTraderV2/backend/utils/translator.py`)
+- ✅ Translation file structure documented (`docs/system/S1mpleTrader V2 Architectuur.md`)
+- ⏳ V3 implementation deferred (post-Issue #72)
+- ✅ Templates scaffold i18n-compliant code
             - persistence: Optional persistence service
             - event_bus: Optional event bus for pub/sub
         """
@@ -539,56 +756,72 @@ class FlowInitiator(IWorker, IWorkerLifecycle):
 
 ### Summary
 
-Backend Pattern Inventory audit successfully cataloged **10 architectural patterns** across 2 tiers:
+Backend Pattern Inventory audit successfully cataloged **12 architectural patterns** across 2 tiers:
 - **4 Tier 2 patterns** (language-level syntax)
-- **6 Tier 3 patterns** (architecture-specific specialization)
+- **8 Tier 3 patterns** (architecture-specific specialization)
 
 **Key Findings:**
-1. **7/10 patterns MANDATORY** (70% baseline compliance)
+1. **9/12 patterns MANDATORY** (75% baseline compliance)
 2. **All Core Principles reflected** in pattern catalog
 3. **No conflicts** with existing coding standards
-4. **6 pattern gaps** in current templates requiring Phase 3 work
+4. **8 pattern gaps** in current templates requiring Phase 3 work
 5. **80%+ coverage achievable** with Tier 3 template design
+6. **Infrastructure patterns identified** (LogEnricher, Translator) from V2 proven implementation
 
+**Infrastructure Patterns (NEW):**
+- Pattern #11: LogEnricher - Structured logging with context injection, custom log levels, indentation
+- Pattern #12: Translator/i18n - Multi-language support with YAML translation files
+- Both patterns have V2 proven implementations ready for V3 integration
+- Templates will scaffold infrastructure-ready code (implementation deferred post-Issue #72)
+4. Typed ID Generation integration
+5. Error Handling blocks (WorkerInitializationError)
 ### Pattern Implementation Priority
 
 **Phase 3 Template Design Priorities:**
 
-**P0 (Must-Have):**
+**P0 (Must-Have - Blocks Template Scaffolding):**
 1. IWorkerLifecycle Two-Phase Init scaffolding
 2. DI via Capabilities boilerplate
 3. Pydantic DTO Pattern with Field validators
 4. Typed ID Generation integration
 5. Error Handling blocks (WorkerInitializationError)
+6. **LogEnricher injection pattern** (infrastructure-ready)
+7. **Translator/i18n compliance** (translation keys)
 
-**P1 (Should-Have):**
-6. Logging setup with structured context
-7. Module Header auto-generation
+**P1 (Should-Have - Production Readiness):**
+8. Module Header auto-generation
+9. Import Organization validation
+10. Type Hinting enforcement
 
-**P2 (Nice-to-Have):**
-8. Async/Await scaffolding for services
-9. Advanced Pydantic validators
+**P2 (Nice-to-Have - Optional Features):**
+11. Async/Await scaffolding for services
+12. Advanced Pydantic validators
 
+**Infrastructure Implementation (Post-Issue #72):**
+- LogEnricher implementation (`backend/utils/app_logger.py`)
+- Translator implementation (`backend/utils/translator.py`)
+- Translation files (`locales/en.yaml`, `locales/nl.yaml`)
 ### Template Coverage Map
 
 | Template Type | Required Patterns | Coverage Target |
 |--------------|-------------------|----------------|
-| Worker | 1, 2, 3, 4, 6, 7, 10 | 100% (7/7 mandatory) |
-| DTO | 1, 2, 3, 5, 8 | 100% (5/5 mandatory) |
-| Adapter | 1, 2, 3, 6, 7 | 100% (4/5 mandatory) |
-| Service | 1, 2, 3, 7, 9 | 80% (3/5, async optional) |
+| Worker | 1, 2, 3, 4, 6, 7, 10, 11 | 100% (8/8 mandatory) |
+| DTO | 1, 2, 3, 5, 8, 12 | 100% (6/6 mandatory) |
+| Adapter | 1, 2, 3, 6, 7, 11 | 100% (6/6 mandatory) |
+| Service | 1, 2, 3, 7, 9, 11 | 83% (5/6, async optional) |
+
+**Pattern Legend:**
+1. Module Header | 2. Import Organization | 3. Type Hinting | 4. IWorkerLifecycle
+5. Pydantic DTO | 6. Error Handling | 7. Logging | 8. Typed ID Generation
+9. Async/Await | 10. DI via Capabilities | 11. LogEnricher Infrastructure | 12. Translator/i18n
 
 **Overall Target:** 90%+ pattern coverage across all Tier 3 templates
 
-### Next Steps
-
-**Immediate Actions:**
-1. **Use this catalog** for Phase 3 template design (Tasks 3.1-3.3)
-2. **Generate scaffolding** for 6 missing patterns
-3. **Validate templates** against pattern coverage map
-4. **Update coding standards** to reference pattern catalog
-
-**Blockers Resolved:**
+**Key Template Implications:**
+- **Worker templates:** Must include `logger: LogEnricher` in `__init__`, use translation keys in log statements
+- **DTO templates:** Must use translation keys in `Field(description="model.field.desc")`
+- **All templates:** i18n-compliant (no hardcoded user-facing strings)
+- **Logging:** Mandatory custom levels (SETUP, MATCH, FILTER, POLICY, RESULT, TRADE)
 - ✅ Blocker #1: Inheritance Introspection (Task 2.1) - COMPLETE
 - ✅ Blocker #2: IWorkerLifecycle Audit (Task 2.2) - COMPLETE  
 - ✅ Blocker #3: Backend Pattern Catalog (Task 2.3) - **COMPLETE (THIS TASK)**
@@ -599,6 +832,8 @@ Backend Pattern Inventory audit successfully cataloged **10 architectural patter
 
 ## References
 
+## References
+
 ### Source Code Reviewed
 
 - [backend/core/flow_initiator.py](../../backend/core/flow_initiator.py) - IWorkerLifecycle example
@@ -606,6 +841,13 @@ Backend Pattern Inventory audit successfully cataloged **10 architectural patter
 - [backend/dtos/strategy/signal.py](../../backend/dtos/strategy/signal.py) - Pydantic DTO example
 - [backend/dtos/causality.py](../../backend/dtos/causality.py) - CausalityChain pattern
 - [backend/utils/id_generators.py](../../backend/utils/id_generators.py) - Typed ID generation utilities
+
+### V2 Infrastructure Reference
+
+- `d:\dev\S1mpleTraderV2\backend\utils\app_logger.py` - LogEnricher, LogFormatter, LogProfiler implementation
+- `d:\dev\S1mpleTraderV2\backend\utils\translator.py` - Translator class with YAML loading
+- [docs/architecture/LOGENRICHER_DESIGN.md](../../architecture/LOGENRICHER_DESIGN.md) - V3 preliminary design
+- [docs/system/S1mpleTrader V2 Architectuur.md](../../system/S1mpleTrader%20V2%20Architectuur.md) - Translation key structure
 
 ### Documentation Reviewed
 
@@ -618,6 +860,12 @@ Backend Pattern Inventory audit successfully cataloged **10 architectural patter
 
 All patterns derived from actual backend codebase analysis across:
 - 12 worker implementations
+- 15 DTO definitions
+- 8 adapter/service modules
+- 100+ backend files reviewed
+- V2 infrastructure modules (app_logger.py, translator.py)
+
+**Pattern Confidence: HIGH** (based on comprehensive codebase audit + V2 proven implementations)
 - 15 DTO definitions
 - 8 adapter/service modules
 - 100+ backend files reviewed
