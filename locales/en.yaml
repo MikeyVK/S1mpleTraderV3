@@ -1,0 +1,87 @@
+# locales/en.yaml
+# English translation file for SimpleTraderV3
+# Structure: component.action for log messages, model.field.desc for Pydantic descriptions
+
+# === Log Messages ===
+
+# System startup
+system:
+  startup: "SimpleTraderV3 starting up..."
+  shutdown: "SimpleTraderV3 shutting down..."
+  config_loaded: "Configuration loaded from {path}"
+
+# Worker lifecycle
+worker:
+  init_start: "Initializing worker: {name}"
+  init_complete: "Worker initialized: {name}"
+  process_start: "Worker {name} processing..."
+  process_complete: "Worker {name} completed: {result}"
+  error: "Worker {name} error: {error}"
+
+# Flow initiator
+flow_initiator:
+  cache_init: "Initializing strategy cache for {strategy_id}"
+  dto_stored: "Stored {dto_type} in cache"
+  run_start: "Starting new strategy run at {timestamp}"
+
+# EMA detector (example plugin)
+ema_detector:
+  process_start: "EMADetector processing {pair} with period={period}"
+  ema_calculated: "EMA calculated: {value:.5f} at {timestamp}"
+
+# === Pydantic Field Descriptions ===
+
+# LedgerState DTO
+ledger_state:
+  equity:
+    desc: "Total current value of the ledger (cash + positions)"
+  available_cash:
+    desc: "Cash available for new positions"
+  total_exposure:
+    desc: "Total value of open positions"
+
+# Signal DTO
+signal:
+  signal_id:
+    desc: "Unique identifier for the signal"
+  timestamp:
+    desc: "When the signal was detected (UTC)"
+  symbol:
+    desc: "Trading pair (e.g., BTC_USDT)"
+  signal_type:
+    desc: "Type of signal (BREAKOUT, REVERSAL, etc.)"
+  confidence:
+    desc: "Signal confidence (0.0-1.0)"
+
+# DispositionEnvelope
+disposition_envelope:
+  disposition:
+    desc: "Worker disposition (CONTINUE, PUBLISH, HALT)"
+  event_payload:
+    desc: "Optional event payload to publish"
+
+# === Plugin Manifest Fields ===
+
+plugins:
+  flow_initiator:
+    display_name: "Flow Initiator"
+    description: "Initializes strategy cache and stores provider DTOs"
+  
+  ema_detector:
+    display_name: "EMA Detector"
+    description: "Calculates Exponential Moving Average"
+
+# === Parameter Display Names ===
+
+params_display_names:
+  "ema_detector.period": "EMA Period"
+  "ema_detector.source": "Price Source"
+  "risk_monitor.max_position_pct": "Max Position %"
+  "risk_monitor.max_drawdown_pct": "Max Drawdown %"
+
+# === Error Messages (user-facing) ===
+
+errors:
+  worker_init_failed: "Failed to initialize worker {name}: {reason}"
+  config_invalid: "Invalid configuration: {field}"
+  dto_validation_failed: "DTO validation failed: {error}"
