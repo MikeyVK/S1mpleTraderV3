@@ -132,7 +132,7 @@ class {{ name }}(IWorker, IWorkerLifecycle):
     def initialize(
         self,
         strategy_cache: IStrategyCache | None = None,
-        **capabilities: Any
+        **capabilities: Any,
     ) -> None:
         """
         Initialize with runtime dependencies.
@@ -166,19 +166,19 @@ class {{ name }}(IWorker, IWorkerLifecycle):
         if strategy_cache is not None:
             raise WorkerInitializationError(
                 f"{self._name}: Platform worker must not receive strategy_cache "
-                f"(got {type(strategy_cache).__name__})"
+                f"(got {type(strategy_cache).__name__})",
             )
 {%- elif worker_scope == 'platform_within_strategy' %}
         # Validate strategy_cache is present (Platform-within-Strategy worker)
         if strategy_cache is None:
             raise WorkerInitializationError(
-                f"{self._name}: Platform-within-Strategy worker requires strategy_cache"
+                f"{self._name}: Platform-within-Strategy worker requires strategy_cache",
             )
 {%- else %}
         # Validate strategy_cache is present (Strategy worker)
         if strategy_cache is None:
             raise WorkerInitializationError(
-                f"{self._name}: Strategy worker requires strategy_cache"
+                f"{self._name}: Strategy worker requires strategy_cache",
             )
 {%- endif %}
 
@@ -187,7 +187,7 @@ class {{ name }}(IWorker, IWorkerLifecycle):
 {%- for capability in capabilities %}
         if "{{ capability }}" not in capabilities:
             raise WorkerInitializationError(
-                f"{self._name}: Required capability '{{ capability }}' not provided"
+                f"{self._name}: Required capability '{{ capability }}' not provided",
             )
 {%- endfor %}
 {%- endif %}
@@ -215,12 +215,6 @@ class {{ name }}(IWorker, IWorkerLifecycle):
         - Flush buffers
         - Clear caches
         """
-        # Implement cleanup logic here
-        # Example:
-        # if self._connection:
-        #     self._connection.close()
-        #     self._connection = None
-        
         # Idempotent implementation - no resources to cleanup yet
         ...
 
