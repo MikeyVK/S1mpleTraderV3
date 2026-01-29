@@ -7,6 +7,13 @@ Pydantic schemas for platform-level configuration.
 @responsibilities:
     - Define PlatformConfig schema (global platform settings)
     - Define LoggingConfig schema (logging profiles and levels)
+
+# TODO(Issue #128): V2→V3 Migration
+# This file was copied from S1mpleTraderV2 (production-ready).
+# V3 compliance needed:
+# - Add unit tests (pytest, 80%+ coverage)
+# - Document CORE_PRINCIPLES alignment
+# See Issue #128 for details.
     - Define CoreConfig schema (language, timezone, paths)
 """
 

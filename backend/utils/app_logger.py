@@ -11,6 +11,14 @@ It is designed to be configured once at the application's entry point.
     - Defines the custom LogFormatter to handle translation and indentation of log messages.
     - Defines the LogEnricher adapter, which is the standard logger interface for the application.
     - Defines the LogProfiler to filter logs based on the configured profile.
+
+# TODO(Issue #128): V2→V3 Migration
+# This file was copied from S1mpleTraderV2 (production-ready).
+# V3 compliance needed:
+# - Add unit tests (pytest, 80%+ coverage)
+# - Add integration tests (LogEnricher injection in workers)
+# - Wire into main.py bootstrap
+# See Issue #128 for details.
     - Provides the central configure_logging function to bootstrap the logging system.
 """
 

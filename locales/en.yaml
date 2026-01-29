@@ -1,5 +1,11 @@
 # locales/en.yaml
 # English translation file for SimpleTraderV3
+# TODO(Issue #128): V2→V3 Migration
+# This file was copied from S1mpleTraderV2 (production-ready).
+# V3 compliance needed:
+# - Validate translations with actual usage
+# - Add missing translations from real components
+# See Issue #128 for details.
 # Structure: component.action for log messages, model.field.desc for Pydantic descriptions
 
 # === Log Messages ===

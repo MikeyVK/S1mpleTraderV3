@@ -7,6 +7,14 @@ Handles loading and retrieving translated strings for the application.
 @responsibilities:
     - Loads the appropriate language file based on the application configuration.
     - Provides a get method to retrieve translated strings using dot-notation keys.
+
+# TODO(Issue #128): V2→V3 Migration
+# This file was copied from S1mpleTraderV2 (production-ready).
+# V3 compliance needed:
+# - Add unit tests (pytest, 80%+ coverage)
+# - Add integration tests
+# - Wire into main.py bootstrap
+# See Issue #128 for details.
     - Provides a get_param_name method for the special case of parameter display names.
 """
 
