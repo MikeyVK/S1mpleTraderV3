@@ -1,7 +1,7 @@
 {#- worker.py.jinja2 - Concrete template for IWorkerLifecycle workers -#}
 {#- Version: 3.0.0 -#}
 {#- Purpose: Generate V3 two-phase initialization workers (IWorker + IWorkerLifecycle) -#}
-{%- extends "tier1_base_code.jinja2" -%}
+{%- extends "tier2_base_python.jinja2" -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -17,13 +17,13 @@ TEMPLATE_METADATA:
       - "def shutdown\\(self\\)"
       - "@property"
       - "def name\\(self\\)"
-  extends: tier1_base_code.jinja2
+  extends: tier2_base_python.jinja2
   purpose: "Worker implementation with IWorkerLifecycle pattern (V3 two-phase initialization)"
   version: "3.0.0"
   introspection:
     template_id: concrete_worker
     tier: concrete
-    parent: tier1_base_code
+    parent: tier2_base_python
     variables:
       required:
         - name
