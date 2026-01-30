@@ -1,49 +1,39 @@
-# tests/mcp_server/scaffolding/test_concrete_test_unit.py
 """
 Unit tests for concrete/test_unit.py.jinja2 template.
 
-Tests the concrete unit test template that cherry-picks 5 test patterns:
-pytest, assertions, mocking, test_fixtures, and test_structure.
-
 @layer: Tests (Unit)
 @dependencies: [pytest, jinja2, pathlib, mcp_server.scaffolding]
-@responsibilities:
-    - Verify concrete/test_unit.py.jinja2 template structure
-    - Test cherry-picking of 5 pattern templates
-    - Validate context variable handling
-    - Test scaffolded test structure
 """
 
-# Standard library
 from pathlib import Path
 
-# Third-party
 import pytest
 from jinja2 import Environment, FileSystemLoader
 
 
 @pytest.fixture
 def jinja_env():
-    """Create Jinja2 environment with template loader."""
-    templates_dir = (
+    """Create Jinja2 environment with test templates path."""
+    templates_path = (
         Path(__file__).parent.parent.parent.parent
         / "mcp_server"
         / "scaffolding"
         / "templates"
     )
-    return Environment(loader=FileSystemLoader(str(templates_dir)))
+    return Environment(loader=FileSystemLoader(str(templates_path)))
 
 
 class TestConcreteTestUnit:
     """Test suite for concrete/test_unit.py.jinja2 template."""
-
+    
     def test_template_exists(self, jinja_env):
-        """Test that template exists and loads."""
+        """Test that template file exists and can be loaded."""
         template = jinja_env.get_template("concrete/test_unit.py.jinja2")
         assert template is not None
-
-    def test_template_extends_patterns(self):
-        """Test that template extends required pattern templates."""
+        assert template.filename is not None
+    
+    def test_template_extends_tier2_base(self):
+        """Test that template extends tier2_base_python."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
             / "mcp_server"
@@ -53,8 +43,9 @@ class TestConcreteTestUnit:
             / "test_unit.py.jinja2"
         )
         content = template_path.read_text(encoding="utf-8")
-        # Should NOT extend (concrete templates generate standalone code)
-        assert "{% extends" not in content or "tier3_pattern" not in content
+        # Concrete templates extend tier2 base (not tier3 patterns)
+        assert '{% extends "tier2_base_python.jinja2" %}' in content
+        assert "tier3_pattern" not in content.split("extends")[0]  # Not in extends statement
 
     def test_template_has_metadata(self):
         """Test that template contains TEMPLATE_METADATA."""
@@ -89,10 +80,10 @@ class TestConcreteTestUnit:
             "test_class_name": "TestExample",
         }
         result = template.render(**context)
-        assert "class TestExample" in result
+        assert "class TestExample:" in result
 
     def test_rendered_contains_module_docstring(self, jinja_env):
-        """Test that rendered output contains module docstring."""
+        """Test that rendered output contains module-level docstring."""
         template = jinja_env.get_template("concrete/test_unit.py.jinja2")
         context = {
             "module_under_test": "mcp_server.tools.example",
@@ -100,7 +91,8 @@ class TestConcreteTestUnit:
         }
         result = template.render(**context)
         assert '"""' in result
-        assert "@layer" in result
+        assert "@layer: Tests (Unit)" in result
+        assert "@dependencies:" in result
 
     def test_rendered_contains_pytest_imports(self, jinja_env):
         """Test that rendered output contains pytest imports."""
@@ -119,11 +111,12 @@ class TestConcreteTestUnit:
             "module_under_test": "mcp_server.tools.example",
             "test_class_name": "TestExample",
             "fixtures": [
-                {"name": "sample_data", "description": "Sample test data"}
+                {"name": "sample_data", "type": "simple", "return_value": "{'key': 'value'}"}
             ],
         }
         result = template.render(**context)
-        assert "@pytest.fixture" in result or "fixture" in result.lower()
+        assert "@pytest.fixture" in result
+        assert "def sample_data" in result
 
     def test_rendered_with_test_methods(self, jinja_env):
         """Test rendering with test method definitions."""
@@ -132,48 +125,35 @@ class TestConcreteTestUnit:
             "module_under_test": "mcp_server.tools.example",
             "test_class_name": "TestExample",
             "test_methods": [
-                {
-                    "name": "test_example_function",
-                    "description": "Test example function",
-                    "async": False,
-                }
+                {"name": "test_example_behavior", "async": False, "fixtures": []},
             ],
         }
         result = template.render(**context)
-        assert "def test_example_function" in result
+        assert "def test_example_behavior" in result
 
     def test_rendered_with_async_test(self, jinja_env):
-        """Test rendering with async test method."""
+        """Test rendering with async test methods."""
         template = jinja_env.get_template("concrete/test_unit.py.jinja2")
         context = {
             "module_under_test": "mcp_server.tools.example",
             "test_class_name": "TestExample",
             "test_methods": [
-                {
-                    "name": "test_async_function",
-                    "description": "Test async function",
-                    "async": True,
-                }
+                {"name": "test_async_behavior", "async": True, "fixtures": []},
             ],
         }
         result = template.render(**context)
-        assert (
-            "async def test_async_function" in result
-            or "@pytest.mark.asyncio" in result
-        )
+        assert "async def test_async_behavior" in result
+        assert "@pytest.mark.asyncio" in result
 
     def test_rendered_contains_aaa_structure(self, jinja_env):
-        """Test that rendered output suggests AAA pattern."""
+        """Test that rendered output contains AAA (Arrange-Act-Assert) structure hints."""
         template = jinja_env.get_template("concrete/test_unit.py.jinja2")
         context = {
             "module_under_test": "mcp_server.tools.example",
             "test_class_name": "TestExample",
         }
         result = template.render(**context)
-        # Should have AAA comments or structure hints
-        assert (
-            "Arrange" in result
-            or "Act" in result
-            or "Assert" in result
-            or "# Setup" in result
-        )
+        # Check for AAA pattern hints
+        assert "Arrange" in result or "# TODO: Set up test data" in result
+        assert "Act" in result or "# TODO: Execute function under test" in result
+        assert "Assert" in result or "assert" in result

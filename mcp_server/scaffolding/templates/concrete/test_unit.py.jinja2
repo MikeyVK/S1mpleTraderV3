@@ -1,0 +1,134 @@
+{# TEMPLATE_METADATA:
+  name: test_unit
+  tier: concrete
+  category: test
+  enforcement: GUIDELINE
+  cherry_picks: [pytest, assertions, mocking, test_fixtures, test_structure]
+  description: >
+    Concrete template for unit test files.
+    Cherry-picks 5 tier3 test patterns for comprehensive test structure.
+#}
+{% extends "tier2_base_python.jinja2" %}
+
+{# Module docstring with test-specific documentation #}
+{% block module_docstring %}
+"""
+Unit tests for {{ module_under_test }}.
+
+{{ test_description | default('Tests the functionality of ' ~ module_under_test ~ ' according to TDD principles.') }}
+
+@layer: Tests (Unit)
+@dependencies: [pytest, {{ module_under_test }}{% if has_mocks | default(True) %}, unittest.mock{% endif %}]
+@responsibilities:
+    - Test {{ test_class_name }} functionality
+    - Verify {{ test_focus | default('core behavior and edge cases') }}
+    - {{ additional_responsibility | default('Cover error handling scenarios') }}
+"""
+{% endblock %}
+
+{# Override imports_section to avoid tier2_base_python defaults #}
+{% block imports_section %}
+# Standard library
+from pathlib import Path
+{% if has_async_tests | default(False) %}
+import asyncio
+{% endif %}
+{% if has_mocks | default(True) %}
+from unittest.mock import MagicMock, Mock, AsyncMock, patch
+{% endif %}
+from typing import Any{% if has_async_tests | default(False) %}, Awaitable{% endif %}
+
+# Third-party
+import pytest
+{% if has_pydantic %}
+from pydantic import ValidationError
+{% endif %}
+
+# Project modules
+from {{ module_under_test }} import {{ imported_classes | default(['*']) | join(', ') }}
+
+{% if fixtures %}
+# Test Fixtures
+{% for fixture in fixtures %}
+
+@pytest.fixture{% if fixture.scope %}(scope="{{ fixture.scope }}"){% endif %}
+def {{ fixture.name }}({% if fixture.dependencies %}{{ fixture.dependencies | join(', ') }}{% endif %}):
+    """{{ fixture.description | default('Fixture: ' ~ fixture.name) }}"""
+    {% if fixture.type == 'simple' %}
+    return {{ fixture.return_value | default('{}') }}
+    {% elif fixture.type == 'generator' %}
+    # Setup
+    resource = {{ fixture.setup | default('create_resource()') }}
+    
+    yield resource
+    
+    # Cleanup
+    {{ fixture.cleanup | default('resource.cleanup()') }}
+    {% elif fixture.type == 'factory' %}
+    def _factory({{ fixture.params | default('**kwargs') }}):
+        return {{ fixture.factory_call | default('create_object(**kwargs)') }}
+    return _factory
+    {% else %}
+    return {{ fixture.return_value | default('None') }}
+    {% endif %}
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+{# Override class_structure block to replace with test class #}
+{% block class_structure %}
+
+class {{ test_class_name }}:
+    """Test suite for {{ module_under_test.split('.')[-1] }}."""
+    
+    {% if test_methods %}
+    {% for method in test_methods %}
+    {% if method.markers %}
+    {% for marker in method.markers %}
+    @pytest.mark.{{ marker }}
+    {% endfor %}
+    {% elif method.async %}
+    @pytest.mark.asyncio
+    {% endif %}
+    {% if method.async %}async {% endif %}def {{ method.name }}(
+        self{% if method.fixtures %},
+        {{ method.fixtures | join(',\n        ') }}{% endif %}
+    ){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
+        """{{ method.description | default('Test ' ~ method.name.replace('test_', '').replace('_', ' ')) }}."""
+        # Arrange - Setup test data and preconditions
+        {% if method.arrange %}
+        {{ method.arrange | indent(8) }}
+        {% else %}
+        # TODO: Set up test data
+        {% endif %}
+        
+        # Act - Execute the functionality being tested
+        {% if method.act %}
+        {{ method.act | indent(8) }}
+        {% else %}
+        # TODO: Execute function under test
+        {% endif %}
+        
+        # Assert - Verify the expected outcome
+        {% if method.assertions %}
+        {{ method.assertions | indent(8) }}
+        {% else %}
+        # TODO: Add assertions
+        assert True  # Replace with actual assertions
+        {% endif %}
+    
+    {% endfor %}
+    {% else %}
+    def test_placeholder(self):
+        """Placeholder test - replace with actual tests."""
+        # Arrange
+        test_input = None
+        expected_output = None
+        
+        # Act
+        result = None  # Call function under test
+        
+        # Assert
+        assert result == expected_output
+    {% endif %}
+{% endblock %}
