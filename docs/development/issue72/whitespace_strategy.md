@@ -268,6 +268,42 @@ Output:
 - test_unit.py.jinja2 line 79
 - test_integration.py.jinja2 line 93
 
+## Lessons Learned: Trailing Newlines in Loops (Issue #72.3.1)
+
+**Problem:** Generated files ended with 2 empty lines instead of 1 newline (POSIX standard).
+
+**Root Cause:** Blank line between `{% endif %}` and `{% endfor %}` in method loops was preserved in output.
+
+**Symptom:** 
+```
+        assert True  # Replace with actual assertions
+[blank line]
+[blank line at EOF]
+```
+
+**Fix Pattern:** Use right-trim on loop-closing tags:
+```jinja
+        {% if method.assertions %}
+        {{ method.assertions | indent(8) }}
+        {% else %}
+        # TODO: Add assertions
+        assert True  # Replace with actual assertions
+        {% endif -%}
+
+    {%- endfor %}
+```
+
+**Why this works:**
+- `{% endif -%}` removes newline AFTER the endif tag
+- `{%- endfor %}` removes whitespace/newline BEFORE the endfor tag
+- Together they eliminate the blank line while preserving code structure
+
+**Applied to:**
+- test_unit.py.jinja2 lines 105-107 (assertions endif + method endfor)
+- test_integration.py.jinja2 lines 118-120 (assertions endif + method endfor)
+
+**Key Insight:** Blank lines in template source between control structures are literal content unless explicitly trimmed. Use surgical trim (`-%}` or `{%-`) only where needed.
+
 ## Anti-Patterns to Avoid
 
 ❌ Explicit newlines: `{{ "\n" }}`
