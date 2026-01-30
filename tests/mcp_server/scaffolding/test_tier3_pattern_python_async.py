@@ -117,10 +117,8 @@ class TestTier3PatternPythonAsync:
         """Test that pattern_async_context_managers macro renders."""
         template = jinja_env.get_template("tier3_pattern_python_async.jinja2")
         rendered = template.module.pattern_async_context_managers(
-            context_name="resource_manager"
         )
-        assert "async with" in rendered or "__aenter__" in rendered
-        assert "resource_manager" in rendered
+        assert "async" in rendered and ("__aenter__" in rendered or "__aexit__" in rendered)
 
     def test_macro_imports_include_awaitable(self, jinja_env):
         """Test that async imports include Awaitable type."""

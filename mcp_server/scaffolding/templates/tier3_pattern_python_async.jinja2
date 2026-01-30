@@ -1,0 +1,36 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_async
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  description: >
+    Async/await pattern for asynchronous Python code.
+    Provides macros for async imports, methods, and context managers.
+#}
+
+{# Macro: Async imports #}
+{% macro pattern_async_imports(include_types=True) %}
+import asyncio
+{% if include_types %}
+from typing import Awaitable, AsyncIterator, Optional, Any
+{% endif %}
+{% endmacro %}
+
+{# Macro: Async method definition #}
+{% macro pattern_async_methods(method_name, params="", return_type="None", body="pass", docstring="") %}
+async def {{ method_name }}({{ params }}){% if return_type %} -> {{ return_type }}{% endif %}:
+    {% if docstring %}"""{{ docstring }}"""{% endif %}
+    {{ body | indent(4) if body != "pass" else "pass" }}
+{% endmacro %}
+
+{# Macro: Async context manager #}
+{% macro pattern_async_context_managers(context_name, resource_type="Any", setup="pass", cleanup="pass") %}
+async def __aenter__(self) -> {{ resource_type }}:
+    """Enter async context manager."""
+    {{ setup | indent(4) if setup != "pass" else "pass" }}
+    return self
+
+async def __aexit__(self, exc_type, exc_val, exc_tb):
+    """Exit async context manager."""
+    {{ cleanup | indent(4) if cleanup != "pass" else "pass" }}
+{% endmacro %}
