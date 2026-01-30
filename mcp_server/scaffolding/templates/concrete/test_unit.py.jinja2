@@ -76,7 +76,7 @@ class {{ test_class_name }}:
     {% elif method.async %}
     @pytest.mark.asyncio
     {% endif %}
-    {% if method.async %}async {% endif %}def {{ method.name }}(
+{% if method.async %}    async def {{ method.name }}{% else %}    def {{ method.name }}{% endif %}(
         self{% if method.fixtures %},
         {{ method.fixtures | join(',\n        ') }}{% endif %}
     ){% if method.return_type %} -> {{ method.return_type }}{% endif %}:

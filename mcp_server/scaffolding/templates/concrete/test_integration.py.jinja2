@@ -90,7 +90,7 @@ class {{ test_class_name }}:
     {% elif method.async %}
     @pytest.mark.asyncio
     {% endif %}
-    {% if method.async %}async {% endif %}def {{ method.name }}(
+{% if method.async %}    async def {{ method.name }}{% else %}    def {{ method.name }}{% endif %}(
         self{% if method.fixtures %},
         {{ method.fixtures | join(',\n        ') }}{% endif %}{% if workspace_fixture | default(True) and 'temp_workspace' not in (method.fixtures or []) %},
         temp_workspace{% endif %}
