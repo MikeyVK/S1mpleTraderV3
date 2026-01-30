@@ -13,6 +13,7 @@ This is a MACRO LIBRARY template (no {% extends %}), provides composable macros 
     - Verify macros are callable via {% import %}
 """
 
+import re
 from pathlib import Path
 
 import pytest
@@ -43,7 +44,6 @@ class TestTier3PatternPythonPytest:
         # Macro library templates should NOT extend other templates
         assert "{% extends" not in content, "Macro library must not use {% extends %}"
         # Check for {% block %} in Jinja code (not in comments)
-        import re
         # Remove comments (lines starting with {#)
         no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
         assert "{% block" not in no_comments, "Macro library must use {% macro %} not {% block %}"
@@ -101,7 +101,7 @@ class TestTier3PatternPythonPytest:
         assert "import pytest" in result
         assert "from pathlib import Path" in result
 
-    def test_template_uses_macros_not_blocks(self, jinja_env):
+    def test_template_uses_macros_not_blocks(self):
         """RED: Verify template defines macros for composition."""
         template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
         content = template_path.read_text(encoding="utf-8")
