@@ -712,34 +712,86 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 ---
 
-#### Task 3.2: DOCUMENT Pattern Templates (8 templates)
+#### Task 3.2: Refactor Concrete CODE Templates (6 templates) + Fix Validation Levels
+**Description:** Refactor existing concrete CODE templates to cherry-pick tier3 patterns via `{% import %}` and fix enforcement levels
+
+**Input:** Task 3.1 CODE patterns complete
+
+**Subtasks (6 × 1h = 6h):**
+- **3.2a:** Refactor worker.py - Cherry-pick 7 patterns + fix enforcement (1h)
+  - Import: async, lifecycle, error, logging, di, log_enricher, translator
+  - Change: `{% extends "tier2_base_python.jinja2" %}`
+  - Add: `{% import "tier3_pattern_python_lifecycle.jinja2" as lifecycle %}`
+  - Use: `{{ lifecycle.pattern_lifecycle_init() | indent(4) }}`
+  - **Fix:** `enforcement: STRICT → GUIDELINE`, `validates.strict → validates.guidelines`
+- **3.2b:** Refactor dto.py - Cherry-pick 3 patterns + fix enforcement (1h)
+  - Import: pydantic, typed_id, logging
+  - **Fix:** Change to `enforcement: GUIDELINE`
+- **3.2c:** Refactor service.py - Cherry-pick 5 patterns + fix enforcement (1h)
+  - Import: async, error, logging, di, translator
+  - **Fix:** Change to `enforcement: GUIDELINE`
+- **3.2d:** Refactor tool.py - Cherry-pick 2 patterns + fix enforcement (1h)
+  - Import: error, logging (lightweight!)
+  - **Fix:** Change to `enforcement: GUIDELINE`
+- **3.2e:** Add config_schema.py concrete template - Cherry-pick 3 patterns (1h)
+  - **NEW TEMPLATE:** Scaffolds Pydantic schemas (WorkflowConfig, LabelConfig, etc.)
+  - Import: pydantic, typed_id, logging
+  - Rationale: CONFIG tak eliminated, schemas are CODE
+  - Enforcement: GUIDELINE (new template, correct from start)
+- **3.2f:** Refactor generic.py - Cherry-pick 1 pattern + fix enforcement (1h)
+  - Import: logging only
+  - **Fix:** Change to `enforcement: GUIDELINE`
+
+**Output:**
+- All CODE concrete templates use `{% import %}` composition
+- All CODE concrete templates have `enforcement: GUIDELINE` (validation hierarchy correct)
+- tool.py justified (2 patterns = lightweight)
+- config_schema.py replaces CONFIG tak
+
+**Acceptance:**
+- worker.py scaffolds with 7 patterns, enforcement GUIDELINE
+- tool.py scaffolds with 2 patterns, enforcement GUIDELINE
+- config_schema.py scaffolds Pydantic schemas (e.g., WorkflowConfig)
+- Validation hierarchy correct: tier0-2 STRICT, tier3 ARCHITECTURAL, concrete GUIDELINE
+
+**Effort:** 6h
+
+**Assignee:** Template Author
+
+**Dependency:** Task 3.1 complete
+
+**Note:** Validation level fix integrated (no separate task needed)
+
+---
+
+#### Task 3.3: DOCUMENT Pattern Templates (8 templates)
 **Description:** Create 8 granular tier3 pattern templates for Markdown document patterns
 
 **Input:** Existing concrete document templates (research, planning, design, architecture, reference)
 
 **Subtasks (8 × 1.5h = 12h):**
-- **3.2a:** `tier3_pattern_markdown_status_header.jinja2` - Status/Version/Date header (1.5h)
+- **3.3a:** `tier3_pattern_markdown_status_header.jinja2` - Status/Version/Date header (1.5h)
   - Blocks: `pattern_status_header_lines`
   - Used by: ALL (5 docs)
-- **3.2b:** `tier3_pattern_markdown_purpose_scope.jinja2` - Purpose + In/Out Scope (1.5h)
+- **3.3b:** `tier3_pattern_markdown_purpose_scope.jinja2` - Purpose + In/Out Scope (1.5h)
   - Blocks: `pattern_purpose_section`, `pattern_scope_section`
   - Used by: ALL (5 docs)
-- **3.2c:** `tier3_pattern_markdown_prerequisites.jinja2` - Numbered "Read first" list (1.5h)
+- **3.3c:** `tier3_pattern_markdown_prerequisites.jinja2` - Numbered "Read first" list (1.5h)
   - Blocks: `pattern_prerequisites_section`, `pattern_prerequisites_list`
   - Used by: research, planning, architecture (3 docs)
-- **3.2d:** `tier3_pattern_markdown_agent_hints.jinja2` - Agent guidance metadata (1.5h)
+- **3.3d:** `tier3_pattern_markdown_agent_hints.jinja2` - Agent guidance metadata (1.5h)
   - Blocks: `pattern_agent_hints_block`, `pattern_agent_hints_fields`
   - Used by: research, planning, design (3 docs)
-- **3.2e:** `tier3_pattern_markdown_related_docs.jinja2` - Cross-referencing (**CROSS-BRANCH!**) (1.5h)
+- **3.3e:** `tier3_pattern_markdown_related_docs.jinja2` - Cross-referencing (**CROSS-BRANCH!**) (1.5h)
   - Blocks: `pattern_related_docs_section`, `pattern_related_docs_links`
   - Used by: ALL (5 docs) + pr.md, issue.md (7 total) - **First cross-branch pattern!**
-- **3.2f:** `tier3_pattern_markdown_version_history.jinja2` - Change tracking table (1.5h)
+- **3.3f:** `tier3_pattern_markdown_version_history.jinja2` - Change tracking table (1.5h)
   - Blocks: `pattern_version_history_section`, `pattern_version_history_table`
   - Used by: ALL (5 docs)
-- **3.2g:** `tier3_pattern_markdown_open_questions.jinja2` - Knowledge gaps documentation (1.5h)
+- **3.3g:** `tier3_pattern_markdown_open_questions.jinja2` - Knowledge gaps documentation (1.5h)
   - Blocks: `pattern_open_questions_section`, `pattern_open_questions_list`
   - Used by: research, design (2 docs)
-- **3.2h:** `tier3_pattern_markdown_dividers.jinja2` - Section separators (1.5h)
+- **3.3h:** `tier3_pattern_markdown_dividers.jinja2` - Section separators (1.5h)
   - Blocks: `pattern_divider`
   - Used by: ALL (5 docs)
 
@@ -757,73 +809,42 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 **Assignee:** Template Author
 
-**Dependency:** None (patterns already exist in concrete templates)
+**Dependency:** None (patterns already exist in concrete templates, can run parallel with 3.1-3.2)
 
 ---
 
-#### Task 3.3: Refactor Concrete CODE Templates (6 templates)
-**Description:** Refactor existing concrete CODE templates to cherry-pick tier3 patterns via `{% import %}`
+#### Task 3.4: Refactor Concrete DOCUMENT Templates (3 templates) + Fix Validation Levels
+**Description:** Refactor existing concrete DOCUMENT templates to cherry-pick tier3 patterns and fix enforcement levels
 
-**Subtasks (6 × 1h = 6h):**
-- **3.3a:** Refactor worker.py - Cherry-pick 7 patterns (1h)
-  - Import: async, lifecycle, error, logging, di, log_enricher, translator
-  - Change: `{% extends "tier2_base_python.jinja2" %}`
-  - Add: `{% import "tier3_pattern_python_lifecycle.jinja2" as lifecycle %}`
-  - Use: `{{ lifecycle.pattern_lifecycle_init() | indent(4) }}`
-- **3.3b:** Refactor dto.py - Cherry-pick 3 patterns (1h)
-  - Import: pydantic, typed_id, logging
-- **3.3c:** Refactor service.py - Cherry-pick 5 patterns (1h)
-  - Import: async, error, logging, di, translator
-- **3.3d:** Refactor tool.py - Cherry-pick 2 patterns (1h)
-  - Import: error, logging (lightweight!)
-- **3.3e:** Add config_schema.py concrete template - Cherry-pick 3 patterns (1h)
-  - **NEW TEMPLATE:** Scaffolds Pydantic schemas (WorkflowConfig, LabelConfig, etc.)
-  - Import: pydantic, typed_id, logging
-  - Rationale: CONFIG tak eliminated, schemas are CODE
-- **3.3f:** Refactor generic.py - Cherry-pick 1 pattern (1h)
-  - Import: logging only
-
-**Output:**
-- All CODE concrete templates use `{% import %}` composition
-- tool.py justified (2 patterns = lightweight)
-- config_schema.py replaces CONFIG tak
-
-**Acceptance:**
-- worker.py scaffolds with 7 patterns
-- tool.py scaffolds with 2 patterns
-- config_schema.py scaffolds Pydantic schemas (e.g., WorkflowConfig)
-
-**Effort:** 6h
-
-**Assignee:** Template Author
-
-**Dependency:** Task 3.1 complete
-
----
-
-#### Task 3.4: Refactor Concrete DOCUMENT Templates (3 templates)
-**Description:** Refactor existing concrete DOCUMENT templates to cherry-pick tier3 patterns
+**Input:** Task 3.3 DOCUMENT patterns complete
 
 **Subtasks (3 × 1h = 3h):**
-- **3.4a:** Refactor research.md - Cherry-pick 7 patterns (1h)
+- **3.4a:** Refactor research.md - Cherry-pick 7 patterns + fix enforcement (1h)
   - Import: status_header, purpose_scope, prerequisites, agent_hints, related_docs, version_history, open_questions
-- **3.4b:** Refactor planning.md - Cherry-pick 6 patterns (1h)
+  - **Fix:** `enforcement: STRICT → GUIDELINE`
+- **3.4b:** Refactor planning.md - Cherry-pick 6 patterns + fix enforcement (1h)
   - Import: status_header, purpose_scope, prerequisites, agent_hints, related_docs, version_history
-- **3.4c:** Refactor design.md - Cherry-pick 7 patterns (1h)
+  - **Fix:** `enforcement: STRICT → GUIDELINE`
+- **3.4c:** Refactor design.md - Cherry-pick 7 patterns + fix enforcement (1h)
   - Import: status_header, purpose_scope, agent_hints, related_docs, version_history, open_questions, dividers
+  - **Fix:** `enforcement: STRICT → GUIDELINE`
 
 **Output:**
 - All DOCUMENT concrete templates use `{% import %}` composition
+- All DOCUMENT concrete templates have `enforcement: GUIDELINE`
 
 **Acceptance:**
-- research.md scaffolds with 7 patterns
+- research.md scaffolds with 7 patterns, enforcement GUIDELINE
 - All document templates use consistent pattern imports
+- Validation hierarchy correct for DOCUMENT branch
 
 **Effort:** 3h
 
 **Assignee:** Template Author
 
-**Dependency:** Task 3.2 complete
+**Dependency:** Task 3.3 complete
+
+**Note:** Validation level fix integrated (no separate task needed)
 
 ---
 
@@ -872,35 +893,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 ---
 
-#### Task 3.6: Fix Concrete Template Validation Levels (9 templates)
-**Description:** Change `enforcement: STRICT → GUIDELINE` for all concrete templates (bug fix)
-
-**Input:** Current concrete templates have wrong enforcement (validate ARCHITECTURAL patterns with STRICT)
-
-**Subtasks (9 × 15min = 2h + 15min):**
-- **3.6a:** Fix worker.py enforcement (15min)
-  - Change: `enforcement: STRICT → GUIDELINE`
-  - Change: `validates.strict → validates.guidelines`
-  - Example: "Workers should implement IWorkerLifecycle" (suggestion, not requirement)
-- **3.6b-i:** Fix dto, service, tool, generic, research, planning, design, architecture (8 × 15min)
-
-**Output:**
-- All concrete templates have `enforcement: GUIDELINE`
-- Architectural patterns validated at tier3 level, not concrete
-
-**Acceptance:**
-- Concrete templates provide SUGGESTIONS, not REQUIREMENTS
-- Validation hierarchy correct: tier0-2 STRICT, tier3 ARCHITECTURAL, concrete GUIDELINE
-
-**Effort:** 2.25h (round to 3h)
-
-**Assignee:** Template Author
-
-**Dependency:** None (bug fix, can do anytime)
-
----
-
-#### Task 3.7: Template Registry Format Change
+#### Task 3.6: Template Registry Format Change
 **Description:** Change template_registry.yaml → template_registry.json for better parsability
 
 **Input:** Machine-generated provenance tracking file
@@ -926,7 +919,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 ---
 
-#### Task 3.8: Documentation (AC8/AC13) - EXPANDED
+#### Task 3.7: Documentation (AC8/AC13) - EXPANDED
 **Description:** Write comprehensive template library documentation including block library composition
 
 **Input:** All Tier 0-3 templates complete + block library pattern
@@ -972,34 +965,42 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 ### Phase 3 Summary (REVISED)
 
-**Total Effort: 65h (was 49h, +16h for SRP granularity)**
+**Total Effort: 67h (was 49h, +18h for SRP granularity)**
 
 | Task | Effort | Category |
 |------|--------|----------|
 | 3.1 CODE Pattern Templates (9) | 18h | Pattern Library |
-| 3.2 DOCUMENT Pattern Templates (8) | 12h | Pattern Library |
-| 3.3 Refactor CODE Concrete (6) | 6h | Refactoring |
-| 3.4 Refactor DOCUMENT Concrete (3) | 3h | Refactoring |
+| 3.2 Refactor CODE Concrete (6) + Fix Validation | 6h | Refactoring |
+| 3.3 DOCUMENT Pattern Templates (8) | 12h | Pattern Library |
+| 3.4 Refactor DOCUMENT Concrete (3) + Fix Validation | 3h | Refactoring |
 | 3.5 Tracking Templates (tier1+tier2+concrete) | 11h | Infrastructure |
-| 3.6 Fix Validation Levels (9) | 3h | Bug Fix |
-| 3.7 Registry Format Change | 1h | Infrastructure |
-| 3.8 Documentation | 16h | Deliverables |
-| **TOTAL** | **70h** | **(4-5 weeks)** |
+| 3.6 Registry Format Change | 1h | Infrastructure |
+| 3.7 Documentation | 16h | Deliverables |
+| **TOTAL** | **67h** | **(4-5 weeks)** |
+
+**Task Flow (Optimized):**
+1. **3.1:** Create CODE patterns (18h)
+2. **3.2:** Immediately refactor CODE templates using patterns + fix validation (6h)
+3. **3.3:** Create DOCUMENT patterns (12h) - Can run parallel with 3.1-3.2
+4. **3.4:** Immediately refactor DOCUMENT templates using patterns + fix validation (3h)
+5. **3.5:** Tracking infrastructure (11h)
+6. **3.6:** Registry format change (1h) - Can run parallel with other tasks
+7. **3.7:** Documentation (16h) - Requires all tasks complete
 
 **Breakdown by Priority:**
-- **P0 (CRITICAL - AC6 blockers):** 49h (tasks 3.1-3.5)
-- **P1 (Important):** 20h (tasks 3.6-3.8)
+- **P0 (CRITICAL - AC6 blockers):** 50h (tasks 3.1-3.5)
+- **P1 (Important):** 17h (tasks 3.6-3.7)
 
 **Key Changes from Original Plan:**
 - ❌ Removed: 3 monolithic tier3 templates (tier3_base_python_component, data_model, tool) - 20h saved
 - ❌ Removed: CONFIG tak (tier1_base_config, tier3_base_yaml_policy) - 5h saved
+- ❌ Removed: Separate validation fix task (integrated in refactoring) - 3h saved
 - ✅ Added: 17 granular tier3 pattern templates (9 CODE + 8 DOCUMENT) - 30h added
-- ✅ Added: Refactoring tasks for cherry-picking composition - 9h added
-- ✅ Added: config_schema.py concrete template - included in 3.3e
-- ✅ Added: Validation level bug fixes - 3h added
+- ✅ Changed: Validation fix integrated in refactoring tasks (more efficient)
+- ✅ Changed: Task order optimized (create pattern → refactor immediately)
 - ✅ Changed: Documentation expanded with block library guide - same 16h
 
-**Net Change: +16h (but significantly better SRP and composition flexibility)**
+**Net Change: +18h (but significantly better SRP, composition, and efficiency)**
 
 ### Phase 4: Migration (Legacy Conversion) - ⚠️ **OBSOLETE**
 **Goal:** ~~Migrate 24 existing templates to multi-tier architecture~~  
