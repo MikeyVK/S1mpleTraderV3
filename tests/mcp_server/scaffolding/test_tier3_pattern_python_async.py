@@ -93,12 +93,9 @@ class TestTier3PatternPythonAsync:
         )
         content = template_path.read_text(encoding="utf-8")
         assert "{% macro pattern_async_context_managers" in content
-
     def test_pattern_async_imports_renders(self, jinja_env):
         """Test that pattern_async_imports macro renders correctly."""
         template = jinja_env.get_template("tier3_pattern_python_async.jinja2")
-        from jinja2 import Template
-        # Import the template and call the macro
         rendered = template.module.pattern_async_imports()
         assert "import asyncio" in rendered
         assert "from typing import" in rendered
