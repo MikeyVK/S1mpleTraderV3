@@ -25,13 +25,11 @@ def jinja_env():
 
 class TestConcreteTestUnit:
     """Test suite for concrete/test_unit.py.jinja2 template."""
-    
     def test_template_exists(self, jinja_env):
         """Test that template file exists and can be loaded."""
         template = jinja_env.get_template("concrete/test_unit.py.jinja2")
         assert template is not None
         assert template.filename is not None
-    
     def test_template_extends_tier2_base(self):
         """Test that template extends tier2_base_python."""
         template_path = (
