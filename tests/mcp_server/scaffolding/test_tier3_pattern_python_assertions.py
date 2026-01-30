@@ -2,20 +2,20 @@
 """
 Unit tests for tier3_pattern_python_assertions template.
 
-Tests the Tier 3 assertion pattern block library for pytest-based testing.
-Validates that template provides composable blocks for different assertion types:
-basic assertions, exception assertions, type assertions, and context assertions.
+Tests the Tier 3 assertion pattern macro library for pytest-based testing.
+Validates that template provides a minimal macro library (assertions are typically inline).
 
 @layer: Tests (Unit)
 @dependencies: [pytest, jinja2, pathlib, mcp_server.scaffolding]
 @responsibilities:
     - Verify tier3_pattern_python_assertions.jinja2 template structure
-    - Test block library pattern (no {% extends %}, pure blocks)
+    - Test macro library pattern (no {% extends %}, no blocks)
     - Validate TEMPLATE_METADATA presence and ARCHITECTURAL enforcement
-    - Test 4 assertion pattern blocks: basic, exceptions, type, context
+    - Confirm minimal implementation (assertions are inline in tests)
 """
 
 # Standard library
+import re
 from pathlib import Path
 
 # Third-party
@@ -36,7 +36,7 @@ def jinja_env():
 
 
 class TestTier3PatternPythonAssertions:
-    """Test suite for tier3_pattern_python_assertions template."""
+    """Test suite for tier3_pattern_python_assertions macro library."""
 
     def test_template_exists(self, jinja_env):
         """Test that template exists and loads."""
@@ -46,7 +46,7 @@ class TestTier3PatternPythonAssertions:
         assert template is not None
 
     def test_template_has_no_extends(self):
-        """Test that template follows block library pattern."""
+        """Test that template follows macro library pattern (no extends, no blocks)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
             / "mcp_server"
@@ -56,6 +56,10 @@ class TestTier3PatternPythonAssertions:
         )
         content = template_path.read_text(encoding="utf-8")
         assert "{% extends" not in content
+        
+        # Check for blocks in non-comment code
+        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        assert "{% block" not in no_comments
 
     def test_template_has_metadata(self):
         """Test that template contains TEMPLATE_METADATA."""
@@ -69,9 +73,10 @@ class TestTier3PatternPythonAssertions:
         content = template_path.read_text(encoding="utf-8")
         assert "TEMPLATE_METADATA" in content
         assert "enforcement: ARCHITECTURAL" in content
+        assert "provides_macros: []" in content
 
-    def test_block_assertions_basic_exists(self):
-        """Test that assertions_basic block is defined."""
+    def test_template_is_minimal(self):
+        """Test that template is minimal (no macros for assertions)."""
         template_path = (
             Path(__file__).parent.parent.parent.parent
             / "mcp_server"
@@ -80,91 +85,54 @@ class TestTier3PatternPythonAssertions:
             / "tier3_pattern_python_assertions.jinja2"
         )
         content = template_path.read_text(encoding="utf-8")
-        assert "{% block assertions_basic %}" in content
-
-    def test_block_assertions_exceptions_exists(
-        self,
-    ):
-        """Test that assertions_exceptions block is defined."""
-        template_path = (
-            Path(__file__).parent.parent.parent.parent
-            / "mcp_server"
-            / "scaffolding"
-            / "templates"
-            / "tier3_pattern_python_assertions.jinja2"
-        )
-        content = template_path.read_text(encoding="utf-8")
-        assert "{% block assertions_exceptions %}" in content
-
-    def test_block_assertions_type_exists(self):
-        """Test that assertions_type block is defined."""
-        template_path = (
-            Path(__file__).parent.parent.parent.parent
-            / "mcp_server"
-            / "scaffolding"
-            / "templates"
-            / "tier3_pattern_python_assertions.jinja2"
-        )
-        content = template_path.read_text(encoding="utf-8")
-        assert "{% block assertions_type %}" in content
-
-    def test_block_assertions_context_exists(
-        self,
-    ):
-        """Test that assertions_context block is defined."""
-        template_path = (
-            Path(__file__).parent.parent.parent.parent
-            / "mcp_server"
-            / "scaffolding"
-            / "templates"
-            / "tier3_pattern_python_assertions.jinja2"
-        )
-        content = template_path.read_text(encoding="utf-8")
-        assert "{% block assertions_context %}" in content
+        # Assertions pattern has no macros - assertions are written inline
+        # Remove comments to check actual template code
+        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        assert "{% macro" not in no_comments
 
     def test_import_from_concrete_template(self, jinja_env):
-        """Test that template can be extended by concrete templates."""
-        # Simulate concrete template extending assertions pattern
+        """Test that template can be imported (even though it provides no macros)."""
+        # Template can be imported but provides no macros
         template_str = """
-{% extends "tier3_pattern_python_assertions.jinja2" %}
-
-{% block assertions_basic %}
-{{ super() }}
-# Additional basic assertions
-{% endblock %}
+{% import "tier3_pattern_python_assertions.jinja2" as assertions_p %}
+# No macros to call - assertions are inline
 """
         template = jinja_env.from_string(template_str)
         result = template.render()
         assert result is not None
+        assert "# No macros to call" in result
 
-    def test_assertions_basic_block_contains_equality(self, jinja_env):
-        """Test that assertions_basic contains equality patterns."""
+    def test_template_renders_empty(self, jinja_env):
+        """Test that template renders to minimal output (no code generation)."""
         template = jinja_env.get_template(
             "tier3_pattern_python_assertions.jinja2"
         )
         result = template.render()
-        assert "==" in result or "assert" in result
+        # Should be minimal/empty since no macros are defined
+        assert result.strip() == ""
 
-    def test_assertions_exceptions_block_contains_pytest_raises(self, jinja_env):
-        """Test that assertions_exceptions contains pytest.raises."""
-        template = jinja_env.get_template(
-            "tier3_pattern_python_assertions.jinja2"
+    def test_template_has_changelog(self):
+        """Test that template documents refactor from blocks to macros."""
+        template_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "mcp_server"
+            / "scaffolding"
+            / "templates"
+            / "tier3_pattern_python_assertions.jinja2"
         )
-        result = template.render()
-        assert "pytest.raises" in result or "exc_info" in result
+        content = template_path.read_text(encoding="utf-8")
+        assert "changelog" in content
+        assert "2.0.0" in content
+        assert "Refactor from" in content
 
-    def test_assertions_type_block_contains_isinstance(self, jinja_env):
-        """Test that assertions_type contains isinstance patterns."""
-        template = jinja_env.get_template(
-            "tier3_pattern_python_assertions.jinja2"
+    def test_template_explains_no_macros_needed(self):
+        """Test that template explains why no macros are provided."""
+        template_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "mcp_server"
+            / "scaffolding"
+            / "templates"
+            / "tier3_pattern_python_assertions.jinja2"
         )
-        result = template.render()
-        assert "isinstance" in result
-
-    def test_assertions_context_block_contains_with_statement(self, jinja_env):
-        """Test that assertions_context contains with statements."""
-        template = jinja_env.get_template(
-            "tier3_pattern_python_assertions.jinja2"
-        )
-        result = template.render()
-        assert "with" in result
+        content = template_path.read_text(encoding="utf-8")
+        assert "inline" in content.lower() or "typically" in content.lower()
