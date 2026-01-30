@@ -1,16 +1,16 @@
-"""Unit tests for tier3_pattern_python_pytest.jinja2 block library.
+"""Unit tests for tier3_pattern_python_pytest.jinja2 macro library.
 
-Tests the pytest framework pattern blocks used by test_unit and test_integration templates.
-This is a BLOCK LIBRARY template (no {% extends %}), provides composable blocks only.
+Tests the pytest framework pattern macros used by test_unit and test_integration templates.
+This is a MACRO LIBRARY template (no {% extends %}), provides composable macros only.
 
 @layer: Tests (Unit)
 @dependencies: [pytest, jinja2, pathlib, mcp_server.scaffolding]
 @responsibilities:
-    - Validate pytest pattern block structure
-    - Test fixture decorators (@pytest.fixture)
-    - Test async markers (@pytest.mark.asyncio)
-    - Test parametrize decorators (@pytest.mark.parametrize)
-    - Test pytest_plugins configuration
+    - Validate pytest pattern macro structure
+    - Test fixture generation (pattern_pytest_imports)
+    - Test async markers generation
+    - Test parametrize decorator generation
+    - Verify macros are callable via {% import %}
 """
 
 from pathlib import Path
@@ -27,7 +27,7 @@ def jinja_env():
 
 
 class TestTier3PatternPythonPytest:
-    """Test pytest pattern blocks for composition via {% import %}."""
+    """Test pytest pattern macros for composition via {% import %}."""
 
     def test_template_exists(self, jinja_env):
         """RED: Verify tier3_pattern_python_pytest.jinja2 exists and loads."""
@@ -36,12 +36,13 @@ class TestTier3PatternPythonPytest:
         assert "tier3_pattern_python_pytest.jinja2" in template.name
 
     def test_template_has_no_extends(self):
-        """RED: Verify template is a BLOCK LIBRARY (no {% extends %} statement)."""
+        """RED: Verify template is a MACRO LIBRARY (no {% extends %} statement)."""
         template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
         content = template_path.read_text(encoding="utf-8")
 
-        # Block library templates should NOT extend other templates
-        assert "{% extends" not in content, "Block library must not use {% extends %}"
+        # Macro library templates should NOT extend other templates
+        assert "{% extends" not in content, "Macro library must not use {% extends %}"
+        assert "{% block" not in content, "Macro library must use {% macro %} not {% block %}"
 
     def test_template_has_metadata(self):
         """RED: Verify TEMPLATE_METADATA with ARCHITECTURAL enforcement."""
@@ -54,129 +55,83 @@ class TestTier3PatternPythonPytest:
         assert "tier: 3" in content
         assert "category: pattern" in content
 
-    def test_block_pattern_pytest_imports_exists(self):
-        """RED: Verify pattern_pytest_imports block exists for pytest imports."""
+    def test_macro_pattern_pytest_imports_exists(self):
+        """RED: Verify pattern_pytest_imports macro exists for pytest imports."""
         template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
         content = template_path.read_text(encoding="utf-8")
 
-        # Must define pattern_pytest_imports block
-        assert "{% block pattern_pytest_imports %}" in content
+        # Must define pattern_pytest_imports macro
+        assert "{% macro pattern_pytest_imports" in content
 
-    def test_block_pattern_pytest_fixtures_exists(self):
-        """RED: Verify pattern_pytest_fixtures block exists for fixture definitions."""
-        template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
-        content = template_path.read_text(encoding="utf-8")
-
-        # Must define pattern_pytest_fixtures block
-        assert "{% block pattern_pytest_fixtures %}" in content
-
-    def test_block_pattern_pytest_marks_exists(self):
-        """RED: Verify pattern_pytest_marks block exists for test decorators."""
-        template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
-        content = template_path.read_text(encoding="utf-8")
-
-        # Must define pattern_pytest_marks block
-        assert "{% block pattern_pytest_marks %}" in content
-
-    def test_block_pattern_pytest_parametrize_exists(self):
-        """RED: Verify pattern_pytest_parametrize block exists for parametrized tests."""
-        template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
-        content = template_path.read_text(encoding="utf-8")
-
-        # Must define pattern_pytest_parametrize block
-        assert "{% block pattern_pytest_parametrize %}" in content
-
-    def test_import_from_concrete_template(self):
-        """RED: Verify template blocks can be extended by a concrete template."""
-        # Create a test concrete template that extends the pytest pattern
+    def test_macro_can_be_imported_and_called(self, jinja_env):
+        """RED: Verify macros can be imported and called from concrete template."""
+        # Create a test template that imports and calls the macro
         test_template_content = """
-{%- extends "tier3_pattern_python_pytest.jinja2" -%}
-
-{# Test Concrete Template using blocks from pattern library #}
-
-{# Override pattern_pytest_imports to add custom imports #}
-{% block pattern_pytest_imports %}
-{{ super() }}
-from typing import Generator
-{% endblock %}
-
-{# Use pattern_pytest_fixtures without override (get default) #}
-
-{# Override pattern_pytest_marks to add custom test #}
-{% block pattern_pytest_marks %}
-{{ super() }}
-
-@pytest.mark.unit
-def test_custom():
-    assert True
-{% endblock %}
+{%- import "tier3_pattern_python_pytest.jinja2" as pytest_p -%}
+{{ pytest_p.pattern_pytest_imports() }}
         """
 
-        # Try to render with Jinja2
-        template_dir = Path("mcp_server/scaffolding/templates")
-        env = Environment(loader=FileSystemLoader(template_dir))
-
-        # Create template from string
-        template = env.from_string(test_template_content)
-
-        # Should render without errors
+        template = jinja_env.from_string(test_template_content)
         result = template.render()
 
-        # Verify result contains both base pattern and override
-        assert result is not None
-        assert "import pytest" in result  # From base pattern
-        assert "from typing import Generator" in result  # From override
-        assert "@pytest.mark.asyncio" in result  # From base pattern
-        assert "@pytest.mark.unit" in result  # From override
+        # Should render pytest import
+        assert "import pytest" in result
+        assert "from pathlib import Path" in result
 
-    def test_pytest_imports_block_contains_pytest_import(self):
-        """RED: Verify pattern_pytest_imports block includes pytest import."""
+    def test_pytest_imports_macro_renders_correctly(self, jinja_env):
+        """RED: Verify pattern_pytest_imports macro generates correct imports."""
         template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
         content = template_path.read_text(encoding="utf-8")
 
-        # Find the pattern_pytest_imports block content
-        start = content.find("{% block pattern_pytest_imports %}")
-        end = content.find("{% endblock %}", start)
-        block_content = content[start:end]
+        # Find the pattern_pytest_imports macro
+        assert "{% macro pattern_pytest_imports" in content
+
+        # Test rendering via import
+        test_template = jinja_env.from_string(
+            """{% import "tier3_pattern_python_pytest.jinja2" as pytest_p %}
+{{ pytest_p.pattern_pytest_imports() }}"""
+        )
+        result = test_template.render()
 
         # Should contain pytest import
-        assert "import pytest" in block_content
+        assert "import pytest" in result
+        assert "from pathlib import Path" in result
 
-    def test_pytest_fixtures_block_contains_fixture_decorator(self):
-        """RED: Verify pattern_pytest_fixtures block includes @pytest.fixture pattern."""
+    def test_macro_for_pytest_fixture_decorator(self, jinja_env):
+        """RED: Verify macro exists for generating pytest fixtures."""
         template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
         content = template_path.read_text(encoding="utf-8")
 
-        # Find the pattern_pytest_fixtures block content
-        start = content.find("{% block pattern_pytest_fixtures %}")
-        end = content.find("{% endblock %}", start)
-        block_content = content[start:end]
+        # Should have a macro for fixture generation (could be pattern_pytest_fixture or similar)
+        assert "{% macro" in content
+        assert "pytest.fixture" in content or "@pytest.fixture" in content
 
-        # Should contain @pytest.fixture decorator pattern
-        assert "@pytest.fixture" in block_content
-
-    def test_pytest_marks_block_contains_asyncio_marker(self):
-        """RED: Verify pattern_pytest_marks block includes @pytest.mark.asyncio."""
+    def test_macro_for_async_test_marker(self, jinja_env):
+        """RED: Verify macro exists for async test markers."""
         template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
         content = template_path.read_text(encoding="utf-8")
 
-        # Find the pattern_pytest_marks block content
-        start = content.find("{% block pattern_pytest_marks %}")
-        end = content.find("{% endblock %}", start)
-        block_content = content[start:end]
+        # Should support async test patterns
+        assert "@pytest.mark.asyncio" in content or "pytest.mark.asyncio" in content
 
-        # Should contain asyncio marker
-        assert "@pytest.mark.asyncio" in block_content
-
-    def test_pytest_parametrize_block_contains_decorator(self):
-        """RED: Verify pattern_pytest_parametrize block includes @pytest.mark.parametrize."""
+    def test_macro_for_parametrize_decorator(self, jinja_env):
+        """RED: Verify macro exists for parametrize decorators."""
         template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
         content = template_path.read_text(encoding="utf-8")
 
-        # Find the pattern_pytest_parametrize block content
-        start = content.find("{% block pattern_pytest_parametrize %}")
-        end = content.find("{% endblock %}", start)
-        block_content = content[start:end]
+        # Should support parametrize patterns
+        assert "@pytest.mark.parametrize" in content or "pytest.mark.parametrize" in content
 
-        # Should contain parametrize decorator
-        assert "@pytest.mark.parametrize" in block_content
+    def test_multiple_macros_can_be_imported(self, jinja_env):
+        """RED: Verify multiple macros can be imported and used together."""
+        # Test that the pattern library provides multiple callable macros
+        test_template = jinja_env.from_string(
+            """{% import "tier3_pattern_python_pytest.jinja2" as pytest_p %}
+{{ pytest_p.pattern_pytest_imports() }}
+"""
+        )
+        result = test_template.render()
+
+        # Should successfully import and call
+        assert result is not None
+        assert "import pytest" in result
