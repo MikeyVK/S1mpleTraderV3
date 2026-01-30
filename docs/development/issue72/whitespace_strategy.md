@@ -233,6 +233,41 @@ Every template must produce:
 3. Consistent across ALL artifact types
 4. No empty lines where not semantically meaningful
 
+## Lessons Learned: Control Structure Indentation (Issue #72.3)
+
+**Problem:** Methods generated outside class despite template having 4 leading spaces before `{% if %}`.
+
+**Root Cause:** Jinja2 treats spaces **before** control structures as template formatting, NOT output content.
+
+**Example (BROKEN):**
+```jinja
+class TestExample:
+    """Docstring."""
+    
+    {% if method.async %}async {% endif %}def {{ method.name }}(
+```
+Output: `def test_name(` at column 0 (method outside class!)
+
+**Fix:** Move indentation **inside** both branches of the conditional:
+```jinja
+class TestExample:
+    """Docstring."""
+    
+{% if method.async %}    async def {{ method.name }}{% else %}    def {{ method.name }}{% endif %}(
+```
+Output:
+- Async: `    async def test_name(` ✅
+- Sync: `    def test_name(` ✅
+
+**Key Insight:**
+- Spaces **before** `{% if %}` = template formatting (ignored in output)
+- Spaces **inside** `{% if %}...{% else %}...{% endif %}` = actual output
+- BOTH branches must include the indentation
+
+**Applied to:**
+- test_unit.py.jinja2 line 79
+- test_integration.py.jinja2 line 93
+
 ## Anti-Patterns to Avoid
 
 ❌ Explicit newlines: `{{ "\n" }}`
