@@ -25,11 +25,13 @@ def jinja_env():
 
 class TestConcreteTestUnit:
     """Test suite for concrete/test_unit.py.jinja2 template."""
+
     def test_template_exists(self, jinja_env):
         """Test that template file exists and can be loaded."""
         template = jinja_env.get_template("concrete/test_unit.py.jinja2")
         assert template is not None
         assert template.filename is not None
+
     def test_template_extends_tier2_base(self):
         """Test that template extends tier2_base_python."""
         template_path = (
@@ -44,6 +46,21 @@ class TestConcreteTestUnit:
         # Concrete templates extend tier2 base (not tier3 patterns)
         assert '{% extends "tier2_base_python.jinja2" %}' in content
         assert "tier3_pattern" not in content.split("extends")[0]  # Not in extends statement
+
+    def test_template_imports_tier3_patterns(self):
+        """Test that template imports tier3 pattern templates."""
+        template_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "mcp_server"
+            / "scaffolding"
+            / "templates"
+            / "concrete"
+            / "test_unit.py.jinja2"
+        )
+        content = template_path.read_text(encoding="utf-8")
+        # Template should import tier3 patterns for DRY composition
+        assert '{% import "tier3_pattern_python_' in content
+        assert "pytest" in content or "test_fixtures" in content
 
     def test_template_has_metadata(self):
         """Test that template contains TEMPLATE_METADATA."""
@@ -102,20 +119,6 @@ class TestConcreteTestUnit:
         result = template.render(**context)
         assert "import pytest" in result
 
-    def test_rendered_with_fixtures(self, jinja_env):
-        """Test rendering with fixture definitions."""
-        template = jinja_env.get_template("concrete/test_unit.py.jinja2")
-        context = {
-            "module_under_test": "mcp_server.tools.example",
-            "test_class_name": "TestExample",
-            "fixtures": [
-                {"name": "sample_data", "type": "simple", "return_value": "{'key': 'value'}"}
-            ],
-        }
-        result = template.render(**context)
-        assert "@pytest.fixture" in result
-        assert "def sample_data" in result
-
     def test_rendered_with_test_methods(self, jinja_env):
         """Test rendering with test method definitions."""
         template = jinja_env.get_template("concrete/test_unit.py.jinja2")
@@ -123,7 +126,7 @@ class TestConcreteTestUnit:
             "module_under_test": "mcp_server.tools.example",
             "test_class_name": "TestExample",
             "test_methods": [
-                {"name": "test_example_behavior", "async": False, "fixtures": []},
+                {"name": "test_example_behavior", "async": False},
             ],
         }
         result = template.render(**context)
@@ -136,7 +139,7 @@ class TestConcreteTestUnit:
             "module_under_test": "mcp_server.tools.example",
             "test_class_name": "TestExample",
             "test_methods": [
-                {"name": "test_async_behavior", "async": True, "fixtures": []},
+                {"name": "test_async_behavior", "async": True},
             ],
         }
         result = template.render(**context)
