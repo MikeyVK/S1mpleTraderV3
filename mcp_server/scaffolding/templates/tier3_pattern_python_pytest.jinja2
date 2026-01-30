@@ -1,0 +1,86 @@
+{# 
+TEMPLATE_METADATA:
+  name: tier3_pattern_python_pytest
+  description: Pytest framework pattern blocks (fixtures, marks, parametrize)
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [test_unit, test_integration]
+  provides_blocks: [pattern_pytest_imports, pattern_pytest_fixtures, pattern_pytest_marks, pattern_pytest_parametrize]
+#}
+
+{# Block: pytest imports - Standard pytest framework imports #}
+{% block pattern_pytest_imports %}
+import pytest
+from pathlib import Path
+{% endblock %}
+
+{# Block: pytest fixtures - Fixture definitions with decorators #}
+{% block pattern_pytest_fixtures %}
+@pytest.fixture
+def example_fixture():
+    """Example fixture docstring."""
+    # Setup
+    resource = create_resource()
+    
+    # Provide fixture value
+    yield resource
+    
+    # Teardown (optional)
+    cleanup_resource(resource)
+
+
+@pytest.fixture(name="custom_name")
+def custom_fixture_impl():
+    """Fixture with custom name for readability."""
+    return {"data": "value"}
+{% endblock %}
+
+{# Block: pytest marks - Test decorators for async, parametrize, etc. #}
+{% block pattern_pytest_marks %}
+@pytest.mark.asyncio
+async def test_async_operation():
+    """Test async functionality."""
+    result = await async_function()
+    assert result is not None
+
+
+@pytest.mark.parametrize("input,expected", [
+    (1, 2),
+    (2, 4),
+    (3, 6),
+])
+def test_parametrized(input, expected):
+    """Test with multiple input/output combinations."""
+    assert input * 2 == expected
+{% endblock %}
+
+{# Block: pytest parametrize - Data-driven test pattern #}
+{% block pattern_pytest_parametrize %}
+@pytest.mark.parametrize("test_case,expected_result", [
+    ("case_1", "result_1"),
+    ("case_2", "result_2"),
+    ("case_3", "result_3"),
+])
+def test_multiple_scenarios(test_case, expected_result):
+    """Test multiple scenarios with parametrize decorator."""
+    # Arrange
+    input_data = prepare_test_case(test_case)
+    
+    # Act
+    result = function_under_test(input_data)
+    
+    # Assert
+    assert result == expected_result
+
+
+@pytest.mark.parametrize("invalid_input", [
+    None,
+    "",
+    "invalid",
+])
+def test_error_cases(invalid_input):
+    """Test error handling with parametrize."""
+    with pytest.raises(ValueError):
+        function_under_test(invalid_input)
+{% endblock %}

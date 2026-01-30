@@ -87,20 +87,29 @@ class TestTier3PatternPythonPytest:
         assert "{% block pattern_pytest_parametrize %}" in content
 
     def test_import_from_concrete_template(self, jinja_env):
-        """RED: Verify template can be imported and used in a concrete template."""
-        # Create a test template that imports the pytest pattern
+        """RED: Verify template blocks can be extended by a concrete template."""
+        # Create a test concrete template that extends the pytest pattern
         test_template_content = """
-        {%- import "tier3_pattern_python_pytest.jinja2" as pytest_pattern -%}
-        
-        # Test Concrete Template
-        {{ pytest_pattern.pattern_pytest_imports() }}
-        
-        {{ pytest_pattern.pattern_pytest_fixtures() }}
-        
-        class TestExample:
-            {{ pytest_pattern.pattern_pytest_marks() | indent(4) }}
-            def test_something(self):
-                pass
+{%- extends "tier3_pattern_python_pytest.jinja2" -%}
+
+{# Test Concrete Template using blocks from pattern library #}
+
+{# Override pattern_pytest_imports to add custom imports #}
+{% block pattern_pytest_imports %}
+{{ super() }}
+from typing import Generator
+{% endblock %}
+
+{# Use pattern_pytest_fixtures without override (get default) #}
+
+{# Override pattern_pytest_marks to add custom test #}
+{% block pattern_pytest_marks %}
+{{ super() }}
+
+@pytest.mark.unit
+def test_custom():
+    assert True
+{% endblock %}
         """
         
         # Try to render with Jinja2
@@ -110,9 +119,15 @@ class TestTier3PatternPythonPytest:
         # Create template from string
         template = env.from_string(test_template_content)
         
-        # Should render without errors (blocks may be empty at this stage)
+        # Should render without errors
         result = template.render()
+        
+        # Verify result contains both base pattern and override
         assert result is not None
+        assert "import pytest" in result  # From base pattern
+        assert "from typing import Generator" in result  # From override
+        assert "@pytest.mark.asyncio" in result  # From base pattern
+        assert "@pytest.mark.unit" in result  # From override
 
     def test_pytest_imports_block_contains_pytest_import(self):
         """RED: Verify pattern_pytest_imports block includes pytest import."""
