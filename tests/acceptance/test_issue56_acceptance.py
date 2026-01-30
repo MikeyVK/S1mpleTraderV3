@@ -1,4 +1,3 @@
-# pylint: disable=redefined-outer-name  # pytest fixtures
 """
 @module: tests.acceptance.test_issue56_acceptance
 @layer: Test Infrastructure

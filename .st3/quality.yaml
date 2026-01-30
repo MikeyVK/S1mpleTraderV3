@@ -5,7 +5,7 @@ gates:
     name: "Linting"
     description: "Python linting"
     execution:
-      command: ["python", "-m", "pylint", "--enable=all", "--max-line-length=100", "--output-format=text"]
+      command: ["python", "-m", "pylint", "--enable=all", "--disable=duplicate-code,redefined-outer-name", "--max-line-length=100", "--output-format=text"]
       timeout_seconds: 60
       working_dir: null
     parsing:

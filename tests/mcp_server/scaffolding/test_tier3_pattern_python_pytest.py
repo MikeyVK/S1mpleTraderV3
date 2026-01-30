@@ -1,4 +1,3 @@
-# pylint: disable=redefined-outer-name  # pytest fixtures
 """Unit tests for tier3_pattern_python_pytest.jinja2 block library.
 
 Tests the pytest framework pattern blocks used by test_unit and test_integration templates.

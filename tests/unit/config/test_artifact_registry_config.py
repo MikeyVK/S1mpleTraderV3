@@ -1,4 +1,3 @@
-# pylint: disable=redefined-outer-name  # pytest fixtures
 """Unit tests for ArtifactRegistryConfig (Issue #56, Cycle 1).
 
 Tests configuration loading from artifacts.yaml with:

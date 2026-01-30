@@ -126,8 +126,8 @@ extension-pkg-allow-list = ["pydantic"]
 [tool.pylint.FORMAT]
 max-line-length = 100
 
-[tool.pylint."MESSAGES CONTROL"]
+[tool.pylint.messages_control]
 disable = [
-    "R0801", # duplicate-code (often inevitable in tests/scaffolding)
+    "duplicate-code",  # R0801: often inevitable in tests/scaffolding
+    "redefined-outer-name",  # W0621: pytest fixtures use parameter injection
 ]
-enable = "all"

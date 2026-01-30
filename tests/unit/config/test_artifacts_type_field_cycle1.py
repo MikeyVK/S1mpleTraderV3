@@ -1,4 +1,3 @@
-# pylint: disable=redefined-outer-name  # pytest fixtures
 """Unit tests for artifacts.yaml type field (Issue #72, TDD Cycle 1).
 
 RED Phase Test:
