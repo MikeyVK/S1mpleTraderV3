@@ -1,0 +1,248 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_test_structure
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [test_unit, test_integration]
+  provides_blocks: [structure_classes, structure_docstrings, structure_aaa, structure_module_docs]
+  description: >
+    Tier 3 pattern template for test file organization and structure.
+    Provides composable blocks for consistent test patterns.
+#}
+
+{% block structure_classes %}
+# Test Class Organization - Grouping related tests
+#
+# Single test class per component/feature
+class TestComponentName:
+    """Test suite for ComponentName."""
+    
+    def test_basic_functionality(self):
+        """Test basic functionality."""
+        # Test implementation
+        pass
+    
+    def test_edge_case(self):
+        """Test edge case behavior."""
+        # Test implementation
+        pass
+
+# Multiple test classes for different aspects
+class TestComponentInitialization:
+    """Test suite for component initialization."""
+    
+    def test_default_initialization(self):
+        """Test default initialization."""
+        pass
+
+class TestComponentBehavior:
+    """Test suite for component behavior."""
+    
+    def test_normal_operation(self):
+        """Test normal operation."""
+        pass
+
+# Nested test classes for complex scenarios
+class TestComplexFeature:
+    """Test suite for complex feature."""
+    
+    class TestSubFeatureA:
+        """Tests for sub-feature A."""
+        
+        def test_sub_feature_a_behavior(self):
+            """Test sub-feature A behavior."""
+            pass
+    
+    class TestSubFeatureB:
+        """Tests for sub-feature B."""
+        
+        def test_sub_feature_b_behavior(self):
+            """Test sub-feature B behavior."""
+            pass
+{% endblock %}
+
+{% block structure_docstrings %}
+# Comprehensive Docstrings - Clear test documentation
+#
+# Module-level docstring (see structure_module_docs block)
+
+# Test function with descriptive docstring
+def test_user_registration():
+    """
+    Test user registration with valid credentials.
+    
+    Verifies that a new user can register with valid email and password,
+    and that the user is created in the database with correct attributes.
+    """
+    pass
+
+# Test class with detailed docstring
+class TestUserAuthentication:
+    """
+    Test suite for user authentication.
+    
+    Tests cover:
+    - Login with valid credentials
+    - Login with invalid credentials
+    - Session management
+    - Token validation
+    """
+    
+    def test_login_success(self):
+        """Test successful login with valid credentials."""
+        pass
+    
+    def test_login_failure(self):
+        """
+        Test login failure with invalid credentials.
+        
+        Verifies that:
+        - Invalid credentials are rejected
+        - Appropriate error message is returned
+        - Login attempts are logged
+        """
+        pass
+
+# Fixture docstrings
+@pytest.fixture
+def user_credentials():
+    """
+    Provide test user credentials.
+    
+    Returns:
+        dict: Dictionary with 'email' and 'password' keys.
+    """
+    return {"email": "test@example.com", "password": "secure123"}
+{% endblock %}
+
+{% block structure_aaa %}
+# AAA Pattern - Arrange, Act, Assert structure
+#
+def test_user_creation_aaa_pattern():
+    """Test user creation following AAA pattern."""
+    # Arrange - Setup test data and preconditions
+    username = "test_user"
+    email = "test@example.com"
+    expected_role = "user"
+    
+    # Act - Execute the functionality being tested
+    user = create_user(username=username, email=email)
+    
+    # Assert - Verify the expected outcome
+    assert user.username == username
+    assert user.email == email
+    assert user.role == expected_role
+
+# AAA with explicit comments
+def test_password_validation():
+    """Test password validation with AAA comments."""
+    # Arrange
+    valid_password = "SecureP@ss123"
+    invalid_password = "weak"
+    
+    # Act
+    valid_result = validate_password(valid_password)
+    invalid_result = validate_password(invalid_password)
+    
+    # Assert
+    assert valid_result is True
+    assert invalid_result is False
+
+# AAA with setup/cleanup
+@pytest.mark.asyncio
+async def test_async_operation():
+    """Test async operation with setup and cleanup."""
+    # Arrange
+    connection = await create_connection()
+    test_data = {"key": "value"}
+    
+    try:
+        # Act
+        result = await connection.execute(test_data)
+        
+        # Assert
+        assert result.status == "success"
+        assert result.data == test_data
+    finally:
+        # Cleanup
+        await connection.close()
+
+# AAA with multiple assertions grouped
+def test_data_transformation():
+    """Test data transformation with grouped assertions."""
+    # Arrange
+    input_data = [1, 2, 3, 4, 5]
+    
+    # Act
+    result = transform_data(input_data)
+    
+    # Assert - Structure
+    assert isinstance(result, dict)
+    assert "values" in result
+    assert "metadata" in result
+    
+    # Assert - Values
+    assert len(result["values"]) == 5
+    assert result["metadata"]["count"] == 5
+{% endblock %}
+
+{% block structure_module_docs %}
+# Module Documentation - Comprehensive module-level docs
+#
+"""
+Unit tests for user management functionality.
+
+Tests the user creation, authentication, and profile management
+features according to TDD principles. Covers happy paths, edge cases,
+and error conditions.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, user_module, database, authentication]
+@responsibilities:
+    - Test user CRUD operations
+    - Verify authentication flows
+    - Validate input validation
+    - Cover edge cases and error handling
+"""
+
+# Alternative compact format
+"""
+Unit tests for ComponentName.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, component_module]
+@responsibilities:
+    - Test core functionality
+    - Verify edge cases
+"""
+
+# Integration test documentation
+"""
+Integration tests for API endpoints.
+
+Tests the REST API endpoints with real database connections and
+external service interactions. Focuses on end-to-end workflows.
+
+@layer: Tests (Integration)
+@dependencies: [pytest, fastapi, database, redis, external_api]
+@responsibilities:
+    - Test complete request/response cycles
+    - Verify database transactions
+    - Test external service integration
+    - Validate error handling and rollback
+"""
+
+# Import organization with comments
+# Standard library
+import json
+from pathlib import Path
+from typing import Any, Dict
+
+# Third-party
+import pytest
+from pydantic import ValidationError
+
+# Project modules
+from backend.users import UserService
+from backend.auth import AuthenticationManager
+{% endblock %}
