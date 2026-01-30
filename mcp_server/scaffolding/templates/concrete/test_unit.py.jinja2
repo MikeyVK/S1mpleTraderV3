@@ -42,14 +42,15 @@ Unit tests for {{ module_under_test }}.
 {# Override imports_section to use tier3 patterns #}
 {% block imports_section %}
 # Standard library
-from pathlib import Path
 {% if has_async_tests | default(False) %}
 {{ async_p.pattern_async_imports() | trim }}
 {% endif %}
 {% if has_mocks | default(True) %}
 {{ mocking_p.pattern_mock_imports() | trim }}
 {% endif %}
-from typing import Any{% if has_async_tests | default(False) %}, Awaitable{% endif %}
+{% if not has_async_tests | default(False) %}
+from typing import Any
+{% endif %}
 
 # Third-party
 {{ pytest_p.pattern_pytest_imports() | trim }}
@@ -117,4 +118,4 @@ class {{ test_class_name }}:
         {{ structure_p.pattern_aaa_comment("Assert") | trim }}
         assert result == expected_output
     {% endif %}
-{% endblock %}
+{%- endblock %}
