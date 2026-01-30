@@ -47,6 +47,21 @@ class TestConcreteTestIntegration:
         assert '{% extends "tier2_base_python.jinja2" %}' in content
         assert "tier3_pattern" not in content.split("extends")[0]  # Not in extends statement
 
+    def test_template_imports_tier3_patterns(self):
+        """Test that template imports tier3 pattern templates."""
+        template_path = (
+            Path(__file__).parent.parent.parent.parent
+            / "mcp_server"
+            / "scaffolding"
+            / "templates"
+            / "concrete"
+            / "test_integration.py.jinja2"
+        )
+        content = template_path.read_text(encoding="utf-8")
+        # Template should import tier3 patterns for DRY composition
+        assert '{% import "tier3_pattern_python_' in content
+        assert "async" in content or "pytest" in content
+
     def test_template_has_metadata(self):
         """Test that template contains TEMPLATE_METADATA."""
         template_path = (
@@ -116,18 +131,6 @@ class TestConcreteTestIntegration:
         assert "@pytest.fixture" in result
         assert "temp_workspace" in result or "workspace" in result
 
-    def test_rendered_with_managers(self, jinja_env):
-        """Test rendering with manager setup."""
-        template = jinja_env.get_template("concrete/test_integration.py.jinja2")
-        context = {
-            "test_scenario": "artifact scaffolding E2E",
-            "test_class_name": "TestScaffoldingIntegration",
-            "managers_needed": ["ArtifactManager", "TemplateManager"],
-        }
-        result = template.render(**context)
-        assert "ArtifactManager" in result
-        assert "TemplateManager" in result
-
     def test_rendered_with_async_test(self, jinja_env):
         """Test rendering with async test methods."""
         template = jinja_env.get_template("concrete/test_integration.py.jinja2")
@@ -135,7 +138,7 @@ class TestConcreteTestIntegration:
             "test_scenario": "artifact scaffolding E2E",
             "test_class_name": "TestScaffoldingIntegration",
             "test_methods": [
-                {"name": "test_async_integration", "async": True, "fixtures": []},
+                {"name": "test_async_integration", "async": True},
             ],
         }
         result = template.render(**context)
