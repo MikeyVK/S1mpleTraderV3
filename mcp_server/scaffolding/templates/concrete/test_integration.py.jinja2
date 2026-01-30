@@ -1,0 +1,149 @@
+{# TEMPLATE_METADATA:
+  name: test_integration
+  tier: concrete
+  category: test
+  enforcement: GUIDELINE
+  cherry_picks: [pytest, assertions, test_fixtures, test_structure, async]
+  description: >
+    Concrete template for integration/E2E test files.
+    Cherry-picks 5 tier3 patterns for full-stack scenario testing.
+#}
+{% extends "tier2_base_python.jinja2" %}
+
+{# Module docstring with scenario-based documentation #}
+{% block module_docstring %}
+"""
+Integration tests for {{ test_scenario }}.
+
+{{ test_description | default('E2E scenario testing for ' ~ test_scenario ~ '.') }}
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pytest-asyncio, tempfile{% if managers_needed %}, {{ managers_needed | join(', ') }}{% endif %}]
+@responsibilities:
+    - Test end-to-end {{ test_scenario }}
+    - Verify full-stack integration
+    - Validate file system interactions
+"""
+{% endblock %}
+
+{# Override imports_section for integration-specific imports #}
+{% block imports_section %}
+# Standard library
+import tempfile
+from pathlib import Path
+{% if workspace_fixture | default(True) %}
+import shutil
+{% endif %}
+import asyncio
+
+# Third-party
+import pytest
+
+# Project modules
+{% if managers_needed %}
+{% for manager in managers_needed %}
+from {{ manager.split('.')[-1] | lower if '.' in manager else 'mcp_server.managers' }} import {{ manager }}
+{% endfor %}
+{% endif %}
+
+{% if workspace_fixture | default(True) %}
+# Test Fixtures
+
+@pytest.fixture
+def temp_workspace(tmp_path):
+    """Create temporary workspace for integration testing."""
+    workspace = tmp_path / "test_workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    
+    yield workspace
+    
+    # Cleanup
+    if workspace.exists():
+        shutil.rmtree(workspace)
+{% endif %}
+{% if fixtures %}
+{% for fixture in fixtures %}
+
+@pytest.fixture{% if fixture.scope %}(scope="{{ fixture.scope }}"){% endif %}
+def {{ fixture.name }}({% if fixture.dependencies %}{{ fixture.dependencies | join(', ') }}{% endif %}):
+    """{{ fixture.description | default('Fixture: ' ~ fixture.name) }}"""
+    {% if fixture.type == 'simple' %}
+    return {{ fixture.return_value | default('{}') }}
+    {% elif fixture.type == 'generator' %}
+    # Setup
+    resource = {{ fixture.setup | default('create_resource()') }}
+    
+    yield resource
+    
+    # Cleanup
+    {{ fixture.cleanup | default('resource.cleanup()') }}
+    {% elif fixture.type == 'factory' %}
+    def _factory({{ fixture.params | default('**kwargs') }}):
+        return {{ fixture.factory_call | default('create_object(**kwargs)') }}
+    return _factory
+    {% else %}
+    return {{ fixture.return_value | default('None') }}
+    {% endif %}
+{% endfor %}
+{% endif %}
+{% endblock %}
+
+{# Override class_structure block for scenario-based test class #}
+{% block class_structure %}
+
+class {{ test_class_name }}:
+    """Integration test suite for {{ test_scenario }}."""
+
+    {% if test_methods %}
+    {% for method in test_methods %}
+    {% if method.markers %}
+    {% for marker in method.markers %}
+    @pytest.mark.{{ marker }}
+    {% endfor %}
+    {% elif method.async %}
+    @pytest.mark.asyncio
+    {% endif %}
+    {% if method.async %}async {% endif %}def {{ method.name }}(
+        self{% if method.fixtures %},
+        {{ method.fixtures | join(',\n        ') }}{% endif %}{% if workspace_fixture | default(True) and 'temp_workspace' not in (method.fixtures or []) %},
+        temp_workspace{% endif %}
+    ){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
+        """{{ method.description | default('Test ' ~ method.name.replace('test_', '').replace('_', ' ')) }}."""
+        # Scenario Setup
+        {% if method.arrange %}
+        {{ method.arrange | indent(8) }}
+        {% else %}
+        # TODO: Set up integration test scenario
+        {% endif %}
+        
+        # Execute Integration
+        {% if method.act %}
+        {{ method.act | indent(8) }}
+        {% else %}
+        # TODO: Execute full-stack operation
+        {% endif %}
+        
+        # Verify Results
+        {% if method.assertions %}
+        {{ method.assertions | indent(8) }}
+        {% else %}
+        # TODO: Validate end-to-end behavior
+        assert True  # Replace with actual verifications
+        {% endif %}
+    
+    {% endfor %}
+    {% else %}
+    @pytest.mark.asyncio
+    async def test_integration_placeholder(self, temp_workspace):
+        """Placeholder integration test - replace with actual scenario."""
+        # Scenario Setup
+        test_file = temp_workspace / "test_output.txt"
+        
+        # Execute Integration
+        test_file.write_text("Integration test placeholder")
+        
+        # Verify Results
+        assert test_file.exists()
+        assert test_file.read_text() == "Integration test placeholder"
+    {% endif %}
+{% endblock %}
