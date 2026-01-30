@@ -115,9 +115,9 @@ class {{ test_class_name }}:
         {% else %}
         # TODO: Validate end-to-end behavior
         assert True  # Replace with actual verifications
-        {% endif %}
+        {% endif -%}
 
-    {% endfor %}
+    {%- endfor %}
     {% else %}
     @pytest.mark.asyncio
     async def test_integration_placeholder(self, temp_workspace):

@@ -102,9 +102,9 @@ class {{ test_class_name }}:
         {% else %}
         # TODO: Add assertions
         assert True  # Replace with actual assertions
-        {% endif %}
+        {% endif -%}
 
-    {% endfor %}
+    {%- endfor %}
     {% else %}
     def test_placeholder(self):
         """Placeholder test - replace with actual tests."""
