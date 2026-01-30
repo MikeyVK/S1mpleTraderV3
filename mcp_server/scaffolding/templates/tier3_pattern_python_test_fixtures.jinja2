@@ -1,0 +1,204 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_test_fixtures
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [test_unit, test_integration]
+  provides_blocks: [fixtures_simple, fixtures_generator, fixtures_composition, fixtures_conftest]
+  description: >
+    Tier 3 pattern template for pytest fixture patterns.
+    Provides composable blocks for different fixture strategies.
+#}
+
+{% block fixtures_simple %}
+# Simple Fixtures - Basic fixture patterns
+#
+import pytest
+
+# Simple fixture returning a value
+@pytest.fixture
+def sample_data():
+    """Provide sample test data."""
+    return {"id": 1, "name": "test"}
+
+# Fixture with scope
+@pytest.fixture(scope="module")
+def database_connection():
+    """Create database connection for entire module."""
+    conn = create_connection()
+    return conn
+
+# Fixture with parameters
+@pytest.fixture
+def config(tmp_path):
+    """Create test configuration."""
+    config_file = tmp_path / "config.json"
+    config_file.write_text('{"debug": true}')
+    return config_file
+
+# Fixture with autouse
+@pytest.fixture(autouse=True)
+def reset_state():
+    """Reset global state before each test."""
+    global_state.reset()
+
+# Named fixture (explicit name)
+@pytest.fixture(name="custom_name")
+def fixture_with_custom_name():
+    """Fixture with custom name."""
+    return "value"
+{% endblock %}
+
+{% block fixtures_generator %}
+# Generator Fixtures - Setup/teardown with yield
+#
+# Basic generator fixture
+@pytest.fixture
+def temp_file(tmp_path):
+    """Create temporary file and cleanup after test."""
+    file_path = tmp_path / "test.txt"
+    file_path.write_text("test data")
+    
+    yield file_path
+    
+    # Cleanup (runs after test)
+    if file_path.exists():
+        file_path.unlink()
+
+# Generator fixture with resource management
+@pytest.fixture
+def database_session():
+    """Create database session with automatic cleanup."""
+    session = SessionFactory()
+    session.begin()
+    
+    yield session
+    
+    # Rollback and close
+    session.rollback()
+    session.close()
+
+# Generator fixture with exception handling
+@pytest.fixture
+def api_client():
+    """Create API client with cleanup."""
+    client = APIClient()
+    try:
+        client.connect()
+        yield client
+    finally:
+        # Always cleanup, even if test fails
+        client.disconnect()
+
+# Generator with multiple cleanup steps
+@pytest.fixture
+def complex_setup():
+    """Complex setup with multiple resources."""
+    resource1 = create_resource1()
+    resource2 = create_resource2()
+    
+    yield (resource1, resource2)
+    
+    # Cleanup in reverse order
+    resource2.cleanup()
+    resource1.cleanup()
+{% endblock %}
+
+{% block fixtures_composition %}
+# Fixture Composition - Building fixtures from other fixtures
+#
+# Fixture depending on another fixture
+@pytest.fixture
+def user(database_session):
+    """Create test user in database."""
+    user = User(name="test_user")
+    database_session.add(user)
+    database_session.commit()
+    return user
+
+# Multiple fixture dependencies
+@pytest.fixture
+def authenticated_client(api_client, user):
+    """Create authenticated API client."""
+    api_client.authenticate(user.token)
+    return api_client
+
+# Fixture factory pattern
+@pytest.fixture
+def make_user(database_session):
+    """Factory fixture for creating multiple users."""
+    users = []
+    
+    def _make_user(name, email):
+        user = User(name=name, email=email)
+        database_session.add(user)
+        users.append(user)
+        return user
+    
+    yield _make_user
+    
+    # Cleanup all created users
+    for user in users:
+        database_session.delete(user)
+
+# Fixture with request parameter
+@pytest.fixture
+def environment(request):
+    """Parameterized environment fixture."""
+    env_name = request.param
+    env = Environment(env_name)
+    yield env
+    env.cleanup()
+
+# Indirect parametrization
+@pytest.fixture
+def user_role(request):
+    """Fixture for different user roles."""
+    return request.param
+{% endblock %}
+
+{% block fixtures_conftest %}
+# Conftest Patterns - Shared fixtures in conftest.py
+#
+# conftest.py structure:
+"""
+# tests/conftest.py or tests/unit/conftest.py
+
+import pytest
+
+# Package-level fixtures (available to all tests in directory)
+@pytest.fixture(scope="session")
+def app_config():
+    '''Load application configuration once per session.'''
+    return load_config("test_config.yaml")
+
+@pytest.fixture(scope="module")
+def shared_resource():
+    '''Create resource shared across module.'''
+    resource = expensive_setup()
+    yield resource
+    resource.cleanup()
+
+@pytest.fixture
+def common_fixture():
+    '''Commonly used fixture across tests.'''
+    return {"common": "data"}
+
+# Fixture with pytest hooks
+def pytest_configure(config):
+    '''Configure pytest before test run.'''
+    config.addinivalue_line("markers", "slow: mark test as slow")
+
+def pytest_collection_modifyitems(config, items):
+    '''Modify test collection.'''
+    for item in items:
+        if "integration" in item.nodeid:
+            item.add_marker(pytest.mark.integration)
+"""
+
+# Using conftest fixtures in test files:
+def test_with_conftest_fixtures(app_config, common_fixture):
+    """Test using fixtures from conftest.py"""
+    assert app_config is not None
+    assert common_fixture["common"] == "data"
+{% endblock %}
