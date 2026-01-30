@@ -1,0 +1,115 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_assertions
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [test_unit, test_integration]
+  provides_blocks: [assertions_basic, assertions_exceptions, assertions_type, assertions_context]
+  description: >
+    Tier 3 pattern template for pytest assertion patterns.
+    Provides composable blocks for different assertion types used in testing.
+#}
+
+{% block assertions_basic %}
+# Basic Assertions - Equality, Membership, Identity, Boolean
+#
+# Equality assertions
+assert result == expected
+assert value != other_value
+assert x is None
+assert y is not None
+
+# Membership assertions
+assert "text" in content
+assert item not in collection
+assert key in dictionary
+
+# Collection checks
+assert len(items) > 0
+assert len(collection) == 5
+assert any(condition for item in items)
+assert all(item.valid for item in items)
+
+# Boolean assertions
+assert result
+assert not failed
+assert condition is True
+assert flag is False
+{% endblock %}
+
+{% block assertions_exceptions %}
+# Exception Assertions - pytest.raises patterns
+#
+# Simple exception check
+with pytest.raises(ValueError):
+    invalid_operation()
+
+# Exception with context (exc_info) for detailed validation
+with pytest.raises(ValueError) as exc_info:
+    function_call()
+assert "error message" in str(exc_info.value)
+assert exc_info.value.args[0] == "Expected error"
+
+# Exception with match parameter (regex pattern)
+with pytest.raises(ValidationError, match="Invalid format"):
+    validation_function()
+
+# Multiple exception types
+with pytest.raises((ValueError, TypeError)):
+    risky_operation()
+
+# No exception expected (implicit - function completes normally)
+result = safe_operation()  # Should not raise
+{% endblock %}
+
+{% block assertions_type %}
+# Type Assertions - isinstance and type checking patterns
+#
+# Basic type checks
+assert isinstance(result, ToolResult)
+assert isinstance(schema, dict)
+assert isinstance(files_arg, list)
+assert isinstance(value, str)
+
+# Collection element type checks
+assert isinstance(validators[0], MockValidator)
+assert all(isinstance(item, int) for item in numbers)
+
+# Multiple types (union)
+assert isinstance(value, (str, int))
+assert isinstance(result, (dict, list))
+
+# Type validation with additional checks
+assert isinstance(config, dict)
+assert "key" in config
+{% endblock %}
+
+{% block assertions_context %}
+# Context Manager Assertions - with statements and context managers
+#
+# File operations with context manager
+with tempfile.NamedTemporaryFile() as tmp_file:
+    tmp_file.write(b"test data")
+    tmp_file.flush()
+    assert Path(tmp_file.name).exists()
+
+# Mock/patch context managers
+with patch("module.function", return_value="mocked"):
+    result = function_under_test()
+    assert result == "expected"
+
+# pytest context managers
+with pytest.warns(DeprecationWarning, match="deprecated"):
+    deprecated_function()
+
+# Multiple context managers
+with patch("pathlib.Path.exists", return_value=True), \
+     patch("pathlib.Path.read_text", return_value="content"):
+    result = process_file()
+    assert result is not None
+
+# Custom context manager with validation
+with resource_manager() as resource:
+    resource.perform_operation()
+    assert resource.state == "active"
+{% endblock %}
