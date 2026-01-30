@@ -67,7 +67,7 @@ from typing import {{ type_imports | join(', ') }}
 {%- endfor %}
 {%- endif %}
 
-{% endblock %}
+{%- endblock %}
 
 {% block class_structure %}
 class {{ class_name }}{% if base_classes %}({{ base_classes | join(', ') }}){% endif %}:
@@ -93,4 +93,4 @@ class {{ class_name }}{% if base_classes %}({{ base_classes | join(', ') }}){% e
 {% endfor -%}
 {% endif -%}
 {% endblock -%}
-{% endblock %}
+{%- endblock -%}
