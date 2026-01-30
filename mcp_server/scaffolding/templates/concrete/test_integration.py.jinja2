@@ -3,10 +3,17 @@
   tier: concrete
   category: test
   enforcement: GUIDELINE
-  cherry_picks: [pytest, assertions, test_fixtures, test_structure, async]
+  cherry_picks: [pytest, async, test_structure]
   description: >
     Concrete template for integration/E2E test files.
-    Cherry-picks 5 tier3 patterns for full-stack scenario testing via {% import %}.
+    Cherry-picks 3 tier3 patterns for DRY full-stack scenario testing via {% import %}.
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Use tier3 macros for pytest imports and AAA comments (truly DRY)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with hard-coded logic (NOT DRY)"
 #}
 {% extends "tier2_base_python.jinja2" %}
 
@@ -42,7 +49,7 @@ import shutil
 {{ async_p.pattern_async_imports() | trim }}
 
 # Third-party
-import pytest
+{{ pytest_p.pattern_pytest_imports() | trim }}
 
 # Project modules
 {% if managers_needed %}
@@ -89,21 +96,21 @@ class {{ test_class_name }}:
         temp_workspace{% endif %}
     ){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
         """{{ method.description | default('Test ' ~ method.name.replace('test_', '').replace('_', ' ')) }}."""
-        # Scenario Setup
+        {{ structure_p.pattern_aaa_comment("Arrange") | trim }}
         {% if method.arrange %}
         {{ method.arrange | indent(8) }}
         {% else %}
         # TODO: Set up integration test scenario
         {% endif %}
 
-        # Execute Integration
+        {{ structure_p.pattern_aaa_comment("Act") | trim }}
         {% if method.act %}
         {{ method.act | indent(8) }}
         {% else %}
         # TODO: Execute full-stack operation
         {% endif %}
 
-        # Verify Results
+        {{ structure_p.pattern_aaa_comment("Assert") | trim }}
         {% if method.assertions %}
         {{ method.assertions | indent(8) }}
         {% else %}
@@ -116,13 +123,13 @@ class {{ test_class_name }}:
     @pytest.mark.asyncio
     async def test_integration_placeholder(self, temp_workspace):
         """Placeholder integration test - replace with actual scenario."""
-        # Scenario Setup
+        {{ structure_p.pattern_aaa_comment("Arrange") | trim }}
         test_file = temp_workspace / "test_output.txt"
 
-        # Execute Integration
+        {{ structure_p.pattern_aaa_comment("Act") | trim }}
         test_file.write_text("Integration test placeholder")
 
-        # Verify Results
+        {{ structure_p.pattern_aaa_comment("Assert") | trim }}
         assert test_file.exists()
         assert test_file.read_text() == "Integration test placeholder"
     {% endif %}

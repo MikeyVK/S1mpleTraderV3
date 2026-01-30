@@ -3,10 +3,17 @@
   tier: concrete
   category: test
   enforcement: GUIDELINE
-  cherry_picks: [pytest, assertions, mocking, test_fixtures, test_structure, async]
+  cherry_picks: [pytest, async, mocking, test_structure]
   description: >
     Concrete template for unit test files.
-    Cherry-picks 6 tier3 test patterns for comprehensive test structure via {% import %}.
+    Cherry-picks 4 tier3 test patterns for DRY test structure via {% import %}.
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Use tier3 macros for imports and AAA comments (truly DRY)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with hard-coded logic (NOT DRY)"
 #}
 {% extends "tier2_base_python.jinja2" %}
 
@@ -14,6 +21,7 @@
 {% import "tier3_pattern_python_pytest.jinja2" as pytest_p %}
 {% import "tier3_pattern_python_test_structure.jinja2" as structure_p %}
 {% import "tier3_pattern_python_async.jinja2" as async_p %}
+{% import "tier3_pattern_python_mocking.jinja2" as mocking_p %}
 
 {# Module docstring with test-specific documentation #}
 {% block module_docstring %}
@@ -39,12 +47,12 @@ from pathlib import Path
 {{ async_p.pattern_async_imports() | trim }}
 {% endif %}
 {% if has_mocks | default(True) %}
-from unittest.mock import MagicMock, Mock, AsyncMock, patch
+{{ mocking_p.pattern_mock_imports() | trim }}
 {% endif %}
 from typing import Any{% if has_async_tests | default(False) %}, Awaitable{% endif %}
 
 # Third-party
-import pytest
+{{ pytest_p.pattern_pytest_imports() | trim }}
 {% if has_pydantic %}
 from pydantic import ValidationError
 {% endif %}
@@ -73,21 +81,21 @@ class {{ test_class_name }}:
         {{ method.fixtures | join(',\n        ') }}{% endif %}
     ){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
         """{{ method.description | default('Test ' ~ method.name.replace('test_', '').replace('_', ' ')) }}."""
-        # Arrange - Setup test data and preconditions
+        {{ structure_p.pattern_aaa_comment("Arrange") | trim }}
         {% if method.arrange %}
         {{ method.arrange | indent(8) }}
         {% else %}
         # TODO: Set up test data
         {% endif %}
 
-        # Act - Execute the functionality being tested
+        {{ structure_p.pattern_aaa_comment("Act") | trim }}
         {% if method.act %}
         {{ method.act | indent(8) }}
         {% else %}
         # TODO: Execute function under test
         {% endif %}
 
-        # Assert - Verify the expected outcome
+        {{ structure_p.pattern_aaa_comment("Assert") | trim }}
         {% if method.assertions %}
         {{ method.assertions | indent(8) }}
         {% else %}
@@ -99,14 +107,14 @@ class {{ test_class_name }}:
     {% else %}
     def test_placeholder(self):
         """Placeholder test - replace with actual tests."""
-        # Arrange
+        {{ structure_p.pattern_aaa_comment("Arrange") | trim }}
         test_input = None
         expected_output = None
 
-        # Act
+        {{ structure_p.pattern_aaa_comment("Act") | trim }}
         result = None  # Call function under test
 
-        # Assert
+        {{ structure_p.pattern_aaa_comment("Assert") | trim }}
         assert result == expected_output
     {% endif %}
 {% endblock %}

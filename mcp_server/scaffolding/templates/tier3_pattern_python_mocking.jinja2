@@ -4,153 +4,20 @@
   category: pattern
   enforcement: ARCHITECTURAL
   used_by: [test_unit, test_integration]
-  provides_blocks: [mocking_basic, mocking_patch, mocking_monkeypatch, mocking_assertions]
+  provides_macros: [pattern_mock_imports]
   description: >
     Tier 3 pattern template for mocking and patching in pytest.
-    Provides composable blocks for different mocking strategies.
+    Provides composable macros for mock imports.
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Refactor from {% block %} to {% macro %} for true DRY composition"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with blocks (NOT DRY)"
 #}
 
-{% block mocking_basic %}
-# Basic Mocking - Mock, MagicMock, AsyncMock
-#
-# Import mocks
-from unittest.mock import Mock, MagicMock, AsyncMock
-
-# Create basic mock
-mock_obj = Mock()
-mock_obj.method.return_value = "mocked_value"
-result = mock_obj.method()
-assert result == "mocked_value"
-
-# MagicMock with attributes
-mock_manager = MagicMock()
-mock_manager.config.timeout = 30
-mock_manager.process.return_value = {"status": "success"}
-
-# AsyncMock for async functions
-mock_async = AsyncMock(return_value="async_result")
-result = await mock_async()
-
-# Mock with side_effect for exceptions
-mock_func = Mock(side_effect=ValueError("Error"))
-with pytest.raises(ValueError):
-    mock_func()
-
-# Mock with side_effect for multiple calls
-mock_multi = Mock(side_effect=["first", "second", "third"])
-assert mock_multi() == "first"
-assert mock_multi() == "second"
-{% endblock %}
-
-{% block mocking_patch %}
-# Patch Decorator - @patch, patch.object, patch context manager
-#
-from unittest.mock import patch
-
-# Simple patch with decorator
-@patch("module.function")
-def test_function(mock_func):
-    mock_func.return_value = "mocked"
-    result = function_under_test()
-    assert result == "expected"
-
-# Patch with return_value
-@patch("pathlib.Path.exists", return_value=True)
-def test_path_exists(mock_exists):
-    assert Path("file.txt").exists()
-    mock_exists.assert_called_once()
-
-# Multiple patches
-@patch("module.second_func")
-@patch("module.first_func")
-def test_multiple(mock_first, mock_second):
-    # Note: decorators apply bottom-to-top
-    mock_first.return_value = "first"
-    mock_second.return_value = "second"
-
-# Patch object method
-with patch.object(obj, "method", return_value="mocked"):
-    result = obj.method()
-    assert result == "mocked"
-
-# Patch context manager (multiple patches)
-with patch("pathlib.Path.exists", return_value=True), \
-     patch("pathlib.Path.read_text", return_value="content"):
-    result = process_file()
-    assert result is not None
-
-# Patch with side_effect
-with patch("module.function", side_effect=mock_implementation):
-    result = function_under_test()
-{% endblock %}
-
-{% block mocking_monkeypatch %}
-# Monkeypatch Fixture - pytest monkeypatch for dynamic patching
-#
-# Monkeypatch attribute
-def test_with_monkeypatch(monkeypatch):
-    monkeypatch.setattr(module, "attribute", "new_value")
-    assert module.attribute == "new_value"
-
-# Monkeypatch environment variable
-def test_env_var(monkeypatch):
-    monkeypatch.setenv("API_KEY", "test_key")
-    assert os.getenv("API_KEY") == "test_key"
-
-# Monkeypatch dictionary
-def test_dict_patch(monkeypatch):
-    monkeypatch.setitem(config, "key", "value")
-    assert config["key"] == "value"
-
-# Monkeypatch delattr
-def test_delete_attr(monkeypatch):
-    monkeypatch.delattr(module, "attribute", raising=False)
-    assert not hasattr(module, "attribute")
-
-# Monkeypatch with context manager (pytest >= 7.0)
-def test_context_monkeypatch(monkeypatch):
-    with monkeypatch.context() as m:
-        m.setattr(module, "temp", "value")
-        assert module.temp == "value"
-    # Reverted after context
-{% endblock %}
-
-{% block mocking_assertions %}
-# Mock Assertions - Verify mock interactions
-#
-# Assert called
-mock.method.assert_called()
-mock.method.assert_called_once()
-mock.method.assert_not_called()
-
-# Assert called with specific arguments
-mock.method.assert_called_with("arg1", "arg2", kwarg="value")
-mock.method.assert_called_once_with("arg1", kwarg="value")
-
-# Assert any call with arguments
-from unittest.mock import call
-mock.method.assert_any_call("arg1")
-assert call("arg1") in mock.method.call_args_list
-
-# Call count
-assert mock.method.call_count == 3
-
-# Call arguments inspection
-args, kwargs = mock.method.call_args
-assert args == ("arg1", "arg2")
-assert kwargs == {"kwarg": "value"}
-
-# All calls inspection
-calls = mock.method.call_args_list
-assert len(calls) == 2
-assert calls[0] == call("first")
-assert calls[1] == call("second")
-
-# Reset mock
-mock.reset_mock()
-assert mock.method.call_count == 0
-
-# Mock return value assertion
-mock.configure_mock(return_value="expected")
-assert mock() == "expected"
-{% endblock %}
+{# Macro: Generate mock imports #}
+{% macro pattern_mock_imports() %}
+from unittest.mock import Mock, MagicMock, AsyncMock, patch
+{% endmacro %}
