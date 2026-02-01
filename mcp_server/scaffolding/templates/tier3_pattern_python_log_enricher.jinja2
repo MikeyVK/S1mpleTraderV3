@@ -8,12 +8,20 @@
     - pattern_log_enricher_imports
     - pattern_log_enricher_set_logger
     - pattern_log_enricher_child
+    - pattern_log_enricher_setup
+    - pattern_log_enricher_match
+    - pattern_log_enricher_filter
+    - pattern_log_enricher_policy
+    - pattern_log_enricher_result
+    - pattern_log_enricher_trade
 #}
 
 {#-
 Tier 3 Pattern: LogEnricher
 - Macro library only: no extends, no blocks
 - Use message keys (i18n) instead of user-facing strings
+- Prefer LogEnricher convenience methods (setup/match/filter/policy/result/trade)
+  as implemented in backend/utils/app_logger.py.
 -#}
 
 {% macro pattern_log_enricher_imports() -%}
@@ -29,4 +37,28 @@ child_logger = LogEnricher(
     self.logger.logger,
     indent=self.logger.extra.get("indent", 0) + {{ indent_delta }},
 )
+{%- endmacro %}
+
+{% macro pattern_log_enricher_setup(message_key="log.unknown", values="") -%}
+self.logger.setup("{{ message_key }}"{% if values %}, {{ values }}{% endif %})
+{%- endmacro %}
+
+{% macro pattern_log_enricher_match(message_key="log.unknown", values="") -%}
+self.logger.match("{{ message_key }}"{% if values %}, {{ values }}{% endif %})
+{%- endmacro %}
+
+{% macro pattern_log_enricher_filter(message_key="log.unknown", values="") -%}
+self.logger.filter("{{ message_key }}"{% if values %}, {{ values }}{% endif %})
+{%- endmacro %}
+
+{% macro pattern_log_enricher_policy(message_key="log.unknown", values="") -%}
+self.logger.policy("{{ message_key }}"{% if values %}, {{ values }}{% endif %})
+{%- endmacro %}
+
+{% macro pattern_log_enricher_result(message_key="log.unknown", values="") -%}
+self.logger.result("{{ message_key }}"{% if values %}, {{ values }}{% endif %})
+{%- endmacro %}
+
+{% macro pattern_log_enricher_trade(message_key="log.unknown", values="") -%}
+self.logger.trade("{{ message_key }}"{% if values %}, {{ values }}{% endif %})
 {%- endmacro %}

@@ -74,12 +74,21 @@ class TestTier3PatternPythonLogEnricher:
         assert "tier: 3" in content
         assert "category: pattern" in content
 
+        # Core macros
         assert "{% macro pattern_log_enricher_imports" in content
         assert "{% macro pattern_log_enricher_set_logger" in content
         assert "{% macro pattern_log_enricher_child" in content
 
+        # Backend-aligned convenience methods (see backend/utils/app_logger.py)
+        assert "{% macro pattern_log_enricher_setup" in content
+        assert "{% macro pattern_log_enricher_match" in content
+        assert "{% macro pattern_log_enricher_filter" in content
+        assert "{% macro pattern_log_enricher_policy" in content
+        assert "{% macro pattern_log_enricher_result" in content
+        assert "{% macro pattern_log_enricher_trade" in content
+
     def test_macros_render_expected_tokens(self, jinja_env):
-        """Rendered macros contain expected LogEnricher tokens."""
+        """Rendered macros contain expected LogEnricher usage tokens."""
         template = jinja_env.get_template("tier3_pattern_python_log_enricher.jinja2")
 
         imports_rendered = getattr(template.module, "pattern_log_enricher_imports")()
@@ -90,7 +99,55 @@ class TestTier3PatternPythonLogEnricher:
             indent_delta=1,
         )
 
+        setup_rendered = getattr(template.module, "pattern_log_enricher_setup")(
+            message_key="log.setup.example",
+            values="worker_name=worker_name",
+        )
+        match_rendered = getattr(template.module, "pattern_log_enricher_match")(
+            message_key="log.match.example",
+            values="symbol=symbol",
+        )
+        filter_rendered = getattr(template.module, "pattern_log_enricher_filter")(
+            message_key="log.filter.example",
+            values="count=count",
+        )
+        policy_rendered = getattr(template.module, "pattern_log_enricher_policy")(
+            message_key="log.policy.example",
+            values="rule=rule",
+        )
+        result_rendered = getattr(template.module, "pattern_log_enricher_result")(
+            message_key="log.result.example",
+            values="ok=ok",
+        )
+        trade_rendered = getattr(template.module, "pattern_log_enricher_trade")(
+            message_key="log.trade.example",
+            values="trade_id=trade_id",
+        )
+
         assert "LogEnricher" in imports_rendered
         assert "self.logger" in set_rendered
+
+        # Child logger pattern: keep same underlying logger; bump indent
         assert "LogEnricher" in child_rendered
+        assert "self.logger.logger" in child_rendered
+        assert "self.logger.extra" in child_rendered
         assert "indent" in child_rendered
+
+        # Backend convenience methods
+        assert "self.logger.setup(\"log.setup.example\"" in setup_rendered
+        assert "worker_name=worker_name" in setup_rendered
+
+        assert "self.logger.match(\"log.match.example\"" in match_rendered
+        assert "symbol=symbol" in match_rendered
+
+        assert "self.logger.filter(\"log.filter.example\"" in filter_rendered
+        assert "count=count" in filter_rendered
+
+        assert "self.logger.policy(\"log.policy.example\"" in policy_rendered
+        assert "rule=rule" in policy_rendered
+
+        assert "self.logger.result(\"log.result.example\"" in result_rendered
+        assert "ok=ok" in result_rendered
+
+        assert "self.logger.trade(\"log.trade.example\"" in trade_rendered
+        assert "trade_id=trade_id" in trade_rendered
