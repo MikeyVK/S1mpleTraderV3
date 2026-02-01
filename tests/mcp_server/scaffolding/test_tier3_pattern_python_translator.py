@@ -75,7 +75,11 @@ class TestTier3PatternPythonTranslator:
         assert "category: pattern" in content
 
         assert "{% macro pattern_translator_imports" in content
+
+        # Backend-aligned usage (see backend/utils/translator.py)
         assert "{% macro pattern_translator_get" in content
+        assert "{% macro pattern_translator_get_param_name" in content
+
         assert "{% macro pattern_translator_key_guideline" in content
 
     def test_macros_render_expected_tokens(self, jinja_env):
@@ -84,8 +88,15 @@ class TestTier3PatternPythonTranslator:
 
         imports_rendered = getattr(template.module, "pattern_translator_imports")()
         get_rendered = getattr(template.module, "pattern_translator_get")(
-            key="app.start",
-            default="app.start",
+            key_expr="key",
+            default_expr="key",
+        )
+        get_param_name_rendered = getattr(
+            template.module,
+            "pattern_translator_get_param_name",
+        )(
+            param_path_expr="param_path",
+            default_expr="param_path",
         )
         guideline_rendered = getattr(
             template.module,
@@ -93,7 +104,14 @@ class TestTier3PatternPythonTranslator:
         )()
 
         assert "Translator" in imports_rendered
+
         assert "translator.get" in get_rendered
-        assert "app.start" in get_rendered
+        assert "translator.get(key" in get_rendered
+        assert "default=key" in get_rendered
+
+        assert "translator.get_param_name" in get_param_name_rendered
+        assert "translator.get_param_name(param_path" in get_param_name_rendered
+        assert "default=param_path" in get_param_name_rendered
+
         assert "dot" in guideline_rendered
         assert "key" in guideline_rendered
