@@ -1,0 +1,76 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_lifecycle
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [worker, adapter]
+  provides_macros:
+    - pattern_lifecycle_imports
+    - pattern_lifecycle_base_class
+    - pattern_lifecycle_init
+    - pattern_lifecycle_initialize
+    - pattern_lifecycle_shutdown
+  description: >
+    IWorkerLifecycle pattern macro library.
+    Provides composable macros for two-phase initialization workers:
+    imports, base-class mixin list, cache field init, initialize(), shutdown().
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-01"
+      changes: "Initial macro library for lifecycle pattern"
+#}
+
+{# Macro: lifecycle imports #}
+{% macro pattern_lifecycle_imports(include_cache_type=true) %}
+from typing import Any
+
+from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInitializationError
+{% if include_cache_type %}
+from backend.core.interfaces.strategy_cache import IStrategyCache
+{% endif %}
+{% endmacro %}
+
+{# Macro: base class list segment for class Foo(<here>) #}
+{% macro pattern_lifecycle_base_class(include_iworker=true) %}
+{% if include_iworker %}IWorker, {% endif %}IWorkerLifecycle
+{% endmacro %}
+
+{# Macro: initialize cache field in __init__ (call with | indent(8) or similar) #}
+{% macro pattern_lifecycle_init(cache_attr="_cache") %}
+self.{{ cache_attr }}: "IStrategyCache | None" = None
+{% endmacro %}
+
+{# Macro: initialize() method (runtime dependency injection) #}
+{% macro pattern_lifecycle_initialize(cache_attr="_cache", validate_cache=false) %}
+def initialize(
+    self,
+    strategy_cache: "IStrategyCache | None" = None,
+    **capabilities: Any,
+) -> None:
+    """Initialize worker with runtime dependencies.
+
+    This method implements the V3 two-phase initialization pattern.
+
+    Args:
+        strategy_cache: Optional strategy cache; required for strategy-aware workers.
+        **capabilities: Optional runtime capabilities injected by bootstrap.
+
+    Raises:
+        WorkerInitializationError: If required dependencies are missing.
+    """
+    {% if validate_cache %}
+    if strategy_cache is None:
+        raise WorkerInitializationError("strategy_cache is required")
+    {% endif %}
+    self.{{ cache_attr }} = strategy_cache
+{% endmacro %}
+
+{# Macro: shutdown() method (idempotent cleanup) #}
+{% macro pattern_lifecycle_shutdown(cache_attr="_cache") %}
+def shutdown(self) -> None:
+    """Graceful shutdown and resource cleanup.
+
+    Must be idempotent and must not raise.
+    """
+    self.{{ cache_attr }} = None
+{% endmacro %}
