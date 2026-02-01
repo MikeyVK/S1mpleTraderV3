@@ -755,47 +755,51 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 #### Task 3.3: CODE Pattern Templates (9 templates)
 **Description:** Create 9 granular tier3 pattern templates for Python architectural patterns (SRP decomposition)
 
+**Terminology (2026-02-01):** Pattern templates are implemented as Jinja **macro libraries** and composed via `{% import %}`. Earlier planning used “Blocks”; read this as “exported macros”. Pattern templates must not use `{% extends %}` or `{% block %}` (outside comments).
+
 **Input:** Phase 2 Backend Pattern Catalog (12 patterns, 8 in tier3)
 
-**Status:** 🔄 **IN PROGRESS** (1/9 complete - async pattern done during Task 3.2)
+**Status:** ✅ **COMPLETE** (9/9 complete; backend-alignment refactors done via per-pattern TDD cycles; 2026-02-01)
 
 **Subtasks (9 × 2h = 18h):**
 - **3.3a:** `tier3_pattern_python_async.jinja2` - Async/Await pattern (2h)
-  - Blocks: `pattern_async_imports`, `pattern_async_methods`, `pattern_async_context_managers`
+  - Macros: `pattern_async_imports`, `pattern_async_methods`, `pattern_async_context_managers`
   - Used by: worker, adapter, service (3 templates)
 - **3.3b:** `tier3_pattern_python_lifecycle.jinja2` - IWorkerLifecycle pattern (2h)
-  - Blocks: `pattern_lifecycle_imports`, `pattern_lifecycle_base_class`, `pattern_lifecycle_init`, `pattern_lifecycle_initialize`, `pattern_lifecycle_shutdown`
+  - Macros: `pattern_lifecycle_imports`, `pattern_lifecycle_base_class`, `pattern_lifecycle_init`, `pattern_lifecycle_initialize`, `pattern_lifecycle_shutdown`
   - Used by: worker, adapter (2 templates)
 - **3.3c:** `tier3_pattern_python_pydantic.jinja2` - Pydantic DTO validation (2h)
-  - Blocks: `pattern_pydantic_base`, `pattern_pydantic_fields`, `pattern_pydantic_validators`, `pattern_pydantic_config`
+  - Macros: `pattern_pydantic_imports`, `pattern_pydantic_base_model`, `pattern_pydantic_config`, `pattern_pydantic_field`, `pattern_pydantic_validator`
   - Used by: dto, schema, config_schema (3 templates)
 - **3.3d:** `tier3_pattern_python_error.jinja2` - Error handling pattern (2h)
-  - Blocks: `pattern_error_imports`, `pattern_error_wrapper`, `pattern_error_custom_exceptions`
+  - Macros: `pattern_error_imports`, `pattern_error_raise`, `pattern_error_wrap`
   - Used by: worker, adapter, service, tool (4 templates)
 - **3.3e:** `tier3_pattern_python_logging.jinja2` - Logging infrastructure (2h)
-  - Blocks: `pattern_logging_imports`, `pattern_logging_setup`, `pattern_logging_calls`
+  - Macros: `pattern_logging_imports`, `pattern_logging_get_logger`, `pattern_logging_call`
   - Used by: ALL (9 templates) - Universal pattern
 - **3.3f:** `tier3_pattern_python_typed_id.jinja2` - Typed ID generation (2h)
-  - Blocks: `pattern_typed_id_imports`, `pattern_typed_id_methods`
+  - Macros: `pattern_typed_id_imports`, `pattern_typed_id_default_factory`, `pattern_typed_id_generate`
   - Used by: dto, schema (2 templates)
 - **3.3g:** `tier3_pattern_python_di.jinja2` - Dependency Injection via Capabilities (2h)
-  - Blocks: `pattern_di_imports`, `pattern_di_constructor`, `pattern_di_injection`
+  - Macros: `pattern_di_imports`, `pattern_di_require_dependency`, `pattern_di_require_capability`, `pattern_di_set_dependency`, `pattern_di_set_capability`
   - Used by: worker, adapter, service (3 templates)
 - **3.3h:** `tier3_pattern_python_log_enricher.jinja2` - LogEnricher context propagation (2h)
-  - Blocks: `pattern_log_enricher_imports`, `pattern_log_enricher_calls`
+  - Macros: `pattern_log_enricher_imports`, `pattern_log_enricher_set_logger`, `pattern_log_enricher_child`, `pattern_log_enricher_setup`, `pattern_log_enricher_match`, `pattern_log_enricher_filter`, `pattern_log_enricher_policy`, `pattern_log_enricher_result`, `pattern_log_enricher_trade`
   - Used by: worker, adapter (2 templates)
 - **3.3i:** `tier3_pattern_python_translator.jinja2` - Translator/i18n pattern (2h)
-  - Blocks: `pattern_translator_imports`, `pattern_translator_calls`, `pattern_translator_keys`
+  - Macros: `pattern_translator_imports`, `pattern_translator_get`, `pattern_translator_get_param_name`, `pattern_translator_key_guideline`
   - Used by: worker, adapter, service (3 templates)
 
 **Output:**
-- 9 standalone BLOCK LIBRARY templates (no `{% extends %}`, only block definitions)
+- 9 standalone MACRO LIBRARY templates (no `{% extends %}`, no `{% block %}`; composed via `{% import %}`)
 - Each template = 1 architectural pattern (SRP)
 - Enforcement: ARCHITECTURAL (validates pattern presence, not syntax)
+- Unit tests enforce macro-library constraints and key output tokens
 
 **Acceptance:**
 - All 9 pattern templates exist in `mcp_server/scaffolding/templates/`
 - Each pattern has `enforcement: ARCHITECTURAL` in TEMPLATE_METADATA
+- Each pattern has a unit test in `tests/mcp_server/scaffolding/`
 - worker.py can cherry-pick 7 patterns via `{% import %}`
 - tool.py can cherry-pick 2 patterns (lightweight composition)
 
