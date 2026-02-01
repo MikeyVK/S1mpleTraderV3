@@ -1,0 +1,29 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_logging
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  purpose: "Standard logging patterns (stdlib logging)"
+  exports:
+    - pattern_logging_imports
+    - pattern_logging_get_logger
+    - pattern_logging_call
+#}
+
+{#-
+Tier 3 Pattern: Logging
+- Macro library only: no extends, no blocks
+- Use message keys (i18n) instead of user-facing strings
+-#}
+
+{% macro pattern_logging_imports() -%}
+import logging
+{%- endmacro %}
+
+{% macro pattern_logging_get_logger(name="__name__") -%}
+logger = logging.getLogger({{ name }})
+{%- endmacro %}
+
+{% macro pattern_logging_call(level="info", message_key="log.unknown") -%}
+logger.{{ level }}("{{ message_key }}")
+{%- endmacro %}
