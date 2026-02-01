@@ -13,7 +13,6 @@ Templates are the Single Source of Truth - no manual field lists needed.
     - Filter system-injected fields from agent schema
     - Return structured TemplateSchema
 """
-# pylint: disable=too-many-locals
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,9 +51,9 @@ class TemplateSchema:
 
 
 def _find_imported_macro_names(ast: nodes.Template) -> set[str]:
-    """Return macro import aliases to exclude from agent schema.
+    """Return macro import symbols to exclude from agent schema.
 
-    Jinja2 `{% import ... as alias %}` and `{% from ... import macro as name %}`
+    Jinja2 `{% import ... as alias %}` and `{% from ... import ... as name %}`
     introduce symbols that are internal to the template, not agent-provided.
 
     Jinja2 meta introspection does not treat these as declared variables, so we
@@ -62,15 +61,23 @@ def _find_imported_macro_names(ast: nodes.Template) -> set[str]:
     """
     imported: set[str] = set()
 
-    for node in ast.find_all((nodes.Import, nodes.FromImport)):
-        if isinstance(node, nodes.Import):
+    for import_node in ast.find_all((nodes.Import, nodes.FromImport)):
+        if isinstance(import_node, nodes.Import):
             # `{% import "x" as alias %}`
-            if isinstance(node.target, str):
-                imported.add(node.target)
-        elif isinstance(node, nodes.FromImport):
+            target = import_node.target
+            if isinstance(target, nodes.Name):
+                imported.add(target.name)
+            elif isinstance(target, str):
+                imported.add(target)
+
+        elif isinstance(import_node, nodes.FromImport):
             # `{% from "x" import a as b, c %}`
-            for name, alias in node.names:
-                imported.add(alias or name)
+            for entry in import_node.names:
+                if isinstance(entry, tuple) and len(entry) == 2:
+                    name, alias = entry
+                    imported.add(alias or name)
+                else:
+                    imported.add(str(entry))
 
     return imported
 
@@ -166,9 +173,23 @@ def _classify_variables(
     return list(required_vars), list(optional_vars)
 
 
-def introspect_template_with_inheritance(
-    template_root: Path, template_path: str
-) -> TemplateSchema:
+def _parse_template_ast(env: jinja2.Environment, template_file: Path) -> nodes.Template:
+    """Parse a template file into a Jinja2 AST.
+
+    Raises:
+        ExecutionError: If template has invalid Jinja2 syntax
+    """
+    src = template_file.read_text(encoding="utf-8")
+    try:
+        return env.parse(src)
+    except jinja2.TemplateSyntaxError as exc:
+        raise ExecutionError(
+            f"Template syntax error in {template_file}: {exc}",
+            recovery=["Check template for valid Jinja2 syntax"],
+        ) from exc
+
+
+def introspect_template_with_inheritance(template_root: Path, template_path: str) -> TemplateSchema:
     """Extract validation schema from template WITH inheritance chain resolution.
 
     This is the Task 2.1 implementation - resolves entire inheritance chain
@@ -193,7 +214,6 @@ def introspect_template_with_inheritance(
     Raises:
         ExecutionError: If template has invalid syntax or chain cannot be resolved
     """
-    # Resolve full path
     full_path = template_root / template_path
 
     if not full_path.exists():
@@ -202,47 +222,23 @@ def introspect_template_with_inheritance(
             recovery=["Check template path", "Verify template_root is correct"],
         )
 
-    # Get inheritance chain using TemplateAnalyzer
-    analyzer = TemplateAnalyzer(template_root)
-    chain = analyzer.get_inheritance_chain(full_path)
+    chain = TemplateAnalyzer(template_root).get_inheritance_chain(full_path)
 
-    # Create Jinja2 environment with template loader
-    env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(template_root),
-    )
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_root))
 
-    # Collect all variables from entire chain
     all_vars: set[str] = set()
-
     for template_file in chain:
-        # Read template source
-        src = template_file.read_text(encoding="utf-8")
-
-        # Parse and extract variables
-        try:
-            ast = env.parse(src)
-        except jinja2.TemplateSyntaxError as e:
-            raise ExecutionError(
-                f"Template syntax error in {template_file}: {e}",
-                recovery=["Check template for valid Jinja2 syntax"],
-            ) from e
-
-        # Extract undeclared variables from this template
-        undeclared = meta.find_undeclared_variables(ast)
-        undeclared = undeclared - _find_imported_macro_names(ast)
+        ast = _parse_template_ast(env, template_file)
+        undeclared = meta.find_undeclared_variables(ast) - _find_imported_macro_names(ast)
         all_vars.update(undeclared)
 
-    # Filter out system fields
     agent_vars = all_vars - SYSTEM_FIELDS
 
-    # Classify variables as required or optional
-    # NOTE: We use the CONCRETE template AST for classification (most specific)
-    # This is because parent templates may have different usage patterns
-    concrete_src = chain[0].read_text(encoding="utf-8")
-    concrete_ast = env.parse(concrete_src)
+    # Classify variables as required or optional.
+    # NOTE: Use the CONCRETE template AST for classification (most specific)
+    concrete_ast = _parse_template_ast(env, chain[0])
     required, optional = _classify_variables(concrete_ast, agent_vars)
 
-    # Sort alphabetically
     return TemplateSchema(
         required=sorted(required),
         optional=sorted(optional),

@@ -16,7 +16,13 @@ from pathlib import Path
 import pytest
 
 
-TEMPLATE_ROOT = Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates" / "concrete"
+TEMPLATE_ROOT = (
+    Path(__file__).parent.parent.parent.parent
+    / "mcp_server"
+    / "scaffolding"
+    / "templates"
+    / "concrete"
+)
 
 
 @pytest.mark.parametrize(
@@ -75,14 +81,20 @@ TEMPLATE_ROOT = Path(__file__).parent.parent.parent.parent / "mcp_server" / "sca
         ),
     ],
 )
-def test_concrete_code_templates_use_tier3_imports(template_name: str, required_imports: list[str]) -> None:
+def test_concrete_code_templates_use_tier3_imports(
+    template_name: str,
+    required_imports: list[str],
+) -> None:
+    """Concrete templates import expected Tier3 macro libraries."""
     template_path = TEMPLATE_ROOT / template_name
     assert template_path.exists(), f"Missing template: {template_path}"
 
     content = template_path.read_text(encoding="utf-8")
 
     for import_stmt in required_imports:
-        assert import_stmt in content, f"{template_name} missing tier3 import: {import_stmt}"
+        assert import_stmt in content, (
+            f"{template_name} missing tier3 import: {import_stmt}"
+        )
 
 
 @pytest.mark.parametrize(
@@ -97,6 +109,7 @@ def test_concrete_code_templates_use_tier3_imports(template_name: str, required_
     ],
 )
 def test_concrete_code_templates_are_guideline_enforcement(template_name: str) -> None:
+    """Concrete templates declare GUIDELINE enforcement (not STRICT)."""
     template_path = TEMPLATE_ROOT / template_name
     assert template_path.exists(), f"Missing template: {template_path}"
 
