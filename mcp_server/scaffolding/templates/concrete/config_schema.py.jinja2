@@ -46,10 +46,9 @@ TEMPLATE_METADATA:
 
 {% block imports_section %}
 # Standard library
-{{ p_logging.pattern_logging_imports() }}
 
 # Third-party
-{{ pydantic.pattern_pydantic_imports() }}
+{{ pydantic.pattern_pydantic_imports(include_field_validator=false) }}
 
 # Project modules
 {# Optional: typed-id generator imports for Field(default_factory=...) #}

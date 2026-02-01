@@ -20,8 +20,8 @@ Tier 3 Pattern: Pydantic v2
   (see backend/dtos/**)
 -#}
 
-{% macro pattern_pydantic_imports(include_validation_error=false) -%}
-from pydantic import BaseModel, Field, field_validator{% if include_validation_error %}, ValidationError{% endif %}
+{% macro pattern_pydantic_imports(include_validation_error=false, include_field_validator=true) -%}
+from pydantic import BaseModel, Field{% if include_field_validator %}, field_validator{% endif %}{% if include_validation_error %}, ValidationError{% endif %}
 {%- endmacro %}
 
 {% macro pattern_pydantic_base_model(class_name="MyModel") -%}

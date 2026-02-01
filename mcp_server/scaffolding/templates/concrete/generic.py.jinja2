@@ -5,6 +5,7 @@
 
 {%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
 
+
 {#-
 TEMPLATE_METADATA:
   enforcement: GUIDELINE
@@ -35,7 +36,6 @@ TEMPLATE_METADATA:
 
 {% block imports_section %}
 # Standard library
-{{ p_logging.pattern_logging_imports() }}
 
 # Third-party
 

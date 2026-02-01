@@ -75,11 +75,12 @@ class TestTemplateRegistryLoading:
         result = scaffolder_fixture.scaffold(
             'worker',
             name='TestWorker',
+            layer='Domain',
             description='Test worker',
             input_dto='TestInput',
             output_dto='TestOutput',
             dependencies=["SomeService"],
-            responsibilities=["Process data"]
+            responsibilities=["Process data"],
         )
         assert result is not None
         assert hasattr(result, 'content')

@@ -66,8 +66,8 @@ class TestValidationEnforcementConsistency:
             "(content guidance, warnings only)"
         )
 
-    def test_concrete_code_templates_have_architectural_enforcement(self):
-        """Concrete code templates (worker, dto) must have ARCHITECTURAL enforcement."""
+    def test_concrete_code_templates_have_guideline_enforcement(self):
+        """Concrete code templates (worker, dto, service) must have GUIDELINE enforcement."""
         template_root = Path("mcp_server/scaffolding/templates")
         analyzer = TemplateAnalyzer(template_root)
 
@@ -81,11 +81,10 @@ class TestValidationEnforcementConsistency:
             metadata = analyzer.extract_metadata(template_path)
 
             assert "enforcement" in metadata, f"{template_name} missing enforcement"
-            assert metadata["enforcement"] == "ARCHITECTURAL", (
-                f"Concrete CODE templates must use ARCHITECTURAL enforcement (code patterns), "
+            assert metadata["enforcement"] == "GUIDELINE", (
+                f"Concrete CODE templates must use GUIDELINE enforcement (content-level guidance), "
                 f"but {template_name} has {metadata.get('enforcement')}"
             )
-
     def test_strict_enforcement_blocks_on_missing_sections(self):
         """STRICT enforcement should block save when required sections missing."""
         template_root = Path("mcp_server/scaffolding/templates")

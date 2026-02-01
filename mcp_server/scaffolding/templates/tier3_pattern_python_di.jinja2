@@ -26,14 +26,14 @@ from backend.core.interfaces.worker import WorkerInitializationError
 {% macro pattern_di_require_dependency(dep_name="strategy_cache", worker_name_attr="_name", details="required") -%}
 if {{ dep_name }} is None:
     raise WorkerInitializationError(
-        f"{self.{{ worker_name_attr }}}: {{ dep_name }} {{ details }}"
+        f"{self.{{ worker_name_attr }}}: di.dependency.{{ dep_name }}.{{ details | replace(' ', '_') }}"
     )
 {%- endmacro %}
 
 {% macro pattern_di_require_capability(cap_key="dto_types", worker_name_attr="_name", details="required") -%}
 if "{{ cap_key }}" not in capabilities:
     raise WorkerInitializationError(
-        f"{self.{{ worker_name_attr }}}: '{{ cap_key }}' capability {{ details }}"
+        f"{self.{{ worker_name_attr }}}: di.capability.{{ cap_key }}.{{ details | replace(' ', '_') }}"
     )
 {%- endmacro %}
 

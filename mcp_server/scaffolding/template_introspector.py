@@ -19,6 +19,7 @@ from pathlib import Path
 
 import jinja2
 from jinja2 import meta, nodes
+from jinja2.exceptions import TemplateNotFound
 
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
@@ -217,13 +218,10 @@ def introspect_template_with_inheritance(template_root: Path, template_path: str
     full_path = template_root / template_path
 
     if not full_path.exists():
-        raise ExecutionError(
-            f"Template not found: {full_path}",
-            recovery=["Check template path", "Verify template_root is correct"],
-        )
+        raise TemplateNotFound(template_path)
+
 
     chain = TemplateAnalyzer(template_root).get_inheritance_chain(full_path)
-
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_root))
 
     all_vars: set[str] = set()

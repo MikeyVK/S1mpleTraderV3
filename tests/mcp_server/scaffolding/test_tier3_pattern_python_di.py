@@ -113,12 +113,11 @@ class TestTier3PatternPythonDi:
 
         assert "if strategy_cache is None" in require_dep_rendered
         assert "raise WorkerInitializationError" in require_dep_rendered
-        assert "f\"{self._name}: strategy_cache" in require_dep_rendered
+        assert "di.dependency.strategy_cache" in require_dep_rendered
 
         assert "if \"dto_types\" not in capabilities" in require_cap_rendered
         assert "raise WorkerInitializationError" in require_cap_rendered
-        assert "f\"{self._name}: 'dto_types' capability" in require_cap_rendered
-
+        assert "di.capability.dto_types" in require_cap_rendered
         assert "self._cache" in set_dep_rendered
         assert "= strategy_cache" in set_dep_rendered
 

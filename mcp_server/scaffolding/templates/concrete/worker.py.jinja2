@@ -1,5 +1,5 @@
 {#- worker.py.jinja2 - Concrete template for IWorkerLifecycle workers -#}
-{#- Version: 3.1.0 -#}
+{#- Version: 3.2.0 -#}
 {#- Purpose: Generate V3 two-phase initialization workers (IWorker + IWorkerLifecycle) -#}
 {%- extends "tier2_base_python.jinja2" -%}
 
@@ -25,7 +25,11 @@ TEMPLATE_METADATA:
       - "Uses Translator keys for user-facing strings"
   extends: tier2_base_python.jinja2
   purpose: "Worker implementation with IWorkerLifecycle pattern (V3 two-phase initialization)"
-  version: "3.1.0"
+  version: "3.2.0"
+  changelog:
+    - version: "3.2.0"
+      date: "2026-02-01"
+      changes: "Add optional async warmup example (no unused imports unless enabled)"
   introspection:
     template_id: concrete_worker
     tier: concrete
@@ -39,6 +43,7 @@ TEMPLATE_METADATA:
         - worker_scope  # platform|strategy|platform_within_strategy
         - responsibilities
         - capabilities  # List of required capabilities
+        - use_async  # If true, scaffold an async warmup example
     pattern: IWorkerLifecycle
     rationale: |
       V3 two-phase initialization pattern:
@@ -48,20 +53,20 @@ TEMPLATE_METADATA:
 -#}
 
 {#- Module docstring customization -#}
-{%- block module_docstring %}
+{% block module_docstring %}
 """
 {{ name }} - {{ module_description | default('Worker implementation') }}.
 
 @layer: {{ layer }}
 @dependencies: [backend.core.interfaces, backend.dtos]
 @responsibilities:
-{%- if responsibilities %}
-{%- for responsibility in responsibilities %}
+{% if responsibilities %}
+{% for responsibility in responsibilities %}
     - {{ responsibility }}
-{%- endfor %}
-{%- else %}
+{% endfor %}
+{% else %}
     - [To be defined]
-{%- endif %}
+{% endif %}
 """
 {% endblock %}
 
@@ -70,7 +75,10 @@ TEMPLATE_METADATA:
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
+{% if use_async | default(false) %}
 {{ p_async.pattern_async_imports(include_types=False) }}
+{% endif %}
+
 {{ p_logging.pattern_logging_imports() }}
 
 # Third-party
@@ -126,6 +134,9 @@ class {{ name }}({{- lifecycle.pattern_lifecycle_base_class(include_iworker=true
 
         self.logger: LogEnricher | None = None
         self._translator: Translator | None = None
+{% if use_async | default(false) %}
+        self._warmup_task: "asyncio.Task[None] | None" = None
+{% endif %}
 
     @property
     def name(self) -> str:
@@ -161,8 +172,7 @@ class {{ name }}({{- lifecycle.pattern_lifecycle_base_class(include_iworker=true
         # Validate strategy_cache is None (Platform worker)
         if strategy_cache is not None:
             raise WorkerInitializationError(
-                f"{self._name}: Platform worker must not receive strategy_cache "
-                f"(got {type(strategy_cache).__name__})",
+                f"{self._name}: worker.initialize.strategy_cache.unexpected"
             )
 {% else %}
         {{ di.pattern_di_require_dependency(dep_name="strategy_cache", worker_name_attr="_name", details="required") | indent(8) }}
@@ -194,8 +204,23 @@ class {{ name }}({{- lifecycle.pattern_lifecycle_base_class(include_iworker=true
 {% endfor %}
 {% endif %}
 
+{% if use_async | default(false) %}
+        # Example: start async warmup if an event loop is running
+        try:
+            self._warmup_task = asyncio.create_task(self._warmup_async())
+        except RuntimeError:
+            # No running event loop in this context
+            pass
+
+{% endif %}
         # Perform additional initialization here
 
+{% if use_async | default(false) %}
+    async def _warmup_async(self) -> None:
+        """Async warmup hook."""
+        await asyncio.sleep(0)
+
+{% endif %}
     def shutdown(self) -> None:
         """Graceful shutdown and resource cleanup.
 
@@ -203,6 +228,11 @@ class {{ name }}({{- lifecycle.pattern_lifecycle_base_class(include_iworker=true
         Must complete within 5 seconds and never raise exceptions.
         """
         try:
+{% if use_async | default(false) %}
+            if self._warmup_task is not None:
+                self._warmup_task.cancel()
+                self._warmup_task = None
+{% endif %}
             self._cache = None
         except Exception:  # noqa: BLE001
             # GUIDELINE: shutdown must not raise; best-effort cleanup only.

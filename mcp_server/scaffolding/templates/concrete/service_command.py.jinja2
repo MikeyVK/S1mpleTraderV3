@@ -1,5 +1,5 @@
 {#- concrete/service_command.py.jinja2 - Service Command Pattern -#}
-{#- Version: 1.3.0 -#}
+{#- Version: 1.3.1 -#}
 {#- Purpose: Generate service command classes (execute pattern) -#}
 {%- extends "tier2_base_python.jinja2" -%}
 
@@ -20,8 +20,11 @@ TEMPLATE_METADATA:
       - "Uses translation keys (no hardcoded UX strings)"
   extends: tier2_base_python.jinja2
   purpose: "Concrete template for service command pattern"
-  version: "1.3.0"
+  version: "1.3.1"
   changelog:
+    - version: "1.3.1"
+      date: "2026-02-01"
+      changes: "Fix module docstring, class naming, and error message key discipline"
     - version: "1.3.0"
       date: "2026-02-01"
       changes: "Refactor service command to compose Tier 3 pattern macros and set enforcement to GUIDELINE"
@@ -40,15 +43,33 @@ TEMPLATE_METADATA:
         - name
       optional:
         - description
+        - layer
+        - responsibilities
         - parameters
         - return_type
 -#}
 
+{% block module_docstring %}
+"""{{ name }} service module.
+
+{{ description | default(name + ' service command.') }}
+
+@layer: {{ layer | default('Backend (Services)') }}
+@dependencies: [backend.utils.translator]
+@responsibilities:
+{% if responsibilities %}
+{% for responsibility in responsibilities %}
+    - {{ responsibility }}
+{% endfor %}
+{% else %}
+    - Execute service command logic
+{% endif %}
+"""
+{% endblock %}
+
 {% block imports_section %}
 # Standard library
 from typing import Any
-{{ p_async.pattern_async_imports(include_types=False) }}
-{{ p_logging.pattern_logging_imports() }}
 
 # Third-party
 
@@ -60,17 +81,19 @@ from typing import Any
 {% block class_structure %}
 {{ translator.pattern_translator_key_guideline() }}
 
+__all__ = ["{{ name }}Service"]
 
-class {{ name }}:
+
+class {{ name }}Service:
 {% block class_docstring %}
     """{{ description | default(name + ' service command.') }}
 
     Service command following execute pattern.
     """
-{% endblock -%}
+{% endblock %}
 
     def __init__(self, service_translator: Translator | None = None) -> None:
-        self._name = "{{ name }}"
+        self._name = "{{ name }}Service"
         self._translator = service_translator
 
 {% block execute_method %}
@@ -90,6 +113,6 @@ class {{ name }}:
             # TODO: Implement service logic
             pass
         except Exception as exc:  # noqa: BLE001
-            {{ errors.pattern_error_raise(exc_class="RuntimeError", worker_name_attr="_name", message="'service.execute.failed'") | indent(12) }}
-{% endblock -%}
+            raise RuntimeError(f"{self._name}: service.execute.failed") from exc
+{% endblock %}
 {% endblock %}

@@ -1,5 +1,5 @@
 {#- concrete/dto.py.jinja2 - Data Transfer Object (Pydantic BaseModel) -#}
-{#- Version: 1.5.0 -#}
+{#- Version: 1.5.1 -#}
 {#- Purpose: Generate Pydantic DTOs for data transfer between layers -#}
 {%- extends "tier2_base_python.jinja2" -%}
 
@@ -19,8 +19,11 @@ TEMPLATE_METADATA:
       - "Immutable by default (frozen=True optional)"
   extends: tier2_base_python.jinja2
   purpose: "Concrete template for Data Transfer Objects (Pydantic)"
-  version: "1.5.0"
+  version: "1.5.1"
   changelog:
+    - version: "1.5.1"
+      date: "2026-02-01"
+      changes: "Restore readable field definitions and pretty-print examples (avoid over-compaction)"
     - version: "1.5.0"
       date: "2026-02-01"
       changes: "Refactor DTO to compose Tier 3 pattern macros and set enforcement to GUIDELINE"
@@ -60,17 +63,16 @@ TEMPLATE_METADATA:
 Data Transfer Object for {{ name | lower }}.
 
 @layer: {{ layer | default("Domain") }}
-@dependencies: {{ dependencies | join(", ") if dependencies is iterable and dependencies is not string else (dependencies if dependencies else "pydantic.BaseModel") }}
-@responsibilities: {{ responsibilities | join(", ") if responsibilities is iterable and responsibilities is not string else (responsibilities if responsibilities else "Data validation, type safety" + (", immutability" if frozen else "")) }}
+@dependencies: {{ (dependencies | default([])) | join(", ") if (dependencies | default([])) is iterable and (dependencies | default([])) is not string and (dependencies | default([])) else (dependencies | default("pydantic.BaseModel")) }}
+@responsibilities: {{ (responsibilities | default([])) | join(", ") if (responsibilities | default([])) is iterable and (responsibilities | default([])) is not string and (responsibilities | default([])) else (responsibilities | default("Data validation, type safety" + (", immutability" if frozen else ""))) }}
 """
 {% endblock %}
 
 {% block imports_section %}
 # Standard library
-{{ p_logging.pattern_logging_imports() }}
 
 # Third-party
-{{ pydantic.pattern_pydantic_imports() }}
+{{ pydantic.pattern_pydantic_imports(include_field_validator=(((validators | default([])) | length) > 0)) }}
 
 # Project modules
 {# Optional: typed-id generator imports for Field(default_factory=...) #}
@@ -103,13 +105,14 @@ class {{ name }}(BaseModel):
 {% if fields -%}
 {% for field in fields %}
     {{ field.name }}: {{ field.type }} = Field(
-{% if field.default is defined %}
-        default={{ field.default }},
-{% endif %}
 {% if field.default_factory is defined %}
         {{ typed_id.pattern_typed_id_default_factory(function_name=field.default_factory) }},
+{% elif field.default is defined %}
+        default={{ field.default }},
+{% else %}
+        default=...,
 {% endif %}
-        description="{{ field.description | default('Field description') }}"
+        description="{{ field.description | default('Field description') }}",
     )
 {% endfor -%}
 {% else -%}
@@ -120,11 +123,10 @@ class {{ name }}(BaseModel):
 
     model_config = {
         "frozen": {{ 'True' if frozen else 'False' }},
-        "extra": "forbid"{% if examples %},
+        "extra": "forbid",
         "json_schema_extra": {
-            "examples": {{ examples | tojson(indent=4) | indent(4, first=False) }}
-        }{% endif %}
-
+            "examples": {{ examples | tojson(indent=4) | indent(12, first=False) }}
+        }
     }
 {% endblock -%}
 {% endblock %}

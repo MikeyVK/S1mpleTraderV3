@@ -1,24 +1,31 @@
 # D:\dev\SimpleTraderV3\.st3\SignalDetectorWorker.py
-# template=worker version=8cdef4f5 created=2026-01-29T16:34Z updated=
+# template=worker version=c1dd4e65 created=2026-02-01T20:24Z updated=
 """
-SignalDetector - Strategy worker that detects trading signals from market data.
+SignalDetector - Detects trading signals and publishes events.
 
 @layer: Backend (Workers)
 @dependencies: [backend.core.interfaces, backend.dtos]
-@responsibilities:    - Detect trading signals    - Generate recommendations"""
+@responsibilities:
+    - Detect trading signals
+    - Emit normalized signal events
+"""
+
 # Standard library
 from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
+
+import logging
 
 # Third-party
 # (Add third-party imports here if needed)
 
 # Project modules
 from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInitializationError
+from backend.utils.app_logger import LogEnricher
+from backend.utils.translator import Translator
 
 if TYPE_CHECKING:
-    from backend.core.interfaces.cache import IStrategyCache
+    from backend.core.interfaces.strategy_cache import IStrategyCache
     from backend.core.interfaces.config import BuildSpec
 
 __all__ = ["SignalDetector"]
@@ -30,7 +37,9 @@ class SignalDetector(IWorker, IWorkerLifecycle):
 
     Architecture:
     - EventAdapter-compliant: Standard IWorker + IWorkerLifecycle pattern
-    - Worker scope: strategy    - Strategy worker: Requires strategy_cache for runtime state    - Required capabilities: persistence, strategy_ledger    """
+    - Worker scope: strategy
+    - Strategy worker: Requires strategy_cache for runtime state
+    """
 
     def __init__(self, build_spec: BuildSpec) -> None:
         """
@@ -44,8 +53,12 @@ class SignalDetector(IWorker, IWorkerLifecycle):
         """
         self._name: str = build_spec.name
         self._config = build_spec.config
-        self._cache: IStrategyCache | None = None
-        # Store other initialization state here
+
+        self._cache: "IStrategyCache | None" = None
+
+
+        self.logger: LogEnricher | None = None
+        self._translator: Translator | None = None
 
     @property
     def name(self) -> str:
@@ -64,45 +77,45 @@ class SignalDetector(IWorker, IWorkerLifecycle):
         Platform assembles workers in any order, then calls initialize() with DI.
 
         Args:
-            strategy_cache: StrategyCache instance or None                - Strategy worker: REQUIRED (validates cache not None)            **capabilities: Optional capabilities injected by platform:                - persistence: [Description of capability]                - strategy_ledger: [Description of capability]
+            strategy_cache: StrategyCache instance or None
+                - Strategy worker: REQUIRED (validates cache not None)
+            **capabilities: Optional capabilities injected by platform
+
         Raises:
             WorkerInitializationError: If requirements not met
         """
-        # Validate strategy_cache is present (Strategy worker)
         if strategy_cache is None:
             raise WorkerInitializationError(
-                f"{self._name}: Strategy worker requires strategy_cache",
+                f"{self._name}: di.dependency.strategy_cache.required"
             )
 
-        # Validate required capabilities
-        if "persistence" not in capabilities:
-            raise WorkerInitializationError(
-                f"{self._name}: Required capability 'persistence' not provided",
-            )
-        if "strategy_ledger" not in capabilities:
-            raise WorkerInitializationError(
-                f"{self._name}: Required capability 'strategy_ledger' not provided",
-            )
-
-        # Store dependencies
         self._cache = strategy_cache
-        self._persistence = capabilities["persistence"]
-        self._strategy_ledger = capabilities["strategy_ledger"]
+
+        # Optional: translator can be injected as a capability
+        # (fallback behavior is to use keys as display strings)
+        if "translator" in capabilities:
+            self._translator = capabilities["translator"]
+
+        # Set up structured logger (LogEnricher)
+        logger = LogEnricher(logging.getLogger(__name__))
+        self.logger = logger
+        self.logger.setup("worker.initialize")
+
+        # Use dot-notation keys for i18n (example key: app.start)
+        # Pattern: translator.get(key, default=key)  (fallback is key itself)
+        # Special-case parameter display names: translator.get_param_name(param_path, default=param_path)
+
 
         # Perform additional initialization here
 
     def shutdown(self) -> None:
-        """
-        Graceful shutdown and resource cleanup.
+        """Graceful shutdown and resource cleanup.
 
         IWorkerLifecycle requirement: Must be idempotent (safe to call multiple times).
         Must complete within 5 seconds and never raise exceptions.
-
-        Release resources:
-        - Close connections
-        - Cancel async tasks
-        - Flush buffers
-        - Clear caches
         """
-        # Idempotent implementation - no resources to cleanup yet
-        ...
+        try:
+            self._cache = None
+        except Exception:  # noqa: BLE001
+            # GUIDELINE: shutdown must not raise; best-effort cleanup only.
+            pass
