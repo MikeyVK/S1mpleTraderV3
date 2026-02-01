@@ -1,0 +1,30 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_di
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  purpose: "Dependency injection via **capabilities (worker initialize pattern)"
+  exports:
+    - pattern_di_imports
+    - pattern_di_get_capability
+    - pattern_di_require_capability
+#}
+
+{#-
+Tier 3 Pattern: DI via capabilities
+- Macro library only: no extends, no blocks
+- Uses the IWorkerLifecycle initialize(strategy_cache, **capabilities) contract
+-#}
+
+{% macro pattern_di_imports() -%}
+from backend.core.interfaces.worker import WorkerInitializationError
+{%- endmacro %}
+
+{% macro pattern_di_get_capability(attr_name="_dep", cap_key="dependency") -%}
+self.{{ attr_name }} = capabilities.get("{{ cap_key }}")
+{%- endmacro %}
+
+{% macro pattern_di_require_capability(cap_key="dependency", exc_class="WorkerInitializationError", message_key="worker.missing_capability") -%}
+if capabilities.get("{{ cap_key }}") is None:
+    raise {{ exc_class }}("{{ message_key }}")
+{%- endmacro %}
