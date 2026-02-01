@@ -1,0 +1,37 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_error
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  purpose: "Standardized error raising/wrapping patterns for workers and tools"
+  exports:
+    - pattern_error_imports
+    - pattern_error_raise
+    - pattern_error_wrap
+#}
+
+{#-
+Tier 3 Pattern: Error handling
+- Macro library only: no extends, no blocks
+- Prefer raising typed exceptions with message keys (i18n)
+-#}
+
+{% macro pattern_error_imports() -%}
+from backend.core.interfaces.worker import WorkerInitializationError
+{%- endmacro %}
+
+{% macro pattern_error_raise(exc_class="WorkerInitializationError", message_key="error.unknown", detail_expr="None") -%}
+{% if detail_expr and detail_expr != 'None' %}
+raise {{ exc_class }}(f"{{ message_key }}: { {{ detail_expr }} }")
+{% else %}
+raise {{ exc_class }}("{{ message_key }}")
+{% endif %}
+{%- endmacro %}
+
+{% macro pattern_error_wrap(exc_class="WorkerInitializationError", message_key="error.unknown") -%}
+try:
+    # ...
+    pass
+except Exception as exc:  # noqa: BLE001
+    raise {{ exc_class }}("{{ message_key }}") from exc
+{%- endmacro %}
