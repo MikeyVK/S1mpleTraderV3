@@ -85,15 +85,21 @@ class TestTier3PatternPythonError:
         imports_rendered = getattr(template.module, "pattern_error_imports")()
         raise_rendered = getattr(template.module, "pattern_error_raise")(
             exc_class="WorkerInitializationError",
-            message_key="worker.init_failed",
+            worker_name_attr="_name",
+            message="initialization failed",
         )
         wrap_rendered = getattr(template.module, "pattern_error_wrap")(
             exc_class="WorkerInitializationError",
-            message_key="worker.init_failed",
+            worker_name_attr="_name",
+            message="initialization failed",
         )
 
         assert "WorkerInitializationError" in imports_rendered
+
         assert "raise" in raise_rendered
-        assert "worker.init_failed" in raise_rendered
+        assert "f\"{self._name}: initialization failed\"" in raise_rendered
+
         assert "try" in wrap_rendered
         assert "except Exception" in wrap_rendered
+        assert "from exc" in wrap_rendered
+        assert "f\"{self._name}: initialization failed\"" in wrap_rendered

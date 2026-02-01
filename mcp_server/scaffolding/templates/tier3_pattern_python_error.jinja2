@@ -13,25 +13,22 @@
 {#-
 Tier 3 Pattern: Error handling
 - Macro library only: no extends, no blocks
-- Prefer raising typed exceptions with message keys (i18n)
+- Backend-aligned: include worker name prefix in exception messages
+  (see backend/core/flow_initiator.py and backend/core/interfaces/worker.py)
 -#}
 
 {% macro pattern_error_imports() -%}
 from backend.core.interfaces.worker import WorkerInitializationError
 {%- endmacro %}
 
-{% macro pattern_error_raise(exc_class="WorkerInitializationError", message_key="error.unknown", detail_expr="None") -%}
-{% if detail_expr and detail_expr != 'None' %}
-raise {{ exc_class }}(f"{{ message_key }}: { {{ detail_expr }} }")
-{% else %}
-raise {{ exc_class }}("{{ message_key }}")
-{% endif %}
+{% macro pattern_error_raise(exc_class="WorkerInitializationError", worker_name_attr="_name", message="initialization failed") -%}
+raise {{ exc_class }}(f"{self.{{ worker_name_attr }}}: {{ message }}")
 {%- endmacro %}
 
-{% macro pattern_error_wrap(exc_class="WorkerInitializationError", message_key="error.unknown") -%}
+{% macro pattern_error_wrap(exc_class="WorkerInitializationError", worker_name_attr="_name", message="initialization failed") -%}
 try:
     # ...
     pass
 except Exception as exc:  # noqa: BLE001
-    raise {{ exc_class }}("{{ message_key }}") from exc
+    raise {{ exc_class }}(f"{self.{{ worker_name_attr }}}: {{ message }}") from exc
 {%- endmacro %}
