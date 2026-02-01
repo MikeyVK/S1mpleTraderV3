@@ -51,6 +51,30 @@ class TemplateSchema:
         }
 
 
+def _find_imported_macro_names(ast: nodes.Template) -> set[str]:
+    """Return macro import aliases to exclude from agent schema.
+
+    Jinja2 `{% import ... as alias %}` and `{% from ... import macro as name %}`
+    introduce symbols that are internal to the template, not agent-provided.
+
+    Jinja2 meta introspection does not treat these as declared variables, so we
+    filter them out explicitly.
+    """
+    imported: set[str] = set()
+
+    for node in ast.find_all((nodes.Import, nodes.FromImport)):
+        if isinstance(node, nodes.Import):
+            # `{% import "x" as alias %}`
+            if isinstance(node.target, str):
+                imported.add(node.target)
+        elif isinstance(node, nodes.FromImport):
+            # `{% from "x" import a as b, c %}`
+            for name, alias in node.names:
+                imported.add(alias or name)
+
+    return imported
+
+
 def introspect_template(env: jinja2.Environment, template_source: str) -> TemplateSchema:
     """Extract validation schema from Jinja2 template source.
 
@@ -85,6 +109,7 @@ def introspect_template(env: jinja2.Environment, template_source: str) -> Templa
 
     # Extract all undeclared variables
     undeclared = meta.find_undeclared_variables(ast)
+    undeclared = undeclared - _find_imported_macro_names(ast)
 
     # Filter out system fields
     agent_vars = undeclared - SYSTEM_FIELDS
@@ -204,6 +229,7 @@ def introspect_template_with_inheritance(
 
         # Extract undeclared variables from this template
         undeclared = meta.find_undeclared_variables(ast)
+        undeclared = undeclared - _find_imported_macro_names(ast)
         all_vars.update(undeclared)
 
     # Filter out system fields
