@@ -1,0 +1,93 @@
+{#- concrete/config_schema.py.jinja2 - Pydantic config schema (CODE) -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Generate config/schema models (WorkflowConfig, LabelConfig, etc.) -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{%- import "tier3_pattern_python_pydantic.jinja2" as pydantic -%}
+{%- import "tier3_pattern_python_typed_id.jinja2" as typed_id -%}
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: concrete
+  artifact_type: schema
+  validates:
+    guidelines:
+      - "Pydantic BaseModel with model_config dict"
+      - "Config schemas are code artifacts (not CONFIG tier)"
+      - "Optional typed-id default_factory imports"
+  extends: tier2_base_python.jinja2
+  purpose: "Concrete template for Pydantic config/schema models"
+  version: "1.0.0"
+  introspection:
+    template_id: concrete_config_schema
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - name
+      optional:
+        - description
+        - layer
+        - fields
+        - frozen
+        - examples
+-#}
+
+{% block module_docstring %}
+"""{{ name }} schema.
+
+{{ description | default('Pydantic schema for configuration/validation.') }}
+
+@layer: {{ layer | default('Backend (Config Schemas)') }}
+"""
+{% endblock %}
+
+{% block imports_section %}
+# Standard library
+{{ p_logging.pattern_logging_imports() }}
+
+# Third-party
+{{ pydantic.pattern_pydantic_imports() }}
+
+# Project modules
+{# Optional: typed-id generator imports for Field(default_factory=...) #}
+{% if fields %}
+{% for field in fields %}
+{% if field.default_factory is defined %}
+{{ typed_id.pattern_typed_id_imports(function_name=field.default_factory) }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block class_structure %}
+class {{ name }}(BaseModel):
+    """{{ description | default(name + ' schema.') }}"""
+
+    model_config = {
+        "frozen": {{ 'True' if (frozen | default(false)) else 'False' }},
+        "extra": "forbid"{% if examples %},
+        "json_schema_extra": {
+            "examples": {{ examples | tojson(indent=4) | indent(4, first=False) }}
+        }{% endif %}
+    }
+
+{% if fields %}
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }} = Field(
+{% if field.default is defined %}
+        default={{ field.default }},
+{% endif %}
+{% if field.default_factory is defined %}
+        {{ typed_id.pattern_typed_id_default_factory(function_name=field.default_factory) }},
+{% endif %}
+        description="{{ field.description | default('Field description') }}",
+    )
+{% endfor %}
+{% else %}
+    pass
+{% endif %}
+{% endblock %}

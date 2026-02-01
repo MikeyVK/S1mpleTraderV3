@@ -73,7 +73,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "ToolScaffolder"
     scaffolder_module: "mcp_server.scaffolders.tool_scaffolder"
-    template_path: null  # No template needed - tool uses legacy scaffolder
+    template_path: "concrete/tool.py.jinja2"
     fallback_template: null
     name_suffix: "Tool"
     file_extension: ".py"
@@ -107,7 +107,7 @@ artifact_types:
     output_type: "file"
     scaffolder_class: "SchemaScaffolder"
     scaffolder_module: "mcp_server.scaffolders.schema_scaffolder"
-    template_path: null  # No template needed - schema uses legacy scaffolder
+    template_path: "concrete/config_schema.py.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".py"

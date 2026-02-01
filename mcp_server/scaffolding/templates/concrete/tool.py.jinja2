@@ -1,0 +1,86 @@
+{#- concrete/tool.py.jinja2 - MCP Tool (template-based) -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Generate MCP tool classes with consistent structure -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{%- import "tier3_pattern_python_error.jinja2" as errors -%}
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: concrete
+  artifact_type: tool
+  validates:
+    guidelines:
+      - "Tool has a single execute() entrypoint"
+      - "Uses logging and key-based messages"
+  extends: tier2_base_python.jinja2
+  purpose: "Concrete template for MCP tools"
+  version: "1.0.0"
+  introspection:
+    template_id: concrete_tool
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - name
+      optional:
+        - description
+        - layer
+        - responsibilities
+-#}
+
+{% block module_docstring %}
+"""{{ name }} tool.
+
+{{ description | default('MCP tool implementation.') }}
+
+@layer: {{ layer | default('MCP (Tools)') }}
+@responsibilities:
+{%- if responsibilities %}
+{%- for responsibility in responsibilities %}
+    - {{ responsibility }}
+{%- endfor %}
+{%- else %}
+    - [To be defined]
+{%- endif %}
+"""
+{% endblock %}
+
+{% block imports_section %}
+# Standard library
+from typing import Any
+{{ p_logging.pattern_logging_imports() }}
+
+# Third-party
+
+# Project modules
+
+{% endblock %}
+
+{% block class_structure %}
+logger = logging.getLogger(__name__)
+
+
+class {{ name }}:
+    """{{ description | default(name + ' tool.') }}"""
+
+    def __init__(self) -> None:
+        self._name = "{{ name }}"
+
+    async def execute(self, **params: Any) -> Any:
+        """Execute tool operation.
+
+        Args:
+            **params: Tool input parameters
+
+        Returns:
+            Tool result (JSON-serializable)
+        """
+        try:
+            # TODO: Implement tool logic
+            return {}
+        except Exception as exc:  # noqa: BLE001
+            {{ errors.pattern_error_raise(exc_class="RuntimeError", worker_name_attr="_name", message="'tool.execute.failed'") | indent(12) }}
+{% endblock %}
