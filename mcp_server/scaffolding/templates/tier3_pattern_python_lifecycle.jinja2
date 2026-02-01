@@ -31,9 +31,9 @@ from backend.core.interfaces.strategy_cache import IStrategyCache
 {% endmacro %}
 
 {# Macro: base class list segment for class Foo(<here>) #}
-{% macro pattern_lifecycle_base_class(include_iworker=true) %}
-{% if include_iworker %}IWorker, {% endif %}IWorkerLifecycle
-{% endmacro %}
+{% macro pattern_lifecycle_base_class(include_iworker=true) -%}
+{%- if include_iworker -%}IWorker, {% endif -%}IWorkerLifecycle
+{%- endmacro %}
 
 {# Macro: initialize cache field in __init__ (call with | indent(8) or similar) #}
 {% macro pattern_lifecycle_init(cache_attr="_cache") %}
