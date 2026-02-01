@@ -75,6 +75,7 @@ class TestTier3PatternPythonTypedId:
         assert "category: pattern" in content
 
         assert "{% macro pattern_typed_id_imports" in content
+        assert "{% macro pattern_typed_id_default_factory" in content
         assert "{% macro pattern_typed_id_generate" in content
 
     def test_macros_render_expected_tokens(self, jinja_env):
@@ -84,10 +85,20 @@ class TestTier3PatternPythonTypedId:
         imports_rendered = getattr(template.module, "pattern_typed_id_imports")(
             function_name="generate_trade_plan_id",
         )
+        default_factory_rendered = getattr(
+            template.module,
+            "pattern_typed_id_default_factory",
+        )(
+            function_name="generate_trade_plan_id",
+        )
         gen_rendered = getattr(template.module, "pattern_typed_id_generate")(
             function_name="generate_trade_plan_id",
         )
 
         assert "id_generators" in imports_rendered
         assert "generate_trade_plan_id" in imports_rendered
-        assert "generate_trade_plan_id" in gen_rendered
+
+        assert "default_factory" in default_factory_rendered
+        assert "default_factory=generate_trade_plan_id" in default_factory_rendered
+
+        assert "generate_trade_plan_id()" in gen_rendered
