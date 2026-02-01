@@ -1,25 +1,31 @@
 {#- worker.py.jinja2 - Concrete template for IWorkerLifecycle workers -#}
-{#- Version: 3.0.0 -#}
+{#- Version: 3.1.0 -#}
 {#- Purpose: Generate V3 two-phase initialization workers (IWorker + IWorkerLifecycle) -#}
 {%- extends "tier2_base_python.jinja2" -%}
 
+{%- import "tier3_pattern_python_async.jinja2" as p_async -%}
+{%- import "tier3_pattern_python_lifecycle.jinja2" as lifecycle -%}
+{%- import "tier3_pattern_python_error.jinja2" as errors -%}
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
+{%- import "tier3_pattern_python_di.jinja2" as di -%}
+{%- import "tier3_pattern_python_log_enricher.jinja2" as log_enricher -%}
+{%- import "tier3_pattern_python_translator.jinja2" as translator -%}
+
 {#-
 TEMPLATE_METADATA:
-  enforcement: STRICT
+  enforcement: GUIDELINE
   level: concrete
   artifact_type: worker
   pattern: IWorkerLifecycle
   validates:
-    strict:
-      - "class.*\\(IWorker, IWorkerLifecycle\\):"
-      - "def __init__\\(self, build_spec: BuildSpec\\)"
-      - "def initialize\\(self, strategy_cache.*\\*\\*capabilities\\)"
-      - "def shutdown\\(self\\)"
-      - "@property"
-      - "def name\\(self\\)"
+    guidelines:
+      - "Implements IWorkerLifecycle two-phase initialization"
+      - "Uses capabilities DI in initialize()"
+      - "Uses LogEnricher for structured logging"
+      - "Uses Translator keys for user-facing strings"
   extends: tier2_base_python.jinja2
   purpose: "Worker implementation with IWorkerLifecycle pattern (V3 two-phase initialization)"
-  version: "3.0.0"
+  version: "3.1.0"
   introspection:
     template_id: concrete_worker
     tier: concrete
@@ -28,10 +34,10 @@ TEMPLATE_METADATA:
       required:
         - name
         - layer
-        - worker_scope  # platform|strategy|platform_within_strategy
-        - responsibilities
       optional:
         - module_description
+        - worker_scope  # platform|strategy|platform_within_strategy
+        - responsibilities
         - capabilities  # List of required capabilities
     pattern: IWorkerLifecycle
     rationale: |
@@ -39,12 +45,6 @@ TEMPLATE_METADATA:
       1. Construction: __init__(build_spec) - Config only, no dependencies
       2. Runtime init: initialize(strategy_cache, **capabilities) - DI injection
       3. Cleanup: shutdown() - Graceful resource release
-      
-      Benefits:
-      - No circular dependencies (V2 problem)
-      - Flexible bootstrap order
-      - Testable in isolation
-      - Standardized lifecycle
 -#}
 
 {#- Module docstring customization -#}
@@ -70,14 +70,19 @@ TEMPLATE_METADATA:
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
+{{ p_async.pattern_async_imports(include_types=False) }}
+{{ p_logging.pattern_logging_imports() }}
+
 # Third-party
 # (Add third-party imports here if needed)
 
 # Project modules
 from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInitializationError
+{{ log_enricher.pattern_log_enricher_imports() }}
+{{ translator.pattern_translator_imports() }}
 
 if TYPE_CHECKING:
-    from backend.core.interfaces.cache import IStrategyCache
+    from backend.core.interfaces.strategy_cache import IStrategyCache
     from backend.core.interfaces.config import BuildSpec
 {% endblock %}
 
@@ -85,7 +90,7 @@ if TYPE_CHECKING:
 __all__ = ["{{ name }}"]
 
 
-class {{ name }}(IWorker, IWorkerLifecycle):
+class {{ name }}({{- lifecycle.pattern_lifecycle_base_class(include_iworker=true) -}}):
     """
     {{ name }} worker implementation.
 
@@ -103,6 +108,7 @@ class {{ name }}(IWorker, IWorkerLifecycle):
     - Required capabilities: {{ capabilities | join(', ') }}
 {% endif %}
     """
+
     def __init__(self, build_spec: BuildSpec) -> None:
         """
         Construct {{ name }} with configuration.
@@ -115,8 +121,11 @@ class {{ name }}(IWorker, IWorkerLifecycle):
         """
         self._name: str = build_spec.name
         self._config = build_spec.config
-        self._cache: IStrategyCache | None = None
-        # Store other initialization state here
+
+        {{ lifecycle.pattern_lifecycle_init(cache_attr="_cache") | indent(8) }}
+
+        self.logger: LogEnricher | None = None
+        self._translator: Translator | None = None
 
     @property
     def name(self) -> str:
@@ -143,14 +152,7 @@ class {{ name }}(IWorker, IWorkerLifecycle):
 {% else %}
                 - Strategy worker: REQUIRED (validates cache not None)
 {% endif %}
-            **capabilities: Optional capabilities injected by platform:
-{% if capabilities %}
-{% for capability in capabilities %}
-                - {{ capability }}: [Description of capability]
-{% endfor %}
-{% else %}
-                - (No capabilities required for this worker)
-{% endif %}
+            **capabilities: Optional capabilities injected by platform
 
         Raises:
             WorkerInitializationError: If requirements not met
@@ -162,51 +164,47 @@ class {{ name }}(IWorker, IWorkerLifecycle):
                 f"{self._name}: Platform worker must not receive strategy_cache "
                 f"(got {type(strategy_cache).__name__})",
             )
-{% elif worker_scope == 'platform_within_strategy' %}
-        # Validate strategy_cache is present (Platform-within-Strategy worker)
-        if strategy_cache is None:
-            raise WorkerInitializationError(
-                f"{self._name}: Platform-within-Strategy worker requires strategy_cache",
-            )
 {% else %}
-        # Validate strategy_cache is present (Strategy worker)
-        if strategy_cache is None:
-            raise WorkerInitializationError(
-                f"{self._name}: Strategy worker requires strategy_cache",
-            )
+        {{ di.pattern_di_require_dependency(dep_name="strategy_cache", worker_name_attr="_name", details="required") | indent(8) }}
 {% endif %}
-{% if capabilities %}
 
+        {{ di.pattern_di_set_dependency(attr_name="_cache", dep_name="strategy_cache") | indent(8) }}
+
+        # Optional: translator can be injected as a capability
+        # (fallback behavior is to use keys as display strings)
+        if "translator" in capabilities:
+            self._translator = capabilities["translator"]
+
+        # Set up structured logger (LogEnricher)
+        logger = LogEnricher(logging.getLogger(__name__))
+        {{ log_enricher.pattern_log_enricher_set_logger(attr_name="logger") | indent(8) }}
+        {{ log_enricher.pattern_log_enricher_setup(message_key="worker.initialize") | indent(8) }}
+
+        {{ translator.pattern_translator_key_guideline() | indent(8) }}
+
+{% if capabilities %}
         # Validate required capabilities
 {% for capability in capabilities %}
-        if "{{ capability }}" not in capabilities:
-            raise WorkerInitializationError(
-                f"{self._name}: Required capability '{{ capability }}' not provided",
-            )
+        {{ di.pattern_di_require_capability(cap_key=capability, worker_name_attr="_name", details="required") | indent(8) }}
 {% endfor %}
-{% endif %}
 
-        # Store dependencies
-        self._cache = strategy_cache
-{% if capabilities %}
+        # Store required capabilities
 {% for capability in capabilities %}
-        self._{{ capability }} = capabilities["{{ capability }}"]
+        {{ di.pattern_di_set_capability(attr_name="_" ~ capability, cap_key=capability) | indent(8) }}
 {% endfor %}
 {% endif %}
 
         # Perform additional initialization here
 
     def shutdown(self) -> None:
-        """
-        Graceful shutdown and resource cleanup.
+        """Graceful shutdown and resource cleanup.
 
         IWorkerLifecycle requirement: Must be idempotent (safe to call multiple times).
         Must complete within 5 seconds and never raise exceptions.
-
-        Release resources:
-        - Close connections
-        - Cancel async tasks
-        - Flush buffers
-        - Clear caches
         """
+        try:
+            self._cache = None
+        except Exception:  # noqa: BLE001
+            # GUIDELINE: shutdown must not raise; best-effort cleanup only.
+            pass
 {% endblock %}

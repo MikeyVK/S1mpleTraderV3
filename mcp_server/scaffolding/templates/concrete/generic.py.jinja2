@@ -1,19 +1,26 @@
 {#- concrete/generic.py.jinja2 - Generic/Minimal Python Class -#}
-{#- Version: 1.1.0 -#}
+{#- Version: 1.2.0 -#}
 {#- Purpose: Catch-all template for simple Python classes -#}
 {%- extends "tier2_base_python.jinja2" -%}
+
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
 
 {#-
 TEMPLATE_METADATA:
   enforcement: GUIDELINE
   level: structure
   validates:
-    patterns:
+    guidelines:
       - "Minimal class structure"
       - "Placeholder methods"
+      - "Includes logging import (optional)"
   extends: tier2_base_python.jinja2
   purpose: "Catch-all concrete template for generic Python classes"
-  version: "1.1.0"
+  version: "1.2.0"
+  changelog:
+    - version: "1.2.0"
+      date: "2026-02-01"
+      changes: "Refactor generic to compose Tier 3 logging pattern and use validates.guidelines"
   introspection:
     template_id: generic
     tier: concrete
@@ -25,6 +32,16 @@ TEMPLATE_METADATA:
         - description
         - methods
 -#}
+
+{% block imports_section %}
+# Standard library
+{{ p_logging.pattern_logging_imports() }}
+
+# Third-party
+
+# Project modules
+
+{% endblock %}
 
 {% block class_structure %}
 class {{ name }}:

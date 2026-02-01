@@ -1,11 +1,15 @@
 {#- concrete/dto.py.jinja2 - Data Transfer Object (Pydantic BaseModel) -#}
-{#- Version: 1.3.0 -#}
+{#- Version: 1.5.0 -#}
 {#- Purpose: Generate Pydantic DTOs for data transfer between layers -#}
 {%- extends "tier2_base_python.jinja2" -%}
 
+{%- import "tier3_pattern_python_pydantic.jinja2" as pydantic -%}
+{%- import "tier3_pattern_python_typed_id.jinja2" as typed_id -%}
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
+
 {#-
 TEMPLATE_METADATA:
-  enforcement: ARCHITECTURAL
+  enforcement: GUIDELINE
   level: content
   validates:
     guidelines:
@@ -15,8 +19,11 @@ TEMPLATE_METADATA:
       - "Immutable by default (frozen=True optional)"
   extends: tier2_base_python.jinja2
   purpose: "Concrete template for Data Transfer Objects (Pydantic)"
-  version: "1.4.0"
+  version: "1.5.0"
   changelog:
+    - version: "1.5.0"
+      date: "2026-02-01"
+      changes: "Refactor DTO to compose Tier 3 pattern macros and set enforcement to GUIDELINE"
     - version: "1.4.0"
       date: "2026-01-27"
       changes: "Make examples REQUIRED for consistent self-documenting DTOs"
@@ -36,11 +43,11 @@ TEMPLATE_METADATA:
     variables:
       required:
         - name
-        - fields (each field must have: name, type, description)
         - frozen (True for immutable DTOs, False for state objects)
         - examples (list of example objects for json_schema_extra)
       optional:
         - description
+        - fields (each field must have: name, type, description)
         - validators
         - layer (architectural layer, e.g. "DTOs (Strategy)")
         - dependencies (list of dependencies, defaults to pydantic.BaseModel)
@@ -60,11 +67,20 @@ Data Transfer Object for {{ name | lower }}.
 
 {% block imports_section %}
 # Standard library
+{{ p_logging.pattern_logging_imports() }}
 
 # Third-party
-from pydantic import BaseModel, Field
+{{ pydantic.pattern_pydantic_imports() }}
 
 # Project modules
+{# Optional: typed-id generator imports for Field(default_factory=...) #}
+{% if fields %}
+{% for field in fields %}
+{% if field.default_factory is defined %}
+{{ typed_id.pattern_typed_id_imports(function_name=field.default_factory) }}
+{% endif %}
+{% endfor %}
+{% endif %}
 
 {% endblock %}
 
@@ -72,10 +88,10 @@ from pydantic import BaseModel, Field
 class {{ name }}(BaseModel):
 {% block class_docstring %}
     """{{ description | default(name + ' DTO.') }}
-    
+
     Data Transfer Object for {{ name | lower }}.
     {% if fields %}
-    
+
     Fields:
 {% for field in fields %}
         {{ field.name }}: {{ field.description | default('Field description') }}
@@ -91,7 +107,7 @@ class {{ name }}(BaseModel):
         default={{ field.default }},
 {% endif %}
 {% if field.default_factory is defined %}
-        default_factory={{ field.default_factory }},
+        {{ typed_id.pattern_typed_id_default_factory(function_name=field.default_factory) }},
 {% endif %}
         description="{{ field.description | default('Field description') }}"
     )
@@ -106,7 +122,7 @@ class {{ name }}(BaseModel):
         "frozen": {{ 'True' if frozen else 'False' }},
         "extra": "forbid"{% if examples %},
         "json_schema_extra": {
-            "examples": {{ examples | tojson(indent=4) | indent(12, first=False) }}
+            "examples": {{ examples | tojson(indent=4) | indent(4, first=False) }}
         }{% endif %}
 
     }

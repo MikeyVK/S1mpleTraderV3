@@ -1,20 +1,30 @@
 {#- concrete/service_command.py.jinja2 - Service Command Pattern -#}
-{#- Version: 1.1.0 -#}
+{#- Version: 1.3.0 -#}
 {#- Purpose: Generate service command classes (execute pattern) -#}
 {%- extends "tier2_base_python.jinja2" -%}
 
+{%- import "tier3_pattern_python_async.jinja2" as p_async -%}
+{%- import "tier3_pattern_python_error.jinja2" as errors -%}
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
+{%- import "tier3_pattern_python_di.jinja2" as di -%}
+{%- import "tier3_pattern_python_translator.jinja2" as translator -%}
+
 {#-
 TEMPLATE_METADATA:
-  enforcement: ARCHITECTURAL
+  enforcement: GUIDELINE
   level: content
   validates:
     guidelines:
       - "Command pattern with execute() method"
       - "Result/Error return types"
+      - "Uses translation keys (no hardcoded UX strings)"
   extends: tier2_base_python.jinja2
   purpose: "Concrete template for service command pattern"
-  version: "1.2.0"
+  version: "1.3.0"
   changelog:
+    - version: "1.3.0"
+      date: "2026-02-01"
+      changes: "Refactor service command to compose Tier 3 pattern macros and set enforcement to GUIDELINE"
     - version: "1.2.0"
       date: "2026-01-26"
       changes: "Changed enforcement from REQUIRED to ARCHITECTURAL (code patterns)"
@@ -37,21 +47,32 @@ TEMPLATE_METADATA:
 {% block imports_section %}
 # Standard library
 from typing import Any
+{{ p_async.pattern_async_imports(include_types=False) }}
+{{ p_logging.pattern_logging_imports() }}
 
 # Third-party
 
 # Project modules
+{{ translator.pattern_translator_imports() }}
 
 {% endblock %}
 
 {% block class_structure %}
+{{ translator.pattern_translator_key_guideline() }}
+
+
 class {{ name }}:
 {% block class_docstring %}
     """{{ description | default(name + ' service command.') }}
-    
+
     Service command following execute pattern.
     """
 {% endblock -%}
+
+    def __init__(self, service_translator: Translator | None = None) -> None:
+        self._name = "{{ name }}"
+        self._translator = service_translator
+
 {% block execute_method %}
 
     async def execute(self{% if parameters %}{% for param in parameters %}, {{ param.name }}: {{ param.type }}{% endfor %}{% endif %}){% if return_type %} -> {{ return_type }}{% else %} -> Any{% endif %}:
@@ -65,7 +86,10 @@ class {{ name }}:
         Returns:
             {{ return_type | default('Any') }}
         """
-        # TODO: Implement service logic
-        pass
+        try:
+            # TODO: Implement service logic
+            pass
+        except Exception as exc:  # noqa: BLE001
+            {{ errors.pattern_error_raise(exc_class="RuntimeError", worker_name_attr="_name", message="'service.execute.failed'") | indent(12) }}
 {% endblock -%}
 {% endblock %}
