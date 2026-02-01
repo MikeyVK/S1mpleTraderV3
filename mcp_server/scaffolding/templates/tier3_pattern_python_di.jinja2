@@ -6,25 +6,41 @@
   purpose: "Dependency injection via **capabilities (worker initialize pattern)"
   exports:
     - pattern_di_imports
-    - pattern_di_get_capability
+    - pattern_di_require_dependency
     - pattern_di_require_capability
+    - pattern_di_set_dependency
+    - pattern_di_set_capability
 #}
 
 {#-
 Tier 3 Pattern: DI via capabilities
 - Macro library only: no extends, no blocks
 - Uses the IWorkerLifecycle initialize(strategy_cache, **capabilities) contract
+- Backend-aligned guard clauses + storage (see backend/core/flow_initiator.py)
 -#}
 
 {% macro pattern_di_imports() -%}
 from backend.core.interfaces.worker import WorkerInitializationError
 {%- endmacro %}
 
-{% macro pattern_di_get_capability(attr_name="_dep", cap_key="dependency") -%}
-self.{{ attr_name }} = capabilities.get("{{ cap_key }}")
+{% macro pattern_di_require_dependency(dep_name="strategy_cache", worker_name_attr="_name", details="required") -%}
+if {{ dep_name }} is None:
+    raise WorkerInitializationError(
+        f"{self.{{ worker_name_attr }}}: {{ dep_name }} {{ details }}"
+    )
 {%- endmacro %}
 
-{% macro pattern_di_require_capability(cap_key="dependency", exc_class="WorkerInitializationError", message_key="worker.missing_capability") -%}
-if capabilities.get("{{ cap_key }}") is None:
-    raise {{ exc_class }}("{{ message_key }}")
+{% macro pattern_di_require_capability(cap_key="dto_types", worker_name_attr="_name", details="required") -%}
+if "{{ cap_key }}" not in capabilities:
+    raise WorkerInitializationError(
+        f"{self.{{ worker_name_attr }}}: '{{ cap_key }}' capability {{ details }}"
+    )
+{%- endmacro %}
+
+{% macro pattern_di_set_dependency(attr_name="_cache", dep_name="strategy_cache") -%}
+self.{{ attr_name }} = {{ dep_name }}
+{%- endmacro %}
+
+{% macro pattern_di_set_capability(attr_name="_dto_types", cap_key="dto_types") -%}
+self.{{ attr_name }} = capabilities["{{ cap_key }}"]
 {%- endmacro %}

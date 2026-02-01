@@ -75,25 +75,52 @@ class TestTier3PatternPythonDi:
         assert "category: pattern" in content
 
         assert "{% macro pattern_di_imports" in content
-        assert "{% macro pattern_di_get_capability" in content
+
+        # Backend-aligned initialize() guard clauses (see backend/core/flow_initiator.py)
+        assert "{% macro pattern_di_require_dependency" in content
         assert "{% macro pattern_di_require_capability" in content
+
+        assert "{% macro pattern_di_set_dependency" in content
+        assert "{% macro pattern_di_set_capability" in content
 
     def test_macros_render_expected_tokens(self, jinja_env):
         """Rendered macros contain expected DI tokens."""
         template = jinja_env.get_template("tier3_pattern_python_di.jinja2")
 
         imports_rendered = getattr(template.module, "pattern_di_imports")()
-        get_rendered = getattr(template.module, "pattern_di_get_capability")(
-            attr_name="_persistence",
-            cap_key="persistence",
+
+        require_dep_rendered = getattr(template.module, "pattern_di_require_dependency")(
+            dep_name="strategy_cache",
+            worker_name_attr="_name",
+            details="required for Platform-within-Strategy worker",
         )
-        req_rendered = getattr(template.module, "pattern_di_require_capability")(
-            cap_key="persistence",
-            message_key="worker.missing_capability",
+        require_cap_rendered = getattr(template.module, "pattern_di_require_capability")(
+            cap_key="dto_types",
+            worker_name_attr="_name",
+            details="capability required for DTO type resolution",
+        )
+
+        set_dep_rendered = getattr(template.module, "pattern_di_set_dependency")(
+            attr_name="_cache",
+            dep_name="strategy_cache",
+        )
+        set_cap_rendered = getattr(template.module, "pattern_di_set_capability")(
+            attr_name="_dto_types",
+            cap_key="dto_types",
         )
 
         assert "WorkerInitializationError" in imports_rendered
-        assert "capabilities" in get_rendered
-        assert "persistence" in get_rendered
-        assert "raise" in req_rendered
-        assert "worker.missing_capability" in req_rendered
+
+        assert "if strategy_cache is None" in require_dep_rendered
+        assert "raise WorkerInitializationError" in require_dep_rendered
+        assert "f\"{self._name}: strategy_cache" in require_dep_rendered
+
+        assert "if \"dto_types\" not in capabilities" in require_cap_rendered
+        assert "raise WorkerInitializationError" in require_cap_rendered
+        assert "f\"{self._name}: 'dto_types' capability" in require_cap_rendered
+
+        assert "self._cache" in set_dep_rendered
+        assert "= strategy_cache" in set_dep_rendered
+
+        assert "self._dto_types" in set_cap_rendered
+        assert "capabilities[\"dto_types\"]" in set_cap_rendered
