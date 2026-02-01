@@ -16,11 +16,12 @@
 Tier 3 Pattern: Pydantic v2
 - Macro library only: no extends, no blocks
 - Keep output composable via {% import %}
-- Prefer i18n keys for descriptions (no user-facing strings)
+- Backend-aligned DTO style uses `model_config = {...}` dict
+  (see backend/dtos/**)
 -#}
 
 {% macro pattern_pydantic_imports(include_validation_error=false) -%}
-from pydantic import BaseModel, ConfigDict, Field, field_validator{% if include_validation_error %}, ValidationError{% endif %}
+from pydantic import BaseModel, Field, field_validator{% if include_validation_error %}, ValidationError{% endif %}
 {%- endmacro %}
 
 {% macro pattern_pydantic_base_model(class_name="MyModel") -%}
@@ -29,16 +30,23 @@ class {{ class_name }}(BaseModel):
 {%- endmacro %}
 
 {% macro pattern_pydantic_config(extra="forbid", frozen=true) -%}
-    model_config = ConfigDict(extra="{{ extra }}", frozen={{ 'True' if frozen else 'False' }})
+    model_config = {
+        "frozen": {{ 'True' if frozen else 'False' }},
+        "extra": "{{ extra }}",
+    }
 {%- endmacro %}
 
-{% macro pattern_pydantic_field(name, type_, description_key, default="...") -%}
-    {{ name }}: {{ type_ }} = Field({{ default }}, description="{{ description_key }}")
+{% macro pattern_pydantic_field(name, type_, description, default="...", default_factory=None, extra_args="") -%}
+    {{ name }}: {{ type_ }} = Field(
+        {% if default_factory %}default_factory={{ default_factory }},{% else %}{{ default }},{% endif %}
+        {% if extra_args %}{{ extra_args }},{% endif %}
+        description="{{ description }}"
+    )
 {%- endmacro %}
 
-{% macro pattern_pydantic_validator(field_name, value_type="str") -%}
-    @field_validator("{{ field_name }}")
+{% macro pattern_pydantic_validator(field_name, signature="v: str", return_type="str", mode=None, method_name=None) -%}
+    @field_validator('{{ field_name }}'{% if mode %}, mode='{{ mode }}'{% endif %})
     @classmethod
-    def validate_{{ field_name }}(cls, v: {{ value_type }}):
+    def {{ method_name if method_name else 'validate_' ~ field_name }}(cls, {{ signature }}) -> {{ return_type }}:
         return v
 {%- endmacro %}

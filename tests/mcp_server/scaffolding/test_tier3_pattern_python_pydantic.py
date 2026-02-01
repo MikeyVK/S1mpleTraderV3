@@ -87,21 +87,40 @@ class TestTier3PatternPythonPydantic:
         template = jinja_env.get_template("tier3_pattern_python_pydantic.jinja2")
 
         imports_rendered = template.module.pattern_pydantic_imports()
-        base_rendered = template.module.pattern_pydantic_base_model()
+        base_rendered = template.module.pattern_pydantic_base_model(class_name="Signal")
+        config_rendered = template.module.pattern_pydantic_config(extra="forbid", frozen=True)
+
         field_rendered = template.module.pattern_pydantic_field(
-            name="foo",
+            name="signal_id",
             type_="str",
-            description_key="dto.foo",
+            description="Typed signal ID (military datetime format)",
+            default_factory="generate_signal_id",
+            extra_args="pattern=r'^SIG_\\d{8}_\\d{6}_[0-9a-f]{8}$'",
         )
-        validator_rendered = template.module.pattern_pydantic_validator(field_name="foo")
+        validator_rendered = template.module.pattern_pydantic_validator(
+            field_name="confidence",
+            signature="v: float | Decimal | str | None",
+            return_type="Decimal | None",
+            mode="before",
+            method_name="convert_to_decimal",
+        )
 
         assert "from pydantic" in imports_rendered
         assert "BaseModel" in imports_rendered
+        assert "ConfigDict" not in imports_rendered
 
-        assert "class" in base_rendered
+        assert "class Signal" in base_rendered
         assert "(BaseModel" in base_rendered
 
-        assert "Field(" in field_rendered
-        assert "dto.foo" in field_rendered
+        assert "model_config" in config_rendered
+        assert "\"extra\": \"forbid\"" in config_rendered
+        assert "\"frozen\": True" in config_rendered
+
+        assert "Field" in field_rendered
+        assert "default_factory=generate_signal_id" in field_rendered
+        assert "pattern=r'^SIG_" in field_rendered
+        assert "Typed signal ID" in field_rendered
 
         assert "@field_validator" in validator_rendered
+        assert "mode='before'" in validator_rendered
+        assert "def convert_to_decimal" in validator_rendered
