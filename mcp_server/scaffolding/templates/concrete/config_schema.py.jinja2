@@ -5,7 +5,6 @@
 
 {%- import "tier3_pattern_python_pydantic.jinja2" as pydantic -%}
 {%- import "tier3_pattern_python_typed_id.jinja2" as typed_id -%}
-{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -45,8 +44,6 @@ TEMPLATE_METADATA:
 {% endblock %}
 
 {% block imports_section %}
-# Standard library
-
 # Third-party
 {{ pydantic.pattern_pydantic_imports(include_field_validator=false) }}
 
@@ -68,10 +65,12 @@ class {{ name }}(BaseModel):
 
     model_config = {
         "frozen": {{ 'True' if (frozen | default(false)) else 'False' }},
-        "extra": "forbid"{% if examples %},
+        "extra": "forbid",
+{% if examples %}
         "json_schema_extra": {
-            "examples": {{ examples | tojson(indent=4) | indent(4, first=False) }}
-        }{% endif %}
+            "examples": {{ examples | pprint }}
+        },
+{% endif %}
     }
 
 {% if fields %}

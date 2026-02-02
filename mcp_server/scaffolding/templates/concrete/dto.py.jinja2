@@ -5,7 +5,6 @@
 
 {%- import "tier3_pattern_python_pydantic.jinja2" as pydantic -%}
 {%- import "tier3_pattern_python_typed_id.jinja2" as typed_id -%}
-{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -69,8 +68,6 @@ Data Transfer Object for {{ name | lower }}.
 {% endblock %}
 
 {% block imports_section %}
-# Standard library
-
 # Third-party
 {{ pydantic.pattern_pydantic_imports(include_field_validator=(((validators | default([])) | length) > 0)) }}
 

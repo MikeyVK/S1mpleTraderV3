@@ -34,8 +34,27 @@ TEMPLATE_METADATA:
         - methods
 -#}
 
+{% block module_docstring %}
+"""{{ name }} module.
+
+{{ description | default('Generic Python component.') }}
+
+@layer: {{ layer | default('Backend (Generic)') }}
+@dependencies: [None]
+@responsibilities:
+{% if responsibilities %}
+{% for responsibility in responsibilities %}
+    - {{ responsibility }}
+{% endfor %}
+{% else %}
+    - [To be defined]
+{% endif %}
+"""
+{% endblock %}
+
 {% block imports_section %}
 # Standard library
+{{ p_logging.pattern_logging_imports() }}
 
 # Third-party
 
@@ -44,6 +63,8 @@ TEMPLATE_METADATA:
 {% endblock %}
 
 {% block class_structure %}
+{{ p_logging.pattern_logging_get_logger() }}
+
 class {{ name }}:
 {% block class_docstring %}
     """{{ description | default(name + ' class.') }}"""

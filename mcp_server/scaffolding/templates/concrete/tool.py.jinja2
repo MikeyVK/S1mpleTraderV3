@@ -38,13 +38,13 @@ TEMPLATE_METADATA:
 
 @layer: {{ layer | default('MCP (Tools)') }}
 @responsibilities:
-{%- if responsibilities %}
-{%- for responsibility in responsibilities %}
+{% if responsibilities %}
+{% for responsibility in responsibilities %}
     - {{ responsibility }}
-{%- endfor %}
-{%- else %}
+{% endfor %}
+{% else %}
     - [To be defined]
-{%- endif %}
+{% endif %}
 """
 {% endblock %}
 
@@ -81,6 +81,6 @@ class {{ name }}:
         try:
             # TODO: Implement tool logic
             return {}
-        except Exception as exc:  # noqa: BLE001
-            {{ errors.pattern_error_raise(exc_class="RuntimeError", worker_name_attr="_name", message="'tool.execute.failed'") | indent(12) }}
+        except Exception:  # noqa: BLE001
+            {{ errors.pattern_error_raise(exc_class="RuntimeError", worker_name_attr="_name", message="tool.execute.failed") | indent(12) }}
 {% endblock %}

@@ -1,19 +1,19 @@
-# D:\dev\SimpleTraderV3\.st3\SignalDetectorWorker.py
-# template=worker version=c1dd4e65 created=2026-02-01T20:24Z updated=
+# .st3/scaffold_review/ReviewSyncWorker.py
+# template=worker version=9cb30b12 created=2026-02-02T08:39Z updated=
 """
-SignalDetector - Detects trading signals and publishes events.
+ReviewSync - Review worker (sync mode)..
 
 @layer: Backend (Workers)
 @dependencies: [backend.core.interfaces, backend.dtos]
 @responsibilities:
-    - Detect trading signals
-    - Emit normalized signal events
+    - Review IWorkerLifecycle structure
+    - Check DI guard clauses + token discipline
+    - Verify LogEnricher/Translator usage
 """
 
 # Standard library
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
-
 import logging
 
 # Third-party
@@ -28,22 +28,23 @@ if TYPE_CHECKING:
     from backend.core.interfaces.strategy_cache import IStrategyCache
     from backend.core.interfaces.config import BuildSpec
 
-__all__ = ["SignalDetector"]
+__all__ = ["ReviewSync"]
 
 
-class SignalDetector(IWorker, IWorkerLifecycle):
+class ReviewSync(IWorker, IWorkerLifecycle):
     """
-    SignalDetector worker implementation.
+    ReviewSync worker implementation.
 
     Architecture:
     - EventAdapter-compliant: Standard IWorker + IWorkerLifecycle pattern
     - Worker scope: strategy
     - Strategy worker: Requires strategy_cache for runtime state
+    - Required capabilities: dto_types
     """
 
     def __init__(self, build_spec: BuildSpec) -> None:
         """
-        Construct SignalDetector with configuration.
+        Construct ReviewSync with configuration.
 
         V3 Pattern: Construction phase accepts BuildSpec only (no dependencies).
         Dependencies injected via initialize() during runtime initialization.
@@ -105,6 +106,14 @@ class SignalDetector(IWorker, IWorkerLifecycle):
         # Pattern: translator.get(key, default=key)  (fallback is key itself)
         # Special-case parameter display names: translator.get_param_name(param_path, default=param_path)
 
+        # Validate required capabilities
+        if "dto_types" not in capabilities:
+            raise WorkerInitializationError(
+                f"{self._name}: di.capability.dto_types.required"
+            )
+
+        # Store required capabilities
+        self._dto_types = capabilities["dto_types"]
 
         # Perform additional initialization here
 

@@ -6,8 +6,8 @@
 {%- import "tier3_pattern_python_async.jinja2" as p_async -%}
 {%- import "tier3_pattern_python_error.jinja2" as errors -%}
 {%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
-{%- import "tier3_pattern_python_di.jinja2" as di -%}
 {%- import "tier3_pattern_python_translator.jinja2" as translator -%}
+{%- import "tier3_pattern_python_di.jinja2" as di -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -70,16 +70,20 @@ TEMPLATE_METADATA:
 {% block imports_section %}
 # Standard library
 from typing import Any
-
+{{ p_logging.pattern_logging_imports() }}
+{{ p_async.pattern_async_imports(include_types=False) }}
 # Third-party
 
 # Project modules
+{{ di.pattern_di_imports() }}
 {{ translator.pattern_translator_imports() }}
 
 {% endblock %}
 
 {% block class_structure %}
 {{ translator.pattern_translator_key_guideline() }}
+
+{{ p_logging.pattern_logging_get_logger() }}
 
 __all__ = ["{{ name }}Service"]
 
@@ -98,21 +102,29 @@ class {{ name }}Service:
 
 {% block execute_method %}
 
-    async def execute(self{% if parameters %}{% for param in parameters %}, {{ param.name }}: {{ param.type }}{% endfor %}{% endif %}){% if return_type %} -> {{ return_type }}{% else %} -> Any{% endif %}:
+    async def execute(self{% if parameters %}{% for param in parameters %}, {{ param.name }}: {{ param.type }}{% endfor %}{% endif %}, **capabilities: Any){% if return_type %} -> {{ return_type }}{% else %} -> Any{% endif %}:
         """Execute service command.
-        {% if parameters %}
+
         Args:
-{% for param in parameters -%}
+{% if parameters %}
+{% for param in parameters %}
             {{ param.name }}: {{ param.description | default('Parameter') }}
-{% endfor -%}
-        {% endif %}
+{% endfor %}
+{% endif %}
+            **capabilities: Optional capability DI (e.g., translator)
         Returns:
             {{ return_type | default('Any') }}
         """
         try:
+            if self._translator is None:
+{{ di.pattern_di_require_capability(cap_key="translator", worker_name_attr="_name", details="required") | indent(16, true) }}
+{{ di.pattern_di_set_capability(attr_name="_translator", cap_key="translator") | indent(16, true) }}
+
             # TODO: Implement service logic
+            await asyncio.sleep(0)  # async placeholder
             pass
-        except Exception as exc:  # noqa: BLE001
-            raise RuntimeError(f"{self._name}: service.execute.failed") from exc
+        except Exception:  # noqa: BLE001
+            {{ p_logging.pattern_logging_call(level="exception", message_key="service.execute.failed") }}
+            {{ errors.pattern_error_raise(exc_class="RuntimeError", worker_name_attr="_name", message="service.execute.failed") }}
 {% endblock %}
 {% endblock %}

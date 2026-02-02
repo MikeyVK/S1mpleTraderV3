@@ -168,9 +168,30 @@ version_hashes:
     concrete:
       template_id: dto.py
       version: 1.5.1
+  '74378193':
+    artifact_type: schema
+    created: '2026-02-02T08:07:38.093511+00:00'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: config_schema.py
+      version: 1.0.0
+  27130d2b:
+    artifact_type: tool
+    created: '2026-02-02T08:07:43.985141+00:00'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: tool.py
+      version: 1.0.0
+  f35abd82:
+    artifact_type: generic
+    created: '2026-02-02T08:13:20.269516+00:00'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: generic.py
+      version: 1.2.0
 current_versions:
   dto: 0d83ee77
-  generic: 6f1837e9
+  generic: f35abd82
   design: 0f06069b
   research: d994bd87
   planning: cdbd5bc4
@@ -178,5 +199,7 @@ current_versions:
   reference: ab4c6f43
   worker: 9cb30b12
   service: 5d5b489a
+  schema: '74378193'
+  tool: 27130d2b
 templates: {}
-last_updated: '2026-02-01T20:46:58.125820+00:00'
+last_updated: '2026-02-02T08:13:20.269531+00:00'

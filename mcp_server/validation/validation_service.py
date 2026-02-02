@@ -143,7 +143,20 @@ class ValidationService:
             succeeds, and issues_text contains formatted issues if any.
         """
         # For code artifacts, do Python syntax validation
-        if artifact_type == "code" or artifact_type in ["dto", "worker", "adapter", "tool", "base"]:
+        if artifact_type == "code" or artifact_type in [
+            "dto",
+            "worker",
+            "adapter",
+            "tool",
+            "schema",
+            "service",
+            "generic",
+            "resource",
+            "interface",
+            "unit_test",
+            "integration_test",
+            "base",
+        ]:
             try:
                 # Try to compile the content to check for syntax errors
                 compile(content, f"<{artifact_type}>", "exec")

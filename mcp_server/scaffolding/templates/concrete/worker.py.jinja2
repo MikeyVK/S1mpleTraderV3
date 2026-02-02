@@ -74,11 +74,9 @@ TEMPLATE_METADATA:
 # Standard library
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
-
-{% if use_async | default(false) %}
+{% if use_async | default(false) -%}
 {{ p_async.pattern_async_imports(include_types=False) }}
-{% endif %}
-
+{% endif -%}
 {{ p_logging.pattern_logging_imports() }}
 
 # Third-party
