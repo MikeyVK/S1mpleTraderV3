@@ -1,317 +1,217 @@
 # Jinja2 Template Whitespace Control Strategy (Issue #72)
 
-## Problem Statement
-Multi-tier template inheritance creates unpredictable whitespace:
-- Explicit newlines (`{{ "\n" }}`) + implicit source newlines = doubled spacing
-- Inconsistent trim patterns ({%- -%}) across tiers break composition
-- Ad-hoc fixes for one artifact type break others
+## Goal
+Make whitespace output deterministic across multi-tier Jinja template inheritance (tier0–tier2 + concrete), so we can normalize templates once and stop doing ad-hoc whitespace patches per artifact type.
 
-## Universal Principles
+This document is intended to be *runnable* as a checklist for an implementation agent.
 
-### 1. Block Boundaries = Natural Newlines
+## Assumptions: Jinja Environment Configuration (Project Truth)
+This project renders templates with these Jinja2 `Environment` options:
+
+- `trim_blocks=True`
+  - Removes the **first newline after a block tag** (`{% ... %}`) only.
+  - Does **not** apply to variable tags (`{{ ... }}`).
+- `lstrip_blocks=True`
+  - Strips **leading spaces and tabs** from the start of a line **up to the start of a block tag**.
+  - If there are non-whitespace characters before the tag, nothing is stripped.
+- `keep_trailing_newline=True`
+  - Preserves a single trailing newline at the end of the template output *if the template source results in it*.
+  - Without this, Jinja strips a single trailing newline by default.
+
+These rules are defined by Jinja2 itself and are the basis for everything below.
+
+## Ground Truth: How Jinja2 Whitespace Actually Works
+Jinja templates are plain text. Apart from the whitespace-control features below, whitespace in the template source is emitted as-is.
+
+### A. Default behavior (conceptual baseline)
+- Whitespace (spaces, tabs, newlines) in the template source is output unchanged.
+- Block tags (`{% ... %}`) and variable tags (`{{ ... }}`) are not themselves printed, but the whitespace around them is still part of the template source and may be printed.
+
+### B. `trim_blocks=True`
+- Only affects block tags (`{% ... %}`), not variable tags (`{{ ... }}`).
+- If a block tag is followed by a newline in the template source, that single newline is removed.
+- Consequence: “block lines” (tags placed on their own line) often disappear cleanly without leaving an empty output line.
+
+### C. `lstrip_blocks=True`
+- Only affects block tags (`{% ... %}`).
+- If a line begins with spaces/tabs followed by a block tag, those spaces/tabs are removed.
+- Consequence: indentation spaces placed *before* `{% if ... %}` / `{% for ... %}` are generally not safe to rely on as output indentation.
+
+### D. Manual whitespace control with `-` on delimiters
+Jinja supports explicit whitespace stripping by adding `-` to the start or end of:
+- block tags: `{%- ... %}` and `{% ... -%}`
+- variable tags: `{{- ... }}` and `{{ ... -}}`
+- comments: `{#- ... #}` and `{# ... -#}`
+
+Important:
+- The `-` must be directly adjacent to the delimiter. This is invalid: `{% - if foo - %}`.
+
+Rule of thumb:
+- Use `-` only when you are intentionally removing whitespace that would otherwise be emitted.
+- Prefer *surgical* use around known-problem boundaries (super calls, endfor/endif edges), not blanket trimming everywhere.
+
+### E. Manual opt-out with `+`
+Jinja supports `+` markers that locally disable environment trimming behavior:
+- `{%+ ... %}` disables `lstrip_blocks` for that tag.
+- `{% ... +%}` disables `trim_blocks` for that tag.
+
+Use these only when you are intentionally preserving whitespace for a specific construct.
+
+### F. Trailing newlines and `keep_trailing_newline=True`
+With `keep_trailing_newline=True`, output will keep a trailing newline **if the rendered output ends with one**.
+
+Project implication:
+- The renderer does not “normalize” the last newline for you.
+- Templates must explicitly *decide* what they want at EOF.
+
+## Project Strategy (Deterministic Output Under These Semantics)
+
+### 1) “Structure tags on their own lines” is the default, but not magic
+Placing control tags on their own lines is still the cleanest approach, especially with `trim_blocks=True` and `lstrip_blocks=True`.
+
+However, do not assume that “block boundaries create exactly one newline”. Newlines are created (or removed) by:
+- literal newlines in the template source,
+- the effect of `trim_blocks` on block tags,
+- any explicit `-` trimming,
+- and the text returned by called macros / `super()`.
+
+### 2) Never inject raw newlines with expressions
+Avoid `{{ "\n" }}`. It bypasses Jinja’s whitespace controls and tends to double up with literal source newlines or inherited block content.
+
+If you need a blank line, express it as a literal blank line in the template source where it belongs.
+
+### 3) Control whitespace at “merge points”
+The most fragile whitespace boundaries are where content is *merged*:
+- `{{ super() }}` calls
+- macro calls that include trailing newlines
+- loop/conditional edges where template authors accidentally include blank lines between `{% endif %}` and `{% endfor %}`
+
+These are the locations where surgical trimming is allowed and expected.
+
+## Required Pattern: `super()` Is a Merge Point
+`super()` returns the parent block’s rendered text as-is.
+
+Because `trim_blocks` does **not** apply to `{{ ... }}`, it will not help you if `super()` returns a string that ends with a newline and you also have a newline in your child template.
+
+Therefore, at merge points we require right-trimming of the `super()` expression:
+
 ```jinja
-{%- block content %}
-...content...
-{% endblock %}
-```
-- Opening `{% block %}` consumes newline before it
-- Closing `{% endblock %}` produces newline after it
-- Result: ONE newline between blocks naturally
-
-### 2. Internal Trimming for Content Merging
-```jinja
-{%- if condition -%}
-content without surrounding whitespace
-{%- endif -%}
-```
-- Use `-` only when you want to REMOVE whitespace
-- Left trim (`{%-`) removes before
-- Right trim (`-%}`) removes after
-
-### 3. Super() Calls Must Be Right-Trimmed (CRITICAL FIX)
-```jinja
-{% block imports %}
 {{ super() -}}
-additional imports
-{% endblock %}
 ```
-- `super()` outputs parent block content AS-IS (includes parent's endblock newline)
-- **MUST use `{{ super() -}}`** (right-trim) to prevent extra blank line
-- Without right-trim: parent newline + block boundary newline = double spacing
-- Learned from Jinja2 docs: variable expressions can be trimmed like blocks
 
-### 4. No Explicit Newlines
+Meaning:
+- If there is whitespace/newline in the template source immediately after the expression, it is removed.
+- This prevents the classic “double blank line” after inherited content.
+
+Notes:
+- This does not remove whitespace *inside* whatever `super()` returns.
+- If the parent intentionally ends with a blank line, that is still inherited.
+
+## Tier Guidance (What Each Tier Is Allowed to Do)
+
+### Tier 0: metadata header only
+Tier 0 should emit the scaffold metadata line and then hand off to child templates.
+
+Rules:
+- No explicit newline injection via expressions.
+- Decide intentionally whether the header ends with a newline.
+  - If you want exactly one newline after the header, include a literal newline after the header text and rely on the environment consistently.
+  - If you want no trailing newline at this point, do not include one.
+
+### Tier 1 CODE: structural blocks (docstring/imports/class)
+Tier 1 CODE is responsible for the *structure* of a Python file (docstring section, import section, class section).
+
+Rules:
+- Use `{{ super() -}}` at the top of the content block if Tier 0 provides header content.
+- Prefer blocks on their own lines.
+- Inside `if`/`for`, never rely on indentation placed before `{% ... %}` tags for output indentation (because `lstrip_blocks=True`).
+  - Put the indentation in emitted text (inside the branches) or render whole lines.
+
+### Tier 1 DOCUMENT: structural blocks (title/sections)
+Tier 1 DOCUMENT is responsible for Markdown structure.
+
+Rules:
+- Avoid a leading blank line before the first header.
+- Ensure exactly one blank line between major markdown headings and their content.
+- Keep the decision about EOF newline in the *template*, not in the renderer.
+
+### Tier 2 specializations (Python / Markdown / YAML)
+Tier 2 may add domain-specific scaffolding (typing imports, yaml boilerplate, markdown front matter, etc.).
+
+Rules:
+- If Tier 2 overrides a block that also calls `super()`, treat it as a merge point and right-trim the `super()` expression unless there is a deliberate reason not to.
+
+### Concrete templates
+Concrete templates should override only specific blocks and avoid whitespace micromanagement.
+
+Rules:
+- Do not introduce aggressive `{%- ... -%}` trimming unless fixing a known merge-point artifact.
+- Avoid introducing blank lines around `{% endif %}` / `{% endfor %}` unless you truly want a blank line in output.
+
+## EOF Policy (Project Decision)
+This project treats “newline at EOF” as *artifact-type owned by templates*, not globally enforced by the writer.
+
+- For CODE artifacts (Python): prefer exactly one trailing newline.
+- For DOCUMENT artifacts (especially tracking/docs): do not require a trailing newline; templates may intentionally omit it.
+
+Because `keep_trailing_newline=True`, templates must be explicit and consistent about whether they end with a newline.
+
+## Deterministic Indentation: Correct Explanation (Issue #72.3)
+**Observed problem:** methods generated at column 0 even though the template visually showed indentation.
+
+**Actual root cause under this project’s env:**
+- With `lstrip_blocks=True`, leading spaces before a `{% if ... %}` tag are stripped.
+- With `trim_blocks=True`, the newline immediately after a `{% ... %}` tag is removed.
+
+So indentation and line breaks around block tags can be removed in ways that surprise you.
+
+**Correct fix pattern:** emit indentation as output text, not as “spaces before a block tag”.
+
+Example (safe):
 ```jinja
-BAD:  {{ "\n" }}
-GOOD: Let block boundaries do it
+{% if method.async %}    async def {{ method.name }}({% else %}    def {{ method.name }}({% endif %}
 ```
 
-## Application Per Tier
+This keeps indentation inside the emitted text in both branches.
 
-### Tier 0 (tier0_base_artifact.jinja2)
-**Purpose:** SCAFFOLD header only
-**Output:** `# SCAFFOLD: ...\n` (one newline from endblock)
+## Trailing Blank Lines in Loops: Correct Explanation and Fix
+**Problem:** output ends with extra blank lines.
 
-```jinja
-{% block content -%}
-{%- set variables... -%}
-{{comment_start}} SCAFFOLD: ...{{comment_end}}
-{% endblock %}
-```
-- `{% block content -%}` - trim after opening (no space before SCAFFOLD)
-- `{%- set ... -%}` - variables don't produce output, trim both sides  
-- SCAFFOLD line has NO explicit newline
-- `{% endblock %}` produces natural newline
+**Common cause:** a literal blank line in the template source between control tags is still part of the template source unless removed by trimming.
 
-### Tier 1 CODE (tier1_base_code.jinja2)
-**Purpose:** Module docstring, imports structure, class structure
-**Output:**
-```
-# SCAFFOLD: ...
-"""Docstring"""
-
-imports
-
-class:
-```
-
-```jinja
-{%- block content %}
-{{ super() -}}
-
-{% block module_docstring %}
-"""..."""
-{% endblock %}
-
-{% block imports_section %}
-{% if imports %}
-imports here
-{% endif %}
-{% endblock %}
-
-{% block class_structure %}
-class definition
-{% endblock %}
-{% endblock %}
-```
-
-**Logic:**
-- `{%- block content %}` (left-trim) - prevents leading newline
-- `{{ super() -}}` (RIGHT-TRIM) - prevents extra blank line after SCAFFOLD
-- Each section block naturally produces newlines between sections
-
-### Tier 1 DOCUMENT (tier1_base_document.jinja2)
-**Purpose:** Markdown header, sections
-**Similar pattern to CODE but for Markdown structure**
-
-### Tier 2 PYTHON (tier2_base_python.jinja2)
-**Purpose:** Python-specific typing, base classes, dunder methods
-**Extends tier1_base_code**
-
-```jinja
-{% block imports_section %}
-{% block type_imports %}
-{% if type_imports %}
-from typing import ...
-{% endif %}
-{% endblock %}
-{{ super() }}
-{% endblock %}
-
-{% block class_structure %}
-class {{ name }}(BaseModel):
-    ...
-{% endblock %}
-```
-
-**Logic:**
-- Override imports_section to prepend type imports
-- `{{ super() }}` brings tier1's imports (stdlib/third_party/project)
-- Natural newlines between type imports and super() output
-
-### Concrete Templates (dto.py.jinja2, worker.py.jinja2, etc)
-**Purpose:** Specific implementation
-**Extends tier2 (Python) or tier1 (generic)**
+**Fix pattern (surgical):** trim only at the edges that cause the blank line.
 
 ```jinja
-{% block type_imports %}
-from pydantic import BaseModel, Field
-{% endblock %}
-
-{% block class_structure %}
-class {{ name }}(BaseModel):
-    """{{ description }}"""
-    
-    fields here
-{% endblock %}
+{% if method.assertions %}
+{{ method.assertions | indent(8) }}
+{% else %}
+# TODO: Add assertions
+assert True
+{% endif -%}
+{%- endfor %}
 ```
 
-**Logic:**
-- Override only what's different
-- No trim unless merging content
-- Let parent tiers handle structure
+What this does:
+- `{% endif -%}` removes the whitespace/newline after the `endif` tag.
+- `{%- endfor %}` removes whitespace/newlines before the `endfor` tag.
 
-## Testing Strategy
+## Implementation Checklist (Drive the Refactor)
 
-### Per-Tier Testing
-1. **Tier 0 only:** Minimal concrete that just extends tier0
-2. **Tier 0 + Tier 1 CODE:** Simple Python class (no tier2)
-3. **Tier 0 + Tier 1 DOCUMENT:** Simple markdown (no tier2)
-4. **Full stack CODE:** Tier0 → Tier1 → Tier2 → DTO
-5. **Full stack DOCUMENT:** Tier0 → Tier1 → Tier2_md → Design
+### Environment alignment
+- [ ] Confirm the renderer keeps `trim_blocks=True`, `lstrip_blocks=True`, `keep_trailing_newline=True` (do not silently change these).
 
-### All Artifact Types
-Must test with representative from each category:
-- **CODE:** dto, worker, service, adapter, tool, resource
-- **DOCUMENT:** design, architecture, tracking, generic
-- **CONFIG:** (future)
+### Template normalization rules
+- [ ] Replace any `{{ "\n" }}` usage with structural whitespace.
+- [ ] Treat every `{{ super() }}` call as a merge point; use `{{ super() -}}` unless there is a deliberate reason not to.
+- [ ] Remove reliance on indentation before `{% ... %}` tags; emit indentation inside output text.
+- [ ] Apply loop-edge trimming only where blank lines are accidental.
 
-## Expected Output Format
+### Testing
+- [ ] Add/keep render-based tests that assert whitespace for at least one representative template per artifact category (CODE/DOCUMENT/CONFIG).
+- [ ] Include at least one test that asserts EOF behavior for a document/tracking artifact (so we don’t regress to “always newline”).
 
-### Python artifacts:
-```python
-# SCAFFOLD: template=dto version=abc123 created=2026-01-26T... path=dto.py
-"""Module docstring."""
-
-from typing import List
-from pydantic import BaseModel, Field
-
-class UserDTO(BaseModel):
-    """User data transfer object."""
-    
-    id: int
-    name: str
-```
-
-**Spacing rules:**
-- 1 newline after SCAFFOLD
-- 1 newline after docstring  
-- 1 newline after imports
-- 1 newline after class docstring
-- 1 newline between fields and methods
-
-### Markdown artifacts:
-```markdown
-<!-- SCAFFOLD: template=design version=abc123 created=2026-01-26T... path=design.md -->
-# Document Title
-
-## Section
-
-Content here.
-```
-
-**Spacing rules:**
-- 1 newline after SCAFFOLD
-- 1 newline after title
-- 1 newline after section header
-
-## Implementation Checklist
-
-- [ ] tier0_base_artifact.jinja2 - Remove explicit `{{ "\n" }}`
-- [ ] tier1_base_code.jinja2 - Consistent block boundaries
-- [ ] tier1_base_document.jinja2 - Same principles
-- [ ] tier1_base_config.jinja2 - Same principles
-- [ ] tier2_base_python.jinja2 - Proper super() handling
-- [ ] tier2_base_markdown.jinja2 - If exists
-- [ ] tier2_base_yaml.jinja2 - If exists
-- [ ] concrete/dto.py.jinja2 - No special trimming
-- [ ] concrete/worker.py.jinja2 - No special trimming
-- [ ] concrete/service.py.jinja2 - No special trimming
-- [ ] concrete/adapter.py.jinja2 - No special trimming
-- [ ] concrete/tool.py.jinja2 - No special trimming
-- [ ] concrete/resource.py.jinja2 - No special trimming
-- [ ] concrete/design.md.jinja2 - No special trimming
-- [ ] concrete/architecture.md.jinja2 - No special trimming
-- [ ] concrete/tracking.md.jinja2 - No special trimming
-- [ ] concrete/generic.py.jinja2 - No special trimming
-
-## Validation
-
-Every template must produce:
-1. Valid syntax (compile for Python, valid Markdown)
-2. Exactly 1 newline between major sections
-3. Consistent across ALL artifact types
-4. No empty lines where not semantically meaningful
-
-## Lessons Learned: Control Structure Indentation (Issue #72.3)
-
-**Problem:** Methods generated outside class despite template having 4 leading spaces before `{% if %}`.
-
-**Root Cause:** Jinja2 treats spaces **before** control structures as template formatting, NOT output content.
-
-**Example (BROKEN):**
-```jinja
-class TestExample:
-    """Docstring."""
-    
-    {% if method.async %}async {% endif %}def {{ method.name }}(
-```
-Output: `def test_name(` at column 0 (method outside class!)
-
-**Fix:** Move indentation **inside** both branches of the conditional:
-```jinja
-class TestExample:
-    """Docstring."""
-    
-{% if method.async %}    async def {{ method.name }}{% else %}    def {{ method.name }}{% endif %}(
-```
-Output:
-- Async: `    async def test_name(` ✅
-- Sync: `    def test_name(` ✅
-
-**Key Insight:**
-- Spaces **before** `{% if %}` = template formatting (ignored in output)
-- Spaces **inside** `{% if %}...{% else %}...{% endif %}` = actual output
-- BOTH branches must include the indentation
-
-**Applied to:**
-- test_unit.py.jinja2 line 79
-- test_integration.py.jinja2 line 93
-
-## Lessons Learned: Trailing Newlines in Loops (Issue #72.3.1)
-
-**Problem:** Generated files ended with 2 empty lines instead of 1 newline (POSIX standard).
-
-**Root Cause:** Blank line between `{% endif %}` and `{% endfor %}` in method loops was preserved in output.
-
-**Symptom:** 
-```
-        assert True  # Replace with actual assertions
-[blank line]
-[blank line at EOF]
-```
-
-**Fix Pattern:** Use right-trim on loop-closing tags:
-```jinja
-        {% if method.assertions %}
-        {{ method.assertions | indent(8) }}
-        {% else %}
-        # TODO: Add assertions
-        assert True  # Replace with actual assertions
-        {% endif -%}
-
-    {%- endfor %}
-```
-
-**Why this works:**
-- `{% endif -%}` removes newline AFTER the endif tag
-- `{%- endfor %}` removes whitespace/newline BEFORE the endfor tag
-- Together they eliminate the blank line while preserving code structure
-
-**Applied to:**
-- test_unit.py.jinja2 lines 105-107 (assertions endif + method endfor)
-- test_integration.py.jinja2 lines 118-120 (assertions endif + method endfor)
-
-**Key Insight:** Blank lines in template source between control structures are literal content unless explicitly trimmed. Use surgical trim (`-%}` or `{%-`) only where needed.
-
-## Anti-Patterns to Avoid
-
-❌ Explicit newlines: `{{ "\n" }}`
-❌ Aggressive trimming: `{%- block -%}` at boundaries
-❌ Ad-hoc fixes: "This works for DTO so ship it"
-❌ Inconsistent patterns: Different trim style per template
-
-✅ Natural newlines: Block boundaries
-✅ Surgical trimming: Only for content merging
-✅ Universal rules: Same logic all templates
-✅ Comprehensive testing: All artifact types
+## Anti-Patterns
+- Explicit newlines: `{{ "\n" }}`
+- “Trim everything” style: `{%- block content -%}` everywhere
+- Relying on indentation before `{% if %}` / `{% for %}` for output indentation under `lstrip_blocks=True`
+- Fixing one artifact type’s whitespace by breaking another’s (no ad-hoc exceptions without tests)
