@@ -48,7 +48,8 @@ WHITESPACE STRATEGY (Issue #72):
 -#}
 
 {%- block content %}
-{{ super() }}
+{{ super() -}}
+{{ '' }}
 {% block module_docstring %}
 """
 {% if module_title -%}
