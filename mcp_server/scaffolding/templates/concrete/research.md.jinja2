@@ -1,12 +1,15 @@
 {#- concrete/research.md.jinja2 - Research Document Template -#}
-{#- Version: 1.2.0 -#}
+{#- Version: 1.3.0 -#}
 {#- Purpose: Research phase documentation - investigation and learning -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
 
-{#- Import tier3 pattern macros (only used patterns) -#}
+{#- Import tier3 pattern macros -#}
 {%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
 {%- import "tier3_pattern_markdown_open_questions.jinja2" as questions -%}
 {%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -20,11 +23,17 @@ TEMPLATE_METADATA:
   extends: tier2_base_markdown.jinja2
   imports_patterns:
     - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
     - tier3_pattern_markdown_open_questions
     - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
   purpose: "Concrete template for research phase documents"
-  version: "1.2.0"
+  version: "1.3.0"
   changelog:
+    - version: "1.3.0"
+      date: "2026-02-05"
+      changes: "Re-added pattern imports + override all tier1 blocks with pattern calls, moved related_docs to proper block (Task 3.6.2)"
     - version: "1.2.0"
       date: "2026-02-05"
       changes: "FIXED: Status collision (renamed import alias status→hdr), removed 4 unused pattern imports (Task 3.6.1)"
@@ -44,10 +53,15 @@ TEMPLATE_METADATA:
         - problem_statement
         - goals
       optional:
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
         - background
         - findings
         - questions_list
         - references
+        - related_docs
   agent_hints:
     phase: "research"
     purpose: "Investigate and understand the problem domain before planning or design"
@@ -87,6 +101,19 @@ TEMPLATE_METADATA:
 {{ hdr.pattern_status_header_basic(status, version, last_updated) }}
 {% endblock -%}
 
+{#- Override tier1 blocks with pattern calls -#}
+{%- block purpose_section %}
+{{ ps.pattern_purpose_section(purpose) }}
+{%- endblock %}
+
+{%- block scope_section %}
+{{ ps.pattern_scope_section(scope_in, scope_out) }}
+{%- endblock %}
+
+{%- block prerequisites_section %}
+{{ prereq.pattern_prerequisites_section(prerequisites) }}
+{%- endblock %}
+
 {#- Research content structure -#}
 {%- block document_content -%}
 
@@ -125,9 +152,14 @@ TEMPLATE_METADATA:
 {{ questions.pattern_open_questions_section(questions_list) }}
 
 {% endif -%}
-{% if references -%}
+{%- endblock %}
 
-{{ related.pattern_related_docs_section(references) }}
+{#- Override related docs block with pattern - moved from document_content for proper merge point -#}
+{%- block related_docs_section %}
+{{ related.pattern_related_docs_section(references if references else related_docs) }}
+{%- endblock %}
 
-{% endif -%}
+{#- Override version history block with pattern -#}
+{%- block version_history_section %}
+{{ history.pattern_version_history_basic(version, last_updated) }}
 {%- endblock %}
