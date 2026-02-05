@@ -938,6 +938,35 @@ Task completed during Phase 3 Tier 3 implementation (2026-02-01), confirmed 2026
 
 **Dependency:** None (patterns already exist in concrete templates, can run parallel with 3.1-3.2)
 
+**Status:** ✅ **COMPLETE** (8/8 patterns implemented; 2026-02-05)
+
+**Verification (2026-02-05):**
+1. ✅ **tier3_pattern_markdown_status_header.jinja2** - 3 macros (basic, extended, reference), enforcement: ARCHITECTURAL
+2. ✅ **tier3_pattern_markdown_purpose_scope.jinja2** - 2 macros (purpose_section, scope_section), enforcement: ARCHITECTURAL
+3. ✅ **tier3_pattern_markdown_prerequisites.jinja2** - Numbered prerequisite list macro, enforcement: ARCHITECTURAL
+4. ✅ **tier3_pattern_markdown_agent_hints.jinja2** - Agent guidance macro with 5 fields, enforcement: ARCHITECTURAL
+5. ✅ **tier3_pattern_markdown_related_docs.jinja2** - Cross-referencing bullet list macro (**CROSS-BRANCH** - usable by DOCUMENT + TRACKING), enforcement: ARCHITECTURAL
+6. ✅ **tier3_pattern_markdown_version_history.jinja2** - Version history table macro, enforcement: ARCHITECTURAL
+7. ✅ **tier3_pattern_markdown_open_questions.jinja2** - Structured question list with context/blocking fields, enforcement: ARCHITECTURAL
+8. ✅ **tier3_pattern_markdown_dividers.jinja2** - 2 macros (section_divider, major_divider), enforcement: ARCHITECTURAL
+
+All templates:
+- Macro library format (no `{% extends %}`, composition via `{% import %}`) ✅
+- TEMPLATE_METADATA with enforcement: ARCHITECTURAL ✅
+- provides_macros list documented ✅
+- used_by list documented ✅
+- Changelog with v1.0.0 entry ✅
+
+**Test Coverage:**
+- `tests/mcp_server/scaffolding/test_task35_document_pattern_templates.py` - 8/8 tests passing
+- All pattern files exist and validated
+
+**Commits:**
+- `0c19105`: TDD Cycle 2 - purpose_scope pattern
+- `0c58016`: TDD Cycles 3-8 - remaining 6 patterns (prerequisites, agent_hints, related_docs, version_history, open_questions, dividers)
+
+Task completed during Phase 3 Tier 3 Pattern Library (2026-02-05).
+
 ---
 
 #### Task 3.6: Refactor Concrete DOCUMENT Templates (3 templates) + Fix Validation Levels
