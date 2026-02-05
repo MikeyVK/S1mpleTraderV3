@@ -1024,6 +1024,37 @@ All templates:
 
 Task completed during Phase 3 Tier 3 Pattern Library (2026-02-05).
 
+**⚠️ QA REJECTION (2026-02-05):** Post-merge testing revealed critical bugs:
+1. **Status name collision:** `{% import "..." as status %}` then `status.macro(status, ...)` → first `status` is alias, second is context variable → renders empty
+2. **Unused pattern imports:** 6 patterns imported but not actually used due to structural incompatibility
+
+Task 3.6 marked **INCOMPLETE** - requires full refactor (see Task 3.6.1).
+
+---
+
+#### Task 3.6.1: Base Document Refactor + Pattern Integration (URGENT FIX)
+**Description:** Full refactor of tier1_base_document.jinja2 + all 5 concrete DOCUMENT templates to fix QA issues
+
+**Trigger:** QA rejection of Task 3.6 (status collision + structural incompatibility)
+
+**User Decision:** Optie B - Full refactor WITHOUT backward compatibility (clean break)
+
+**Breaking Change:** tier1_base_document.jinja2 v3.1.0 → v4.0.0 (added 5 composable blocks)
+
+**Output (2026-02-05):**
+- ✅ tier1_base_document.jinja2 v4.0.0 - 5 composable blocks added
+- ✅ planning.md.jinja2 v1.2.0 - status collision fixed + removed 5 unused imports
+- ✅ research.md.jinja2 v1.2.0 - status collision fixed + removed 4 unused imports
+- ✅ design.md.jinja2 v3.4.0 - status collision fixed + removed 4 unused imports
+- ✅ architecture.md.jinja2 v2.0.0 - refactored with tier3 patterns + fixed loop.parent Jinja2 bug
+- ✅ reference.md.jinja2 v2.0.0 - version bump for consistency
+
+**Status:** ✅ **COMPLETE** (2026-02-05)
+
+**Commits:** `5cec354`, `4e108ff`, `3aeedac`, `93e46d6`, `877f695`, `923aa01`, `fa619eb`
+
+**Effort:** 4.5h actual (overrun from 3h estimate)
+
 ---
 
 #### Task 3.7: Tier 1 Tracking + Tier 2 Templates (VCS Workflows)
