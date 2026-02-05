@@ -1,7 +1,16 @@
 {#- concrete/design.md.jinja2 - Design Document Template -#}
-{#- Version: 3.2.0 -#}
+{#- Version: 3.3.0 -#}
 {#- Purpose: DESIGN_TEMPLATE.md implementation - pre-implementation design decisions -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
+
+{#- Import tier3 pattern macros -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as status -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_agent_hints.jinja2" as hints -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
+{%- import "tier3_pattern_markdown_open_questions.jinja2" as questions -%}
+{%- import "tier3_pattern_markdown_dividers.jinja2" as div -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -15,9 +24,20 @@ TEMPLATE_METADATA:
       - "Section 4: Open Questions (optional)"
       - "Section dividers (---) between major sections"
   extends: tier2_base_markdown.jinja2
+  imports_patterns:
+    - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_agent_hints
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
+    - tier3_pattern_markdown_open_questions
+    - tier3_pattern_markdown_dividers
   purpose: "Concrete template for design documents per DESIGN_TEMPLATE.md"
-  version: "3.2.0"
+  version: "3.3.0"
   changelog:
+    - version: "3.3.0"
+      date: "2026-02-05"
+      changes: "Refactored to use {% import %} composition with 7 tier3 patterns (Task 3.6)"
     - version: "3.2.0"
       date: "2026-01-27"
       changes: "Added agent_hints for phase transition workflow integration"
@@ -59,7 +79,7 @@ TEMPLATE_METADATA:
         - constraints
         - options
         - key_decisions
-        - open_questions
+        - open_questions_list
   agent_hints:
     phase: "design"
     purpose: "Document pre-implementation design decisions with clear rationale"
@@ -95,18 +115,12 @@ TEMPLATE_METADATA:
 
 {#- DESIGN_TEMPLATE.md adds: Created, Implementation Phase to header -#}
 {%- block header_fields %}
-
-**Status:** {{ status | default("PRELIMINARY") }}  
-**Version:** {{ version | default("1.0") }}  
-**Created:** {{ created | default(timestamp[:10]) }}  
-**Last Updated:** {{ last_updated | default(timestamp[:10]) }}  
-**Implementation Phase:** {{ implementation_phase | default("Phase 1.0 - Design") }}  
+{{ status.pattern_status_header_extended(status, version, created, last_updated, implementation_phase) }}
 {% endblock -%}
 
 {#- DESIGN_TEMPLATE.md content: numbered sections with --- dividers -#}
 {%- block document_content -%}
-
----
+{{ div.pattern_section_divider() }}
 
 ## 1. Context & Requirements
 
@@ -133,8 +147,7 @@ TEMPLATE_METADATA:
 {% else -%}
 None
 {% endif %}
-
----
+{{ div.pattern_section_divider() }}
 
 ## 2. Design Options
 {% for option in options %}
@@ -153,8 +166,7 @@ None
 - ❌ {{ con }}
 {% endfor %}
 {%- endfor %}
-
----
+{{ div.pattern_section_divider() }}
 
 ## 3. Chosen Design
 
@@ -170,16 +182,8 @@ None
 | {{ kd.decision }} | {{ kd.rationale }} |
 {% endfor %}
 
-{% if open_questions -%}
-
----
-
-## 4. Open Questions
-
-| Question | Options | Status |
-|----------|---------|--------|
-{% for question in open_questions -%}
-| {{ question }} | - | 🔴 Open |
-{% endfor -%}
+{% if open_questions_list -%}
+{{ div.pattern_section_divider() }}
+{{ questions.pattern_open_questions_section(open_questions_list) }}
 {%- endif -%}
 {%- endblock %}
