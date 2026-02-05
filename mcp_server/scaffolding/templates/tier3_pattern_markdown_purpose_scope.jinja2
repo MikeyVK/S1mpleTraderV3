@@ -1,0 +1,37 @@
+{# tier3_pattern_markdown_purpose_scope.jinja2 #}
+{# template=tier3_pattern version=1.0.0 #}
+"""
+TEMPLATE_METADATA:
+  enforcement: ARCHITECTURAL
+  tier: 3
+  category: pattern
+  provides_macros:
+    - pattern_purpose_section
+    - pattern_scope_section
+  used_by:
+    - research.md
+    - planning.md
+    - design.md
+    - architecture.md
+    - reference.md
+"""
+
+{% macro pattern_purpose_section(purpose) -%}
+## Purpose
+
+{{ purpose }}
+{%- endmacro %}
+
+{% macro pattern_scope_section(scope_in, scope_out) -%}
+## Scope
+
+### In Scope
+{{ scope_in }}
+
+### Out of Scope
+{{ scope_out }}
+{%- endmacro %}
+
+{# Changelog:
+- v1.0.0 (2026-02-05): Initial macro library with purpose and scope patterns
+#}
