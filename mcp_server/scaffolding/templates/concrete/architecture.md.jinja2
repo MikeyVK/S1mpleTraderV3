@@ -1,10 +1,14 @@
 {#- concrete/architecture.md.jinja2 - Architecture Document Template -#}
-{#- Version: 2.0.0 -#}
+{#- Version: 2.1.0 -#}
 {#- Purpose: ARCHITECTURE_TEMPLATE.md implementation - system architecture concepts -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
 
 {#- Import tier3 pattern macros (only used patterns) -#}
 {%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -19,9 +23,16 @@ TEMPLATE_METADATA:
   extends: tier2_base_markdown.jinja2
   imports_patterns:
     - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
   purpose: "Concrete template for architecture documents per ARCHITECTURE_TEMPLATE.md"
-  version: "2.0.0"
+  version: "2.1.0"
   changelog:
+    - version: "2.1.0"
+      date: "2026-02-05"
+      changes: "Added pattern imports (ps/prereq/related/history) + override all tier1 blocks with pattern calls (Task 3.6.2)"
     - version: "2.0.0"
       date: "2026-02-05"
       changes: "Refactored to use {% import %} composition with tier3 status pattern (Task 3.6.1)"
@@ -37,6 +48,11 @@ TEMPLATE_METADATA:
         - title
         - concepts
       optional:
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
+        - related_docs
         - constraints
         - decisions
   agent_hints:
@@ -76,6 +92,27 @@ TEMPLATE_METADATA:
 {%- block header_fields %}
 {{ hdr.pattern_status_header_basic(status, version, last_updated) }}
 {% endblock -%}
+
+{#- Override tier1 blocks with pattern calls (code-tak compositie parity) -#}
+{%- block purpose_section -%}
+{{ ps.pattern_purpose_section(purpose) }}
+{%- endblock -%}
+
+{%- block scope_section -%}
+{{ ps.pattern_scope_section(scope_in, scope_out) }}
+{%- endblock -%}
+
+{%- block prerequisites_section -%}
+{{ prereq.pattern_prerequisites_section(prerequisites) }}
+{%- endblock -%}
+
+{%- block related_docs_section -%}
+{{ related.pattern_related_docs_section(related_docs) }}
+{%- endblock -%}
+
+{%- block version_history_section -%}
+{{ history.pattern_version_history_basic(version, last_updated) }}
+{%- endblock -%}
 
 {#- Architecture content: numbered sections with Mermaid diagrams -#}
 {%- block document_content -%}
