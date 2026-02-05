@@ -1,12 +1,16 @@
 {#- concrete/design.md.jinja2 - Design Document Template -#}
-{#- Version: 3.4.0 -#}
+{#- Version: 3.5.0 -#}
 {#- Purpose: DESIGN_TEMPLATE.md implementation - pre-implementation design decisions -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
 
 {#- Import tier3 pattern macros (only used patterns) -#}
 {%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
 {%- import "tier3_pattern_markdown_open_questions.jinja2" as questions -%}
 {%- import "tier3_pattern_markdown_dividers.jinja2" as div -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -22,11 +26,18 @@ TEMPLATE_METADATA:
   extends: tier2_base_markdown.jinja2
   imports_patterns:
     - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
     - tier3_pattern_markdown_open_questions
     - tier3_pattern_markdown_dividers
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
   purpose: "Concrete template for design documents per DESIGN_TEMPLATE.md"
-  version: "3.4.0"
+  version: "3.5.0"
   changelog:
+    - version: "3.5.0"
+      date: "2026-02-05"
+      changes: "Added pattern imports (ps/prereq/related/history) + override all tier1 blocks with pattern calls (Task 3.6.2)"
     - version: "3.4.0"
       date: "2026-02-05"
       changes: "FIXED: Status collision (renamed import alias status→hdr), removed 4 unused pattern imports (Task 3.6.1)"
@@ -71,6 +82,11 @@ TEMPLATE_METADATA:
         - decision
         - rationale
       optional:
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
+        - related_docs
         - constraints
         - options
         - key_decisions
@@ -112,6 +128,27 @@ TEMPLATE_METADATA:
 {%- block header_fields %}
 {{ hdr.pattern_status_header_extended(status, version, created, last_updated, implementation_phase) }}
 {% endblock -%}
+
+{#- Override tier1 blocks with pattern calls (code-tak compositie parity) -#}
+{%- block purpose_section -%}
+{{ ps.pattern_purpose_section(purpose) }}
+{%- endblock -%}
+
+{%- block scope_section -%}
+{{ ps.pattern_scope_section(scope_in, scope_out) }}
+{%- endblock -%}
+
+{%- block prerequisites_section -%}
+{{ prereq.pattern_prerequisites_section(prerequisites) }}
+{%- endblock -%}
+
+{%- block related_docs_section -%}
+{{ related.pattern_related_docs_section(related_docs) }}
+{%- endblock -%}
+
+{%- block version_history_section -%}
+{{ history.pattern_version_history_basic(version, last_updated) }}
+{%- endblock -%}
 
 {#- DESIGN_TEMPLATE.md content: numbered sections with --- dividers -#}
 {%- block document_content -%}
