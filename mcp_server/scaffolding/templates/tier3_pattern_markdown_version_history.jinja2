@@ -1,5 +1,5 @@
 {# tier3_pattern_markdown_version_history.jinja2 #}
-{# template=tier3_pattern version=1.0.0 #}
+{# template=tier3_pattern version=2.0.0 #}
 """
 TEMPLATE_METADATA:
   enforcement: ARCHITECTURAL
@@ -7,23 +7,34 @@ TEMPLATE_METADATA:
   category: pattern
   provides_macros:
     - pattern_version_history_section
+    - pattern_version_history_basic
   used_by:
     - research.md
     - planning.md
     - design.md
     - architecture.md
+  compatibility: tier1_base_document.jinja2 version_history_section block (4 columns: Version/Date/Author/Changes)
 """
 
 {% macro pattern_version_history_section(versions) -%}
 ## Version History
 
-| Version | Date | Changes |
-|---------|------|---------|
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
 {% for v in versions -%}
-| {{ v.version }} | {{ v.date }} | {{ v.changes }} |
+| {{ v.version }} | {{ v.date }} | {{ v.get('author', 'Agent') }} | {{ v.changes }} |
 {% endfor %}
 {%- endmacro %}
 
+{% macro pattern_version_history_basic(version, last_updated, author="Agent", changes="Initial draft") -%}
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| {{ version | default("1.0") }} | {{ last_updated | default(timestamp[:10] if timestamp else "") }} | {{ author }} | {{ changes }} |
+{%- endmacro %}
+
 {# Changelog:
+- v2.0.0 (2026-02-05): BREAKING: Updated to 4-column format (Version/Date/Author/Changes) to match tier1_base_document; added pattern_version_history_basic for single-entry case (Task 3.6.2)
 - v1.0.0 (2026-02-05): Initial macro library with table pattern for version history
 #}

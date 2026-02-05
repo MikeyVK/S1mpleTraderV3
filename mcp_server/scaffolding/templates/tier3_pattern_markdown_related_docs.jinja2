@@ -1,5 +1,5 @@
 {# tier3_pattern_markdown_related_docs.jinja2 #}
-{# template=tier3_pattern version=1.0.0 #}
+{# template=tier3_pattern version=2.0.0 #}
 """
 TEMPLATE_METADATA:
   enforcement: ARCHITECTURAL
@@ -15,16 +15,24 @@ TEMPLATE_METADATA:
     - reference.md
     - pr.md
     - issue.md
+  compatibility: tier1_base_document.jinja2 related_docs_section block
 """
 
 {% macro pattern_related_docs_section(docs) -%}
-## Related Documents
+## Related Documentation
+
+{%- if docs %}
 
 {% for doc in docs -%}
-- {{ doc }}
-{% endfor %}
+- **[{{ doc }}][related-{{ loop.index }}]**
+{% endfor -%}
+{%- else %}
+
+None
+{%- endif %}
 {%- endmacro %}
 
 {# Changelog:
+- v2.0.0 (2026-02-05): BREAKING: Updated to match tier1_base_document format - "Related Documentation" heading, link definitions [related-i], "None" fallback (Task 3.6.2)
 - v1.0.0 (2026-02-05): Initial macro library with bullet list pattern for related docs
 #}
