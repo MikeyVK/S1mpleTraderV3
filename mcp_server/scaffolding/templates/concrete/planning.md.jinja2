@@ -1,15 +1,10 @@
 {#- concrete/planning.md.jinja2 - Planning Document Template -#}
-{#- Version: 1.1.0 -#}
+{#- Version: 1.2.0 -#}
 {#- Purpose: Planning phase documentation - TDD cycle breakdown -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
 
-{#- Import tier3 pattern macros -#}
-{%- import "tier3_pattern_markdown_status_header.jinja2" as status -%}
-{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
-{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
-{%- import "tier3_pattern_markdown_agent_hints.jinja2" as hints -%}
-{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
-{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
+{#- Import tier3 pattern macros (only used patterns) -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -23,14 +18,12 @@ TEMPLATE_METADATA:
   extends: tier2_base_markdown.jinja2
   imports_patterns:
     - tier3_pattern_markdown_status_header
-    - tier3_pattern_markdown_purpose_scope
-    - tier3_pattern_markdown_prerequisites
-    - tier3_pattern_markdown_agent_hints
-    - tier3_pattern_markdown_related_docs
-    - tier3_pattern_markdown_version_history
   purpose: "Concrete template for planning phase documents"
-  version: "1.1.0"
+  version: "1.2.0"
   changelog:
+    - version: "1.2.0"
+      date: "2026-02-05"
+      changes: "FIXED: Status collision (renamed import alias status→hdr), removed unused pattern imports (Task 3.6.1)"
     - version: "1.1.0"
       date: "2026-02-05"
       changes: "Refactored to use {% import %} composition with 6 tier3 patterns (Task 3.6)"
@@ -85,7 +78,7 @@ TEMPLATE_METADATA:
 
 {#- Planning documents use BASE header (no Created/Implementation Phase) -#}
 {%- block header_fields %}
-{{ status.pattern_status_header_basic(status, version, last_updated) }}
+{{ hdr.pattern_status_header_basic(status, version, last_updated) }}
 {% endblock -%}
 
 {#- Planning content structure -#}
