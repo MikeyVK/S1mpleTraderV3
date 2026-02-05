@@ -1,14 +1,10 @@
 {#- concrete/design.md.jinja2 - Design Document Template -#}
-{#- Version: 3.3.0 -#}
+{#- Version: 3.4.0 -#}
 {#- Purpose: DESIGN_TEMPLATE.md implementation - pre-implementation design decisions -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
 
-{#- Import tier3 pattern macros -#}
-{%- import "tier3_pattern_markdown_status_header.jinja2" as status -%}
-{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
-{%- import "tier3_pattern_markdown_agent_hints.jinja2" as hints -%}
-{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
-{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
+{#- Import tier3 pattern macros (only used patterns) -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
 {%- import "tier3_pattern_markdown_open_questions.jinja2" as questions -%}
 {%- import "tier3_pattern_markdown_dividers.jinja2" as div -%}
 
@@ -26,15 +22,14 @@ TEMPLATE_METADATA:
   extends: tier2_base_markdown.jinja2
   imports_patterns:
     - tier3_pattern_markdown_status_header
-    - tier3_pattern_markdown_purpose_scope
-    - tier3_pattern_markdown_agent_hints
-    - tier3_pattern_markdown_related_docs
-    - tier3_pattern_markdown_version_history
     - tier3_pattern_markdown_open_questions
     - tier3_pattern_markdown_dividers
   purpose: "Concrete template for design documents per DESIGN_TEMPLATE.md"
-  version: "3.3.0"
+  version: "3.4.0"
   changelog:
+    - version: "3.4.0"
+      date: "2026-02-05"
+      changes: "FIXED: Status collision (renamed import alias status→hdr), removed 4 unused pattern imports (Task 3.6.1)"
     - version: "3.3.0"
       date: "2026-02-05"
       changes: "Refactored to use {% import %} composition with 7 tier3 patterns (Task 3.6)"
@@ -115,7 +110,7 @@ TEMPLATE_METADATA:
 
 {#- DESIGN_TEMPLATE.md adds: Created, Implementation Phase to header -#}
 {%- block header_fields %}
-{{ status.pattern_status_header_extended(status, version, created, last_updated, implementation_phase) }}
+{{ hdr.pattern_status_header_extended(status, version, created, last_updated, implementation_phase) }}
 {% endblock -%}
 
 {#- DESIGN_TEMPLATE.md content: numbered sections with --- dividers -#}
