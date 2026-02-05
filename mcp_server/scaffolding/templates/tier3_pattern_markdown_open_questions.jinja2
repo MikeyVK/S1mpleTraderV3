@@ -1,0 +1,32 @@
+{# tier3_pattern_markdown_open_questions.jinja2 #}
+{# template=tier3_pattern version=1.0.0 #}
+"""
+TEMPLATE_METADATA:
+  enforcement: ARCHITECTURAL
+  tier: 3
+  category: pattern
+  provides_macros:
+    - pattern_open_questions_section
+  used_by:
+    - research.md
+    - planning.md
+    - design.md
+"""
+
+{% macro pattern_open_questions_section(questions) -%}
+## Open Questions
+
+{% for q in questions -%}
+- **Q{{ loop.index }}:** {{ q.question }}
+  {% if q.context -%}
+  - Context: {{ q.context }}
+  {% endif -%}
+  {% if q.blocking -%}
+  - ⚠️ BLOCKING
+  {% endif %}
+{% endfor %}
+{%- endmacro %}
+
+{# Changelog:
+- v1.0.0 (2026-02-05): Initial macro library with structured question list pattern
+#}

@@ -1,0 +1,28 @@
+{# tier3_pattern_markdown_prerequisites.jinja2 #}
+{# template=tier3_pattern version=1.0.0 #}
+"""
+TEMPLATE_METADATA:
+  enforcement: ARCHITECTURAL
+  tier: 3
+  category: pattern
+  provides_macros:
+    - pattern_prerequisites_section
+  used_by:
+    - research.md
+    - planning.md
+    - architecture.md
+"""
+
+{% macro pattern_prerequisites_section(prereqs) -%}
+## Prerequisites
+
+Read these documents first:
+
+{% for prereq in prereqs -%}
+{{ loop.index }}. {{ prereq }}
+{% endfor %}
+{%- endmacro %}
+
+{# Changelog:
+- v1.0.0 (2026-02-05): Initial macro library with numbered prerequisite list pattern
+#}

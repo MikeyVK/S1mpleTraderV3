@@ -1,0 +1,30 @@
+{# tier3_pattern_markdown_related_docs.jinja2 #}
+{# template=tier3_pattern version=1.0.0 #}
+"""
+TEMPLATE_METADATA:
+  enforcement: ARCHITECTURAL
+  tier: 3
+  category: pattern
+  provides_macros:
+    - pattern_related_docs_section
+  used_by:
+    - research.md
+    - planning.md
+    - design.md
+    - architecture.md
+    - reference.md
+    - pr.md
+    - issue.md
+"""
+
+{% macro pattern_related_docs_section(docs) -%}
+## Related Documents
+
+{% for doc in docs -%}
+- {{ doc }}
+{% endfor %}
+{%- endmacro %}
+
+{# Changelog:
+- v1.0.0 (2026-02-05): Initial macro library with bullet list pattern for related docs
+#}

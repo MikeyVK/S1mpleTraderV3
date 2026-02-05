@@ -1,0 +1,29 @@
+{# tier3_pattern_markdown_version_history.jinja2 #}
+{# template=tier3_pattern version=1.0.0 #}
+"""
+TEMPLATE_METADATA:
+  enforcement: ARCHITECTURAL
+  tier: 3
+  category: pattern
+  provides_macros:
+    - pattern_version_history_section
+  used_by:
+    - research.md
+    - planning.md
+    - design.md
+    - architecture.md
+"""
+
+{% macro pattern_version_history_section(versions) -%}
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+{% for v in versions -%}
+| {{ v.version }} | {{ v.date }} | {{ v.changes }} |
+{% endfor %}
+{%- endmacro %}
+
+{# Changelog:
+- v1.0.0 (2026-02-05): Initial macro library with table pattern for version history
+#}
