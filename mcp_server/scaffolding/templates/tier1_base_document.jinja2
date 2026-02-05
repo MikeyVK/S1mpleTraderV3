@@ -1,5 +1,5 @@
 {#- tier1_base_document.jinja2 - Universal Document Structure -#}
-{#- Version: 3.1.0 -#}
+{#- Version: 4.0.0 -#}
 {#- Purpose: Implements BASE_TEMPLATE.md structure - foundation for all document types -#}
 {%- extends "tier0_base_artifact.jinja2" -%}
 
@@ -10,21 +10,29 @@ TEMPLATE_METADATA:
   validates:
     required_blocks:
       - header_fields
+      - purpose_section
+      - scope_section
+      - prerequisites_section
       - document_content
+      - related_docs_section
       - link_definitions
+      - version_history_section
     structure:
       - "Multi-line header (Status, Version, Last Updated)"
-      - "Purpose section (single paragraph)"
-      - "Scope section (In Scope / Out of Scope)"
-      - "Optional Prerequisites (numbered list)"
+      - "Purpose section (tier3 pattern composable)"
+      - "Scope section (tier3 pattern composable)"
+      - "Optional Prerequisites (tier3 pattern composable)"
       - "Document content block (concrete template responsibility)"
-      - "Related Documentation with link references"
+      - "Related Documentation (tier3 pattern composable)"
       - "Link definitions block"
-      - "Version History table"
+      - "Version History (tier3 pattern composable)"
   extends: tier0_base_artifact
-  purpose: "Universal document structure per BASE_TEMPLATE.md"
-  version: "3.1.0"
+  purpose: "Universal document structure per BASE_TEMPLATE.md, refactored for tier3 pattern composition"
+  version: "4.0.0"
   changelog:
+    - version: "4.0.0"
+      date: "2026-02-05"
+      changes: "BREAKING: Added composable blocks for all sections (purpose, scope, prerequisites, related_docs, version_history) to enable tier3 pattern injection (Task 3.6.1)"
     - version: "3.1.0"
       date: "2026-01-26"
       changes: "Fixed link definitions order (before Related Documentation), added divider before Version History"
@@ -44,20 +52,25 @@ TEMPLATE_METADATA:
     variables:
       required:
         - title
-        - purpose
-        - scope_in
-        - scope_out
       optional:
         - status
         - version
         - last_updated
+        - purpose
+        - scope_in
+        - scope_out
         - prerequisites
         - related_docs
     exports:
       blocks:
         - header_fields
+        - purpose_section
+        - scope_section
+        - prerequisites_section
         - document_content
+        - related_docs_section
         - link_definitions
+        - version_history_section
 -#}
 
 {% block content %}
@@ -76,12 +89,19 @@ TEMPLATE_METADATA:
 ---
 
 {% endif -%}
+
+{#- Purpose section - composable via tier3 patterns -#}
+{%- block purpose_section -%}
 {% if purpose -%}
 ## Purpose
 
 {{ purpose }}
 
 {% endif -%}
+{%- endblock -%}
+
+{#- Scope section - composable via tier3 patterns -#}
+{%- block scope_section -%}
 {% if scope_in or scope_out -%}
 ## Scope
 
@@ -96,7 +116,10 @@ TEMPLATE_METADATA:
 
 {% endif -%}
 {% endif -%}
+{%- endblock -%}
 
+{#- Prerequisites section - composable via tier3 patterns -#}
+{%- block prerequisites_section -%}
 {% if prerequisites -%}
 ## Prerequisites
 
@@ -105,9 +128,13 @@ Read these first:
 {{ loop.index }}. {{ prereq }}
 {% endfor -%}
 {%- endif %}
+{%- endblock -%}
 
+{#- Document content - concrete template responsibility -#}
 {%- block document_content %}{% endblock %}
 
+{#- Related docs section - composable via tier3 patterns -#}
+{%- block related_docs_section -%}
 ## Related Documentation
 
 {%- if related_docs %}
@@ -119,14 +146,18 @@ Read these first:
 
 None
 {%- endif %}
+{%- endblock -%}
 
 {% block link_definitions -%}{%- endblock %}
 
 ---
 
+{#- Version history section - composable via tier3 patterns -#}
+{%- block version_history_section -%}
 ## Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | {{ version | default("1.0") }} | {{ last_updated | default(timestamp[:10]) }} | Agent | Initial draft |
+{%- endblock -%}
 {%- endblock -%}
