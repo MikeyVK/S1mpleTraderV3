@@ -1,5 +1,5 @@
 {# tier3_pattern_markdown_prerequisites.jinja2 #}
-{# template=tier3_pattern version=1.0.0 #}
+{# template=tier3_pattern version=1.1.0 #}
 """
 TEMPLATE_METADATA:
   enforcement: ARCHITECTURAL
@@ -11,18 +11,21 @@ TEMPLATE_METADATA:
     - research.md
     - planning.md
     - architecture.md
+  compatibility: tier1_base_document.jinja2 prerequisites_section block
 """
 
 {% macro pattern_prerequisites_section(prereqs) -%}
+{% if prereqs -%}
 ## Prerequisites
 
-Read these documents first:
-
+Read these first:
 {% for prereq in prereqs -%}
 {{ loop.index }}. {{ prereq }}
-{% endfor %}
+{% endfor -%}
+{%- endif %}
 {%- endmacro %}
 
 {# Changelog:
+- v1.1.0 (2026-02-05): Updated to match tier1_base_document format - "Read these first:" text, added if prereqs check (Task 3.6.2)
 - v1.0.0 (2026-02-05): Initial macro library with numbered prerequisite list pattern
 #}

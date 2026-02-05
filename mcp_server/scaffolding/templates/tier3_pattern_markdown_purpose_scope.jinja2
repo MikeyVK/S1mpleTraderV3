@@ -1,5 +1,5 @@
 {# tier3_pattern_markdown_purpose_scope.jinja2 #}
-{# template=tier3_pattern version=1.0.0 #}
+{# template=tier3_pattern version=1.1.0 #}
 """
 TEMPLATE_METADATA:
   enforcement: ARCHITECTURAL
@@ -14,24 +14,36 @@ TEMPLATE_METADATA:
     - design.md
     - architecture.md
     - reference.md
+  compatibility: tier1_base_document.jinja2 purpose_section and scope_section blocks
 """
 
 {% macro pattern_purpose_section(purpose) -%}
+{% if purpose -%}
 ## Purpose
 
 {{ purpose }}
+
+{% endif -%}
 {%- endmacro %}
 
 {% macro pattern_scope_section(scope_in, scope_out) -%}
+{% if scope_in or scope_out -%}
 ## Scope
 
-### In Scope
+{% if scope_in -%}
+**In Scope:**
 {{ scope_in }}
 
-### Out of Scope
+{% endif -%}
+{% if scope_out -%}
+**Out of Scope:**
 {{ scope_out }}
+
+{% endif -%}
+{% endif -%}
 {%- endmacro %}
 
 {# Changelog:
+- v1.1.0 (2026-02-05): Updated to match tier1_base_document format - bold labels instead of subsections, added if checks (Task 3.6.2)
 - v1.0.0 (2026-02-05): Initial macro library with purpose and scope patterns
 #}
