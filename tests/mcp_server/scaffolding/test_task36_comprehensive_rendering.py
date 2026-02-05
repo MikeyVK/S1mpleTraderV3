@@ -18,7 +18,7 @@ def jinja_env():
 
 
 def test_planning_md_renders_with_patterns(jinja_env):
-    """Test planning.md.jinja2 renders with tier3 status pattern (no collision)."""
+    """Test planning.md.jinja2 renders with ALL tier3 patterns (Task 3.6.2)."""
     template = jinja_env.get_template("concrete/planning.md.jinja2")
     
     context = {
@@ -28,6 +28,11 @@ def test_planning_md_renders_with_patterns(jinja_env):
         "version": "1.0",
         "last_updated": "2026-02-05",
         "timestamp": "2026-02-05T10:00:00",
+        "purpose": "This is the purpose of the planning document",
+        "scope_in": "Features A, B, C",
+        "scope_out": "Features X, Y, Z",
+        "prerequisites": ["Read design.md", "Read architecture.md"],
+        "related_docs": ["docs/design.md", "docs/research.md"],
         "summary": "Test planning summary",
         "tdd_cycles": [
             {
@@ -44,12 +49,37 @@ def test_planning_md_renders_with_patterns(jinja_env):
     # Verify status field populated (not empty from collision)
     assert "**Status:** DRAFT" in output, "Status field should be populated"
     assert "**Version:** 1.0" in output
+    
+    # Verify all 5 tier1 pattern sections from Task 3.6.2
+    assert "## Purpose" in output, "Purpose section should render"
+    assert "This is the purpose" in output, "Purpose content should render"
+    
+    assert "## Scope" in output, "Scope section should render"
+    assert "**In Scope:**" in output, "In Scope label should render"
+    assert "Features A, B, C" in output, "In scope content should render"
+    assert "**Out of Scope:**" in output, "Out of Scope label should render"
+    assert "Features X, Y, Z" in output, "Out of scope content should render"
+    
+    assert "## Prerequisites" in output, "Prerequisites section should render"
+    assert "Read these first:" in output, "Prerequisites text should render"
+    assert "Read design.md" in output, "Prerequisite 1 should render"
+    assert "Read architecture.md" in output, "Prerequisite 2 should render"
+    
+    assert "## Related Documentation" in output, "Related docs section should render"
+    assert "[docs/design.md][related-1]" in output, "Related doc 1 link ref should render"
+    assert "[docs/research.md][related-2]" in output, "Related doc 2 link ref should render"
+    
+    assert "## Version History" in output, "Version history section should render"
+    assert "| Version | Date | Author | Changes |" in output, "Version history table header (4 columns) should render"
+    assert "| Agent |" in output, "Version history Agent column should render"
+    
+    # Verify planning-specific content
     assert "## Summary" in output
     assert "## TDD Cycles" in output
 
 
 def test_research_md_renders_with_patterns(jinja_env):
-    """Test research.md.jinja2 renders with tier3 patterns (status + questions)."""
+    """Test research.md.jinja2 renders with ALL tier3 patterns (Task 3.6.2)."""
     template = jinja_env.get_template("concrete/research.md.jinja2")
     
     context = {
@@ -59,27 +89,56 @@ def test_research_md_renders_with_patterns(jinja_env):
         "version": "1.0",
         "last_updated": "2026-02-05",
         "timestamp": "2026-02-05T10:00:00",
+        "purpose": "Research purpose text",
+        "scope_in": "Research scope in",
+        "scope_out": "Research scope out",
+        "prerequisites": ["Read prerequisite 1"],
         "problem_statement": "What is the problem?",
-        "findings": ["Finding 1", "Finding 2"],
+        "goals": ["Goal 1", "Goal 2"],
+        "findings": "Research findings text",
         "questions_list": [
             {"question": "Question 1", "context": "Context for Q1"},
             {"question": "Question 2", "blocking": True}
         ],
-        "references": []
+        "references": ["docs/architecture.md", "docs/planning.md"]
     }
     
     output = template.render(**context)
     
     # Verify status pattern works
     assert "**Status:** DRAFT" in output
-    # Verify questions pattern works
+    
+    # Verify all 5 tier1 pattern sections from Task 3.6.2
+    assert "## Purpose" in output, "Purpose section should render"
+    assert "Research purpose text" in output, "Purpose content should render"
+    
+    assert "## Scope" in output, "Scope section should render"
+    assert "**In Scope:**" in output, "In Scope label should render"
+    assert "Research scope in" in output, "In scope content should render"
+    assert "**Out of Scope:**" in output, "Out of Scope label should render"
+    assert "Research scope out" in output, "Out of scope content should render"
+    
+    assert "## Prerequisites" in output, "Prerequisites section should render"
+    assert "Read these first:" in output, "Prerequisites text should render"
+    assert "Read prerequisite 1" in output, "Prerequisite should render"
+    
+    # Related docs uses 'references' context variable for research.md
+    assert "## Related Documentation" in output, "Related docs section should render"
+    assert "[docs/architecture.md][related-1]" in output, "Reference 1 link ref should render"
+    assert "[docs/planning.md][related-2]" in output, "Reference 2 link ref should render"
+    
+    assert "## Version History" in output, "Version history section should render"
+    assert "| Version | Date | Author | Changes |" in output, "Version history table header (4 columns) should render"
+    assert "| Agent |" in output, "Version history Agent column should render"
+    
+    # Verify research-specific content (questions pattern works)
     assert "## Open Questions" in output
     assert "Question 1" in output
     assert "Context: Context for Q1" in output or "Question 2" in output
 
 
 def test_design_md_renders_with_extended_header(jinja_env):
-    """Test design.md.jinja2 renders with extended header pattern."""
+    """Test design.md.jinja2 renders with extended header + ALL tier3 patterns (Task 3.6.2)."""
     template = jinja_env.get_template("concrete/design.md.jinja2")
     
     context = {
@@ -91,10 +150,16 @@ def test_design_md_renders_with_extended_header(jinja_env):
         "last_updated": "2026-02-05",
         "implementation_phase": "design",
         "timestamp": "2026-02-05T10:00:00",
-        "context_text": "Design context",
-        "requirements": ["Requirement 1"],
-        "options": [{"name": "Option A", "description": "Description A"}],
-        "chosen_design": "Option A",
+        "purpose": "Design purpose text",
+        "scope_in": "Design scope in",
+        "scope_out": "Design scope out",
+        "prerequisites": ["Read planning.md", "Read research.md"],
+        "related_docs": ["docs/planning.md", "docs/architecture.md"],
+        "problem_statement": "Design problem",
+        "requirements_functional": ["Requirement 1"],
+        "requirements_nonfunctional": ["Non-functional 1"],
+        "options": [{"name": "Option A", "description": "Description A", "pros": ["Pro1"], "cons": ["Con1"]}],
+        "decision": "Option A",
         "rationale": "Because reasons",
         "key_decisions": [{"decision": "Decision 1", "rationale": "Rationale 1"}],
         "open_questions_list": [{"question": "Question 1"}]
@@ -106,14 +171,37 @@ def test_design_md_renders_with_extended_header(jinja_env):
     assert "**Status:** APPROVED" in output
     assert "**Created:** 2026-02-01" in output
     assert "**Implementation Phase:**" in output
-    # Verify dividers pattern works
+    
+    # Verify all 5 tier1 pattern sections from Task 3.6.2
+    assert "## Purpose" in output, "Purpose section should render"
+    assert "Design purpose text" in output, "Purpose content should render"
+    
+    assert "## Scope" in output, "Scope section should render"
+    assert "**In Scope:**" in output, "In Scope label should render"
+    assert "Design scope in" in output, "In scope content should render"
+    assert "**Out of Scope:**" in output, "Out of Scope label should render"
+    assert "Design scope out" in output, "Out of scope content should render"
+    
+    assert "## Prerequisites" in output, "Prerequisites section should render"
+    assert "Read these first:" in output, "Prerequisites text should render"
+    assert "Read planning.md" in output, "Prerequisite 1 should render"
+    assert "Read research.md" in output, "Prerequisite 2 should render"
+    
+    assert "## Related Documentation" in output, "Related docs section should render"
+    assert "[docs/planning.md][related-1]" in output, "Related doc 1 link ref should render"
+    assert "[docs/architecture.md][related-2]" in output, "Related doc 2 link ref should render"
+    
+    assert "## Version History" in output, "Version history section should render"
+    assert "| Version | Date | Author | Changes |" in output, "Version history table header (4 columns) should render"
+    assert "| Agent |" in output, "Version history Agent column should render"
+    
+    # Verify design-specific content
     assert output.count("---") >= 4, "Should have multiple dividers"
-    # Verify questions pattern works
     assert "## Open Questions" in output or "Question 1" in output
 
 
 def test_architecture_md_renders_with_numbered_sections(jinja_env):
-    """Test architecture.md.jinja2 renders with correct numbering (loop.parent bug fixed)."""
+    """Test architecture.md.jinja2 renders with numbering + ALL tier3 patterns (Task 3.6.2)."""
     template = jinja_env.get_template("concrete/architecture.md.jinja2")
     
     context = {
@@ -123,6 +211,11 @@ def test_architecture_md_renders_with_numbered_sections(jinja_env):
         "version": "1.0",
         "last_updated": "2026-02-05",
         "timestamp": "2026-02-05T10:00:00",
+        "purpose": "Architecture purpose text",
+        "scope_in": "Architecture scope in",
+        "scope_out": "Architecture scope out",
+        "prerequisites": ["Read design.md"],
+        "related_docs": ["docs/design.md", "docs/research.md"],
         "concepts": [
             {
                 "name": "Core Concept",
@@ -143,7 +236,30 @@ def test_architecture_md_renders_with_numbered_sections(jinja_env):
     
     # Verify status works
     assert "**Status:** DEFINITIVE" in output
-    # Verify numbered sections work
+    
+    # Verify all 5 tier1 pattern sections from Task 3.6.2
+    assert "## Purpose" in output, "Purpose section should render"
+    assert "Architecture purpose text" in output, "Purpose content should render"
+    
+    assert "## Scope" in output, "Scope section should render"
+    assert "**In Scope:**" in output, "In Scope label should render"
+    assert "Architecture scope in" in output, "In scope content should render"
+    assert "**Out of Scope:**" in output, "Out of Scope label should render"
+    assert "Architecture scope out" in output, "Out of scope content should render"
+    
+    assert "## Prerequisites" in output, "Prerequisites section should render"
+    assert "Read these first:" in output, "Prerequisites text should render"
+    assert "Read design.md" in output, "Prerequisite should render"
+    
+    assert "## Related Documentation" in output, "Related docs section should render"
+    assert "[docs/design.md][related-1]" in output, "Related doc 1 link ref should render"
+    assert "[docs/research.md][related-2]" in output, "Related doc 2 link ref should render"
+    
+    assert "## Version History" in output, "Version history section should render"
+    assert "| Version | Date | Author | Changes |" in output, "Version history table header (4 columns) should render"
+    assert "| Agent |" in output, "Version history Agent column should render"
+    
+    # Verify architecture-specific content (numbered sections work)
     assert "## 1. Core Concept" in output
     assert "## 2. Another Concept" in output
     # Verify subsection numbering works (loop.parent bug fixed)
