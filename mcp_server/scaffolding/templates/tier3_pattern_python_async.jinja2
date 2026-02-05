@@ -14,14 +14,14 @@ import asyncio
 {% if include_types %}
 from typing import Awaitable, AsyncIterator, Optional, Any
 {% endif %}
-{% endmacro %}
+{%- endmacro %}
 
 {# Macro: Async method definition #}
 {% macro pattern_async_methods(method_name, params="", return_type="None", body="pass", docstring="") %}
 async def {{ method_name }}({{ params }}){% if return_type %} -> {{ return_type }}{% endif %}:
     {% if docstring %}"""{{ docstring }}"""{% endif %}
     {{ body | indent(4) if body != "pass" else "pass" }}
-{% endmacro %}
+{%- endmacro %}
 
 {# Macro: Async context manager #}
 {% macro pattern_async_context_managers(context_name, resource_type="Any", setup="pass", cleanup="pass") %}
@@ -33,4 +33,4 @@ async def __aenter__(self) -> {{ resource_type }}:
 async def __aexit__(self, exc_type, exc_val, exc_tb):
     """Exit async context manager."""
     {{ cleanup | indent(4) if cleanup != "pass" else "pass" }}
-{% endmacro %}
+{%- endmacro %}

@@ -129,7 +129,6 @@ class {{ name }}({{- lifecycle.pattern_lifecycle_base_class(include_iworker=true
         self._config = build_spec.config
 
         {{ lifecycle.pattern_lifecycle_init(cache_attr="_cache") | indent(8) }}
-
         self.logger: LogEnricher | None = None
         self._translator: Translator | None = None
 {% if use_async | default(false) %}

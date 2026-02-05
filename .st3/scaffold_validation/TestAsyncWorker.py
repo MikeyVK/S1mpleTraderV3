@@ -1,19 +1,19 @@
-# .st3/scaffold_review/ReviewSyncWorker.py
-# template=worker version=9cb30b12 created=2026-02-02T08:39Z updated=
+# d:\dev\SimpleTraderV3\.st3\scaffold_validation\TestAsyncWorker.py
+# template=worker version=9cb30b12 created=2026-02-05T19:30Z updated=
 """
-ReviewSync - Review worker (sync mode)..
+TestAsyncWorker - Worker implementation.
 
-@layer: Backend (Workers)
+@layer: core
 @dependencies: [backend.core.interfaces, backend.dtos]
 @responsibilities:
-    - Review IWorkerLifecycle structure
-    - Check DI guard clauses + token discipline
-    - Verify LogEnricher/Translator usage
+    - [To be defined]
 """
 
 # Standard library
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any
+import asyncio
+
 import logging
 
 # Third-party
@@ -28,12 +28,12 @@ if TYPE_CHECKING:
     from backend.core.interfaces.strategy_cache import IStrategyCache
     from backend.core.interfaces.config import BuildSpec
 
-__all__ = ["ReviewSync"]
+__all__ = ["TestAsyncWorker"]
 
 
-class ReviewSync(IWorker, IWorkerLifecycle):
+class TestAsyncWorker(IWorker, IWorkerLifecycle):
     """
-    ReviewSync worker implementation.
+    TestAsyncWorker worker implementation.
 
     Architecture:
     - EventAdapter-compliant: Standard IWorker + IWorkerLifecycle pattern
@@ -44,7 +44,7 @@ class ReviewSync(IWorker, IWorkerLifecycle):
 
     def __init__(self, build_spec: BuildSpec) -> None:
         """
-        Construct ReviewSync with configuration.
+        Construct TestAsyncWorker with configuration.
 
         V3 Pattern: Construction phase accepts BuildSpec only (no dependencies).
         Dependencies injected via initialize() during runtime initialization.
@@ -56,10 +56,9 @@ class ReviewSync(IWorker, IWorkerLifecycle):
         self._config = build_spec.config
 
         self._cache: "IStrategyCache | None" = None
-
-
         self.logger: LogEnricher | None = None
         self._translator: Translator | None = None
+        self._warmup_task: "asyncio.Task[None] | None" = None
 
     @property
     def name(self) -> str:
@@ -115,7 +114,18 @@ class ReviewSync(IWorker, IWorkerLifecycle):
         # Store required capabilities
         self._dto_types = capabilities["dto_types"]
 
+        # Example: start async warmup if an event loop is running
+        try:
+            self._warmup_task = asyncio.create_task(self._warmup_async())
+        except RuntimeError:
+            # No running event loop in this context
+            pass
+
         # Perform additional initialization here
+
+    async def _warmup_async(self) -> None:
+        """Async warmup hook."""
+        await asyncio.sleep(0)
 
     def shutdown(self) -> None:
         """Graceful shutdown and resource cleanup.
@@ -124,6 +134,9 @@ class ReviewSync(IWorker, IWorkerLifecycle):
         Must complete within 5 seconds and never raise exceptions.
         """
         try:
+            if self._warmup_task is not None:
+                self._warmup_task.cancel()
+                self._warmup_task = None
             self._cache = None
         except Exception:  # noqa: BLE001
             # GUIDELINE: shutdown must not raise; best-effort cleanup only.

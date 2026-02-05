@@ -20,4 +20,4 @@
 {# Macro: Generate pytest fixture decorator with options #}
 {% macro pattern_fixture_decorator(name, scope=None, autouse=False, params=None) %}
 @pytest.fixture{% if scope %}(scope="{{ scope }}"){% elif autouse %}(autouse=True){% elif params %}(params={{ params }}){% endif %}
-{% endmacro %}
+{%- endmacro %}

@@ -1,8 +1,8 @@
-# .st3/scaffold_review/ReviewOrderService.py
-# template=service version=5d5b489a created=2026-02-02T08:39Z updated=
-"""ReviewOrder service module.
+# d:\dev\SimpleTraderV3\.st3\scaffold_validation\TestService.py
+# template=service version=5d5b489a created=2026-02-05T19:30Z updated=
+"""TestService service module.
 
-Service command for scaffold review.
+TestService service command.
 
 @layer: Backend (Services)
 @dependencies: [backend.utils.translator]
@@ -28,26 +28,24 @@ from backend.utils.translator import Translator
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["ReviewOrderService"]
+__all__ = ["TestServiceService"]
 
 
-class ReviewOrderService:
-    """Service command for scaffold review.
+class TestServiceService:
+    """TestService service command.
 
     Service command following execute pattern.
     """
 
     def __init__(self, service_translator: Translator | None = None) -> None:
-        self._name = "ReviewOrderService"
+        self._name = "TestServiceService"
         self._translator = service_translator
 
 
-    async def execute(self, order_id: str, action: str, **capabilities: Any) -> Any:
+    async def execute(self, **capabilities: Any) -> Any:
         """Execute service command.
 
         Args:
-            order_id: Order identifier.
-            action: Action to perform (create|cancel).
             **capabilities: Optional capability DI (e.g., translator)
         Returns:
             Any

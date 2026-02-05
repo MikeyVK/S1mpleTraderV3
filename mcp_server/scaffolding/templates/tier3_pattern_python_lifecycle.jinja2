@@ -28,7 +28,7 @@ from backend.core.interfaces.worker import IWorker, IWorkerLifecycle, WorkerInit
 {% if include_cache_type %}
 from backend.core.interfaces.strategy_cache import IStrategyCache
 {% endif %}
-{% endmacro %}
+{%- endmacro %}
 
 {# Macro: base class list segment for class Foo(<here>) #}
 {% macro pattern_lifecycle_base_class(include_iworker=true) -%}
@@ -38,7 +38,7 @@ from backend.core.interfaces.strategy_cache import IStrategyCache
 {# Macro: initialize cache field in __init__ (call with | indent(8) or similar) #}
 {% macro pattern_lifecycle_init(cache_attr="_cache") %}
 self.{{ cache_attr }}: "IStrategyCache | None" = None
-{% endmacro %}
+{%- endmacro %}
 
 {# Macro: initialize() method (runtime dependency injection) #}
 {% macro pattern_lifecycle_initialize(cache_attr="_cache", validate_cache=false) %}
@@ -63,7 +63,7 @@ def initialize(
         raise WorkerInitializationError("strategy_cache is required")
     {% endif %}
     self.{{ cache_attr }} = strategy_cache
-{% endmacro %}
+{%- endmacro %}
 
 {# Macro: shutdown() method (idempotent cleanup) #}
 {% macro pattern_lifecycle_shutdown(cache_attr="_cache") %}
@@ -73,4 +73,4 @@ def shutdown(self) -> None:
     Must be idempotent and must not raise.
     """
     self.{{ cache_attr }} = None
-{% endmacro %}
+{%- endmacro %}

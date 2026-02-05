@@ -189,6 +189,26 @@ version_hashes:
     concrete:
       template_id: generic.py
       version: 1.2.0
+  6b0f1f7e:
+    artifact_type: unit_test
+    created: '2026-02-05T19:30:45.178700+00:00'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: test_unit.py
+      version: '1.0'
+    tier0:
+      template_id: tier2_base_python
+      version: 1.2.0
+  85ea75d4:
+    artifact_type: integration_test
+    created: '2026-02-05T19:30:55.207055+00:00'
+    hash_algorithm: SHA256
+    concrete:
+      template_id: test_integration.py
+      version: '1.0'
+    tier0:
+      template_id: tier2_base_python
+      version: 1.2.0
 current_versions:
   dto: 0d83ee77
   generic: f35abd82
@@ -201,5 +221,7 @@ current_versions:
   service: 5d5b489a
   schema: '74378193'
   tool: 27130d2b
+  unit_test: 6b0f1f7e
+  integration_test: 85ea75d4
 templates: {}
-last_updated: '2026-02-02T08:13:20.269531+00:00'
+last_updated: '2026-02-05T19:30:55.207070+00:00'

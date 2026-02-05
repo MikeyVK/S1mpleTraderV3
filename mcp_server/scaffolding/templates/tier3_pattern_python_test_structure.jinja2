@@ -20,4 +20,4 @@
 {# Macro: Generate AAA (Arrange-Act-Assert) comments #}
 {% macro pattern_aaa_comment(phase) %}
 # {{ phase }} - {% if phase == "Arrange" %}Setup test data and preconditions{% elif phase == "Act" %}Execute the functionality being tested{% elif phase == "Assert" %}Verify the expected outcome{% endif %}
-{% endmacro %}
+{%- endmacro %}
