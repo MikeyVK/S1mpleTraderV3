@@ -1002,6 +1002,28 @@ Task completed during Phase 3 Tier 3 Pattern Library (2026-02-05).
 
 **Note:** Validation level fix integrated (no separate task needed)
 
+**Status:** ✅ **COMPLETE** (3/3 templates refactored; 2026-02-05)
+
+**Verification (2026-02-05):**
+1. ✅ **research.md.jinja2** - Version 1.1.0, imports 7 patterns (status_header, purpose_scope, prerequisites, agent_hints, related_docs, version_history, open_questions), enforcement: GUIDELINE
+2. ✅ **planning.md.jinja2** - Version 1.1.0, imports 6 patterns (status_header, purpose_scope, prerequisites, agent_hints, related_docs, version_history), enforcement: GUIDELINE  
+3. ✅ **design.md.jinja2** - Version 3.3.0, imports 7 patterns (status_header, purpose_scope, agent_hints, related_docs, version_history, open_questions, dividers), enforcement: GUIDELINE
+
+All templates:
+- Use `{% import %}` composition (not monolithic blocks) ✅
+- Import tier3 pattern macros and call them in blocks ✅
+- Maintain enforcement: GUIDELINE (already correct) ✅
+- Version bumped with Task 3.6 changelog entry ✅
+
+**Test Coverage:**
+- `tests/mcp_server/scaffolding/test_task36_refactor_document_templates.py` - 3/3 tests passing
+- All templates correctly import required patterns
+
+**Commits:**
+- `47e7d05`: Task 3.6 complete - refactored 3 DOCUMENT templates with tier3 pattern composition
+
+Task completed during Phase 3 Tier 3 Pattern Library (2026-02-05).
+
 ---
 
 #### Task 3.7: Tier 1 Tracking + Tier 2 Templates (VCS Workflows)
