@@ -1,7 +1,10 @@
 {#- concrete/architecture.md.jinja2 - Architecture Document Template -#}
-{#- Version: 1.0.0 -#}
+{#- Version: 2.0.0 -#}
 {#- Purpose: ARCHITECTURE_TEMPLATE.md implementation - system architecture concepts -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
+
+{#- Import tier3 pattern macros (only used patterns) -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -14,9 +17,14 @@ TEMPLATE_METADATA:
       - "NO implementation code (link to source instead)"
       - "Focus on WHAT and WHY, not HOW"
   extends: tier2_base_markdown.jinja2
+  imports_patterns:
+    - tier3_pattern_markdown_status_header
   purpose: "Concrete template for architecture documents per ARCHITECTURE_TEMPLATE.md"
-  version: "1.0.0"
+  version: "2.0.0"
   changelog:
+    - version: "2.0.0"
+      date: "2026-02-05"
+      changes: "Refactored to use {% import %} composition with tier3 status pattern (Task 3.6.1)"
     - version: "1.0.0"
       date: "2026-01-27"
       changes: "Initial version with agent hints and architecture structure"
@@ -66,10 +74,7 @@ TEMPLATE_METADATA:
 
 {#- Architecture documents use BASE header (no extra fields) -#}
 {%- block header_fields %}
-
-**Status:** {{ status | default("DRAFT") }}  
-**Version:** {{ version | default("1.0") }}  
-**Last Updated:** {{ last_updated | default(timestamp[:10]) }}  
+{{ hdr.pattern_status_header_basic(status, version, last_updated) }}
 {% endblock -%}
 
 {#- Architecture content: numbered sections with Mermaid diagrams -#}
@@ -78,8 +83,9 @@ TEMPLATE_METADATA:
 ---
 
 {% for concept in concepts %}
+{% set concept_num = loop.index %}
 
-## {{ loop.index }}. {{ concept.name }}
+## {{ concept_num }}. {{ concept.name }}
 
 {{ concept.description }}
 
@@ -93,7 +99,7 @@ TEMPLATE_METADATA:
 {% if concept.subsections -%}
 {% for subsection in concept.subsections %}
 
-### {{ loop.parent.loop.index }}.{{ loop.index }}. {{ subsection.name }}
+### {{ concept_num }}.{{ loop.index }}. {{ subsection.name }}
 
 {{ subsection.description }}
 
