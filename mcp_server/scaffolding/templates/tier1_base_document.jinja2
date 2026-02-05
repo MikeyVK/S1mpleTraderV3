@@ -1,5 +1,5 @@
 {#- tier1_base_document.jinja2 - Universal Document Structure -#}
-{#- Version: 4.0.1 -#}
+{#- Version: 4.0.2 -#}
 {#- Purpose: Implements BASE_TEMPLATE.md structure - foundation for all document types -#}
 {%- extends "tier0_base_artifact.jinja2" -%}
 
@@ -28,8 +28,11 @@ TEMPLATE_METADATA:
       - "Version History (tier3 pattern composable)"
   extends: tier0_base_artifact
   purpose: "Universal document structure per BASE_TEMPLATE.md, refactored for tier3 pattern composition"
-  version: "4.0.1"
+  version: "4.0.2"
   changelog:
+    - version: "4.0.2"
+      date: "2026-02-05"
+      changes: "BUGFIX: Fixed status header spacing - removed leading {%- from header_fields block to preserve newline after title"
     - version: "4.0.1"
       date: "2026-02-05"
       changes: "BUGFIX: Fixed markdown divider bug - removed leading {%- from version_history_section block to prevent divider+header on same line"
@@ -80,7 +83,7 @@ TEMPLATE_METADATA:
 
 # {{ title | default(name) }}
 
-{%- block header_fields %}
+{% block header_fields -%}
 
 **Status:** {{ status | default("DRAFT") }}  
 **Version:** {{ version | default("1.0") }}  
