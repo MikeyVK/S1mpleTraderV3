@@ -1,10 +1,14 @@
 {#- concrete/planning.md.jinja2 - Planning Document Template -#}
-{#- Version: 1.2.0 -#}
+{#- Version: 1.3.0 -#}
 {#- Purpose: Planning phase documentation - TDD cycle breakdown -#}
 {%- extends "tier2_base_markdown.jinja2" -%}
 
-{#- Import tier3 pattern macros (only used patterns) -#}
+{#- Import tier3 pattern macros -#}
 {%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
 
 {#-
 TEMPLATE_METADATA:
@@ -18,9 +22,16 @@ TEMPLATE_METADATA:
   extends: tier2_base_markdown.jinja2
   imports_patterns:
     - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
   purpose: "Concrete template for planning phase documents"
-  version: "1.2.0"
+  version: "1.3.0"
   changelog:
+    - version: "1.3.0"
+      date: "2026-02-05"
+      changes: "Re-added pattern imports + override all tier1 blocks with pattern calls for code-tak compositie parity (Task 3.6.2)"
     - version: "1.2.0"
       date: "2026-02-05"
       changes: "FIXED: Status collision (renamed import alias status→hdr), removed unused pattern imports (Task 3.6.1)"
@@ -40,9 +51,14 @@ TEMPLATE_METADATA:
         - summary
         - tdd_cycles
       optional:
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
         - dependencies
         - risks
         - milestones
+        - related_docs
   agent_hints:
     phase: "planning"
     purpose: "Break down work into TDD cycles before design or implementation"
@@ -80,6 +96,19 @@ TEMPLATE_METADATA:
 {%- block header_fields %}
 {{ hdr.pattern_status_header_basic(status, version, last_updated) }}
 {% endblock -%}
+
+{#- Override tier1 blocks with pattern calls -#}
+{%- block purpose_section %}
+{{ ps.pattern_purpose_section(purpose) }}
+{%- endblock %}
+
+{%- block scope_section %}
+{{ ps.pattern_scope_section(scope_in, scope_out) }}
+{%- endblock %}
+
+{%- block prerequisites_section %}
+{{ prereq.pattern_prerequisites_section(prerequisites) }}
+{%- endblock %}
 
 {#- Planning content structure -#}
 {%- block document_content -%}
@@ -154,4 +183,14 @@ TEMPLATE_METADATA:
 {% endfor %}
 
 {% endif -%}
+{%- endblock %}
+
+{#- Override related docs block with pattern -#}
+{%- block related_docs_section %}
+{{ related.pattern_related_docs_section(related_docs) }}
+{%- endblock %}
+
+{#- Override version history block with pattern -#}
+{%- block version_history_section %}
+{{ history.pattern_version_history_basic(version, last_updated) }}
 {%- endblock %}
