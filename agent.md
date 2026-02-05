@@ -303,6 +303,50 @@ scaffold_artifact(
 
 ---
 
+## 🚫 run_in_terminal Restrictions (CRITICAL)
+
+**`run_in_terminal` is ONLY allowed for:**
+
+✅ **Permitted (rare cases):**
+- Development servers where no MCP tool exists (e.g., `npm run dev`, `python -m http.server`)
+- Build commands explicitly requested by user
+- Smoke tests / exploratory commands approved by user
+- Python package installations via pip (when not using install_python_packages tool)
+
+❌ **FORBIDDEN (use MCP tool instead):**
+- **File operations** → use `create_file` / `safe_edit_file`
+- **Git operations** → use `git_*` tools (see matrix above)
+- **Test execution** → use `run_tests` tool
+- **File copy/move/delete** → use file editing tools or ask user
+- **Quality gates** → use `run_quality_gates` tool
+- **Python execution** → use appropriate MCP tool or ask user
+
+**Default rule: If unsure, ask yourself "Is there an MCP tool for this?" If yes → use it. If no → ask user permission first.**
+
+**This restriction prevents bypassing:**
+- Template validation
+- SCAFFOLD metadata tracking
+- Quality gate enforcement
+- Audit trail in MCP workflow
+- Provenance tracking in template registry
+
+**Common mistakes to avoid:**
+```powershell
+# ❌ WRONG
+run_in_terminal("Set-Content file.py ...")
+run_in_terminal("git add .")
+run_in_terminal("pytest tests/")
+run_in_terminal("Copy-Item source.py dest.py")
+
+# ✅ CORRECT
+create_file(path="file.py", content=...)
+git_add_or_commit(phase="red", message="...")
+run_tests(path="tests/")
+# For copy: read original, create new with create_file
+```
+
+---
+
 ## 🏁 Ready State
 
 **If you have run Phase 1: Orientation, you are now READY.**
