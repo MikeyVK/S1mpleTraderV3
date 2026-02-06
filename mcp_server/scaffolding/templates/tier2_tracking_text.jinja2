@@ -1,0 +1,51 @@
+{#- tier2_tracking_text.jinja2 - Language base for plain text tracking -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Adds plain text formatting for commit messages and text-based tracking -#}
+{%- extends "tier1_base_tracking.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: STRICT
+  level: format
+  validates:
+    strict:
+      - "Plain text only"
+      - "NO markdown syntax"
+      - "Line breaks only"
+    format:
+      - "Single line breaks"
+      - "NO headers (#)"
+      - "NO lists (*/-)"
+      - "NO emphasis (**/*/~~)"
+  extends: tier1_base_tracking.jinja2
+  purpose: "Language base for plain text tracking artifacts - commit messages, plain text logs"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-06"
+      changes: "Initial version - plain text formatting for commit messages (Task 3.7)"
+  introspection:
+    template_id: tier2_tracking_text
+    tier: 2
+    parent: tier1_base_tracking
+    variables:
+      required:
+        - message
+      optional:
+        - prefix
+        - scope
+        - breaking_change
+        - footer
+    exports_blocks:
+      - text_content
+-#}
+
+{%- block workflow_metadata -%}
+{#- Plain text has minimal metadata - usually embedded in content -#}
+{%- endblock -%}
+
+{%- block tracking_content -%}
+{%- block text_content -%}
+{#- Concrete templates provide text content -#}
+{%- endblock -%}
+{%- endblock -%}

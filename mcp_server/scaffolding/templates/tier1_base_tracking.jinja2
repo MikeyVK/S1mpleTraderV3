@@ -1,0 +1,62 @@
+{#- tier1_base_tracking.jinja2 - Base template for tracking artifacts -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Provides workflow metadata structure for VCS workflow artifacts -#}
+{%- extends "tier0_base_artifact.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: STRICT
+  level: format
+  validates:
+    required_blocks:
+      - workflow_metadata
+      - tracking_content
+    characteristics:
+      - "NO status lifecycle (tracking = workflow metadata, not knowledge docs)"
+      - "NO versioning (ephemeral or single-version artifacts)"
+      - "NO Purpose/Scope blocks (not documentation)"
+      - "Workflow context (timestamp, branch, phase, type)"
+      - "VCS-agnostic terminology"
+  extends: tier0_base_artifact.jinja2
+  purpose: "Format base for tracking artifacts - workflow metadata without documentation structure"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-06"
+      changes: "Initial version - minimal tracking structure (Task 3.7)"
+  introspection:
+    template_id: tier1_base_tracking
+    tier: 1
+    parent: tier0_base_artifact
+    variables:
+      required:
+        - tracking_type
+      optional:
+        - workflow_branch
+        - workflow_phase
+        - workflow_context
+        - timestamp
+        - author
+    exports_blocks:
+      - workflow_metadata
+      - tracking_content
+-#}
+
+{#-
+WHITESPACE STRATEGY (Issue #72):
+- Block boundaries ({% block %}) produce natural newlines
+- Trim ({%- -%}) only for internal content (if/for loops, variable substitution)
+- super() MUST be right-trimmed ({{ super() -}}) to prevent extra blank line
+- Result: SCAFFOLD directly followed by content (no gap), minimal structure
+-#}
+
+{%- block content %}
+{{ super() -}}
+{% block workflow_metadata %}
+{#- Workflow metadata - concrete templates can override for format-specific structure -#}
+{%- endblock %}
+
+{% block tracking_content %}
+{#- Main content - concrete templates implement their specific structure -#}
+{%- endblock %}
+{%- endblock -%}

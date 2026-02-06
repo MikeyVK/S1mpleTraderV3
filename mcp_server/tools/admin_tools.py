@@ -225,7 +225,8 @@ class RestartServerTool(BaseTool):
         # Return success immediately (before exit happens)
         return ToolResult.text(
             f"Server restart scheduled (reason: {params.reason}). "
-            f"Server will exit with code 42 in 500ms, supervisor will spawn new instance."
+            f"⏳ WAIT 3 SECONDS before continuing - server needs time to reload. "
+            f"Service will be unavailable briefly during restart."
         )
 
 

@@ -1,0 +1,67 @@
+{#- tier2_tracking_markdown.jinja2 - Language base for Markdown tracking -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Adds Markdown formatting for PR/issue/milestone descriptions -#}
+{%- extends "tier1_base_tracking.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: STRICT
+  level: format
+  validates:
+    strict:
+      - "^## "
+      - "^### "
+      - "^- \\[ \\]"
+      - "^- \\[x\\]"
+    format:
+      - "Headers (##/###)"
+      - "Bullet lists (-)"
+      - "Task lists (- [ ]/- [x])"
+      - "Code blocks (```)"
+      - "Bold (**text**)"
+  extends: tier1_base_tracking.jinja2
+  purpose: "Language base for Markdown tracking artifacts - PR descriptions, issues, milestones"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-06"
+      changes: "Initial version - Markdown formatting for PR/issue/milestone (Task 3.7)"
+  introspection:
+    template_id: tier2_tracking_markdown
+    tier: 2
+    parent: tier1_base_tracking
+    variables:
+      required:
+        - title
+      optional:
+        - summary
+        - sections
+        - checklist
+        - code_blocks
+        - references
+    exports_blocks:
+      - markdown_header
+      - markdown_sections
+      - markdown_checklist
+      - markdown_footer
+-#}
+
+{%- block workflow_metadata -%}
+{%- block markdown_header -%}
+{#- Concrete templates can add title/summary here -#}
+{%- endblock -%}
+{%- endblock -%}
+
+{%- block tracking_content -%}
+{%- block markdown_sections -%}
+{#- Concrete templates define sections (## Changes, ## Testing, etc.) -#}
+{%- endblock -%}
+
+{%- block markdown_checklist -%}
+{#- Optional checklist section -#}
+{%- endblock -%}
+
+{%- block markdown_footer -%}
+{#- Optional footer (references, related issues) -#}
+{%- endblock -%}
+{%- endblock -%}

@@ -1,0 +1,64 @@
+{#- concrete/commit.txt.jinja2 - Git commit message template -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Conventional Commits format for git commit messages -#}
+{%- extends "tier2_tracking_text.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: concrete
+  validates:
+    guideline:
+      - "Conventional Commits format"
+      - "type(scope): message"
+      - "50 char subject line"
+      - "72 char body wrap"
+  extends: tier2_tracking_text.jinja2
+  purpose: "Concrete template for git commit messages using Conventional Commits format"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-06"
+      changes: "Initial version - Conventional Commits format (Task 3.7)"
+  introspection:
+    template_id: concrete_commit
+    tier: concrete
+    parent: tier2_tracking_text
+    variables:
+      required:
+        - type
+        - message
+      optional:
+        - scope
+        - body
+        - breaking_change
+        - breaking_description
+        - footer
+        - refs
+    example_context:
+      type: "feat"
+      scope: "tracking"
+      message: "add conventional commits template"
+      body: "Implements Conventional Commits format for git commit messages as part of Task 3.7 tracking templates."
+      refs: ["#72"]
+-#}
+
+{%- block text_content -%}
+{{ type }}{% if scope %}({{ scope }}){% endif %}{% if breaking_change %}!{% endif %}: {{ message }}
+{% if body %}
+
+{{ body }}
+{%- endif %}
+{% if breaking_change and breaking_description %}
+
+BREAKING CHANGE: {{ breaking_description }}
+{%- endif %}
+{% if refs %}
+
+Refs: {{ refs | join(', ') }}
+{%- endif %}
+{% if footer %}
+
+{{ footer }}
+{%- endif %}
+{%- endblock -%}

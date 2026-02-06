@@ -1,0 +1,115 @@
+{#- concrete/pr.md.jinja2 - Pull Request description template -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: PR description with changes, testing, checklist sections -#}
+{%- extends "tier2_tracking_markdown.jinja2" -%}
+
+{#- CROSS-BRANCH PATTERN IMPORT: related_docs from DOCUMENT tier3 used in TRACKING -#}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: concrete
+  validates:
+    guideline:
+      - "## Changes section"
+      - "## Testing section"
+      - "## Checklist with task items"
+      - "Related Documentation section"
+  extends: tier2_tracking_markdown.jinja2
+  imports:
+    - tier3_pattern_markdown_related_docs
+  purpose: "Concrete template for Pull Request descriptions with standard sections"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-06"
+      changes: "Initial version - PR template with cross-branch pattern (Task 3.7)"
+  introspection:
+    template_id: concrete_pr
+    tier: concrete
+    parent: tier2_tracking_markdown
+    variables:
+      required:
+        - title
+        - changes
+      optional:
+        - summary
+        - testing
+        - checklist_items
+        - related_docs
+        - closes_issues
+        - breaking_changes
+    example_context:
+      title: "Add tracking templates (Task 3.7)"
+      summary: "Implements tier1_base_tracking + tier2 text/markdown + 3 concrete templates"
+      changes: "- Created tier1_base_tracking.jinja2\n- Created tier2_tracking_text.jinja2\n- Created tier2_tracking_markdown.jinja2"
+      testing: "Unit tests for all tier1/tier2 templates, integration test for concrete templates"
+      checklist_items: ["All tests passing", "Documentation updated", "Templates validated"]
+      related_docs: ["docs/development/issue72/planning.md", "docs/development/issue72/tracking-type-architecture.md"]
+      closes_issues: [72]
+-#}
+
+{%- block markdown_header -%}
+# {{ title }}
+{% if summary %}
+
+{{ summary }}
+{%- endif %}
+{%- endblock -%}
+
+{%- block markdown_sections -%}
+
+## Changes
+{% if changes -%}
+
+{{ changes }}
+{% else -%}
+
+[Describe the changes in this PR]
+{%- endif %}
+
+## Testing
+{% if testing -%}
+
+{{ testing }}
+{% else -%}
+
+[Describe how this was tested]
+{%- endif %}
+{%- endblock -%}
+
+{%- block markdown_checklist -%}
+
+## Checklist
+
+{% if checklist_items -%}
+{% for item in checklist_items -%}
+- [{% if item.checked %}x{% else %} {% endif %}] {{ item if item is string else item.description }}
+{% endfor -%}
+{% else -%}
+- [ ] Code follows project standards
+- [ ] Tests added/updated
+- [ ] Documentation updated
+- [ ] Quality gates passing
+{%- endif %}
+{%- endblock -%}
+
+{%- block markdown_footer -%}
+{% if breaking_changes %}
+
+## ⚠️ Breaking Changes
+
+{{ breaking_changes }}
+{%- endif %}
+{% if related_docs %}
+
+{{ related.pattern_related_docs_section(related_docs) -}}
+{%- endif %}
+{% if closes_issues %}
+
+---
+
+Closes: {% for issue in closes_issues %}#{{ issue }}{% if not loop.last %}, {% endif %}{% endfor %}
+{%- endif %}
+{%- endblock -%}

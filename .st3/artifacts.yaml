@@ -315,16 +315,44 @@ artifact_types:
           to: [APPROVED, DEFINITIVE]
         - from: APPROVED
           to: [DEFINITIVE]
-  # ===== EPHEMERAL ARTIFACTS =====
-  - type: doc
-    type_id: commit_message
+  # ===== TRACKING ARTIFACTS =====
+  - type: tracking
+    type_id: commit
     name: "Git Commit Message"
-    description: "Git commit message (ephemeral, not saved to disk)"
+    description: "Git commit message for conventional commits format"
     output_type: "ephemeral"
-    template_path: "docs/commit-message.txt.jinja2"
+    template_path: "concrete/commit.txt.jinja2"
     fallback_template: null
     name_suffix: null
     file_extension: ".txt"
+    generate_test: false
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: tracking
+    type_id: pr
+    name: "Pull Request Description"
+    description: "Pull request description with changes, testing, checklist sections"
+    output_type: "ephemeral"
+    template_path: "concrete/pr.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: tracking
+    type_id: issue
+    name: "GitHub Issue Description"
+    description: "GitHub issue description with problem, expected, actual sections"
+    output_type: "ephemeral"
+    template_path: "concrete/issue.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
     generate_test: false
     state_machine:
       states: [CREATED]

@@ -291,7 +291,7 @@ scaffold_artifact(
 ### MCP Server Management
 | Action | ✅ USE THIS | ❌ NEVER USE | Notes |
 |--------|-------------|------------|-------|
-| Hot-reload server | `restart_server()` | Manual process kill | **Use after code changes to MCP tools/server.** Zero client downtime (~2.3s). See [reference](docs/reference/mcp/proxy_restart.md) |
+| Hot-reload server | `restart_server()` | Manual process kill | **Use after code changes to MCP tools/server. ⏳ WAIT 3 SECONDS after restart before calling next tool.** Zero client downtime. See [reference](docs/reference/mcp/proxy_restart.md) |
 
 ### File Editing
 | Action | ✅ USE THIS | ❌ NEVER USE |
