@@ -1,5 +1,5 @@
 {#- tier2_tracking_markdown.jinja2 - Language base for Markdown tracking -#}
-{#- Version: 1.0.0 -#}
+{#- Version: 1.1.0 -#}
 {#- Purpose: Adds Markdown formatting for PR/issue/milestone descriptions -#}
 {%- extends "tier1_base_tracking.jinja2" -%}
 
@@ -9,20 +9,21 @@ TEMPLATE_METADATA:
   level: format
   validates:
     strict:
-      - "^## "
-      - "^### "
-      - "^- \\[ \\]"
-      - "^- \\[x\\]"
-    format:
-      - "Headers (##/###)"
+      - "^#\\s+"
+      - "^##\\s+"
+    characteristics:
+      - "Headers (H1 required via ^#, H2/H3 common)"
       - "Bullet lists (-)"
-      - "Task lists (- [ ]/- [x])"
+      - "Task lists (- [ ]/- [x]) for PRs"
       - "Code blocks (```)"
-      - "Bold (**text**)"
+      - "Bold (**text**) and emphasis (*text*)"
   extends: tier1_base_tracking.jinja2
   purpose: "Language base for Markdown tracking artifacts - PR descriptions, issues, milestones"
-  version: "1.0.0"
+  version: "1.1.0"
   changelog:
+    - version: "1.1.0"
+      date: "2026-02-06"
+      changes: "ALIGNMENT: Relaxed validates.strict to minimal common denominator (H1+H2 only), moved H3/checkboxes to characteristics"
     - version: "1.0.0"
       date: "2026-02-06"
       changes: "Initial version - Markdown formatting for PR/issue/milestone (Task 3.7)"
@@ -46,8 +47,8 @@ TEMPLATE_METADATA:
       - markdown_footer
 -#}
 
-{%- block workflow_metadata -%}
-{%- block markdown_header -%}
+{% block workflow_metadata -%}
+{% block markdown_header -%}
 {#- Concrete templates can add title/summary here -#}
 {%- endblock -%}
 {%- endblock -%}

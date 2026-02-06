@@ -1,5 +1,5 @@
 {#- tier2_tracking_text.jinja2 - Language base for plain text tracking -#}
-{#- Version: 1.0.0 -#}
+{#- Version: 1.1.0 -#}
 {#- Purpose: Adds plain text formatting for commit messages and text-based tracking -#}
 {%- extends "tier1_base_tracking.jinja2" -%}
 
@@ -9,18 +9,20 @@ TEMPLATE_METADATA:
   level: format
   validates:
     strict:
-      - "Plain text only"
-      - "NO markdown syntax"
-      - "Line breaks only"
-    format:
-      - "Single line breaks"
+      - ".+"
+    characteristics:
+      - "Plain text only (no markdown syntax)"
+      - "Line breaks for structure"
       - "NO headers (#)"
       - "NO lists (*/-)"
       - "NO emphasis (**/*/~~)"
   extends: tier1_base_tracking.jinja2
   purpose: "Language base for plain text tracking artifacts - commit messages, plain text logs"
-  version: "1.0.0"
+  version: "1.1.0"
   changelog:
+    - version: "1.1.0"
+      date: "2026-02-06"
+      changes: "ALIGNMENT: Moved descriptive strings to characteristics, added minimal regex .+ (non-empty) to validates.strict"
     - version: "1.0.0"
       date: "2026-02-06"
       changes: "Initial version - plain text formatting for commit messages (Task 3.7)"
