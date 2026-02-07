@@ -28,7 +28,7 @@ Complete reference documentation for the TEMPLATE_METADATA format used in Jinja2
 
 **In Scope:**
 - YAML structure and syntax within Jinja2 comment blocks
-- Enforcement levels (FORMAT, ARCHITECTURAL, GUIDELINE)
+- Enforcement levels (STRICT, ARCHITECTURAL, GUIDELINE)
 - Validation rule types (strict vs guidelines)
 - Template inheritance mechanism
 - Variable declaration
@@ -107,7 +107,7 @@ variables:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `enforcement` | String | Validation enforcement level (FORMAT/ARCHITECTURAL/GUIDELINE) |
+| `enforcement` | String | Validation enforcement level (STRICT/ARCHITECTURAL/GUIDELINE) |
 | `level` | String | Always `"content"` for component templates |
 | `extends` | String | Path to base template (relative to templates/) |
 | `version` | String | Template version (semantic versioning) |
@@ -124,18 +124,18 @@ variables:
 
 The `enforcement` field controls how strictly rules are enforced during validation.
 
-### FORMAT (Strictest)
+### STRICT (Strictest)
 
 ```yaml
-enforcement: FORMAT
+enforcement: STRICT
 ```
 
 - **Purpose**: Enforce non-negotiable formatting/structure
 - **Failure behavior**: Hard failure, score penalty
-- **Use case**: Base document structure, markdown frontmatter
+- **Use case**: Base document structure, required header fields
 - **Example**: base_document.md.jinja2
 
-**When to use FORMAT:**
+**When to use STRICT:**
 - File must have specific structure to be valid
 - No architectural flexibility needed
 - Violations make file unusable
@@ -174,7 +174,7 @@ enforcement: GUIDELINE
 
 ## Validation Rules (Strict)
 
-Strict rules cause hard failures when enforcement is ARCHITECTURAL or FORMAT.
+Strict rules cause hard failures when enforcement is ARCHITECTURAL or STRICT.
 
 ### Pattern Matching
 
@@ -241,7 +241,7 @@ strict:
 
 ## Validation Rules (Guidelines)
 
-Guidelines provide warnings but never fail validation (even with FORMAT enforcement).
+Guidelines provide warnings but never fail validation (even with STRICT enforcement).
 
 ### Structure
 
@@ -447,19 +447,19 @@ validates:
 - Adapter class validation: Must have `Adapter` suffix
 - Interface Segregation Principle as guideline (WARNING only)
 
-### Base Document Template (FORMAT) - Conceptual Example
+### Base Document Template (STRICT) - Conceptual Example
 
 ```jinja
 {# TEMPLATE_METADATA
-enforcement: FORMAT
+enforcement: STRICT
 level: structure
 version: "2.0"
 
 validates:
   strict:
-    - rule: frontmatter_presence
-      description: "Must have YAML frontmatter block at start"
-      pattern: "^---\\n[\\s\\S]*?\\n---"
+    - rule: header_fields_presence
+      description: "Must have Status/Version/Last Updated header fields"
+      pattern: "\\*\\*Status:\\*\\*.*\\*\\*Version:\\*\\*.*\\*\\*Last Updated:\\*\\*"
       
     - rule: separator_structure
       description: "Must have separator line (---) after header"
@@ -485,7 +485,7 @@ variables:
 ```
 
 **Key Points:**
-- `FORMAT` enforcement: Non-negotiable structure rules
+- `STRICT` enforcement: Non-negotiable structure rules
 - Applies to ALL document types (research, planning, design)
 - Content flexibility maintained via inheritance
 - Document-specific rules in child templates (research.md, planning.md)
@@ -494,7 +494,7 @@ variables:
 
 ### 1. Choose Appropriate Enforcement Level
 
-- **FORMAT**: Only for non-negotiable structure (markdown frontmatter)
+- **STRICT**: Only for non-negotiable structure (document header + required sections)
 - **ARCHITECTURAL**: For code patterns (workers, DTOs, adapters)
 - **GUIDELINE**: For style preferences (not yet used)
 
@@ -567,7 +567,7 @@ description: "Validate configuration"
 **Step 1: Choose Enforcement Level**
 ```yaml
 # Non-negotiable structure (markdown format, file structure)
-enforcement: FORMAT
+enforcement: STRICT
 
 # OR: System architecture patterns (base classes, protocols)
 enforcement: ARCHITECTURAL
