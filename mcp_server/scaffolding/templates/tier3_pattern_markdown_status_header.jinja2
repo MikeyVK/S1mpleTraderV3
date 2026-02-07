@@ -21,26 +21,26 @@
 #}
 
 {# Macro: basic status header (research, planning, architecture) #}
-{% macro pattern_status_header_basic(status="DRAFT", version="1.0", last_updated=None) -%}
+{% macro pattern_status_header_basic(status="DRAFT", version="1.0", last_updated=None, timestamp=None) -%}
 **Status:** {{ status }}  
 **Version:** {{ version }}  
-**Last Updated:** {{ last_updated or timestamp[:10] }}  
+**Last Updated:** {{ last_updated or (timestamp[:10] if timestamp else "") }}  
 {%- endmacro %}
 
 {# Macro: extended status header (design.md) #}
-{% macro pattern_status_header_extended(status="PRELIMINARY", version="1.0", created=None, last_updated=None, implementation_phase=None) -%}
+{% macro pattern_status_header_extended(status="PRELIMINARY", version="1.0", created=None, last_updated=None, implementation_phase=None, timestamp=None) -%}
 **Status:** {{ status }}  
 **Version:** {{ version }}  
-**Created:** {{ created or timestamp[:10] }}  
-**Last Updated:** {{ last_updated or timestamp[:10] }}  
+**Created:** {{ created or (timestamp[:10] if timestamp else "") }}  
+**Last Updated:** {{ last_updated or (timestamp[:10] if timestamp else "") }}  
 **Implementation Phase:** {{ implementation_phase or "Phase 1.0 - Design" }}  
 {%- endmacro %}
 
 {# Macro: reference status header (reference.md) #}
-{% macro pattern_status_header_reference(status="DEFINITIVE", version="1.0", last_updated=None, source_file=None, test_file=None, test_count=None) -%}
+{% macro pattern_status_header_reference(status="DEFINITIVE", version="1.0", last_updated=None, source_file=None, test_file=None, test_count=None, timestamp=None) -%}
 **Status:** {{ status }}  
 **Version:** {{ version }}  
-**Last Updated:** {{ last_updated or timestamp[:10] }}  
+**Last Updated:** {{ last_updated or (timestamp[:10] if timestamp else "") }}  
 
 **Source:** [{{ source_file }}][source]  
 **Tests:** [{{ test_file }}][tests]{% if test_count %} ({{ test_count }} tests){% endif %}  

@@ -29,6 +29,34 @@ TEMPLATE_METADATA:
         - description
         - layer
         - responsibilities
+  agent_hints:
+    phase: "green"
+    purpose: "Generate MCP server tool implementations for external integrations"
+    belongs_here:
+      - "MCP tool definitions with execute() entrypoint"
+      - "GitHub, git, file system, or external API wrappers"
+      - "Tool parameter validation and error handling"
+      - "Logging for tool execution tracking"
+      - "Integration with platform services via dependency injection"
+    does_not_belong:
+      - "Platform runtime components → worker.py"
+      - "Business logic or strategy code → worker.py or service_command.py"
+      - "Data structures → dto.py"
+      - "Pure utility functions → generic.py"
+    tone: "Integration-focused: clear parameters, robust error handling, structured logging"
+    common_pitfalls:
+      - "Mixing tool logic with business logic (tools are thin wrappers)"
+      - "Not validating tool parameters properly"
+      - "Missing error handling for external API failures"
+      - "Hardcoding configuration instead of using context"
+      - "Over-complicating tool implementations (keep them simple)"
+    workflow_context:
+      - "Tools are green-phase (implementation) artifacts"
+      - "Define tool signatures and responsibilities in design phase"
+      - "Tools bridge MCP protocol with platform capabilities"
+    related_phases:
+      before: "design.md (defines tool parameters and integration points)"
+      after: "test_integration.py (tests tool execution with mocked external services)"
 -#}
 
 {% block module_docstring %}

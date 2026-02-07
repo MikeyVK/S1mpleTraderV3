@@ -32,6 +32,34 @@ TEMPLATE_METADATA:
         - fields
         - frozen
         - examples
+  agent_hints:
+    phase: "green"
+    purpose: "Generate Pydantic config schemas for validating YAML configurations"
+    belongs_here:
+      - "Configuration schemas (workflows, labels, phase plans)"
+      - "YAML data validation models"
+      - "Pydantic BaseModel with model_config"
+      - "Configuration parsing and type safety"
+      - "Self-documenting with examples"
+    does_not_belong:
+      - "Runtime DTOs for business logic → dto.py"
+      - "Stateful components → worker.py"
+      - "Service orchestration → service_command.py"
+      - "Utility functions → generic.py"
+    tone: "Configuration-focused: strict validation, clear field descriptions, examples"
+    common_pitfalls:
+      - "Confusing config schemas (CODE) with YAML config files (data)"
+      - "Missing field validation constraints (use Field constraints)"
+      - "Not providing examples for self-documentation"
+      - "Over-complicating schemas (keep them flat when possible)"
+      - "Forgetting frozen=True for immutable configs"
+    workflow_context:
+      - "Config schemas are green-phase (implementation) artifacts"
+      - "Define schema requirements in design phase"
+      - "Schemas validate user-provided YAML configurations"
+    related_phases:
+      before: "design.md (defines configuration structure and constraints)"
+      after: "test_unit.py (tests validation rules and edge cases)"
 -#}
 
 {% block module_docstring %}

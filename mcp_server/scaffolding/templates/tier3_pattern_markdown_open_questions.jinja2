@@ -13,10 +13,26 @@ TEMPLATE_METADATA:
     - design.md
 """
 
-{% macro pattern_open_questions_section(questions) -%}
+{% macro pattern_open_questions_section(questions, section_number=None, as_table=False) -%}
+{% if section_number -%}
+## {{ section_number }}. Open Questions
+{% else -%}
 ## Open Questions
+{% endif %}
 
+{% if as_table -%}
+| Question | Options | Status |
+|----------|---------|--------|
 {% for q in questions -%}
+{% if q is mapping -%}
+| {{ q.question }} | {{ q.options | default("") }} | {{ "BLOCKING" if q.blocking else (q.status | default("")) }} |
+{% else -%}
+| {{ q }} |  |  |
+{% endif -%}
+{% endfor %}
+{% else -%}
+{% for q in questions -%}
+{% if q is mapping -%}
 - **Q{{ loop.index }}:** {{ q.question }}
   {% if q.context -%}
   - Context: {{ q.context }}
@@ -24,7 +40,11 @@ TEMPLATE_METADATA:
   {% if q.blocking -%}
   - ⚠️ BLOCKING
   {% endif %}
+{% else -%}
+- ❓ {{ q }}
+{% endif %}
 {% endfor %}
+{% endif %}
 {%- endmacro %}
 
 {# Changelog:

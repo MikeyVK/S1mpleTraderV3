@@ -52,6 +52,34 @@ TEMPLATE_METADATA:
       context: "Part of Issue #72 Task 3.7 - Template Library Management"
       related_docs: ["docs/development/issue72/planning.md", "docs/development/issue72/tracking-type-architecture.md"]
       labels: ["type:feature", "area:templates"]
+  agent_hints:
+    phase: "planning"
+    purpose: "Generate GitHub issue descriptions with structured problem/solution sections"
+    belongs_here:
+      - "Bug reports with Problem/Expected/Actual/Context"
+      - "Feature requests with Problem/Expected/Context"
+      - "Issue tracking with labels, milestones, assignees"
+      - "Related documentation links"
+      - "Steps to reproduce (for bugs)"
+    does_not_belong:
+      - "Git commit messages → commit.txt"
+      - "Pull request descriptions → pr.md"
+      - "Detailed implementation plans → planning.md"
+      - "Design decisions → design.md"
+    tone: "Clear problem statement: what, why, and expected outcome"
+    common_pitfalls:
+      - "Vague problem descriptions (be specific)"
+      - "Missing context or reproduction steps"
+      - "Forgetting to link related documentation"
+      - "Not setting appropriate labels or milestone"
+      - "Mixing multiple unrelated issues in one"
+    workflow_context:
+      - "Issues are planning-phase artifacts"
+      - "Create issues before starting implementation"
+      - "Use create_issue tool to generate from template"
+    related_phases:
+      before: "research.md (understand problem domain first)"
+      after: "planning.md (break down issue into tasks)"
 -#}
 
 {% block markdown_header -%}

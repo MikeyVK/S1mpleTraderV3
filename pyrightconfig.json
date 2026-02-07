@@ -14,8 +14,6 @@
   "ignore": [],
   "defineConstant": {},
   "stubPath": "",
-  "venvPath": ".",
-  "venv": ".venv",
   "pythonVersion": "3.13",
   "pythonPlatform": "Windows",
   "typeCheckingMode": "strict",

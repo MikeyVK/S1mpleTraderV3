@@ -14,6 +14,33 @@
     - version: "1.0.0"
       date: "2026-01-25"
       changes: "Initial version with hard-coded logic (NOT DRY)"
+  agent_hints:
+    phase: "red"
+    purpose: "Generate unit tests for isolated function/class/method verification"
+    belongs_here:
+      - "Unit tests for individual functions or methods"
+      - "Business logic testing with mocked dependencies"
+      - "Pydantic validation testing (DTOs, config schemas)"
+      - "Worker initialization and lifecycle testing"
+      - "Edge case and error handling verification"
+    does_not_belong:
+      - "Full workflow integration tests → test_integration.py"
+      - "Multi-component orchestration tests → test_integration.py"
+      - "Production code → worker.py, dto.py, service_command.py, etc."
+    tone: "Focused isolation: test one thing at a time, mock dependencies"
+    common_pitfalls:
+      - "Testing multiple components together (that's integration testing)"
+      - "Not mocking external dependencies (use unittest.mock or pytest fixtures)"
+      - "Missing edge cases (empty inputs, None values, boundary conditions)"
+      - "Over-complicating tests (keep them simple and readable)"
+      - "Not following AAA pattern (Arrange, Act, Assert)"
+    workflow_context:
+      - "Unit tests are red-phase (test-first) artifacts"
+      - "Write tests before implementing (TDD red-green-refactor)"
+      - "Tests should fail initially, then pass after green phase"
+    related_phases:
+      before: "design.md (defines component responsibilities and edge cases)"
+      after: "worker.py or dto.py (implement to make tests pass - green phase)"
 #}
 {% extends "tier2_base_python.jinja2" %}
 

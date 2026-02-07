@@ -17,9 +17,9 @@
 3. **planning.md** (vanaf "Post-TDD continuation" sectie) - Generalization beyond design.md (dto/worker/service/generic, tracking, CONFIG)
 
 **Superseded assumptions (as of 2026-01-26):**
-- âš ï¸ **SCAFFOLD format:** planning.md originally described 1-line format; **tdd-planning.md Cycle 2 defines 2-line format as SSOT**
-- âš ï¸ **Document tier implementation order:** tdd-planning.md Cycles 3-5 define detailed sequence; **follow tdd-planning for tier1_base_document â†’ tier2_base_markdown â†’ concrete/design.md**
-- âš ï¸ **Tracking scope:** tdd-planning.md marks tracking as "future work"; **tracking implementation deferred until post-TDD continuation**
+- ⚠️ **SCAFFOLD format:** planning.md originally described 1-line format; **tdd-planning.md Cycle 2 defines 2-line format as SSOT**
+- ⚠️ **Document tier implementation order:** tdd-planning.md Cycles 3-5 define detailed sequence; **follow tdd-planning for tier1_base_document â†’ tier2_base_markdown â†’ concrete/design.md**
+- ⚠️ **Tracking scope:** tdd-planning.md marks tracking as "future work"; **tracking implementation deferred until post-TDD continuation**
 
 **Handoff boundary:**
 - Complete tdd-planning.md Cycle 7 (E2E test for design.md) before resuming planning.md tasks
@@ -27,18 +27,18 @@
 
 ---
 
-**âš ï¸ CRITICAL UPDATE #1:** After commit 2ee9228 analysis, discovered **forceful cutover** broke legacy scaffolding. See [cutover-analysis.md](cutover-analysis.md) for complete findings. Planning revised to reflect:
-- âœ… Phase 1 Tier 0-2 templates **COMPLETE** 
-- âš ï¸ Phase 1 Registry/hash/provenance **INCOMPLETE** - NOT integrated in scaffold flow
-- â­ï¸ **Tasks 1.1b/c (registry completion) MUST finish BEFORE Task 1.6** - prevents non-traceable artifacts
-- âŒ Phase 4 (Migration) **OBSOLETE** - legacy templates already unreachable
-- ðŸ’° **Net change: -48h vs original 183h** (less savings due to registry work)
+**⚠️ CRITICAL UPDATE #1:** After commit 2ee9228 analysis, discovered **forceful cutover** broke legacy scaffolding. See [cutover-analysis.md](cutover-analysis.md) for complete findings. Planning revised to reflect:
+- ✅ Phase 1 Tier 0-2 templates **COMPLETE** 
+- ⚠️ Phase 1 Registry/hash/provenance **INCOMPLETE** - NOT integrated in scaffold flow
+- ⭐ **Tasks 1.1b/c (registry completion) MUST finish BEFORE Task 1.6** - prevents non-traceable artifacts
+- ❌ Phase 4 (Migration) **OBSOLETE** - legacy templates already unreachable
+- 💰 **Net change: -48h vs original 183h** (less savings due to registry work)
 
-**âš ï¸ CRITICAL UPDATE #2:** Phase 1 Definition-of-Done NOT met:
-- âŒ `.st3/template_registry.yaml` never created (no save_version() calls)
-- âŒ `compute_version_hash()` uses placeholder "concrete" (not traceable)
-- âŒ `ArtifactDefinition.version` conflicts with registry-based versioning
-- âŒ No E2E test for scaffold â†’ header â†’ registry roundtrip
+**⚠️ CRITICAL UPDATE #2:** Phase 1 Definition-of-Done NOT met:
+- ❌ `.st3/template_registry.yaml` never created (no save_version() calls)
+- ❌ `compute_version_hash()` uses placeholder "concrete" (not traceable)
+- ❌ `ArtifactDefinition.version` conflicts with registry-based versioning
+- ❌ No E2E test for scaffold → header → registry roundtrip
 - **Impact:** Cannot proceed to Task 1.6 without fixing - would produce untraceable artifacts
 
 ---
@@ -48,8 +48,8 @@
 Break down research findings from Issue #72 into **actionable implementation tasks** with clear sequencing, effort estimation, dependencies, and risk mitigation.
 
 **Scope Clarity:**
-- âœ… **Planning = WHAT to build + WHEN + HOW MUCH effort**
-- âŒ **Planning â‰  Design (HOW to architect/implement)**
+- ✅ **Planning = WHAT to build + WHEN + HOW MUCH effort**
+- ❌ **Planning ≠ Design (HOW to architect/implement)**
 
 ---
 
@@ -76,25 +76,25 @@ Break down research findings from Issue #72 into **actionable implementation tas
 
 ## Prerequisites
 
-1. âœ… Research phase complete:
+1. ✅ Research phase complete:
    - [research.md](research.md) - Full exploration with alternatives (2500+ lines)
    - [research_summary.md](research_summary.md) - Final decisions and blockers (719 lines)
    
-2. âœ… MVP validation complete:
+2. ✅ MVP validation complete:
    - [docs/development/issue72/mvp/](mvp/) - 5-tier template proof-of-concept
    - 67% variable coverage improvement demonstrated
    
-3. âœ… Issue #52 alignment confirmed:
+3. ✅ Issue #52 alignment confirmed:
    - TEMPLATE_METADATA format documented
    - Validation integration strategy defined
 
-4. âœ… Design phase complete (2026-01-26):
+4. ✅ Design phase complete (2026-01-26):
    - [document-tier-allocation.md](document-tier-allocation.md) - Complete tier specs for DOCUMENT artifacts
    - [tracking-type-architecture.md](tracking-type-architecture.md) - Tracking as base type (not ephemeral)
    - [whitespace_strategy.md](whitespace_strategy.md) - Jinja2 whitespace control rules
    - [tdd-planning.md](tdd-planning.md) - 7 TDD cycles for document template implementation
 
-5. âš ï¸ **Critical Blockers Identified (3):**
+5. ⚠️ **Critical Blockers Identified (3):**
    - Template inheritance introspection (must fix before rollout)
    - IWorkerLifecycle pattern validation (audit required)
    - Backend pattern inventory (24 templates, 65h baseline)
@@ -107,9 +107,9 @@ Break down research findings from Issue #72 into **actionable implementation tas
 
 | Category | Status | Count | Planning Action |
 |----------|--------|-------|-----------------|
-| **Architecture** (hierarchy, registry, SCAFFOLD) | âœ… Designed | 4/4 | Implementation tasks ready |
-| **Template Quality** (lifecycle, patterns, hints) | âš ï¸ Partial/Gap | 1/5 proven, 4/5 gaps | Requires audit & prototype |
-| **Extensibility** (language/format addition) | âœ… Proven | 3/3 | Proof tasks ready |
+| **Architecture** (hierarchy, registry, SCAFFOLD) | ✅ Designed | 4/4 | Implementation tasks ready |
+| **Template Quality** (lifecycle, patterns, hints) | ⚠️ Partial/Gap | 1/5 proven, 4/5 gaps | Requires audit & prototype |
+| **Extensibility** (language/format addition) | ✅ Proven | 3/3 | Proof tasks ready |
 
 **Planning Priority:**
 1. **Phase 1 (Foundation):** Implement 4/4 proven architecture criteria
@@ -119,32 +119,32 @@ Break down research findings from Issue #72 into **actionable implementation tas
 ### AC-by-AC Validation Plan
 
 #### AC1: 5-level template hierarchy implemented
-- **Status:** âœ… Designed (MVP proven)
+- **Status:** ✅ Designed (MVP proven)
 - **Tasks:** Create Tier 0-3 base templates (9 templates estimated)
 - **Validation:** Introspection returns 5-tier chain for concrete template
 - **Effort:** 2h + 6h + 9h + 24h = 41h
 
 #### AC2: Base templates cover 3 Tier 1 categories
-- **Status:** âœ… Designed (CODE/DOCUMENT proven, CONFIG extrapolated)
+- **Status:** ✅ Designed (CODE/DOCUMENT proven, CONFIG extrapolated)
 - **Tasks:** Create `base_code.jinja2`, `base_document.jinja2`, `base_config.jinja2`
 - **Validation:** Each Tier 1 template provides format-specific structure blocks
 - **Effort:** 6h
 
 #### AC3: Template registry operational with hash-based versioning
-- **Status:** âœ… Designed (format defined)
+- **Status:** ✅ Designed (format defined)
 - **Tasks:** Build `.st3/template_registry.yaml` + read/write utilities
 - **Validation:** `scaffold_artifact()` writes registry, hash lookup succeeds
 - **Effort:** 8h
 
 #### AC4: SCAFFOLD metadata = 1 line
-- **Status:** âš ï¸ **SUPERSEDED** (pre-2026-01-26 assumption)
+- **Status:** ⚠️ **SUPERSEDED** (pre-2026-01-26 assumption)
 - **Superseded by:** [tdd-planning.md](tdd-planning.md) Cycle 2 defines **2-line format** as SSOT
 - **Tasks:** Tier 0 provides `scaffold_metadata` block
 - **Validation:** All scaffolded files have 2-line header (line 1: filepath, line 2: metadata)
 - **Effort:** Included in Tier 0 creation (2h)
 
 #### AC5: Worker uses IWorkerLifecycle
-- **Status:** âš ï¸ BLOCKER - Hypothesis unvalidated
+- **Status:** ⚠️ BLOCKER - Hypothesis unvalidated
 - **Tasks:** **MUST AUDIT** actual backend usage before planning
 - **Validation:** Cannot define until pattern confirmed
 - **Effort:** TBD after audit (estimate 8-16h)
@@ -168,25 +168,25 @@ Break down research findings from Issue #72 into **actionable implementation tas
 - **Effort:** 16h (architecture guide + usage examples)
 
 #### AC9: All scaffolded code passes validation
-- **Status:** âš ï¸ DEPENDENCY - Requires Issue #52 completion
+- **Status:** ⚠️ DEPENDENCY - Requires Issue #52 completion
 - **Tasks:** Coordinate with #52, integrate validation hooks
 - **Validation:** E2E test with #74 (DTO/Tool validation)
 - **Effort:** 8h coordination + testing
 
 #### AC10: Adding new language = 1 Tier 2 template
-- **Status:** âœ… Proven (TypeScript extrapolation)
+- **Status:** ✅ Proven (TypeScript extrapolation)
 - **Tasks:** Create `base_typescript.jinja2` as proof
 - **Validation:** TypeScript worker scaffolds with 1 new template
 - **Effort:** 4h (Tier 2 TypeScript)
 
 #### AC11: Adding new format = 1 Tier 1 template
-- **Status:** âœ… Proven (CONFIG identified)
+- **Status:** ✅ Proven (CONFIG identified)
 - **Tasks:** Create `base_config.jinja2` + `base_yaml.jinja2`
 - **Validation:** YAML workflow scaffolds with new tier chain
 - **Effort:** 5h (Tier 1 CONFIG + Tier 2 YAML)
 
 #### AC12: SCAFFOLD defined once (Tier 0), inherited by all
-- **Status:** âœ… Proven (MVP demonstrates)
+- **Status:** ✅ Proven (MVP demonstrates)
 - **Tasks:** All concrete templates extend Tier 0 chain
 - **Validation:** Introspection shows `scaffold_metadata` from Tier 0
 - **Effort:** Included in migration (24h)
@@ -205,13 +205,13 @@ Break down research findings from Issue #72 into **actionable implementation tas
 **Dependencies:** None (can start immediately)  
 **Effort:** 8h implementation + 4h testing = 12h  
 **Priority:** P0 (blocks all multi-tier scaffolding)
-**Status:** âœ… **RESOLVED** (2026-01-27)
+**Status:** ✅ **RESOLVED** (2026-01-27)
 
 **Tasks:**
-1. âœ… Integrate `introspect_template_with_inheritance()` from MVP into `TemplateIntrospector`
-2. âœ… Unit test: 5-tier worker template returns all 8 variables (concrete + inherited)
-3. âœ… E2E test: Scaffolding validates against complete schema
-4. âœ… Document introspection algorithm in architecture guide
+1. ✅ Integrate `introspect_template_with_inheritance()` from MVP into `TemplateIntrospector`
+2. ✅ Unit test: 5-tier worker template returns all 8 variables (concrete + inherited)
+3. ✅ E2E test: Scaffolding validates against complete schema
+4. ✅ Document introspection algorithm in architecture guide
 
 **Definition of Done:**
 - [x] `introspect_template(template_name, with_inheritance=True)` returns inherited variables
@@ -231,14 +231,14 @@ Break down research findings from Issue #72 into **actionable implementation tas
 **Dependencies:** None (research/audit task)  
 **Effort:** 4h audit + 2h documentation = 6h  
 **Priority:** P0 (blocks Tier 3 specialization design)
-**Status:** âœ… **RESOLVED** (2026-01-27)
+**Status:** ✅ **RESOLVED** (2026-01-27)
 
 **Tasks:**
-1. âœ… **Audit codebase:** Search `src/workers/` for IWorkerLifecycle implementations
-2. âœ… **Find contract:** Locate IWorkerLifecycle interface definition (if exists)
-3. âœ… **Assess necessity:** Document why two-phase init is architectural requirement
-4. âœ… **Verify template:** Check if `worker.py.jinja2` currently generates lifecycle code
-5. âœ… **Cross-language check:** Do other components (TypeScript?) follow similar patterns?
+1. ✅ **Audit codebase:** Search `src/workers/` for IWorkerLifecycle implementations
+2. ✅ **Find contract:** Locate IWorkerLifecycle interface definition (if exists)
+3. ✅ **Assess necessity:** Document why two-phase init is architectural requirement
+4. ✅ **Verify template:** Check if `worker.py.jinja2` currently generates lifecycle code
+5. ✅ **Cross-language check:** Do other components (TypeScript?) follow similar patterns?
 
 **Definition of Done:**
 - [x] Document: "X out of Y workers implement IWorkerLifecycle"
@@ -247,7 +247,7 @@ Break down research findings from Issue #72 into **actionable implementation tas
 - [x] Decision: Confirm/reject Tier 3 placement for lifecycle pattern
 
 **Possible Outcomes:**
-- âœ… **Validated:** Add lifecycle blocks to `tier3_base_python_component.jinja2`
+- ✅ **Validated:** Add lifecycle blocks to `tier3_base_python_component.jinja2`
 
 **Outcomes:**
 - Comprehensive audit: 1 of 3 workers implement IWorkerLifecycle (FlowInitiator)
@@ -264,14 +264,14 @@ Break down research findings from Issue #72 into **actionable implementation tas
 **Dependencies:** None (research task)  
 **Effort:** 8h audit + 4h catalog + 4h tier assignment = 16h  
 **Priority:** P1 (blocks Tier 2/3 completeness, but doesn't block MVP)
-**Status:** âœ… **RESOLVED** (2026-01-29)
+**Status:** ✅ **RESOLVED** (2026-01-29)
 
 **Tasks:**
-1. âœ… Audit `src/workers/`, `src/adapters/`, `src/services/` for architectural patterns
-2. âœ… List patterns: Dependency injection, error handling, logging, config, lifecycle, etc
-3. âœ… Assign each pattern to Tier 2 (syntax) or Tier 3 (specialization)
-4. âœ… Document pattern rationale and usage examples
-5. âœ… Create "Backend Pattern Catalog" in design docs
+1. ✅ Audit `src/workers/`, `src/adapters/`, `src/services/` for architectural patterns
+2. ✅ List patterns: Dependency injection, error handling, logging, config, lifecycle, etc
+3. ✅ Assign each pattern to Tier 2 (syntax) or Tier 3 (specialization)
+4. ✅ Document pattern rationale and usage examples
+5. ✅ Create "Backend Pattern Catalog" in design docs
 
 **Definition of Done:**
 - [x] Exhaustive pattern list with examples
@@ -298,24 +298,24 @@ Break down research findings from Issue #72 into **actionable implementation tas
 De volgende deliverables van tdd-planning zijn **vereiste dependencies** voor continuation:
 
 #### Cycle 1 Output: artifacts.yaml type field
-- **Deliverable:** `.st3/artifacts.yaml` heeft `type: code|doc|tracking|config` voor alle artifacts (âš ï¸ Note: tracking is post-TDD extension per [tracking-type-architecture.md](tracking-type-architecture.md), not part of tdd-planning Cycle 1 SSOT which adds `code|doc|config` only)
+- **Deliverable:** `.st3/artifacts.yaml` heeft `type: code|doc|tracking|config` voor alle artifacts (⚠️ Note: tracking is post-TDD extension per [tracking-type-architecture.md](tracking-type-architecture.md), not part of tdd-planning Cycle 1 SSOT which adds `code|doc|config` only)
 - **Planning impact:** Enables type-based tier routing voor CODE/TRACKING/CONFIG templates (beyond DOCUMENT)
 - **Mapping:** Niet expliciet als Task in planning.md; **required before Phase 3 (Tier 3 templates)**
 
 #### Cycle 2 Output: tier0_base_artifact.jinja2 (2-line SCAFFOLD)
 - **Deliverable:** Universal base met 2-line SCAFFOLD format (filepath + metadata)
 - **Planning impact:** Supersedes AC4; validates planning Task 1.2 implementation
-- **Mapping:** âœ… planning.md Task 1.2 already updated to reference tdd-planning Cycle 2
+- **Mapping:** ✅ planning.md Task 1.2 already updated to reference tdd-planning Cycle 2
 
 #### Cycle 3 Output: tier1_base_document.jinja2
 - **Deliverable:** Universal document structure (Status/Purpose/Scope/Prerequisites/Related/Version History)
 - **Planning impact:** Defines document-lane tier1 structure
-- **Mapping:** âœ… planning.md Task 1.3 includes tier1_base_document (detailed impl in tdd-planning)
+- **Mapping:** ✅ planning.md Task 1.3 includes tier1_base_document (detailed impl in tdd-planning)
 
 #### Cycle 4 Output: tier2_base_markdown.jinja2
 - **Deliverable:** Markdown syntax (HTML comments, link definitions, code blocks)
 - **Planning impact:** Enables Markdown document types beyond design.md
-- **Mapping:** âœ… planning.md Task 1.4 includes tier2_base_markdown
+- **Mapping:** ✅ planning.md Task 1.4 includes tier2_base_markdown
 
 #### Cycle 5 Output: concrete/design.md.jinja2
 - **Deliverable:** Full DESIGN_TEMPLATE with numbered sections, options, decisions
@@ -373,21 +373,21 @@ De volgende deliverables van tdd-planning zijn **vereiste dependencies** voor co
 **Goal:** Implement proven architecture without blockers  
 **Duration:** ~2 weeks (80h â†’ **revised 95h**)  
 **Dependencies:** None (can start immediately)
-**Status:** âœ… **COMPLETE** (2026-01-29) - All tasks finished, 1504/1507 tests passing (99.8%)
+**Status:** ✅ **COMPLETE** (2026-01-29) - All tasks finished, 1504/1507 tests passing (99.8%)
 
-**âœ… PROGRESS UPDATE (2026-01-29):**
+**✅ PROGRESS UPDATE (2026-01-29):**
 Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment done:
-- âœ… Task 1.1: TemplateRegistry class complete (all methods operational)
-- âœ… Task 1.1b: compute_version_hash() fixed - extracts real template versions
-- âœ… Task 1.1c: Registry integrated in scaffold_artifact() flow
-- âœ… Task 1.2: Tier 0 base template created (tier0_base_artifact.jinja2)
-- âœ… Task 1.3: Tier 1 bases complete (CODE, DOCUMENT, CONFIG; TRACKING deferred)
-- âœ… Task 1.4: Tier 2 bases complete (Python, Markdown, YAML)
-- âœ… Task 1.5: TEMPLATE_METADATA alignment done
-- âœ… Task 1.5b: ArtifactDefinition.version removed - conceptual clarity achieved
-- âœ… Task 1.6: 9 concrete templates created (5 required + 4 additional)
-- âœ… QA Alignment: Quality gates 10/10 achieved
-- âœ… Test Status: 1504/1507 tests passing (99.8% pass rate)
+- ✅ Task 1.1: TemplateRegistry class complete (all methods operational)
+- ✅ Task 1.1b: compute_version_hash() fixed - extracts real template versions
+- ✅ Task 1.1c: Registry integrated in scaffold_artifact() flow
+- ✅ Task 1.2: Tier 0 base template created (tier0_base_artifact.jinja2)
+- ✅ Task 1.3: Tier 1 bases complete (CODE, DOCUMENT, CONFIG; TRACKING deferred)
+- ✅ Task 1.4: Tier 2 bases complete (Python, Markdown, YAML)
+- ✅ Task 1.5: TEMPLATE_METADATA alignment done
+- ✅ Task 1.5b: ArtifactDefinition.version removed - conceptual clarity achieved
+- ✅ Task 1.6: 9 concrete templates created (5 required + 4 additional)
+- ✅ QA Alignment: Quality gates 10/10 achieved
+- ✅ Test Status: 1504/1507 tests passing (99.8% pass rate)
 
 **Phase 1 Definition-of-Done:**
 - [x] Quality gates pass (lint/typecheck/tests) - **1504/1507 tests pass**
@@ -407,7 +407,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Acceptance:** `scaffold_artifact()` writes registry entry, lookup returns tier chain data
 - **Effort:** 8h
 - **Assignee:** Backend Engineer
-- **Status:** âœ… **COMPLETE** (original implementation)
+- **Status:** ✅ **COMPLETE** (original implementation)
 
 #### Task 1.1b: Fix compute_version_hash Implementation
 - **Description:** Replace placeholder "concrete" with real template IDs + versions
@@ -421,7 +421,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 4h
 - **Assignee:** Backend Engineer
 - **Priority:** **P0** - blocks provenance traceability
-- **Status:** âœ… **COMPLETE** (commits 1226de6 RED, 0df997e GREEN)
+- **Status:** ✅ **COMPLETE** (commits 1226de6 RED, 0df997e GREEN)
 
 #### Task 1.1c: Integrate Registry in scaffold_artifact() Flow
 - **Description:** Add registry save to ArtifactManager.scaffold_artifact()
@@ -434,8 +434,8 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 3h
 - **Assignee:** Backend Engineer
 - **Priority:** **P0** - blocks provenance
-- **Status:** âœ… **COMPLETE** (commits c65441a RED, 45d7563 GREEN)
-- **âš ï¸ Known Gap:** tier_chain = [] (empty), template_registry default None â†’ registry not auto-created
+- **Status:** ✅ **COMPLETE** (commits c65441a RED, 45d7563 GREEN)
+- **⚠️ Known Gap:** tier_chain = [] (empty), template_registry default None â†’ registry not auto-created
 - **Follow-up:** Task 1.6 concrete templates + tier introspection will fill tier_chain
 
 #### Task 1.2: Tier 0 Base (Universal SCAFFOLD)
@@ -448,7 +448,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Acceptance:** All formats inherit correct 2-line SCAFFOLD header
 - **Effort:** 2h
 - **Assignee:** Template Author
-- **Status:** âœ… **COMPLETE** (file exists: `tier0_base_artifact.jinja2`)
+- **Status:** ✅ **COMPLETE** (file exists: `tier0_base_artifact.jinja2`)
 
 #### Task 1.3: Tier 1 Bases (Format Categories)
 - **Description:** Create 4 Tier 1 templates: CODE, DOCUMENT, CONFIG, TRACKING
@@ -462,7 +462,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 2h Ã— 3 = 6h (DOCUMENT via tdd-planning; CODE/CONFIG in planning; TRACKING post-TDD)
 - **Assignee:** Template Author
 - **Dependency:** Tier 0 complete
-- **Status:** âœ… **COMPLETE** (3 of 4 templates exist: CODE, DOCUMENT, CONFIG; TRACKING deferred)
+- **Status:** ✅ **COMPLETE** (3 of 4 templates exist: CODE, DOCUMENT, CONFIG; TRACKING deferred)
 - **Note:** 
   - DOCUMENT templates follow [tdd-planning.md](tdd-planning.md) Cycles 3-5 (design.md MVP focus)
   - TRACKING marked as "future work" in tdd-planning.md; deferred to avoid scope creep (see Post-TDD continuation)
@@ -478,7 +478,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 3h Ã— 3 = 9h
 - **Assignee:** Template Author
 - **Dependency:** Tier 1 complete
-- **Status:** âœ… **COMPLETE** (all 3 files exist: Python, Markdown, YAML)
+- **Status:** ✅ **COMPLETE** (all 3 files exist: Python, Markdown, YAML)
 
 #### Task 1.5: Issue #52 Alignment (TEMPLATE_METADATA)
 - **Description:** Add TEMPLATE_METADATA to Tier 1-2 templates
@@ -488,7 +488,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 1h Ã— 6 templates = 6h
 - **Assignee:** Template Author + Validation Engineer
 - **Dependency:** Tier 1-2 complete
-- **Status:** âœ… **COMPLETE** (commit 10a3c9d)
+- **Status:** ✅ **COMPLETE** (commit 10a3c9d)
 
 #### Task 1.5b: Remove ArtifactDefinition.version (Cleanup Conflict)
 - **Description:** Eliminate conceptual conflict between artifacts.yaml version and registry-based versioning
@@ -501,7 +501,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 2h
 - **Assignee:** Backend Engineer
 - **Priority:** **P1** - architectural hygiene
-- **Status:** âœ… **COMPLETE** (commits cf46670 RED, e4e0b16 GREEN)
+- **Status:** ✅ **COMPLETE** (commits cf46670 RED, e4e0b16 GREEN)
 - **Impact:** 
   - Removed ArtifactDefinition.version field (artifact_registry_config.py:95)
   - Removed template_version context injection (artifact_manager.py:115)
@@ -537,7 +537,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Assignee:** Template Author
 - **Priority:** **P0 (BLOCKER)** - tests currently broken due to template path mismatch
 - **Dependency:** **Task 1.1c complete (registry operational)** - prevents non-traceable artifacts
-- **Status:** âœ… **COMPLETE** (commits 6bf6e02, 2c9cdc1, d65fef9, d7d9b05)
+- **Status:** ✅ **COMPLETE** (commits 6bf6e02, 2c9cdc1, d65fef9, d7d9b05)
 - **Outcomes:** 
   - 9 concrete templates exist (5 required + 4 additional: research, planning, reference, architecture)
   - All templates extend proper tier chains
@@ -545,8 +545,8 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
   - 1504/1507 tests passing (99.8% pass rate)
   - artifacts.yaml updated with concrete/ paths
 - **Context:** Commit 2ee9228 redirected `TemplateScaffolder` to new tier templates without creating concrete templates, breaking all 24 legacy artifact types. This task creates minimal set needed to unblock testing.
-- **Note:** Template base path is ALREADY configurable via `get_template_root()` (âœ… complete)
-- **âš ï¸ CRITICAL:** Templates MUST inherit Tier 0 SCAFFOLD block AND registry flow must work, otherwise produced artifacts have untraceable hashes
+- **Note:** Template base path is ALREADY configurable via `get_template_root()` (✅ complete)
+- **⚠️ CRITICAL:** Templates MUST inherit Tier 0 SCAFFOLD block AND registry flow must work, otherwise produced artifacts have untraceable hashes
 
 #### Task 1.6b: E2E Provenance Regression Test
 - **Description:** Validate scaffold â†’ parse header â†’ registry lookup roundtrip
@@ -567,7 +567,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 **Goal:** Unblock Tier 3 design and multi-tier scaffolding  
 **Duration:** ~1 week (40h)  
 **Dependencies:** None (parallel with Phase 1 if resources available)
-**Status:** âœ… **COMPLETE** (2026-01-29) - All 3 critical blockers resolved
+**Status:** ✅ **COMPLETE** (2026-01-29) - All 3 critical blockers resolved
 
 #### Task 2.1: Fix Inheritance Introspection (Blocker #1)
 - **Description:** Integrate MVP introspection into template_introspector.py
@@ -580,7 +580,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 8h implementation + 4h testing = 12h
 - **Assignee:** Backend Engineer
 - **Priority:** P0 (blocks Phase 3)
-- **Status:** âœ… **COMPLETE** (commits 5854b63, a98bb60, 257f2c6)
+- **Status:** ✅ **COMPLETE** (commits 5854b63, a98bb60, 257f2c6)
 - **Deliverable:** `introspect_template_with_inheritance()` in `template_introspector.py`
 - **Outcomes:**
   - AST-based inheritance chain resolution implemented
@@ -598,7 +598,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 4h audit + 2h documentation = 6h
 - **Assignee:** System Architect
 - **Priority:** P0 (blocks Tier 3 design)
-- **Status:** âœ… **COMPLETE** (commit d7df3ad, 2026-01-27)
+- **Status:** ✅ **COMPLETE** (commit d7df3ad, 2026-01-27)
 - **Deliverable:** [phase2-task22-iworkerlifecycle-audit.md](phase2-task22-iworkerlifecycle-audit.md) (1253 lines)
 - **Outcomes:**
   - IWorkerLifecycle protocol is well-designed but underutilized (1/3 workers)
@@ -618,7 +618,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Effort:** 8h audit + 4h catalog + 4h tier assignment = 16h
 - **Assignee:** System Architect + Senior Engineers
 - **Priority:** P1 (blocks AC6 completeness, but not MVP)
-- **Status:** âœ… **COMPLETE** (2026-01-29)
+- **Status:** ✅ **COMPLETE** (2026-01-29)
 - **Deliverable:** [phase2-task23-backend-pattern-catalog.md](phase2-task23-backend-pattern-catalog.md) (875 lines)
 - **Outcomes:**
   - 12 patterns cataloged (9 MANDATORY, 1 OPTIONAL, 2 RECOMMENDED)
@@ -642,7 +642,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Assignee:** Agent Developer + Template Author
 - **Priority:** P2 (nice-to-have, not blocking)
 
-### Phase 3: Tier 3 Pattern Library (Quality) - âš ï¸ **REVISED 2026-01-30**
+### Phase 3: Tier 3 Pattern Library (Quality) - ⚠️ **REVISED 2026-01-30**
 **Goal:** Complete template quality acceptance criteria with SRP-based pattern decomposition  
 **Duration:** ~4-5 weeks (65h)  
 **Dependencies:** Phase 2 (blocker resolution) complete  
@@ -651,15 +651,15 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 **Key Architectural Changes:**
 - âŒ **REMOVED:** Monolithic tier3 templates (tier3_base_python_component, tier3_base_python_data_model, tier3_base_python_tool)
 - âŒ **REMOVED:** CONFIG tak (tier1_base_config, tier3_base_yaml_policy) - YAML files are DATA validated by Pydantic schemas
-- âœ… **ADDED:** 17 granular tier3 pattern templates (9 CODE + 8 DOCUMENT) for SRP composition
-- âœ… **ADDED:** Block library composition via `{% import %}` (not `{% extends %}`)
-- âœ… **ADDED:** config_schema.py concrete template (scaffolds Pydantic validation schemas)
-- âœ… **CHANGED:** Validation hierarchy: tier0-2 STRICT, tier3 ARCHITECTURAL, concrete GUIDELINE
-- âœ… **CHANGED:** template_registry.yaml â†’ template_registry.json (better parsability)
+- ✅ **ADDED:** 17 granular tier3 pattern templates (9 CODE + 8 DOCUMENT) for SRP composition
+- ✅ **ADDED:** Block library composition via `{% import %}` (not `{% extends %}`)
+- ✅ **ADDED:** config_schema.py concrete template (scaffolds Pydantic validation schemas)
+- ✅ **CHANGED:** Validation hierarchy: tier0-2 STRICT, tier3 ARCHITECTURAL, concrete GUIDELINE
+- ✅ **CHANGED:** template_registry.yaml â†’ template_registry.json (better parsability)
 
 ---
 
-#### Task 3.1: Test Pattern Templates (5 templates) - ðŸŽ¯ **QUICK WIN: Bootstrap Testing**
+#### Task 3.1: Test Pattern Templates (5 templates) - 🎯 **QUICK WIN: Bootstrap Testing**
 **Description:** Create tier3 pattern templates for test scaffolding (pytest, mocking, assertions)
 
 **Rationale:** Build test templates FIRST to enable scaffolding of tests for all other templates (bootstrap effect)
@@ -708,7 +708,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 ---
 
-#### Task 3.2: Concrete Test Templates (2 templates) - ðŸŽ¯ **QUICK WIN: Self-Testing System**
+#### Task 3.2: Concrete Test Templates (2 templates) - 🎯 **QUICK WIN: Self-Testing System**
 **Description:** Create concrete test templates using test patterns from Task 3.1
 
 **Input:** Task 3.1 test patterns complete
@@ -738,17 +738,17 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - Registered in artifacts.yaml (already present: unit_test, integration_test)
 
 **Acceptance:**
-- âœ… test_unit.py.jinja2 scaffolds with 4 patterns (pytest, async, mocking, structure)
-- âœ… test_integration.py.jinja2 scaffolds with 4 patterns (pytest, async, mocking, structure)
-- âœ… Can scaffold test for tier3_pattern_python_async.jinja2 (bootstrap validated)
-- âœ… Whitespace issues fixed (method indentation, trailing newlines)
-- âœ… Lessons learned documented in whitespace_strategy.md
+- ✅ test_unit.py.jinja2 scaffolds with 4 patterns (pytest, async, mocking, structure)
+- ✅ test_integration.py.jinja2 scaffolds with 4 patterns (pytest, async, mocking, structure)
+- ✅ Can scaffold test for tier3_pattern_python_async.jinja2 (bootstrap validated)
+- ✅ Whitespace issues fixed (method indentation, trailing newlines)
+- ✅ Lessons learned documented in whitespace_strategy.md
 
 **Effort:** 4h â†’ **Actual: 6h** (whitespace debugging)
 
-**Status:** âœ… **COMPLETE** (2026-01-30)
+**Status:** ✅ **COMPLETE** (2026-01-30)
 
-**ðŸŽ¯ BOOTSTRAP MILESTONE ACHIEVED:** All subsequent template tests can now be scaffolded!
+**🎯 BOOTSTRAP MILESTONE ACHIEVED:** All subsequent template tests can now be scaffolded!
 
 ---
 
@@ -759,7 +759,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 **Input:** Phase 2 Backend Pattern Catalog (12 patterns, 8 in tier3)
 
-**Status:** âœ… **COMPLETE** (9/9 complete; backend-alignment refactors done via per-pattern TDD cycles; 2026-02-01)
+**Status:** ✅ **COMPLETE** (9/9 complete; backend-alignment refactors done via per-pattern TDD cycles; 2026-02-01)
 
 **Subtasks (9 Ã— 2h = 18h):**
 - **3.3a:** `tier3_pattern_python_async.jinja2` - Async/Await pattern (2h)
@@ -1178,8 +1178,8 @@ Task 3.6 marked **INCOMPLETE** - requires full refactor (see Task 3.6.1).
 
 | Task | Effort | Category |
 |------|--------|----------|
-| 3.1 Test Pattern Templates (5) | 9h | ðŸŽ¯ **BOOTSTRAP: Pattern Library** |
-| 3.2 Concrete Test Templates (2) | 4h | ðŸŽ¯ **BOOTSTRAP: Self-Testing** |
+| 3.1 Test Pattern Templates (5) | 9h | 🎯 **BOOTSTRAP: Pattern Library** |
+| 3.2 Concrete Test Templates (2) | 4h | 🎯 **BOOTSTRAP: Self-Testing** |
 | 3.3 CODE Pattern Templates (9) | 18h | Pattern Library |
 | 3.4 Refactor CODE Concrete (6) + Fix Validation | 6h | Refactoring |
 | 3.5 DOCUMENT Pattern Templates (8) | 12h | Pattern Library |
@@ -1190,8 +1190,8 @@ Task 3.6 marked **INCOMPLETE** - requires full refactor (see Task 3.6.1).
 | **TOTAL** | **80h** | **(5-6 weeks)** |
 
 **Task Flow (Optimized with Bootstrap):**
-1. **3.1:** Test pattern templates (9h) - ðŸŽ¯ Enables test scaffolding
-2. **3.2:** Concrete test templates (4h) - ðŸŽ¯ **BOOTSTRAP MILESTONE: Tests can now be scaffolded!**
+1. **3.1:** Test pattern templates (9h) - 🎯 Enables test scaffolding
+2. **3.2:** Concrete test templates (4h) - 🎯 **BOOTSTRAP MILESTONE: Tests can now be scaffolded!**
 3. **3.3:** CODE patterns (18h) - Use scaffolded tests from this point
 4. **3.4:** Refactor CODE concrete + validation fix (6h)
 5. **3.5:** DOCUMENT patterns (12h) - Can run parallel with 3.3-3.4
@@ -1209,22 +1209,22 @@ Task 3.6 marked **INCOMPLETE** - requires full refactor (see Task 3.6.1).
 - âŒ Removed: 3 monolithic tier3 templates (tier3_base_python_component, data_model, tool) - 20h saved
 - âŒ Removed: CONFIG tak (tier1_base_config, tier3_base_yaml_policy) - 5h saved
 - âŒ Removed: Separate validation fix task (integrated in refactoring) - 3h saved
-- âœ… Added: 5 test pattern templates (pytest, assertions, mocking, fixtures, structure) - 9h added
-- âœ… Added: 2 concrete test templates (unit_test, integration_test) - 4h added
-- âœ… Added: 17 granular tier3 patterns (9 CODE + 8 DOCUMENT) - 30h added
-- âœ… Changed: Validation fix integrated in refactoring tasks (more efficient)
-- âœ… Changed: Task order optimized (test templates FIRST = bootstrap effect)
-- âœ… Changed: Documentation expanded with block library guide - same 16h
+- ✅ Added: 5 test pattern templates (pytest, assertions, mocking, fixtures, structure) - 9h added
+- ✅ Added: 2 concrete test templates (unit_test, integration_test) - 4h added
+- ✅ Added: 17 granular tier3 patterns (9 CODE + 8 DOCUMENT) - 30h added
+- ✅ Changed: Validation fix integrated in refactoring tasks (more efficient)
+- ✅ Changed: Task order optimized (test templates FIRST = bootstrap effect)
+- ✅ Changed: Documentation expanded with block library guide - same 16h
 
 **Net Change: +31h (but significantly better: SRP + self-testing + quick wins)**
 
-**ðŸŽ¯ Bootstrap Strategy Benefits:**
+**🎯 Bootstrap Strategy Benefits:**
 - After Task 3.2: All subsequent tests can be **scaffolded** (not hand-written)
 - Immediate productivity gain - test writing becomes 3-5x faster
 - Self-validating system - test templates tested by scaffolded tests
 - Quick wins build momentum for Phase 3 execution
 
-### Phase 4: Migration (Legacy Conversion) - âš ï¸ **OBSOLETE**
+### Phase 4: Migration (Legacy Conversion) - ⚠️ **OBSOLETE**
 **Goal:** ~~Migrate 24 existing templates to multi-tier architecture~~  
 **Duration:** ~~1.5 weeks (60h)~~  
 **Dependencies:** ~~Phase 3 complete (all base templates ready)~~
@@ -1376,11 +1376,11 @@ Task 2.1 (Introspection 12h)
 
 ## Effort Estimation Summary
 
-**âš ï¸ REVISED** after commit 2ee9228 analysis (see [cutover-analysis.md](cutover-analysis.md))
+**⚠️ REVISED** after commit 2ee9228 analysis (see [cutover-analysis.md](cutover-analysis.md))
 
 | Phase | Tasks | Total Hours | Duration (1 eng) | Duration (4 eng) | Status |
 |-------|-------|-------------|------------------|------------------|--------|
-| **Phase 1: Foundation** | 10 tasks (was 6) | **55h** (was 38h) | 7 days | 3 days | âš ï¸ **INCOMPLETE** |
+| **Phase 1: Foundation** | 10 tasks (was 6) | **55h** (was 38h) | 7 days | 3 days | ⚠️ **INCOMPLETE** |
 | **Phase 2: Blockers** | 4 tasks | 40h | 5 days | 3 days | Not started |
 | **Phase 3: Tier 3** | 7 tasks | 46h | 6 days | 3 days | Not started |
 | ~~**Phase 4: Migration**~~ | ~~6 tasks~~ | ~~58h~~ | ~~7 days~~ | ~~4 days~~ | **OBSOLETE** |
@@ -1388,21 +1388,21 @@ Task 2.1 (Introspection 12h)
 | **TOTAL** | **23 tasks** (was 19) | **149h** (was 132h) | **19 days** (was 17) | **10 days (2 weeks)** (was 9 days) |
 
 **Key Changes:**
-- âš ï¸ **Phase 1 +17h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) - foundation NOT done
-- âœ… **Phase 4 -65h:** Migration obsolete (legacy templates unreachable after commit 2ee9228)
-- âš ï¸ **Net change: -48h vs original 183h** but Phase 1 must complete FIRST
-- âœ… **Timeline: 23 days â†’ 19 days** (1 engineer) or **13 days â†’ 10 days** (4 engineers)
+- ⚠️ **Phase 1 +17h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) - foundation NOT done
+- ✅ **Phase 4 -65h:** Migration obsolete (legacy templates unreachable after commit 2ee9228)
+- ⚠️ **Net change: -48h vs original 183h** but Phase 1 must complete FIRST
+- ✅ **Timeline: 23 days â†’ 19 days** (1 engineer) or **13 days â†’ 10 days** (4 engineers)
 - ðŸ“š **Design docs complete:** See [tdd-planning.md](tdd-planning.md) for document template implementation (7 TDD cycles)
 - â¸ï¸ **Tracking deferred:** tier1_base_tracking moved to Post-TDD continuation (tdd-planning marks as "future work")
 
 **Phase 1 Revised Breakdown:**
-- Task 1.1: Registry infrastructure (8h) âœ…
+- Task 1.1: Registry infrastructure (8h) ✅
 - **Task 1.1b: Fix compute_version_hash (4h)** â† NEW
 - **Task 1.1c: Integrate registry in scaffold flow (3h)** â† NEW
-- Task 1.2: Tier 0 base (2h) âœ…
+- Task 1.2: Tier 0 base (2h) ✅
 - Task 1.3: Tier 1 bases (6h) â† DOCUMENT via tdd-planning Cycles 3-5; CODE/CONFIG in planning; TRACKING post-TDD
-- Task 1.4: Tier 2 bases (9h) âœ…
-- Task 1.5: Issue #52 alignment (6h) âœ…
+- Task 1.4: Tier 2 bases (9h) ✅
+- Task 1.5: Issue #52 alignment (6h) ✅
 - **Task 1.5b: Remove ArtifactDefinition.version conflict (2h)** â† NEW
 - **Task 1.5c: Add artifact variants support (4h)** â† NEW (P2 optional)
 - **Task 1.6: Concrete templates (7h)** â† BLOCKED until 1.1c done

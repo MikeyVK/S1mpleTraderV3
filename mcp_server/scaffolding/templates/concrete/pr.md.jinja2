@@ -48,6 +48,35 @@ TEMPLATE_METADATA:
       checklist_items: ["All tests passing", "Documentation updated", "Templates validated"]
       related_docs: ["docs/development/issue72/planning.md", "docs/development/issue72/tracking-type-architecture.md"]
       closes_issues: [72]
+  agent_hints:
+    phase: "docs"
+    purpose: "Generate Pull Request descriptions summarizing changes and testing"
+    belongs_here:
+      - "Summary of all changes in the PR"
+      - "Testing strategy and test results"
+      - "Checklist of completion criteria"
+      - "Related documentation links"
+      - "Issue references (Closes #123)"
+      - "Breaking changes warnings"
+    does_not_belong:
+      - "Git commit messages → commit.txt"
+      - "Individual issue tracking → issue.md"
+      - "Implementation planning → planning.md"
+      - "Design decisions → design.md"
+    tone: "Comprehensive summary: what changed, why, and verification steps"
+    common_pitfalls:
+      - "Vague 'Changes' section (list specific files/features)"
+      - "Missing testing information"
+      - "Not linking related issues or documentation"
+      - "Forgetting to mark breaking changes"
+      - "Incomplete checklist before requesting review"
+    workflow_context:
+      - "PRs are docs-phase artifacts (after implementation complete)"
+      - "Create PR after all tests pass and commits pushed"
+      - "Use create_pr tool to generate from template"
+    related_phases:
+      before: "commit.txt (multiple commits aggregated in PR)"
+      after: "issue.md (PR closes related issues)"
 -#}
 
 {% block markdown_header -%}

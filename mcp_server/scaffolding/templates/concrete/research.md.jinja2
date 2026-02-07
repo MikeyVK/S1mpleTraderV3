@@ -7,7 +7,8 @@
 {%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
 {%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
 {%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
-{%- import "tier3_pattern_markdown_open_questions.jinja2" as questions -%}
+{%- import "tier3_pattern_markdown_agent_hints.jinja2" as agent -%}
+{%- import "tier3_pattern_markdown_open_questions.jinja2" as oq -%}
 {%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
 {%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
 
@@ -25,6 +26,7 @@ TEMPLATE_METADATA:
     - tier3_pattern_markdown_status_header
     - tier3_pattern_markdown_purpose_scope
     - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_agent_hints
     - tier3_pattern_markdown_open_questions
     - tier3_pattern_markdown_related_docs
     - tier3_pattern_markdown_version_history
@@ -101,7 +103,7 @@ TEMPLATE_METADATA:
 
 {#- Research documents use BASE header (no Created/Implementation Phase) -#}
 {%- block header_fields %}
-{{ hdr.pattern_status_header_basic(status, version, last_updated) }}
+{{ hdr.pattern_status_header_basic(status | default("DRAFT"), version | default("1.0"), last_updated, timestamp) }}
 {% endblock -%}
 
 {#- Override tier1 blocks with pattern calls -#}
@@ -150,9 +152,10 @@ TEMPLATE_METADATA:
 {{ findings }}
 
 {% endif -%}
-{% if questions_list -%}
+{% set q_list = (questions | default([])) if (questions | default(None)) else (questions_list | default([])) -%}
+{% if q_list -%}
 
-{{ questions.pattern_open_questions_section(questions_list) }}
+{{ oq.pattern_open_questions_section(q_list) }}
 
 {% endif -%}
 {%- endblock %}

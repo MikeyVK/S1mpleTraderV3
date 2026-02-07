@@ -54,6 +54,36 @@ TEMPLATE_METADATA:
         - layer (architectural layer, e.g. "DTOs (Strategy)")
         - dependencies (list of dependencies, defaults to pydantic.BaseModel)
         - responsibilities (list of responsibilities, defaults to data validation)
+  agent_hints:
+    phase: "green"
+    purpose: "Generate Pydantic-based Data Transfer Objects for cross-layer communication"
+    belongs_here:
+      - "Immutable data structures (frozen=True)"
+      - "Data validation with type hints and Field constraints"
+      - "Cross-layer DTOs (BuildSpec, ExecutionState, Strategy Config)"
+      - "Self-documenting with json_schema_extra examples"
+      - "Simple data containers without behavior"
+    does_not_belong:
+      - "Stateful runtime components → worker.py"
+      - "YAML configuration schemas → config_schema.py"
+      - "Utility functions or algorithms → generic.py or service_command.py"
+      - "Business logic → worker methods"
+      - "Logging infrastructure (DTOs don't log)"
+    tone: "Data-focused: clear types, validation rules, and examples"
+    common_pitfalls:
+      - "Adding methods beyond validation (keep DTOs as pure data)"
+      - "Forgetting json_schema_extra with examples (self-documentation is required)"
+      - "Using mutable defaults (list/dict) without Field(default_factory=...)"
+      - "Not setting frozen=True for truly immutable DTOs"
+      - "Complex nested validation (consider flattening or dedicated validator classes)"
+      - "Missing field descriptions (Field(description='...') required)"
+    workflow_context:
+      - "DTOs are green-phase (implementation) artifacts"
+      - "Define data schemas after design phase clarifies data flow"
+      - "Examples in json_schema_extra serve as test fixtures"
+    related_phases:
+      before: "design.md (defines data structures and validation rules)"
+      after: "test_unit.py (tests validation logic and edge cases)"
 -#}
 
 {% block module_docstring %}

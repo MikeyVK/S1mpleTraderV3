@@ -7,7 +7,8 @@
 {%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
 {%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
 {%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
-{%- import "tier3_pattern_markdown_open_questions.jinja2" as questions -%}
+{%- import "tier3_pattern_markdown_agent_hints.jinja2" as agent -%}
+{%- import "tier3_pattern_markdown_open_questions.jinja2" as oq -%}
 {%- import "tier3_pattern_markdown_dividers.jinja2" as div -%}
 {%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
 {%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
@@ -28,6 +29,7 @@ TEMPLATE_METADATA:
     - tier3_pattern_markdown_status_header
     - tier3_pattern_markdown_purpose_scope
     - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_agent_hints
     - tier3_pattern_markdown_open_questions
     - tier3_pattern_markdown_dividers
     - tier3_pattern_markdown_related_docs
@@ -74,8 +76,6 @@ TEMPLATE_METADATA:
         - title
         - status
         - version
-        - created
-        - implementation_phase
         - problem_statement
         - requirements_functional
         - requirements_nonfunctional
@@ -91,6 +91,7 @@ TEMPLATE_METADATA:
         - options
         - key_decisions
         - open_questions_list
+        - last_updated
   agent_hints:
     phase: "design"
     purpose: "Document pre-implementation design decisions with clear rationale"
@@ -124,30 +125,29 @@ TEMPLATE_METADATA:
       parallel: "architecture.md (if architectural concepts emerge)"
 -#}
 
-{#- DESIGN_TEMPLATE.md adds: Created, Implementation Phase to header -#}
 {%- block header_fields %}
-{{ hdr.pattern_status_header_extended(status, version, created, last_updated, implementation_phase) }}
+{{ hdr.pattern_status_header_basic(status | default("DRAFT"), version | default("1.0"), last_updated | default(""), timestamp) }}
 {% endblock -%}
 
 {#- Override tier1 blocks with pattern calls (code-tak compositie parity) -#}
 {%- block purpose_section -%}
-{{ ps.pattern_purpose_section(purpose) }}
+{{ ps.pattern_purpose_section(purpose | default("")) }}
 {%- endblock -%}
 
 {%- block scope_section -%}
-{{ ps.pattern_scope_section(scope_in, scope_out) }}
+{{ ps.pattern_scope_section(scope_in | default(""), scope_out | default("")) }}
 {%- endblock -%}
 
 {%- block prerequisites_section -%}
-{{ prereq.pattern_prerequisites_section(prerequisites) }}
+{{ prereq.pattern_prerequisites_section(prerequisites | default([])) }}
 {%- endblock -%}
 
 {%- block related_docs_section -%}
-{{ related.pattern_related_docs_section(related_docs) }}
+{{ related.pattern_related_docs_section(related_docs | default([])) }}
 {%- endblock -%}
 
 {%- block version_history_section -%}
-{{ history.pattern_version_history_basic(version, last_updated) }}
+{{ history.pattern_version_history_basic(version, last_updated | default("")) }}
 {%- endblock -%}
 
 {#- DESIGN_TEMPLATE.md content: numbered sections with --- dividers -#}
@@ -214,8 +214,9 @@ None
 | {{ kd.decision }} | {{ kd.rationale }} |
 {% endfor %}
 
-{% if open_questions_list -%}
+{% set q_list = (open_questions | default([])) if (open_questions | default(None)) else (open_questions_list | default([])) -%}
+{% if q_list -%}
 {{ div.pattern_section_divider() }}
-{{ questions.pattern_open_questions_section(open_questions_list) }}
+{{ oq.pattern_open_questions_section(q_list, section_number=4, as_table=True) }}
 {%- endif -%}
 {%- endblock %}

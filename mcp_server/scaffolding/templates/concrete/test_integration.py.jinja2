@@ -14,6 +14,33 @@
     - version: "1.0.0"
       date: "2026-01-25"
       changes: "Initial version with hard-coded logic (NOT DRY)"
+  agent_hints:
+    phase: "red"
+    purpose: "Generate integration/E2E tests for full-stack workflow verification"
+    belongs_here:
+      - "End-to-end scenario testing across multiple components"
+      - "File system integration (tempfile, workspace fixtures)"
+      - "External service integration (mocked GitHub, git)"
+      - "Async workflow testing (pytest-asyncio)"
+      - "Multi-component orchestration tests"
+    does_not_belong:
+      - "Unit tests for individual functions → test_unit.py"
+      - "Pure business logic testing without I/O → test_unit.py"
+      - "Production code → worker.py, dto.py, service_command.py, etc."
+    tone: "Scenario-driven: test realistic user workflows, not isolated logic"
+    common_pitfalls:
+      - "Testing too many scenarios in one file (split by feature)"
+      - "Not cleaning up temporary files/resources (use fixtures)"
+      - "Missing async markers (@pytest.mark.asyncio)"
+      - "Over-mocking (integration tests should test real interactions)"
+      - "Not testing failure paths and edge cases"
+    workflow_context:
+      - "Integration tests are red-phase (test-first) artifacts"
+      - "Write integration tests after design defines workflows"
+      - "Tests should fail initially (TDD red phase)"
+    related_phases:
+      before: "design.md (defines integration scenarios and workflows)"
+      after: "worker.py or tool.py (implement to make tests pass - green phase)"
 #}
 {% extends "tier2_base_python.jinja2" %}
 

@@ -34,11 +34,10 @@ from mcp_server.core.exceptions import ConfigError
 
 
 class ArtifactType(str, Enum):
-    """Artifact category: code, document, config, or tracking (VCS workflows)."""
+    """Artifact category: code, documentation, or tracking (VCS workflows)."""
 
     CODE = "code"
     DOC = "doc"
-    CONFIG = "config"
     TRACKING = "tracking"
 
 

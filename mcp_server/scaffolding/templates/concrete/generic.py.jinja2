@@ -32,6 +32,34 @@ TEMPLATE_METADATA:
       optional:
         - description
         - methods
+  agent_hints:
+    phase: "green"
+    purpose: "Generate generic Python classes for utilities and simple components"
+    belongs_here:
+      - "Utility classes without lifecycle management"
+      - "Helper functions grouped in a class namespace"
+      - "Simple components that don't fit worker/dto/service patterns"
+      - "Placeholder scaffolds to be refined later"
+      - "Adapters or wrappers for third-party libraries"
+    does_not_belong:
+      - "Lifecycle-managed components → worker.py"
+      - "Data structures with validation → dto.py"
+      - "Service orchestration → service_command.py"
+      - "Configuration schemas → config_schema.py"
+      - "MCP server tools → tool.py"
+    tone: "Minimal and pragmatic: use only when specific patterns don't apply"
+    common_pitfalls:
+      - "Overusing generic.py instead of more specific templates"
+      - "Creating complex classes that should be workers"
+      - "Not refactoring generic classes into proper patterns as code matures"
+      - "Missing type hints or documentation"
+    workflow_context:
+      - "Generic is a catch-all for edge cases"
+      - "Consider refactoring to worker/dto/service_command as requirements clarify"
+      - "Use for rapid prototyping, then migrate to structured patterns"
+    related_phases:
+      before: "design.md (clarify if a more specific pattern is appropriate)"
+      after: "test_unit.py (test the minimal behavior, refactor if complexity grows)"
 -#}
 
 {% block module_docstring %}

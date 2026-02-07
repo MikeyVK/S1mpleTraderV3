@@ -106,9 +106,9 @@ class TestTier3PatternPythonPytest:
         template_path = Path("mcp_server/scaffolding/templates/tier3_pattern_python_pytest.jinja2")
         content = template_path.read_text(encoding="utf-8")
 
-        # Should have macros defined
-        assert "{% macro" in content
-        assert "{% endmacro" in content
+        # Should have macros defined (flexible whitespace handling)
+        assert "{% macro" in content or "{%- macro" in content
+        assert "endmacro" in content  # Matches both {% endmacro and {%- endmacro %}
 
     def test_multiple_macros_can_be_imported(self, jinja_env):
         """RED: Verify multiple macros can be imported and used together."""

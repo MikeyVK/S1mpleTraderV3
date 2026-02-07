@@ -45,7 +45,6 @@ TEMPLATE_ROOT = (
             [
                 'import "tier3_pattern_python_pydantic.jinja2"',
                 'import "tier3_pattern_python_typed_id.jinja2"',
-                'import "tier3_pattern_python_logging.jinja2"',
             ],
         ),
         (
@@ -76,7 +75,6 @@ TEMPLATE_ROOT = (
             [
                 'import "tier3_pattern_python_pydantic.jinja2"',
                 'import "tier3_pattern_python_typed_id.jinja2"',
-                'import "tier3_pattern_python_logging.jinja2"',
             ],
         ),
     ],

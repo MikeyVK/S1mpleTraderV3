@@ -90,7 +90,7 @@ TEMPLATE_METADATA:
 
 {#- Architecture documents use BASE header (no extra fields) -#}
 {%- block header_fields %}
-{{ hdr.pattern_status_header_basic(status, version, last_updated) }}
+{{ hdr.pattern_status_header_basic(status | default("DRAFT"), version | default("1.0"), last_updated, timestamp) }}
 {% endblock -%}
 
 {#- Override tier1 blocks with pattern calls (code-tak compositie parity) -#}

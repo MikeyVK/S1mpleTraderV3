@@ -15,6 +15,7 @@ pip-selfcheck.json
 .tmp/
 # Build artifacts
 build/
+.tmp_pyright/
 _build/
 dist/
 *.egg-info/

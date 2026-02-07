@@ -50,10 +50,10 @@ class TestArtifactsTypeField:
             assert artifact.type in [
                 ArtifactType.CODE,
                 ArtifactType.DOC,
-                ArtifactType.CONFIG,
+                ArtifactType.TRACKING,
             ], (
                 f"Artifact {artifact.type_id} has invalid type: "
-                f"{artifact.type} (expected CODE|DOC|CONFIG)"
+                f"{artifact.type} (expected CODE|DOC|TRACKING)"
             )
 
     def test_code_artifacts_have_correct_type(

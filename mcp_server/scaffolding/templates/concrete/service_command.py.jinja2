@@ -47,6 +47,34 @@ TEMPLATE_METADATA:
         - responsibilities
         - parameters
         - return_type
+  agent_hints:
+    phase: "green"
+    purpose: "Generate service command classes for orchestrating business operations"
+    belongs_here:
+      - "Command pattern with execute() method"
+      - "Orchestration of multiple workers or DTOs"
+      - "Business logic encapsulation"
+      - "Service-layer operations (not single-worker tasks)"
+      - "Translator usage for user-facing error messages"
+    does_not_belong:
+      - "Stateful lifecycle components → worker.py"
+      - "Simple data structures → dto.py"
+      - "Pure functions without dependencies → generic.py"
+      - "MCP server tools → tool.py"
+    tone: "Service-oriented: clear responsibilities, dependency injection, error handling"
+    common_pitfalls:
+      - "Mixing service commands with workers (workers have lifecycle, commands don't)"
+      - "Hardcoding user-facing strings (use Translator keys)"
+      - "Not using Result/Error types for operation outcomes"
+      - "Missing async support when orchestrating async workers"
+      - "Over-complicating with unnecessary abstraction layers"
+    workflow_context:
+      - "Service commands are green-phase (implementation) artifacts"
+      - "Design phase should define command responsibilities clearly"
+      - "Commands coordinate workers but don't replace them"
+    related_phases:
+      before: "design.md (defines service operations and orchestration)"
+      after: "test_unit.py (tests command execution paths and error handling)"
 -#}
 
 {% block module_docstring %}

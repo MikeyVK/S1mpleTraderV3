@@ -50,6 +50,37 @@ TEMPLATE_METADATA:
       1. Construction: __init__(build_spec) - Config only, no dependencies
       2. Runtime init: initialize(strategy_cache, **capabilities) - DI injection
       3. Cleanup: shutdown() - Graceful resource release
+  agent_hints:
+    phase: "green"
+    purpose: "Generate IWorkerLifecycle runtime components for platform or strategy execution"
+    belongs_here:
+      - "Platform runtime workers (triggers, persistence, event adapters)"
+      - "Strategy runtime workers (trade logic, portfolio management, risk calculators)"
+      - "Two-phase initialization: __init__ (config only) + initialize() (DI injection)"
+      - "State-holding components requiring lifecycle management"
+      - "Components needing LogEnricher for structured logging"
+      - "Components using Translator for user-facing strings"
+    does_not_belong:
+      - "Simple data structures → dto.py"
+      - "Pure configuration schemas → config_schema.py"
+      - "Utility functions without state → generic.py or service_command.py"
+      - "MCP server tool definitions → tool.py"
+      - "Test code → test_unit.py or test_integration.py"
+    tone: "Production runtime: async-ready, lifecycle-aware, dependency-injected"
+    common_pitfalls:
+      - "Failing to separate __init__ (config) from initialize() (DI) phases"
+      - "Missing shutdown() cleanup for resources"
+      - "Importing dependencies in __init__ instead of receiving via initialize()"
+      - "Not using LogEnricher for structured context logging"
+      - "Hardcoding user-facing strings instead of using Translator keys"
+      - "Mixing platform and strategy concerns (respect worker_scope)"
+    workflow_context:
+      - "Workers are green-phase (implementation) artifacts"
+      - "Design phase should define responsibilities and capabilities first"
+      - "Use platform_scope to clarify platform vs strategy boundary"
+    related_phases:
+      before: "design.md (defines worker responsibilities and dependencies)"
+      after: "test_unit.py (tests initialization phases and business logic)"
 -#}
 
 {#- Module docstring customization -#}
