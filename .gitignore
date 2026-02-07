@@ -46,6 +46,11 @@ mcp_config.yaml
 .coverage
 coverage.json
 quality_report.json
+
+# Workspace-root temporary outputs
+.st3_tmp_*
+.temp_*
+swot_scan_results.txt
 deep_report_output.md
 mcp_debug.log
 mcp_server.audit.log
