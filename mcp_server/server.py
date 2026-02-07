@@ -105,7 +105,7 @@ class MCPServer:
 
         # Initialize template registry (Issue #72 Task 1.6)
         workspace_root = Path(settings.server.workspace_root)
-        registry_path = workspace_root / ".st3" / "template_registry.yaml"
+        registry_path = workspace_root / ".st3" / "template_registry.json"
 
         # Bootstrap registry file if missing
         if not registry_path.exists():

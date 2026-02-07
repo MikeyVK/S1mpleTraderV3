@@ -120,9 +120,9 @@ class ArtifactManager:
         if template_registry is None:
             # Lazy initialize registry in workspace root or .st3/
             if self.workspace_root:
-                registry_path = self.workspace_root / ".st3" / "template_registry.yaml"
+                registry_path = self.workspace_root / ".st3" / "template_registry.json"
             else:
-                registry_path = Path(".st3/template_registry.yaml")
+                registry_path = Path(".st3/template_registry.json")
             template_registry = TemplateRegistry(registry_path=registry_path)
         self.template_registry = template_registry
 

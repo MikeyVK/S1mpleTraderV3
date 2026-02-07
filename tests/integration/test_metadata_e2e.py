@@ -198,7 +198,7 @@ class TestMetadataEndToEnd:
         4. Verify tier chain matches
         """
         # Setup registry in temp directory
-        registry_path = tmp_path / ".st3" / "template_registry.yaml"
+        registry_path = tmp_path / ".st3" / "template_registry.json"
         registry_path.parent.mkdir(parents=True, exist_ok=True)
         template_registry = TemplateRegistry(registry_path=registry_path)
 
