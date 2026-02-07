@@ -2,8 +2,8 @@
 
 <!-- SCAFFOLD: planning:draft_v1 | 2026-01-22 | docs/development/issue72/planning.md -->
 
-**Status:** UPDATED (DoD verified through Task 3.7 - Tracking templates)  
-**Phase:** COMPLETE through Task 3.7 (Tracking templates implemented)  
+**Status:** UPDATED (DoD verified through Task 3.8 - Template registry JSON migration)  
+**Phase:** COMPLETE through Task 3.8 (Registry format changed to JSON)  
 **Date:** 2026-02-07  
 **Input:** [research_summary.md](research_summary.md) (719 lines)
 
@@ -35,7 +35,7 @@
 - ✅ Net change: -48h vs original 183h (less savings due to registry work)
 
 **✅ CRITICAL UPDATE #2 RESOLVED (2026-02-07):** Phase 1 Definition-of-Done met:
-- ✅ `.st3/template_registry.yaml` created/updated during scaffolding
+- ✅ `.st3/template_registry.json` created/updated during scaffolding
 - ✅ `compute_version_hash()` uses real tier chain versions (no placeholders)
 - ✅ `ArtifactDefinition.version` removed (registry owns provenance)
 - ✅ E2E test for scaffold → header → registry roundtrip added and passing
@@ -129,7 +129,7 @@ Break down research findings from Issue #72 into **actionable implementation tas
 
 #### AC3: Template registry operational with hash-based versioning
 - **Status:** ✅ Designed (format defined)
-- **Tasks:** Build `.st3/template_registry.yaml` + read/write utilities
+- **Tasks:** Build `.st3/template_registry.json` + read/write utilities
 - **Validation:** `scaffold_artifact()` writes registry, hash lookup succeeds
 - **Effort:** 8h
 
@@ -388,7 +388,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 **Phase 1 Definition-of-Done:**
 - [x] Quality gates pass (lint/typecheck/tests) - **1504/1507 tests pass**
-- [x] Registry operational: scaffold creates `.st3/template_registry.yaml` entries
+- [x] Registry operational: scaffold creates `.st3/template_registry.json` entries
 - [x] Version hash traceable: real template versions extracted
 - [x] SCAFFOLD header format: 2-line format implemented
 - [x] E2E tests: scaffold â†’ validate â†’ registry roundtrip works
@@ -397,7 +397,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 
 **✅ VERIFIED (2026-02-07):** Full pytest suite green (`1678 passed, 6 skipped`) and quality gates PASS (lint/type/pyright).
 #### Task 1.1: Template Registry Infrastructure
-- **Description:** Build `.st3/template_registry.yaml` read/write utilities
+- **Description:** Build `.st3/template_registry.json` read/write utilities
 - **Input:** Research Q8b (registry structure)
 - **Output:** 
   - `TemplateRegistry` class with `save_version()`, `lookup_hash()`, `get_current_version()`
@@ -428,7 +428,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
   - Compute version_hash BEFORE rendering
   - Call `registry.save_version(artifact_type, version_hash, tier_chain)` 
   - Inject version_hash into template context
-  - Create `.st3/template_registry.yaml` if not exists
+  - Create `.st3/template_registry.json` if not exists
 - **Acceptance:** Every scaffold operation writes registry entry
 - **Effort:** 3h
 - **Assignee:** Backend Engineer
@@ -553,7 +553,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - **Output:**
   - E2E test: scaffold each artifact type (dto, worker, service, generic, design)
   - Parse SCAFFOLD header from generated file
-  - Lookup version_hash in `.st3/template_registry.yaml`
+  - Lookup version_hash in `.st3/template_registry.json`
   - Assert tier chain matches template inheritance
   - Assert header format: `artifact_type:version_hash | timestamp | output_path`
 - **Acceptance:** All 5 artifact types pass roundtrip validation
@@ -1112,26 +1112,38 @@ Task 3.6 marked **INCOMPLETE** - requires full refactor (see Task 3.6.1).
 ---
 
 #### Task 3.8: Template Registry Format Change
-**Description:** Change template_registry.yaml â†’ template_registry.json for better parsability
+**Description:** Change template_registry.yaml → template_registry.json for better parsability
 
 **Input:** Machine-generated provenance tracking file
 
 **Subtasks (1h):**
 - Update TemplateRegistry class to read/write JSON
-- Convert existing .yaml to .json
-- Update documentation references
+- Convert existing .yaml to .json (one-time migration)
+- Update runtime wiring to use `.json`
 
 **Output:**
-- template_registry.json format
-- Better parsability, no YAML ambiguity
+- `.st3/template_registry.json` is the canonical registry file
+- One-time migration behavior: if legacy `.st3/template_registry.yaml` exists and `.json` is missing, convert and delete YAML
 
 **Acceptance:**
-- Registry writes to .json
-- Provenance tracking works correctly
+- ✅ Registry writes to `.json`
+- ✅ Provenance tracking works correctly
+
+**Evidence (2026-02-07):**
+- Registry file present: `.st3/template_registry.json` (YAML removed)
+- Runtime wiring updated: `mcp_server/server.py`, `mcp_server/managers/artifact_manager.py`
+- Tests green:
+  - Full suite: `1679 passed, 6 skipped`
+  - Focused: `tests/test_template_registry.py` and E2E registry roundtrip
+- Quality gates PASS (lint/type/pyright)
+- Commits:
+  - `259dd891` (JSON migration + wiring + tests + registry file)
+  - `541a162c` (quality-gates lint fix)
 
 **Effort:** 1h
 
 **Assignee:** Backend Engineer
+**Status:** ✅ COMPLETE (2026-02-07)
 
 **Dependency:** None (infrastructure change)
 

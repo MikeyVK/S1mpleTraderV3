@@ -219,7 +219,7 @@ force_phase_transition(
 - **5-tier Jinja2 hierarchy:** Tier 0 (universal SCAFFOLD) → Tier 1 (CODE/DOCUMENT/CONFIG format) → Tier 2 (Python/Markdown/YAML language) → Tier 3 (component/data/tool specialization) → Concrete (worker.py, research.md)
 - **Inheritance-aware introspection:** `introspect_template(name, with_inheritance=True)` returns complete variable schema (all tiers)
 - **SCAFFOLD metadata:** All scaffolded files include 1-line header: `# SCAFFOLD: {type}:{hash} | {timestamp} | {path}`
-- **Template registry:** `.st3/template_registry.yaml` maps version hashes to tier chains
+- **Template registry:** `.st3/template_registry.json` maps version hashes to tier chains
 - **Validation integration:** All generated code passes Issue #52 validation (TEMPLATE_METADATA enforcement)
 
 **Context Requirements:**
