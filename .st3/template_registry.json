@@ -332,6 +332,15 @@
         "template_id": "commit.txt",
         "version": "1.0.0"
       }
+    },
+    "064954ea": {
+      "artifact_type": "reference",
+      "created": "2026-02-07T21:48:15.281861+00:00",
+      "hash_algorithm": "SHA256",
+      "concrete": {
+        "template_id": "reference.md",
+        "version": "2.0.0"
+      }
     }
   },
   "current_versions": {
@@ -341,7 +350,7 @@
     "research": "8b7bb3ab",
     "planning": "130ac5ea",
     "architecture": "8b924f78",
-    "reference": "ab4c6f43",
+    "reference": "064954ea",
     "worker": "9cb30b12",
     "service": "5d5b489a",
     "schema": "74378193",
@@ -353,5 +362,5 @@
     "commit": "2860db55"
   },
   "templates": {},
-  "last_updated": "2026-02-07T21:02:41.110729+00:00"
+  "last_updated": "2026-02-07T21:48:15.281880+00:00"
 }

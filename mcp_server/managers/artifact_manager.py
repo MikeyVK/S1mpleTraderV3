@@ -26,6 +26,7 @@ from typing import Any
 
 from mcp_server.adapters.filesystem import FilesystemAdapter
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.settings import settings
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
@@ -117,12 +118,10 @@ class ArtifactManager:
         self.fs_adapter = fs_adapter or FilesystemAdapter()
 
         # Task 1.1c: Template registry for provenance (lazy init if not provided)
+        # IMPORTANT: resolve path relative to workspace root (never process CWD).
         if template_registry is None:
-            # Lazy initialize registry in workspace root or .st3/
-            if self.workspace_root:
-                registry_path = self.workspace_root / ".st3" / "template_registry.json"
-            else:
-                registry_path = Path(".st3/template_registry.json")
+            root = self.workspace_root or Path(settings.server.workspace_root).resolve()
+            registry_path = root / ".st3" / "template_registry.json"
             template_registry = TemplateRegistry(registry_path=registry_path)
         self.template_registry = template_registry
 
