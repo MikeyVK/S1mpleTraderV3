@@ -1155,35 +1155,37 @@ Task 3.6 marked **INCOMPLETE** - requires full refactor (see Task 3.6.1).
 **Input:** All Tier 0-3 templates complete + block library pattern
 
 **Subtasks (16h):**
-- **3.8a:** Architecture guide (4h)
+- **3.9a:** Architecture guide (4h)
   - Tier system rationale (tier0-2 STRICT syntax, tier3 ARCHITECTURAL patterns, concrete GUIDELINE)
   - Block library composition via `{% import %}` (not `{% extends %}`)
   - Cross-branch patterns (related_docs example)
   - Decision tree: "Where does this element go?" (from research doc)
-- **3.8b:** Usage guide (4h)
+- **3.9b:** Usage guide (4h)
   - Scaffolding new artifact with pattern cherry-picking
   - Adding language/format (extensibility)
   - Pattern selection guide (when to use lifecycle, pydantic, etc.)
-- **3.8c:** Pattern guide (4h)
-  - Backend patterns and tier assignments (12 patterns â†’ 17 templates)
+- **3.9c:** Pattern guide (4h)
+  - Backend patterns and tier assignments (12 patterns → 17 templates)
   - Code examples for each tier3 pattern
   - Cherry-picking composition examples (worker = 7 patterns, tool = 2 patterns)
-- **3.8d:** Quick reference tables (4h)
+- **3.9d:** Quick reference tables (4h)
   - Master template inventory (from research doc)
   - Element flow tables (CODE/DOCUMENT/TRACKING)
   - Pattern cherry-picking table
   - Validation hierarchy table
 
 **Output:**
-- Architecture guide with SRP pattern rationale
-- Usage guide with {% import %} examples
-- Pattern guide with 17 tier3 patterns documented
-- Quick reference tables for developer onboarding
+- Architecture guide: docs/architecture/TEMPLATE_LIBRARY.md
+- Usage guide: docs/reference/mcp/TEMPLATE_LIBRARY_USAGE.md
+- Pattern guide: docs/reference/mcp/TEMPLATE_LIBRARY_PATTERNS.md
+- Quick reference: docs/reference/mcp/TEMPLATE_LIBRARY_QUICK_REFERENCE.md
 
 **Acceptance:**
 - Developer can scaffold new artifact following guide
 - Developer understands block library composition
 - Developer can add new tier3 pattern (SRP)
+
+**Status:** ✅ COMPLETE (2026-02-07)
 
 **Effort:** 16h
 
