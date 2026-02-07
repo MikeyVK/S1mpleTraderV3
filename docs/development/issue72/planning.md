@@ -1,10 +1,10 @@
-﻿# Issue #72 Template Library Management - Planning
+# Issue #72 Template Library Management - Planning
 
 <!-- SCAFFOLD: planning:draft_v1 | 2026-01-22 | docs/development/issue72/planning.md -->
 
-**Status:** REVISED (Post-TDD Analysis + Phase 1 Completion Audit)  
-**Phase:** Phase 1 INCOMPLETE - Registry/Provenance Not Integrated  
-**Date:** 2026-01-23 (revised from 2026-01-22)  
+**Status:** UPDATED (DoD verified through Task 3.7 - Tracking templates)  
+**Phase:** COMPLETE through Task 3.7 (Tracking templates implemented)  
+**Date:** 2026-02-07  
 **Input:** [research_summary.md](research_summary.md) (719 lines)
 
 ---
@@ -19,7 +19,7 @@
 **Superseded assumptions (as of 2026-01-26):**
 - ⚠️ **SCAFFOLD format:** planning.md originally described 1-line format; **tdd-planning.md Cycle 2 defines 2-line format as SSOT**
 - ⚠️ **Document tier implementation order:** tdd-planning.md Cycles 3-5 define detailed sequence; **follow tdd-planning for tier1_base_document â†’ tier2_base_markdown â†’ concrete/design.md**
-- ⚠️ **Tracking scope:** tdd-planning.md marks tracking as "future work"; **tracking implementation deferred until post-TDD continuation**
+- ✅ **Tracking scope:** Tracking base + concrete templates implemented (see Task 3.7)
 
 **Handoff boundary:**
 - Complete tdd-planning.md Cycle 7 (E2E test for design.md) before resuming planning.md tasks
@@ -27,21 +27,18 @@
 
 ---
 
-**⚠️ CRITICAL UPDATE #1:** After commit 2ee9228 analysis, discovered **forceful cutover** broke legacy scaffolding. See [cutover-analysis.md](cutover-analysis.md) for complete findings. Planning revised to reflect:
-- ✅ Phase 1 Tier 0-2 templates **COMPLETE** 
-- ⚠️ Phase 1 Registry/hash/provenance **INCOMPLETE** - NOT integrated in scaffold flow
-- ⭐ **Tasks 1.1b/c (registry completion) MUST finish BEFORE Task 1.6** - prevents non-traceable artifacts
-- ❌ Phase 4 (Migration) **OBSOLETE** - legacy templates already unreachable
-- 💰 **Net change: -48h vs original 183h** (less savings due to registry work)
+**✅ CRITICAL UPDATE #1 RESOLVED (2026-02-07):** Forceful cutover concerns addressed; tiered scaffolding is stable again.
+- ✅ Phase 1 Tier 0-2 templates **COMPLETE**
+- ✅ Phase 1 Registry/hash/provenance **INTEGRATED** in scaffold flow
+- ✅ Tasks 1.1b/c (registry completion) completed before Task 1.6
+- ✅ Phase 4 (Migration) **OBSOLETE** - legacy templates already unreachable
+- ✅ Net change: -48h vs original 183h (less savings due to registry work)
 
-**⚠️ CRITICAL UPDATE #2:** Phase 1 Definition-of-Done NOT met:
-- ❌ `.st3/template_registry.yaml` never created (no save_version() calls)
-- ❌ `compute_version_hash()` uses placeholder "concrete" (not traceable)
-- ❌ `ArtifactDefinition.version` conflicts with registry-based versioning
-- ❌ No E2E test for scaffold → header → registry roundtrip
-- **Impact:** Cannot proceed to Task 1.6 without fixing - would produce untraceable artifacts
-
----
+**✅ CRITICAL UPDATE #2 RESOLVED (2026-02-07):** Phase 1 Definition-of-Done met:
+- ✅ `.st3/template_registry.yaml` created/updated during scaffolding
+- ✅ `compute_version_hash()` uses real tier chain versions (no placeholders)
+- ✅ `ArtifactDefinition.version` removed (registry owns provenance)
+- ✅ E2E test for scaffold → header → registry roundtrip added and passing
 
 ## Purpose
 
@@ -381,7 +378,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - ✅ Task 1.1b: compute_version_hash() fixed - extracts real template versions
 - ✅ Task 1.1c: Registry integrated in scaffold_artifact() flow
 - ✅ Task 1.2: Tier 0 base template created (tier0_base_artifact.jinja2)
-- ✅ Task 1.3: Tier 1 bases complete (CODE, DOCUMENT, CONFIG; TRACKING deferred)
+- ✅ Task 1.3: Tier 1 bases complete (CODE, DOCUMENT, CONFIG, TRACKING)
 - ✅ Task 1.4: Tier 2 bases complete (Python, Markdown, YAML)
 - ✅ Task 1.5: TEMPLATE_METADATA alignment done
 - ✅ Task 1.5b: ArtifactDefinition.version removed - conceptual clarity achieved
@@ -397,6 +394,8 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 - [x] E2E tests: scaffold â†’ validate â†’ registry roundtrip works
 - [x] Zero conceptual conflicts (artifacts.yaml = variants, registry = provenance)
 
+
+**✅ VERIFIED (2026-02-07):** Full pytest suite green (`1678 passed, 6 skipped`) and quality gates PASS (lint/type/pyright).
 #### Task 1.1: Template Registry Infrastructure
 - **Description:** Build `.st3/template_registry.yaml` read/write utilities
 - **Input:** Research Q8b (registry structure)
@@ -457,15 +456,15 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
   - `tier1_base_code.jinja2` (imports, classes, functions structure)
   - `tier1_base_document.jinja2` (heading hierarchy) - See [tdd-planning.md](tdd-planning.md) Cycle 3 for detailed implementation
   - `tier1_base_config.jinja2` (schema validation hooks)
-  - `tier1_base_tracking.jinja2` (VCS workflow structure) - **DEFERRED to Post-TDD continuation**
+  - `tier1_base_tracking.jinja2` (VCS workflow structure)
 - **Acceptance:** Each provides format-specific structure blocks
-- **Effort:** 2h Ã— 3 = 6h (DOCUMENT via tdd-planning; CODE/CONFIG in planning; TRACKING post-TDD)
+- **Effort:** 2h × 4 = 8h (DOCUMENT via tdd-planning; CODE/CONFIG in planning; TRACKING completed via Task 3.7)
 - **Assignee:** Template Author
 - **Dependency:** Tier 0 complete
-- **Status:** ✅ **COMPLETE** (3 of 4 templates exist: CODE, DOCUMENT, CONFIG; TRACKING deferred)
+- **Status:** ✅ **COMPLETE** (4 of 4 templates exist: CODE, DOCUMENT, CONFIG, TRACKING)
 - **Note:** 
   - DOCUMENT templates follow [tdd-planning.md](tdd-planning.md) Cycles 3-5 (design.md MVP focus)
-  - TRACKING marked as "future work" in tdd-planning.md; deferred to avoid scope creep (see Post-TDD continuation)
+  - TRACKING implemented in Task 3.7 (tier1_base_tracking + tier2 tracking + concrete commit/pr/issue)
 
 #### Task 1.4: Tier 2 Bases (Language Syntax)
 - **Description:** Create 3 Tier 2 templates: Python, Markdown, YAML
@@ -646,7 +645,7 @@ Phase 1 is **100% complete** - all infrastructure, templates, and QA alignment d
 **Goal:** Complete template quality acceptance criteria with SRP-based pattern decomposition  
 **Duration:** ~4-5 weeks (65h)  
 **Dependencies:** Phase 2 (blocker resolution) complete  
-**Revision Rationale:** [.st3/phase3-tier3-template-requirements.md v2.0](../../.st3/phase3-tier3-template-requirements.md) - Monolithic tier3 templates rejected, replaced with 17 granular pattern templates for cherry-picking composition
+**Revision Rationale:** [phase3-tier3-template-requirements.md v2.0](phase3-tier3-template-requirements.md) - Monolithic tier3 templates rejected, replaced with 17 granular pattern templates for cherry-picking composition
 
 **Key Architectural Changes:**
 - âŒ **REMOVED:** Monolithic tier3 templates (tier3_base_python_component, tier3_base_python_data_model, tier3_base_python_tool)
@@ -1097,6 +1096,16 @@ Task 3.6 marked **INCOMPLETE** - requires full refactor (see Task 3.6.1).
 **Effort:** 11h
 
 **Assignee:** Template Author
+**Status:** ✅ **COMPLETE** (2026-02-07)
+
+**Evidence:**
+- Templates: `tier1_base_tracking.jinja2`, `tier2_tracking_text.jinja2`, `tier2_tracking_markdown.jinja2`
+- Concretes: `concrete/commit.txt.jinja2`, `concrete/pr.md.jinja2`, `concrete/issue.md.jinja2`
+- Tests: `tests/mcp_server/scaffolding/test_task37_tracking_templates.py`
+- Artifacts: `.st3/artifacts.yaml` includes `commit`, `pr`, `issue` as `type: tracking`
+
+**Commit:** `bf7f6a0` (tracking templates + related updates)
+
 
 **Note:** Tracking is NOT a document subtype - it's a top-level base type with fundamentally different characteristics (no versioning, no status lifecycle)
 
@@ -1380,27 +1389,27 @@ Task 2.1 (Introspection 12h)
 
 | Phase | Tasks | Total Hours | Duration (1 eng) | Duration (4 eng) | Status |
 |-------|-------|-------------|------------------|------------------|--------|
-| **Phase 1: Foundation** | 10 tasks (was 6) | **55h** (was 38h) | 7 days | 3 days | ⚠️ **INCOMPLETE** |
-| **Phase 2: Blockers** | 4 tasks | 40h | 5 days | 3 days | Not started |
-| **Phase 3: Tier 3** | 7 tasks | 46h | 6 days | 3 days | Not started |
+| **Phase 1: Foundation** | 10 tasks (was 6) | **55h** (was 38h) | 7 days | 3 days | ✅ COMPLETE |
+| **Phase 2: Blockers** | 4 tasks | 40h | 5 days | 3 days | ✅ COMPLETE |
+| **Phase 3: Tier 3** | 7 tasks | 46h | 6 days | 3 days | ⚠️ IN PROGRESS (through Task 3.7) |
 | ~~**Phase 4: Migration**~~ | ~~6 tasks~~ | ~~58h~~ | ~~7 days~~ | ~~4 days~~ | **OBSOLETE** |
 | **Phase 5: Extensibility** | 2 tasks | 8h | 1 day | 1 day | Not started |
 | **TOTAL** | **23 tasks** (was 19) | **149h** (was 132h) | **19 days** (was 17) | **10 days (2 weeks)** (was 9 days) |
 
 **Key Changes:**
-- ⚠️ **Phase 1 +17h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) - foundation NOT done
+- ✅ **Phase 1 +17h:** Added registry completion tasks (1.1b/c, 1.5b/c, 1.6b) - foundation DONE
 - ✅ **Phase 4 -65h:** Migration obsolete (legacy templates unreachable after commit 2ee9228)
-- ⚠️ **Net change: -48h vs original 183h** but Phase 1 must complete FIRST
-- ✅ **Timeline: 23 days â†’ 19 days** (1 engineer) or **13 days â†’ 10 days** (4 engineers)
-- ðŸ“š **Design docs complete:** See [tdd-planning.md](tdd-planning.md) for document template implementation (7 TDD cycles)
-- â¸ï¸ **Tracking deferred:** tier1_base_tracking moved to Post-TDD continuation (tdd-planning marks as "future work")
+- ✅ **Net change: -48h vs original 183h** (Phase 1 complete; tracking completed via Task 3.7)
+- ✅ **Timeline: 23 days → 19 days** (1 engineer) or **13 days → 10 days** (4 engineers)
+- 📚 **Design docs complete:** See [tdd-planning.md](tdd-planning.md) for document template implementation (7 TDD cycles)
+- ✅ **Tracking delivered:** tier1_base_tracking + concrete commit/pr/issue templates (Task 3.7)
 
 **Phase 1 Revised Breakdown:**
 - Task 1.1: Registry infrastructure (8h) ✅
 - **Task 1.1b: Fix compute_version_hash (4h)** â† NEW
 - **Task 1.1c: Integrate registry in scaffold flow (3h)** â† NEW
 - Task 1.2: Tier 0 base (2h) ✅
-- Task 1.3: Tier 1 bases (6h) â† DOCUMENT via tdd-planning Cycles 3-5; CODE/CONFIG in planning; TRACKING post-TDD
+- Task 1.3: Tier 1 bases (6h) ← DOCUMENT via tdd-planning Cycles 3-5; CODE/CONFIG in planning; TRACKING completed via Task 3.7
 - Task 1.4: Tier 2 bases (9h) ✅
 - Task 1.5: Issue #52 alignment (6h) ✅
 - **Task 1.5b: Remove ArtifactDefinition.version conflict (2h)** â† NEW
