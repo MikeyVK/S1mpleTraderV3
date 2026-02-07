@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -54,7 +55,7 @@ def _create_audit_props(
         "reason": reason,
         "pid": os.getpid(),
         "timestamp": datetime.now(UTC).isoformat(),
-        "event_type": event_type
+        "event_type": event_type,
     }
     props.update(extra_props)
     return props
@@ -83,7 +84,7 @@ class RestartServerInput(BaseModel):
 
     reason: str = Field(
         default="code changes",
-        description="Description of why restart is needed (for audit logging)"
+        description="Description of why restart is needed (for audit logging)",
     )
 
 
@@ -143,9 +144,9 @@ class RestartServerTool(BaseTool):
             extra={
                 "props": _create_audit_props(
                     reason=params.reason,
-                    event_type="server_restart_requested"
+                    event_type="server_restart_requested",
                 )
-            }
+            },
         )
 
         # Write restart marker file (for verification)
@@ -155,13 +156,10 @@ class RestartServerTool(BaseTool):
             "timestamp": restart_time.timestamp(),
             "pid": os.getpid(),
             "reason": params.reason,
-            "iso_time": restart_time.isoformat()
+            "iso_time": restart_time.isoformat(),
         }
 
-        marker_path.write_text(
-            json.dumps(marker_content, indent=2),
-            encoding="utf-8"
-        )
+        marker_path.write_text(json.dumps(marker_content, indent=2), encoding="utf-8")
 
         # Audit log: Marker written
         logger.info(
@@ -171,9 +169,9 @@ class RestartServerTool(BaseTool):
                     reason=params.reason,
                     event_type="restart_marker_written",
                     marker_path=str(marker_path),
-                    marker_content=marker_content
+                    marker_content=marker_content,
                 )
-            }
+            },
         )
 
         # Schedule delayed exit in background (supervisor will restart)
@@ -184,7 +182,7 @@ class RestartServerTool(BaseTool):
             and will spawn a new MCP server instance while maintaining the
             stdio connection to VS Code (no re-initialization needed).
             """
-            await asyncio.sleep(0.1)  # 100ms delay - faster response for response to be sent
+            await asyncio.sleep(0.1)  # 100ms delay - allow response to be sent
 
             # Flush all output (ensure audit logs persisted)
             sys.stdout.flush()
@@ -201,15 +199,14 @@ class RestartServerTool(BaseTool):
                     "props": _create_audit_props(
                         reason=params.reason,
                         event_type="server_exiting_for_restart",
-                        exit_code=42
+                        exit_code=42,
                     )
-                }
+                },
             )
 
             # Final flush
             sys.stdout.flush()
             sys.stderr.flush()
-
 
             # Signal proxy to restart by printing marker
             print("__MCP_RESTART_REQUEST__", file=sys.stderr, flush=True)
@@ -225,8 +222,8 @@ class RestartServerTool(BaseTool):
         # Return success immediately (before exit happens)
         return ToolResult.text(
             f"Server restart scheduled (reason: {params.reason}). "
-            f"⏳ WAIT 3 SECONDS before continuing - server needs time to reload. "
-            f"Service will be unavailable briefly during restart."
+            "⏳ WAIT 3 SECONDS before continuing - server needs time to reload. "
+            "Service will be unavailable briefly during restart."
         )
 
 
@@ -284,8 +281,6 @@ def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:
         else:
             raise Exception("Server restart failed!")
     """
-    import time
-
     logger = get_logger("tools.admin")
 
     marker_path = _get_restart_marker_path()
@@ -295,7 +290,7 @@ def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:
         return {
             "restarted": False,
             "error": "Restart marker not found",
-            "marker_path": str(marker_path)
+            "marker_path": str(marker_path),
         }
 
     # Parse marker
@@ -304,7 +299,7 @@ def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError) as e:
         return {
             "restarted": False,
-            "error": f"Failed to parse restart marker: {e}"
+            "error": f"Failed to parse restart marker: {e}",
         }
 
     restart_timestamp = marker_data["timestamp"]
@@ -319,7 +314,7 @@ def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:
         "previous_pid": marker_data["pid"],
         "reason": marker_data["reason"],
         "time_since_restart": time.time() - restart_timestamp,
-        "iso_time": marker_data["iso_time"]
+        "iso_time": marker_data["iso_time"],
     }
 
     # Audit log verification
@@ -328,9 +323,9 @@ def verify_server_restarted(since_timestamp: float) -> dict[str, Any]:
         extra={
             "props": {
                 "result": result,
-                "since_timestamp": since_timestamp
+                "since_timestamp": since_timestamp,
             }
-        }
+        },
     )
 
     return result
