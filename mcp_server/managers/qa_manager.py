@@ -28,6 +28,31 @@ def _pyright_script_name() -> str:
 class QAManager:
     """Manager for quality assurance and gates."""
 
+    def _filter_files(
+        self, files: list[str]
+    ) -> tuple[list[str], list[dict[str, Any]]]:
+        """Filter Python files and generate pre-gate issues for non-Python files.
+
+        Returns:
+            (python_files, pre_gate_issues)
+        """
+        python_files = [f for f in files if str(f).endswith(".py")]
+        non_python_files = [f for f in files if f not in python_files]
+
+        issues: list[dict[str, Any]] = []
+        if not python_files:
+            issues.append({
+                "message": "No Python (.py) files provided; quality gates support .py only"
+            })
+
+        for f in non_python_files:
+            issues.append({
+                "file": f,
+                "message": "Skipped non-Python file (quality gates support .py only)"
+            })
+
+        return python_files, issues
+
     def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
         """Run quality gates on specified files."""
         results: dict[str, Any] = {
@@ -48,30 +73,18 @@ class QAManager:
             })
             return results
 
-        python_files = [f for f in files if str(f).endswith(".py")]
-        non_python_files = [f for f in files if f not in python_files]
+        python_files, pre_gate_issues = self._filter_files(files)
 
-        if non_python_files or not python_files:
-            issues: list[dict[str, Any]] = []
-            if not python_files:
-                results["overall_pass"] = False
-                issues.append({
-                    "message": "No Python (.py) files provided; quality gates support .py only"
-                })
-
-            for f in non_python_files:
-                issues.append({
-                    "file": f,
-                    "message": "Skipped non-Python file (quality gates support .py only)"
-                })
-
+        if pre_gate_issues or not python_files:
             results["gates"].append({
                 "gate_number": 0,
                 "name": "File Filtering",
                 "passed": bool(python_files),
                 "score": "N/A",
-                "issues": issues,
+                "issues": pre_gate_issues,
             })
+            if not python_files:
+                results["overall_pass"] = False
 
         if not python_files:
             return results
@@ -83,18 +96,33 @@ class QAManager:
         pyright_gate = self._require_gate(quality_config, "pyright")
 
         # Gate 1: Pylint
+        # Gate 1: Pylint (no scope filtering - strict on all files)
         pylint_result = self._run_pylint(pylint_gate, python_files)
         results["gates"].append(pylint_result)
         if not pylint_result["passed"]:
             results["overall_pass"] = False
 
-        # Gate 2: Mypy
-        mypy_result = self._run_mypy(mypy_gate, python_files)
-        results["gates"].append(mypy_result)
-        if not mypy_result["passed"]:
-            results["overall_pass"] = False
+        # Gate 2: Mypy (apply scope filtering per config)
+        mypy_files = python_files
+        if mypy_gate.scope:
+            mypy_files = mypy_gate.scope.filter_files(python_files)
 
-        # Gate 3: Pyright
+        if not mypy_files:
+            # No files in scope - skip gate with pass
+            results["gates"].append({
+                "gate_number": 2,
+                "name": mypy_gate.name,
+                "passed": True,
+                "score": "Skipped (no matching files)",
+                "issues": []
+            })
+        else:
+            mypy_result = self._run_mypy(mypy_gate, mypy_files)
+            results["gates"].append(mypy_result)
+            if not mypy_result["passed"]:
+                results["overall_pass"] = False
+
+        # Gate 3: Pyright (no scope filtering for now)
         pyright_result = self._run_pyright(pyright_gate, python_files)
         results["gates"].append(pyright_result)
         if not pyright_result["passed"]:
@@ -235,8 +263,9 @@ class QAManager:
                 check=False
             )
 
-            # Parse mypy output
-            issues = self._parse_mypy_output(proc.stdout)
+            # Parse mypy output from both stdout and stderr
+            combined_output = proc.stdout + proc.stderr
+            issues = self._parse_mypy_output(combined_output)
             result["issues"] = issues
             result["passed"] = not issues
             result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
@@ -296,10 +325,29 @@ class QAManager:
                 check=False,
             )
 
-            issues = self._parse_pyright_output(proc.stdout or "")
-            result["issues"] = issues
-            result["passed"] = not issues
-            result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
+            # Combine stdout + stderr for robust parsing
+            combined_output = (proc.stdout or "") + (proc.stderr or "")
+
+            # Fail hard on non-zero exit code
+            if proc.returncode:
+                result["passed"] = False
+                # Parse output for specific errors, but always mark as failed
+                issues = self._parse_pyright_output(combined_output)
+                if not issues:
+                    # No diagnostics parsed - add generic failure message with context
+                    preview = "\n".join(combined_output.split("\n")[:20])
+                    issues = [{
+                        "message": f"Pyright failed (exit code {proc.returncode})",
+                        "details": preview if preview else "No output captured"
+                    }]
+                result["issues"] = issues
+                result["score"] = f"Fail ({len(issues)} errors)"
+            else:
+                # Exit code 0 - parse diagnostics normally
+                issues = self._parse_pyright_output(combined_output)
+                result["issues"] = issues
+                result["passed"] = not issues
+                result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
 
         except subprocess.TimeoutExpired:
             result["passed"] = False

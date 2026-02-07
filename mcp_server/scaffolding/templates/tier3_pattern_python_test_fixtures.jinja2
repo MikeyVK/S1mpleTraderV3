@@ -1,0 +1,23 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_test_fixtures
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [test_unit, test_integration]
+  provides_macros: [pattern_fixture_decorator]
+  description: >
+    Tier 3 pattern template for pytest fixture patterns.
+    Provides composable macros for fixture generation.
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Refactor from {% block %} to {% macro %} for true DRY composition"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with blocks (NOT DRY)"
+#}
+
+{# Macro: Generate pytest fixture decorator with options #}
+{% macro pattern_fixture_decorator(name, scope=None, autouse=False, params=None) %}
+@pytest.fixture{% if scope %}(scope="{{ scope }}"){% elif autouse %}(autouse=True){% elif params %}(params={{ params }}){% endif %}
+{%- endmacro %}

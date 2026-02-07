@@ -10,7 +10,7 @@ Used by ScaffoldMetadataParser to detect and validate SCAFFOLD comments.
 
 import re
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -19,20 +19,24 @@ from pydantic import BaseModel, Field, field_validator
 class ConfigError(Exception):
     """Custom exception for configuration errors with helpful hints."""
 
-    def __init__(self, message: str, hint: Optional[str] = None):
+    def __init__(self, message: str, hint: str | None = None) -> None:
         self.hint = hint
         super().__init__(f"{message}\n💡 {hint}" if hint else message)
 
-
 class CommentPattern(BaseModel):
     """
-    Defines how to detect SCAFFOLD metadata in a specific comment syntax.
+    Defines how to detect 2-line SCAFFOLD metadata in a specific comment syntax.
+
+    NEW FORMAT (Issue #72):
+    Line 1: filepath only
+    Line 2: metadata fields (template= version= created= updated=)
 
     Example:
         CommentPattern(
             syntax="hash",
             prefix=r"#\\s*",
-            metadata_line_regex=r"^#\\s*SCAFFOLD:\\s*(.+)$",
+            filepath_line_regex=r"^#\\s*(.+\\.py)$",
+            metadata_line_regex=r"^#\\s*template=.+\\s+version=.+\\s+created=.+\\s+updated=.*$",
             extensions=[".py", ".yaml", ".sh"]
         )
     """
@@ -44,16 +48,20 @@ class CommentPattern(BaseModel):
         min_length=1,
         description="Regex pattern matching comment prefix"
     )
+    filepath_line_regex: str = Field(
+        min_length=1,
+        description="Regex pattern matching line 1 (filepath)"
+    )
     metadata_line_regex: str = Field(
         min_length=1,
-        description="Regex pattern matching full metadata line"
+        description="Regex pattern matching line 2 (metadata)"
     )
     extensions: list[str] = Field(
         default_factory=list,
         description="File extensions this pattern applies to (e.g., ['.py', '.yaml'])"
     )
 
-    @field_validator("prefix", "metadata_line_regex")
+    @field_validator("prefix", "filepath_line_regex", "metadata_line_regex")
     @classmethod
     def validate_regex_pattern(cls, v: str) -> str:
         """Ensure pattern is a valid compilable regex."""
@@ -120,7 +128,7 @@ class ScaffoldMetadataConfig(BaseModel):
     )
 
     @classmethod
-    def from_file(cls, path: Optional[Path] = None) -> "ScaffoldMetadataConfig":
+    def from_file(cls, path: Path | None = None) -> "ScaffoldMetadataConfig":
         """
         Load configuration from YAML file.
 
@@ -158,7 +166,7 @@ class ScaffoldMetadataConfig(BaseModel):
                 hint=f"Check schema compliance: {e}"
             ) from e
 
-    def get_pattern(self, syntax: str) -> Optional[CommentPattern]:
+    def get_pattern(self, syntax: str) -> CommentPattern | None:
         """
         Retrieve comment pattern by syntax identifier.
 
@@ -179,7 +187,7 @@ class ScaffoldMetadataConfig(BaseModel):
             None
         )
 
-    def get_field(self, name: str) -> Optional[MetadataField]:
+    def get_field(self, name: str) -> MetadataField | None:
         """
         Retrieve metadata field definition by name.
 

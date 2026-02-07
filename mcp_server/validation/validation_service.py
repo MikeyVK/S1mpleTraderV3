@@ -17,10 +17,10 @@ from pathlib import Path
 
 # Project imports
 from mcp_server.validation.base import BaseValidator
-from mcp_server.validation.registry import ValidatorRegistry
-from mcp_server.validation.python_validator import PythonSyntaxValidator
-from mcp_server.validation.markdown_validator import MarkdownValidator
 from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
+from mcp_server.validation.markdown_validator import MarkdownValidator
+from mcp_server.validation.python_validator import PythonSyntaxValidator
+from mcp_server.validation.registry import ValidatorRegistry
 from mcp_server.validation.template_analyzer import TemplateAnalyzer
 
 
@@ -40,9 +40,15 @@ class ValidationService:
     """
 
     def __init__(self) -> None:
-        """Initialize validation service and register validators."""
+        """Initialize validation service and register validators.
+
+        Note: Lazy import of get_template_root to avoid circular dependency.
+        """
+        from mcp_server.config.template_config import (
+            get_template_root,  # pylint: disable=import-outside-toplevel
+        )
         self.template_analyzer = TemplateAnalyzer(
-            template_root=Path("mcp_server/templates")
+            template_root=get_template_root()
         )
         self._setup_validators()
 
@@ -137,7 +143,20 @@ class ValidationService:
             succeeds, and issues_text contains formatted issues if any.
         """
         # For code artifacts, do Python syntax validation
-        if artifact_type == "code" or artifact_type in ["dto", "worker", "adapter", "tool", "base"]:
+        if artifact_type == "code" or artifact_type in [
+            "dto",
+            "worker",
+            "adapter",
+            "tool",
+            "schema",
+            "service",
+            "generic",
+            "resource",
+            "interface",
+            "unit_test",
+            "integration_test",
+            "base",
+        ]:
             try:
                 # Try to compile the content to check for syntax errors
                 compile(content, f"<{artifact_type}>", "exec")

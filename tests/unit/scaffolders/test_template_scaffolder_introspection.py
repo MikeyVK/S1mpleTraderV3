@@ -25,6 +25,7 @@ from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
+
 @pytest.fixture(name="registry")
 def fixture_registry() -> ArtifactRegistryConfig:
     """Provides artifact registry configuration"""
@@ -51,7 +52,12 @@ class TestTemplateScaffolderIntrospection:
         result = scaffolder.validate(
             "dto",
             name="TestDTO",
-            description="Test description"
+            description="Test description",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
         )
 
         # Assert - validation passes (frozen is optional, system fields not required)
@@ -62,17 +68,19 @@ class TestTemplateScaffolderIntrospection:
         scaffolder: TemplateScaffolder
     ) -> None:
         """RED: validate() raises ValidationError with schema when fields missing"""
-        # Arrange - DTO requires name and description
+        # Arrange - Concrete DTO template requires only 'name' (fields is optional)
 
         # Act & Assert
         with pytest.raises(ValidationError) as exc_info:
-            scaffolder.validate("dto", name="TestDTO")  # Missing description
+            scaffolder.validate("dto")  # Missing name (required)
 
         # Assert - error should have schema attribute with template-derived fields
         error = exc_info.value
         assert hasattr(error, "schema"), "ValidationError should have schema attribute"
-        assert "description" in error.schema.required
+        # Concrete DTO template: name=required, fields/description/validators=optional
         assert "name" in error.schema.required
+        assert "fields" in error.schema.optional
+        assert "description" in error.schema.optional
 
     def test_validate_allows_optional_fields_omitted(
         self,
@@ -85,8 +93,13 @@ class TestTemplateScaffolderIntrospection:
         result = scaffolder.validate(
             "dto",
             name="TestDTO",
-            description="Test"
-            # frozen omitted - should be OK
+            description="Test",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
+            # validators omitted - should be OK (optional)
         )
 
         # Assert
@@ -104,7 +117,12 @@ class TestTemplateScaffolderIntrospection:
         result = scaffolder.validate(
             "dto",
             name="TestDTO",
-            description="Test"
+            description="Test",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
             # NO template_id, template_version, scaffold_created, output_path
         )
 

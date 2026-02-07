@@ -95,7 +95,7 @@ class DirectoryPolicyResolver:
     - Config validation (Pydantic does this)
     """
 
-    def __init__(self, config: ProjectStructureConfig | None = None):
+    def __init__(self, config: ProjectStructureConfig | None = None) -> None:
         """Initialize resolver.
 
         Args:

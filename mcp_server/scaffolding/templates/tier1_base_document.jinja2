@@ -1,0 +1,169 @@
+{#- tier1_base_document.jinja2 - Universal Document Structure -#}
+{#- Version: 4.0.2 -#}
+{#- Purpose: Implements BASE_TEMPLATE.md structure - foundation for all document types -#}
+{%- extends "tier0_base_artifact.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: STRICT
+  level: structure
+  validates:
+    required_blocks:
+      - header_fields
+      - purpose_section
+      - scope_section
+      - prerequisites_section
+      - document_content
+      - related_docs_section
+      - link_definitions
+      - version_history_section
+    structure:
+      - "Multi-line header (Status, Version, Last Updated)"
+      - "Purpose section (tier3 pattern composable)"
+      - "Scope section (tier3 pattern composable)"
+      - "Optional Prerequisites (tier3 pattern composable)"
+      - "Document content block (concrete template responsibility)"
+      - "Related Documentation (tier3 pattern composable)"
+      - "Link definitions block"
+      - "Version History (tier3 pattern composable)"
+  extends: tier0_base_artifact
+  purpose: "Universal document structure per BASE_TEMPLATE.md, refactored for tier3 pattern composition"
+  version: "4.0.2"
+  changelog:
+    - version: "4.0.2"
+      date: "2026-02-05"
+      changes: "BUGFIX: Fixed status header spacing - removed leading {%- from header_fields block to preserve newline after title"
+    - version: "4.0.1"
+      date: "2026-02-05"
+      changes: "BUGFIX: Fixed markdown divider bug - removed leading {%- from version_history_section block to prevent divider+header on same line"
+    - version: "4.0.0"
+      date: "2026-02-05"
+      changes: "BREAKING: Added composable blocks for all sections (purpose, scope, prerequisites, related_docs, version_history) to enable tier3 pattern injection (Task 3.6.1)"
+    - version: "3.1.0"
+      date: "2026-01-26"
+      changes: "Fixed link definitions order (before Related Documentation), added divider before Version History"
+    - version: "3.0.0"
+      date: "2026-01-26"
+      changes: "BREAKING: Multi-line header, removed phase, numbered prerequisites, bold Markdown links"
+    - version: "2.0.0"
+      date: "2026-01-26"
+      changes: "Complete BASE_TEMPLATE structure with all sections (Issue #72 Cycle 3)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with basic document structure"
+  introspection:
+    template_id: base_document
+    tier: tier1
+    parent: tier0_base_artifact
+    variables:
+      required:
+        - title
+      optional:
+        - status
+        - version
+        - last_updated
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
+        - related_docs
+    exports:
+      blocks:
+        - header_fields
+        - purpose_section
+        - scope_section
+        - prerequisites_section
+        - document_content
+        - related_docs_section
+        - link_definitions
+        - version_history_section
+-#}
+
+{% block content %}
+
+# {{ title | default(name) }}
+
+{% block header_fields -%}
+
+**Status:** {{ status | default("DRAFT") }}  
+**Version:** {{ version | default("1.0") }}  
+**Last Updated:** {{ last_updated | default(timestamp[:10]) }}  
+{% endblock %}
+
+{% if purpose or scope_in or scope_out -%}
+
+---
+
+{% endif -%}
+
+{#- Purpose section - composable via tier3 patterns -#}
+{%- block purpose_section -%}
+{% if purpose -%}
+## Purpose
+
+{{ purpose }}
+
+{% endif -%}
+{%- endblock -%}
+
+{#- Scope section - composable via tier3 patterns -#}
+{%- block scope_section -%}
+{% if scope_in or scope_out -%}
+## Scope
+
+{% if scope_in -%}
+**In Scope:**
+{{ scope_in }}
+
+{% endif -%}
+{% if scope_out -%}
+**Out of Scope:**
+{{ scope_out }}
+
+{% endif -%}
+{% endif -%}
+{%- endblock -%}
+
+{#- Prerequisites section - composable via tier3 patterns -#}
+{%- block prerequisites_section -%}
+{% if prerequisites -%}
+## Prerequisites
+
+Read these first:
+{% for prereq in prerequisites -%}
+{{ loop.index }}. {{ prereq }}
+{% endfor -%}
+{%- endif %}
+{%- endblock -%}
+
+{#- Document content - concrete template responsibility -#}
+{%- block document_content %}{% endblock %}
+
+{#- Related docs section - composable via tier3 patterns -#}
+{%- block related_docs_section -%}
+## Related Documentation
+
+{%- if related_docs %}
+
+{% for doc in related_docs -%}
+- **[{{ doc }}][related-{{ loop.index }}]**
+{% endfor -%}
+{%- else %}
+
+None
+{%- endif %}
+{%- endblock -%}
+
+{% block link_definitions -%}{%- endblock %}
+
+---
+
+{% block version_history_section -%}
+{#- Version history section - composable via tier3 patterns -#}
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| {{ version | default("1.0") }} | {{ last_updated | default(timestamp[:10]) }} | Agent | Initial draft |
+{%- endblock -%}
+{%- endblock -%}

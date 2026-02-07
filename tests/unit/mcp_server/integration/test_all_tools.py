@@ -7,37 +7,46 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcp_server.tools.code_tools import CreateFileTool, CreateFileInput
+from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 
 # Git Tools
 from mcp_server.tools.git_tools import (
-    CreateBranchTool, CreateBranchInput,
-    GitCheckoutTool, GitCheckoutInput,
-    GitCommitTool, GitCommitInput,
-    GitDeleteBranchTool, GitDeleteBranchInput,
-    GitMergeTool, GitMergeInput,
-    GitPushTool, GitPushInput,
-    GitRestoreTool, GitRestoreInput,
-    GitStashTool, GitStashInput,
-    GitStatusTool, GitStatusInput,
+    CreateBranchInput,
+    CreateBranchTool,
+    GitCheckoutInput,
+    GitCheckoutTool,
+    GitCommitInput,
+    GitCommitTool,
+    GitDeleteBranchInput,
+    GitDeleteBranchTool,
+    GitMergeInput,
+    GitMergeTool,
+    GitPushInput,
+    GitPushTool,
+    GitRestoreInput,
+    GitRestoreTool,
+    GitStashInput,
+    GitStashTool,
+    GitStatusInput,
+    GitStatusTool,
 )
 
 # Development Tools
-from mcp_server.tools.health_tools import HealthCheckTool, HealthCheckInput
+from mcp_server.tools.health_tools import HealthCheckInput, HealthCheckTool
 
 # GitHub Tools (imported here for availability, require manager injection)
-from mcp_server.tools.issue_tools import CreateIssueTool, CreateIssueInput
-from mcp_server.tools.label_tools import AddLabelsTool, AddLabelsInput
-from mcp_server.tools.pr_tools import CreatePRTool, CreatePRInput
+from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool
+from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
+from mcp_server.tools.pr_tools import CreatePRInput, CreatePRTool
 
 # Quality Tools
-from mcp_server.tools.quality_tools import RunQualityGatesTool, RunQualityGatesInput
+from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.validation_tools import (
-    ValidateDTOTool,
     ValidateDTOInput,
-    ValidationTool,
+    ValidateDTOTool,
     ValidationInput,
+    ValidationTool,
 )
 
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 # Module imports
-from .base import BaseValidator, ValidationResult, ValidationIssue
+from .base import BaseValidator, ValidationIssue, ValidationResult
 from .template_analyzer import TemplateAnalyzer
 
 
@@ -39,7 +39,7 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
         self,
         template_type: str,
         template_analyzer: TemplateAnalyzer
-    ):
+    ) -> None:
         """
         Initialize validator for specific template type.
 
@@ -146,14 +146,50 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
         validates = self.metadata.get("validates", {})
         strict_rules = validates.get("strict", [])
 
-        for rule in strict_rules:
-            rule_name = rule.get("rule", "")
-            if rule_name in ["frontmatter_presence", "separator_structure",
-                             "required_sections", "link_definitions"]:
-                # Format rules for documents
-                issue = self._check_pattern(content, rule)
-                if issue:
-                    issues.append(issue)
+        # Group SCAFFOLD patterns for OR logic (any one must match)
+        scaffold_patterns = [r for r in strict_rules if isinstance(r, str) and "SCAFFOLD:" in r]
+        other_rules = [r for r in strict_rules if not (isinstance(r, str) and "SCAFFOLD:" in r)]
+
+        # Check SCAFFOLD patterns with OR logic
+        if scaffold_patterns:
+            import re
+            scaffold_found = any(
+                re.search(pattern, content, re.MULTILINE)
+                for pattern in scaffold_patterns
+            )
+            if not scaffold_found:
+                patterns_list = ', '.join(scaffold_patterns)
+                issues.append(ValidationIssue(
+                    message=(
+                        f"Required SCAFFOLD header not found "
+                        f"(expected one of: {patterns_list})"
+                    ),
+                    code="scaffold_header_missing",
+                    severity="error",
+                    line=0
+                ))
+
+        # Check other rules individually (AND logic)
+        for rule in other_rules:
+            # Handle both string patterns and dict rules
+            if isinstance(rule, str):
+                # String pattern - check if content matches
+                import re
+                if not re.search(rule, content, re.MULTILINE):
+                    issues.append(ValidationIssue(
+                        message=f"Required pattern not found: {rule}",
+                        code="pattern_match",
+                        severity="error",
+                        line=0
+                    ))
+            elif isinstance(rule, dict):
+                rule_name = rule.get("rule", "")
+                if rule_name in ["frontmatter_presence", "separator_structure",
+                                 "required_sections", "link_definitions"]:
+                    # Format rules for documents
+                    issue = self._check_pattern(content, rule)
+                    if issue:
+                        issues.append(issue)
 
         return issues
 
@@ -175,14 +211,19 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
         strict_rules = validates.get("strict", [])
 
         for rule in strict_rules:
-            rule_name = rule.get("rule", "")
-            if rule_name in ["base_class", "required_properties",
-                             "execute_method", "required_imports",
-                             "frozen_config", "field_validators"]:
-                # Architectural rules for components
-                issue = self._check_pattern(content, rule)
-                if issue:
-                    issues.append(issue)
+            # Skip string patterns (handled in _validate_format)
+            if isinstance(rule, str):
+                continue
+
+            if isinstance(rule, dict):
+                rule_name = rule.get("rule", "")
+                if rule_name in ["base_class", "required_properties",
+                                 "execute_method", "required_imports",
+                                 "frozen_config", "field_validators"]:
+                    # Architectural rules for components
+                    issue = self._check_pattern(content, rule)
+                    if issue:
+                        issues.append(issue)
 
         return issues
 
@@ -204,9 +245,14 @@ class LayeredTemplateValidator(BaseValidator):  # pylint: disable=too-few-public
         guideline_rules = validates.get("guidelines", [])
 
         for rule in guideline_rules:
-            issue = self._check_pattern(content, rule, severity="warning")
-            if issue:
-                issues.append(issue)
+            # Skip string patterns (for now - guidelines typically use dict format)
+            if isinstance(rule, str):
+                continue
+
+            if isinstance(rule, dict):
+                issue = self._check_pattern(content, rule, severity="warning")
+                if issue:
+                    issues.append(issue)
 
         return issues
 

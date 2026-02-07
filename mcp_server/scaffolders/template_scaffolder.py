@@ -20,16 +20,21 @@ Uses JinjaRenderer with FileSystemLoader for safe template loading.
 """
 
 # Standard library
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # Project modules
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.base_scaffolder import BaseScaffolder
 from mcp_server.scaffolders.scaffold_result import ScaffoldResult
 from mcp_server.scaffolding.renderer import JinjaRenderer
-from mcp_server.scaffolding.template_introspector import introspect_template
+from mcp_server.scaffolding.template_introspector import introspect_template_with_inheritance
+
+if TYPE_CHECKING:
+    pass  # TYPE_CHECKING block for future type-only imports
 
 
 class TemplateScaffolder(BaseScaffolder):
@@ -46,15 +51,14 @@ class TemplateScaffolder(BaseScaffolder):
             registry: Artifact registry configuration.
                      Defaults to loading from .st3/artifacts.yaml.
             renderer: Jinja2 template renderer.
-                     Defaults to JinjaRenderer with mcp_server/templates.
+                     Defaults to JinjaRenderer with tier-root (mcp_server/scaffolding/templates).
         """
         super().__init__()
         self.registry = registry or ArtifactRegistryConfig.from_file()
 
-        # Initialize renderer with safe FileSystemLoader
+        # Initialize renderer with configurable template root (fail-fast)
         if renderer is None:
-            # Default template directory: mcp_server/templates
-            template_dir = Path(__file__).parent.parent / "templates"
+            template_dir = get_template_root()
             renderer = JinjaRenderer(template_dir=template_dir)
         self._renderer = renderer
 
@@ -87,19 +91,22 @@ class TemplateScaffolder(BaseScaffolder):
                 f"No template configured for artifact type: {artifact_type}"
             )
 
-        # Load template source for introspection
+        # Extract schema from template via inheritance-aware introspection (Task 2.1)
+        # This resolves the entire inheritance chain to detect ALL variables
         if self._renderer.env.loader is None:
             raise ValidationError(
                 f"Template loader not configured for {artifact_type}"
             )
 
-        template_source = self._renderer.env.loader.get_source(
-            self._renderer.env,
-            template_path
-        )[0]
+        # Type guard: loader is FileSystemLoader with searchpath
+        loader = self._renderer.env.loader
+        if not hasattr(loader, "searchpath"):
+            raise ValidationError(
+                f"Template loader does not support searchpath for {artifact_type}"
+            )
 
-        # Extract schema from template via introspection
-        schema = introspect_template(self._renderer.env, template_source)
+        template_root = Path(loader.searchpath[0])
+        schema = introspect_template_with_inheritance(template_root, template_path)
 
         # Check required fields present
         provided = set(kwargs.keys())
@@ -155,14 +162,39 @@ class TemplateScaffolder(BaseScaffolder):
             )
 
         # Render template via JinjaRenderer (safe FileSystemLoader)
+        # Add artifact_type to render context (needed by Tier 0 SCAFFOLD block)
+        # Add format (determines comment style in SCAFFOLD header)
+        # Add timestamp (ISO 8601 format for provenance)
+        # Add output_path (file path for SCAFFOLD header)
         # Remove template_name from context to avoid conflict
-        render_context = {k: v for k, v in kwargs.items() if k != "template_name"}
-        rendered = self._load_and_render_template(template_path, **render_context)
+        format_value = self._determine_format(artifact)
 
-        # Construct filename (docs use 'title', code uses 'name')
+        # Construct output path for SCAFFOLD header
         name = kwargs.get("name") or kwargs.get("title", "unnamed")
         suffix = artifact.name_suffix or ""
         extension = artifact.file_extension
+        output_path = kwargs.get("output_path") or f"{name}{suffix}{extension}"
+
+        # Use provided timestamp or generate ISO 8601 (UTC, minute precision)
+        timestamp = (
+            kwargs.get("timestamp") or
+            datetime.now(UTC).strftime("%Y-%m-%dT%H:%MZ")
+        )
+
+        # template_version must be provided by caller (artifact_manager injects version_hash)
+        template_version = kwargs.get("template_version", "1.0")
+
+        render_context = {
+            **{k: v for k, v in kwargs.items() if k not in ("template_name", "output_path")},
+            "artifact_type": artifact_type,
+            "format": format_value,
+            "timestamp": timestamp,
+            "template_version": template_version,
+            "output_path": output_path
+        }
+        rendered = self._load_and_render_template(template_path, **render_context)
+
+        # Construct filename (docs use 'title', code uses 'name')
         file_name = f"{name}{suffix}{extension}"
 
         return ScaffoldResult(content=rendered, file_name=file_name)
@@ -173,11 +205,13 @@ class TemplateScaffolder(BaseScaffolder):
         artifact: Any,
         context: dict[str, Any]
     ) -> str | None:
-        """Resolve template path for artifact type.
+        """Resolve template path from artifact definition or context.
 
-        Handles special cases:
-        - service: Uses service_type to select template
-        - generic: Uses template_name from context
+        Resolution order:
+        1. Service artifacts: Check service_type in context (command/orchestrator/query)
+        2. Generic artifacts: Check template_name in context (PRIORITY override)
+        3. Default: Use artifact.template_path from artifacts.yaml
+        4. Validation: Generic with no template_path AND no template_name = error
 
         Args:
             artifact_type: Artifact type_id
@@ -187,20 +221,33 @@ class TemplateScaffolder(BaseScaffolder):
         Returns:
             Relative template path or None
         """
+        # SPECIAL CASE 1: Service can select subtype via service_type context
+        if artifact_type == "service":
+            service_type = context.get("service_type", "command")  # Default: command
+            service_template_map: dict[str, str] = {
+                "orchestrator": "concrete/service_orchestrator.py.jinja2",
+                "command": "concrete/service_command.py.jinja2",
+                "query": "concrete/service_query.py.jinja2",
+            }
+            # Get template from map or fall back to artifact.template_path
+            template = service_template_map.get(service_type)
+            return template if template else artifact.template_path
+
+        # SPECIAL CASE 2: Generic can override via template_name in context
+        if artifact_type == "generic":
+            template_name = context.get("template_name")
+            if template_name and isinstance(template_name, str):
+                return str(template_name)  # PRIORITY: context overrides artifacts.yaml
+
+        # DEFAULT: Use template_path from artifacts.yaml
         template_path: str | None = artifact.template_path
 
-        # SPECIAL CASE: Service type selects template
-        if artifact_type == "service" and template_path is None:
-            service_type = context.get("service_type", "orchestrator")
-            template_path = f"components/service_{service_type}.py.jinja2"
-
-        # SPECIAL CASE: Generic uses template_name from context
-        elif artifact_type == "generic" and template_path is None:
-            template_path = context.get("template_name")
-            if not template_path:
-                raise ValidationError(
-                    "Generic artifacts require 'template_name' in context"
-                )
+        # VALIDATION: Generic without template_path requires template_name
+        if artifact_type == "generic" and template_path is None:
+            raise ValidationError(
+                "Generic artifacts require 'template_name' in context or "
+                "template_path in artifacts.yaml"
+            )
 
         return template_path
 
@@ -229,3 +276,26 @@ class TemplateScaffolder(BaseScaffolder):
         # Let ExecutionError propagate - semantically correct
         # (template loading is execution/config, not input validation)
         return self._renderer.render(template_name, **kwargs)
+
+    def _determine_format(self, artifact: Any) -> str:
+        """Determine format for SCAFFOLD header comment style.
+
+        Args:
+            artifact: Artifact definition
+
+        Returns:
+            Format string: "python", "yaml", "markdown", "shell", etc.
+        """
+        extension = artifact.file_extension.lstrip(".")
+
+        # Map file extensions to format names
+        format_map = {
+            "py": "python",
+            "yaml": "yaml",
+            "yml": "yaml",
+            "md": "markdown",
+            "sh": "shell",
+            "bash": "shell",
+        }
+
+        return format_map.get(extension, "markdown")  # Default to markdown (<!-- -->)

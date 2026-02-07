@@ -1,0 +1,148 @@
+{# TEMPLATE_METADATA:
+  name: test_unit
+  tier: concrete
+  category: test
+  enforcement: GUIDELINE
+  cherry_picks: [pytest, async, mocking, test_structure]
+  description: >
+    Concrete template for unit test files.
+    Cherry-picks 4 tier3 test patterns for DRY test structure via {% import %}.
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Use tier3 macros for imports and AAA comments (truly DRY)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with hard-coded logic (NOT DRY)"
+  agent_hints:
+    phase: "red"
+    purpose: "Generate unit tests for isolated function/class/method verification"
+    belongs_here:
+      - "Unit tests for individual functions or methods"
+      - "Business logic testing with mocked dependencies"
+      - "Pydantic validation testing (DTOs, config schemas)"
+      - "Worker initialization and lifecycle testing"
+      - "Edge case and error handling verification"
+    does_not_belong:
+      - "Full workflow integration tests → test_integration.py"
+      - "Multi-component orchestration tests → test_integration.py"
+      - "Production code → worker.py, dto.py, service_command.py, etc."
+    tone: "Focused isolation: test one thing at a time, mock dependencies"
+    common_pitfalls:
+      - "Testing multiple components together (that's integration testing)"
+      - "Not mocking external dependencies (use unittest.mock or pytest fixtures)"
+      - "Missing edge cases (empty inputs, None values, boundary conditions)"
+      - "Over-complicating tests (keep them simple and readable)"
+      - "Not following AAA pattern (Arrange, Act, Assert)"
+    workflow_context:
+      - "Unit tests are red-phase (test-first) artifacts"
+      - "Write tests before implementing (TDD red-green-refactor)"
+      - "Tests should fail initially, then pass after green phase"
+    related_phases:
+      before: "design.md (defines component responsibilities and edge cases)"
+      after: "worker.py or dto.py (implement to make tests pass - green phase)"
+#}
+{% extends "tier2_base_python.jinja2" %}
+
+{# Import tier3 pattern templates for DRY composition #}
+{% import "tier3_pattern_python_pytest.jinja2" as pytest_p %}
+{% import "tier3_pattern_python_test_structure.jinja2" as structure_p %}
+{% import "tier3_pattern_python_async.jinja2" as async_p %}
+{% import "tier3_pattern_python_mocking.jinja2" as mocking_p %}
+
+{# Module docstring with test-specific documentation #}
+{% block module_docstring %}
+"""
+Unit tests for {{ module_under_test }}.
+
+{{ test_description | default('Tests the functionality of ' ~ module_under_test ~ ' according to TDD principles.') }}
+
+@layer: Tests (Unit)
+@dependencies: [pytest, {{ module_under_test }}{% if has_mocks | default(True) %}, unittest.mock{% endif %}]
+@responsibilities:
+    - Test {{ test_class_name }} functionality
+    - Verify {{ test_focus | default('core behavior and edge cases') }}
+    - {{ additional_responsibility | default('Cover error handling scenarios') }}
+"""
+{% endblock %}
+
+{# Override imports_section to use tier3 patterns #}
+{% block imports_section %}
+# Standard library
+{% if has_async_tests | default(False) %}
+{{ async_p.pattern_async_imports() | trim }}
+{% endif %}
+{% if has_mocks | default(True) %}
+{{ mocking_p.pattern_mock_imports() | trim }}
+{% endif %}
+{% if not has_async_tests | default(False) %}
+from typing import Any
+{% endif %}
+
+# Third-party
+{{ pytest_p.pattern_pytest_imports() | trim }}
+{% if has_pydantic %}
+from pydantic import ValidationError
+{% endif %}
+
+# Project modules
+from {{ module_under_test }} import {{ imported_classes | default(['*']) | join(', ') }}
+{% endblock %}
+
+{# Override class_structure block for test class #}
+{% block class_structure %}
+
+class {{ test_class_name }}:
+    """Test suite for {{ module_under_test.split('.')[-1] }}."""
+
+    {% if test_methods %}
+    {% for method in test_methods %}
+    {% if method.markers %}
+    {% for marker in method.markers %}
+    @pytest.mark.{{ marker }}
+    {% endfor %}
+    {% elif method.async %}
+    @pytest.mark.asyncio
+    {% endif %}
+{% if method.async %}    async def {{ method.name }}{% else %}    def {{ method.name }}{% endif %}(
+        self{% if method.fixtures %},
+        {{ method.fixtures | join(',\n        ') }}{% endif %}
+    ){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
+        """{{ method.description | default('Test ' ~ method.name.replace('test_', '').replace('_', ' ')) }}."""
+        {{ structure_p.pattern_aaa_comment("Arrange") | trim }}
+        {% if method.arrange %}
+        {{ method.arrange | indent(8) }}
+        {% else %}
+        # TODO: Set up test data
+        {% endif %}
+
+        {{ structure_p.pattern_aaa_comment("Act") | trim }}
+        {% if method.act %}
+        {{ method.act | indent(8) }}
+        {% else %}
+        # TODO: Execute function under test
+        {% endif %}
+
+        {{ structure_p.pattern_aaa_comment("Assert") | trim }}
+        {% if method.assertions %}
+        {{ method.assertions | indent(8) }}
+        {% else %}
+        # TODO: Add assertions
+        assert True  # Replace with actual assertions
+        {% endif -%}
+
+    {%- endfor %}
+    {% else %}
+    def test_placeholder(self):
+        """Placeholder test - replace with actual tests."""
+        {{ structure_p.pattern_aaa_comment("Arrange") | trim }}
+        test_input = None
+        expected_output = None
+
+        {{ structure_p.pattern_aaa_comment("Act") | trim }}
+        result = None  # Call function under test
+
+        {{ structure_p.pattern_aaa_comment("Assert") | trim }}
+        assert result == expected_output
+    {% endif %}
+{%- endblock -%}

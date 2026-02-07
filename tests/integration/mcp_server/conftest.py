@@ -1,5 +1,6 @@
 """Integration test configuration for MCP server tests."""
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 

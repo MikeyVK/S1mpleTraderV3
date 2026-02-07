@@ -1,0 +1,162 @@
+{#- concrete/architecture.md.jinja2 - Architecture Document Template -#}
+{#- Version: 2.1.0 -#}
+{#- Purpose: ARCHITECTURE_TEMPLATE.md implementation - system architecture concepts -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#- Import tier3 pattern macros (only used patterns) -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Numbered sections for architectural concepts (1, 1.1, 1.2)"
+      - "Mermaid diagrams for visualization"
+      - "NO implementation code (link to source instead)"
+      - "Focus on WHAT and WHY, not HOW"
+  extends: tier2_base_markdown.jinja2
+  imports_patterns:
+    - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
+  purpose: "Concrete template for architecture documents per ARCHITECTURE_TEMPLATE.md"
+  version: "2.1.0"
+  changelog:
+    - version: "2.1.0"
+      date: "2026-02-05"
+      changes: "Added pattern imports (ps/prereq/related/history) + override all tier1 blocks with pattern calls (Task 3.6.2)"
+    - version: "2.0.0"
+      date: "2026-02-05"
+      changes: "Refactored to use {% import %} composition with tier3 status pattern (Task 3.6.1)"
+    - version: "1.0.0"
+      date: "2026-01-27"
+      changes: "Initial version with agent hints and architecture structure"
+  introspection:
+    template_id: architecture
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - concepts
+      optional:
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
+        - related_docs
+        - constraints
+        - decisions
+  agent_hints:
+    phase: "architecture"
+    purpose: "Document stable architectural concepts and system design philosophy"
+    belongs_here:
+      - "Conceptual system design (WHAT and WHY)"
+      - "Architectural patterns and principles"
+      - "Component relationships and boundaries"
+      - "Mermaid diagrams for visualization"
+      - "System-level constraints and decisions"
+      - "Architectural trade-offs and rationale"
+    does_not_belong:
+      - "Implementation code (link to source files instead)"
+      - "API reference details → reference.md"
+      - "Design decisions for specific features → design.md"
+      - "TDD cycle breakdown → planning.md"
+      - "Implementation HOW (focus on conceptual WHAT/WHY)"
+    tone: "Conceptual: explain principles, relationships, and architectural thinking"
+    common_pitfalls:
+      - "Including implementation code (this is conceptual only)"
+      - "Mixing architecture with feature design (different levels)"
+      - "Over-detailing implementation (link to source instead)"
+      - "Skipping the 'why' behind architectural choices"
+      - "Documenting unstable implementation details (architecture should be stable)"
+    workflow_context:
+      - "Status lifecycle: DRAFT → PRELIMINARY → APPROVED → DEFINITIVE"
+      - "Architecture should be stable before extensive implementation"
+      - "Changes to DEFINITIVE architecture require careful review"
+    related_phases:
+      before: "research.md (if architectural investigation needed)"
+      after: "design.md (applies architecture to specific features)"
+      parallel: "reference.md (documents the implemented architecture)"
+-#}
+
+{#- Architecture documents use BASE header (no extra fields) -#}
+{%- block header_fields %}
+{{ hdr.pattern_status_header_basic(status | default("DRAFT"), version | default("1.0"), last_updated, timestamp) }}
+{% endblock -%}
+
+{#- Override tier1 blocks with pattern calls (code-tak compositie parity) -#}
+{%- block purpose_section -%}
+{{ ps.pattern_purpose_section(purpose) }}
+{%- endblock -%}
+
+{%- block scope_section -%}
+{{ ps.pattern_scope_section(scope_in, scope_out) }}
+{%- endblock -%}
+
+{%- block prerequisites_section -%}
+{{ prereq.pattern_prerequisites_section(prerequisites) }}
+{%- endblock -%}
+
+{%- block related_docs_section -%}
+{{ related.pattern_related_docs_section(related_docs) }}
+{%- endblock -%}
+
+{%- block version_history_section -%}
+{{ history.pattern_version_history_basic(version, last_updated) }}
+{%- endblock -%}
+
+{#- Architecture content: numbered sections with Mermaid diagrams -#}
+{%- block document_content -%}
+
+---
+
+{% for concept in concepts %}
+{% set concept_num = loop.index %}
+
+## {{ concept_num }}. {{ concept.name }}
+
+{{ concept.description }}
+
+{% if concept.diagram -%}
+
+```mermaid
+{{ concept.diagram }}
+```
+
+{% endif -%}
+{% if concept.subsections -%}
+{% for subsection in concept.subsections %}
+
+### {{ concept_num }}.{{ loop.index }}. {{ subsection.name }}
+
+{{ subsection.description }}
+
+{% endfor -%}
+{% endif -%}
+
+---
+
+{% endfor -%}
+{% if decisions -%}
+
+## Constraints & Decisions
+
+| Decision | Rationale | Alternatives Rejected |
+|----------|-----------|----------------------|
+{% for decision in decisions -%}
+| {{ decision.decision }} | {{ decision.rationale }} | {{ decision.alternatives }} |
+{% endfor %}
+
+---
+
+{% endif -%}
+{%- endblock %}

@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, MCPError
-from mcp_server.services.document_indexer import DocumentIndexer
-from mcp_server.services.search_service import SearchService
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.services.document_indexer import DocumentIndexer
+from mcp_server.services.search_service import SearchService
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 

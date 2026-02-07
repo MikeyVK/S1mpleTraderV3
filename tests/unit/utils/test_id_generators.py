@@ -11,26 +11,26 @@ traceability across the trading system.
 
 # Standard Library Imports
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Third-Party Imports
 import pytest
 
 # Our Application Imports
 from backend.utils.id_generators import (
-    generate_tick_id,
-    generate_schedule_id,
-    generate_news_id,
-    generate_signal_id,
-    generate_risk_id,
-    generate_strategy_directive_id,
-    generate_entry_plan_id,
-    generate_size_plan_id,
-    generate_exit_plan_id,
-    generate_execution_command_id,
-    generate_trade_plan_id,
-    extract_id_type,
     extract_id_timestamp,
+    extract_id_type,
+    generate_entry_plan_id,
+    generate_execution_command_id,
+    generate_exit_plan_id,
+    generate_news_id,
+    generate_risk_id,
+    generate_schedule_id,
+    generate_signal_id,
+    generate_size_plan_id,
+    generate_strategy_directive_id,
+    generate_tick_id,
+    generate_trade_plan_id,
 )
 
 
@@ -242,7 +242,7 @@ class TestIDTimestampExtraction:
         timestamp = extract_id_timestamp(tick_id)
 
         # Should be recent (within last minute)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         assert (now - timestamp).total_seconds() < 60
 
     def test_extract_timestamp_from_signal_id(self):
@@ -251,7 +251,7 @@ class TestIDTimestampExtraction:
         timestamp = extract_id_timestamp(sig_id)
 
         # Should be recent (within last minute)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         assert (now - timestamp).total_seconds() < 60
 
     def test_extract_timestamp_rejects_invalid_format(self):
@@ -276,7 +276,7 @@ class TestIDTimestampExtraction:
         expected = datetime.strptime(
             f"{date_str}_{time_str}",
             "%Y%m%d_%H%M%S"
-        ).replace(tzinfo=timezone.utc)
+        ).replace(tzinfo=UTC)
 
         # Should match
         assert timestamp == expected

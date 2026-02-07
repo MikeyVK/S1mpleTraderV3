@@ -1,0 +1,32 @@
+{# tier3_pattern_markdown_dividers.jinja2 #}
+{# template=tier3_pattern version=1.0.0 #}
+"""
+TEMPLATE_METADATA:
+  enforcement: ARCHITECTURAL
+  tier: 3
+  category: pattern
+  provides_macros:
+    - pattern_section_divider
+    - pattern_major_divider
+  used_by:
+    - research.md
+    - planning.md
+    - design.md
+    - architecture.md
+    - reference.md
+"""
+
+{% macro pattern_section_divider() -%}
+
+---
+{%- endmacro %}
+
+{% macro pattern_major_divider() -%}
+
+---
+---
+{%- endmacro %}
+
+{# Changelog:
+- v1.0.0 (2026-02-05): Initial macro library with horizontal rule patterns
+#}

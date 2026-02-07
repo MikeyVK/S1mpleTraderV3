@@ -1,0 +1,20 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_assertions
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [test_unit, test_integration]
+  provides_macros: []
+  description: >
+    Tier 3 pattern template for pytest assertion patterns.
+    Currently provides no macros (assertions are typically inline in tests).
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Refactor from {% block %} to {% macro %} - no macros needed for assertions"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with blocks (NOT DRY)"
+#}
+
+{# No macros needed - assertions are typically written inline in test methods #}

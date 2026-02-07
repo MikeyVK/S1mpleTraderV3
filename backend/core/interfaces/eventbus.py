@@ -10,9 +10,10 @@ N-to-N communication between strategies and platform services.
 """
 
 # Standard Library Imports
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol, Callable, Optional, Set
+from typing import Protocol
 
 # Third-Party Imports
 from pydantic import BaseModel
@@ -79,13 +80,13 @@ class SubscriptionScope:
     """
 
     level: ScopeLevel
-    strategy_instance_id: Optional[str] = None
-    target_strategy_ids: Optional[Set[str]] = None
+    strategy_instance_id: str | None = None
+    target_strategy_ids: set[str] | None = None
 
     def should_receive_event(
         self,
         publish_scope: ScopeLevel,
-        publish_strategy_id: Optional[str]
+        publish_strategy_id: str | None
     ) -> bool:
         """
         Determine if subscription should receive event.
@@ -167,7 +168,7 @@ class IEventBus(Protocol):
         event_name: str,
         payload: BaseModel,
         scope: ScopeLevel,
-        strategy_instance_id: Optional[str] = None
+        strategy_instance_id: str | None = None
     ) -> None:
         """
         Broadcast event to matching subscribers.

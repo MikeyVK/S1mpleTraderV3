@@ -18,11 +18,12 @@ Loads and validates label definitions from labels.yaml.
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any, ClassVar
+from typing import Any, ClassVar, Optional
+
+import yaml
 
 # Third-party
-from pydantic import BaseModel, Field, field_validator, ConfigDict, PrivateAttr
-import yaml
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 
 
 @dataclass(frozen=True)
@@ -97,8 +98,8 @@ class LabelConfig(BaseModel):
 
     # Singleton cache (class-level, shared across all instances)
     _instance: ClassVar[Optional["LabelConfig"]] = None
-    _loaded_path: ClassVar[Optional[Path]] = None
-    _loaded_mtime: ClassVar[Optional[float]] = None
+    _loaded_path: ClassVar[Path | None] = None
+    _loaded_mtime: ClassVar[float | None] = None
 
     # Instance caches (Pydantic-compatible private attributes)
     _labels_by_name: dict[str, Label] = PrivateAttr(default_factory=dict)
@@ -191,7 +192,7 @@ class LabelConfig(BaseModel):
             raise FileNotFoundError(f"Label configuration not found: {config_path}")
 
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML syntax in {config_path}: {e}") from e

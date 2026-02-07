@@ -14,7 +14,7 @@ StrategyPlanner when it makes a decision based on the signal.
 # Suppress Pydantic FieldInfo false positives for optional fields
 
 # Standard Library Imports
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 # Third-Party Imports
@@ -32,7 +32,7 @@ class TestSignalCreation:
     def test_create_minimal_signal(self):
         """Test creating signal with required fields only (no causality!)."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_USDT",
             direction="long",
             signal_type="FVG_ENTRY"
@@ -51,7 +51,7 @@ class TestSignalCreation:
     def test_create_signal_with_confidence(self):
         """Test creating signal with optional confidence score (Decimal)."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="ETH_USDT",
             direction="short",
             signal_type="EMA_CROSS",
@@ -64,7 +64,7 @@ class TestSignalCreation:
     def test_signal_id_auto_generated(self):
         """Test that signal_id is auto-generated if not provided."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
             signal_type="FVG_ENTRY"
@@ -78,7 +78,7 @@ class TestSignalCreation:
         custom_id = generate_signal_id()
         signal = Signal(
             signal_id=custom_id,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
             signal_type="FVG_ENTRY"
@@ -93,7 +93,7 @@ class TestSignalPreCausality:
     def test_signal_has_no_causality_field(self):
         """Signal should NOT have a causality field - it's pre-causality."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_USDT",
             direction="long",
             signal_type="BREAKOUT"
@@ -106,7 +106,7 @@ class TestSignalPreCausality:
         """Should create Signal without any causality parameter."""
         # This should NOT require causality parameter
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="ETH_USDT",
             direction="short",
             signal_type="REVERSAL"
@@ -122,7 +122,7 @@ class TestSignalIDValidation:
         """Test that SIG_ prefix with military datetime is valid."""
         signal = Signal(
             signal_id=generate_signal_id(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
@@ -136,7 +136,7 @@ class TestSignalIDValidation:
         with pytest.raises(ValidationError) as exc_info:
             Signal(
                 signal_id="TCK_550e8400-e29b-41d4-a716-446655440000",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST"
@@ -162,11 +162,11 @@ class TestSignalTimestampValidation:
         assert naive_dt.year == 2025
         assert naive_dt.month == 1
         assert naive_dt.day == 15
-        assert signal.timestamp == naive_dt.replace(tzinfo=timezone.utc)
+        assert signal.timestamp == naive_dt.replace(tzinfo=UTC)
 
     def test_aware_datetime_preserved(self):
         """Test that timezone-aware datetime is preserved."""
-        aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=UTC)
         signal = Signal(
             timestamp=aware_dt,
             symbol="BTC_EUR",
@@ -192,7 +192,7 @@ class TestSignalSymbolValidation:
 
         for symbol in valid_symbols:
             signal = Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol=symbol,
                 direction="long",
                 signal_type="TEST"
@@ -203,7 +203,7 @@ class TestSignalSymbolValidation:
         """Test that too short symbol is rejected (min 3 chars)."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="AB",
                 direction="long",
                 signal_type="TEST"
@@ -216,7 +216,7 @@ class TestSignalSymbolValidation:
         long_symbol = "A" * 25
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol=long_symbol,
                 direction="long",
                 signal_type="TEST"
@@ -238,7 +238,7 @@ class TestSignalSymbolValidation:
         for invalid_symbol in invalid_symbols:
             with pytest.raises(ValidationError):
                 Signal(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     symbol=invalid_symbol,
                     direction="long",
                     signal_type="TEST"
@@ -251,7 +251,7 @@ class TestSignalDirectionValidation:
     def test_long_direction_accepted(self):
         """Test that 'long' direction is accepted."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
@@ -262,7 +262,7 @@ class TestSignalDirectionValidation:
     def test_short_direction_accepted(self):
         """Test that 'short' direction is accepted."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="short",
             signal_type="TEST"
@@ -274,7 +274,7 @@ class TestSignalDirectionValidation:
         """Test that invalid direction is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="neutral",  # type: ignore
                 signal_type="TEST"
@@ -298,7 +298,7 @@ class TestSignalTypeValidation:
 
         for signal_type in valid_types:
             signal = Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type=signal_type
@@ -309,7 +309,7 @@ class TestSignalTypeValidation:
         """Test that signal_type < 3 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="AB"
@@ -321,7 +321,7 @@ class TestSignalTypeValidation:
         """Test that signal_type > 25 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="A" * 26
@@ -333,7 +333,7 @@ class TestSignalTypeValidation:
         """Test that lowercase signal_type is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="fvg_entry"
@@ -352,7 +352,7 @@ class TestSignalTypeValidation:
         for reserved_type in reserved_types:
             with pytest.raises(ValidationError) as exc_info:
                 Signal(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     symbol="BTC_EUR",
                     direction="long",
                     signal_type=reserved_type
@@ -367,7 +367,7 @@ class TestSignalConfidenceValidation:
     def test_confidence_none_by_default(self):
         """Test that confidence is None if not provided."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
@@ -378,7 +378,7 @@ class TestSignalConfidenceValidation:
     def test_confidence_is_decimal_type(self):
         """Test that confidence is stored as Decimal for precision."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
             signal_type="TEST",
@@ -391,7 +391,7 @@ class TestSignalConfidenceValidation:
     def test_confidence_float_converted_to_decimal(self):
         """Test that float input is converted to Decimal."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
             signal_type="TEST",
@@ -413,7 +413,7 @@ class TestSignalConfidenceValidation:
 
         for conf in valid_values:
             signal = Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
@@ -425,7 +425,7 @@ class TestSignalConfidenceValidation:
         """Test that confidence < 0.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
@@ -438,7 +438,7 @@ class TestSignalConfidenceValidation:
         """Test that confidence > 1.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
@@ -454,7 +454,7 @@ class TestSignalImmutability:
     def test_signal_is_frozen(self):
         """Test that Signal is immutable after creation."""
         signal = Signal(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
             signal_type="TEST"
@@ -467,7 +467,7 @@ class TestSignalImmutability:
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
@@ -483,7 +483,7 @@ class TestSignalSerialization:
     def test_signal_to_json(self):
         """Test Signal serializes to JSON correctly."""
         signal = Signal(
-            timestamp=datetime(2025, 12, 1, 14, 30, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2025, 12, 1, 14, 30, 0, tzinfo=UTC),
             symbol="BTC_USDT",
             direction="long",
             signal_type="FVG_ENTRY",

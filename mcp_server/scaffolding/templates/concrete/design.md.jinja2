@@ -1,0 +1,222 @@
+{#- concrete/design.md.jinja2 - Design Document Template -#}
+{#- Version: 3.5.0 -#}
+{#- Purpose: DESIGN_TEMPLATE.md implementation - pre-implementation design decisions -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#- Import tier3 pattern macros (only used patterns) -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
+{%- import "tier3_pattern_markdown_agent_hints.jinja2" as agent -%}
+{%- import "tier3_pattern_markdown_open_questions.jinja2" as oq -%}
+{%- import "tier3_pattern_markdown_dividers.jinja2" as div -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Section 1: Context & Requirements with numbered subsections (1.1, 1.2, 1.3)"
+      - "Section 2: Design Options with numbered alternatives (2.1, 2.2, ...)"
+      - "Section 3: Chosen Design with Decision/Rationale/Key Decisions table (2 columns)"
+      - "Section 4: Open Questions (optional)"
+      - "Section dividers (---) between major sections"
+  extends: tier2_base_markdown.jinja2
+  imports_patterns:
+    - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_agent_hints
+    - tier3_pattern_markdown_open_questions
+    - tier3_pattern_markdown_dividers
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
+  purpose: "Concrete template for design documents per DESIGN_TEMPLATE.md"
+  version: "3.5.0"
+  changelog:
+    - version: "3.5.0"
+      date: "2026-02-05"
+      changes: "Added pattern imports (ps/prereq/related/history) + override all tier1 blocks with pattern calls (Task 3.6.2)"
+    - version: "3.4.0"
+      date: "2026-02-05"
+      changes: "FIXED: Status collision (renamed import alias status→hdr), removed 4 unused pattern imports (Task 3.6.1)"
+    - version: "3.3.0"
+      date: "2026-02-05"
+      changes: "Refactored to use {% import %} composition with 7 tier3 patterns (Task 3.6)"
+    - version: "3.2.0"
+      date: "2026-01-27"
+      changes: "Added agent_hints for phase transition workflow integration"
+    - version: "3.1.0"
+      date: "2026-01-26"
+      changes: "Fixed requirements newlines, link definitions order"
+    - version: "3.0.0"
+      date: "2026-01-26"
+      changes: "BREAKING: Aligned with DESIGN_TEMPLATE.md - proper section numbering, removed frontmatter, 2-column Key Decisions"
+    - version: "2.2.0"
+      date: "2026-01-26"
+      changes: "Fixed newline before frontmatter"
+    - version: "2.1.0"
+      date: "2026-01-26"
+      changes: "Fixed frontmatter newline handling"
+    - version: "2.0.0"
+      date: "2026-01-26"
+      changes: "Full DESIGN_TEMPLATE structure (Issue #72 Cycle 5)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with basic structure"
+  introspection:
+    template_id: design
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - status
+        - version
+        - problem_statement
+        - requirements_functional
+        - requirements_nonfunctional
+        - decision
+        - rationale
+      optional:
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
+        - related_docs
+        - constraints
+        - options
+        - key_decisions
+        - open_questions_list
+        - last_updated
+  agent_hints:
+    phase: "design"
+    purpose: "Document pre-implementation design decisions with clear rationale"
+    belongs_here:
+      - "Design options comparison (pros/cons analysis)"
+      - "Decision rationale explaining WHY an option was chosen"
+      - "Key design decisions with trade-off reasoning"
+      - "Illustrative code examples (design-level, not production)"
+      - "Component structure diagrams (Mermaid)"
+      - "Open questions that need resolution before implementation"
+    does_not_belong:
+      - "Research findings or background investigation → research.md"
+      - "TDD cycle breakdown or task planning → planning.md"
+      - "Production implementation code → source files (link instead)"
+      - "Architectural concepts → architecture.md"
+      - "API reference documentation → reference.md"
+    tone: "Decision-focused: compare alternatives, explain trade-offs, justify choices"
+    common_pitfalls:
+      - "Mixing implementation details with design concepts"
+      - "Choosing options without explaining rationale"
+      - "Skipping the 'why' behind decisions (always document reasoning)"
+      - "Treating design as implementation (this is PRE-implementation)"
+      - "Including too much code (use illustrative snippets only)"
+    workflow_context:
+      - "Status lifecycle: PRELIMINARY → APPROVED"
+      - "Design must be approved before implementation phase"
+      - "Open questions block approval (resolve or defer)"
+    related_phases:
+      before: "planning.md (defines TDD cycles for this design)"
+      after: "implementation (source files + tests)"
+      parallel: "architecture.md (if architectural concepts emerge)"
+-#}
+
+{%- block header_fields %}
+{{ hdr.pattern_status_header_basic(status | default("DRAFT"), version | default("1.0"), last_updated | default(""), timestamp) }}
+{% endblock -%}
+
+{#- Override tier1 blocks with pattern calls (code-tak compositie parity) -#}
+{%- block purpose_section -%}
+{{ ps.pattern_purpose_section(purpose | default("")) }}
+{%- endblock -%}
+
+{%- block scope_section -%}
+{{ ps.pattern_scope_section(scope_in | default(""), scope_out | default("")) }}
+{%- endblock -%}
+
+{%- block prerequisites_section -%}
+{{ prereq.pattern_prerequisites_section(prerequisites | default([])) }}
+{%- endblock -%}
+
+{%- block related_docs_section -%}
+{{ related.pattern_related_docs_section(related_docs | default([])) }}
+{%- endblock -%}
+
+{%- block version_history_section -%}
+{{ history.pattern_version_history_basic(version, last_updated | default("")) }}
+{%- endblock -%}
+
+{#- DESIGN_TEMPLATE.md content: numbered sections with --- dividers -#}
+{%- block document_content -%}
+{{ div.pattern_section_divider() }}
+
+## 1. Context & Requirements
+
+### 1.1. Problem Statement
+
+{{ problem_statement }}
+
+### 1.2. Requirements
+
+**Functional:**
+{% for req in requirements_functional -%}
+- [ ] {{ req }}
+{% endfor %}
+
+**Non-Functional:**
+{% for req in requirements_nonfunctional -%}
+- [ ] {{ req }}
+{% endfor %}
+
+### 1.3. Constraints
+
+{% if constraints -%}
+{{ constraints }}
+{% else -%}
+None
+{% endif %}
+{{ div.pattern_section_divider() }}
+
+## 2. Design Options
+{% for option in options %}
+
+### 2.{{ loop.index }}. Option {{ "ABCDEFGHIJ"[loop.index0] }}: {{ option.name }}
+
+{{ option.description }}
+
+**Pros:**
+{% for pro in option.pros -%}
+- ✅ {{ pro }}
+{% endfor %}
+
+**Cons:**
+{% for con in option.cons -%}
+- ❌ {{ con }}
+{% endfor %}
+{%- endfor %}
+{{ div.pattern_section_divider() }}
+
+## 3. Chosen Design
+
+**Decision:** {{ decision }}
+
+**Rationale:** {{ rationale }}
+
+### 3.1. Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+{% for kd in key_decisions -%}
+| {{ kd.decision }} | {{ kd.rationale }} |
+{% endfor %}
+
+{% set q_list = (open_questions | default([])) if (open_questions | default(None)) else (open_questions_list | default([])) -%}
+{% if q_list -%}
+{{ div.pattern_section_divider() }}
+{{ oq.pattern_open_questions_section(q_list, section_number=4, as_table=True) }}
+{%- endif -%}
+{%- endblock %}

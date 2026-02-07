@@ -20,23 +20,23 @@ Tests the ExecutionCommandBatch DTO for atomic batch execution.
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 
 from backend.core.enums import ExecutionMode
 from backend.dtos.causality import CausalityChain
-from backend.dtos.shared import Origin, OriginType
-from backend.dtos.strategy import (
-    EntryPlan,
-    SizePlan,
-    ExitPlan,
-    ExecutionPlan,
-)
 from backend.dtos.execution.execution_command import (
     ExecutionCommand,
     ExecutionCommandBatch,
+)
+from backend.dtos.shared import Origin, OriginType
+from backend.dtos.strategy import (
+    EntryPlan,
+    ExecutionPlan,
+    ExitPlan,
+    SizePlan,
 )
 
 
@@ -87,7 +87,7 @@ class TestExecutionCommandCreation:
             execution_plan=execution_plan
         )
 
-        assert getattr(command, "command_id").startswith("EXC_")
+        assert command.command_id.startswith("EXC_")
         assert command.causality == causality
         assert command.entry_plan == entry
         assert command.size_plan == size
@@ -114,7 +114,7 @@ class TestExecutionCommandCreation:
             exit_plan=exit_plan
         )
 
-        assert getattr(command, "command_id").startswith("EXC_")
+        assert command.command_id.startswith("EXC_")
         assert command.entry_plan is None
         assert command.size_plan is None
         assert command.exit_plan == exit_plan
@@ -138,7 +138,7 @@ class TestExecutionCommandCreation:
             execution_plan=execution_plan
         )
 
-        assert getattr(command, "command_id").startswith("EXC_")
+        assert command.command_id.startswith("EXC_")
         assert command.entry_plan is None
         assert command.size_plan is None
         assert command.exit_plan is None
@@ -162,8 +162,8 @@ class TestExecutionCommandCreation:
         )
 
         # EXC_YYYYMMDD_HHMMSS_hash format
-        assert getattr(command, "command_id").startswith("EXC_")
-        assert len(getattr(command, "command_id")) == 28
+        assert command.command_id.startswith("EXC_")
+        assert len(command.command_id) == 28
 
 
 class TestExecutionCommandValidation:
@@ -300,7 +300,7 @@ class TestExecutionCommandBatchCreation:
             batch_id="BAT_20251028_143022_a8f3c",
             commands=[command],
             execution_mode=ExecutionMode.SEQUENTIAL,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc)
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
         )
 
         assert batch.batch_id == "BAT_20251028_143022_a8f3c"
@@ -315,7 +315,7 @@ class TestExecutionCommandBatchCreation:
             batch_id="BAT_20251028_143022_b9g4h",
             commands=commands,
             execution_mode=ExecutionMode.ATOMIC,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=timezone.utc),
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
             rollback_on_failure=True
         )
 
@@ -329,7 +329,7 @@ class TestExecutionCommandBatchCreation:
             batch_id="BAT_20251028_143022_c1d2e",
             commands=[command],
             execution_mode=ExecutionMode.PARALLEL,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             metadata={"reason": "FLASH_CRASH", "trigger_price": 45000}
         )
 
@@ -345,7 +345,7 @@ class TestExecutionCommandBatchCreation:
             batch_id="BAT_20251028_143022_f3g4h",
             commands=[command],
             execution_mode=ExecutionMode.SEQUENTIAL,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             timeout_seconds=30
         )
 
@@ -365,7 +365,7 @@ class TestExecutionCommandBatchValidation:
                 batch_id="INVALID_ID",
                 commands=[command],
                 execution_mode=ExecutionMode.SEQUENTIAL,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(UTC)
             )
 
     def test_commands_non_empty_validation(self):
@@ -375,7 +375,7 @@ class TestExecutionCommandBatchValidation:
                 batch_id="BAT_20251028_143022_a8f3c",
                 commands=[],
                 execution_mode=ExecutionMode.SEQUENTIAL,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(UTC)
             )
 
     def test_unique_command_ids_validation(self):
@@ -393,7 +393,7 @@ class TestExecutionCommandBatchValidation:
                 batch_id="BAT_20251028_143022_a8f3c",
                 commands=[command1, command2],
                 execution_mode=ExecutionMode.SEQUENTIAL,
-                created_at=datetime.now(timezone.utc)
+                created_at=datetime.now(UTC)
             )
 
     def test_atomic_requires_rollback(self):
@@ -405,7 +405,7 @@ class TestExecutionCommandBatchValidation:
                 batch_id="BAT_20251028_143022_a8f3c",
                 commands=[command],
                 execution_mode=ExecutionMode.ATOMIC,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
                 rollback_on_failure=False
             )
 
@@ -418,7 +418,7 @@ class TestExecutionCommandBatchValidation:
                 batch_id="BAT_20251028_143022_a8f3c",
                 commands=[command],
                 execution_mode=ExecutionMode.SEQUENTIAL,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
                 timeout_seconds=0
             )
 
@@ -433,7 +433,7 @@ class TestExecutionCommandBatchImmutability:
             batch_id="BAT_20251028_143022_a8f3c",
             commands=[command],
             execution_mode=ExecutionMode.SEQUENTIAL,
-            created_at=datetime.now(timezone.utc)
+            created_at=datetime.now(UTC)
         )
 
         with pytest.raises(ValueError, match="frozen"):
@@ -450,7 +450,7 @@ class TestExecutionCommandBatchModes:
             batch_id="BAT_20251028_143022_a8f3c",
             commands=commands,
             execution_mode=ExecutionMode.SEQUENTIAL,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             rollback_on_failure=False  # Allowed for SEQUENTIAL
         )
 
@@ -464,7 +464,7 @@ class TestExecutionCommandBatchModes:
             batch_id="BAT_20251028_143022_a8f3c",
             commands=commands,
             execution_mode=ExecutionMode.PARALLEL,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             rollback_on_failure=False  # Allowed for PARALLEL
         )
 
@@ -477,7 +477,7 @@ class TestExecutionCommandBatchModes:
             batch_id="BAT_20251028_143022_a8f3c",
             commands=commands,
             execution_mode=ExecutionMode.ATOMIC,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             rollback_on_failure=True  # Required for ATOMIC
         )
 

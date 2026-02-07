@@ -1,0 +1,149 @@
+{#- concrete/issue.md.jinja2 - GitHub Issue template -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Issue description with problem, expected, actual, context sections -#}
+{%- extends "tier2_tracking_markdown.jinja2" -%}
+
+{#- CROSS-BRANCH PATTERN IMPORT: related_docs from DOCUMENT tier3 used in TRACKING -#}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: concrete
+  validates:
+    guideline:
+      - "## Problem section"
+      - "## Expected Behavior section"
+      - "## Actual Behavior section"
+      - "## Context section"
+      - "Related Documentation section"
+  extends: tier2_tracking_markdown.jinja2
+  imports:
+    - tier3_pattern_markdown_related_docs
+  purpose: "Concrete template for GitHub Issues with standard bug/feature sections"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-06"
+      changes: "Initial version - Issue template with cross-branch pattern (Task 3.7)"
+  introspection:
+    template_id: concrete_issue
+    tier: concrete
+    parent: tier2_tracking_markdown
+    variables:
+      required:
+        - title
+        - problem
+      optional:
+        - summary
+        - expected
+        - actual
+        - context
+        - steps_to_reproduce
+        - related_docs
+        - labels
+        - milestone
+        - assignees
+    example_context:
+      title: "Add tracking templates"
+      summary: "Implement tier1_base_tracking + tier2 text/markdown + concrete templates for VCS workflow artifacts"
+      problem: "No template library for tracking artifacts (commit messages, PR/issue descriptions)"
+      expected: "Tracking artifacts should follow consistent structure and support cross-branch pattern imports"
+      context: "Part of Issue #72 Task 3.7 - Template Library Management"
+      related_docs: ["docs/development/issue72/planning.md", "docs/development/issue72/tracking-type-architecture.md"]
+      labels: ["type:feature", "area:templates"]
+  agent_hints:
+    phase: "planning"
+    purpose: "Generate GitHub issue descriptions with structured problem/solution sections"
+    belongs_here:
+      - "Bug reports with Problem/Expected/Actual/Context"
+      - "Feature requests with Problem/Expected/Context"
+      - "Issue tracking with labels, milestones, assignees"
+      - "Related documentation links"
+      - "Steps to reproduce (for bugs)"
+    does_not_belong:
+      - "Git commit messages → commit.txt"
+      - "Pull request descriptions → pr.md"
+      - "Detailed implementation plans → planning.md"
+      - "Design decisions → design.md"
+    tone: "Clear problem statement: what, why, and expected outcome"
+    common_pitfalls:
+      - "Vague problem descriptions (be specific)"
+      - "Missing context or reproduction steps"
+      - "Forgetting to link related documentation"
+      - "Not setting appropriate labels or milestone"
+      - "Mixing multiple unrelated issues in one"
+    workflow_context:
+      - "Issues are planning-phase artifacts"
+      - "Create issues before starting implementation"
+      - "Use create_issue tool to generate from template"
+    related_phases:
+      before: "research.md (understand problem domain first)"
+      after: "planning.md (break down issue into tasks)"
+-#}
+
+{% block markdown_header -%}
+# {{ title }}
+{% if summary %}
+
+{{ summary }}
+{%- endif %}
+{%- endblock -%}
+
+{%- block markdown_sections -%}
+
+## Problem
+{% if problem -%}
+
+{{ problem }}
+{% else -%}
+
+[Describe the problem or feature request]
+{%- endif %}
+{% if expected %}
+
+## Expected Behavior
+
+{{ expected }}
+{%- endif %}
+{% if actual %}
+
+## Actual Behavior
+
+{{ actual }}
+{%- endif %}
+{% if steps_to_reproduce %}
+
+## Steps to Reproduce
+
+{{ steps_to_reproduce }}
+{%- endif %}
+{% if context %}
+
+## Context
+
+{{ context }}
+{%- endif %}
+{%- endblock -%}
+
+{%- block markdown_footer -%}
+{% if related_docs %}
+
+{{ related.pattern_related_docs_section(related_docs) -}}
+{%- endif %}
+{% if labels or milestone or assignees %}
+
+---
+
+**Metadata:**
+{% if labels -%}
+- Labels: {{ labels | join(', ') }}
+{% endif -%}
+{% if milestone -%}
+- Milestone: {{ milestone }}
+{% endif -%}
+{% if assignees -%}
+- Assignees: {{ assignees | join(', ') }}
+{% endif -%}
+{%- endif %}
+{%- endblock -%}

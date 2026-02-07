@@ -2,7 +2,6 @@
   "include": [
     "backend",
     "tests",
-    "frontends",
     "mcp_server"
   ],
   "exclude": [
@@ -15,11 +14,20 @@
   "ignore": [],
   "defineConstant": {},
   "stubPath": "",
-  "venvPath": ".",
-  "venv": ".venv",
   "pythonVersion": "3.13",
   "pythonPlatform": "Windows",
   "typeCheckingMode": "strict",
+  "executionEnvironments": [
+    {
+      "root": "./backend"
+    },
+    {
+      "root": "./mcp_server"
+    },
+    {
+      "root": "./tests"
+    }
+  ],
   "useLibraryCodeForTypes": true,
   "reportMissingImports": true,
   "reportMissingTypeStubs": false,

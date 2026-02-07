@@ -8,9 +8,7 @@ Immutable Pydantic model representing UserDTO data.
 @dependencies: [pydantic]
 """
 # Standard library
-from datetime import datetime, timezone
-from decimal import Decimal
-from typing import Literal, Optional
+from datetime import UTC, datetime
 
 # Third-party
 from pydantic import BaseModel, Field, field_validator
@@ -23,7 +21,7 @@ class UserDTO(BaseModel):
 
     # Primary identifier
     userdto_id: str = Field(
-        default_factory=lambda: "USE_" + datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S"),
+        default_factory=lambda: "USE_" + datetime.now(UTC).strftime("%Y%m%d_%H%M%S"),
         description="UserDTO unique identifier (USE_YYYYMMDD_HHMMSS_hash format)"
     )
 

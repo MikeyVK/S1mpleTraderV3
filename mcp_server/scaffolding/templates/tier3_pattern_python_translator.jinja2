@@ -1,0 +1,37 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_translator
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  purpose: "Translator/i18n usage patterns (key-based messages)"
+  exports:
+    - pattern_translator_imports
+    - pattern_translator_get
+    - pattern_translator_get_param_name
+    - pattern_translator_key_guideline
+#}
+
+{#-
+Tier 3 Pattern: Translator (i18n)
+- Macro library only: no extends, no blocks
+- Use translation keys (dot-notation) instead of hardcoded user-facing strings
+- Backend-aligned calls (see backend/utils/translator.py)
+-#}
+
+{% macro pattern_translator_imports() -%}
+from backend.utils.translator import Translator
+{%- endmacro %}
+
+{% macro pattern_translator_get(key_expr='"app.start"', default_expr=None) -%}
+translator.get({{ key_expr }}{% if default_expr is not none %}, default={{ default_expr }}{% endif %})
+{%- endmacro %}
+
+{% macro pattern_translator_get_param_name(param_path_expr='"params.some.path"', default_expr=None) -%}
+translator.get_param_name({{ param_path_expr }}{% if default_expr is not none %}, default={{ default_expr }}{% endif %})
+{%- endmacro %}
+
+{% macro pattern_translator_key_guideline() -%}
+# Use dot-notation keys for i18n (example key: app.start)
+# Pattern: translator.get(key, default=key)  (fallback is key itself)
+# Special-case parameter display names: translator.get_param_name(param_path, default=param_path)
+{%- endmacro %}

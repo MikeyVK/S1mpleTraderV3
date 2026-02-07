@@ -54,7 +54,7 @@ class DocumentIndexer:
 
                 index.append(doc_entry)
 
-            except (IOError, UnicodeDecodeError):
+            except (OSError, UnicodeDecodeError):
                 # Skip files that can't be read
                 continue
 

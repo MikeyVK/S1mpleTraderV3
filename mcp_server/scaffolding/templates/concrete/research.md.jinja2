@@ -1,0 +1,184 @@
+{#- concrete/research.md.jinja2 - Research Document Template -#}
+{#- Version: 1.3.1 -#}
+{#- Purpose: Research phase documentation - investigation and learning -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#- Import tier3 pattern macros -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
+{%- import "tier3_pattern_markdown_agent_hints.jinja2" as agent -%}
+{%- import "tier3_pattern_markdown_open_questions.jinja2" as oq -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Focus on investigation, not design or implementation"
+      - "Document findings, questions, and knowledge gaps"
+      - "No code examples or design decisions"
+  extends: tier2_base_markdown.jinja2
+  imports_patterns:
+    - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_agent_hints
+    - tier3_pattern_markdown_open_questions
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
+  purpose: "Concrete template for research phase documents"
+  version: "1.3.1"
+  changelog:
+    - version: "1.3.1"
+      date: "2026-02-05"
+      changes: "BUGFIX: Override link_definitions to normalize references → related_docs (SSOT fix for link refs mismatch)"
+    - version: "1.3.0"
+      date: "2026-02-05"
+      changes: "Re-added pattern imports + override all tier1 blocks with pattern calls, moved related_docs to proper block (Task 3.6.2)"
+    - version: "1.2.0"
+      date: "2026-02-05"
+      changes: "FIXED: Status collision (renamed import alias status→hdr), removed 4 unused pattern imports (Task 3.6.1)"
+    - version: "1.1.0"
+      date: "2026-02-05"
+      changes: "Refactored to use {% import %} composition with 7 tier3 patterns (Task 3.6)"
+    - version: "1.0.0"
+      date: "2026-01-27"
+      changes: "Initial version with agent hints and research structure"
+  introspection:
+    template_id: research
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - problem_statement
+        - goals
+      optional:
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
+        - background
+        - findings
+        - questions_list
+        - references
+        - related_docs
+  agent_hints:
+    phase: "research"
+    purpose: "Investigate and understand the problem domain before planning or design"
+    belongs_here:
+      - "Problem understanding and context"
+      - "Background investigation and domain knowledge"
+      - "Existing solutions and prior art analysis"
+      - "Key concepts and terminology definitions"
+      - "Open questions that need answers"
+      - "Knowledge gaps identified"
+      - "Links to external resources and references"
+    does_not_belong:
+      - "TDD cycle breakdown or task planning → planning.md"
+      - "Design decisions or options comparison → design.md"
+      - "Code examples (illustrative or production) → not in research phase"
+      - "Implementation details → source files"
+      - "Architectural concepts → architecture.md (if concepts solidify, move there)"
+    tone: "Investigative: ask questions, explore alternatives, identify unknowns"
+    common_pitfalls:
+      - "Jumping to solutions before understanding the problem"
+      - "Including design decisions or code examples"
+      - "Mixing research with planning (separate phases)"
+      - "Not documenting 'what we don't know' (questions are valuable!)"
+      - "Skipping existing solutions research (reinventing the wheel)"
+    workflow_context:
+      - "Status lifecycle: DRAFT → APPROVED → DEFINITIVE"
+      - "Research should be approved before moving to planning phase"
+      - "Unanswered questions may require more research"
+    related_phases:
+      before: "none (research is the first phase)"
+      after: "planning.md (breaks down the work based on research findings)"
+      parallel: "none (research is focused investigation)"
+-#}
+
+{#- Research documents use BASE header (no Created/Implementation Phase) -#}
+{%- block header_fields %}
+{{ hdr.pattern_status_header_basic(status | default("DRAFT"), version | default("1.0"), last_updated, timestamp) }}
+{% endblock -%}
+
+{#- Override tier1 blocks with pattern calls -#}
+{%- block purpose_section %}
+{{ ps.pattern_purpose_section(purpose) }}
+{%- endblock %}
+
+{%- block scope_section %}
+{{ ps.pattern_scope_section(scope_in, scope_out) }}
+{%- endblock %}
+
+{%- block prerequisites_section %}
+{{ prereq.pattern_prerequisites_section(prerequisites) }}
+{%- endblock %}
+
+{#- Research content structure -#}
+{%- block document_content -%}
+
+---
+
+## Problem Statement
+
+{{ problem_statement }}
+
+## Research Goals
+
+{% for goal in goals -%}
+- {{ goal }}
+{% endfor %}
+
+{% if background -%}
+
+---
+
+## Background
+
+{{ background }}
+
+{% endif -%}
+{% if findings -%}
+
+---
+
+## Findings
+
+{{ findings }}
+
+{% endif -%}
+{% set q_list = (questions | default([])) if (questions | default(None)) else (questions_list | default([])) -%}
+{% if q_list -%}
+
+{{ oq.pattern_open_questions_section(q_list) }}
+
+{% endif -%}
+{%- endblock %}
+
+{#- Override related docs block with pattern - moved from document_content for proper merge point -#}
+{%- block related_docs_section %}
+{{ related.pattern_related_docs_section(references if references else related_docs) }}
+{%- endblock %}
+
+{#- Override version history block with pattern -#}
+{%- block version_history_section %}
+{{ history.pattern_version_history_basic(version, last_updated) }}
+{%- endblock %}
+
+{#- Override link_definitions to normalize references → related_docs (SSOT fix) -#}
+{%- block link_definitions -%}
+{%- set link_docs = references if references else related_docs -%}
+{%- if link_docs %}
+
+<!-- Link definitions -->
+
+{% for doc in link_docs -%}
+[related-{{ loop.index }}]: {{ doc }}
+{% endfor -%}
+{%- endif -%}
+{%- endblock -%}

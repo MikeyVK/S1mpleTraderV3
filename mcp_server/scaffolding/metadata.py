@@ -1,17 +1,18 @@
 """
 Metadata parser for scaffolded files.
 
-Parses SCAFFOLD comments from the first line of generated files to extract:
+Parses 2-line SCAFFOLD metadata from generated files (Issue #72 format):
+Line 1: # filepath or <!-- filepath -->
+Line 2: # template=dto version=abc12345 created=2026-01-27T10:00Z updated=
+
 - template: Template ID used
-- version: Template version
-- created: Creation timestamp
-- updated: Last update timestamp (optional)
-- path: File path (optional for ephemeral artifacts)
+- version: Template version hash (8 hex chars)
+- created: Creation timestamp (ISO 8601 UTC)
+- updated: Last update timestamp (optional, can be empty)
 """
 
 import re
 from pathlib import Path
-from typing import Optional
 
 from mcp_server.config.scaffold_metadata_config import (
     CommentPattern,
@@ -23,17 +24,23 @@ from mcp_server.core.exceptions import MetadataParseError
 
 class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
     """
-    Parses SCAFFOLD metadata from first line of scaffolded files.
+    Parses 2-line SCAFFOLD metadata from scaffolded files (Issue #72 format).
+
+    NEW FORMAT (no "SCAFFOLD:" prefix):
+    Line 1: # backend/dtos/user_dto.py
+    Line 2: # template=dto version=abc12345 created=2026-01-27T10:00Z updated=
 
     Example:
         >>> parser = ScaffoldMetadataParser()
-        >>> content = "# SCAFFOLD: template=dto version=1.0 created=2026-01-20T14:00:00Z\\n..."
+        >>> line1 = "# backend/dtos/user_dto.py"
+        >>> line2 = "# template=dto version=abc12345 created=2026-01-27T10:00Z updated="
+        >>> content = f"{line1}\\n{line2}\\n..."
         >>> metadata = parser.parse(content, ".py")
         >>> metadata["template"]
         'dto'
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None) -> None:
         """
         Initialize parser with configuration.
 
@@ -58,9 +65,9 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
             if extension in pattern.extensions
         ]
 
-    def parse(self, content: str, extension: str) -> Optional[dict[str, str]]:
+    def parse(self, content: str, extension: str) -> dict[str, str] | None:
         """
-        Parse metadata from file content.
+        Parse 2-line metadata from file content (Issue #72 format).
 
         Args:
             content: File content to parse
@@ -75,9 +82,15 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
         if not content:
             return None
 
-        # Get first line
-        first_line = content.split("\n")[0].strip()
-        if not first_line:
+        # Get first 2 lines
+        lines = content.split("\n")
+        if len(lines) < 2:
+            return None
+
+        first_line = lines[0].strip()
+        second_line = lines[1].strip()
+
+        if not first_line or not second_line:
             return None
 
         # Filter patterns by extension
@@ -87,10 +100,17 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
 
         # Try each matching pattern
         for pattern in patterns:
-            match = re.match(pattern.metadata_line_regex, first_line)
+            # NEW: Check line 2 for metadata (not line 1)
+            match = re.match(pattern.metadata_line_regex, second_line)
             if match:
-                # Extract metadata string
-                metadata_str = match.group(1).strip()
+                # Extract metadata string from line 2
+                # No capturing group needed - whole line is metadata
+                metadata_str = second_line
+
+                # Remove comment prefix (e.g., "# " or "<!-- " or "// ")
+                metadata_str = re.sub(pattern.prefix, "", metadata_str).strip()
+                # Remove comment suffix for HTML/Jinja (e.g., " -->" or " #}")
+                metadata_str = re.sub(r"\s*(-->|#\})$", "", metadata_str).strip()
 
                 # Parse key=value pairs
                 metadata = self._parse_key_value_pairs(metadata_str)
@@ -108,7 +128,7 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
         Parse key=value pairs from metadata string.
 
         Args:
-            metadata_str: String like "template=dto version=1.0 created=..."
+            metadata_str: String like "template=dto version=abc12345 created=..."
 
         Returns:
             Dict of parsed key-value pairs
@@ -119,7 +139,8 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
         metadata = {}
         # Use regex to split on whitespace but keep values together
         # Pattern: key=value pairs separated by spaces
-        pattern = r'(\w+)=([^\s]+)'
+        # Updated: Allow empty values (e.g., updated=)
+        pattern = r'(\w+)=([^\s]*)'
         matches = re.findall(pattern, metadata_str)
 
         if not matches:
@@ -139,14 +160,6 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
 
         Raises:
             MetadataParseError: If validation fails
-
-        Note:
-            Path validation is NOT conditionality checked here against artifact
-            output_type (ephemeral vs file). That validation happens in Phase 0.3
-            during ArtifactManager integration when artifact definitions are available.
-            
-            Current behavior: path field is optional per config (required: false),
-            allowing both file artifacts without path and ephemeral artifacts.
         """
         # Check required fields
         for field_def in self.config.metadata_fields:
@@ -156,7 +169,7 @@ class ScaffoldMetadataParser:  # pylint: disable=too-few-public-methods
         # Filter to known fields only and validate
         validated: dict[str, str] = {}
         for field_name, field_value in metadata.items():
-            field_config: Optional[MetadataField] = self.config.get_field(field_name)
+            field_config: MetadataField | None = self.config.get_field(field_name)
 
             # Skip unknown fields (silently ignored)
             if field_config is None:

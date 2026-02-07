@@ -1,0 +1,198 @@
+{#- concrete/planning.md.jinja2 - Planning Document Template -#}
+{#- Version: 1.3.0 -#}
+{#- Purpose: Planning phase documentation - TDD cycle breakdown -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#- Import tier3 pattern macros -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
+{%- import "tier3_pattern_markdown_agent_hints.jinja2" as agent -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Focus on TDD cycle breakdown and task sequencing"
+      - "Define test cycles, not implementation details"
+      - "No code examples or design decisions"
+  extends: tier2_base_markdown.jinja2
+  imports_patterns:
+    - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_agent_hints
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
+  purpose: "Concrete template for planning phase documents"
+  version: "1.3.0"
+  changelog:
+    - version: "1.3.0"
+      date: "2026-02-05"
+      changes: "Re-added pattern imports + override all tier1 blocks with pattern calls for code-tak compositie parity (Task 3.6.2)"
+    - version: "1.2.0"
+      date: "2026-02-05"
+      changes: "FIXED: Status collision (renamed import alias status→hdr), removed unused pattern imports (Task 3.6.1)"
+    - version: "1.1.0"
+      date: "2026-02-05"
+      changes: "Refactored to use {% import %} composition with 6 tier3 patterns (Task 3.6)"
+    - version: "1.0.0"
+      date: "2026-01-27"
+      changes: "Initial version with agent hints and TDD planning structure"
+  introspection:
+    template_id: planning
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - summary
+        - tdd_cycles
+      optional:
+        - purpose
+        - scope_in
+        - scope_out
+        - prerequisites
+        - dependencies
+        - risks
+        - milestones
+        - related_docs
+  agent_hints:
+    phase: "planning"
+    purpose: "Break down work into TDD cycles before design or implementation"
+    belongs_here:
+      - "TDD cycle breakdown (Red → Green → Refactor)"
+      - "Test cycle sequencing and dependencies"
+      - "Task estimation and milestone planning"
+      - "Risk identification and mitigation strategies"
+      - "Success criteria for each cycle"
+      - "Dependencies between cycles"
+    does_not_belong:
+      - "Research findings or problem investigation → research.md"
+      - "Design decisions or options comparison → design.md"
+      - "Code examples (test or production) → not in planning phase"
+      - "Implementation details → source files"
+      - "Architectural concepts → architecture.md"
+    tone: "Pragmatic: focus on 'what to build' and 'in what order', not 'how to build it'"
+    common_pitfalls:
+      - "Including code examples or design decisions"
+      - "Mixing planning with research (research comes first)"
+      - "Over-detailed task breakdown (keep it at cycle level)"
+      - "Skipping dependencies between cycles"
+      - "Not defining success criteria per cycle"
+    workflow_context:
+      - "Status lifecycle: DRAFT → APPROVED → DEFINITIVE"
+      - "Planning should be approved before moving to design/implementation"
+      - "TDD cycles may be refined during execution"
+    related_phases:
+      before: "research.md (provides problem understanding for planning)"
+      after: "design.md (design decisions for specific cycles) OR implementation (if design not needed)"
+      parallel: "none (planning is focused breakdown)"
+-#}
+
+{#- Planning documents use BASE header (no Created/Implementation Phase) -#}
+{%- block header_fields %}
+{{ hdr.pattern_status_header_basic(status | default("DRAFT"), version | default("1.0"), last_updated, timestamp) }}
+{% endblock -%}
+
+{#- Override tier1 blocks with pattern calls -#}
+{%- block purpose_section %}
+{{ ps.pattern_purpose_section(purpose) }}
+{%- endblock %}
+
+{%- block scope_section %}
+{{ ps.pattern_scope_section(scope_in, scope_out) }}
+{%- endblock %}
+
+{%- block prerequisites_section %}
+{{ prereq.pattern_prerequisites_section(prerequisites) }}
+{%- endblock %}
+
+{#- Planning content structure -#}
+{%- block document_content -%}
+
+---
+
+## Summary
+
+{{ summary }}
+
+{% if dependencies -%}
+
+---
+
+## Dependencies
+
+{% for dep in dependencies -%}
+- {{ dep }}
+{% endfor %}
+
+{% endif -%}
+
+---
+
+## TDD Cycles
+
+{% for cycle in tdd_cycles %}
+
+### Cycle {{ loop.index }}: {{ cycle.name }}
+
+**Goal:** {{ cycle.goal }}
+
+**Tests:**
+{% for test in cycle.tests -%}
+- {{ test }}
+{% endfor %}
+
+**Success Criteria:**
+{% if cycle.success_criteria is string -%}
+{{ cycle.success_criteria }}
+{% else -%}
+{% for criterion in cycle.success_criteria -%}
+- {{ criterion }}
+{% endfor -%}
+{% endif %}
+
+{% if cycle.dependencies -%}
+**Dependencies:** {{ cycle.dependencies | join(", ") }}
+{% endif %}
+
+{% endfor -%}
+{% if risks -%}
+
+---
+
+## Risks & Mitigation
+
+{% for risk in risks %}
+- **Risk:** {{ risk.description }}
+  - **Mitigation:** {{ risk.mitigation }}
+{% endfor %}
+
+{% endif -%}
+{% if milestones -%}
+
+---
+
+## Milestones
+
+{% for milestone in milestones -%}
+- {{ milestone }}
+{% endfor %}
+
+{% endif -%}
+{%- endblock %}
+
+{#- Override related docs block with pattern -#}
+{%- block related_docs_section %}
+{{ related.pattern_related_docs_section(related_docs) }}
+{%- endblock %}
+
+{#- Override version history block with pattern -#}
+{%- block version_history_section %}
+{{ history.pattern_version_history_basic(version, last_updated) }}
+{%- endblock %}

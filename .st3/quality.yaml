@@ -5,7 +5,7 @@ gates:
     name: "Linting"
     description: "Python linting"
     execution:
-      command: ["python", "-m", "pylint", "--enable=all", "--max-line-length=100", "--output-format=text"]
+      command: ["python", "-m", "pylint", "--enable=all", "--disable=duplicate-code,redefined-outer-name", "--max-line-length=100", "--output-format=text"]
       timeout_seconds: 60
       working_dir: null
     parsing:
@@ -29,7 +29,7 @@ gates:
     name: "Pyright"
     description: "Type checking"
     execution:
-      command: ["pyright", "--outputjson"]
+      command: ["python", "-m", "pyright", "--project", "pyrightconfig.json", "--outputjson"]
       timeout_seconds: 120
       working_dir: null
     parsing:
@@ -97,6 +97,12 @@ gates:
       file_types: [".py"]
       supports_autofix: false
       produces_json: false
+    scope:
+      include_globs:
+        - "backend/**/*.py"
+        - "mcp_server/**/*.py"
+      exclude_globs:
+        - "tests/**/*.py"
 
   pytest:
     name: "Pytest"

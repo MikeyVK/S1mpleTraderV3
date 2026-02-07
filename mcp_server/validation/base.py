@@ -51,12 +51,12 @@ class BaseValidator(ABC):
     async def validate(self, path: str, content: str | None = None) -> ValidationResult:
         """
         Validate content at path.
-        
+
         Args:
             path: Absolute path to the file.
             content: Optional content override (for checking before saving).
                      If None, reads from disk.
-                     
+
         Returns:
             ValidationResult containing status and issues.
         """

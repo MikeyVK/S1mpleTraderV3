@@ -16,7 +16,7 @@ SRP-focused container for DTOs during a single strategy run.
 
 # Standard library
 from datetime import datetime
-from typing import Dict, Protocol, Type
+from typing import Protocol
 
 # Third-party
 from pydantic import BaseModel, ConfigDict
@@ -24,9 +24,8 @@ from pydantic import BaseModel, ConfigDict
 # Project modules
 from backend.core.interfaces.worker import IWorker
 
-
 # Type alias for the cache container
-StrategyCacheType = Dict[Type[BaseModel], BaseModel]
+StrategyCacheType = dict[type[BaseModel], BaseModel]
 
 
 class RunAnchor(BaseModel):
@@ -106,7 +105,7 @@ class IStrategyCache(Protocol):
     def get_required_dtos(
         self,
         requesting_worker: IWorker
-    ) -> Dict[Type[BaseModel], BaseModel]:
+    ) -> dict[type[BaseModel], BaseModel]:
         """
         Retrieve DTOs required by worker from cache.
 
@@ -148,7 +147,7 @@ class IStrategyCache(Protocol):
         """
         ...
 
-    def has_dto(self, dto_type: Type[BaseModel]) -> bool:
+    def has_dto(self, dto_type: type[BaseModel]) -> bool:
         """
         Check if DTO type is present in cache.
 
@@ -183,7 +182,7 @@ class NoActiveRunError(Exception):
 class MissingContextDataError(Exception):
     """Raised when required DTO not found in cache."""
 
-    def __init__(self, worker_name: str, missing_dtos: list[str]):
+    def __init__(self, worker_name: str, missing_dtos: list[str]) -> None:
         self.worker_name = worker_name
         self.missing_dtos = missing_dtos
         super().__init__(
@@ -196,7 +195,7 @@ class MissingContextDataError(Exception):
 class UnexpectedDTOTypeError(Exception):
     """Raised when worker produces DTO not declared in manifest."""
 
-    def __init__(self, worker_name: str, dto_type: str, declared_dtos: list[str]):
+    def __init__(self, worker_name: str, dto_type: str, declared_dtos: list[str]) -> None:
         self.worker_name = worker_name
         self.dto_type = dto_type
         self.declared_dtos = declared_dtos

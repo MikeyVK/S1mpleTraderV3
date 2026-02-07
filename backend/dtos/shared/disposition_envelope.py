@@ -17,7 +17,8 @@ Part of Platgeslagen Orkestratie architecture:
 """
 
 import re
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -73,34 +74,34 @@ class DispositionEnvelope(BaseModel):
         description="Flow control instruction for EventAdapter"
     )
 
-    event_name: Optional[str] = Field(
+    event_name: str | None = Field(
         default=None,
         min_length=3,
         max_length=100,
         description="Event name for publication (required when disposition=PUBLISH)"
     )
 
-    event_payload: Optional[BaseModel] = Field(
+    event_payload: BaseModel | None = Field(
         default=None,
         description="Optional System DTO as event payload"
     )
 
     @field_validator("event_name")
     @classmethod
-    def validate_event_name_format(cls, v: Optional[str]) -> Optional[str]:
+    def validate_event_name_format(cls, v: str | None) -> str | None:
         """Validate event name follows UPPER_SNAKE_CASE convention.
-        
+
         Event names must:
         - Use UPPER_SNAKE_CASE format (uppercase letters, digits, underscores)
         - Not use reserved prefixes: SYSTEM_, INTERNAL_, _
         - Be between 3 and 100 characters
-        
+
         Args:
             v: Event name to validate
-        
+
         Returns:
             Validated event name
-        
+
         Raises:
             ValueError: If event name doesn't follow UPPER_SNAKE_CASE or uses reserved prefix
         """
@@ -126,11 +127,10 @@ class DispositionEnvelope(BaseModel):
     @model_validator(mode='after')
     def validate_publish_requirements(self) -> 'DispositionEnvelope':
         """Ensure PUBLISH disposition has event_name (payload is optional)."""
-        if self.disposition == 'PUBLISH':
-            if not self.event_name:
-                raise ValueError(
-                    "event_name is required when disposition='PUBLISH'"
-                )
+        if self.disposition == 'PUBLISH' and not self.event_name:
+            raise ValueError(
+                "event_name is required when disposition='PUBLISH'"
+            )
         return self
 
     model_config = {

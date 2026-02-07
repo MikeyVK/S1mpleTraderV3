@@ -1,0 +1,23 @@
+{# 
+TEMPLATE_METADATA:
+  name: tier3_pattern_python_pytest
+  description: Pytest framework pattern macros (imports, fixtures, marks, parametrize)
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [test_unit, test_integration]
+  provides_macros: [pattern_pytest_imports]
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Refactor from {% block %} to {% macro %} for true DRY composition"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with blocks (NOT DRY)"
+#}
+
+{# Macro: pytest imports - Standard pytest framework imports #}
+{% macro pattern_pytest_imports() %}
+import pytest
+from pathlib import Path
+{%- endmacro %}

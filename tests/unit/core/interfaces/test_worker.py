@@ -23,7 +23,6 @@ from backend.core.interfaces.worker import (
     WorkerInitializationError,
 )
 
-
 # Protocol Structure Tests
 
 

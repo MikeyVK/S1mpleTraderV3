@@ -1,0 +1,41 @@
+{# tier3_pattern_markdown_agent_hints.jinja2 #}
+{# template=tier3_pattern version=1.0.0 #}
+"""
+TEMPLATE_METADATA:
+  enforcement: ARCHITECTURAL
+  tier: 3
+  category: pattern
+  provides_macros:
+    - pattern_agent_hints_section
+  used_by:
+    - research.md
+    - planning.md
+    - design.md
+"""
+
+{% macro pattern_agent_hints_section(belongs_here, does_not_belong, tone=None, pitfalls=None, workflow_context=None) -%}
+## Agent Hints
+
+**What belongs here:**  
+{{ belongs_here }}
+
+**What does NOT belong here:**  
+{{ does_not_belong }}
+
+{% if tone -%}
+**Tone/style:**  
+{{ tone }}
+{% endif %}
+{% if pitfalls -%}
+**Common pitfalls:**  
+{{ pitfalls }}
+{% endif %}
+{% if workflow_context -%}
+**Workflow context:**  
+{{ workflow_context }}
+{% endif %}
+{%- endmacro %}
+
+{# Changelog:
+- v1.0.0 (2026-02-05): Initial macro library with agent guidance pattern
+#}

@@ -17,7 +17,7 @@ class ToolResult(BaseModel):
     file_path: str | None = None
 
     @classmethod
-    def text(cls, text: str) -> "ToolResult":
+    def text(cls, text: str) -> ToolResult:
         """Create a text result."""
 
         return cls(content=[{"type": "text", "text": text}])
@@ -29,7 +29,7 @@ class ToolResult(BaseModel):
         error_code: str | None = None,
         hints: list[str] | None = None,
         file_path: str | None = None,
-    ) -> "ToolResult":
+    ) -> ToolResult:
         """Create an error result with structured error information."""
 
         return cls(

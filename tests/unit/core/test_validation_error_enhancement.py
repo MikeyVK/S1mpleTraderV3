@@ -23,6 +23,7 @@ import pytest
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolding.template_introspector import TemplateSchema
 
+
 @pytest.fixture(name="sample_schema")
 def fixture_sample_schema() -> TemplateSchema:
     """Provides sample TemplateSchema for testing"""

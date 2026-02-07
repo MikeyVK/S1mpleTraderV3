@@ -1,0 +1,159 @@
+{#- concrete/dto.py.jinja2 - Data Transfer Object (Pydantic BaseModel) -#}
+{#- Version: 1.5.1 -#}
+{#- Purpose: Generate Pydantic DTOs for data transfer between layers -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{%- import "tier3_pattern_python_pydantic.jinja2" as pydantic -%}
+{%- import "tier3_pattern_python_typed_id.jinja2" as typed_id -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Pydantic BaseModel inheritance"
+      - "Field definitions with type hints and descriptions"
+      - "Self-documenting via json_schema_extra"
+      - "Immutable by default (frozen=True optional)"
+  extends: tier2_base_python.jinja2
+  purpose: "Concrete template for Data Transfer Objects (Pydantic)"
+  version: "1.5.1"
+  changelog:
+    - version: "1.5.1"
+      date: "2026-02-01"
+      changes: "Restore readable field definitions and pretty-print examples (avoid over-compaction)"
+    - version: "1.5.0"
+      date: "2026-02-01"
+      changes: "Refactor DTO to compose Tier 3 pattern macros and set enforcement to GUIDELINE"
+    - version: "1.4.0"
+      date: "2026-01-27"
+      changes: "Make examples REQUIRED for consistent self-documenting DTOs"
+    - version: "1.3.0"
+      date: "2026-01-27"
+      changes: "Add field descriptions and json_schema_extra for self-documentation"
+    - version: "1.2.0"
+      date: "2026-01-26"
+      changes: "Changed enforcement from REQUIRED to ARCHITECTURAL (code patterns)"
+    - version: "1.1.0"
+      date: "2026-01-25"
+      changes: "Initial version"
+  introspection:
+    template_id: dto
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - name
+        - frozen (True for immutable DTOs, False for state objects)
+        - examples (list of example objects for json_schema_extra)
+      optional:
+        - description
+        - fields (each field must have: name, type, description)
+        - validators
+        - layer (architectural layer, e.g. "DTOs (Strategy)")
+        - dependencies (list of dependencies, defaults to pydantic.BaseModel)
+        - responsibilities (list of responsibilities, defaults to data validation)
+  agent_hints:
+    phase: "green"
+    purpose: "Generate Pydantic-based Data Transfer Objects for cross-layer communication"
+    belongs_here:
+      - "Immutable data structures (frozen=True)"
+      - "Data validation with type hints and Field constraints"
+      - "Cross-layer DTOs (BuildSpec, ExecutionState, Strategy Config)"
+      - "Self-documenting with json_schema_extra examples"
+      - "Simple data containers without behavior"
+    does_not_belong:
+      - "Stateful runtime components → worker.py"
+      - "YAML configuration schemas → config_schema.py"
+      - "Utility functions or algorithms → generic.py or service_command.py"
+      - "Business logic → worker methods"
+      - "Logging infrastructure (DTOs don't log)"
+    tone: "Data-focused: clear types, validation rules, and examples"
+    common_pitfalls:
+      - "Adding methods beyond validation (keep DTOs as pure data)"
+      - "Forgetting json_schema_extra with examples (self-documentation is required)"
+      - "Using mutable defaults (list/dict) without Field(default_factory=...)"
+      - "Not setting frozen=True for truly immutable DTOs"
+      - "Complex nested validation (consider flattening or dedicated validator classes)"
+      - "Missing field descriptions (Field(description='...') required)"
+    workflow_context:
+      - "DTOs are green-phase (implementation) artifacts"
+      - "Define data schemas after design phase clarifies data flow"
+      - "Examples in json_schema_extra serve as test fixtures"
+    related_phases:
+      before: "design.md (defines data structures and validation rules)"
+      after: "test_unit.py (tests validation logic and edge cases)"
+-#}
+
+{% block module_docstring %}
+"""{{ name }} DTO module.
+
+Data Transfer Object for {{ name | lower }}.
+
+@layer: {{ layer | default("Domain") }}
+@dependencies: {{ (dependencies | default([])) | join(", ") if (dependencies | default([])) is iterable and (dependencies | default([])) is not string and (dependencies | default([])) else (dependencies | default("pydantic.BaseModel")) }}
+@responsibilities: {{ (responsibilities | default([])) | join(", ") if (responsibilities | default([])) is iterable and (responsibilities | default([])) is not string and (responsibilities | default([])) else (responsibilities | default("Data validation, type safety" + (", immutability" if frozen else ""))) }}
+"""
+{% endblock %}
+
+{% block imports_section %}
+# Third-party
+{{ pydantic.pattern_pydantic_imports(include_field_validator=(((validators | default([])) | length) > 0)) }}
+
+# Project modules
+{# Optional: typed-id generator imports for Field(default_factory=...) #}
+{% if fields %}
+{% for field in fields %}
+{% if field.default_factory is defined %}
+{{ typed_id.pattern_typed_id_imports(function_name=field.default_factory) }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% endblock %}
+
+{% block class_structure %}
+class {{ name }}(BaseModel):
+{% block class_docstring %}
+    """{{ description | default(name + ' DTO.') }}
+
+    Data Transfer Object for {{ name | lower }}.
+    {% if fields %}
+
+    Fields:
+{% for field in fields %}
+        {{ field.name }}: {{ field.description | default('Field description') }}
+{% endfor -%}
+    {% endif %}
+    """
+{% endblock -%}
+{% block field_definitions %}
+{% if fields -%}
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }} = Field(
+{% if field.default_factory is defined %}
+        {{ typed_id.pattern_typed_id_default_factory(function_name=field.default_factory) }},
+{% elif field.default is defined %}
+        default={{ field.default }},
+{% else %}
+        default=...,
+{% endif %}
+        description="{{ field.description | default('Field description') }}",
+    )
+{% endfor -%}
+{% else -%}
+    pass
+{% endif -%}
+{% endblock -%}
+{% block config_section %}
+
+    model_config = {
+        "frozen": {{ 'True' if frozen else 'False' }},
+        "extra": "forbid",
+        "json_schema_extra": {
+            "examples": {{ examples | tojson(indent=4) | indent(12, first=False) }}
+        }
+    }
+{% endblock -%}
+{% endblock %}

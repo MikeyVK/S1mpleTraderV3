@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.core.exceptions import ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
-from mcp_server.core.exceptions import ValidationError
 
 
 class TestArtifactManagerCore:
@@ -64,7 +64,7 @@ class TestArtifactManagerCore:
         assert call_args[1]['name'] == 'Test'
         assert call_args[1]['fields'] == []
         assert 'template_id' in call_args[1]
-        assert 'template_version' in call_args[1]
+        assert 'version_hash' in call_args[1]  # Task 1.1c
         assert 'scaffold_created' in call_args[1]
         assert 'output_path' in call_args[1]
 

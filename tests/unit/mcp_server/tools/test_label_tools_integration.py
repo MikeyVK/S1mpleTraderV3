@@ -16,12 +16,12 @@ import pytest
 # Local
 from mcp_server.config.label_config import LabelConfig
 from mcp_server.tools.label_tools import (
-    CreateLabelTool,
-    CreateLabelInput,
-    AddLabelsTool,
     AddLabelsInput,
-    DetectLabelDriftTool,
+    AddLabelsTool,
+    CreateLabelInput,
+    CreateLabelTool,
     DetectLabelDriftInput,
+    DetectLabelDriftTool,
 )
 
 

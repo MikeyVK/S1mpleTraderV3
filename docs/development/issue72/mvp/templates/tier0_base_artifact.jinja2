@@ -1,0 +1,19 @@
+{#- TIER 0: Universal Base Artifact -#}
+{#- All artifacts inherit from this - defines SCAFFOLD metadata contract -#}
+
+{%- block scaffold_metadata -%}
+{#- SCAFFOLD metadata - universal for ALL artifacts -#}
+{#- Child templates should override this with language-specific comment syntax -#}
+{%- endblock %}
+
+{%- block artifact_header -%}
+{#- Generated artifact header -#}
+{%- endblock %}
+
+{%- block artifact_content -%}
+{#- Main artifact content - MUST be overridden -#}
+{%- endblock %}
+
+{%- block artifact_footer -%}
+{#- Generated artifact footer -#}
+{%- endblock -%}

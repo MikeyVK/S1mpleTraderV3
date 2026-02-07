@@ -1,0 +1,162 @@
+{# TEMPLATE_METADATA:
+  name: test_integration
+  tier: concrete
+  category: test
+  enforcement: GUIDELINE
+  cherry_picks: [pytest, async, test_structure]
+  description: >
+    Concrete template for integration/E2E test files.
+    Cherry-picks 3 tier3 patterns for DRY full-stack scenario testing via {% import %}.
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Use tier3 macros for pytest imports and AAA comments (truly DRY)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with hard-coded logic (NOT DRY)"
+  agent_hints:
+    phase: "red"
+    purpose: "Generate integration/E2E tests for full-stack workflow verification"
+    belongs_here:
+      - "End-to-end scenario testing across multiple components"
+      - "File system integration (tempfile, workspace fixtures)"
+      - "External service integration (mocked GitHub, git)"
+      - "Async workflow testing (pytest-asyncio)"
+      - "Multi-component orchestration tests"
+    does_not_belong:
+      - "Unit tests for individual functions → test_unit.py"
+      - "Pure business logic testing without I/O → test_unit.py"
+      - "Production code → worker.py, dto.py, service_command.py, etc."
+    tone: "Scenario-driven: test realistic user workflows, not isolated logic"
+    common_pitfalls:
+      - "Testing too many scenarios in one file (split by feature)"
+      - "Not cleaning up temporary files/resources (use fixtures)"
+      - "Missing async markers (@pytest.mark.asyncio)"
+      - "Over-mocking (integration tests should test real interactions)"
+      - "Not testing failure paths and edge cases"
+    workflow_context:
+      - "Integration tests are red-phase (test-first) artifacts"
+      - "Write integration tests after design defines workflows"
+      - "Tests should fail initially (TDD red phase)"
+    related_phases:
+      before: "design.md (defines integration scenarios and workflows)"
+      after: "worker.py or tool.py (implement to make tests pass - green phase)"
+#}
+{% extends "tier2_base_python.jinja2" %}
+
+{# Import tier3 pattern templates for DRY composition #}
+{% import "tier3_pattern_python_pytest.jinja2" as pytest_p %}
+{% import "tier3_pattern_python_test_structure.jinja2" as structure_p %}
+{% import "tier3_pattern_python_async.jinja2" as async_p %}
+
+{# Module docstring with scenario-based documentation #}
+{% block module_docstring %}
+"""
+Integration tests for {{ test_scenario }}.
+
+{{ test_description | default('E2E scenario testing for ' ~ test_scenario ~ '.') }}
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pytest-asyncio, tempfile{% if managers_needed %}, {{ managers_needed | join(', ') }}{% endif %}]
+@responsibilities:
+    - Test end-to-end {{ test_scenario }}
+    - Verify full-stack integration
+    - Validate file system interactions
+"""
+{% endblock %}
+
+{# Override imports_section for integration-specific imports #}
+{% block imports_section %}
+# Standard library
+import tempfile
+{% if workspace_fixture | default(True) %}
+import shutil
+{% endif %}
+{{ async_p.pattern_async_imports() | trim }}
+
+# Third-party
+{{ pytest_p.pattern_pytest_imports() | trim }}
+
+# Project modules
+{% if managers_needed %}
+{% for manager in managers_needed %}
+from {{ manager.split('.')[-1] | lower if '.' in manager else 'mcp_server.managers' }} import {{ manager }}
+{% endfor %}
+{% endif %}
+
+{% if workspace_fixture | default(True) %}
+# Test Fixtures
+
+@pytest.fixture
+def temp_workspace(tmp_path):
+    """Create temporary workspace for integration testing."""
+    workspace = tmp_path / "test_workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+
+    yield workspace
+
+    # Cleanup
+    if workspace.exists():
+        shutil.rmtree(workspace)
+{% endif %}
+{% endblock %}
+
+{# Override class_structure block for scenario-based test class #}
+{% block class_structure %}
+
+class {{ test_class_name }}:
+    """Integration test suite for {{ test_scenario }}."""
+
+    {% if test_methods %}
+    {% for method in test_methods %}
+    {% if method.markers %}
+    {% for marker in method.markers %}
+    @pytest.mark.{{ marker }}
+    {% endfor %}
+    {% elif method.async %}
+    @pytest.mark.asyncio
+    {% endif %}
+{% if method.async %}    async def {{ method.name }}{% else %}    def {{ method.name }}{% endif %}(
+        self{% if method.fixtures %},
+        {{ method.fixtures | join(',\n        ') }}{% endif %}{% if workspace_fixture | default(True) and 'temp_workspace' not in (method.fixtures or []) %},
+        temp_workspace{% endif %}
+    ){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
+        """{{ method.description | default('Test ' ~ method.name.replace('test_', '').replace('_', ' ')) }}."""
+        {{ structure_p.pattern_aaa_comment("Arrange") | trim }}
+        {% if method.arrange %}
+        {{ method.arrange | indent(8) }}
+        {% else %}
+        # TODO: Set up integration test scenario
+        {% endif %}
+
+        {{ structure_p.pattern_aaa_comment("Act") | trim }}
+        {% if method.act %}
+        {{ method.act | indent(8) }}
+        {% else %}
+        # TODO: Execute full-stack operation
+        {% endif %}
+
+        {{ structure_p.pattern_aaa_comment("Assert") | trim }}
+        {% if method.assertions %}
+        {{ method.assertions | indent(8) }}
+        {% else %}
+        # TODO: Validate end-to-end behavior
+        assert True  # Replace with actual verifications
+        {% endif -%}
+
+    {%- endfor %}
+    {% else %}
+    @pytest.mark.asyncio
+    async def test_integration_placeholder(self, temp_workspace):
+        """Placeholder integration test - replace with actual scenario."""
+        {{ structure_p.pattern_aaa_comment("Arrange") | trim }}
+        test_file = temp_workspace / "test_output.txt"
+
+        {{ structure_p.pattern_aaa_comment("Act") | trim }}
+        test_file.write_text("Integration test placeholder")
+
+        {{ structure_p.pattern_aaa_comment("Assert") | trim }}
+        assert test_file.exists()
+        assert test_file.read_text() == "Integration test placeholder"
+    {% endif %}
+{%- endblock -%}

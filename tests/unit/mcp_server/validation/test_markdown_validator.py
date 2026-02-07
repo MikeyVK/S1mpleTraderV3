@@ -12,7 +12,7 @@ Tests according to TDD principles with comprehensive coverage.
 
 # Standard library
 import textwrap
-from typing import Generator
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 # Third-party

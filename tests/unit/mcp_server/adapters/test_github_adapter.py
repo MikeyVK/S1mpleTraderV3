@@ -1,11 +1,13 @@
 """Unit tests for GitHubAdapter."""
-import pytest
+from datetime import date
 from unittest.mock import MagicMock, patch
-from datetime import datetime, date
+
+import pytest
+from github import GithubException
 
 from mcp_server.adapters.github_adapter import GitHubAdapter
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
-from github import GithubException
+
 
 @pytest.fixture
 def mock_github_client():
@@ -34,7 +36,7 @@ def test_init_no_token():
 def test_repo_property(adapter, mock_github_client):
     mock_repo = MagicMock()
     adapter.client.get_repo.return_value = mock_repo
-    
+
     assert adapter.repo == mock_repo
     adapter.client.get_repo.assert_called_once_with("test-owner/test-repo")
 
@@ -46,7 +48,7 @@ def test_repo_property_error(adapter):
 def test_get_issue(adapter):
     mock_issue = MagicMock()
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
-    
+
     assert adapter.get_issue(1) == mock_issue
     adapter.repo.get_issue.assert_called_once_with(1)
 
@@ -58,9 +60,9 @@ def test_get_issue_not_found(adapter):
 def test_create_issue(adapter):
     mock_issue = MagicMock()
     adapter.client.get_repo.return_value.create_issue.return_value = mock_issue
-    
+
     result = adapter.create_issue("Title", "Body", labels=["bug"], assignees=["user"])
-    
+
     assert result == mock_issue
     adapter.repo.create_issue.assert_called_once_with(
         title="Title", body="Body", labels=["bug"], assignees=["user"]
@@ -69,24 +71,24 @@ def test_create_issue(adapter):
 def test_update_issue(adapter):
     mock_issue = MagicMock()
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
-    
+
     adapter.update_issue(1, title="New Title", state="closed")
-    
+
     mock_issue.edit.assert_called_once_with(title="New Title", state="closed")
 
 def test_list_issues(adapter):
     mock_issues = [MagicMock(), MagicMock()]
     adapter.client.get_repo.return_value.get_issues.return_value = mock_issues
-    
+
     assert adapter.list_issues(state="closed") == mock_issues
     adapter.repo.get_issues.assert_called_once_with(state="closed")
 
 def test_create_pr(adapter):
     mock_pr = MagicMock()
     adapter.client.get_repo.return_value.create_pull.return_value = mock_pr
-    
+
     result = adapter.create_pr("Title", "Body", "feature", "main", True)
-    
+
     assert result == mock_pr
     adapter.repo.create_pull.assert_called_once_with(
         title="Title", body="Body", head="feature", base="main", draft=True
@@ -95,7 +97,7 @@ def test_create_pr(adapter):
 def test_create_label(adapter):
     mock_label = MagicMock()
     adapter.client.get_repo.return_value.create_label.return_value = mock_label
-    
+
     result = adapter.create_label("bug", "ff0000", "desc")
     assert result == mock_label
     adapter.repo.create_label.assert_called_once_with(
@@ -110,7 +112,7 @@ def test_create_label_exists(adapter):
 def test_create_milestone(adapter):
     mock_milestone = MagicMock()
     adapter.client.get_repo.return_value.create_milestone.return_value = mock_milestone
-    
+
     # Test with valid date string
     result = adapter.create_milestone("v1", due_on="2025-12-31T00:00:00Z")
     assert result == mock_milestone
@@ -129,12 +131,12 @@ def test_merge_pr_success(adapter):
     mock_merge_status.merged = True
     mock_merge_status.sha = "abc1234"
     mock_merge_status.message = "Merged"
-    
+
     mock_pr.merge.return_value = mock_merge_status
     adapter.client.get_repo.return_value.get_pull.return_value = mock_pr
-    
+
     result = adapter.merge_pr(1, "Merge commit", "squash")
-    
+
     assert result["merged"] is True
     assert result["sha"] == "abc1234"
     mock_pr.merge.assert_called_once_with(commit_message="Merge commit", merge_method="squash")
@@ -144,10 +146,10 @@ def test_merge_pr_failed(adapter):
     mock_merge_status = MagicMock()
     mock_merge_status.merged = False
     mock_merge_status.message = "Conflict"
-    
+
     mock_pr.merge.return_value = mock_merge_status
     adapter.client.get_repo.return_value.get_pull.return_value = mock_pr
-    
+
     with pytest.raises(ExecutionError, match="Merge failed: Conflict"):
         adapter.merge_pr(1)
 
@@ -228,9 +230,9 @@ def test_create_issue_with_labels_assignees_milestone(adapter):
     mock_milestone = MagicMock()
     adapter.client.get_repo.return_value.create_issue.return_value = mock_issue
     adapter.client.get_repo.return_value.get_milestone.return_value = mock_milestone
-    
+
     adapter.create_issue("Title", "Body", labels=["L1"], assignees=["U1"], milestone_number=1)
-    
+
     adapter.repo.create_issue.assert_called_once()
     kwargs = adapter.repo.create_issue.call_args[1]
     assert kwargs["labels"] == ["L1"]
@@ -252,11 +254,11 @@ def test_update_issue_all_fields(adapter):
     mock_milestone = MagicMock()
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
     adapter.client.get_repo.return_value.get_milestone.return_value = mock_milestone
-    
+
     adapter.update_issue(
         1, title="T", body="B", state="open", labels=["L"], milestone_number=2, assignees=["U"]
     )
-    
+
     mock_issue.edit.assert_called_once()
     kwargs = mock_issue.edit.call_args[1]
     assert kwargs["title"] == "T"
@@ -326,7 +328,7 @@ def test_remove_labels_ignore_missing(adapter):
     mock_issue = MagicMock()
     mock_issue.remove_from_labels.side_effect = GithubException(404, "Not Found")
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
-    
+
     # Should not raise
     adapter.remove_labels(1, ["missing"])
 

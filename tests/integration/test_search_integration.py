@@ -2,8 +2,8 @@
 
 import pytest
 
-from mcp_server.services.search_service import SearchService
 from mcp_server.services.document_indexer import DocumentIndexer
+from mcp_server.services.search_service import SearchService
 
 
 class TestSearchServiceIntegration:

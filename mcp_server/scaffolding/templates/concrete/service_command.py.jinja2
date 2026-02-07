@@ -1,0 +1,158 @@
+{#- concrete/service_command.py.jinja2 - Service Command Pattern -#}
+{#- Version: 1.3.1 -#}
+{#- Purpose: Generate service command classes (execute pattern) -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{%- import "tier3_pattern_python_async.jinja2" as p_async -%}
+{%- import "tier3_pattern_python_error.jinja2" as errors -%}
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
+{%- import "tier3_pattern_python_translator.jinja2" as translator -%}
+{%- import "tier3_pattern_python_di.jinja2" as di -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Command pattern with execute() method"
+      - "Result/Error return types"
+      - "Uses translation keys (no hardcoded UX strings)"
+  extends: tier2_base_python.jinja2
+  purpose: "Concrete template for service command pattern"
+  version: "1.3.1"
+  changelog:
+    - version: "1.3.1"
+      date: "2026-02-01"
+      changes: "Fix module docstring, class naming, and error message key discipline"
+    - version: "1.3.0"
+      date: "2026-02-01"
+      changes: "Refactor service command to compose Tier 3 pattern macros and set enforcement to GUIDELINE"
+    - version: "1.2.0"
+      date: "2026-01-26"
+      changes: "Changed enforcement from REQUIRED to ARCHITECTURAL (code patterns)"
+    - version: "1.1.0"
+      date: "2026-01-25"
+      changes: "Initial version"
+  introspection:
+    template_id: service_command
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - name
+      optional:
+        - description
+        - layer
+        - responsibilities
+        - parameters
+        - return_type
+  agent_hints:
+    phase: "green"
+    purpose: "Generate service command classes for orchestrating business operations"
+    belongs_here:
+      - "Command pattern with execute() method"
+      - "Orchestration of multiple workers or DTOs"
+      - "Business logic encapsulation"
+      - "Service-layer operations (not single-worker tasks)"
+      - "Translator usage for user-facing error messages"
+    does_not_belong:
+      - "Stateful lifecycle components → worker.py"
+      - "Simple data structures → dto.py"
+      - "Pure functions without dependencies → generic.py"
+      - "MCP server tools → tool.py"
+    tone: "Service-oriented: clear responsibilities, dependency injection, error handling"
+    common_pitfalls:
+      - "Mixing service commands with workers (workers have lifecycle, commands don't)"
+      - "Hardcoding user-facing strings (use Translator keys)"
+      - "Not using Result/Error types for operation outcomes"
+      - "Missing async support when orchestrating async workers"
+      - "Over-complicating with unnecessary abstraction layers"
+    workflow_context:
+      - "Service commands are green-phase (implementation) artifacts"
+      - "Design phase should define command responsibilities clearly"
+      - "Commands coordinate workers but don't replace them"
+    related_phases:
+      before: "design.md (defines service operations and orchestration)"
+      after: "test_unit.py (tests command execution paths and error handling)"
+-#}
+
+{% block module_docstring %}
+"""{{ name }} service module.
+
+{{ description | default(name + ' service command.') }}
+
+@layer: {{ layer | default('Backend (Services)') }}
+@dependencies: [backend.utils.translator]
+@responsibilities:
+{% if responsibilities %}
+{% for responsibility in responsibilities %}
+    - {{ responsibility }}
+{% endfor %}
+{% else %}
+    - Execute service command logic
+{% endif %}
+"""
+{% endblock %}
+
+{% block imports_section %}
+# Standard library
+from typing import Any
+{{ p_logging.pattern_logging_imports() }}
+{{ p_async.pattern_async_imports(include_types=False) }}
+# Third-party
+
+# Project modules
+{{ di.pattern_di_imports() }}
+{{ translator.pattern_translator_imports() }}
+
+{% endblock %}
+
+{% block class_structure %}
+{{ translator.pattern_translator_key_guideline() }}
+
+{{ p_logging.pattern_logging_get_logger() }}
+
+__all__ = ["{{ name }}Service"]
+
+
+class {{ name }}Service:
+{% block class_docstring %}
+    """{{ description | default(name + ' service command.') }}
+
+    Service command following execute pattern.
+    """
+{% endblock %}
+
+    def __init__(self, service_translator: Translator | None = None) -> None:
+        self._name = "{{ name }}Service"
+        self._translator = service_translator
+
+{% block execute_method %}
+
+    async def execute(self{% if parameters %}{% for param in parameters %}, {{ param.name }}: {{ param.type }}{% endfor %}{% endif %}, **capabilities: Any){% if return_type %} -> {{ return_type }}{% else %} -> Any{% endif %}:
+        """Execute service command.
+
+        Args:
+{% if parameters %}
+{% for param in parameters %}
+            {{ param.name }}: {{ param.description | default('Parameter') }}
+{% endfor %}
+{% endif %}
+            **capabilities: Optional capability DI (e.g., translator)
+        Returns:
+            {{ return_type | default('Any') }}
+        """
+        try:
+            if self._translator is None:
+{{ di.pattern_di_require_capability(cap_key="translator", worker_name_attr="_name", details="required") | indent(16, true) }}
+{{ di.pattern_di_set_capability(attr_name="_translator", cap_key="translator") | indent(16, true) }}
+
+            # TODO: Implement service logic
+            await asyncio.sleep(0)  # async placeholder
+            pass
+        except Exception:  # noqa: BLE001
+            {{ p_logging.pattern_logging_call(level="exception", message_key="service.execute.failed") }}
+            {{ errors.pattern_error_raise(exc_class="RuntimeError", worker_name_attr="_name", message="service.execute.failed") }}
+{% endblock %}
+{% endblock %}

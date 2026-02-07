@@ -12,8 +12,8 @@ Tests according to TDD principles with comprehensive coverage.
 
 # Standard library
 import typing  # noqa: F401
-from unittest.mock import MagicMock
 from datetime import datetime
+from unittest.mock import MagicMock
 
 # Third-party
 import pytest

@@ -211,9 +211,66 @@ force_phase_transition(
 
 **Common artifact types:**
 - **Code:** dto, worker, adapter, interface, tool, resource, schema, service
-- **Docs:** design, architecture, tracking, generic
+- **Docs:** design, architecture, tracking, generic, research, planning
 
 **Registry:** `.st3/artifacts.yaml` defines all artifact types and their templates.
+
+**Template System (Issue #72 - Multi-Tier Architecture):**
+- **5-tier Jinja2 hierarchy:** Tier 0 (universal SCAFFOLD) → Tier 1 (CODE/DOCUMENT/CONFIG format) → Tier 2 (Python/Markdown/YAML language) → Tier 3 (component/data/tool specialization) → Concrete (worker.py, research.md)
+- **Inheritance-aware introspection:** `introspect_template(name, with_inheritance=True)` returns complete variable schema (all tiers)
+- **SCAFFOLD metadata:** All scaffolded files include 1-line header: `# SCAFFOLD: {type}:{hash} | {timestamp} | {path}`
+- **Template registry:** `.st3/template_registry.json` maps version hashes to tier chains
+- **Validation integration:** All generated code passes Issue #52 validation (TEMPLATE_METADATA enforcement)
+
+**Context Requirements:**
+- **Code artifacts:** Variables from all tiers (concrete + Tier 3 + Tier 2 + Tier 1 + Tier 0)
+- **Document artifacts:** Standard sections (purpose, scope, related_docs) + artifact-specific fields
+- **Missing variables:** Scaffolding will fail with clear error listing required fields
+- **System variables:** Auto-populated (timestamp, version_hash, output_path, artifact_type)
+
+**Example:**
+```python
+# Worker scaffolding (Python CODE artifact)
+scaffold_artifact(
+    artifact_type="worker",
+    name="ProcessWorker",
+    context={
+        # Tier 4 (concrete): worker-specific
+        "worker_name": "ProcessWorker",
+        "worker_description": "Processes incoming events",
+        "input_type": "EventDTO",
+        "output_type": "ResultDTO",
+        
+        # Tier 3 (component): lifecycle pattern (if IWorkerLifecycle validated)
+        "config_type": "WorkerConfig",
+        "uses_async": True,
+        
+        # Tier 2 (language): Python syntax (often inferred from tier 3)
+        # Tier 1 (format): CODE structure (auto-provided by template)
+        # Tier 0 (universal): SCAFFOLD metadata (auto-generated)
+    }
+)
+
+# Research doc scaffolding (Markdown DOCUMENT artifact)
+scaffold_artifact(
+    artifact_type="research",
+    name="multi-tier-templates",
+    context={
+        # Document-specific
+        "title": "Issue #72 Multi-Tier Template Research",
+        "purpose": "Investigate template hierarchy to eliminate DRY violations",
+        "scope_in": "5-tier architecture, inheritance introspection, registry format",
+        "scope_out": "Implementation details, performance optimization",
+        "prerequisites": ["Research questions defined", "MVP validated"],
+        "related_docs": ["planning.md", "design.md"],
+        
+        # Optional: Custom sections
+        "sections": ["Background", "Alternatives", "Decision Rationale"],
+    }
+)
+```
+
+**Design Reference:** [docs/development/issue72/design.md](docs/development/issue72/design.md) - Complete 5-tier architecture specification
 
 ### Quality & Testing
 | Action | ✅ USE THIS | ❌ NEVER USE |
@@ -234,7 +291,7 @@ force_phase_transition(
 ### MCP Server Management
 | Action | ✅ USE THIS | ❌ NEVER USE | Notes |
 |--------|-------------|------------|-------|
-| Hot-reload server | `restart_server()` | Manual process kill | **Use after code changes to MCP tools/server.** Zero client downtime (~2.3s). See [reference](docs/reference/mcp/proxy_restart.md) |
+| Hot-reload server | `restart_server()` | Manual process kill | **Use after code changes to MCP tools/server. ⏳ WAIT 3 SECONDS after restart before calling next tool.** Zero client downtime. See [reference](docs/reference/mcp/proxy_restart.md) |
 
 ### File Editing
 | Action | ✅ USE THIS | ❌ NEVER USE |
@@ -243,6 +300,50 @@ force_phase_transition(
 | Create generic file | `create_file(path, content)` | VS Code create_file (deprecated) |
 
 > **📌 Remember:** The ST3 MCP tools use Jinja2 templates that ensure consistency, correct imports, proper structure, and automatic test file generation. Manual file creation bypasses all these benefits.
+
+---
+
+## 🚫 run_in_terminal Restrictions (CRITICAL)
+
+**`run_in_terminal` is ONLY allowed for:**
+
+✅ **Permitted (rare cases):**
+- Development servers where no MCP tool exists (e.g., `npm run dev`, `python -m http.server`)
+- Build commands explicitly requested by user
+- Smoke tests / exploratory commands approved by user
+- Python package installations via pip (when not using install_python_packages tool)
+
+❌ **FORBIDDEN (use MCP tool instead):**
+- **File operations** → use `create_file` / `safe_edit_file`
+- **Git operations** → use `git_*` tools (see matrix above)
+- **Test execution** → use `run_tests` tool
+- **File copy/move/delete** → use file editing tools or ask user
+- **Quality gates** → use `run_quality_gates` tool
+- **Python execution** → use appropriate MCP tool or ask user
+
+**Default rule: If unsure, ask yourself "Is there an MCP tool for this?" If yes → use it. If no → ask user permission first.**
+
+**This restriction prevents bypassing:**
+- Template validation
+- SCAFFOLD metadata tracking
+- Quality gate enforcement
+- Audit trail in MCP workflow
+- Provenance tracking in template registry
+
+**Common mistakes to avoid:**
+```powershell
+# ❌ WRONG
+run_in_terminal("Set-Content file.py ...")
+run_in_terminal("git add .")
+run_in_terminal("pytest tests/")
+run_in_terminal("Copy-Item source.py dest.py")
+
+# ✅ CORRECT
+create_file(path="file.py", content=...)
+git_add_or_commit(phase="red", message="...")
+run_tests(path="tests/")
+# For copy: read original, create new with create_file
+```
 
 ---
 

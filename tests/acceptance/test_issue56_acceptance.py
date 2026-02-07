@@ -1,4 +1,3 @@
-# pylint: disable=redefined-outer-name  # pytest fixtures
 """
 @module: tests.acceptance.test_issue56_acceptance
 @layer: Test Infrastructure
@@ -14,8 +13,8 @@ from pathlib import Path
 import pytest
 
 from mcp_server.managers.artifact_manager import ArtifactManager
-from mcp_server.tools.scaffold_artifact import ScaffoldArtifactInput, ScaffoldArtifactTool
 from mcp_server.tools.discovery_tools import SearchDocumentationInput, SearchDocumentationTool
+from mcp_server.tools.scaffold_artifact import ScaffoldArtifactInput, ScaffoldArtifactTool
 
 
 @pytest.mark.asyncio

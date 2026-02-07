@@ -12,7 +12,7 @@ StrategyPlanner when it makes a decision based on the risk.
 """
 
 # Standard Library Imports
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 # Third-Party Imports
@@ -30,7 +30,7 @@ class TestRiskCreation:
     def test_create_minimal_risk(self):
         """Test creating risk with required fields only (no causality!)."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="MAX_DRAWDOWN_APPROACHING",
             severity=Decimal("0.75")
         )
@@ -47,7 +47,7 @@ class TestRiskCreation:
     def test_create_risk_with_affected_symbol(self):
         """Test creating risk with affected symbol specified."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="UNUSUAL_VOLATILITY",
             severity=Decimal("0.60"),
             affected_symbol="BTC_EUR"
@@ -58,7 +58,7 @@ class TestRiskCreation:
     def test_risk_id_auto_generated(self):
         """Test that risk_id is auto-generated if not provided."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="HEALTH_DEGRADED",
             severity=Decimal("0.50")
         )
@@ -71,7 +71,7 @@ class TestRiskCreation:
         custom_id = generate_risk_id()
         risk = Risk(
             risk_id=custom_id,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="EMERGENCY_HALT",
             severity=Decimal("1.0")
         )
@@ -85,7 +85,7 @@ class TestRiskPreCausality:
     def test_risk_has_no_causality_field(self):
         """Risk should NOT have a causality field - it's pre-causality."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="DRAWDOWN_BREACH",
             severity=Decimal("0.80")
         )
@@ -96,7 +96,7 @@ class TestRiskPreCausality:
     def test_risk_creation_without_causality_succeeds(self):
         """Should create Risk without any causality parameter."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="POSITION_RISK",
             severity=Decimal("0.65")
         )
@@ -111,7 +111,7 @@ class TestRiskIDValidation:
         """Test that RSK_ prefix with military datetime is valid."""
         risk = Risk(
             risk_id=generate_risk_id(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="TEST",
             severity=Decimal("0.5")
         )
@@ -124,7 +124,7 @@ class TestRiskIDValidation:
         with pytest.raises(ValidationError) as exc_info:
             Risk(
                 risk_id="OPP_550e8400-e29b-41d4-a716-446655440000",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="TEST",
                 severity=Decimal("0.5")
             )
@@ -144,12 +144,12 @@ class TestRiskTimestampValidation:
             severity=Decimal("0.5")
         )
 
-        expected_utc = naive_dt.replace(tzinfo=timezone.utc)
+        expected_utc = naive_dt.replace(tzinfo=UTC)
         assert risk.timestamp == expected_utc
 
     def test_aware_datetime_preserved(self):
         """Test that timezone-aware datetime is preserved."""
-        aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=UTC)
         risk = Risk(
             timestamp=aware_dt,
             risk_type="TEST",
@@ -174,7 +174,7 @@ class TestRiskTypeValidation:
 
         for risk_type in valid_types:
             risk = Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type=risk_type,
                 severity=Decimal("0.5")
             )
@@ -184,7 +184,7 @@ class TestRiskTypeValidation:
         """Test that risk_type < 3 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="AB",
                 severity=Decimal("0.5")
             )
@@ -195,7 +195,7 @@ class TestRiskTypeValidation:
         """Test that risk_type > 25 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="A" * 26,
                 severity=Decimal("0.5")
             )
@@ -206,7 +206,7 @@ class TestRiskTypeValidation:
         """Test that lowercase risk_type is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="max_drawdown",
                 severity=Decimal("0.5")
             )
@@ -224,7 +224,7 @@ class TestRiskTypeValidation:
         for reserved_type in reserved_types:
             with pytest.raises(ValidationError) as exc_info:
                 Risk(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     risk_type=reserved_type,
                     severity=Decimal("0.5")
                 )
@@ -238,7 +238,7 @@ class TestRiskSeverityValidation:
     def test_severity_is_decimal_type(self):
         """Test that severity is stored as Decimal for precision."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="TEST",
             severity=Decimal("0.75")
         )
@@ -249,7 +249,7 @@ class TestRiskSeverityValidation:
     def test_severity_float_converted_to_decimal(self):
         """Test that float input is converted to Decimal."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="TEST",
             severity=0.85
         )
@@ -268,7 +268,7 @@ class TestRiskSeverityValidation:
 
         for sev in valid_values:
             risk = Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="TEST",
                 severity=sev
             )
@@ -278,7 +278,7 @@ class TestRiskSeverityValidation:
         """Test that severity < 0.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="TEST",
                 severity=Decimal("-0.1")
             )
@@ -289,7 +289,7 @@ class TestRiskSeverityValidation:
         """Test that severity > 1.0 is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="TEST",
                 severity=Decimal("1.1")
             )
@@ -303,7 +303,7 @@ class TestRiskAffectedSymbolValidation:
     def test_system_wide_risk_has_no_symbol(self):
         """Test that system-wide risks can have no affected_symbol."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="EXCHANGE_DOWNTIME",
             severity=Decimal("0.9"),
             affected_symbol=None
@@ -322,7 +322,7 @@ class TestRiskAffectedSymbolValidation:
 
         for symbol in valid_symbols:
             risk = Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="UNUSUAL_VOLATILITY",
                 severity=Decimal("0.6"),
                 affected_symbol=symbol
@@ -333,7 +333,7 @@ class TestRiskAffectedSymbolValidation:
         """Test that too short symbol is rejected (min 3 chars)."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="TEST",
                 severity=Decimal("0.5"),
                 affected_symbol="AB"
@@ -353,7 +353,7 @@ class TestRiskAffectedSymbolValidation:
         for invalid_symbol in invalid_symbols:
             with pytest.raises(ValidationError):
                 Risk(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     risk_type="TEST",
                     severity=Decimal("0.5"),
                     affected_symbol=invalid_symbol
@@ -366,7 +366,7 @@ class TestRiskImmutability:
     def test_risk_is_frozen(self):
         """Test that Risk is immutable after creation."""
         risk = Risk(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             risk_type="TEST",
             severity=Decimal("0.5")
         )
@@ -378,7 +378,7 @@ class TestRiskImmutability:
         """Test that extra fields are forbidden."""
         with pytest.raises(ValidationError) as exc_info:
             Risk(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 risk_type="TEST",
                 severity=Decimal("0.5"),
                 extra_field="not allowed"  # type: ignore
@@ -393,7 +393,7 @@ class TestRiskSerialization:
     def test_risk_to_json(self):
         """Test Risk serializes to JSON correctly."""
         risk = Risk(
-            timestamp=datetime(2025, 12, 1, 14, 30, 0, tzinfo=timezone.utc),
+            timestamp=datetime(2025, 12, 1, 14, 30, 0, tzinfo=UTC),
             risk_type="STOP_LOSS_HIT",
             severity=Decimal("0.90"),
             affected_symbol="BTC_USDT"

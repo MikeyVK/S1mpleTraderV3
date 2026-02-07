@@ -1,0 +1,29 @@
+{% extends "tier1_base_code.jinja2" %}
+
+{#- TIER 2: Python Language Base -#}
+{#- Adds Python-specific syntax and conventions -#}
+
+{%- block code_imports %}
+from typing import {{ typing_imports|default("Any") }}
+
+{%- if custom_imports %}
+{%- for import_line in custom_imports %}
+{{ import_line }}
+{%- endfor %}
+{%- endif %}
+{%- endblock %}
+
+{%- block code_body %}
+
+{%- block python_classes -%}
+{#- Python class definitions -#}
+{%- endblock %}
+
+{%- block python_functions -%}
+{#- Python function definitions -#}
+{%- endblock %}
+
+{%- block python_main -%}
+{#- Python main block (if needed) -#}
+{%- endblock %}
+{%- endblock -%}

@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.tools.issue_tools import CreateIssueTool, CreateIssueInput
+from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool
 
 
 @pytest.fixture

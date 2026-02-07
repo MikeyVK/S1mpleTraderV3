@@ -73,7 +73,7 @@ class ValidationError(MCPError):
         schema: Any = None
     ) -> None:
         """Initialize the validation error.
-        
+
         Args:
             message: Error message describing the validation failure
             hints: Optional list of suggestions to fix the error
@@ -86,10 +86,10 @@ class ValidationError(MCPError):
 
     def to_resource_dict(self, artifact_type: str) -> dict[str, Any]:
         """Generate structured resource data for ToolResult.
-        
+
         Used by MCP tools to add resource content item with complete
         schema and validation details for agent consumption.
-        
+
         Args:
             artifact_type: Artifact type identifier (e.g., "dto")
 
@@ -114,7 +114,7 @@ class ValidationError(MCPError):
 
 class MetadataParseError(ValidationError):
     """Raised when scaffold metadata parsing fails.
-    
+
     Subclass of ValidationError for metadata-specific validation errors.
     Used by ScaffoldMetadataParser when metadata format is invalid.
     """
@@ -126,7 +126,7 @@ class MetadataParseError(ValidationError):
         hints: list[str] | None = None
     ) -> None:
         """Initialize the metadata parse error.
-        
+
         Args:
             message: Error message describing the parsing problem
             file_path: Optional path to file with invalid metadata

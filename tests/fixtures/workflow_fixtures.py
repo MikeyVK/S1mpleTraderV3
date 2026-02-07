@@ -8,6 +8,7 @@
 """
 
 import pytest
+
 from mcp_server.config.workflows import WorkflowConfig
 
 
@@ -21,7 +22,7 @@ def workflow_config():
 def workflow_phases(workflow_config: WorkflowConfig) -> list[str]:
     """
     All unique phases across all workflows.
-    
+
     Returns list like: ["research", "planning", "design", "tdd", "integration", "documentation", "coordination"]
     """
     all_phases = set()
@@ -34,7 +35,7 @@ def workflow_phases(workflow_config: WorkflowConfig) -> list[str]:
 def feature_phases(workflow_config: WorkflowConfig) -> list[str]:
     """
     Phases for feature workflow.
-    
+
     Returns: ["research", "planning", "design", "tdd", "integration", "documentation"]
     """
     return workflow_config.workflows["feature"].phases
@@ -44,7 +45,7 @@ def feature_phases(workflow_config: WorkflowConfig) -> list[str]:
 def bug_phases(workflow_config: WorkflowConfig) -> list[str]:
     """
     Phases for bug workflow.
-    
+
     Returns: ["research", "planning", "design", "tdd", "integration", "documentation"]
     """
     return workflow_config.workflows["bug"].phases
@@ -54,7 +55,7 @@ def bug_phases(workflow_config: WorkflowConfig) -> list[str]:
 def hotfix_phases(workflow_config: WorkflowConfig) -> list[str]:
     """
     Phases for hotfix workflow.
-    
+
     Returns: ["tdd", "integration", "documentation"]
     """
     return workflow_config.workflows["hotfix"].phases

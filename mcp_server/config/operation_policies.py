@@ -8,7 +8,6 @@ Cross-references: workflows.yaml (validates allowed_phases exist)
 from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
-
 import fnmatch
 from pathlib import Path
 from typing import ClassVar
@@ -80,10 +79,7 @@ class OperationPolicy(BaseModel):
         Returns:
             True if path is blocked, False otherwise
         """
-        for pattern in self.blocked_patterns:
-            if fnmatch.fnmatch(path, pattern):
-                return True
-        return False
+        return any(fnmatch.fnmatch(path, pattern) for pattern in self.blocked_patterns)
 
     def is_extension_allowed(self, path: str) -> bool:
         """Check if file extension is allowed.
@@ -244,7 +240,7 @@ class OperationPoliciesConfig(BaseModel):
             )
         return self.operations[operation_id]
 
-    def get_available_operations(self) -> List[str]:
+    def get_available_operations(self) -> list[str]:
         """Get list of all configured operation IDs.
 
         Returns:

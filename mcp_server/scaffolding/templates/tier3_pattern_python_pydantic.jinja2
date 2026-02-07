@@ -1,0 +1,52 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_pydantic
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  purpose: "Pydantic v2 patterns for DTO/schema definitions"
+  exports:
+    - pattern_pydantic_imports
+    - pattern_pydantic_base_model
+    - pattern_pydantic_config
+    - pattern_pydantic_field
+    - pattern_pydantic_validator
+#}
+
+{#-
+Tier 3 Pattern: Pydantic v2
+- Macro library only: no extends, no blocks
+- Keep output composable via {% import %}
+- Backend-aligned DTO style uses `model_config = {...}` dict
+  (see backend/dtos/**)
+-#}
+
+{% macro pattern_pydantic_imports(include_validation_error=false, include_field_validator=true) -%}
+from pydantic import BaseModel, Field{% if include_field_validator %}, field_validator{% endif %}{% if include_validation_error %}, ValidationError{% endif %}
+{%- endmacro %}
+
+{% macro pattern_pydantic_base_model(class_name="MyModel") -%}
+class {{ class_name }}(BaseModel):
+    """{{ class_name }} DTO."""
+{%- endmacro %}
+
+{% macro pattern_pydantic_config(extra="forbid", frozen=true) -%}
+    model_config = {
+        "frozen": {{ 'True' if frozen else 'False' }},
+        "extra": "{{ extra }}",
+    }
+{%- endmacro %}
+
+{% macro pattern_pydantic_field(name, type_, description, default="...", default_factory=None, extra_args="") -%}
+    {{ name }}: {{ type_ }} = Field(
+        {% if default_factory %}default_factory={{ default_factory }},{% else %}{{ default }},{% endif %}
+        {% if extra_args %}{{ extra_args }},{% endif %}
+        description="{{ description }}"
+    )
+{%- endmacro %}
+
+{% macro pattern_pydantic_validator(field_name, signature="v: str", return_type="str", mode=None, method_name=None) -%}
+    @field_validator('{{ field_name }}'{% if mode %}, mode='{{ mode }}'{% endif %})
+    @classmethod
+    def {{ method_name if method_name else 'validate_' ~ field_name }}(cls, {{ signature }}) -> {{ return_type }}:
+        return v
+{%- endmacro %}

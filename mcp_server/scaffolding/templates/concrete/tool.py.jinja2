@@ -1,0 +1,114 @@
+{#- concrete/tool.py.jinja2 - MCP Tool (template-based) -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Generate MCP tool classes with consistent structure -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{%- import "tier3_pattern_python_error.jinja2" as errors -%}
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: concrete
+  artifact_type: tool
+  validates:
+    guidelines:
+      - "Tool has a single execute() entrypoint"
+      - "Uses logging and key-based messages"
+  extends: tier2_base_python.jinja2
+  purpose: "Concrete template for MCP tools"
+  version: "1.0.0"
+  introspection:
+    template_id: concrete_tool
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - name
+      optional:
+        - description
+        - layer
+        - responsibilities
+  agent_hints:
+    phase: "green"
+    purpose: "Generate MCP server tool implementations for external integrations"
+    belongs_here:
+      - "MCP tool definitions with execute() entrypoint"
+      - "GitHub, git, file system, or external API wrappers"
+      - "Tool parameter validation and error handling"
+      - "Logging for tool execution tracking"
+      - "Integration with platform services via dependency injection"
+    does_not_belong:
+      - "Platform runtime components → worker.py"
+      - "Business logic or strategy code → worker.py or service_command.py"
+      - "Data structures → dto.py"
+      - "Pure utility functions → generic.py"
+    tone: "Integration-focused: clear parameters, robust error handling, structured logging"
+    common_pitfalls:
+      - "Mixing tool logic with business logic (tools are thin wrappers)"
+      - "Not validating tool parameters properly"
+      - "Missing error handling for external API failures"
+      - "Hardcoding configuration instead of using context"
+      - "Over-complicating tool implementations (keep them simple)"
+    workflow_context:
+      - "Tools are green-phase (implementation) artifacts"
+      - "Define tool signatures and responsibilities in design phase"
+      - "Tools bridge MCP protocol with platform capabilities"
+    related_phases:
+      before: "design.md (defines tool parameters and integration points)"
+      after: "test_integration.py (tests tool execution with mocked external services)"
+-#}
+
+{% block module_docstring %}
+"""{{ name }} tool.
+
+{{ description | default('MCP tool implementation.') }}
+
+@layer: {{ layer | default('MCP (Tools)') }}
+@responsibilities:
+{% if responsibilities %}
+{% for responsibility in responsibilities %}
+    - {{ responsibility }}
+{% endfor %}
+{% else %}
+    - [To be defined]
+{% endif %}
+"""
+{% endblock %}
+
+{% block imports_section %}
+# Standard library
+from typing import Any
+{{ p_logging.pattern_logging_imports() }}
+
+# Third-party
+
+# Project modules
+
+{% endblock %}
+
+{% block class_structure %}
+logger = logging.getLogger(__name__)
+
+
+class {{ name }}:
+    """{{ description | default(name + ' tool.') }}"""
+
+    def __init__(self) -> None:
+        self._name = "{{ name }}"
+
+    async def execute(self, **params: Any) -> Any:
+        """Execute tool operation.
+
+        Args:
+            **params: Tool input parameters
+
+        Returns:
+            Tool result (JSON-serializable)
+        """
+        try:
+            # TODO: Implement tool logic
+            return {}
+        except Exception:  # noqa: BLE001
+            {{ errors.pattern_error_raise(exc_class="RuntimeError", worker_name_attr="_name", message="tool.execute.failed") | indent(12) }}
+{% endblock %}

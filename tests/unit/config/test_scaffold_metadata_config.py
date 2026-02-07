@@ -20,21 +20,23 @@ class TestCommentPattern:
     """Test comment pattern model validation."""
 
     def test_valid_hash_pattern(self):
-        """RED: Hash pattern should validate."""
+        """RED: Hash pattern should validate (2-line format)."""
         pattern = CommentPattern(
             syntax="hash",
             prefix=r"#\s*",
-            metadata_line_regex=r"^#\s*SCAFFOLD:\s*(.+)$"
+            filepath_line_regex=r"^#\s*(.+\.py)$",
+            metadata_line_regex=r"^#\s*template=.+\s+version=.+\s+created=.+\s+updated=.*$"
         )
         assert pattern.syntax == "hash"
         assert pattern.prefix == r"#\s*"
 
     def test_valid_double_slash_pattern(self):
-        """RED: Double-slash pattern should validate."""
+        """RED: Double-slash pattern should validate (2-line format)."""
         pattern = CommentPattern(
             syntax="double_slash",
             prefix=r"//\s*",
-            metadata_line_regex=r"^//\s*SCAFFOLD:\s*(.+)$"
+            filepath_line_regex=r"^//\s*(.+\.ts)$",
+            metadata_line_regex=r"^//\s*template=.+\s+version=.+\s+created=.+\s+updated=.*$"
         )
         assert pattern.syntax == "double_slash"
 
@@ -44,6 +46,7 @@ class TestCommentPattern:
             CommentPattern(
                 syntax="invalid_syntax",  # type: ignore[arg-type]
                 prefix="#",
+                filepath_line_regex="^#.*$",
                 metadata_line_regex="^#.*$"
             )
 
@@ -53,6 +56,7 @@ class TestCommentPattern:
             CommentPattern(
                 syntax="hash",
                 prefix="",
+                filepath_line_regex="^#.*$",
                 metadata_line_regex="^#.*$"
             )
 
@@ -62,6 +66,7 @@ class TestCommentPattern:
             CommentPattern(
                 syntax="hash",
                 prefix="[invalid(regex",  # Unclosed bracket
+                filepath_line_regex="^#.*$",
                 metadata_line_regex="^#.*$"
             )
 
@@ -129,19 +134,21 @@ class TestScaffoldMetadataConfig:
     """Test main configuration model."""
 
     def test_load_from_valid_yaml(self, tmp_path):
-        """RED: Should load valid YAML config."""
+        """RED: Should load valid YAML config (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("""
-version: "1.0"
+version: "2.0"
 
 comment_patterns:
   - syntax: hash
     prefix: "#\\\\s*"
-    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
+    filepath_line_regex: "^#\\\\s*(.+\\\\.py)$"
+    metadata_line_regex: "^#\\\\s*template=.+\\\\s+version=.+\\\\s+created=.+\\\\s+updated=.*$"
 
   - syntax: double_slash
     prefix: "//\\\\s*"
-    metadata_line_regex: "^//\\\\s*SCAFFOLD:\\\\s*(.+)$"
+    filepath_line_regex: "^//\\\\s*(.+\\\\.ts)$"
+    metadata_line_regex: "^//\\\\s*template=.+\\\\s+version=.+\\\\s+created=.+\\\\s+updated=.*$"
 
 metadata_fields:
   - name: template
@@ -149,37 +156,34 @@ metadata_fields:
     required: true
 
   - name: version
-    format_regex: "^\\\\d+\\\\.\\\\d+$"
+    format_regex: "^[0-9a-f]{8}$|^$"
     required: true
 
   - name: created
-    format_regex: "^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}Z$"
+    format_regex: "^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}(:\\\\d{2})?Z$"
     required: true
 
   - name: updated
-    format_regex: "^\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}:\\\\d{2}Z$"
-    required: false
-
-  - name: path
-    format_regex: "^[a-zA-Z0-9_/.-]+$"
+    format_regex: "^(\\\\d{4}-\\\\d{2}-\\\\d{2}T\\\\d{2}:\\\\d{2}(:\\\\d{2})?Z)?$"
     required: false
 """, encoding="utf-8")
 
         config = ScaffoldMetadataConfig.from_file(config_file)
 
         assert len(config.comment_patterns) == 2
-        assert len(config.metadata_fields) == 5
+        assert len(config.metadata_fields) == 4  # No path field anymore
         assert config.comment_patterns[0].syntax == "hash"
         assert config.metadata_fields[0].name == "template"
 
     def test_get_pattern_by_syntax(self, tmp_path):
-        """RED: Should retrieve pattern by syntax."""
+        """RED: Should retrieve pattern by syntax (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
     prefix: "#\\\\s*"
-    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
+    filepath_line_regex: "^#\\\\s*(.+\\\\.py)$"
+    metadata_line_regex: "^#\\\\s*template=.+\\\\s+version=.+\\\\s+created=.+\\\\s+updated=.*$"
 
 metadata_fields:
   - name: template
@@ -194,13 +198,14 @@ metadata_fields:
         assert pattern.syntax == "hash"
 
     def test_get_pattern_not_found_returns_none(self, tmp_path):
-        """RED: Should return None for unknown syntax."""
+        """RED: Should return None for unknown syntax (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
     prefix: "#\\\\s*"
-    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
+    filepath_line_regex: "^#\\\\s*(.+\\\\.py)$"
+    metadata_line_regex: "^#\\\\s*template=.+\\\\s+version=.+\\\\s+created=.+\\\\s+updated=.*$"
 
 metadata_fields:
   - name: template
@@ -214,39 +219,41 @@ metadata_fields:
         assert pattern is None
 
     def test_get_field_by_name(self, tmp_path):
-        """RED: Should retrieve field by name."""
+        """RED: Should retrieve field by name (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
     prefix: "#\\\\s*"
-    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
+    filepath_line_regex: "^#\\\\s*(.+\\\\.py)$"
+    metadata_line_regex: "^#\\\\s*template=.+\\\\s+version=.+\\\\s+created=.+\\\\s+updated=.*$"
 
 metadata_fields:
   - name: template
     format_regex: "^[a-z0-9_-]+$"
     required: true
 
-  - name: path
-    format_regex: "^[a-zA-Z0-9_/.-]+$"
-    required: false
+  - name: version
+    format_regex: "^[0-9a-f]{8}$|^$"
+    required: true
 """, encoding="utf-8")
 
         config = ScaffoldMetadataConfig.from_file(config_file)
-        field = config.get_field("path")
+        field = config.get_field("version")
 
         assert field is not None
-        assert field.name == "path"
-        assert field.required is False
+        assert field.name == "version"
+        assert field.required is True
 
     def test_get_field_not_found_returns_none(self, tmp_path):
-        """RED: Should return None for unknown field."""
+        """RED: Should return None for unknown field (2-line format)."""
         config_file = tmp_path / "scaffold_metadata.yaml"
         config_file.write_text("""
 comment_patterns:
   - syntax: hash
     prefix: "#\\\\s*"
-    metadata_line_regex: "^#\\\\s*SCAFFOLD:\\\\s*(.+)$"
+    filepath_line_regex: "^#\\\\s*(.+\\\\.py)$"
+    metadata_line_regex: "^#\\\\s*template=.+\\\\s+version=.+\\\\s+created=.+\\\\s+updated=.*$"
 
 metadata_fields:
   - name: template

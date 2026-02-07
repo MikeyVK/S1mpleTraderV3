@@ -1,15 +1,13 @@
 """MCP Server Entrypoint."""
 import asyncio
-from io import TextIOWrapper
-from pathlib import Path
 import sys
 import time
-from typing import Any, cast, Type
 import uuid
+from io import TextIOWrapper
+from pathlib import Path
+from typing import Any, cast
 
-from pydantic import AnyUrl, BaseModel, ValidationError
 import anyio
-
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import (
@@ -19,26 +17,31 @@ from mcp.types import (
     TextContent,
     Tool,
 )
-
-from mcp_server.tools.base import BaseTool
-from mcp_server.tools.tool_result import ToolResult
-
-from mcp_server.config.settings import settings
-from mcp_server.core.logging import get_logger, setup_logging
-from mcp_server.resources.github import GitHubIssuesResource
+from pydantic import AnyUrl, BaseModel, ValidationError
 
 # Config
 from mcp_server.config.label_startup import validate_label_config_on_startup
+from mcp_server.config.settings import settings
+from mcp_server.core.logging import get_logger, setup_logging
+from mcp_server.managers.artifact_manager import ArtifactManager
+from mcp_server.resources.github import GitHubIssuesResource
 
 # Resources
 from mcp_server.resources.standards import StandardsResource
 from mcp_server.resources.status import StatusResource
+
+# Scaffolding infrastructure (Issue #72)
+from mcp_server.scaffolding.template_registry import TemplateRegistry
+from mcp_server.tools.admin_tools import RestartServerTool
+from mcp_server.tools.base import BaseTool
 from mcp_server.tools.code_tools import CreateFileTool
 from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
+from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.git_fetch_tool import GitFetchTool
 from mcp_server.tools.git_pull_tool import GitPullTool
 from mcp_server.tools.git_tools import (
     CreateBranchTool,
+    GetParentBranchTool,
     GitCheckoutTool,
     GitCommitTool,
     GitDeleteBranchTool,
@@ -47,11 +50,8 @@ from mcp_server.tools.git_tools import (
     GitRestoreTool,
     GitStashTool,
     GitStatusTool,
-    GetParentBranchTool,
 )
-from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.health_tools import HealthCheckTool
-from mcp_server.tools.admin_tools import RestartServerTool
 
 # Tools
 from mcp_server.tools.issue_tools import (
@@ -73,15 +73,16 @@ from mcp_server.tools.milestone_tools import (
     CreateMilestoneTool,
     ListMilestonesTool,
 )
+from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
 from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
-from mcp_server.tools.project_tools import InitializeProjectTool, GetProjectPlanTool
-from mcp_server.tools.phase_tools import TransitionPhaseTool, ForcePhaseTransitionTool
+from mcp_server.tools.project_tools import GetProjectPlanTool, InitializeProjectTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
-from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
-from mcp_server.tools.test_tools import RunTestsTool
-from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 from mcp_server.tools.safe_edit_tool import SafeEditTool
+from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
 from mcp_server.tools.template_validation_tool import TemplateValidationTool
+from mcp_server.tools.test_tools import RunTestsTool
+from mcp_server.tools.tool_result import ToolResult
+from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
 # Initialize logging
 setup_logging()
@@ -94,13 +95,25 @@ class MCPServer:
 
     def __init__(self) -> None:
         """Initialize the MCP server with resources and tools."""
-        server_name = getattr(getattr(settings, "server"), "name")
+        server_name = settings.server.name
 
         # Log server startup
         lifecycle_logger.info("MCP server starting")
 
         # Validate label configuration at startup
         validate_label_config_on_startup()
+
+        # Initialize template registry (Issue #72 Task 1.6)
+        workspace_root = Path(settings.server.workspace_root)
+        registry_path = workspace_root / ".st3" / "template_registry.json"
+
+        # Bootstrap registry file if missing
+        if not registry_path.exists():
+            registry_path.parent.mkdir(parents=True, exist_ok=True)
+            lifecycle_logger.info("Bootstrapping template registry: %s", registry_path)
+
+        self.template_registry = TemplateRegistry(registry_path=registry_path)
+        lifecycle_logger.info("Template registry initialized")
 
         self.server = Server(server_name)
 
@@ -145,14 +158,19 @@ class MCPServer:
             TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
             ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
             # Scaffold tools (unified artifact scaffolding)
-            ScaffoldArtifactTool(),
+            ScaffoldArtifactTool(
+                manager=ArtifactManager(
+                    workspace_root=workspace_root,
+                    template_registry=self.template_registry
+                )
+            ),
             # Discovery tools
             SearchDocumentationTool(),
             GetWorkContextTool(),
         ]
 
         # GitHub-dependent resources and additional tools (only if token is configured)
-        github_token = getattr(getattr(settings, "github"), "token")
+        github_token = settings.github.token
         if github_token:
             self.resources.append(GitHubIssuesResource())
             self.tools.extend([
@@ -209,7 +227,7 @@ class MCPServer:
         if not getattr(tool, "args_model", None):
             return arguments or {}
 
-        model_cls = cast(Type[BaseModel], tool.args_model)
+        model_cls = cast(type[BaseModel], tool.args_model)
         logger.debug(
             "Validating tool arguments",
             extra={"props": {
@@ -396,7 +414,7 @@ class MCPServer:
 
     async def run(self) -> None:
         """Run the MCP server."""
-        server_name = getattr(getattr(settings, "server"), "name")
+        server_name = settings.server.name
 
         # Validate label configuration at startup
         validate_label_config_on_startup()

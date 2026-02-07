@@ -1,3 +1,5 @@
+# Local-only MCP config
+mcp_config.yaml
 # Python
 __pycache__/
 *.pytest_cache
@@ -13,6 +15,7 @@ pip-selfcheck.json
 .tmp/
 # Build artifacts
 build/
+.tmp_pyright/
 _build/
 dist/
 *.egg-info/
@@ -43,6 +46,11 @@ mcp_config.yaml
 .coverage
 coverage.json
 quality_report.json
+
+# Workspace-root temporary outputs
+.st3_tmp_*
+.temp_*
+swot_scan_results.txt
 deep_report_output.md
 mcp_debug.log
 mcp_server.audit.log
@@ -65,10 +73,16 @@ Kraken_Trading_History/
 # ST3 Workflow - Runtime state (not version controlled)
 .st3/state.json
 .st3/.restart_marker
-.st3/temp/  # Ephemeral artifacts temp files
+# Ephemeral artifacts temp files
+.st3/temp/
+
+# Generated with timestamps
+.st3/template_registry.yaml
 
 # ST3 Workflow - Local debug artifacts
 .st3/popen_called.txt
 .st3/sync_debug.log
 .st3/test_sync.py
 .st3/.state_*.tmp
+# Test output
+.st3/pyright_test.json

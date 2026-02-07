@@ -1,0 +1,34 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_error
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  purpose: "Standardized error raising/wrapping patterns for workers and tools"
+  exports:
+    - pattern_error_imports
+    - pattern_error_raise
+    - pattern_error_wrap
+#}
+
+{#-
+Tier 3 Pattern: Error handling
+- Macro library only: no extends, no blocks
+- Backend-aligned: include worker name prefix in exception messages
+  (see backend/core/flow_initiator.py and backend/core/interfaces/worker.py)
+-#}
+
+{% macro pattern_error_imports() -%}
+from backend.core.interfaces.worker import WorkerInitializationError
+{%- endmacro %}
+
+{% macro pattern_error_raise(exc_class="WorkerInitializationError", worker_name_attr="_name", message="initialization failed") -%}
+raise {{ exc_class }}(f"{self.{{ worker_name_attr }}}: {{ message }}")
+{%- endmacro %}
+
+{% macro pattern_error_wrap(exc_class="WorkerInitializationError", worker_name_attr="_name", message="initialization failed") -%}
+try:
+    # ...
+    pass
+except Exception as exc:  # noqa: BLE001
+    raise {{ exc_class }}(f"{self.{{ worker_name_attr }}}: {{ message }}") from exc
+{%- endmacro %}

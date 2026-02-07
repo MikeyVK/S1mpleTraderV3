@@ -6,7 +6,7 @@ Cross-references: artifacts.yaml (validates allowed_artifact_types)
 """
 
 from pathlib import Path
-from typing import ClassVar, Dict, List, Optional, cast
+from typing import ClassVar, Optional, cast
 
 import yaml
 from pydantic import BaseModel, Field
@@ -19,23 +19,23 @@ class DirectoryPolicy(BaseModel):
     """Directory-specific file and artifact policies."""
 
     path: str = Field(..., description="Directory path (workspace-relative)")
-    parent: Optional[str] = Field(None, description="Parent directory path")
+    parent: str | None = Field(None, description="Parent directory path")
     description: str = Field(..., description="Human-readable description")
-    allowed_artifact_types: List[str] = Field(
+    allowed_artifact_types: list[str] = Field(
         default_factory=list,
         description="Artifact types allowed in this directory",
     )
-    allowed_extensions: List[str] = Field(
+    allowed_extensions: list[str] = Field(
         default_factory=list,
         description="File extensions allowed (empty = all allowed)",
     )
-    require_scaffold_for: List[str] = Field(
+    require_scaffold_for: list[str] = Field(
         default_factory=list,
         description="Glob patterns requiring scaffolding",
     )
 
     @property
-    def allowed_component_types(self) -> List[str]:
+    def allowed_component_types(self) -> list[str]:
         """DEPRECATED: Backwards compatibility alias."""
         return self.allowed_artifact_types
 
@@ -49,7 +49,7 @@ class ProjectStructureConfig(BaseModel):
     Cross-validates: allowed_artifact_types against artifacts.yaml
     """
 
-    directories: Dict[str, DirectoryPolicy] = Field(
+    directories: dict[str, DirectoryPolicy] = Field(
         ..., description="Directory policies keyed by directory path"
     )
 
@@ -125,7 +125,7 @@ class ProjectStructureConfig(BaseModel):
         artifact_config = ArtifactRegistryConfig.from_file()
         valid_types = set(artifact_config.list_type_ids())
 
-        directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
+        directories = cast(dict[str, DirectoryPolicy], self.directories)
         for dir_path, policy in directories.items():
             invalid_types = set(policy.allowed_artifact_types) - valid_types
             if invalid_types:
@@ -146,7 +146,7 @@ class ProjectStructureConfig(BaseModel):
         Raises:
             ConfigError: If directory references unknown parent
         """
-        directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
+        directories = cast(dict[str, DirectoryPolicy], self.directories)
         for dir_path, policy in directories.items():
             parent = policy.parent
             if parent is not None and directories.get(parent) is None:
@@ -161,7 +161,7 @@ class ProjectStructureConfig(BaseModel):
         """Reset singleton instance (for testing only)."""
         cls._instance = None
 
-    def get_directory(self, path: str) -> Optional[DirectoryPolicy]:
+    def get_directory(self, path: str) -> DirectoryPolicy | None:
         """Get policy for exact directory path.
 
         Args:
@@ -170,14 +170,14 @@ class ProjectStructureConfig(BaseModel):
         Returns:
             DirectoryPolicy if found, None otherwise
         """
-        directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
+        directories = cast(dict[str, DirectoryPolicy], self.directories)
         return directories.get(path)
 
-    def get_all_directories(self) -> List[str]:
+    def get_all_directories(self) -> list[str]:
         """Get sorted list of all directory paths.
 
         Returns:
             Sorted list of directory paths
         """
-        directories = cast(Dict[str, DirectoryPolicy], getattr(self, "directories"))
+        directories = cast(dict[str, DirectoryPolicy], self.directories)
         return sorted(directories.keys())

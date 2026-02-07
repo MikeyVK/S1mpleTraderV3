@@ -9,14 +9,13 @@ Following TDD workflow - these tests define the expected behavior.
 @tests: backend/dtos/state/fill.py
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
 
 from backend.dtos.state.fill import Fill
-
 
 # =============================================================================
 # FIXTURES
@@ -33,7 +32,7 @@ def valid_fill_data() -> dict:
         "fill_price": Decimal("3450.25"),
         "commission": Decimal("0.003"),
         "commission_asset": "BNB",
-        "executed_at": datetime.now(timezone.utc),
+        "executed_at": datetime.now(UTC),
     }
 
 
@@ -44,7 +43,7 @@ def minimal_fill_data() -> dict:
         "parent_order_id": "ORD_20251201_150100_b2c3d4e5",
         "filled_quantity": Decimal("2.0"),
         "fill_price": Decimal("3450.25"),
-        "executed_at": datetime.now(timezone.utc),
+        "executed_at": datetime.now(UTC),
     }
 
 
@@ -205,7 +204,7 @@ class TestFillImmutability:
         """Should raise error when modifying executed_at."""
         fill = Fill(**valid_fill_data)
         with pytest.raises(ValidationError):
-            fill.executed_at = datetime.now(timezone.utc)
+            fill.executed_at = datetime.now(UTC)
 
 
 # =============================================================================

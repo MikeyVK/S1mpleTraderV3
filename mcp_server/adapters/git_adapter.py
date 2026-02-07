@@ -4,8 +4,9 @@ from typing import Any
 from git import InvalidGitRepositoryError, Repo
 
 from mcp_server.config.settings import settings
-from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 from mcp_server.core import logging as core_logging
+from mcp_server.core.exceptions import ExecutionError, MCPSystemError
+
 
 class GitAdapter:
     """Adapter for interacting with local Git repository."""

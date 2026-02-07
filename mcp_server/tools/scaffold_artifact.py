@@ -15,11 +15,12 @@ Handles all artifact types (code + documents) via ArtifactManager.
 """
 
 from typing import Any
+
 from pydantic import BaseModel, Field
 
+from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.managers.artifact_manager import ArtifactManager
 
 
 class ScaffoldArtifactInput(BaseModel):

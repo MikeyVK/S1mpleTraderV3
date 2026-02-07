@@ -13,14 +13,14 @@ flexible scoping, and critical error handling.
 import logging
 import threading
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Dict, List, Callable, Optional
 
 # Third-Party Imports
 from pydantic import BaseModel
 
 # Our Application Imports
-from backend.core.interfaces.eventbus import IEventBus, SubscriptionScope, ScopeLevel
+from backend.core.interfaces.eventbus import IEventBus, ScopeLevel, SubscriptionScope
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class CriticalEventHandlerError(Exception):
         message: str,
         original_error: Exception,
         subscription_id: str
-    ):
+    ) -> None:
         super().__init__(message)
         self.original_error = original_error
         self.subscription_id = subscription_id
@@ -105,10 +105,10 @@ class EventBus(IEventBus):
         - Critical handlers (is_critical=True): Raise CriticalEventHandlerError
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty event bus with thread lock."""
-        self._subscriptions: Dict[str, List[Subscription]] = {}
-        self._subscription_index: Dict[str, Subscription] = {}
+        self._subscriptions: dict[str, list[Subscription]] = {}
+        self._subscription_index: dict[str, Subscription] = {}
         self._lock = threading.RLock()  # Reentrant lock for nested calls
 
     def publish(
@@ -116,7 +116,7 @@ class EventBus(IEventBus):
         event_name: str,
         payload: BaseModel,
         scope: ScopeLevel,
-        strategy_instance_id: Optional[str] = None
+        strategy_instance_id: str | None = None
     ) -> None:
         """
         Broadcast event to matching subscribers.
@@ -270,17 +270,16 @@ class EventBus(IEventBus):
                     original_error=e,
                     subscription_id=subscription.subscription_id
                 ) from e
-            else:
-                # Strategy worker failure = LOG + CONTINUE
-                strategy_id = subscription.scope.strategy_instance_id
-                logger.error(  # pylint: disable=logging-fstring-interpolation
-                    f"Handler failed for strategy {strategy_id}",
-                    exc_info=e,
-                    extra={
-                        "subscription_id": subscription.subscription_id,
-                        "event_name": subscription.event_name,
-                        "strategy_instance_id": strategy_id,
-                        "handler": subscription.handler.__name__
-                    }
-                )
+            # Strategy worker failure = LOG + CONTINUE
+            strategy_id = subscription.scope.strategy_instance_id
+            logger.error(  # pylint: disable=logging-fstring-interpolation
+                f"Handler failed for strategy {strategy_id}",
+                exc_info=e,
+                extra={
+                    "subscription_id": subscription.subscription_id,
+                    "event_name": subscription.event_name,
+                    "strategy_instance_id": strategy_id,
+                    "handler": subscription.handler.__name__
+                }
+            )
                 # Continue to next handler (no raise)

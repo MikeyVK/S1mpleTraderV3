@@ -108,7 +108,7 @@ class WorkflowConfig(BaseModel):
                 f"Hint: Initialize workflows with default config"
             )
 
-        with open(path, "r", encoding="utf-8") as file_handle:
+        with open(path, encoding="utf-8") as file_handle:
             data = yaml.safe_load(file_handle)
 
         return cls(**data)

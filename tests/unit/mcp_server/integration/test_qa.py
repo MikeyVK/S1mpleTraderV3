@@ -5,7 +5,7 @@ Integration tests for real QA tool execution with actual files.
 import pytest
 
 from mcp_server.managers.qa_manager import QAManager
-from mcp_server.tools.quality_tools import RunQualityGatesTool, RunQualityGatesInput
+from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 
 
 def test_qa_manager_run_gates_with_real_file() -> None:

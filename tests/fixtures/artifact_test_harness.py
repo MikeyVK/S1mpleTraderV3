@@ -8,10 +8,10 @@
   - E2E test helpers
 """
 
-# pylint: disable=redefined-outer-name
 # Standard library
+from collections.abc import Generator
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Generator
 
 # Third-party
 import pytest
@@ -26,8 +26,8 @@ from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.validation.validation_service import ValidationService
 
 
-@pytest.fixture
-def temp_workspace(
+@pytest.fixture(name="temp_workspace")
+def _temp_workspace(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Generator[Path, None, None]:
     """
@@ -40,14 +40,19 @@ def temp_workspace(
     workspace = tmp_path / "workspace"
     workspace.mkdir()
 
+    # Set TEMPLATE_ROOT to actual project templates (not relative to temp CWD)
+    project_root = Path(__file__).parent.parent.parent
+    template_root = project_root / "mcp_server" / "scaffolding" / "templates"
+    monkeypatch.setenv("TEMPLATE_ROOT", str(template_root))
+
     # Change CWD to workspace (template paths are relative)
     monkeypatch.chdir(workspace)
 
     yield workspace
 
 
-@pytest.fixture
-def artifacts_yaml_content() -> str:
+@pytest.fixture(name="artifacts_yaml_content")
+def _artifacts_yaml_content() -> str:
     """Minimal artifacts.yaml for testing."""
     return """version: "1.0"
 
@@ -99,8 +104,8 @@ artifact_types:
 """
 
 
-@pytest.fixture
-def artifacts_yaml_file(
+@pytest.fixture(name="artifacts_yaml_file")
+def _artifacts_yaml_file_st3(
     temp_workspace: Path,
     artifacts_yaml_content: str,
 ) -> Path:
@@ -145,14 +150,14 @@ def artifacts_yaml_file(
     return artifacts_file
 
 
-@pytest.fixture
-def fs_adapter(temp_workspace: Path) -> FilesystemAdapter:
+@pytest.fixture(name="fs_adapter")
+def _fs_adapter(temp_workspace: Path) -> FilesystemAdapter:
     """FilesystemAdapter scoped to temp workspace."""
     return FilesystemAdapter(root_path=str(temp_workspace))
 
 
-@pytest.fixture
-def artifact_registry(
+@pytest.fixture(name="artifact_registry")
+def _artifact_registry(
     artifacts_yaml_file: Path,
 ) -> Generator[ArtifactRegistryConfig, None, None]:
     """Load ArtifactRegistryConfig from temp artifacts.yaml."""
@@ -168,8 +173,8 @@ def artifact_registry(
     ArtifactRegistryConfig.reset_instance()
 
 
-@pytest.fixture
-def template_scaffolder(
+@pytest.fixture(name="template_scaffolder")
+def _template_scaffolder_alternate(
     artifact_registry: ArtifactRegistryConfig,
     temp_workspace: Path,
 ) -> TemplateScaffolder:
@@ -183,14 +188,14 @@ def template_scaffolder(
     return TemplateScaffolder(registry=artifact_registry, renderer=renderer)
 
 
-@pytest.fixture
-def validation_service() -> ValidationService:
+@pytest.fixture(name="validation_service")
+def _validation_service_alternate() -> ValidationService:
     """ValidationService instance."""
     return ValidationService()
 
 
-@pytest.fixture
-def artifact_manager(
+@pytest.fixture(name="artifact_manager")
+def _artifact_manager(
     temp_workspace: Path,
     artifact_registry: ArtifactRegistryConfig,
     template_scaffolder: TemplateScaffolder,
@@ -213,32 +218,42 @@ def artifact_manager(
 
 # Helper functions for dynamic artifact/template creation
 
+@dataclass
+class ArtifactIdentity:
+    """Artifact type and ID."""
+    type_id: str
+    artifact_type: str  # 'code' or 'doc'
+
+
+@dataclass
+class TemplateFields:
+    """Template field specification."""
+    required: list[str] = field(default_factory=list)
+    optional: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ArtifactSpec:
+    """Specification for adding an artifact to artifacts.yaml."""
+    identity: ArtifactIdentity
+    name: str
+    template_path: str
+    file_extension: str
+    description: str | None = None
+    template_fields: TemplateFields = field(default_factory=TemplateFields)
+    generate_test: bool = False
+
+
 def add_artifact_to_yaml(
     artifacts_yaml_path: Path,
-    type_id: str,
-    artifact_type: str,
-    name: str,
-    template_path: str,
-    file_extension: str,
-    description: str | None = None,
-    required_fields: list[str] | None = None,
-    optional_fields: list[str] | None = None,
-    generate_test: bool = False
+    spec: ArtifactSpec
 ) -> None:
     """
     Add artifact type to existing artifacts.yaml.
 
     Args:
         artifacts_yaml_path: Path to artifacts.yaml
-        type_id: Artifact type ID (e.g., 'dto_invalid')
-        artifact_type: Type category ('code' or 'doc')
-        name: Display name
-        template_path: Relative template path
-        file_extension: File extension (e.g., '.py', '.md')
-        description: Artifact description
-        required_fields: Required template fields
-        optional_fields: Optional template fields
-        generate_test: Whether to generate test file
+        spec: Artifact specification
     """
     # Load existing YAML
     with open(artifacts_yaml_path, encoding="utf-8") as f:
@@ -246,17 +261,17 @@ def add_artifact_to_yaml(
 
     # Create new artifact definition
     artifact_def = {
-        "type": artifact_type,
-        "type_id": type_id,
-        "name": name,
-        "description": description or f"{name} artifact",
-        "template_path": template_path,
+        "type": spec.identity.artifact_type,
+        "type_id": spec.identity.type_id,
+        "name": spec.name,
+        "description": spec.description or f"{spec.name} artifact",
+        "template_path": spec.template_path,
         "fallback_template": None,
         "name_suffix": None,
-        "file_extension": file_extension,
-        "generate_test": generate_test,
-        "required_fields": required_fields or ["name"],
-        "optional_fields": optional_fields or [],
+        "file_extension": spec.file_extension,
+        "generate_test": spec.generate_test,
+        "required_fields": spec.template_fields.required or ["name"],
+        "optional_fields": spec.template_fields.optional or [],
         "state_machine": {
             "states": ["CREATED"],
             "initial_state": "CREATED",

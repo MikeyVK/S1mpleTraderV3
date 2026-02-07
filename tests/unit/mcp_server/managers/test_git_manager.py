@@ -8,9 +8,10 @@ from unittest.mock import MagicMock
 # Third-party
 import pytest
 
+from mcp_server.core.exceptions import PreflightError, ValidationError
+
 # Module under test
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.core.exceptions import ValidationError, PreflightError
 
 
 class TestGitManagerValidation:

@@ -18,7 +18,7 @@ from jinja2 import Environment, meta
 class TemplateAnalyzer:
     """Analyzes Jinja2 templates to extract validation metadata."""
 
-    def __init__(self, template_root: Path):
+    def __init__(self, template_root: Path) -> None:
         """
         Initialize analyzer with template directory root.
 
@@ -70,7 +70,9 @@ class TemplateAnalyzer:
             ) from e
 
         # Extract TEMPLATE_METADATA from Jinja2 comment block
-        pattern = r'\{#\s*TEMPLATE_METADATA\s*(.*?)\s*#\}'
+        # Supports both {# TEMPLATE_METADATA ... #} and {#- TEMPLATE_METADATA ... -#}
+        # Pattern captures the full "TEMPLATE_METADATA: ..." YAML block
+        pattern = r'\{#-?\s*(TEMPLATE_METADATA:.*?)\s*-?#\}'
         match = re.search(pattern, source, re.DOTALL)
 
         if not match:
@@ -80,18 +82,24 @@ class TemplateAnalyzer:
 
         metadata_yaml = match.group(1)
 
-        # Parse YAML
+        # Parse YAML (will have TEMPLATE_METADATA as root key)
         try:
-            metadata = yaml.safe_load(metadata_yaml)
+            yaml_dict = yaml.safe_load(metadata_yaml)
         except yaml.YAMLError as e:
             raise ValueError(
                 f"Failed to parse TEMPLATE_METADATA in {template_path}: {e}"
             ) from e
 
-        if not isinstance(metadata, dict):
+        if not isinstance(yaml_dict, dict):
             raise ValueError(
-                f"TEMPLATE_METADATA must be a dict, got {type(metadata)}"
+                f"TEMPLATE_METADATA must be a dict, got {type(yaml_dict)}"
             )
+
+        # Extract the actual metadata from under TEMPLATE_METADATA key
+        metadata: dict[str, Any] = yaml_dict.get("TEMPLATE_METADATA", {})
+        if not metadata:
+            self._metadata_cache[template_path] = {}
+            return {}
 
         # Extract Jinja2 variables
         metadata["variables"] = self.extract_jinja_variables(template_path)
@@ -114,7 +122,7 @@ class TemplateAnalyzer:
             source = template_path.read_text(encoding="utf-8")
             ast = self.env.parse(source)
             variables = meta.find_undeclared_variables(ast)
-            return sorted(list(variables))
+            return sorted(variables)
         except (OSError, UnicodeDecodeError, ValueError):
             # If reading or parsing fails, return empty list
             return []
@@ -227,6 +235,6 @@ class TemplateAnalyzer:
         # Union of variables
         child_vars = set(child.get("variables", []))
         parent_vars = set(parent.get("variables", []))
-        merged["variables"] = sorted(list(child_vars | parent_vars))
+        merged["variables"] = sorted(child_vars | parent_vars)
 
         return merged

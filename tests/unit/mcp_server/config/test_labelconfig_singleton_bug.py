@@ -241,9 +241,9 @@ freeform_exceptions: []
         # Load, reset, load again
         LabelConfig.reset()
         config1 = LabelConfig.load(config_file)
-        
+
         LabelConfig.reset()  # Force invalidation
-        
+
         config2 = LabelConfig.load(config_file)
 
         # Should be different objects (fresh load after reset)

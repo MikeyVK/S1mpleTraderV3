@@ -1,0 +1,35 @@
+{% extends "tier3_base_python_component.jinja2" %}
+
+{#- CONCRETE: Worker Template -#}
+{#- Specific implementation for worker components -#}
+
+{%- set typing_imports = "Dict, Any" -%}
+{%- set custom_imports = [
+    "from mcp_server.workers.base_worker import BaseWorker",
+    "from mcp_server.core.exceptions import ExecutionError"
+] -%}
+{%- set class_name = worker_name + "Worker" -%}
+{%- set class_docstring = worker_description -%}
+{%- set layer = "Backend (Workers)" -%}
+{%- set dependencies = worker_dependencies|default("[]") -%}
+
+{%- block component_methods %}
+    async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute {{ worker_name }} worker logic.
+        
+        Args:
+            context: Execution context with input data
+            
+        Returns:
+            Dict with execution results
+            
+        Raises:
+            ExecutionError: If execution fails
+        """
+        {%- if worker_logic %}
+{{ worker_logic | indent(8, first=True) }}
+        {%- else %}
+        # TODO: Implement worker logic
+        raise NotImplementedError("Worker logic not implemented")
+        {%- endif %}
+{%- endblock -%}

@@ -1,0 +1,115 @@
+{#- concrete/generic.py.jinja2 - Generic/Minimal Python Class -#}
+{#- Version: 1.2.0 -#}
+{#- Purpose: Catch-all template for simple Python classes -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{%- import "tier3_pattern_python_logging.jinja2" as p_logging -%}
+
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: structure
+  validates:
+    guidelines:
+      - "Minimal class structure"
+      - "Placeholder methods"
+      - "Includes logging import (optional)"
+  extends: tier2_base_python.jinja2
+  purpose: "Catch-all concrete template for generic Python classes"
+  version: "1.2.0"
+  changelog:
+    - version: "1.2.0"
+      date: "2026-02-01"
+      changes: "Refactor generic to compose Tier 3 logging pattern and use validates.guidelines"
+  introspection:
+    template_id: generic
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - name
+      optional:
+        - description
+        - methods
+  agent_hints:
+    phase: "green"
+    purpose: "Generate generic Python classes for utilities and simple components"
+    belongs_here:
+      - "Utility classes without lifecycle management"
+      - "Helper functions grouped in a class namespace"
+      - "Simple components that don't fit worker/dto/service patterns"
+      - "Placeholder scaffolds to be refined later"
+      - "Adapters or wrappers for third-party libraries"
+    does_not_belong:
+      - "Lifecycle-managed components → worker.py"
+      - "Data structures with validation → dto.py"
+      - "Service orchestration → service_command.py"
+      - "Configuration schemas → config_schema.py"
+      - "MCP server tools → tool.py"
+    tone: "Minimal and pragmatic: use only when specific patterns don't apply"
+    common_pitfalls:
+      - "Overusing generic.py instead of more specific templates"
+      - "Creating complex classes that should be workers"
+      - "Not refactoring generic classes into proper patterns as code matures"
+      - "Missing type hints or documentation"
+    workflow_context:
+      - "Generic is a catch-all for edge cases"
+      - "Consider refactoring to worker/dto/service_command as requirements clarify"
+      - "Use for rapid prototyping, then migrate to structured patterns"
+    related_phases:
+      before: "design.md (clarify if a more specific pattern is appropriate)"
+      after: "test_unit.py (test the minimal behavior, refactor if complexity grows)"
+-#}
+
+{% block module_docstring %}
+"""{{ name }} module.
+
+{{ description | default('Generic Python component.') }}
+
+@layer: {{ layer | default('Backend (Generic)') }}
+@dependencies: [None]
+@responsibilities:
+{% if responsibilities %}
+{% for responsibility in responsibilities %}
+    - {{ responsibility }}
+{% endfor %}
+{% else %}
+    - [To be defined]
+{% endif %}
+"""
+{% endblock %}
+
+{% block imports_section %}
+# Standard library
+{{ p_logging.pattern_logging_imports() }}
+
+# Third-party
+
+# Project modules
+
+{% endblock %}
+
+{% block class_structure %}
+{{ p_logging.pattern_logging_get_logger() }}
+
+class {{ name }}:
+{% block class_docstring %}
+    """{{ description | default(name + ' class.') }}"""
+{% endblock -%}
+{% block methods_section %}
+{% if methods %}
+{% for method in methods %}
+
+    def {{ method.name }}(self{% if method.params %}, {{ method.params }}{% endif %}){% if method.return_type %} -> {{ method.return_type }}{% endif %}:
+        """{{ method.docstring | default(method.name + ' method.') }}"""
+        {{ method.body | default('pass') | indent(8) }}
+{% endfor -%}
+{% else %}
+
+    def placeholder(self):
+        """Placeholder method."""
+        pass
+{% endif -%}
+{% endblock -%}
+{% endblock %}

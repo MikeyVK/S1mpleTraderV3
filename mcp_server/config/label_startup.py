@@ -17,17 +17,16 @@ import logging
 # Local
 from mcp_server.config.label_config import LabelConfig
 
-
 logger = logging.getLogger(__name__)
 
 
 def validate_label_config_on_startup(config_path: str | None = None) -> None:
     """
     Validate labels.yaml at server startup.
-    
+
     Args:
         config_path: Optional path to labels.yaml (for testing)
-    
+
     Logs warnings but does NOT block startup.
     Tools will validate at operation time.
     """

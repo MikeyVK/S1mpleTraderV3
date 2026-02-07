@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mcp_server.tools.discovery_tools import (
-    GetWorkContextTool, GetWorkContextInput,
-    SearchDocumentationTool, SearchDocumentationInput
+    GetWorkContextInput,
+    GetWorkContextTool,
+    SearchDocumentationInput,
+    SearchDocumentationTool,
 )
 
 

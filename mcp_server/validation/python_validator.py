@@ -1,11 +1,13 @@
 """Python validator implementation."""
 import ast
+import contextlib
 import os
 import tempfile
 from typing import Any
 
 from mcp_server.managers.qa_manager import QAManager
-from .base import BaseValidator, ValidationResult, ValidationIssue
+
+from .base import BaseValidator, ValidationIssue, ValidationResult
 
 
 class PythonValidator(BaseValidator):
@@ -100,10 +102,8 @@ class PythonValidator(BaseValidator):
         finally:
             # Cleanup temp file
             if temp_file and os.path.exists(temp_file):
-                try:
+                with contextlib.suppress(OSError):
                     os.unlink(temp_file)
-                except OSError:
-                    pass
 
     def _parse_result(
         self, raw_result: dict[str, Any], original_path: str, scanned_path: str

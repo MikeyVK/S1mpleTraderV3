@@ -28,9 +28,8 @@ def normalize_unicode(text: str) -> str:
     normalized = utf8_bytes.decode('utf-8', errors='replace')
 
     # Step 3: Apply Unicode normalization (NFC = canonical composition)
-    normalized = unicodedata.normalize('NFC', normalized)
+    return unicodedata.normalize('NFC', normalized)
 
-    return normalized
 
 
 class CreateIssueInput(BaseModel):
@@ -100,7 +99,7 @@ class GetIssueTool(BaseTool):
 
             # Formatting helpers
             assignees_str = ", ".join(a.login for a in issue.assignees) or "none"
-            labels_str = ", ".join(l.name for l in issue.labels) or "none"
+            labels_str = ", ".join(label.name for label in issue.labels) or "none"
             milestone_str = issue.milestone.title if issue.milestone else "none"
 
             return ToolResult.text(

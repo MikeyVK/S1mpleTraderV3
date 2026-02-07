@@ -29,16 +29,18 @@ Author: Autonomous Agent (Issue #55)
 Date: 2026-01-15
 Status: Production
 """
+
+import io
 import json
-import os # Added os import
+import os
 import re
 import subprocess
-import threading
 import sys
+import threading
 import time
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
-
+from typing import Any
 
 # RESTART_MARKER: Printed to stderr by server to signal restart request
 # Proxy detects this marker and triggers transparent server restart
@@ -62,10 +64,10 @@ def fix_json_surrogates(json_str: str) -> str:
     """
     # Pattern: \uD800-\uDBFF (high surrogate) followed by \uDC00-\uDFFF (low surrogate)
     surrogate_pattern = re.compile(
-        r'\\u([dD][8-9a-bA-B][0-9a-fA-F]{2})\\u([dD][c-fC-F][0-9a-fA-F]{2})'
+        r"\\u([dD][8-9a-bA-B][0-9a-fA-F]{2})\\u([dD][c-fC-F][0-9a-fA-F]{2})"
     )
 
-    def replace_surrogate_pair(match):
+    def replace_surrogate_pair(match: re.Match[str]) -> str:
         high = int(match.group(1), 16)
         low = int(match.group(2), 16)
 
@@ -75,36 +77,34 @@ def fix_json_surrogates(json_str: str) -> str:
 
         # Convert to UTF-8 character
         try:
-            char = chr(codepoint)
-            # Re-encode as JSON escape sequence (or keep as UTF-8)
-            return char
+            return chr(codepoint)
         except (ValueError, OverflowError):
             # Invalid codepoint - replace with Unicode replacement character
-            return '\ufffd'
+            return "\ufffd"
 
     return surrogate_pattern.sub(replace_surrogate_pair, json_str)
 
 
-def _setup_utf8_encoding():
+def _setup_utf8_encoding() -> None:
     """Force UTF-8 encoding on Windows stdout/stderr.
 
     CRITICAL: Prevents 'charmap' codec errors when forwarding Unicode.
     Only runs in production (not during pytest imports).
     """
-    if sys.platform == 'win32' and 'pytest' not in sys.modules:
-        import io
+    if sys.platform == "win32" and "pytest" not in sys.modules:
         # Reconfigure stdin to read UTF-8 bytes correctly
-        sys.stdin = io.TextIOWrapper(
-            sys.stdin.buffer, encoding='utf-8',
-            errors='replace'
-        )
+        sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", errors="replace")
         sys.stdout = io.TextIOWrapper(
-            sys.stdout.buffer, encoding='utf-8',
-            errors='replace', line_buffering=True
+            sys.stdout.buffer,
+            encoding="utf-8",
+            errors="replace",
+            line_buffering=True,
         )
         sys.stderr = io.TextIOWrapper(
-            sys.stderr.buffer, encoding='utf-8',
-            errors='replace', line_buffering=True
+            sys.stderr.buffer,
+            encoding="utf-8",
+            errors="replace",
+            line_buffering=True,
         )
 
 
@@ -115,19 +115,21 @@ class MCPProxy:
     breaking the MCP protocol initialization handshake.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize proxy state."""
         # Setup UTF-8 encoding (Windows compatibility)
         _setup_utf8_encoding()
 
-        self.server_process = None
-        self.init_request = None
+        self.server_process: subprocess.Popen[str] | None = None
+        self.init_request: dict[str, Any] | None = None
         self.lock = threading.Lock()
         self.restarting = False
         self.restart_count = 0
-        self.proxy_pid = subprocess.os.getpid()
+        self.proxy_pid = os.getpid()
 
-    def audit_log(self, message: str, level: str = "INFO", **extra):
+        self._server_started = threading.Event()
+
+    def audit_log(self, message: str, level: str = "INFO", **extra: Any) -> None:
         """Write structured log entry to mcp_audit.log.
 
         Args:
@@ -141,22 +143,22 @@ class MCPProxy:
             audit_file = log_dir / "mcp_audit.log"
 
             entry = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "level": level,
                 "logger": "mcp_proxy",
                 "message": message,
                 "proxy_pid": self.proxy_pid,
                 "server_pid": self.server_process.pid if self.server_process else None,
                 "restart_count": self.restart_count,
-                **extra
+                **extra,
             }
 
             with open(audit_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
-        except Exception as e:
+        except OSError as e:
             print(f"[PROXY ERROR] Audit log failed: {e}", file=sys.stderr, flush=True)
 
-    def log(self, message: str, level: str = "INFO", **extra):
+    def log(self, message: str, level: str = "INFO", **extra: Any) -> None:
         """Log to both stderr (VS Code Output) and audit log.
 
         Args:
@@ -167,23 +169,9 @@ class MCPProxy:
         print(f"[PROXY] {message}", file=sys.stderr, flush=True)
         self.audit_log(message, level, **extra)
 
-    def start_server(self, is_restart: bool = False):
-        """Start MCP server subprocess.
-
-        Args:
-            is_restart: If True, replay initialize handshake after spawn
-        """
+    def _spawn_server_in_context(self, env: dict[str, str]) -> None:
         try:
-            start_time = time.time()
-            attempt = self.restart_count + 1
-
-            self.log(f"Starting MCP server (restart={is_restart}, attempt={attempt})")
-
-            # Create environment with PYTHONUTF8=1 to ensure server sees UTF-8 streams
-            env = os.environ.copy()
-            env["PYTHONUTF8"] = "1"
-
-            self.server_process = subprocess.Popen(
+            with subprocess.Popen(
                 [sys.executable, "-m", "mcp_server"],
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
@@ -192,47 +180,101 @@ class MCPProxy:
                 text=True,
                 bufsize=1,
                 encoding="utf-8",
-                errors="replace"
+                errors="replace",
+            ) as process:
+                self.server_process = process
+                self._server_started.set()
+
+                process.wait()
+        except (OSError, ValueError, subprocess.SubprocessError) as e:
+            self.log(
+                f"Server start failed: {e}",
+                level="ERROR",
+                event_type="server_start_failed",
+                error=str(e),
             )
+            self.server_process = None
+            self._server_started.set()
+        finally:
+            current = self.server_process
+            if current is not None and current.poll() is not None:
+                self.server_process = None
 
-            self.log(f"Server spawned (PID={self.server_process.pid})",
-                    event_type="server_spawned")
+    def start_server(self, is_restart: bool = False) -> None:
+        """Start MCP server subprocess.
 
-            # Replay initialize handshake if restarting
-            if is_restart and self.init_request:
-                time.sleep(0.3)  # Let server initialize
+        Args:
+            is_restart: If True, replay initialize handshake after spawn
+        """
+        start_time = time.time()
+        attempt = self.restart_count + 1
 
+        self.log(f"Starting MCP server (restart={is_restart}, attempt={attempt})")
+
+        # Create environment with PYTHONUTF8=1 to ensure server sees UTF-8 streams
+        env = os.environ.copy()
+        env["PYTHONUTF8"] = "1"
+
+        self._server_started.clear()
+        threading.Thread(
+            target=self._spawn_server_in_context,
+            args=(env,),
+            daemon=True,
+        ).start()
+
+        if not self._server_started.wait(timeout=5):
+            self.log(
+                "Server start timed out",
+                level="ERROR",
+                event_type="server_start_failed",
+            )
+            return
+
+        if self.server_process is None:
+            return
+
+        # Replay initialize handshake if restarting
+        if is_restart and self.init_request:
+            time.sleep(0.3)  # Let server initialize
+
+            process = self.server_process
+            if process.stdin is None or process.stdout is None:
+                self.log(
+                    "Server process stdio not available for initialize replay",
+                    level="ERROR",
+                    event_type="initialize_replay_failed",
+                )
+            else:
                 self.log("Replaying initialize handshake to new server...")
-                self.server_process.stdin.write(json.dumps(self.init_request) + "\n")
-                self.server_process.stdin.flush()
+                process.stdin.write(json.dumps(self.init_request) + "\n")
+                process.stdin.flush()
 
                 # Read and discard initialize response (VS Code already has it)
-                response = self.server_process.stdout.readline()
+                response = process.stdout.readline()
                 try:
                     resp_data = json.loads(response)
                     server_info = resp_data.get("result", {}).get("serverInfo", {})
                     server_name = server_info.get("name", "unknown")
                     server_version = server_info.get("version", "unknown")
-                    self.log(f"Initialize handshake completed ({server_name} v{server_version})",
-                            event_type="initialize_replayed")
-                except:
+                    self.log(
+                        f"Initialize handshake completed ({server_name} v{server_version})",
+                        event_type="initialize_replayed",
+                    )
+                except json.JSONDecodeError:
                     self.log("Initialize response received (non-JSON)")
 
-            # Start output reader threads AFTER initialize replay
-            threading.Thread(target=self.read_server_output, daemon=True).start()
-            threading.Thread(target=self.read_server_stderr, daemon=True).start()
+        # Start output reader threads AFTER initialize replay
+        threading.Thread(target=self.read_server_output, daemon=True).start()
+        threading.Thread(target=self.read_server_stderr, daemon=True).start()
 
-            elapsed_ms = (time.time() - start_time) * 1000
-            self.log(f"Server ready (startup: {elapsed_ms:.1f}ms)",
-                    event_type="server_ready",
-                    startup_time_ms=elapsed_ms)
+        elapsed_ms = (time.time() - start_time) * 1000
+        self.log(
+            f"Server ready (startup: {elapsed_ms:.1f}ms)",
+            event_type="server_ready",
+            startup_time_ms=elapsed_ms,
+        )
 
-        except Exception as e:
-            self.log(f"Server start failed: {e}", level="ERROR",
-                    event_type="server_start_failed",
-                    error=str(e))
-
-    def send_to_server(self, message_line: str):
+    def send_to_server(self, message_line: str) -> None:
         """Send JSON-RPC message line to server.
 
         Args:
@@ -241,106 +283,133 @@ class MCPProxy:
         if self.restarting:
             return  # Skip sends during restart
 
-        if self.server_process and self.server_process.stdin:
-            try:
-                self.server_process.stdin.write(message_line + "\n")
-                self.server_process.stdin.flush()
-            except Exception as e:
-                self.log(f"Send error: {e}", level="ERROR",
-                        event_type="send_failed",
-                        error=str(e))
+        process = self.server_process
+        if process is None or process.stdin is None:
+            return
 
-    def read_server_output(self):
+        try:
+            process.stdin.write(message_line + "\n")
+            process.stdin.flush()
+        except (OSError, ValueError) as e:
+            self.log(
+                f"Send error: {e}",
+                level="ERROR",
+                event_type="send_failed",
+                error=str(e),
+            )
+
+    def read_server_output(self) -> None:
         """Read server stdout and forward JSON-RPC to VS Code."""
-        while self.server_process:
-            try:
-                line = self.server_process.stdout.readline()
-                if not line:
-                    self.log("Server stdout closed", level="WARNING")
-                    break
-
-                line = line.strip()
-                if not line:
-                    continue
-
-                # Forward JSON-RPC messages to VS Code
-                try:
-                    json.loads(line)  # Validate JSON
-                    print(line, flush=True)  # Forward to VS Code
-                except json.JSONDecodeError:
-                    pass  # Skip non-JSON lines (server internal logs)
-
-            except Exception as e:
-                self.log(f"Read error: {e}", level="ERROR",
-                        event_type="read_failed",
-                        error=str(e))
+        while True:
+            process = self.server_process
+            if process is None or process.stdout is None:
                 break
 
-    def read_server_stderr(self):
+            try:
+                line = process.stdout.readline()
+            except (OSError, ValueError) as e:
+                self.log(
+                    f"Read error: {e}",
+                    level="ERROR",
+                    event_type="read_failed",
+                    error=str(e),
+                )
+                break
+
+            if not line:
+                self.log("Server stdout closed", level="WARNING")
+                break
+
+            line = line.strip()
+            if not line:
+                continue
+
+            # Forward JSON-RPC messages to VS Code
+            try:
+                json.loads(line)  # Validate JSON
+                print(line, flush=True)  # Forward to VS Code
+            except json.JSONDecodeError:
+                pass  # Skip non-JSON lines (server internal logs)
+
+    def read_server_stderr(self) -> None:
         """Read server stderr and monitor for restart marker."""
-        while self.server_process:
-            try:
-                line = self.server_process.stderr.readline()
-                if not line:
-                    break
-
-                line = line.strip()
-                if not line:
-                    continue
-
-                # Check for restart marker on stderr
-                if RESTART_MARKER in line:
-                    self.log(
-                        "ðŸ”„ Restart marker detected on stderr - "
-                        "initiating transparent restart",
-                        event_type="restart_marker_detected"
-                    )
-                    threading.Thread(target=self.trigger_restart).start()
-                    continue
-
-                # Check for Pydantic validation errors (crash cause)
-                msg_lower = line.lower()
-                if "validation error" in msg_lower or "pydantic" in msg_lower:
-                    self.log(f"Server validation error detected: {line}",
-                            level="ERROR",
-                            event_type="validation_error_detected",
-                            raw_stderr=line)
-
-                # Forward server logs to VS Code Output (stderr)
-                print(f"[SERVER] {line}", file=sys.stderr, flush=True)
-
-            except Exception as e:
-                self.log(f"Stderr read error: {e}", level="ERROR",
-                        event_type="stderr_read_failed",
-                        error=str(e))
+        while True:
+            process = self.server_process
+            if process is None or process.stderr is None:
                 break
 
-    def trigger_restart(self):
+            try:
+                line = process.stderr.readline()
+            except (OSError, ValueError) as e:
+                self.log(
+                    f"Stderr read error: {e}",
+                    level="ERROR",
+                    event_type="stderr_read_failed",
+                    error=str(e),
+                )
+                break
+
+            if not line:
+                break
+
+            line = line.strip()
+            if not line:
+                continue
+
+            # Check for restart marker on stderr
+            if RESTART_MARKER in line:
+                self.log(
+                    "ðŸ”„ Restart marker detected on stderr - initiating transparent restart",
+                    event_type="restart_marker_detected",
+                )
+                threading.Thread(target=self.trigger_restart).start()
+                continue
+
+            # Check for Pydantic validation errors (crash cause)
+            msg_lower = line.lower()
+            if "validation error" in msg_lower or "pydantic" in msg_lower:
+                self.log(
+                    f"Server validation error detected: {line}",
+                    level="ERROR",
+                    event_type="validation_error_detected",
+                    raw_stderr=line,
+                )
+
+            # Forward server logs to VS Code Output (stderr)
+            print(f"[SERVER] {line}", file=sys.stderr, flush=True)
+
+    def trigger_restart(self) -> None:
         """Perform transparent server restart."""
         with self.lock:
+            if self.server_process is None:
+                return
+
             self.restarting = True
             self.restart_count += 1
             restart_start = time.time()
-            old_pid = self.server_process.pid if self.server_process else None
 
-            self.log(f"=== RESTART #{self.restart_count} INITIATED ===",
-                    event_type="restart_initiated",
-                    old_server_pid=old_pid)
+            old_process = self.server_process
+            old_pid = old_process.pid
 
-            # Terminate old server
-            if self.server_process:
-                self.log(f"Terminating old server (PID={old_pid})...")
-                self.server_process.terminate()
+            self.log(
+                f"=== RESTART #{self.restart_count} INITIATED ===",
+                event_type="restart_initiated",
+                old_server_pid=old_pid,
+            )
 
-                try:
-                    self.server_process.wait(timeout=5)
-                    self.log(f"Old server terminated gracefully",
-                            event_type="server_terminated")
-                except subprocess.TimeoutExpired:
-                    self.log(f"Force killing old server (PID={old_pid})",
-                            level="WARNING",
-                            event_type="server_force_killed")
-                    self.server_process.kill()
+            self.log(f"Terminating old server (PID={old_pid})...")
+            old_process.terminate()
+
+            try:
+                old_process.wait(timeout=5)
+                self.log("Old server terminated gracefully", event_type="server_terminated")
+            except subprocess.TimeoutExpired:
+                self.log(
+                    f"Force killing old server (PID={old_pid})",
+                    level="WARNING",
+                    event_type="server_force_killed",
+                )
+                old_process.kill()
 
             time.sleep(0.5)  # Brief pause before respawn
 
@@ -350,16 +419,17 @@ class MCPProxy:
             self.restarting = False
             elapsed_ms = (time.time() - restart_start) * 1000
 
-            self.log(f"=== RESTART COMPLETE (duration: {elapsed_ms:.1f}ms, VS Code unaware) ===",
-                    event_type="restart_completed",
-                    restart_duration_ms=elapsed_ms,
-                    new_server_pid=self.server_process.pid if self.server_process else None)
+            self.log(
+                f"=== RESTART COMPLETE (duration: {elapsed_ms:.1f}ms, VS Code unaware) ===",
+                event_type="restart_completed",
+                restart_duration_ms=elapsed_ms,
+                new_server_pid=self.server_process.pid if self.server_process else None,
+            )
 
-    def run(self):
+    def run(self) -> None:
         """Main proxy loop - read from VS Code stdin and forward to server."""
-        self.log(f"MCP Proxy starting (PID={self.proxy_pid})",
-                event_type="proxy_started")
-        self.log(f"Mode: Transparent restart without VS Code disconnect")
+        self.log(f"MCP Proxy starting (PID={self.proxy_pid})", event_type="proxy_started")
+        self.log("Mode: Transparent restart without VS Code disconnect")
 
         self.start_server(is_restart=False)
 
@@ -372,20 +442,29 @@ class MCPProxy:
 
                 try:
                     # Parse JSON first
-                    # fixed_line = fix_json_surrogates(line)  # DISABLED: Using generic validation instead
+                    # DISABLED: Using generic validation
+                    # fixed_line = fix_json_surrogates(line)
                     fixed_line = line
                     message = json.loads(fixed_line)
 
                     # GENERIC VALIDATION: Ensure message content is strictly valid UTF-8
-                    # Python's json.loads allows lone surrogates (e.g. \uD83D), but these 
+                    # Python's json.loads allows lone surrogates (e.g. \uD83D), but these
                     # can crash downstream libraries/servers trying to encode strict UTF-8.
                     # We validate by attempting a strict encoding.
                     try:
-                        json.dumps(message, ensure_ascii=False).encode('utf-8')
+                        json.dumps(message, ensure_ascii=False).encode("utf-8")
                     except (UnicodeError, ValueError) as e:
                         # Validation failed - Block message to prevent Server crash
-                        error_msg = f"Message validation failed (encoding error): {e}. Please ensure valid Unicode input."
-                        self.log(error_msg, level="ERROR", event_type="validation_blocked", raw_line=line)
+                        error_msg = (
+                            f"Message validation failed (encoding error): {e}. "
+                            "Please ensure valid Unicode input."
+                        )
+                        self.log(
+                            error_msg,
+                            level="ERROR",
+                            event_type="validation_blocked",
+                            raw_line=line,
+                        )
 
                         # Send error back to client
                         msg_id = message.get("id")
@@ -393,35 +472,27 @@ class MCPProxy:
                             err_response = {
                                 "jsonrpc": "2.0",
                                 "id": msg_id,
-                                "error": {
-                                    "code": -32602,
-                                    "message": error_msg
-                                }
+                                "error": {"code": -32602, "message": error_msg},
                             }
                             print(json.dumps(err_response), flush=True)
-                        
-                        continue  # Skip sending to server
 
-                    # Capture initialize request for replay
+                        continue  # Skip sending to server
 
                     # Capture initialize request for replay
                     if message.get("method") == "initialize":
                         init_id = message.get("id")
-                        client_info = message.get("params", {}).get(
-                            "clientInfo", {}
-                        )
+                        client_info = message.get("params", {}).get("clientInfo", {})
                         client_name = client_info.get("name", "unknown")
                         protocol_version = message.get("params", {}).get(
                             "protocolVersion", "unknown"
                         )
 
                         self.log(
-                            f"Initialize request captured "
-                            f"(id={init_id}, client={client_name}, "
+                            f"Initialize request captured (id={init_id}, client={client_name}, "
                             f"protocol={protocol_version})",
                             event_type="initialize_captured",
                             init_id=init_id,
-                            client=client_name
+                            client=client_name,
                         )
                         self.init_request = message
 
@@ -429,34 +500,43 @@ class MCPProxy:
                     self.send_to_server(fixed_line)
 
                 except json.JSONDecodeError as e:
-                    self.log(f"Invalid JSON from VS Code: {e}", level="WARNING",
-                            event_type="json_decode_error")
+                    self.log(
+                        f"Invalid JSON from VS Code: {e}",
+                        level="WARNING",
+                        event_type="json_decode_error",
+                    )
 
         except KeyboardInterrupt:
             self.log("Interrupted by user", event_type="interrupted")
-        except Exception as e:
-            self.log(f"Unexpected error: {e}", level="ERROR",
-                    event_type="unexpected_error",
-                    error=str(e))
+        except OSError as e:
+            self.log(
+                f"I/O error in proxy loop: {e}",
+                level="ERROR",
+                event_type="unexpected_error",
+                error=str(e),
+            )
         finally:
             self.cleanup()
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Cleanup on exit."""
-        self.log(f"Proxy shutting down (total restarts: {self.restart_count})",
-                event_type="proxy_stopping")
+        self.log(
+            f"Proxy shutting down (total restarts: {self.restart_count})",
+            event_type="proxy_stopping",
+        )
 
-        if self.server_process:
-            self.server_process.terminate()
+        process = self.server_process
+        if process:
+            process.terminate()
             try:
-                self.server_process.wait(timeout=2)
-            except:
-                self.server_process.kill()
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
 
         self.log("Proxy stopped", event_type="proxy_stopped")
 
 
-def main():
+def main() -> None:
     """Entry point for python -m mcp_server.core.proxy"""
     proxy = MCPProxy()
     proxy.run()

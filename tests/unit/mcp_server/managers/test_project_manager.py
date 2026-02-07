@@ -11,8 +11,8 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 from mcp_server.config.workflows import workflow_config
+from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 
 
 class TestProjectManagerWorkflows:
@@ -254,7 +254,7 @@ class TestProjectManagerWorkflows:
         self, manager: ProjectManager
     ) -> None:
         """Test initializing project without parent_branch (backward compat).
-        
+
         Issue #79: parent_branch is optional for existing workflows.
         """
         result = manager.initialize_project(

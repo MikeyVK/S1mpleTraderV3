@@ -62,7 +62,7 @@ class PhaseStateEngine:
     Supports standard sequential and forced non-sequential transitions.
     """
 
-    def __init__(self, workspace_root: Path | str, project_manager: ProjectManager):
+    def __init__(self, workspace_root: Path | str, project_manager: ProjectManager) -> None:
         """Initialize PhaseStateEngine.
 
         Args:
@@ -452,8 +452,7 @@ class PhaseStateEngine:
                 timeout=2,  # Short timeout to avoid blocking MCP (Issue #85)
                 env=env,
             )
-            commits = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-            return commits
+            return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
         except subprocess.CalledProcessError as e:
             msg = f"Git log failed: {e.stderr}"

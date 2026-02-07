@@ -7,11 +7,11 @@ from typing import Any
 import anyio
 from pydantic import BaseModel, Field, field_validator
 
+from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
-from mcp_server.config.git_config import GitConfig
-from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers import phase_state_engine, project_manager
+from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 

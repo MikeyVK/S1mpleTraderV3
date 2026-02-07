@@ -1,0 +1,75 @@
+{#- tier2_base_markdown.jinja2 - Language base for Markdown documents -#}
+{#- Version: 3.0.0 -#}
+{#- Purpose: Adds Markdown-specific patterns (code blocks, link definitions) - NO frontmatter -#}
+{%- extends "tier1_base_document.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: STRICT
+  level: format
+  validates:
+    strict:
+      - "^# "
+      - "^## "
+      - "^---$"
+  extends: tier1_base_document.jinja2
+  purpose: "Language base for Markdown - adds code blocks, link definitions (frontmatter removed per BASE_TEMPLATE)"
+  version: "3.0.0"
+  changelog:
+    - version: "3.0.0"
+      date: "2026-01-26"
+      changes: "BREAKING: Removed frontmatter (not in BASE_TEMPLATE), aligned with docs/ standards"
+    - version: "2.3.0"
+      date: "2026-01-26"
+      changes: "Fixed whitespace in Related Documentation section"
+    - version: "2.2.0"
+      date: "2026-01-26"
+      changes: "Fixed whitespace: newline after frontmatter, proper link definition spacing"
+    - version: "2.1.0"
+      date: "2026-01-26"
+      changes: "Changed enforcement from ARCHITECTURAL to STRICT (tier2 = BASE template)"
+    - version: "2.0.0"
+      date: "2026-01-26"
+      changes: "Added link definitions section before Version History"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with frontmatter and code blocks"
+  introspection:
+    template_id: tier2_base_markdown
+    tier: 2
+    parent: tier1_base_document
+    variables:
+      required:
+        - title
+      optional:
+        - code_blocks
+        - related_docs
+    exports_blocks:
+      - code_section
+      - link_definitions
+-#}
+
+{#- Markdown tier2 only adds code blocks and link definitions -#}
+{#- All content structure comes from tier1 (BASE_TEMPLATE) -#}
+
+{%- block code_section -%}
+{%- if code_blocks -%}
+{%- for block in code_blocks %}
+
+```{{ block.language | default('') }}
+{{ block.code }}
+```
+{%- endfor -%}
+{%- endif -%}
+{%- endblock %}
+
+{%- block link_definitions -%}
+{%- if related_docs %}
+
+<!-- Link definitions -->
+
+{% for doc in related_docs -%}
+[related-{{ loop.index }}]: {{ doc }}
+{% endfor -%}
+{%- endif -%}
+{%- endblock -%}

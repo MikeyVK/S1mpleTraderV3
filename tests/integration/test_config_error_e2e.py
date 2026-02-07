@@ -14,9 +14,10 @@ from pathlib import Path
 # Third-party
 import pytest
 
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+
 # Project
 from mcp_server.core.exceptions import ConfigError
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 
 
 def test_config_error_for_invalid_yaml(tmp_path: Path) -> None:

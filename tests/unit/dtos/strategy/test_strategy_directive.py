@@ -6,7 +6,7 @@ Tests creation, validation, and edge cases for strategy planning directives.
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false, reportFunctionMemberAccess=false
 # Suppress Pydantic FieldInfo false positives - Pylance can't narrow types after isinstance()/cast()
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import cast
 
@@ -17,12 +17,12 @@ from backend.core.enums import BatchExecutionMode, DirectiveScope
 from backend.dtos.causality import CausalityChain
 from backend.dtos.shared import Origin, OriginType
 from backend.dtos.strategy.strategy_directive import (
-    StrategyDirective,
     EntryDirective,
-    SizeDirective,
-    ExitDirective,
     ExecutionDirective,
     ExecutionPolicy,
+    ExitDirective,
+    SizeDirective,
+    StrategyDirective,
 )
 
 
@@ -89,8 +89,8 @@ class TestStrategyDirectiveCreation:
         size_dir = cast(SizeDirective, directive.size_directive)
         assert entry_dir is not None
         assert size_dir is not None
-        entry_symbol = str(getattr(entry_dir, "symbol"))
-        size_agg = getattr(size_dir, "aggressiveness")
+        entry_symbol = str(entry_dir.symbol)
+        size_agg = size_dir.aggressiveness
         assert entry_symbol == "BTCUSDT"
         assert size_agg == Decimal("0.6")
 
@@ -157,14 +157,14 @@ class TestStrategyDirectiveDefaultValues:
 
     def test_auto_sets_decision_timestamp(self):
         """decision_timestamp is auto-set to current UTC time."""
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         directive = StrategyDirective(
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.5")
         )
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         assert before <= directive.decision_timestamp <= after
         # Verify timezone-aware datetime
@@ -172,7 +172,7 @@ class TestStrategyDirectiveDefaultValues:
         # Pylance limitation: FieldInfo doesn't narrow to datetime after isinstance()
         # Runtime works perfectly. See agent.md section 6.6.5 "Bekende acceptable warnings #2"
         dt = cast(datetime, directive.decision_timestamp)
-        assert getattr(dt, "tzinfo") is not None
+        assert dt.tzinfo is not None
 
     def test_sub_directives_default_to_none(self):
         """All sub-directives are optional and default to None."""
@@ -215,8 +215,8 @@ class TestStrategyDirectiveDefaultValues:
 
         # CausalityChain enable Journal causality reconstruction
         causality = cast(CausalityChain, directive.causality)
-        assert len(getattr(causality, "signal_ids")) == 2
-        assert len(getattr(causality, "risk_ids")) == 1
+        assert len(causality.signal_ids) == 2
+        assert len(causality.risk_ids) == 1
 
 
 class TestStrategyDirectiveSerialization:
@@ -300,7 +300,7 @@ class TestStrategyDirectiveUseCases:
         # Type narrowing: entry_directive is not None here
         entry_dir = cast(EntryDirective, directive.entry_directive)
         assert entry_dir is not None
-        assert getattr(entry_dir, "direction") == "BUY"
+        assert entry_dir.direction == "BUY"
         assert directive.confidence == Decimal("0.85")
 
     def test_modify_existing_trade_on_risk(self):
@@ -341,7 +341,7 @@ class TestStrategyDirectiveUseCases:
         # Type narrowing: routing_directive is not None here
         routing_dir = cast(ExecutionDirective, directive.routing_directive)
         assert routing_dir is not None
-        assert getattr(routing_dir, "execution_urgency") == Decimal("1.0")
+        assert routing_dir.execution_urgency == Decimal("1.0")
 
     def test_partial_directive_for_entry_only(self):
         """Directive with only entry sub-directive (other planners inactive)."""
@@ -500,8 +500,8 @@ class TestStrategyDirectiveExecutionPolicy:
 
         assert directive.execution_policy is not None
         exec_policy = cast(ExecutionPolicy, directive.execution_policy)
-        assert getattr(exec_policy, "mode") == BatchExecutionMode.COORDINATED
-        assert getattr(exec_policy, "timeout_seconds") == 30
+        assert exec_policy.mode == BatchExecutionMode.COORDINATED
+        assert exec_policy.timeout_seconds == 30
 
     def test_flash_crash_scenario_with_independent_policy(self):
         """Flash crash uses INDEPENDENT mode (fire all, ignore failures)."""
@@ -520,7 +520,7 @@ class TestStrategyDirectiveExecutionPolicy:
         )
 
         exec_policy = cast(ExecutionPolicy, directive.execution_policy)
-        assert getattr(exec_policy, "mode") == BatchExecutionMode.INDEPENDENT
+        assert exec_policy.mode == BatchExecutionMode.INDEPENDENT
 
     def test_pair_trade_scenario_with_coordinated_policy(self):
         """Pair trade uses COORDINATED mode (cancel others on failure)."""
@@ -536,5 +536,5 @@ class TestStrategyDirectiveExecutionPolicy:
         )
 
         exec_policy = cast(ExecutionPolicy, directive.execution_policy)
-        assert getattr(exec_policy, "mode") == BatchExecutionMode.COORDINATED
-        assert getattr(exec_policy, "timeout_seconds") == 30
+        assert exec_policy.mode == BatchExecutionMode.COORDINATED
+        assert exec_policy.timeout_seconds == 30

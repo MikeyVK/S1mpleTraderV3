@@ -1,0 +1,61 @@
+{#- tier2_base_yaml.jinja2 - Language base for YAML config files -#}
+{#- Version: 1.1.0 -#}
+{#- Purpose: Adds YAML-specific patterns (nested structures, comments, anchors) -#}
+{%- extends "tier1_base_config.jinja2" -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: STRICT
+  level: format
+  validates:
+    strict:
+      - "^[a-z_]+:"
+      - "^  "
+      - "^#"
+  extends: tier1_base_config.jinja2
+  purpose: "Language base for YAML - adds nested structures, comments, anchors"
+  version: "1.1.0"
+  changelog:
+    - version: "1.1.0"
+      date: "2026-01-26"
+      changes: "Changed enforcement from ARCHITECTURAL to STRICT (tier2 = BASE template)"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version"
+  introspection:
+    template_id: tier2_base_yaml
+    tier: 2
+    parent: tier1_base_config
+    variables:
+      required:
+        - config_name
+      optional:
+        - config_entries
+        - nested_structures
+        - header_comment
+    exports_blocks:
+      - header_comment_block
+      - nested_section
+-#}
+
+{%- block content -%}
+{%- block header_comment_block -%}
+{%- if header_comment -%}
+# {{ header_comment }}
+{%- endif -%}
+{%- endblock %}
+
+{{ super() }}
+
+{%- block nested_section -%}
+{%- if nested_structures -%}
+{%- for struct in nested_structures %}
+
+{{ struct.key }}:
+{%- for item in struct.entries %}
+  {{ item.key }}: {{ item.value }}
+{%- endfor %}
+{%- endfor -%}
+{%- endif -%}
+{%- endblock %}
+{%- endblock -%}

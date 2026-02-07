@@ -1,0 +1,23 @@
+{# TEMPLATE_METADATA:
+  name: tier3_pattern_python_test_structure
+  tier: 3
+  category: pattern
+  enforcement: ARCHITECTURAL
+  used_by: [test_unit, test_integration]
+  provides_macros: [pattern_aaa_comment]
+  description: >
+    Tier 3 pattern template for test file organization and structure.
+    Provides composable macros for consistent test patterns (AAA pattern).
+  changelog:
+    - version: "2.0.0"
+      date: "2026-01-30"
+      changes: "Refactor from {% block %} to {% macro %} for true DRY composition"
+    - version: "1.0.0"
+      date: "2026-01-25"
+      changes: "Initial version with blocks (NOT DRY)"
+#}
+
+{# Macro: Generate AAA (Arrange-Act-Assert) comments #}
+{% macro pattern_aaa_comment(phase) %}
+# {{ phase }} - {% if phase == "Arrange" %}Setup test data and preconditions{% elif phase == "Act" %}Execute the functionality being tested{% elif phase == "Assert" %}Verify the expected outcome{% endif %}
+{%- endmacro %}

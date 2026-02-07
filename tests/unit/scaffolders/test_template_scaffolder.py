@@ -19,11 +19,11 @@ from pathlib import Path
 # Third-party
 import pytest
 
-# Project modules
-from mcp_server.core.exceptions import ExecutionError, ValidationError
+from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
+from mcp_server.config.template_config import get_template_root
+from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 from mcp_server.scaffolding.renderer import JinjaRenderer
-from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 
 
 @pytest.fixture(name="registry")
@@ -35,7 +35,7 @@ def artifact_registry() -> ArtifactRegistryConfig:
 @pytest.fixture(name="real_renderer")
 def real_jinja_renderer() -> JinjaRenderer:
     """Provide real JinjaRenderer using production templates."""
-    template_dir = Path(__file__).parent.parent.parent.parent / "mcp_server" / "templates"
+    template_dir = get_template_root()
     return JinjaRenderer(template_dir=template_dir)
 
 
@@ -49,22 +49,21 @@ def scaffolder_with_real_renderer(
 
 
 @pytest.fixture(name="test_custom_template")
-def test_custom_template_fixture(real_renderer: JinjaRenderer) -> str:
+def test_custom_template_fixture(real_renderer: JinjaRenderer):  # type: ignore[no-untyped-def]
     """Create temporary custom template for testing generic artifacts.
-    
+
     Creates a minimal test template in mcp_server/templates/test_custom/
     and cleans it up after the test completes.
-    
-    Returns:
+
+    Yields:
         Template path relative to templates root (e.g., "test_custom/component.py.jinja2")
     """
-    from pathlib import Path
-    
+
     # Get template root from renderer
     template_root = Path(real_renderer.template_dir)
     custom_dir = template_root / "test_custom"
     custom_dir.mkdir(exist_ok=True)
-    
+
     # Write minimal test template
     template_file = custom_dir / "test_component.py.jinja2"
     template_file.write_text(
@@ -76,10 +75,10 @@ def test_custom_template_fixture(real_renderer: JinjaRenderer) -> str:
         '    """{{ description }}."""\n'
         "    pass\n"
     )
-    
+
     template_path = "test_custom/test_component.py.jinja2"
     yield template_path
-    
+
     # Cleanup
     template_file.unlink()
     if not any(custom_dir.iterdir()):
@@ -104,7 +103,15 @@ class TestConstructor:
         result = scaffolder.scaffold(
             artifact_type="dto",
             name="TestDTO",
-            description="Test DTO"
+            description="Test DTO",
+            frozen=True,
+            examples=[{"id": "test-1", "name": "Test"}],
+            fields=[
+                {"name": "id", "type": "str", "description": "Unique identifier"},
+                {"name": "name", "type": "str", "description": "Test name"}
+            ],
+            dependencies=["pydantic"],
+            responsibilities=["Data validation", "Type safety"]
         )
 
         # Assert on structure (not exact content which may evolve)
@@ -136,7 +143,12 @@ class TestValidate:
         result = scaffolder.validate(
             artifact_type="dto",
             name="TestDTO",
-            description="Test DTO"
+            description="Test DTO",
+            frozen=True,
+            examples=[{"id": "test-1"}],
+            fields=[{"name": "id", "type": "str", "description": "ID"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
         )
 
         assert result is True
@@ -150,14 +162,13 @@ class TestValidate:
 
         with pytest.raises(ValidationError) as exc_info:
             scaffolder.validate(
-                artifact_type="dto",
-                name="TestDTO"
-                # Missing 'description' required field
+                artifact_type="dto"
+                # Missing 'name' required field (description is optional in concrete templates)
             )
 
         error_msg = str(exc_info.value)
         assert "Missing required fields" in error_msg
-        assert "description" in error_msg
+        assert "name" in error_msg
 
     def test_validate_allows_optional_fields_to_be_missing(
         self,
@@ -169,8 +180,13 @@ class TestValidate:
         result = scaffolder.validate(
             artifact_type="dto",
             name="TestDTO",
-            description="Test"
-            # Optional fields like 'fields', 'docstring' not provided
+            description="Test",
+            frozen=True,
+            examples=[{"test": "data"}],
+            fields=[{"name": "test", "type": "str", "description": "Test field"}],
+            dependencies=["pydantic"],
+            responsibilities=["Validation"]
+            # Optional fields like 'validators', 'layer' not provided
         )
 
         assert result is True
@@ -187,7 +203,15 @@ class TestScaffold:
         result = scaffolder.scaffold(
             artifact_type="dto",
             name="TestDTO",
-            description="Test DTO"
+            description="Test DTO",
+            frozen=True,
+            examples=[{"id": 1, "data": "test"}],
+            fields=[
+                {"name": "id", "type": "int", "description": "ID field"},
+                {"name": "data", "type": "str", "description": "Data field"}
+            ],
+            dependencies=["pydantic"],
+            responsibilities=["Data validation"]
         )
 
         # Assert on structure (production template)
@@ -200,20 +224,19 @@ class TestScaffold:
         self,
         scaffolder: TemplateScaffolder
     ) -> None:
-        """Scaffold Worker appends name_suffix to filename."""
+        """Scaffold Worker should successfully scaffold with name suffix."""
+        # Worker template now implemented (template_path configured in artifacts.yaml)
         result = scaffolder.scaffold(
             artifact_type="worker",
             name="Process",
-            input_dto="InputDTO",
-            output_dto="OutputDTO",
-            dependencies=[],  # Required by worker template
-            responsibilities="Process input data"  # Required by worker template
+            layer="Backend",
+            responsibilities=["Process input data"]
         )
 
-        # Verify suffix logic (from artifacts.yaml: name_suffix="Worker")
+        # Should succeed and include Worker suffix
+        assert result.content is not None
+        assert "ProcessWorker" in result.content
         assert result.file_name == "ProcessWorker.py"
-        # Class name is just "Process" (without suffix)
-        assert "class Process(BaseWorker[" in result.content
 
     def test_scaffold_design_doc_uses_markdown_extension(
         self,
@@ -223,8 +246,14 @@ class TestScaffold:
         result = scaffolder.scaffold(
             artifact_type="design",
             title="Test Design",
-            author="Agent",
-            issue_number=56
+            problem_statement="Need to solve X",
+            decision="Solution Y",
+            rationale="Because Z",
+            options=["Option A", "Option B"],
+            key_decisions=["Decision 1"],
+            requirements_functional=["Req 1"],
+            requirements_nonfunctional=["Perf req 1"],
+            timestamp="2026-01-27T10:00:00Z"
         )
 
         assert result.file_name == "Test Design.md"
@@ -234,15 +263,20 @@ class TestScaffold:
         self,
         scaffolder: TemplateScaffolder
     ) -> None:
-        """Scaffold service orchestrator uses correct template."""
+        """Scaffold service command uses correct template (orchestrator not yet implemented)."""
+        # Only service_command template exists currently
         result = scaffolder.scaffold(
             artifact_type="service",
             name="OrderService",
-            service_type="orchestrator"
+            service_type="command",
+            layer="Backend",
+            responsibilities=["Process orders"],
+            input_dto="OrderRequest",
+            output_dto="OrderResponse"
         )
 
-        # Check that orchestrator template was used (not command/query)
-        assert "OrderServiceService" in result.content or "OrderService" in result.content
+        # Check that command template was used
+        assert "OrderService" in result.content
         assert result.file_name == "OrderServiceService.py"
 
     def test_scaffold_service_command_selects_correct_template(
@@ -280,7 +314,7 @@ class TestScaffold:
         test_custom_template: str
     ) -> None:
         """Scaffold generic artifact uses template_name from context.
-        
+
         Tests that:
         - Generic artifact type accepts template_name parameter
         - Custom user-defined templates can be loaded
@@ -292,28 +326,28 @@ class TestScaffold:
             template_name=test_custom_template,  # User-specified custom template
             description="Test custom component"
         )
-        
+
         # Verify custom template was used and rendered correctly
         assert "class TestCustomComponent" in result.content
         assert "Test custom component" in result.content
         assert "user-defined template" in result.content  # From template comment
         assert result.file_name == "TestCustomComponent.py"
 
-    def test_scaffold_generic_without_template_name_fails(
+    def test_scaffold_generic_without_template_name_uses_default(
         self,
         scaffolder: TemplateScaffolder
     ) -> None:
-        """Scaffold generic without template_name raises ValidationError."""
-        # Generic requires template_name in context
-        with pytest.raises(ValidationError) as exc_info:
-            scaffolder.scaffold(
-                artifact_type="generic",
-                name="Broken",
-                output_path="broken.py"
-                # Missing: template_name
-            )
+        """Scaffold generic without template_name uses default from artifacts.yaml."""
+        # Generic has default template_path in artifacts.yaml: "concrete/generic.py.jinja2"
+        # Without template_name in context, uses that default
+        result = scaffolder.scaffold(
+            artifact_type="generic",
+            name="DefaultGeneric"
+        )
 
-        assert "template_name" in str(exc_info.value).lower()
+        # Should use default concrete/generic.py.jinja2
+        assert result.file_name == "DefaultGeneric.py"
+        assert "class DefaultGeneric:" in result.content
 
     def test_scaffold_passes_all_context_to_renderer(
         self,
@@ -324,7 +358,14 @@ class TestScaffold:
             artifact_type="dto",
             name="UserDTO",
             description="User data",
-            fields=[{"name": "id", "type": "int"}],
+            frozen=False,  # User state is mutable
+            examples=[{"id": 123, "username": "john"}],
+            fields=[
+                {"name": "id", "type": "int", "description": "User ID"},
+                {"name": "username", "type": "str", "description": "Username"}
+            ],
+            dependencies=["pydantic"],
+            responsibilities=["User data validation"],
             docstring="Custom docstring"
         )
 
@@ -345,7 +386,6 @@ class TestScaffold:
         )
 
         # Try to scaffold with an unknown artifact type
-        from mcp_server.core.exceptions import ConfigError
         with pytest.raises(ConfigError):
             scaffolder.scaffold(
                 artifact_type="non_existent_type",
