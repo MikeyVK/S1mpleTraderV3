@@ -15,11 +15,10 @@ Responsibilities:
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
-
-import json
 
 import yaml
 
@@ -38,6 +37,7 @@ class TemplateRegistry:
         self._data: dict[str, Any] = self._load()
 
     def _legacy_yaml_path(self) -> Path:
+        """Return the legacy YAML path next to the JSON registry."""
         return self.registry_path.with_name("template_registry.yaml")
 
     def _load(self) -> dict[str, Any]:
@@ -62,6 +62,7 @@ class TemplateRegistry:
         return self._empty_registry()
 
     def _load_json_file(self, path: Path) -> dict[str, Any]:
+        """Load registry from a JSON file; return empty registry on parse errors."""
         try:
             text = path.read_text(encoding="utf-8")
             if not text.strip():
@@ -74,6 +75,7 @@ class TemplateRegistry:
             return self._empty_registry()
 
     def _load_yaml_file(self, path: Path) -> dict[str, Any]:
+        """Load registry from a YAML file; return empty registry on parse errors."""
         try:
             with path.open(encoding="utf-8") as f:
                 data = yaml.safe_load(f)
@@ -96,17 +98,12 @@ class TemplateRegistry:
         self,
         artifact_type: str,
         version_hash: str,
-        tier_versions: dict[str, tuple[str, str]],  # {tier_name: (template_id, version)}
+        tier_versions: dict[str, tuple[str, str]],
     ) -> None:
-        """Save new version entry to registry.
-
-        Args:
-            artifact_type: "worker", "research", etc.
-            version_hash: 8-char hex hash
-            tier_versions: Tier chain with versions
+        """Save a new version entry to the registry.
 
         Raises:
-            ValueError: If hash collision detected (different tier chain for same hash)
+            ValueError: if hash collision detected (different tier chain for same hash)
         """
         if version_hash in self._data["version_hashes"]:
             existing = self._data["version_hashes"][version_hash]
@@ -143,17 +140,21 @@ class TemplateRegistry:
         self._persist()
 
     def lookup_hash(self, version_hash: str) -> dict[str, Any] | None:
+        """Lookup tier chain entry by version hash."""
         result = self._data["version_hashes"].get(version_hash)
         return cast(dict[str, Any] | None, result)
 
     def get_current_version(self, artifact_type: str) -> str | None:
+        """Get the current version hash for an artifact type."""
         result = self._data["current_versions"].get(artifact_type)
         return cast(str | None, result)
 
     def get_all_hashes(self) -> list[str]:
+        """Return all registered version hashes."""
         return list(self._data["version_hashes"].keys())
 
     def get_all_artifact_types(self) -> list[str]:
+        """Return all artifact types with a current version."""
         return list(self._data["current_versions"].keys())
 
     def _persist(self) -> None:
