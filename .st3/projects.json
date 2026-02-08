@@ -384,5 +384,17 @@
     "skip_reason": null,
     "parent_branch": "main",
     "created_at": "2026-01-22T16:15:17.812951+00:00"
+  },
+  "19": {
+    "issue_title": "Reference Documentation for MCP Server Tooling",
+    "workflow_name": "docs",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "planning",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": null,
+    "created_at": "2026-02-08T11:05:50.754151+00:00"
   }
 }
