@@ -423,12 +423,44 @@ Update `.github/.copilot-instructions.md`:
 
 ---
 
-## Open Questions
+## Decisions
 
-1. Should `detect_label_drift` be registered in server.py (making agent.md reference valid) or should the agent.md reference be removed?
-2. What is the desired granularity for the updated MCP_TOOLS.md — single comprehensive doc or split per category?
-3. Should `supervisor_reference.md` be deleted/archived or maintained alongside `proxy_restart.md`?
-4. For the hybrid `.copilot-instructions.md` approach — what is the acceptable auto-injection size (200 lines? 300 lines?)?
+Following research findings, the following decisions were made:
+
+### 1. `detect_label_drift` Tool Reference
+**Decision:** Remove references from agent.md (do not register).  
+**Rationale:** Tool exists in code but is not registered in server.py and has no documented use case. Registering would add maintenance burden without clear value.
+
+### 2. MCP_TOOLS.md Structure
+**Decision:** Split into category-specific documents (one per category).  
+**Rationale:** Current MCP_TOOLS.md would exceed 1000+ lines with full 46-tool documentation. Per DOCUMENTATION_MAINTENANCE.md: standard docs max 300 lines, architecture docs max 1000 lines. Split structure:
+- `docs/reference/mcp/tools/README.md` — Index/navigation (≤300 lines)
+- `docs/reference/mcp/tools/git.md` — Git tools (14 tools, ~400 lines)
+- `docs/reference/mcp/tools/github.md` — Issues/PRs/Labels/Milestones (16 tools, ~500 lines)
+- `docs/reference/mcp/tools/project.md` — Project/Phase management (4 tools, ~200 lines)
+- `docs/reference/mcp/tools/editing.md` — File editing (`safe_edit_file` deep-dive + `create_file`, ~400 lines)
+- `docs/reference/mcp/tools/quality.md` — Quality/validation/testing (5 tools, ~250 lines)
+- `docs/reference/mcp/tools/scaffolding.md` — Scaffolding (1 tool + artifacts.yaml, ~300 lines)
+- `docs/reference/mcp/tools/discovery.md` — Discovery/admin (4 tools, ~200 lines)
+
+### 3. `supervisor_reference.md` Status
+**Decision:** Archive/deprecate — superseded by `proxy_restart.md`.  
+**Rationale:** Naming inconsistency (refers to non-existent `supervisor.py`). `proxy_restart.md` is the accurate, maintained reference for the same functionality. Move to `docs/archive/`.
+
+### 4. `.copilot-instructions.md` Auto-Injection Size
+**Decision:** Target 150-200 lines (strict max 250 lines).  
+**Rationale:** Based on empirical model behavior:
+- **Claude (Opus/Sonnet):** Handles ~4000 token system prompts reliably. 200 lines ≈ 800-1200 tokens (comfortable).
+- **GPT-4o/o1:** Instruction following degrades significantly above ~300 lines. 200 lines is the sweet spot.
+- **Gemini 2.5:** Exhibits "instruction drift" beyond ~250 lines. Shorter = more reliable.
+- **Project standards:** Templates max 150 lines (DOCUMENTATION_MAINTENANCE.md). `.copilot-instructions.md` is effectively a config/template file.
+
+**Content to inline (~115 core lines + structure = ~150-180 total):**
+- Tool Priority Matrix (60 lines) — most critical
+- `run_in_terminal` restrictions (20 lines)
+- TDD cycle (15 lines)
+- Prime Directives (10 lines)
+- Workflow types table (10 lines)
 
 ---
 
