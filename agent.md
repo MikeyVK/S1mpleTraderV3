@@ -1,5 +1,6 @@
 # S1mpleTrader V3 - Agent Cooperation Protocol
 
+**Note:** This document is the full reference. For auto-loaded instructions in VS Code, see [.github/.copilot-instructions.md](.github/.copilot-instructions.md) which contains the critical subset of these rules.
 **Status:** Active | **Type:** Bootloader | **Context:** High-Frequency Trading Platform
 
 > **🛑 STOP & READ:** You are an autonomous developer agent. Your goal is precision and efficiency. **DO NOT ask the user for context we already have.** Follow this protocol to orient yourself and begin work.
@@ -62,13 +63,12 @@ Don't guess the phase or status. **Query the system:**
 
 **Workflow Types (from `.st3/workflows.yaml`):**
 
-| Workflow | Phases | Use Case |
-|----------|--------|----------|
-| **feature** | 7 phases: planning → research → design → tdd → integration → documentation → ready | New functionality |
-| **bug** | 6 phases: triage → investigation → design → tdd → integration → ready | Bug fixes |
-| **docs** | 4 phases: research → draft → review → ready | Documentation work |
-| **refactor** | 5 phases: analysis → design → tdd → integration → ready | Code improvements |
-| **hotfix** | 3 phases: triage → tdd → ready | Urgent fixes |
+| **feature** | 6 phases: research → planning → design → tdd → integration → documentation | New functionality |
+| **bug** | 6 phases: research → planning → design → tdd → integration → documentation | Bug fixes |
+| **docs** | 2 phases: planning → documentation | Documentation work |
+| **refactor** | 5 phases: research → planning → tdd → integration → documentation | Code improvements |
+| **hotfix** | 3 phases: tdd → integration → documentation | Urgent fixes |
+| **epic** | 5 phases: research → planning → design → tdd → integration | Large multi-issue initiatives |
 
 **Epic Support:**
 - Large issues use `type:epic` label
@@ -129,7 +129,6 @@ force_phase_transition(
 - Tool: `scaffold_artifact(artifact_type="design|architecture|tracking", name="...", context={...})`
   - Unified tool for ALL artifacts (code + docs)
   - Auto-resolves paths from artifacts.yaml registry
-- Validation: `validate_doc(path="...")`
 
 **Documentation Phase (after integration):**
 - Focus: Reference docs, project documentation updates
@@ -188,7 +187,6 @@ force_phase_transition(
 | List labels | `list_labels()` | `run_in_terminal("gh label list")` |
 | Add labels to issue/PR | `add_labels(issue_number, labels)` | GitHub CLI / manual |
 | Remove labels | `remove_labels(issue_number, labels)` | GitHub CLI / manual |
-| Detect label drift | `detect_label_drift()` | Manual comparison |
 
 ### GitHub Milestones
 | Action | ✅ USE THIS | ❌ NEVER USE |
@@ -278,7 +276,6 @@ scaffold_artifact(
 | Run tests | `run_tests(path, markers, timeout, verbose)` | `run_in_terminal("pytest")` |
 | Quality gates | `run_quality_gates(files)` | `run_in_terminal("ruff/mypy/pylint")` |
 | Validate template | `validate_template(path, template_type)` | Manual validation |
-| Validate document | `validate_doc(content, template_type)` | Manual check |
 | Validate architecture | `validate_architecture(scope)` | Manual review |
 
 ### Discovery & Context
@@ -392,14 +389,12 @@ run_tests(path="tests/")
     *   Auto-resolves docs/development/issueXX/ from artifacts.yaml
     *   *Result:* Creates perfectly structured markdown file.
 2.  **Validate:**
-    *   `validate_doc(content="...", template_type="design")`
 
 ### C. "Manage Labels & Milestones"
 1.  **Create Label:**
     *   `create_label(name="type:feature", color="0e8a16", description="...")`
     *   Labels validated against `.st3/labels.yaml`
 2.  **Detect Drift:**
-    *   `detect_label_drift()` - Compare repo labels with config (manual/quality gate)
 
 ---
 
