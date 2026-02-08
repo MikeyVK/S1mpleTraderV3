@@ -1,3 +1,5 @@
+> **⚠️ DEPRECATED:** This document refers to the old "supervisor" naming. The current implementation is documented in [../reference/mcp/proxy_restart.md](../reference/mcp/proxy_restart.md) as "MCP Transparent Restart Proxy" (`mcp_server/core/proxy.py`). This file is preserved for historical reference only.
+
 # Watchdog Supervisor Reference
 
 **Status:** APPROVED
