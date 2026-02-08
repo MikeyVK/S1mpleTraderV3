@@ -1,9 +1,9 @@
 <!-- docs/development/issue121/design.md -->
-<!-- template=design version=5827e841 created=2026-02-08 updated= -->
+<!-- template=design version=5827e841 created=2026-02-08 updated=2026-02-08 -->
 # Content-aware editing: segment-based editing met automatische indentation
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 1.3  
 **Last Updated:** 2026-02-08
 
 ---
