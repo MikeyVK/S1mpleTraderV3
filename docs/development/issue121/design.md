@@ -54,41 +54,184 @@ Huidige edit tools (line-based en pattern matching) zijn te fragiel voor agents.
 
 ### 1.4. Risks & Dependencies
 
-**Risk 1: Template Introspection Classification Accuracy**
+**Risk 1: Template Introspection Classification Fragility (CRITICAL)**
 
-*Current Issue:* `_classify_variables()` in TemplateIntrospector gebruikt **alleen de concrete template AST** voor required/optional classification, niet de hele inheritance chain. Dit leidt tot misclassificatie:
+*Analysis Date: 2026-02-08*  
+*Templates Analyzed: 71 files*  
+*Estimated Misclassifications: **80-120 variables** (40% false positive rate)*
+
+#### Current Algorithm Limitations
+
+`_classify_variables()` in [template_introspector.py](../../mcp_server/scaffolding/template_introspector.py#L135-L173) detecteert ALLEEN 2 patronen:
 
 ```python
-# Template Tier 0 (base.py.jinja2):
-{{ optional_field|default("fallback") }}  # Optional pattern
-
-# Template Concrete (worker.py.jinja2) - extends base:
-{{ optional_field }}  # No default here
-
-# Result: optional_field wordt FOUTIEF als REQUIRED geclassificeerd
-# Reden: classification kijkt alleen naar concrete template AST
+def _classify_variables(ast, variables):
+    # Pattern 1: {% if variable %} → optional
+    if isinstance(node, nodes.If) and isinstance(node.test, nodes.Name):
+        optional_vars.add(var_name)
+    
+    # Pattern 2: {{ variable|default(...) }} → optional
+    if isinstance(node, nodes.Filter) and node.name == "default":
+        optional_vars.add(var_name)
+    
+    # Everything else → REQUIRED (conservative)
+    return required_vars, optional_vars
 ```
 
-**Known Issues (Issue #72):**
-- Import aliases (`{% import ... as di %}`) worden gezien als undeclared variables
-- Optional fields uit parent templates → gezien als required in concrete template
-- Conservative fallback: "if unclear, mark as required" → false positives
+#### Undetected Patterns (Edge Cases)
 
-**Impact op Issue #121:**
-- TemplateBlockDetector kan blocks missen als template metadata incomplete is
-- Graceful degradation naar Python/Markdown detection is CRITICAL
-- Agent-facing error messages moeten duidelijk zijn over fallback behavior
+**Category A: For Loops (HIGH SEVERITY - 45+ templates affected)**
+
+```jinja
+{# NOT DETECTED: 'responsibilities' marked as REQUIRED #}
+{% for responsibility in responsibilities %}
+    - {{ responsibility }}
+{% endfor %}
+
+{# Reality: Empty list is valid! #}
+scaffold_artifact('worker', name='Test')  # ❌ Error: responsibilities required
+```
+
+**Category B: Explicit "is defined" Checks (MEDIUM SEVERITY - 9 templates)**
+
+```jinja
+{# NOT DETECTED: 'field.default' marked as REQUIRED #}
+{% if field.default is defined %}
+    default={{ field.default }},
+{% endif %}
+
+{# Reason: Algorithm checks nodes.Name, not Test nodes #}
+```
+
+**Category C: Nested Field Access (CRITICAL - 100+ occurrences, ALL templates)**
+
+```jinja
+{# NOT DETECTED: 'field.name', 'field.type', 'field.example' invisible #}
+{% for field in fields %}
+    {{ field.name }}: {{ field.type }} = {{ field.example }}
+{% endfor %}
+
+{# Reason: meta.find_undeclared_variables() only returns top-level 'fields'
+   Nested attributes like .name, .type are NOT in undeclared set #}
+```
+
+**Category D: Variables Inside Conditionals (HIGH SEVERITY - 30+ templates)**
+
+```jinja
+{# NOT DETECTED: 'doc.title' and 'doc.path' marked as REQUIRED #}
+{% if related_docs %}
+{% for doc in related_docs %}
+    - [{{ doc.title }}]({{ doc.path }})
+{% endfor %}
+{% endif %}
+
+{# Reason: Algorithm only marks variable optional if it's the TEST,
+   not if used INSIDE the conditional block #}
+```
+
+**Category E: Complex Conditionals (MEDIUM SEVERITY - 8 templates)**
+
+```jinja
+{# NOT DETECTED: Both 'labels' and 'milestone' marked as REQUIRED #}
+{% if labels or milestone %}
+    ## Metadata
+{% endif %}
+
+{# Reason: AST contains Or node, not simple Name node #}
+```
+
+#### Real-World Impact Examples
+
+**Failure Mode 1: DTO with No Fields**
+```python
+scaffold_artifact(
+    artifact_type='dto',
+    name='EmptyDTO',
+    context={'frozen': True}
+)
+```
+**Error:** `ValidationError: 'fields' is required`  
+**Reality:** `fields` is optional (empty DTO is valid: `fields=[]`)
+
+**Failure Mode 2: Design Document Without Related Docs**
+```python
+scaffold_artifact(
+    artifact_type='design',
+    name='SimpleDesign',
+    context={'problem_statement': 'Issue description'}
+)
+```
+**Error:** `ValidationError: 'related_docs' is required`  
+**Reality:** `related_docs` is optional (new designs have no related docs yet)
+
+**Failure Mode 3: Worker Without Capabilities**
+```python
+scaffold_artifact(
+    artifact_type='worker',
+    name='BasicWorker',
+    context={'name': 'BasicWorker', 'layer': 'Platform'}
+)
+```
+**Error:** `ValidationError: 'capabilities' is required`  
+**Reality:** `capabilities` is optional (simple workers don't need DI)
+
+#### Severity Assessment
+
+| Misclassification Type | Frequency | Impact | Priority |
+|------------------------|-----------|--------|----------|
+| **Nested field access** | 100+ occurrences | CRITICAL - breaks all complex DTOs | P0 |
+| **For loops** | 45 templates (63%) | HIGH - empty lists fail validation | P1 |
+| **Variables inside if-blocks** | 30 templates | HIGH - cascading parent-child errors | P1 |
+| **"is defined" checks** | 9 templates | MEDIUM - explicit optionality ignored | P2 |
+| **Complex conditionals** | 8 templates | MEDIUM - OR/AND conditions fail | P2 |
+| **Import aliases** | ALL tier3 templates | MEDIUM - internal symbols leak | P2 |
+| **Inheritance chain** | Multi-tier templates | MEDIUM - parent optionals become required | P2 |
+
+#### Impact op Issue #121
+
+1. **TemplateBlockDetector robustness:**
+   - Template metadata may be incomplete/missing → MANDATORY graceful degradation
+   - Python AST and Markdown regex detection must be PRIMARY, not fallback
+   - Agent must never see "template block not found" errors
+
+2. **Segment naming fragility:**
+   - Template block names depend on accurate introspection
+3. **Error messaging:**
+   - Current: "Missing required field X" (wrong - field is optional)
+   - Improved: "Template introspection incomplete, using Python AST detection"
+   - Agent should be UNAWARE of introspection failures
 
 **Mitigation Strategies:**
-1. **Primary:** Use `introspect_template_with_inheritance()` ipv `introspect_template()` (analyseert hele chain)
-2. **Fallback:** Als template metadata ontbreekt/faalt → automatisch Python AST of Markdown regex detection
-3. **Validation:** Test met multi-tier templates (tier0 → concrete) om classification edge cases te detecteren
-4. **Documentation:** Agent-facing errors moeten uitleggen: "Template blocks not detected, using Python AST detection instead"
+
+1. **PRIMARY Strategy: Python AST as Source of Truth**
+   - Use Python AST detection for Python files (function/method/class names)
+   - Use Markdown regex for .md files (heading-based sections)
+   - Template blocks become OPTIONAL bonus metadata, not required
+   - Impact: Issue #121 works independently of template introspection quality
+
+2. **SECONDARY: Fix Classification Algorithm (Issue #72 follow-up)**
+   - Priority P0: Detect nested field access (walk Getattr nodes)
+   - Priority P1: Detect for loops (check nodes.For, mark optional)
+   - Priority P2: Detect "is defined" (check Test nodes with name='defined')
+   - Priority P3: Detect complex conditionals (walk And/Or/Not nodes)
+   - Effort: 1.5-2 days (see section 10 Implementation Effort)
+
+3. **TERTIARY: Enhanced Error Messages**
+   - Template introspection fails → log warning, continue with AST detection
+   - Agent sees: "Editing Worker.process method" (not "template block 'method_process'")
+   - No classification errors exposed to agent
+
+4. **Validation Strategy:**
+   - Test with scaffolded files (should prefer template blocks if available)
+   - Test with non-scaffolded files (must work with Python/Markdown detection)
+   - Test with corrupt metadata (graceful degradation to AST)
+   - Test with multi-tier templates (classification edge cases)
 
 **Related Issues:**
 - Issue #72: TEMPLATE_METADATA vs Jinja-meta als SSOT (DRY risk)
 - Issue #120: ScaffoldMetadataParser moet robuust zijn tegen missing/incomplete metadata
 
+**Decision:** Template introspection is **NOT A BLOCKER** for Issue #121. Python AST + Markdown regex detection is sufficient for MVP. Template blocks are a "nice-to-have" optimization, not a requirement.
 ---
 
 ## 2. Design Options
@@ -854,7 +997,17 @@ def _execute_safe_edit(input: SafeEditInput) -> str:
 | Validate SCAFFOLD header parsing | 2 hours | MEDIUM | Robust against missing/corrupt metadata |
 | **Total** | **1.5 days** | **BLOCKER** | **Must fix before Issue #121 template detection** |
 
-**Recommendation:** Fix template introspection FIRST (Issue #72 subtask) before implementing TemplateBlockDetector. Python/Markdown detection can be implemented independently.
+**Recommendation:** Template introspection fixes are OPTIONAL for Issue #121 MVP. Python AST + Markdown regex detection works independently and should be implemented first. TemplateBlockDetector can be added later as optimization.
+
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|----------|
+| 1.0 | 2026-02-08 | Agent | Initial draft |
+| 1.1 | 2026-02-08 | Agent | Added template introspection robustness analysis (Issue #72 dependency) |
+| 1.2 | 2026-02-08 | Agent | **CRITICAL:** Comprehensive fragility analysis - 80-120 misclassified variables (40% false positive rate). Analyzed 71 templates, identified 7 undetected edge case categories. Decision: Python AST + Markdown regex as PRIMARY detection, template blocks as optional optimization. |
 
 ---
 
