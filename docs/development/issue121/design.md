@@ -845,17 +845,6 @@ def _execute_safe_edit(input: SafeEditInput) -> str:
 
 ---
 
-## Version History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|----------|
-| 1.0 | 2026-02-08 | Agent | Initial draft |
-| 1.1 | 2026-02-08 | Agent | Added template introspection robustness analysis (Issue #72 dependency) |
-| 1.2 | 2026-02-08 | Agent | **CRITICAL:** Comprehensive fragility analysis - 80-120 misclassified variables (40% false positive rate). Analyzed 71 templates, identified 7 undetected edge case categories. Decision: Python AST + Markdown regex as PRIMARY detection, template blocks as optional optimization. |
-| 1.3 | 2026-02-08 | Agent | **CLEANUP:** Deferred template introspection work to Issue #72. Removed detailed analysis from this document - now tracked in [Issue #72: template-introspection-classification-fragility.md](../issue72/template-introspection-classification-fragility.md). Issue #121 proceeds independently with Python AST + Markdown regex detection. |
-
----
-
 ## 11. Open Questions
 
 ### Segment-Based Editing
@@ -895,3 +884,7 @@ def _execute_safe_edit(input: SafeEditInput) -> str:
 |---------|------|--------|---------|
 | 1.0 | 2026-02-08 | Agent | Initial draft |
 | 1.1 | 2026-02-08 | Agent | Added template introspection robustness analysis (Issue #72 dependency) |
+| 1.2 | 2026-02-08 | Agent | **CRITICAL:** Comprehensive fragility analysis - 80-120 misclassified variables (40% false positive rate). Analyzed 71 templates, identified 7 undetected edge case categories. Decision: Python AST + Markdown regex as PRIMARY detection, template blocks as optional optimization. |
+| 1.3 | 2026-02-08 | Agent | **CLEANUP:** Deferred template introspection work to Issue #72. Removed detailed analysis from this document - now tracked in [Issue #72: template-introspection-classification-fragility.md](../issue72/template-introspection-classification-fragility.md). Issue #121 proceeds independently with Python AST + Markdown regex detection. |
+
+---
