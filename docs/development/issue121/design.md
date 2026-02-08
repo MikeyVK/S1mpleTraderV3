@@ -51,6 +51,44 @@ Huidige edit tools (line-based en pattern matching) zijn te fragiel voor agents.
 ### 1.3. Constraints
 
 ['Moet compatible blijven met bestaande safe_edit_tool modes', 'Indentation detection moet tabs vs spaces onderscheid maken', 'Template block detection afhankelijk van Issue #120 completion', 'Performance: <100ms voor files tot 5000 lines']
+
+### 1.4. Risks & Dependencies
+
+**Risk 1: Template Introspection Classification Accuracy**
+
+*Current Issue:* `_classify_variables()` in TemplateIntrospector gebruikt **alleen de concrete template AST** voor required/optional classification, niet de hele inheritance chain. Dit leidt tot misclassificatie:
+
+```python
+# Template Tier 0 (base.py.jinja2):
+{{ optional_field|default("fallback") }}  # Optional pattern
+
+# Template Concrete (worker.py.jinja2) - extends base:
+{{ optional_field }}  # No default here
+
+# Result: optional_field wordt FOUTIEF als REQUIRED geclassificeerd
+# Reden: classification kijkt alleen naar concrete template AST
+```
+
+**Known Issues (Issue #72):**
+- Import aliases (`{% import ... as di %}`) worden gezien als undeclared variables
+- Optional fields uit parent templates → gezien als required in concrete template
+- Conservative fallback: "if unclear, mark as required" → false positives
+
+**Impact op Issue #121:**
+- TemplateBlockDetector kan blocks missen als template metadata incomplete is
+- Graceful degradation naar Python/Markdown detection is CRITICAL
+- Agent-facing error messages moeten duidelijk zijn over fallback behavior
+
+**Mitigation Strategies:**
+1. **Primary:** Use `introspect_template_with_inheritance()` ipv `introspect_template()` (analyseert hele chain)
+2. **Fallback:** Als template metadata ontbreekt/faalt → automatisch Python AST of Markdown regex detection
+3. **Validation:** Test met multi-tier templates (tier0 → concrete) om classification edge cases te detecteren
+4. **Documentation:** Agent-facing errors moeten uitleggen: "Template blocks not detected, using Python AST detection instead"
+
+**Related Issues:**
+- Issue #72: TEMPLATE_METADATA vs Jinja-meta als SSOT (DRY risk)
+- Issue #120: ScaffoldMetadataParser moet robuust zijn tegen missing/incomplete metadata
+
 ---
 
 ## 2. Design Options
@@ -600,41 +638,76 @@ class PythonSegmentDetector(SegmentDetector):
 
 ### 7.3. Template Block Detector
 
-**Strategy:** Integration with Issue #120 TemplateIntrospector.
+**Strategy:** Integration with Issue #120 TemplateIntrospector with graceful degradation.
 
 ```python
 from backend.assembly.introspection import TemplateIntrospector
+from mcp_server.scaffolding.template_introspector import introspect_template_with_inheritance
 
 class TemplateBlockDetector(SegmentDetector):
-    """Detect template blocks using scaffold metadata."""
+    """Detect template blocks using scaffold metadata.
+    
+    CRITICAL: Uses introspect_template_with_inheritance() for robustness
+    against multi-tier template inheritance classification issues.
+    """
     
     def detect(self, content: str, file_path: str) -> dict[str, SegmentLocation]:
         """Detect all template blocks in scaffolded file."""
         if not file_path:
             return {}
         
-        # Use TemplateIntrospector from Issue #120
-        inspector = TemplateIntrospector()
-        blocks = inspector.get_template_blocks(file_path)
-        
-        if not blocks:
-            # Graceful degradation: fall back to Python/Markdown detection
-            return {}
-        
-        segments = {}
-        lines = content.splitlines()
-        
-        for block in blocks:
-            segments[block.name] = SegmentLocation(
-                name=block.name,
-                start_line=block.start_line,
-                end_line=block.end_line,
-                base_indentation=block.indentation,
-                content="\n".join(lines[block.start_line-1:block.end_line])
+        try:
+            # Use TemplateIntrospector from Issue #120
+            # NOTE: Try to extract template metadata from SCAFFOLD header
+            inspector = TemplateIntrospector()
+            blocks = inspector.get_template_blocks(file_path)
+            
+            if not blocks:
+                # Graceful degradation: fall back to Python/Markdown detection
+                logger.info(f"No template blocks found for {file_path}, using fallback detection")
+                return {}
+            
+            segments = {}
+            lines = content.splitlines()
+            
+            for block in blocks:
+                segments[block.name] = SegmentLocation(
+                    name=block.name,
+                    start_line=block.start_line,
+                    end_line=block.end_line,
+                    base_indentation=block.indentation,
+                    content="\n".join(lines[block.start_line-1:block.end_line])
+                )
+            
+            return segments
+            
+        except Exception as e:
+            # CRITICAL: Graceful degradation on ANY introspection failure
+            # Common failures:
+            # - Template metadata missing (non-scaffolded file)
+            # - Template metadata corrupt (invalid SCAFFOLD header)
+            # - Introspection classification error (Issue #72 edge cases)
+            logger.warning(
+                f"Template introspection failed for {file_path}: {e}. "
+                "Falling back to Python/Markdown detection."
             )
-        
-        return segments
+            return {}
 ```
+
+**Error Handling Strategy:**
+
+| Error Scenario | Handling | User Impact |
+|----------------|----------|-------------|
+| No SCAFFOLD header | Return empty dict → Python/Markdown fallback | Agent uses function/section names instead of template block names |
+| Corrupt SCAFFOLD metadata | Catch exception → Python/Markdown fallback | Same as above + warning logged |
+| Template file not found | Return empty dict → Python/Markdown fallback | Works for non-scaffolded files |
+| Introspection classification error | Catch exception → Python/Markdown fallback | Agent oblivious - tool handles gracefully |
+
+**Validation Requirements:**
+- Test with scaffolded files (should use template blocks)
+- Test with non-scaffolded files (should use Python/Markdown fallback)
+- Test with corrupt SCAFFOLD headers (should gracefully degrade)
+- Test with multi-tier templates (Issue #72 edge cases)
 
 ---
 
@@ -722,6 +795,13 @@ def _execute_safe_edit(input: SafeEditInput) -> str:
 - Python: module functions, class methods, nested functions, decorators
 - Template blocks: with/without metadata, fallback behavior
 
+**Template introspection robustness (CRITICAL):**
+- Test `introspect_template_with_inheritance()` with multi-tier templates (tier0 → concrete)
+- Test optional field detection across inheritance chain
+- Test import alias filtering (should NOT appear in required fields)
+- Test SCAFFOLD header parsing (valid, missing, corrupt)
+- Test graceful degradation when introspection fails
+
 ### 9.2. Integration Tests
 
 **End-to-end segment editing:**
@@ -741,15 +821,73 @@ def _execute_safe_edit(input: SafeEditInput) -> str:
 - Segment detection on 5000-line file → <100ms
 - Multiple segment edits in single file → batching optimization
 - Memory usage with large files → streaming if needed
+- Template introspection caching → avoid repeated AST parsing
 
 ---
 
-## 10. Open Questions
+## 10. Implementation Effort Estimation
+
+### Core Features (5-8 days total)
+
+| Component | Effort | Priority | Dependencies |
+|-----------|--------|----------|--------------|
+| Indentation preservation algorithm | 1 day | HIGH | None |
+| SegmentEdit API + models | 0.5 day | HIGH | None |
+| Markdown segment detector | 0.5 day | MEDIUM | None |
+| Python AST segment detector | 1 day | MEDIUM | None |
+| Template block detector | 1 day | LOW | Issue #120, Issue #72 fixes |
+| Integration met safe_edit_tool | 1 day | HIGH | Above components |
+| Unit tests | 1.5 days | HIGH | Above components |
+| Integration tests | 1 day | HIGH | Above components |
+| Documentation | 0.5 day | MEDIUM | Above components |
+
+### Template Introspection Robustness (Issue #72 follow-up)
+
+**Scope:** Fix `_classify_variables()` om hele inheritance chain te analyseren, niet alleen concrete template
+
+| Component | Effort | Priority | Notes |
+|-----------|--------|----------|-------|
+| Analyze Issue #72 root cause | 2 hours | HIGH | Understand inheritance chain classification bug |
+| Extend `_classify_variables()` | 4 hours | HIGH | Walk ALL ASTs in chain, not just concrete |
+| Fix import alias detection | 2 hours | HIGH | Filter `{% import ... as alias %}` from undeclared vars |
+| Add multi-tier tests | 3 hours | HIGH | Test tier0 → tier1 → tier2 → concrete chains |
+| Validate SCAFFOLD header parsing | 2 hours | MEDIUM | Robust against missing/corrupt metadata |
+| **Total** | **1.5 days** | **BLOCKER** | **Must fix before Issue #121 template detection** |
+
+**Recommendation:** Fix template introspection FIRST (Issue #72 subtask) before implementing TemplateBlockDetector. Python/Markdown detection can be implemented independently.
+
+---
+
+## 11. Open Questions
+
+### Segment-Based Editing
 
 1. **Multi-segment edits:** Should we support editing multiple segments in one tool call? (Batch optimization)
 2. **Segment renaming:** Should segment_edit also support renaming (e.g., rename method)?
 3. **Cross-file segments:** Could template blocks span multiple files? (Out of scope for now)
 4. **Fuzzy matching:** If segment name not exact match, should we suggest similar names? (Nice-to-have)
+
+### Template Introspection Robustness
+
+5. **Classification algorithm improvement (Issue #72):**
+   - Should `_classify_variables()` analyze ENTIRE inheritance chain, not just concrete template AST?
+   - How to handle import aliases (`{% import ... as alias %}`) in undeclared variables?
+   - Should we use TEMPLATE_METADATA as SSOT instead of Jinja-meta (DRY principle)?
+
+6. **Fallback detection priority:**
+   - When template introspection fails, what order: Template → Python AST → Markdown regex?
+   - Should we cache detection results per file to avoid repeated introspection?
+   - How to handle hybrid files (Python + Markdown in same file)?
+
+7. **Agent error messages:**
+   - When falling back to Python/Markdown detection, should agent be notified?
+   - Should error messages explain WHY template blocks couldn't be used?
+   - Format: Silent fallback vs informative warning?
+
+8. **Multi-tier template testing:**
+   - What test coverage needed for tier0 → tier1 → tier2 → concrete chain?
+   - Edge cases: optional fields in base templates, required in concrete?
+   - Performance: introspection latency with 4-tier inheritance?
 
 ---
 
@@ -757,4 +895,5 @@ def _execute_safe_edit(input: SafeEditInput) -> str:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 |  | Agent | Initial draft |
+| 1.0 | 2026-02-08 | Agent | Initial draft |
+| 1.1 | 2026-02-08 | Agent | Added template introspection robustness analysis (Issue #72 dependency) |
