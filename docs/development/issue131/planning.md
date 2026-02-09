@@ -3,7 +3,7 @@
 # Quality Gates Config-Driven Execution - Planning
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-02-09  
 **Issue:** #131
 
@@ -42,6 +42,8 @@ Read these first:
 ## Summary
 
 Refactor QAManager from hardcoded 3-gate execution (pylint, mypy, pyright) to config-driven dynamic execution using quality.yaml `active_gates` list and generic gate executor pattern. Eliminates ~145 lines of duplicated parsing logic and enables adding/removing gates via configuration only.
+
+**Additional scope:** Refactor standards.py to use quality.yaml (eliminate hardcoded JSON), install quality gate tools, and refactor pyproject.toml based on quality standards research to properly separate IDE baseline from CI/CD strict settings.
 
 ---
 
@@ -116,6 +118,66 @@ Refactor QAManager from hardcoded 3-gate execution (pylint, mypy, pyright) to co
 - Iterates over `quality_config.active_gates`
 - Calls generic `_run_gate()` for each
 - Gate number increments dynamically
+
+---
+
+### WP8: Standards Resource Refactoring
+
+**Deliverables:**
+- Refactor standards.py to read from quality.yaml (eliminate hardcoded JSON)
+- Return active_gates in response
+- Update tests for dynamic behavior
+
+**Acceptance Criteria:**
+- `st3://rules/coding_standards` returns dynamic configuration
+- Reads active_gates from quality.yaml
+- No hardcoded tool lists
+- Test validates new implementation
+
+**Files Modified:**
+- `mcp_server/resources/standards.py`
+- `tests/unit/mcp_server/resources/test_standards.py`
+
+---
+
+### WP9: Tool Installation & Verification
+
+**Deliverables:**
+- Install all tools from requirements-dev.txt in venv
+- Verify ruff executable available
+- Document tool versions
+
+**Acceptance Criteria:**
+- `pip install -r requirements-dev.txt` succeeds
+- `ruff --version` returns version number
+- `pyright --version` works
+- All quality gates tools executable
+
+**Files Modified:**
+- None (installation only)
+- Document installation in planning
+
+---
+
+### WP10: pyproject.toml Configuration Refactor
+
+**Deliverables:**
+- Refactor pyproject.toml based on quality standards research
+- Separate IDE-friendly baseline from CI/CD strict settings
+- Document rationale for each configuration choice
+
+**Acceptance Criteria:**
+- pyproject.toml reflects coding standards from docs/coding_standards/
+- Quality.yaml CI/CD overrides clearly documented
+- Dual-user scenario (IDE vs CI/CD) explicitly configured
+- Configuration decisions traceable to quality standards docs
+
+**Dependencies:**
+- **Blocked by:** Separate research into quality gate settings (new research phase)
+
+**Files Modified:**
+- `pyproject.toml`
+- `.st3/quality.yaml` (CI/CD overrides)
 - Applies gate.scope filtering if defined
 - Skips gates with no matching files
 - Aggregates results correctly
@@ -187,40 +249,45 @@ Refactor QAManager from hardcoded 3-gate execution (pylint, mypy, pyright) to co
 
 ## TDD Cycles
 
-### Cycle 1: Config Model Extension (active_gates field)
+### Cycle 1: Config Model Extension + Tool Installation (WP1, WP9)
 
-**Goal:** Add and validate active_gates configuration
+**Goal:** Add and validate active_gates configuration, install tools
 
 **Tests:**
 - `test_quality_config_with_active_gates()` - Load config with active_gates
 - `test_active_gates_validation_fails_for_missing_gate()` - Invalid gate ID error
 - `test_active_gates_defaults_to_empty()` - No active_gates field defaults
+- (Manual) Verify ruff executable installed and working
 
 **Success Criteria:**
 - Tests pass
 - QualityConfig has active_gates field
 - Cross-validation prevents invalid gate IDs
+- All tools from requirements-dev.txt installed
 
 ---
 
-### Cycle 2: Generic Parsing Strategies
+### Cycle 2: Generic Parsing Strategies + Standards Refactor (WP2, WP8)
 
-**Goal:** Implement reusable parsing executors
+**Goal:** Implement reusable parsing executors, refactor standards.py
 
 **Tests:**
 - `test_parse_text_regex_extracts_patterns()` - Regex parsing works
 - `test_parse_json_field_extracts_paths()` - JSON field extraction works
 - `test_parse_exit_code_interprets_codes()` - Exit code interpretation works
 - `test_parsing_uses_quality_yaml_config()` - No hardcoded patterns
+- `test_standards_resource_reads_quality_yaml()` - Standards.py dynamic
+- `test_standards_resource_reflects_active_gates()` - Active gates in response
 
 **Success Criteria:**
 - Tests pass
 - Three parsing methods exist
 - All use quality.yaml configuration
+- standards.py no hardcoded JSON
 
 ---
 
-### Cycle 3: Generic Gate Executor
+### Cycle 3: Generic Gate Executor (WP3)
 
 **Goal:** Single method executes any gate
 
@@ -239,9 +306,9 @@ Refactor QAManager from hardcoded 3-gate execution (pylint, mypy, pyright) to co
 
 ---
 
-### Cycle 4: Integration (run_quality_gates refactor + cleanup)
+### Cycle 4: Integration + Cleanup (WP4, WP5, WP6, WP7)
 
-**Goal:** Integrate all components, remove legacy code
+**Goal:** Integrate all components, remove legacy code, update quality.yaml
 
 **Tests:**
 - `test_run_quality_gates_reads_active_gates()` - Uses config not hardcoded
@@ -256,6 +323,27 @@ Refactor QAManager from hardcoded 3-gate execution (pylint, mypy, pyright) to co
 - All active gates execute
 - Legacy code removed
 - Integration test with real quality.yaml passes
+- Ruff enabled, Mypy disabled in quality.yaml
+
+---
+
+### Cycle 5: Configuration Refinement (WP10)
+
+**Goal:** Refactor pyproject.toml based on quality standards research
+
+**Tests:**
+- Manual validation against docs/coding_standards/
+- Verify IDE experience with lenient settings
+- Verify CI/CD strict enforcement via quality.yaml overrides
+
+**Success Criteria:**
+- pyproject.toml reflects quality standards
+- Dual-user scenario properly configured
+- CI/CD overrides documented in quality.yaml
+- Configuration choices traceable to standards docs
+
+**Dependencies:**
+- **Blocked by:** Quality gate settings research (separate research phase)
 
 ---
 
@@ -276,10 +364,12 @@ Refactor QAManager from hardcoded 3-gate execution (pylint, mypy, pyright) to co
 
 **Blocked By:**
 - Research complete ✅
+- **WP10 blocked by:** Quality gate settings research (separate research document)
 
 **Enables:**
 - Issue #18: Epic - TDD & Coverage Enforcement (quality gate policies)
 - Dynamic gate addition without code changes
+- Proper IDE vs CI/CD configuration separation
 
 ---
 
@@ -296,12 +386,11 @@ Refactor QAManager from hardcoded 3-gate execution (pylint, mypy, pyright) to co
 
 ## Milestones
 
-1. **Config Foundation** (WP1) - active_gates field validated
-2. **Parsing Layer** (WP2) - Generic parsers working
+1. **Config Foundation** (WP1, WP9) - active_gates field validated, tools installed
+2. **Parsing Layer** (WP2, WP8) - Generic parsers working, standards.py refactored
 3. **Executor Layer** (WP3) - Generic gate runs
-4. **Integration** (WP4) - run_quality_gates refactored
-5. **Cleanup** (WP5) - Legacy code removed
-6. **Validation** (WP6-7) - Tests pass, Ruff enabled
+4. **Integration** (WP4, WP5, WP6, WP7) - run_quality_gates refactored, legacy removed, Ruff enabled
+5. **Configuration Refinement** (WP10) - pyproject.toml optimized per quality standards (requires separate research)
 
 ---
 
@@ -310,3 +399,4 @@ Refactor QAManager from hardcoded 3-gate execution (pylint, mypy, pyright) to co
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-09 | Agent | Complete planning - 7 work packages, 4 TDD cycles, dependencies/risks documented |
+| 1.1 | 2026-02-09 | Agent | Extended scope - added WP8 (standards.py refactor), WP9 (tool installation), WP10 (pyproject.toml refactor), added Cycle 5, WP10 blocked by separate quality standards research |
