@@ -28,3 +28,30 @@ def test_standards_resource_metadata() -> None:
     resource = StandardsResource()
     assert resource.uri_pattern == "st3://rules/coding_standards"
     assert "coding standards" in resource.description
+
+
+@pytest.mark.asyncio
+async def test_standards_resource_reads_active_gates_from_quality_yaml() -> None:
+    """Test that standards resource dynamically reads active_gates from quality.yaml.
+    
+    This verifies WP8 requirement: standards.py should read from quality.yaml 
+    instead of returning hardcoded JSON.
+    """
+    resource = StandardsResource()
+    content = await resource.read("st3://rules/coding_standards")
+
+    data = json.loads(content)
+    
+    # Should include active_gates field from quality.yaml
+    assert "quality_gates" in data, "Missing quality_gates section"
+    assert "active_gates" in data["quality_gates"], "Missing active_gates field"
+    
+    # Should have the 5 configured gates from quality.yaml
+    active_gates = data["quality_gates"]["active_gates"]
+    assert isinstance(active_gates, list), "active_gates should be a list"
+    assert len(active_gates) == 5, f"Expected 5 active gates, got {len(active_gates)}"
+    
+    # Verify expected gate names from quality.yaml
+    expected_gates = ["gate1_formatting", "gate2_imports", "gate3_line_length", 
+                      "gate4_types", "gate5_tests"]
+    assert active_gates == expected_gates, f"Expected {expected_gates}, got {active_gates}"

@@ -1,6 +1,8 @@
 """Resource for coding standards."""
 import json
+from pathlib import Path
 
+from mcp_server.config.quality_config import QualityConfig
 from mcp_server.resources.base import BaseResource
 
 
@@ -11,9 +13,10 @@ class StandardsResource(BaseResource):
     description = "Project coding standards and conventions"
 
     async def read(self, uri: str) -> str:
-        """Read coding standards from file."""
-        # In a real implementation, this might read from a file in docs/
-        # For now, we return a structured JSON based on known standards
+        """Read coding standards from quality.yaml."""
+        # Load quality configuration from .st3/quality.yaml
+        config_path = Path(".st3/quality.yaml")
+        quality_config = QualityConfig.load(config_path)
 
         standards = {
             "python": {
@@ -29,6 +32,10 @@ class StandardsResource(BaseResource):
                 "formatter": "ruff",
                 "linter": "ruff",
                 "type_checker": "pyright",
+            },
+            "quality_gates": {
+                "active_gates": quality_config.active_gates,
+                "gate_count": len(quality_config.active_gates),
             }
         }
 
