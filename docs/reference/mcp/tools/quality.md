@@ -25,7 +25,7 @@ The MCP server provides **5 quality/validation tools**:
 
 | Tool | Purpose | Key Features |
 |------|---------|-------------|
-| `run_quality_gates` | Run pylint + mypy/pyright | File-level static analysis |
+| `run_quality_gates` | Run configured quality gates | Config-driven static checks + tests |
 | `run_tests` | Run pytest with markers | Test execution with timeout |
 | `validate_architecture` | Validate code against patterns | DTO/worker/platform architecture checks |
 | `validate_dto` | Validate DTO definition | DTO-specific validation rules |
@@ -41,7 +41,9 @@ The MCP server provides **5 quality/validation tools**:
 **Class:** `RunQualityGatesTool`  
 **File:** [mcp_server/tools/quality_tools.py](../../../../mcp_server/tools/quality_tools.py)
 
-Run pylint and mypy/pyright static analysis on specified files.
+Run the configured quality gates from `.st3/quality.yaml` against the provided files.
+
+Gates are executed in the order of `active_gates`. Each gate definition provides its own command, parsing strategy, and success criteria.
 
 #### Parameters
 
@@ -53,37 +55,29 @@ Run pylint and mypy/pyright static analysis on specified files.
 
 ```json
 {
-  "success": true,
-  "results": {
-    "backend/dtos/user.py": {
-      "pylint": {
-        "score": 9.5,
-        "errors": [],
-        "warnings": ["W0612: Unused variable 'temp'"],
-        "passed": true
-      },
-      "mypy": {
-        "errors": [],
-        "passed": true
-      }
+  "overall_pass": false,
+  "gates": [
+    {
+      "gate_number": 0,
+      "name": "File Filtering",
+      "passed": true,
+      "score": "N/A",
+      "issues": []
     },
-    "backend/services/auth_service.py": {
-      "pylint": {
-        "score": 8.0,
-        "errors": ["E0602: Undefined variable 'user_id'"],
-        "warnings": [],
-        "passed": false
-      },
-      "mypy": {
-        "errors": ["Line 42: error: Name 'user_id' is not defined"],
-        "passed": false
-      }
+    {
+      "gate_number": 1,
+      "name": "Gate 1: Formatting",
+      "passed": true,
+      "score": "Pass",
+      "issues": []
     }
-  },
-  "overall_passed": false
+  ]
 }
 ```
 
+
+Notes:
+- `hints` (optional): when a gate fails, it may include `hints: list[str]` with targeted, actionable next-step guidance (primarily intended for automated agents).
 #### Example Usage
 
 **Single file:**
@@ -106,35 +100,63 @@ Run pylint and mypy/pyright static analysis on specified files.
 
 #### Behavior Notes
 
-- **Pylint:** Always runs if `pylint` is installed
-- **Mypy/Pyright:** Runs if tools are installed (checks for `mypy` first, then `pyright`)
-- **Score Threshold:** Configured in [.st3/quality.yaml](../../../../.st3/quality.yaml) (default: 8.0)
-- **File Filtering:** Only Python files (`.py`) are analyzed; non-Python files ignored
-- **Parallel Execution:** Analyzes files in parallel when multiple files specified
+- Gates executed in the order of `active_gates` from [.st3/quality.yaml](../../../../.st3/quality.yaml)
+- `.py` filtering: non-Python inputs are reported as skipped
+- Scope filtering: when `scope` is present, include/exclude globs apply
+- Repo-scoped gates: some tools (e.g., pytest) can ignore file lists and run against configured targets
 
 #### Quality Gate Configuration
 
 From [.st3/quality.yaml](../../../../.st3/quality.yaml):
 
 ```yaml
-quality_gates:
-  python:
-    - tool: pylint
-      enabled: true
-      min_score: 8.0
-      ignore_patterns:
-        - "W0613"  # unused-argument
-    
-    - tool: mypy
-      enabled: true
-      strict: false
-    
-    - tool: pyright
-      enabled: true
-      fallback_to_mypy: true
+version: "1.0"
+active_gates:
+  - gate0_ruff_format
+  - gate1_formatting
+  - gate2_imports
+  - gate3_line_length
+  - gate4_types
+  - gate5_tests
+
+gates:
+  gate0_ruff_format:
+    name: "Gate 0: Ruff Format"
+    description: "Code formatting (ruff format --check)"
+    execution:
+      command: ["python", "-m", "ruff", "format", "--check", "--diff", "--isolated", "--line-length=100"]
+      timeout_seconds: 60
+      working_dir: null
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: true
+      produces_json: false
+
+  gate1_formatting:
+    name: "Gate 1: Ruff Strict Lint"
+    description: "Strict linting (stricter than VS Code/IDE baseline)"
+    execution:
+      command: ["python", "-m", "ruff", "check", "--isolated", "--select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC", "--ignore=E501,PLC0415", "--line-length=100", "--target-version=py311"]
+      timeout_seconds: 60
+      working_dir: null
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: true
+      produces_json: false
 ```
 
 ---
+
 
 ### run_tests
 

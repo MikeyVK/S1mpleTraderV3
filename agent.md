@@ -39,6 +39,7 @@ Don't guess the phase or status. **Query the system:**
 
 1.  **Read Coding Standards:**
     *   `st3://rules/coding_standards` → *Loads TDD rules, Style, Quality Gates.*
+    *   Also follow [docs/coding_standards/TYPE_CHECKING_PLAYBOOK.md](docs/coding_standards/TYPE_CHECKING_PLAYBOOK.md) for typing-issue resolution consistency (no global disables; targeted ignores only as last resort).
 2.  **Check Development Phase:**
     *   `st3://status/phase` → *Tells you current_phase, active_branch, is_clean.*
 3.  **Check Work Context:**

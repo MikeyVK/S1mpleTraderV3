@@ -7,7 +7,7 @@ Tests according to TDD principles with comprehensive coverage.
 @layer: Tests (Unit)
 @dependencies: [pytest]
 """
-# pyright: reportCallIssue=false, reportAttributeAccessIssue=false
+# pyright: reportCallIssue=false, reportAttributeAccessIssue=false, reportPrivateUsage=false
 # Suppress Pydantic FieldInfo false positives
 
 # Standard library
@@ -22,7 +22,7 @@ import yaml  # type: ignore[import-untyped]
 
 # Module under test
 from mcp_server.managers.qa_manager import QAManager
-from mcp_server.config.quality_config import QualityGate, ExecutionConfig
+from mcp_server.config.quality_config import QualityGate
 
 
 class TestQAManager:
@@ -39,7 +39,7 @@ class TestQAManager:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
             assert manager.check_health() is True
-            assert mock_run.call_count == 3  # pylint, mypy, pyright
+            assert mock_run.call_count == 4  # ruff, mypy, pyright, pytest
 
     @pytest.mark.asyncio
     async def test_check_health_fail(self, manager: QAManager) -> None:
@@ -482,6 +482,31 @@ class TestRuffGateExecution:
             mock_run.return_value = mock_proc
 
             result = manager._execute_gate(gate1_formatting, ["test.py"], gate_number=1)
+
+            assert result["passed"] is False
+            assert len(result["issues"]) > 0
+
+
+    def test_execute_gate_adds_hints_when_gate_id_provided(self, manager: QAManager, gate3_line_length: QualityGate) -> None:
+        """Test hints are attached for known gate IDs (agent guidance)."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = "test.py:1:1: E501 line too long"
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(
+                gate3_line_length,
+                ["test.py"],
+                gate_number=3,
+                gate_id="gate3_line_length",
+            )
+
+            assert result["passed"] is False
+            assert "hints" in result
+            assert any("Re-run:" in h for h in result["hints"])
+            assert any("<= 100 chars" in h for h in result["hints"])
 
 
 class TestConfigDrivenExecution:

@@ -46,7 +46,6 @@ class RunQualityGatesTool(BaseTool):
             if not gate['passed'] and gate.get('issues'):
                 text += "  Issues:\n"
                 for issue in gate['issues']:
-                    # Format: ❌ file.py:10: [CODE] Message
                     loc = (
                         f"{issue.get('file', 'unknown')}:"
                         f"{issue.get('line', '?')}:"
@@ -55,5 +54,10 @@ class RunQualityGatesTool(BaseTool):
                     code = f"[{issue.get('code', 'MISC')}] " if 'code' in issue else ""
                     msg = issue.get('message', 'Unknown issue')
                     text += f"  - {loc} {code}{msg}\n"
+
+            if not gate['passed'] and gate.get('hints'):
+                text += "  Hints:\n"
+                for hint in gate['hints']:
+                    text += f"  - {hint}\n"
 
         return ToolResult.text(text)

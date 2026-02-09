@@ -14,6 +14,8 @@ This directory contains the comprehensive coding standards for S1mpleTrader V3. 
 
 ✨ **Style Guide:** [CODE_STYLE.md](CODE_STYLE.md) - Code formatting rules
 
+🧩 **Type Checking:** [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) - Standardized fixes for typing issues
+
 ## Documentation Structure
 
 ### 1. [TDD_WORKFLOW.md](TDD_WORKFLOW.md)
@@ -41,10 +43,11 @@ Learn the RED → GREEN → REFACTOR cycle with Git integration.
 
 **Quality Gates - Pre-Merge Checklist**
 
-The 5 mandatory quality gates that all code must pass.
+The 6 mandatory quality gates that all code must pass.
 
 **Topics:**
-- Gate 1: Trailing whitespace & parens (10/10 required)
+- Gate 0: Ruff formatting (ruff format --check)
+- Gate 1: Ruff strict lint (stricter than VS Code)
 - Gate 2: Import placement (top-level only)
 - Gate 3: Line length (<100 chars)
 - Gate 4: Type checking (mypy strict for DTOs)

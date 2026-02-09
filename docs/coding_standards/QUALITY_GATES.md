@@ -2,31 +2,43 @@
 
 ## Overview
 
-All code in S1mpleTrader V3 must pass **5 mandatory quality gates** before merging to main. Each gate checks specific aspects of code quality and must score **10.00/10**.
+All code in S1mpleTrader V3 must pass **6 mandatory quality gates** before merging to main. Each gate checks specific aspects of code quality and must score **10.00/10**.
 
 ## Gate Checklist
 
 Every DTO implementation must pass all gates for **both** the DTO file and its test file.
 
-### Gate 1: Trailing Whitespace & Parens
+### Gate 0: Ruff Format
 
-**Purpose:** Ensure clean code without trailing spaces or superfluous parentheses.
+**Purpose:** Enforce consistent formatting (formatter check is as important as lint).
 
 ```powershell
-# Check DTO file
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
+# Check formatting (no changes written)
+python -m ruff format --check --diff --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --check --diff --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
 
-# Check test file
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
+# Apply formatting (writes changes)
+python -m ruff format --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
 ```
 
-**Expected:** `10.00/10` for both files
+**Expected:** `Pass` (exit code 0)
 
-**Auto-fix whitespace:**
+### Gate 1: Ruff Strict Lint
+
+**Purpose:** Enforce strict linting in CI (stricter than VS Code baseline).
+
 ```powershell
-(Get-Content backend/dtos/strategy/my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content backend/dtos/strategy/my_dto.py
-(Get-Content tests/unit/dtos/strategy/test_my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content tests/unit/dtos/strategy/test_my_dto.py
+# Strict lint (same intent as CI gate; does not inherit IDE ignores)
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 tests/unit/dtos/strategy/test_my_dto.py
+
+# Optional: apply safe autofixes
+python -m ruff check --fix --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
+python -m ruff check --fix --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 tests/unit/dtos/strategy/test_my_dto.py
 ```
+
+**Expected:** `Pass` (exit code 0)
 
 ### Gate 2: Import Placement
 
@@ -34,13 +46,13 @@ python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=
 
 ```powershell
 # Check DTO file
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=import-outside-toplevel
+python -m ruff check --isolated --select=PLC0415 --target-version=py311 backend/dtos/strategy/my_dto.py
 
 # Check test file
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=import-outside-toplevel
+python -m ruff check --isolated --select=PLC0415 --target-version=py311 tests/unit/dtos/strategy/test_my_dto.py
 ```
 
-**Expected:** `10.00/10` for both files
+**Expected:** `Pass` (exit code 0)
 
 **Common violation:**
 ```python
@@ -62,13 +74,13 @@ def my_function():
 
 ```powershell
 # Check DTO file
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=line-too-long --max-line-length=100
+python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
 
 # Check test file
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=line-too-long --max-line-length=100
+python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 tests/unit/dtos/strategy/test_my_dto.py
 ```
 
-**Expected:** `10.00/10` for both files
+**Expected:** `Pass` (exit code 0)
 
 **Techniques to fix:**
 - Split long assertions into multiple variables
@@ -112,24 +124,20 @@ pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
 Complete workflow for a new DTO:
 
 ```powershell
-# Step 1: Auto-fix trailing whitespace
-(Get-Content backend/dtos/strategy/my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content backend/dtos/strategy/my_dto.py
-(Get-Content tests/unit/dtos/strategy/test_my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content tests/unit/dtos/strategy/test_my_dto.py
+# Step 1: Apply formatting (writes changes)
+python -m ruff format --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
 
-# Step 2: Run all 5 gates for DTO
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=import-outside-toplevel
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=line-too-long --max-line-length=100
+# Step 2: Run lint gates
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
+python -m ruff check --isolated --select=PLC0415 --target-version=py311 backend/dtos/strategy/my_dto.py
+python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
+
+# Step 3: Run type checking (DTOs only)
 python -m mypy backend/dtos/strategy/my_dto.py --strict --no-error-summary
 
-# Step 3: Run all 5 gates for tests (except mypy)
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=import-outside-toplevel
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=line-too-long --max-line-length=100
+# Step 4: Run tests
 pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
-
-# Step 4: Verify VS Code Problems panel
-# Only acceptable warnings should remain (see below)
 ```
 
 ## Bulk Quality Checks
@@ -139,12 +147,10 @@ Check all modified files at once:
 ```powershell
 # Find all modified Python files
 git diff --name-only | Where-Object { $_ -like "*.py" } | ForEach-Object {
-    python -m pylint $_ --disable=all --enable=trailing-whitespace,superfluous-parens,import-outside-toplevel,line-too-long --max-line-length=100
-}
-
-# Cleanup trailing whitespace in bulk
-Get-ChildItem -Recurse -Filter "*.py" | ForEach-Object {
-    (Get-Content $_.FullName) | ForEach-Object { $_.TrimEnd() } | Set-Content $_.FullName
+    python -m ruff format --check --diff --line-length=100 $_
+    python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 $_
+    python -m ruff check --isolated --select=PLC0415 --target-version=py311 $_
+    python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 $_
 }
 ```
 
@@ -173,6 +179,8 @@ Project uses `pyrightconfig.json` for consistent type checking:
 ## Known Acceptable Warnings
 
 ### 1. Pydantic Field() with Generics
+**Standard policy:** Follow [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) for the mandatory resolution order (narrow → refactor types → targeted ignore). This keeps agent fixes consistent and avoids global disables.
+
 
 **Issue:** `list[ContextFactor]` triggers "partially unknown" warnings
 

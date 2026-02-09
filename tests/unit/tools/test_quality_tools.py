@@ -73,6 +73,30 @@ class TestRunQualityGatesTool:
         assert "[C0111] Missing docstring" in text
 
     @pytest.mark.asyncio
+    async def test_quality_gates_failed_prints_hints(self) -> None:
+        """Test gate hints are surfaced in tool output."""
+        mock_manager = MagicMock()
+        mock_manager.run_quality_gates.return_value = {
+            "overall_pass": False,
+            "gates": [
+                {
+                    "name": "Gate 3: Line Length",
+                    "passed": False,
+                    "score": "Fail",
+                    "issues": [{"message": "E501"}],
+                    "hints": ["Re-run: python -m ruff check --select=E501 --line-length=100 file.py"],
+                }
+            ],
+        }
+
+        tool = RunQualityGatesTool(manager=mock_manager)
+        result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
+
+        text = result.content[0]["text"]
+        assert "Hints:" in text
+        assert "Re-run:" in text
+
+    @pytest.mark.asyncio
     async def test_quality_gates_issues_missing_fields(self) -> None:
         """Test issue formatting robustness."""
         mock_manager = MagicMock()
