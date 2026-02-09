@@ -20,6 +20,7 @@ import pytest
 
 # Module under test
 from mcp_server.managers.qa_manager import QAManager
+from mcp_server.config.quality_config import QualityGate, ExecutionConfig
 
 
 class TestQAManager:
@@ -242,3 +243,94 @@ Your code has been rated at 5.00/10
     def _satisfy_typing_import(self) -> typing.Any:
         """Helper to legitimately use typing import."""
         return None
+
+
+class TestExecuteGate:
+    """Test suite for generic _execute_gate method (Cycle 2)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        """Fixture for QAManager."""
+        return QAManager()
+
+    @pytest.fixture
+    def mock_gate(self) -> QualityGate:
+        """Fixture for mock QualityGate config."""
+        return QualityGate.model_validate({
+            "name": "TestGate",
+            "description": "Test gate",
+            "execution": {
+                "command": ["test_tool", "--check"],
+                "timeout_seconds": 60,
+                "working_dir": None
+            },
+            "parsing": {"strategy": "exit_code"},
+            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+            "capabilities": {
+                "file_types": [".py"],
+                "supports_autofix": False,
+                "produces_json": False
+            }
+        })
+
+    def test_execute_gate_success(self, manager: QAManager, mock_gate: QualityGate) -> None:
+        """Test _execute_gate with successful tool execution."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
+
+            assert result["gate_number"] == 1
+            assert result["name"] == "TestGate"
+            assert result["passed"] is True
+            assert result["issues"] == []
+
+    def test_execute_gate_failure_exit_code(self, manager: QAManager, mock_gate: QualityGate) -> None:
+        """Test _execute_gate with non-zero exit code."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = "Error output"
+            mock_proc.stderr = "Stderr output"
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
+
+            assert result["passed"] is False
+            assert len(result["issues"]) > 0
+
+    def test_execute_gate_timeout(self, manager: QAManager, mock_gate: QualityGate) -> None:
+        """Test _execute_gate handles subprocess timeout."""
+        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(["test_tool"], 60)):
+            result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
+
+            assert result["passed"] is False
+            assert "timed out" in result["issues"][0]["message"].lower()
+
+    def test_execute_gate_file_not_found(self, manager: QAManager, mock_gate: QualityGate) -> None:
+        """Test _execute_gate handles FileNotFoundError."""
+        with patch("subprocess.run", side_effect=FileNotFoundError("Tool not found")):
+            result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
+
+            assert result["passed"] is False
+            assert "not found" in result["issues"][0]["message"].lower()
+
+    def test_execute_gate_appends_files_to_command(self, manager: QAManager, mock_gate: QualityGate) -> None:
+        """Test _execute_gate correctly appends files to command."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            manager._execute_gate(mock_gate, ["file1.py", "file2.py"], gate_number=1)
+
+            # Verify command includes files
+            called_cmd = mock_run.call_args[0][0]
+            assert "file1.py" in called_cmd
+            assert "file2.py" in called_cmd
