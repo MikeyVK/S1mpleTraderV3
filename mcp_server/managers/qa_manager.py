@@ -176,6 +176,19 @@ class QAManager:
                 )
                 continue
 
+            # Skip gates with no files after scope filtering
+            if not gate_files:
+                results["gates"].append(
+                    {
+                        "gate_number": idx,
+                        "name": gate.name,
+                        "passed": True,
+                        "score": "Skipped (no matching files)",
+                        "issues": [],
+                    }
+                )
+                continue
+
             gate_result = self._execute_gate(gate, gate_files, gate_number=idx, gate_id=gate_id)
             results["gates"].append(gate_result)
             if not gate_result["passed"]:
@@ -214,9 +227,13 @@ class QAManager:
 
     def _resolve_command(self, base_command: list[str], files: list[str]) -> list[str]:
         cmd = list(base_command)
-
         if cmd and cmd[0] == "python":
-            cmd[0] = sys.executable
+            # Prefer venv Python if available
+            venv_python = Path(__file__).parents[2] / ".venv" / "Scripts" / "python.exe"
+            if venv_python.exists():
+                cmd[0] = str(venv_python)
+            else:
+                cmd[0] = sys.executable
 
         if cmd and cmd[0] in {"pyright", "pyright.exe"}:
             cmd[0] = _venv_script_path(_pyright_script_name())
