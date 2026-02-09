@@ -96,8 +96,16 @@ class QAManager:
 
         # Config-driven gate execution using active_gates list
         if not quality_config.active_gates:
-            # Fallback to legacy hardcoded gates if active_gates not configured
-            return self._run_legacy_gates(quality_config, python_files, results)
+            # No active gates configured - return empty results
+            results["gates"].append({
+                "gate_number": 0,
+                "name": "Configuration",
+                "passed": False,
+                "score": "N/A",
+                "issues": [{"message": "No active_gates configured in quality.yaml"}]
+            })
+            results["overall_pass"] = False
+            return results
 
         # Execute gates dynamically based on active_gates configuration
         for gate_number, gate_id in enumerate(quality_config.active_gates, start=1):
@@ -137,45 +145,6 @@ class QAManager:
 
         return results
 
-    def _run_legacy_gates(self, quality_config: QualityConfig, python_files: list[str], results: dict[str, Any]) -> dict[str, Any]:
-        """Legacy hardcoded gate execution (deprecated - kept for backward compatibility)."""
-        pylint_gate = self._require_gate(quality_config, "pylint")
-        mypy_gate = self._require_gate(quality_config, "mypy")
-        pyright_gate = self._require_gate(quality_config, "pyright")
-
-        # Gate 1: Pylint (no scope filtering - strict on all files)
-        pylint_result = self._run_pylint(pylint_gate, python_files)
-        results["gates"].append(pylint_result)
-        if not pylint_result["passed"]:
-            results["overall_pass"] = False
-
-        # Gate 2: Mypy (apply scope filtering per config)
-        mypy_files = python_files
-        if mypy_gate.scope:
-            mypy_files = mypy_gate.scope.filter_files(python_files)
-
-        if not mypy_files:
-            # No files in scope - skip gate with pass
-            results["gates"].append({
-                "gate_number": 2,
-                "name": mypy_gate.name,
-                "passed": True,
-                "score": "Skipped (no matching files)",
-                "issues": []
-            })
-        else:
-            mypy_result = self._run_mypy(mypy_gate, mypy_files)
-            results["gates"].append(mypy_result)
-            if not mypy_result["passed"]:
-                results["overall_pass"] = False
-
-        # Gate 3: Pyright (no scope filtering for now)
-        pyright_result = self._run_pyright(pyright_gate, python_files)
-        results["gates"].append(pyright_result)
-        if not pyright_result["passed"]:
-            results["overall_pass"] = False
-
-        return results
 
     def check_health(self) -> bool:
         """Check if QA tools are available."""
@@ -280,49 +249,24 @@ class QAManager:
                     }]
 
             elif strategy == "text_regex":
-                # Text regex strategy: use patterns from quality.yaml (future WP)
-                # For now fall back to tool-specific parsing for backward compatibility
-                tool_type = self._detect_tool_type(gate.name.lower())
-                if tool_type == "pylint":
-                    issues = self._parse_pylint_output(combined_output)
-                    score = self._extract_pylint_score(combined_output)
-                    result["score"] = score
-                    result["issues"] = issues
-                    result["passed"] = not issues and "10" in score
-                elif tool_type == "mypy":
-                    issues = self._parse_mypy_output(combined_output)
-                    result["issues"] = issues
-                    result["passed"] = not issues
-                    result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
-                elif tool_type == "pyright":
-                    # Pyright fails hard on non-zero exit code
-                    if proc.returncode != 0:
-                        result["passed"] = False
-                        issues = self._parse_pyright_output(combined_output)
-                        if not issues:
-                            # No diagnostics parsed - add generic failure
-                            preview = "\n".join(combined_output.split("\n")[:20])
-                            issues = [{
-                                "message": f"Pyright failed (exit code {proc.returncode})",
-                                "details": preview if preview else "No output captured"
-                            }]
-                        result["issues"] = issues
-                        result["score"] = f"Fail ({len(issues)} errors)"
-                    else:
-                        # Exit code 0 - parse diagnostics normally
-                        issues = self._parse_pyright_output(combined_output)
-                        result["issues"] = issues
-                        result["passed"] = not issues
-                        result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
-                else:
-                    # Fallback: treat as exit_code strategy
-                    if proc.returncode != 0:
-                        result["passed"] = False
-                        result["score"] = f"Fail (exit code {proc.returncode})"
-                        result["issues"] = [{
-                            "message": f"Tool exited with code {proc.returncode}",
-                            "output": combined_output[:500]
-                        }]
+                # Text regex strategy: not yet fully implemented (future WP)
+                # Requires pattern matching configuration from quality.yaml
+                result["passed"] = False
+                result["score"] = "Not Implemented"
+                result["issues"] = [{
+                    "message": "text_regex parsing strategy not yet implemented",
+                    "details": "Use exit_code strategy for current gates"
+                }]
+
+            elif strategy == "json_field":
+                # JSON field strategy: not yet fully implemented (future WP)
+                # Requires field extraction configuration from quality.yaml
+                result["passed"] = False
+                result["score"] = "Not Implemented"
+                result["issues"] = [{
+                    "message": "json_field parsing strategy not yet implemented",
+                    "details": "Use exit_code strategy for current gates"
+                }]
 
             else:
                 # Unknown strategy - default to exit_code behavior
@@ -345,260 +289,11 @@ class QAManager:
 
         return result
 
-    def _detect_tool_type(self, gate_name: str) -> str:
-        """Detect tool type from gate name for backward compatibility.
-        
-        Args:
-            gate_name: Gate name from quality.yaml (lowercase)
-            
-        Returns:
-            Tool type: 'pylint', 'mypy', 'pyright', or 'unknown'
-        """
-        if "pylint" in gate_name or "linting" in gate_name:
-            return "pylint"
-        elif "mypy" in gate_name or "type checking" in gate_name:
-            return "mypy"
-        elif "pyright" in gate_name:
-            return "pyright"
-        else:
-            return "unknown"
 
-    def _run_pylint(self, gate: QualityGate, files: list[str]) -> dict[str, Any]:
-        """Run pylint checks on files."""
-        result: dict[str, Any] = {
-            "gate_number": 1,
-            "name": gate.name,
-            "passed": True,
-            "score": "10/10",
-            "issues": []
-        }
 
-        try:
-            cmd = self._resolve_command(gate.execution.command, files)
 
-            proc = subprocess.run(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                timeout=gate.execution.timeout_seconds,
-                check=False
-            )
 
-            # Parse pylint output
-            output = proc.stdout + proc.stderr
-            issues = self._parse_pylint_output(output)
-            score = self._extract_pylint_score(output)
 
-            result["issues"] = issues
-            result["score"] = score
-            result["passed"] = not issues and "10" in score
 
-        except subprocess.TimeoutExpired:
-            result["passed"] = False
-            result["score"] = "N/A"
-            result["issues"] = [{"message": "Pylint timed out"}]
-        except FileNotFoundError:
-            result["passed"] = False
-            result["score"] = "N/A"
-            result["issues"] = [{"message": "Pylint not found"}]
 
-        return result
 
-    def _parse_pylint_output(self, output: str) -> list[dict[str, Any]]:
-        """Parse pylint output into structured issues."""
-        issues: list[dict[str, Any]] = []
-
-        # Pattern: filepath:line:col: code: message
-        pattern = r"^(.+?):(\d+):(\d+): ([A-Z]\d+): (.+)$"
-
-        for line in output.split("\n"):
-            match = re.match(pattern, line.strip())
-            if match:
-                issues.append({
-                    "file": match.group(1),
-                    "line": int(match.group(2)),
-                    "column": int(match.group(3)),
-                    "code": match.group(4),
-                    "message": match.group(5)
-                })
-
-        return issues
-
-    def _extract_pylint_score(self, output: str) -> str:
-        """Extract score from pylint output."""
-        # Pattern: "Your code has been rated at X.XX/10"
-        pattern = r"Your code has been rated at ([\d.]+)/10"
-        match = re.search(pattern, output)
-        if match:
-            return f"{match.group(1)}/10"
-        return "10/10"  # Default if no issues found
-
-    def _run_mypy(self, gate: QualityGate, files: list[str]) -> dict[str, Any]:
-        """Run mypy type checking on files."""
-        result: dict[str, Any] = {
-            "gate_number": 2,
-            "name": gate.name,
-            "passed": True,
-            "score": "Pass",
-            "issues": []
-        }
-
-        try:
-            cmd = self._resolve_command(gate.execution.command, files)
-
-            proc = subprocess.run(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                timeout=gate.execution.timeout_seconds,
-                check=False
-            )
-
-            # Parse mypy output from both stdout and stderr
-            combined_output = proc.stdout + proc.stderr
-            issues = self._parse_mypy_output(combined_output)
-            result["issues"] = issues
-            result["passed"] = not issues
-            result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
-
-        except subprocess.TimeoutExpired:
-            result["passed"] = False
-            result["score"] = "Timeout"
-            result["issues"] = [{"message": "Mypy timed out"}]
-        except FileNotFoundError:
-            result["passed"] = False
-            result["score"] = "Not Found"
-            result["issues"] = [{"message": "Mypy not found"}]
-
-        return result
-
-    def _parse_mypy_output(self, output: str) -> list[dict[str, Any]]:
-        """Parse mypy output into structured issues."""
-        issues: list[dict[str, Any]] = []
-
-        # Pattern: filepath:line: error: message
-        pattern = r"^(.+?):(\d+): (error|warning): (.+)$"
-
-        for line in output.split("\n"):
-            match = re.match(pattern, line.strip())
-            if match:
-                issues.append({
-                    "file": match.group(1),
-                    "line": int(match.group(2)),
-                    "severity": match.group(3),
-                    "message": match.group(4)
-                })
-
-        return issues
-
-    def _run_pyright(self, gate: QualityGate, files: list[str]) -> dict[str, Any]:
-        """Run pyright type checking on files.
-
-        Note: pyright is a separate CLI (not `python -m pyright`).
-        """
-        result: dict[str, Any] = {
-            "gate_number": 3,
-            "name": gate.name,
-            "passed": True,
-            "score": "Pass",
-            "issues": [],
-        }
-
-        try:
-            cmd = self._resolve_command(gate.execution.command, files)
-
-            proc = subprocess.run(
-                cmd,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                timeout=gate.execution.timeout_seconds,
-                check=False,
-            )
-
-            # Combine stdout + stderr for robust parsing
-            combined_output = (proc.stdout or "") + (proc.stderr or "")
-
-            # Fail hard on non-zero exit code
-            if proc.returncode:
-                result["passed"] = False
-                # Parse output for specific errors, but always mark as failed
-                issues = self._parse_pyright_output(combined_output)
-                if not issues:
-                    # No diagnostics parsed - add generic failure message with context
-                    preview = "\n".join(combined_output.split("\n")[:20])
-                    issues = [{
-                        "message": f"Pyright failed (exit code {proc.returncode})",
-                        "details": preview if preview else "No output captured"
-                    }]
-                result["issues"] = issues
-                result["score"] = f"Fail ({len(issues)} errors)"
-            else:
-                # Exit code 0 - parse diagnostics normally
-                issues = self._parse_pyright_output(combined_output)
-                result["issues"] = issues
-                result["passed"] = not issues
-                result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
-
-        except subprocess.TimeoutExpired:
-            result["passed"] = False
-            result["score"] = "Timeout"
-            result["issues"] = [{"message": "Pyright timed out"}]
-        except FileNotFoundError:
-            result["passed"] = False
-            result["score"] = "Not Found"
-            result["issues"] = [{"message": "Pyright not found"}]
-
-        return result
-
-    def _pyright_issue_from_diag(self, diag: dict[str, Any]) -> dict[str, Any]:
-        """Convert a single pyright diagnostic to the common issue format."""
-        issue: dict[str, Any] = {
-            "message": str(diag.get("message", "Unknown issue")),
-        }
-
-        file_path = diag.get("file")
-        if isinstance(file_path, str):
-            issue["file"] = file_path
-
-        start = ((diag.get("range") or {}).get("start") or {})
-        line = start.get("line")
-        char = start.get("character")
-        if isinstance(line, int):
-            issue["line"] = line + 1  # pyright is 0-based
-        if isinstance(char, int):
-            issue["column"] = char + 1
-
-        rule = diag.get("rule")
-        if rule is not None:
-            issue["code"] = str(rule)
-
-        sev = diag.get("severity")
-        if sev is not None:
-            issue["severity"] = str(sev)
-
-        return issue
-
-    def _parse_pyright_output(self, output: str) -> list[dict[str, Any]]:
-        """Parse pyright --outputjson output into structured issues."""
-        issues: list[dict[str, Any]] = []
-
-        # When `--outputjson` is used, output is JSON. Keep parsing defensive.
-        try:
-            data = json.loads(output)
-            diagnostics = data.get("generalDiagnostics", [])
-            if isinstance(diagnostics, list):
-                for diag in diagnostics:
-                    if isinstance(diag, dict):
-                        issues.append(self._pyright_issue_from_diag(diag))
-
-        except (json.JSONDecodeError, TypeError, ValueError):
-            # Fall back to plain-text parsing if JSON isn't available/valid.
-            for line in output.split("\n"):
-                text = line.strip()
-                if text:
-                    issues.append({"message": text})
-
-        return issues
