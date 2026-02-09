@@ -334,3 +334,150 @@ class TestExecuteGate:
             called_cmd = mock_run.call_args[0][0]
             assert "file1.py" in called_cmd
             assert "file2.py" in called_cmd
+
+
+class TestRuffGateExecution:
+    """Test suite for Ruff gate execution via _execute_gate (Cycle 3)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        """Fixture for QAManager."""
+        return QAManager()
+
+    @pytest.fixture
+    def gate1_formatting(self) -> QualityGate:
+        """Fixture for gate1_formatting config."""
+        return QualityGate.model_validate({
+            "name": "Gate 1: Formatting",
+            "description": "Code formatting",
+            "execution": {
+                "command": ["python", "-m", "ruff", "check", "--select=W291,W292,W293,UP034", "--ignore="],
+                "timeout_seconds": 60,
+                "working_dir": None
+            },
+            "parsing": {"strategy": "exit_code"},
+            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+            "capabilities": {
+                "file_types": [".py"],
+                "supports_autofix": True,
+                "produces_json": False
+            }
+        })
+
+    @pytest.fixture
+    def gate2_imports(self) -> QualityGate:
+        """Fixture for gate2_imports config."""
+        return QualityGate.model_validate({
+            "name": "Gate 2: Imports",
+            "description": "Import placement",
+            "execution": {
+                "command": ["python", "-m", "ruff", "check", "--select=PLC0415", "--ignore="],
+                "timeout_seconds": 60,
+                "working_dir": None
+            },
+            "parsing": {"strategy": "exit_code"},
+            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+            "capabilities": {
+                "file_types": [".py"],
+                "supports_autofix": False,
+                "produces_json": False
+            }
+        })
+
+    @pytest.fixture
+    def gate3_line_length(self) -> QualityGate:
+        """Fixture for gate3_line_length config."""
+        return QualityGate.model_validate({
+            "name": "Gate 3: Line Length",
+            "description": "Line length",
+            "execution": {
+                "command": ["python", "-m", "ruff", "check", "--select=E501", "--line-length=100", "--ignore="],
+                "timeout_seconds": 60,
+                "working_dir": None
+            },
+            "parsing": {"strategy": "exit_code"},
+            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+            "capabilities": {
+                "file_types": [".py"],
+                "supports_autofix": False,
+                "produces_json": False
+            }
+        })
+
+    def test_gate1_formatting_command_construction(self, manager: QAManager, gate1_formatting: QualityGate) -> None:
+        """Test gate1_formatting command is constructed correctly."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            manager._execute_gate(gate1_formatting, ["test.py"], gate_number=1)
+
+            cmd = mock_run.call_args[0][0]
+            # Note: QAManager replaces 'python' with full venv path
+            assert any("python" in str(part).lower() for part in cmd)
+            assert "-m" in cmd
+            assert "ruff" in cmd
+            assert "check" in cmd
+            assert "--select=W291,W292,W293,UP034" in cmd
+            assert "test.py" in cmd
+            assert "test.py" in cmd
+
+    def test_gate2_imports_command_construction(self, manager: QAManager, gate2_imports: QualityGate) -> None:
+        """Test gate2_imports command is constructed correctly."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            manager._execute_gate(gate2_imports, ["test.py"], gate_number=2)
+
+            cmd = mock_run.call_args[0][0]
+            assert "--select=PLC0415" in cmd
+
+    def test_gate3_line_length_command_construction(self, manager: QAManager, gate3_line_length: QualityGate) -> None:
+        """Test gate3_line_length command is constructed correctly."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            manager._execute_gate(gate3_line_length, ["test.py"], gate_number=3)
+
+            cmd = mock_run.call_args[0][0]
+            assert "--select=E501" in cmd
+            assert "--line-length=100" in cmd
+
+    def test_ruff_gates_success_with_clean_code(self, manager: QAManager, gate1_formatting: QualityGate) -> None:
+        """Test Ruff gate passes with clean code (exit code 0)."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0  # Clean code
+            mock_proc.stdout = "All checks passed!"
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate1_formatting, ["test.py"], gate_number=1)
+
+            assert result["passed"] is True
+            assert result["issues"] == []
+
+    def test_ruff_gates_failure_with_violations(self, manager: QAManager, gate1_formatting: QualityGate) -> None:
+        """Test Ruff gate fails with code violations (exit code 1)."""
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1  # Violations found
+            mock_proc.stdout = "test.py:10:5: W291 trailing whitespace"
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate1_formatting, ["test.py"], gate_number=1)
+
+            assert result["passed"] is False
+            assert len(result["issues"]) > 0
