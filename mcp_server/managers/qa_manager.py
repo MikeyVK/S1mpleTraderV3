@@ -54,7 +54,10 @@ class QAManager:
         return python_files, issues
 
     def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
-        """Run quality gates on specified files."""
+        """Run quality gates on specified files.
+        
+        Uses active_gates list from quality.yaml for config-driven execution.
+        """
         results: dict[str, Any] = {
             "overall_pass": True,
             "gates": [],
@@ -91,11 +94,55 @@ class QAManager:
 
         quality_config = QualityConfig.load()
 
+        # Config-driven gate execution using active_gates list
+        if not quality_config.active_gates:
+            # Fallback to legacy hardcoded gates if active_gates not configured
+            return self._run_legacy_gates(quality_config, python_files, results)
+
+        # Execute gates dynamically based on active_gates configuration
+        for gate_number, gate_id in enumerate(quality_config.active_gates, start=1):
+            gate = quality_config.gates.get(gate_id)
+            if gate is None:
+                results["gates"].append({
+                    "gate_number": gate_number,
+                    "name": f"Unknown Gate: {gate_id}",
+                    "passed": False,
+                    "score": "N/A",
+                    "issues": [{"message": f"Gate '{gate_id}' not found in quality.yaml"}]
+                })
+                results["overall_pass"] = False
+                continue
+
+            # Apply scope filtering if gate defines scope
+            gate_files = python_files
+            if gate.scope:
+                gate_files = gate.scope.filter_files(python_files)
+
+            if not gate_files:
+                # No files in scope - skip gate with pass
+                results["gates"].append({
+                    "gate_number": gate_number,
+                    "name": gate.name,
+                    "passed": True,
+                    "score": "Skipped (no matching files)",
+                    "issues": []
+                })
+                continue
+
+            # Execute gate using generic executor
+            gate_result = self._execute_gate(gate, gate_files, gate_number=gate_number)
+            results["gates"].append(gate_result)
+            if not gate_result["passed"]:
+                results["overall_pass"] = False
+
+        return results
+
+    def _run_legacy_gates(self, quality_config: QualityConfig, python_files: list[str], results: dict[str, Any]) -> dict[str, Any]:
+        """Legacy hardcoded gate execution (deprecated - kept for backward compatibility)."""
         pylint_gate = self._require_gate(quality_config, "pylint")
         mypy_gate = self._require_gate(quality_config, "mypy")
         pyright_gate = self._require_gate(quality_config, "pyright")
 
-        # Gate 1: Pylint
         # Gate 1: Pylint (no scope filtering - strict on all files)
         pylint_result = self._run_pylint(pylint_gate, python_files)
         results["gates"].append(pylint_result)
