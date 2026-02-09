@@ -170,6 +170,66 @@ class QAManager:
 
         return [*cmd, *files]
 
+    def _execute_gate(
+        self, gate: QualityGate, files: list[str], gate_number: int
+    ) -> dict[str, Any]:
+        """Execute a quality gate with generic command execution.
+        
+        Generic executor that replaces tool-specific methods (_run_pylint, _run_mypy, _run_pyright).
+        Eliminates code duplication by handling subprocess execution, timeout, and error handling uniformly.
+        
+        Args:
+            gate: Gate configuration from quality.yaml
+            files: List of files to check
+            gate_number: Gate number for result reporting
+            
+        Returns:
+            Result dict with gate_number, name, passed, score, issues
+        """
+        result: dict[str, Any] = {
+            "gate_number": gate_number,
+            "name": gate.name,
+            "passed": True,
+            "score": "Pass",
+            "issues": []
+        }
+
+        try:
+            cmd = self._resolve_command(gate.execution.command, files)
+
+            proc = subprocess.run(
+                cmd,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=gate.execution.timeout_seconds,
+                check=False
+            )
+
+            # Combine stdout + stderr for parsing
+            combined_output = proc.stdout + proc.stderr
+
+            # Parse output based on tool (delegate to existing parsers)
+            # For now, use exit_code strategy - tool-specific parsing will be added in later cycles
+            if proc.returncode != 0:
+                result["passed"] = False
+                result["score"] = f"Fail (exit code {proc.returncode})"
+                result["issues"] = [{
+                    "message": f"Tool exited with code {proc.returncode}",
+                    "output": combined_output[:500]  # Truncate for readability
+                }]
+
+        except subprocess.TimeoutExpired:
+            result["passed"] = False
+            result["score"] = "Timeout"
+            result["issues"] = [{"message": f"{gate.name} timed out"}]
+        except FileNotFoundError:
+            result["passed"] = False
+            result["score"] = "Not Found"
+            result["issues"] = [{"message": f"{gate.name} not found"}]
+
+        return result
+
     def _run_pylint(self, gate: QualityGate, files: list[str]) -> dict[str, Any]:
         """Run pylint checks on files."""
         result: dict[str, Any] = {
