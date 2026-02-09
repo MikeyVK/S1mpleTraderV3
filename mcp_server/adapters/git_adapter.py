@@ -178,7 +178,7 @@ class GitAdapter:
                 )
             else:
                 push_infos = origin.push()
-            
+
             # Check push status for rejections
             for info in push_infos:
                 # PushInfo flags: ERROR=1, REJECTED=1024, REMOTE_REJECTED=2048

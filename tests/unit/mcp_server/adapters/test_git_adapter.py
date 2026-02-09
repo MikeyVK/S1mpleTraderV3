@@ -93,13 +93,13 @@ class TestGitAdapterPush:
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
             mock_origin = MagicMock()
-            
+            mock_origin = MagicMock()
             # Mock PushInfo with REJECTED flag
             mock_push_info = MagicMock()
             mock_push_info.flags = 1024  # PushInfo.REJECTED flag
             mock_push_info.summary = "non-fast-forward"
             mock_origin.push.return_value = [mock_push_info]
-            
+            mock_origin.push.return_value = [mock_push_info]
             mock_repo.remote.return_value = mock_origin
             mock_repo.active_branch.name = "feature/test"
             mock_repo_class.return_value = mock_repo
