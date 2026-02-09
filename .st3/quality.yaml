@@ -1,5 +1,12 @@
 version: "1.0"
 
+# Active quality gates (currently hardcoded in QAManager - to be refactored)
+# Note: Will be updated with Ruff-based gates (gate1_formatting, gate2_imports, gate3_line_length, gate4_types, gate5_tests) in later cycles
+active_gates:
+  - pylint
+  - pyright
+  - ruff
+
 gates:
   pylint:
     name: "Linting"
