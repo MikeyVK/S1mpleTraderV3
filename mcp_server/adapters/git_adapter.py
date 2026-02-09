@@ -157,7 +157,11 @@ class GitAdapter:
             raise ExecutionError(f"Failed to checkout {branch_name}: {e}") from e
 
     def push(self, set_upstream: bool = False) -> None:
-        """Push current branch to origin."""
+        """Push current branch to origin.
+        
+        Raises:
+            ExecutionError: If push is rejected (e.g., non-fast-forward)
+        """
         try:
             origin = self.repo.remote("origin")
         except ValueError as e:
@@ -168,12 +172,25 @@ class GitAdapter:
         try:
             branch = self.get_current_branch()
             if set_upstream:
-                origin.push(refspec=f"{branch}:{branch}", set_upstream=True)
+                push_infos = origin.push(
+                    refspec=f"{branch}:{branch}",
+                    set_upstream=True
+                )
             else:
-                origin.push()
+                push_infos = origin.push()
+            
+            # Check push status for rejections
+            for info in push_infos:
+                # PushInfo flags: ERROR=1, REJECTED=1024, REMOTE_REJECTED=2048
+                if info.flags & (1 | 1024 | 2048):
+                    raise ExecutionError(
+                        f"Push rejected: {info.summary}"
+                    )
+        except ExecutionError:
+            # Re-raise our own ExecutionErrors
+            raise
         except Exception as e:
             raise ExecutionError(f"Failed to push: {e}") from e
-
 
     def fetch(self, remote: str = "origin", prune: bool = False) -> str:
         """Fetch updates from a remote.
