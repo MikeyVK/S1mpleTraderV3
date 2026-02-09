@@ -256,55 +256,82 @@ class QAManager:
             # Combine stdout + stderr for parsing
             combined_output = proc.stdout + proc.stderr
 
-            # Determine tool type for parsing (based on gate name for backward compatibility)
-            tool_type = self._detect_tool_type(gate.name.lower())
+            # Use parsing strategy from quality.yaml config (WP2)
+            strategy = gate.parsing.strategy
 
-            # Parse output based on tool type
+            # Strategy-based parsing:
             issues: list[dict[str, Any]] = []
             score = "Pass"
 
-            if tool_type == "pylint":
-                issues = self._parse_pylint_output(combined_output)
-                score = self._extract_pylint_score(combined_output)
-                result["score"] = score
-                result["issues"] = issues
-                result["passed"] = not issues and "10" in score
-
-            elif tool_type == "mypy":
-                issues = self._parse_mypy_output(combined_output)
-                result["issues"] = issues
-                result["passed"] = not issues
-                result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
-
-            elif tool_type == "pyright":
-                # Pyright fails hard on non-zero exit code
-                if proc.returncode != 0:
-                    result["passed"] = False
-                    issues = self._parse_pyright_output(combined_output)
-                    if not issues:
-                        # No diagnostics parsed - add generic failure
-                        preview = "\n".join(combined_output.split("\n")[:20])
-                        issues = [{
-                            "message": f"Pyright failed (exit code {proc.returncode})",
-                            "details": preview if preview else "No output captured"
-                        }]
-                    result["issues"] = issues
-                    result["score"] = f"Fail ({len(issues)} errors)"
+            if strategy == "exit_code":
+                # Exit code strategy: check returncode against success.exit_codes_ok
+                if proc.returncode in gate.success.exit_codes_ok:
+                    # Success - tool returned acceptable exit code
+                    result["passed"] = True
+                    result["issues"] = []
+                    result["score"] = "Pass"
                 else:
-                    # Exit code 0 - parse diagnostics normally
-                    issues = self._parse_pyright_output(combined_output)
-                    result["issues"] = issues
-                    result["passed"] = not issues
-                    result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
-
-            else:
-                # Default exit_code strategy for unknown tools
-                if proc.returncode != 0:
+                    # Failure - tool returned non-acceptable exit code
                     result["passed"] = False
                     result["score"] = f"Fail (exit code {proc.returncode})"
                     result["issues"] = [{
                         "message": f"Tool exited with code {proc.returncode}",
                         "output": combined_output[:500]  # Truncate for readability
+                    }]
+
+            elif strategy == "text_regex":
+                # Text regex strategy: use patterns from quality.yaml (future WP)
+                # For now fall back to tool-specific parsing for backward compatibility
+                tool_type = self._detect_tool_type(gate.name.lower())
+                if tool_type == "pylint":
+                    issues = self._parse_pylint_output(combined_output)
+                    score = self._extract_pylint_score(combined_output)
+                    result["score"] = score
+                    result["issues"] = issues
+                    result["passed"] = not issues and "10" in score
+                elif tool_type == "mypy":
+                    issues = self._parse_mypy_output(combined_output)
+                    result["issues"] = issues
+                    result["passed"] = not issues
+                    result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
+                elif tool_type == "pyright":
+                    # Pyright fails hard on non-zero exit code
+                    if proc.returncode != 0:
+                        result["passed"] = False
+                        issues = self._parse_pyright_output(combined_output)
+                        if not issues:
+                            # No diagnostics parsed - add generic failure
+                            preview = "\n".join(combined_output.split("\n")[:20])
+                            issues = [{
+                                "message": f"Pyright failed (exit code {proc.returncode})",
+                                "details": preview if preview else "No output captured"
+                            }]
+                        result["issues"] = issues
+                        result["score"] = f"Fail ({len(issues)} errors)"
+                    else:
+                        # Exit code 0 - parse diagnostics normally
+                        issues = self._parse_pyright_output(combined_output)
+                        result["issues"] = issues
+                        result["passed"] = not issues
+                        result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
+                else:
+                    # Fallback: treat as exit_code strategy
+                    if proc.returncode != 0:
+                        result["passed"] = False
+                        result["score"] = f"Fail (exit code {proc.returncode})"
+                        result["issues"] = [{
+                            "message": f"Tool exited with code {proc.returncode}",
+                            "output": combined_output[:500]
+                        }]
+
+            else:
+                # Unknown strategy - default to exit_code behavior
+                if proc.returncode != 0:
+                    result["passed"] = False
+                    result["score"] = f"Fail (exit code {proc.returncode})"
+                    result["issues"] = [{
+                        "message": f"Tool exited with code {proc.returncode}",
+                        "output": combined_output[:500]
                     }]
 
         except subprocess.TimeoutExpired:

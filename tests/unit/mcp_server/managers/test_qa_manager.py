@@ -582,3 +582,37 @@ class TestConfigDrivenExecution:
 
             finally:
                 Path(test_file).unlink(missing_ok=True)
+
+
+class TestStrategyBasedParsing:
+    """Test suite for strategy-based parsing (WP2 - Generic Parsing Strategies)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        """Fixture for QAManager."""
+        return QAManager()
+
+    def test_execute_gate_respects_parsing_strategy_not_tool_name(self, manager: QAManager) -> None:
+        """Test parsing uses gate.parsing.strategy, not tool name detection (WP2)."""
+        # Gate with 'pylint' in name but exit_code strategy
+        gate = QualityGate.model_validate({
+            "name": "Pylint-Like Tool",
+            "description": "Tool with exit_code strategy",
+            "execution": {"command": ["tool"], "timeout_seconds": 60, "working_dir": None},
+            "parsing": {"strategy": "exit_code"},
+            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+            "capabilities": {"file_types": [".py"], "supports_autofix": False, "produces_json": False}
+        })
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = "test.py:1:0: C0111: Missing\nYour code has been rated at 5.00/10"
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["test.py"], gate_number=1)
+
+            # exit_code strategy: returncode=0 means pass, ignore output
+            assert result["passed"] is True
+            assert result["issues"] == []
