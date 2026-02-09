@@ -162,6 +162,20 @@ class QAManager:
                 continue
 
             gate_files = self._files_for_gate(gate, python_files)
+
+            # Skip repo-scoped gates (pytest) when doing file-specific checks
+            if self._is_pytest_gate(gate):
+                results["gates"].append(
+                    {
+                        "gate_number": idx,
+                        "name": gate.name,
+                        "passed": True,
+                        "score": "Skipped (repo-scoped)",
+                        "issues": [],
+                    }
+                )
+                continue
+
             gate_result = self._execute_gate(gate, gate_files, gate_number=idx, gate_id=gate_id)
             results["gates"].append(gate_result)
             if not gate_result["passed"]:
