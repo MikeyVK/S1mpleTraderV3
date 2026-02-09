@@ -113,7 +113,7 @@ ignore = [
     "ANN",  # No type annotations required in tests
     "ARG",  # Unused arguments OK in fixtures
     "N806", # Variable names can be uppercase (MockManager pattern)
-    "E501", # Line length OK in tests
+    # E501 removed - tests MUST comply with 100-char limit per QUALITY_GATES.md
     "SIM117", # Nested with OK in tests
     "SIM105", # try-except-pass OK in tests
 ]
