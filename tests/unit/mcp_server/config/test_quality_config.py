@@ -6,6 +6,7 @@ Scope:
 - Strategy validation (parsing strategy discriminated union)
 - Success validation (`success.mode` must match `parsing.strategy`)
 - JSON Pointer validation (RFC 6901-style basic constraints)
+- Active gates (config-driven gate selection)
 
 Quality Requirements:
 - Pylint: 10/10
@@ -271,3 +272,183 @@ class TestQualityConfigValidation:
                     },
                 }
             )
+
+
+class TestActiveGatesField:
+    """Test active_gates field for config-driven execution (Issue #131)."""
+
+    def test_active_gates_defaults_to_empty_list(self) -> None:
+        """active_gates defaults to empty list when not provided."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "gates": {
+                    "ruff": {
+                        "name": "Ruff",
+                        "description": "",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                            "produces_json": False,
+                        },
+                    }
+                },
+            }
+        )
+        assert config.active_gates == []
+
+    def test_active_gates_accepts_list_of_gate_names(self) -> None:
+        """active_gates accepts a list of gate names."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "active_gates": ["gate1", "gate2"],
+                "gates": {
+                    "gate1": {
+                        "name": "Gate1",
+                        "description": "",
+                        "execution": {
+                            "command": ["tool1"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": False,
+                            "produces_json": False,
+                        },
+                    },
+                    "gate2": {
+                        "name": "Gate2",
+                        "description": "",
+                        "execution": {
+                            "command": ["tool2"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": False,
+                            "produces_json": False,
+                        },
+                    },
+                },
+            }
+        )
+        assert config.active_gates == ["gate1", "gate2"]
+
+    def test_active_gates_allows_empty_list(self) -> None:
+        """active_gates can be explicitly set to empty list."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "active_gates": [],
+                "gates": {
+                    "ruff": {
+                        "name": "Ruff",
+                        "description": "",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                            "produces_json": False,
+                        },
+                    }
+                },
+            }
+        )
+        assert config.active_gates == []
+
+    def test_active_gates_subset_of_catalog(self) -> None:
+        """active_gates can reference subset of gates catalog."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "active_gates": ["gate1"],
+                "gates": {
+                    "gate1": {
+                        "name": "Gate1",
+                        "description": "",
+                        "execution": {
+                            "command": ["tool1"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": False,
+                            "produces_json": False,
+                        },
+                    },
+                    "gate2": {
+                        "name": "Gate2",
+                        "description": "",
+                        "execution": {
+                            "command": ["tool2"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": False,
+                            "produces_json": False,
+                        },
+                    },
+                },
+            }
+        )
+        assert config.active_gates == ["gate1"]
+        assert "gate2" in config.gates  # gate2 exists but not active
+
+    def test_active_gates_loads_from_yaml(self, tmp_path: Path) -> None:
+        """active_gates field loads correctly from YAML file."""
+        yaml_data = {
+            "version": "1.0",
+            "active_gates": ["ruff"],
+            "gates": {
+                "ruff": {
+                    "name": "Ruff",
+                    "description": "Fast linter",
+                    "execution": {
+                        "command": ["ruff", "check"],
+                        "timeout_seconds": 60,
+                        "working_dir": None,
+                    },
+                    "parsing": {"strategy": "exit_code"},
+                    "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                    "capabilities": {
+                        "file_types": [".py"],
+                        "supports_autofix": True,
+                        "produces_json": False,
+                    },
+                }
+            },
+        }
+
+        yaml_path = tmp_path / "test_quality.yaml"
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.dump(yaml_data, f)
+
+        config = QualityConfig.load(yaml_path)
+        assert config.active_gates == ["ruff"]
