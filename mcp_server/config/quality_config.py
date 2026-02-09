@@ -226,6 +226,10 @@ class QualityConfig(BaseModel):
     """Root quality gates configuration."""
 
     version: str = Field(..., min_length=1)
+    active_gates: list[str] = Field(
+        default_factory=list,
+        description="List of active gate names to execute from gates catalog"
+    )
     gates: dict[str, QualityGate] = Field(..., min_length=1)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
