@@ -85,7 +85,29 @@ class TestGitAdapterPush:
 
             with pytest.raises(ExecutionError, match="origin"):
                 adapter.push()
+            with pytest.raises(ExecutionError, match="origin"):
+                adapter.push()
 
+    def test_push_rejected_raises_error(self) -> None:
+        """Test push rejection (non-fast-forward) raises ExecutionError."""
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            mock_origin = MagicMock()
+            
+            # Mock PushInfo with REJECTED flag
+            mock_push_info = MagicMock()
+            mock_push_info.flags = 1024  # PushInfo.REJECTED flag
+            mock_push_info.summary = "non-fast-forward"
+            mock_origin.push.return_value = [mock_push_info]
+            
+            mock_repo.remote.return_value = mock_origin
+            mock_repo.active_branch.name = "feature/test"
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            with pytest.raises(ExecutionError, match="Push rejected"):
+                adapter.push()
 
 class TestGitAdapterMerge:
     """Tests for merge functionality."""
