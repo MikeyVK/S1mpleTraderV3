@@ -15,7 +15,7 @@ gates:
     name: "Gate 1: Formatting"
     description: "Code formatting (trailing whitespace, superfluous parentheses)"
     execution:
-      command: ["python", "-m", "ruff", "check", "--select=W291,W292,W293,UP034", "--ignore="]
+      command: ["python", "-m", "ruff", "check", "--select=W291,W292,W293,UP034"]
       timeout_seconds: 60
       working_dir: null
     parsing:
@@ -33,7 +33,7 @@ gates:
     name: "Gate 2: Imports"
     description: "Import placement (no imports outside top-level)"
     execution:
-      command: ["python", "-m", "ruff", "check", "--select=PLC0415", "--ignore="]
+      command: ["python", "-m", "ruff", "check", "--select=PLC0415"]
       timeout_seconds: 60
       working_dir: null
     parsing:
@@ -51,7 +51,7 @@ gates:
     name: "Gate 3: Line Length"
     description: "Line length (max 100 characters)"
     execution:
-      command: ["python", "-m", "ruff", "check", "--select=E501", "--line-length=100", "--ignore="]
+      command: ["python", "-m", "ruff", "check", "--select=E501", "--line-length=100"]
       timeout_seconds: 60
       working_dir: null
     parsing:
