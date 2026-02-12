@@ -331,6 +331,36 @@ class TestExecuteGate:
             assert result["passed"] is False
             assert len(result["issues"]) > 0
 
+
+    def test_execute_gate_failure_captures_and_truncates_output(
+        self, manager: QAManager, mock_gate: QualityGate
+    ) -> None:
+        """Test failure output captures stdout/stderr with truncation metadata."""
+        long_stdout = "\n".join(f"stdout line {i}" for i in range(1, 81))
+        long_stderr = "\n".join(f"stderr line {i}" for i in range(1, 21))
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = long_stdout
+            mock_proc.stderr = long_stderr
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
+
+            assert result["passed"] is False
+            assert "output" in result, "Expected structured output capture"
+
+            output = result["output"]
+            assert "stdout" in output
+            assert "stderr" in output
+            assert "truncated" in output
+            assert output["truncated"] is True
+
+            issue_details = result["issues"][0].get("details", "")
+            assert "stdout:" in issue_details
+            assert "stderr:" in issue_details
+            assert "truncated" in issue_details.lower()
     def test_execute_gate_timeout(self, manager: QAManager, mock_gate: QualityGate) -> None:
         """Test _execute_gate handles subprocess timeout."""
         with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(["test_tool"], 60)):
