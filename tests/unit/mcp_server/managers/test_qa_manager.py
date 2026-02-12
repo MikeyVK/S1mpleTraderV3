@@ -787,3 +787,106 @@ class TestStrategyBasedParsing:
             # exit_code strategy: returncode=0 means pass, ignore output
             assert result["passed"] is True
             assert result["issues"] == []
+
+
+class TestResponseSchemaV2:
+    """Test v2.0 JSON response schema (Issue #131 improvements)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        """Fixture for QAManager."""
+        return QAManager()
+
+    def test_response_schema_v2_structure(self, manager: QAManager) -> None:
+        """Test response includes v2.0 schema fields (version, mode, summary, gates[])."""
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch.object(manager, "_execute_gate") as mock_execute,
+        ):
+            mock_execute.return_value = {
+                "gate_number": 1,
+                "name": "Test Gate",
+                "passed": True,
+                "issues": [],
+            }
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tf:
+                tf.write("print('test')")
+                test_file = tf.name
+
+            try:
+                result = manager.run_quality_gates([test_file])
+
+                # v2.0 Schema Requirements
+                assert "version" in result, "Missing 'version' field"
+                assert result["version"] == "2.0", "Expected version 2.0"
+
+                assert "mode" in result, "Missing 'mode' field"
+                assert result["mode"] in ["file-specific", "project-level"], (
+                    f"Invalid mode: {result.get('mode')}"
+                )
+
+                assert "files" in result, "Missing 'files' field"
+                assert isinstance(result["files"], list), "'files' must be a list"
+
+                assert "summary" in result, "Missing 'summary' field"
+                summary = result["summary"]
+                assert "passed" in summary, "Summary missing 'passed' count"
+                assert "failed" in summary, "Summary missing 'failed' count"
+                assert "skipped" in summary, "Summary missing 'skipped' count"
+                assert isinstance(summary["passed"], int), "'passed' must be int"
+                assert isinstance(summary["failed"], int), "'failed' must be int"
+                assert isinstance(summary["skipped"], int), "'skipped' must be int"
+
+                assert "gates" in result, "Missing 'gates' field"
+                assert isinstance(result["gates"], list), "'gates' must be a list"
+
+            finally:
+                Path(test_file).unlink(missing_ok=True)
+
+    def test_response_schema_v2_file_specific_mode(self, manager: QAManager) -> None:
+        """Test mode='file-specific' when files provided."""
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch.object(manager, "_execute_gate") as mock_execute,
+        ):
+            mock_execute.return_value = {
+                "gate_number": 1,
+                "name": "Test Gate",
+                "passed": True,
+                "issues": [],
+            }
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tf:
+                tf.write("print('test')")
+                test_file = tf.name
+
+            try:
+                result = manager.run_quality_gates([test_file])
+                assert result["mode"] == "file-specific", (
+                    f"Expected 'file-specific' mode, got: {result.get('mode')}"
+                )
+                assert len(result["files"]) == 1, (
+                    f"Expected 1 file in response, got: {len(result.get('files', []))}"
+                )
+            finally:
+                Path(test_file).unlink(missing_ok=True)
+
+    def test_response_schema_v2_project_level_mode(self, manager: QAManager) -> None:
+        """Test mode='project-level' when files=[] (empty list)."""
+        with patch.object(manager, "_execute_gate") as mock_execute:
+            mock_execute.return_value = {
+                "gate_number": 5,
+                "name": "Tests",
+                "passed": True,
+                "issues": [],
+            }
+
+            result = manager.run_quality_gates([])  # Empty list → project-level mode
+
+            assert result["mode"] == "project-level", (
+                f"Expected 'project-level' mode, got: {result.get('mode')}"
+            )
+            assert result["files"] == [], (
+                f"Expected empty files list, got: {result.get('files')}"
+            )
