@@ -668,11 +668,11 @@ class TestConfigDrivenExecution:
                 Path(test_file).unlink(missing_ok=True)
 
     def test_repo_scoped_mode_runs_pytest_gates(self, manager: QAManager) -> None:
-        """Test empty files list triggers repo-scoped mode (runs pytest gates).
+        """Test empty files list triggers project-level mode (pytest gates only).
 
         When run_quality_gates(files=[]) is called with empty list:
-        - File-based gates (0-4) should run on all eligible files
-        - Pytest gates (5, 6) should NOT be skipped
+        - File-based static gates (0-4) should skip (no file discovery in project-level mode)
+        - Pytest gates (5, 6) should run (project-level test validation)
         - This enables coverage enforcement (Gate 6)
 
         Issue #133: Gate 5 & 6 always skipped
