@@ -12,6 +12,11 @@ active_gates:
   - gate5_tests
   - gate6_coverage
 
+artifact_logging:
+  enabled: true
+  output_dir: "temp/qa_logs"
+  max_files: 200
+
 gates:
   # Gate 0: Formatter (Ruff)
   gate0_ruff_format:

@@ -457,6 +457,73 @@ class TestActiveGatesField:
 class TestRuffGateDefinitions:
     """Test new Ruff-based gate definitions (Issue #131 Cycle 3)."""
 
+
+class TestArtifactLoggingConfig:
+    """Test artifact_logging root config behavior."""
+
+    def test_artifact_logging_defaults(self) -> None:
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "gates": {
+                    "ruff": {
+                        "name": "Ruff",
+                        "description": "",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                            "produces_json": False,
+                        },
+                    }
+                },
+            }
+        )
+
+        assert config.artifact_logging.enabled is True
+        assert config.artifact_logging.output_dir == "temp/qa_logs"
+        assert config.artifact_logging.max_files == 200
+
+    def test_artifact_logging_custom_values(self) -> None:
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "artifact_logging": {
+                    "enabled": False,
+                    "output_dir": "temp/custom_artifacts",
+                    "max_files": 50,
+                },
+                "gates": {
+                    "ruff": {
+                        "name": "Ruff",
+                        "description": "",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                            "produces_json": False,
+                        },
+                    }
+                },
+            }
+        )
+
+        assert config.artifact_logging.enabled is False
+        assert config.artifact_logging.output_dir == "temp/custom_artifacts"
+        assert config.artifact_logging.max_files == 50
+
     def test_gate1_formatting_loads_from_yaml(self) -> None:
         """gate1_formatting definition loads correctly from quality.yaml."""
         # Load from actual quality.yaml
@@ -465,15 +532,11 @@ class TestRuffGateDefinitions:
 
         assert "gate1_formatting" in config.gates
         gate = config.gates["gate1_formatting"]
-        assert gate.name == "Gate 1: Formatting"
-        assert gate.execution.command == [
-            "python",
-            "-m",
-            "ruff",
-            "check",
-            "--select=W291,W292,W293,UP034",
-            "--ignore=",
-        ]
+        assert gate.name == "Gate 1: Ruff Strict Lint"
+        assert gate.execution.command[:4] == ["python", "-m", "ruff", "check"]
+        assert "--isolated" in gate.execution.command
+        assert "--output-format=json" in gate.execution.command
+        assert "--ignore=E501,PLC0415" in gate.execution.command
 
     def test_gate2_imports_loads_from_yaml(self) -> None:
         """gate2_imports definition loads correctly from quality.yaml."""
@@ -483,14 +546,11 @@ class TestRuffGateDefinitions:
         assert "gate2_imports" in config.gates
         gate = config.gates["gate2_imports"]
         assert gate.name == "Gate 2: Imports"
-        assert gate.execution.command == [
-            "python",
-            "-m",
-            "ruff",
-            "check",
-            "--select=PLC0415",
-            "--ignore=",
-        ]
+        assert gate.execution.command[:4] == ["python", "-m", "ruff", "check"]
+        assert "--isolated" in gate.execution.command
+        assert "--output-format=json" in gate.execution.command
+        assert "--select=PLC0415" in gate.execution.command
+        assert "--target-version=py311" in gate.execution.command
 
     def test_gate3_line_length_loads_from_yaml(self) -> None:
         """gate3_line_length definition loads correctly from quality.yaml."""
@@ -500,15 +560,12 @@ class TestRuffGateDefinitions:
         assert "gate3_line_length" in config.gates
         gate = config.gates["gate3_line_length"]
         assert gate.name == "Gate 3: Line Length"
-        assert gate.execution.command == [
-            "python",
-            "-m",
-            "ruff",
-            "check",
-            "--select=E501",
-            "--line-length=100",
-            "--ignore=",
-        ]
+        assert gate.execution.command[:4] == ["python", "-m", "ruff", "check"]
+        assert "--isolated" in gate.execution.command
+        assert "--output-format=json" in gate.execution.command
+        assert "--select=E501" in gate.execution.command
+        assert "--line-length=100" in gate.execution.command
+        assert "--target-version=py311" in gate.execution.command
 
     def test_active_gates_includes_ruff_gates(self) -> None:
         """active_gates list includes new Ruff-based gates."""

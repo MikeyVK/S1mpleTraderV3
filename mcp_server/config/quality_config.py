@@ -220,6 +220,16 @@ class QualityGate(BaseModel):
         return self
 
 
+class ArtifactLoggingConfig(BaseModel):
+    """Artifact logging behavior for failed gate diagnostics."""
+
+    enabled: bool = Field(default=True)
+    output_dir: str = Field(default="temp/qa_logs", min_length=1)
+    max_files: int = Field(default=200, ge=1)
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
 class QualityConfig(BaseModel):
     """Root quality gates configuration."""
 
@@ -227,6 +237,7 @@ class QualityConfig(BaseModel):
     active_gates: list[str] = Field(
         default_factory=list, description="List of active gate names to execute from gates catalog"
     )
+    artifact_logging: ArtifactLoggingConfig = Field(default_factory=ArtifactLoggingConfig)
     gates: dict[str, QualityGate] = Field(..., min_length=1)
 
     model_config = ConfigDict(extra="forbid", frozen=True)

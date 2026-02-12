@@ -468,8 +468,28 @@ class TestArtifactLogging:
             mock_run.return_value = mock_proc
 
             result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
-
             assert result["passed"] is True
+            assert "artifact_path" not in result
+            assert not (tmp_path / "qa_logs").exists()
+
+    def test_execute_gate_failure_respects_disabled_artifact_logging(
+        self, manager: QAManager, mock_gate: QualityGate, tmp_path: Path
+    ) -> None:
+        """Test disabled artifact logging prevents file creation."""
+        with (
+            patch.object(QAManager, "QA_LOG_DIR", tmp_path / "qa_logs"),
+            patch.object(QAManager, "QA_LOG_ENABLED", False),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = "lint fail"
+            mock_proc.stderr = "details"
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
+
+            assert result["passed"] is False
             assert "artifact_path" not in result
             assert not (tmp_path / "qa_logs").exists()
 

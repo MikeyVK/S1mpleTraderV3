@@ -12,7 +12,7 @@ from typing import Any, cast
 
 from mcp_server.config.quality_config import QualityConfig, QualityGate
 
-MAX_ARTIFACT_LOG_FILES = 200
+DEFAULT_ARTIFACT_LOG_MAX_FILES = 200
 MAX_OUTPUT_LINES = 50
 MAX_OUTPUT_BYTES = 5120
 
@@ -38,6 +38,8 @@ class QAManager:
     """Manager for quality assurance and gates."""
 
     QA_LOG_DIR = Path("temp/qa_logs")
+    QA_LOG_ENABLED = True
+    QA_LOG_MAX_FILES = DEFAULT_ARTIFACT_LOG_MAX_FILES
 
     def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
         """Filter Python files and generate pre-gate issues for non-Python files.
@@ -144,6 +146,10 @@ class QAManager:
             return results
 
         quality_config = QualityConfig.load()
+        # Apply artifact logging config (config-first with safe defaults)
+        self.QA_LOG_ENABLED = quality_config.artifact_logging.enabled
+        self.QA_LOG_DIR = Path(quality_config.artifact_logging.output_dir)
+        self.QA_LOG_MAX_FILES = quality_config.artifact_logging.max_files
 
         if not quality_config.active_gates:
             self._update_summary_and_append_gate(
@@ -418,7 +424,7 @@ class QAManager:
             reverse=True,
         )
 
-        for stale_file in artifacts[MAX_ARTIFACT_LOG_FILES:]:
+        for stale_file in artifacts[self.QA_LOG_MAX_FILES :]:
             stale_file.unlink(missing_ok=True)
 
     def _write_artifact_log(
@@ -429,13 +435,15 @@ class QAManager:
         files: list[str],
         result: dict[str, Any],
     ) -> str | None:
-        """Write failed gate diagnostics to temp/qa_logs JSON artifact."""
+        """Write failed gate diagnostics to configured JSON artifact directory."""
+        if not self.QA_LOG_ENABLED:
+            return None
+
         try:
             self.QA_LOG_DIR.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
             safe_gate_name = gate_name.lower().replace(" ", "_").replace(":", "")
             artifact_path = self.QA_LOG_DIR / f"{timestamp}_gate{gate_number}_{safe_gate_name}.json"
-
             payload = {
                 "timestamp": timestamp,
                 "gate_number": gate_number,
