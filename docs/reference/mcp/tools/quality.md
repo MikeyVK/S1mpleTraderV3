@@ -179,6 +179,142 @@ gates:
 
 ---
 
+## Configuration Files: Dual-User Scenario
+
+**Status:** Updated for Issue #131
+**Principle:** Quality gates use `.st3/quality.yaml` for CI/CD enforcement; individual tools (Ruff, Mypy, Pyright) read `pyproject.toml` / `pyrightconfig.json` for IDE/CLI behavior.
+
+This project maintains **two separate configuration layers** to support different user workflows:
+
+### 1. Developer IDE/CLI Experience: pyproject.toml
+
+**Purpose:** Baseline code quality for VS Code, CLI usage, and local development.
+
+**Audience:** Human developers working in their IDE
+
+**Key Characteristics:**
+- **Relaxed rules:** Allows common IDE patterns (e.g., E501 line length warnings instead of errors)
+- **Inline ignores:** Developers can use `# type: ignore` or `# noqa` for edge cases
+- **Tool-specific sections:** Each tool (Ruff, Mypy, Pyright) has its own configuration block
+- **Independent execution:** Developers run `ruff check`, `mypy`, `pyright` directly
+
+**Example (pyproject.toml):**
+```toml
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# Relaxed ruleset for IDE: warnings allowed
+select = ["E", "W", "F", "I", "UP"]
+ignore = ["E501"]  # Line too long (warning only in IDE)
+
+[tool.mypy]
+python_version = "3.11"
+strict = false  # Enforce strict typing in quality gates only
+```
+
+### 2. CI/CD Quality Gates: .st3/quality.yaml
+
+**Purpose:** Strict quality enforcement for automated systems (GitHub Actions, MCP tools, pre-merge checks).
+
+**Audience:** Automated agents (AI assistants, CI/CD pipelines)
+
+**Key Characteristics:**
+- **Strict rules:** Enforces stricter checks than IDE baseline (e.g., E501 becomes an error)
+- **Config-driven execution:** Gates run in sequence defined by `active_gates` list
+- **No inline ignores:** Cannot override gate failures with `# noqa` or `# type: ignore`
+- **Unified execution:** All gates run via `QAManager` → ensures consistent enforcement
+
+**Example (.st3/quality.yaml):**
+```yaml
+version: "1.0"
+active_gates:
+  - gate0_ruff_format
+  - gate1_formatting
+  - gate3_line_length  # E501 enforced as error here
+  - gate4_pyright
+
+gates:
+  gate3_line_length:
+    name: "Gate 3: Line Length"
+    execution:
+      # Stricter than pyproject.toml: E501 is  an error, not a warning
+      command: ["python", "-m", "ruff", "check", "--select=E501", "--line-length=100"]
+      timeout_seconds: 60
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]  # Fail on any E501 violation
+```
+
+### Why Two Configuration Layers?
+
+**Design Philosophy:**
+- **Developers** need flexible, warning-based feedback for rapid iteration
+- **Automated systems** need strict, pass/fail gates to enforce code quality standards
+
+**Hierarchical Enforcement:**
+1. **IDE/CLI (pyproject.toml):** Baseline quality with warnings
+2. **Pre-commit hooks:** Run subset of gates (e.g., formatting, imports)
+3. **CI/CD (.st3/quality.yaml):** Full gate suite with strict enforcement
+
+**Example Workflow:**
+```
+Human developer:
+  1. Write code in VS Code
+  2. Ruff/Mypy show warnings (E501 line too long)
+  3. Developer ignores warning temporarily, continues work
+  4. Runs `git commit`
+  5. Pre-commit hook fails with Gate 3 (E501 enforced)
+  6. Developer fixes line length, commit succeeds
+
+AI agent/CI:
+  1. Agent writes code via safe_edit_file
+  2. Tool internally runs run_quality_gates(files=[...])
+  3. Gate 3 fails with E501 violation
+  4. Agent automatically rewrites code to fix line length
+  5. All gates pass, commit proceeds
+```
+
+### Gate Configuration Override Behavior
+
+**Command Flag Precedence:**
+- Gates explicitly specify flags (e.g., `--select=E501`, `--ignore=`) in their `command` array
+- These flags **override** the corresponding settings from `pyproject.toml` / `pyrightconfig.json`
+- This ensures gate behavior is **deterministic** and independent of local IDE config
+
+**Example:**
+```yaml
+# .st3/quality.yaml (Gate 2)
+command: ["python", "-m", "ruff", "check", "--select=PLC0415", "--ignore="]
+# --ignore= clears any ignore patterns from pyproject.toml
+# --select=PLC0415 enforces import placement (even if not in pyproject.toml select list)
+```
+
+```toml
+# pyproject.toml (IDE config)
+[tool.ruff.lint]
+select = ["E", "W", "F"]  # Does NOT include PLC0415ignore = ["PLC0415"]  # Attempts to ignore import errors
+```
+
+**Result:** Gate 2 will **fail** on PLC0415 violations, regardless of `pyproject.toml` configuration.
+
+### Migration Path (Pre-Issue #131)
+
+**Before (hardcoded gates):**
+- Quality gates were hardcoded in `QAManager._run_*` methods
+- No `.st3/quality.yaml` file
+- Gate activation required code changes
+
+**After (config-driven):**
+- All gates defined in `.st3/quality.yaml`
+- Gate activation via `active_gates` list (no code changes)
+- Gate definitions reusable across projects (copy quality.yaml)
+
+---
+
 
 ### run_tests
 
