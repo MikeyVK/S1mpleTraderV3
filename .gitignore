@@ -76,6 +76,8 @@ Kraken_Trading_History/
 # Ephemeral artifacts temp files
 .st3/temp/
 
+# QA artifact logs (Cycle 5)
+temp/qa_logs/
 # Generated with timestamps
 .st3/template_registry.yaml
 
