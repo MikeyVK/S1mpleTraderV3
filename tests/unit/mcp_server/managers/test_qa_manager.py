@@ -59,7 +59,7 @@ class TestQAManager:
 
     @pytest.mark.asyncio
     @pytest.mark.skip(
-        reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution)."
+        reason="Legacy test - uses hardcoded gates. "  "Replaced by config-driven execution tests (TestConfigDrivenExecution)."
     )
     async def test_run_quality_gates_pylint_fail(self, manager: QAManager) -> None:
         """Test quality gates fail on Pylint errors."""
@@ -95,7 +95,7 @@ Your code has been rated at 5.00/10
 
     @pytest.mark.asyncio
     @pytest.mark.skip(
-        reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests."
+        reason="Complex to mock: requires both subprocess behavior AND quality.yaml "  "scope filtering. Covered by integration tests."
     )
     async def test_run_quality_gates_mypy_fail(self, manager: QAManager) -> None:
         """Test quality gates fail on Mypy errors (uses real quality.yaml with scope filtering)."""
@@ -131,7 +131,7 @@ Your code has been rated at 5.00/10
 
     @pytest.mark.asyncio
     @pytest.mark.skip(
-        reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution)."
+        reason="Legacy test - uses hardcoded gates. "  "Replaced by config-driven execution tests (TestConfigDrivenExecution)."
     )
     async def test_run_quality_gates_pass(self, manager: QAManager) -> None:
         """Test passing quality gates."""
@@ -163,7 +163,7 @@ Your code has been rated at 5.00/10
 
     @pytest.mark.asyncio
     @pytest.mark.skip(
-        reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests."
+        reason="Complex to mock: requires both subprocess behavior AND quality.yaml "  "scope filtering. Covered by integration tests."
     )
     async def test_subprocess_timeout(self, manager: QAManager) -> None:
         """Test handling of subprocess timeout (uses real quality.yaml with scope filtering)."""
@@ -193,7 +193,7 @@ Your code has been rated at 5.00/10
 
     @pytest.mark.asyncio
     @pytest.mark.skip(
-        reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution)."
+        reason="Legacy test - uses hardcoded gates. "  "Replaced by config-driven execution tests (TestConfigDrivenExecution)."
     )
     async def test_subprocess_not_found(self, manager: QAManager) -> None:
         """Test handling of FileNotFoundError (tool missing) during execution."""
@@ -214,10 +214,10 @@ Your code has been rated at 5.00/10
 
     @pytest.mark.asyncio
     @pytest.mark.skip(
-        reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests."
+        reason="Complex to mock: requires both subprocess behavior AND quality.yaml "  "scope filtering. Covered by integration tests."
     )
     async def test_run_quality_gates_pyright_fail(self, manager: QAManager) -> None:
-        """Test quality gates fail on Pyright errors (uses real quality.yaml with scope filtering)."""
+        """Test quality gates fail on Pyright errors.  (uses real quality.yaml with scope filtering)."""
         pyright_output = (
             '{"generalDiagnostics": ['
             '{"file":"backend/test.py","severity":"error","message":"Bad type","range":'
