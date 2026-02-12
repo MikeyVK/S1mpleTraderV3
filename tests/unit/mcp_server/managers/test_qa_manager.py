@@ -667,6 +667,87 @@ class TestConfigDrivenExecution:
             finally:
                 Path(test_file).unlink(missing_ok=True)
 
+    def test_repo_scoped_mode_runs_pytest_gates(self, manager: QAManager) -> None:
+        """Test empty files list triggers repo-scoped mode (runs pytest gates).
+
+        When run_quality_gates(files=[]) is called with empty list:
+        - File-based gates (0-4) should run on all eligible files
+        - Pytest gates (5, 6) should NOT be skipped
+        - This enables coverage enforcement (Gate 6)
+
+        Issue #133: Gate 5 & 6 always skipped
+        """
+        with patch("subprocess.run") as mock_run:
+            # Mock successful execution for all gates
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            # Call with EMPTY files list (repo-scoped mode)
+            result = manager.run_quality_gates(files=[])
+
+            # Verify pytest gates were NOT skipped
+            gate_names = [g["name"] for g in result["gates"]]
+            skipped_gates = [g for g in result["gates"] if "Skipped" in g.get("score", "")]
+
+            # Gate 5 (Tests) and Gate 6 (Coverage) should be in results
+            assert any("Tests" in name or "Test" in name for name in gate_names), (
+                f"Gate 5 (Tests) not found in gate names: {gate_names}"
+            )
+            assert any("Coverage" in name or "Cov" in name for name in gate_names), (
+                f"Gate 6 (Coverage) not found in gate names: {gate_names}"
+            )
+
+            # Pytest gates should NOT be in skipped list
+            pytest_skipped = [
+                g["name"]
+                for g in skipped_gates
+                if "Test" in g["name"] or "Coverage" in g["name"]
+            ]
+            assert not pytest_skipped, (
+                f"Pytest gates should NOT be skipped in repo-scoped mode: {pytest_skipped}"
+            )
+
+    def test_file_specific_mode_skips_pytest_gates(self, manager: QAManager) -> None:
+        """Test populated files list triggers file-specific mode (skips pytest gates).
+
+        When run_quality_gates(files=["file.py"]) is called with files:
+        - File-based gates (0-4) should run on specified files
+        - Pytest gates (5, 6) should be skipped (not file-specific)
+
+        This is existing behavior - ensuring it's not broken.
+        """
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tf:
+            tf.write("print('test')")
+            test_file = tf.name
+
+        try:
+            with patch("subprocess.run") as mock_run:
+                mock_proc = MagicMock()
+                mock_proc.returncode = 0
+                mock_proc.stdout = ""
+                mock_proc.stderr = ""
+                mock_run.return_value = mock_proc
+
+                # Call with populated files list (file-specific mode)
+                result = manager.run_quality_gates(files=[test_file])
+
+                # Pytest gates SHOULD be skipped in file-specific mode
+                skipped_pytest = [
+                    g
+                    for g in result["gates"]
+                    if ("Test" in g["name"] or "Coverage" in g["name"])
+                    and "Skipped" in g.get("score", "")
+                ]
+
+                assert skipped_pytest, (
+                    "Pytest gates should be skipped in file-specific mode"
+                )
+        finally:
+            Path(test_file).unlink(missing_ok=True)
+
 
 class TestStrategyBasedParsing:
     """Test suite for strategy-based parsing (WP2 - Generic Parsing Strategies)."""

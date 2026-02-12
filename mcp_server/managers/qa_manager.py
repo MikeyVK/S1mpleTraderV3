@@ -74,49 +74,49 @@ class QAManager:
             "gates": [],
         }
 
-        if not files:
-            results["overall_pass"] = False
-            results["gates"].append(
-                {
-                    "gate_number": 0,
-                    "name": "File Validation",
-                    "passed": False,
-                    "score": "N/A",
-                    "issues": [{"message": "No files provided"}],
-                }
-            )
-            return results
+        # Determine execution mode: file-specific vs repo-scoped
+        # files=[] (empty) → repo-scoped mode (run ALL gates including pytest)
+        # files=[...] (populated) → file-specific mode (skip pytest gates)
+        is_file_specific_mode = bool(files)
 
-        missing_files = [f for f in files if not Path(f).exists()]
-        if missing_files:
-            results["overall_pass"] = False
-            results["gates"].append(
-                {
-                    "gate_number": 0,
-                    "name": "File Validation",
-                    "passed": False,
-                    "score": "N/A",
-                    "issues": [{"message": f"File not found: {f}"} for f in missing_files],
-                }
-            )
-            return results
-
-        python_files, pre_gate_issues = self._filter_files(files)
-
-        if pre_gate_issues or not python_files:
-            results["gates"].append(
-                {
-                    "gate_number": 0,
-                    "name": "File Filtering",
-                    "passed": bool(python_files),
-                    "score": "N/A",
-                    "issues": pre_gate_issues,
-                }
-            )
-            if not python_files:
+        if is_file_specific_mode:
+            # File-specific mode: validate file existence
+            missing_files = [f for f in files if not Path(f).exists()]
+            if missing_files:
                 results["overall_pass"] = False
+                results["gates"].append(
+                    {
+                        "gate_number": 0,
+                        "name": "File Validation",
+                        "passed": False,
+                        "score": "N/A",
+                        "issues": [{"message": f"File not found: {f}"} for f in missing_files],
+                    }
+                )
+                return results
 
-        if not python_files:
+            python_files, pre_gate_issues = self._filter_files(files)
+
+            if pre_gate_issues or not python_files:
+                results["gates"].append(
+                    {
+                        "gate_number": 0,
+                        "name": "File Filtering",
+                        "passed": bool(python_files),
+                        "score": "N/A",
+                        "issues": pre_gate_issues,
+                    }
+                )
+                if not python_files:
+                    results["overall_pass"] = False
+
+            if not python_files:
+                return results
+        else:
+            # Repo-scoped mode: no file validation needed
+            python_files = []  # Will be populated per-gate based on scope
+        # In file-specific mode, early return if no valid files
+        if is_file_specific_mode and not python_files:
             return results
 
         quality_config = QualityConfig.load()
@@ -161,21 +161,22 @@ class QAManager:
 
             gate_files = self._files_for_gate(gate, python_files)
 
-            # Skip repo-scoped gates (pytest) when doing file-specific checks
-            if self._is_pytest_gate(gate):
+            # Skip repo-scoped gates (pytest) when in file-specific mode
+            if is_file_specific_mode and self._is_pytest_gate(gate):
                 results["gates"].append(
                     {
                         "gate_number": idx,
                         "name": gate.name,
                         "passed": True,
-                        "score": "Skipped (repo-scoped)",
+                        "score": "Skipped (file-specific mode)",
                         "issues": [],
                     }
                 )
                 continue
-
             # Skip gates with no files after scope filtering
-            if not gate_files:
+            # Exception: in repo-scoped mode, allow pytest gates to run
+            is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
+            if not gate_files and not is_repo_scoped_pytest_gate:
                 results["gates"].append(
                     {
                         "gate_number": idx,
