@@ -924,6 +924,74 @@ class TestResponseSchemaV2:
             assert result["files"] == [], f"Expected empty files list, got: {result.get('files')}"
 
 
+
+
+class TestSkipReasonLogic:
+    """Test consolidated skip reason logic (Cycle 4)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    @pytest.fixture
+    def pytest_gate(self) -> QualityGate:
+        return QualityGate.model_validate(
+            {
+                "name": "Gate 5: Tests",
+                "description": "Unit tests",
+                "execution": {
+                    "command": ["pytest", "tests/"],
+                    "timeout_seconds": 300,
+                    "working_dir": None,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+
+    @pytest.fixture
+    def static_gate(self) -> QualityGate:
+        return QualityGate.model_validate(
+            {
+                "name": "Gate 1: Formatting",
+                "description": "Lint",
+                "execution": {
+                    "command": ["python", "-m", "ruff", "check"],
+                    "timeout_seconds": 60,
+                    "working_dir": None,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+
+    def test_get_skip_reason_file_specific_pytest_gate(
+        self, manager: QAManager, pytest_gate: QualityGate
+    ) -> None:
+        reason = manager._get_skip_reason(pytest_gate, [], is_file_specific_mode=True)
+        assert reason == "Skipped (file-specific mode)"
+
+    def test_get_skip_reason_no_matching_files_for_static_gate(
+        self, manager: QAManager, static_gate: QualityGate
+    ) -> None:
+        reason = manager._get_skip_reason(static_gate, [], is_file_specific_mode=False)
+        assert reason == "Skipped (no matching files)"
+
+    def test_get_skip_reason_project_level_pytest_not_skipped(
+        self, manager: QAManager, pytest_gate: QualityGate
+    ) -> None:
+        reason = manager._get_skip_reason(pytest_gate, [], is_file_specific_mode=False)
+        assert reason is None
 class TestRuffJsonParsing:
     """Test Ruff JSON output parsing (Issue #131 Cycle 2)."""
 
