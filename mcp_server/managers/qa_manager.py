@@ -59,19 +59,32 @@ class QAManager:
             )
 
         return python_files, issues
-
     def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
         """Run configured quality gates on specified files.
+
+        Returns v2.0 JSON schema with version, mode, summary, and gates.
 
         Notes:
             - Gate catalog and active gates are defined in `.st3/quality.yaml`.
             - Only `.py` files are eligible for file-scoped gates.
             - Some gates (e.g., pytest) are repo-scoped and ignore file lists.
         """
+        # Determine execution mode
+        is_file_specific_mode = bool(files)
+        mode = "file-specific" if is_file_specific_mode else "project-level"
 
+        # Initialize v2.0 response schema
         results: dict[str, Any] = {
-            "overall_pass": True,
+            "version": "2.0",
+            "mode": mode,
+            "files": files,
+            "summary": {
+                "passed": 0,
+                "failed": 0,
+                "skipped": 0,
+            },
             "gates": [],
+            "overall_pass": True,  # Backward compatibility
         }
 
         # Determine execution mode:
@@ -83,32 +96,31 @@ class QAManager:
             # File-specific mode: validate file existence
             missing_files = [f for f in files if not Path(f).exists()]
             if missing_files:
-                results["overall_pass"] = False
-                results["gates"].append(
+                self._update_summary_and_append_gate(
+                    results,
                     {
                         "gate_number": 0,
                         "name": "File Validation",
                         "passed": False,
                         "score": "N/A",
                         "issues": [{"message": f"File not found: {f}"} for f in missing_files],
-                    }
+                    },
                 )
                 return results
 
             python_files, pre_gate_issues = self._filter_files(files)
 
             if pre_gate_issues or not python_files:
-                results["gates"].append(
+                self._update_summary_and_append_gate(
+                    results,
                     {
                         "gate_number": 0,
                         "name": "File Filtering",
                         "passed": bool(python_files),
                         "score": "N/A",
                         "issues": pre_gate_issues,
-                    }
+                    },
                 )
-                if not python_files:
-                    results["overall_pass"] = False
 
             if not python_files:
                 return results
@@ -125,8 +137,8 @@ class QAManager:
         quality_config = QualityConfig.load()
 
         if not quality_config.active_gates:
-            results["overall_pass"] = False
-            results["gates"].append(
+            self._update_summary_and_append_gate(
+                results,
                 {
                     "gate_number": 0,
                     "name": "Configuration",
@@ -137,7 +149,7 @@ class QAManager:
                             "message": "No active_gates configured in .st3/quality.yaml",
                         }
                     ],
-                }
+                },
             )
             return results
 
@@ -146,8 +158,8 @@ class QAManager:
         for idx, gate_id in enumerate(quality_config.active_gates, start=1):
             gate = gate_catalog.get(gate_id)
             if gate is None:
-                results["overall_pass"] = False
-                results["gates"].append(
+                self._update_summary_and_append_gate(
+                    results,
                     {
                         "gate_number": idx,
                         "name": gate_id,
@@ -158,7 +170,7 @@ class QAManager:
                                 "message": f"Active gate not found in catalog: {gate_id}",
                             }
                         ],
-                    }
+                    },
                 )
                 continue
 
@@ -166,37 +178,53 @@ class QAManager:
 
             # Skip pytest gates (project-level tests) when in file-specific validation mode
             if is_file_specific_mode and self._is_pytest_gate(gate):
-                results["gates"].append(
+                self._update_summary_and_append_gate(
+                    results,
                     {
                         "gate_number": idx,
                         "name": gate.name,
                         "passed": True,
                         "score": "Skipped (file-specific mode)",
                         "issues": [],
-                    }
+                    },
                 )
                 continue
             # Skip gates with no files after scope filtering
             # Exception: in project-level test validation mode, allow pytest gates to run
             is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
             if not gate_files and not is_repo_scoped_pytest_gate:
-                results["gates"].append(
+                self._update_summary_and_append_gate(
+                    results,
                     {
                         "gate_number": idx,
                         "name": gate.name,
                         "passed": True,
                         "score": "Skipped (no matching files)",
                         "issues": [],
-                    }
+                    },
                 )
                 continue
-
             gate_result = self._execute_gate(gate, gate_files, gate_number=idx, gate_id=gate_id)
-            results["gates"].append(gate_result)
-            if not gate_result["passed"]:
-                results["overall_pass"] = False
+            self._update_summary_and_append_gate(results, gate_result)
 
         return results
+
+    def _update_summary_and_append_gate(
+        self, results: dict[str, Any], gate_result: dict[str, Any]
+    ) -> None:
+        """Add gate result and update summary counts."""
+        results["gates"].append(gate_result)
+
+        # Determine gate status for summary
+        if gate_result.get("passed"):
+            score = gate_result.get("score", "")
+            if isinstance(score, str) and "Skipped" in score:
+                results["summary"]["skipped"] += 1
+            else:
+                results["summary"]["passed"] += 1
+        else:
+            results["summary"]["failed"] += 1
+            results["overall_pass"] = False
 
     def check_health(self) -> bool:
         """Check if QA tools are available."""
