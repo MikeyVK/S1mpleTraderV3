@@ -5,8 +5,8 @@ It validates tool definitions only (commands/parsing/success/capabilities) and
 explicitly does not model enforcement policy (Epic #18).
 
 Quality Requirements:
-- Pylint: 10/10 (strict)
-- Mypy: strict mode passing
+- Pyright: strict mode passing
+- Ruff: all configured rules passing
 - Coverage: 100% for this module
 """
 
@@ -172,15 +172,13 @@ class GateScope(BaseModel):
 
             # Include matching
             if include_patterns and not any(
-                PurePosixPath(posix_path).match(pattern)
-                for pattern in include_patterns
+                PurePosixPath(posix_path).match(pattern) for pattern in include_patterns
             ):
                 continue  # Skip if not in include list
 
             # Exclude matching
             if exclude_patterns and any(
-                PurePosixPath(posix_path).match(pattern)
-                for pattern in exclude_patterns
+                PurePosixPath(posix_path).match(pattern) for pattern in exclude_patterns
             ):
                 continue  # Skip if in exclude list
             filtered.append(file_path)
@@ -222,10 +220,24 @@ class QualityGate(BaseModel):
         return self
 
 
+class ArtifactLoggingConfig(BaseModel):
+    """Artifact logging behavior for failed gate diagnostics."""
+
+    enabled: bool = Field(default=True)
+    output_dir: str = Field(default="temp/qa_logs", min_length=1)
+    max_files: int = Field(default=200, ge=1)
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
 class QualityConfig(BaseModel):
     """Root quality gates configuration."""
 
     version: str = Field(..., min_length=1)
+    active_gates: list[str] = Field(
+        default_factory=list, description="List of active gate names to execute from gates catalog"
+    )
+    artifact_logging: ArtifactLoggingConfig = Field(default_factory=ArtifactLoggingConfig)
     gates: dict[str, QualityGate] = Field(..., min_length=1)
 
     model_config = ConfigDict(extra="forbid", frozen=True)

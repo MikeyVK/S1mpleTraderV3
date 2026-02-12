@@ -111,21 +111,22 @@ Organize issues into release milestones.
 
 ### 6. Quality & Testing Tools (6 tools)
 
-Run linters, type checkers, tests, and validate code.
+Run quality gates (Ruff, Pyright), tests, and validate code.
 
 | Tool | Purpose | Parameters | Returns |
 |------|---------|------------|---------|
-| **RunQualityGatesTool** | Run pylint + mypy | `files` (list of paths) | Score: Linting 0-10, Type checking Pass/Fail |
+| **RunQualityGatesTool** | Run config-driven quality gates | `files` (list of paths; empty = project-level) | v2.0 JSON: summary, gates[], timings, command metadata |
 | **ValidateDocTool** | Check doc structure | `file_path` | Validation results (headings, links, etc.) |
 | **ValidationTool** | Generic code validation | `file_path` | Issues found |
 | **ValidateDTOTool** | Validate DTO schema | `file_path` | DTO structure validation |
 | **RunTestsTool** | Run pytest | `path` (default: tests/), `markers` (optional), `verbose` (optional), `timeout` (default: 300s) | Test results, pass/fail count |
 | **HealthCheckTool** | Server health status | None | OK/ERROR |
 
-**Quality Gates Standard:**
-- **Linting:** 10.00/10 (pylint + custom rules)
-- **Type Checking:** Pass (mypy with strict mode)
-- **Tests:** All passing (715 tests currently)
+**Quality Gates Standard (`.st3/quality.yaml`):**
+- **Gates 0–3:** Ruff format, strict lint, imports, line length (all with `--isolated`)
+- **Gates 4/4b:** Mypy strict (DTOs only) + Pyright (all files, warnings fail)
+- **Gate 5:** All tests passing
+- **Gate 6:** Branch coverage ≥ 90%
 
 ### 7. Discovery & Navigation Tools (2 tools)
 
@@ -310,7 +311,7 @@ DOCS:         git_commit "Update documentation" phase=docs
 ```
 1. run_quality_gates files=[modified files]
 2. run_tests path=tests/
-3. Ensure: Linting 10.00/10 + Type checking Pass
+3. Ensure: All quality gates pass (Gates 0-6)
 4. git_push
 ```
 
@@ -344,9 +345,9 @@ DOCS:         git_commit "Update documentation" phase=docs
 
 **Fix:** Set `GITHUB_TOKEN` environment variable and restart MCP server
 
-### Quality Gates Show "N/A" for Mypy
+### Quality Gates Show "N/A" for Pyright/Mypy
 
-**Fix:** Server was just started. Mypy needs venv initialization. Retry the command.
+**Fix:** Server was just started. Type checker needs venv initialization. Retry the command.
 
 ### CreatePRTool Fails: "Head branch not found"
 

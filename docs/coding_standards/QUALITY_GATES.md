@@ -2,30 +2,95 @@
 
 ## Overview
 
-All code in S1mpleTrader V3 must pass **5 mandatory quality gates** before merging to main. Each gate checks specific aspects of code quality and must score **10.00/10**.
+All code in S1mpleTrader V3 must pass **7 mandatory quality gates** before merging to main. Each gate must **pass** (exit code 0) to ensure code quality and consistency.
+
+## Configuration Doctrine: IDE vs CI
+
+**Two-tier quality enforcement strategy:**
+
+1. **`pyproject.toml`** = **IDE Baseline** (Pragmatic)
+   - Used by VS Code, PyCharm, and local Ruff/Mypy runs
+   - Balanced for developer productivity
+   - May have pragmatic ignores for known false positives
+
+2. **`.st3/quality.yaml`** = **CI Authority** (Strict)
+   - Used by quality gates in CI/CD pipelines
+   - Stricter enforcement before merge
+   - Ruff gates use `--isolated` flag to ignore IDE config
+   - Final arbiter for pull request approval
+
+3. **Gates apply to production AND test code**
+   - All Python files in `backend/`, `mcp_server/`, and `tests/` must pass
+   - Tests held to same quality bar as production code
+
+4. **Ruff `--isolated` mode in CI**
+   - Gates 0-3 run with `--isolated` to prevent inheriting IDE ignores
+   - Ensures deterministic, strict enforcement independent of local settings
+
+**Result:** Developers get helpful local feedback, while CI enforces non-negotiable quality standards.
 
 ## Gate Checklist
 
-Every DTO implementation must pass all gates for **both** the DTO file and its test file.
+Every DTO implementation must pass all gates for **both** the DTO file and its test file:
 
-### Gate 1: Trailing Whitespace & Parens
+- [ ] Gate 0: Ruff Format
+- [ ] Gate 1: Ruff Strict Lint
+- [ ] Gate 2: Import Placement
+- [ ] Gate 3: Line Length
+- [ ] Gate 4: Type Checking (DTOs only)
+- [ ] Gate 5: Tests Passing
+- [ ] Gate 6: Code Coverage (>= 90%)
 
-**Purpose:** Ensure clean code without trailing spaces or superfluous parentheses.
+### Gate 0: Ruff Format
+
+**Purpose:** Enforce consistent formatting (formatter check is as important as lint).
 
 ```powershell
-# Check DTO file
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
+# Check formatting (no changes written)
+python -m ruff format --isolated --check --diff --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --isolated --check --diff --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
 
-# Check test file
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
+# Apply formatting (writes changes)
+python -m ruff format --isolated --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --isolated --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
+
 ```
 
-**Expected:** `10.00/10` for both files
+**Expected:** `Pass` (exit code 0)
 
-**Auto-fix whitespace:**
+### Gate 1: Ruff Strict Lint (excluding line length & import placement)
+
+**Purpose:** Enforce strict linting in CI (stricter than VS Code baseline).
+
+**Note:** This gate intentionally excludes:
+- **E501** (line length) → Checked separately in Gate 3
+- **PLC0415** (import placement) → Checked separately in Gate 2
+
+This separation follows Single Responsibility Principle - each gate validates one specific aspect.
+
+**What is ANN?** Type annotation rules (`flake8-annotations`) - ensures function parameters and return types have explicit type hints. This applies to both production code and test files.
+
 ```powershell
-(Get-Content backend/dtos/strategy/my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content backend/dtos/strategy/my_dto.py
-(Get-Content tests/unit/dtos/strategy/test_my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content tests/unit/dtos/strategy/test_my_dto.py
+# Strict lint (same intent as CI gate; does not inherit IDE ignores)
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 tests/unit/dtos/strategy/test_my_dto.py
+
+# Optional: apply safe autofixes
+python -m ruff check --fix --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
+python -m ruff check --fix --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 tests/unit/dtos/strategy/test_my_dto.py
+```
+
+**Expected:** `Pass` (exit code 0)
+
+**Common ANN violations in tests:**
+```python
+# ❌ WRONG - test function missing return type
+def test_my_feature(dto):
+    assert dto.value == 42
+
+# ✅ CORRECT - explicit return type
+def test_my_feature(dto: MyDTO) -> None:
+    assert dto.value == 42
 ```
 
 ### Gate 2: Import Placement
@@ -34,13 +99,13 @@ python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=
 
 ```powershell
 # Check DTO file
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=import-outside-toplevel
+python -m ruff check --isolated --select=PLC0415 --target-version=py311 backend/dtos/strategy/my_dto.py
 
 # Check test file
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=import-outside-toplevel
+python -m ruff check --isolated --select=PLC0415 --target-version=py311 tests/unit/dtos/strategy/test_my_dto.py
 ```
 
-**Expected:** `10.00/10` for both files
+**Expected:** `Pass` (exit code 0)
 
 **Common violation:**
 ```python
@@ -62,13 +127,13 @@ def my_function():
 
 ```powershell
 # Check DTO file
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=line-too-long --max-line-length=100
+python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
 
 # Check test file
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=line-too-long --max-line-length=100
+python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 tests/unit/dtos/strategy/test_my_dto.py
 ```
 
-**Expected:** `10.00/10` for both files
+**Expected:** `Pass` (exit code 0)
 
 **Techniques to fix:**
 - Split long assertions into multiple variables
@@ -99,37 +164,63 @@ python -m mypy backend/dtos/strategy/my_dto.py --strict --no-error-summary
 
 ### Gate 5: Tests Passing
 
-**Purpose:** All unit tests must pass.
+**Purpose:** All unit tests must pass (correctness validation).
 
 ```powershell
 pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
 ```
 
-**Expected:** All tests passing (complete coverage, not arbitrary quantity targets)
+**Expected:** All tests passing
+
+**Note:** Coverage is enforced separately in Gate 6 (SRP: tests validate correctness, coverage validates thoroughness).
+
+### Gate 6: Code Coverage
+
+**Purpose:** Ensure comprehensive test coverage with branch coverage >= 90%.
+
+```powershell
+# Check coverage for backend and mcp_server packages
+pytest tests/ --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90 --tb=short
+```
+
+**Expected:** Branch coverage >= 90% (hard fail below threshold)
+
+**Scope:** Production packages only:
+- `backend/` - Core trading logic
+- `mcp_server/` - MCP server implementation
+
+**Why separate from Gate 5?**
+- **Gate 5:** Validates test correctness (do tests pass?)
+- **Gate 6:** Validates test thoroughness (are all code paths tested?)
+- Follows Single Responsibility Principle - each gate checks one aspect
+
+**Adding new packages:** When adding new production Python packages, extend Gate 6 scope:
+```powershell
+pytest tests/ --cov=backend --cov=mcp_server --cov=new_package --cov-branch --cov-fail-under=90
+```
 
 ## Post-Implementation Workflow
 
 Complete workflow for a new DTO:
 
 ```powershell
-# Step 1: Auto-fix trailing whitespace
-(Get-Content backend/dtos/strategy/my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content backend/dtos/strategy/my_dto.py
-(Get-Content tests/unit/dtos/strategy/test_my_dto.py) | ForEach-Object { $_.TrimEnd() } | Set-Content tests/unit/dtos/strategy/test_my_dto.py
+# Step 1: Apply formatting (writes changes)
+python -m ruff format --isolated --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --isolated --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
 
-# Step 2: Run all 5 gates for DTO
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=import-outside-toplevel
-python -m pylint backend/dtos/strategy/my_dto.py --disable=all --enable=line-too-long --max-line-length=100
+# Step 2: Run lint gates
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
+python -m ruff check --isolated --select=PLC0415 --target-version=py311 backend/dtos/strategy/my_dto.py
+python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
+
+# Step 3: Run type checking (DTOs only)
 python -m mypy backend/dtos/strategy/my_dto.py --strict --no-error-summary
 
-# Step 3: Run all 5 gates for tests (except mypy)
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=trailing-whitespace,superfluous-parens
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=import-outside-toplevel
-python -m pylint tests/unit/dtos/strategy/test_my_dto.py --disable=all --enable=line-too-long --max-line-length=100
+# Step 4: Run tests
 pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
 
-# Step 4: Verify VS Code Problems panel
-# Only acceptable warnings should remain (see below)
+# Step 5: Run coverage (entire test suite with branch coverage)
+pytest tests/ --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90 --tb=short
 ```
 
 ## Bulk Quality Checks
@@ -139,12 +230,10 @@ Check all modified files at once:
 ```powershell
 # Find all modified Python files
 git diff --name-only | Where-Object { $_ -like "*.py" } | ForEach-Object {
-    python -m pylint $_ --disable=all --enable=trailing-whitespace,superfluous-parens,import-outside-toplevel,line-too-long --max-line-length=100
-}
-
-# Cleanup trailing whitespace in bulk
-Get-ChildItem -Recurse -Filter "*.py" | ForEach-Object {
-    (Get-Content $_.FullName) | ForEach-Object { $_.TrimEnd() } | Set-Content $_.FullName
+    python -m ruff format --isolated --check --diff --line-length=100 $_
+    python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 $_
+    python -m ruff check --isolated --select=PLC0415 --target-version=py311 $_
+    python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 $_
 }
 ```
 
@@ -173,6 +262,8 @@ Project uses `pyrightconfig.json` for consistent type checking:
 ## Known Acceptable Warnings
 
 ### 1. Pydantic Field() with Generics
+**Standard policy:** Follow [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) for the mandatory resolution order (narrow → refactor types → targeted ignore). This keeps agent fixes consistent and avoids global disables.
+
 
 **Issue:** `list[ContextFactor]` triggers "partially unknown" warnings
 
@@ -231,23 +322,9 @@ assert getattr(dt, "tzinfo") is not None
 
 ### 4. Pytest Fixture Redefined Names (W0621)
 
-**Issue:** Fixtures that depend on other fixtures trigger `redefined-outer-name` when fixture names exist at module scope.
+**Issue:** Fixtures that depend on other fixtures can shadow names at module scope, causing linter warnings.
 
-**Pattern:**
-```python
-@pytest.fixture
-def temp_workspace(...) -> Path:
-    ...
-
-@pytest.fixture
-def artifact_manager(
-    temp_workspace: Path,  # ❌ W0621: redefines 'temp_workspace' from outer scope
-    ...
-) -> ArtifactManager:
-    ...
-```
-
-**Preferred fix:** Fixture aliasing with `name=` parameter:
+**Preferred pattern:** Fixture aliasing with `name=` parameter:
 ```python
 # ✅ BEST - Private function name + public fixture name
 @pytest.fixture(name="temp_workspace")
@@ -266,7 +343,7 @@ def _artifact_manager(
 **Benefits:**
 - Zero suppressions needed
 - Test code unchanged (uses public fixture name)
-- Pylint sees no module-scope symbol collision
+- No module-scope symbol collision
 - Standard pytest pattern for fixture composition
 
 **Status:** Use this pattern for all fixtures that inject other fixtures as parameters.
@@ -275,7 +352,7 @@ def _artifact_manager(
 
 **REJECT if any of these conditions:**
 
-- ❌ Pylint score < 10.00 for whitespace/parens/imports
+- ❌ Any quality gate fails (non-zero exit code)
 - ❌ Failing tests
 - ❌ Missing type hints
 - ❌ Imports inside functions (must be top-level)
@@ -284,8 +361,7 @@ def _artifact_manager(
 - ❌ Import grouping violations (see [CODE_STYLE.md](CODE_STYLE.md))
 
 **ACCEPT only when:**
-
-- ✅ All pylint checks at 10.00/10
+- ✅ All quality gates pass (exit code 0)
 - ✅ All tests green (no skips)
 - ✅ Type hints complete
 - ✅ Docstrings present (module + public methods)
@@ -303,8 +379,6 @@ Add to `.vscode/settings.json`:
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "editor.rulers": [100],
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true,
     "python.analysis.typeCheckingMode": "basic"
 }
 ```

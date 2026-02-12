@@ -6,6 +6,7 @@ Scope:
 - Strategy validation (parsing strategy discriminated union)
 - Success validation (`success.mode` must match `parsing.strategy`)
 - JSON Pointer validation (RFC 6901-style basic constraints)
+- Active gates (config-driven gate selection)
 
 Quality Requirements:
 - Pylint: 10/10
@@ -271,3 +272,317 @@ class TestQualityConfigValidation:
                     },
                 }
             )
+
+
+class TestActiveGatesField:
+    """Test active_gates field for config-driven execution (Issue #131)."""
+
+    def test_active_gates_defaults_to_empty_list(self) -> None:
+        """active_gates defaults to empty list when not provided."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "gates": {
+                    "ruff": {
+                        "name": "Ruff",
+                        "description": "",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                            "produces_json": False,
+                        },
+                    }
+                },
+            }
+        )
+        assert config.active_gates == []
+
+    def test_active_gates_accepts_list_of_gate_names(self) -> None:
+        """active_gates accepts a list of gate names."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "active_gates": ["gate1", "gate2"],
+                "gates": {
+                    "gate1": {
+                        "name": "Gate1",
+                        "description": "",
+                        "execution": {
+                            "command": ["tool1"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": False,
+                            "produces_json": False,
+                        },
+                    },
+                    "gate2": {
+                        "name": "Gate2",
+                        "description": "",
+                        "execution": {
+                            "command": ["tool2"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": False,
+                            "produces_json": False,
+                        },
+                    },
+                },
+            }
+        )
+        assert config.active_gates == ["gate1", "gate2"]
+
+    def test_active_gates_allows_empty_list(self) -> None:
+        """active_gates can be explicitly set to empty list."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "active_gates": [],
+                "gates": {
+                    "ruff": {
+                        "name": "Ruff",
+                        "description": "",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                            "produces_json": False,
+                        },
+                    }
+                },
+            }
+        )
+        assert config.active_gates == []
+
+    def test_active_gates_subset_of_catalog(self) -> None:
+        """active_gates can reference subset of gates catalog."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "active_gates": ["gate1"],
+                "gates": {
+                    "gate1": {
+                        "name": "Gate1",
+                        "description": "",
+                        "execution": {
+                            "command": ["tool1"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": False,
+                            "produces_json": False,
+                        },
+                    },
+                    "gate2": {
+                        "name": "Gate2",
+                        "description": "",
+                        "execution": {
+                            "command": ["tool2"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": False,
+                            "produces_json": False,
+                        },
+                    },
+                },
+            }
+        )
+        assert config.active_gates == ["gate1"]
+        assert "gate2" in config.gates  # gate2 exists but not active
+
+    def test_active_gates_loads_from_yaml(self, tmp_path: Path) -> None:
+        """active_gates field loads correctly from YAML file."""
+        yaml_data = {
+            "version": "1.0",
+            "active_gates": ["ruff"],
+            "gates": {
+                "ruff": {
+                    "name": "Ruff",
+                    "description": "Fast linter",
+                    "execution": {
+                        "command": ["ruff", "check"],
+                        "timeout_seconds": 60,
+                        "working_dir": None,
+                    },
+                    "parsing": {"strategy": "exit_code"},
+                    "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                    "capabilities": {
+                        "file_types": [".py"],
+                        "supports_autofix": True,
+                        "produces_json": False,
+                    },
+                }
+            },
+        }
+
+        yaml_path = tmp_path / "test_quality.yaml"
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.dump(yaml_data, f)
+
+        config = QualityConfig.load(yaml_path)
+        assert config.active_gates == ["ruff"]
+
+
+class TestRuffGateDefinitions:
+    """Test new Ruff-based gate definitions (Issue #131 Cycle 3)."""
+
+
+class TestArtifactLoggingConfig:
+    """Test artifact_logging root config behavior."""
+
+    def test_artifact_logging_defaults(self) -> None:
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "gates": {
+                    "ruff": {
+                        "name": "Ruff",
+                        "description": "",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                            "produces_json": False,
+                        },
+                    }
+                },
+            }
+        )
+
+        assert config.artifact_logging.enabled is True
+        assert config.artifact_logging.output_dir == "temp/qa_logs"
+        assert config.artifact_logging.max_files == 200
+
+    def test_artifact_logging_custom_values(self) -> None:
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "artifact_logging": {
+                    "enabled": False,
+                    "output_dir": "temp/custom_artifacts",
+                    "max_files": 50,
+                },
+                "gates": {
+                    "ruff": {
+                        "name": "Ruff",
+                        "description": "",
+                        "execution": {
+                            "command": ["ruff", "check"],
+                            "timeout_seconds": 1,
+                            "working_dir": None,
+                        },
+                        "parsing": {"strategy": "exit_code"},
+                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "capabilities": {
+                            "file_types": [".py"],
+                            "supports_autofix": True,
+                            "produces_json": False,
+                        },
+                    }
+                },
+            }
+        )
+
+        assert config.artifact_logging.enabled is False
+        assert config.artifact_logging.output_dir == "temp/custom_artifacts"
+        assert config.artifact_logging.max_files == 50
+
+    def test_gate1_formatting_loads_from_yaml(self) -> None:
+        """gate1_formatting definition loads correctly from quality.yaml."""
+        # Load from actual quality.yaml
+        quality_yaml = Path(".st3/quality.yaml")
+        config = QualityConfig.load(quality_yaml)
+
+        assert "gate1_formatting" in config.gates
+        gate = config.gates["gate1_formatting"]
+        assert gate.name == "Gate 1: Ruff Strict Lint"
+        assert gate.execution.command[:4] == ["python", "-m", "ruff", "check"]
+        assert "--isolated" in gate.execution.command
+        assert "--output-format=json" in gate.execution.command
+        assert "--ignore=E501,PLC0415" in gate.execution.command
+
+    def test_gate2_imports_loads_from_yaml(self) -> None:
+        """gate2_imports definition loads correctly from quality.yaml."""
+        quality_yaml = Path(".st3/quality.yaml")
+        config = QualityConfig.load(quality_yaml)
+
+        assert "gate2_imports" in config.gates
+        gate = config.gates["gate2_imports"]
+        assert gate.name == "Gate 2: Imports"
+        assert gate.execution.command[:4] == ["python", "-m", "ruff", "check"]
+        assert "--isolated" in gate.execution.command
+        assert "--output-format=json" in gate.execution.command
+        assert "--select=PLC0415" in gate.execution.command
+        assert "--target-version=py311" in gate.execution.command
+
+    def test_gate3_line_length_loads_from_yaml(self) -> None:
+        """gate3_line_length definition loads correctly from quality.yaml."""
+        quality_yaml = Path(".st3/quality.yaml")
+        config = QualityConfig.load(quality_yaml)
+
+        assert "gate3_line_length" in config.gates
+        gate = config.gates["gate3_line_length"]
+        assert gate.name == "Gate 3: Line Length"
+        assert gate.execution.command[:4] == ["python", "-m", "ruff", "check"]
+        assert "--isolated" in gate.execution.command
+        assert "--output-format=json" in gate.execution.command
+        assert "--select=E501" in gate.execution.command
+        assert "--line-length=100" in gate.execution.command
+        assert "--target-version=py311" in gate.execution.command
+
+    def test_active_gates_includes_ruff_gates(self) -> None:
+        """active_gates list includes new Ruff-based gates."""
+        quality_yaml = Path(".st3/quality.yaml")
+        config = QualityConfig.load(quality_yaml)
+
+        assert "gate1_formatting" in config.active_gates
+        assert "gate2_imports" in config.active_gates
+        assert "gate3_line_length" in config.active_gates
+
+    def test_ruff_gates_use_exit_code_strategy(self) -> None:
+        """All Ruff gates use exit_code parsing strategy."""
+        quality_yaml = Path(".st3/quality.yaml")
+        config = QualityConfig.load(quality_yaml)
+
+        for gate_name in ["gate1_formatting", "gate2_imports", "gate3_line_length"]:
+            gate = config.gates[gate_name]
+            assert gate.parsing.strategy == "exit_code"
+            assert gate.success.mode == "exit_code"
+            assert gate.success.exit_codes_ok == [0]

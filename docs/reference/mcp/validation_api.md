@@ -467,7 +467,7 @@ from mcp_server.validation.template_analyzer import TemplateAnalyzer
 service = ValidationService()
 
 # Service automatically:
-# 1. Runs PythonValidator (pylint, mypy, pyright)
+# 1. Runs PythonValidator (Ruff, Pyright)
 # 2. Runs LayeredTemplateValidator (template rules)
 # 3. Combines results
 

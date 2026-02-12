@@ -31,7 +31,7 @@ The MCP server provides two file editing tools:
 `safe_edit_file` is a 552-line tool offering:
 - **4 mutually exclusive edit modes** (full rewrite, line edits, insert, search/replace)
 - **3 validation modes** (strict, interactive, verify-only)
-- **Quality gate integration** via `ValidationService` (pylint, mypy/pyright, markdown validation)
+- **Quality gate integration** via `ValidationService` (Ruff, Pyright, markdown validation)
 - **Concurrent edit protection** with file-level `asyncio.Lock` (10ms timeout)
 - **Diff preview** via `difflib.unified_diff`
 

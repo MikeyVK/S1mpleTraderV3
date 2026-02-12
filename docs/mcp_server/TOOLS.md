@@ -217,7 +217,7 @@ parameters:
   - name: quality_gates
     type: string
     required: true
-    default: "10/10"
+    default: "all pass"
   - name: status
     type: string
     required: true
@@ -787,7 +787,7 @@ Tools for enforcing quality gates and fixing common issues.
 
 ### 5.1 `run_quality_gates`
 
-**Description:** Runs all 5 mandatory quality gates on specified files. Returns pass/fail status and detailed diagnostics.
+**Description:** Runs configured quality gates from `.st3/quality.yaml` against specified files. Returns structured v2.0 JSON with pass/fail status, diagnostics, timing, and command metadata.
 
 **Category:** `quality`
 
@@ -795,24 +795,29 @@ Tools for enforcing quality gates and fixing common issues.
 parameters:
   - name: files
     type: array
-    required: true
-    description: "List of file paths to check (e.g., ['backend/dtos/strategy/signal.py'])"
-  - name: include_tests
-    type: boolean
     required: false
-    default: true
-    description: "Also check corresponding test files"
-  - name: gates
-    type: array
-    required: false
-    default: [1, 2, 3, 4, 5]
-    description: "Which gates to run (1=whitespace, 2=imports, 3=line length, 4=mypy, 5=pytest)"
+    default: []
+    description: >
+      List of file paths to check. Empty list [] = project-level test validation
+      (pytest/coverage only, Gates 5-6). Populated list = file-specific validation
+      (static analysis Gates 0-4b, skip pytest).
 
 returns:
   success:
     schema:
       type: object
       properties:
+        version: { type: string, description: "Schema version (2.0)" }
+        mode: { type: string, enum: ["file-specific", "project-level"] }
+        files: { type: array, items: { type: string } }
+        summary:
+          type: object
+          properties:
+            passed: { type: integer }
+            failed: { type: integer }
+            skipped: { type: integer }
+            total_violations: { type: integer }
+            auto_fixable: { type: integer }
         overall_pass: { type: boolean }
         gates:
           type: array
@@ -822,32 +827,34 @@ returns:
               gate_number: { type: integer }
               name: { type: string }
               passed: { type: boolean }
+              status: { type: string, enum: ["passed", "failed", "skipped"] }
+              skip_reason: { type: string, nullable: true }
               score: { type: string }
-              issues:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    file: { type: string }
-                    line: { type: integer }
-                    message: { type: string }
-        test_results:
+              issues: { type: array }
+              duration_ms: { type: integer }
+              command: { type: object, description: "executable, args, cwd, exit_code, environment" }
+              output: { type: object, description: "stdout, stderr, truncated, details (failures only)" }
+              hints: { type: array, items: { type: string } }
+              artifact_path: { type: string }
+              fields: { type: object, description: "Parsed JSON fields (json_field strategy only)" }
+        timings:
           type: object
-          properties:
-            passed: { type: integer }
-            failed: { type: integer }
-            errors: { type: array, items: { type: string } }
+          description: "Per-gate duration_ms keyed by gate_number, plus total"
+        text_output: { type: string }
 
 implementation:
   steps:
-    - "For each file:"
-    - "  Gate 1: python -m pylint {file} --disable=all --enable=trailing-whitespace,superfluous-parens"
-    - "  Gate 2: python -m pylint {file} --disable=all --enable=import-outside-toplevel"
-    - "  Gate 3: python -m pylint {file} --disable=all --enable=line-too-long --max-line-length=100"
-    - "  Gate 4 (DTOs only): python -m mypy {file} --strict --no-error-summary"
-    - "  Gate 5: pytest {test_file} -q --tb=line"
-    - "Aggregate results"
-    - "Return structured output"
+    - "Load gate definitions from .st3/quality.yaml"
+    - "Determine mode: file-specific (files provided) or project-level (empty)"
+    - "For each gate in active_gates:"
+    - "  Check skip conditions (mode, scope, file types)"
+    - "  Execute command with timeout"
+    - "  Parse output via configured strategy (exit_code / json_field / text_regex)"
+    - "  Collect environment metadata (python_version, tool_path, tool_version, platform)"
+    - "  Build structured gate result with issues, score, command, output"
+    - "  Log artifacts for failed gates to temp/qa_logs/"
+    - "Build timings aggregate and summary"
+    - "Return structured v2.0 JSON via ToolResult.json_data()"
 
 idempotency: true
 dry_run_support: false
@@ -1045,7 +1052,7 @@ parameters:
   - name: quality_gates
     type: string
     required: false
-    description: "Gate status (e.g., '10/10')"
+    description: "Gate status (e.g., 'all pass', '5 passed, 1 failed')"
 
 returns:
   success:
@@ -1184,11 +1191,11 @@ These rules are embedded in tools as pre-flight checks.
 | TDD-001 | RED commit contains only test files | `commit_tdd_phase(phase=red)` | ✅ Yes |
 | TDD-002 | Branch naming follows `{type}/{name}` pattern | `create_feature_branch` | ✅ Yes |
 | TDD-003 | Commit message follows Conventional Commits | `commit_tdd_phase` | ✅ Yes |
-| QG-001 | Pylint score 10/10 for whitespace | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| QG-002 | No imports inside functions | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| QG-003 | Max line length 100 chars | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| QG-004 | mypy strict passes (DTOs) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
-| QG-005 | All tests pass | `run_quality_gates`, `merge_to_main` | ✅ Yes |
+| QG-001 | Ruff format + strict lint pass (Gates 0-1) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
+| QG-002 | No imports inside functions (Gate 2) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
+| QG-003 | Max line length 100 chars (Gate 3) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
+| QG-004 | Type checking passes — Mypy/Pyright (Gates 4/4b) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
+| QG-005 | All tests pass + coverage ≥90% (Gates 5-6) | `run_quality_gates`, `merge_to_main` | ✅ Yes |
 | DOC-001 | Document line limits respected | `validate_document_structure` | ⚠️ Warning |
 | DOC-002 | Required sections present | `validate_document_structure` | ⚠️ Warning |
 | DOC-003 | Link definitions for all references | `validate_document_structure` | ⚠️ Warning |
@@ -1200,7 +1207,7 @@ These rules are embedded in tools as pre-flight checks.
 | Code | Tool | Cause | Recovery |
 |------|------|-------|----------|
 | `ERR_UNCOMMITTED_CHANGES` | `create_feature_branch`, `merge_to_main` | Git status not clean | Commit or stash changes first |
-| `ERR_QUALITY_GATE_FAILED` | `merge_to_main` | One or more gates < 10/10 | Run `fix_whitespace`, fix issues manually, re-run gates |
+| `ERR_QUALITY_GATE_FAILED` | `merge_to_main` | One or more quality gates failed | Fix violations reported in gate output, re-run gates |
 | `ERR_TESTS_FAILING` | `merge_to_main` | pytest failed | Fix failing tests before merge |
 | `ERR_BRANCH_EXISTS` | `create_feature_branch` | Branch already exists | Use different name or checkout existing |
 | `ERR_FILE_EXISTS` | `scaffold_*` | Target file already exists | Use --overwrite flag or choose different name |

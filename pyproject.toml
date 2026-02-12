@@ -21,7 +21,6 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "mypy>=1.7.0",
     "ruff>=0.1.6",
-    "pylint>=3.0.0",
     "black>=23.9.0",
     "pyright>=1.1.386",
 ]
@@ -45,10 +44,10 @@ addopts = [
     "-v",
     "--strict-markers",
     "--tb=short",
-    "--cov=backend",
-    "--cov-report=term-missing",
-    "--cov-report=html",
 ]
+# Coverage decoupled from default pytest runs per TODO 6 (Issue #131)
+# Coverage is enforced separately via Gate 6 (branch coverage >= 90%)
+# To run with coverage: pytest --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90
 markers = [
     "integration: Integration tests requiring real dependencies",
     "slow: Tests that take more than 5 seconds to complete",
@@ -81,13 +80,15 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
+# IDE baseline configuration - balanced strictness for developer productivity
+# CI/CD overrides in .st3/quality.yaml for 10/10 enforcement
 select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
+    "E",   # pycodestyle errors - includes E501 (line-too-long)
+    "W",   # pycodestyle warnings - includes W291/W292/W293 (whitespace)
     "F",   # pyflakes
     "I",   # isort
     "N",   # pep8-naming
-    "UP",  # pyupgrade
+    "UP",  # pyupgrade - includes UP034 (extraneous-parens)
     "ANN", # flake8-annotations
     "B",   # flake8-bugbear
     "C4",  # flake8-comprehensions
@@ -97,12 +98,13 @@ select = [
     "RET", # flake8-return
     "SIM", # flake8-simplify
     "ARG", # flake8-unused-arguments
+    "PLC", # pylint-convention - includes PLC0415 (import-outside-top-level) for Gate 2
 ]
 ignore = [
-    "ANN101", # Missing type annotation for self
-    "ANN102", # Missing type annotation for cls
-    "ANN401", # Dynamically typed expressions (Any) are disallowed - needed for **kwargs
-    "ARG002", # Unused method argument - needed for interface compliance
+    "ANN101", # IDE only - self annotations noisy
+    "ANN102", # IDE only - cls annotations noisy
+    "ANN401", # IDE only - allow Any for **kwargs patterns
+    "ARG002", # IDE only - allow unused method args for interface compliance
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -110,7 +112,7 @@ ignore = [
     "ANN",  # No type annotations required in tests
     "ARG",  # Unused arguments OK in fixtures
     "N806", # Variable names can be uppercase (MockManager pattern)
-    "E501", # Line length OK in tests
+    # E501 removed - tests MUST comply with 100-char limit per QUALITY_GATES.md
     "SIM117", # Nested with OK in tests
     "SIM105", # try-except-pass OK in tests
 ]
@@ -119,15 +121,3 @@ ignore = [
 # Pydantic v2 integration - prevents FieldInfo type inference issues
 reportFunctionMemberAccess = false
 
-[tool.pylint.MAIN]
-init-hook = 'import sys; sys.path.append(".")'
-extension-pkg-allow-list = ["pydantic"]
-
-[tool.pylint.FORMAT]
-max-line-length = 100
-
-[tool.pylint.messages_control]
-disable = [
-    "duplicate-code",  # R0801: often inevitable in tests/scaffolding
-    "redefined-outer-name",  # W0621: pytest fixtures use parameter injection
-]
