@@ -6,11 +6,13 @@ import json
 import os
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
 from mcp_server.config.quality_config import QualityConfig, QualityGate
 
+MAX_ARTIFACT_LOG_FILES = 200
 MAX_OUTPUT_LINES = 50
 MAX_OUTPUT_BYTES = 5120
 
@@ -34,6 +36,8 @@ def _pyright_script_name() -> str:
 
 class QAManager:
     """Manager for quality assurance and gates."""
+
+    QA_LOG_DIR = Path("temp/qa_logs")
 
     def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
         """Filter Python files and generate pre-gate issues for non-Python files.
@@ -403,6 +407,54 @@ class QAManager:
             "details": details,
         }
 
+    def _cleanup_artifact_logs(self) -> None:
+        """Keep only the newest artifact logs to avoid unbounded growth."""
+        if not self.QA_LOG_DIR.exists():
+            return
+
+        artifacts = sorted(
+            self.QA_LOG_DIR.glob("*.json"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+
+        for stale_file in artifacts[MAX_ARTIFACT_LOG_FILES:]:
+            stale_file.unlink(missing_ok=True)
+
+    def _write_artifact_log(
+        self,
+        gate_number: int,
+        gate_name: str,
+        command: list[str],
+        files: list[str],
+        result: dict[str, Any],
+    ) -> str | None:
+        """Write failed gate diagnostics to temp/qa_logs JSON artifact."""
+        try:
+            self.QA_LOG_DIR.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+            safe_gate_name = gate_name.lower().replace(" ", "_").replace(":", "")
+            artifact_path = self.QA_LOG_DIR / f"{timestamp}_gate{gate_number}_{safe_gate_name}.json"
+
+            payload = {
+                "timestamp": timestamp,
+                "gate_number": gate_number,
+                "gate_name": gate_name,
+                "command": command,
+                "files": files,
+                "passed": result.get("passed", False),
+                "score": result.get("score", "N/A"),
+                "issues": result.get("issues", []),
+                "output": result.get("output", {}),
+            }
+
+            artifact_body = json.dumps(payload, ensure_ascii=False, indent=2)
+            artifact_path.write_text(artifact_body, encoding="utf-8")
+            self._cleanup_artifact_logs()
+            return artifact_path.as_posix()
+        except OSError:
+            return None
+
     def _execute_gate(
         self, gate: QualityGate, files: list[str], gate_number: int, gate_id: str | None = None
     ) -> dict[str, Any]:
@@ -416,6 +468,7 @@ class QAManager:
             "issues": [],
         }
 
+        cmd: list[str] = []
         try:
             cmd = self._resolve_command(gate.execution.command, files)
 
@@ -434,13 +487,10 @@ class QAManager:
             if gate.parsing.strategy == "exit_code":
                 ok_codes = set(gate.success.exit_codes_ok)
 
-                # Try JSON parsing if gate produces JSON (Ruff gates with --output-format=json)
                 if gate.capabilities.produces_json:
-                    # Parse Ruff JSON violations
                     parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
                     parsed_issues = self._parse_ruff_json(parser_input)
                     if parsed_issues:
-                        # Violations found - gate fails
                         result["passed"] = False
                         fixable_count = sum(1 for issue in parsed_issues if issue.get("fixable"))
                         result["score"] = (
@@ -451,12 +501,10 @@ class QAManager:
                             proc.stdout or "", proc.stderr or ""
                         )
                     elif proc.returncode in ok_codes:
-                        # No violations, exit code OK - gate passes
                         result["score"] = "Pass"
                         result["passed"] = True
                         result["issues"] = []
                     else:
-                        # JSON parsing failed but exit code indicates error
                         result["passed"] = False
                         result["score"] = f"Fail (exit={proc.returncode})"
                         output_capture = self._build_output_capture(
@@ -470,7 +518,6 @@ class QAManager:
                             }
                         ]
                 else:
-                    # Traditional exit code-only parsing
                     if proc.returncode in ok_codes:
                         result["passed"] = True
                         result["score"] = "Pass"
@@ -492,13 +539,10 @@ class QAManager:
             elif gate.parsing.strategy == "json_field":
                 issues = self._parse_json_field_issues(combined_output)
                 result["issues"] = issues
-                # If parsing is JSON-field based, treat any issue list as failure.
                 result["passed"] = not issues
                 result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
 
             elif gate.parsing.strategy == "text_regex":
-                # Minimal v1: consider non-zero exit code as failure; surface output.
-                # Detailed regex extraction is intentionally deferred.
                 if proc.returncode in set(gate.success.exit_codes_ok):
                     result["passed"] = True
                     result["issues"] = []
@@ -532,6 +576,11 @@ class QAManager:
             result["passed"] = False
             result["score"] = "Not Found"
             result["issues"] = [{"message": f"Tool not found: {e}"}]
+
+        if not result["passed"]:
+            artifact_path = self._write_artifact_log(gate_number, gate.name, cmd, files, result)
+            if artifact_path is not None:
+                result["artifact_path"] = artifact_path
 
         if gate_id and not result["passed"]:
             result["hints"] = self._gate_hints(gate_id, gate, files)

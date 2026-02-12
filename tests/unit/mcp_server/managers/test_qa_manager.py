@@ -397,8 +397,6 @@ class TestExecuteGate:
             assert "file2.py" in called_cmd
 
 
-
-
 class TestArtifactLogging:
     """Test artifact log writing for failed gates (Cycle 5)."""
 
@@ -474,6 +472,8 @@ class TestArtifactLogging:
             assert result["passed"] is True
             assert "artifact_path" not in result
             assert not (tmp_path / "qa_logs").exists()
+
+
 class TestRuffGateExecution:
     """Test suite for Ruff gate execution via _execute_gate (Cycle 3)."""
 
