@@ -311,7 +311,7 @@ DOCS:         git_commit "Update documentation" phase=docs
 ```
 1. run_quality_gates files=[modified files]
 2. run_tests path=tests/
-3. Ensure: Linting 10.00/10 + Type checking Pass
+3. Ensure: All quality gates pass (Gates 0-6)
 4. git_push
 ```
 

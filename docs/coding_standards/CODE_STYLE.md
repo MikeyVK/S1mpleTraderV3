@@ -444,13 +444,10 @@ Recommended `.vscode/settings.json`:
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "editor.rulers": [100],
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true,
     "python.analysis.typeCheckingMode": "basic",
     "editor.formatOnSave": false,
-    "python.formatting.provider": "black",
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter"
+        "editor.defaultFormatter": "charliermarsh.ruff"
     }
 }
 ```
