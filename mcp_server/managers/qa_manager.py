@@ -180,31 +180,15 @@ class QAManager:
                 continue
 
             gate_files = self._files_for_gate(gate, python_files)
-
-            # Skip pytest gates (project-level tests) when in file-specific validation mode
-            if is_file_specific_mode and self._is_pytest_gate(gate):
+            skip_reason = self._get_skip_reason(gate, gate_files, is_file_specific_mode)
+            if skip_reason is not None:
                 self._update_summary_and_append_gate(
                     results,
                     {
                         "gate_number": idx,
                         "name": gate.name,
                         "passed": True,
-                        "score": "Skipped (file-specific mode)",
-                        "issues": [],
-                    },
-                )
-                continue
-            # Skip gates with no files after scope filtering
-            # Exception: in project-level test validation mode, allow pytest gates to run
-            is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
-            if not gate_files and not is_repo_scoped_pytest_gate:
-                self._update_summary_and_append_gate(
-                    results,
-                    {
-                        "gate_number": idx,
-                        "name": gate.name,
-                        "passed": True,
-                        "score": "Skipped (no matching files)",
+                        "score": skip_reason,
                         "issues": [],
                     },
                 )
@@ -295,6 +279,19 @@ class QAManager:
             eligible = gate.scope.filter_files(eligible)
 
         return eligible
+
+    def _get_skip_reason(
+        self, gate: QualityGate, gate_files: list[str], is_file_specific_mode: bool
+    ) -> str | None:
+        """Return standardized skip reason for a gate, if any."""
+        if is_file_specific_mode and self._is_pytest_gate(gate):
+            return "Skipped (file-specific mode)"
+
+        is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
+        if not gate_files and not is_repo_scoped_pytest_gate:
+            return "Skipped (no matching files)"
+
+        return None
 
     def _is_pytest_gate(self, gate: QualityGate) -> bool:
         cmd = gate.execution.command

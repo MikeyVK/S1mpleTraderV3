@@ -924,8 +924,6 @@ class TestResponseSchemaV2:
             assert result["files"] == [], f"Expected empty files list, got: {result.get('files')}"
 
 
-
-
 class TestSkipReasonLogic:
     """Test consolidated skip reason logic (Cycle 4)."""
 
@@ -992,6 +990,8 @@ class TestSkipReasonLogic:
     ) -> None:
         reason = manager._get_skip_reason(pytest_gate, [], is_file_specific_mode=False)
         assert reason is None
+
+
 class TestRuffJsonParsing:
     """Test Ruff JSON output parsing (Issue #131 Cycle 2)."""
 
