@@ -695,6 +695,79 @@ class TestRuffGateExecution:
             assert any("<= 100 chars" in h for h in result["hints"])
 
 
+class TestPytestJsonReportFeatureDetection:
+    """Test pytest-json-report capability detection and command toggling."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    @pytest.fixture
+    def pytest_gate(self) -> QualityGate:
+        return QualityGate.model_validate(
+            {
+                "name": "Gate 5: Tests",
+                "description": "Unit tests",
+                "execution": {
+                    "command": ["pytest", "tests/", "--tb=short"],
+                    "timeout_seconds": 300,
+                    "working_dir": None,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+
+    def test_supports_pytest_json_report_true(self, manager: QAManager) -> None:
+        with patch("importlib.util.find_spec", return_value=object()):
+            assert manager._supports_pytest_json_report() is True
+
+    def test_supports_pytest_json_report_false(self, manager: QAManager) -> None:
+        with patch("importlib.util.find_spec", return_value=None):
+            assert manager._supports_pytest_json_report() is False
+
+    def test_execute_gate_enables_json_report_flags_when_supported(
+        self, manager: QAManager, pytest_gate: QualityGate
+    ) -> None:
+        with (
+            patch.object(manager, "_supports_pytest_json_report", return_value=True),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            manager._execute_gate(pytest_gate, [], gate_number=5)
+            called_cmd = mock_run.call_args[0][0]
+            assert "--json-report" in called_cmd
+            assert "--json-report-file=none" in called_cmd
+
+    def test_execute_gate_does_not_enable_json_report_flags_when_unsupported(
+        self, manager: QAManager, pytest_gate: QualityGate
+    ) -> None:
+        with (
+            patch.object(manager, "_supports_pytest_json_report", return_value=False),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            manager._execute_gate(pytest_gate, [], gate_number=5)
+            called_cmd = mock_run.call_args[0][0]
+            assert "--json-report" not in called_cmd
+            assert "--json-report-file=none" not in called_cmd
+
+
 class TestConfigDrivenExecution:
     """Test config-driven quality gate execution (Cycle 4 - WP11)."""
 
