@@ -101,6 +101,8 @@ class QAManager:
                 "passed": 0,
                 "failed": 0,
                 "skipped": 0,
+                "total_violations": 0,
+                "auto_fixable": 0,
             },
             "gates": [],
             "overall_pass": True,  # Backward compatibility
@@ -205,8 +207,11 @@ class QAManager:
                     results,
                     {
                         "gate_number": idx,
+                        "id": idx,
                         "name": gate.name,
                         "passed": True,
+                        "status": "skipped",
+                        "skip_reason": skip_reason,
                         "score": skip_reason,
                         "issues": [],
                     },
@@ -220,19 +225,31 @@ class QAManager:
     def _update_summary_and_append_gate(
         self, results: dict[str, Any], gate_result: dict[str, Any]
     ) -> None:
-        """Add gate result and update summary counts."""
+        """Add gate result and update summary counts + violation totals."""
         results["gates"].append(gate_result)
 
-        # Determine gate status for summary
-        if gate_result.get("passed"):
-            score = gate_result.get("score", "")
-            if isinstance(score, str) and "Skipped" in score:
-                results["summary"]["skipped"] += 1
+        # Use status field if present, else infer from passed/score (backward compat)
+        status = gate_result.get("status")
+        if status is None:
+            if gate_result.get("passed"):
+                score = gate_result.get("score", "")
+                status = "skipped" if isinstance(score, str) and "Skipped" in score else "passed"
             else:
-                results["summary"]["passed"] += 1
+                status = "failed"
+
+        if status == "skipped":
+            results["summary"]["skipped"] += 1
+        elif status == "passed":
+            results["summary"]["passed"] += 1
         else:
             results["summary"]["failed"] += 1
             results["overall_pass"] = False
+
+        # Accumulate violation totals (skip for skipped gates)
+        if status != "skipped":
+            issues = gate_result.get("issues", [])
+            results["summary"]["total_violations"] += len(issues)
+            results["summary"]["auto_fixable"] += sum(1 for issue in issues if issue.get("fixable"))
 
     def check_health(self) -> bool:
         """Check if QA tools are available."""
@@ -293,7 +310,7 @@ class QAManager:
         if "--json-report" in command:
             return command
 
-        return [*command, "--json-report", "--json-report-file=none"]
+        return [*command, "--json-report"]
 
     def _files_for_gate(self, gate: QualityGate, python_files: list[str]) -> list[str]:
         """Determine which files should be passed to a gate.
@@ -319,12 +336,18 @@ class QAManager:
     def _get_skip_reason(
         self, gate: QualityGate, gate_files: list[str], is_file_specific_mode: bool
     ) -> str | None:
-        """Return standardized skip reason for a gate, if any."""
+        """Return standardized, mode-aware skip reason for a gate, if any.
+
+        Skip reasons are explicit about WHY the gate was skipped to avoid
+        confusion between intentional mode-based skips and actual errors.
+        """
         if is_file_specific_mode and self._is_pytest_gate(gate):
-            return "Skipped (file-specific mode)"
+            return "Skipped (file-specific mode - tests run project-wide)"
 
         is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
         if not gate_files and not is_repo_scoped_pytest_gate:
+            if not is_file_specific_mode:
+                return "Skipped (project-level mode - static analysis unavailable)"
             return "Skipped (no matching files)"
 
         return None
@@ -496,8 +519,11 @@ class QAManager:
 
         result: dict[str, Any] = {
             "gate_number": gate_number,
+            "id": gate_number,
             "name": gate.name,
             "passed": True,
+            "status": "passed",
+            "skip_reason": None,
             "score": "Pass",
             "issues": [],
         }
@@ -572,7 +598,10 @@ class QAManager:
                         ]
 
             elif gate.parsing.strategy == "json_field":
-                issues = self._parse_json_field_issues(combined_output)
+                # Prefer stdout for JSON parsing (more reliable than combined)
+                parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
+                diagnostics_path = getattr(gate.parsing, "diagnostics_path", None)
+                issues = self._parse_json_field_issues(parser_input, diagnostics_path)
                 result["issues"] = issues
                 result["passed"] = not issues
                 result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
@@ -613,6 +642,7 @@ class QAManager:
             result["issues"] = [{"message": f"Tool not found: {e}"}]
 
         if not result["passed"]:
+            result["status"] = "failed"
             artifact_path = self._write_artifact_log(gate_number, gate.name, cmd, files, result)
             if artifact_path is not None:
                 result["artifact_path"] = artifact_path
@@ -622,10 +652,44 @@ class QAManager:
 
         return result
 
-    def _parse_json_field_issues(self, output: str) -> list[dict[str, Any]]:
+    def _resolve_json_pointer(self, data: dict[str, object], pointer: str) -> object:
+        """Resolve a JSON Pointer (RFC 6901) against parsed JSON data.
+
+        Args:
+            data: Parsed JSON data structure.
+            pointer: JSON Pointer string (e.g., '/generalDiagnostics').
+
+        Returns:
+            The value at the pointer path, or None if not found.
+        """
+        if pointer == "/":
+            return data
+
+        segments = pointer.lstrip("/").split("/")
+        current: object = data
+        for segment in segments:
+            if isinstance(current, dict):
+                current = current.get(segment)
+            elif isinstance(current, list):
+                try:
+                    current = current[int(segment)]
+                except (ValueError, IndexError):
+                    return None
+            else:
+                return None
+        return current
+
+    def _parse_json_field_issues(
+        self, output: str, diagnostics_path: str | None = None
+    ) -> list[dict[str, Any]]:
         """Best-effort JSON diagnostic parsing.
 
         This is primarily intended for pyright-like tools that emit JSON diagnostics.
+
+        Args:
+            output: Raw JSON string from tool stdout/stderr.
+            diagnostics_path: Optional JSON Pointer (RFC 6901) to diagnostics array.
+                Falls back to 'generalDiagnostics' when not provided.
         """
 
         try:
@@ -635,7 +699,10 @@ class QAManager:
             text = output.strip()
             return [{"message": text}] if text else []
 
-        diagnostics = data.get("generalDiagnostics")
+        if diagnostics_path:
+            diagnostics = self._resolve_json_pointer(data, diagnostics_path)
+        else:
+            diagnostics = data.get("generalDiagnostics")
         if not isinstance(diagnostics, list):
             return []
 

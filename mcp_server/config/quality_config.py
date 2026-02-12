@@ -5,8 +5,8 @@ It validates tool definitions only (commands/parsing/success/capabilities) and
 explicitly does not model enforcement policy (Epic #18).
 
 Quality Requirements:
-- Pylint: 10/10 (strict)
-- Mypy: strict mode passing
+- Pyright: strict mode passing
+- Ruff: all configured rules passing
 - Coverage: 100% for this module
 """
 

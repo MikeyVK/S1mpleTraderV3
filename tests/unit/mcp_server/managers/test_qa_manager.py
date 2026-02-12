@@ -747,7 +747,7 @@ class TestPytestJsonReportFeatureDetection:
             manager._execute_gate(pytest_gate, [], gate_number=5)
             called_cmd = mock_run.call_args[0][0]
             assert "--json-report" in called_cmd
-            assert "--json-report-file=none" in called_cmd
+            assert "--json-report-file=none" not in called_cmd
 
     def test_execute_gate_does_not_enable_json_report_flags_when_unsupported(
         self, manager: QAManager, pytest_gate: QualityGate
@@ -1147,12 +1147,19 @@ class TestSkipReasonLogic:
         self, manager: QAManager, pytest_gate: QualityGate
     ) -> None:
         reason = manager._get_skip_reason(pytest_gate, [], is_file_specific_mode=True)
-        assert reason == "Skipped (file-specific mode)"
+        assert reason == "Skipped (file-specific mode - tests run project-wide)"
 
     def test_get_skip_reason_no_matching_files_for_static_gate(
         self, manager: QAManager, static_gate: QualityGate
     ) -> None:
         reason = manager._get_skip_reason(static_gate, [], is_file_specific_mode=False)
+        assert reason == "Skipped (project-level mode - static analysis unavailable)"
+
+    def test_get_skip_reason_file_specific_no_matching_files(
+        self, manager: QAManager, static_gate: QualityGate
+    ) -> None:
+        """File-specific mode with genuinely no matching files."""
+        reason = manager._get_skip_reason(static_gate, [], is_file_specific_mode=True)
         assert reason == "Skipped (no matching files)"
 
     def test_get_skip_reason_project_level_pytest_not_skipped(
@@ -1287,3 +1294,239 @@ class TestRuffJsonParsing:
             assert result["passed"], "Gate should pass with clean code"
             assert result["issues"] == [], "Expected no issues"
             assert result["score"] == "Pass", f"Expected 'Pass' score, got {result['score']}"
+
+
+class TestGateSchemaEnrichment:
+    """Test gate results include id, status, skip_reason fields (P0-AC2)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def test_executed_gate_has_id_status_skip_reason(self, manager: QAManager) -> None:
+        """Test _execute_gate includes enriched schema fields."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "Test Gate",
+                "description": "Test",
+                "execution": {"command": ["echo", "ok"], "timeout_seconds": 60},
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["test.py"], gate_number=3)
+
+            assert result["id"] == 3, "Gate must have 'id' field"
+            assert result["status"] == "passed", "Passed gate must have status='passed'"
+            assert result["skip_reason"] is None, "Executed gate must have skip_reason=None"
+
+    def test_failed_gate_has_status_failed(self, manager: QAManager) -> None:
+        """Test failed gate has status='failed'."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "Failing Gate",
+                "description": "Test",
+                "execution": {"command": ["false"], "timeout_seconds": 60},
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = ""
+            mock_proc.stderr = "error"
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["test.py"], gate_number=2)
+
+            assert result["status"] == "failed", "Failed gate must have status='failed'"
+            assert result["passed"] is False
+
+    def test_skipped_gate_in_full_flow_has_enriched_fields(self, manager: QAManager) -> None:
+        """Test skipped gates from run_quality_gates include id/status/skip_reason."""
+        with patch.object(manager, "_execute_gate") as mock_execute:
+            mock_execute.return_value = {
+                "gate_number": 5,
+                "name": "Tests",
+                "passed": True,
+                "score": "Pass",
+                "issues": [],
+            }
+
+            # Project-level mode: static gates should be skipped
+            result = manager.run_quality_gates([])
+
+            skipped_gates = [g for g in result["gates"] if g.get("status") == "skipped"]
+            for gate in skipped_gates:
+                assert "id" in gate, f"Skipped gate '{gate['name']}' missing 'id'"
+                assert gate["status"] == "skipped"
+                assert gate["skip_reason"] is not None
+                assert "project-level mode" in gate["skip_reason"]
+
+
+class TestSummaryTotals:
+    """Test summary includes total_violations and auto_fixable (P1-AC5)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def test_summary_has_total_violations_and_auto_fixable(self, manager: QAManager) -> None:
+        """Test summary includes violation counts."""
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch.object(manager, "_execute_gate") as mock_execute,
+        ):
+            mock_execute.return_value = {
+                "gate_number": 1,
+                "name": "Test Gate",
+                "passed": False,
+                "status": "failed",
+                "issues": [
+                    {"message": "issue 1", "fixable": True},
+                    {"message": "issue 2", "fixable": False},
+                    {"message": "issue 3", "fixable": True},
+                ],
+            }
+
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tf:
+                tf.write("print('test')")
+                test_file = tf.name
+
+            try:
+                result = manager.run_quality_gates([test_file])
+                summary = result["summary"]
+
+                assert "total_violations" in summary, "Missing total_violations"
+                assert "auto_fixable" in summary, "Missing auto_fixable"
+                assert isinstance(summary["total_violations"], int)
+                assert isinstance(summary["auto_fixable"], int)
+                # Each gate execution produces 3 issues; multiple gates may run
+                assert summary["total_violations"] >= 3
+                assert summary["auto_fixable"] >= 2
+            finally:
+                Path(test_file).unlink(missing_ok=True)
+
+    def test_skipped_gates_dont_count_in_violation_totals(self, manager: QAManager) -> None:
+        """Skipped gates should not contribute to violation counts."""
+        with patch.object(manager, "_execute_gate") as mock_execute:
+            mock_execute.return_value = {
+                "gate_number": 5,
+                "name": "Tests",
+                "passed": True,
+                "score": "Pass",
+                "issues": [],
+            }
+
+            # Project-level: static gates skipped, pytest gates run
+            result = manager.run_quality_gates([])
+            summary = result["summary"]
+
+            assert summary["total_violations"] == 0
+            assert summary["auto_fixable"] == 0
+
+
+class TestJsonFieldParserConfig:
+    """Test json_field parser respects config pointers (P1-AC4)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def test_diagnostics_path_is_used_when_provided(self, manager: QAManager) -> None:
+        """Test _parse_json_field_issues uses diagnostics_path from config."""
+        json_output = json.dumps(
+            {
+                "summary": {"total": 1},
+                "customDiagnostics": [
+                    {
+                        "message": "Found error",
+                        "file": "test.py",
+                        "range": {"start": {"line": 5, "character": 0}},
+                    }
+                ],
+            }
+        )
+        issues = manager._parse_json_field_issues(
+            json_output, diagnostics_path="/customDiagnostics"
+        )
+        assert len(issues) == 1
+        assert issues[0]["message"] == "Found error"
+
+    def test_falls_back_to_general_diagnostics_when_no_path(self, manager: QAManager) -> None:
+        """Test _parse_json_field_issues falls back to generalDiagnostics."""
+        json_output = json.dumps(
+            {
+                "generalDiagnostics": [
+                    {"message": "General error"},
+                ]
+            }
+        )
+        issues = manager._parse_json_field_issues(json_output)
+        assert len(issues) == 1
+        assert issues[0]["message"] == "General error"
+
+    def test_resolve_json_pointer_nested(self, manager: QAManager) -> None:
+        """Test _resolve_json_pointer handles nested paths."""
+        data = {"a": {"b": {"c": [1, 2, 3]}}}
+        result = manager._resolve_json_pointer(data, "/a/b/c")
+        assert result == [1, 2, 3]
+
+    def test_resolve_json_pointer_missing_key(self, manager: QAManager) -> None:
+        """Test _resolve_json_pointer returns None for missing paths."""
+        data = {"a": {"b": 1}}
+        result = manager._resolve_json_pointer(data, "/a/x/y")
+        assert result is None
+
+
+class TestPytestJsonReportFlag:
+    """Test --json-report flag handling (AC7 stability)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def test_json_report_flag_does_not_include_file_none(self, manager: QAManager) -> None:
+        """Verify --json-report-file=none is NOT added (could create file named 'none')."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "Gate 5: Tests",
+                "description": "Tests",
+                "execution": {
+                    "command": ["python", "-m", "pytest", "tests/"],
+                    "timeout_seconds": 300,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        with patch.object(manager, "_supports_pytest_json_report", return_value=True):
+            result_cmd = manager._maybe_enable_pytest_json_report(
+                gate, list(gate.execution.command)
+            )
+            assert "--json-report" in result_cmd
+            file_none_flag = "--json-report-file=none"
+            assert file_none_flag not in result_cmd

@@ -1,5 +1,6 @@
 """Quality tools."""
 
+import json
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -43,7 +44,12 @@ class RunQualityGatesTool(BaseTool):
         return self.args_model.model_json_schema()
 
     async def execute(self, params: RunQualityGatesInput) -> ToolResult:
-        """Execute quality gates."""
+        """Execute quality gates and return schema-first JSON response.
+
+        Returns structured JSON as primary output with a derived text_output field.
+        Consumers should parse the JSON structure (gates[], summary) for programmatic use.
+        The text_output field provides a human-readable rendering for display purposes.
+        """
         files = params.files
         # Project-level test validation mode (files=[]):
         # - Runs pytest gates only (Gate 5: tests, Gate 6: coverage >= 90%)
@@ -57,12 +63,42 @@ class RunQualityGatesTool(BaseTool):
 
         result = self.manager.run_quality_gates(files)
 
-        text = "Quality Gates Results:\n"
-        text += f"Overall Pass: {result['overall_pass']}\n"
-        for gate in result["gates"]:
-            status = "✅" if gate["passed"] else "❌"
-            text += f"\n{status} {gate['name']}: {gate['score']}\n"
-            if not gate["passed"] and gate.get("issues"):
+        # Build derived text rendering and attach to response
+        text_output = self._render_text_output(result)
+        result["text_output"] = text_output
+
+        return ToolResult.text(json.dumps(result, indent=2, default=str))
+
+    @staticmethod
+    def _render_text_output(result: dict[str, Any]) -> str:
+        """Render structured result as human-readable text (derived view)."""
+        mode = result.get("mode", "unknown")
+        summary = result.get("summary", {})
+
+        text = f"Quality Gates Results (mode: {mode}):\n"
+        text += (
+            f"Summary: {summary.get('passed', 0)} passed, "
+            f"{summary.get('failed', 0)} failed, "
+            f"{summary.get('skipped', 0)} skipped"
+        )
+        total_v = summary.get("total_violations", 0)
+        auto_f = summary.get("auto_fixable", 0)
+        if total_v:
+            text += f" | {total_v} violations ({auto_f} auto-fixable)"
+        text += "\n"
+        text += f"Overall Pass: {result.get('overall_pass', False)}\n"
+
+        for gate in result.get("gates", []):
+            status = gate.get("status", "passed" if gate.get("passed") else "failed")
+            if status == "skipped":
+                icon = "⏭️"
+            elif status == "passed":
+                icon = "✅"
+            else:
+                icon = "❌"
+            text += f"\n{icon} {gate['name']}: {gate.get('score', 'N/A')}\n"
+
+            if status == "failed" and gate.get("issues"):
                 text += "  Issues:\n"
                 for issue in gate["issues"]:
                     loc = (
@@ -74,9 +110,9 @@ class RunQualityGatesTool(BaseTool):
                     msg = issue.get("message", "Unknown issue")
                     text += f"  - {loc} {code}{msg}\n"
 
-            if not gate["passed"] and gate.get("hints"):
+            if status == "failed" and gate.get("hints"):
                 text += "  Hints:\n"
                 for hint in gate["hints"]:
                     text += f"  - {hint}\n"
 
-        return ToolResult.text(text)
+        return text
