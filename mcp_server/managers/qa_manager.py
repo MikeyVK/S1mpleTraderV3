@@ -223,6 +223,14 @@ class QAManager:
             gate_result = self._execute_gate(gate, gate_files, gate_number=idx, gate_id=gate_id)
             self._update_summary_and_append_gate(results, gate_result)
 
+        # Build top-level timing breakdown (Improvement E)
+        timings: dict[str, int] = {}
+        for gate_result in results["gates"]:
+            gate_id_key = str(gate_result.get("gate_number", gate_result.get("id", "?")))
+            timings[gate_id_key] = gate_result.get("duration_ms", 0)
+        timings["total"] = sum(timings.values())
+        results["timings"] = timings
+
         return results
 
     def _update_summary_and_append_gate(
@@ -470,9 +478,23 @@ class QAManager:
 
         Returns a dict with python_version, tool_path, platform, and
         optionally tool_version (best-effort via ``--version``).
+
+        When the command follows the ``python -m <tool>`` pattern the version
+        probe targets the *tool* (``python -m <tool> --version``) rather than
+        the Python interpreter, so ``tool_version`` reflects the actual tool.
         """
         executable = cmd[0] if cmd else ""
-        tool_path = shutil.which(executable) or ""
+
+        # Detect ``python -m <tool>`` pattern
+        is_python_m = (
+            len(cmd) >= 3 and "python" in os.path.basename(executable).lower() and cmd[1] == "-m"
+        )
+        tool_name = cmd[2] if is_python_m else executable
+
+        # Resolve the tool on PATH (the actual binary, not python)
+        tool_path = (
+            (shutil.which(tool_name) or "") if is_python_m else (shutil.which(executable) or "")
+        )
 
         env: dict[str, str] = {
             "python_version": platform.python_version(),
@@ -480,10 +502,13 @@ class QAManager:
             "platform": platform.platform(),
         }
 
-        # Best-effort tool version: try ``<executable> --version``
+        # Best-effort tool version probe
+        version_cmd: list[str] = (
+            [executable, "-m", tool_name, "--version"] if is_python_m else [executable, "--version"]
+        )
         try:
             ver_proc = subprocess.run(
-                [executable, "--version"],
+                version_cmd,
                 capture_output=True,
                 text=True,
                 timeout=5,

@@ -1047,6 +1047,11 @@ class TestResponseSchemaV2:
                 assert "gates" in result, "Missing 'gates' field"
                 assert isinstance(result["gates"], list), "'gates' must be a list"
 
+                # Timings aggregate (Improvement E)
+                assert "timings" in result, "Missing 'timings' field"
+                assert "total" in result["timings"], "Missing 'total' in timings"
+                assert isinstance(result["timings"]["total"], int)
+
             finally:
                 Path(test_file).unlink(missing_ok=True)
 
@@ -1918,6 +1923,30 @@ class TestEnvironmentMetadata:
         with patch("subprocess.run", return_value=mock_proc):
             env = manager._collect_environment_metadata(["ruff"])
             assert env.get("tool_version") == "ruff 0.9.7"
+
+    def test_python_m_tool_resolves_tool_version_not_python(self, manager: QAManager) -> None:
+        """Test python -m <tool> probes tool version, not Python version."""
+        mock_proc = MagicMock()
+        mock_proc.stdout = "ruff 0.14.2\n"
+        mock_proc.stderr = ""
+
+        with patch("subprocess.run", return_value=mock_proc) as mock_run:
+            env = manager._collect_environment_metadata(["python", "-m", "ruff", "check"])
+            # Version command should be [python, -m, ruff, --version]
+            version_cmd = mock_run.call_args[0][0]
+            assert version_cmd == ["python", "-m", "ruff", "--version"]
+            assert env.get("tool_version") == "ruff 0.14.2"
+
+    def test_python_m_tool_resolves_tool_path(self, manager: QAManager) -> None:
+        """Test python -m <tool> resolves tool_path to tool binary, not python."""
+        with (
+            patch("shutil.which", return_value="/venv/bin/ruff") as mock_which,
+            patch("subprocess.run", side_effect=FileNotFoundError),
+        ):
+            env = manager._collect_environment_metadata(["python", "-m", "ruff", "check"])
+            # Should resolve 'ruff', not 'python'
+            mock_which.assert_called_with("ruff")
+            assert env["tool_path"] == "/venv/bin/ruff"
 
     def test_tool_version_absent_on_failure(self, manager: QAManager) -> None:
         """Test tool_version is not set when --version fails."""
