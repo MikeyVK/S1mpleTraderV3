@@ -465,11 +465,7 @@ class QAManager:
                         output_capture = self._build_output_capture(
                             proc.stdout or "", proc.stderr or ""
                         )
-                        result["output"] = {
-                            "stdout": output_capture["stdout"],
-                            "stderr": output_capture["stderr"],
-                            "truncated": output_capture["truncated"],
-                        }
+                        result["output"] = output_capture
                         result["issues"] = [
                             {
                                 "message": f"Gate failed with exit code {proc.returncode}",
@@ -488,11 +484,7 @@ class QAManager:
                         output_capture = self._build_output_capture(
                             proc.stdout or "", proc.stderr or ""
                         )
-                        result["output"] = {
-                            "stdout": output_capture["stdout"],
-                            "stderr": output_capture["stderr"],
-                            "truncated": output_capture["truncated"],
-                        }
+                        result["output"] = output_capture
                         result["issues"] = [
                             {
                                 "message": f"Gate failed with exit code {proc.returncode}",
@@ -519,11 +511,7 @@ class QAManager:
                     output_capture = self._build_output_capture(
                         proc.stdout or "", proc.stderr or ""
                     )
-                    result["output"] = {
-                        "stdout": output_capture["stdout"],
-                        "stderr": output_capture["stderr"],
-                        "truncated": output_capture["truncated"],
-                    }
+                    result["output"] = output_capture
                     result["issues"] = [
                         {
                             "message": f"Gate failed with exit code {proc.returncode}",

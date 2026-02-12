@@ -354,6 +354,7 @@ class TestExecuteGate:
             assert "stdout" in output
             assert "stderr" in output
             assert "truncated" in output
+            assert "details" in output
             assert output["truncated"] is True
 
             issue_details = result["issues"][0].get("details", "")
