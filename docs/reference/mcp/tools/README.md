@@ -157,7 +157,7 @@ Automated quality gates, test execution, and architectural validation.
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
-| `run_quality_gates` | Run pylint + mypy/pyright | `files` |
+| `run_quality_gates` | Run config-driven quality gates (Ruff, Pyright) | `files` |
 | `run_tests` | Run pytest with markers/timeout | `path`, `markers`, `verbose`, `timeout` |
 | `validate_architecture` | Validate code against patterns | `scope` (all/dtos/workers/platform) |
 | `validate_dto` | Validate DTO definition | `file_path` |
@@ -253,7 +253,7 @@ All GitHub tools (issues, PRs, labels, milestones) handle Unicode content correc
 ### 6. Quality Gate Integration
 
 `safe_edit_file` delegates to `ValidationService` which selects validators by file extension:
-- `.py` → `PythonValidator` (pylint, mypy/pyright)
+- `.py` → `PythonValidator` (Ruff, Pyright — config-driven via `.st3/quality.yaml`)
 - `.md` → `MarkdownValidator` (structure, SCAFFOLD headers)
 - SCAFFOLD headers → `TemplateValidator` (template conformance)
 

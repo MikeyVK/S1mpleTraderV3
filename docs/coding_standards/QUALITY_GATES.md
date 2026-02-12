@@ -366,7 +366,7 @@ def _artifact_manager(
 
 **REJECT if any of these conditions:**
 
-- ❌ Pylint score < 10.00 for whitespace/parens/imports
+- ❌ Any quality gate fails (non-zero exit code)
 - ❌ Failing tests
 - ❌ Missing type hints
 - ❌ Imports inside functions (must be top-level)
@@ -393,8 +393,6 @@ Add to `.vscode/settings.json`:
     "files.trimTrailingWhitespace": true,
     "files.insertFinalNewline": true,
     "editor.rulers": [100],
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true,
     "python.analysis.typeCheckingMode": "basic"
 }
 ```
