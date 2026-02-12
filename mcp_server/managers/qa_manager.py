@@ -59,6 +59,7 @@ class QAManager:
             )
 
         return python_files, issues
+
     def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
         """Run configured quality gates on specified files.
 
@@ -89,7 +90,8 @@ class QAManager:
 
         # Determine execution mode:
         # files=[] (empty) → project-level test validation (pytest gates only: Gate 5-6)
-        # files=[...] (populated) → file-specific validation (static gates only: Gates 0-4, skip pytest)
+        # files=[...] (populated) → file-specific validation
+        #                            (static gates only: Gates 0-4, skip pytest)
         is_file_specific_mode = bool(files)
 
         if is_file_specific_mode:

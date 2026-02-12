@@ -702,9 +702,7 @@ class TestConfigDrivenExecution:
 
             # Pytest gates should NOT be in skipped list
             pytest_skipped = [
-                g["name"]
-                for g in skipped_gates
-                if "Test" in g["name"] or "Coverage" in g["name"]
+                g["name"] for g in skipped_gates if "Test" in g["name"] or "Coverage" in g["name"]
             ]
             assert not pytest_skipped, (
                 f"Pytest gates should NOT be skipped in repo-scoped mode: {pytest_skipped}"
@@ -742,9 +740,7 @@ class TestConfigDrivenExecution:
                     and "Skipped" in g.get("score", "")
                 ]
 
-                assert skipped_pytest, (
-                    "Pytest gates should be skipped in file-specific mode"
-                )
+                assert skipped_pytest, "Pytest gates should be skipped in file-specific mode"
         finally:
             Path(test_file).unlink(missing_ok=True)
 
@@ -887,6 +883,4 @@ class TestResponseSchemaV2:
             assert result["mode"] == "project-level", (
                 f"Expected 'project-level' mode, got: {result.get('mode')}"
             )
-            assert result["files"] == [], (
-                f"Expected empty files list, got: {result.get('files')}"
-            )
+            assert result["files"] == [], f"Expected empty files list, got: {result.get('files')}"
