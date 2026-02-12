@@ -507,7 +507,7 @@ flowchart TD
 |------|----------|-------------|
 | `ERR_VALIDATION` | Validation | Input doesn't match schema |
 | `ERR_UNCOMMITTED_CHANGES` | Pre-flight | Git working directory not clean |
-| `ERR_QUALITY_GATE_FAILED` | Pre-flight | One or more gates < 10/10 |
+| `ERR_QUALITY_GATE_FAILED` | Pre-flight | One or more quality gates failed |
 | `ERR_TESTS_FAILING` | Pre-flight | pytest failures |
 | `ERR_BRANCH_EXISTS` | Execution | Branch already exists |
 | `ERR_GITHUB_AUTH` | System | GITHUB_TOKEN invalid/missing |

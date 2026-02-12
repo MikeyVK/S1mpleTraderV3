@@ -135,7 +135,7 @@ Comprehensive style guide for Python code in S1mpleTrader V3.
    - Line length → [CODE_STYLE.md](CODE_STYLE.md) techniques
    - Imports → Move to top-level
    - Type hints → Add return types
-4. **Re-run gates:** Verify 10/10 before merge
+4. **Re-run gates:** Verify all gates pass before merge
 
 ### Writing Good Commit Messages
 

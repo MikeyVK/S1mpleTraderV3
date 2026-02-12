@@ -2,8 +2,8 @@
 <!-- template=design version=5827e841 created=2026-02-12T00:00Z updated= -->
 # Issue 131 — Quality Gates Alignment (TODOs + Acceptance Criteria)
 
-**Status:** DRAFT  
-**Version:** 1.0  
+**Status:** COMPLETED  
+**Version:** 1.1  
 **Last Updated:** 2026-02-12
 
 ## Prerequisites
@@ -22,17 +22,17 @@ Align quality gate doctrine and documentation so CI/PR enforcement is strict and
 ### 1.2. Requirements
 
 **Functional:**
-- [ ] Docs clearly state: `pyproject.toml` is IDE baseline; `.st3/quality.yaml` is CI authority.
-- [ ] Ruff gates in CI run with `--isolated` and docs reflect exact commands/flags.
-- [ ] Gates apply to both production code and `tests/**/*.py`.
-- [ ] Gate 6 exists: pytest + coverage with `--cov-branch` and `--cov-fail-under=90`, covering `backend` + `mcp_server`.
-- [ ] Coverage enforcement is separated from Gate 5 (tests-only).
+- [x] Docs clearly state: `pyproject.toml` is IDE baseline; `.st3/quality.yaml` is CI authority.
+- [x] Ruff gates in CI run with `--isolated` and docs reflect exact commands/flags.
+- [x] Gates apply to both production code and `tests/**/*.py`.
+- [x] Gate 6 exists: pytest + coverage with `--cov-branch` and `--cov-fail-under=90`, covering `backend` + `mcp_server`.
+- [x] Coverage enforcement is separated from Gate 5 (tests-only).
 
 **Non-Functional:**
-- [ ] Copy/paste reproducibility: docs commands match `.st3/quality.yaml` byte-for-byte.
-- [ ] SRP clarity: formatting (Gate 0), lint (Gate 1), imports (Gate 2), line length (Gate 3), typing (Gate 4), tests (Gate 5), coverage (Gate 6) are unambiguous.
-- [ ] Developer experience: local `pytest tests/` runs without automatic coverage noise by default.
-- [ ] Future-proof coverage scope: easy to extend to new production packages without mixing toolchains.
+- [x] Copy/paste reproducibility: docs commands match `.st3/quality.yaml` byte-for-byte.
+- [x] SRP clarity: formatting (Gate 0), lint (Gate 1), imports (Gate 2), line length (Gate 3), typing (Gate 4/4b), tests (Gate 5), coverage (Gate 6) are unambiguous.
+- [x] Developer experience: local `pytest tests/` runs without automatic coverage noise by default.
+- [x] Future-proof coverage scope: easy to extend to new production packages without mixing toolchains.
 
 ### 1.3. Constraints
 
@@ -290,4 +290,5 @@ Loosen `.st3/quality.yaml` to match `pyproject.toml` behavior to reduce friction
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1 | 2026-02-12 | Agent | All TODOs verified implemented; status → COMPLETED |
 | 1.0 |  | Agent | Initial draft |

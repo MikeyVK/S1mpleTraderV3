@@ -1,10 +1,10 @@
 <!-- docs/reference/mcp/tools/quality.md -->
-<!-- template=reference version=064954ea created=2026-02-08T12:00:00+01:00 updated=2026-02-08 -->
+<!-- template=reference version=064954ea created=2026-02-08T12:00:00+01:00 updated=2026-02-12 -->
 # Quality & Validation Tools
 
 **Status:** DEFINITIVE  
-**Version:** 2.0  
-**Last Updated:** 2026-02-08  
+**Version:** 2.1  
+**Last Updated:** 2026-02-12  
 
 **Source:** [mcp_server/tools/quality_tools.py](../../../../mcp_server/tools/quality_tools.py), [test_tools.py](../../../../mcp_server/tools/test_tools.py), [validation_tools.py](../../../../mcp_server/tools/validation_tools.py), [template_validation_tool.py](../../../../mcp_server/tools/template_validation_tool.py)  
 **Tests:** [tests/unit/test_quality_tools.py](../../../../tests/unit/test_quality_tools.py)  
@@ -53,30 +53,165 @@ Gates are executed in the order of `active_gates`. Each gate definition provides
 
 #### Returns
 
+Response format v2.0 — a structured JSON dict returned via `ToolResult.json_data()`:
+
 ```json
 {
+  "version": "2.0",
+  "mode": "file-specific",
+  "files": ["backend/dtos/user.py"],
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "skipped": 2,
+    "total_violations": 3,
+    "auto_fixable": 1
+  },
   "overall_pass": false,
   "gates": [
     {
-      "gate_number": 0,
-      "name": "File Filtering",
+      "gate_number": 1,
+      "id": 1,
+      "name": "Gate 0: Ruff Format",
       "passed": true,
-      "score": "N/A",
-      "issues": []
+      "status": "passed",
+      "skip_reason": null,
+      "score": "Pass",
+      "issues": [],
+      "duration_ms": 124,
+      "command": {
+        "executable": "D:\\dev\\project\\.venv\\Scripts\\python.exe",
+        "args": ["-m", "ruff", "format", "--check", "--diff", "--isolated", "--line-length=100", "backend/dtos/user.py"],
+        "cwd": null,
+        "exit_code": 0,
+        "environment": {
+          "python_version": "3.13.5",
+          "tool_path": "D:\\dev\\project\\.venv\\Scripts\\ruff.exe",
+          "platform": "Windows-11-10.0.26100-SP0",
+          "tool_version": "ruff 0.14.2"
+        }
+      }
     },
     {
-      "gate_number": 1,
-      "name": "Gate 1: Formatting",
+      "gate_number": 2,
+      "id": 2,
+      "name": "Gate 1: Ruff Strict Lint",
+      "passed": false,
+      "status": "failed",
+      "skip_reason": null,
+      "score": "3 violations, 1 auto-fixable",
+      "issues": [
+        {
+          "code": "ANN401",
+          "message": "Dynamically typed expressions (typing.Any) are disallowed",
+          "line": 15,
+          "column": 22,
+          "file": "backend/dtos/user.py",
+          "fixable": false
+        }
+      ],
+      "duration_ms": 131,
+      "command": { "..." : "..." },
+      "output": {
+        "stdout": "[{\"code\": \"ANN401\", ...}]",
+        "stderr": "",
+        "truncated": false,
+        "details": "stdout:\n[{\"code\": \"ANN401\", ...}]"
+      },
+      "hints": [
+        "Re-run: python -m ruff check --isolated ...",
+        "This gate is stricter than the VS Code/IDE baseline (it does not inherit pyproject ignores).",
+        "Line length (E501) and import placement (PLC0415) are enforced in Gate 2/3."
+      ],
+      "artifact_path": "temp/qa_logs/20260212T120000Z_gate2_gate_1_ruff_strict_lint.json"
+    },
+    {
+      "gate_number": 6,
+      "id": 6,
+      "name": "Gate 4b: Pyright",
       "passed": true,
+      "status": "passed",
+      "skip_reason": null,
       "score": "Pass",
+      "issues": [],
+      "duration_ms": 2465,
+      "command": { "..." : "..." },
+      "fields": {
+        "diagnostics": [],
+        "error_count": 0
+      }
+    },
+    {
+      "gate_number": 7,
+      "id": 7,
+      "name": "Gate 5: Tests",
+      "passed": true,
+      "status": "skipped",
+      "skip_reason": "Skipped (file-specific mode - tests run project-wide)",
+      "score": "Skipped (file-specific mode - tests run project-wide)",
       "issues": []
     }
-  ]
+  ],
+  "timings": {
+    "1": 124,
+    "2": 131,
+    "3": 118,
+    "4": 116,
+    "5": 0,
+    "6": 2465,
+    "7": 0,
+    "8": 0,
+    "total": 2954
+  },
+  "text_output": "Quality Gates Results (mode: file-specific):\nSummary: 5 passed, 1 failed, 2 skipped\n..."
 }
 ```
 
+##### Response fields reference
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `version` | `str` | Schema version, currently `"2.0"` |
+| `mode` | `str` | `"file-specific"` or `"project-level"` |
+| `files` | `list[str]` | Input files (empty for project-level) |
+| `summary` | `dict` | Aggregate counts: `passed`, `failed`, `skipped`, `total_violations`, `auto_fixable` |
+| `overall_pass` | `bool` | `true` if all gates passed or were skipped |
+| `gates` | `list[dict]` | Per-gate results (see below) |
+| `timings` | `dict[str, int]` | Per-gate timing: `{gate_number: duration_ms, ..., "total": sum}` |
+| `text_output` | `str` | Human-readable summary (added by tool layer) |
+
+##### Per-gate fields
+
+| Field | Presence | Description |
+|-------|----------|-------------|
+| `gate_number` | Always | 1-based index in active_gates |
+| `id` | Always | Same as gate_number |
+| `name` | Always | Gate display name from config |
+| `passed` | Always | `true` / `false` |
+| `status` | Always | `"passed"`, `"failed"`, or `"skipped"` |
+| `skip_reason` | Always | Mode-aware skip message or `null` |
+| `score` | Always | Human-readable score: `"Pass"`, `"Fail (exit=N)"`, `"N violations, M auto-fixable"`, `"Timeout"` |
+| `issues` | Always | List of structured violations (empty if none) |
+| `duration_ms` | Executed only | Wall-clock time of gate execution |
+| `command` | Executed only | Exact command with `executable`, `args`, `cwd`, `exit_code`, `environment` |
+| `output` | Failed only | `stdout`, `stderr`, `truncated`, `details`; plus `full_log_path` when truncated |
+| `hints` | Failed only | Actionable next-step guidance |
+| `artifact_path` | Failed only | Path to full diagnostics JSON in `temp/qa_logs/` |
+| `fields` | json_field only | Parsed fields from JSON output (e.g., Pyright `diagnostics`, `error_count`) |
+
+##### Environment metadata (in `command.environment`)
+
+| Field | Description |
+|-------|-------------|
+| `python_version` | Python interpreter version |
+| `tool_path` | Resolved path to tool binary via `shutil.which()` |
+| `platform` | OS platform string |
+| `tool_version` | Best-effort `--version` output (detects `python -m <tool>` pattern) |
+
 **Notes:**
-- `hints` (optional): when a gate fails, it may include `hints: list[str]` with targeted, actionable next-step guidance (primarily intended for automated agents).
+- `hints` provide targeted, actionable next-step guidance (primarily for automated agents).
+- `output` is only present on failures. Streams are truncated to 50 lines / 5 KB per stream; when truncated, `full_log_path` points to the complete artifact JSON.
+- When `python -m <tool>` is detected, `tool_version` reflects the actual tool version (e.g., `ruff 0.14.2`), not the Python version.
 
 #### Example Usage
 
@@ -109,14 +244,14 @@ Gates are executed in the order of `active_gates`. Each gate definition provides
 
 **Project-level test validation mode (`files=[]`):**
 - Runs **pytest gates only** (Gate 5: Tests, Gate 6: Coverage ≥90%)
-- File-based static gates (Gates 0-4: Ruff, Mypy) are **skipped** (no file list provided)
+- File-based static gates (Gates 0–4b: Ruff, Mypy, Pyright) are **skipped** (no file list provided)
 - Used for CI/CD test/coverage enforcement before merge
 - Example use case: Block PR merge if tests fail or coverage < 90%
 - **Note:** For full-repo static analysis, provide explicit file list via Git diff or glob
 
 **File-specific validation mode (`files=[...]`):**
-- Runs **file-based static gates** (Gates 0-4: Ruff formatting, linting, imports, line length, type checking)
-- **Skips** pytest gates (Gate 5 & 6) - tests run at project-level, not per-file
+- Runs **file-based static gates** (Gates 0–4b: Ruff formatting, linting, imports, line length, Mypy, Pyright)
+- **Skips** pytest gates (Gate 5 & 6) — tests run at project-level, not per-file
 - Validates file existence and filters to `.py` files
 - Example use case: IDE save hooks, pre-commit validation on changed files
 
@@ -134,12 +269,19 @@ From [.st3/quality.yaml](../../../../.st3/quality.yaml):
 ```yaml
 version: "1.0"
 active_gates:
-  - gate0_ruff_format
-  - gate1_formatting
-  - gate2_imports
-  - gate3_line_length
-  - gate4_types
-  - gate5_tests
+  - gate0_ruff_format    # Gate 0: Formatting
+  - gate1_formatting     # Gate 1: Strict Lint (stricter than IDE)
+  - gate2_imports        # Gate 2: Import placement
+  - gate3_line_length    # Gate 3: Line length (E501)
+  - gate4_types          # Gate 4: Mypy strict (DTOs only)
+  - gate4_pyright        # Gate 4b: Pyright (warnings fail)
+  - gate5_tests          # Gate 5: Unit tests
+  - gate6_coverage       # Gate 6: Coverage ≥90%
+
+artifact_logging:
+  enabled: true
+  output_dir: "temp/qa_logs"
+  max_files: 200
 
 gates:
   gate0_ruff_format:
@@ -148,7 +290,6 @@ gates:
     execution:
       command: ["python", "-m", "ruff", "format", "--check", "--diff", "--isolated", "--line-length=100"]
       timeout_seconds: 60
-      working_dir: null
     parsing:
       strategy: "exit_code"
     success:
@@ -163,9 +304,10 @@ gates:
     name: "Gate 1: Ruff Strict Lint"
     description: "Strict linting (stricter than VS Code/IDE baseline)"
     execution:
-      command: ["python", "-m", "ruff", "check", "--isolated", "--select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC", "--ignore=E501,PLC0415", "--line-length=100", "--target-version=py311"]
+      command: ["python", "-m", "ruff", "check", "--isolated", "--output-format=json",
+        "--select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC",
+        "--ignore=E501,PLC0415", "--line-length=100", "--target-version=py311"]
       timeout_seconds: 60
-      working_dir: null
     parsing:
       strategy: "exit_code"
     success:
@@ -174,8 +316,53 @@ gates:
     capabilities:
       file_types: [".py"]
       supports_autofix: true
-      produces_json: false
+      produces_json: true          # ← Ruff JSON parsed for structured issues
+
+  gate4_pyright:
+    name: "Gate 4b: Pyright"
+    description: "Type checking (Pyright strict; warnings fail)"
+    execution:
+      command: ["python", "-m", "pyright", "--project", "pyrightconfig.json",
+        "--pythonversion", "3.11", "--pythonplatform", "Windows",
+        "--level", "warning", "--warnings", "--outputjson"]
+      timeout_seconds: 120
+    parsing:
+      strategy: "json_field"       # ← JSON Pointer-based field extraction
+      fields:
+        diagnostics: "/generalDiagnostics"
+        error_count: "/summary/errorCount"
+      diagnostics_path: "/generalDiagnostics"
+    success:
+      mode: "json_field"
+      max_errors: 0
+      require_no_issues: true
+    capabilities:
+      file_types: [".py"]
+      produces_json: true
+
+  gate6_coverage:
+    name: "Gate 6: Coverage"
+    description: "Branch coverage >= 90% (backend + mcp_server)"
+    execution:
+      command: ["pytest", "tests/", "--cov=backend", "--cov=mcp_server",
+        "--cov-branch", "--cov-fail-under=90", "--tb=short"]
+      timeout_seconds: 300
+    parsing:
+      strategy: "exit_code"
+    success:
+      mode: "exit_code"
+      exit_codes_ok: [0]
+
+  # ... gate2_imports, gate3_line_length, gate4_types, gate5_tests omitted for brevity
 ```
+
+##### Parsing strategies
+
+| Strategy | Used By | Behavior |
+|----------|---------|----------|
+| `exit_code` | Gates 0–5, 6 | Check return code against `exit_codes_ok`. If `produces_json: true`, also parses Ruff JSON for structured violations. |
+| `json_field` | Gate 4b (Pyright) | Parses JSON output, extracts fields via RFC 6901 JSON Pointers (`/generalDiagnostics`, `/summary/errorCount`). |
+| `text_regex` | (unused) | Regex-based text parsing with named groups. Falls back to exit code on failure. |
 
 ---
 
@@ -674,7 +861,7 @@ Quality validation is automatically triggered by `safe_edit_file` in `strict` an
 
 .py → PythonValidator
       ├─ Syntax check (ast.parse)
-      ├─ run_quality_gates (pylint, mypy)
+      ├─ run_quality_gates (Ruff, Pyright — config-driven)
       └─ validate_architecture (if backend/ file)
 
 .md → MarkdownValidator
@@ -689,33 +876,21 @@ SCAFFOLD header → TemplateValidator
 
 ## Configuration
 
-### .st3/quality.yaml
+### .st3/quality.yaml (authoritative)
 
-```yaml
-quality_gates:
-  python:
-    - tool: pylint
-      enabled: true
-      min_score: 8.0
-      ignore_patterns:
-        - "W0613"  # unused-argument
-        - "R0903"  # too-few-public-methods (for DTOs)
-    
-    - tool: mypy
-      enabled: true
-      strict: false
-      config_file: "pyproject.toml"
-    
-    - tool: pyright
-      enabled: true
-      fallback_to_mypy: true
-      config_file: "pyrightconfig.json"
-  
-  test:
-    pytest:
-      default_markers: "unit"
-      default_timeout: 300
-```
+All gate definitions, ordering, and behavior live in [.st3/quality.yaml](../../../../.st3/quality.yaml). See the [Quality Gate Configuration](#quality-gate-configuration) section above for the full schema.
+
+Key config sections:
+
+| Section | Purpose |
+|---------|---------|
+| `active_gates` | Ordered list of gate IDs to execute |
+| `gates.<id>.execution` | Command, timeout, working_dir |
+| `gates.<id>.parsing` | Strategy (`exit_code`, `json_field`, `text_regex`) and field mappings |
+| `gates.<id>.success` | Pass/fail criteria (exit codes, max errors, regex patterns) |
+| `gates.<id>.capabilities` | File types, autofix support, JSON output flag |
+| `gates.<id>.scope` | Optional include/exclude globs (e.g., Gate 4 Mypy runs on `backend/dtos/**` only) |
+| `artifact_logging` | Enable/disable, output dir, max file count |
 
 ---
 
@@ -773,4 +948,5 @@ quality_gates:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.1 | 2026-02-12 | Agent | Aligned with actual v2.0 response schema: full gate structure, timings, environment metadata, command block, output/truncation, artifact logging, parsing strategies, all 8 active gates |
 | 2.0 | 2026-02-08 | Agent | Complete reference for 5 quality tools: quality gates, tests, architecture validation, DTO validation, template validation |
