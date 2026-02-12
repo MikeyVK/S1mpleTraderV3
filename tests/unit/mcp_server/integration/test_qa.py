@@ -39,8 +39,14 @@ async def test_quality_tool_output_format() -> None:
 
     result = await tool.execute(RunQualityGatesInput(files=["backend/core/enums.py"]))
 
-    # Output must be valid JSON (schema-first)
-    data = json.loads(result.content[0]["text"])
+    # Output must be native JSON object (schema-first)
+    assert result.content[0]["type"] == "json"
+    data = result.content[0]["json"]
+    assert isinstance(data, dict)
+
+    # Text fallback for legacy clients
+    assert result.content[1]["type"] == "text"
+    assert isinstance(result.content[1]["text"], str)
 
     # Verify JSON structure
     assert "version" in data

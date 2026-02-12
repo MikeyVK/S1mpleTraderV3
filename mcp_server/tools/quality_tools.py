@@ -1,6 +1,5 @@
 """Quality tools."""
 
-import json
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -67,7 +66,7 @@ class RunQualityGatesTool(BaseTool):
         text_output = self._render_text_output(result)
         result["text_output"] = text_output
 
-        return ToolResult.text(json.dumps(result, indent=2, default=str))
+        return ToolResult.json_data(result)
 
     @staticmethod
     def _render_text_output(result: dict[str, Any]) -> str:

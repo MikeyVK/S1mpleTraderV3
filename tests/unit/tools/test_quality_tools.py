@@ -3,7 +3,7 @@
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 
 # Standard library
-import json
+from typing import Any
 from unittest.mock import MagicMock
 
 # Third-party
@@ -11,6 +11,16 @@ import pytest
 
 # Module under test
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
+from mcp_server.tools.tool_result import ToolResult
+
+
+def _extract_json(result: ToolResult) -> dict[str, Any]:
+    """Extract structured JSON from ToolResult (content[0] type=json)."""
+    json_item = result.content[0]
+    assert json_item["type"] == "json", (
+        f"Expected content[0] type='json', got '{json_item['type']}'"
+    )
+    return json_item["json"]
 
 
 class TestRunQualityGatesTool:
@@ -45,7 +55,7 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=[]))
 
-        data = json.loads(result.content[0]["text"])
+        data = _extract_json(result)
         assert data["mode"] == "project-level"
         assert "text_output" in data
         mock_manager.run_quality_gates.assert_called_once_with([])
@@ -56,13 +66,20 @@ class TestRunQualityGatesTool:
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "overall_pass": True,
-            "gates": [{"name": "pylint", "passed": True, "score": 10.0, "issues": []}],
+            "gates": [
+                {
+                    "name": "pylint",
+                    "passed": True,
+                    "score": 10.0,
+                    "issues": [],
+                }
+            ],
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        data = json.loads(result.content[0]["text"])
+        data = _extract_json(result)
         assert data["overall_pass"] is True
         assert "text_output" in data
         assert "✅ pylint" in data["text_output"]
@@ -95,7 +112,7 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        data = json.loads(result.content[0]["text"])
+        data = _extract_json(result)
         assert data["overall_pass"] is False
         assert "❌ pylint" in data["text_output"]
         assert "foo.py:10:4" in data["text_output"]
@@ -114,9 +131,7 @@ class TestRunQualityGatesTool:
                     "status": "failed",
                     "score": "Fail",
                     "issues": [{"message": "E501"}],
-                    "hints": [
-                        "Re-run: python -m ruff check --select=E501 --line-length=100 file.py"
-                    ],
+                    "hints": ["Re-run: python -m ruff check file.py"],
                 }
             ],
         }
@@ -124,7 +139,7 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        data = json.loads(result.content[0]["text"])
+        data = _extract_json(result)
         assert "Hints:" in data["text_output"]
         assert "Re-run:" in data["text_output"]
 
@@ -140,7 +155,7 @@ class TestRunQualityGatesTool:
                     "passed": False,
                     "status": "failed",
                     "score": 0,
-                    "issues": [{}],  # Empty issue dict
+                    "issues": [{}],
                 }
             ],
         }
@@ -148,13 +163,13 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        data = json.loads(result.content[0]["text"])
+        data = _extract_json(result)
         assert "unknown:?:?" in data["text_output"]
         assert "Unknown issue" in data["text_output"]
 
     @pytest.mark.asyncio
-    async def test_response_contains_structured_json(self) -> None:
-        """Test tool returns machine-readable JSON structure (P0-AC1)."""
+    async def test_response_is_native_json_object(self) -> None:
+        """Test tool returns native JSON object, not JSON-in-text (P0-AC1)."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "version": "2.0",
@@ -184,10 +199,16 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        # Must be valid JSON
-        data = json.loads(result.content[0]["text"])
+        # Content[0] is native JSON object (not merely serialized text)
+        assert result.content[0]["type"] == "json"
+        data = result.content[0]["json"]
+        assert isinstance(data, dict)
 
-        # Schema-first: structured fields present
+        # Content[1] is text fallback for legacy clients
+        assert result.content[1]["type"] == "text"
+        assert isinstance(result.content[1]["text"], str)
+
+        # Structured fields present in JSON
         assert data["version"] == "2.0"
         assert data["mode"] == "file-specific"
         assert "summary" in data

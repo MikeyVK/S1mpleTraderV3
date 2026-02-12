@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
@@ -533,6 +534,7 @@ class QAManager:
             cmd = self._resolve_command(gate.execution.command, files)
             cmd = self._maybe_enable_pytest_json_report(gate, cmd)
 
+            start_time = time.monotonic()
             proc = subprocess.run(
                 cmd,
                 stdin=subprocess.DEVNULL,
@@ -542,6 +544,15 @@ class QAManager:
                 check=False,
                 cwd=gate.execution.working_dir,
             )
+            duration_ms = round((time.monotonic() - start_time) * 1000)
+
+            result["duration_ms"] = duration_ms
+            result["command"] = {
+                "executable": cmd[0] if cmd else "",
+                "args": cmd[1:] if len(cmd) > 1 else [],
+                "cwd": gate.execution.working_dir,
+                "exit_code": proc.returncode,
+            }
 
             combined_output = (proc.stdout or "") + (proc.stderr or "")
 
@@ -602,9 +613,23 @@ class QAManager:
                 parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
                 diagnostics_path = getattr(gate.parsing, "diagnostics_path", None)
                 issues = self._parse_json_field_issues(parser_input, diagnostics_path)
+
+                # Extract additional fields from JSON via configured pointers
+                fields_data = self._extract_json_fields(parser_input, gate)
+
+                # Apply success criteria (max_errors / require_no_issues)
+                issue_count = len(issues)
+                if gate.success.max_errors is not None:
+                    result["passed"] = issue_count <= gate.success.max_errors
+                elif gate.success.require_no_issues:
+                    result["passed"] = issue_count == 0
+                else:
+                    result["passed"] = True
+
                 result["issues"] = issues
-                result["passed"] = not issues
-                result["score"] = "Pass" if result["passed"] else f"Fail ({len(issues)} errors)"
+                result["score"] = "Pass" if result["passed"] else f"Fail ({issue_count} errors)"
+                if fields_data:
+                    result["fields"] = fields_data
 
             elif gate.parsing.strategy == "text_regex":
                 if proc.returncode in set(gate.success.exit_codes_ok):
@@ -740,6 +765,36 @@ class QAManager:
             issues.append(issue)
 
         return issues
+
+    def _extract_json_fields(self, output: str, gate: QualityGate) -> dict[str, object]:
+        """Extract named fields from JSON output using configured pointers.
+
+        Uses the ``fields`` mapping from ``JsonFieldParsing`` config to resolve
+        each named field via its JSON Pointer path.
+
+        Args:
+            output: Raw JSON string from tool output.
+            gate: Gate config; only ``json_field`` parsing has ``fields``.
+
+        Returns:
+            Dict of field_name → resolved_value. Empty if parsing fails or
+            no ``fields`` configured.
+        """
+        fields_config: dict[str, str] = getattr(gate.parsing, "fields", {})
+        if not fields_config:
+            return {}
+
+        try:
+            data = json.loads(output)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return {}
+
+        extracted: dict[str, object] = {}
+        for field_name, pointer in fields_config.items():
+            value = self._resolve_json_pointer(data, pointer)
+            if value is not None:
+                extracted[field_name] = value
+        return extracted
 
     def _parse_ruff_json(self, output: str) -> list[dict[str, Any]]:
         """Parse Ruff JSON output into structured violation issues.

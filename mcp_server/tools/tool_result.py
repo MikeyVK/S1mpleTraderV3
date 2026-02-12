@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -21,6 +22,26 @@ class ToolResult(BaseModel):
         """Create a text result."""
 
         return cls(content=[{"type": "text", "text": text}])
+
+    @classmethod
+    def json_data(cls, data: dict[str, Any]) -> ToolResult:
+        """Create a JSON result with both structured and text content.
+
+        Returns a ToolResult containing two content items:
+        1. A JSON object (type: "json") for machine consumption.
+        2. A serialized text fallback (type: "text") for clients that
+           only support text content.
+
+        Args:
+            data: Structured dict to return as JSON.
+        """
+        text_fallback = json.dumps(data, indent=2, default=str)
+        return cls(
+            content=[
+                {"type": "json", "json": data},
+                {"type": "text", "text": text_fallback},
+            ]
+        )
 
     @classmethod
     def error(

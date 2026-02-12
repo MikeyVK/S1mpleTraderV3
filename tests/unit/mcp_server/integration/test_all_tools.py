@@ -211,7 +211,11 @@ class TestQualityToolsIntegration:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["test.py"]))
 
-        assert "Pass" in result.content[0]["text"] or "pass" in result.content[0]["text"].lower()
+        # Content[0] is native JSON, content[1] is text fallback
+        assert result.content[0]["type"] == "json"
+        data = result.content[0]["json"]
+        assert data["overall_pass"] is True
+        assert "text_output" in data
 
     @pytest.mark.asyncio
     async def test_validation_tool_flow(self) -> None:

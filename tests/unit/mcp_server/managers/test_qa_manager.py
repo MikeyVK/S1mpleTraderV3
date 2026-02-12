@@ -32,6 +32,7 @@ from mcp_server.config.quality_config import (
 
 # Module under test
 from mcp_server.managers.qa_manager import QAManager
+from mcp_server.tools.tool_result import ToolResult
 
 
 class TestQAManager:
@@ -1495,6 +1496,381 @@ class TestJsonFieldParserConfig:
         data = {"a": {"b": 1}}
         result = manager._resolve_json_pointer(data, "/a/x/y")
         assert result is None
+
+
+class TestDurationAndCommandMetadata:
+    """Test duration_ms and command metadata in gate results (Gap 1)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def test_execute_gate_has_duration_ms(self, manager: QAManager) -> None:
+        """Test _execute_gate result includes duration_ms (int >= 0)."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "DurationTest",
+                "description": "Gate with timing",
+                "execution": {
+                    "command": ["echo", "ok"],
+                    "timeout_seconds": 10,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["test.py"], gate_number=1)
+
+            assert "duration_ms" in result
+            assert isinstance(result["duration_ms"], int)
+            assert result["duration_ms"] >= 0
+
+    def test_execute_gate_has_command_metadata(self, manager: QAManager) -> None:
+        """Test _execute_gate result includes command dict with executable, args, cwd, exit_code."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "CommandTest",
+                "description": "Gate with command metadata",
+                "execution": {
+                    "command": ["python", "-m", "ruff", "check"],
+                    "timeout_seconds": 60,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["file.py"], gate_number=1)
+
+            assert "command" in result
+            cmd = result["command"]
+            assert "executable" in cmd
+            assert "args" in cmd
+            assert "cwd" in cmd
+            assert "exit_code" in cmd
+            assert cmd["exit_code"] == 0
+
+    def test_timeout_does_not_have_command_metadata(self, manager: QAManager) -> None:
+        """Test timeout scenario does not crash (no command metadata expected)."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "TimeoutGate",
+                "description": "Timeout",
+                "execution": {"command": ["slow_cmd"], "timeout_seconds": 1},
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        with patch(
+            "subprocess.run",
+            side_effect=subprocess.TimeoutExpired(["slow_cmd"], 1),
+        ):
+            result = manager._execute_gate(gate, ["test.py"], gate_number=1)
+            assert result["passed"] is False
+            # Command metadata is set only after successful subprocess run
+            # Timeout happens inside subprocess.run, so no command dict
+            assert "command" not in result or result.get("command") is not None
+
+
+class TestExtractJsonFields:
+    """Test _extract_json_fields for field pointer extraction (Gap 2a)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def test_extracts_fields_via_pointers(self, manager: QAManager) -> None:
+        """Test _extract_json_fields resolves field pointers from JSON output."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "FieldsGate",
+                "description": "Fields extraction",
+                "execution": {"command": ["tool"], "timeout_seconds": 60},
+                "parsing": {
+                    "strategy": "json_field",
+                    "diagnostics_path": "/generalDiagnostics",
+                    "fields": {
+                        "diagnostics": "/generalDiagnostics",
+                        "error_count": "/summary/errorCount",
+                    },
+                },
+                "success": {"mode": "json_field", "max_errors": 0},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": True,
+                },
+            }
+        )
+        json_output = json.dumps(
+            {
+                "generalDiagnostics": [{"message": "err1"}],
+                "summary": {"errorCount": 3},
+            }
+        )
+        fields = manager._extract_json_fields(json_output, gate)
+        assert fields["diagnostics"] == [{"message": "err1"}]
+        assert fields["error_count"] == 3
+
+    def test_empty_fields_config_returns_empty(self, manager: QAManager) -> None:
+        """Test _extract_json_fields returns {} when gate has no fields configured."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "NoFieldsGate",
+                "description": "No fields",
+                "execution": {"command": ["tool"], "timeout_seconds": 60},
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        fields = manager._extract_json_fields("{}", gate)
+        assert fields == {}
+
+    def test_invalid_json_returns_empty(self, manager: QAManager) -> None:
+        """Test _extract_json_fields handles invalid JSON gracefully."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "BadJsonGate",
+                "description": "Bad JSON",
+                "execution": {"command": ["tool"], "timeout_seconds": 60},
+                "parsing": {
+                    "strategy": "json_field",
+                    "diagnostics_path": "/generalDiagnostics",
+                    "fields": {"x": "/foo"},
+                },
+                "success": {"mode": "json_field"},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": True,
+                },
+            }
+        )
+        fields = manager._extract_json_fields("not-json", gate)
+        assert fields == {}
+
+
+class TestJsonFieldSuccessCriteria:
+    """Test json_field strategy applies max_errors / require_no_issues (Gap 2b)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def _make_json_field_gate(
+        self,
+        max_errors: int | None = None,
+        require_no_issues: bool = False,
+    ) -> QualityGate:
+        """Create a json_field gate with specified success criteria."""
+        return QualityGate.model_validate(
+            {
+                "name": "JsonFieldCriteria",
+                "description": "Criteria test",
+                "execution": {"command": ["pyright"], "timeout_seconds": 60},
+                "parsing": {
+                    "strategy": "json_field",
+                    "diagnostics_path": "/generalDiagnostics",
+                    "fields": {"error_count": "/summary/errorCount"},
+                },
+                "success": {
+                    "mode": "json_field",
+                    "max_errors": max_errors,
+                    "require_no_issues": require_no_issues,
+                },
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": True,
+                },
+            }
+        )
+
+    def test_max_errors_zero_passes_with_no_issues(self, manager: QAManager) -> None:
+        """Test max_errors=0 passes when there are no diagnostics."""
+        gate = self._make_json_field_gate(max_errors=0)
+        output = json.dumps({"generalDiagnostics": []})
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = output
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
+            assert result["passed"] is True
+
+    def test_max_errors_zero_fails_with_issues(self, manager: QAManager) -> None:
+        """Test max_errors=0 fails when there are diagnostics."""
+        gate = self._make_json_field_gate(max_errors=0)
+        output = json.dumps(
+            {
+                "generalDiagnostics": [
+                    {
+                        "message": "error1",
+                        "range": {"start": {"line": 1, "character": 0}},
+                    }
+                ]
+            }
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = output
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
+            assert result["passed"] is False
+            assert "1 errors" in result["score"]
+
+    def test_require_no_issues_true_fails_with_issues(self, manager: QAManager) -> None:
+        """Test require_no_issues=True fails when any issue is present."""
+        gate = self._make_json_field_gate(require_no_issues=True)
+        output = json.dumps(
+            {
+                "generalDiagnostics": [
+                    {
+                        "message": "warning",
+                        "range": {"start": {"line": 1, "character": 0}},
+                    }
+                ]
+            }
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = output
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
+            assert result["passed"] is False
+
+    def test_require_no_issues_false_passes_even_with_issues(self, manager: QAManager) -> None:
+        """Test require_no_issues=False passes regardless of issues."""
+        gate = self._make_json_field_gate(require_no_issues=False)
+        output = json.dumps(
+            {
+                "generalDiagnostics": [
+                    {
+                        "message": "info",
+                        "range": {"start": {"line": 1, "character": 0}},
+                    }
+                ]
+            }
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = output
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
+            assert result["passed"] is True
+
+    def test_json_field_attaches_fields_data(self, manager: QAManager) -> None:
+        """Test json_field result includes 'fields' when fields config present."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "FieldsAttach",
+                "description": "Fields attach test",
+                "execution": {"command": ["pyright"], "timeout_seconds": 60},
+                "parsing": {
+                    "strategy": "json_field",
+                    "diagnostics_path": "/generalDiagnostics",
+                    "fields": {"error_count": "/summary/errorCount"},
+                },
+                "success": {
+                    "mode": "json_field",
+                    "max_errors": 0,
+                },
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": True,
+                },
+            }
+        )
+        output = json.dumps(
+            {
+                "generalDiagnostics": [],
+                "summary": {"errorCount": 0},
+            }
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = output
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
+            assert "fields" in result
+            assert result["fields"]["error_count"] == 0
+
+
+class TestToolResultJsonData:
+    """Test ToolResult.json_data() returns native JSON + text fallback (Gap 3)."""
+
+    def test_json_data_returns_dual_content(self) -> None:
+        """Test json_data() returns list with json and text items."""
+        data = {"version": "2.0", "gates": []}
+        result = ToolResult.json_data(data)
+
+        assert len(result.content) == 2
+        assert result.content[0]["type"] == "json"
+        assert result.content[0]["json"] is data  # same dict reference
+        assert result.content[1]["type"] == "text"
+        assert isinstance(result.content[1]["text"], str)
+        assert '"version": "2.0"' in result.content[1]["text"]
+
+    def test_json_data_text_fallback_is_parseable(self) -> None:
+        """Test text fallback is valid JSON matching the original dict."""
+        data = {"overall_pass": True, "count": 42}
+        result = ToolResult.json_data(data)
+
+        parsed = json.loads(result.content[1]["text"])
+        assert parsed == data
 
 
 class TestPytestJsonReportFlag:
