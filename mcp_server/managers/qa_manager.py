@@ -387,20 +387,52 @@ class QAManager:
 
             if gate.parsing.strategy == "exit_code":
                 ok_codes = set(gate.success.exit_codes_ok)
-                if proc.returncode in ok_codes:
-                    result["passed"] = True
-                    result["score"] = "Pass"
-                    result["issues"] = []
+
+                # Try JSON parsing if gate produces JSON (Ruff gates with --output-format=json)
+                if gate.capabilities.produces_json:
+                    # Parse Ruff JSON violations
+                    parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
+                    parsed_issues = self._parse_ruff_json(parser_input)
+                    if parsed_issues:
+                        # Violations found - gate fails
+                        result["passed"] = False
+                        fixable_count = sum(1 for issue in parsed_issues if issue.get("fixable"))
+                        result["score"] = (
+                            f"{len(parsed_issues)} violations, {fixable_count} auto-fixable"
+                        )
+                        result["issues"] = parsed_issues
+                    elif proc.returncode in ok_codes:
+                        # No violations, exit code OK - gate passes
+                        result["passed"] = True
+                        result["score"] = "Pass"
+                        result["issues"] = []
+                    else:
+                        # JSON parsing failed but exit code indicates error
+                        result["passed"] = False
+                        result["score"] = f"Fail (exit={proc.returncode})"
+                        preview = "\n".join(combined_output.splitlines()[:50]).strip()
+                        result["issues"] = [
+                            {
+                                "message": f"Gate failed with exit code {proc.returncode}",
+                                "details": preview or "No output captured",
+                            }
+                        ]
                 else:
-                    result["passed"] = False
-                    result["score"] = f"Fail (exit={proc.returncode})"
-                    preview = "\n".join(combined_output.splitlines()[:50]).strip()
-                    result["issues"] = [
-                        {
-                            "message": f"Gate failed with exit code {proc.returncode}",
-                            "details": preview or "No output captured",
-                        }
-                    ]
+                    # Traditional exit code-only parsing
+                    if proc.returncode in ok_codes:
+                        result["passed"] = True
+                        result["score"] = "Pass"
+                        result["issues"] = []
+                    else:
+                        result["passed"] = False
+                        result["score"] = f"Fail (exit={proc.returncode})"
+                        preview = "\n".join(combined_output.splitlines()[:50]).strip()
+                        result["issues"] = [
+                            {
+                                "message": f"Gate failed with exit code {proc.returncode}",
+                                "details": preview or "No output captured",
+                            }
+                        ]
 
             elif gate.parsing.strategy == "json_field":
                 issues = self._parse_json_field_issues(combined_output)
@@ -495,6 +527,65 @@ class QAManager:
             sev = diag.get("severity")
             if sev is not None:
                 issue["severity"] = str(sev)
+
+            issues.append(issue)
+
+        return issues
+
+    def _parse_ruff_json(self, output: str) -> list[dict[str, Any]]:
+        """Parse Ruff JSON output into structured violation issues.
+
+        Ruff's --output-format=json produces an array of violation objects.
+        Each violation has:
+        - code: Rule code (e.g., "E501", "F401")
+        - message: Description of the violation
+        - location: {row: int, column: int}
+        - filename: Path to the file
+        - fix: Optional fix object with {applicability: "safe" | "unsafe" | "display"}
+
+        Args:
+            output: JSON string from Ruff command stdout
+
+        Returns:
+            List of structured issue dicts with fields: file, line, column, code, message, fixable
+        """
+        try:
+            violations = json.loads(output)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            # Not valid JSON, return empty (caller handles exit code as failure)
+            return []
+
+        if not isinstance(violations, list):
+            return []
+
+        issues: list[dict[str, Any]] = []
+        for violation in violations:
+            if not isinstance(violation, dict):
+                continue
+
+            issue: dict[str, Any] = {
+                "code": violation.get("code", "UNKNOWN"),
+                "message": violation.get("message", "No message"),
+            }
+
+            # Extract location
+            location = violation.get("location", {})
+            if isinstance(location, dict):
+                issue["line"] = location.get("row")
+                issue["column"] = location.get("column")
+
+            # Extract filename
+            filename = violation.get("filename")
+            if filename:
+                issue["file"] = str(filename)
+
+            # Determine fixability
+            fix = violation.get("fix")
+            if fix is not None and isinstance(fix, dict):
+                applicability = fix.get("applicability")
+                issue["fixable"] = applicability == "safe"
+            else:
+                issue["fixable"] = False
 
             issues.append(issue)
 

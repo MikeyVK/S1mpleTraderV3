@@ -22,7 +22,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml  # type: ignore[import-untyped]
 
-from mcp_server.config.quality_config import QualityGate
+from mcp_server.config.quality_config import (
+    CapabilitiesMetadata,
+    ExecutionConfig,
+    ExitCodeParsing,
+    QualityGate,
+    SuccessCriteria,
+)
 
 # Module under test
 from mcp_server.managers.qa_manager import QAManager
@@ -919,85 +925,96 @@ class TestRuffJsonParsing:
             ]
         )
 
-        with (
-            patch("pathlib.Path.exists", return_value=True),
-            patch("subprocess.run") as mock_run,
-        ):
+        # Create a mock gate with produces_json=true
+
+        mock_gate = QualityGate(
+            name="Test Ruff Gate",
+            description="Test gate for JSON parsing",
+            execution=ExecutionConfig(
+                command=["ruff", "check", "--output-format=json"],
+                timeout_seconds=60,
+            ),
+            parsing=ExitCodeParsing(strategy="exit_code"),
+            success=SuccessCriteria(mode="exit_code", exit_codes_ok=[0]),
+            capabilities=CapabilitiesMetadata(
+                file_types=[".py"],
+                supports_autofix=True,
+                produces_json=True,  # This is the key
+            ),
+        )
+
+        with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
             mock_proc.returncode = 1  # Violations found
             mock_proc.stdout = ruff_json_output
             mock_proc.stderr = ""
             mock_run.return_value = mock_proc
 
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tf:
-                tf.write("print('test')")
-                test_file = tf.name
+            # Test _execute_gate directly
+            result = manager._execute_gate(mock_gate, ["test_file.py"], gate_number=1)
 
-            try:
-                result = manager.run_quality_gates([test_file])
+            assert not result["passed"], "Gate should fail with violations"
 
-                # Find Ruff gate (should be gate 1, 2, or 3)
-                ruff_gates = [g for g in result["gates"] if "Ruff" in g.get("name", "")]
-                assert len(ruff_gates) > 0, "Expected at least one Ruff gate"
+            # Check structured issues
+            issues = result.get("issues", [])
+            assert len(issues) == 2, f"Expected 2 issues, got {len(issues)}"
 
-                ruff_gate = ruff_gates[0]
-                assert not ruff_gate["passed"], "Gate should fail with violations"
+            # Verify issue structure
+            issue1 = issues[0]
+            assert "file" in issue1, "Issue missing 'file' field"
+            assert "line" in issue1, "Issue missing 'line' field"
+            assert "column" in issue1, "Issue missing 'column' field"
+            assert "code" in issue1, "Issue missing 'code' field"
+            assert "message" in issue1, "Issue missing 'message' field"
+            assert "fixable" in issue1, "Issue missing 'fixable' field"
 
-                # Check structured issues
-                issues = ruff_gate.get("issues", [])
-                assert len(issues) == 2, f"Expected 2 issues, got {len(issues)}"
+            # Verify parsed values
+            assert issue1["code"] == "E501"
+            assert issue1["line"] == 123
+            assert issue1["column"] == 101
+            assert issue1["fixable"] is False  # No fix provided
 
-                # Verify issue structure
-                issue1 = issues[0]
-                assert "file" in issue1, "Issue missing 'file' field"
-                assert "line" in issue1, "Issue missing 'line' field"
-                assert "column" in issue1, "Issue missing 'column' field"
-                assert "code" in issue1, "Issue missing 'code' field"
-                assert "message" in issue1, "Issue missing 'message' field"
-                assert "fixable" in issue1, "Issue missing 'fixable' field"
+            issue2 = issues[1]
+            assert issue2["code"] == "F401"
+            assert issue2["line"] == 10
+            assert issue2["fixable"] is True  # Fix available
 
-                # Verify parsed values
-                assert issue1["code"] == "E501"
-                assert issue1["line"] == 123
-                assert issue1["column"] == 101
-                assert issue1["fixable"] is False  # No fix provided
-
-                issue2 = issues[1]
-                assert issue2["code"] == "F401"
-                assert issue2["line"] == 10
-                assert issue2["fixable"] is True  # Fix available
-
-            finally:
-                Path(test_file).unlink(missing_ok=True)
+            # Verify score message
+            assert "2 violations" in result["score"]
+            assert "1 auto-fixable" in result["score"]
 
     def test_ruff_json_parsing_with_clean_code(self, manager: QAManager) -> None:
         """Test Ruff JSON output when no violations found."""
         ruff_json_output = json.dumps([])  # Empty array = no violations
 
-        with (
-            patch("pathlib.Path.exists", return_value=True),
-            patch("subprocess.run") as mock_run,
-        ):
+        # Create a mock gate with produces_json=true
+
+        mock_gate = QualityGate(
+            name="Test Ruff Gate",
+            description="Test gate for JSON parsing",
+            execution=ExecutionConfig(
+                command=["ruff", "check", "--output-format=json"],
+                timeout_seconds=60,
+            ),
+            parsing=ExitCodeParsing(strategy="exit_code"),
+            success=SuccessCriteria(mode="exit_code", exit_codes_ok=[0]),
+            capabilities=CapabilitiesMetadata(
+                file_types=[".py"],
+                supports_autofix=True,
+                produces_json=True,  # This is the key
+            ),
+        )
+
+        with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
             mock_proc.returncode = 0  # Clean code
             mock_proc.stdout = ruff_json_output
             mock_proc.stderr = ""
             mock_run.return_value = mock_proc
 
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tf:
-                tf.write("print('test')")
-                test_file = tf.name
+            # Test _execute_gate directly
+            result = manager._execute_gate(mock_gate, ["test_file.py"], gate_number=1)
 
-            try:
-                result = manager.run_quality_gates([test_file])
-
-                # Find Ruff gate
-                ruff_gates = [g for g in result["gates"] if "Ruff" in g.get("name", "")]
-                assert len(ruff_gates) > 0, "Expected at least one Ruff gate"
-
-                ruff_gate = ruff_gates[0]
-                assert ruff_gate["passed"], "Gate should pass with clean code"
-                assert ruff_gate["issues"] == [], "Expected no issues"
-
-            finally:
-                Path(test_file).unlink(missing_ok=True)
+            assert result["passed"], "Gate should pass with clean code"
+            assert result["issues"] == [], "Expected no issues"
+            assert result["score"] == "Pass", f"Expected 'Pass' score, got {result['score']}"
