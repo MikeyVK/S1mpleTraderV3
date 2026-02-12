@@ -455,53 +455,66 @@ class TestActiveGatesField:
 
 
 class TestRuffGateDefinitions:
-    """Test new Ruff-based gate definitions (Issue #131 Cycle 3).""" 
+    """Test new Ruff-based gate definitions (Issue #131 Cycle 3)."""
 
     def test_gate1_formatting_loads_from_yaml(self) -> None:
         """gate1_formatting definition loads correctly from quality.yaml."""
         # Load from actual quality.yaml
         quality_yaml = Path(".st3/quality.yaml")
         config = QualityConfig.load(quality_yaml)
-        
+
         assert "gate1_formatting" in config.gates
         gate = config.gates["gate1_formatting"]
         assert gate.name == "Gate 1: Formatting"
         assert gate.execution.command == [
-            "python", "-m", "ruff", "check", 
-            "--select=W291,W292,W293,UP034", "--ignore="
+            "python",
+            "-m",
+            "ruff",
+            "check",
+            "--select=W291,W292,W293,UP034",
+            "--ignore=",
         ]
 
     def test_gate2_imports_loads_from_yaml(self) -> None:
         """gate2_imports definition loads correctly from quality.yaml."""
         quality_yaml = Path(".st3/quality.yaml")
         config = QualityConfig.load(quality_yaml)
-        
+
         assert "gate2_imports" in config.gates
         gate = config.gates["gate2_imports"]
         assert gate.name == "Gate 2: Imports"
         assert gate.execution.command == [
-            "python", "-m", "ruff", "check",
-            "--select=PLC0415", "--ignore="
+            "python",
+            "-m",
+            "ruff",
+            "check",
+            "--select=PLC0415",
+            "--ignore=",
         ]
 
     def test_gate3_line_length_loads_from_yaml(self) -> None:
         """gate3_line_length definition loads correctly from quality.yaml."""
         quality_yaml = Path(".st3/quality.yaml")
         config = QualityConfig.load(quality_yaml)
-        
+
         assert "gate3_line_length" in config.gates
         gate = config.gates["gate3_line_length"]
         assert gate.name == "Gate 3: Line Length"
         assert gate.execution.command == [
-            "python", "-m", "ruff", "check",
-            "--select=E501", "--line-length=100", "--ignore="
+            "python",
+            "-m",
+            "ruff",
+            "check",
+            "--select=E501",
+            "--line-length=100",
+            "--ignore=",
         ]
 
     def test_active_gates_includes_ruff_gates(self) -> None:
         """active_gates list includes new Ruff-based gates."""
         quality_yaml = Path(".st3/quality.yaml")
         config = QualityConfig.load(quality_yaml)
-        
+
         assert "gate1_formatting" in config.active_gates
         assert "gate2_imports" in config.active_gates
         assert "gate3_line_length" in config.active_gates
@@ -510,7 +523,7 @@ class TestRuffGateDefinitions:
         """All Ruff gates use exit_code parsing strategy."""
         quality_yaml = Path(".st3/quality.yaml")
         config = QualityConfig.load(quality_yaml)
-        
+
         for gate_name in ["gate1_formatting", "gate2_imports", "gate3_line_length"]:
             gate = config.gates[gate_name]
             assert gate.parsing.strategy == "exit_code"

@@ -268,12 +268,7 @@ class QAManager:
             return True
         if len(cmd) >= 3 and cmd[0] == "python" and cmd[1] == "-m" and cmd[2] == "pytest":
             return True
-        return (
-            len(cmd) >= 3
-            and cmd[0] == sys.executable
-            and cmd[1] == "-m"
-            and cmd[2] == "pytest"
-        )
+        return len(cmd) >= 3 and cmd[0] == sys.executable and cmd[1] == "-m" and cmd[2] == "pytest"
 
     def _command_for_hints(self, gate: QualityGate, files: list[str]) -> str:
         parts = [*gate.execution.command, *files]

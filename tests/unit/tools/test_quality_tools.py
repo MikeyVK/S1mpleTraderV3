@@ -28,9 +28,7 @@ class TestRunQualityGatesTool:
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "overall_pass": True,
-            "gates": [
-                {"name": "pylint", "passed": True, "score": 10.0}
-            ]
+            "gates": [{"name": "pylint", "passed": True, "score": 10.0}],
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
@@ -56,11 +54,11 @@ class TestRunQualityGatesTool:
                             "line": 10,
                             "column": 4,
                             "code": "C0111",
-                            "message": "Missing docstring"
+                            "message": "Missing docstring",
                         }
-                    ]
+                    ],
                 }
-            ]
+            ],
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
@@ -84,7 +82,9 @@ class TestRunQualityGatesTool:
                     "passed": False,
                     "score": "Fail",
                     "issues": [{"message": "E501"}],
-                    "hints": ["Re-run: python -m ruff check --select=E501 --line-length=100 file.py"],
+                    "hints": [
+                        "Re-run: python -m ruff check --select=E501 --line-length=100 file.py"
+                    ],
                 }
             ],
         }
@@ -107,9 +107,9 @@ class TestRunQualityGatesTool:
                     "name": "check",
                     "passed": False,
                     "score": 0,
-                    "issues": [{}]  # Empty issue dict
+                    "issues": [{}],  # Empty issue dict
                 }
-            ]
+            ],
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)

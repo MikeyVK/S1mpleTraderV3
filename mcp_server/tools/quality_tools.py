@@ -1,4 +1,5 @@
 """Quality tools."""
+
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -10,6 +11,7 @@ from mcp_server.tools.tool_result import ToolResult
 
 class RunQualityGatesInput(BaseModel):
     """Input for RunQualityGatesTool."""
+
     files: list[str] = Field(..., description="List of files to check")
 
 
@@ -40,24 +42,24 @@ class RunQualityGatesTool(BaseTool):
 
         text = "Quality Gates Results:\n"
         text += f"Overall Pass: {result['overall_pass']}\n"
-        for gate in result['gates']:
-            status = "✅" if gate['passed'] else "❌"
+        for gate in result["gates"]:
+            status = "✅" if gate["passed"] else "❌"
             text += f"\n{status} {gate['name']}: {gate['score']}\n"
-            if not gate['passed'] and gate.get('issues'):
+            if not gate["passed"] and gate.get("issues"):
                 text += "  Issues:\n"
-                for issue in gate['issues']:
+                for issue in gate["issues"]:
                     loc = (
                         f"{issue.get('file', 'unknown')}:"
                         f"{issue.get('line', '?')}:"
                         f"{issue.get('column', '?')}"
                     )
-                    code = f"[{issue.get('code', 'MISC')}] " if 'code' in issue else ""
-                    msg = issue.get('message', 'Unknown issue')
+                    code = f"[{issue.get('code', 'MISC')}] " if "code" in issue else ""
+                    msg = issue.get("message", "Unknown issue")
                     text += f"  - {loc} {code}{msg}\n"
 
-            if not gate['passed'] and gate.get('hints'):
+            if not gate["passed"] and gate.get("hints"):
                 text += "  Hints:\n"
-                for hint in gate['hints']:
+                for hint in gate["hints"]:
                     text += f"  - {hint}\n"
 
         return ToolResult.text(text)

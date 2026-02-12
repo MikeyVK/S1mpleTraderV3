@@ -172,15 +172,13 @@ class GateScope(BaseModel):
 
             # Include matching
             if include_patterns and not any(
-                PurePosixPath(posix_path).match(pattern)
-                for pattern in include_patterns
+                PurePosixPath(posix_path).match(pattern) for pattern in include_patterns
             ):
                 continue  # Skip if not in include list
 
             # Exclude matching
             if exclude_patterns and any(
-                PurePosixPath(posix_path).match(pattern)
-                for pattern in exclude_patterns
+                PurePosixPath(posix_path).match(pattern) for pattern in exclude_patterns
             ):
                 continue  # Skip if in exclude list
             filtered.append(file_path)
@@ -227,8 +225,7 @@ class QualityConfig(BaseModel):
 
     version: str = Field(..., min_length=1)
     active_gates: list[str] = Field(
-        default_factory=list,
-        description="List of active gate names to execute from gates catalog"
+        default_factory=list, description="List of active gate names to execute from gates catalog"
     )
     gates: dict[str, QualityGate] = Field(..., min_length=1)
 
