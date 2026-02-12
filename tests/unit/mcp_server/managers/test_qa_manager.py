@@ -397,6 +397,83 @@ class TestExecuteGate:
             assert "file2.py" in called_cmd
 
 
+
+
+class TestArtifactLogging:
+    """Test artifact log writing for failed gates (Cycle 5)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    @pytest.fixture
+    def mock_gate(self) -> QualityGate:
+        return QualityGate.model_validate(
+            {
+                "name": "TestGate",
+                "description": "Test gate",
+                "execution": {
+                    "command": ["test_tool", "--check"],
+                    "timeout_seconds": 60,
+                    "working_dir": None,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+
+    def test_execute_gate_failure_writes_artifact_log(
+        self, manager: QAManager, mock_gate: QualityGate, tmp_path: Path
+    ) -> None:
+        """Test failed gate writes JSON artifact log to qa_logs."""
+        with (
+            patch.object(QAManager, "QA_LOG_DIR", tmp_path / "qa_logs"),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = "lint fail"
+            mock_proc.stderr = "details"
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
+
+            assert result["passed"] is False
+            assert "artifact_path" in result
+            artifact_file = Path(result["artifact_path"])
+            assert artifact_file.exists(), f"Artifact not found: {artifact_file}"
+
+            payload = json.loads(artifact_file.read_text(encoding="utf-8"))
+            assert payload["gate_number"] == 1
+            assert payload["gate_name"] == "TestGate"
+            assert payload["passed"] is False
+            assert "issues" in payload
+            assert "output" in payload
+
+    def test_execute_gate_success_does_not_write_artifact_log(
+        self, manager: QAManager, mock_gate: QualityGate, tmp_path: Path
+    ) -> None:
+        """Test passing gate does not create artifact log."""
+        with (
+            patch.object(QAManager, "QA_LOG_DIR", tmp_path / "qa_logs"),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_proc = MagicMock()
+            mock_proc.returncode = 0
+            mock_proc.stdout = ""
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(mock_gate, ["test.py"], gate_number=1)
+
+            assert result["passed"] is True
+            assert "artifact_path" not in result
+            assert not (tmp_path / "qa_logs").exists()
 class TestRuffGateExecution:
     """Test suite for Ruff gate execution via _execute_gate (Cycle 3)."""
 
