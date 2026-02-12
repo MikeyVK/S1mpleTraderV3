@@ -47,9 +47,9 @@ Gates are executed in the order of `active_gates`. Each gate definition provides
 
 #### Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `files` | `list[str]` | **Yes** | List of file paths to check (relative or absolute) |
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `files` | `list[str]` | No | `[]` | List of file paths. `[]` = repo-scoped mode (run ALL gates including pytest). `[...]` = file-specific mode (skip pytest gates). |
 
 #### Returns
 
@@ -72,22 +72,28 @@ Gates are executed in the order of `active_gates`. Each gate definition provides
       "issues": []
     }
   ]
+```
+
+**Notes:**
+- `hints` (optional): when a gate fails, it may include `hints: list[str]` with targeted, actionable next-step guidance (primarily intended for automated agents).
+
+#### Example Usage
+
+**Repo-scoped mode (run ALL gates including pytest):**
+```json
+{
+  "files": []
 }
 ```
 
-
-Notes:
-- `hints` (optional): when a gate fails, it may include `hints: list[str]` with targeted, actionable next-step guidance (primarily intended for automated agents).
-#### Example Usage
-
-**Single file:**
+**Single file (file-specific mode):**
 ```json
 {
   "files": ["backend/dtos/user.py"]
 }
 ```
 
-**Multiple files:**
+**Multiple files (file-specific mode):**
 ```json
 {
   "files": [
@@ -98,13 +104,25 @@ Notes:
 }
 ```
 
+#### Execution Modes
+
+**Repo-scoped mode (`files=[]`):**
+- Runs **ALL** configured gates including pytest (Gate 5: Tests, Gate 6: Coverage)
+- Used for full repository validation before merge/deploy
+- No file existence validation
+- Example: Pre-commit hook, CI/CD pipelines
+
+**File-specific mode (`files=[...]`):**
+- Runs only file-based gates (Ruff formatting, linting, type checking)
+- **Skips** pytest gates (Gate 5 & 6) - not applicable to individual files
+- Validates file existence and filters to `.py` files
+- Example: IDE save hooks, targeted file validation
+
 #### Behavior Notes
 
 - Gates executed in the order of `active_gates` from [.st3/quality.yaml](../../../../.st3/quality.yaml)
 - `.py` filtering: non-Python inputs are reported as skipped
-- Scope filtering: when `scope` is present, include/exclude globs apply
-- Repo-scoped gates: some tools (e.g., pytest) can ignore file lists and run against configured targets
-
+- Scope filtering: when `scope` is present, include/exclude globs apply per-gate
 #### Quality Gate Configuration
 
 From [.st3/quality.yaml](../../../../.st3/quality.yaml):

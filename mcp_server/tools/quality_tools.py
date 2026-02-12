@@ -12,14 +12,17 @@ from mcp_server.tools.tool_result import ToolResult
 class RunQualityGatesInput(BaseModel):
     """Input for RunQualityGatesTool."""
 
-    files: list[str] = Field(..., description="List of files to check")
+    files: list[str] = Field(
+        default=[],
+        description="List of files to check. Empty list [] = repo-scoped mode (run ALL gates including pytest). Populated list = file-specific mode (skip pytest gates)."
+    )
 
 
 class RunQualityGatesTool(BaseTool):
     """Tool to run quality gates."""
 
     name = "run_quality_gates"
-    description = "Run quality gates on files"
+    description = "Run quality gates. Use files=[] for repo-scoped mode (all gates), files=[...] for file-specific mode (skip pytest gates)."
     args_model = RunQualityGatesInput
 
     def __init__(self, manager: QAManager | None = None) -> None:
@@ -35,8 +38,8 @@ class RunQualityGatesTool(BaseTool):
     async def execute(self, params: RunQualityGatesInput) -> ToolResult:
         """Execute quality gates."""
         files = params.files
-        if not files:
-            return ToolResult.text("❌ No files provided")
+        # Note: files=[] (empty list) triggers repo-scoped mode (run ALL gates including pytest)
+        # files=[...] (populated list) triggers file-specific mode (skip pytest gates)
 
         result = self.manager.run_quality_gates(files)
 
