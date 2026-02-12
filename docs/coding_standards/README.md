@@ -43,7 +43,7 @@ Learn the RED → GREEN → REFACTOR cycle with Git integration.
 
 **Quality Gates - Pre-Merge Checklist**
 
-The 6 mandatory quality gates that all code must pass.
+The 7 mandatory quality gates that all code must pass.
 
 **Topics:**
 - Gate 0: Ruff formatting (ruff format --check)

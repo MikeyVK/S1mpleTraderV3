@@ -2,7 +2,7 @@
 
 ## Overview
 
-All code in S1mpleTrader V3 must pass **7 mandatory quality gates** before merging to main. Each gate checks specific aspects of code quality and must score **10.00/10**.
+All code in S1mpleTrader V3 must pass **7 mandatory quality gates** before merging to main. Each gate must **pass** (exit code 0) to ensure code quality and consistency.
 
 ## Configuration Doctrine: IDE vs CI
 
@@ -47,12 +47,13 @@ Every DTO implementation must pass all gates for **both** the DTO file and its t
 
 ```powershell
 # Check formatting (no changes written)
-python -m ruff format --check --diff --line-length=100 backend/dtos/strategy/my_dto.py
-python -m ruff format --check --diff --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
+python -m ruff format --isolated --check --diff --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --isolated --check --diff --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
 
 # Apply formatting (writes changes)
-python -m ruff format --line-length=100 backend/dtos/strategy/my_dto.py
-python -m ruff format --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
+python -m ruff format --isolated --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --isolated --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
+
 ```
 
 **Expected:** `Pass` (exit code 0)
@@ -204,8 +205,8 @@ Complete workflow for a new DTO:
 
 ```powershell
 # Step 1: Apply formatting (writes changes)
-python -m ruff format --line-length=100 backend/dtos/strategy/my_dto.py
-python -m ruff format --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
+python -m ruff format --isolated --line-length=100 backend/dtos/strategy/my_dto.py
+python -m ruff format --isolated --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
 
 # Step 2: Run lint gates
 python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/dtos/strategy/my_dto.py
@@ -229,7 +230,7 @@ Check all modified files at once:
 ```powershell
 # Find all modified Python files
 git diff --name-only | Where-Object { $_ -like "*.py" } | ForEach-Object {
-    python -m ruff format --check --diff --line-length=100 $_
+    python -m ruff format --isolated --check --diff --line-length=100 $_
     python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 $_
     python -m ruff check --isolated --select=PLC0415 --target-version=py311 $_
     python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 $_
@@ -374,8 +375,7 @@ def _artifact_manager(
 - ❌ Import grouping violations (see [CODE_STYLE.md](CODE_STYLE.md))
 
 **ACCEPT only when:**
-
-- ✅ All pylint checks at 10.00/10
+- ✅ All quality gates pass (exit code 0)
 - ✅ All tests green (no skips)
 - ✅ Type hints complete
 - ✅ Docstrings present (module + public methods)
