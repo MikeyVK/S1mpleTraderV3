@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import platform
+import shutil
 import subprocess
 import sys
 import time
@@ -463,6 +465,38 @@ class QAManager:
             "details": details,
         }
 
+    def _collect_environment_metadata(self, cmd: list[str]) -> dict[str, str]:
+        """Collect environment metadata for command reproducibility.
+
+        Returns a dict with python_version, tool_path, platform, and
+        optionally tool_version (best-effort via ``--version``).
+        """
+        executable = cmd[0] if cmd else ""
+        tool_path = shutil.which(executable) or ""
+
+        env: dict[str, str] = {
+            "python_version": platform.python_version(),
+            "tool_path": tool_path,
+            "platform": platform.platform(),
+        }
+
+        # Best-effort tool version: try ``<executable> --version``
+        try:
+            ver_proc = subprocess.run(
+                [executable, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            version_line = (ver_proc.stdout or ver_proc.stderr or "").strip().splitlines()
+            if version_line:
+                env["tool_version"] = version_line[0]
+        except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+            pass
+
+        return env
+
     def _cleanup_artifact_logs(self) -> None:
         """Keep only the newest artifact logs to avoid unbounded growth."""
         if not self.qa_log_dir.exists():
@@ -552,6 +586,7 @@ class QAManager:
                 "args": cmd[1:] if len(cmd) > 1 else [],
                 "cwd": gate.execution.working_dir,
                 "exit_code": proc.returncode,
+                "environment": self._collect_environment_metadata(cmd),
             }
 
             combined_output = (proc.stdout or "") + (proc.stderr or "")
@@ -671,6 +706,10 @@ class QAManager:
             artifact_path = self._write_artifact_log(gate_number, gate.name, cmd, files, result)
             if artifact_path is not None:
                 result["artifact_path"] = artifact_path
+                # Provide escape hatch to full logs when output was truncated
+                output_dict = result.get("output")
+                if isinstance(output_dict, dict) and output_dict.get("truncated"):
+                    output_dict["full_log_path"] = artifact_path
 
         if gate_id and not result["passed"]:
             result["hints"] = self._gate_hints(gate_id, gate, files)

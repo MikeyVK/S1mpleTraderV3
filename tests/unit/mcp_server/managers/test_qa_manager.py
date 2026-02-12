@@ -392,8 +392,9 @@ class TestExecuteGate:
 
             manager._execute_gate(mock_gate, ["file1.py", "file2.py"], gate_number=1)
 
-            # Verify command includes files
-            called_cmd = mock_run.call_args[0][0]
+            # Verify first subprocess call (gate execution) includes files
+            # (subsequent calls may be --version probes from environment metadata)
+            called_cmd = mock_run.call_args_list[0][0][0]
             assert "file1.py" in called_cmd
             assert "file2.py" in called_cmd
 
@@ -597,7 +598,7 @@ class TestRuffGateExecution:
 
             manager._execute_gate(gate1_formatting, ["test.py"], gate_number=1)
 
-            cmd = mock_run.call_args[0][0]
+            cmd = mock_run.call_args_list[0][0][0]
             # Note: QAManager replaces 'python' with full venv path
             assert any("python" in str(part).lower() for part in cmd)
             assert "-m" in cmd
@@ -620,7 +621,7 @@ class TestRuffGateExecution:
 
             manager._execute_gate(gate2_imports, ["test.py"], gate_number=2)
 
-            cmd = mock_run.call_args[0][0]
+            cmd = mock_run.call_args_list[0][0][0]
             assert "--select=PLC0415" in cmd
 
     def test_gate3_line_length_command_construction(
@@ -636,7 +637,7 @@ class TestRuffGateExecution:
 
             manager._execute_gate(gate3_line_length, ["test.py"], gate_number=3)
 
-            cmd = mock_run.call_args[0][0]
+            cmd = mock_run.call_args_list[0][0][0]
             assert "--select=E501" in cmd
             assert "--line-length=100" in cmd
 
@@ -746,7 +747,7 @@ class TestPytestJsonReportFeatureDetection:
             mock_run.return_value = mock_proc
 
             manager._execute_gate(pytest_gate, [], gate_number=5)
-            called_cmd = mock_run.call_args[0][0]
+            called_cmd = mock_run.call_args_list[0][0][0]
             assert "--json-report" in called_cmd
             assert "--json-report-file=none" not in called_cmd
 
@@ -764,7 +765,7 @@ class TestPytestJsonReportFeatureDetection:
             mock_run.return_value = mock_proc
 
             manager._execute_gate(pytest_gate, [], gate_number=5)
-            called_cmd = mock_run.call_args[0][0]
+            called_cmd = mock_run.call_args_list[0][0][0]
             assert "--json-report" not in called_cmd
             assert "--json-report-file=none" not in called_cmd
 
@@ -1538,7 +1539,7 @@ class TestDurationAndCommandMetadata:
             assert result["duration_ms"] >= 0
 
     def test_execute_gate_has_command_metadata(self, manager: QAManager) -> None:
-        """Test _execute_gate result includes command dict with executable, args, cwd, exit_code."""
+        """Test _execute_gate result includes command dict with environment."""
         gate = QualityGate.model_validate(
             {
                 "name": "CommandTest",
@@ -1572,6 +1573,13 @@ class TestDurationAndCommandMetadata:
             assert "cwd" in cmd
             assert "exit_code" in cmd
             assert cmd["exit_code"] == 0
+
+            # Environment sub-dict for reproducibility (Improvement B)
+            assert "environment" in cmd
+            env = cmd["environment"]
+            assert "python_version" in env
+            assert "platform" in env
+            assert "tool_path" in env
 
     def test_timeout_does_not_have_command_metadata(self, manager: QAManager) -> None:
         """Test timeout scenario does not crash (no command metadata expected)."""
@@ -1871,6 +1879,131 @@ class TestToolResultJsonData:
 
         parsed = json.loads(result.content[1]["text"])
         assert parsed == data
+
+
+class TestEnvironmentMetadata:
+    """Test _collect_environment_metadata for reproducibility (Improvement B)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def test_returns_python_version_and_platform(self, manager: QAManager) -> None:
+        """Test environment always includes python_version and platform."""
+        env = manager._collect_environment_metadata(["python", "-m", "ruff"])
+
+        assert "python_version" in env
+        assert env["python_version"]  # non-empty
+        assert "platform" in env
+        assert env["platform"]  # non-empty
+
+    def test_resolves_tool_path_via_which(self, manager: QAManager) -> None:
+        """Test tool_path is resolved via shutil.which."""
+        with patch("shutil.which", return_value="/usr/bin/python"):
+            env = manager._collect_environment_metadata(["python"])
+            assert env["tool_path"] == "/usr/bin/python"
+
+    def test_tool_path_empty_when_not_found(self, manager: QAManager) -> None:
+        """Test tool_path is empty string when executable not on PATH."""
+        with patch("shutil.which", return_value=None):
+            env = manager._collect_environment_metadata(["nonexistent_tool"])
+            assert env["tool_path"] == ""
+
+    def test_tool_version_collected_on_success(self, manager: QAManager) -> None:
+        """Test tool_version is set when --version succeeds."""
+        mock_proc = MagicMock()
+        mock_proc.stdout = "ruff 0.9.7\n"
+        mock_proc.stderr = ""
+
+        with patch("subprocess.run", return_value=mock_proc):
+            env = manager._collect_environment_metadata(["ruff"])
+            assert env.get("tool_version") == "ruff 0.9.7"
+
+    def test_tool_version_absent_on_failure(self, manager: QAManager) -> None:
+        """Test tool_version is not set when --version fails."""
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            env = manager._collect_environment_metadata(["nonexistent"])
+            assert "tool_version" not in env
+
+    def test_empty_command_is_safe(self, manager: QAManager) -> None:
+        """Test _collect_environment_metadata handles empty command list."""
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            env = manager._collect_environment_metadata([])
+            assert "python_version" in env
+            assert env["tool_path"] == ""
+
+
+class TestTruncationFullLogPath:
+    """Test full_log_path escape hatch on truncated output (Improvement C)."""
+
+    @pytest.fixture
+    def manager(self) -> QAManager:
+        return QAManager()
+
+    def test_full_log_path_set_when_output_truncated(self, manager: QAManager) -> None:
+        """Test output.full_log_path points to artifact when output is truncated."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "TruncGate",
+                "description": "Truncation test",
+                "execution": {"command": ["tool"], "timeout_seconds": 60},
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        # Generate stdout that exceeds truncation limits (>50 lines)
+        long_stdout = "\n".join(f"error line {i}" for i in range(100))
+
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = long_stdout
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["f.py"], gate_number=99)
+
+            assert result["passed"] is False
+            output = result.get("output", {})
+            assert output.get("truncated") is True
+
+            # full_log_path should reference artifact when truncated
+            if "artifact_path" in result:
+                assert output.get("full_log_path") == result["artifact_path"]
+
+    def test_no_full_log_path_when_not_truncated(self, manager: QAManager) -> None:
+        """Test output has no full_log_path when output is NOT truncated."""
+        gate = QualityGate.model_validate(
+            {
+                "name": "ShortGate",
+                "description": "Short output",
+                "execution": {"command": ["tool"], "timeout_seconds": 60},
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
+        with patch("subprocess.run") as mock_run:
+            mock_proc = MagicMock()
+            mock_proc.returncode = 1
+            mock_proc.stdout = "short error output"
+            mock_proc.stderr = ""
+            mock_run.return_value = mock_proc
+
+            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
+
+            output = result.get("output", {})
+            assert output.get("truncated") is False
+            assert "full_log_path" not in output
 
 
 class TestPytestJsonReportFlag:
