@@ -11,6 +11,9 @@ from typing import Any, cast
 
 from mcp_server.config.quality_config import QualityConfig, QualityGate
 
+MAX_OUTPUT_LINES = 50
+MAX_OUTPUT_BYTES = 5120
+
 
 def _venv_script_path(script_name: str) -> str:
     """Return a best-effort path to a venv script.
@@ -357,6 +360,52 @@ class QAManager:
 
         return hints
 
+    def _truncate_output_text(self, text: str) -> tuple[str, bool]:
+        """Truncate output text by line and byte limits."""
+        if not text:
+            return "", False
+
+        truncated = False
+        lines = text.splitlines()
+
+        if len(lines) > MAX_OUTPUT_LINES:
+            lines = lines[:MAX_OUTPUT_LINES]
+            truncated = True
+
+        trimmed = "\n".join(lines).strip()
+        encoded = trimmed.encode("utf-8")
+        if len(encoded) > MAX_OUTPUT_BYTES:
+            trimmed = encoded[:MAX_OUTPUT_BYTES].decode("utf-8", errors="ignore").rstrip()
+            truncated = True
+
+        return trimmed, truncated
+
+    def _build_output_capture(self, stdout: str, stderr: str) -> dict[str, Any]:
+        """Build structured output capture with truncation metadata."""
+        stdout_text, stdout_truncated = self._truncate_output_text(stdout)
+        stderr_text, stderr_truncated = self._truncate_output_text(stderr)
+
+        is_truncated = stdout_truncated or stderr_truncated
+        details_parts: list[str] = []
+        if stdout_text:
+            details_parts.append(f"stdout:\n{stdout_text}")
+        if stderr_text:
+            details_parts.append(f"stderr:\n{stderr_text}")
+
+        details = "\n\n".join(details_parts) if details_parts else "No output captured"
+        if is_truncated:
+            details = (
+                f"{details}\n\n[truncated to {MAX_OUTPUT_LINES} lines / "
+                f"{MAX_OUTPUT_BYTES} bytes per stream]"
+            )
+
+        return {
+            "stdout": stdout_text,
+            "stderr": stderr_text,
+            "truncated": is_truncated,
+            "details": details,
+        }
+
     def _execute_gate(
         self, gate: QualityGate, files: list[str], gate_number: int, gate_id: str | None = None
     ) -> dict[str, Any]:
@@ -401,20 +450,30 @@ class QAManager:
                             f"{len(parsed_issues)} violations, {fixable_count} auto-fixable"
                         )
                         result["issues"] = parsed_issues
+                        result["output"] = self._build_output_capture(
+                            proc.stdout or "", proc.stderr or ""
+                        )
                     elif proc.returncode in ok_codes:
                         # No violations, exit code OK - gate passes
-                        result["passed"] = True
                         result["score"] = "Pass"
+                        result["passed"] = True
                         result["issues"] = []
                     else:
                         # JSON parsing failed but exit code indicates error
                         result["passed"] = False
                         result["score"] = f"Fail (exit={proc.returncode})"
-                        preview = "\n".join(combined_output.splitlines()[:50]).strip()
+                        output_capture = self._build_output_capture(
+                            proc.stdout or "", proc.stderr or ""
+                        )
+                        result["output"] = {
+                            "stdout": output_capture["stdout"],
+                            "stderr": output_capture["stderr"],
+                            "truncated": output_capture["truncated"],
+                        }
                         result["issues"] = [
                             {
                                 "message": f"Gate failed with exit code {proc.returncode}",
-                                "details": preview or "No output captured",
+                                "details": output_capture["details"],
                             }
                         ]
                 else:
@@ -426,11 +485,18 @@ class QAManager:
                     else:
                         result["passed"] = False
                         result["score"] = f"Fail (exit={proc.returncode})"
-                        preview = "\n".join(combined_output.splitlines()[:50]).strip()
+                        output_capture = self._build_output_capture(
+                            proc.stdout or "", proc.stderr or ""
+                        )
+                        result["output"] = {
+                            "stdout": output_capture["stdout"],
+                            "stderr": output_capture["stderr"],
+                            "truncated": output_capture["truncated"],
+                        }
                         result["issues"] = [
                             {
                                 "message": f"Gate failed with exit code {proc.returncode}",
-                                "details": preview or "No output captured",
+                                "details": output_capture["details"],
                             }
                         ]
 
@@ -450,11 +516,18 @@ class QAManager:
                     result["score"] = "Pass"
                 else:
                     result["passed"] = False
-                    preview = "\n".join(combined_output.splitlines()[:50]).strip()
+                    output_capture = self._build_output_capture(
+                        proc.stdout or "", proc.stderr or ""
+                    )
+                    result["output"] = {
+                        "stdout": output_capture["stdout"],
+                        "stderr": output_capture["stderr"],
+                        "truncated": output_capture["truncated"],
+                    }
                     result["issues"] = [
                         {
                             "message": f"Gate failed with exit code {proc.returncode}",
-                            "details": preview or "No output captured",
+                            "details": output_capture["details"],
                         }
                     ]
                     result["score"] = f"Fail (exit={proc.returncode})"

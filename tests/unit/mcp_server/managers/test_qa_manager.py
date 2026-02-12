@@ -331,7 +331,6 @@ class TestExecuteGate:
             assert result["passed"] is False
             assert len(result["issues"]) > 0
 
-
     def test_execute_gate_failure_captures_and_truncates_output(
         self, manager: QAManager, mock_gate: QualityGate
     ) -> None:
@@ -361,6 +360,7 @@ class TestExecuteGate:
             assert "stdout:" in issue_details
             assert "stderr:" in issue_details
             assert "truncated" in issue_details.lower()
+
     def test_execute_gate_timeout(self, manager: QAManager, mock_gate: QualityGate) -> None:
         """Test _execute_gate handles subprocess timeout."""
         with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(["test_tool"], 60)):
