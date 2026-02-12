@@ -9,6 +9,7 @@ active_gates:
   - gate2_imports
   - gate3_line_length
   - gate4_types
+  - gate4_pyright
   - gate5_tests
   - gate6_coverage
 
@@ -145,6 +146,44 @@ gates:
         - "backend/dtos/**/*.py"
       exclude_globs:
         - "tests/**/*.py"
+  # Gate 4b: Type Checking (Pyright)
+  gate4_pyright:
+    name: "Gate 4b: Pyright"
+    description: "Type checking (Pyright strict; warnings fail)"
+    execution:
+      command:
+        [
+          "python",
+          "-m",
+          "pyright",
+          "--project",
+          "pyrightconfig.json",
+          "--pythonversion",
+          "3.11",
+          "--pythonplatform",
+          "Windows",
+          "--level",
+          "warning",
+          "--warnings",
+          "--outputjson"
+        ]
+      timeout_seconds: 120
+      working_dir: null
+    parsing:
+      strategy: "json_field"
+      fields:
+        diagnostics: "/generalDiagnostics"
+        error_count: "/summary/errorCount"
+      diagnostics_path: "/generalDiagnostics"
+    success:
+      mode: "json_field"
+      max_errors: 0
+      require_no_issues: true
+    capabilities:
+      file_types: [".py"]
+      supports_autofix: false
+      produces_json: true
+
   # Gate 5: Unit Tests (Pytest)
   gate5_tests:
     name: "Gate 5: Tests"
@@ -182,52 +221,6 @@ gates:
       produces_json: false
 
   # === LEGACY GATES (Deprecated - kept for reference) ===
-
-  pylint:
-    name: "Linting"
-    description: "Python linting"
-    execution:
-      command: ["python", "-m", "pylint", "--enable=all", "--disable=duplicate-code,redefined-outer-name", "--max-line-length=100", "--output-format=text"]
-      timeout_seconds: 60
-      working_dir: null
-    parsing:
-      strategy: "text_regex"
-      patterns:
-        - name: "rating"
-          regex: "Your code has been rated at ([\\d.]+)/10"
-          flags: ["MULTILINE"]
-          group: 1
-          required: true
-    success:
-      mode: "text_regex"
-      min_score: 10.0
-      require_no_issues: true
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: false
-      produces_json: false
-
-  pyright:
-    name: "Pyright"
-    description: "Type checking"
-    execution:
-      command: ["python", "-m", "pyright", "--project", "pyrightconfig.json", "--outputjson"]
-      timeout_seconds: 120
-      working_dir: null
-    parsing:
-      strategy: "json_field"
-      fields:
-        diagnostics: "/generalDiagnostics"
-        error_count: "/summary/errorCount"
-      diagnostics_path: "/generalDiagnostics"
-    success:
-      mode: "json_field"
-      max_errors: 0
-      require_no_issues: true
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: false
-      produces_json: true
 
   ruff:
     name: "Ruff"

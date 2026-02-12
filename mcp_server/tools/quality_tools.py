@@ -14,7 +14,11 @@ class RunQualityGatesInput(BaseModel):
 
     files: list[str] = Field(
         default=[],
-        description="List of files to check. Empty list [] = project-level test validation (pytest/coverage only, Gates 5-6). Populated list = file-specific validation (static analysis Gates 0-4, skip pytest)."
+        description=(
+            "List of files to check. Empty list [] = project-level test validation "
+            "(pytest/coverage only, Gates 5-6). Populated list = file-specific validation "
+            "(static analysis Gates 0-4, skip pytest)."
+        ),
     )
 
 
@@ -22,7 +26,10 @@ class RunQualityGatesTool(BaseTool):
     """Tool to run quality gates."""
 
     name = "run_quality_gates"
-    description = "Run quality gates. Use files=[] for project-level test validation (pytest/coverage), files=[...] for file-specific validation (static analysis on specified files)."
+    description = (
+        "Run quality gates. Use files=[] for project-level test validation (pytest/coverage), "
+        "files=[...] for file-specific validation (static analysis on specified files)."
+    )
     args_model = RunQualityGatesInput
 
     def __init__(self, manager: QAManager | None = None) -> None:

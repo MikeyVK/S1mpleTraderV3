@@ -38,9 +38,17 @@ def _pyright_script_name() -> str:
 class QAManager:
     """Manager for quality assurance and gates."""
 
+    # Default configuration (UPPERCASE constants for test mocking compatibility)
     QA_LOG_DIR = Path("temp/qa_logs")
     QA_LOG_ENABLED = True
     QA_LOG_MAX_FILES = DEFAULT_ARTIFACT_LOG_MAX_FILES
+
+    def __init__(self) -> None:
+        """Initialize QA Manager with default runtime configuration."""
+        # Runtime configuration (lowercase for instance mutability)
+        self.qa_log_dir = self.QA_LOG_DIR
+        self.qa_log_enabled = self.QA_LOG_ENABLED
+        self.qa_log_max_files = self.QA_LOG_MAX_FILES
 
     def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
         """Filter Python files and generate pre-gate issues for non-Python files.
@@ -148,9 +156,9 @@ class QAManager:
 
         quality_config = QualityConfig.load()
         # Apply artifact logging config (config-first with safe defaults)
-        self.QA_LOG_ENABLED = quality_config.artifact_logging.enabled
-        self.QA_LOG_DIR = Path(quality_config.artifact_logging.output_dir)
-        self.QA_LOG_MAX_FILES = quality_config.artifact_logging.max_files
+        self.qa_log_enabled = quality_config.artifact_logging.enabled
+        self.qa_log_dir = Path(quality_config.artifact_logging.output_dir)
+        self.qa_log_max_files = quality_config.artifact_logging.max_files
 
         if not quality_config.active_gates:
             self._update_summary_and_append_gate(
@@ -433,16 +441,16 @@ class QAManager:
 
     def _cleanup_artifact_logs(self) -> None:
         """Keep only the newest artifact logs to avoid unbounded growth."""
-        if not self.QA_LOG_DIR.exists():
+        if not self.qa_log_dir.exists():
             return
 
         artifacts = sorted(
-            self.QA_LOG_DIR.glob("*.json"),
+            self.qa_log_dir.glob("*.json"),
             key=lambda path: path.stat().st_mtime,
             reverse=True,
         )
 
-        for stale_file in artifacts[self.QA_LOG_MAX_FILES :]:
+        for stale_file in artifacts[self.qa_log_max_files :]:
             stale_file.unlink(missing_ok=True)
 
     def _write_artifact_log(
@@ -454,14 +462,14 @@ class QAManager:
         result: dict[str, Any],
     ) -> str | None:
         """Write failed gate diagnostics to configured JSON artifact directory."""
-        if not self.QA_LOG_ENABLED:
+        if not self.qa_log_enabled:
             return None
 
         try:
-            self.QA_LOG_DIR.mkdir(parents=True, exist_ok=True)
+            self.qa_log_dir.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
             safe_gate_name = gate_name.lower().replace(" ", "_").replace(":", "")
-            artifact_path = self.QA_LOG_DIR / f"{timestamp}_gate{gate_number}_{safe_gate_name}.json"
+            artifact_path = self.qa_log_dir / f"{timestamp}_gate{gate_number}_{safe_gate_name}.json"
             payload = {
                 "timestamp": timestamp,
                 "gate_number": gate_number,
