@@ -45,10 +45,10 @@ addopts = [
     "-v",
     "--strict-markers",
     "--tb=short",
-    "--cov=backend",
-    "--cov-report=term-missing",
-    "--cov-report=html",
 ]
+# Coverage decoupled from default pytest runs per TODO 6 (Issue #131)
+# Coverage is enforced separately via Gate 6 (branch coverage >= 90%)
+# To run with coverage: pytest --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90
 markers = [
     "integration: Integration tests requiring real dependencies",
     "slow: Tests that take more than 5 seconds to complete",

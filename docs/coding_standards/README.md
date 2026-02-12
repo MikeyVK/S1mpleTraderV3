@@ -123,7 +123,7 @@ Comprehensive style guide for Python code in S1mpleTrader V3.
 3. **RED phase:** Write failing tests, commit
 4. **GREEN phase:** Minimal implementation, commit
 5. **REFACTOR phase:** Quality improvements, commit
-6. **Check:** [QUALITY_GATES.md](QUALITY_GATES.md) - Run all 5 gates
+6. **Check:** [QUALITY_GATES.md](QUALITY_GATES.md) - Run all 7 gates
 7. **Merge:** [GIT_WORKFLOW.md](GIT_WORKFLOW.md) - Merge to main
 
 ### Fixing Quality Gate Failures
@@ -157,11 +157,18 @@ All code must meet these standards before merge:
 
 | Gate | Check | Target | Tool |
 |------|-------|--------|------|
-| 1 | Whitespace & Parens | 10/10 | `pylint --enable=trailing-whitespace,superfluous-parens` |
-| 2 | Import Placement | 10/10 | `pylint --enable=import-outside-toplevel` |
-| 3 | Line Length | 10/10 | `pylint --enable=line-too-long --max-line-length=100` |
-| 4 | Type Checking | 0 errors | `mypy --strict` (DTOs only) |
+| 0 | Formatting | Pass | `ruff format --check --isolated` |
+| 1 | Strict Lint | Pass | `ruff check --isolated` (stricter than IDE) |
+| 2 | Import Placement | Pass | `ruff check --isolated --select=PLC0415` |
+| 3 | Line Length | Pass | `ruff check --isolated --select=E501` (max 100 chars) |
+| 4 | Type Checking | 0 errors | `mypy --strict` (DTOs only: `backend/dtos/**/*.py`) |
 | 5 | Tests Passing | 100% | `pytest` |
+| 6 | Code Coverage | >= 90% | `pytest --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90` |
+
+**Configuration Doctrine:**
+- **`pyproject.toml`** = IDE baseline (pragmatic, for VS Code/PyCharm)
+- **`.st3/quality.yaml`** = CI authority (strict, gates use `--isolated`)
+- See [QUALITY_GATES.md](QUALITY_GATES.md) for complete details and exact commands
 
 ## Key Principles
 

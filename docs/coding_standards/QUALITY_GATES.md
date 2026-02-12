@@ -2,11 +2,44 @@
 
 ## Overview
 
-All code in S1mpleTrader V3 must pass **6 mandatory quality gates** before merging to main. Each gate checks specific aspects of code quality and must score **10.00/10**.
+All code in S1mpleTrader V3 must pass **7 mandatory quality gates** before merging to main. Each gate checks specific aspects of code quality and must score **10.00/10**.
+
+## Configuration Doctrine: IDE vs CI
+
+**Two-tier quality enforcement strategy:**
+
+1. **`pyproject.toml`** = **IDE Baseline** (Pragmatic)
+   - Used by VS Code, PyCharm, and local Ruff/Mypy runs
+   - Balanced for developer productivity
+   - May have pragmatic ignores for known false positives
+
+2. **`.st3/quality.yaml`** = **CI Authority** (Strict)
+   - Used by quality gates in CI/CD pipelines
+   - Stricter enforcement before merge
+   - Ruff gates use `--isolated` flag to ignore IDE config
+   - Final arbiter for pull request approval
+
+3. **Gates apply to production AND test code**
+   - All Python files in `backend/`, `mcp_server/`, and `tests/` must pass
+   - Tests held to same quality bar as production code
+
+4. **Ruff `--isolated` mode in CI**
+   - Gates 0-3 run with `--isolated` to prevent inheriting IDE ignores
+   - Ensures deterministic, strict enforcement independent of local settings
+
+**Result:** Developers get helpful local feedback, while CI enforces non-negotiable quality standards.
 
 ## Gate Checklist
 
-Every DTO implementation must pass all gates for **both** the DTO file and its test file.
+Every DTO implementation must pass all gates for **both** the DTO file and its test file:
+
+- [ ] Gate 0: Ruff Format
+- [ ] Gate 1: Ruff Strict Lint
+- [ ] Gate 2: Import Placement
+- [ ] Gate 3: Line Length
+- [ ] Gate 4: Type Checking (DTOs only)
+- [ ] Gate 5: Tests Passing
+- [ ] Gate 6: Code Coverage (>= 90%)
 
 ### Gate 0: Ruff Format
 
@@ -24,9 +57,17 @@ python -m ruff format --line-length=100 tests/unit/dtos/strategy/test_my_dto.py
 
 **Expected:** `Pass` (exit code 0)
 
-### Gate 1: Ruff Strict Lint
+### Gate 1: Ruff Strict Lint (excluding line length & import placement)
 
 **Purpose:** Enforce strict linting in CI (stricter than VS Code baseline).
+
+**Note:** This gate intentionally excludes:
+- **E501** (line length) → Checked separately in Gate 3
+- **PLC0415** (import placement) → Checked separately in Gate 2
+
+This separation follows Single Responsibility Principle - each gate validates one specific aspect.
+
+**What is ANN?** Type annotation rules (`flake8-annotations`) - ensures function parameters and return types have explicit type hints. This applies to both production code and test files.
 
 ```powershell
 # Strict lint (same intent as CI gate; does not inherit IDE ignores)
@@ -39,6 +80,17 @@ python -m ruff check --fix --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC
 ```
 
 **Expected:** `Pass` (exit code 0)
+
+**Common ANN violations in tests:**
+```python
+# ❌ WRONG - test function missing return type
+def test_my_feature(dto):
+    assert dto.value == 42
+
+# ✅ CORRECT - explicit return type
+def test_my_feature(dto: MyDTO) -> None:
+    assert dto.value == 42
+```
 
 ### Gate 2: Import Placement
 
@@ -111,13 +163,40 @@ python -m mypy backend/dtos/strategy/my_dto.py --strict --no-error-summary
 
 ### Gate 5: Tests Passing
 
-**Purpose:** All unit tests must pass.
+**Purpose:** All unit tests must pass (correctness validation).
 
 ```powershell
 pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
 ```
 
-**Expected:** All tests passing (complete coverage, not arbitrary quantity targets)
+**Expected:** All tests passing
+
+**Note:** Coverage is enforced separately in Gate 6 (SRP: tests validate correctness, coverage validates thoroughness).
+
+### Gate 6: Code Coverage
+
+**Purpose:** Ensure comprehensive test coverage with branch coverage >= 90%.
+
+```powershell
+# Check coverage for backend and mcp_server packages
+pytest tests/ --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90 --tb=short
+```
+
+**Expected:** Branch coverage >= 90% (hard fail below threshold)
+
+**Scope:** Production packages only:
+- `backend/` - Core trading logic
+- `mcp_server/` - MCP server implementation
+
+**Why separate from Gate 5?**
+- **Gate 5:** Validates test correctness (do tests pass?)
+- **Gate 6:** Validates test thoroughness (are all code paths tested?)
+- Follows Single Responsibility Principle - each gate checks one aspect
+
+**Adding new packages:** When adding new production Python packages, extend Gate 6 scope:
+```powershell
+pytest tests/ --cov=backend --cov=mcp_server --cov=new_package --cov-branch --cov-fail-under=90
+```
 
 ## Post-Implementation Workflow
 
@@ -138,6 +217,9 @@ python -m mypy backend/dtos/strategy/my_dto.py --strict --no-error-summary
 
 # Step 4: Run tests
 pytest tests/unit/dtos/strategy/test_my_dto.py -q --tb=line
+
+# Step 5: Run coverage (entire test suite with branch coverage)
+pytest tests/ --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90 --tb=short
 ```
 
 ## Bulk Quality Checks
