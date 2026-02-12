@@ -74,9 +74,9 @@ class QAManager:
             "gates": [],
         }
 
-        # Determine execution mode: file-specific vs repo-scoped
-        # files=[] (empty) → repo-scoped mode (run ALL gates including pytest)
-        # files=[...] (populated) → file-specific mode (skip pytest gates)
+        # Determine execution mode:
+        # files=[] (empty) → project-level test validation (pytest gates only: Gate 5-6)
+        # files=[...] (populated) → file-specific validation (static gates only: Gates 0-4, skip pytest)
         is_file_specific_mode = bool(files)
 
         if is_file_specific_mode:
@@ -113,8 +113,11 @@ class QAManager:
             if not python_files:
                 return results
         else:
-            # Repo-scoped mode: no file validation needed
-            python_files = []  # Will be populated per-gate based on scope
+            # Project-level test validation mode:
+            # - python_files stays empty (no file discovery)
+            # - File-based static gates (Gates 0-4) will skip: "Skipped (no matching files)"
+            # - Pytest gates (Gate 5-6) proceed with their configured targets (e.g., tests/)
+            python_files = []
         # In file-specific mode, early return if no valid files
         if is_file_specific_mode and not python_files:
             return results
@@ -161,7 +164,7 @@ class QAManager:
 
             gate_files = self._files_for_gate(gate, python_files)
 
-            # Skip repo-scoped gates (pytest) when in file-specific mode
+            # Skip pytest gates (project-level tests) when in file-specific validation mode
             if is_file_specific_mode and self._is_pytest_gate(gate):
                 results["gates"].append(
                     {
@@ -174,7 +177,7 @@ class QAManager:
                 )
                 continue
             # Skip gates with no files after scope filtering
-            # Exception: in repo-scoped mode, allow pytest gates to run
+            # Exception: in project-level test validation mode, allow pytest gates to run
             is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
             if not gate_files and not is_repo_scoped_pytest_gate:
                 results["gates"].append(

@@ -49,7 +49,7 @@ Gates are executed in the order of `active_gates`. Each gate definition provides
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `files` | `list[str]` | No | `[]` | List of file paths. `[]` = repo-scoped mode (run ALL gates including pytest). `[...]` = file-specific mode (skip pytest gates). |
+| `files` | `list[str]` | No | `[]` | List of file paths. `[]` = project-level test validation (pytest/coverage only). `[...]` = file-specific mode (static analysis on specified files). |
 
 #### Returns
 
@@ -72,6 +72,7 @@ Gates are executed in the order of `active_gates`. Each gate definition provides
       "issues": []
     }
   ]
+}
 ```
 
 **Notes:**
@@ -79,21 +80,21 @@ Gates are executed in the order of `active_gates`. Each gate definition provides
 
 #### Example Usage
 
-**Repo-scoped mode (run ALL gates including pytest):**
+**Project-level test validation (pytest/coverage enforcement):**
 ```json
 {
   "files": []
 }
 ```
 
-**Single file (file-specific mode):**
+**Single file validation (static analysis):**
 ```json
 {
   "files": ["backend/dtos/user.py"]
 }
 ```
 
-**Multiple files (file-specific mode):**
+**Multiple files validation (static analysis):**
 ```json
 {
   "files": [
@@ -106,23 +107,26 @@ Gates are executed in the order of `active_gates`. Each gate definition provides
 
 #### Execution Modes
 
-**Repo-scoped mode (`files=[]`):**
-- Runs **ALL** configured gates including pytest (Gate 5: Tests, Gate 6: Coverage)
-- Used for full repository validation before merge/deploy
-- No file existence validation
-- Example: Pre-commit hook, CI/CD pipelines
+**Project-level test validation mode (`files=[]`):**
+- Runs **pytest gates only** (Gate 5: Tests, Gate 6: Coverage ≥90%)
+- File-based static gates (Gates 0-4: Ruff, Mypy) are **skipped** (no file list provided)
+- Used for CI/CD test/coverage enforcement before merge
+- Example use case: Block PR merge if tests fail or coverage < 90%
+- **Note:** For full-repo static analysis, provide explicit file list via Git diff or glob
 
-**File-specific mode (`files=[...]`):**
-- Runs only file-based gates (Ruff formatting, linting, type checking)
-- **Skips** pytest gates (Gate 5 & 6) - not applicable to individual files
+**File-specific validation mode (`files=[...]`):**
+- Runs **file-based static gates** (Gates 0-4: Ruff formatting, linting, imports, line length, type checking)
+- **Skips** pytest gates (Gate 5 & 6) - tests run at project-level, not per-file
 - Validates file existence and filters to `.py` files
-- Example: IDE save hooks, targeted file validation
+- Example use case: IDE save hooks, pre-commit validation on changed files
 
 #### Behavior Notes
 
 - Gates executed in the order of `active_gates` from [.st3/quality.yaml](../../../../.st3/quality.yaml)
 - `.py` filtering: non-Python inputs are reported as skipped
 - Scope filtering: when `scope` is present, include/exclude globs apply per-gate
+- **Silent skips:** Gates without matching files show as "Skipped (no matching files)" in output
+
 #### Quality Gate Configuration
 
 From [.st3/quality.yaml](../../../../.st3/quality.yaml):

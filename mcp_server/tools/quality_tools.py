@@ -14,7 +14,7 @@ class RunQualityGatesInput(BaseModel):
 
     files: list[str] = Field(
         default=[],
-        description="List of files to check. Empty list [] = repo-scoped mode (run ALL gates including pytest). Populated list = file-specific mode (skip pytest gates)."
+        description="List of files to check. Empty list [] = project-level test validation (pytest/coverage only, Gates 5-6). Populated list = file-specific validation (static analysis Gates 0-4, skip pytest)."
     )
 
 
@@ -22,7 +22,7 @@ class RunQualityGatesTool(BaseTool):
     """Tool to run quality gates."""
 
     name = "run_quality_gates"
-    description = "Run quality gates. Use files=[] for repo-scoped mode (all gates), files=[...] for file-specific mode (skip pytest gates)."
+    description = "Run quality gates. Use files=[] for project-level test validation (pytest/coverage), files=[...] for file-specific validation (static analysis on specified files)."
     args_model = RunQualityGatesInput
 
     def __init__(self, manager: QAManager | None = None) -> None:
@@ -38,8 +38,15 @@ class RunQualityGatesTool(BaseTool):
     async def execute(self, params: RunQualityGatesInput) -> ToolResult:
         """Execute quality gates."""
         files = params.files
-        # Note: files=[] (empty list) triggers repo-scoped mode (run ALL gates including pytest)
-        # files=[...] (populated list) triggers file-specific mode (skip pytest gates)
+        # Project-level test validation mode (files=[]):
+        # - Runs pytest gates only (Gate 5: tests, Gate 6: coverage >= 90%)
+        # - Skips file-based static gates (Gates 0-4: Ruff, Mypy) - no file list provided
+        # - Use case: CI/CD test/coverage enforcement before merge
+        #
+        # File-specific validation mode (files=[...]):
+        # - Runs file-based static gates (Gates 0-4: Ruff, Mypy)
+        # - Skips pytest gates (Gate 5-6) - tests run at project-level
+        # - Use case: IDE save hooks, pre-commit validation on changed files
 
         result = self.manager.run_quality_gates(files)
 
