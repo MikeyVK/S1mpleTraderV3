@@ -1,4 +1,5 @@
 """Resource for coding standards."""
+
 import json
 from pathlib import Path
 
@@ -12,7 +13,7 @@ class StandardsResource(BaseResource):
     uri_pattern = "st3://rules/coding_standards"
     description = "Project coding standards and conventions"
 
-    async def read(self, uri: str) -> str:
+    async def read(self, uri: str) -> str:  # noqa: ARG002
         """Read coding standards from quality.yaml."""
         # Load quality configuration from .st3/quality.yaml
         config_path = Path(".st3/quality.yaml")
@@ -36,7 +37,7 @@ class StandardsResource(BaseResource):
             "quality_gates": {
                 "active_gates": quality_config.active_gates,
                 "gate_count": len(quality_config.active_gates),
-            }
+            },
         }
 
         return json.dumps(standards, indent=2)

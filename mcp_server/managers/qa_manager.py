@@ -32,9 +32,7 @@ def _pyright_script_name() -> str:
 class QAManager:
     """Manager for quality assurance and gates."""
 
-    def _filter_files(
-        self, files: list[str]
-    ) -> tuple[list[str], list[dict[str, Any]]]:
+    def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
         """Filter Python files and generate pre-gate issues for non-Python files.
 
         Returns:
@@ -270,9 +268,12 @@ class QAManager:
             return True
         if len(cmd) >= 3 and cmd[0] == "python" and cmd[1] == "-m" and cmd[2] == "pytest":
             return True
-        if len(cmd) >= 3 and cmd[0] == sys.executable and cmd[1] == "-m" and cmd[2] == "pytest":
-            return True
-        return False
+        return (
+            len(cmd) >= 3
+            and cmd[0] == sys.executable
+            and cmd[1] == "-m"
+            and cmd[2] == "pytest"
+        )
 
     def _command_for_hints(self, gate: QualityGate, files: list[str]) -> str:
         parts = [*gate.execution.command, *files]
@@ -283,25 +284,47 @@ class QAManager:
         hints: list[str] = [f"Re-run: {cmd}"]
 
         if gate_id == "gate0_ruff_format":
-            hints.append("To apply formatting: run the same command without `--check`/`--diff` (e.g. `python -m ruff format <files>`).")
+            hints.append(
+                "To apply formatting: run the same command without "
+                "`--check`/`--diff` (e.g. `python -m ruff format <files>`)."
+            )
 
         elif gate_id == "gate1_formatting":
-            hints.append("This gate is stricter than the VS Code/IDE baseline (it does not inherit pyproject ignores).")
-            hints.append("If safe, try Ruff autofix by adding `--fix` to the re-run command.")
-            hints.append("Line length (E501) and import placement (PLC0415) are enforced in Gate 2/3.")
+            hints.append(
+                "This gate is stricter than the VS Code/IDE baseline "
+                "(it does not inherit pyproject ignores)."
+            )
+            hints.append(
+                "Line length (E501) and import placement (PLC0415) are enforced in Gate 2/3."
+            )
 
         elif gate_id == "gate2_imports":
-            hints.append("Move imports to module top-level (PLC0415). Never import inside functions/methods.")
+            hints.append(
+                "Move imports to module top-level (PLC0415). Never import inside functions/methods."
+            )
 
         elif gate_id == "gate3_line_length":
-            hints.append("Split long lines to <= 100 chars (E501). Prefer intermediate variables and broken method chains.")
+            hints.append(
+                "Split long lines to <= 100 chars (E501). "
+                "Prefer intermediate variables and broken method chains."
+            )
 
         elif gate_id == "gate4_types":
-            hints.append("Run type fixes in order: add annotations -> narrow Optionals (assert/isinstance) -> refactor types (TypedDict/Protocol) -> targeted ignore as last resort.")
-            hints.append("This gate is scoped (DTOs only). If you hit false positives, prefer narrowing or tiny, code-specific ignores.")
+            hints.append(
+                "Run type fixes in order: add annotations -> narrow Optionals "
+                "(assert/isinstance) -> refactor types (TypedDict/Protocol) -> "
+                "targeted ignore as last resort."
+            )
+            hints.append(
+                "This gate is scoped (DTOs only). If you hit false positives, "
+                "prefer narrowing or tiny, code-specific ignores."
+            )
 
         elif gate_id == "gate5_tests":
-            hints.append("Re-run pytest and fix the first failing test; reduce scope by running the failing test file only.")
+            hints.append(
+                "Re-run pytest and fix the first failing test; reduce scope by "
+                "running the failing test file only."
+            )
 
         return hints
 
@@ -378,7 +401,9 @@ class QAManager:
             else:
                 result["passed"] = False
                 result["score"] = "N/A"
-                result["issues"] = [{"message": f"Unsupported parsing strategy: {gate.parsing.strategy}"}]
+                result["issues"] = [
+                    {"message": f"Unsupported parsing strategy: {gate.parsing.strategy}"}
+                ]
 
         except subprocess.TimeoutExpired:
             result["passed"] = False

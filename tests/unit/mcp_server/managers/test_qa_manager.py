@@ -12,6 +12,7 @@ Tests according to TDD principles with comprehensive coverage.
 
 # Standard library
 import subprocess
+import tempfile
 import typing
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -20,9 +21,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml  # type: ignore[import-untyped]
 
+from mcp_server.config.quality_config import QualityGate
+
 # Module under test
 from mcp_server.managers.qa_manager import QAManager
-from mcp_server.config.quality_config import QualityGate
 
 
 class TestQAManager:
@@ -54,17 +56,18 @@ class TestQAManager:
             result = manager.run_quality_gates(["ghost.py"])
             assert result["overall_pass"] is False
             assert "File not found" in result["gates"][0]["issues"][0]["message"]
+
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution).")
+    @pytest.mark.skip(
+        reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution)."
+    )
     async def test_run_quality_gates_pylint_fail(self, manager: QAManager) -> None:
         """Test quality gates fail on Pylint errors."""
         pylint_output = """
 test.py:10:0: C0111: Missing docstring (missing-docstring)
 Your code has been rated at 5.00/10
 """
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("subprocess.run") as mock_run:
-
+        with patch("pathlib.Path.exists", return_value=True), patch("subprocess.run") as mock_run:
             # Setup Pylint failure output
             mock_proc_pylint = MagicMock()
             mock_proc_pylint.stdout = pylint_output
@@ -91,14 +94,14 @@ Your code has been rated at 5.00/10
             assert pylint_gate["issues"][0]["code"] == "C0111"
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests.")
+    @pytest.mark.skip(
+        reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests."
+    )
     async def test_run_quality_gates_mypy_fail(self, manager: QAManager) -> None:
         """Test quality gates fail on Mypy errors (uses real quality.yaml with scope filtering)."""
         mypy_output = "backend/test.py:12: error: Incompatible types"
 
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("subprocess.run") as mock_run:
-
+        with patch("pathlib.Path.exists", return_value=True), patch("subprocess.run") as mock_run:
             # Pylint Pass
             mock_proc_pylint = MagicMock()
             mock_proc_pylint.returncode = 0
@@ -127,12 +130,12 @@ Your code has been rated at 5.00/10
             assert "Incompatible types" in mypy_gate["issues"][0]["message"]
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution).")
+    @pytest.mark.skip(
+        reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution)."
+    )
     async def test_run_quality_gates_pass(self, manager: QAManager) -> None:
         """Test passing quality gates."""
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("subprocess.run") as mock_run:
-
+        with patch("pathlib.Path.exists", return_value=True), patch("subprocess.run") as mock_run:
             # Pylint Pass
             mock_proc_pylint = MagicMock()
             mock_proc_pylint.returncode = 0
@@ -159,12 +162,12 @@ Your code has been rated at 5.00/10
             assert not any(g["issues"] for g in result["gates"])
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests.")
+    @pytest.mark.skip(
+        reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests."
+    )
     async def test_subprocess_timeout(self, manager: QAManager) -> None:
         """Test handling of subprocess timeout (uses real quality.yaml with scope filtering)."""
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("subprocess.run") as mock_run:
-
+        with patch("pathlib.Path.exists", return_value=True), patch("subprocess.run") as mock_run:
             # Pylint runs ok
             mock_proc_pylint = MagicMock()
             mock_proc_pylint.returncode = 0
@@ -189,16 +192,19 @@ Your code has been rated at 5.00/10
             assert "timed out" in mypy_gate["issues"][0]["message"].lower()
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution).")
+    @pytest.mark.skip(
+        reason="Legacy test - uses hardcoded gates. Replaced by config-driven execution tests (TestConfigDrivenExecution)."
+    )
     async def test_subprocess_not_found(self, manager: QAManager) -> None:
         """Test handling of FileNotFoundError (tool missing) during execution."""
         # Use simple variable type hint to satisfy 'typing' usage requirement
         # without complex logic impact.
         _unused: typing.Any = None
 
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("subprocess.run", side_effect=FileNotFoundError("Tool not found")):
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("subprocess.run", side_effect=FileNotFoundError("Tool not found")),
+        ):
             result = manager.run_quality_gates(["test.py"])
 
             # Pylint fails first
@@ -207,19 +213,19 @@ Your code has been rated at 5.00/10
             assert "not found" in pylint_gate["issues"][0]["message"]
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests.")
+    @pytest.mark.skip(
+        reason="Complex to mock: requires both subprocess behavior AND quality.yaml scope filtering. Covered by integration tests."
+    )
     async def test_run_quality_gates_pyright_fail(self, manager: QAManager) -> None:
         """Test quality gates fail on Pyright errors (uses real quality.yaml with scope filtering)."""
         pyright_output = (
             '{"generalDiagnostics": ['
             '{"file":"backend/test.py","severity":"error","message":"Bad type","range":'
             '{"start":{"line":11,"character":0},"end":{"line":11,"character":3}}}'
-            ']}'
+            "]}"
         )
 
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("subprocess.run") as mock_run:
-
+        with patch("pathlib.Path.exists", return_value=True), patch("subprocess.run") as mock_run:
             mock_proc_pylint = MagicMock()
             mock_proc_pylint.returncode = 0
             mock_proc_pylint.stdout = "Your code has been rated at 10.00/10"
@@ -260,22 +266,24 @@ class TestExecuteGate:
     @pytest.fixture
     def mock_gate(self) -> QualityGate:
         """Fixture for mock QualityGate config."""
-        return QualityGate.model_validate({
-            "name": "TestGate",
-            "description": "Test gate",
-            "execution": {
-                "command": ["test_tool", "--check"],
-                "timeout_seconds": 60,
-                "working_dir": None
-            },
-            "parsing": {"strategy": "exit_code"},
-            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
-            "capabilities": {
-                "file_types": [".py"],
-                "supports_autofix": False,
-                "produces_json": False
+        return QualityGate.model_validate(
+            {
+                "name": "TestGate",
+                "description": "Test gate",
+                "execution": {
+                    "command": ["test_tool", "--check"],
+                    "timeout_seconds": 60,
+                    "working_dir": None,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
             }
-        })
+        )
 
     def test_execute_gate_success(self, manager: QAManager, mock_gate: QualityGate) -> None:
         """Test _execute_gate with successful tool execution."""
@@ -293,7 +301,9 @@ class TestExecuteGate:
             assert result["passed"] is True
             assert result["issues"] == []
 
-    def test_execute_gate_failure_exit_code(self, manager: QAManager, mock_gate: QualityGate) -> None:
+    def test_execute_gate_failure_exit_code(
+        self, manager: QAManager, mock_gate: QualityGate
+    ) -> None:
         """Test _execute_gate with non-zero exit code."""
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
@@ -323,7 +333,9 @@ class TestExecuteGate:
             assert result["passed"] is False
             assert "not found" in result["issues"][0]["message"].lower()
 
-    def test_execute_gate_appends_files_to_command(self, manager: QAManager, mock_gate: QualityGate) -> None:
+    def test_execute_gate_appends_files_to_command(
+        self, manager: QAManager, mock_gate: QualityGate
+    ) -> None:
         """Test _execute_gate correctly appends files to command."""
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
@@ -351,64 +363,87 @@ class TestRuffGateExecution:
     @pytest.fixture
     def gate1_formatting(self) -> QualityGate:
         """Fixture for gate1_formatting config."""
-        return QualityGate.model_validate({
-            "name": "Gate 1: Formatting",
-            "description": "Code formatting",
-            "execution": {
-                "command": ["python", "-m", "ruff", "check", "--select=W291,W292,W293,UP034", "--ignore="],
-                "timeout_seconds": 60,
-                "working_dir": None
-            },
-            "parsing": {"strategy": "exit_code"},
-            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
-            "capabilities": {
-                "file_types": [".py"],
-                "supports_autofix": True,
-                "produces_json": False
+        return QualityGate.model_validate(
+            {
+                "name": "Gate 1: Formatting",
+                "description": "Code formatting",
+                "execution": {
+                    "command": [
+                        "python",
+                        "-m",
+                        "ruff",
+                        "check",
+                        "--select=W291,W292,W293,UP034",
+                        "--ignore=",
+                    ],
+                    "timeout_seconds": 60,
+                    "working_dir": None,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": True,
+                    "produces_json": False,
+                },
             }
-        })
+        )
 
     @pytest.fixture
     def gate2_imports(self) -> QualityGate:
         """Fixture for gate2_imports config."""
-        return QualityGate.model_validate({
-            "name": "Gate 2: Imports",
-            "description": "Import placement",
-            "execution": {
-                "command": ["python", "-m", "ruff", "check", "--select=PLC0415", "--ignore="],
-                "timeout_seconds": 60,
-                "working_dir": None
-            },
-            "parsing": {"strategy": "exit_code"},
-            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
-            "capabilities": {
-                "file_types": [".py"],
-                "supports_autofix": False,
-                "produces_json": False
+        return QualityGate.model_validate(
+            {
+                "name": "Gate 2: Imports",
+                "description": "Import placement",
+                "execution": {
+                    "command": ["python", "-m", "ruff", "check", "--select=PLC0415", "--ignore="],
+                    "timeout_seconds": 60,
+                    "working_dir": None,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
             }
-        })
+        )
 
     @pytest.fixture
     def gate3_line_length(self) -> QualityGate:
         """Fixture for gate3_line_length config."""
-        return QualityGate.model_validate({
-            "name": "Gate 3: Line Length",
-            "description": "Line length",
-            "execution": {
-                "command": ["python", "-m", "ruff", "check", "--select=E501", "--line-length=100", "--ignore="],
-                "timeout_seconds": 60,
-                "working_dir": None
-            },
-            "parsing": {"strategy": "exit_code"},
-            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
-            "capabilities": {
-                "file_types": [".py"],
-                "supports_autofix": False,
-                "produces_json": False
+        return QualityGate.model_validate(
+            {
+                "name": "Gate 3: Line Length",
+                "description": "Line length",
+                "execution": {
+                    "command": [
+                        "python",
+                        "-m",
+                        "ruff",
+                        "check",
+                        "--select=E501",
+                        "--line-length=100",
+                        "--ignore=",
+                    ],
+                    "timeout_seconds": 60,
+                    "working_dir": None,
+                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
             }
-        })
+        )
 
-    def test_gate1_formatting_command_construction(self, manager: QAManager, gate1_formatting: QualityGate) -> None:
+    def test_gate1_formatting_command_construction(
+        self, manager: QAManager, gate1_formatting: QualityGate
+    ) -> None:
         """Test gate1_formatting command is constructed correctly."""
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
@@ -429,7 +464,9 @@ class TestRuffGateExecution:
             assert "test.py" in cmd
             assert "test.py" in cmd
 
-    def test_gate2_imports_command_construction(self, manager: QAManager, gate2_imports: QualityGate) -> None:
+    def test_gate2_imports_command_construction(
+        self, manager: QAManager, gate2_imports: QualityGate
+    ) -> None:
         """Test gate2_imports command is constructed correctly."""
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
@@ -443,7 +480,9 @@ class TestRuffGateExecution:
             cmd = mock_run.call_args[0][0]
             assert "--select=PLC0415" in cmd
 
-    def test_gate3_line_length_command_construction(self, manager: QAManager, gate3_line_length: QualityGate) -> None:
+    def test_gate3_line_length_command_construction(
+        self, manager: QAManager, gate3_line_length: QualityGate
+    ) -> None:
         """Test gate3_line_length command is constructed correctly."""
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
@@ -458,7 +497,9 @@ class TestRuffGateExecution:
             assert "--select=E501" in cmd
             assert "--line-length=100" in cmd
 
-    def test_ruff_gates_success_with_clean_code(self, manager: QAManager, gate1_formatting: QualityGate) -> None:
+    def test_ruff_gates_success_with_clean_code(
+        self, manager: QAManager, gate1_formatting: QualityGate
+    ) -> None:
         """Test Ruff gate passes with clean code (exit code 0)."""
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
@@ -472,7 +513,9 @@ class TestRuffGateExecution:
             assert result["passed"] is True
             assert result["issues"] == []
 
-    def test_ruff_gates_failure_with_violations(self, manager: QAManager, gate1_formatting: QualityGate) -> None:
+    def test_ruff_gates_failure_with_violations(
+        self, manager: QAManager, gate1_formatting: QualityGate
+    ) -> None:
         """Test Ruff gate fails with code violations (exit code 1)."""
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
@@ -486,8 +529,9 @@ class TestRuffGateExecution:
             assert result["passed"] is False
             assert len(result["issues"]) > 0
 
-
-    def test_execute_gate_adds_hints_when_gate_id_provided(self, manager: QAManager, gate3_line_length: QualityGate) -> None:
+    def test_execute_gate_adds_hints_when_gate_id_provided(
+        self, manager: QAManager, gate3_line_length: QualityGate
+    ) -> None:
         """Test hints are attached for known gate IDs (agent guidance)."""
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
@@ -530,31 +574,38 @@ class TestConfigDrivenExecution:
                     "execution": {
                         "command": ["python", "-m", "ruff", "check", "--select=W291", "--ignore="],
                         "timeout_seconds": 60,
-                        "working_dir": None
+                        "working_dir": None,
                     },
                     "parsing": {"strategy": "exit_code"},
                     "success": {"mode": "exit_code", "exit_codes_ok": [0]},
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": True,
-                        "produces_json": False
-                    }
+                        "produces_json": False,
+                    },
                 },
                 "gate2_imports": {
                     "name": "Gate 2: Imports",
                     "description": "Import placement",
                     "execution": {
-                        "command": ["python", "-m", "ruff", "check", "--select=PLC0415", "--ignore="],
+                        "command": [
+                            "python",
+                            "-m",
+                            "ruff",
+                            "check",
+                            "--select=PLC0415",
+                            "--ignore=",
+                        ],
                         "timeout_seconds": 60,
-                        "working_dir": None
+                        "working_dir": None,
                     },
                     "parsing": {"strategy": "exit_code"},
                     "success": {"mode": "exit_code", "exit_codes_ok": [0]},
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": False,
-                        "produces_json": False
-                    }
+                        "produces_json": False,
+                    },
                 },
                 "gate3_line_length": {
                     "name": "Gate 3: Line Length",
@@ -562,17 +613,17 @@ class TestConfigDrivenExecution:
                     "execution": {
                         "command": ["python", "-m", "ruff", "check", "--select=E501", "--ignore="],
                         "timeout_seconds": 60,
-                        "working_dir": None
+                        "working_dir": None,
                     },
                     "parsing": {"strategy": "exit_code"},
                     "success": {"mode": "exit_code", "exit_codes_ok": [0]},
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": False,
-                        "produces_json": False
-                    }
-                }
-            }
+                        "produces_json": False,
+                    },
+                },
+            },
         }
         yaml_path = tmp_path / "quality.yaml"
         with open(yaml_path, "w", encoding="utf-8") as f:
@@ -586,10 +637,9 @@ class TestConfigDrivenExecution:
                 "gate_number": 1,
                 "name": "Test Gate",
                 "passed": True,
-                "issues": []
+                "issues": [],
             }
 
-            import tempfile
             with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tf:
                 tf.write("print('test')")
                 test_file = tf.name
@@ -598,8 +648,10 @@ class TestConfigDrivenExecution:
                 manager.run_quality_gates([test_file])
 
                 # Verify at least some gates were executed
-                assert mock_execute.call_count >= 2, f"Expected at least 2 gates, got {mock_execute.call_count}"
-                
+                assert mock_execute.call_count >= 2, (
+                    f"Expected at least 2 gates, got {mock_execute.call_count}"
+                )
+
                 # Verify first few calls are in order
                 call_order = [call[0][0].name for call in mock_execute.call_args_list]
                 # Just verify we have some gates executing
@@ -620,14 +672,20 @@ class TestStrategyBasedParsing:
     def test_execute_gate_respects_parsing_strategy_not_tool_name(self, manager: QAManager) -> None:
         """Test parsing uses gate.parsing.strategy, not tool name detection (WP2)."""
         # Gate with 'pylint' in name but exit_code strategy
-        gate = QualityGate.model_validate({
-            "name": "Pylint-Like Tool",
-            "description": "Tool with exit_code strategy",
-            "execution": {"command": ["tool"], "timeout_seconds": 60, "working_dir": None},
-            "parsing": {"strategy": "exit_code"},
-            "success": {"mode": "exit_code", "exit_codes_ok": [0]},
-            "capabilities": {"file_types": [".py"], "supports_autofix": False, "produces_json": False}
-        })
+        gate = QualityGate.model_validate(
+            {
+                "name": "Pylint-Like Tool",
+                "description": "Tool with exit_code strategy",
+                "execution": {"command": ["tool"], "timeout_seconds": 60, "working_dir": None},
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "capabilities": {
+                    "file_types": [".py"],
+                    "supports_autofix": False,
+                    "produces_json": False,
+                },
+            }
+        )
 
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
