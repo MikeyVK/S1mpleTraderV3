@@ -429,10 +429,10 @@ class TestArtifactLogging:
         self, manager: QAManager, mock_gate: QualityGate, tmp_path: Path
     ) -> None:
         """Test failed gate writes JSON artifact log to qa_logs."""
-        with (
-            patch.object(QAManager, "QA_LOG_DIR", tmp_path / "qa_logs"),
-            patch("subprocess.run") as mock_run,
-        ):
+        # Set instance attribute directly since manager is already instantiated
+        manager.qa_log_dir = tmp_path / "qa_logs"
+
+        with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
             mock_proc.returncode = 1
             mock_proc.stdout = "lint fail"
@@ -457,10 +457,10 @@ class TestArtifactLogging:
         self, manager: QAManager, mock_gate: QualityGate, tmp_path: Path
     ) -> None:
         """Test passing gate does not create artifact log."""
-        with (
-            patch.object(QAManager, "QA_LOG_DIR", tmp_path / "qa_logs"),
-            patch("subprocess.run") as mock_run,
-        ):
+        # Set instance attribute directly since manager is already instantiated
+        manager.qa_log_dir = tmp_path / "qa_logs"
+
+        with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
             mock_proc.returncode = 0
             mock_proc.stdout = ""
@@ -476,11 +476,11 @@ class TestArtifactLogging:
         self, manager: QAManager, mock_gate: QualityGate, tmp_path: Path
     ) -> None:
         """Test disabled artifact logging prevents file creation."""
-        with (
-            patch.object(QAManager, "QA_LOG_DIR", tmp_path / "qa_logs"),
-            patch.object(QAManager, "QA_LOG_ENABLED", False),
-            patch("subprocess.run") as mock_run,
-        ):
+        # Set instance attributes directly since manager is already instantiated
+        manager.qa_log_dir = tmp_path / "qa_logs"
+        manager.qa_log_enabled = False
+
+        with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
             mock_proc.returncode = 1
             mock_proc.stdout = "lint fail"
