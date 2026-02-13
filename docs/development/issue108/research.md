@@ -649,45 +649,77 @@ def test_discover_capabilities() -> None:
 
 ---
 
-#### AC7: Multiple Template Roots
+#### AC7: Template Root Configuration (YAGNI: Single Root First)
 
-**Required Implementation:**
+**YAGNI Principle Applied:** Start with single configurable root, defer multiple roots until proven needed.
+
+**Phase 1 Implementation (P0 - This Issue):**
 ```python
 class TemplateEngine:
-    def __init__(self, template_roots: list[Path] | None = None) -> None:
-        """Initialize with multiple template directories.
+    def __init__(self, template_root: Path | None = None) -> None:
+        """Initialize with single template directory.
         
         Args:
-            template_roots: List of template roots (priority order)
-                           Default: [mcp_server/templates, docs/templates]
+            template_root: Template directory path
+                          Default: mcp_server/scaffolding/templates/
         """
-        if template_roots is None:
+        if template_root is None:
             base = Path(__file__).parent.parent.parent
-            template_roots = [
-                base / "mcp_server" / "templates",
-                base / "docs" / "templates"
-            ]
+            template_root = base / "mcp_server" / "scaffolding" / "templates"
         
-        loaders = [
-            FileSystemLoader(str(root)) 
-            for root in template_roots 
-            if root.exists()
-        ]
+        if not template_root.exists():
+            raise ValueError(f"Template root does not exist: {template_root}")
         
+        self._env = Environment(loader=FileSystemLoader(str(template_root)))
+```
+
+**Future Extension (P1 - When Multi-Root Proven Needed):**
+```python
+# YAGNI: Only implement when we have concrete use case for:
+# - Tool-specific template overrides
+# - Per-project custom templates
+# - Documentation template separation
+
+class TemplateEngine:
+    def __init__(self, template_roots: list[Path] | None = None) -> None:
+        """Initialize with multiple template directories (priority order)."""
+        loaders = [FileSystemLoader(str(root)) for root in template_roots]
         self._env = Environment(loader=ChoiceLoader(loaders))
 ```
 
+**Decision Rationale:**
+- Current system: Single root (`mcp_server/scaffolding/templates/`) suffices
+- Config-first principle: Root is configurable (not hardcoded)
+- YAGNI: Multiple roots adds complexity without current requirement
+- Easy upgrade path: Change `Path` → `list[Path]` when needed
+
 **Test Coverage:**
 ```python
-def test_multiple_template_roots() -> None:
-    """Test ChoiceLoader with multiple roots."""
+def test_default_template_root() -> None:
+    """Test default root is mcp_server/scaffolding/templates/."""
 
-def test_template_resolution_order() -> None:
-    """Test priority order (first root wins)."""
+def test_custom_template_root() -> None:
+    """Test custom root via constructor."""
+
+def test_nonexistent_root_raises_error() -> None:
+    """Test ValueError on nonexistent root."""
+
+# FUTURE (P1 - Multi-Root):
+# def test_multiple_template_roots() -> None:
+# def test_template_resolution_order() -> None:
 ```
 
----
+**TODO for Planning Phase:**
+- [ ] Update ~50 doc references from `mcp_server/templates/` → `mcp_server/scaffolding/templates/`
+  - `docs/development/issue108/research.md` (this file)
+  - `docs/reference/mcp/validation_api.md`
+  - `docs/reference/mcp/scaffolding.md`
+  - `docs/reference/mcp/template_metadata_format.md`
+  - Archive docs (issue52, issue56, issue72)
+- [ ] Verify all doc examples use correct active template path
+- [ ] Consider: Add redirects/notes in legacy sections
 
+---
 #### AC8: Custom Jinja2 Filters
 
 **Required Filters:**
