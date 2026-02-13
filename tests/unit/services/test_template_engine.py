@@ -4,6 +4,7 @@ Tests TemplateEngine extracted from mcp_server/scaffolding/renderer.py
 to backend/services/template_engine.py for reusability.
 """
 
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -175,3 +176,46 @@ class TestTemplateEngineErrorHandling:
         # Error should mention undefined/missing
         error_msg = str(exc_info.value).lower()
         assert "undefined" in error_msg or "required_var" in error_msg
+
+
+class TestTemplateEngineDiscovery:
+    """Test template discovery and listing."""
+
+    @pytest.fixture
+    def engine(self) -> TemplateEngine:
+        """Provide TemplateEngine with test templates."""
+        template_root = Path("mcp_server/scaffolding/templates")
+        return TemplateEngine(template_root=template_root)
+
+    def test_list_templates_returns_jinja2_files(self, engine: TemplateEngine) -> None:
+        """list_templates() returns all .jinja2 files."""
+        templates = engine.list_templates()
+
+        # Should find concrete templates
+        assert "concrete/dto.py.jinja2" in templates
+        assert "concrete/worker.py.jinja2" in templates
+
+        # Should find tier templates
+        assert "tier0_base_artifact.jinja2" in templates
+
+        # All returned paths should be strings
+        assert all(isinstance(t, str) for t in templates)
+
+    def test_list_templates_returns_relative_paths(self, engine: TemplateEngine) -> None:
+        """list_templates() returns paths relative to template_root."""
+        templates = engine.list_templates()
+
+        # Should not contain absolute paths
+        for template in templates:
+            assert not template.startswith("/")
+            assert not template.startswith("\\")
+            # Should not contain drive letters (Windows)
+            assert not (len(template) > 1 and template[1] == ":")
+
+    def test_list_templates_empty_for_empty_dir(self) -> None:
+        """list_templates() returns empty list if template_root has no templates."""
+        # Create engine with a directory that exists but has no templates
+        with tempfile.TemporaryDirectory() as tmpdir:
+            engine = TemplateEngine(template_root=tmpdir)
+            templates = engine.list_templates()
+            assert templates == []

@@ -104,6 +104,26 @@ class TemplateEngine:
         template = self.get_template(template_name)
         return str(template.render(**kwargs))
 
+    def list_templates(self) -> list[str]:
+        """List all available templates.
+
+        Returns:
+            List of template names (relative paths to .jinja2 files)
+
+        Example:
+            >>> engine = TemplateEngine(template_root="mcp_server/scaffolding/templates")
+            >>> templates = engine.list_templates()
+            >>> print(templates)
+            ['concrete/dto.py.jinja2', 'tier0_base_artifact.jinja2', ...]
+        """
+        templates: list[str] = []
+        if self.template_root.exists():
+            for path in self.template_root.rglob("*.jinja2"):
+                # Use forward slashes for cross-platform compatibility
+                rel_path = path.relative_to(self.template_root).as_posix()
+                templates.append(rel_path)
+        return templates
+
     # Custom Jinja2 filters
 
     @staticmethod
