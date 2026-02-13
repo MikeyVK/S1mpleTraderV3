@@ -15,10 +15,10 @@ def capture_baselines() -> None:
     """Capture baseline outputs from current JinjaRenderer implementation."""
     baselines_dir = Path("tests/baselines")
     baselines_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Use JinjaRenderer to ensure identical config (trim_blocks, lstrip_blocks, etc.)
     renderer = JinjaRenderer(template_dir=Path("mcp_server/scaffolding/templates"))
-    
+
     # Baseline 1: DTO
     print("Capturing DTO baseline...")
     dto_output = renderer.render(
@@ -37,15 +37,15 @@ def capture_baselines() -> None:
         # dto-specific
         fields=[
             {"name": "id", "type": "str", "description": "Identifier"},
-            {"name": "value", "type": "int", "description": "Test value"}
+            {"name": "value", "type": "int", "description": "Test value"},
         ],
         validators=[],
         examples=["BaselineTestDTO(id='test', value=42)"],
-        frozen=True
+        frozen=True,
     )
     (baselines_dir / "baseline_dto.py").write_text(dto_output, encoding="utf-8")
     print(f"  ✅ Saved {len(dto_output)} bytes")
-    
+
     # Baseline 2: Worker
     print("Capturing Worker baseline...")
     worker_output = renderer.render(
@@ -64,11 +64,11 @@ def capture_baselines() -> None:
         # worker-specific
         input_dto="BaselineInputDTO",
         output_dto="BaselineOutputDTO",
-        responsibilities=["Process test data"]
+        responsibilities=["Process test data"],
     )
     (baselines_dir / "baseline_worker.py").write_text(worker_output, encoding="utf-8")
     print(f"  ✅ Saved {len(worker_output)} bytes")
-    
+
     # Baseline 3: Tool
     print("Capturing Tool baseline...")
     tool_output = renderer.render(
@@ -87,11 +87,11 @@ def capture_baselines() -> None:
         # tool-specific
         input_schema={"type": "object", "properties": {}},
         output_format="json",
-        responsibilities=["Perform test operation"]
+        responsibilities=["Perform test operation"],
     )
     (baselines_dir / "baseline_tool.md").write_text(tool_output, encoding="utf-8")
     print(f"  ✅ Saved {len(tool_output)} bytes")
-    
+
     # Baseline 4: Research
     print("Capturing Research baseline...")
     research_output = renderer.render(
@@ -112,11 +112,11 @@ def capture_baselines() -> None:
         prerequisites=[],
         related_docs=[],
         # tier2
-        frontmatter={"title": "Baseline Test Research", "type": "research"}
+        frontmatter={"title": "Baseline Test Research", "type": "research"},
     )
     (baselines_dir / "baseline_research.md").write_text(research_output, encoding="utf-8")
     print(f"  ✅ Saved {len(research_output)} bytes")
-    
+
     # Baseline 5: Planning
     print("Capturing Planning baseline...")
     planning_output = renderer.render(
@@ -137,11 +137,11 @@ def capture_baselines() -> None:
         prerequisites=[],
         related_docs=[],
         # tier2
-        frontmatter={"title": "Baseline Test Planning", "type": "planning"}
+        frontmatter={"title": "Baseline Test Planning", "type": "planning"},
     )
     (baselines_dir / "baseline_planning.md").write_text(planning_output, encoding="utf-8")
     print(f"  ✅ Saved {len(planning_output)} bytes")
-    
+
     print("\n✅ All 5 baselines captured successfully using JinjaRenderer")
 
 
