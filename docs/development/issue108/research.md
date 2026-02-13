@@ -326,60 +326,477 @@ mcp_server/templates/
 
 ---
 
-### 7. Backward Compatibility Requirements
+### 7. Migration Strategy: Direct Replacement (No Backward Compatibility)
 
 **Q8: What backward compatibility guarantees needed?**
 
-**✅ ANSWER: Import Alias + Test Coverage**
+**✅ ANSWER: NONE - Direct Migration with Test Coverage**
 
-**Current Imports (3 sites):**
+**Decision: NO backward compatibility layer**
+- ❌ No import alias at old location
+- ❌ No deprecation warnings
+- ❌ No gradual transition period
+- ✅ Direct file replacement + import updates
+- ✅ Full test coverage ensures safety
+
+**Rationale:**
+1. **Limited Surface Area:** Only 3 import sites to update
+2. **Internal Module:** JinjaRenderer is not a public API
+3. **Test Safety Net:** All functionality covered by tests
+4. **Clean Cut:** No legacy baggage slowing future refactors
+5. **Issue #108 Scope:** Extraction is blocking Issue #121 (high priority)
+
+**Migration Steps:**
+
+**Step 1: Create New Module**
 ```python
-from mcp_server.scaffolding.renderer import JinjaRenderer
+# backend/services/template_engine.py
+"""
+Template Engine - Jinja2 rendering with mock capabilities.
+
+Enhanced JinjaRenderer with mock rendering for template introspection
+and multi-root template support for Issue #72 5-tier architecture.
+
+@layer: Backend (Services)
+@dependencies: [jinja2, ast, pathlib]
+@responsibilities:
+    - Render Jinja2 templates with context variables
+    - Mock render templates for structure analysis (Issue #121)
+    - Support multiple template roots (Issue #72)
+    - Parse rendered output (Python AST, Markdown)
+    - Provide custom filters (metadata, formatting, validation)
+"""
 ```
 
-**Migration Strategy:**
+**Step 2: Update All Imports (3 Sites)**
+```python
+# BEFORE
+from mcp_server.scaffolding.renderer import JinjaRenderer
 
-**Phase 1: Extract + Dual Location**
-1. Create `backend/services/template_engine.py` with enhanced JinjaRenderer
-2. Keep `mcp_server/scaffolding/renderer.py` as import alias:
-   ```python
-   # mcp_server/scaffolding/renderer.py (DEPRECATED)
-   from backend.services.template_engine import JinjaRenderer
-   
-   __all__ = ["JinjaRenderer"]
-   ```
-3. Add deprecation warning (optional):
-   ```python
-   import warnings
-   warnings.warn(
-       "mcp_server.scaffolding.renderer is deprecated, "
-       "use backend.services.template_engine",
-       DeprecationWarning,
-       stacklevel=2
-   )
-   ```
+# AFTER
+from backend.services.template_engine import TemplateEngine
+```
 
-**Phase 2: Update Imports**
-4. Update 3 import sites:
-   - `mcp_server/scaffolding/base.py`
-   - `mcp_server/scaffolders/template_scaffolder.py`
-   - `tests/integration/.../test_scaffold_validate_e2e.py`
-5. Run full test suite: `pytest tests/`
-6. Verify quality gates: `run_quality_gates(files=[...])`
+**Files to Update:**
+1. `mcp_server/scaffolding/base.py`
+2. `mcp_server/scaffolders/template_scaffolder.py`
+3. `tests/integration/mcp_server/validation/test_scaffold_validate_e2e.py`
 
-**Phase 3: Remove Deprecated Location**
-7. Delete `mcp_server/scaffolding/renderer.py` (after 1-2 sprints grace period)
-8. Update documentation references
+**Step 3: Delete Old Module**
+```powershell
+Remove-Item mcp_server/scaffolding/renderer.py
+```
 
-**Test Coverage Requirements:**
-- ✅ All existing tests must pass with new location
-- ✅ Mock rendering tests added (new capability)
-- ✅ Multiple template root tests added (new capability)
-- ✅ Backward compatibility test (import alias works)
+**Step 4: Verify via Quality Gates**
+```powershell
+# Run full test suite
+pytest tests/
+
+# Run quality gates on changed files
+python -m ruff format --check backend/services/template_engine.py
+python -m ruff check backend/services/template_engine.py
+python -m mypy backend/services/template_engine.py --strict
+```
+
+**Risk Mitigation:**
+- ✅ Run full test suite BEFORE commit
+- ✅ Quality gates BEFORE commit
+- ✅ All tests pass = safe to proceed
+- ✅ Git history preserves old implementation (easy revert if needed)
+
+**Estimated Effort:**
+- Create new module: 4-6 hours (with mock rendering)
+- Update 3 imports: 15 minutes
+- Test verification: 30 minutes
+- **Total: 5-7 hours**
 
 ---
 
-### 8. Mock Rendering Capabilities
+### 8. Acceptance Criteria (Based on Coding Standards)
+
+**Source:** `docs/coding_standards/` (QUALITY_GATES.md, CODE_STYLE.md, TYPE_CHECKING_PLAYBOOK.md)
+
+#### AC1: Quality Gates (All 7 Gates Must Pass)
+
+**Gate 0: Ruff Format**
+```powershell
+python -m ruff format --isolated --check --diff --line-length=100 backend/services/template_engine.py
+python -m ruff format --isolated --check --diff --line-length=100 tests/unit/backend/services/test_template_engine.py
+```
+- ✅ Consistent formatting (100 char line length)
+- ✅ No formatting diffs
+
+**Gate 1: Ruff Strict Lint**
+```powershell
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/services/template_engine.py
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 tests/unit/backend/services/test_template_engine.py
+```
+- ✅ No lint violations
+- ✅ Full type annotations (ANN rules)
+
+**Gate 2: Import Placement**
+```powershell
+python -m ruff check --isolated --select=PLC0415 --target-version=py311 backend/services/template_engine.py
+```
+- ✅ All imports at module top-level
+- ✅ No imports inside functions/methods
+
+**Gate 3: Line Length**
+```powershell
+python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 backend/services/template_engine.py
+```
+- ✅ Maximum 100 characters per line
+
+**Gate 4: Type Checking (Strict)**
+```powershell
+python -m mypy backend/services/template_engine.py --strict
+```
+- ✅ Full type coverage (no `Any` without justification)
+- ✅ No type: ignore without rationale comment
+- ✅ Follow Type Checking Playbook resolution order
+
+**Gate 5: Tests Passing**
+```powershell
+pytest tests/unit/backend/services/test_template_engine.py
+pytest tests/integration/mcp_server/validation/test_scaffold_validate_e2e.py
+```
+- ✅ All tests pass (exit code 0)
+- ✅ Mock rendering tests included
+- ✅ Multiple template roots tests included
+
+**Gate 6: Code Coverage**
+```powershell
+pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fail-under=90
+```
+- ✅ ≥90% code coverage
+- ✅ All core methods covered (render, mock_render, parse_output)
+
+---
+
+#### AC2: File Header Standards
+
+**Mandatory Module Header:**
+```python
+# backend/services/template_engine.py
+"""
+Template Engine - Jinja2 rendering with mock capabilities.
+
+Enhanced JinjaRenderer with mock rendering for template introspection
+and multi-root template support for Issue #72 5-tier architecture.
+
+@layer: Backend (Services)
+@dependencies: [jinja2, ast, re, pathlib]
+@responsibilities:
+    - Render Jinja2 templates with context variables
+    - Mock render templates for structure analysis (Issue #121)
+    - Support multiple template roots via ChoiceLoader (Issue #72)
+    - Parse rendered output (Python AST for .py, Markdown for .md)
+    - Provide custom filters (metadata, formatting, validation)
+    - Enable accurate optional field detection (Issue #120)
+"""
+```
+
+**Class Docstrings (Concise):**
+```python
+class TemplateEngine:
+    """Jinja2 template engine with mock rendering and multi-root support."""
+```
+
+**Method Docstrings (Google Style):**
+```python
+def mock_render(self, template_name: str, mock_context: dict[str, Any]) -> str:
+    """Render template with mock context for structure analysis.
+    
+    Args:
+        template_name: Relative path to template (e.g., "dto.py.jinja2")
+        mock_context: Mock variable context for rendering
+    
+    Returns:
+        Rendered template output string
+    
+    Raises:
+        TemplateNotFound: If template does not exist
+        TemplateSyntaxError: If template has invalid Jinja2 syntax
+    
+    Example:
+        >>> engine = TemplateEngine()
+        >>> output = engine.mock_render("dto.py.jinja2", {"name": "TEST"})
+    """
+```
+
+---
+
+#### AC3: Import Organization (3 Sections)
+
+```python
+# Standard library
+import ast
+import re
+from pathlib import Path
+from typing import Any, Protocol
+
+# Third-party
+from jinja2 import ChoiceLoader, Environment, FileSystemLoader, TemplateNotFound
+
+# Project modules
+from mcp_server.core.exceptions import ExecutionError
+```
+
+**Rules:**
+- ✅ 3 sections with comment headers
+- ✅ Blank line between sections
+- ✅ Alphabetical order within sections
+- ✅ No imports inside functions
+
+---
+
+#### AC4: Full Type Hinting
+
+**All Functions/Methods:**
+```python
+def render(self, template_name: str, **kwargs: Any) -> str:
+    """Type hints for params AND return value."""
+```
+
+**Properties:**
+```python
+@property
+def env(self) -> Environment:
+    """Type hint for property return value."""
+```
+
+**Private Methods:**
+```python
+def _parse_python_output(self, output: str) -> dict[str, Any]:
+    """Even private methods need type hints."""
+```
+
+**Test Functions:**
+```python
+def test_mock_render(engine: TemplateEngine) -> None:
+    """Test functions need return type (None)."""
+```
+
+---
+
+#### AC5: Type Checking Playbook Compliance
+
+**Resolution Order:**
+1. ✅ Fix types at source (prefer concrete types over Any)
+2. ✅ Narrow types via runtime checks (assert, isinstance, if checks)
+3. ✅ Improve model/type design (Protocol, TypedDict, NewType)
+4. ✅ Contain dynamic edges (parse at boundaries)
+5. ✅ Targeted ignore (with rationale comment)
+6. ✅ Casting (last resort, with runtime check)
+
+**Example:**
+```python
+from typing import cast
+
+def get_template(self, name: str) -> Template:
+    """Load template with proper type narrowing."""
+    template = self.env.get_template(name)  # Returns Template | None
+    
+    # Narrow via runtime check (not blind cast!)
+    if template is None:
+        raise TemplateNotFound(name)
+    
+    # Type checker now knows template is not None
+    return template
+```
+
+---
+
+#### AC6: Mock Rendering Functionality
+
+**Required Methods:**
+```python
+class TemplateEngine:
+    def mock_render(self, template_name: str, mock_context: dict[str, Any]) -> str:
+        """Render with mock context."""
+    
+    def parse_python_output(self, rendered: str) -> dict[str, Any]:
+        """Parse rendered Python code via AST."""
+    
+    def parse_markdown_output(self, rendered: str) -> dict[str, Any]:
+        """Parse rendered Markdown structure."""
+    
+    def discover_capabilities(self, template_name: str) -> dict[str, Any]:
+        """Discover edit capabilities for Issue #121."""
+```
+
+**Test Coverage:**
+```python
+def test_mock_render_dto() -> None:
+    """Test mock rendering of DTO template."""
+
+def test_parse_python_output() -> None:
+    """Test Python AST parsing."""
+
+def test_parse_markdown_output() -> None:
+    """Test Markdown structure parsing."""
+
+def test_discover_capabilities() -> None:
+    """Test edit capabilities discovery for Issue #121."""
+```
+
+---
+
+#### AC7: Multiple Template Roots
+
+**Required Implementation:**
+```python
+class TemplateEngine:
+    def __init__(self, template_roots: list[Path] | None = None) -> None:
+        """Initialize with multiple template directories.
+        
+        Args:
+            template_roots: List of template roots (priority order)
+                           Default: [mcp_server/templates, docs/templates]
+        """
+        if template_roots is None:
+            base = Path(__file__).parent.parent.parent
+            template_roots = [
+                base / "mcp_server" / "templates",
+                base / "docs" / "templates"
+            ]
+        
+        loaders = [
+            FileSystemLoader(str(root)) 
+            for root in template_roots 
+            if root.exists()
+        ]
+        
+        self._env = Environment(loader=ChoiceLoader(loaders))
+```
+
+**Test Coverage:**
+```python
+def test_multiple_template_roots() -> None:
+    """Test ChoiceLoader with multiple roots."""
+
+def test_template_resolution_order() -> None:
+    """Test priority order (first root wins)."""
+```
+
+---
+
+#### AC8: Custom Jinja2 Filters
+
+**Required Filters:**
+```python
+def filter_pascalcase(s: str) -> str:
+    """Convert to PascalCase."""
+
+def filter_snakecase(s: str) -> str:
+    """Convert to snake_case."""
+
+def filter_kebabcase(s: str) -> str:
+    """Convert to kebab-case."""
+
+def filter_validate_identifier(s: str) -> str:
+    """Validate Python identifier."""
+```
+
+**Registration:**
+```python
+self._env.filters['pascalcase'] = filter_pascalcase
+self._env.filters['snakecase'] = filter_snakecase
+self._env.filters['kebabcase'] = filter_kebabcase
+self._env.filters['validate_identifier'] = filter_validate_identifier
+```
+
+**Test Coverage:**
+```python
+def test_filters() -> None:
+    """Test all custom filters."""
+```
+
+---
+
+#### AC9: Issue Integration
+
+**Issue #120 Integration:**
+- ✅ Mock rendering enables accurate optional field detection
+- ✅ Test: Render template with/without each field
+- ✅ Compare with conservative classification from `_classify_variables()`
+
+**Issue #121 Integration:**
+- ✅ `discover_capabilities()` method returns edit operations
+- ✅ Test: Parse DTO template → return `append_to_list` capabilities
+- ✅ Test: Parse Markdown template → return `replace_section` capabilities
+
+**Issue #72 Integration:**
+- ✅ Multiple template roots support 5-tier architecture
+- ✅ ChoiceLoader handles inheritance chain resolution
+- ✅ Test: Resolve Tier 0 → Tier 1 → Tier 2 → Tier 3 → Concrete
+
+---
+
+#### AC10: Documentation
+
+**Required Documentation:**
+- ✅ Module docstring with @layer, @dependencies, @responsibilities
+- ✅ Class docstring (concise one-liner)
+- ✅ Method docstrings (Google style with Args/Returns/Raises/Example)
+- ✅ Inline comments for complex logic only
+- ✅ Type hints serve as documentation (prefer over comments)
+
+**Example Usage Documentation:**
+```python
+"""
+Example Usage:
+    >>> from backend.services.template_engine import TemplateEngine
+    >>> from pathlib import Path
+    >>> 
+    >>> # Create engine with custom roots
+    >>> roots = [Path("templates"), Path("docs/templates")]
+    >>> engine = TemplateEngine(template_roots=roots)
+    >>> 
+    >>> # Render template
+    >>> output = engine.render("dto.py.jinja2", name="Signal", fields=[...])
+    >>> 
+    >>> # Mock render for discovery
+    >>> mock_output = engine.mock_render("dto.py.jinja2", {"name": "TEST"})
+    >>> structure = engine.parse_python_output(mock_output)
+    >>> print(structure["classes"])  # ['TESTSignal']
+"""
+```
+
+---
+
+## Summary of Research Updates
+
+### Clarifications
+
+1. **✅ NO Backward Compatibility**
+   - Direct migration (no import alias, no deprecation warnings)
+   - Only 3 import sites to update
+   - Full test coverage ensures safety
+   - Clean cut for future maintainability
+
+2. **✅ Acceptance Criteria Defined**
+   - 7 Quality Gates (Gate 0-6) must pass
+   - File header standards (@layer, @dependencies, @responsibilities)
+   - Import organization (3 sections)
+   - Full type hinting (parameters + return types)
+   - Type Checking Playbook compliance
+   - Mock rendering functionality with tests
+   - Multiple template roots support
+   - Custom Jinja2 filters
+   - Issue integration (#120, #121, #72)
+   - Documentation standards
+
+### Key Findings Remain
+
+- **Circular Dependency Blocker:** Extract to `backend/services/template_engine.py`
+- **Mock Rendering:** Solves Issue #120 hallucination + Issue #121 discovery
+- **Issue #72 Integration:** Multiple template roots via ChoiceLoader
+- **Output Parsing:** Python AST + Markdown structure analysis
+
+---
+
+### 9. Mock Rendering Capabilities
 
 **Q9: What output parsing utilities are needed?**
 
@@ -497,7 +914,7 @@ def discover_edit_capabilities(file_path: str) -> dict:
 
 ---
 
-### 9. Custom Jinja2 Filters
+### 10. Custom Jinja2 Filters
 
 **Q6: Which custom filters are needed?**
 
@@ -574,7 +991,7 @@ class TemplateEngine:
 
 ---
 
-### 10. Multiple Template Roots Strategy
+### 11. Multiple Template Roots Strategy
 
 **Q7: How should multiple template roots be managed?**
 
@@ -649,6 +1066,7 @@ renderer.get_template("tools/fix-import.py.jinja2") # From tools/templates/
 1. **Circular Dependency Blocker:**
    - Current location prevents tools/ from using JinjaRenderer
    - Extract to `backend/services/template_engine.py` breaks cycle
+   - **No backward compatibility needed** - only 3 import sites, direct migration
 
 2. **Mock Rendering Solves Multiple Problems:**
    - Issue #120: Accurate optional field detection (no more hallucination)
@@ -660,17 +1078,46 @@ renderer.get_template("tools/fix-import.py.jinja2") # From tools/templates/
    - Need multiple template roots support (ChoiceLoader)
    - Template registry integration required
 
-4. **Backward Compatibility:**
-   - Import alias at old location during transition
-   - 3 import sites to update
-   - Full test coverage required
+4. **Quality Standards:**
+   - All 7 quality gates must pass (Gate 0-6)
+   - File headers with @layer, @dependencies, @responsibilities
+   - Full type hinting (parameters + return types)
+   - Type Checking Playbook compliance
+   - ≥90% code coverage
+
+### Acceptance Criteria Defined
+
+**Based on:** `docs/coding_standards/` (QUALITY_GATES.md, CODE_STYLE.md, TYPE_CHECKING_PLAYBOOK.md)
+
+**Must Pass:**
+- ✅ Gate 0: Ruff Format (100 char lines)
+- ✅ Gate 1: Ruff Strict Lint (ANN, E, W, F, I, N, UP, B, C4, DTZ, T10, ISC, RET, SIM, ARG, PLC)
+- ✅ Gate 2: Import Placement (PLC0415 - top-level only)
+- ✅ Gate 3: Line Length (E501 - max 100 chars)
+- ✅ Gate 4: Type Checking (mypy --strict)
+- ✅ Gate 5: Tests Passing (all tests green)
+- ✅ Gate 6: Code Coverage (≥90%)
+
+**Must Implement:**
+- ✅ Mock rendering with parse_python_output() and parse_markdown_output()
+- ✅ Multiple template roots via ChoiceLoader
+- ✅ Custom filters (pascalcase, snakecase, kebabcase, validate_identifier)
+- ✅ Issue #120 integration (accurate optional detection)
+- ✅ Issue #121 integration (discover_capabilities method)
+- ✅ Issue #72 integration (5-tier template support)
+
+**Must Document:**
+- ✅ Module header with @layer, @dependencies, @responsibilities
+- ✅ Google-style docstrings (Args/Returns/Raises/Example)
+- ✅ 3-section imports (standard/third-party/project)
 
 ### Unanswered Questions (Deferred to Planning)
 
-- ⏳ **Q10: Template namespacing collisions?** - Namespace prefix strategy defined, but implementation details in TDD phase
 - ⏳ **Effort estimation:** How long for each capability? (planning phase)
 - ⏳ **Test strategy:** Which test scenarios cover mock rendering? (planning phase)
-- ⏳ **Migration timeline:** When to deprecate old location? (planning phase)
+- ⏳ **Work package breakdown:** How to sequence implementation? (planning phase)
+- ⏳ **Risk mitigation:** What are potential blockers? (planning phase)
+- ⏳ **Integration testing:** How to verify Issue #120/#121 compatibility? (planning phase)
 
 
 ## Related Documentation
@@ -698,4 +1145,6 @@ renderer.get_template("tools/fix-import.py.jinja2") # From tools/templates/
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 | 2025-01-26 | Agent | Initial draft |
+| 1.0 | 2026-02-13 | Agent | Initial research complete |
+| 1.1 | 2026-02-13 | Agent | Added acceptance criteria (coding standards) |
+| 1.1 | 2026-02-13 | Agent | Removed backward compatibility (direct migration) |
