@@ -167,24 +167,34 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 
 ### Cycle 5: Cleanup Legacy Module
 
-**Goal:** Remove mcp_server/scaffolding/renderer.py after confirming zero references remain
+**Goal:** Remove mcp_server/scaffolding/renderer.py and test utilities after confirming zero references remain
 
 **Tests:**
 - test_no_renderer_imports: Grep search confirms zero 'from mcp_server.scaffolding.renderer' references
 - test_full_test_suite_passes: All 40+ tests pass with old module deleted
 - test_import_error_on_old_path: Verify ImportError raised if old path accidentally used
+- test_no_capture_script_references: Confirm scripts/capture_baselines.py not imported anywhere
 
 **Success Criteria:**
 - mcp_server/scaffolding/renderer.py deleted
+- scripts/capture_baselines.py deleted (one-time Cycle 0 utility, no longer needed)
+- tests/baselines/README.md updated (mark baselines as immutable - no regeneration)
 - Full test suite (40+ tests) passes
 - No grep matches for old import path
 - Documentation updated (if renderer.py was documented)
 
+**Cleanup Rationale:**
+- **capture_baselines.py:** One-time utility for Cycle 0 baseline capture. No longer needed after baselines committed. Not scaffolded (coding standards violation), wrong location (scripts/ vs tests/fixtures/), imports mcp_server but lives outside mcp_server/ (boundary violation). Delete to reduce technical debt.
+- **Baseline immutability:** Baselines are frozen reference point - regeneration would mask regressions. Remove regeneration instructions from README.md.
 
 **RED→GREEN→REFACTOR:**
 1. **RED:** Write test_import_error_on_old_path.py (expects ImportError, fails - module still exists)
 2. **GREEN:** Delete mcp_server/scaffolding/renderer.py (test now passes - ImportError raised)
-3. **REFACTOR:** Run full test suite (40+ tests) + grep validation, update docs if needed
+3. **REFACTOR:** 
+   - Delete scripts/capture_baselines.py (no longer needed)
+   - Update tests/baselines/README.md (remove regeneration section, add immutability warning)
+   - Run full test suite (40+ tests) + grep validation
+   - Update docs if needed
 
 **Dependencies:** Cycle 4: Regression Validation Suite
 
