@@ -13,7 +13,9 @@ All code in S1mpleTrader V3 follows **strict PEP 8 compliance** with additional 
 
 ## File Headers
 
-**MANDATORY:** All Python modules must include a standardized header documenting architectural position.
+**AUTOMATED VIA SCAFFOLDING:** All Python modules scaffolded via `scaffold_artifact` automatically include standardized headers. Manual addition only required for non-scaffolded files.
+
+**Scaffolding Templates:** `mcp_server/templates/base/base_component.py.jinja2` and `base_test.py.jinja2` enforce headers.
 
 ### Header Template
 
@@ -26,15 +28,16 @@ All code in S1mpleTrader V3 follows **strict PEP 8 compliance** with additional 
 
 @layer: {Backend/Tests/Service/Frontend}
 @dependencies: [{list, of, dependencies}]
-@responsibilities:
-    - {Responsibility 1}
-    - {Responsibility 2}
 """
 ```
 
+**Implementation:**
+- ✅ **Scaffolded files**: Headers auto-generated via templates
+- ⚠️ **Non-scaffolded files**: Must manually add header (rare cases only)
+
 ### Examples
 
-**DTO Module:**
+**Component Module (Auto-generated via scaffolding):**
 ```python
 # backend/dtos/shared/disposition_envelope.py
 """
@@ -46,32 +49,10 @@ next-step intentions to the EventAdapter.
 
 @layer: Backend (DTOs)
 @dependencies: [pydantic, typing, re]
-@responsibilities:
-    - Define worker output contract (CONTINUE, PUBLISH, STOP)
-    - Enable event-driven flow control without coupling workers to EventBus
-    - Validate event publication payloads at type level
 """
 ```
 
-**Utility Module:**
-```python
-# backend/utils/id_generators.py
-"""
-Typed ID generation utilities.
-
-Provides standardized ID generation with type prefixes for causal
-traceability across the trading system.
-
-@layer: Backend (Utils)
-@dependencies: [uuid]
-@responsibilities:
-    - Generate typed IDs with consistent prefixes
-    - Extract ID type from typed ID string
-    - Maintain ID format consistency
-"""
-```
-
-**Test Module:**
+**Test Module (Auto-generated via scaffolding):**
 ```python
 # tests/unit/dtos/shared/test_disposition_envelope.py
 """
@@ -84,13 +65,32 @@ Tests the worker output flow control contract according to TDD principles.
 """
 ```
 
+**Non-Scaffolded Utility (Manual header required):**
+```python
+# backend/utils/id_generators.py
+"""
+Typed ID generation utilities.
+
+Provides standardized ID generation with type prefixes for causal
+traceability across the trading system.
+
+@layer: Backend (Utils)
+@dependencies: [uuid]
+"""
+```
+
 **Why This Convention:**
+- **Scaffolding enforcement** - Automatic for all scaffolded files
 - **Quick navigation** - Immediately see where you are in architecture
-- **Documentation** - Explicit dependencies and responsibilities
+- **Documentation** - Explicit dependencies visible
 - **Consistency** - All modules follow same pattern
 - **IDE-friendly** - File path as first line helps with context
 
 ## Import Organization
+
+**AUTOMATED VIA SCAFFOLDING:** All scaffolded Python files include properly organized imports with comment headers via base templates.
+
+**Scaffolding Templates:** `mcp_server/templates/base/base_component.py.jinja2` and `base_test.py.jinja2` enforce import structure.
 
 Imports must be grouped into **3 sections** with comment headers:
 
@@ -115,6 +115,11 @@ from backend.dtos.causality import CausalityChain
 5. Alphabetical order within each group
 6. **Never import inside functions** - All imports at module top-level
 
+**Implementation:**
+- ✅ **Scaffolded files**: Import structure auto-generated via templates
+- ⚠️ **Non-scaffolded files**: Must manually organize imports
+- ✅ **Ruff autofix**: Can organize imports automatically (`ruff check --select I --fix`)
+
 **Common violation:**
 ```python
 # ❌ WRONG - import inside function
@@ -122,7 +127,7 @@ def my_function():
     from datetime import datetime  # NEVER DO THIS
     return datetime.now()
 
-# ✅ CORRECT - import at top
+# ✅ CORRECT - import at top (enforced by scaffolding templates)
 from datetime import datetime
 
 def my_function():

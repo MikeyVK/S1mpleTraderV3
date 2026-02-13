@@ -475,7 +475,11 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 
 #### AC2: File Header Standards
 
-**Mandatory Module Header:**
+**AUTOMATED VIA SCAFFOLDING:** TemplateEngine will be scaffolded, inheriting header automatically.
+
+**Note:** Base templates (`base_component.py.jinja2`) enforce file headers. Manual addition NOT required for scaffolded files.
+
+**Expected Module Header:**
 ```python
 # backend/services/template_engine.py
 """
@@ -486,13 +490,6 @@ and multi-root template support for Issue #72 5-tier architecture.
 
 @layer: Backend (Services)
 @dependencies: [jinja2, ast, re, pathlib]
-@responsibilities:
-    - Render Jinja2 templates with context variables
-    - Mock render templates for structure analysis (Issue #121)
-    - Support multiple template roots via ChoiceLoader (Issue #72)
-    - Parse rendered output (Python AST for .py, Markdown for .md)
-    - Provide custom filters (metadata, formatting, validation)
-    - Enable accurate optional field detection (Issue #120)
 """
 ```
 
@@ -528,6 +525,9 @@ def mock_render(self, template_name: str, mock_context: dict[str, Any]) -> str:
 
 #### AC3: Import Organization (3 Sections)
 
+**AUTOMATED VIA SCAFFOLDING:** Base templates enforce 3-section import structure.
+
+**Expected Structure:**
 ```python
 # Standard library
 import ast
@@ -542,7 +542,7 @@ from jinja2 import ChoiceLoader, Environment, FileSystemLoader, TemplateNotFound
 from mcp_server.core.exceptions import ExecutionError
 ```
 
-**Rules:**
+**Rules (Enforced by base_component.py.jinja2):**
 - ✅ 3 sections with comment headers
 - ✅ Blank line between sections
 - ✅ Alphabetical order within sections

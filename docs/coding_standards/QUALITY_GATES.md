@@ -97,6 +97,8 @@ def test_my_feature(dto: MyDTO) -> None:
 
 **Purpose:** All imports must be at top-level (never inside functions/methods).
 
+**Note:** Scaffolded files automatically comply via base templates (`base_component.py.jinja2`, `base_test.py.jinja2`). This gate validates non-scaffolded or manually edited files.
+
 ```powershell
 # Check DTO file
 python -m ruff check --isolated --select=PLC0415 --target-version=py311 backend/dtos/strategy/my_dto.py
@@ -114,7 +116,7 @@ def my_function():
     from datetime import datetime  # NEVER DO THIS
     return datetime.now()
 
-# ✅ CORRECT - import at top
+# ✅ CORRECT - import at top (enforced by scaffolding templates)
 from datetime import datetime
 
 def my_function():
