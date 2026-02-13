@@ -786,7 +786,7 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 
 - **Circular Dependency Blocker:** Extract to `backend/services/template_engine.py`
 - **Mock Rendering:** Solves Issue #120 hallucination + Issue #121 discovery
-- **Issue #72 Integration:** Multiple template roots via ChoiceLoader
+- **Issue #72 Integration:** Single template root + FileSystemLoader (ChoiceLoader deferred to Phase 2)
 - **Output Parsing:** Python AST + Markdown structure analysis
 
 ---
