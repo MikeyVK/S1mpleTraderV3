@@ -31,7 +31,7 @@ Read these first:
 
 ### 1.1. Problem Statement
 
-Current JinjaRenderer location (mcp_server/scaffolding/renderer.py) creates circular dependency preventing tools/ from using template rendering. Need to extract to backend/services/ while maintaining 100% behavioral compatibility with existing scaffolding system (40 tests, 6 import sites). MVP scope: Single template root via get_template_root(), FileSystemLoader support, custom filters. No backward compatibility layer needed - direct migration.
+Current JinjaRenderer location (mcp_server/scaffolding/renderer.py) creates circular dependency preventing tools/ from using template rendering. Need to extract to backend/services/ while maintaining 100% behavioral compatibility with existing scaffolding system (40 tests, 6 import sites). MVP scope: Single template root (caller provides via get_template_root()), FileSystemLoader support, custom filters. No backward compatibility layer needed - direct migration.
 
 ### 1.2. Requirements
 
@@ -118,7 +118,8 @@ Extract JinjaRenderer in stages: first move, then refactor internal structure in
 |----------|-----------|
 | Module path: backend/services/template_engine.py | Services layer appropriate for reusable utilities. Backend/ prefix ensures no mcp_server/ imports (breaks circular dependency). Follows backend/ → services/ convention. |
 | Class name: TemplateEngine (not JinjaRenderer) | Rename signals new location and avoids confusion. 'Engine' implies broader applicability (future Phase 2 features). Clear break from old import path. |
-| Single template root via get_template_root() | MVP scope - YAGNI principle. Multi-root (ChoiceLoader) deferred to Phase 2. Simplifies initial extraction, reduces risk. Current scaffolding only needs single root. |
+| Template root resolution: Caller responsibility | TemplateEngine accepts template_root as __init__ parameter (Path or str). Caller (scaffolding code) invokes get_template_root() from mcp_server/config/. **Critical:** TemplateEngine does NOT import get_template_root() (would violate "no mcp_server/ imports" constraint). Separation of concerns: config resolution = caller, rendering = TemplateEngine. |
+| Single template root only (no multi-root) | MVP scope - YAGNI principle. Multi-root (ChoiceLoader) deferred to Phase 2. Simplifies initial extraction, reduces risk. Current scaffolding only needs single root. |
 | FileSystemLoader only (no ChoiceLoader) | Supports existing 5-tier inheritance (tier0→tier1→tier2→tier3→concrete). ChoiceLoader not needed for MVP (Issue #72 compatibility requires single root only). Phase 2 work. |
 | Cycle 0: Baseline capture BEFORE migration | Immutable reference point for byte-identical validation. Captures current output before any changes. Enables Cycle 4 regression tests to prove zero behavioral change. |
 | Import migration: 2 production + 4 test files | Research identified exact 6 sites. Split into Cycle 2 (production: base.py, template_scaffolder.py) and Cycle 3 (tests) for isolation. Production first ensures core stability. |
@@ -128,16 +129,9 @@ Extract JinjaRenderer in stages: first move, then refactor internal structure in
 | Quality gates: All 7 gates enforced | Cycle 1 REFACTOR phase runs: ruff format/check, mypy --strict, import order, line length, pytest (5 tests), coverage ≥90%. Ensures production quality before integration. |
 
 ## Related Documentation
-- **[research.md - Research findings justifying extraction][related-1]**
-- **[planning.md - TDD cycle breakdown (Cycle 0-5)][related-2]**
-- **[../../coding_standards/TYPE_CHECKING_PLAYBOOK.md - Type checking standards][related-3]**
-
-<!-- Link definitions -->
-
-[related-1]: research.md - Research findings justifying extraction
-[related-2]: planning.md - TDD cycle breakdown (Cycle 0-5)
-[related-3]: ../../coding_standards/TYPE_CHECKING_PLAYBOOK.md - Type checking standards
-
+- **[research.md](research.md)** - Research findings justifying extraction
+- **[planning.md](planning.md)** - TDD cycle breakdown (Cycle 0-5)
+- **[../../coding_standards/TYPE_CHECKING_PLAYBOOK.md](../../coding_standards/TYPE_CHECKING_PLAYBOOK.md)** - Type checking standards
 ---
 
 ## Version History
