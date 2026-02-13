@@ -472,242 +472,120 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 - ✅ All core methods covered (render, mock_render, parse_output)
 
 ---
-
 #### AC2: File Header Standards
 
-**AUTOMATED VIA SCAFFOLDING:** TemplateEngine will be scaffolded, inheriting header automatically from base_component.py.jinja2.
+**Requirement:** Module must follow coding standards file header format (@layer, @dependencies, @responsibilities).
 
-**Expected Module Header:**
-```python
-# backend/services/template_engine.py
-"""
-Template Engine - Jinja2 rendering with mock capabilities.
+**Standards:**
+- Path comment on line 1
+- Module docstring with description
+- @layer annotation (Backend - Services)
+- @dependencies list (jinja2, ast, re, pathlib)
+- @responsibilities list (render, mock render, parse output, custom filters)
 
-Enhanced JinjaRenderer with mock rendering for template introspection
-and multi-root template support for Issue #72 5-tier architecture.
-
-@layer: Backend (Services)
-@dependencies: [jinja2, ast, re, pathlib]
-@responsibilities:
-    - Render Jinja2 templates with context variables
-    - Mock render templates for structure analysis (Issue #121)
-    - Support multiple template roots via ChoiceLoader (Issue #72)
-    - Parse rendered output (Python AST for .py, Markdown for .md)
-    - Provide custom filters (metadata, formatting, validation)
-    - Enable accurate optional field detection (Issue #120)
-"""
-```
-
-**Note:** @responsibilities block is now mandatory via base_component.py.jinja2 template.
-
-**Class Docstrings (Concise):**
-```python
-class TemplateEngine:
-    """Jinja2 template engine with mock rendering and multi-root support."""
-```
-
-**Method Docstrings (Google Style):**
-```python
-def mock_render(self, template_name: str, mock_context: dict[str, Any]) -> str:
-    """Render template with mock context for structure analysis.
-    
-    Args:
-        template_name: Relative path to template (e.g., "dto.py.jinja2")
-        mock_context: Mock variable context for rendering
-    
-    Returns:
-        Rendered template output string
-    
-    Raises:
-        TemplateNotFound: If template does not exist
-        TemplateSyntaxError: If template has invalid Jinja2 syntax
-    
-    Example:
-        >>> engine = TemplateEngine()
-        >>> output = engine.mock_render("dto.py.jinja2", {"name": "TEST"})
-    """
-```
+**Note:** AUTOMATED VIA SCAFFOLDING (base_component.py.jinja2)
 
 ---
 
-#### AC3: Import Organization (3 Sections)
+#### AC3: Import Organization
 
-**AUTOMATED VIA SCAFFOLDING:** Base templates enforce 3-section import structure.
+**Requirement:** 3-section import structure per coding standards.
 
-**Expected Structure:**
-```python
-# Standard library
-import ast
-import re
-from pathlib import Path
-from typing import Any, Protocol
+**Standards:**
+- Section 1: Standard library imports
+- Section 2: Third-party imports (jinja2)
+- Section 3: Project modules
+- Comment headers required
+- Alphabetical order within sections
 
-# Third-party
-from jinja2 import ChoiceLoader, Environment, FileSystemLoader, TemplateNotFound
-
-# Project modules
-from mcp_server.core.exceptions import ExecutionError
-```
-
-**Rules (Enforced by base_component.py.jinja2):**
-- ✅ 3 sections with comment headers
-- ✅ Blank line between sections
-- ✅ Alphabetical order within sections
-- ✅ No imports inside functions
+**Note:** AUTOMATED VIA SCAFFOLDING
 
 ---
 
 #### AC4: Full Type Hinting
 
-**All Functions/Methods:**
-```python
-def render(self, template_name: str, **kwargs: Any) -> str:
-    """Type hints for params AND return value."""
-```
+**Requirement:** All functions, methods, and properties must have complete type hints.
 
-**Properties:**
-```python
-@property
-def env(self) -> Environment:
-    """Type hint for property return value."""
-```
+**Standards:**
+- Parameter types required
+- Return type required (including `None` for void functions)
+- Private methods need type hints
+- Test functions need return type annotation
+- Use concrete types over `Any` where possible
 
-**Private Methods:**
-```python
-def _parse_python_output(self, output: str) -> dict[str, Any]:
-    """Even private methods need type hints."""
-```
-
-**Test Functions:**
-```python
-def test_mock_render(engine: TemplateEngine) -> None:
-    """Test functions need return type (None)."""
-```
+**Validation:** mypy --strict must pass (Gate 4)
 
 ---
 
 #### AC5: Type Checking Playbook Compliance
 
-**Resolution Order:**
-1. ✅ Fix types at source (prefer concrete types over Any)
-2. ✅ Narrow types via runtime checks (assert, isinstance, if checks)
-3. ✅ Improve model/type design (Protocol, TypedDict, NewType)
-4. ✅ Contain dynamic edges (parse at boundaries)
-5. ✅ Targeted ignore (with rationale comment)
-6. ✅ Casting (last resort, with runtime check)
+**Requirement:** Type issues resolved following resolution order from Type Checking Playbook.
 
-**Example:**
-```python
-from typing import cast
+**Resolution Order (docs/coding_standards/TYPE_CHECKING_PLAYBOOK.md):**
+1. Fix types at source (prefer concrete types)
+2. Narrow types via runtime checks
+3. Improve model/type design (Protocol, TypedDict)
+4. Contain dynamic edges (parse at boundaries)
+5. Targeted type: ignore (with rationale comment)
+6. Casting (last resort, with runtime validation)
 
-def get_template(self, name: str) -> Template:
-    """Load template with proper type narrowing."""
-    template = self.env.get_template(name)  # Returns Template | None
-    
-    # Narrow via runtime check (not blind cast!)
-    if template is None:
-        raise TemplateNotFound(name)
-    
-    # Type checker now knows template is not None
-    return template
-```
+**Standards:**
+- No blind casting
+- Runtime checks before narrowing
+- Rationale comments for type: ignore
 
 ---
 
 #### AC6: Mock Rendering Functionality
 
-**Required Methods:**
-```python
-class TemplateEngine:
-    def mock_render(self, template_name: str, mock_context: dict[str, Any]) -> str:
-        """Render with mock context."""
-    
-    def parse_python_output(self, rendered: str) -> dict[str, Any]:
-        """Parse rendered Python code via AST."""
-    
-    def parse_markdown_output(self, rendered: str) -> dict[str, Any]:
-        """Parse rendered Markdown structure."""
-    
-    def discover_capabilities(self, template_name: str) -> dict[str, Any]:
-        """Discover edit capabilities for Issue #121."""
-```
+**Requirement:** Support mock rendering for template structure analysis (Issue #121).
+
+**Required Capabilities:**
+- Mock render with test context
+- Parse Python output via AST
+- Parse Markdown structure
+- Discover edit capabilities (Issue #121 integration)
 
 **Test Coverage:**
-```python
-def test_mock_render_dto() -> None:
-    """Test mock rendering of DTO template."""
-
-def test_parse_python_output() -> None:
-    """Test Python AST parsing."""
-
-def test_parse_markdown_output() -> None:
-    """Test Markdown structure parsing."""
-
-def test_discover_capabilities() -> None:
-    """Test edit capabilities discovery for Issue #121."""
-```
+- Test: Mock render DTO template
+- Test: Parse Python AST successfully
+- Test: Parse Markdown structure
+- Test: Discover capabilities returns expected operations
 
 ---
 
-#### AC7: Template Root Configuration (YAGNI: Single Root First)
+---
 
-**YAGNI Principle Applied:** Start with single configurable root, defer multiple roots until proven needed.
+#### AC7: Template Root Configuration (Config-First)
 
-**Phase 1 Implementation (P0 - This Issue):**
-```python
-class TemplateEngine:
-    def __init__(self, template_root: Path | None = None) -> None:
-        """Initialize with single template directory.
-        
-        Args:
-            template_root: Template directory path
-                          Default: mcp_server/scaffolding/templates/
-        """
-        if template_root is None:
-            base = Path(__file__).parent.parent.parent
-            template_root = base / "mcp_server" / "scaffolding" / "templates"
-        
-        if not template_root.exists():
-            raise ValueError(f"Template root does not exist: {template_root}")
-        
-        self._env = Environment(loader=FileSystemLoader(str(template_root)))
-```
+**Requirement:** Template root must be configurable via central config mechanism, not hardcoded paths.
 
-**Future Extension (P1 - When Multi-Root Proven Needed):**
-```python
-# YAGNI: Only implement when we have concrete use case for:
-# - Tool-specific template overrides
-# - Per-project custom templates
-# - Documentation template separation
+**Config-First Principle:**
+- ✅ Template root comes from config source (environment variable, config file, or config helper)
+- ✅ No hardcoded relative paths in template engine code
+- ✅ Single source of truth for template location
+- ❌ NO `Path(__file__).parent.parent.parent / "mcp_server"...` constructions
 
-class TemplateEngine:
-    def __init__(self, template_roots: list[Path] | None = None) -> None:
-        """Initialize with multiple template directories (priority order)."""
-        loaders = [FileSystemLoader(str(root)) for root in template_roots]
-        self._env = Environment(loader=ChoiceLoader(loaders))
-```
+**Expected Behavior:**
+- Default: Use existing `get_template_root()` from `mcp_server/config/template_config.py`
+- Override: Constructor accepts optional `template_root` parameter
+- Validation: Raise error if configured root does not exist
 
-**Decision Rationale:**
-- Current system: Single root (`mcp_server/scaffolding/templates/`) suffices
-- Config-first principle: Root is configurable (not hardcoded)
-- YAGNI: Multiple roots adds complexity without current requirement
-- Easy upgrade path: Change `Path` → `list[Path]` when needed
+**Integration Point:**
+- Existing config: `mcp_server/config/template_config.py` already has `get_template_root()`
+- Returns: `mcp_server/scaffolding/templates/` (can be overridden via TEMPLATE_ROOT env var)
+- TemplateEngine should reuse this config mechanism
 
-**Test Coverage:**
-```python
-def test_default_template_root() -> None:
-    """Test default root is mcp_server/scaffolding/templates/."""
+**YAGNI Note:**
+- Start with single template root (sufficient for current needs)
+- Multiple roots (ChoiceLoader) deferred to P1 when proven needed
+- Easy upgrade path: `Path` → `list[Path]` if required later
 
-def test_custom_template_root() -> None:
-    """Test custom root via constructor."""
-
-def test_nonexistent_root_raises_error() -> None:
-    """Test ValueError on nonexistent root."""
-
-# FUTURE (P1 - Multi-Root):
-# def test_multiple_template_roots() -> None:
-# def test_template_resolution_order() -> None:
-```
+**Test Requirements:**
+- Test: Default uses `get_template_root()` value
+- Test: Constructor override works
+- Test: ValueError on nonexistent root
+- Test: Respects TEMPLATE_ROOT environment variable (via config)
 
 **TODO for Planning Phase:**
 - [ ] Update ~50 doc references from `mcp_server/templates/` → `mcp_server/scaffolding/templates/`
@@ -720,87 +598,62 @@ def test_nonexistent_root_raises_error() -> None:
 - [ ] Consider: Add redirects/notes in legacy sections
 
 ---
+---
 #### AC8: Custom Jinja2 Filters
 
+**Requirement:** Provide custom Jinja2 filters for template convenience.
+
 **Required Filters:**
-```python
-def filter_pascalcase(s: str) -> str:
-    """Convert to PascalCase."""
-
-def filter_snakecase(s: str) -> str:
-    """Convert to snake_case."""
-
-def filter_kebabcase(s: str) -> str:
-    """Convert to kebab-case."""
-
-def filter_validate_identifier(s: str) -> str:
-    """Validate Python identifier."""
-```
-
-**Registration:**
-```python
-self._env.filters['pascalcase'] = filter_pascalcase
-self._env.filters['snakecase'] = filter_snakecase
-self._env.filters['kebabcase'] = filter_kebabcase
-self._env.filters['validate_identifier'] = filter_validate_identifier
-```
+- pascalcase: Convert string to PascalCase
+- snakecase: Convert string to snake_case
+- kebabcase: Convert string to kebab-case
+- validate_identifier: Validate Python identifier
 
 **Test Coverage:**
-```python
-def test_filters() -> None:
-    """Test all custom filters."""
-```
+- Test: Each filter with valid input
+- Test: Edge cases (empty strings, special characters)
+- Test: Filters available in template rendering
 
 ---
 
 #### AC9: Issue Integration
 
-**Issue #120 Integration:**
-- ✅ Mock rendering enables accurate optional field detection
-- ✅ Test: Render template with/without each field
-- ✅ Compare with conservative classification from `_classify_variables()`
+**Requirement:** Integrate with Issue #120, #121, and #72.
 
-**Issue #121 Integration:**
-- ✅ `discover_capabilities()` method returns edit operations
-- ✅ Test: Parse DTO template → return `append_to_list` capabilities
-- ✅ Test: Parse Markdown template → return `replace_section` capabilities
+**Issue #120 Integration (Template Introspection):**
+- Mock rendering enables accurate optional field detection
+- Test: Render with/without each field
+- Compare with conservative classification
 
-**Issue #72 Integration:**
-- ✅ Multiple template roots support 5-tier architecture
-- ✅ ChoiceLoader handles inheritance chain resolution
-- ✅ Test: Resolve Tier 0 → Tier 1 → Tier 2 → Tier 3 → Concrete
+**Issue #121 Integration (Content-Aware Editing):**
+- `discover_capabilities()` method returns edit operations
+- Test: Parse DTO template returns expected capabilities
+- Test: Parse Markdown template returns section operations
+
+**Issue #72 Integration (5-Tier Templates):**
+- Template root supports 5-tier architecture
+- Jinja2 FileSystemLoader handles inheritance chain
+- Test: Resolve complete tier chain (Tier 0 → Concrete)
 
 ---
 
 #### AC10: Documentation
 
-**Required Documentation:**
-- ✅ Module docstring with @layer, @dependencies, @responsibilities
-- ✅ Class docstring (concise one-liner)
-- ✅ Method docstrings (Google style with Args/Returns/Raises/Example)
-- ✅ Inline comments for complex logic only
-- ✅ Type hints serve as documentation (prefer over comments)
+**Requirement:** Complete documentation per coding standards.
 
-**Example Usage Documentation:**
-```python
-"""
-Example Usage:
-    >>> from backend.services.template_engine import TemplateEngine
-    >>> from pathlib import Path
-    >>> 
-    >>> # Create engine with custom roots
-    >>> roots = [Path("templates"), Path("docs/templates")]
-    >>> engine = TemplateEngine(template_roots=roots)
-    >>> 
-    >>> # Render template
-    >>> output = engine.render("dto.py.jinja2", name="Signal", fields=[...])
-    >>> 
-    >>> # Mock render for discovery
-    >>> mock_output = engine.mock_render("dto.py.jinja2", {"name": "TEST"})
-    >>> structure = engine.parse_python_output(mock_output)
-    >>> print(structure["classes"])  # ['TESTSignal']
-"""
-```
+**Required Documentation:**
+- Module docstring with @layer, @dependencies, @responsibilities
+- Class docstring (concise one-liner)
+- Method docstrings (Google style: Args/Returns/Raises/Example)
+- Inline comments only for complex logic
+- Type hints as primary documentation (prefer over comments)
+
+**Validation:**
+- All public methods documented
+- Google style format consistent
+- Examples included for non-trivial methods
+
+---
 
 ---
 
@@ -841,225 +694,74 @@ Example Usage:
 
 **✅ ANSWER: Python AST + Markdown Structure Parsers**
 
-**Python AST Parsing (for .py templates):**
-```python
-import ast
+**Python Template Parsing:**
+- Parse rendered Python code via `ast.parse()`
+- Extract: classes, functions, methods, imports, constants
+- Enable discovery of edit points for Issue #121
+- Handle syntax errors gracefully
 
-def parse_python_output(rendered: str) -> dict:
-    """Parse rendered Python code structure."""
-    try:
-        tree = ast.parse(rendered)
-    except SyntaxError as e:
-        return {"error": str(e)}
-    
-    result = {
-        "classes": [],
-        "functions": [],
-        "methods": {},  # class_name -> [method_names]
-        "imports": [],
-        "constants": []
-    }
-    
-    for node in ast.walk(tree):
-        if isinstance(node, ast.ClassDef):
-            result["classes"].append(node.name)
-            result["methods"][node.name] = [
-                m.name for m in node.body 
-                if isinstance(m, ast.FunctionDef)
-            ]
-        elif isinstance(node, ast.FunctionDef):
-            result["functions"].append(node.name)
-        elif isinstance(node, ast.Import):
-            result["imports"].extend([a.name for a in node.names])
-        elif isinstance(node, ast.ImportFrom):
-            result["imports"].append(f"{node.module}")
-    
-    return result
-```
+**Markdown Template Parsing:**
+- Parse rendered Markdown structure via regex/line scanning
+- Extract: sections (H2), subsections (H3), lists, code blocks, tables
+- Enable section-based editing for Issue #121
+- Maintain line number mapping for edit operations
 
-**Markdown Structure Parsing (for .md templates):**
-```python
-import re
+**Issue #121 Integration:**
+- `discover_capabilities()` combines template mock rendering + parsing
+- Returns available edit operations based on file type
+- Python: append_to_list (imports, methods, fields), replace_section (classes, functions)
+- Markdown: append_to_list (bullet points), replace_section (H2 sections)
 
-def parse_markdown_output(rendered: str) -> dict:
-    """Parse rendered Markdown structure."""
-    result = {
-        "sections": [],      # H2 headers
-        "subsections": {},   # H2 -> [H3 headers]
-        "lists": [],         # Bullet/numbered list locations
-        "code_blocks": [],   # Code block languages
-        "tables": []         # Table headers
-    }
-    
-    lines = rendered.split('\n')
-    current_section = None
-    
-    for i, line in enumerate(lines):
-        # H2 sections
-        if line.startswith('## '):
-            section = line[3:].strip()
-            result["sections"].append(section)
-            result["subsections"][section] = []
-            current_section = section
-        
-        # H3 subsections
-        elif line.startswith('### ') and current_section:
-            subsection = line[4:].strip()
-            result["subsections"][current_section].append(subsection)
-        
-        # Lists
-        elif re.match(r'^[\*\-\+]\s', line) or re.match(r'^\d+\.\s', line):
-            result["lists"].append(i + 1)  # Line number
-        
-        # Code blocks
-        elif line.startswith('```'):
-            lang = line[3:].strip()
-            result["code_blocks"].append(lang or "plain")
-    
-    return result
-```
-
-**Integration with Issue #121:**
-```python
-def discover_edit_capabilities(file_path: str) -> dict:
-    """Discover what ScaffoldEdit operations are supported."""
-    # 1. Load template that generated this file
-    template_id = extract_scaffold_metadata(file_path)
-    
-    # 2. Mock render with minimal context
-    renderer = TemplateEngine()
-    output = renderer.mock_render(template_id, mock_context={...})
-    
-    # 3. Parse structure
-    if file_path.endswith('.py'):
-        structure = parse_python_output(output)
-        capabilities = {
-            "append_to_list": ["imports", "methods", "fields"],
-            "replace_section": structure["classes"] + structure["functions"]
-        }
-    elif file_path.endswith('.md'):
-        structure = parse_markdown_output(output)
-        capabilities = {
-            "append_to_list": structure["lists"],
-            "replace_section": structure["sections"]
-        }
-    
-    return {
-        "template_id": template_id,
-        "edit_capabilities": capabilities,
-        "structure": structure
-    }
-```
+**Implementation Note:** Defer concrete parsing logic to planning/design phase.
 
 ---
 
 ### 10. Custom Jinja2 Filters
 
-**Q6: Which custom filters are needed?**
+**Q10: Which custom filters are needed?**
 
-**✅ ANSWER: Metadata, Formatting, and Validation Filters**
+**✅ ANSWER: Case Conversion + Validation Filters**
 
-**Metadata Filters (Issue #72 SCAFFOLD header):**
-```python
-def filter_scaffold_metadata(template_id: str, version: str) -> str:
-    """Generate SCAFFOLD header line."""
-    from datetime import datetime
-    timestamp = datetime.now().isoformat()
-    return f"# SCAFFOLD: {template_id}:{version} | {timestamp} | {{{{ output_path }}}}"
+**Required Filters:**
+- **pascalcase**: Convert snake_case to PascalCase (class names)
+- **snakecase**: Convert PascalCase to snake_case (function names)
+- **kebabcase**: Convert to kebab-case (file paths)
+- **validate_identifier**: Ensure valid Python identifier
 
-# Usage in Tier 0 template:
-# {{ template_id | scaffold_metadata(template_version) }}
-```
+**Usage Context:**
+- Templates use filters for consistent naming conventions
+- Example: `class {{ name | pascalcase }}:` ensures proper class naming
+- Validation filters raise errors on invalid input (fail-fast)
 
-**Formatting Filters:**
-```python
-def filter_pascalcase(s: str) -> str:
-    """Convert string to PascalCase."""
-    return ''.join(word.capitalize() for word in s.split('_'))
-
-def filter_snakecase(s: str) -> str:
-    """Convert string to snake_case."""
-    import re
-    s = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', s)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s).lower()
-
-def filter_kebabcase(s: str) -> str:
-    """Convert string to kebab-case."""
-    return filter_snakecase(s).replace('_', '-')
-
-# Usage:
-# class {{ name | pascalcase }}:
-# def {{ method_name | snakecase }}():
-# docs/{{ title | kebabcase }}.md
-```
-
-**Validation Filters:**
-```python
-def filter_validate_identifier(s: str) -> str:
-    """Validate Python identifier."""
-    if not s.isidentifier():
-        raise ValueError(f"Invalid Python identifier: {s}")
-    return s
-
-def filter_validate_path(s: str) -> str:
-    """Validate file path safety."""
-    from pathlib import Path
-    if '..' in s or s.startswith('/'):
-        raise ValueError(f"Unsafe path: {s}")
-    return str(Path(s))
-
-# Usage:
-# class {{ name | validate_identifier }}:
-# output: {{ output_path | validate_path }}
-```
-
-**Filter Registration:**
-```python
-class TemplateEngine:
-    def __init__(self, ...):
-        self._env = Environment(...)
-        
-        # Register custom filters
-        self._env.filters['scaffold_metadata'] = filter_scaffold_metadata
-        self._env.filters['pascalcase'] = filter_pascalcase
-        self._env.filters['snakecase'] = filter_snakecase
-        self._env.filters['kebabcase'] = filter_kebabcase
-        self._env.filters['validate_identifier'] = filter_validate_identifier
-        self._env.filters['validate_path'] = filter_validate_path
-```
+**Implementation Note:** Defer filter implementations to planning/design phase.
 
 ---
 
-### 11. Multiple Template Roots Strategy
+### 11. Template Root Configuration Strategy
 
-**Q7: How should multiple template roots be managed?**
+**Q11: How should template root be configured?**
 
-**✅ ANSWER: ChoiceLoader with Priority Order**
+**✅ ANSWER: Config-First via get_template_root()**
 
-**Current Implementation (Single Root):**
-```python
-class JinjaRenderer:
-    def __init__(self, template_dir: Path):
-        self._env = Environment(
-            loader=FileSystemLoader(str(template_dir))
-        )
-```
+**Current System:**
+- `mcp_server/config/template_config.py` has `get_template_root()` helper
+- Returns `mcp_server/scaffolding/templates/` by default
+- Supports override via TEMPLATE_ROOT environment variable
+- Already used by TemplateScaffolder and ValidationService
 
-**New Implementation (Multiple Roots):**
-```python
-from jinja2 import ChoiceLoader, FileSystemLoader
+**TemplateEngine Integration:**
+- Reuse existing config mechanism (DRY principle)
+- Constructor parameter for test overrides
+- Validate root exists (fail-fast on misconfiguration)
 
-class TemplateEngine:
-    def __init__(self, template_roots: list[Path] | None = None):
-        """Initialize with multiple template roots.
-        
-        Args:
-            template_roots: List of template directories (priority order)
-                           Default: [mcp_server/templates, docs/templates]
-        """
-        if template_roots is None:
-            base = Path(__file__).parent.parent.parent
-            template_roots = [
+**YAGNI Decision:**
+- Start with single root (sufficient for current needs)
+- Defer multiple roots (ChoiceLoader) to P1 when proven needed
+- Easy upgrade path if requirements change
+
+**Implementation Note:** Use existing infrastructure, don't reinvent config.
+
+---
                 base / "mcp_server" / "templates",  # Priority 1
                 base / "docs" / "templates"         # Priority 2
             ]
