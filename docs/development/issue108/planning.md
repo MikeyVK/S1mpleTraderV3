@@ -191,6 +191,8 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 **Phase Gate:** ✅ Exit from TDD phase (tdd→integration transition)
 ## Risks & Mitigation
 
+- **Risk:** "Identical API" claim conflicts with stricter constructor contract in TemplateEngine
+  - **Mitigation:** Documented as deliberate deviation in design.md §3.2. Constructor strictness (required root parameter) enforces caller responsibility, prevents implicit path assumptions. Zero migration impact - all 6 call sites already provide explicit path. Validated by tests: `test_accepts_template_dir_parameter`, `test_raises_on_nonexistent_root`.
 - **Risk:** Circular dependency resurfaces if TemplateEngine imports from mcp_server/scaffolding/
   - **Mitigation:** Strict import validation in Cycle 1 tests - TemplateEngine must only import from backend/, stdlib, and third-party
 - **Risk:** Byte-identical output assumption fails due to Jinja2 version differences or environment factors

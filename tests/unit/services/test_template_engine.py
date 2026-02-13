@@ -177,6 +177,32 @@ class TestTemplateEngineErrorHandling:
 
         assert "missing/template.jinja2" in str(exc_info.value)
 
+    def test_missing_template_boundary_contract(self, engine: TemplateEngine) -> None:
+        """Missing template raises raw TemplateNotFound for MCP boundary wrapping.
+
+        Contract: TemplateEngine returns raw jinja2.TemplateNotFound (no ExecutionError wrapping).
+        MCP server tools MUST catch TemplateNotFound at boundary and wrap in ExecutionError.
+
+        This test validates:
+        1. TemplateEngine raises TemplateNotFound (not ExecutionError)
+        2. Exception includes template name for debugging
+        3. Exception is catchable for boundary normalization
+
+        Rationale: backend/services cannot import mcp_server exceptions (circular dependency).
+        Exception normalization is MCP boundary concern (see design.md §3.2).
+        """
+        # Verify raw Jinja2 exception propagates (not wrapped in ExecutionError)
+        with pytest.raises(TemplateNotFound) as exc_info:
+            engine.render("nonexistent/missing_template.jinja2")
+
+        # Verify exception message contains template name (enables boundary wrapping)
+        error_message = str(exc_info.value)
+        assert "missing_template.jinja2" in error_message or "nonexistent" in error_message
+
+        # Verify exception type is exactly TemplateNotFound (not subclass or wrapper)
+        assert type(exc_info.value).__name__ == "TemplateNotFound"
+        assert exc_info.value.__class__.__module__ == "jinja2.exceptions"
+
     def test_missing_variable_error(self, engine: TemplateEngine) -> None:
         """Missing required variable raises clear error."""
         # Create template that truly requires a variable

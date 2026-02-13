@@ -128,6 +128,31 @@ Extract JinjaRenderer in stages: first move, then refactor internal structure in
 | Legacy cleanup: Delete renderer.py in Cycle 5 | No compatibility layer per research decision. Clean migration: all 6 sites updated, tests green, then delete old module. Cycle 5 test validates ImportError on old path (RED discipline). |
 | Quality gates: All 7 gates enforced | Cycle 1 REFACTOR phase runs: ruff format/check, mypy --strict, import order, line length, pytest (5 tests), coverage ≥90%. Ensures production quality before integration. |
 
+### 3.2. API Compatibility Decisions
+
+**Core Principle:** TemplateEngine is an extraction-MVP with caller-provided root - stricter than legacy JinjaRenderer but architecturally cleaner.
+
+**Deliberate API Deviations from "Identical API" Goal:**
+
+1. **Constructor Contract (Stricter)**
+   - **Legacy JinjaRenderer:** Optional template_dir parameter with auto-detection fallback to parent/templates
+   - **New TemplateEngine:** Requires explicit `template_root` or `template_dir` parameter (mutually exclusive)
+   - **Rationale:** Auto-detection violates separation of concerns (config resolution = caller responsibility). Caller MUST invoke `get_template_root()` and pass result. Prevents implicit path assumptions. Fails fast with ValueError if neither/both provided.
+   - **Migration Impact:** Zero - all 6 call sites already provide explicit path via get_template_root()
+
+2. **Exception Handling (Simplified)**
+   - **Legacy JinjaRenderer:** Wraps `TemplateNotFound` in `ExecutionError` from mcp_server/core/exceptions
+   - **New TemplateEngine:** Returns raw `TemplateNotFound` from jinja2 (no wrapping)
+   - **Rationale:** backend/services MUST NOT depend on mcp_server exceptions (recreates circular dependency). Exception normalization is MCP server boundary concern, not rendering engine concern.
+   - **Migration Strategy:** MCP server tools wrapping TemplateEngine can catch `TemplateNotFound` and wrap in `ExecutionError` at boundary (see Cycle 5 contract test below)
+
+**Validation Evidence:**
+- Constructor strictness: `test_accepts_template_dir_parameter` + `test_raises_on_nonexistent_root` enforce contract
+- Exception handling: `test_template_not_found_message` validates raw `TemplateNotFound` propagation
+- mypy --strict passes: Constructor signature type-safe with Optional parameters
+
+**Design Tradeoff:** Prioritized architectural purity (no circular dependency) over literal API identity. All deviations documented, tested, and intentional.
+
 ## Related Documentation
 - **[research.md](research.md)** - Research findings justifying extraction
 - **[planning.md](planning.md)** - TDD cycle breakdown (Cycle 0-5)
