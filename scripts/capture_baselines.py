@@ -2,25 +2,27 @@
 
 Renders 5 representative templates with minimal context to create
 immutable baseline outputs for regression validation in Cycle 4.
+
+CRITICAL: Uses JinjaRenderer (not direct Jinja2) to ensure identical config.
 """
 
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader
+from mcp_server.scaffolding.renderer import JinjaRenderer
 
 
 def capture_baselines() -> None:
     """Capture baseline outputs from current JinjaRenderer implementation."""
-    template_dir = Path("mcp_server/scaffolding/templates")
     baselines_dir = Path("tests/baselines")
     baselines_dir.mkdir(parents=True, exist_ok=True)
     
-    env = Environment(loader=FileSystemLoader(template_dir))
+    # Use JinjaRenderer to ensure identical config (trim_blocks, lstrip_blocks, etc.)
+    renderer = JinjaRenderer(template_dir=Path("mcp_server/scaffolding/templates"))
     
     # Baseline 1: DTO
     print("Capturing DTO baseline...")
-    dto_template = env.get_template("concrete/dto.py.jinja2")
-    dto_output = dto_template.render(
+    dto_output = renderer.render(
+        "concrete/dto.py.jinja2",
         # tier0
         artifact_type="dto",
         version_hash="baseline_v1",
@@ -46,8 +48,8 @@ def capture_baselines() -> None:
     
     # Baseline 2: Worker
     print("Capturing Worker baseline...")
-    worker_template = env.get_template("concrete/worker.py.jinja2")
-    worker_output = worker_template.render(
+    worker_output = renderer.render(
+        "concrete/worker.py.jinja2",
         # tier0
         artifact_type="worker",
         version_hash="baseline_v1",
@@ -69,8 +71,8 @@ def capture_baselines() -> None:
     
     # Baseline 3: Tool
     print("Capturing Tool baseline...")
-    tool_template = env.get_template("concrete/tool.py.jinja2")
-    tool_output = tool_template.render(
+    tool_output = renderer.render(
+        "concrete/tool.py.jinja2",
         # tier0
         artifact_type="tool",
         version_hash="baseline_v1",
@@ -92,8 +94,8 @@ def capture_baselines() -> None:
     
     # Baseline 4: Research
     print("Capturing Research baseline...")
-    research_template = env.get_template("concrete/research.md.jinja2")
-    research_output = research_template.render(
+    research_output = renderer.render(
+        "concrete/research.md.jinja2",
         # tier0
         artifact_type="research",
         version_hash="baseline_v1",
@@ -117,8 +119,8 @@ def capture_baselines() -> None:
     
     # Baseline 5: Planning
     print("Capturing Planning baseline...")
-    planning_template = env.get_template("concrete/planning.md.jinja2")
-    planning_output = planning_template.render(
+    planning_output = renderer.render(
+        "concrete/planning.md.jinja2",
         # tier0
         artifact_type="planning",
         version_hash="baseline_v1",
@@ -140,7 +142,7 @@ def capture_baselines() -> None:
     (baselines_dir / "baseline_planning.md").write_text(planning_output, encoding="utf-8")
     print(f"  ✅ Saved {len(planning_output)} bytes")
     
-    print("\n✅ All 5 baselines captured successfully")
+    print("\n✅ All 5 baselines captured successfully using JinjaRenderer")
 
 
 if __name__ == "__main__":

@@ -1,21 +1,13 @@
 # tests/baselines/baseline_tool.md
 # template=tool version=baseline_v1 created=2026-02-13T14:30:00Z updated=
-
-
 """baseline_test_tool tool.
 
 Test tool for baseline capture
 
 @layer: tools
 @responsibilities:
-
-
     - Perform test operation
-
-
 """
-
-
 
 # Standard library
 from typing import Any
@@ -24,8 +16,6 @@ import logging
 # Third-party
 
 # Project modules
-
-
 
 
 logger = logging.getLogger(__name__)

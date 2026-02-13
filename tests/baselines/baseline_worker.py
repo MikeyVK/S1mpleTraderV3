@@ -1,21 +1,13 @@
 # tests/baselines/baseline_worker.py
 # template=worker version=baseline_v1 created=2026-02-13T14:30:00Z updated=
-
-
 """
 BaselineTestWorker - Worker implementation.
 
 @layer: workers
 @dependencies: [backend.core.interfaces, backend.dtos]
 @responsibilities:
-
-
     - Process test data
-
-
 """
-
-
 
 # Standard library
 from __future__ import annotations
@@ -34,8 +26,6 @@ if TYPE_CHECKING:
     from backend.core.interfaces.strategy_cache import IStrategyCache
     from backend.core.interfaces.config import BuildSpec
 
-
-
 __all__ = ["BaselineTestWorker"]
 
 
@@ -46,10 +36,7 @@ class BaselineTestWorker(IWorker, IWorkerLifecycle):
     Architecture:
     - EventAdapter-compliant: Standard IWorker + IWorkerLifecycle pattern
     - Worker scope: strategy
-
     - Strategy worker: Requires strategy_cache for runtime state
-
-
     """
 
     def __init__(self, build_spec: BuildSpec) -> None:
@@ -65,11 +52,9 @@ class BaselineTestWorker(IWorker, IWorkerLifecycle):
         self._name: str = build_spec.name
         self._config = build_spec.config
 
-        
         self._cache: "IStrategyCache | None" = None
         self.logger: LogEnricher | None = None
         self._translator: Translator | None = None
-
 
     @property
     def name(self) -> str:
@@ -89,20 +74,16 @@ class BaselineTestWorker(IWorker, IWorkerLifecycle):
 
         Args:
             strategy_cache: StrategyCache instance or None
-
                 - Strategy worker: REQUIRED (validates cache not None)
-
             **capabilities: Optional capabilities injected by platform
 
         Raises:
             WorkerInitializationError: If requirements not met
         """
-
         if strategy_cache is None:
             raise WorkerInitializationError(
                 f"{self._name}: di.dependency.strategy_cache.required"
             )
-
 
         self._cache = strategy_cache
 
@@ -121,10 +102,7 @@ class BaselineTestWorker(IWorker, IWorkerLifecycle):
         # Special-case parameter display names: translator.get_param_name(param_path, default=param_path)
 
 
-
-
         # Perform additional initialization here
-
 
     def shutdown(self) -> None:
         """Graceful shutdown and resource cleanup.
@@ -133,7 +111,6 @@ class BaselineTestWorker(IWorker, IWorkerLifecycle):
         Must complete within 5 seconds and never raise exceptions.
         """
         try:
-
             self._cache = None
         except Exception:  # noqa: BLE001
             # GUIDELINE: shutdown must not raise; best-effort cleanup only.
