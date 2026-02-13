@@ -30,7 +30,7 @@ Read these first:
 
 ## Summary
 
-Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer.py to backend/services/template_engine.py. Focus: Breaking circular dependency while maintaining 100% backward compatibility with existing scaffolding system. MVP scope: Basic rendering, single template root, FileSystemLoader support.
+Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer.py to backend/services/template_engine.py. Focus: Breaking circular dependency while maintaining behavioral/output compatibility (identical scaffolding output, no compatibility layer needed). MVP scope: Basic rendering, single template root, FileSystemLoader support.
 
 ---
 
@@ -44,7 +44,34 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 
 ## TDD Cycles
 
+> **Workflow Model:** Each cycle follows RED→GREEN→REFACTOR pattern (agent.md:103-120)
+> - **RED:** Write failing test, commit with `phase="red"`
+> - **GREEN:** Implement minimal code to pass, commit with `phase="green"`  
+> - **REFACTOR:** Clean up + quality gates, commit with `phase="refactor"`
 
+### Cycle 0: Baseline Capture
+
+**Goal:** Capture baseline scaffolding output BEFORE any migration, enabling byte-identical regression validation
+
+**Tests:**
+- test_capture_baseline_dto: Scaffold dto with known context, save output to tests/baselines/
+- test_capture_baseline_worker: Scaffold worker with known context, save output
+- test_capture_baseline_tool: Scaffold tool with known context, save output
+- test_capture_baseline_research: Scaffold research.md with known context, save output
+- test_capture_baseline_planning: Scaffold planning.md with known context, save output
+
+**Success Criteria:**
+- 5 baseline files captured in tests/baselines/ directory
+- Baselines committed to git (immutable reference point)
+- Documentation: How to regenerate baselines if needed
+- All existing tests (40) pass without modification
+
+**RED→GREEN→REFACTOR:**
+1. **RED:** Write test_capture_baselines.py (fails - no baselines yet)
+2. **GREEN:** Run current scaffolding, capture outputs to tests/baselines/
+3. **REFACTOR:** Add baseline regeneration documentation, commit baselines
+
+**Phase Gate:** ✅ Entry to TDD phase (planning→tdd transition)
 ### Cycle 1: Extract TemplateEngine Module
 
 **Goal:** Create backend/services/template_engine.py with TemplateEngine class (renamed from JinjaRenderer) maintaining identical API
@@ -62,7 +89,12 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 - Module docstring follows coding standards (@layer, @dependencies, @responsibilities)
 - 100% type coverage (mypy --strict passes)
 
+**RED→GREEN→REFACTOR:**
+1. **RED:** Write tests/unit/services/test_template_engine.py (5 tests, all fail)
+2. **GREEN:** Copy JinjaRenderer to backend/services/template_engine.py, rename class
+3. **REFACTOR:** Fix imports (backend/ only), add docstring, mypy --strict
 
+**Dependencies:** Cycle 0: Baseline Capture
 
 ### Cycle 2: Update Production Import Sites
 
@@ -76,7 +108,12 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 **Success Criteria:**
 - Both production files updated: base.py, template_scaffolder.py
 - All 40 existing scaffolding tests remain green
-- No changes to scaffolded output (byte-identical validation)
+- No changes to scaffolded output (byte-identical validation vs Cycle 0 baselines)
+
+**RED→GREEN→REFACTOR:**
+1. **RED:** Write tests for import verification (2 tests fail - old imports still there)
+2. **GREEN:** Update base.py + template_scaffolder.py imports only (minimal change)
+3. **REFACTOR:** Run full test suite (40 tests) + quality gates, validate no output changes
 
 **Dependencies:** Cycle 1: Extract TemplateEngine Module
 
@@ -96,9 +133,12 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 - All tests pass without modification beyond import change
 - Test coverage remains ≥90%
 
+**RED→GREEN→REFACTOR:**
+1. **RED:** Write test_import_migration.py verifying 4 test files use TemplateEngine (fails)
+2. **GREEN:** Update 4 test file imports (minimal change)
+3. **REFACTOR:** Run pytest with coverage, validate ≥90% maintained
+
 **Dependencies:** Cycle 2: Update Production Import Sites
-
-
 ### Cycle 4: Regression Validation Suite
 
 **Goal:** Create regression tests validating byte-identical output for 10 representative templates
@@ -115,12 +155,16 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 
 **Success Criteria:**
 - 8 regression tests created covering code + doc templates
-- All regression tests pass (byte-identical output)
-- Baseline snapshots captured before migration
+- All regression tests pass (byte-identical output vs Cycle 0 baselines)
 - Regression suite added to CI pipeline
+- Documentation: How to run regression suite
+
+**RED→GREEN→REFACTOR:**
+1. **RED:** Write tests/regression/test_extraction_regression.py (8 tests, compare to baselines)
+2. **GREEN:** Tests should pass (baselines from Cycle 0, no output changes expected)
+3. **REFACTOR:** Add CI integration (.st3/workflows.yaml or GitHub Actions)
 
 **Dependencies:** Cycle 3: Update Test Import Sites
-
 
 ### Cycle 5: Cleanup Legacy Module
 
@@ -137,9 +181,14 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 - No grep matches for old import path
 - Documentation updated (if renderer.py was documented)
 
+**RED→GREEN→REFACTOR:**
+1. **RED:** Write test_no_legacy_imports.py (grep verification, passes initially)
+2. **GREEN:** Delete mcp_server/scaffolding/renderer.py
+3. **REFACTOR:** Run full test suite + grep validation, update docs if needed
+
 **Dependencies:** Cycle 4: Regression Validation Suite
 
----
+**Phase Gate:** ✅ Exit from TDD phase (tdd→integration transition)
 
 ## Risks & Mitigation
 
@@ -156,21 +205,16 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 
 ## Milestones
 
-- Cycle 1 complete: TemplateEngine exists and passes independent tests
-- Cycle 3 complete: All 6 import sites migrated, full test suite green
-- Cycle 4 complete: Regression suite passes (byte-identical validation)
-- Cycle 5 complete: Legacy module removed, extraction complete
+- **Cycle 0 complete:** Baseline outputs captured, planning→tdd phase transition approved
+- **Cycle 1 complete:** TemplateEngine exists and passes independent tests
+- **Cycle 3 complete:** All 6 import sites migrated, full test suite green
+- **Cycle 4 complete:** Regression suite passes (byte-identical validation)
+- **Cycle 5 complete:** Legacy module removed, tdd→integration phase transition
 
 ## Related Documentation
-- **[research.md - Research findings and MVP scope decision][related-1]**
-- **[../../reference/mcp/scaffolding.md - Scaffolding system architecture][related-2]**
-- **[../../coding_standards/TYPE_CHECKING_PLAYBOOK.md - Type checking standards][related-3]**
-
-<!-- Link definitions -->
-
-[related-1]: research.md - Research findings and MVP scope decision
-[related-2]: ../../reference/mcp/scaffolding.md - Scaffolding system architecture
-[related-3]: ../../coding_standards/TYPE_CHECKING_PLAYBOOK.md - Type checking standards
+- **[research.md](research.md)** - Research findings and MVP scope decision
+- **[../../reference/mcp/scaffolding.md](../../reference/mcp/scaffolding.md)** - Scaffolding system architecture
+- **[../../coding_standards/TYPE_CHECKING_PLAYBOOK.md](../../coding_standards/TYPE_CHECKING_PLAYBOOK.md)** - Type checking standards
 
 ---
 
