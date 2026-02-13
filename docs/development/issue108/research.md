@@ -10,17 +10,28 @@
 
 ## Purpose
 
-Investigate JinjaRenderer extraction from scaffolding to backend/services, enabling mock rendering for Issue #120/#121 and broader reuse across MCP tools
+Investigate JinjaRenderer extraction from scaffolding to backend/services for reusability across MCP tools
 
 ## Scope
 
-**In Scope:**
-Current JinjaRenderer architecture, Issue #52 mock rendering research, Issue #120 template introspection integration, Issue #72 multi-tier template system, circular dependency analysis, output parsing strategies
+**MVP (Phase 1 - This Issue):**
+- Extract JinjaRenderer to `backend/services/template_engine.py`
+- Break circular dependency (tools/ can import TemplateEngine)
+- Maintain API compatibility with current JinjaRenderer
+- Support Issue #72 5-tier template architecture (FileSystemLoader)
+- Regression validation: scaffolding output byte-identical before/after
+
+**Follow-Up (Phase 2 - Same Issue, Future Work Package):**
+- Mock rendering for template structure analysis
+- Output parsing (Python AST, Markdown)
+- Issue #120 integration (accurate optional field detection)
+- Issue #121 integration (discover_capabilities method)
 
 **Out of Scope:**
-Implementation details (TDD phase), safe_edit template usage (separate issue), full Issue #121 implementation
-
-## Prerequisites
+- Implementation details (TDD phase)
+- Multiple template roots via ChoiceLoader (deferred to post-extraction)
+- Tool-specific template overrides
+- safe_edit template usage (separate issue)
 
 Read these first:
 1. Issue #52 archive research reviewed
@@ -56,11 +67,13 @@ class JinjaRenderer:
     def list_templates() -> list[str]
 ```
 
-**Current Usage (3 import sites):**
+**Current Usage (6 import sites: 2 production, 4 test):**
 - `mcp_server/scaffolding/base.py` - Base scaffolder infrastructure
 - `mcp_server/scaffolders/template_scaffolder.py` - Template-driven scaffolding
-- `tests/integration/mcp_server/validation/test_scaffold_validate_e2e.py` - E2E tests
-
+- `tests/unit/scaffolders/test_template_scaffolder.py` - Scaffolder unit tests
+- `tests/unit/scaffolding/test_components.py` - Component tests
+- `tests/integration/test_concrete_templates.py` - Template integration tests
+- `tests/fixtures/artifact_test_harness.py` - Test harness
 **Missing Capabilities:**
 - ❌ Mock rendering with mock context
 - ❌ Multiple template root support
@@ -258,9 +271,10 @@ Tier 3: Domain patterns (worker/adapter/dto/service)
 Concrete: Actual template with specific implementation
 ```
 
+
 **Example Inheritance Chain:**
 ```
-mcp_server/templates/
+mcp_server/scaffolding/templates/
 ├── tier0_base_artifact.jinja2          # Tier 0
 ├── tier1_code_artifact.jinja2          # Tier 1
 ├── tier2_python.jinja2                 # Tier 2
@@ -268,12 +282,11 @@ mcp_server/templates/
 └── concrete/worker.py.jinja2           # Concrete
 ```
 
-**JinjaRenderer New Responsibilities:**
+**JinjaRenderer Responsibilities for Issue #72:**
 
-1. **Multiple Template Roots:**
-   - `mcp_server/templates/` - Main scaffolding templates
-   - `docs/templates/` - Documentation templates (future)
-   - `tools/templates/` - Tool-specific templates (future)
+1. **Single Template Root (MVP):**
+   - `mcp_server/scaffolding/templates/` - All templates (5-tier architecture)
+   - Multiple roots deferred to post-extraction work
 
 2. **Inheritance Chain Resolution:**
    - Already supported via `FileSystemLoader`
@@ -330,7 +343,7 @@ mcp_server/templates/
 
 **Q8: What backward compatibility guarantees needed?**
 
-**✅ ANSWER: NONE - Direct Migration with Test Coverage**
+**✅ ANSWER: NONE - Direct Migration with Test Coverage + Regression Validation**
 
 **Decision: NO backward compatibility layer**
 - ❌ No import alias at old location
@@ -338,13 +351,35 @@ mcp_server/templates/
 - ❌ No gradual transition period
 - ✅ Direct file replacement + import updates
 - ✅ Full test coverage ensures safety
+- ✅ **Regression validation: Scaffolding output must be byte-identical before/after extraction**
+
+**Regression Requirements (Hard Constraint):**
+
+**Output Identity:**
+- Same input context → identical rendered output (character-for-character)
+- Same template → same SCAFFOLD metadata
+- Same error conditions → identical error messages
+
+**Test Strategy:**
+- Capture baseline outputs from current JinjaRenderer (10 templates)
+- Run same renders through TemplateEngine
+- Assert byte-for-byte equality (no formatting changes, no metadata drift)
+- Include error cases (missing template, invalid context)
+
+**Validation Tests:**
+- Test: DTO template → identical output
+- Test: Worker template → identical output
+- Test: Design doc template → identical output
+- Test: Missing template → identical error message
+- Test: Invalid context → identical error behavior
 
 **Rationale:**
-1. **Limited Surface Area:** Only 3 import sites to update
+1. **Limited Surface Area:** Only 6 import sites (2 production, 4 test)
 2. **Internal Module:** JinjaRenderer is not a public API
 3. **Test Safety Net:** All functionality covered by tests
-4. **Clean Cut:** No legacy baggage slowing future refactors
-5. **Issue #108 Scope:** Extraction is blocking Issue #121 (high priority)
+4. **Output Stability:** Regression tests prevent unintended changes
+5. **Clean Cut:** No legacy baggage slowing future refactors
+6. **Issue #108 Scope:** Extraction is blocking Issue #121 (high priority)
 
 **Migration Steps:**
 
@@ -406,7 +441,7 @@ python -m mypy backend/services/template_engine.py --strict
 
 **Estimated Effort:**
 - Create new module: 4-6 hours (with mock rendering)
-- Update 3 imports: 15 minutes
+- Update 6 imports: 30 minutes
 - Test verification: 30 minutes
 - **Total: 5-7 hours**
 
@@ -418,65 +453,118 @@ python -m mypy backend/services/template_engine.py --strict
 
 #### AC1: Quality Gates (All 7 Gates Must Pass)
 
-**Gate 0: Ruff Format**
-```powershell
-python -m ruff format --isolated --check --diff --line-length=100 backend/services/template_engine.py
-python -m ruff format --isolated --check --diff --line-length=100 tests/unit/backend/services/test_template_engine.py
-```
+**Gate 0: Code Formatting**
+
+**Requirements:**
 - ✅ Consistent formatting (100 char line length)
 - ✅ No formatting diffs
+- ✅ Black-compatible style
 
-**Gate 1: Ruff Strict Lint**
+**Validation:**
+Run formatter in check mode (any formatter implementing these rules).
+*Example using ruff:*
 ```powershell
-python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 backend/services/template_engine.py
-python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 --target-version=py311 tests/unit/backend/services/test_template_engine.py
+python -m ruff format --isolated --check --diff --line-length=100 backend/services/template_engine.py
 ```
-- ✅ No lint violations
-- ✅ Full type annotations (ANN rules)
+
+---
+
+**Gate 1: Strict Linting**
+
+**Requirements:**
+- ✅ No lint violations (errors, warnings, style issues)
+- ✅ Full type annotations on all functions/methods (ANN rules)
+- ✅ No unused imports or variables
+
+**Validation:**
+Run linter in strict mode.
+*Example using ruff:*
+```powershell
+python -m ruff check --isolated --select=E,W,F,I,N,UP,ANN,B,C4,DTZ,T10,ISC,RET,SIM,ARG,PLC --ignore=E501,PLC0415 --line-length=100 backend/services/template_engine.py
+```
+
+---
 
 **Gate 2: Import Placement**
-```powershell
-python -m ruff check --isolated --select=PLC0415 --target-version=py311 backend/services/template_engine.py
-```
+
+**Requirements:**
 - ✅ All imports at module top-level
 - ✅ No imports inside functions/methods
 
-**Gate 3: Line Length**
+**Validation:**
+Check import placement rules.
+*Example using ruff:*
 ```powershell
-python -m ruff check --isolated --select=E501 --line-length=100 --target-version=py311 backend/services/template_engine.py
+python -m ruff check --isolated --select=PLC0415 backend/services/template_engine.py
 ```
+
+---
+
+**Gate 3: Line Length**
+
+**Requirements:**
 - ✅ Maximum 100 characters per line
+- ✅ No exceptions (use line breaks for long strings/imports)
+
+**Validation:**
+Check line length compliance.
+*Example using ruff:*
+```powershell
+python -m ruff check --isolated --select=E501 --line-length=100 backend/services/template_engine.py
+```
+
+---
 
 **Gate 4: Type Checking (Strict)**
+
+**Requirements:**
+- ✅ Full type coverage (no `Any` without justification)
+- ✅ No `type: ignore` without rationale comment
+- ✅ Follow Type Checking Playbook resolution order
+
+**Validation:**
+Run type checker in strict mode.
+*Example using mypy:*
 ```powershell
 python -m mypy backend/services/template_engine.py --strict
 ```
-- ✅ Full type coverage (no `Any` without justification)
-- ✅ No type: ignore without rationale comment
-- ✅ Follow Type Checking Playbook resolution order
+
+---
 
 **Gate 5: Tests Passing**
+
+**Requirements:**
+- ✅ All unit tests pass
+- ✅ All integration tests pass
+- ✅ Regression tests validate output identity
+- ✅ Error case tests included
+
+**Validation:**
+Run test suite with exit code 0.
+*Example using pytest:*
 ```powershell
 pytest tests/unit/backend/services/test_template_engine.py
-pytest tests/integration/mcp_server/validation/test_scaffold_validate_e2e.py
+pytest tests/integration/ -k template_engine
 ```
-- ✅ All tests pass (exit code 0)
-- ✅ Mock rendering tests included
-- ✅ Multiple template roots tests included
+
+---
 
 **Gate 6: Code Coverage**
+
+**Requirements:**
+- ✅ ≥90% code coverage
+- ✅ All public methods covered
+- ✅ Error paths covered
+- ✅ Edge cases covered
+
+**Validation:**
+Run coverage tool with 90% threshold.
+*Example using pytest-cov:*
 ```powershell
 pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fail-under=90
 ```
-- ✅ ≥90% code coverage
-- ✅ All core methods covered (render, mock_render, parse_output)
 
 ---
-#### AC2: File Header Standards
-
-**Requirement:** Module must follow coding standards file header format (@layer, @dependencies, @responsibilities).
-
-**Standards:**
 - Path comment on line 1
 - Module docstring with description
 - @layer annotation (Backend - Services)
@@ -618,22 +706,35 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 
 #### AC9: Issue Integration
 
-**Requirement:** Integrate with Issue #120, #121, and #72.
+**Requirement:** Ensure extraction supports Issue #72 architecture (MVP), defer #120/#121 enhancements.
+
+**MVP Criteria (P0 - Required for Extraction):**
+
+**Issue #72 Integration (5-Tier Templates):**
+- Template root points to `mcp_server/scaffolding/templates/`
+- Jinja2 FileSystemLoader handles inheritance chain (`{% extends %}`)
+- Test: Render concrete template that extends tier2 → tier1 → tier0
+- Test: Template with tier3 patterns imports via `{% import %}`
+- Validation: Existing scaffolding output identical before/after extraction
+
+**Follow-Up Criteria (P1 - Post-Extraction Enhancements):**
 
 **Issue #120 Integration (Template Introspection):**
 - Mock rendering enables accurate optional field detection
-- Test: Render with/without each field
-- Compare with conservative classification
+- Test: Render template with/without each field
+- Compare with conservative classification from `_classify_variables()`
+- Note: Deferred to separate work package (depends on mock rendering)
 
 **Issue #121 Integration (Content-Aware Editing):**
 - `discover_capabilities()` method returns edit operations
 - Test: Parse DTO template returns expected capabilities
 - Test: Parse Markdown template returns section operations
+- Note: Deferred to separate work package (depends on output parsing)
 
-**Issue #72 Integration (5-Tier Templates):**
-- Template root supports 5-tier architecture
-- Jinja2 FileSystemLoader handles inheritance chain
-- Test: Resolve complete tier chain (Tier 0 → Concrete)
+**Scope Rationale:**
+- MVP scope: Extract JinjaRenderer for reusability (#72 compatibility required)
+- Enhancement scope: Add mock rendering + parsing (#120/#121 integration)
+- Prevents scope creep while enabling future work
 
 ---
 
@@ -663,7 +764,7 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 
 1. **✅ NO Backward Compatibility**
    - Direct migration (no import alias, no deprecation warnings)
-   - Only 3 import sites to update
+   - Only 6 import sites (2 production, 4 test) - direct migration feasible
    - Full test coverage ensures safety
    - Clean cut for future maintainability
 
@@ -741,7 +842,12 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 
 **Q11: How should template root be configured?**
 
-**✅ ANSWER: Config-First via get_template_root()**
+**✅ ANSWER: Config-First via get_template_root() [MVP: Single Root Only]**
+
+**MVP Scope Decision:**
+- ✅ Single template root only (sufficient for extraction goal)
+- ❌ Multi-root/ChoiceLoader explicitly deferred to future work
+- ✅ Reuse existing `get_template_root()` infrastructure
 
 **Current System:**
 - `mcp_server/config/template_config.py` has `get_template_root()` helper
@@ -749,56 +855,25 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 - Supports override via TEMPLATE_ROOT environment variable
 - Already used by TemplateScaffolder and ValidationService
 
-**TemplateEngine Integration:**
+**TemplateEngine Integration (MVP):**
 - Reuse existing config mechanism (DRY principle)
 - Constructor parameter for test overrides
 - Validate root exists (fail-fast on misconfiguration)
+- FileSystemLoader (NOT ChoiceLoader)
 
-**YAGNI Decision:**
-- Start with single root (sufficient for current needs)
-- Defer multiple roots (ChoiceLoader) to P1 when proven needed
-- Easy upgrade path if requirements change
+**YAGNI Rationale:**
+- Current need: Extract JinjaRenderer for reusability
+- Single root satisfies extraction goal
+- Multi-root adds complexity without proven requirement
+- Easy upgrade path if requirements emerge
+
+**Deferred to Future (Post-Extraction):**
+- Multiple template roots via ChoiceLoader
+- Template namespacing strategy
+- Priority order resolution
+- Tool-specific template overrides
 
 **Implementation Note:** Use existing infrastructure, don't reinvent config.
-
----
-                base / "mcp_server" / "templates",  # Priority 1
-                base / "docs" / "templates"         # Priority 2
-            ]
-        
-        # Create loader for each root
-        loaders = [
-            FileSystemLoader(str(root)) 
-            for root in template_roots 
-            if root.exists()
-        ]
-        
-        # ChoiceLoader tries each loader in order until template found
-        self._env = Environment(
-            loader=ChoiceLoader(loaders)
-        )
-```
-
-**Template Resolution Order:**
-1. Check `mcp_server/templates/` first (scaffolding priority)
-2. Check `docs/templates/` second (documentation templates)
-3. Future: Check `tools/templates/` third (tool-specific)
-
-**Namespacing Strategy:**
-```python
-# Explicit namespace prefix prevents collisions
-renderer.get_template("scaffolding/dto.py.jinja2")  # From mcp_server/templates/
-renderer.get_template("docs/design.md.jinja2")      # From docs/templates/
-renderer.get_template("tools/fix-import.py.jinja2") # From tools/templates/
-```
-
-**Benefits:**
-- ✅ No template name collisions (explicit namespace)
-- ✅ Clear ownership (scaffolding/ vs docs/ vs tools/)
-- ✅ Easy to add new roots (append to list)
-- ✅ Fallback mechanism (ChoiceLoader tries all roots)
-
----
 
 ## Summary of Key Findings
 
@@ -807,7 +882,7 @@ renderer.get_template("tools/fix-import.py.jinja2") # From tools/templates/
 1. **Circular Dependency Blocker:**
    - Current location prevents tools/ from using JinjaRenderer
    - Extract to `backend/services/template_engine.py` breaks cycle
-   - **No backward compatibility needed** - only 3 import sites, direct migration
+   - **No backward compatibility needed** - only 6 import sites (2 production, 4 test), direct migration
 
 2. **Mock Rendering Solves Multiple Problems:**
    - Issue #120: Accurate optional field detection (no more hallucination)
@@ -888,4 +963,6 @@ renderer.get_template("tools/fix-import.py.jinja2") # From tools/templates/
 |---------|------|--------|---------|
 | 1.0 | 2026-02-13 | Agent | Initial research complete |
 | 1.1 | 2026-02-13 | Agent | Added acceptance criteria (coding standards) |
-| 1.1 | 2026-02-13 | Agent | Removed backward compatibility (direct migration) |
+| 1.2 | 2026-02-13 | Agent | Removed backward compatibility (direct migration) |
+| 1.3 | 2026-02-13 | Agent | P0 feedback: MVP scope (single root), pad fixes, import count, AC9 split |
+| 1.4 | 2026-02-13 | Agent | P1 feedback: Regression reqs, mock rendering deferred, tool-agnostic gates |
