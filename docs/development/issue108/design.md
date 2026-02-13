@@ -3,7 +3,7 @@
 # Issue #108: JinjaRenderer Extraction - Design
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-02-13
 
 ---
@@ -135,7 +135,7 @@ Extract JinjaRenderer in stages: first move, then refactor internal structure in
 ---
 
 ## Version History
-
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-13 | Agent | Initial draft |
+| 1.1 | 2026-02-13 | Agent | Architecture fix: Template root resolution caller responsibility (no mcp_server/ imports) |
