@@ -27,16 +27,29 @@ class TemplateEngine:
     5-tier template architecture ({% extends %} inheritance).
     """
 
-    def __init__(self, template_root: Path | str) -> None:
+    def __init__(
+        self,
+        template_root: Path | str | None = None,
+        *,
+        template_dir: Path | str | None = None,
+    ) -> None:
         """Initialize the template engine.
 
         Args:
             template_root: Path to templates root directory (Path or str)
+            template_dir: Alias for template_root (backwards compatibility)
 
         Raises:
-            ValueError: If template_root does not exist
+            ValueError: If template_root does not exist or both/neither parameters provided
         """
-        self.template_root = Path(template_root)
+        # Support both parameter names for backwards compatibility
+        if template_root is not None and template_dir is not None:
+            raise ValueError("Cannot specify both template_root and template_dir")
+        if template_root is None and template_dir is None:
+            raise ValueError("Must specify either template_root or template_dir")
+
+        root = template_root if template_root is not None else template_dir
+        self.template_root = Path(root)  # type: ignore[arg-type]
 
         if not self.template_root.exists():
             raise ValueError(f"Template root does not exist: {self.template_root}")

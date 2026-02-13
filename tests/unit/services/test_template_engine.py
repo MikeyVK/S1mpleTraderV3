@@ -28,6 +28,18 @@ class TestTemplateEngineInitialization:
         engine_str = TemplateEngine(template_root=str(template_root))
         assert engine_str.template_root == template_root
 
+    def test_accepts_template_dir_parameter(self) -> None:
+        """TemplateEngine accepts template_dir (backwards compatibility)."""
+        template_dir = Path("mcp_server/scaffolding/templates")
+
+        # Should accept template_dir as alias for template_root
+        engine = TemplateEngine(template_dir=template_dir)
+        assert engine.template_root == template_dir
+
+        # Should accept str
+        engine_str = TemplateEngine(template_dir=str(template_dir))
+        assert engine_str.template_root == template_dir
+
     def test_raises_on_nonexistent_root(self) -> None:
         """TemplateEngine raises ValueError if root doesn't exist."""
         with pytest.raises(ValueError, match="Template root does not exist"):
