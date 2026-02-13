@@ -141,8 +141,7 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 **Dependencies:** Cycle 2: Update Production Import Sites
 ### Cycle 4: Regression Validation Suite
 
-**Goal:** Create regression tests validating byte-identical output for 10 representative templates
-
+**Goal:** Create regression tests validating byte-identical output for 8 representative scenarios
 **Tests:**
 - test_regression_dto_template: Baseline vs current output for dto.py.jinja2
 - test_regression_worker_template: Baseline vs current output for worker.py.jinja2
@@ -181,15 +180,15 @@ Planning phase for extracting JinjaRenderer from mcp_server/scaffolding/renderer
 - No grep matches for old import path
 - Documentation updated (if renderer.py was documented)
 
+
 **RED→GREEN→REFACTOR:**
-1. **RED:** Write test_no_legacy_imports.py (grep verification, passes initially)
-2. **GREEN:** Delete mcp_server/scaffolding/renderer.py
-3. **REFACTOR:** Run full test suite + grep validation, update docs if needed
+1. **RED:** Write test_import_error_on_old_path.py (expects ImportError, fails - module still exists)
+2. **GREEN:** Delete mcp_server/scaffolding/renderer.py (test now passes - ImportError raised)
+3. **REFACTOR:** Run full test suite (40+ tests) + grep validation, update docs if needed
 
 **Dependencies:** Cycle 4: Regression Validation Suite
 
 **Phase Gate:** ✅ Exit from TDD phase (tdd→integration transition)
-
 ## Risks & Mitigation
 
 - **Risk:** Circular dependency resurfaces if TemplateEngine imports from mcp_server/scaffolding/
