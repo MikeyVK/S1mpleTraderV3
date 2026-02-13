@@ -4,6 +4,10 @@
 
 {% block layer %}Service (Orchestrator){% endblock %}
 
+{% block responsibilities %}    - Coordinate complex workflows for {{ name | replace('Service', '') | replace('Orchestrator', '') }}
+    - Manage service composition
+    - Handle multi-step business processes{% endblock %}
+
 {% block content %}
 class {{ name }}:
     """Orchestrates high-level operations for {{ name | replace('Service', '') }}."""

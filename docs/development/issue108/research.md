@@ -475,9 +475,7 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 
 #### AC2: File Header Standards
 
-**AUTOMATED VIA SCAFFOLDING:** TemplateEngine will be scaffolded, inheriting header automatically.
-
-**Note:** Base templates (`base_component.py.jinja2`) enforce file headers. Manual addition NOT required for scaffolded files.
+**AUTOMATED VIA SCAFFOLDING:** TemplateEngine will be scaffolded, inheriting header automatically from base_component.py.jinja2.
 
 **Expected Module Header:**
 ```python
@@ -490,8 +488,17 @@ and multi-root template support for Issue #72 5-tier architecture.
 
 @layer: Backend (Services)
 @dependencies: [jinja2, ast, re, pathlib]
+@responsibilities:
+    - Render Jinja2 templates with context variables
+    - Mock render templates for structure analysis (Issue #121)
+    - Support multiple template roots via ChoiceLoader (Issue #72)
+    - Parse rendered output (Python AST for .py, Markdown for .md)
+    - Provide custom filters (metadata, formatting, validation)
+    - Enable accurate optional field detection (Issue #120)
 """
 ```
+
+**Note:** @responsibilities block is now mandatory via base_component.py.jinja2 template.
 
 **Class Docstrings (Concise):**
 ```python

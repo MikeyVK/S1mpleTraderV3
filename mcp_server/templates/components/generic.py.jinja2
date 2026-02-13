@@ -4,6 +4,8 @@
 
 {% block layer %}Generic{% endblock %}
 
+{% block responsibilities %}    - {{ responsibility | default('Provide ' + name + ' functionality') }}{% endblock %}
+
 {% block content %}
 # Generic component
 # This file was generated using the generic template.

@@ -4,6 +4,10 @@
 
 {% block layer %}Service (Query){% endblock %}
 
+{% block responsibilities %}    - Execute read-only queries for {{ name | replace('Service', '') | replace('Query', '') }}
+    - Aggregate data from multiple sources
+    - Format query results{% endblock %}
+
 {% block content %}
 class {{ name }}:
     """Orchestrates read-only inquiries for {{ name | replace('Service', '') }}."""

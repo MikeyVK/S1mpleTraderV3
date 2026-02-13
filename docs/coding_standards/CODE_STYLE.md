@@ -28,11 +28,14 @@ All code in S1mpleTrader V3 follows **strict PEP 8 compliance** with additional 
 
 @layer: {Backend/Tests/Service/Frontend}
 @dependencies: [{list, of, dependencies}]
+@responsibilities:
+    - {Responsibility 1}
+    - {Responsibility 2}
 """
 ```
 
 **Implementation:**
-- ✅ **Scaffolded files**: Headers auto-generated via templates
+- ✅ **Scaffolded files**: Headers auto-generated via templates (including @responsibilities)
 - ⚠️ **Non-scaffolded files**: Must manually add header (rare cases only)
 
 ### Examples
@@ -49,7 +52,10 @@ next-step intentions to the EventAdapter.
 
 @layer: Backend (DTOs)
 @dependencies: [pydantic, typing, re]
-"""
+@responsibilities:
+    - Define worker output contract (CONTINUE, PUBLISH, STOP)
+    - Enable event-driven flow control without coupling workers to EventBus
+    - Validate event publication payloads at type level
 ```
 
 **Test Module (Auto-generated via scaffolding):**
@@ -62,8 +68,9 @@ Tests the worker output flow control contract according to TDD principles.
 
 @layer: Tests (Unit)
 @dependencies: [pytest, pydantic, backend.dtos.shared.disposition_envelope]
-"""
 ```
+
+**Note:** Test modules typically don't include @responsibilities as their purpose is self-evident (test the module under test).
 
 **Non-Scaffolded Utility (Manual header required):**
 ```python
@@ -76,13 +83,17 @@ traceability across the trading system.
 
 @layer: Backend (Utils)
 @dependencies: [uuid]
+@responsibilities:
+    - Generate typed IDs with consistent prefixes
+    - Extract ID type from typed ID string
+    - Maintain ID format consistency
 """
 ```
 
 **Why This Convention:**
 - **Scaffolding enforcement** - Automatic for all scaffolded files
 - **Quick navigation** - Immediately see where you are in architecture
-- **Documentation** - Explicit dependencies visible
+- **Documentation** - Explicit dependencies and responsibilities visible
 - **Consistency** - All modules follow same pattern
 - **IDE-friendly** - File path as first line helps with context
 

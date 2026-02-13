@@ -4,6 +4,10 @@
 
 {% block layer %}Service (Command){% endblock %}
 
+{% block responsibilities %}    - Execute write operations for {{ name | replace('Service', '') | replace('Command', '') }}
+    - Ensure transactional integrity
+    - Handle command validation{% endblock %}
+
 {% block content %}
 class {{ name }}:
     """Orchestrates write-actions / commands for {{ name | replace('Service', '') }}."""

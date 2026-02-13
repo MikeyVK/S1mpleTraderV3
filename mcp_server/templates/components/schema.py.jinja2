@@ -6,6 +6,10 @@
 
 {% block dependencies %}pydantic{% endblock %}
 
+{% block responsibilities %}    - Define {{ name }} configuration structure
+    - Provide validation via Pydantic
+    - Enable type-safe configuration{% endblock %}
+
 {% block thirdparty_imports %}
 from pydantic import BaseModel, Field
 {% endblock %}

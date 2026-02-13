@@ -4,6 +4,10 @@
 
 {% block layer %}Core Interfaces{% endblock %}
 
+{% block responsibilities %}    - Define {{ name }} contract via Protocol
+    - Specify method signatures for implementations
+    - Enable dependency injection and testing{% endblock %}
+
 {% block stdlib_imports %}
 {{ super() }}
 from typing import Protocol, Any, List, Optional, Dict

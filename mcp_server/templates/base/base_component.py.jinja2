@@ -24,6 +24,8 @@
 
 @layer: {% block layer %}Platform{% endblock %}
 @dependencies: [{% block dependencies %}{% endblock %}]
+@responsibilities:
+{% block responsibilities %}    - Primary responsibility{% endblock %}
 """
 {% block pyright_suppressions %}{% endblock %}
 {# ═══════════════════════════════════════════════════════════════════════════

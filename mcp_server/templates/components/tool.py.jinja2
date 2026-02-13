@@ -62,6 +62,10 @@ variables:
 
 {% block dependencies %}mcp_server.tools.base{% endblock %}
 
+{% block responsibilities %}    - Expose {{ name | replace('Tool', '') }} functionality via MCP protocol
+    - Validate tool input parameters
+    - Return structured ToolResult responses{% endblock %}
+
 {% block stdlib_imports %}
 {{ super() }}
 {% endblock %}

@@ -6,6 +6,10 @@
 
 {% block dependencies %}mcp_server.resources.base{% endblock %}
 
+{% block responsibilities %}    - Provide {{ name }} data via MCP resource protocol
+    - Handle URI pattern matching
+    - Return resource content in specified MIME type{% endblock %}
+
 {% block stdlib_imports %}
 {{ super() }}
 {% endblock %}
