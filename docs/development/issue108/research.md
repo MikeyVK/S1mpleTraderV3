@@ -387,23 +387,21 @@ mcp_server/scaffolding/templates/
 ```python
 # backend/services/template_engine.py
 """
-Template Engine - Jinja2 rendering with mock capabilities.
+Template Engine - Jinja2 rendering for scaffolding.
 
-Enhanced JinjaRenderer with mock rendering for template introspection
-and multi-root template support for Issue #72 5-tier architecture.
+Provides Jinja2-based template rendering for Issue #72 5-tier architecture.
 
 @layer: Backend (Services)
-@dependencies: [jinja2, ast, pathlib]
+@dependencies: [jinja2, pathlib]
 @responsibilities:
     - Render Jinja2 templates with context variables
-    - Mock render templates for structure analysis (Issue #121)
-    - Support multiple template roots (Issue #72)
-    - Parse rendered output (Python AST, Markdown)
+    - Support single template root via get_template_root()
+    - Enable 5-tier template inheritance (FileSystemLoader)
     - Provide custom filters (metadata, formatting, validation)
 """
 ```
 
-**Step 2: Update All Imports (3 Sites)**
+**Step 2: Update All Imports (6 Sites)**
 ```python
 # BEFORE
 from mcp_server.scaffolding.renderer import JinjaRenderer
@@ -412,11 +410,15 @@ from mcp_server.scaffolding.renderer import JinjaRenderer
 from backend.services.template_engine import TemplateEngine
 ```
 
-**Files to Update:**
+**Production Files (2):**
 1. `mcp_server/scaffolding/base.py`
 2. `mcp_server/scaffolders/template_scaffolder.py`
-3. `tests/integration/mcp_server/validation/test_scaffold_validate_e2e.py`
 
+**Test Files (4):**
+3. `tests/unit/scaffolders/test_template_scaffolder.py`
+4. `tests/unit/scaffolding/test_components.py`
+5. `tests/integration/test_concrete_templates.py`
+6. `tests/fixtures/artifact_test_harness.py`
 **Step 3: Delete Old Module**
 ```powershell
 Remove-Item mcp_server/scaffolding/renderer.py
@@ -883,16 +885,15 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
    - Current location prevents tools/ from using JinjaRenderer
    - Extract to `backend/services/template_engine.py` breaks cycle
    - **No backward compatibility needed** - only 6 import sites (2 production, 4 test), direct migration
-
-2. **Mock Rendering Solves Multiple Problems:**
+2. **Mock Rendering (Phase 2 - Follow-Up):**
    - Issue #120: Accurate optional field detection (no more hallucination)
    - Issue #121: Proactive edit capabilities discovery (40% call reduction)
    - Output structure analysis: Python AST + Markdown parsing
 
-3. **Issue #72 Integration:**
-   - 5-tier inheritance already supported via FileSystemLoader
-   - Need multiple template roots support (ChoiceLoader)
-   - Template registry integration required
+3. **Issue #72 Integration (MVP):**
+   - 5-tier inheritance supported via FileSystemLoader
+   - Single template root via `get_template_root()`
+   - Compatible with existing `mcp_server/scaffolding/templates/`
 
 4. **Quality Standards:**
    - All 7 quality gates must pass (Gate 0-6)
@@ -914,14 +915,18 @@ pytest --cov=backend.services.template_engine --cov-report=term-missing --cov-fa
 - ✅ Gate 5: Tests Passing (all tests green)
 - ✅ Gate 6: Code Coverage (≥90%)
 
-**Must Implement:**
-- ✅ Mock rendering with parse_python_output() and parse_markdown_output()
-- ✅ Multiple template roots via ChoiceLoader
+**Must Implement (MVP - Phase 1):**
+- ✅ Basic Jinja2 rendering with context variables
+- ✅ Single template root via `get_template_root()`
+- ✅ FileSystemLoader for 5-tier inheritance support
 - ✅ Custom filters (pascalcase, snakecase, kebabcase, validate_identifier)
-- ✅ Issue #120 integration (accurate optional detection)
-- ✅ Issue #121 integration (discover_capabilities method)
-- ✅ Issue #72 integration (5-tier template support)
+- ✅ Issue #72 compatibility (existing scaffolding output identical)
 
+**Follow-Up Implementation (Phase 2):**
+- ⏳ Mock rendering with parse_python_output() and parse_markdown_output()
+- ⏳ Multiple template roots via ChoiceLoader
+- ⏳ Issue #120 integration (accurate optional detection)
+- ⏳ Issue #121 integration (discover_capabilities method)
 **Must Document:**
 - ✅ Module header with @layer, @dependencies, @responsibilities
 - ✅ Google-style docstrings (Args/Returns/Raises/Example)
