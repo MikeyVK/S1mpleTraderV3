@@ -69,7 +69,8 @@ def test_capture_baseline_research():
     
     content = baseline_file.read_text(encoding="utf-8")
     assert len(content) > 0, "Baseline file should not be empty"
-    assert "# Research:" in content, "Research baseline should contain research header"
+    assert "# Baseline Test Research" in content, "Research baseline should contain title"
+    assert "## Purpose" in content, "Research baseline should have Purpose section"
 
 
 def test_capture_baseline_planning():
@@ -83,7 +84,8 @@ def test_capture_baseline_planning():
     
     content = baseline_file.read_text(encoding="utf-8")
     assert len(content) > 0, "Baseline file should not be empty"
-    assert "# Planning:" in content, "Planning baseline should contain planning header"
+    assert "# Baseline Test Planning" in content, "Planning baseline should contain title"
+    assert "## Purpose" in content, "Planning baseline should have Purpose section"
 
 
 def test_baselines_directory_exists():
