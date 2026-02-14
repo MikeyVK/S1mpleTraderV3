@@ -277,4 +277,75 @@ ERROR_SPECS = {
 
 **Issue #136 Migration Path:** Replace dict with `error_catalog_service.get_error_spec(code)`.
 
-(Continuering volgt in volgende bericht - bestand te groot voor één call)
+---
+
+## 7. Tool Boundary Implementation
+
+**GitCheckoutTool.execute()** normalizes ExecutionError → ToolResult:
+
+```python
+def execute(self, branch: str) -> ToolResult:
+    try:
+        self.git_adapter.checkout(branch)
+        return ToolResult(success=True, message=f"Checked out {branch}")
+    except ExecutionError as e:
+        error_code = self._classify_error(e)
+        hint = ERROR_SPECS[error_code]["hint_template"]
+        return ToolResult(success=False, error_code=error_code, message=str(e), hint=hint)
+```
+
+**SRP:** Adapter throws domain errors, tool converts to MCP contract.
+
+---
+
+## 8. Implementation Summary
+
+**GitAdapter.checkout() changes:**
+1. Normalize input (strip `origin/` prefix)
+2. Fast path: check local first (NO remote call)
+3. Fallback: check remote-tracking refs
+4. Create tracking branch if found
+5. Raise descriptive ExecutionError
+
+**Tool boundary changes:**
+1. Add ERROR_SPECS dict (migrate to YAML in Issue #136)
+2. Implement _classify_error() method
+3. Return ToolResult with error_code + hint
+
+---
+
+## 9. Issue #136 Alignment
+
+✅ **Aligned:** Tool boundary normalization, error codes, MCP tool names in hints  
+📝 **Deferred:** error_catalog.yaml file, ErrorCatalogService (Issue #136 scope)
+
+**Migration:** When #136 lands, replace ERROR_SPECS dict with service call. Zero test changes.
+
+---
+
+## 10. Success Criteria
+
+- ☐ All architecture patterns validated
+- ☐ Error taxonomy complete
+- ☐ Tool boundary SRP compliant
+- ☐ #136 alignment verified
+- ☐ Human reviewer approval
+
+**Next:** TDD phase per planning.md (4 cycles)
+
+---
+
+## Related Documentation
+
+- [research.md](research.md) - Alternatives analyzed
+- [planning.md](planning.md) - TDD cycles with decisions
+- Issue #136 - Error handling contract
+- [Addendum 3.8](../../../docs/system/addendums/Addendum_%203.8%20Configuratie%20en%20Vertaal%20Filosofie.md) - Config First
+
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|  
+| 1.0 | 2026-02-14 | Agent | Complete design: Q3 decision, error taxonomy, tool boundary, #136 alignment |
