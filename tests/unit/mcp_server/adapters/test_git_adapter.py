@@ -26,6 +26,8 @@ class TestGitAdapterCheckout:
             adapter.checkout("feature/test")
 
             mock_branch.checkout.assert_called_once()
+            # Performance invariant: fast path must NEVER call remote
+            mock_repo.remote.assert_not_called()  # Cycle 4: S1 performance requirement
 
     def test_checkout_nonexistent_branch_raises_error(self) -> None:
         """Test checkout to non-existent branch raises ExecutionError."""
