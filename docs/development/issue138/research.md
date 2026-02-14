@@ -2,8 +2,8 @@
 <!-- template=research version=8b7bb3ab created=2026-02-14T17:30:00+00:00 updated=2026-02-14T18:15:00+00:00 -->
 # Issue #138: Workflow-First Commit Convention Architecture
 
-**Status:** COMPLETE  
-**Version:** 2.0 (Refactored)  
+**Version:** 2.1
+**Last Updated:** 2026-02-14T18:20:00+00:00
 **Last Updated:** 2026-02-14T18:15:00+00:00
 
 ---
@@ -383,6 +383,6 @@ Examples:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 2.0 | 2026-02-14T18:15:00+00:00 | Agent | Refactored: removed implementation details, added graceful degradation requirement |
+| 2.1 | 2026-02-14T18:20:00+00:00 | Agent | Refactored: removed implementation details, focused on research only, added graceful degradation requirement |
 | 2.0 | 2026-02-14T17:45:00+00:00 | Agent | Complete architectural design (too broad - contained design/implementation) |
 | 1.0 | 2026-02-14T15:00:00+00:00 | Agent | Two phase systems analysis (archived as research-v1-archived.md) |
