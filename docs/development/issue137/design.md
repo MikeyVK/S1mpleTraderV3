@@ -458,7 +458,7 @@ These are **#136 decisions**. Issue #137 stays compatible but doesn't pre-implem
 | Planning Element | Design Decision | Implementation | Test |
 |-----------------|-----------------|----------------|------|
 | **Q3:** No auto-fetch | Functional precondition | Docstring note | N/A (functional req) |
-| **Q2:** Origin-only | D2: Hardcode "origin" | Line: `origin = self.repo.remote("origin")` | All tests use origin |
+| **Q2:** Origin-only | Q2: Origin-only | Line: `origin = self.repo.remote("origin")` | All tests use origin |
 | **S1:** Local fast path | D3: Early return invariant | `if normalized in heads: return` | `assert_not_called()` |
 | **S2:** Remote-only | Sequential fallback | `origin.refs` lookup + create_head | `test_checkout_remote_only_branch` |
 | **S3:** No origin | Error message | `except ValueError: raise ExecutionError` | `test_checkout_no_origin_remote` |
