@@ -1,31 +1,31 @@
 <!-- D:\dev\SimpleTraderV3\docs\development\issue138\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-14T17:30:00+00:00 updated=2026-02-14T18:15:00+00:00 -->
+<!-- template=research version=8b7bb3ab created=2026-02-14T17:30:00+00:00 updated=2026-02-14T18:50:00+00:00 -->
 # Issue #138: Workflow-First Commit Convention Architecture
 
-**Version:** 2.1
-**Last Updated:** 2026-02-14T18:20:00+00:00
-**Last Updated:** 2026-02-14T18:15:00+00:00
+**Status:** COMPLETE  
+**Version:** 2.2  
+**Last Updated:** 2026-02-14T18:50:00+00:00
 
 ---
 
 ## Purpose
 
-Research architectural approach for workflow-first commit conventions using Conventional Commits format, identifying breaking points in current codebase and establishing requirements for graceful degradation.
+Research architectural approach for workflow-first commit conventions using Conventional Commits format, respecting dual-source model (state.json for runtime, commit-scope for history), and establishing graceful degradation requirements.
 
 ## Scope
 
 **In Scope:**
-Problem analysis (dual phase systems), Breaking points in existing tools (GitManager, GitConfig, get_work_context), Architecture trade-offs (workflow-first vs TDD-first), Backward compatibility requirements (old commits must not block work)
+Problem analysis (dual phase systems), Breaking points in existing tools (GitManager, GitConfig, get_work_context), Dual-source model (state.json vs commit-scope), Source precedence per tool type, Backward compatibility requirements
 
 **Out of Scope:**
-Implementation design (moved to planning/design phases), Complete schemas (workphases.yaml design), Code examples (ScopeEncoder/Decoder implementation), Migration strategies, Test plans
+Implementation design, Complete schemas, Code examples, Migration strategies, Test plans
 
 ## Prerequisites
 
 1. Issue #138 v1.0 research-v1-archived.md (two phase systems analysis)
-2. User requirement: workflow phases should be primary (not TDD phases)
-3. User requirement: old commits without proper format must not block tools
-4. Coding standards understood (DRY principles)
+2. Issue #39 infrastructure (PhaseStateEngine, state.json persistence)
+3. User requirement: workflow phases in commit-scope (not replacing state.json)
+4. User requirement: dual-source model with explicit precedence per tool type
 
 ---
 
@@ -37,7 +37,7 @@ Implementation design (moved to planning/design phases), Complete schemas (workp
 
 **Problem:** `git_add_or_commit` only accepts TDD phases. Agents cannot commit during research/planning/integration phases.
 
-**User Vision:** Workflow phases should drive commit messages, encoded in Conventional Commits scope field.
+**User Vision:** Workflow phases should be visible in commit messages (Conventional Commits scope field), while state.json remains primary for runtime/enforcement.
 
 **Critical Requirement:** Tools must handle old commits gracefully (no blocking errors when parsing commits without proper scope format).
 
@@ -89,7 +89,7 @@ class GitConfig(BaseModel):
         return phase in self.tdd_phases  # ❌ Rejects workflow phases
 ```
 
-**Problem:** Validation model doesn't know about workflow phases. Single source of truth missing.
+**Problem:** Validation model doesn't know about workflow phases.
 
 ---
 
@@ -139,36 +139,65 @@ def _detect_tdd_phase(self) -> str:
 
 ---
 
-## Architectural Vision (High-Level)
+## Dual-Source Model (Issue #39 Architecture)
 
-### Core Principle
+**CORRECTION TO INITIAL RESEARCH:** workphases.yaml is NOT absolute SSOT. Issue #39 established dual-source architecture that must be preserved.
 
-**Workflow phases are PRIMARY, encoded in Conventional Commits scope field.**
+### Source Hierarchy
 
-### Format
+**1. Runtime/Enforcement Primary:** `.st3/state.json`
+- **Purpose:** Current phase tracking, workflow validation, audit trail
+- **Contents:**
+  - current_phase (authoritative for transitions)
+  - workflow_name (cached from project for performance)
+  - transitions array with forced flag
+  - skip_reason + human_approval (forced transition audit)
+  - parent_branch tracking
+- **Not version-controlled:** .gitignore:74 - runtime state only
+- **Manager:** PhaseStateEngine (mcp_server/managers/phase_state_engine.py)
+- **Used by:** transition_phase, force_phase_transition, initialize_project
 
+**2. History/Context Primary:** Git commit scope
+- **Purpose:** Workflow phase visible in git history, context detection
+- **Format:** Conventional Commits `type(scope): message`
+- **Contents:** `P_PHASE` or `P_PHASE_SP_SUBPHASE` encoding
+- **Fallback:** Type-based heuristic for old commits
+- **Used by:** get_work_context, get_project_plan (context/reporting tools)
+
+**3. Configuration Source:** workphases.yaml
+- **Purpose:** Phase metadata (display names, descriptions, commit type hints)
+- **Referenced by:** workflows.yaml (sequences), git.yaml (conventions)
+- **Not runtime state:** Just definitions, not current phase
+
+### Source Precedence (EXPLICIT)
+
+**Transition/Enforcement Tools** (state.json authoritative):
+```python
+transition_phase()        → state.json ONLY (runtime state authoritative)
+force_phase_transition()  → state.json ONLY (audit trail required)
+initialize_project()      → state.json WRITE (creates runtime state)
 ```
-type(scope): description
 
-Examples:
-  docs(P_RESEARCH): complete dependency analysis
-  test(P_TDD_SP_C1_RED): add validation tests
-  feat(P_TDD_SP_C1_GREEN): implement validation
+**Context/Reporting Tools** (commit-scope preferred, state.json fallback):
+```python
+get_work_context()   → commit-scope > state.json > type-heuristic
+get_project_plan()   → commit-scope > state.json > type-heuristic
+git_log analysis     → commit-scope ONLY (historical trace)
 ```
 
-**Key Insight:** Conventional Commits already supports hierarchical scopes. We don't need a new format, just a new convention for what goes in the scope field.
+### Rationale
 
-### Configuration Hierarchy
+**Why state.json remains primary for enforcement:**
+1. **Audit trail:** Forced transitions track skip_reason + human_approval (compliance requirement)
+2. **Performance:** workflow_name cached (avoids repeated project lookups)
+3. **Atomic transitions:** PhaseStateEngine validates against workflow rules
+4. **Runtime-only:** Not part of git history (.gitignore:74 - deliberate choice)
 
-```
-workphases.yaml        → SSOT: All phase definitions (research, tdd, integration, etc.)
-        ↓
-workflows.yaml         → References phases (defines sequences)
-        ↓
-git.yaml               → References phases (commit conventions)
-```
-
-**Single source of truth** eliminates drift between git.yaml and workflows.yaml.
+**Why commit-scope is primary for context:**
+1. **Git history:** `git log --oneline` shows workflow progression without external files
+2. **Branch switching:** state.json deleted on `git checkout` (context tools need fallback)
+3. **Observability:** Phase visible in every commit message (self-documenting)
+4. **Historical analysis:** No dependency on runtime state files
 
 ---
 
@@ -185,7 +214,7 @@ git.yaml               → References phases (commit conventions)
 
 **Implication:** 
 - ✅ Scope parsing must be **optional**, not required
-- ✅ Tools must fallback to type-based guessing if scope missing/invalid
+- ✅ Tools must fallback to type-based heuristic if scope missing/invalid
 - ✅ New commits should use new format, old commits continue working
 - ❌ Tools must NOT throw errors when encountering old format
 
@@ -199,7 +228,11 @@ scope = decoder.extract_from_commit(commit_message)
 # Old format (graceful fallback)
 commit_message = "test: add tests"
 scope = decoder.extract_from_commit(commit_message)
-# → None (fallback to type-based heuristic: type="test" → assume phase="tdd")
+# → None (fallback to type-based heuristic: type="test" → phase="tdd")
+
+# state.json fallback
+if scope is None and state.json exists:
+    phase = state["current_phase"]  # Use runtime state
 ```
 
 ---
@@ -216,65 +249,57 @@ scope = decoder.extract_from_commit(commit_message)
 
 ---
 
-### 3. Single Source of Truth (workphases.yaml)
+### 3. Respect State.json Audit Trail
 
-**Problem:** Currently phases defined in 2 places:
-- git.yaml: `tdd_phases: [red, green, refactor, docs]`
-- workflows.yaml: `phases: [research, planning, design, tdd, ...]`
+**Non-Negotiable:** PhaseStateEngine audit trail must remain intact.
 
-**Solution:** Define once in workphases.yaml, reference everywhere else.
-
-**Benefits:**
-- Adding new phase = config change only (no code changes)
-- No drift between files
-- Clear hierarchy: workphase → workflow sequence → commit format
+**Implications:**
+- ✅ Forced transitions still track skip_reason + human_approval in state.json
+- ✅ transition_phase validates against state.json current_phase (not commit-scope)
+- ✅ Commit-scope does NOT replace state.json for enforcement
+- ✅ Dual-source model: both sources serve different purposes
 
 ---
 
 ## Trade-Offs Analysis
 
-### Option 1: Workflow-First (Selected)
+### Option 1: Dual-Source Model (Selected)
+
+**Approach:** state.json for runtime/enforcement, commit-scope for history/context
 
 **Pros:**
+- ✅ Preserves Issue #39 audit trail infrastructure
 - ✅ Git history self-documenting (scope shows workflow state)
-- ✅ Conventional Commits compliant (GitHub/GitLab tools work)
-- ✅ Single source of truth (DRY)
-- ✅ Extensible (new phases via config)
+- ✅ Conventional Commits compliant
+- ✅ Clear separation: enforcement vs observability
 
 **Cons:**
-- ⚠️ Scope strings longer (`P_TDD_SP_C1_RED` vs `test:`)
-- ⚠️ Agents must learn new format
-- ⚠️ Requires encoder/decoder utilities
+- ⚠️ Two sources of truth (requires explicit precedence rules)
+- ⚠️ Potential divergence if not synchronized correctly
+- ⚠️ Tools must implement precedence correctly (more complex)
 
 ---
 
-### Option 2: Hybrid Validation (v1.0 - Rejected)
+### Option 2: state.json-Only (Rejected)
 
-**Approach:** Accept both TDD and workflow phases, map workflow → TDD prefix
-
-**Example:**
-```python
-# GitCommitInput accepts "research"
-git_add_or_commit(phase="research", message="...")
-# Maps to: "docs: complete research"
-```
+**Approach:** Keep state.json as only source, don't change commits
 
 **Why Rejected:**
-- ❌ Perpetuates dual system (TDD still primary)
-- ❌ Workflow phase hidden (only in state.json, not git history)
-- ❌ Hardcoded mapping (code changes for new phases)
-- ❌ Doesn't solve Issue #117 (get_work_context still can't detect workflow phase)
+- ❌ Doesn't solve Issue #138 (agents still can't commit with workflow phases)
+- ❌ Git history remains opaque (workflow state hidden in state.json)
+- ❌ Violates user vision (workflow phases should be visible)
 
 ---
 
-### Option 3: Keep TDD-First (Status Quo - Rejected)
+### Option 3: Commit-Scope-Only (Rejected - Violates Issue #39)
 
-**Approach:** Keep current system, don't change anything
+**Approach:** Make commit-scope absolute SSOT, deprecate state.json
 
 **Why Rejected:**
-- ❌ Doesn't solve Issue #138 (agents can't commit during research/planning)
-- ❌ Violates user vision (workflow should be primary)
-- ❌ Issue #117 persists (get_work_context guessing)
+- ❌ Loses forced transition audit trail (compliance requirement)
+- ❌ Loses workflow_name cache (performance degradation)
+- ❌ Breaks PhaseStateEngine contracts (test failures)
+- ❌ Violates Issue #39 architecture decisions
 
 ---
 
@@ -284,16 +309,9 @@ git_add_or_commit(phase="research", message="...")
 
 **Current Problem:** Parses commit **type** (feat/test/docs), not **scope**.
 
-**Fix:** Parse scope field for workflow phase.
+**Fix:** Parse commit-scope with state.json fallback, type-heuristic as last resort.
 
-**Example:**
-```python
-# OLD: commit_message = "test: add validation"
-#      → Guesses phase="red" from type="test" (wrong!)
-
-# NEW: commit_message = "test(P_TDD_SP_C2_RED): add validation"
-#      → Parses scope="P_TDD_SP_C2_RED" → phase="tdd", cycle=2 (correct!)
-```
+**Source Precedence:** commit-scope > state.json > type-heuristic
 
 ---
 
@@ -301,7 +319,9 @@ git_add_or_commit(phase="research", message="...")
 
 **Current Problem:** current_phase only in state.json, not visible in git history.
 
-**Benefit:** With workflow-first, `git log` shows workflow progression without state.json dependency.
+**Benefit:** With commit-scope, `git log` shows workflow progression.
+
+**Source Precedence:** commit-scope > state.json
 
 ---
 
@@ -339,9 +359,13 @@ Examples:
 
 4. **get_work_context** (mcp_server/tools/context_tools.py)
    - Method: _detect_tdd_phase()
-   - Impact: Parse scope instead of type
+   - Impact: Parse scope with state.json fallback
 
-5. **Tests** (tests/...)
+5. **get_project_plan** (mcp_server/tools/project_tools.py)
+   - Method: Extract current_phase
+   - Impact: Parse commit-scope with state.json fallback
+
+6. **Tests** (tests/...)
    - Files: test_git_manager.py, test_git_tools_config.py (20+ files)
    - Impact: ~210 assertions need updates
 
@@ -349,33 +373,70 @@ Examples:
 
 ## Architecture Decision Record
 
-### ADR-001: Workflow-First Commit Convention
+### ADR-001: Dual-Source Model for Phase Tracking
 
-**Decision:** Encode workflow phases in Conventional Commits scope field.
+**Decision:** Use state.json for runtime/enforcement, commit-scope for history/context.
 
 **Rationale:**
-1. **Self-documenting history:** `git log` shows complete workflow trace
-2. **Standards compliance:** Conventional Commits format preserved
-3. **Single source of truth:** workphases.yaml eliminates dual system
-4. **Extensibility:** New phases = config change only
+1. **Preserves Issue #39:** PhaseStateEngine audit trail remains intact
+2. **Self-documenting history:** `git log` shows complete workflow trace
+3. **Standards compliance:** Conventional Commits format preserved
+4. **Clear separation:** Enforcement (state.json) vs Observability (commit-scope)
 
 **Consequences:**
 - ✅ Fixes Issue #138 (workflow phase commits)
-- ✅ Fixes Issue #117 (scope-based detection)
+- ✅ Fixes Issue #117 (commit-scope-based detection with fallback)
 - ✅ Improves Issue #139 (visible state in git history)
-- ⚠️ Requires encoder/decoder utilities (DRY)
-- ⚠️ Migration effort: ~14 files, ~210 test assertions
-- ✅ Graceful degradation for old commits (fallback to type-based heuristic)
+- ✅ Preserves audit trail (forced transitions, skip_reason, human_approval)
+- ⚠️ Requires explicit precedence per tool type (documented above)
+- ⚠️ Tools must implement dual-source correctly (test coverage required)
+
+**Rejected Alternatives:**
+- state.json-only: Doesn't solve Issue #138, git history opaque
+- commit-scope-only: Violates Issue #39, loses audit trail
+
+---
+
+## Acceptatiecriteria (User-Specified)
+
+1. **Geen blocking errors op legacy commitformaten**
+   - Old commits (`test: add tests`) must not throw errors
+   - Graceful fallback to type-heuristic or state.json
+
+2. **Deterministische source precedence per tooltype**
+   - Transition tools: state.json > commit-scope > type-heuristic
+   - Context tools: commit-scope > state.json > type-heuristic
+   - Explicitly documented and tested
+
+3. **Consistente phase-output tussen tools**
+   - get_work_context, get_project_plan, git_add_or_commit all use same resolver
+   - DRY: Single ScopeDecoder utility with precedence logic
+
+4. **Audit/transitiongedrag via state-engine blijft intact**
+   - transition_phase validates against state.json
+   - force_phase_transition tracks skip_reason + human_approval
+   - PhaseStateEngine contracts unchanged
 
 ---
 
 ## Open Questions for Planning Phase
 
-1. **workphases.yaml schema:** What metadata fields needed? (display_name, description, commit_type_hints, etc.)
-2. **Encoder/decoder location:** New module mcp_server/core/scope_formatter.py? Or extend GitConfig?
-3. **Cycle tracking:** How to increment TDD cycle numbers? (Manual input or auto-detect from last commit?)
-4. **Validation UX:** What error messages for invalid scopes? (Learned from Issue #121)
-5. **Test strategy:** Unit tests for encoder/decoder? Integration tests for full workflow?
+1. **ScopeDecoder precedence:** How to implement commit-scope > state.json > type-heuristic cleanly?
+2. **Cycle tracking:** How to increment TDD cycle numbers? (Manual input or auto-detect from last commit?)
+3. **Validation UX:** What error messages for invalid scopes? (Issue #121 lesson)
+4. **Test strategy:** Contract tests for precedence logic? Integration tests for tool boundaries?
+5. **State synchronization:** How to keep commit-scope and state.json aligned? (git_add_or_commit responsibility?)
+
+---
+
+## Referentiepunten
+
+- **[docs/reference/mcp/tools/project.md](../../reference/mcp/tools/project.md):** Runtime-state rationale, PhaseStateEngine
+- **[docs/reference/mcp/tools/git.md](../../reference/mcp/tools/git.md):** Git-tooling huidige TDD-focus
+- **[.gitignore:74](../../../.gitignore):** state.json is bewust niet-versioned
+- **[mcp_server/managers/phase_state_engine.py](../../../mcp_server/managers/phase_state_engine.py):** Forced transitions, audit trail
+- **[mcp_server/tools/project_tools.py](../../../mcp_server/tools/project_tools.py):** Initialize project, state contracts
+- **[tests/.../test_initialize_project_tool.py](../../../tests/unit/mcp_server/tools/test_initialize_project_tool.py):** State contracts
 
 ---
 
@@ -383,6 +444,7 @@ Examples:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.2 | 2026-02-14T18:50:00+00:00 | Agent | Corrected to dual-source model (state.json + commit-scope), added acceptatiecriteria, referentiepunten |
 | 2.1 | 2026-02-14T18:20:00+00:00 | Agent | Refactored: removed implementation details, focused on research only, added graceful degradation requirement |
 | 2.0 | 2026-02-14T17:45:00+00:00 | Agent | Complete architectural design (too broad - contained design/implementation) |
 | 1.0 | 2026-02-14T15:00:00+00:00 | Agent | Two phase systems analysis (archived as research-v1-archived.md) |

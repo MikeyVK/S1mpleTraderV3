@@ -45,34 +45,45 @@ Vertical slice implementation of workflow-first commit conventions. Each cycle d
 
 ## TDD Cycles
 
-### Cycle 1: Phase Resolution + Graceful Degradation
+### Cycle 1: Phase Resolution + Graceful Degradation (Dual-Source)
 
-**Goal:** Old commits work, tools don't break on missing/invalid scope
+**Goal:** Commit-scope parsing met state.json fallback, oude commits blijven werken
 
 **Deliverables:**
-1. workphases.yaml (minimal SSOT - research, tdd, integration, documentation phases)
-2. Scope parser with fallback (ScopeDecoder.extract_from_commit())
-3. get_work_context integration (#117 fix)
-4. Contract tests for parser (valid scopes, invalid scopes, missing scopes)
-5. Integration test: old commit format ("test: add tests" → fallback to type heuristic)
+1. workphases.yaml (minimal SSOT - phase definitions only)
+2. Scope parser/decoder (ScopeDecoder.extract_from_commit())
+3. Precedence resolver (commit-scope > state.json > type-heuristic)
+4. get_work_context integration (#117 fix - met precedence)
+5. Contract tests (scope parsing + fallback scenarios)
+6. Integration test: old commit format graceful handling
 
 **Exit Criteria:**
-- **Functional:** get_work_context parses new scope format OR falls back to type-based heuristic
+- **Functional:** get_work_context implements commit-scope > state.json > type-heuristic precedence
 - **Compatibility:** All existing branches/commits continue working (no blocking errors)
-- **Observability:** Clear logging when fallback used (not error, just info)
+- **Observability:** Clear logging van bron (scope, state.json, heuristic)
 
 **No-Regression Contract:**
 ```python
-# OLD FORMAT - MUST WORK
-commit_message = "test: add validation tests"  # No scope
+# NEW FORMAT - Commit-scope primary
+commit_message = "test(P_TDD_SP_C1_RED): add tests"
 scope = decoder.extract_from_commit(commit_message)
-assert scope is None  # Graceful: returns None, doesn't throw
+assert scope is not None  # Parses correctly
+assert scope.phase == "tdd"
 
-# Tools fallback to type-based heuristic
-phase = detect_phase_from_commit(commit_message)
-assert phase == "tdd"  # Heuristic: type="test" → phase="tdd"
+# OLD FORMAT - Graceful fallback
+commit_message = "test: add tests"  # No scope
+scope = decoder.extract_from_commit(commit_message)
+assert scope is None  # Returns None, doesn't throw
+
+# Fallback chain in get_work_context
+phase = get_work_context().current_phase
+# 1. Try commit-scope (None voor old commits)
+# 2. Try state.json (if exists)
+# 3. Fallback type-heuristic (type="test" → "tdd")
+assert phase == "tdd"  # Works via fallback
 ```
 
+**Critical:** state.json blijft authoritative voor transition_phase (niet gewijzigd in Cycle 1)
 ---
 
 ### Cycle 2: Scope Encoding + New Commit Format
@@ -162,6 +173,39 @@ git_add_or_commit(
 
 ## Related Documentation
 - **[research.md v2.1][related-1]**
+
+---
+
+## Acceptatiecriteria (User-Specified)
+
+1. **Geen blocking errors op legacy commitformaten**
+   - Test: Old commits (`test: add tests`) behandeling zonder errors
+   - Graceful fallback naar type-heuristic of state.json
+
+2. **Deterministische source precedence per tooltype**
+   - Transition tools: state.json > commit-scope > type-heuristic
+   - Context tools: commit-scope > state.json > type-heuristic
+   - Expliciet getest per tool
+
+3. **Consistente phase-output tussen tools**
+   - get_work_context, get_project_plan, git_add_or_commit gebruiken zelfde resolver
+   - DRY: Single ScopeDecoder utility met precedence logic
+
+4. **Audit/transition gedrag via state-engine blijft intact**
+   - transition_phase valideert tegen state.json
+   - force_phase_transition tracked skip_reason + human_approval
+   - PhaseStateEngine contracts ongewijzigd
+
+---
+
+## Referentiepunten
+
+- **[docs/reference/mcp/tools/project.md](../../reference/mcp/tools/project.md):** Runtime-state rationale, PhaseStateEngine
+- **[docs/reference/mcp/tools/git.md](../../reference/mcp/tools/git.md):** Git-tooling huidige TDD-focus
+- **[.gitignore:74](../../../.gitignore):** state.json bewust niet-versioned
+- **[mcp_server/managers/phase_state_engine.py](../../../mcp_server/managers/phase_state_engine.py):** Forced transitions, audit trail
+- **[mcp_server/tools/project_tools.py](../../../mcp_server/tools/project_tools.py):** Initialize project, state contracts
+- **[tests/.../test_initialize_project_tool.py](../../../tests/unit/mcp_server/tools/test_initialize_project_tool.py):** State contracts
 - **[docs/coding_standards/README.md][related-2]**
 - **[Issue #117 (get_work_context)][related-3]**
 - **[Issue #139 (get_project_plan)][related-4]**
