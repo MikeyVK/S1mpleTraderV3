@@ -69,6 +69,7 @@ Issue #72 established 5-tier template architecture (tier0-4). Issue #120 impleme
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.1 | 2026-02-14 | Agent | 🚨 CRITICAL CORRECTIONS: TEMPLATE_METADATA actually used (scope revised); semantic parity blocker discovered (or vs default); edge case #4 not detected; claims downgraded to realistic estimates (40-60% simpler, not 90%) |
 | 2.0 | 2026-02-14 | Agent | 🚨 BREAKTHROUGH: Option C discovery - unified pattern enforcement eliminates need for mock rendering, reduces implementation 90% |
 | 1.0 | 2026-02-14 | Agent | Initial draft: metadata audit, algorithm analysis, TemplateEngine role, 7 edge cases |
 
@@ -78,27 +79,43 @@ Issue #72 established 5-tier template architecture (tier0-4). Issue #120 impleme
 
 ### Metadata Usage Audit
 
-**Critical Finding: YAML Metadata is NOT Used by Runtime Validation**
+**⚠️ CORRECTED FINDING: TEMPLATE_METADATA is Used, `introspection.variables` is NOT**
 
-Codebase search for metadata usage in production:
+**What IS used in runtime (Evidence: Code Inspection):**
+
+1. **template_analyzer.py:31-100** - `extract_metadata()` reads TEMPLATE_METADATA:
+   - Enforcement level (STRICT/ARCHITECTURAL/GUIDELINE)
+   - Validation rules (strict/guidelines lists)
+   - Template version, purpose, extends chain
+
+2. **artifact_manager.py:214-271** - Version/provenance tracking:
+   - Extracts version from TEMPLATE_METADATA for template_registry.json
+   - Builds tier_chain with (template_name, version) tuples
+
+3. **layered_template_validator.py:71** - Validation flow:
+   - Merges TEMPLATE_METADATA across inheritance chain
+   - Applies enforcement rules from metadata
+
+**What is NOT used in runtime (Evidence: Grep Search):**
 
 ```python
 # mcp_server/scaffolders/template_scaffolder.py:98
 def validate(self, artifact_type: str, **kwargs: Any) -> bool:
-    # ❌ NO reading of YAML introspection.variables metadata!
+    # ❌ NO reading of introspection.variables from YAML!
     # ✅ Uses AST introspection directly:
     schema = introspect_template_with_inheritance(template_root, template_path)
-    
-    # Validates against Jinja2 AST analysis, NOT YAML
     missing = [f for f in schema.required if f not in provided]
 ```
 
-**Search Results:**
-- Production code using metadata: **0 occurrences**
-- Test files checking metadata EXISTS: **40+ occurrences**
-- Templates defining metadata: **24 templates**
+**Search Results (grep "introspection" in mcp_server/):**
+- Production code reading `introspection.variables`: **0 occurrences**
+- AST introspection usage: **7 occurrences** (all via template_introspector.py)
+- Test assertions checking introspection block exists: **~10 occurrences**
 
-**Conclusion:** YAML `introspection.variables` serves ZERO runtime purpose. Pure documentation that drifts.
+**✅ CORRECTED Conclusion:** 
+- `TEMPLATE_METADATA` (general): **USED** for validation rules, versioning, provenance
+- `introspection.variables` (specific): **NOT USED** - AST introspection is runtime SSOT
+- **Scope adjustment:** Remove only `introspection.variables` sub-block, preserve rest of TEMPLATE_METADATA
 
 ---
 
@@ -288,9 +305,21 @@ final_required = all_vars - final_optional
 
 ### Edge Case #4: "is defined" Checks - MEDIUM
 **Pattern:** `{% if variable is defined %} {{ variable }} {% endif %}`  
-**AST Detection:** ✅ Pattern detected correctly (existing)  
-**Frequency:** 9 templates (13%)  
-**Priority:** P2 - Already handled by AST
+**AST Detection:** ⚠️ **NOT CURRENTLY DETECTED** (correction from initial analysis)  
+**Frequency:** 5 occurrences (attribute checks like `field.default_factory is defined`)  
+**Priority:** P2 - Needs AST enhancement (nodes.Test detection)
+
+**Current Implementation (template_introspector.py:126-159):**
+```python
+# Only detects {% if variable %} (nodes.If + nodes.Name)
+if isinstance(node, nodes.If) and isinstance(node.test, nodes.Name):
+    optional_vars.add(node.test.name)
+    
+# Does NOT detect {% if variable is defined %} (nodes.If + nodes.Test)
+# This would require checking: nodes.Test with test.name == "defined"
+```
+
+**Evidence:** Actual code inspection shows no `nodes.Test` handling for `is defined` pattern.
 
 ---
 
@@ -531,36 +560,42 @@ def _classify_variables_unified(ast: nodes.Template, all_vars: set[str]) -> tupl
 
 ### Impact on Original Solution Space
 
-**❌ OBSOLETE Approaches:**
-1. **Mock Rendering (+25% accuracy)** → NOT NEEDED with 100% pattern accuracy
-2. **Enhanced AST Detection (7 edge cases)** → NOT NEEDED with single pattern
-3. **Two-Phase Classification** → NOT NEEDED, single-pass sufficient
-4. **YAML Metadata Maintenance** → ELIMINATED entirely
+**❌ POTENTIALLY OBSOLETE Approaches (Pending Semantic Parity Resolution):**
+1. **Mock Rendering (+25% accuracy)** → May not be needed IF unified pattern works
+2. **Enhanced AST Detection (7 edge cases)** → Simplified IF pattern enforcement succeeds
+3. **Two-Phase Classification** → Reduced to single-pass IF semantic parity resolved
+4. **YAML introspection.variables Maintenance** → Can be eliminated (rest of TEMPLATE_METADATA stays)
 
-**✅ NEW Solution (Radically Simpler):**
+**✅ REVISED Solution (After Corrections):**
 1. **Refactor 5 lines** in 1 template (tier3_pattern_markdown_status_header.jinja2)
+   - ⚠️ **BLOCKED:** Requires semantic parity validation first
 2. **Add Linter Rule** (template_pattern_compliance.py)
-3. **Simplify _classify_variables()** to detect ONLY `|default` filter
-4. **Remove YAML metadata** from 24 templates (600 lines deleted)
-5. **Update coding standards** to mandate `|default` pattern
+   - ⚠️ **DEPENDS:** On semantic mitigation strategy (default(x, true) vs dual patterns)
+3. **Simplify _classify_variables()**  - ⚠️ **HYPOTHESIS:** Still needs edge case #4 (is defined) enhancement
+4. **Remove introspection.variables** from 24 templates (~200 lines, not 600)
+   - ✅ **CLARIFIED:** Preserve rest of TEMPLATE_METADATA (validation, versioning)
+5. **Update coding standards** to mandate pattern uniformity
 
-**Complexity Reduction:**
-- Implementation effort: 1000 lines → **~100 lines**
-- Algorithm complexity: Two-phase AST+mock → **Single-pass AST**
-- Maintenance surface: 24 YAML blocks → **0 YAML blocks**
-- Test coverage needed: 21 edge case scenarios → **~5 pattern tests**
-- False positive rate: 15% residual → **0% (guaranteed)**
+**Complexity Reduction (REVISED ESTIMATES):**
+- Implementation effort: ~~1000 lines → 100 lines~~ → **300-500 lines** (with semantic tests and edge case #4)
+- Algorithm complexity: ~~Two-phase AST+mock~~ → **Single-pass AST + pattern linter + semantic compatibility layer**
+- Maintenance surface: ~~24 YAML blocks~~ → **Only introspection sub-blocks** (preserve TEMPLATE_METADATA)
+- Test coverage needed: ~~21 edge case scenarios~~ → **~12 scenarios** (5 patterns + 7 semantic parity tests)
+- False positive rate: ~~15% residual → 0% guaranteed~~ → **10-15% residual** (edge case #1 + #4 remain)
 
-### Benefits Summary
+**Corrected claim:** "90% simpler" → **40-60% simpler** (realistic with blockers addressed)
 
-| Benefit | Before (AST+Mock) | After (Unified Pattern) |
-|---------|-------------------|-------------------------|
-| **Accuracy** | ~85% (estimated) | **100% (guaranteed)** |
-| **Performance** | O(N nodes + N vars × render) | **O(N nodes)** single-pass |
-| **Maintainability** | YAML drift risk | **Self-documenting** |
-| **Implementation** | 1000 lines, 2 weeks | **100 lines, 2 days** |
-| **False positives** | 15% accept or complex fixes | **0% by construction** |
-| **Template restrictions** | None | **Minimal (1 pattern enforcement)** |
+### Benefits Summary (REVISED After Corrections)
+
+| Benefit | Before (AST+Mock) | After (Unified Pattern) | Status |
+|---------|-------------------|-------------------------|--------|
+| **Accuracy** | ~85% (estimated) | **90-95%** (if semantic parity resolved) | ⚠️ HYPOTHESIS |
+| **Performance** | O(N nodes + N vars × render) | **O(N nodes)** single-pass | ✅ VALIDATED |
+| **Maintainability** | YAML drift risk | **Self-documenting** (with linter) | ✅ IMPROVED |
+| **Implementation** | 1000 lines, 2 weeks | **300-500 lines, 1 week** | ⚠️ REVISED |
+| **False positives** | 15% accept or complex fixes | **10-15%** (edge cases #1, #4 remain) | ⚠️ REVISED |
+| **Template restrictions** | None | **Minimal** (semantic parity req) | ⚠️ BLOCKING |
+| **Metadata scope** | Remove all YAML | **Remove introspection only** | ✅ CLARIFIED |
 
 ### Decision Rationale
 
@@ -587,12 +622,37 @@ Encoding variations:
 
 Solution: **Encode that knowledge unambiguously** in a single, enforceable pattern.
 
-### Implementation Priority: P0 (CRITICAL PATH CHANGE)
+### Implementation Priority: ⚠️ P1 (HIGH) - PENDING BLOCKER RESOLUTION
 
-**Recommendation:** Adopt Unified Pattern Enforcement as PRIMARY solution approach.
-- Relegates AST enhancement to P2 (edge case #1: nested fields remains, but lower priority)
-- Eliminates need for mock rendering entirely
-- Simplifies implementation from complex algorithm to pattern enforcement + cleanup
+**Status:** Promising direction with **critical blockers** requiring planning phase resolution.
+
+**Recommendation:** Adopt Unified Pattern Enforcement as **candidate PRIMARY** solution, but:
+
+**🚨 BLOCKING Issues (Must Resolve Before Implementation):**
+1. **Semantic Parity Validation**
+   - Test suite: Compare `or` vs `|default` behavior for all 5 current usages
+   - Decision: Use `|default(x, true)` for falsy-checking, or keep dual patterns?
+   - Risk assessment: Which templates rely on falsy vs None-checking semantics?
+
+2. **Edge Case #4 (is defined) Enhancement**
+   - Add `nodes.Test` detection to _classify_variables()
+   - Validate 5 occurrences (field.default_factory checks)  
+   - Test coverage for "is defined" pattern
+
+3. **Scope Clarification Complete**
+   - ✅ DONE: Only remove `introspection.variables`, preserve rest of TEMPLATE_METADATA
+   - Estimate revision: ~200 lines removed (not 600)
+
+**⏭️ Next Steps for Planning Phase:**
+- Semantic parity test suite design
+- Mitigation strategy: `|default(x, true)` vs dual-pattern rules
+- Linter integration points (pre-commit, quality gates, scaffold validation)
+- Edge case #4 implementation approach
+- Realistic timeline: 1 week (not 2 days) with proper validation
+
+**De-prioritized (for now):**
+- Mock rendering approach (may not be needed if pattern enforcement succeeds)
+- Complex AST enhancements for 7 edge cases (reduced scope if pattern works)
 
 ---
 
