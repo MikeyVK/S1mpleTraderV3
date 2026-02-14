@@ -1,10 +1,10 @@
 <!-- docs/development/issue137/research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-14T10:55:00Z updated=2026-02-14T12:10:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-14T10:55:00Z updated=2026-02-14T12:15:00Z -->
 # Issue #137: Remote Branch Checkout Research
 
 **Status:** DRAFT  
-**Version:** 1.2  
-**Last Updated:** 2026-02-14T12:10:00Z
+**Version:** 1.3  
+**Last Updated:** 2026-02-14T12:15:00Z
 
 ---
 
@@ -29,8 +29,8 @@ Investigate current limitations of git_checkout when branches exist only on remo
 
 Read these first:
 1. Issue #137 description
-2. [mcp_server/adapters/git_adapter.py](../../mcp_server/adapters/git_adapter.py) (lines 148-157)
-3. [tests/unit/mcp_server/adapters/test_git_adapter.py](../../tests/unit/mcp_server/adapters/test_git_adapter.py)
+2. [mcp_server/adapters/git_adapter.py](../../../mcp_server/adapters/git_adapter.py) (lines 148-157)
+3. [tests/unit/mcp_server/adapters/test_git_adapter.py](../../../tests/unit/mcp_server/adapters/test_git_adapter.py)
 
 ---
 
@@ -71,6 +71,7 @@ origin = self.repo.remote("origin")  # May raise ValueError if not configured
 **Remote references** (inferred from push/fetch):
 ```python
 origin.refs  # List of RemoteReference objects (e.g., origin/main, origin/feature/x)
+              # NOTE: These are LOCAL remote-tracking refs, not live network calls
 ```
 
 **Branch creation** (lines 85-95):
@@ -111,7 +112,7 @@ def checkout(self, branch_name: str) -> None:
         self.repo.heads[branch_name].checkout()
         return
     
-    # Check remote second
+    # Check remote second (reads local remote-tracking refs)
     try:
         origin = self.repo.remote("origin")
         remote_ref = f"origin/{branch_name}"
@@ -128,7 +129,7 @@ def checkout(self, branch_name: str) -> None:
 
 **Characteristics:**
 - Preserves fast path for local branches
-- Adds remote lookup on local miss
+- Adds remote-tracking ref lookup on local miss
 - Auto-creates tracking branch
 
 ### Alternative B: Explicit Remote Flag
@@ -171,12 +172,12 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 - ✅ No API changes (backward compatible)
 - ✅ Matches user mental model (git checkout just works)
 - ✅ Consistent with push/fetch (both use origin implicitly)
-- ✅ Minimal performance impact (remote check only on miss)
+- ✅ No network overhead (reads local remote-tracking refs)
 
 **Cons:**
 - ❌ Adds complexity to single method
 - ❌ Silent remote lookup (less explicit)
-- ❌ Network call on every local miss (if remote stale)
+- ❌ Requires prior `git_fetch` to have fresh remote-tracking refs
 
 ### Alternative B (Explicit Flag)
 
@@ -232,10 +233,12 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 
 **Unclear:** What level of detail aids debugging without noise?
 
-### Performance on Stale Remote
-**Risk:** Remote refs stale after someone else pushes. User must `git_fetch` first.
+### Stale Remote-Tracking Refs
+**Risk:** Remote-tracking refs outdated if no recent fetch. Branch appears missing despite existing on server.
 
-**Unclear:** Should checkout auto-fetch? (Adds network latency)
+**Current dependency:** Assumes user ran `git_fetch` before `git_checkout`.
+
+**Unclear:** Should checkout auto-fetch stale refs? (Adds network latency)
 
 ---
 
@@ -249,8 +252,6 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 - Reject as invalid input (strict)
 - Document expected format (docs-based)
 
-**Decision needed in:** Planning phase
-
 ### Q2: Remote Preference Order
 **Question:** If multiple remotes exist (origin, upstream, fork), which to check?
 
@@ -261,21 +262,15 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 - B) Configurable (adds complexity)
 - C) Check all remotes (ambiguous if duplicate branch names)
 
-**Decision needed in:** Planning phase
-
 ### Q3: Auto-Fetch Behavior
-**Question:** Should checkout trigger fetch if remote branch not found locally?
+**Question:** Should checkout trigger fetch if remote branch not found in local tracking refs?
 
 **Trade-off:** Freshness vs performance.
-
-**Decision needed in:** Planning phase
 
 ### Q4: Tracking Branch Setup
 **Question:** Should local branch always track remote, or only on explicit creation?
 
 **Current pattern:** `has_upstream()` check suggests tracking is expected.
-
-**Decision needed in:** Planning phase
 
 ### Q5: Error Message Detail Level
 **Question:** How verbose should "not found" errors be?
@@ -284,8 +279,6 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 - Minimal: "Branch X not found"
 - Descriptive: "Branch X not found (checked local + origin)"
 - Actionable: "Branch X not found. Try: git_fetch, git_list_branches"
-
-**Decision needed in:** Planning phase
 
 ---
 
@@ -318,11 +311,6 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 
 **Regression risk:** Existing local checkout tests must remain passing.
 
-### Related Issues
-
-- **Issue #138:** git_add_or_commit phase validation (separate concern, doesn't block this issue)
-- **Issue #24:** Missing git operations (this issue closes gap)
-
 ---
 
 ## Version History
@@ -331,4 +319,5 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 |---------|------|--------|---------|
 | 1.0 | 2026-02-14T10:55:00Z | Agent | Initial draft |
 | 1.1 | 2026-02-14T11:00:00Z | Agent | Added implementation details (REMOVED in 1.2) |
-| 1.2 | 2026-02-14T12:10:00Z | Agent | Refactor to pure research (observações, alternatives, trade-offs, risks, open questions) |
+| 1.2 | 2026-02-14T12:10:00Z | Agent | Refactor to pure research (observations, alternatives, trade-offs, risks, open questions) |
+| 1.3 | 2026-02-14T12:15:00Z | Agent | Fix: correct relative paths, remove network call claim, remove procedural references, remove unrelated issues |
