@@ -17,9 +17,9 @@ class TestGitAdapterCheckout:
             mock_repo = MagicMock()
             mock_branch = MagicMock()
             mock_branch.name = "feature/test"
-            mock_repo.heads.__iter__ = lambda self: iter([mock_branch])
-            mock_repo.heads.__contains__ = lambda self, x: x == "feature/test"
-            mock_repo.heads.__getitem__ = lambda self, x: mock_branch
+            mock_repo.heads.__iter__ = lambda _self: iter([mock_branch])
+            mock_repo.heads.__contains__ = lambda _self, x: x == "feature/test"
+            mock_repo.heads.__getitem__ = lambda _self, _x: mock_branch
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -31,7 +31,7 @@ class TestGitAdapterCheckout:
         """Test checkout to non-existent branch raises ExecutionError."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
-            mock_repo.heads.__contains__ = lambda self, x: False
+            mock_repo.heads.__contains__ = lambda _self, _x: False
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -51,7 +51,7 @@ class TestGitAdapterCheckout:
             mock_repo = MagicMock()
 
             # Setup: No local branch exists
-            mock_repo.heads.__contains__ = lambda self, x: False
+            mock_repo.heads.__contains__ = lambda _self, _x: False
 
             # Setup: Origin remote with remote-tracking ref
             mock_origin = MagicMock()
@@ -88,7 +88,7 @@ class TestGitAdapterCheckout:
             mock_repo = MagicMock()
 
             # Setup: No local branch exists
-            mock_repo.heads.__contains__ = lambda self, x: False
+            mock_repo.heads.__contains__ = lambda _self, _x: False
 
             # Setup: Origin remote with remote-tracking ref
             mock_origin = MagicMock()
@@ -123,8 +123,8 @@ class TestGitAdapterPush:
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
             mock_origin = MagicMock()
-            mock_repo.remotes.__iter__ = lambda self: iter([mock_origin])
-            mock_repo.remotes.__contains__ = lambda self, x: x == "origin"
+            mock_repo.remotes.__iter__ = lambda _self: iter([mock_origin])
+            mock_repo.remotes.__contains__ = lambda _self, _x: _x == "origin"
             mock_repo.remote.return_value = mock_origin
             mock_repo.active_branch.name = "feature/test"
             mock_repo_class.return_value = mock_repo
@@ -139,7 +139,7 @@ class TestGitAdapterPush:
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
             mock_origin = MagicMock()
-            mock_repo.remotes.__contains__ = lambda self, x: x == "origin"
+            mock_repo.remotes.__contains__ = lambda _self, _x: _x == "origin"
             mock_repo.remote.return_value = mock_origin
             mock_repo.active_branch.name = "feature/new"
             mock_repo_class.return_value = mock_repo
@@ -153,7 +153,7 @@ class TestGitAdapterPush:
         """Test push without origin remote raises ExecutionError."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
-            mock_repo.remotes.__iter__ = lambda self: iter([])
+            mock_repo.remotes.__iter__ = lambda _self: iter([])
             mock_repo.remote.side_effect = ValueError("Remote origin not found")
             mock_repo_class.return_value = mock_repo
 
@@ -170,7 +170,7 @@ class TestGitAdapterMerge:
         """Test merge branch into current."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
-            mock_repo.heads.__contains__ = lambda self, x: x == "feature/test"
+            mock_repo.heads.__contains__ = lambda _self, _x: _x == "feature/test"
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -182,7 +182,7 @@ class TestGitAdapterMerge:
         """Test merge non-existent branch raises ExecutionError."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
-            mock_repo.heads.__contains__ = lambda self, x: False
+            mock_repo.heads.__contains__ = lambda _self, _x: False
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -198,7 +198,7 @@ class TestGitAdapterDeleteBranch:
         """Test delete a branch."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
-            mock_repo.heads.__contains__ = lambda self, x: x == "feature/test"
+            mock_repo.heads.__contains__ = lambda _self, _x: _x == "feature/test"
             mock_repo.active_branch.name = "main"
             mock_repo_class.return_value = mock_repo
 
@@ -212,7 +212,7 @@ class TestGitAdapterDeleteBranch:
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
             mock_repo.active_branch.name = "feature/test"
-            mock_repo.heads.__contains__ = lambda self, x: x == "feature/test"
+            mock_repo.heads.__contains__ = lambda _self, _x: _x == "feature/test"
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -224,7 +224,7 @@ class TestGitAdapterDeleteBranch:
         """Test delete non-existent branch raises ExecutionError."""
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
-            mock_repo.heads.__contains__ = lambda self, x: False
+            mock_repo.heads.__contains__ = lambda _self, _x: False
             mock_repo_class.return_value = mock_repo
 
 
@@ -478,8 +478,8 @@ class TestGitAdapterCreateBranch:
             mock_branch.name = "existing-branch"
             # Use MagicMock list-like behavior instead of setting __contains__
             mock_repo.heads = MagicMock()
-            mock_repo.heads.__iter__ = lambda self: iter([mock_branch])
-            mock_repo.heads.__contains__ = lambda self, x: x == "existing-branch"
+            mock_repo.heads.__iter__ = lambda _self: iter([mock_branch])
+            mock_repo.heads.__contains__ = lambda _self, _x: _x == "existing-branch"
             mock_repo_class.return_value = mock_repo
 
             adapter = GitAdapter("/fake/path")
@@ -489,19 +489,21 @@ class TestGitAdapterCreateBranch:
 
     def test_create_branch_logs_operation(self) -> None:
         """GREEN: Should log branch creation with all relevant details."""
-        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
-            with patch("mcp_server.core.logging.get_logger") as mock_logger:
-                mock_repo = MagicMock()
-                mock_repo.heads = []
-                mock_new_branch = MagicMock()
-                mock_repo.create_head.return_value = mock_new_branch
-                mock_repo_class.return_value = mock_repo
+        with (
+            patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class,
+            patch("mcp_server.core.logging.get_logger") as mock_logger,
+        ):
+            mock_repo = MagicMock()
+            mock_repo.heads = []
+            mock_new_branch = MagicMock()
+            mock_repo.create_head.return_value = mock_new_branch
+            mock_repo_class.return_value = mock_repo
 
-                mock_log = MagicMock()
-                mock_logger.return_value = mock_log
+            mock_log = MagicMock()
+            mock_logger.return_value = mock_log
 
-                adapter = GitAdapter("/fake/path")
-                adapter.create_branch("test-branch", base="main")
+            adapter = GitAdapter("/fake/path")
+            adapter.create_branch("test-branch", base="main")
 
-                # Should log the operation
-                assert mock_log.debug.called or mock_log.info.called
+            # Should log the operation
+            assert mock_log.debug.called or mock_log.info.called
