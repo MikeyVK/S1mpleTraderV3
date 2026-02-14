@@ -177,7 +177,10 @@ class GitAdapter:
                 return  # ← Early return, NO remote access
 
             # Fallback: check remote-tracking refs (Scenario S2)
-            origin = self.repo.remote("origin")
+            try:
+                origin = self.repo.remote("origin")
+            except ValueError as e:
+                raise ExecutionError("Origin remote not configured") from e  # Scenario S3
 
             # Search for remote-tracking ref
             remote_ref_name = f"origin/{normalized_branch}"
@@ -186,7 +189,7 @@ class GitAdapter:
             if remote_ref is None:
                 raise ExecutionError(
                     f"Branch {normalized_branch} does not exist (checked: local, origin)"
-                )
+                )  # Scenario S4
 
             # Create local tracking branch (Scenario S2)
             local_branch = self.repo.create_head(normalized_branch, remote_ref)
