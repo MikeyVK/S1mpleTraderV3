@@ -3,8 +3,8 @@
 # Issue #138 Implementation Planning - Workflow-First Vertical Cycles
 
 **Status:** DRAFT  
-**Version:** 1.0  
-**Last Updated:** 2026-02-14T18:25:00+00:00
+**Version:** 1.1
+**Last Updated:** 2026-02-14T19:00:00+00:00
 
 ---
 
@@ -23,7 +23,7 @@ Design details (HOW to implement), Code structure, Implementation approaches, De
 ## Prerequisites
 
 Read these first:
-1. Issue #138 research v2.1 complete
+1. Issue #138 research v2.2 complete
 2. Workflow-first architecture chosen
 3. Graceful degradation as non-negotiable
 4. User feedback: vertical cycles not horizontal layers
@@ -119,23 +119,23 @@ git_add_or_commit(
 
 ### Cycle 3: Tool Integration + Issue #139 Fix
 
-**Goal:** get_project_plan shows current_phase from git history, all tools workflow-aware
+**Goal:** get_project_plan implements commit-scope > state.json precedence, all tools workflow-aware
 
 **Deliverables:**
-1. get_project_plan integration (#139 fix - extract phase from last commit)
+1. get_project_plan integration (#139 fix - commit-scope met state.json fallback)
 2. workflows.yaml phase_source reference (points to workphases.yaml)
 3. GitConfig deprecation notices (tdd_phases, commit_prefix_map marked deprecated)
 4. End-to-end test: full workflow cycle (research → planning → tdd → integration)
 
 **Exit Criteria:**
-- **Functional:** get_project_plan extracts phase from last commit scope
+- **Functional:** get_project_plan implements commit-scope > state.json precedence (consistent met Cycle 1)
 - **Compatibility:** No tool regressions (GitConfig, workflows.yaml references)
 - **Observability:** Tools report phase source (git scope vs state.json fallback)
 
 **Coupled Issues:**
-- Issue #117: get_work_context parses scope (not just type)
-- Issue #139: get_project_plan shows current_phase from git
-- Both use same ScopeDecoder utility (DRY)
+- Issue #117: get_work_context parses commit-scope met state.json fallback (Cycle 1)
+- Issue #139: get_project_plan parses commit-scope met state.json fallback (Cycle 3)
+- Both use same ScopeDecoder utility with precedence logic (DRY)
 
 ---
 
@@ -211,11 +211,10 @@ git_add_or_commit(
 - **[Issue #139 (get_project_plan)][related-4]**
 
 <!-- Link definitions -->
-
-[related-1]: research.md v2.1
-[related-2]: docs/coding_standards/README.md
-[related-3]: Issue #117 (get_work_context)
-[related-4]: Issue #139 (get_project_plan)
+[related-1]: research.md
+[related-2]: ../../coding_standards/README.md
+[related-3]: https://github.com/owner/SimpleTraderV3/issues/117
+[related-4]: https://github.com/owner/SimpleTraderV3/issues/139
 
 ---
 
@@ -223,4 +222,5 @@ git_add_or_commit(
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1 | 2026-02-14T19:00:00+00:00 | Agent | Correcties: research v2.2 refs, link definitions, Cycle 3 precedence expliciet |
 | 1.0 | 2026-02-14T18:25:00+00:00 | Agent | Initial draft |
