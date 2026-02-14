@@ -139,6 +139,33 @@ class TestGitAdapterCheckout:
             with pytest.raises(ExecutionError, match="Origin remote not configured"):
                 adapter.checkout("feature/test")
 
+    def test_checkout_branch_missing_everywhere(self) -> None:
+        """Test checkout error indicates both local and remote checked.
+
+        Scenario S4: No local branch, origin configured, no remote-tracking refs.
+        Expected: ExecutionError indicating exhaustive search.
+
+        TDD Cycle 3B - RED: This test WILL FAIL until error message updated.
+        """
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+
+            # Setup: No local branch exists
+            mock_repo.heads.__contains__ = lambda _self, _x: False
+
+            # Setup: Origin configured, but no remote-tracking refs
+            mock_origin = MagicMock()
+            mock_origin.refs = []  # Empty - no branches on remote
+            mock_repo.remote.return_value = mock_origin
+
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            # WHEN/THEN: Error message indicates exhaustive search
+            with pytest.raises(ExecutionError, match=r"does not exist \(checked: local, origin\)"):
+                adapter.checkout("missing")
+
 
 class TestGitAdapterPush:
     """Tests for push functionality."""
