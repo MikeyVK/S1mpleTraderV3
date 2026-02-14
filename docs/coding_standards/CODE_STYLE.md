@@ -13,7 +13,9 @@ All code in S1mpleTrader V3 follows **strict PEP 8 compliance** with additional 
 
 ## File Headers
 
-**MANDATORY:** All Python modules must include a standardized header documenting architectural position.
+**AUTOMATED VIA SCAFFOLDING:** All Python modules scaffolded via `scaffold_artifact` automatically include standardized headers. Manual addition only required for non-scaffolded files.
+
+**Scaffolding Templates:** `mcp_server/templates/base/base_component.py.jinja2` and `base_test.py.jinja2` enforce headers.
 
 ### Header Template
 
@@ -32,9 +34,13 @@ All code in S1mpleTrader V3 follows **strict PEP 8 compliance** with additional 
 """
 ```
 
+**Implementation:**
+- ✅ **Scaffolded files**: Headers auto-generated via templates (including @responsibilities)
+- ⚠️ **Non-scaffolded files**: Must manually add header (rare cases only)
+
 ### Examples
 
-**DTO Module:**
+**Component Module (Auto-generated via scaffolding):**
 ```python
 # backend/dtos/shared/disposition_envelope.py
 """
@@ -50,10 +56,23 @@ next-step intentions to the EventAdapter.
     - Define worker output contract (CONTINUE, PUBLISH, STOP)
     - Enable event-driven flow control without coupling workers to EventBus
     - Validate event publication payloads at type level
-"""
 ```
 
-**Utility Module:**
+**Test Module (Auto-generated via scaffolding):**
+```python
+# tests/unit/dtos/shared/test_disposition_envelope.py
+"""
+Unit tests for DispositionEnvelope DTO.
+
+Tests the worker output flow control contract according to TDD principles.
+
+@layer: Tests (Unit)
+@dependencies: [pytest, pydantic, backend.dtos.shared.disposition_envelope]
+```
+
+**Note:** Test modules typically don't include @responsibilities as their purpose is self-evident (test the module under test).
+
+**Non-Scaffolded Utility (Manual header required):**
 ```python
 # backend/utils/id_generators.py
 """
@@ -71,26 +90,18 @@ traceability across the trading system.
 """
 ```
 
-**Test Module:**
-```python
-# tests/unit/dtos/shared/test_disposition_envelope.py
-"""
-Unit tests for DispositionEnvelope DTO.
-
-Tests the worker output flow control contract according to TDD principles.
-
-@layer: Tests (Unit)
-@dependencies: [pytest, pydantic, backend.dtos.shared.disposition_envelope]
-"""
-```
-
 **Why This Convention:**
+- **Scaffolding enforcement** - Automatic for all scaffolded files
 - **Quick navigation** - Immediately see where you are in architecture
-- **Documentation** - Explicit dependencies and responsibilities
+- **Documentation** - Explicit dependencies and responsibilities visible
 - **Consistency** - All modules follow same pattern
 - **IDE-friendly** - File path as first line helps with context
 
 ## Import Organization
+
+**AUTOMATED VIA SCAFFOLDING:** All scaffolded Python files include properly organized imports with comment headers via base templates.
+
+**Scaffolding Templates:** `mcp_server/templates/base/base_component.py.jinja2` and `base_test.py.jinja2` enforce import structure.
 
 Imports must be grouped into **3 sections** with comment headers:
 
@@ -115,6 +126,11 @@ from backend.dtos.causality import CausalityChain
 5. Alphabetical order within each group
 6. **Never import inside functions** - All imports at module top-level
 
+**Implementation:**
+- ✅ **Scaffolded files**: Import structure auto-generated via templates
+- ⚠️ **Non-scaffolded files**: Must manually organize imports
+- ✅ **Ruff autofix**: Can organize imports automatically (`ruff check --select I --fix`)
+
 **Common violation:**
 ```python
 # ❌ WRONG - import inside function
@@ -122,7 +138,7 @@ def my_function():
     from datetime import datetime  # NEVER DO THIS
     return datetime.now()
 
-# ✅ CORRECT - import at top
+# ✅ CORRECT - import at top (enforced by scaffolding templates)
 from datetime import datetime
 
 def my_function():
