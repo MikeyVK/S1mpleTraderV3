@@ -1,58 +1,48 @@
-<!-- D:\dev\SimpleTraderV3-parallel\.st3\issue137-remote-branch-checkout.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-14T10:55:00Z updated=2026-02-14T11:00:00Z -->
+<!-- docs/development/issue137/research.md -->
+<!-- template=research version=8b7bb3ab created=2026-02-14T10:55:00Z updated=2026-02-14T12:10:00Z -->
 # Issue #137: Remote Branch Checkout Research
 
-**Status:** APPROVED  
-**Version:** 1.1  
-**Last Updated:** 2026-02-14T11:00:00Z
+**Status:** DRAFT  
+**Version:** 1.2  
+**Last Updated:** 2026-02-14T12:10:00Z
 
 ---
 
 ## Purpose
 
-Investigate how to extend git_checkout to support remote-only branches
+Investigate current limitations of git_checkout when branches exist only on remote, and explore implementation alternatives.
 
 ## Scope
 
 **In Scope:**
-GitAdapter.checkout() method, GitPython remote references, existing test coverage
+- GitAdapter.checkout() current behavior
+- GitPython remote reference API
+- Existing test coverage patterns
+- Alternative implementation strategies
 
 **Out of Scope:**
-Other git operations, branch creation logic, state management
+- Branch creation workflows (separate concern)
+- State management integration
+- Multi-remote scenarios beyond origin
 
 ## Prerequisites
 
 Read these first:
-1. Issue #137 description reviewed
-2. GitAdapter code analyzed
+1. Issue #137 description
+2. [mcp_server/adapters/git_adapter.py](../../mcp_server/adapters/git_adapter.py) (lines 148-157)
+3. [tests/unit/mcp_server/adapters/test_git_adapter.py](../../tests/unit/mcp_server/adapters/test_git_adapter.py)
+
 ---
 
 ## Problem Statement
 
-GitAdapter.checkout() only checks local branches (self.repo.heads), failing when branch exists only on remote after git fetch
-
-## Research Goals
-
-- Understand GitPython remote reference model
-- Design solution for remote branch checkout
-- Identify test cases needed
-
-## Related Documentation
-- **[GitPython Documentation][related-1]**
-- **[mcp_server/adapters/git_adapter.py][related-2]**
-- **[tests/unit/mcp_server/adapters/test_git_adapter.py][related-3]**
-
-<!-- Link definitions -->
-
-[related-1]: https://gitpython.readthedocs.io/en/stable/reference.html#module-git.repo.base
-[related-2]: file://./mcp_server/adapters/git_adapter.py#L148
-[related-3]: file://./tests/unit/mcp_server/adapters/test_git_adapter.py
+`GitAdapter.checkout()` only checks local branches (`self.repo.heads`), raising ExecutionError when branch exists solely on remote after `git fetch`. User workaround requires terminal: `git checkout -b local origin/remote`.
 
 ---
 
-## Findings
+## Observations
 
-### Current Implementation Analysis
+### Current Implementation Behavior
 
 **File:** `mcp_server/adapters/git_adapter.py` (lines 148-157)
 
@@ -60,7 +50,7 @@ GitAdapter.checkout() only checks local branches (self.repo.heads), failing when
 def checkout(self, branch_name: str) -> None:
     """Checkout to an existing branch."""
     try:
-        if branch_name not in self.repo.heads:  # ❌ LOCAL ONLY
+        if branch_name not in self.repo.heads:  # ⚠️ Only checks local
             raise ExecutionError(f"Branch {branch_name} does not exist")
         self.repo.heads[branch_name].checkout()
     except ExecutionError:
@@ -69,135 +59,269 @@ def checkout(self, branch_name: str) -> None:
         raise ExecutionError(f"Failed to checkout {branch_name}: {e}") from e
 ```
 
-**Problem:** `self.repo.heads` only contains local branches. Remote-only branches are in `self.repo.remotes['origin'].refs`.
+**Observation:** Method assumes all branches are local. No remote lookup attempted.
 
-### GitPython Remote Reference Model
+### GitPython API Patterns (from existing codebase)
 
-Based on analysis of existing code patterns:
+**Remote access pattern** (lines 162, 205):
+```python
+origin = self.repo.remote("origin")  # May raise ValueError if not configured
+```
 
-1. **Access remote:** `origin = self.repo.remote("origin")` (used in push, fetch methods)
-2. **Remote refs:** `origin.refs` contains all remote branches (e.g., `origin/main`, `origin/feature/x`)
-3. **Create local tracking branch:** GitPython's `create_head()` method can create from remote ref
-4. **Set upstream:** `branch.set_tracking_branch(remote_ref)` establishes tracking relationship
+**Remote references** (inferred from push/fetch):
+```python
+origin.refs  # List of RemoteReference objects (e.g., origin/main, origin/feature/x)
+```
+
+**Branch creation** (lines 85-95):
+```python
+self.repo.create_head(branch_name, base_ref)  # Creates local branch from ref
+```
+
+**Tracking branch setup** (line 240 - has_upstream check):
+```python
+self.repo.active_branch.tracking_branch()  # Returns RemoteReference or None
+```
 
 ### Existing Test Coverage
 
-**File:** `tests/unit/mcp_server/adapters/test_git_adapter.py`
+**File:** `tests/unit/mcp_server/adapters/test_git_adapter.py` (lines 10-40)
 
-Existing tests:
-- ✅ `test_checkout_existing_branch` - validates local branch checkout
-- ✅ `test_checkout_nonexistent_branch_raises_error` - validates error for missing branch
+**Covered scenarios:**
+- ✅ Checkout existing local branch
+- ✅ Checkout non-existent branch (error)
 
-Missing tests:
-- ❌ **Remote-only branch checkout** (main gap!)
-- ❌ Branch name normalization (with/without 'origin/' prefix)
-- ❌ Non-existent remote branch
-- ❌ Remote not configured scenario
+**Uncovered scenarios:**
+- ❌ Remote-only branch (issue #137 gap)
+- ❌ Input normalization (with/without `origin/` prefix)
+- ❌ Missing origin remote
+- ❌ Branch exists on remote but not locally
 
-### Solution Design
+---
 
-**Three-Tier Fallback Strategy:**
+## Alternatives
 
+### Alternative A: Two-Tier Fallback (Local → Remote)
+
+**Hypothetical example:**
 ```python
 def checkout(self, branch_name: str) -> None:
-    """Checkout to an existing branch (local or remote)."""
-    # 1. Try local branch first
+    # Check local first
     if branch_name in self.repo.heads:
         self.repo.heads[branch_name].checkout()
         return
     
-    # 2. Try remote branch  
+    # Check remote second
     try:
         origin = self.repo.remote("origin")
-        remote_ref_name = f"origin/{branch_name}"
-        
-        # Check if remote branch exists
-        if remote_ref_name in [ref.name for ref in origin.refs]:
-            # Create local tracking branch
-            local_branch = self.repo.create_head(
-                branch_name,
-                origin.refs[branch_name]
-            )
-            local_branch.set_tracking_branch(origin.refs[branch_name])
-            local_branch.checkout()
+        remote_ref = f"origin/{branch_name}"
+        if remote_ref in [ref.name for ref in origin.refs]:
+            local = self.repo.create_head(branch_name, origin.refs[branch_name])
+            local.set_tracking_branch(origin.refs[branch_name])
+            local.checkout()
             return
-    except ValueError:
-        # No origin remote configured - fall through to error
+    except ValueError:  # No origin remote
         pass
     
-    # 3. Branch not found
-    raise ExecutionError(
-        f"Branch {branch_name} does not exist (checked local and origin)"
-    )
+    raise ExecutionError(f"Branch {branch_name} not found (local/remote)")
 ```
 
-### Test Cases Required
+**Characteristics:**
+- Preserves fast path for local branches
+- Adds remote lookup on local miss
+- Auto-creates tracking branch
 
-**New test cases to add:**
+### Alternative B: Explicit Remote Flag
 
-1. **`test_checkout_remote_only_branch`**
-   - Setup: Remote branch exists, no local branch
-   - Action: `checkout("feature/test")`
-   - Expected: Local tracking branch created, checked out
-   
-2. **`test_checkout_remote_only_branch_with_origin_prefix`**
-   - Setup: Remote branch `origin/feature/test` exists
-   - Action: `checkout("origin/feature/test")`
-   - Expected: Strip `origin/` prefix, create `feature/test` locally
+**Hypothetical example:**
+```python
+def checkout(self, branch_name: str, check_remote: bool = True) -> None:
+    # ... local check ...
+    if not check_remote:
+        raise ExecutionError("Local branch not found")
+    # ... remote check ...
+```
 
-3. **`test_checkout_nonexistent_remote_branch`**
-   - Setup: Branch doesn't exist locally OR remotely
-   - Action: `checkout("missing")`
-   - Expected: ExecutionError with message about checking both local and remote
+**Characteristics:**
+- Explicit control over remote lookup
+- Backward compatible via default parameter
+- Requires API change
 
-4. **`test_checkout_no_remote_configured`**
-   - Setup: No origin remote
-   - Action: `checkout("feature/test")`
-   - Expected: ExecutionError (no remote available)
+### Alternative C: Separate Method
 
-### Implementation Considerations
+**Hypothetical example:**
+```python
+def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None:
+    """Checkout remote-only branch, creating local tracking branch."""
+    # ... remote-specific logic ...
+```
 
-**Edge Cases:**
-- **Detached HEAD state:** Already handled by get_current_branch()
-- **Multiple remotes:** Only check `origin` (consistent with push/fetch)
-- **Name normalization:** Should `"origin/feature/x"` be stripped to `"feature/x"`?
-- **Dirty working directory:** Git will handle (raise error if conflicts)
-
-**Error Messages:**
-- Clear distinction between "not found locally" vs "not found anywhere"
-- Suggest `git_fetch` if remote might be stale
-
-**Performance:**
-- Remote check adds minimal overhead (list comprehension over refs)
-- Only attempted if local branch not found (fast path unaffected)
+**Characteristics:**
+- Clear separation of concerns
+- Existing checkout() unchanged
+- More methods to maintain
 
 ---
 
-## Recommendations
+## Trade-offs
 
-### Implementation Approach
+### Alternative A (Two-Tier Fallback)
 
-**APPROVED:** Three-tier fallback (local → remote → error)
+**Pros:**
+- ✅ No API changes (backward compatible)
+- ✅ Matches user mental model (git checkout just works)
+- ✅ Consistent with push/fetch (both use origin implicitly)
+- ✅ Minimal performance impact (remote check only on miss)
 
-**Rationale:**
-- ✅ Backward compatible (local branch checkout unchanged)
-- ✅ Minimal performance impact (remote check only on local miss)
-- ✅ Consistent with existing patterns (`origin` preference)
-- ✅ Clear error messages for debugging
+**Cons:**
+- ❌ Adds complexity to single method
+- ❌ Silent remote lookup (less explicit)
+- ❌ Network call on every local miss (if remote stale)
 
-### Test Strategy
+### Alternative B (Explicit Flag)
 
-**TDD Sequence:**
-1. RED: Add `test_checkout_remote_only_branch` (fails with current code)
-2. GREEN: Implement remote branch support
-3. REFACTOR: Extract helper methods if needed
-4. Repeat for remaining 3 test cases
+**Pros:**
+- ✅ Explicit control
+- ✅ Testable in isolation (flag=False disables remote)
 
-### Documentation Updates
+**Cons:**
+- ❌ API change (breaks existing calls if required param)
+- ❌ Requires tool layer changes
+- ❌ Less user-friendly (extra parameter)
 
-**Files to update:**
-- `mcp_server/adapters/git_adapter.py` - docstring update
-- `agent.md` - note about automatic remote branch handling (if relevant)
+### Alternative C (Separate Method)
+
+**Pros:**
+- ✅ SRP (Single Responsibility Principle)
+- ✅ No existing logic modified
+
+**Cons:**
+- ❌ User must know which method to call
+- ❌ Duplicates error handling logic
+- ❌ More test surface area
+
+---
+
+## Risks
+
+### Input Normalization Ambiguity
+**Risk:** User provides `"origin/feature/x"` - should we:
+- A) Strip prefix and checkout as `"feature/x"`?
+- B) Treat as malformed input and error?
+- C) Attempt both formats?
+
+**Evidence:** None found in codebase. Other git operations use branch names without `origin/` prefix.
+
+### Missing Origin Remote
+**Risk:** Repo has no origin configured.
+
+**Current behavior:** `self.repo.remote("origin")` raises `ValueError`.
+
+**Unclear:** Should we:
+- A) Fail immediately with clear error?
+- B) Check other remotes (upstream, etc.)?
+- C) Proceed without remote check?
+
+### Error Message Strategy
+**Risk:** Poor error messages confuse users.
+
+**Options:**
+- Generic: "Branch not found"
+- Detailed: "Branch not found (checked: local, origin)"
+- Actionable: "Branch not found. Try: git_fetch first"
+
+**Unclear:** What level of detail aids debugging without noise?
+
+### Performance on Stale Remote
+**Risk:** Remote refs stale after someone else pushes. User must `git_fetch` first.
+
+**Unclear:** Should checkout auto-fetch? (Adds network latency)
+
+---
+
+## Open Questions
+
+### Q1: Branch Name Normalization
+**Question:** How should `"origin/feature/x"` input be handled?
+
+**Options:**
+- Strip prefix automatically (user-friendly)
+- Reject as invalid input (strict)
+- Document expected format (docs-based)
+
+**Decision needed in:** Planning phase
+
+### Q2: Remote Preference Order
+**Question:** If multiple remotes exist (origin, upstream, fork), which to check?
+
+**Current pattern:** All git operations use `"origin"` hardcoded.
+
+**Options:**
+- A) Only origin (consistent with existing)
+- B) Configurable (adds complexity)
+- C) Check all remotes (ambiguous if duplicate branch names)
+
+**Decision needed in:** Planning phase
+
+### Q3: Auto-Fetch Behavior
+**Question:** Should checkout trigger fetch if remote branch not found locally?
+
+**Trade-off:** Freshness vs performance.
+
+**Decision needed in:** Planning phase
+
+### Q4: Tracking Branch Setup
+**Question:** Should local branch always track remote, or only on explicit creation?
+
+**Current pattern:** `has_upstream()` check suggests tracking is expected.
+
+**Decision needed in:** Planning phase
+
+### Q5: Error Message Detail Level
+**Question:** How verbose should "not found" errors be?
+
+**Options:**
+- Minimal: "Branch X not found"
+- Descriptive: "Branch X not found (checked local + origin)"
+- Actionable: "Branch X not found. Try: git_fetch, git_list_branches"
+
+**Decision needed in:** Planning phase
+
+---
+
+## Evidence
+
+### Existing Git Method Patterns
+
+**push() method** (lines 161-175):
+- Explicitly checks for `origin` remote
+- Raises ExecutionError if missing
+- No fallback to other remotes
+
+**fetch() method** (lines 177-218):
+- Accepts `remote` parameter (default: "origin")
+- Explicit origin preference
+- Clear error if remote not configured
+
+**Pattern consistency:** All git operations prefer `origin` as default remote.
+
+### Test Coverage Gaps
+
+**File:** `tests/unit/mcp_server/adapters/test_git_adapter.py`
+
+**Missing test scenarios:**
+1. Remote-only branch checkout (primary gap)
+2. Origin remote not configured
+3. Branch name with `origin/` prefix
+4. Branch exists on remote but outdated locally
+5. Tracking branch relationship verification
+
+**Regression risk:** Existing local checkout tests must remain passing.
+
+### Related Issues
+
+- **Issue #138:** git_add_or_commit phase validation (separate concern, doesn't block this issue)
+- **Issue #24:** Missing git operations (this issue closes gap)
 
 ---
 
@@ -206,4 +330,5 @@ def checkout(self, branch_name: str) -> None:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-14T10:55:00Z | Agent | Initial draft |
-| 1.1 | 2026-02-14T11:00:00Z | Agent | Complete research findings |
+| 1.1 | 2026-02-14T11:00:00Z | Agent | Added implementation details (REMOVED in 1.2) |
+| 1.2 | 2026-02-14T12:10:00Z | Agent | Refactor to pure research (observações, alternatives, trade-offs, risks, open questions) |
