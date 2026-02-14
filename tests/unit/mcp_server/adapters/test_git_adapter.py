@@ -38,6 +38,43 @@ class TestGitAdapterCheckout:
             with pytest.raises(ExecutionError, match="does not exist"):
                 adapter.checkout("nonexistent")
 
+    def test_checkout_remote_only_branch(self) -> None:
+        """Test checkout creates local tracking branch from remote-only ref.
+        
+        Scenario S2: Remote-tracking ref exists, no local branch.
+        Expected: Create local tracking branch and checkout.
+        
+        TDD Cycle 1 - RED: This test WILL FAIL until remote fallback implemented.
+        """
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+            
+            # Setup: No local branch exists
+            mock_repo.heads.__contains__ = lambda self, x: False
+            
+            # Setup: Origin remote with remote-tracking ref
+            mock_origin = MagicMock()
+            mock_remote_ref = MagicMock()
+            mock_remote_ref.name = "origin/feature/test"
+            mock_origin.refs = [mock_remote_ref]
+            mock_repo.remote.return_value = mock_origin
+            
+            # Setup: create_head returns mock branch with tracking methods
+            mock_local_branch = MagicMock()
+            mock_repo.create_head.return_value = mock_local_branch
+            
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+            
+            # WHEN: Checkout remote-only branch
+            adapter.checkout("feature/test")
+            
+            # THEN: Local tracking branch created from remote ref
+            mock_repo.create_head.assert_called_once_with("feature/test", mock_remote_ref)
+            mock_local_branch.set_tracking_branch.assert_called_once_with(mock_remote_ref)
+            mock_local_branch.checkout.assert_called_once()
+
 
 class TestGitAdapterPush:
     """Tests for push functionality."""
