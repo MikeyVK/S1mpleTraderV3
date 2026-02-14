@@ -1,39 +1,36 @@
 <!-- docs/development/issue137/design.md -->
-<!-- template=design version=5827e841 created=2026-02-14T13:30:00Z updated=2026-02-14T14:00:00Z -->
-# Issue #137: Design for Remote Branch Checkout with Config-Driven Error Handling
+<!-- template=design version=5827e841 created=2026-02-14T13:30:00Z updated=2026-02-14T15:00:00Z -->
+# Issue #137: Design for Remote Branch Checkout
 
 **Status:** DRAFT  
-**Version:** 1.0  
-**Last Updated:** 2026-02-14T14:00:00Z
+**Version:** 2.0  
+**Last Updated:** 2026-02-14T15:00:00Z
 
 ---
 
 ## Scope
 
 **In Scope:**
-- GitAdapter.checkout() implementation architecture
-- Error code taxonomy (4 codes: NOT_CONFIGURED, NOT_FOUND, FAILED, INVALID_INPUT)
-- Tool boundary error normalization pattern
-- Message templates with MCP tool names
-- Issue #136 alignment strategy and migration path
-- API contracts for adapter and tool layers
-- Data flow diagrams (normal + error flows)
+- GitAdapter.checkout() implementation to support remote-tracking refs
+- Error handling aligned with existing ToolResult contract (tool_result.py)
+- Backward compatibility with existing GitCheckoutTool behavior (phase sync + parent branch)
+- Input normalization (strip 'origin/' prefix)
 
-**Out of Scope:**
-- TDD cycle implementation details (covered in planning.md)
-- Actual error_catalog.yaml file creation (Issue #136 scope)
-- ErrorCatalogService implementation (Issue #136 scope)
-- Orchestration layer for composite workflows (future work)
-- Multi-remote support (deferred per Decision Q2)
-- Auto-fetch feature (deferred per Decision Q3)
+**Out of Scope (Non-Goals):**
+- `.st3/error_catalog.yaml` file creation (Issue #136)
+- `ErrorCatalogService` implementation (Issue #136)
+- Cross-tool error taxonomy (Issue #136)
+- Auto-fetch behavior (deferred per Q3)
+- Multi-remote support (deferred per Q2)
+- Template placeholder systems (Issue #136)
 
 ## Prerequisites
 
 Read these first:
 1. [research.md](research.md) - 3 alternatives analyzed
-2. [planning.md](planning.md) - All decisions closed (v2.1)
-3. Issue #136 - Error handling contract requirements
-4. [Addendum 3.8](../../../docs/system/addendums/Addendum_%203.8%20Configuratie%20en%20Vertaal%20Filosofie.md) - Config First principle
+2. [planning.md](planning.md) - All decisions closed (v2.1), scenarios S1-S5
+3. [mcp_server/tools/tool_result.py](../../../mcp_server/tools/tool_result.py) - ToolResult contract
+4. [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py#L219) - Current GitCheckoutTool behavior
 
 ---
 
@@ -41,35 +38,30 @@ Read these first:
 
 ### 1.1. Problem Statement
 
-GitAdapter.checkout() only checks local branches (self.repo.heads), causing ExecutionError when attempting to checkout remote-only branches. Requires architectural solution that: 
+GitAdapter.checkout() only checks local branches (self.repo.heads), causing ExecutionError when attempting to checkout remote-only branches (Scenario S2 from planning.md). 
 
-1. Enables remote-tracking ref lookup without breaking local fast path
-2. Provides agent-friendly error messages with explicit MCP tool names
-3. Aligns with Issue #136 error handling contract and Config First principle
+**Acceptance:** Issue #137 is done when checkout works for remote-only branches WITHOUT breaking existing tool contract (phase sync + parent branch output).
 
 ### 1.2. Requirements
 
-**Functional:**
-- ✅ git_checkout('feature/x') succeeds when only origin/feature/x exists (after git_fetch)
-- ✅ Local tracking branch automatically created with upstream set to origin remote-tracking ref
-- ✅ Input normalization: git_checkout('origin/feature/x') strips prefix and checks 'feature/x'
-- ✅ Local branch checkout unaffected (fast path: no remote lookup)
-- ✅ Error messages include explicit MCP tool names for agent recovery
-- ✅ All errors raised as ExecutionError in adapter, normalized to ToolResult in tool
+**Functional (Mapped to Planning Scenarios):**
+- ✅ **S2:** git_checkout('feature/x') succeeds when only origin/feature/x exists
+- ✅ **S5:** git_checkout('origin/feature/x') normalizes prefix to 'feature/x'
+- ✅ **S1:** Local branch checkout unaffected (fast path preserved)
+- ✅ **S3:** Clear error when origin remote not configured
+- ✅ **S4:** Clear error when branch missing everywhere
+- ✅ Existing GitCheckoutTool output preserved (phase + parent branch)
 
 **Non-Functional:**
-- ✅ Performance: Local checkout must NOT trigger remote lookup (fast path regression protection)
-- ✅ SRP: Adapter handles git logic, tool handles MCP contract conversion
-- ✅ Maintainability: Error handling pattern reusable for Issue #136 migration
-- ✅ Agent-Friendly: Error hints must contain actionable MCP tool names (not UI instructions)
-- ✅ Config First: Error codes and templates structured for future YAML migration
-- ✅ Backward Compatibility: No API changes to checkout() signature
+- ✅ **Performance Invariant:** Local checkout MUST NOT trigger remote lookup
+- ✅ **Backward Compatibility:** No changes to public tool contract (input/output format)
+- ✅ **Error Format:** Use existing `ToolResult.error(message, error_code, hints)` contract
 
 ### 1.3. Constraints
 
 - Only 'origin' remote supported (Decision Q2 from planning.md)
-- Requires git_fetch pre-run for fresh remote-tracking refs (until Q3 auto-fetch decided)
-- GitPython library constraints: origin.refs are local remote-tracking refs (no network call)
+- **Functional Preconditie:** Requires git_fetch pre-run for fresh remote-tracking refs (Decision Q3: no auto-fetch)
+- GitPython library: origin.refs are local remote-tracking refs (no network call)
 - Must pass all 7 quality gates (Gates 0-6 from .st3/quality.yaml)
 - Branch coverage ≥90% requirement
 
@@ -85,52 +77,45 @@ Check local branches first (fast path), then check remote-tracking refs, then er
 - ✅ No API changes
 - ✅ Backward compatible
 - ✅ Matches git CLI mental model
-- ✅ Fast path preserved
+- ✅ Fast path preserved (performance invariant)
 
 **Cons:**
 - ❌ Slightly more complex logic
 - ❌ Two check operations
 
+**Traceability:** Addresses scenarios S1 (local), S2 (remote-only), S5 (prefix normalization)
+
 ### 2.2. Option B: Parametric Control (REJECTED)
 
 Add fetch: bool parameter to checkout method
 
-**Pros:**
-- ✅ Explicit control
-- ✅ Clear semantics
-
-**Cons:**
-- ❌ API change breaks existing callers
-- ❌ More complexity in tool layer
+**Rejected:** API change breaks existing callers, violates backward compatibility requirement
 
 ### 2.3. Option C: Dedicated Method (REJECTED)
 
 New checkout_remote() method separate from checkout()
 
-**Pros:**
-- ✅ Cleanest separation
-- ✅ No existing behavior changes
-
-**Cons:**
-- ❌ API proliferation
-- ❌ Confusing for users (which method to use?)
+**Rejected:** API proliferation, confusing for users
 
 ---
 
 ## 3. Chosen Design
 
-**Decision:** Implement Alternative A (Sequential Fallback) with tool boundary error normalization and config-ready message templates, preparing for Issue #136 error_catalog.yaml migration without premature abstraction.
+**Decision:** Implement Alternative A (Sequential Fallback) with adapter-level error messages and tool-level contract preservation.
 
-**Rationale:** Sequential Fallback preserves backward compatibility and fast path performance. Tool boundary normalization aligns with SRP (adapters throw domain errors, tools convert to MCP contract). Config-ready templates follow Config First principle while deferring full catalog infrastructure to Issue #136's dedicated error handling focus.
+**Rationale:** Preserves backward compatibility and fast path performance. Adapter stays focused on git operations (domain logic), tool maintains existing contract (phase sync + parent branch output).
 
 ### 3.1. Key Design Decisions
 
-| Decision ID | Question | Decision | Rationale |
-|-------------|----------|----------|-----------|
-| **Q3** | Auto-fetch behavior | NO auto-fetch - primary tools maintain SRP | Aligns with Config First: tools are atomic, orchestration layer (future) handles composite workflows. Predictable behavior, no hidden network calls. |
-| **D1** | Error normalization location | Tool boundary (GitCheckoutTool.execute()) | Issue #136 principle: adapters throw domain errors, tools convert to MCP contract. Clean separation, supports future error_catalog.yaml migration. |
-| **D2** | error_catalog.yaml timing | Prepare for migration: use consistent pattern in code, defer catalog file to Issue #136 | Separation of concerns: #137 = adapter fix, #136 = error infrastructure. Aligned architecture without premature abstraction. |
-| **D3** | Error hint format | Message templates with explicit MCP tool names | Config First preparation: hints readable now, easily migratable to template format ('{fetch_tool}') when error_catalog.yaml lands. |
+| ID | Question | Decision | Traceability |
+|----|----------|----------|--------------|
+| **Q3** | Auto-fetch behavior | NO auto-fetch (functional preconditie: user must run git_fetch) | Planning Q3, aligns with SRP |
+| **Q2** | Multi-remote support | Only 'origin' (hardcoded) | Planning Q2, consistent with existing push/fetch |
+| **D1** | Where to handle errors | Adapter raises ExecutionError, tool preserves existing contract | Compatible with #136 direction (normalization at tool boundary), implementation deferred |
+| **D2** | Input normalization | Strip 'origin/' prefix automatically | Planning S5, matches git CLI |
+| **D3** | Fast path guarantee | Local checkout MUST NOT call remote() | Performance invariant S1, testable with mock.assert_not_called() |
+
+**Note on D1:** Tool-level error normalization (error_code, hints) is a **compatibility guideline** for future Issue #136 work, not a required implementation for #137 acceptance. Issue #137 is done when adapter fix works, even if tool errors remain basic.
 
 ---
 
@@ -140,66 +125,62 @@ New checkout_remote() method separate from checkout()
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ MCP Client (Agent or Human)                                │
-│   - Receives ToolResult(success, error_code, hint)         │
-│   - Parses hint for recovery tools ("git_fetch", ...)      │
-└────────────────────────────────────────────────────────────┘
-                            │
-                            │ ToolResult
-                            │
-                            ▼
-┌────────────────────────────────────────────────────────────┐
-│ TOOL BOUNDARY: GitCheckoutTool.execute()                   │
-│   RESPONSIBILITY: MCP Contract Conversion                  │
-│   - Normalize ExecutionError → ToolResult                  │
-│   - Classify error → error_code (GIT_*)                    │
-│   - Format hint with MCP tool names                        │
+│ GitCheckoutTool (git_tools.py:219)                         │
+│   EXISTING BEHAVIOR (MUST PRESERVE):                       │
+│   1. Call manager.checkout(branch) via anyio.to_thread    │
+│   2. Sync PhaseStateEngine state                           │
+│   3. Get current_phase and parent_branch from state       │
+│   4. Return ToolResult.text("Switched to...\nPhase:...")  │
+│                                                            │
+│   ERROR CONTRACT:                                          │
+│   - Use ToolResult.error(message, error_code, hints)      │
+│   - hints = list[str] (MCP tool names for recovery)      │
 └────────────────────────────────────────────────────────────┘
                             │
                             │ ExecutionError
                             │
                             ▼
 ┌────────────────────────────────────────────────────────────┐
-│ ADAPTER LAYER: GitAdapter.checkout()                       │
-│   RESPONSIBILITY: Git Operations (Domain Logic)            │
-│   - Check local branches (fast path)                       │
-│   - Check remote-tracking refs (fallback)                  │
-│   - Create tracking branch                                 │
-│   - Raise ExecutionError(descriptive_message) on failure   │
+│ GitAdapter.checkout() (IMPLEMENTATION TARGET)              │
+│   RESPONSIBILITY: Git Operations                           │
+│   1. Normalize input (strip 'origin/' prefix)             │
+│   2. Fast path: Check local branches (NO remote access)   │
+│   3. Fallback: Check remote-tracking refs                 │
+│   4. Create tracking branch if found                       │
+│   5. Raise ExecutionError(descriptive_message) on failure │
 └────────────────────────────────────────────────────────────┘
 ```
 
-**Key Principle:** Clean separation between domain logic (adapter) and MCP contract (tool).
+**Critical:** Tool contract preservation is NON-NEGOTIABLE. Phase sync + parent branch output must work in all scenarios.
 
 ### 4.2. Sequential Fallback Flow
 
 ```python
-# Pseudo-code for GitAdapter.checkout()
-def checkout(branch_name: str) -> None:
-    # Step 1: Input normalization
+# GitAdapter.checkout() implementation
+def checkout(self, branch_name: str) -> None:
+    # Step 1: Normalize (Planning S5)
     normalized = branch_name.removeprefix("origin/")
     
-    # Step 2: Fast path - check local branches
+    # Step 2: Fast path (Planning S1 - performance invariant)
     if normalized in self.repo.heads:
-        self.repo.heads[normalized].checkout()  # ← NO remote access
-        return
+        self.repo.heads[normalized].checkout()
+        return  # ← NO remote access
     
-    # Step 3: Fallback - check remote-tracking refs
+    # Step 3: Check remote (Planning S2)
     try:
-        origin = self.repo.remote("origin")  # May raise ValueError
+        origin = self.repo.remote("origin")
     except ValueError:
-        raise ExecutionError("Origin remote not configured")
+        raise ExecutionError("Origin remote not configured")  # Planning S3
     
-    # Step 4: Search remote-tracking refs
-    remote_ref_name = f"origin/{normalized}"
-    remote_ref = next((ref for ref in origin.refs if ref.name == remote_ref_name), None)
+    remote_ref = next(
+        (ref for ref in origin.refs if ref.name == f"origin/{normalized}"),
+        None
+    )
     
     if remote_ref is None:
-        raise ExecutionError(
-            f"Branch {normalized} does not exist (checked: local, origin)"
-        )
+        raise ExecutionError(f"Branch {normalized} does not exist (checked: local, origin)")  # Planning S4
     
-    # Step 5: Create local tracking branch
+    # Step 4: Create tracking branch
     local_branch = self.repo.create_head(normalized, remote_ref)
     local_branch.set_tracking_branch(remote_ref)
     local_branch.checkout()
@@ -207,140 +188,324 @@ def checkout(branch_name: str) -> None:
 
 ---
 
-## 5. Q3 Resolution: Auto-Fetch Decision
+## 5. Error Handling
 
-### 5.1. Decision: NO Auto-Fetch
+### 5.1. Error Contract (tool_result.py)
 
-**Rationale:**
-- **SRP:** Primary tools stay atomic (single responsibility)
-- **Config First:** Orchestration layer (future) handles composite workflows
-- **Predictable:** No hidden network calls
-- **Performance:** Avoids latency on every remote checkout
-
-### 5.2. Implications
-
-| Aspect | Impact |
-|--------|--------|
-| **User workflow** | Must run `git_fetch` before checkout for fresh refs |
-| **Error handling** | Clear error message with explicit recovery tool name |
-| **Future work** | Orchestration layer can auto-sequence `git_fetch` + `git_checkout` |
-| **Documentation** | Docstring must document `git_fetch` prerequisite |
-
-### 5.3. Error Message Strategy
-
-❌ **Vague:** "Branch not found. Try fetching."
-
-✅ **Agent-Friendly:** "Branch feature/x does not exist (checked: local, origin). Run 'git_fetch' tool to update remote-tracking refs."
-
-**Why:** Agent can parse tool name and execute directly. No ambiguity.
-
----
-
-## 6. Error Code Taxonomy
-
-### 6.1. Error Codes (Ready for Issue #136 Migration)
-
-| Error Code | Category | Severity | Trigger Scenario |
-|------------|----------|----------|------------------|
-| **GIT_REMOTE_NOT_CONFIGURED** | configuration | error | `origin` remote not in repo config |
-| **GIT_BRANCH_NOT_FOUND** | not_found | error | Branch missing after checking local + remote |
-| **GIT_CHECKOUT_FAILED** | execution | error | Unexpected Git error during checkout |
-| **GIT_INVALID_BRANCH_NAME** | validation | error | Branch name contains invalid characters (future) |
-
-### 6.2. Message Templates (Config-Ready)
-
-**Pattern:** Each error has:
-1. **Message template** - Human-readable error description
-2. **Hint template** - Actionable recovery with explicit MCP tool names
-3. **Recovery tools list** - Tool names for future orchestration
-
+**Existing contract (MUST USE):**
 ```python
-# In-code structure (Issue #136 will move to YAML)
-ERROR_SPECS = {
-    "GIT_REMOTE_NOT_CONFIGURED": {
-        "message_template": "Origin remote not configured",
-        "hint_template": "Configure origin with: git remote add origin <url>",
-        "recovery_tools": [],  # Manual intervention required
-    },
-    "GIT_BRANCH_NOT_FOUND": {
-        "message_template": "Branch {branch_name} does not exist (checked: {checked_locations})",
-        "hint_template": "Run 'git_fetch' tool to update remote-tracking refs, or use 'git_list_branches' tool to see available branches",
-        "recovery_tools": ["git_fetch", "git_list_branches"],
-    },
-    "GIT_CHECKOUT_FAILED": {
-        "message_template": "Failed to checkout {branch_name}: {error_detail}",
-        "hint_template": "Check repository state with 'git_status' tool",
-        "recovery_tools": ["git_status"],
-    },
-}
+@classmethod
+def error(
+    cls,
+    message: str,
+    error_code: str | None = None,
+    hints: list[str] | None = None,  # ← LIST of hints, not single string
+    file_path: str | None = None,
+) -> ToolResult
 ```
 
-**Issue #136 Migration Path:** Replace dict with `error_catalog_service.get_error_spec(code)`.
+### 5.2. Error Scenarios (Issue #137 Only)
+
+| Scenario | Adapter Error | Tool Error (Optional Enhancement) | Planning Ref |
+|----------|---------------|-----------------------------------|--------------|
+| **S3:** No origin | `ExecutionError("Origin remote not configured")` | `ToolResult.error(msg, hints=["Manual: git remote add origin <url>"])` | S3 |
+| **S4:** Missing everywhere | `ExecutionError("Branch X does not exist (checked: local, origin)")` | `ToolResult.error(msg, hints=["git_fetch", "git_list_branches"])` | S4 |
+| **Unexpected** | `ExecutionError("Failed to checkout X: {detail}")` | `ToolResult.error(msg, hints=["git_status"])` | General |
+
+**Note:** Tool-level hints are **optional enhancements**. Issue #137 is done when adapter raises descriptive ExecutionError. Tool can catch and enhance later per #136 direction.
+
+### 5.3. Hints Priority (MCP-Tool-First)
+
+**Format:** `hints: list[str]`
+
+```python
+# MCP tool names FIRST (agent can call directly)
+hints=["git_fetch", "git_list_branches"]
+
+# CLI instructions ONLY for manual intervention
+hints=["Manual: git remote add origin <url>"]
+```
+
+**Rationale:** Agents parse tool names from hints for recovery. CLI instructions only when no MCP tool exists.
 
 ---
 
-## 7. Tool Boundary Implementation
+## 6. Implementation Components
 
-**GitCheckoutTool.execute()** normalizes ExecutionError → ToolResult:
+### 6.1. GitAdapter.checkout() - Complete Implementation
 
+**File:** [mcp_server/adapters/git_adapter.py](../../../mcp_server/adapters/git_adapter.py) (lines 148-157)
+
+**Changes:**
+1. Input normalization (Decision D2)
+2. Fast path check FIRST with early return (Decision D3 invariant)
+3. Remote-tracking ref lookup (fallback)
+4. Descriptive error messages (scenarios S3, S4)
+5. Updated docstring
+
+**New Implementation:**
 ```python
-def execute(self, branch: str) -> ToolResult:
+def checkout(self, branch_name: str) -> None:
+    """Checkout branch (local or remote-tracking).
+    
+    Sequential fallback: checks local branches first (fast path), then
+    remote-tracking refs. Creates local tracking branch for remote-only.
+    
+    Args:
+        branch_name: Branch name with or without 'origin/' prefix.
+                     Examples: "feature/x", "origin/feature/x"
+    
+    Returns:
+        None: On successful checkout
+    
+    Raises:
+        ExecutionError: In these scenarios:
+            - "Origin remote not configured" (no origin remote)
+            - "Branch {name} does not exist (checked: local, origin)" (missing)
+            - "Failed to checkout {name}: {detail}" (unexpected git error)
+    
+    Precondition:
+        Requires recent git_fetch() for up-to-date remote-tracking refs.
+        Does NOT auto-fetch (Decision Q3).
+    
+    Performance:
+        Local branch: O(1), NO remote access (Decision D3 invariant)
+        Remote-only: O(n), n = count of remote refs
+    """
+    # Normalize input (Decision D2, Scenario S5)
+    normalized_branch = branch_name.removeprefix("origin/")
+    
+    # Fast path: local branch exists (Scenario S1, Decision D3)
+    if normalized_branch in self.repo.heads:
+        self.repo.heads[normalized_branch].checkout()
+        return  # ← Early return, NO remote access
+    
+    # Fallback: check remote-tracking refs (Scenario S2)
     try:
-        self.git_adapter.checkout(branch)
-        return ToolResult(success=True, message=f"Checked out {branch}")
-    except ExecutionError as e:
-        error_code = self._classify_error(e)
-        hint = ERROR_SPECS[error_code]["hint_template"]
-        return ToolResult(success=False, error_code=error_code, message=str(e), hint=hint)
+        origin = self.repo.remote("origin")
+    except ValueError as e:
+        raise ExecutionError("Origin remote not configured") from e  # Scenario S3
+    
+    # Search for remote-tracking ref
+    remote_ref_name = f"origin/{normalized_branch}"
+    remote_ref = next(
+        (ref for ref in origin.refs if ref.name == remote_ref_name),
+        None
+    )
+    
+    if remote_ref is None:
+        raise ExecutionError(
+            f"Branch {normalized_branch} does not exist (checked: local, origin)"
+        )  # Scenario S4
+    
+    # Create local tracking branch (Scenario S2)
+    try:
+        local_branch = self.repo.create_head(normalized_branch, remote_ref)
+        local_branch.set_tracking_branch(remote_ref)
+        local_branch.checkout()
+    except Exception as e:
+        raise ExecutionError(
+            f"Failed to checkout {normalized_branch}: {e}"
+        ) from e
 ```
 
-**SRP:** Adapter throws domain errors, tool converts to MCP contract.
+### 6.2. GitCheckoutTool - Existing Behavior Preserved
+
+**File:** [mcp_server/tools/git_tools.py](../../../mcp_server/tools/git_tools.py#L219)
+
+**MUST PRESERVE (Lines 240-278):**
+1. anyio.to_thread.run_sync for blocking git operations
+2. PhaseStateEngine state synchronization after checkout
+3. current_phase extraction from state
+4. parent_branch extraction from state
+5. Output format: "Switched to branch: X\nCurrent phase: Y\nParent branch: Z"
+
+**Current Error Handling (Line 247):**
+```python
+except MCPError as exc:
+    return ToolResult.error(f"Checkout failed for branch: {params.branch}")
+```
+
+**Optional Enhancement (Compatible with #136 direction):**
+```python
+except MCPError as exc:
+    hints = []
+    if "not configured" in str(exc).lower():
+        hints = ["Manual: git remote add origin <url>"]
+    elif "does not exist" in str(exc).lower():
+        hints = ["git_fetch", "git_list_branches"]
+    else:
+        hints = ["git_status"]
+    
+    return ToolResult.error(
+        f"Checkout failed for branch: {params.branch}",
+        error_code="GIT_CHECKOUT_ERROR",  # Optional
+        hints=hints
+    )
+```
+
+**Note:** Tool-level enhancement is OPTIONAL for #137 acceptance. Adapter fix is sufficient.
 
 ---
 
-## 8. Implementation Summary
+## 7. Regression Protection
 
-**GitAdapter.checkout() changes:**
-1. Normalize input (strip `origin/` prefix)
-2. Fast path: check local first (NO remote call)
-3. Fallback: check remote-tracking refs
-4. Create tracking branch if found
-5. Raise descriptive ExecutionError
+### 7.1. Performance Invariant (Testable)
 
-**Tool boundary changes:**
-1. Add ERROR_SPECS dict (migrate to YAML in Issue #136)
-2. Implement _classify_error() method
-3. Return ToolResult with error_code + hint
+**Requirement:** Local checkout MUST NOT access remote
+
+**Test (planning.md Cycle 4):**
+```python
+def test_checkout_existing_branch_no_remote_call():
+    """CRITICAL: Verify fast path does NOT access remote."""
+    mock_repo.heads.__contains__ = lambda self, x: True  # Local exists
+    
+    adapter.checkout("main")
+    
+    # Performance invariant: NO remote access on local hit
+    mock_repo.remote.assert_not_called()  # ← MUST PASS
+```
+
+### 7.2. Tool Contract Preservation (Testable)
+
+**Requirement:** Phase sync + parent branch output unchanged
+
+**Test:**
+```python
+def test_checkout_preserves_phase_sync():
+    """Verify phase state synchronization works after adapter change."""
+    # Setup: Remote-only branch exists
+    # Execute: checkout
+    # Assert: Output contains "Current phase:" and "Parent branch:"
+    assert "Current phase:" in result.content[0]["text"]
+```
 
 ---
 
-## 9. Issue #136 Alignment
+## 8. Acceptance Criteria
 
-✅ **Aligned:** Tool boundary normalization, error codes, MCP tool names in hints  
-📝 **Deferred:** error_catalog.yaml file, ErrorCatalogService (Issue #136 scope)
+Issue #137 is **DONE** when:
 
-**Migration:** When #136 lands, replace ERROR_SPECS dict with service call. Zero test changes.
+### 8.1. Functional (Planning Scenarios)
+- ✅ **S1:** `test_checkout_existing_branch` passes (local fast path)
+- ✅ **S2:** `test_checkout_remote_only_branch` passes (creates tracking branch)
+- ✅ **S3:** `test_checkout_no_origin_remote` passes (clear error)
+- ✅ **S4:** `test_checkout_branch_missing_everywhere` passes (clear error)
+- ✅ **S5:** `test_checkout_strips_origin_prefix` passes (normalization)
+
+### 8.2. Non-Functional
+- ✅ Fast path regression test passes (mock.remote.assert_not_called)
+- ✅ GitCheckoutTool output preserves phase + parent branch
+- ✅ All 7 quality gates pass (Gates 0-6)
+- ✅ Branch coverage ≥90%
+- ✅ No changes to public tool contract (input/output schema)
+
+### 8.3. Documentation
+- ✅ GitAdapter.checkout() docstring updated (precondition, performance)
+- ✅ Error messages match scenarios S3, S4
+
+**Definition of Done:** Adapter fix works, tool contract unchanged, all tests pass.
 
 ---
 
-## 10. Success Criteria
+## 9. Future Alignment with Issue #136
 
-- ☐ All architecture patterns validated
-- ☐ Error taxonomy complete
-- ☐ Tool boundary SRP compliant
-- ☐ #136 alignment verified
+**Deferred to Issue #136 (Not Required for #137):**
+
+### 9.1. What #136 Will Deliver
+
+1. `.st3/error_catalog.yaml` - Centralized error configuration
+2. `ErrorCatalogService` - Config loader with template substitution
+3. Cross-tool error taxonomy - Consistent codes/categories
+4. Contracttests for E2E error propagation
+
+### 9.2. How #137 Enables #136
+
+**Compatible design choices:**
+- ✅ Descriptive adapter errors (easy to classify)
+- ✅ Tool boundary as normalization point (architecture matches)
+- ✅ MCP tool names in hints (migration-friendly format)
+
+**When #136 lands, minimal changes needed:**
+```python
+# #137 (now): Basic tool error
+except MCPError as exc:
+    return ToolResult.error(f"Checkout failed: {params.branch}")
+
+# #136 (future): Enhanced with catalog
+except MCPError as exc:
+    spec = error_catalog.classify(exc)
+    hints = error_catalog.get_recovery_hints(spec.code)
+    return ToolResult.error(str(exc), error_code=spec.code, hints=hints)
+```
+
+**Migration Impact:** Low - only tool layer changes, adapter untouched.
+
+### 9.3. Non-Commitment
+
+Issue #137 does NOT commit to:
+- Specific error_code values (GIT_*, etc.)
+- Error taxonomy structure
+- Template placeholder format
+- ErrorCatalogService API design
+
+These are **#136 decisions**. Issue #137 stays compatible but doesn't pre-implement.
+
+---
+
+## 10. Traceability Matrix
+
+| Planning Element | Design Decision | Implementation | Test |
+|-----------------|-----------------|----------------|------|
+| **Q3:** No auto-fetch | D3: git_fetch precondition | Docstring note | N/A (functional req) |
+| **Q2:** Origin-only | D2: Hardcode "origin" | Line: `origin = self.repo.remote("origin")` | All tests use origin |
+| **S1:** Local fast path | D3: Early return invariant | `if normalized in heads: return` | `assert_not_called()` |
+| **S2:** Remote-only | Sequential fallback | `origin.refs` lookup + create_head | `test_checkout_remote_only_branch` |
+| **S3:** No origin | Error message | `except ValueError: raise ExecutionError` | `test_checkout_no_origin_remote` |
+| **S4:** Missing | Error message | `if remote_ref is None: raise` | `test_checkout_branch_missing_everywhere` |
+| **S5:** Prefix strip | D2: Input normalization | `removeprefix("origin/")` | `test_checkout_strips_origin_prefix` |
+| **Phase sync** | Tool contract preservation | No tool changes | `test_checkout_preserves_phase_sync` |
+| **#136 compat** | D1: Descriptive errors | Adapter messages parseable | Future catalog migration |
+
+---
+
+## 11. Key Takeaways
+
+### 11.1. What #137 Delivers
+
+1. **Adapter Fix:** GitAdapter.checkout() supports remote-tracking refs
+2. **Backward Compatible:** Tool contract unchanged (phase + parent output)
+3. **Performance:** Fast path preserved (no remote lookup for local)
+4. **Clear Errors:** Descriptive messages per scenario
+
+### 11.2. What #137 Does NOT Deliver
+
+1. ❌ Error catalog infrastructure (Issue #136)
+2. ❌ Cross-tool error taxonomy (Issue #136)
+3. ❌ ErrorCatalogService (Issue #136)
+4. ❌ Auto-fetch feature (deferred Q3)
+5. ❌ Multi-remote support (deferred Q2)
+
+### 11.3. Success Criteria
+
+Design QA passes when:
+- ☐ No contract conflict with tool_result.py (ToolResult.error)
+- ☐ No contract conflict with git_tools.py:219 (phase sync preserved)
+- ☐ No scope creep into #136 implementation
+- ☐ All decisions traceable to planning S1-S5
+- ☐ Fast path invariant testable (mock.assert_not_called)
 - ☐ Human reviewer approval
 
-**Next:** TDD phase per planning.md (4 cycles)
+**Next Phase:** TDD implementation per planning.md (4 cycles)
 
 ---
 
 ## Related Documentation
 
 - [research.md](research.md) - Alternatives analyzed
-- [planning.md](planning.md) - TDD cycles with decisions
-- Issue #136 - Error handling contract
-- [Addendum 3.8](../../../docs/system/addendums/Addendum_%203.8%20Configuratie%20en%20Vertaal%20Filosofie.md) - Config First
+- [planning.md](planning.md) - TDD cycles, scenarios S1-S5, decisions Q2/Q3
+- [tool_result.py](../../../mcp_server/tools/tool_result.py) - ToolResult contract
+- [git_tools.py](../../../mcp_server/tools/git_tools.py#L219) - Current GitCheckoutTool
 
 ---
 
@@ -348,4 +513,5 @@ def execute(self, branch: str) -> ToolResult:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|  
-| 1.0 | 2026-02-14 | Agent | Complete design: Q3 decision, error taxonomy, tool boundary, #136 alignment |
+| 1.0 | 2026-02-14T14:00:00Z | Agent | Initial design with #136 alignment |
+| 2.0 | 2026-02-14T15:00:00Z | Agent | QA fixes: ToolResult.error contract, scope clarity, #136 deferral, traceability to S1-S5, non-goals |
