@@ -1,10 +1,10 @@
 <!-- docs/development/issue137/research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-14T10:55:00Z updated=2026-02-14T12:15:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-14T10:55:00Z updated=2026-02-14T12:20:00Z -->
 # Issue #137: Remote Branch Checkout Research
 
 **Status:** DRAFT  
-**Version:** 1.3  
-**Last Updated:** 2026-02-14T12:15:00Z
+**Version:** 1.4  
+**Last Updated:** 2026-02-14T12:20:00Z
 
 ---
 
@@ -102,71 +102,91 @@ self.repo.active_branch.tracking_branch()  # Returns RemoteReference or None
 
 ## Alternatives
 
-### Alternative A: Two-Tier Fallback (Local → Remote)
+### Alternative A: Sequential Fallback Strategy
 
-**Hypothetical example:**
-```python
-def checkout(self, branch_name: str) -> None:
-    # Check local first
-    if branch_name in self.repo.heads:
-        self.repo.heads[branch_name].checkout()
-        return
-    
-    # Check remote second (reads local remote-tracking refs)
-    try:
-        origin = self.repo.remote("origin")
-        remote_ref = f"origin/{branch_name}"
-        if remote_ref in [ref.name for ref in origin.refs]:
-            local = self.repo.create_head(branch_name, origin.refs[branch_name])
-            local.set_tracking_branch(origin.refs[branch_name])
-            local.checkout()
-            return
-    except ValueError:  # No origin remote
-        pass
-    
-    raise ExecutionError(f"Branch {branch_name} not found (local/remote)")
+**Conceptual flow:**
+```
+1. Check local branch collection
+   → IF found: switch to local branch, RETURN
+   
+2. Check remote-tracking ref collection (origin remote)
+   → IF found: create local tracking branch, switch to it, RETURN
+   → IF origin missing: fall through
+   
+3. Raise error: branch not found in local or remote-tracking refs
 ```
 
 **Characteristics:**
-- Preserves fast path for local branches
-- Adds remote-tracking ref lookup on local miss
-- Auto-creates tracking branch
+- Single method handles both scenarios
+- Local branch checked first (fast path)
+- Remote-tracking refs checked second (fallback)
+- Automatic tracking branch creation on remote-only match
+- No signature changes (backward compatible)
 
-### Alternative B: Explicit Remote Flag
+**Dependencies:**
+- Requires prior fetch for fresh remote-tracking refs
+- Assumes origin as default remote
 
-**Hypothetical example:**
-```python
-def checkout(self, branch_name: str, check_remote: bool = True) -> None:
-    # ... local check ...
-    if not check_remote:
-        raise ExecutionError("Local branch not found")
-    # ... remote check ...
+---
+
+### Alternative B: Parametric Control
+
+**Conceptual flow:**
+```
+Parameters: branch_name, check_remote_refs (default: true)
+
+1. Check local branch collection
+   → IF found: switch, RETURN
+   
+2. IF check_remote_refs == false:
+   → Raise error: local branch not found
+   
+3. Check remote-tracking refs
+   → IF found: create local + switch
+   → ELSE: raise error
 ```
 
 **Characteristics:**
-- Explicit control over remote lookup
-- Backward compatible via default parameter
-- Requires API change
+- Caller controls remote-tracking ref lookup
+- Optional parameter (default preserves new behavior)
+- Explicit separation of local vs remote-tracking scenarios
+- API surface grows (new parameter)
 
-### Alternative C: Separate Method
+**Dependencies:**
+- Tool layer must pass parameter explicitly
+- Testing must cover both flag states
 
-**Hypothetical example:**
-```python
-def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None:
-    """Checkout remote-only branch, creating local tracking branch."""
-    # ... remote-specific logic ...
+---
+
+### Alternative C: Dedicated Method
+
+**Conceptual flow:**
+```
+Method A (existing): checkout(branch_name)
+  → Only checks local branches
+  → No changes to existing behavior
+
+Method B (new): checkout_from_remote_ref(branch_name, remote="origin")
+  → Only checks remote-tracking refs
+  → Creates local tracking branch
+  → Switches to new branch
 ```
 
 **Characteristics:**
-- Clear separation of concerns
-- Existing checkout() unchanged
-- More methods to maintain
+- Separation of concerns (SRP)
+- No modifications to existing method
+- User must explicitly choose which method
+- Two code paths to maintain
+
+**Dependencies:**
+- Tool layer must route to correct method
+- Documentation must explain when to use which
 
 ---
 
 ## Trade-offs
 
-### Alternative A (Two-Tier Fallback)
+### Alternative A (Sequential Fallback)
 
 **Pros:**
 - ✅ No API changes (backward compatible)
@@ -179,7 +199,7 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 - ❌ Silent remote lookup (less explicit)
 - ❌ Requires prior `git_fetch` to have fresh remote-tracking refs
 
-### Alternative B (Explicit Flag)
+### Alternative B (Parametric Control)
 
 **Pros:**
 - ✅ Explicit control
@@ -190,7 +210,7 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 - ❌ Requires tool layer changes
 - ❌ Less user-friendly (extra parameter)
 
-### Alternative C (Separate Method)
+### Alternative C (Dedicated Method)
 
 **Pros:**
 - ✅ SRP (Single Responsibility Principle)
@@ -321,3 +341,4 @@ def checkout_from_remote(self, branch_name: str, remote: str = "origin") -> None
 | 1.1 | 2026-02-14T11:00:00Z | Agent | Added implementation details (REMOVED in 1.2) |
 | 1.2 | 2026-02-14T12:10:00Z | Agent | Refactor to pure research (observations, alternatives, trade-offs, risks, open questions) |
 | 1.3 | 2026-02-14T12:15:00Z | Agent | Fix: correct relative paths, remove network call claim, remove procedural references, remove unrelated issues |
+| 1.4 | 2026-02-14T12:20:00Z | Agent | Neutralize alternatives with conceptual flow instead of concrete code |
