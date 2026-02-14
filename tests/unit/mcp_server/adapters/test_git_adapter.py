@@ -142,12 +142,12 @@ class TestGitAdapterCheckout:
                 adapter.checkout("feature/test")
 
     def test_checkout_branch_missing_everywhere(self) -> None:
-        """Test checkout error indicates both local and remote checked.
+        """Test checkout error includes actionable hint.
 
         Scenario S4: No local branch, origin configured, no remote-tracking refs.
-        Expected: ExecutionError indicating exhaustive search.
+        Expected: ExecutionError with exhaustive search message AND git_fetch hint.
 
-        TDD Cycle 3B - RED: This test WILL FAIL until error message updated.
+        Issue #144: RED phase - test expects hint in error message.
         """
         with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
             mock_repo = MagicMock()
@@ -164,8 +164,11 @@ class TestGitAdapterCheckout:
 
             adapter = GitAdapter("/fake/path")
 
-            # WHEN/THEN: Error message indicates exhaustive search
-            with pytest.raises(ExecutionError, match=r"does not exist \(checked: local, origin\)"):
+            # WHEN/THEN: Error message includes exhaustive search AND hint
+            with pytest.raises(
+                ExecutionError,
+                match=r"does not exist \(checked: local, origin\)\. Hint: Run git_fetch",
+            ):
                 adapter.checkout("missing")
 
 
