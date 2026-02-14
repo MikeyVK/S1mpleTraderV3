@@ -111,7 +111,7 @@ New checkout_remote() method separate from checkout()
 |----|----------|----------|--------------|
 | **Q3** | Auto-fetch behavior | NO auto-fetch (functional preconditie: user must run git_fetch) | Planning Q3, aligns with SRP |
 | **Q2** | Multi-remote support | Only 'origin' (hardcoded) | Planning Q2, consistent with existing push/fetch |
-| **D1** | Where to handle errors | Adapter raises ExecutionError, tool preserves existing contract | Compatible with #136 direction (normalization at tool boundary), implementation deferred |
+| **D1** | Where to handle errors | Adapter raises ExecutionError, tool preserves existing contract | Tool hints optional (#136 scope) |
 | **D2** | Input normalization | Strip 'origin/' prefix automatically | Planning S5, matches git CLI |
 | **D3** | Fast path guarantee | Local checkout MUST NOT call remote() | Performance invariant S1, testable with mock.assert_not_called() |
 
@@ -457,7 +457,7 @@ These are **#136 decisions**. Issue #137 stays compatible but doesn't pre-implem
 
 | Planning Element | Design Decision | Implementation | Test |
 |-----------------|-----------------|----------------|------|
-| **Q3:** No auto-fetch | D3: git_fetch precondition | Docstring note | N/A (functional req) |
+| **Q3:** No auto-fetch | Functional precondition | Docstring note | N/A (functional req) |
 | **Q2:** Origin-only | D2: Hardcode "origin" | Line: `origin = self.repo.remote("origin")` | All tests use origin |
 | **S1:** Local fast path | D3: Early return invariant | `if normalized in heads: return` | `assert_not_called()` |
 | **S2:** Remote-only | Sequential fallback | `origin.refs` lookup + create_head | `test_checkout_remote_only_branch` |
