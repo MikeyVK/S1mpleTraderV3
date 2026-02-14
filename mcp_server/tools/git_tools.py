@@ -245,7 +245,7 @@ class GitCheckoutTool(BaseTool):
                 "Branch checkout failed",
                 extra={"props": {"branch": params.branch, "error": str(exc)}},
             )
-            return ToolResult.error(f"Checkout failed for branch: {params.branch}")
+            return ToolResult.error(str(exc))
 
         current_phase = "unknown"
         state: dict[str, Any] = {}
