@@ -76,6 +76,44 @@ class TestGitAdapterCheckout:
             mock_local_branch.set_tracking_branch.assert_called_once_with(mock_remote_ref)
             mock_local_branch.checkout.assert_called_once()
 
+    def test_checkout_strips_origin_prefix(self) -> None:
+        """Test checkout normalizes origin/ prefix in input.
+
+        Scenario S5: User provides 'origin/feature/test' as input.
+        Expected: Prefix stripped, local branch created as 'feature/test'.
+
+        TDD Cycle 2 - RED: This test WILL FAIL until prefix normalization added.
+        """
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+
+            # Setup: No local branch exists
+            mock_repo.heads.__contains__ = lambda self, x: False
+
+            # Setup: Origin remote with remote-tracking ref
+            mock_origin = MagicMock()
+            mock_remote_ref = MagicMock()
+            mock_remote_ref.name = "origin/feature/test"
+            mock_origin.refs = [mock_remote_ref]
+            mock_repo.remote.return_value = mock_origin
+
+            # Setup: create_head returns mock branch
+            mock_local_branch = MagicMock()
+            mock_repo.create_head.return_value = mock_local_branch
+
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            # WHEN: Checkout WITH origin/ prefix
+            adapter.checkout("origin/feature/test")
+
+            # THEN: Prefix stripped, local branch "feature/test" created
+            # NOT: create_head("origin/feature/test", ...)
+            mock_repo.create_head.assert_called_once_with("feature/test", mock_remote_ref)
+            mock_local_branch.set_tracking_branch.assert_called_once_with(mock_remote_ref)
+            mock_local_branch.checkout.assert_called_once()
+
 
 class TestGitAdapterPush:
     """Tests for push functionality."""
