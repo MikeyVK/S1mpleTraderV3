@@ -3,8 +3,8 @@
 # Issue #138 Implementation Planning - Workflow-First Vertical Cycles
 
 **Status:** DRAFT  
-**Version:** 1.1
-**Last Updated:** 2026-02-14T19:00:00+00:00
+**Version:** 1.2
+**Last Updated:** 2026-02-14T19:05:00+00:00
 
 ---
 
@@ -50,7 +50,7 @@ Vertical slice implementation of workflow-first commit conventions. Each cycle d
 **Goal:** Commit-scope parsing met state.json fallback, oude commits blijven werken
 
 **Deliverables:**
-1. workphases.yaml (minimal SSOT - phase definitions only)
+1. workphases.yaml (config-SSOT voor phase definitions - runtime state blijft in state.json)
 2. Scope parser/decoder (ScopeDecoder.extract_from_commit())
 3. Precedence resolver (commit-scope > state.json > type-heuristic)
 4. get_work_context integration (#117 fix - met precedence)
@@ -172,7 +172,7 @@ git_add_or_commit(
   - **Mitigation:** Contract tests first (parser isolation), then integration tests (tool boundaries)
 
 ## Related Documentation
-- **[research.md v2.1][related-1]**
+- **[research.md v2.2][related-1]**
 
 ---
 
@@ -222,5 +222,6 @@ git_add_or_commit(
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.2 | 2026-02-14T19:05:00+00:00 | Agent | Fix: research v2.2 ref (regel 175), verduidelijk workphases.yaml config-SSOT (niet runtime) |
 | 1.1 | 2026-02-14T19:00:00+00:00 | Agent | Correcties: research v2.2 refs, link definitions, Cycle 3 precedence expliciet |
 | 1.0 | 2026-02-14T18:25:00+00:00 | Agent | Initial draft |
