@@ -188,7 +188,8 @@ class GitAdapter:
 
             if remote_ref is None:
                 raise ExecutionError(
-                    f"Branch {normalized_branch} does not exist (checked: local, origin)"
+                    f"Branch {normalized_branch} does not exist (checked: local, origin). "
+                    f"Hint: Run git_fetch to update remote branch information."
                 )  # Scenario S4
 
             # Create local tracking branch (Scenario S2)
