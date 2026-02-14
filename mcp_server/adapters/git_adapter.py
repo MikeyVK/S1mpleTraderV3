@@ -168,25 +168,28 @@ class GitAdapter:
             Remote-only: O(n), n = count of remote refs
         """
         try:
+            # Normalize input (Decision D2, Scenario S5)
+            normalized_branch = branch_name.removeprefix("origin/")
+
             # Fast path: local branch exists (Scenario S1, Decision D3)
-            if branch_name in self.repo.heads:
-                self.repo.heads[branch_name].checkout()
+            if normalized_branch in self.repo.heads:
+                self.repo.heads[normalized_branch].checkout()
                 return  # ← Early return, NO remote access
 
             # Fallback: check remote-tracking refs (Scenario S2)
             origin = self.repo.remote("origin")
 
             # Search for remote-tracking ref
-            remote_ref_name = f"origin/{branch_name}"
+            remote_ref_name = f"origin/{normalized_branch}"
             remote_ref = next((ref for ref in origin.refs if ref.name == remote_ref_name), None)
 
             if remote_ref is None:
                 raise ExecutionError(
-                    f"Branch {branch_name} does not exist (checked: local, origin)"
+                    f"Branch {normalized_branch} does not exist (checked: local, origin)"
                 )
 
             # Create local tracking branch (Scenario S2)
-            local_branch = self.repo.create_head(branch_name, remote_ref)
+            local_branch = self.repo.create_head(normalized_branch, remote_ref)
             local_branch.set_tracking_branch(remote_ref)
             local_branch.checkout()
 
