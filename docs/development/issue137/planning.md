@@ -1,16 +1,16 @@
 <!-- docs/development/issue137/planning.md -->
-<!-- template=planning version=130ac5ea created=2026-02-14T12:25:00Z updated=2026-02-14T13:00:00Z -->
+<!-- template=planning version=130ac5ea created=2026-02-14T12:25:00Z updated=2026-02-14T13:10:00Z -->
 # Issue #137: TDD Cycle Planning for Remote Branch Checkout
 
 **Status:** DRAFT  
-**Version:** 2.0  
-**Last Updated:** 2026-02-14T13:00:00Z
+**Version:** 2.1  
+**Last Updated:** 2026-02-14T13:10:00Z
 
 ---
 
 ## Purpose
 
-Plan TDD cycles for implementing remote branch checkout support with all design decisions closed before implementation.
+Plan TDD cycles for implementing remote branch checkout support with all design decisions closed before design phase.
 
 ## Scope
 
@@ -21,7 +21,7 @@ Plan TDD cycles for implementing remote branch checkout support with all design 
 - Traceability from issue to tests
 
 **Out of Scope:**
-- Implementation details (HOW to code)
+- Implementation details (HOW to code - determined in design phase)
 - Performance optimization strategies
 - Multi-remote scenarios
 
@@ -34,7 +34,7 @@ Read these first:
 
 ## Summary
 
-Implement remote branch checkout via **Alternative A (Sequential Fallback)** with 4 non-overlapping TDD cycles. All design decisions closed in Decision Register below.
+Implement remote branch checkout via **Alternative A (Sequential Fallback)** with 4 non-overlapping TDD cycles. All planning decisions closed. Auto-fetch behavior deferred to design phase.
 
 ---
 
@@ -46,12 +46,24 @@ All open questions from research.md resolved:
 |----|----------|----------|-----------|
 | **Q1** | Branch name normalization (`origin/feature/x` input) | **DECIDED:** Strip `origin/` prefix automatically | Matches git CLI behavior; user-friendly |
 | **Q2** | Remote preference order | **DECIDED:** Only `origin` (hardcoded) | Consistent with existing push/fetch patterns |
-| **Q3** | Auto-fetch behavior | **DEFERRED to future issue** | Out of scope; document fetch dependency in docstring |
+| **Q3** | Auto-fetch behavior | **DEFERRED TO DESIGN PHASE** (see below) | Requires architecture decision on network latency vs freshness trade-off |
 | **Q4** | Tracking branch setup | **DECIDED:** Always set tracking branch on remote-only checkout | Matches git CLI `--track` default behavior |
 | **Q5** | Error message detail level | **DECIDED:** Descriptive (indicates what was checked) | Balances debugging utility vs noise |
 | **ALT** | Implementation alternative | **DECIDED:** Alternative A (Sequential Fallback) | No API changes; backward compatible; matches user mental model |
 
-**Q3 Deferral Justification:** Auto-fetch adds network latency and complexity. Document `git_fetch` prerequisite in docstring. Future issue can add optional `fetch=True` parameter if needed.
+### Q3 Deferral Details
+
+**Deferred to:** Design phase  
+**Reason:** Auto-fetch requires architecture decision on network call integration
+
+**Design phase must deliver:**
+1. **Decision:** Auto-fetch on remote miss (yes/no/optional parameter)
+2. **If yes:** Error handling strategy for fetch failures
+3. **If yes:** User notification mechanism (silent vs logged)
+4. **If optional:** Parameter name, default value, docstring
+5. **If no:** Document `git_fetch` prerequisite clearly in docstring
+
+**Planning constraint:** Current implementation assumes `git_fetch` already run (no auto-fetch). Design may override.
 
 ---
 
@@ -302,7 +314,7 @@ Issue #137 complete when ALL criteria met:
 ### Documentation
 - ✅ `GitAdapter.checkout()` docstring updated:
   - Documents remote-tracking ref fallback
-  - Notes `git_fetch` prerequisite
+  - Notes `git_fetch` prerequisite (until Q3 resolved in design)
   - Lists possible ExecutionError scenarios
 - ✅ Error messages match contract table
 
@@ -314,8 +326,8 @@ Issue #137 complete when ALL criteria met:
 |----------------------------|---------|------------------|
 | "git_checkout works for remote-only branches" | `test_checkout_remote_only_branch` | Local tracking branch created, checkout succeeds |
 | "Local tracking branch automatically created" | `test_checkout_remote_only_branch` | `set_tracking_branch()` called |
-| "No terminal workaround needed" | All tests | Zero `run_in_terminal` calls in implementation |
-| "Existing local branch checkout unaffected" | `test_checkout_existing_branch` | `remote.assert_not_called()` passes |
+| "No terminal workaround needed" | `test_checkout_existing_branch` + `test_checkout_remote_only_branch` | Adapter: `mock_repo.remote.assert_not_called()` on local hit; Tool: Zero `run_in_terminal` calls in `GitCheckoutTool.execute()` |
+| "Existing local branch checkout unaffected" | `test_checkout_existing_branch` | `remote.assert_not_called()` passes (fast path proof) |
 | "Handles origin/ prefix input" | `test_checkout_strips_origin_prefix` | Prefix stripped correctly |
 | "Clear error when origin missing" | `test_checkout_no_origin_remote` | Error: "Origin remote not configured" |
 | "Clear error when branch missing" | `test_checkout_branch_missing_everywhere` | Error: "...checked: local, origin" |
@@ -326,29 +338,29 @@ Issue #137 complete when ALL criteria met:
 
 ## Dependencies
 
-**Blocking:** None (all decisions closed)
+**Blocking:** None (all planning decisions closed)
 
 **Non-blocking:**
 - Issue #138 (git phase validation) - separate workflow concern
-- Future auto-fetch feature - Q3 deferred
+- Q3 auto-fetch decision - handled in design phase
 
 ---
 
 ## Risks
 
 ### Risk 1: Stale Remote-Tracking Refs
-**Impact:** User must `git_fetch` before checkout for fresh refs
+**Impact:** User must `git_fetch` before checkout for fresh refs (unless Q3 enables auto-fetch in design)
 
 **Mitigation:** Document in docstring: _"Note: Requires recent `git_fetch` for up-to-date remote-tracking refs."_
 
-**Accepted:** Out of scope for this issue (Q3 deferred)
+**Owner:** Design phase (Q3 decision)
 
 ### Risk 2: Multiple Remotes Edge Case
 **Impact:** Only checks `origin`; ignores `upstream`, `fork`, etc.
 
 **Mitigation:** Consistent with existing push/fetch behavior. Document in docstring.
 
-**Accepted:** Multi-remote support deferred (Q2 decision)
+**Accepted:** Multi-remote support deferred (Q2 decision: origin-only)
 
 ---
 
@@ -356,7 +368,7 @@ Issue #137 complete when ALL criteria met:
 
 **Transition to Design phase allowed ONLY when:**
 
-- ✅ All 5 research questions (Q1-Q5) have binding decisions (see Decision Register)
+- ✅ All 5 research questions (Q1-Q5) have binding decisions OR explicit design-phase deferral
 - ✅ Alternative selection finalized (Alternative A chosen)
 - ✅ Error message contract defined for all scenarios
 - ✅ Test scenarios non-overlapping and complete
@@ -364,12 +376,14 @@ Issue #137 complete when ALL criteria met:
 - ✅ Quality gates aligned with `.st3/quality.yaml`
 - ✅ Planning document approved by human reviewer
 
-**Current Status:** ✅ ALL CRITERIA MET - Ready for TDD phase
+**Current Status:** ✅ ALL CRITERIA MET - Ready for Design phase
+
+**Next Phase:** Design phase will resolve Q3 (auto-fetch behavior) and produce implementation architecture.
 
 ---
 
 ## Related Documentation
-- [research.md](research.md) - Research findings (all questions answered)
+- [research.md](research.md) - Research findings (all questions answered or deferred)
 - [mcp_server/adapters/git_adapter.py](../../../mcp_server/adapters/git_adapter.py) - Implementation target
 - [tests/unit/mcp_server/adapters/test_git_adapter.py](../../../tests/unit/mcp_server/adapters/test_git_adapter.py) - Test location
 - [.st3/quality.yaml](../../../.st3/quality.yaml) - Quality gate definitions
@@ -383,3 +397,4 @@ Issue #137 complete when ALL criteria met:
 | 1.0 | 2026-02-14T12:25:00Z | Agent | Initial scaffold |
 | 1.1 | 2026-02-14T12:30:00Z | Agent | Complete TDD cycle breakdown |
 | 2.0 | 2026-02-14T13:00:00Z | Agent | Add Decision Register, error contract, traceability matrix, design entry criteria |
+| 2.1 | 2026-02-14T13:10:00Z | Agent | Fix: Q3 deferred to design phase (not future issue), correct phase transition (planning→design), strengthen traceability |
