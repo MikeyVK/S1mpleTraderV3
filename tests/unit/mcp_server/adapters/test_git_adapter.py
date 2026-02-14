@@ -114,6 +114,31 @@ class TestGitAdapterCheckout:
             mock_local_branch.set_tracking_branch.assert_called_once_with(mock_remote_ref)
             mock_local_branch.checkout.assert_called_once()
 
+    def test_checkout_no_origin_remote(self) -> None:
+        """Test checkout raises clear error when origin not configured.
+
+        Scenario S3: No local branch, no origin remote.
+        Expected: ExecutionError with "Origin remote not configured" message.
+
+        TDD Cycle 3A - RED: This test WILL FAIL until ValueError caught explicitly.
+        """
+        with patch("mcp_server.adapters.git_adapter.Repo") as mock_repo_class:
+            mock_repo = MagicMock()
+
+            # Setup: No local branch exists
+            mock_repo.heads.__contains__ = lambda _self, _x: False
+
+            # Setup: No origin remote (ValueError when accessed)
+            mock_repo.remote.side_effect = ValueError("Remote 'origin' not found")
+
+            mock_repo_class.return_value = mock_repo
+
+            adapter = GitAdapter("/fake/path")
+
+            # WHEN/THEN: Checkout raises descriptive error
+            with pytest.raises(ExecutionError, match="Origin remote not configured"):
+                adapter.checkout("feature/test")
+
 
 class TestGitAdapterPush:
     """Tests for push functionality."""
