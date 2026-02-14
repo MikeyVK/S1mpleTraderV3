@@ -146,11 +146,57 @@ class GitAdapter:
             raise ExecutionError(f"Failed to restore files: {e}") from e
 
     def checkout(self, branch_name: str) -> None:
-        """Checkout to an existing branch."""
+        """Checkout branch (local or remote-tracking).
+        
+        Sequential fallback: checks local branches first (fast path), then
+        remote-tracking refs. Creates local tracking branch for remote-only.
+        
+        Args:
+            branch_name: Branch name with or without 'origin/' prefix.
+                         Examples: "feature/x", "origin/feature/x"
+        
+        Returns:
+            None: On successful checkout
+        
+        Raises:
+            ExecutionError: In these scenarios:
+                - "Branch {name} does not exist (checked: local, origin)" (missing)
+                - "Failed to checkout {name}: {detail}" (unexpected git error)
+        
+        Precondition:
+            Requires recent git_fetch() for up-to-date remote-tracking refs.
+            Does NOT auto-fetch (Decision Q3).
+        
+        Performance:
+            Local branch: O(1), NO remote access (Decision D3 invariant)
+            Remote-only: O(n), n = count of remote refs
+        """
         try:
-            if branch_name not in self.repo.heads:
-                raise ExecutionError(f"Branch {branch_name} does not exist")
-            self.repo.heads[branch_name].checkout()
+            # Fast path: local branch exists (Scenario S1, Decision D3)
+            if branch_name in self.repo.heads:
+                self.repo.heads[branch_name].checkout()
+                return  # ← Early return, NO remote access
+            
+            # Fallback: check remote-tracking refs (Scenario S2)
+            origin = self.repo.remote("origin")
+            
+            # Search for remote-tracking ref
+            remote_ref_name = f"origin/{branch_name}"
+            remote_ref = next(
+                (ref for ref in origin.refs if ref.name == remote_ref_name),
+                None
+            )
+            
+            if remote_ref is None:
+                raise ExecutionError(
+                    f"Branch {branch_name} does not exist (checked: local, origin)"
+                )
+            
+            # Create local tracking branch (Scenario S2)
+            local_branch = self.repo.create_head(branch_name, remote_ref)
+            local_branch.set_tracking_branch(remote_ref)
+            local_branch.checkout()
+            
         except ExecutionError:
             raise
         except Exception as e:
