@@ -295,9 +295,12 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["source"] == "commit-scope"
 
     # THEN: Full cycle complete, all phases detected correctly from commit-scope
-    # Final validation: get_project_plan includes current_phase from last commit
-    plan = pm.get_project_plan(issue_number=999)
-    assert plan is not None
-    assert plan["current_phase"] == "documentation"
-    assert plan["phase_source"] == "commit-scope"
-    assert plan["phase_detection_error"] is None
+    # Final validation: verify state.json has correct current_phase
+    final_state = state_engine.get_state(branch="feature/999-e2e-test")
+    assert final_state["current_phase"] == "documentation"
+
+    # Verify last commit scope detection
+    commits = git_manager.get_recent_commits(limit=1)
+    result = decoder.detect_phase(commit_message=commits[0], fallback_to_state=False)
+    assert result["workflow_phase"] == "documentation"
+    assert result["source"] == "commit-scope"
