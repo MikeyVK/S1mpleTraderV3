@@ -360,6 +360,25 @@ version: "1.0"
             files=["src/app.py", "tests/test_app.py"],
         )
 
+    def test_commit_with_scope_with_commit_type_override(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test commit with explicit commit_type override."""
+        mock_adapter.commit.return_value = "pqr678"
+
+        result = manager.commit_with_scope(
+            workflow_phase="tdd",
+            sub_phase="red",
+            message="fix failing test",
+            commit_type="fix",  # Override default 'test'
+        )
+
+        assert result == "pqr678"
+        mock_adapter.commit.assert_called_once_with(
+            "fix(P_TDD_SP_RED): fix failing test",
+            files=None,
+        )
+
     def test_commit_with_scope_invalid_phase_raises_error(self, manager: GitManager) -> None:
         """Test that invalid phase raises ValueError with actionable message."""
         with pytest.raises(ValueError, match="Unknown workflow phase"):

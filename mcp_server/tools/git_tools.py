@@ -132,7 +132,7 @@ class GitCommitInput(BaseModel):
         default=None,
         description=(
             "Workflow phase (research|planning|design|tdd|integration|documentation|coordination). "
-            "Auto-detected from state.json if omitted."
+            "Required when using new workflow-first format."
         ),
     )
     sub_phase: str | None = Field(
@@ -145,6 +145,13 @@ class GitCommitInput(BaseModel):
     cycle_number: int | None = Field(
         default=None,
         description="Cycle number (e.g., 1, 2, 3). Optional, used in multi-cycle TDD.",
+    )
+    commit_type: str | None = Field(
+        default=None,
+        description=(
+            "Commit type override (test|feat|refactor|docs|chore|fix). "
+            "Auto-determined from workphases.yaml if omitted."
+        ),
     )
 
     # DEPRECATED: Backward compatibility
@@ -187,10 +194,10 @@ class GitCommitInput(BaseModel):
 
 
 class GitCommitTool(BaseTool):
-    """Tool to commit changes with TDD phase prefix."""
+    """Tool to commit changes with workflow-scoped commit messages."""
 
     name = "git_add_or_commit"
-    description = "Commit changes with TDD phase prefix (red/green/refactor/docs)"
+    description = "Commit changes with workflow phase scope (e.g., test(P_TDD_SP_RED): message)"
     args_model = GitCommitInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
@@ -208,6 +215,7 @@ class GitCommitTool(BaseTool):
                 message=params.message,
                 sub_phase=params.sub_phase,
                 cycle_number=params.cycle_number,
+                commit_type=params.commit_type,
                 files=params.files,
             )
         # OLD backward-compatible path

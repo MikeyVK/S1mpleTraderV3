@@ -142,6 +142,7 @@ async def test_git_commit_tool_with_workflow_phase(mock_git_manager):
         message="complete research",
         sub_phase=None,
         cycle_number=None,
+        commit_type=None,
         files=None,
     )
     assert "Committed: wf1234" in result.content[0]["text"]
@@ -165,6 +166,7 @@ async def test_git_commit_tool_with_workflow_phase_and_subphase(mock_git_manager
         message="add failing test",
         sub_phase="red",
         cycle_number=None,
+        commit_type=None,
         files=None,
     )
     assert "Committed: wf5678" in result.content[0]["text"]
@@ -189,6 +191,7 @@ async def test_git_commit_tool_with_cycle_number(mock_git_manager):
         message="implement feature",
         sub_phase="green",
         cycle_number=1,
+        commit_type=None,
         files=None,
     )
     assert "Committed: wf9012" in result.content[0]["text"]
@@ -213,6 +216,7 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
         message="refactor code",
         sub_phase="refactor",
         cycle_number=None,
+        commit_type=None,
         files=["src/app.py", "tests/test_app.py"],
     )
     assert "Committed: wf3456" in result.content[0]["text"]
@@ -230,6 +234,32 @@ async def test_git_commit_tool_backward_compat_with_old_phase(mock_git_manager):
     # Should use old path when workflow_phase is not provided
     mock_git_manager.commit_tdd_phase.assert_called_once_with("red", "old style commit", files=None)
     assert "Committed: old1234" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
+    """Test commit_type override parameter."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "override123"
+
+    params = GitCommitInput(
+        workflow_phase="tdd",
+        sub_phase="red",
+        commit_type="fix",  # Override default 'test'
+        message="fix failing test",
+    )
+    result = await tool.execute(params)
+
+    # Should pass commit_type to commit_with_scope
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="fix failing test",
+        sub_phase="red",
+        cycle_number=None,
+        commit_type="fix",
+        files=None,
+    )
+    assert "Committed: override123" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio

@@ -136,6 +136,7 @@ class GitManager:
         message: str,
         sub_phase: str | None = None,
         cycle_number: int | None = None,
+        commit_type: str | None = None,
         files: list[str] | None = None,
     ) -> str:
         """Commit changes with workflow phase scope.
@@ -145,6 +146,8 @@ class GitManager:
             message: Commit message (without type/scope prefix).
             sub_phase: Optional subphase (red, green, refactor, c1, ...).
             cycle_number: Optional cycle number (1, 2, 3, ...).
+            commit_type: Optional commit type override (test, feat, refactor, docs, chore, fix).
+                        Auto-determined from workphases.yaml if omitted.
             files: Optional list of file paths to stage + commit.
 
         Returns:
@@ -157,6 +160,9 @@ class GitManager:
         Example:
             >>> manager.commit_with_scope("tdd", "add tests", sub_phase="red")
             # Generates: "test(P_TDD_SP_RED): add tests"
+
+            >>> manager.commit_with_scope("tdd", "add tests", sub_phase="red", commit_type="fix")
+            # Generates: "fix(P_TDD_SP_RED): add tests" (override)
         """
         if files is not None and not files:
             raise ValidationError(
@@ -164,35 +170,37 @@ class GitManager:
                 hints=["Omit 'files' to commit everything, or provide at least one path"],
             )
 
-        # Load workphases config to get commit_type
-        with open(self._workphases_path) as f:
-            workphases_config = yaml.safe_load(f)
-
-        phases = workphases_config.get("phases", {})
-        phase_config = phases.get(workflow_phase.lower())
-
-        if phase_config is None:
-            # ScopeEncoder will raise ValueError with actionable message
-            encoder = ScopeEncoder(self._workphases_path)
-            encoder.generate_scope(workflow_phase, sub_phase, cycle_number)
-            # Should never reach here due to ValueError above
-            raise RuntimeError("Unexpected: phase validation failed silently")
-
-        commit_type = phase_config.get("commit_type_hint", "chore")
-
-        # Handle TDD phase (commit_type_hint is null, varies by subphase)
+        # If commit_type override provided, use it
         if commit_type is None:
-            if workflow_phase.lower() == "tdd":
-                if sub_phase == "red":
-                    commit_type = "test"
-                elif sub_phase == "green":
-                    commit_type = "feat"
-                elif sub_phase == "refactor":
-                    commit_type = "refactor"
+            # Load workphases config to get commit_type
+            with open(self._workphases_path) as f:
+                workphases_config = yaml.safe_load(f)
+
+            phases = workphases_config.get("phases", {})
+            phase_config = phases.get(workflow_phase.lower())
+
+            if phase_config is None:
+                # ScopeEncoder will raise ValueError with actionable message
+                encoder = ScopeEncoder(self._workphases_path)
+                encoder.generate_scope(workflow_phase, sub_phase, cycle_number)
+                # Should never reach here due to ValueError above
+                raise RuntimeError("Unexpected: phase validation failed silently")
+
+            commit_type = phase_config.get("commit_type_hint", "chore")
+
+            # Handle TDD phase (commit_type_hint is null, varies by subphase)
+            if commit_type is None:
+                if workflow_phase.lower() == "tdd":
+                    if sub_phase == "red":
+                        commit_type = "test"
+                    elif sub_phase == "green":
+                        commit_type = "feat"
+                    elif sub_phase == "refactor":
+                        commit_type = "refactor"
+                    else:
+                        commit_type = "chore"  # fallback if no subphase
                 else:
-                    commit_type = "chore"  # fallback if no subphase
-            else:
-                commit_type = "chore"  # fallback for other null cases
+                    commit_type = "chore"  # fallback for other null cases
 
         # Generate scope using ScopeEncoder (validates phase + subphase)
         encoder = ScopeEncoder(self._workphases_path)
