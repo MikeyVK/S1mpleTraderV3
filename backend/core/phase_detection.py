@@ -67,7 +67,7 @@ class ScopeDecoder:
     # Conventional Commits scope extraction
     COMMIT_SCOPE_PATTERN = re.compile(r"^[a-z]+\(([^)]+)\):", re.IGNORECASE)
 
-    def __init__(self, state_path: Path | None = None):
+    def __init__(self, state_path: Path | None = None) -> None:
         """
         Initialize ScopeDecoder with optional state.json path.
 

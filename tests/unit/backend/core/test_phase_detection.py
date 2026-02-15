@@ -15,12 +15,9 @@ Test PhaseDetectionResult TypedDict schema validation and field types
 
 # Standard library
 import json
-import tempfile
 from pathlib import Path
 
 # Third-party
-import pytest
-
 # Project modules
 from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 
@@ -111,9 +108,7 @@ class TestScopeDecoder:
         """Fallback to state.json when commit scope format is invalid."""
         # Arrange
         state_file = tmp_path / "state.json"
-        state_file.write_text(
-            json.dumps({"current_phase": "planning", "workflow_name": "bug"})
-        )
+        state_file.write_text(json.dumps({"current_phase": "planning", "workflow_name": "bug"}))
         decoder = ScopeDecoder(state_path=state_file)
         commit_message = "feat(INVALID_SCOPE): implement feature"  # Invalid format
 
