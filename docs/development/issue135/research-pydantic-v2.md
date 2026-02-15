@@ -1,9 +1,9 @@
 <!-- docs/development/issue135/research-pydantic-v2.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T18:00:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T18:30:00Z -->
 # Pydantic-First Scaffolding V2 Architecture Research
 
 **Status:** COMPLETE  
-**Version:** 1.3 (Data Consistency + Gates Fixed)  
+**Version:** 1.4 (GATE 2 Replaced - Enrichment Boundary Type Contract)
 **Last Updated:** 2026-02-15
 
 ---
@@ -1160,21 +1160,122 @@ def _enrich_context(self, context: WorkerContext) -> WorkerRenderContext:
 
 ---
 
-### GATE 2: Schema Inheritance Depth 🔴 UNRESOLVED (UNBLOCKED)
+### GATE 2: Enrichment Boundary Type Contract 🔴 UNRESOLVED (UNBLOCKED)
 
 **Status:** UNRESOLVED - Ready for planning phase (GATE 1 resolved)
 
-**Question:** Should lifecycle fields (output_path, scaffold_created, template_id, version_hash) be:
-- **Option A:** Defined in LifecycleMixin (user provides in context dict)?
-- **Option B:** Auto-injected by ArtifactManager._enrich_context() (user context doesn't need them)?
+**Context:** GATE 1 established Context → RenderContext enrichment pattern. This gate determines HOW to enforce type safety at the enrichment boundary.
 
-**Trade-off:**
-- **Option A Pros:** Schema completeness (all fields explicitly validated)
-- **Option A Cons:** User must provide system fields (bad UX)
-- **Option B Pros:** User context stays focused on artifact-specific fields
-- **Option B Cons:** Schema doesn't reflect actual template variables (introspection mismatch)
+**Question:** How should ArtifactManager._enrich_context() enforce type safety when transforming Context → RenderContext?
 
-**Recommendation for Planning:** Option B with PartialContext pattern (see GATE 1 for full details).
+**Option A: Protocol (Structural Subtyping)**
+```python
+from typing import Protocol
+
+class EnrichableContext(Protocol):
+    """Structural contract for contexts that can be enriched."""
+    def model_dump(self) -> dict: ...
+
+def _enrich_context(self, context: EnrichableContext) -> WorkerRenderContext:
+    return WorkerRenderContext(**context.model_dump(), ...)
+```
+**Pros:**
+- ✅ Duck typing - any object with model_dump() works
+- ✅ Flexible - supports future context types without inheritance
+- ✅ Pydantic-native (BaseModel has model_dump())
+
+**Cons:**
+- ❌ Weak contract - runtime errors if model_dump() returns wrong shape
+- ❌ No IDE autocomplete for context fields
+- ❌ Protocol not runtime-checkable without @runtime_checkable
+
+**Option B: ABC (Explicit Inheritance Contract)**
+```python
+from abc import ABC, abstractmethod
+
+class BaseContext(ABC, BaseModel):
+    """Abstract base for all artifact contexts."""
+    @abstractmethod
+    def get_artifact_type(self) -> str: ...
+
+class WorkerContext(BaseContext):
+    worker_name: str
+    def get_artifact_type(self) -> str:
+        return "worker"
+
+def _enrich_context(self, context: BaseContext) -> BaseRenderContext:
+    ...
+```
+**Pros:**
+- ✅ Strong contract - enforced at class definition
+- ✅ IDE support - autocomplete for all BaseContext methods
+- ✅ Explicit inheritance tree
+
+**Cons:**
+- ❌ Rigid - all contexts must inherit from BaseContext
+- ❌ Multiple inheritance complexity (BaseContext + BaseModel)
+- ❌ Overkill for simple enrichment
+
+**Option C: Generic TypeVar (Parameterized Enrichment)**
+```python
+from typing import TypeVar, Generic
+
+TContext = TypeVar('TContext', bound=BaseModel)
+TRenderContext = TypeVar('TRenderContext', bound=BaseModel)
+
+def _enrich_context(
+    self, 
+    context: TContext,
+    render_cls: type[TRenderContext]
+) -> TRenderContext:
+    return render_cls(**context.model_dump(), ...)
+
+# Usage:
+render_ctx = manager._enrich_context(worker_ctx, WorkerRenderContext)
+```
+**Pros:**
+- ✅ Type-safe - preserves specific context types
+- ✅ Flexible - works with any BaseModel subclass
+- ✅ No inheritance required
+
+**Cons:**
+- ❌ Caller must pass render_cls (extra parameter)
+- ❌ No compile-time check that TContext fields ⊆ TRenderContext fields
+- ❌ Generic complexity in manager code
+
+**Option D: Runtime Validation (Hybrid)**
+```python
+def _enrich_context(self, context: BaseModel) -> BaseModel:
+    """Runtime validation of expected context type."""
+    expected_type = self._get_expected_context_type(context)
+    if not isinstance(context, expected_type):
+        raise TypeError(f"Expected {expected_type}, got {type(context)}")
+    
+    render_cls = self._get_render_context_class(type(context))
+    return render_cls(**context.model_dump(), ...)
+```
+**Pros:**
+- ✅ Fail-fast - catches type mismatches at runtime
+- ✅ Flexible - accepts BaseModel, validates later
+- ✅ Clear error messages
+
+**Cons:**
+- ❌ No static type checking (mypy/pyright won't catch errors)
+- ❌ Runtime overhead (isinstance checks)
+- ❌ Complex type registry (_get_expected_context_type mapping)
+
+**BLOCKS (Requires Decision Before Planning):**
+1. **Manager Method Signature:** Which types do _enrich_context() accept/return?
+2. **Schema Registry Design:** How to map Context → RenderContext (registry, naming convention, introspection)?
+3. **Type Checker Integration:** Will mypy/pyright validate enrichment correctly?
+4. **Error Handling Strategy:** Where to catch type mismatches (compile-time, instantiation, enrichment)?
+
+**Trade-Off Analysis:**
+- **Static Type Safety:** Option B (ABC) > Option C (Generic) > Option A (Protocol) > Option D (Runtime)
+- **Flexibility:** Option A (Protocol) > Option D (Runtime) > Option C (Generic) > Option B (ABC)
+- **Implementation Complexity:** Option A (Protocol) < Option D (Runtime) < Option C (Generic) < Option B (ABC)
+
+**Recommendation for Planning:** Option A (Protocol) OR Option C (Generic) - balance type safety with flexibility, pending team preference on mypy strictness.
 
 ---
 
@@ -1223,8 +1324,7 @@ def _enrich_context(self, context: WorkerContext) -> WorkerRenderContext:
 | 1.1 | 2026-02-15 | Agent | Aanscherping met harde data: measurement methods added (78 instances measured via grep), ephemeral decision (TypedDict for commit/pr/issue), Tier 3 guardrails (31 macros categorized - all allowed), GATE 1 lifecycle fields (Option B recommended: 34 files - Context + RenderContext split) |
 | 1.2 | 2026-02-15 | Agent | GATE 1 Resolved: Lifecycle fields are SYSTEM-MANAGED (strict auto-injection) - NEVER user/agent provided. Two-schema pattern (Context + RenderContext) enforces separation. 34 schema files (17 Context + 17 RenderContext). User feedback: "Het is de basis voor fingerprinting van gescaffolde artefacten!" |
 | 1.3 | 2026-02-15 | Agent | Data consistency fix: Code (41/53%), Docs (22/28%), Tests (15/19%). Gate status fixed: GATE 2 unblocked (unresolved), GATE 3 resolved. Claims softened: "all 31 analyzed" (not "ALL"), "target 100%" (not absolute). Evidence table added for reproducibility. |
-
----
+| 1.4 | 2026-02-15 | Agent | GATE 2 replaced: Was duplicate of GATE 1 (lifecycle field injection already decided). New GATE 2: Enrichment boundary type contract (Protocol vs ABC vs Generic vs Runtime validation) - 4 options analyzed with trade-offs. User feedback: "Herformuleer naar een nieuw, echt open planning-vraagstuk." |
 
 ## Next Steps
 
