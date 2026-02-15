@@ -23,7 +23,7 @@ Implementation code examples (design phase), class diagrams (design phase), temp
 ## Prerequisites
 
 Read these first:
-1. Research phase complete (research-pydantic-v2.md v1.7)
+1. Research phase complete (research-pydantic-v2.md v1.8)
 2. GATE 1 resolved (system-managed lifecycle)
 3. GATE 2 resolved (Naming Convention)
 4. GATE 3 resolved (19 macros analyzed)
@@ -62,60 +62,71 @@ Migration plan for Pydantic-First v2 architecture addressing Issue #135 template
 - ✅ All 10 DTO pilot test cases pass (bit-for-bit output equivalence after normalization)
 - ✅ v2 template character count reduction: 106 → 36 chars on line 95
 - ✅ Zero validation errors when rendering with validated DTOContext
+- ✅ Quality Gates 0-6 pass for all pilot Python files (LifecycleMixin, DTOContext, DTORenderContext, parity test framework)
+  - Gate 0: Ruff Format
+  - Gate 1: Ruff Strict Lint
+  - Gate 2: Import Placement
+  - Gate 3: Line Length (<100 chars)
+  - Gate 4: Type Checking (mypy strict)
+  - Gate 5: Tests Passing (100%)
+  - Gate 6: Code Coverage (≥90%)
 
 **Exit Criteria:**
 - Stakeholder approval on pilot results
 - Parity test framework accepted as validation standard
+- Quality gates 0-6 enforced and passing (establishes standard for remaining phases)
 
 ---
 
 ### Phase 2: Code Artifacts (Week 3-4)
-**Goal:** Migrate remaining 13 code artifact types (worker, adapter, service, etc.)
+**Goal:** Migrate remaining 8 code artifact types from artifacts.yaml registry
 
 **Deliverables:**
-1. **Context Schemas (13 types)**
-   - WorkerContext, AdapterContext, ServiceContext, InterfaceContext, ToolContext, ResourceContext, SchemaContext
-   - ManagerContext, ValidatorContext, ConfigContext, UtilsContext, TestContext, HandlerContext
+1. **Context Schemas (8 types)**
+   - WorkerContext, AdapterContext, ServiceContext, InterfaceContext
+   - ToolContext, ResourceContext, SchemaContext, GenericContext
 
-2. **RenderContext Classes (13 types)**
+2. **RenderContext Classes (8 types)**
    - All inherit from respective Context + LifecycleMixin
    - Follow Naming Convention: `WorkerContext` → `WorkerRenderContext`
 
 3. **Template Simplification**
-   - Remove defensive patterns from 13 v2 concrete templates
+   - Remove defensive patterns from 8 v2 concrete templates
    - Estimated reduction: 41 total defaults across code templates
 
 4. **Parity Testing**
-   - 5-10 test cases per artifact type (minimum 65 total tests)
+   - 5-10 test cases per artifact type (minimum 40 total tests)
    - Cover: happy path, edge cases (empty lists, optional fields), error cases
 
 **Success Criteria:**
 - ✅ 100% parity test pass rate (output equivalence)
 - ✅ Character count reduction measured and documented per template
 - ✅ No regression in error handling (v2 schema validation ≥ v1 `| default` robustness)
+- ✅ Quality Gates 0-6 pass for all 8 context schemas + 8 render context schemas (16 files total)
 
 ---
 
 ### Phase 3: Document Artifacts (Week 5)
-**Goal:** Migrate 8 document artifact types (research, planning, design, architecture, etc.)
+**Goal:** Migrate 6 document artifact types from artifacts.yaml registry
 
 **Deliverables:**
-1. **Document Context Schemas (8 types)**
-   - ResearchContext, PlanningContext, DesignContext, ArchitectureContext, TrackingContext
-   - GenericContext, ApiContext, TutorialContext
+1. **Document Context Schemas (6 types)**
+   - ResearchContext, PlanningContext, DesignContext
+   - ArchitectureContext, TrackingContext, ReferenceContext
 
 2. **Template Simplification**
-   - Remove defensive patterns from 8 markdown templates
+   - Remove defensive patterns from 6 markdown templates
    - Estimated reduction: 22 total defaults across doc templates
 
 3. **Parity Testing**
-   - 3-5 test cases per document type (minimum 24 total tests)
+   - 3-5 test cases per document type (minimum 18 total tests)
    - Focus: section structure, metadata fields, markdown formatting
 
 **Success Criteria:**
 - ✅ 100% parity test pass rate
 - ✅ Markdown structure preserved (headers, links, tables)
 - ✅ Document metadata complete (version, timestamp, related_docs)
+- ✅ Quality Gates 0-3 pass for all markdown templates (Gate 4-6 not applicable to docs)
 
 ---
 
@@ -129,8 +140,8 @@ Migration plan for Pydantic-First v2 architecture addressing Issue #135 template
    - Gradual rollout: pilot users → team → production
 
 2. **Full Validation Suite**
-   - 100+ parity tests (DTO: 10, Code: 65+, Docs: 24+, Edge: 10+)
-   - Smoke tests: scaffold 20 artifact types with real-world context
+   - 70+ parity tests (DTO: 10, Code: 40, Docs: 18, Edge: 10+)
+   - Smoke tests: scaffold all 17 artifact types with real-world context
    - Regression suite: existing template_engine.py tests must pass unchanged
 
 3. **Performance Benchmarking**
@@ -147,11 +158,17 @@ Migration plan for Pydantic-First v2 architecture addressing Issue #135 template
 - ✅ Feature flag tested in isolation (v1/v2 toggle)
 - ✅ Performance overhead within acceptable range (≤20%)
 - ✅ Zero critical bugs in production pilot (2 week monitoring)
+- ✅ Quality Gates 0-6 pass for ALL schema files (34 total: 17 Context + 17 RenderContext)
+- ✅ Quality Gates 0-6 pass for v2 ArtifactManager enrichment logic
+- ✅ Quality Gates 5-6 pass for full parity test suite (70+ tests, ≥90% coverage)
 
 **Exit Criteria:**
 - 2-week pilot period with PYDANTIC_SCAFFOLDING_ENABLED=true for team
 - Metrics: error rate, performance, user feedback
 - Go/No-Go decision for default=true rollout
+- Quality gates integrated into CI/CD pipeline (automated enforcement)
+
+---
 
 ---
 
@@ -567,7 +584,7 @@ __all__ = [
 
 ---
 
-### Cycle 5: Remaining Code Artifacts (13 types)
+### Cycle 5: Remaining Code Artifacts (8 types)
 
 **Goal:** Scale to all code artifact types
 
@@ -577,13 +594,13 @@ __all__ = [
 - `test_{type}_parity_happy_path()` - v1 vs v2 output equivalent (5-10 cases)
 
 **Success Criteria:**
-- 13 context schemas implemented (worker, adapter, service, etc.)
-- 13 render context classes implemented (naming convention followed)
-- 65+ parity tests pass (5 per type minimum)
+- 8 context schemas implemented (worker, adapter, service, tool, resource, schema, interface, generic)
+- 8 render context classes implemented (naming convention followed)
+- 40+ parity tests pass (5 per type minimum)
 
 ---
 
-### Cycle 6: Document Artifacts (8 types)
+### Cycle 6: Document Artifacts (6 types)
 
 **Goal:** Extend to markdown document artifacts
 
@@ -593,9 +610,11 @@ __all__ = [
 - `test_{type}_parity_structure()` - markdown structure preserved (3-5 cases)
 
 **Success Criteria:**
-- 8 document context schemas implemented (research, planning, design, etc.)
-- 8 document render context classes implemented
-- 24+ parity tests pass (3 per type minimum)
+- 6 document context schemas implemented (research, planning, design, architecture, tracking, reference)
+- 6 document render context classes implemented
+- 18+ parity tests pass (3 per type minimum)
+
+---
 
 ---
 
@@ -604,14 +623,14 @@ __all__ = [
 **Goal:** End-to-end validation with production-like scenarios
 
 **Tests:**
-- `test_all_artifacts_scaffoldable()` - scaffold 20 artifact types (smoke test)
+- `test_all_artifacts_scaffoldable()` - scaffold all 17 non-ephemeral artifact types (smoke test)
 - `test_naming_convention_lookup()` - all 17 RenderContext classes found via globals()
 - `test_import_scope_complete()` - all schemas importable from backend.schemas
 - `test_performance_benchmark()` - v2 ≤ 1.2× v1 render time
 - `test_error_messages_improved()` - v2 ValidationError > v1 silent failure
 
 **Success Criteria:**
-- All 20 artifact types scaffold successfully (v2 pipeline)
+- All 17 non-ephemeral artifact types scaffold successfully (v2 pipeline: DTO + 8 code + 6 docs + 2 test)
 - Naming Convention works (no NameError on class lookup)
 - Performance within acceptable range (≤20% overhead)
 - Error handling better than v1 (explicit failures, clear messages)
@@ -620,14 +639,16 @@ __all__ = [
 
 ## Related Documentation
 - **[research-pydantic-v2.md][related-1]** - Architecture research, GATE 1-3 decisions
-- **[docs/architecture/template_system.md][related-2]** - Multi-tier template architecture (Issue #72)
+- **[docs/architecture/TEMPLATE_LIBRARY.md][related-2]** - Template library architecture
 - **[docs/coding_standards/TYPE_CHECKING_PLAYBOOK.md][related-3]** - Type checking standards
+- **[docs/coding_standards/QUALITY_GATES.md][related-4]** - Quality gates 0-6 enforcement
 
 <!-- Link definitions -->
 
 [related-1]: research-pydantic-v2.md
-[related-2]: ../../architecture/template_system.md
+[related-2]: ../../architecture/TEMPLATE_LIBRARY.md
 [related-3]: ../../coding_standards/TYPE_CHECKING_PLAYBOOK.md
+[related-4]: ../../coding_standards/QUALITY_GATES.md
 
 ---
 

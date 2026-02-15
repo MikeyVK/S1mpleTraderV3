@@ -2,8 +2,8 @@
 <!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T20:00:00Z -->
 # Pydantic-First Scaffolding V2 Architecture Research
 
-**Status:** COMPLETE  
-**Version:** 1.7 (Semantic Clash Fixed - 19 Analyzed, 3 Pending)
+**Status:** COMPLETE - All 3 gates resolved  
+**Version:** 1.8 (GATE 2 Resolved - Naming Convention Selected)
 **Last Updated:** 2026-02-15
 
 ---
@@ -1169,9 +1169,9 @@ def _enrich_context(self, context: WorkerContext) -> WorkerRenderContext:
 
 ---
 
-### GATE 2: Enrichment Boundary Type Contract 🔴 UNRESOLVED (UNBLOCKED)
+### GATE 2: Enrichment Boundary Type Contract ✅ RESOLVED
 
-**Status:** UNRESOLVED - Ready for planning phase (GATE 1 resolved)
+**Status:** RESOLVED - Naming Convention selected (2026-02-15)
 
 **Context:** GATE 1 established Context → RenderContext enrichment pattern. This gate determines HOW to enforce type safety at the enrichment boundary.
 
@@ -1273,18 +1273,31 @@ def _enrich_context(self, context: BaseModel) -> BaseModel:
 - ❌ Runtime overhead (isinstance checks)
 - ❌ Complex type registry (_get_expected_context_type mapping)
 
-**BLOCKS (Requires Decision Before Planning):**
-1. **Manager Method Signature:** Which types do _enrich_context() accept/return?
-2. **Schema Registry Design:** How to map Context → RenderContext (registry, naming convention, introspection)?
-3. **Type Checker Integration:** Will mypy/pyright validate enrichment correctly?
-4. **Error Handling Strategy:** Where to catch type mismatches (compile-time, instantiation, enrichment)?
+**DECISION (2026-02-15):** **Naming Convention** (simplified approach after user insight)
 
-**Trade-Off Analysis:**
-- **Static Type Safety:** Option B (ABC) > Option C (Generic) > Option A (Protocol) > Option D (Runtime)
-- **Flexibility:** Option A (Protocol) > Option D (Runtime) > Option C (Generic) > Option B (ABC)
-- **Implementation Complexity:** Option A (Protocol) < Option D (Runtime) < Option C (Generic) < Option B (ABC)
+After user feedback that LifecycleMixin already solves DRY for lifecycle field inheritance, GATE 2 question was simplified from "how to enforce type safety" to "how to map Context → RenderContext class." The Naming Convention approach was selected for its zero maintenance burden, DRY alignment, and simplicity.
 
-**Recommendation for Planning:** Option A (Protocol) OR Option C (Generic) - balance type safety with flexibility, pending team preference on mypy strictness.
+**Selected Approach:**
+```python
+def _get_render_context_class(self, context_type: type[BaseModel]) -> type[BaseModel]:
+    class_name = context_type.__name__.replace("Context", "RenderContext")
+    return globals()[class_name]  # WorkerContext → WorkerRenderContext
+
+def _enrich_context(self, context: BaseModel) -> BaseModel:
+    render_cls = self._get_render_context_class(type(context))
+    return render_cls(**context.model_dump(), **self._get_lifecycle_fields())
+```
+
+**Rationale:**
+- ✅ **Zero maintenance:** No registry to update when adding new artifact types
+- ✅ **DRY:** No duplication between schema definitions and mapping logic
+- ✅ **Automatic:** Works for any `XContext` → `XRenderContext` pair
+- ✅ **Type safety:** Pydantic validates fields at instantiation (catches errors early)
+- ✅ **Simple:** 3 lines of code, leverages existing naming pattern
+
+**Alternative Considered:** Explicit Registry (dict with 17+ entries) - rejected due to maintenance burden and DRY violation.
+
+**Full decision documentation:** See `planning-pydantic-v2.md` section "GATE 2 Decision Rationale"
 
 ---
 
