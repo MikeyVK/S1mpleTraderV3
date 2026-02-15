@@ -1,0 +1,74 @@
+# Workflow Phases Configuration
+# Schema Version: 1.0
+# Purpose: Define phase metadata and subphase whitelists for workflow commit conventions
+# Used by: ScopeDecoder, ScopeEncoder, workflows.yaml
+# Documentation: docs/development/issue138/design.md
+
+version: "1.0"
+
+phases:
+  research:
+    display_name: "Research"
+    description: "Problem analysis, requirements gathering, technical exploration"
+    commit_type_hint: "docs"
+    subphases: []  # No subphases for research
+
+  planning:
+    display_name: "Planning"
+    description: "TDD cycle breakdown, task decomposition, dependency analysis"
+    commit_type_hint: "docs"
+    subphases:
+      - "c1"  # Cycle 1
+      - "c2"  # Cycle 2
+      - "c3"  # Cycle 3
+      - "c4"  # Cycle 4
+
+  design:
+    display_name: "Design"
+    description: "Interface contracts, data flows, schemas, architecture decisions"
+    commit_type_hint: "docs"
+    subphases:
+      - "contracts"    # Interface and API design
+      - "flows"        # Data flow diagrams
+      - "schemas"      # Data structure definitions
+
+  tdd:
+    display_name: "TDD"
+    description: "Test-Driven Development cycle (red → green → refactor)"
+    commit_type_hint: null  # Varies by sub_phase (test/feat/refactor)
+    subphases:
+      - "red"          # Write failing test
+      - "green"        # Implement minimum code to pass
+      - "refactor"     # Clean up code
+
+  integration:
+    display_name: "Integration"
+    description: "End-to-end testing, acceptance testing, system integration"
+    commit_type_hint: "test"
+    subphases:
+      - "e2e"          # End-to-end tests
+      - "acceptance"   # Acceptance tests
+
+  documentation:
+    display_name: "Documentation"
+    description: "Reference documentation, guides, agent instructions"
+    commit_type_hint: "docs"
+    subphases:
+      - "reference"    # API reference, technical docs
+      - "guides"       # User guides, tutorials
+      - "agent"        # Agent instructions, .copilot-instructions.md
+
+  coordination:
+    display_name: "Coordination"
+    description: "Epic-level work, child issue delegation, cross-issue synchronization"
+    commit_type_hint: "chore"
+    subphases:
+      - "delegation"   # Delegate work to child issues
+      - "sync"         # Synchronize across issues
+      - "review"       # Epic-level review
+
+# Validation Rules
+# 1. Phase names must match workflows.yaml phase references
+# 2. Subphases are strict whitelists (ScopeEncoder validates)
+# 3. commit_type_hint is optional (null allows dynamic selection)
+# 4. Empty subphases array means no subphase validation for that phase
