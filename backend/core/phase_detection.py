@@ -17,7 +17,7 @@ NO type-heuristic guessing - unknown is acceptable outcome.
 # Standard library
 import logging
 import re
-from typing import Literal, Optional, TypedDict
+from typing import Literal, TypedDict
 
 # Third-party
 
@@ -41,11 +41,11 @@ class PhaseDetectionResult(TypedDict):
     """
 
     workflow_phase: str
-    sub_phase: Optional[str]
+    sub_phase: str | None
     source: Literal["commit-scope", "state.json", "unknown"]
     confidence: Literal["high", "medium", "unknown"]
-    raw_scope: Optional[str]
-    error_message: Optional[str]
+    raw_scope: str | None
+    error_message: str | None
 
 
 class ScopeDecoder:
@@ -67,7 +67,7 @@ class ScopeDecoder:
 
     def detect_phase(
         self,
-        commit_message: Optional[str],
+        commit_message: str | None,
         fallback_to_state: bool = True,
     ) -> PhaseDetectionResult:
         """
@@ -102,7 +102,7 @@ class ScopeDecoder:
         # Unknown fallback (TERTIARY)
         return self._unknown_fallback()
 
-    def _parse_commit_scope(self, commit_message: str) -> Optional[PhaseDetectionResult]:
+    def _parse_commit_scope(self, commit_message: str) -> PhaseDetectionResult | None:
         """
         Parse workflow phase from commit scope (Conventional Commits).
 
@@ -162,8 +162,10 @@ class ScopeDecoder:
             "confidence": "unknown",
             "raw_scope": None,
             "error_message": (
-                "Phase detection failed. Recovery: Run transition_phase(to_phase='<phase>') "
+                "Phase detection failed. "
+                "Recovery: Run transition_phase(to_phase='<phase>') "
                 "or commit with scope 'type(P_PHASE): message'. "
-                "Valid phases: research, planning, design, tdd, integration, documentation, coordination"
+                "Valid phases: research, planning, design, tdd, integration, "
+                "documentation, coordination"
             ),
         }

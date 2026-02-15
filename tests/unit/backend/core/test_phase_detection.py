@@ -14,15 +14,11 @@ Test PhaseDetectionResult TypedDict schema validation and field types
 """
 
 # Standard library
-from unittest.mock import Mock, MagicMock, AsyncMock, patch
-from typing import Any
 
 # Third-party
-import pytest
-from pathlib import Path
 
 # Project modules
-from backend.core.phase_detection import PhaseDetectionResult
+from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 
 
 class TestPhaseDetectionResult:
@@ -55,8 +51,6 @@ class TestScopeDecoder:
     def test_parse_commit_scope_phase_only(self):
         """Parse commit scope with P_PHASE format (no subphase)."""
         # Arrange
-        from backend.core.phase_detection import ScopeDecoder
-
         decoder = ScopeDecoder()
         commit_message = "docs(P_RESEARCH): complete problem analysis"
 
@@ -74,8 +68,6 @@ class TestScopeDecoder:
     def test_parse_commit_scope_phase_and_subphase(self):
         """Parse commit scope with P_PHASE_SP_SUBPHASE format."""
         # Arrange
-        from backend.core.phase_detection import ScopeDecoder
-
         decoder = ScopeDecoder()
         commit_message = "test(P_TDD_SP_RED): add user validation tests"
 
