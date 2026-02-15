@@ -3,6 +3,7 @@
 # Suppress Pydantic FieldInfo false positives
 
 # Standard library
+from pathlib import Path
 from unittest.mock import MagicMock
 
 # Third-party
@@ -75,6 +76,7 @@ class TestGitManagerValidation:
 
         with pytest.raises(PreflightError, match="Working directory is not clean"):
             manager.create_branch("valid-name", "feature", "HEAD")
+
     def test_commit_tdd_phase_invalid(self, manager: GitManager) -> None:
         """Test validation of TDD phase."""
         with pytest.raises(ValidationError, match="Invalid TDD phase"):
@@ -84,6 +86,7 @@ class TestGitManagerValidation:
         """Test deletion of protected branch is prevented."""
         with pytest.raises(ValidationError, match="Cannot delete protected branch"):
             manager.delete_branch("main")
+
 
 class TestGitManagerOperations:
     """Test suite for GitManager operations (commit, merge, stash)."""
@@ -234,6 +237,151 @@ class TestGitManagerCreateBranch:
         """RED: Should pass base_branch to adapter.create_branch as base."""
         manager.create_branch("test", "feature", "main")
 
-        mock_adapter.create_branch.assert_called_once_with(
-            "feature/test", base="main"
+        mock_adapter.create_branch.assert_called_once_with("feature/test", base="main")
+
+
+class TestGitManagerCommitWithScope:
+    """Tests for commit_with_scope method with workflow phase scopes."""
+
+    @pytest.fixture
+    def mock_adapter(self) -> MagicMock:
+        """Fixture for mocked GitAdapter."""
+        return MagicMock()
+
+    @pytest.fixture
+    def manager(self, mock_adapter: MagicMock, tmp_path: Path) -> GitManager:
+        """Fixture for GitManager with mocked adapter and test workphases."""
+        # Create test workphases.yaml
+        workphases_path = tmp_path / "workphases.yaml"
+        workphases_path.write_text("""
+phases:
+  research:
+    display_name: "Research"
+    commit_type: "docs"
+    subphases: []
+  tdd:
+    display_name: "TDD"
+    commit_type: "test"
+    subphases: ["red", "green", "refactor"]
+  coordination:
+    display_name: "Coordination"
+    commit_type: "chore"
+    subphases: ["delegation", "sync", "review"]
+version: "1.0"
+""")
+        mgr = GitManager(adapter=mock_adapter)
+        mgr._workphases_path = workphases_path
+        return mgr
+
+    def test_commit_with_scope_phase_only(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test commit with phase-only scope (no subphase)."""
+        mock_adapter.commit.return_value = "abc123"
+
+        result = manager.commit_with_scope(
+            workflow_phase="research",
+            message="investigate alternatives",
         )
+
+        assert result == "abc123"
+        mock_adapter.commit.assert_called_once_with(
+            "docs(P_RESEARCH): investigate alternatives", files=None
+        )
+
+    def test_commit_with_scope_phase_and_subphase(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test commit with phase and subphase."""
+        mock_adapter.commit.return_value = "def456"
+
+        result = manager.commit_with_scope(
+            workflow_phase="tdd",
+            sub_phase="red",
+            message="add failing test",
+        )
+
+        assert result == "def456"
+        mock_adapter.commit.assert_called_once_with(
+            "test(P_TDD_SP_RED): add failing test", files=None
+        )
+
+    def test_commit_with_scope_with_cycle_number(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test commit with cycle number in TDD format."""
+        mock_adapter.commit.return_value = "ghi789"
+
+        result = manager.commit_with_scope(
+            workflow_phase="tdd",
+            sub_phase="green",
+            cycle_number=1,
+            message="implement feature",
+        )
+
+        assert result == "ghi789"
+        mock_adapter.commit.assert_called_once_with(
+            "test(P_TDD_SP_C1_GREEN): implement feature", files=None
+        )
+
+    def test_commit_with_scope_coordination_phase(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test commit with coordination phase (new phase type)."""
+        mock_adapter.commit.return_value = "jkl012"
+
+        result = manager.commit_with_scope(
+            workflow_phase="coordination",
+            sub_phase="delegation",
+            message="delegate to child issues",
+        )
+
+        assert result == "jkl012"
+        mock_adapter.commit.assert_called_once_with(
+            "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None
+        )
+
+    def test_commit_with_scope_with_files(
+        self, manager: GitManager, mock_adapter: MagicMock
+    ) -> None:
+        """Test commit with specific files."""
+        mock_adapter.commit.return_value = "mno345"
+
+        result = manager.commit_with_scope(
+            workflow_phase="tdd",
+            sub_phase="refactor",
+            message="clean up code",
+            files=["src/app.py", "tests/test_app.py"],
+        )
+
+        assert result == "mno345"
+        mock_adapter.commit.assert_called_once_with(
+            "test(P_TDD_SP_REFACTOR): clean up code",
+            files=["src/app.py", "tests/test_app.py"],
+        )
+
+    def test_commit_with_scope_invalid_phase_raises_error(self, manager: GitManager) -> None:
+        """Test that invalid phase raises ValueError with actionable message."""
+        with pytest.raises(ValueError, match="Unknown workflow phase"):
+            manager.commit_with_scope(
+                workflow_phase="invalid_phase",
+                message="test",
+            )
+
+    def test_commit_with_scope_invalid_subphase_raises_error(self, manager: GitManager) -> None:
+        """Test that invalid subphase raises ValueError with actionable message."""
+        with pytest.raises(ValueError, match="Invalid sub_phase"):
+            manager.commit_with_scope(
+                workflow_phase="tdd",
+                sub_phase="invalid_subphase",
+                message="test",
+            )
+
+    def test_commit_with_scope_empty_files_raises_error(self, manager: GitManager) -> None:
+        """Test that empty files list raises ValidationError."""
+        with pytest.raises(ValidationError, match="Files list cannot be empty"):
+            manager.commit_with_scope(
+                workflow_phase="research",
+                message="test",
+                files=[],
+            )

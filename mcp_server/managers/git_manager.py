@@ -1,6 +1,11 @@
 """Git Manager for business logic."""
+
+from pathlib import Path
 from typing import Any
 
+import yaml
+
+from backend.core.scope_encoder import ScopeEncoder
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
@@ -10,9 +15,12 @@ from mcp_server.core.logging import get_logger
 class GitManager:
     """Manager for Git operations and conventions."""
 
-    def __init__(self, adapter: GitAdapter | None = None) -> None:
+    def __init__(
+        self, adapter: GitAdapter | None = None, workphases_path: Path | None = None
+    ) -> None:
         self.adapter = adapter or GitAdapter()
         self._git_config = GitConfig.from_file()
+        self._workphases_path = workphases_path or Path(".st3/workphases.yaml")
 
     def get_status(self) -> dict[str, Any]:
         """Get git status."""
@@ -122,6 +130,64 @@ class GitManager:
         full_message = f"docs: {message}"
         return self.adapter.commit(full_message, files=files)
 
+    def commit_with_scope(
+        self,
+        workflow_phase: str,
+        message: str,
+        sub_phase: str | None = None,
+        cycle_number: int | None = None,
+        files: list[str] | None = None,
+    ) -> str:
+        """Commit changes with workflow phase scope.
+
+        Args:
+            workflow_phase: Workflow phase (research, planning, design, tdd, ...).
+            message: Commit message (without type/scope prefix).
+            sub_phase: Optional subphase (red, green, refactor, c1, ...).
+            cycle_number: Optional cycle number (1, 2, 3, ...).
+            files: Optional list of file paths to stage + commit.
+
+        Returns:
+            Commit hash.
+
+        Raises:
+            ValueError: Invalid phase or sub_phase with actionable message.
+            ValidationError: Empty files list.
+
+        Example:
+            >>> manager.commit_with_scope("tdd", "add tests", sub_phase="red")
+            # Generates: "test(P_TDD_SP_RED): add tests"
+        """
+        if files is not None and not files:
+            raise ValidationError(
+                "Files list cannot be empty",
+                hints=["Omit 'files' to commit everything, or provide at least one path"],
+            )
+
+        # Load workphases config to get commit_type
+        with open(self._workphases_path) as f:
+            workphases_config = yaml.safe_load(f)
+
+        phases = workphases_config.get("phases", {})
+        phase_config = phases.get(workflow_phase.lower())
+
+        if phase_config is None:
+            # ScopeEncoder will raise ValueError with actionable message
+            encoder = ScopeEncoder(self._workphases_path)
+            encoder.generate_scope(workflow_phase, sub_phase, cycle_number)
+            # Should never reach here due to ValueError above
+            raise RuntimeError("Unexpected: phase validation failed silently")
+
+        commit_type = phase_config.get("commit_type", "chore")
+
+        # Generate scope using ScopeEncoder (validates phase + subphase)
+        encoder = ScopeEncoder(self._workphases_path)
+        scope = encoder.generate_scope(workflow_phase, sub_phase, cycle_number)
+
+        # Format: type(scope): message
+        full_message = f"{commit_type}({scope}): {message}"
+        return self.adapter.commit(full_message, files=files)
+
     def restore(self, files: list[str], source: str = "HEAD") -> None:
         """Restore files to a given source ref.
 
@@ -144,7 +210,6 @@ class GitManager:
         """Push current branch to origin."""
         self.adapter.push(set_upstream=set_upstream)
 
-
     def fetch(self, remote: str = "origin", prune: bool = False) -> str:
         """Fetch updates from a remote.
 
@@ -158,7 +223,6 @@ class GitManager:
         - Fetch is allowed even when the working tree is dirty.
         """
         return self.adapter.fetch(remote=remote, prune=prune)
-
 
     def pull(self, remote: str = "origin", rebase: bool = False) -> str:
         """Pull updates from a remote into the current branch.
@@ -192,6 +256,7 @@ class GitManager:
             )
 
         return self.adapter.pull(remote=remote, rebase=rebase)
+
     def merge(self, branch_name: str) -> None:
         """Merge a branch into current branch."""
         if not self.adapter.is_clean():
