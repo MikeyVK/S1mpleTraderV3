@@ -16,6 +16,7 @@ NO type-heuristic guessing - unknown is acceptable outcome.
 
 # Standard library
 import logging
+import re
 from typing import Literal, Optional, TypedDict
 
 # Third-party
@@ -45,3 +46,133 @@ class PhaseDetectionResult(TypedDict):
     confidence: Literal["high", "medium", "unknown"]
     raw_scope: Optional[str]
     error_message: Optional[str]
+
+
+class ScopeDecoder:
+    """
+    Decoder for workflow phase from commit-scope with deterministic precedence.
+
+    Precedence: commit-scope > state.json > unknown (NO type-heuristic guessing)
+    
+    Scope Format:
+        - P_PHASE: e.g., P_RESEARCH, P_TDD
+        - P_PHASE_SP_SUBPHASE: e.g., P_TDD_SP_RED, P_PLANNING_SP_C1
+    """
+
+    # Regex patterns for scope parsing
+    SCOPE_PATTERN_WITH_SUBPHASE = re.compile(
+        r"^P_([A-Z]+)_SP_([A-Z0-9_]+)$",
+        re.IGNORECASE
+    )
+    SCOPE_PATTERN_PHASE_ONLY = re.compile(
+        r"^P_([A-Z]+)$",
+        re.IGNORECASE
+    )
+    # Conventional Commits scope extraction
+    COMMIT_SCOPE_PATTERN = re.compile(
+        r"^[a-z]+\(([^)]+)\):",
+        re.IGNORECASE
+    )
+
+    def detect_phase(
+        self,
+        commit_message: Optional[str],
+        fallback_to_state: bool = True,
+    ) -> PhaseDetectionResult:
+        """
+        Detect workflow phase with deterministic precedence.
+
+        Precedence chain: commit-scope > state.json > unknown
+
+        Args:
+            commit_message: Commit message to parse (Conventional Commits format)
+            fallback_to_state: Whether to fallback to state.json if scope missing
+
+        Returns:
+            PhaseDetectionResult with detected phase or unknown
+
+        Notes:
+            - Never raises exceptions (graceful degradation)
+            - Returns unknown with actionable error_message when all sources fail
+            - NO type-heuristic guessing from commit type
+        """
+        # Try commit-scope first (PRIMARY for context tools)
+        if commit_message:
+            scope_result = self._parse_commit_scope(commit_message)
+            if scope_result:
+                return scope_result
+
+        # TODO: Fallback to state.json (SECONDARY)
+        # if fallback_to_state:
+        #     state_result = self._read_state_json()
+        #     if state_result:
+        #         return state_result
+
+        # Unknown fallback (TERTIARY)
+        return self._unknown_fallback()
+
+    def _parse_commit_scope(self, commit_message: str) -> Optional[PhaseDetectionResult]:
+        """
+        Parse workflow phase from commit scope (Conventional Commits).
+
+        Format: type(P_PHASE_SP_SUBPHASE): message
+
+        Returns:
+            PhaseDetectionResult if scope matches pattern, None otherwise
+        """
+        # Extract scope from commit message
+        scope_match = self.COMMIT_SCOPE_PATTERN.match(commit_message)
+        if not scope_match:
+            return None
+
+        scope = scope_match.group(1)
+
+        # Try P_PHASE_SP_SUBPHASE format first
+        match_with_subphase = self.SCOPE_PATTERN_WITH_SUBPHASE.match(scope)
+        if match_with_subphase:
+            phase = match_with_subphase.group(1).lower()
+            subphase = match_with_subphase.group(2).lower()
+            return {
+                "workflow_phase": phase,
+                "sub_phase": subphase,
+                "source": "commit-scope",
+                "confidence": "high",
+                "raw_scope": scope,
+                "error_message": None,
+            }
+
+        # Try P_PHASE format (no subphase)
+        match_phase_only = self.SCOPE_PATTERN_PHASE_ONLY.match(scope)
+        if match_phase_only:
+            phase = match_phase_only.group(1).lower()
+            return {
+                "workflow_phase": phase,
+                "sub_phase": None,
+                "source": "commit-scope",
+                "confidence": "high",
+                "raw_scope": scope,
+                "error_message": None,
+            }
+
+        # Scope exists but doesn't match expected format
+        return None
+
+    def _unknown_fallback(self) -> PhaseDetectionResult:
+        """
+        Return unknown phase with actionable error message.
+
+        Returns:
+            PhaseDetectionResult with workflow_phase="unknown"
+        """
+        return {
+            "workflow_phase": "unknown",
+            "sub_phase": None,
+            "source": "unknown",
+            "confidence": "unknown",
+            "raw_scope": None,
+            "error_message": (
+                "Phase detection failed. Recovery: Run transition_phase(to_phase='<phase>') "
+                "or commit with scope 'type(P_PHASE): message'. "
+                "Valid phases: research, planning, design, tdd, integration, documentation, coordination"
+            ),
+        }
