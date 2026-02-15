@@ -47,3 +47,43 @@ class TestPhaseDetectionResult:
         assert result["confidence"] == "high"
         assert result["raw_scope"] == "P_TDD_SP_RED"
         assert result["error_message"] is None
+
+
+class TestScopeDecoder:
+    """Test suite for ScopeDecoder deterministic phase detection."""
+
+    def test_parse_commit_scope_phase_only(self):
+        """Parse commit scope with P_PHASE format (no subphase)."""
+        # Arrange
+        from backend.core.phase_detection import ScopeDecoder
+        decoder = ScopeDecoder()
+        commit_message = "docs(P_RESEARCH): complete problem analysis"
+
+        # Act
+        result = decoder.detect_phase(commit_message, fallback_to_state=False)
+
+        # Assert
+        assert result["workflow_phase"] == "research"
+        assert result["sub_phase"] is None
+        assert result["source"] == "commit-scope"
+        assert result["confidence"] == "high"
+        assert result["raw_scope"] == "P_RESEARCH"
+        assert result["error_message"] is None
+
+    def test_parse_commit_scope_phase_and_subphase(self):
+        """Parse commit scope with P_PHASE_SP_SUBPHASE format."""
+        # Arrange
+        from backend.core.phase_detection import ScopeDecoder
+        decoder = ScopeDecoder()
+        commit_message = "test(P_TDD_SP_RED): add user validation tests"
+
+        # Act
+        result = decoder.detect_phase(commit_message, fallback_to_state=False)
+
+        # Assert
+        assert result["workflow_phase"] == "tdd"
+        assert result["sub_phase"] == "red"
+        assert result["source"] == "commit-scope"
+        assert result["confidence"] == "high"
+        assert result["raw_scope"] == "P_TDD_SP_RED"
+        assert result["error_message"] is None
