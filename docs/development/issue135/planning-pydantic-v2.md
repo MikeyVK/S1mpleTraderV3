@@ -3,7 +3,7 @@
 # Issue #135 Pydantic-First v2 Planning
 
 **Status:** DRAFT  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-02-15
 
 ---
@@ -15,7 +15,7 @@ Plan migration timeline, parity testing strategy, and feature flag implementatio
 ## Scope
 
 **In Scope:**
-Migration phases (DTO pilot → code → docs → integration → documentation), TDD cycles (6 cycles: parity framework → schemas → pilot → feature flag → code artifacts → doc artifacts), integration testing (pilot deployment, performance benchmarking, production scenarios), documentation deliverables (migration guide, runbooks, technical debt register), GATE 2 rationale (Naming Convention decision), schema registry structure, quality gates 0-6 enforcement
+Migration phases (DTO pilot → code → docs → tests → integration → documentation), TDD cycles (7 cycles: parity framework → schemas → pilot → feature flag → code artifacts → doc artifacts → test artifacts), integration testing (pilot deployment, performance benchmarking, production scenarios), documentation deliverables (migration guide, runbooks, technical debt register), GATE 2 rationale (Naming Convention decision), schema registry structure, quality gates 0-6 enforcement
 
 **Out of Scope:**
 Implementation code examples (design phase), class diagrams (design phase), template simplification syntax (design phase)
@@ -37,7 +37,7 @@ Implementation code examples (design phase), class diagrams (design phase), temp
 
 ## Summary
 
-Migration plan for Pydantic-First v2 architecture addressing Issue #135 template introspection metadata SSOT violation. Defines 5-phase workflow (research → planning → tdd → integration → documentation) with 6 TDD cycles, integration pilot deployment (2 weeks), and complete documentation deliverables (migration guide, runbooks, technical debt register). Parity testing strategy ensures output equivalence validation. Feature flag pattern enables gradual rollout (pilot → team → production). GATE 2 rationale documents Naming Convention over Registry decision. Eliminates 78× defensive template patterns through schema-first validation. Quality gates 0-6 enforced for all schema files (34 total: 17 Context + 17 RenderContext).
+Migration plan for Pydantic-First v2 architecture addressing Issue #135 template introspection metadata SSOT violation. Defines 5-phase workflow (research → planning → tdd → integration → documentation) with 7 TDD cycles covering all 17 non-ephemeral artifacts (DTO: 1, Code: 8, Docs: 6, Tests: 2), integration pilot deployment (2 weeks), and complete documentation deliverables (migration guide, runbooks, technical debt register). Parity testing strategy ensures output equivalence validation. Feature flag pattern enables gradual rollout (pilot → team → production). GATE 2 rationale documents Naming Convention over Registry decision. Eliminates 78× defensive template patterns through schema-first validation. Quality gates 0-6 enforced for all schema files (34 total: 17 Context + 17 RenderContext).
 
 ---
 
@@ -135,43 +135,44 @@ Migration plan for Pydantic-First v2 architecture addressing Issue #135 template
 
 ---
 
-### Phase 4: Integration & Rollout (Week 6)
-**Goal:** Feature flag activation, full validation, performance benchmarking
+### Phase 4: Test Artifacts (Week 6)
+**Goal:** Migrate 2 test artifact types (unit_test, integration_test) from artifacts.yaml registry
 
 **Deliverables:**
-1. **Feature Flag Integration**
-   - ArtifactManager v1/v2 routing logic
-   - Environment variable: `PYDANTIC_SCAFFOLDING_ENABLED` (default: false)
-   - Gradual rollout: pilot users → team → production
+1. **Test Context Schemas (2 types)**
+   - UnitTestContext, IntegrationTestContext
 
-2. **Full Validation Suite**
-   - 70+ parity tests (DTO: 10, Code: 40, Docs: 18, Edge: 10+)
-   - Smoke tests: scaffold all 17 artifact types with real-world context
-   - Regression suite: existing template_engine.py tests must pass unchanged
+2. **RenderContext Classes (2 types)**
+   - All inherit from respective Context + LifecycleMixin
+   - Follow Naming Convention: `UnitTestContext` → `UnitTestRenderContext`
 
-3. **Performance Benchmarking**
-   - v1 baseline: current template render times (median/p95)
-   - v2 measurement: Pydantic validation overhead + simplified render
-   - Acceptance: v2 ≤ 1.2× v1 median time (20% overhead acceptable)
+3. **Template Simplification**
+   - Remove defensive patterns from test templates (if applicable)
+   - Focus: test structure, fixture imports, assertion patterns
 
-4. **Documentation**
-   - Migration guide: "How to create new Context schema"
-   - Troubleshooting: common Pydantic validation errors
-   - Rollback plan: feature flag deactivation procedure
+4. **Parity Testing**
+   - 5 test cases per artifact type (minimum 10 total tests)
+   - Cover: test method structure, fixture usage, parametrization
 
 **Success Criteria:**
-- ✅ Feature flag tested in isolation (v1/v2 toggle)
-- ✅ Performance overhead within acceptable range (≤20%)
-- ✅ Zero critical bugs in production pilot (2 week monitoring)
-- ✅ Quality Gates 0-6 pass for ALL schema files (34 total: 17 Context + 17 RenderContext)
-- ✅ Quality Gates 0-6 pass for v2 ArtifactManager enrichment logic
-- ✅ Quality Gates 5-6 pass for full parity test suite (70+ tests, ≥90% coverage)
+- ✅ 100% parity test pass rate (10+ tests)
+- ✅ Test template structure preserved (pytest patterns)
+- ✅ Quality Gates 0-6 pass for 2 test context schemas + 2 render context schemas (4 files total)
 
-**Exit Criteria:**
-- 2-week pilot period with PYDANTIC_SCAFFOLDING_ENABLED=true for team
-- Metrics: error rate, performance, user feedback
-- Go/No-Go decision for default=true rollout
-- Quality gates integrated into CI/CD pipeline (automated enforcement)
+**Migration Completion:**
+- **Total artifacts migrated:** 17 non-ephemeral (DTO: 1, Code: 8, Docs: 6, Tests: 2)
+- **Phase 1-4 coverage:** 100% of non-ephemeral artifacts from artifacts.yaml
+- **Ready for Integration Phase:** All 34 schema files (17 Context + 17 RenderContext) implemented
+
+---
+
+**Migration Timeline Summary:**
+- **Week 1-2:** Phase 1 (Foundation + DTO pilot)
+- **Week 3-4:** Phase 2 (8 code artifacts)
+- **Week 5:** Phase 3 (6 document artifacts)
+- **Week 6:** Phase 4 (2 test artifacts)
+- **Week 7-8:** Integration Phase (pilot deployment, performance benchmarking, production scenarios - see Integration Phase section below)
+- **Week 9-10:** Documentation Phase (migration guide, runbooks, technical debt register - see Documentation Phase section below)
 
 ---
 
@@ -621,6 +622,21 @@ __all__ = [
 
 ---
 
+### Cycle 7: Test Artifacts (2 types)
+
+**Goal:** Complete coverage with test artifact types
+
+**Tests (per artifact type):**
+- `test_{type}_context_validation()` - schema validates correctly
+- `test_{type}_render_context_enrichment()` - enrichment adds lifecycle
+- `test_{type}_parity_test_structure()` - test template structure preserved (5 cases)
+
+**Success Criteria:**
+- 2 test context schemas implemented (unit_test, integration_test)
+- 2 test render context classes implemented (naming convention followed)
+- 10+ parity tests pass (5 per type minimum)
+- **Migration complete:** All 17 non-ephemeral artifacts covered (DTO: 1, Code: 8, Docs: 6, Tests: 2)
+
 ---
 
 ## Integration Phase
@@ -814,3 +830,4 @@ __all__ = [
 |---------|------|--------|---------|
 | 1.0 | 2026-02-15 | Agent | Initial draft with GATE 2 rationale documented |
 | 1.1 | 2026-02-15 | Agent | Workflow phases restructured: TDD cycles 1-6, Integration phase (Cycle 7 → pilot deployment with measurable criteria), Documentation phase (migration guide, runbooks, technical debt register) |
+| 1.2 | 2026-02-15 | Agent | Governance consolidation: Removed Phase 4 duplication (Integration & Rollout merged into separate Integration Phase), removed Documentation from Phase 4 (now only in Documentation Phase), added TDD Cycle 7 for test artifacts (unit_test, integration_test), complete artifact coverage: 17 non-ephemeral (DTO:1 + Code:8 + Docs:6 + Tests:2) |
