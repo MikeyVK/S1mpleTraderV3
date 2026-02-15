@@ -3,7 +3,7 @@
 # Issue #135 Pydantic-First v2 Planning
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-02-15
 
 ---
@@ -15,24 +15,29 @@ Plan migration timeline, parity testing strategy, and feature flag implementatio
 ## Scope
 
 **In Scope:**
-Migration phases (DTO pilot → code → docs), parity test requirements (output equivalence), feature flag integration (ArtifactManager), GATE 2 rationale (Naming Convention decision), schema registry structure
+Migration phases (DTO pilot → code → docs → integration → documentation), TDD cycles (6 cycles: parity framework → schemas → pilot → feature flag → code artifacts → doc artifacts), integration testing (pilot deployment, performance benchmarking, production scenarios), documentation deliverables (migration guide, runbooks, technical debt register), GATE 2 rationale (Naming Convention decision), schema registry structure, quality gates 0-6 enforcement
 
 **Out of Scope:**
-Implementation code examples (design phase), class diagrams (design phase), template simplification syntax (design phase), test implementation (TDD phase)
+Implementation code examples (design phase), class diagrams (design phase), template simplification syntax (design phase)
 
 ## Prerequisites
 
-Read these first:
-1. Research phase complete (research-pydantic-v2.md v1.8)
-2. GATE 1 resolved (system-managed lifecycle)
-3. GATE 2 resolved (Naming Convention)
-4. GATE 3 resolved (19 macros analyzed)
+**Source Document Verification:**
+- Research document: `research-pydantic-v2.md` v1.8 (Status: COMPLETE - All 3 gates resolved)
+- Last verified: 2026-02-15
+- GATE 1 ✅ RESOLVED: System-managed lifecycle (Context + RenderContext pattern)
+- GATE 2 ✅ RESOLVED: Naming Convention (zero maintenance, DRY)
+- GATE 3 ✅ RESOLVED: 19 Tier 3 macros analyzed (OUTPUT formatters), 3 pending
+
+**Required Reading:**
+1. [research-pydantic-v2.md v1.8](research-pydantic-v2.md) - Complete architecture research with all gates resolved
+2. [docs/coding_standards/QUALITY_GATES.md](../../coding_standards/QUALITY_GATES.md) - Gates 0-6 enforcement standards
 
 ---
 
 ## Summary
 
-Migration plan for Pydantic-First v2 architecture addressing Issue #135 template introspection metadata SSOT violation. Defines 4-phase rollout (DTO pilot → code artifacts → docs → remaining), parity testing strategy (output equivalence validation), feature flag integration pattern, and GATE 2 rationale (Naming Convention over Registry). Eliminates 78× defensive template patterns through schema-first validation.
+Migration plan for Pydantic-First v2 architecture addressing Issue #135 template introspection metadata SSOT violation. Defines 5-phase workflow (research → planning → tdd → integration → documentation) with 6 TDD cycles, integration pilot deployment (2 weeks), and complete documentation deliverables (migration guide, runbooks, technical debt register). Parity testing strategy ensures output equivalence validation. Feature flag pattern enables gradual rollout (pilot → team → production). GATE 2 rationale documents Naming Convention over Registry decision. Eliminates 78× defensive template patterns through schema-first validation. Quality gates 0-6 enforced for all schema files (34 total: 17 Context + 17 RenderContext).
 
 ---
 
@@ -618,22 +623,173 @@ __all__ = [
 
 ---
 
-### Cycle 7: Full Validation Smoke Test
+## Integration Phase
 
-**Goal:** End-to-end validation with production-like scenarios
+### Real-World Validation & Pilot Deployment
 
-**Tests:**
-- `test_all_artifacts_scaffoldable()` - scaffold all 17 non-ephemeral artifact types (smoke test)
-- `test_naming_convention_lookup()` - all 17 RenderContext classes found via globals()
-- `test_import_scope_complete()` - all schemas importable from backend.schemas
-- `test_performance_benchmark()` - v2 ≤ 1.2× v1 render time
-- `test_error_messages_improved()` - v2 ValidationError > v1 silent failure
+**Goal:** End-to-end validation with production-like scenarios, pilot deployment with team
 
-**Success Criteria:**
-- All 17 non-ephemeral artifact types scaffold successfully (v2 pipeline: DTO + 8 code + 6 docs + 2 test)
-- Naming Convention works (no NameError on class lookup)
-- Performance within acceptable range (≤20% overhead)
-- Error handling better than v1 (explicit failures, clear messages)
+**Deliverables:**
+
+1. **Full System Smoke Tests**
+   - Scaffold all 17 non-ephemeral artifact types with real-world context
+   - Validate naming convention lookup (all RenderContext classes found via globals())
+   - Verify import scope completeness (all schemas importable from backend.schemas)
+   
+2. **Performance Benchmarking**
+   - Baseline measurement: v1 template render times (median/p95/p99)
+   - V2 measurement: Pydantic validation overhead + simplified template render
+   - Comparative analysis: v2 vs v1 performance (target: ≤1.2× v1 median time)
+   - Hotspot profiling: identify bottlenecks if overhead >20%
+   
+3. **Pilot Deployment (2 weeks)**
+   - Feature flag: PYDANTIC_SCAFFOLDING_ENABLED=true for team (5-10 users)
+   - Real-world usage: scaffold 50+ artifacts during normal development
+   - Error tracking: collect ValidationError occurrences, categorize (schema issue vs user input)
+   - Feedback collection: usability survey (schema API clarity, error messages, documentation)
+   
+4. **Regression Testing**
+   - V1 pipeline validation: existing template_engine.py tests pass unchanged
+   - Backward compatibility: v1/v2 toggle verified (no side effects)
+   - Edge case coverage: empty lists, optional fields, nested objects, unicode, special chars
+   
+5. **Production-Like Scenarios**
+   - Multi-artifact workflows: scaffold DTO → Worker → Test in sequence
+   - Complex context: nested Pydantic models, cross-references, large field counts (20+ fields)
+   - Error recovery: simulate invalid context, validate error messages clarity
+   - Concurrent scaffolding: 10 parallel scaffold operations (thread safety)
+
+**Acceptance Criteria:**
+
+- ✅ **All 17 artifact types scaffold successfully** (v2 pipeline: DTO + 8 code + 6 docs + 2 test)
+- ✅ **Naming Convention works** (no NameError on class lookup across 17 types)
+- ✅ **Performance within acceptable range** (v2 ≤ 1.2× v1 median time, p95 ≤ 1.3× v1)
+- ✅ **Error handling superior to v1** (explicit ValidationError > silent `| default` failures)
+- ✅ **Pilot feedback positive** (≥80% satisfaction rate, <5 critical issues reported)
+- ✅ **Zero backward compatibility breaks** (v1 pipeline operates identically with flag OFF)
+- ✅ **Quality Gates 0-6 pass** for all integration test code (smoke tests, performance tests)
+
+**Measurable Evidence:**
+
+| Metric | Target | Measurement Method |
+|--------|--------|-------------------|
+| Artifact success rate | 100% (17/17) | Smoke test suite execution |
+| Performance overhead | ≤20% (median) | cProfile + pytest-benchmark |
+| Pilot error rate | <5 critical bugs | GitHub issue tracking (label: pilot-issue) |
+| User satisfaction | ≥80% | Post-pilot survey (SUS score) |
+| V1 regression | 0 failures | Existing test suite (200+ tests) |
+| Code coverage | ≥90% | pytest-cov report |
+
+**Exit Criteria:**
+
+- 2-week pilot period completed without rollback
+- Performance benchmarks within acceptable range (measured, documented)
+- Pilot feedback incorporated (high-priority issues resolved)
+- Go/No-Go decision documented with stakeholder approval
+- Rollback plan tested (feature flag deactivation, v1 pipeline verified)
+
+---
+
+## Documentation Phase
+
+### Migration Guide, Runbooks, and Cleanup
+
+**Goal:** Deliver complete documentation for v2 adoption, establish maintenance procedures, document technical debt
+
+**Deliverables:**
+
+1. **User Documentation**
+   - **Context Schema Creation Guide**
+     - Step-by-step: How to create new Context/RenderContext pair
+     - Field types reference: Pydantic types, validators, examples
+     - Naming convention rules: XContext → XRenderContext enforcement
+     - Common patterns: optional fields, nested models, unions
+   - **Migration Runbook**
+     - V1 → V2 upgrade procedure (feature flag activation)
+     - Rollback procedure (v1 reversion steps)
+     - Troubleshooting guide: common Pydantic ValidationError patterns
+     - FAQ: "Why ValidationError instead of broken output?", "How to add lifecycle field?"
+   - **Template Simplification Guide**
+     - Before/after examples: dto.py line 95 (106 → 36 chars)
+     - Pattern removal: `| default` → Pydantic field defaults
+     - Testing checklist: parity tests, quality gates
+
+2. **Technical Documentation**
+   - **Architecture Decision Record (ADR)**
+     - GATE 1 decision: System-managed lifecycle (rationale, alternatives)
+     - GATE 2 decision: Naming Convention (rationale, Registry comparison)
+     - GATE 3 decision: Tier 3 macro reuse (19 analyzed, 3 pending)
+   - **Schema Registry Documentation**
+     - Directory structure: mixins/ contexts/ render_contexts/
+     - Import pattern: backend.schemas wildcard exports
+     - Maintenance: Adding new artifact type (5-step checklist)
+   - **Performance Baseline**
+     - V1 benchmarks: template render times (documented for future comparison)
+     - V2 benchmarks: validation + render times (profiling results)
+     - Optimization notes: memoization opportunities, bottlenecks
+
+3. **Operational Runbooks**
+   - **CI/CD Integration Guide**
+     - Quality gates enforcement: Ruff/mypy commands for schema files
+     - Parity test execution: automated test suite in pipeline
+     - Feature flag management: environment variable configuration
+   - **Monitoring & Alerting**
+     - Metrics to track: scaffold success rate, ValidationError frequency, performance p95
+     - Alert thresholds: >5% error rate, >30% performance degradation
+     - Incident response: rollback procedure, hotfix process
+   - **Maintenance Schedule**
+     - Monthly: Review pending Tier 3 macros (assertions, log_enricher, translator)
+     - Quarterly: Audit schema coverage (new artifact types, missing RenderContext)
+     - Annually: Performance re-baseline (hardware changes, Python version upgrades)
+
+4. **Cleanup & Technical Debt**
+   - **V1 Deprecation Roadmap**
+     - Timeline: 3-month stability period before v1 removal consideration
+     - Deprecation warnings: add to v1 pipeline (e.g., "v1 deprecated, migrate to v2")
+     - Removal criteria: 95% v2 adoption rate, zero critical v2 bugs for 3 months
+   - **Outstanding Technical Debt**
+     - Issue #107: Remove scaffolder_class/scaffolder_module from artifacts.yaml (LEGACY fields)
+     - Issue #121: Add 'updated' field to LifecycleMixin (future enhancement)
+     - 3 pending Tier 3 macros: assertions, log_enricher, translator (categorization deferred)
+   - **Cleanup Tasks**
+     - Remove `| default` patterns from v1 templates (when v1 deprecated)
+     - Consolidate template_engine.py introspection code (v2 doesn't need it)
+     - Archive research/planning docs (move to docs/archive/issue135/)
+
+5. **Training Materials (Optional)**
+   - Brownbag session slides: "Pydantic-First Scaffolding V2" (30 min presentation)
+   - Video walkthrough: Context schema creation demo (10 min screencast)
+   - Code review checklist: schema quality standards (Gate 0-6 enforcement)
+
+**Acceptance Criteria:**
+
+- ✅ **Migration guide complete** (5+ sections, examples, troubleshooting)
+- ✅ **Runbooks tested** (dry-run upgrade/rollback procedures successful)
+- ✅ **ADRs documented** (GATE 1-3 decisions with rationale)
+- ✅ **Technical debt catalogued** (3+ issues documented with priority)
+- ✅ **Quality Gates 0-3 pass** for all markdown documentation files
+
+**Deliverables Checklist:**
+
+- [ ] Migration runbook (upgrade + rollback)
+- [ ] Context schema creation guide (step-by-step + examples)
+- [ ] Troubleshooting guide (common ValidationError patterns)
+- [ ] Architecture Decision Records (GATE 1-3)
+- [ ] Schema registry documentation (directory structure + maintenance)
+- [ ] Performance baseline documentation (v1/v2 benchmarks)
+- [ ] CI/CD integration guide (quality gates + parity tests)
+- [ ] Monitoring & alerting runbook (metrics + thresholds)
+- [ ] Maintenance schedule (monthly/quarterly/annual tasks)
+- [ ] Technical debt register (Issue #107, #121, 3 pending macros)
+- [ ] Cleanup task list (v1 deprecation roadmap)
+
+**Exit Criteria:**
+
+- All deliverables completed and reviewed (stakeholder sign-off)
+- Documentation published (internal wiki or docs/ directory)
+- Runbooks validated (dry-run successful, feedback incorporated)
+- Technical debt prioritized (backlog grooming session completed)
+- Training delivered (brownbag session or video walkthrough)
 
 ---
 
@@ -657,3 +813,4 @@ __all__ = [
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-15 | Agent | Initial draft with GATE 2 rationale documented |
+| 1.1 | 2026-02-15 | Agent | Workflow phases restructured: TDD cycles 1-6, Integration phase (Cycle 7 → pilot deployment with measurable criteria), Documentation phase (migration guide, runbooks, technical debt register) |
