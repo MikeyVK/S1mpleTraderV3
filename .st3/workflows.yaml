@@ -4,6 +4,7 @@
 # Documentation: docs/reference/WORKFLOWS.md
 
 version: "1.0"
+phase_source: ".st3/workphases.yaml"
 
 workflows:
   # Feature Development (full workflow)

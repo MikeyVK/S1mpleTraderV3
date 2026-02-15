@@ -103,7 +103,7 @@ class GitStatusTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitStatusInput) -> ToolResult:
+    async def execute(self, params: GitStatusInput) -> ToolResult:  # noqa: ARG002
         status = self.manager.get_status()
 
         text = f"Branch: {status['branch']}\n"
@@ -157,7 +157,10 @@ class GitCommitInput(BaseModel):
     # DEPRECATED: Backward compatibility
     phase: str | None = Field(
         default=None,
-        description="DEPRECATED: TDD phase (red=test, green=feat, refactor, docs). Use workflow_phase + sub_phase instead.",
+        description=(
+            "DEPRECATED: TDD phase (red=test, green=feat, refactor, docs). "
+            "Use workflow_phase + sub_phase instead."
+        ),
     )
 
     @field_validator("phase")
@@ -175,29 +178,16 @@ class GitCommitInput(BaseModel):
     @field_validator("commit_type")
     @classmethod
     def validate_commit_type(cls, value: str | None) -> str | None:
-        """Validate commit_type against Conventional Commit types. Only if provided."""
+        """Validate commit_type against GitConfig (Convention #6). Only if provided."""
         if value is None:
             return None
 
-        # Conventional Commit types (https://www.conventionalcommits.org/)
-        allowed_types = [
-            "feat",
-            "fix",
-            "docs",
-            "style",
-            "refactor",
-            "test",
-            "chore",
-            "perf",
-            "ci",
-            "build",
-            "revert",
-        ]
-
-        if value.lower() not in allowed_types:
+        git_config = GitConfig.from_file()
+        if not git_config.has_commit_type(value):
+            valid_types = ", ".join(git_config.commit_types)
             raise ValueError(
                 f"Invalid commit_type '{value}'. "
-                f"Valid types: {', '.join(allowed_types)}. "
+                f"Valid types from git.yaml: {valid_types}. "
                 f"See: https://www.conventionalcommits.org/"
             )
 
@@ -205,7 +195,11 @@ class GitCommitInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_phase_or_workflow_phase(self) -> "GitCommitInput":
-        """Ensure either phase or workflow_phase is provided (not both, not neither)."""
+        """Ensure phase and workflow_phase are not both specified.
+
+        Auto-detection: If neither is provided, workflow_phase will be auto-detected
+        from state.json in execute() method.
+        """
         has_phase = self.phase is not None
         has_workflow = self.workflow_phase is not None
 
@@ -213,12 +207,6 @@ class GitCommitInput(BaseModel):
             raise ValueError(
                 "Cannot specify both 'phase' (deprecated) and 'workflow_phase'. "
                 "Use workflow_phase only."
-            )
-
-        if not has_phase and not has_workflow:
-            raise ValueError(
-                "Must specify either 'phase' (deprecated) or 'workflow_phase'. "
-                "Recommended: use workflow_phase."
             )
 
         return self
@@ -239,10 +227,25 @@ class GitCommitTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCommitInput) -> ToolResult:
+        # Auto-detect workflow_phase from state.json if not provided
+        workflow_phase = params.workflow_phase
+        if workflow_phase is None and params.phase is None:
+            # Get current branch
+            current_branch = self.manager.adapter.get_current_branch()
+
+            # Read workflow_phase from state.json
+            state_engine = phase_state_engine.PhaseStateEngine()
+            workflow_phase = state_engine.get_current_phase(branch=current_branch)
+
+            logger.info(
+                "Auto-detected workflow_phase from state.json",
+                extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
+            )
+
         # NEW workflow-first path
-        if params.workflow_phase is not None:
+        if workflow_phase is not None:
             commit_hash = self.manager.commit_with_scope(
-                workflow_phase=params.workflow_phase,
+                workflow_phase=workflow_phase,
                 message=params.message,
                 sub_phase=params.sub_phase,
                 cycle_number=params.cycle_number,

@@ -32,5 +32,20 @@ protected_branches:
 # Convention #5: Branch name pattern (kebab-case validation)
 branch_name_pattern: "^[a-z0-9-]+$"
 
+# Convention #6: Conventional Commit types (Issue #138)
+# Source: https://www.conventionalcommits.org/
+commit_types:
+  - feat
+  - fix
+  - docs
+  - style
+  - refactor
+  - test
+  - chore
+  - perf
+  - ci
+  - build
+  - revert
+
 # Conventions #9-11: Default base branch for PR creation
 default_base_branch: main

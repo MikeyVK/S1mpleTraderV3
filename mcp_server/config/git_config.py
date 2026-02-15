@@ -64,6 +64,25 @@ class GitConfig(BaseModel):
         description="Regex pattern for branch name validation (kebab-case default)",
     )
 
+    # Convention #6: Conventional Commit types (Issue #138)
+    commit_types: list[str] = Field(
+        default=[
+            "feat",
+            "fix",
+            "docs",
+            "style",
+            "refactor",
+            "test",
+            "chore",
+            "perf",
+            "ci",
+            "build",
+            "revert",
+        ],
+        description="Allowed Conventional Commit types (https://www.conventionalcommits.org/)",
+        min_length=1,
+    )
+
     # Conventions #9-11: Default base branch
     default_base_branch: str = Field(
         default="main", description="Default base branch for PR creation"
@@ -143,6 +162,17 @@ class GitConfig(BaseModel):
             True if phase in allowed phases
         """
         return phase in self.tdd_phases
+
+    def has_commit_type(self, commit_type: str) -> bool:
+        """Check if commit_type is valid Conventional Commit type (Convention #6).
+
+        Args:
+            commit_type: Commit type to check (e.g., "feat", "fix")
+
+        Returns:
+            True if commit_type in allowed types
+        """
+        return commit_type.lower() in self.commit_types
 
     def get_prefix(self, phase: str) -> str:
         """Get commit prefix for TDD phase (Convention #3).
