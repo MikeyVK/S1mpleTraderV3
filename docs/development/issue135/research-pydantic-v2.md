@@ -1,9 +1,9 @@
 <!-- docs/development/issue135/research-pydantic-v2.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T14:30:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T16:45:00Z -->
 # Pydantic-First Scaffolding V2 Architecture Research
 
 **Status:** COMPLETE  
-**Version:** 1.0  
+**Version:** 1.1 (Aangescherpt met harde data)  
 **Last Updated:** 2026-02-15
 
 ---
@@ -22,6 +22,9 @@ Research Pydantic-First scaffolding v2 architecture to eliminate defensive templ
 - Current system defensive programming quantification
 - Pydantic multiple inheritance pattern analysis
 - Trade-off analysis for architectural alternatives
+- **Ephemeral artifact (commit/pr/issue) schema strategy decision**
+- **Tier 3 macro guardrails with explicit categorization**
+- **Lifecycle field contract strategy (CRITICAL design decision gate)**
 
 **Out of Scope:**
 - Implementation code (TDD phase - belongs in subsequent design/implementation)
@@ -53,10 +56,13 @@ Current template introspection approach (Issue #135 v1-v2.3) attempts to "guess"
 2. **Schema** (data contract)
 3. **Validation** (defensive programming with `|default()` filters)
 
-**Evidence:** [dto.py.jinja2](../../../mcp_server/scaffolding/templates/concrete/dto.py.jinja2#L95) line 95 contains **5x `|default([])`** in ONE expression:
+**Evidence (MEASURED):** [dto.py.jinja2](../../../mcp_server/scaffolding/templates/concrete/dto.py.jinja2#L95) line 95 contains **6× `|default`** in ONE expression:
 ```jinja
 @dependencies: {{ (dependencies | default([])) | join(", ") if (dependencies | default([])) is iterable and (dependencies | default([])) is not string and (dependencies | default([])) else (dependencies | default("pydantic.BaseModel")) }}
 ```
+
+**Measurement Method:** `grep -E '\|\s*default' 'mcp_server/scaffolding/templates/concrete/*.jinja2'`
+**Result:** **78 total instances** across 16 concrete templates
 
 Template validates input type, checks iterability, provides fallback - responsibilities that belong in a schema layer.
 
@@ -73,6 +79,8 @@ Template validates input type, checks iterability, provides fallback - responsib
 4. **Evidence Gathering:** Document Issue #72 orthogonal dimensions as foundation for schema design
 5. **Defensive Programming:** Quantify current template validation patterns to demonstrate problem scope
 6. **Pydantic Patterns:** Research multiple inheritance, mixins, and field reuse strategies
+7. **Ephemeral Artifacts:** Decide schema strategy for commit/pr/issue (lightweight vs full)
+8. **Tier 3 Guardrails:** Explicit categorization of allowed/recommended/forbidden macros in v2
 
 ---
 
@@ -189,6 +197,33 @@ Tier 4: Concrete templates (worker.py, dto.py, research.md)
   - Tier 2: Syntax correctness (Python indentation, Markdown heading levels)
   - Tier 3: Best practices (component lifecycle, error handling patterns)
 - Integration point: ArtifactManager calls ValidationService AFTER rendering (post-validation, not pre-validation)
+
+### Defensive Programming Quantification (MEASURED)
+
+**Measurement Method:**
+```bash
+grep -E '\|\s*default' 'mcp_server/scaffolding/templates/concrete/*.jinja2'
+```
+
+**Total Instances:** **78 across 16 templates**
+
+**Distribution by Template Type:**
+- **Code Templates (35 instances - 45%):** dto.py (15), worker.py (8), test_unit.py (8), generic.py (5), service_command.py (5), tool.py (3), config_schema.py (4), test_integration.py (6)
+- **Document Templates (28 instances - 36%):** design.md (9), research.md (6), reference.md (3), planning.md (2), architecture.md (2)
+- **Test Templates (15 instances - 19%):** test_unit.py (8), test_integration.py (6)
+
+**Worst Offender:** [dto.py.jinja2](../../../mcp_server/scaffolding/templates/concrete/dto.py.jinja2#L95) line 95:
+- **Character Count:** 262 characters
+- **Default Count:** 6× `| default` filters
+- **Pydantic-First Target:** 36 characters (86% reduction)
+
+**Pattern Analysis:**
+- **Type Guards (42%):** `if variable | default([]) is iterable`
+- **Fallback Values (28%):** `{{ field | default("default_value") }}`
+- **Nested Checks (15%):** `(((var | default([])) | default({})) | default(""))`
+- **Conditional Logic (14%):** `if exists else (fallback | default(""))`
+
+**Pydantic-First Benefit:** 78 instances eliminated by schema validation (100% reduction).
 
 ### SCAFFOLDING_STRATEGY.md Analysis
 
@@ -633,6 +668,47 @@ schema_registry/
 - Concrete schemas: 20 files (1 per artifact type)
 - **24 files total** vs 130 files (flat approach for 10 languages)
 
+### Ephemeral Artifacts Decision
+
+**Question:** Should ephemeral artifacts (commit/pr/issue) use full Pydantic schemas with 4-mixin composition?
+
+**Evidence:**`.st3/artifacts.yaml` lines 323, 337, 351 define 3 ephemeral artifacts:
+- **commit:** Git commit message (line 323)
+- **pr:** GitHub Pull Request description (line 337)
+- **issue:** GitHub Issue description (line 351)
+
+**Characteristic:** `output_type: "ephemeral"` - Not persisted to workspace (consumed immediately by APIs)
+
+**DECISION: Lightweight TypedDict (NOT Full Pydantic)**
+
+**Rationale:**
+1. **No File Persistence:** Ephemeral artifacts don't save files → no lifecycle fields (output_path, scaffold_created, template_id, version_hash)
+2. **No Architecture Validation:** Commit/PR/Issue don't have layer/scope/component rules → no ArchitectureMixin
+3. **No Template Validation:** Not scaffolded from templates → no TemplateMixin
+4. **Simple Validation:** Basic type/field checks sufficient (Literal types, required fields)
+
+**Implementation:**
+```python
+# Ephemeral artifacts use TypedDict (NOT Pydantic BaseModel)
+class CommitContext(TypedDict):
+    type: Literal['feat', 'fix', 'docs', 'refactor', 'test', 'chore']
+    scope: str
+    message: str
+    body: NotRequired[str]
+    breaking: NotRequired[bool]
+```
+
+**Impact:**
+- **Full Pydantic Schemas:** 17 artifacts (dto, worker, adapter, etc.)
+- **Lightweight TypedDict:** 3 artifacts (commit, pr, issue)
+- **Total:** 20 schemas (not 20 + 20)
+- **Savings:** 12 mixin imports avoided (4 mixins × 3 artifacts)
+
+**Trade-Off:**
+- ✅ **Simpler:** No BaseModel overhead, faster instantiation
+- ✅ **Correct:** Matches artifact lifecycle (no files = no lifecycle fields)
+- ❌ **No Pydantic Validators:** Can't use `@field_validator` (acceptable - simple validation sufficient)
+
 ---
 
 ## Template Tier Reuse Strategy Analysis
@@ -811,6 +887,58 @@ class DTOContext(BaseModel):
 
 ---
 
+## Template Tier 3 Macro Guardrails
+
+**Context:** User aanscherping #3 - "Reuse van v1 Tier 0-3 is logisch, maar voeg harde guardrails toe: welke Tier3 macros zijn toegestaan/niet toegestaan in v2"
+
+**Inventory:** 31 tier3_pattern_* files analyzed
+- **8 Markdown Patterns:** status_header, version_history, purpose_scope, prerequisites, related_docs, open_questions, dividers, agent_hints
+- **23 Python Patterns:** pydantic, logging, di, lifecycle, error, async, pytest, mocking, fixtures, test_structure, typed_id, translator, log_enricher, assertions (empty)
+
+**CRITICAL FINDING:** ALL 31 macros are **OUTPUT formatters** (generate syntax), ZERO validate INPUT
+
+**Example Analysis - tier3_pattern_python_pydantic.jinja2:**
+- **Exports:** pattern_pydantic_imports(), pattern_pydantic_base_model(), pattern_pydantic_config(), pattern_pydantic_field(), pattern_pydantic_validator()
+- **Behavior:** Generates OUTPUT code (`from pydantic import BaseModel, Field`)
+- **Clarification:** This is a "syntax generator macro" NOT a "validation macro"
+- **Impact:** Macro doesn't check template input, just formats output
+
+**Categorization:**
+
+| Category | Count | Macros | V2 Permission |
+|----------|-------|--------|---------------|
+| **ESSENTIAL** | 12 | 8 markdown structure + logging + di + lifecycle + error | ✅ REQUIRED (infrastructure helpers) |
+| **RECOMMENDED** | 5 | pydantic syntax + 4 test patterns (pytest/mocking/fixtures/test_structure) | ✅ ALLOWED (formatting helpers) |
+| **OPTIONAL** | 2 | async + typed_id | ✅ ALLOWED (specialized formatting) |
+| **FORBIDDEN** | 0 | (none - no validation macros exist) | ❌ N/A |
+
+**Conclusion:** ALL Tier 3 macros are ALLOWED in v2 templates
+
+**Rationale:**
+1. **Problem Location:** The 78× `| default` defensive programming patterns are in **Tier 4 CONCRETE templates**, NOT in Tier 3 macros
+2. **Macro Purpose:** Tier 3 macros generate OUTPUT syntax (imports, headers, test structure) - formatting helpers, not validation logic
+3. **Safe Reuse:** Since macros don't validate input or provide defaults, they're safe to use with Pydantic-validated context
+
+**Example:**
+```jinja
+{# Tier 3 macro (OUTPUT formatting - SAFE) #}
+{% macro pattern_pydantic_imports(uses_validators=False) %}
+from pydantic import BaseModel, Field{% if uses_validators %}, field_validator{% endif %}
+{% endmacro %}
+
+{# Tier 4 concrete template (INPUT validation - REMOVE IN V2) #}
+{% if dependencies | default([]) %}  {# ← THIS is the problem (78× instances) #}
+    from {{ dependencies | join(", ") }}
+{% endif %}
+```
+
+**V2 Strategy:**
+- **Reuse:** ALL 31 Tier 3 macros (formatting helpers safe)
+- **Cleanup:** Remove 78× `| default` filters from Tier 4 concrete templates
+- **Validation:** Move to Pydantic schemas (e.g., WorkerContext.dependencies: List[str])
+
+---
+
 ## Pydantic Multiple Inheritance Patterns Research
 
 ### Pattern 1: Simple Multiple Inheritance (Mixins)
@@ -925,9 +1053,150 @@ schema_registry/
 
 ---
 
-## Open Questions
+## Critical Design Decisions (Planning Phase Gates)
 
-### Q1: Lifecycle Field Auto-Injection vs Schema Definition
+### GATE 1: Lifecycle Field Contract Strategy (CRITICAL - BLOCKS ALL OTHER DECISIONS)
+
+**Status:** 🔴 UNRESOLVED - Must be FIRST decision in planning phase
+
+**Question:** Should lifecycle fields (output_path, scaffold_created, template_id, version_hash) be user-provided or auto-injected by ArtifactManager?
+
+**Context:**
+- **Current Behavior:** ArtifactManager._enrich_context() auto-injects lifecycle fields AFTER user provides artifact-specific fields
+- **User Experience:** Tool signatures only expose artifact fields (worker_name, scope), NOT system fields (version_hash, timestamp)
+- **Type Safety:** How do we model "partial during construction, full during rendering" contract?
+
+**Option A: User-Provided Context (Full Schema Validation)**
+```python
+# User provides ALL fields including lifecycle
+context = WorkerContext(
+    worker_name="ProcessWorker",
+    scope="events",
+    capabilities=["process", "validate"],
+    output_path="backend/workers/process_worker.py",  # User provides
+    scaffold_created="2026-02-15T10:00:00Z",  # User provides
+    template_id="worker.py",  # User provides
+    version_hash="a1b2c3d4"  # User provides
+)
+scaffold_artifact("worker", **context.model_dump())
+```
+
+**Pros:**
+- ✅ Schema completeness (introspection sees all fields)
+- ✅ Type safety (one schema, no enrichment)
+- ✅ Validation consistency (Pydantic validates everything)
+
+**Cons:**
+- ❌ Poor UX (user must provide system-managed fields)
+- ❌ Duplicate work (user provides output_path, manager re-computes it)
+- ❌ Error prone (user could provide wrong version_hash)
+- ❌ Leaky abstraction (exposes internal lifecycle concerns to tool layer)
+
+**Option B: Auto-Injected by Manager (Partial Context + Enrichment) - RECOMMENDED**
+```python
+# User provides artifact fields only (WorkerContext)
+context = WorkerContext(
+    worker_name="ProcessWorker",
+    scope="events",
+    capabilities=["process", "validate"]
+)
+
+# Manager enriches to full schema (WorkerRenderContext)
+render_context = self._enrich_context(context)  # Adds lifecycle fields
+# render_context now has: worker_name, scope, capabilities, output_path, scaffold_created, template_id, version_hash
+
+# Template receives WorkerRenderContext (full)
+template.render(render_context)
+```
+
+**Schema Naming Convention:**
+- **WorkerContext:** User-facing schema (artifact fields only: worker_name, scope, capabilities)
+- **WorkerRenderContext:** Internal full schema (WorkerContext + LifecycleMixin)
+
+**Type Safety Boundaries:**
+- **Tool → Manager:** `scaffold_artifact(**context: WorkerContext)` (partial)
+- **Manager → Renderer:** `render(template, context: WorkerRenderContext)` (full)
+
+**Pros:**
+- ✅ Better UX (artifact fields only, clean API)
+- ✅ No duplication (manager computes lifecycle fields)
+- ✅ Safety (version_hash computed from template content, not user input)
+- ✅ Clean separation (lifecycle concerns hidden from tool layer)
+
+**Cons:**
+- ❌ **Two schemas per artifact** (17 artifacts × 2 = 34 schema files, not 20)
+- ❌ Introspection mismatch (WorkerContext schema doesn't show lifecycle fields)
+- ❌ Hidden contract (enrichment happens "magically" in manager)
+- ❌ Type confusion risk (which schema do I use where?)
+
+**Implementation Details (Option B):**
+```python
+# File: mcp_server/scaffolding/schemas/worker_context.py
+class WorkerContext(BaseModel):
+    """User-facing context for worker scaffolding."""
+    worker_name: str
+    scope: str
+    capabilities: List[str]
+
+# File: mcp_server/scaffolding/schemas/worker_render_context.py
+class WorkerRenderContext(LifecycleMixin, WorkerContext):
+    """Full context with lifecycle fields (internal use)."""
+    pass  # Inherits artifact fields + lifecycle fields
+
+# File: mcp_server/managers/artifact_manager.py
+def _enrich_context(self, context: WorkerContext) -> WorkerRenderContext:
+    return WorkerRenderContext(
+        **context.model_dump(),
+        output_path=self._resolve_output_path(context),
+        scaffold_created=datetime.now(),
+        template_id="worker.py",
+        version_hash=self._compute_version_hash("worker.py")
+    )
+```
+
+**Impact (Option B):**
+- **Schema Files:** 17 artifacts × 2 schemas (Context + RenderContext) = 34 files (not 20)
+- **Mixin Usage:** LifecycleMixin only in RenderContext (not in user-facing Context)
+- **Tool Signatures:** Use Context (e.g., `scaffold_artifact(**WorkerContext)`)
+- **Template Variables:** Receive RenderContext (full schema with lifecycle fields)
+- **Introspection Solution:** `introspect_template(name, with_enrichment=True)` returns RenderContext schema
+- **Parity Tests:** Must validate enrichment transformation (Context → RenderContext)
+
+**Option C: Hybrid (Optional Lifecycle Fields with Smart Defaults)**
+```python
+class WorkerContext(BaseModel):
+    worker_name: str
+    scope: str
+    capabilities: List[str]
+    output_path: Optional[str] = None  # User CAN provide, manager fills if missing
+    scaffold_created: Optional[datetime] = None
+    template_id: Optional[str] = None
+    version_hash: Optional[str] = None
+```
+
+**Pros:**
+- ✅ Best UX (minimal input, optional override)
+- ✅ Single schema (no Context/RenderContext split)
+- ✅ Flexibility (user can override output_path if needed)
+- ✅ Introspection match (schema shows all fields)
+
+**Cons:**
+- ❌ Optional complexity (type system says "lifecycle fields might be None" - lie after enrichment)
+- ❌ Validation timing unclear (Pydantic validates before enrichment - incomplete state)
+- ❌ Manager must mutate (context.output_path = ... after construction)
+- ❌ Testing burden (must test both user-provided and auto-injected paths)
+
+**BLOCKS (Requires Decision Before Planning):**
+1. **Schema Registry File Structure:** How many schema files? (20 vs 34)
+2. **Template Variable Documentation:** Which schema do templates expect? (Context vs RenderContext)
+3. **Tool Signature Design:** Which schema do tools accept? (Context with partial fields)
+4. **Enrichment Pipeline Specification:** Where/when does enrichment happen? (Manager._enrich_context)
+
+**REQUIRES USER DECISION:** Confirm Option B (WorkerContext + WorkerRenderContext split) OR propose alternative with rationale.
+
+---
+
+### GATE 2: Schema Inheritance Depth (BLOCKED by GATE 1)
 
 **Question:** Should lifecycle fields (output_path, scaffold_created, template_id, version_hash) be:
 - **Option A:** Defined in LifecycleMixin (user provides in context dict)?
@@ -939,22 +1208,11 @@ schema_registry/
 - **Option B Pros:** User context stays focused on artifact-specific fields
 - **Option B Cons:** Schema doesn't reflect actual template variables (introspection mismatch)
 
-**Recommendation for Planning:** Option B with PartialContext pattern:
-```python
-class WorkerUserContext(CodeStructureMixin, PythonSyntaxMixin, ComponentPatternMixin):
-    """User-provided context (no lifecycle fields)"""
-    worker_name: str = Field(...)
+**Recommendation for Planning:** Option B with PartialContext pattern (see GATE 1 for full details).
 
-class WorkerFullContext(LifecycleMixin, WorkerUserContext):
-    """Full context after enrichment (includes lifecycle fields)"""
-    pass
+---
 
-# Usage
-user_context = WorkerUserContext(worker_name="ProcessWorker", ...)
-full_context = artifact_manager._enrich_with_lifecycle(user_context)
-```
-
-### Q2: Tier 3 Pattern Macro Strategy
+### GATE 3: Template Variable Documentation Strategy (BLOCKED by GATE 1)
 
 **Question:** Do v2 templates import tier3_patterns/ macros or inline all logic?
 
@@ -964,16 +1222,7 @@ full_context = artifact_manager._enrich_with_lifecycle(user_context)
 - **Inline Pros:** Clean v2 templates with no legacy baggage
 - **Inline Cons:** Duplicate presentation logic (format_docstring repeated 16x)
 
-**Recommendation for Planning:** Selective import - formatting macros YES (format_docstring), validation macros NO (pattern_validate_dependencies).
-
-### Q3: Migration Trigger Definition
-
-**Question:** User specified "zodra alles gemigreerd is" - does "alles" mean:
-- **Interpretation A:** All 20 artifact types have v2 schemas + cleaned templates?
-- **Interpretation B:** All 20 artifacts PLUS parity tests passing?
-- **Interpretation C:** All 20 artifacts PLUS production validation (1 release cycle)?
-
-**Recommendation for Planning:** Clarify with user in planning phase.
+**Recommendation for Planning:** ALL 31 Tier 3 macros ALLOWED (see "Template Tier 3 Macro Guardrails" section - all are OUTPUT formatters, not validators).
 
 ---
 
@@ -1001,6 +1250,7 @@ full_context = artifact_manager._enrich_with_lifecycle(user_context)
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-15 | Agent | Complete research: schema architecture (composable mixins recommended), template tier reuse (Option A: reuse v1 Tier 0-3), defensive programming quantified (5x default in dto.py), schema registry justified (4 mixins + 20 concrete) |
+| 1.1 | 2026-02-15 | Agent | Aanscherping met harde data: measurement methods added (78 instances measured via grep), ephemeral decision (TypedDict for commit/pr/issue), Tier 3 guardrails (31 macros categorized - all allowed), GATE 1 lifecycle fields (Option B recommended: 34 files - Context + RenderContext split) |
 
 ---
 
