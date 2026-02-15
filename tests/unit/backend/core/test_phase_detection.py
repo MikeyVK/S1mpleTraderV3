@@ -11,6 +11,7 @@ Test PhaseDetectionResult TypedDict schema validation and field types
     - Test PhaseDetectionResult TypedDict schema
     - Verify ScopeDecoder.detect_phase() deterministic precedence
     - Cover error handling scenarios (graceful degradation)
+    - Validate phase names against workphases.yaml
 """
 
 # Standard library
@@ -18,6 +19,7 @@ import json
 from pathlib import Path
 
 # Third-party
+
 # Project modules
 from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 
@@ -108,7 +110,9 @@ class TestScopeDecoder:
         """Fallback to state.json when commit scope format is invalid."""
         # Arrange
         state_file = tmp_path / "state.json"
-        state_file.write_text(json.dumps({"current_phase": "planning", "workflow_name": "bug"}))
+        state_file.write_text(
+            json.dumps({"current_phase": "planning", "workflow_name": "bug"})
+        )
         decoder = ScopeDecoder(state_path=state_file)
         commit_message = "feat(INVALID_SCOPE): implement feature"  # Invalid format
 
@@ -168,3 +172,52 @@ class TestScopeDecoder:
         assert result["source"] == "state.json"
         assert result["confidence"] == "medium"
         # No exception raised - graceful degradation
+
+    def test_validate_phase_from_state_json_against_workphases(self, tmp_path):
+        """Invalid phase in state.json should fallback to unknown."""
+        # Arrange
+        state_file = tmp_path / "state.json"
+        state_file.write_text(
+            json.dumps({"current_phase": "invalid_phase", "workflow_name": "feature"})
+        )
+        # Use real workphases.yaml from .st3/
+        decoder = ScopeDecoder(state_path=state_file)
+        commit_message = "docs: no scope"
+
+        # Act
+        result = decoder.detect_phase(commit_message, fallback_to_state=True)
+
+        # Assert - invalid phase rejected, fallback to unknown
+        assert result["workflow_phase"] == "unknown"
+        assert result["source"] == "unknown"
+        assert result["confidence"] == "unknown"
+        assert "Phase detection failed" in result["error_message"]
+
+    def test_validate_phase_accepts_valid_phases_from_workphases(self, tmp_path):
+        """Valid phase in state.json should be accepted."""
+        # Arrange - use all valid phases from workphases.yaml
+        valid_phases = [
+            "research",
+            "planning",
+            "design",
+            "tdd",
+            "integration",
+            "documentation",
+            "coordination",
+        ]
+
+        for phase in valid_phases:
+            state_file = tmp_path / f"state_{phase}.json"
+            state_file.write_text(
+                json.dumps({"current_phase": phase, "workflow_name": "feature"})
+            )
+            decoder = ScopeDecoder(state_path=state_file)
+            commit_message = "docs: no scope"
+
+            # Act
+            result = decoder.detect_phase(commit_message, fallback_to_state=True)
+
+            # Assert - valid phase accepted
+            assert result["workflow_phase"] == phase, f"Phase {phase} should be accepted"
+            assert result["source"] == "state.json"
+            assert result["confidence"] == "medium"
