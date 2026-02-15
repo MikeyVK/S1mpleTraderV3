@@ -178,7 +178,21 @@ class GitManager:
             # Should never reach here due to ValueError above
             raise RuntimeError("Unexpected: phase validation failed silently")
 
-        commit_type = phase_config.get("commit_type", "chore")
+        commit_type = phase_config.get("commit_type_hint", "chore")
+
+        # Handle TDD phase (commit_type_hint is null, varies by subphase)
+        if commit_type is None:
+            if workflow_phase.lower() == "tdd":
+                if sub_phase == "red":
+                    commit_type = "test"
+                elif sub_phase == "green":
+                    commit_type = "feat"
+                elif sub_phase == "refactor":
+                    commit_type = "refactor"
+                else:
+                    commit_type = "chore"  # fallback if no subphase
+            else:
+                commit_type = "chore"  # fallback for other null cases
 
         # Generate scope using ScopeEncoder (validates phase + subphase)
         encoder = ScopeEncoder(self._workphases_path)

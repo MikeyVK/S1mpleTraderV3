@@ -257,15 +257,15 @@ class TestGitManagerCommitWithScope:
 phases:
   research:
     display_name: "Research"
-    commit_type: "docs"
+    commit_type_hint: "docs"
     subphases: []
   tdd:
     display_name: "TDD"
-    commit_type: "test"
+    commit_type_hint: null
     subphases: ["red", "green", "refactor"]
   coordination:
     display_name: "Coordination"
-    commit_type: "chore"
+    commit_type_hint: "chore"
     subphases: ["delegation", "sync", "review"]
 version: "1.0"
 """)
@@ -321,7 +321,7 @@ version: "1.0"
 
         assert result == "ghi789"
         mock_adapter.commit.assert_called_once_with(
-            "test(P_TDD_SP_C1_GREEN): implement feature", files=None
+            "feat(P_TDD_SP_C1_GREEN): implement feature", files=None
         )
 
     def test_commit_with_scope_coordination_phase(
@@ -356,7 +356,7 @@ version: "1.0"
 
         assert result == "mno345"
         mock_adapter.commit.assert_called_once_with(
-            "test(P_TDD_SP_REFACTOR): clean up code",
+            "refactor(P_TDD_SP_REFACTOR): clean up code",
             files=["src/app.py", "tests/test_app.py"],
         )
 

@@ -233,6 +233,56 @@ async def test_git_commit_tool_backward_compat_with_old_phase(mock_git_manager):
 
 
 @pytest.mark.asyncio
+async def test_git_commit_integration_workflow_phases():
+    """Integration test: Full commit workflow with real workphases.yaml."""
+    from pathlib import Path
+    from unittest.mock import MagicMock
+
+    # Create a real GitManager with mocked adapter but real workphases.yaml
+    mock_adapter = MagicMock()
+    mock_adapter.commit.return_value = "integration123"
+
+    # Use the real .st3/workphases.yaml
+    workphases_path = Path(".st3/workphases.yaml")
+    if not workphases_path.exists():
+        pytest.skip("workphases.yaml not found - skipping integration test")
+
+    from mcp_server.managers.git_manager import GitManager
+
+    manager = GitManager(adapter=mock_adapter, workphases_path=workphases_path)
+    tool = GitCommitTool(manager=manager)
+
+    # Test 1: Research phase (no subphase)
+    params1 = GitCommitInput(message="investigate alternatives", workflow_phase="research")
+    result1 = await tool.execute(params1)
+
+    assert "Committed: integration123" in result1.content[0]["text"]
+    mock_adapter.commit.assert_called_with("docs(P_RESEARCH): investigate alternatives", files=None)
+
+    # Test 2: TDD with subphase
+    params2 = GitCommitInput(
+        message="add failing test",
+        workflow_phase="tdd",
+        sub_phase="red",
+    )
+    result2 = await tool.execute(params2)
+
+    mock_adapter.commit.assert_called_with("test(P_TDD_SP_RED): add failing test", files=None)
+
+    # Test 3: Coordination phase (NEW)
+    params3 = GitCommitInput(
+        message="delegate to child issues",
+        workflow_phase="coordination",
+        sub_phase="delegation",
+    )
+    result3 = await tool.execute(params3)
+
+    mock_adapter.commit.assert_called_with(
+        "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None
+    )
+
+
+@pytest.mark.asyncio
 async def test_git_checkout_tool(mock_git_manager):
     """Test git checkout tool with PhaseStateEngine state sync."""
     tool = GitCheckoutTool(manager=mock_git_manager)
