@@ -181,7 +181,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["source"] == "commit-scope"
 
     # Transition to PLANNING
-    state_engine.transition_phase(branch="feature/999-e2e-test", to_phase="planning")
+    state_engine.transition(branch="feature/999-e2e-test", to_phase="planning")
 
     # Phase 2: PLANNING
     test_file.write_text("planning phase\n")
@@ -197,7 +197,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["source"] == "commit-scope"
 
     # Transition to DESIGN
-    state_engine.transition_phase(branch="feature/999-e2e-test", to_phase="design")
+    state_engine.transition(branch="feature/999-e2e-test", to_phase="design")
 
     # Phase 3: DESIGN
     test_file.write_text("design phase\n")
@@ -213,7 +213,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["source"] == "commit-scope"
 
     # Transition to TDD
-    state_engine.transition_phase(branch="feature/999-e2e-test", to_phase="tdd")
+    state_engine.transition(branch="feature/999-e2e-test", to_phase="tdd")
 
     # Phase 4: TDD CYCLE (red → green → refactor)
 
@@ -263,7 +263,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["source"] == "commit-scope"
 
     # Transition to INTEGRATION
-    state_engine.transition_phase(branch="feature/999-e2e-test", to_phase="integration")
+    state_engine.transition(branch="feature/999-e2e-test", to_phase="integration")
 
     # Phase 5: INTEGRATION
     test_file.write_text("integration phase\n")
@@ -279,7 +279,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["source"] == "commit-scope"
 
     # Transition to DOCUMENTATION
-    state_engine.transition_phase(branch="feature/999-e2e-test", to_phase="documentation")
+    state_engine.transition(branch="feature/999-e2e-test", to_phase="documentation")
 
     # Phase 6: DOCUMENTATION
     test_file.write_text("documentation phase\n")
