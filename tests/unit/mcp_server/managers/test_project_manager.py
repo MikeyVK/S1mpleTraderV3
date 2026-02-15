@@ -1,4 +1,4 @@
-﻿"""Tests for ProjectManager with workflow-based initialization.
+"""Tests for ProjectManager with workflow-based initialization.
 
 Issue #50: Tests migrated from PHASE_TEMPLATES to workflows.yaml.
 - Workflow selection from workflows.yaml
@@ -6,12 +6,14 @@ Issue #50: Tests migrated from PHASE_TEMPLATES to workflows.yaml.
 - Custom phases with skip_reason
 - Project plan storage in .st3/projects.json
 """
+
 import json
 from pathlib import Path
 
 import pytest
 
 from mcp_server.config.workflows import workflow_config
+from mcp_server.managers import git_manager
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
 
 
@@ -70,9 +72,7 @@ class TestProjectManagerWorkflows:
     ) -> None:
         """Test initialize_project with feature workflow."""
         result = manager.initialize_project(
-            issue_number=42,
-            issue_title="Add user authentication",
-            workflow_name="feature"
+            issue_number=42, issue_title="Add user authentication", workflow_name="feature"
         )
 
         assert result["success"] is True
@@ -96,9 +96,7 @@ class TestProjectManagerWorkflows:
     ) -> None:
         """Test initialize_project with hotfix workflow (autonomous)."""
         result = manager.initialize_project(
-            issue_number=99,
-            issue_title="Critical security fix",
-            workflow_name="hotfix"
+            issue_number=99, issue_title="Critical security fix", workflow_name="hotfix"
         )
 
         assert result["success"] is True
@@ -119,7 +117,7 @@ class TestProjectManagerWorkflows:
             issue_number=77,
             issue_title="Test",
             workflow_name="feature",
-            options=ProjectInitOptions(execution_mode="autonomous")
+            options=ProjectInitOptions(execution_mode="autonomous"),
         )
 
         assert result["execution_mode"] == "autonomous"
@@ -140,9 +138,8 @@ class TestProjectManagerWorkflows:
             issue_title="Complex refactor",
             workflow_name="refactor",
             options=ProjectInitOptions(
-                custom_phases=custom_phases,
-                skip_reason="Adding design phase for complex refactor"
-            )
+                custom_phases=custom_phases, skip_reason="Adding design phase for complex refactor"
+            ),
         )
 
         assert result["success"] is True
@@ -157,31 +154,25 @@ class TestProjectManagerWorkflows:
         assert tuple(project["required_phases"]) == custom_phases
         assert project["skip_reason"] == "Adding design phase for complex refactor"
 
-    def test_initialize_project_invalid_workflow(
-        self, manager: ProjectManager
-    ) -> None:
+    def test_initialize_project_invalid_workflow(self, manager: ProjectManager) -> None:
         """Test initialize_project rejects unknown workflow."""
         with pytest.raises(ValueError) as exc_info:
             manager.initialize_project(
-                issue_number=999,
-                issue_title="Test",
-                workflow_name="invalid_workflow"
+                issue_number=999, issue_title="Test", workflow_name="invalid_workflow"
             )
 
         error_msg = str(exc_info.value)
         assert "Unknown workflow: 'invalid_workflow'" in error_msg
         assert "Available workflows:" in error_msg
 
-    def test_initialize_project_invalid_execution_mode(
-        self, manager: ProjectManager
-    ) -> None:
+    def test_initialize_project_invalid_execution_mode(self, manager: ProjectManager) -> None:
         """Test initialize_project rejects invalid execution_mode."""
         with pytest.raises(ValueError) as exc_info:
             manager.initialize_project(
                 issue_number=888,
                 issue_title="Test",
                 workflow_name="feature",
-                options=ProjectInitOptions(execution_mode="manual")
+                options=ProjectInitOptions(execution_mode="manual"),
             )
 
         error_msg = str(exc_info.value)
@@ -197,22 +188,16 @@ class TestProjectManagerWorkflows:
                 issue_number=777,
                 issue_title="Test",
                 workflow_name="feature",
-                options=ProjectInitOptions(custom_phases=("research", "tdd"))
+                options=ProjectInitOptions(custom_phases=("research", "tdd")),
             )
 
         error_msg = str(exc_info.value)
         assert "skip_reason required when custom_phases provided" in error_msg
 
-    def test_get_project_plan_returns_stored_plan(
-        self, manager: ProjectManager
-    ) -> None:
+    def test_get_project_plan_returns_stored_plan(self, manager: ProjectManager) -> None:
         """Test get_project_plan retrieves stored project plan."""
         # Initialize project
-        manager.initialize_project(
-            issue_number=42,
-            issue_title="Test",
-            workflow_name="feature"
-        )
+        manager.initialize_project(issue_number=42, issue_title="Test", workflow_name="feature")
 
         # Retrieve plan
         plan = manager.get_project_plan(issue_number=42)
@@ -221,16 +206,12 @@ class TestProjectManagerWorkflows:
         assert plan["execution_mode"] == "interactive"
         assert len(plan["required_phases"]) == 6
 
-    def test_get_project_plan_nonexistent_returns_none(
-        self, manager: ProjectManager
-    ) -> None:
+    def test_get_project_plan_nonexistent_returns_none(self, manager: ProjectManager) -> None:
         """Test get_project_plan returns None for nonexistent project."""
         plan = manager.get_project_plan(issue_number=999)
         assert plan is None
 
-    def test_initialize_project_with_parent_branch(
-        self, manager: ProjectManager
-    ) -> None:
+    def test_initialize_project_with_parent_branch(self, manager: ProjectManager) -> None:
         """Test initializing project with explicit parent_branch.
 
         Issue #79: parent_branch tracking for merge targets.
@@ -239,7 +220,7 @@ class TestProjectManagerWorkflows:
             issue_number=79,
             issue_title="Add parent branch tracking",
             workflow_name="feature",
-            options=ProjectInitOptions(parent_branch="epic/76-quality-gates-tooling")
+            options=ProjectInitOptions(parent_branch="epic/76-quality-gates-tooling"),
         )
 
         # Verify parent_branch in returned result
@@ -250,17 +231,13 @@ class TestProjectManagerWorkflows:
         assert plan is not None
         assert plan["parent_branch"] == "epic/76-quality-gates-tooling"
 
-    def test_initialize_project_without_parent_branch(
-        self, manager: ProjectManager
-    ) -> None:
+    def test_initialize_project_without_parent_branch(self, manager: ProjectManager) -> None:
         """Test initializing project without parent_branch (backward compat).
 
         Issue #79: parent_branch is optional for existing workflows.
         """
         result = manager.initialize_project(
-            issue_number=80,
-            issue_title="Old style project",
-            workflow_name="bug"
+            issue_number=80, issue_title="Old style project", workflow_name="bug"
         )
 
         # Verify parent_branch is None
@@ -270,3 +247,92 @@ class TestProjectManagerWorkflows:
         plan = manager.get_project_plan(issue_number=80)
         assert plan is not None
         assert plan["parent_branch"] is None
+
+
+class TestProjectManagerPhaseDetection:
+    """Test ProjectManager phase detection (Issue #139).
+
+    Cycle 3.2: get_project_plan should return current_phase via ScopeDecoder.
+    """
+
+    @pytest.fixture
+    def workspace_root(self, tmp_path: Path) -> Path:
+        """Create temporary workspace with .st3 directory."""
+        st3_dir = tmp_path / ".st3"
+        st3_dir.mkdir()
+
+        # Create workphases.yaml
+        workphases_path = st3_dir / "workphases.yaml"
+        workphases_path.write_text(
+            """
+version: "1.0"
+phases:
+  research:
+    display_name: "Research"
+    commit_type_hint: "docs"
+    subphases: []
+  tdd:
+    display_name: "TDD"
+    commit_type_hint: null
+    subphases: ["red", "green", "refactor"]
+  documentation:
+    display_name: "Documentation"
+    commit_type_hint: "docs"
+    subphases: ["reference", "guides"]
+"""
+        )
+
+        return tmp_path
+
+    @pytest.fixture
+    def manager(self, workspace_root: Path) -> ProjectManager:
+        """Create ProjectManager instance."""
+        return ProjectManager(workspace_root=workspace_root)
+
+    def test_get_project_plan_includes_current_phase_from_commit_scope(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test get_project_plan returns current_phase from commit-scope.
+
+        Issue #139: Phase detection via ScopeDecoder (commit-scope > state.json > unknown).
+        """
+        # Initialize project
+        manager.initialize_project(
+            issue_number=139,
+            issue_title="Add current_phase to get_project_plan",
+            workflow_name="feature",
+        )
+
+        # Mock a commit with scope
+        # Note: This test will fail (RED) until we integrate GitManager
+        plan = manager.get_project_plan(issue_number=139)
+
+        # Assertions for Issue #139 fix
+        assert plan is not None
+        assert "current_phase" in plan
+        assert "phase_source" in plan
+        assert "phase_detection_error" in plan
+
+    def test_get_project_plan_returns_unknown_when_no_commits(
+        self, manager: ProjectManager, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test get_project_plan returns unknown phase when no commits exist."""
+        # Mock GitManager.get_recent_commits to return empty list
+        monkeypatch.setattr(
+            git_manager.GitManager, "get_recent_commits", lambda _self, _limit=10: []
+        )
+
+        # Initialize project
+        manager.initialize_project(
+            issue_number=140,
+            issue_title="Test unknown phase",
+            workflow_name="bug",
+        )
+
+        plan = manager.get_project_plan(issue_number=140)
+
+        # Should return unknown with error message
+        assert plan is not None
+        assert plan["current_phase"] == "unknown"
+        assert plan["phase_source"] == "unknown"
+        assert plan["phase_detection_error"] is not None
