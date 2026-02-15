@@ -1,9 +1,9 @@
 <!-- docs/development/issue135/research-pydantic-v2.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T16:45:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T17:30:00Z -->
 # Pydantic-First Scaffolding V2 Architecture Research
 
 **Status:** COMPLETE  
-**Version:** 1.1 (Aangescherpt met harde data)  
+**Version:** 1.2 (GATE 1 Resolved - System-Managed Lifecycle)  
 **Last Updated:** 2026-02-15
 
 ---
@@ -1055,144 +1055,93 @@ schema_registry/
 
 ## Critical Design Decisions (Planning Phase Gates)
 
-### GATE 1: Lifecycle Field Contract Strategy (CRITICAL - BLOCKS ALL OTHER DECISIONS)
+### GATE 1: Lifecycle Field Contract Strategy ✅ RESOLVED
 
-**Status:** 🔴 UNRESOLVED - Must be FIRST decision in planning phase
+**Status:** ✅ RESOLVED - Decision: SYSTEM-MANAGED LIFECYCLE (STRICT AUTO-INJECTION)
 
-**Question:** Should lifecycle fields (output_path, scaffold_created, template_id, version_hash) be user-provided or auto-injected by ArtifactManager?
+**Decision:** Lifecycle fields (output_path, scaffold_created, template_id, version_hash) are **STRICTLY SYSTEM-MANAGED** - NEVER user/agent provided.
 
-**Context:**
-- **Current Behavior:** ArtifactManager._enrich_context() auto-injects lifecycle fields AFTER user provides artifact-specific fields
-- **User Experience:** Tool signatures only expose artifact fields (worker_name, scope), NOT system fields (version_hash, timestamp)
-- **Type Safety:** How do we model "partial during construction, full during rendering" contract?
+**Rationale (User Feedback):**
+> "Het hele idee van artifact lifecycle management is dat dit strikt gecontroleerd, geautomatiseerd en gecontroleerd gebeurt. Het is de basis voor fingerprinting van gescaffolde artefacten! Zelfs 'updated' veld moet op termijn generated zijn."
 
-**Option A: User-Provided Context (Full Schema Validation)**
-```python
-# User provides ALL fields including lifecycle
-context = WorkerContext(
-    worker_name="ProcessWorker",
-    scope="events",
-    capabilities=["process", "validate"],
-    output_path="backend/workers/process_worker.py",  # User provides
-    scaffold_created="2026-02-15T10:00:00Z",  # User provides
-    template_id="worker.py",  # User provides
-    version_hash="a1b2c3d4"  # User provides
-)
-scaffold_artifact("worker", **context.model_dump())
-```
+**Foundational Principle:** Lifecycle fields are the **fingerprinting basis** for scaffold artifact tracking - must be computed by system, NOT provided by user/agent.
 
-**Pros:**
-- ✅ Schema completeness (introspection sees all fields)
-- ✅ Type safety (one schema, no enrichment)
-- ✅ Validation consistency (Pydantic validates everything)
+**Architecture: Two-Schema Pattern (Context + RenderContext)**
 
-**Cons:**
-- ❌ Poor UX (user must provide system-managed fields)
-- ❌ Duplicate work (user provides output_path, manager re-computes it)
-- ❌ Error prone (user could provide wrong version_hash)
-- ❌ Leaky abstraction (exposes internal lifecycle concerns to tool layer)
-
-**Option B: Auto-Injected by Manager (Partial Context + Enrichment) - RECOMMENDED**
-```python
-# User provides artifact fields only (WorkerContext)
-context = WorkerContext(
-    worker_name="ProcessWorker",
-    scope="events",
-    capabilities=["process", "validate"]
-)
-
-# Manager enriches to full schema (WorkerRenderContext)
-render_context = self._enrich_context(context)  # Adds lifecycle fields
-# render_context now has: worker_name, scope, capabilities, output_path, scaffold_created, template_id, version_hash
-
-# Template receives WorkerRenderContext (full)
-template.render(render_context)
-```
-
-**Schema Naming Convention:**
-- **WorkerContext:** User-facing schema (artifact fields only: worker_name, scope, capabilities)
-- **WorkerRenderContext:** Internal full schema (WorkerContext + LifecycleMixin)
-
-**Type Safety Boundaries:**
-- **Tool → Manager:** `scaffold_artifact(**context: WorkerContext)` (partial)
-- **Manager → Renderer:** `render(template, context: WorkerRenderContext)` (full)
-
-**Pros:**
-- ✅ Better UX (artifact fields only, clean API)
-- ✅ No duplication (manager computes lifecycle fields)
-- ✅ Safety (version_hash computed from template content, not user input)
-- ✅ Clean separation (lifecycle concerns hidden from tool layer)
-
-**Cons:**
-- ❌ **Two schemas per artifact** (17 artifacts × 2 = 34 schema files, not 20)
-- ❌ Introspection mismatch (WorkerContext schema doesn't show lifecycle fields)
-- ❌ Hidden contract (enrichment happens "magically" in manager)
-- ❌ Type confusion risk (which schema do I use where?)
-
-**Implementation Details (Option B):**
 ```python
 # File: mcp_server/scaffolding/schemas/worker_context.py
 class WorkerContext(BaseModel):
-    """User-facing context for worker scaffolding."""
+    """User-facing context for worker scaffolding (artifact fields ONLY)."""
     worker_name: str
     scope: str
     capabilities: List[str]
+    # NO lifecycle fields (output_path, scaffold_created, template_id, version_hash)
 
 # File: mcp_server/scaffolding/schemas/worker_render_context.py
 class WorkerRenderContext(LifecycleMixin, WorkerContext):
-    """Full context with lifecycle fields (internal use)."""
-    pass  # Inherits artifact fields + lifecycle fields
+    """Full context with system-managed lifecycle fields (internal use ONLY)."""
+    # Inherits:
+    # - worker_name, scope, capabilities (from WorkerContext)
+    # - output_path, scaffold_created, template_id, version_hash (from LifecycleMixin)
 
 # File: mcp_server/managers/artifact_manager.py
 def _enrich_context(self, context: WorkerContext) -> WorkerRenderContext:
+    """Transform user context to render context (ADD lifecycle fields)."""
     return WorkerRenderContext(
         **context.model_dump(),
-        output_path=self._resolve_output_path(context),
-        scaffold_created=datetime.now(),
-        template_id="worker.py",
-        version_hash=self._compute_version_hash("worker.py")
+        output_path=self._resolve_output_path(context),  # COMPUTED by manager
+        scaffold_created=datetime.now(),  # GENERATED timestamp
+        template_id="worker.py",  # DETERMINED by artifact_type
+        version_hash=self._compute_version_hash("worker.py")  # FINGERPRINT from template
     )
 ```
 
-**Impact (Option B):**
-- **Schema Files:** 17 artifacts × 2 schemas (Context + RenderContext) = 34 files (not 20)
-- **Mixin Usage:** LifecycleMixin only in RenderContext (not in user-facing Context)
-- **Tool Signatures:** Use Context (e.g., `scaffold_artifact(**WorkerContext)`)
-- **Template Variables:** Receive RenderContext (full schema with lifecycle fields)
-- **Introspection Solution:** `introspect_template(name, with_enrichment=True)` returns RenderContext schema
-- **Parity Tests:** Must validate enrichment transformation (Context → RenderContext)
+**Type Safety Boundaries:**
+- **Tool → Manager Boundary:** `scaffold_artifact(**context: WorkerContext)` - user provides artifact fields ONLY
+- **Manager → Renderer Boundary:** `render(template, context: WorkerRenderContext)` - template receives FULL context with lifecycle
 
-**Option C: Hybrid (Optional Lifecycle Fields with Smart Defaults)**
-```python
-class WorkerContext(BaseModel):
-    worker_name: str
-    scope: str
-    capabilities: List[str]
-    output_path: Optional[str] = None  # User CAN provide, manager fills if missing
-    scaffold_created: Optional[datetime] = None
-    template_id: Optional[str] = None
-    version_hash: Optional[str] = None
-```
+**Why Two Schemas?**
+1. **Separation of Concerns:** User context (artifact domain) separate from system context (lifecycle tracking)
+2. **Type Safety:** User CANNOT provide lifecycle fields (not in WorkerContext schema)
+3. **Fingerprinting Integrity:** version_hash MUST be computed from template content, NOT user input
+4. **Introspection Clarity:** WorkerContext shows "what user provides", WorkerRenderContext shows "what template receives"
+
+**Schema Impact:**
+- **17 Non-Ephemeral Artifacts** (dto, worker, adapter, tool, resource, schema, interface, service, generic, unit_test, integration_test, research, planning, design, architecture, tracking, reference)
+- **2 Schemas Per Artifact:** Context (user-facing) + RenderContext (internal)
+- **Total Schema Files:** 17 × 2 = **34 schema files** (not 20)
+- **3 Ephemeral Artifacts** (commit, pr, issue): TypedDict (no lifecycle fields - see "Ephemeral Artifacts Decision")
 
 **Pros:**
-- ✅ Best UX (minimal input, optional override)
-- ✅ Single schema (no Context/RenderContext split)
-- ✅ Flexibility (user can override output_path if needed)
-- ✅ Introspection match (schema shows all fields)
+- ✅ **Strict Control:** User CANNOT provide lifecycle fields (enforced by schema)
+- ✅ **Fingerprinting Basis:** version_hash computed from template content (integrity guarantee)
+- ✅ **Clean API:** Tool signatures expose artifact fields only (better UX)
+- ✅ **Future-Proof:** 'updated' field can be added to LifecycleMixin later (Issue #121 enforcement)
+- ✅ **Type Safety:** Clear boundaries between user context and render context
 
 **Cons:**
-- ❌ Optional complexity (type system says "lifecycle fields might be None" - lie after enrichment)
-- ❌ Validation timing unclear (Pydantic validates before enrichment - incomplete state)
-- ❌ Manager must mutate (context.output_path = ... after construction)
-- ❌ Testing burden (must test both user-provided and auto-injected paths)
+- ❌ **More Schema Files:** 34 files (Context + RenderContext) vs 20 files (single schema)
+- ❌ **Introspection Gap:** WorkerContext schema doesn't show lifecycle fields (must introspect RenderContext for full template variables)
+- ❌ **Transformation Required:** Manager must enrich Context → RenderContext (complexity)
 
-**BLOCKS (Requires Decision Before Planning):**
-1. **Schema Registry File Structure:** How many schema files? (20 vs 34)
-2. **Template Variable Documentation:** Which schema do templates expect? (Context vs RenderContext)
-3. **Tool Signature Design:** Which schema do tools accept? (Context with partial fields)
-4. **Enrichment Pipeline Specification:** Where/when does enrichment happen? (Manager._enrich_context)
+**Trade-Off Accepted:** More schema files (34 vs 20) is acceptable cost for **strict lifecycle control** and **fingerprinting integrity**.
 
-**REQUIRES USER DECISION:** Confirm Option B (WorkerContext + WorkerRenderContext split) OR propose alternative with rationale.
+**Future Evolution (Issue #121):**
+- **'updated' field:** Will be system-generated (not manual safe_edit_file timestamp)
+- **Tool Usage Enforcement:** After Issue #121, tool layer can enforce lifecycle field immutability at runtime
+- **Audit Trail:** All lifecycle mutations logged for provenance tracking
+
+**Implementation Notes:**
+- **LifecycleMixin:** Contains 4 fields (output_path, scaffold_created, template_id, version_hash)
+- **Enrichment Pipeline:** ArtifactManager._enrich_context() is ONLY place where lifecycle fields added
+- **Validation:** LifecycleMixin uses Pydantic validators to enforce field constraints (e.g., version_hash must be 8-char hex)
+- **Template Access:** v2 templates receive WorkerRenderContext, can access lifecycle fields via `{{ output_path }}`, `{{ version_hash }}`
+
+**Blocks Resolved:**
+1. ✅ **Schema Registry File Structure:** 34 schema files (17 Context + 17 RenderContext)
+2. ✅ **Template Variable Documentation:** Templates document RenderContext schema (full with lifecycle)
+3. ✅ **Tool Signature Design:** Tools accept Context schema (artifact fields only)
+4. ✅ **Enrichment Pipeline Specification:** Manager._enrich_context(Context) → RenderContext (single transform point)
 
 ---
 
@@ -1251,6 +1200,7 @@ class WorkerContext(BaseModel):
 |---------|------|--------|---------|
 | 1.0 | 2026-02-15 | Agent | Complete research: schema architecture (composable mixins recommended), template tier reuse (Option A: reuse v1 Tier 0-3), defensive programming quantified (5x default in dto.py), schema registry justified (4 mixins + 20 concrete) |
 | 1.1 | 2026-02-15 | Agent | Aanscherping met harde data: measurement methods added (78 instances measured via grep), ephemeral decision (TypedDict for commit/pr/issue), Tier 3 guardrails (31 macros categorized - all allowed), GATE 1 lifecycle fields (Option B recommended: 34 files - Context + RenderContext split) |
+| 1.2 | 2026-02-15 | Agent | GATE 1 Resolved: Lifecycle fields are SYSTEM-MANAGED (strict auto-injection) - NEVER user/agent provided. Two-schema pattern (Context + RenderContext) enforces separation. 34 schema files (17 Context + 17 RenderContext). User feedback: "Het is de basis voor fingerprinting van gescaffolde artefacten!" |
 
 ---
 
