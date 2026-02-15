@@ -234,7 +234,12 @@ class GitCommitTool(BaseTool):
             current_branch = self.manager.adapter.get_current_branch()
 
             # Read workflow_phase from state.json
-            state_engine = phase_state_engine.PhaseStateEngine()
+            workspace_root = Path.cwd()
+            pm = project_manager.ProjectManager(workspace_root=workspace_root)
+            state_engine = phase_state_engine.PhaseStateEngine(
+                workspace_root=workspace_root,
+                project_manager=pm,
+            )
             workflow_phase = state_engine.get_current_phase(branch=current_branch)
 
             logger.info(
