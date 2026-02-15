@@ -1,4 +1,5 @@
 """Unit tests for git_tools.py."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -33,11 +34,13 @@ def mock_git_manager():
     """Fixture for mocked GitManager."""
     return MagicMock()
 
+
 @pytest.mark.asyncio
 async def test_create_branch_tool_requires_base_branch(mock_git_manager):
     """Test that base_branch parameter is required."""
     with pytest.raises(Exception):  # Pydantic validation error
         CreateBranchInput(name="test-branch", branch_type="feature")
+
 
 @pytest.mark.asyncio
 async def test_create_branch_tool_calls_manager_with_explicit_base(mock_git_manager):
@@ -45,20 +48,13 @@ async def test_create_branch_tool_calls_manager_with_explicit_base(mock_git_mana
     tool = CreateBranchTool(manager=mock_git_manager)
     mock_git_manager.create_branch.return_value = "feature/test-branch"
 
-    params = CreateBranchInput(
-        name="test-branch",
-        branch_type="feature",
-        base_branch="HEAD"
-    )
+    params = CreateBranchInput(name="test-branch", branch_type="feature", base_branch="HEAD")
     result = await tool.execute(params)
 
-    mock_git_manager.create_branch.assert_called_once_with(
-        "test-branch",
-        "feature",
-        "HEAD"
-    )
+    mock_git_manager.create_branch.assert_called_once_with("test-branch", "feature", "HEAD")
     assert isinstance(result, ToolResult)
     assert "Created and switched to branch: feature/test-branch" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager):
@@ -67,24 +63,22 @@ async def test_create_branch_tool_with_branch_name_as_base(mock_git_manager):
     mock_git_manager.create_branch.return_value = "fix/new-fix"
 
     params = CreateBranchInput(
-        name="new-fix",
-        branch_type="fix",
-        base_branch="refactor/51-labels-yaml"
+        name="new-fix", branch_type="fix", base_branch="refactor/51-labels-yaml"
     )
     result = await tool.execute(params)
 
     mock_git_manager.create_branch.assert_called_once_with(
-        "new-fix",
-        "fix",
-        "refactor/51-labels-yaml"
+        "new-fix", "fix", "refactor/51-labels-yaml"
     )
     assert "fix/new-fix" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_create_branch_tool_name_changed(mock_git_manager):
     """Test that tool name is 'create_branch' (not 'create_feature_branch')."""
     tool = CreateBranchTool(manager=mock_git_manager)
     assert tool.name == "create_branch", "Tool should be renamed to create_branch"
+
 
 @pytest.mark.asyncio
 async def test_git_status_tool(mock_git_manager):
@@ -94,7 +88,7 @@ async def test_git_status_tool(mock_git_manager):
         "branch": "main",
         "is_clean": False,
         "untracked_files": ["foo.py"],
-        "modified_files": ["bar.py"]
+        "modified_files": ["bar.py"],
     }
 
     result = await tool.execute(GitStatusInput())
@@ -103,6 +97,7 @@ async def test_git_status_tool(mock_git_manager):
     assert "Branch: main" in result.content[0]["text"]
     assert "Untracked: foo.py" in result.content[0]["text"]
     assert "Modified: bar.py" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_git_commit_tool_tdd(mock_git_manager):
@@ -116,6 +111,7 @@ async def test_git_commit_tool_tdd(mock_git_manager):
     mock_git_manager.commit_tdd_phase.assert_called_once_with("red", "failing test", files=None)
     assert "Committed: abc1234" in result.content[0]["text"]
 
+
 @pytest.mark.asyncio
 async def test_git_commit_tool_docs(mock_git_manager):
     """Test git commit tool with docs phase."""
@@ -128,6 +124,114 @@ async def test_git_commit_tool_docs(mock_git_manager):
     mock_git_manager.commit_docs.assert_called_once_with("update readme", files=None)
     assert "Committed: doc1234" in result.content[0]["text"]
 
+
+@pytest.mark.asyncio
+async def test_git_commit_tool_with_workflow_phase(mock_git_manager):
+    """Test git commit tool with workflow_phase parameter (NEW)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "wf1234"
+
+    params = GitCommitInput(
+        message="complete research",
+        workflow_phase="research",
+    )
+    result = await tool.execute(params)
+
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="research",
+        message="complete research",
+        sub_phase=None,
+        cycle_number=None,
+        files=None,
+    )
+    assert "Committed: wf1234" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tool_with_workflow_phase_and_subphase(mock_git_manager):
+    """Test git commit tool with workflow_phase and sub_phase."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "wf5678"
+
+    params = GitCommitInput(
+        message="add failing test",
+        workflow_phase="tdd",
+        sub_phase="red",
+    )
+    result = await tool.execute(params)
+
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="add failing test",
+        sub_phase="red",
+        cycle_number=None,
+        files=None,
+    )
+    assert "Committed: wf5678" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tool_with_cycle_number(mock_git_manager):
+    """Test git commit tool with cycle_number."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "wf9012"
+
+    params = GitCommitInput(
+        message="implement feature",
+        workflow_phase="tdd",
+        sub_phase="green",
+        cycle_number=1,
+    )
+    result = await tool.execute(params)
+
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="implement feature",
+        sub_phase="green",
+        cycle_number=1,
+        files=None,
+    )
+    assert "Committed: wf9012" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
+    """Test git commit tool with workflow_phase and files."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "wf3456"
+
+    params = GitCommitInput(
+        message="refactor code",
+        workflow_phase="tdd",
+        sub_phase="refactor",
+        files=["src/app.py", "tests/test_app.py"],
+    )
+    result = await tool.execute(params)
+
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="refactor code",
+        sub_phase="refactor",
+        cycle_number=None,
+        files=["src/app.py", "tests/test_app.py"],
+    )
+    assert "Committed: wf3456" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tool_backward_compat_with_old_phase(mock_git_manager):
+    """Test backward compatibility: old 'phase' parameter still works."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_tdd_phase.return_value = "old1234"
+
+    params = GitCommitInput(phase="red", message="old style commit")
+    result = await tool.execute(params)
+
+    # Should use old path when workflow_phase is not provided
+    mock_git_manager.commit_tdd_phase.assert_called_once_with("red", "old style commit", files=None)
+    assert "Committed: old1234" in result.content[0]["text"]
+
+
 @pytest.mark.asyncio
 async def test_git_checkout_tool(mock_git_manager):
     """Test git checkout tool with PhaseStateEngine state sync."""
@@ -135,23 +239,22 @@ async def test_git_checkout_tool(mock_git_manager):
 
     # Mock PhaseStateEngine to return state with phase info
     mock_engine = MagicMock()
-    mock_engine.get_state.return_value = {'current_phase': 'tdd', 'branch': 'main'}
+    mock_engine.get_state.return_value = {"current_phase": "tdd", "branch": "main"}
 
     params = GitCheckoutInput(branch="main")
 
-    with patch(
-        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
-        return_value=mock_engine
-    ), \
-         patch('mcp_server.managers.project_manager.ProjectManager'), \
-         patch('pathlib.Path.cwd', return_value=MagicMock()):
-
+    with (
+        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
+        patch("mcp_server.managers.project_manager.ProjectManager"),
+        patch("pathlib.Path.cwd", return_value=MagicMock()),
+    ):
         result = await tool.execute(params)
 
         mock_git_manager.checkout.assert_called_once_with("main")
         mock_engine.get_state.assert_called_once_with("main")
         assert "Switched to branch: main" in result.content[0]["text"]
         assert "tdd" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_git_checkout_tool_displays_parent_branch(mock_git_manager):
@@ -164,26 +267,25 @@ async def test_git_checkout_tool_displays_parent_branch(mock_git_manager):
     # Mock PhaseStateEngine to return state with parent_branch
     mock_engine = MagicMock()
     mock_engine.get_state.return_value = {
-        'current_phase': 'design',
-        'branch': 'feature/79-test',
-        'parent_branch': 'epic/76-quality-gates'
+        "current_phase": "design",
+        "branch": "feature/79-test",
+        "parent_branch": "epic/76-quality-gates",
     }
 
     params = GitCheckoutInput(branch="feature/79-test")
 
-    with patch(
-        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
-        return_value=mock_engine
-    ), \
-         patch('mcp_server.managers.project_manager.ProjectManager'), \
-         patch('pathlib.Path.cwd', return_value=MagicMock()):
-
+    with (
+        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
+        patch("mcp_server.managers.project_manager.ProjectManager"),
+        patch("pathlib.Path.cwd", return_value=MagicMock()),
+    ):
         result = await tool.execute(params)
 
         mock_git_manager.checkout.assert_called_once_with("feature/79-test")
         assert "Switched to branch: feature/79-test" in result.content[0]["text"]
         assert "Current phase: design" in result.content[0]["text"]
         assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_git_checkout_tool_no_parent_branch(mock_git_manager):
@@ -196,20 +298,18 @@ async def test_git_checkout_tool_no_parent_branch(mock_git_manager):
     # Mock PhaseStateEngine to return state WITHOUT parent_branch
     mock_engine = MagicMock()
     mock_engine.get_state.return_value = {
-        'current_phase': 'tdd',
-        'branch': 'main',
-        'parent_branch': None
+        "current_phase": "tdd",
+        "branch": "main",
+        "parent_branch": None,
     }
 
     params = GitCheckoutInput(branch="main")
 
-    with patch(
-        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
-        return_value=mock_engine
-    ), \
-         patch('mcp_server.managers.project_manager.ProjectManager'), \
-         patch('pathlib.Path.cwd', return_value=MagicMock()):
-
+    with (
+        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
+        patch("mcp_server.managers.project_manager.ProjectManager"),
+        patch("pathlib.Path.cwd", return_value=MagicMock()),
+    ):
         result = await tool.execute(params)
 
         mock_git_manager.checkout.assert_called_once_with("main")
@@ -217,6 +317,7 @@ async def test_git_checkout_tool_no_parent_branch(mock_git_manager):
         assert "Switched to branch: main" in output
         assert "Current phase: tdd" in output
         assert "Parent branch:" not in output  # Should NOT appear
+
 
 @pytest.mark.asyncio
 async def test_git_push_tool(mock_git_manager):
@@ -230,6 +331,7 @@ async def test_git_push_tool(mock_git_manager):
     mock_git_manager.push.assert_called_once_with(set_upstream=True)
     assert "Pushed branch: feature/foo" in result.content[0]["text"]
 
+
 @pytest.mark.asyncio
 async def test_git_merge_tool(mock_git_manager):
     """Test git merge tool."""
@@ -242,6 +344,7 @@ async def test_git_merge_tool(mock_git_manager):
     mock_git_manager.merge.assert_called_once_with("feature/foo")
     assert "Merged feature/foo into main" in result.content[0]["text"]
 
+
 @pytest.mark.asyncio
 async def test_git_delete_branch_tool(mock_git_manager):
     """Test git delete branch tool."""
@@ -252,6 +355,7 @@ async def test_git_delete_branch_tool(mock_git_manager):
 
     mock_git_manager.delete_branch.assert_called_once_with("feature/old", force=True)
     assert "Deleted branch: feature/old" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_git_stash_tool(mock_git_manager):
@@ -297,25 +401,24 @@ async def test_get_parent_branch_current_branch():
     # Mock PhaseStateEngine to return state with parent_branch
     mock_engine = MagicMock()
     mock_engine.get_state.return_value = {
-        'current_phase': 'tdd',
-        'branch': 'feature/79-parent-branch-tracking',
-        'parent_branch': 'epic/76-quality-gates'
+        "current_phase": "tdd",
+        "branch": "feature/79-parent-branch-tracking",
+        "parent_branch": "epic/76-quality-gates",
     }
 
     params = GetParentBranchInput()  # No branch specified = current branch
 
-    with patch(
-        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
-        return_value=mock_engine
-    ), \
-         patch('mcp_server.managers.project_manager.ProjectManager'), \
-         patch('pathlib.Path.cwd', return_value=MagicMock()), \
-         patch('mcp_server.tools.git_tools.GitManager') as mock_git:
-        mock_git.return_value.get_current_branch.return_value = 'feature/79-parent-branch-tracking'
+    with (
+        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
+        patch("mcp_server.managers.project_manager.ProjectManager"),
+        patch("pathlib.Path.cwd", return_value=MagicMock()),
+        patch("mcp_server.tools.git_tools.GitManager") as mock_git,
+    ):
+        mock_git.return_value.get_current_branch.return_value = "feature/79-parent-branch-tracking"
 
         result = await tool.execute(params)
 
-        mock_engine.get_state.assert_called_once_with('feature/79-parent-branch-tracking')
+        mock_engine.get_state.assert_called_once_with("feature/79-parent-branch-tracking")
         assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
 
 
@@ -330,23 +433,21 @@ async def test_get_parent_branch_specified_branch():
     # Mock PhaseStateEngine to return state with parent_branch
     mock_engine = MagicMock()
     mock_engine.get_state.return_value = {
-        'current_phase': 'design',
-        'branch': 'feature/77-error-handling',
-        'parent_branch': 'epic/76-quality-gates'
+        "current_phase": "design",
+        "branch": "feature/77-error-handling",
+        "parent_branch": "epic/76-quality-gates",
     }
 
-    params = GetParentBranchInput(branch='feature/77-error-handling')
+    params = GetParentBranchInput(branch="feature/77-error-handling")
 
-    with patch(
-        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
-        return_value=mock_engine
-    ), \
-         patch('mcp_server.managers.project_manager.ProjectManager'), \
-         patch('pathlib.Path.cwd', return_value=MagicMock()):
-
+    with (
+        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
+        patch("mcp_server.managers.project_manager.ProjectManager"),
+        patch("pathlib.Path.cwd", return_value=MagicMock()),
+    ):
         result = await tool.execute(params)
 
-        mock_engine.get_state.assert_called_once_with('feature/77-error-handling')
+        mock_engine.get_state.assert_called_once_with("feature/77-error-handling")
         assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
         assert "feature/77-error-handling" in result.content[0]["text"]
 
@@ -362,23 +463,21 @@ async def test_get_parent_branch_not_set():
     # Mock PhaseStateEngine to return state WITHOUT parent_branch
     mock_engine = MagicMock()
     mock_engine.get_state.return_value = {
-        'current_phase': 'tdd',
-        'branch': 'main',
-        'parent_branch': None
+        "current_phase": "tdd",
+        "branch": "main",
+        "parent_branch": None,
     }
 
-    params = GetParentBranchInput(branch='main')
+    params = GetParentBranchInput(branch="main")
 
-    with patch(
-        'mcp_server.managers.phase_state_engine.PhaseStateEngine',
-        return_value=mock_engine
-    ), \
-         patch('mcp_server.managers.project_manager.ProjectManager'), \
-         patch('pathlib.Path.cwd', return_value=MagicMock()):
-
+    with (
+        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
+        patch("mcp_server.managers.project_manager.ProjectManager"),
+        patch("pathlib.Path.cwd", return_value=MagicMock()),
+    ):
         result = await tool.execute(params)
 
-        mock_engine.get_state.assert_called_once_with('main')
+        mock_engine.get_state.assert_called_once_with("main")
         output = result.content[0]["text"]
         assert "Parent branch: (not set)" in output
         assert "main" in output
