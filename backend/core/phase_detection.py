@@ -15,8 +15,10 @@ NO type-heuristic guessing - unknown is acceptable outcome.
 """
 
 # Standard library
+import json
 import logging
 import re
+from pathlib import Path
 from typing import Literal, TypedDict
 
 # Third-party
@@ -65,6 +67,15 @@ class ScopeDecoder:
     # Conventional Commits scope extraction
     COMMIT_SCOPE_PATTERN = re.compile(r"^[a-z]+\(([^)]+)\):", re.IGNORECASE)
 
+    def __init__(self, state_path: Path | None = None):
+        """
+        Initialize ScopeDecoder with optional state.json path.
+
+        Args:
+            state_path: Path to state.json file (defaults to .st3/state.json)
+        """
+        self.state_path = state_path or Path(".st3/state.json")
+
     def detect_phase(
         self,
         commit_message: str | None,
@@ -93,11 +104,11 @@ class ScopeDecoder:
             if scope_result:
                 return scope_result
 
-        # TODO: Fallback to state.json (SECONDARY)
-        # if fallback_to_state:
-        #     state_result = self._read_state_json()
-        #     if state_result:
-        #         return state_result
+        # Fallback to state.json (SECONDARY)
+        if fallback_to_state:
+            state_result = self._read_state_json()
+            if state_result:
+                return state_result
 
         # Unknown fallback (TERTIARY)
         return self._unknown_fallback()
@@ -147,6 +158,38 @@ class ScopeDecoder:
 
         # Scope exists but doesn't match expected format
         return None
+
+    def _read_state_json(self) -> PhaseDetectionResult | None:
+        """
+        Read workflow phase from state.json.
+
+        Returns:
+            PhaseDetectionResult with medium confidence if state.json exists and has current_phase,
+            None otherwise (graceful degradation on missing file or malformed JSON)
+        """
+        try:
+            if not self.state_path.exists():
+                return None
+
+            with self.state_path.open("r", encoding="utf-8") as f:
+                state_data = json.load(f)
+
+            current_phase = state_data.get("current_phase")
+            if not current_phase:
+                return None
+
+            return {
+                "workflow_phase": current_phase,
+                "sub_phase": None,
+                "source": "state.json",
+                "confidence": "medium",
+                "raw_scope": None,
+                "error_message": None,
+            }
+        except (OSError, json.JSONDecodeError) as e:
+            # Graceful degradation - log but don't raise
+            logger.debug(f"Failed to read state.json: {e}")
+            return None
 
     def _unknown_fallback(self) -> PhaseDetectionResult:
         """
