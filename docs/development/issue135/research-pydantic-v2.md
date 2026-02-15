@@ -1,9 +1,9 @@
 <!-- docs/development/issue135/research-pydantic-v2.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T19:30:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T20:00:00Z -->
 # Pydantic-First Scaffolding V2 Architecture Research
 
 **Status:** COMPLETE  
-**Version:** 1.6 (Final Consistency - 100% Clean)
+**Version:** 1.7 (Semantic Clash Fixed - 19 Analyzed, 3 Pending)
 **Last Updated:** 2026-02-15
 
 ---
@@ -904,7 +904,7 @@ class DTOContext(BaseModel):
 - **8 Markdown Patterns:** status_header, version_history, purpose_scope, prerequisites, related_docs, open_questions, dividers, agent_hints
 - **14 Python Patterns:** assertions (empty), async, di, error, lifecycle, logging, log_enricher, mocking, pydantic, pytest, test_fixtures, test_structure, translator, typed_id
 
-**CRITICAL FINDING:** All 22 analyzed macros are **OUTPUT formatters** (generate syntax), ZERO validate INPUT
+**CRITICAL FINDING:** All 19 analyzed macros are **OUTPUT formatters** (generate syntax), ZERO validate INPUT. **3 macros pending analysis** (assertions/log_enricher/translator - not yet evaluated).
 
 **Example Analysis - tier3_pattern_python_pydantic.jinja2:**
 - **Exports:** pattern_pydantic_imports(), pattern_pydantic_base_model(), pattern_pydantic_config(), pattern_pydantic_field(), pattern_pydantic_validator()
@@ -924,12 +924,17 @@ class DTOContext(BaseModel):
 
 **Total: 22 macros analyzed** (19 categorized: 12 ESSENTIAL + 5 RECOMMENDED + 2 OPTIONAL, 3 uncategorized pending analysis)
 
-**Conclusion:** All 22 analyzed Tier 3 macros are OUTPUT formatters → recommended for v2 (pending verification during implementation)
+**Analysis Coverage:** 19 macros analyzed (86%), 3 pending analysis (14%)  
+**Verified OUTPUT Formatters:** 19 (ESSENTIAL: 12, RECOMMENDED: 5, OPTIONAL: 2)  
+**Pending Evaluation:** 3 (assertions, log_enricher, translator)
+
+**Conclusion:** All 19 analyzed Tier 3 macros are OUTPUT formatters → recommended for v2 (pending verification during implementation). **3 macros pending analysis** (assertions/empty, log_enricher, translator) - not yet evaluated for OUTPUT vs INPUT validation.
 
 **Rationale:**
 1. **Problem Location:** The 78× `| default` defensive programming patterns are in **Tier 4 CONCRETE templates**, NOT in Tier 3 macros
 2. **Macro Purpose:** Tier 3 macros generate OUTPUT syntax (imports, headers, test structure) - formatting helpers, not validation logic
 3. **Safe Reuse:** Since macros don't validate input or provide defaults, they're safe to use with Pydantic-validated context
+4. **Analysis Coverage:** 19 of 22 macros analyzed (86% coverage), 3 pending (assertions, log_enricher, translator)
 
 **Example:**
 ```jinja
@@ -945,14 +950,15 @@ from pydantic import BaseModel, Field{% if uses_validators %}, field_validator{%
 ```
 
 **V2 Strategy:**
-- **Reuse:** All 22 analyzed Tier 3 macros (formatting helpers safe)
+- **Reuse:** 19 analyzed Tier 3 macros (proven OUTPUT formatters)
+- **Pending:** 3 uncategorized macros (assertions/log_enricher/translator) - evaluate during implementation
 - **Cleanup:** Remove 78× `| default` filters from Tier 4 concrete templates
 - **Validation:** Move to Pydantic schemas (e.g., WorkerContext.dependencies: List[str])
 
 **Analysis Scope & Limitations:**
 - **Files Analyzed:** 22 tier3_pattern_* files in mcp_server/scaffolding/templates/
 - **Method:** Manual inspection of macro exports + behavioral analysis (OUTPUT vs INPUT validation)
-- **Coverage:** 100% of existing v1 Tier 3 macros
+- **Coverage:** 19 of 22 macros analyzed (86%), 3 pending analysis
 - **Limitation:** New v2 macros may introduce different patterns; requires re-analysis during implementation
 
 ---
@@ -1286,7 +1292,7 @@ def _enrich_context(self, context: BaseModel) -> BaseModel:
 
 **Status:** ✅ RESOLVED
 
-**Decision:** All 22 analyzed Tier 3 macros are OUTPUT formatters (see 'Template Tier 3 Macro Guardrails' section) - recommended for v2 reuse pending implementation verification
+**Decision:** All 19 analyzed Tier 3 macros are OUTPUT formatters (see 'Template Tier 3 Macro Guardrails' section) - recommended for v2 reuse. **3 macros pending analysis** (assertions, log_enricher, translator) - deferred to implementation phase.
 
 **Question:** Do v2 templates import tier3_patterns/ macros or inline all logic?
 
@@ -1296,7 +1302,7 @@ def _enrich_context(self, context: BaseModel) -> BaseModel:
 - **Inline Pros:** Clean v2 templates with no legacy baggage
 - **Inline Cons:** Duplicate presentation logic (format_docstring repeated 16x)
 
-**Recommendation for Planning:** All 22 analyzed Tier 3 macros ALLOWED (see "Template Tier 3 Macro Guardrails" section - all are OUTPUT formatters, not validators).
+**Recommendation for Planning:** 19 analyzed Tier 3 macros ALLOWED (OUTPUT formatters, no validators). 3 pending analysis (assertions/log_enricher/translator) - evaluate during implementation.
 
 ---
 
@@ -1330,6 +1336,7 @@ def _enrich_context(self, context: BaseModel) -> BaseModel:
 | 1.4 | 2026-02-15 | Agent | GATE 2 replaced: Was duplicate of GATE 1 (lifecycle field injection already decided). New GATE 2: Enrichment boundary type contract (Protocol vs ABC vs Generic vs Runtime validation) - 4 options analyzed with trade-offs. User feedback: "Herformuleer naar een nieuw, echt open planning-vraagstuk." |
 | 1.5 | 2026-02-15 | Agent | Consistency blockers fixed: (1) Tier 3 inventory corrected (31→22 files, 23→14 python, 3 uncategorized added: assertions/log_enricher/translator), (2) Defensive guards contradiction resolved (macros are OUTPUT formatters, no defensive logic), (3) Next Steps updated (lifecycle already decided in GATE 1, replaced with GATE 2 enrichment boundary). User feedback: "Maak dit sluitend." |
 | 1.6 | 2026-02-15 | Agent | Final consistency fix: Option A Template Tier Reuse cons corrected - removed "defensive macros" claim (contradicts later analysis proving ALL 22 Tier 3 macros are OUTPUT formatters). Replaced with "legacy coupling/bloat" terminology. Document now 100% internally consistent. User feedback: "Herformuleer die ene Option A-con bullet naar legacy coupling i.p.v. defensive macros." |
+| 1.7 | 2026-02-15 | Agent | Semantic clash fixed: "ALL 22 analyzed" contradicted "3 UNCATEGORIZED NEEDS ANALYSIS". Corrected to: 19 macros analyzed (OUTPUT formatters proven), 3 pending analysis (assertions/log_enricher/translator not yet evaluated). Updated GATE 3, Conclusion, Critical Finding, Evidence Table, V2 Strategy. User feedback: "Dit kan niet tegelijk waar zijn; kies één lijn." Version 1.6 "100% clean" was premature. |
 
 ## Next Steps
 
