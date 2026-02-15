@@ -56,6 +56,7 @@ class TestScopeDecoder:
         """Parse commit scope with P_PHASE format (no subphase)."""
         # Arrange
         from backend.core.phase_detection import ScopeDecoder
+
         decoder = ScopeDecoder()
         commit_message = "docs(P_RESEARCH): complete problem analysis"
 
@@ -74,6 +75,7 @@ class TestScopeDecoder:
         """Parse commit scope with P_PHASE_SP_SUBPHASE format."""
         # Arrange
         from backend.core.phase_detection import ScopeDecoder
+
         decoder = ScopeDecoder()
         commit_message = "test(P_TDD_SP_RED): add user validation tests"
 

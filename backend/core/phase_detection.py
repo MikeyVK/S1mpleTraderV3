@@ -53,26 +53,17 @@ class ScopeDecoder:
     Decoder for workflow phase from commit-scope with deterministic precedence.
 
     Precedence: commit-scope > state.json > unknown (NO type-heuristic guessing)
-    
+
     Scope Format:
         - P_PHASE: e.g., P_RESEARCH, P_TDD
         - P_PHASE_SP_SUBPHASE: e.g., P_TDD_SP_RED, P_PLANNING_SP_C1
     """
 
     # Regex patterns for scope parsing
-    SCOPE_PATTERN_WITH_SUBPHASE = re.compile(
-        r"^P_([A-Z]+)_SP_([A-Z0-9_]+)$",
-        re.IGNORECASE
-    )
-    SCOPE_PATTERN_PHASE_ONLY = re.compile(
-        r"^P_([A-Z]+)$",
-        re.IGNORECASE
-    )
+    SCOPE_PATTERN_WITH_SUBPHASE = re.compile(r"^P_([A-Z]+)_SP_([A-Z0-9_]+)$", re.IGNORECASE)
+    SCOPE_PATTERN_PHASE_ONLY = re.compile(r"^P_([A-Z]+)$", re.IGNORECASE)
     # Conventional Commits scope extraction
-    COMMIT_SCOPE_PATTERN = re.compile(
-        r"^[a-z]+\(([^)]+)\):",
-        re.IGNORECASE
-    )
+    COMMIT_SCOPE_PATTERN = re.compile(r"^[a-z]+\(([^)]+)\):", re.IGNORECASE)
 
     def detect_phase(
         self,
