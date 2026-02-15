@@ -19,7 +19,6 @@ import json
 from pathlib import Path
 
 # Third-party
-
 # Project modules
 from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 
@@ -110,9 +109,7 @@ class TestScopeDecoder:
         """Fallback to state.json when commit scope format is invalid."""
         # Arrange
         state_file = tmp_path / "state.json"
-        state_file.write_text(
-            json.dumps({"current_phase": "planning", "workflow_name": "bug"})
-        )
+        state_file.write_text(json.dumps({"current_phase": "planning", "workflow_name": "bug"}))
         decoder = ScopeDecoder(state_path=state_file)
         commit_message = "feat(INVALID_SCOPE): implement feature"  # Invalid format
 
@@ -208,9 +205,7 @@ class TestScopeDecoder:
 
         for phase in valid_phases:
             state_file = tmp_path / f"state_{phase}.json"
-            state_file.write_text(
-                json.dumps({"current_phase": phase, "workflow_name": "feature"})
-            )
+            state_file.write_text(json.dumps({"current_phase": phase, "workflow_name": "feature"}))
             decoder = ScopeDecoder(state_path=state_file)
             commit_message = "docs: no scope"
 
@@ -221,3 +216,43 @@ class TestScopeDecoder:
             assert result["workflow_phase"] == phase, f"Phase {phase} should be accepted"
             assert result["source"] == "state.json"
             assert result["confidence"] == "medium"
+
+    def test_validate_commit_scope_phase_against_workphases(self, tmp_path):
+        """Invalid phase in commit-scope should be rejected (fallback to state.json)."""
+        # Arrange - commit with invalid phase, state.json with valid phase
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps({"current_phase": "tdd", "workflow_name": "feature"}))
+        decoder = ScopeDecoder(state_path=state_file)
+        commit_message = "docs(P_INVALID_PHASE): some documentation"
+
+        # Act
+        result = decoder.detect_phase(commit_message, fallback_to_state=True)
+
+        # Assert - should reject invalid commit-scope, fallback to state.json
+        assert result["workflow_phase"] == "tdd"  # From state.json, not commit-scope
+        assert result["source"] == "state.json"  # Fallback source
+        assert result["confidence"] == "medium"  # Medium confidence from state
+
+    def test_validate_commit_scope_accepts_valid_phases(self):
+        """Valid phase in commit-scope should be accepted."""
+        # Arrange - valid phases from workphases.yaml
+        valid_commits = [
+            ("docs(P_RESEARCH): research", "research"),
+            ("chore(P_PLANNING): planning", "planning"),
+            ("docs(P_DESIGN): design", "design"),
+            ("test(P_TDD_SP_RED): tdd test", "tdd"),
+            ("test(P_INTEGRATION): integration", "integration"),
+            ("docs(P_DOCUMENTATION): docs", "documentation"),
+            ("chore(P_COORDINATION): coordination", "coordination"),
+        ]
+
+        decoder = ScopeDecoder()
+
+        for commit, expected_phase in valid_commits:
+            # Act
+            result = decoder.detect_phase(commit, fallback_to_state=False)
+
+            # Assert - valid phase accepted with high confidence
+            assert result["workflow_phase"] == expected_phase
+            assert result["source"] == "commit-scope"
+            assert result["confidence"] == "high"

@@ -130,7 +130,11 @@ class ScopeDecoder:
         Format: type(P_PHASE_SP_SUBPHASE): message
 
         Returns:
-            PhaseDetectionResult if scope matches pattern, None otherwise
+            PhaseDetectionResult if scope matches pattern AND phase is valid, None otherwise
+
+        Notes:
+            - Validates phase against workphases.yaml
+            - Invalid phases are rejected (returns None for fallback)
         """
         # Extract scope from commit message
         scope_match = self.COMMIT_SCOPE_PATTERN.match(commit_message)
@@ -144,6 +148,16 @@ class ScopeDecoder:
         if match_with_subphase:
             phase = match_with_subphase.group(1).lower()
             subphase = match_with_subphase.group(2).lower()
+
+            # Validate phase against workphases.yaml
+            valid_phases = self._load_valid_phases()
+            if valid_phases and phase not in valid_phases:
+                logger.debug(
+                    f"Invalid phase '{phase}' in commit-scope '{scope}'. "
+                    f"Valid phases: {sorted(valid_phases)}"
+                )
+                return None
+
             return {
                 "workflow_phase": phase,
                 "sub_phase": subphase,
@@ -157,6 +171,16 @@ class ScopeDecoder:
         match_phase_only = self.SCOPE_PATTERN_PHASE_ONLY.match(scope)
         if match_phase_only:
             phase = match_phase_only.group(1).lower()
+
+            # Validate phase against workphases.yaml
+            valid_phases = self._load_valid_phases()
+            if valid_phases and phase not in valid_phases:
+                logger.debug(
+                    f"Invalid phase '{phase}' in commit-scope '{scope}'. "
+                    f"Valid phases: {sorted(valid_phases)}"
+                )
+                return None
+
             return {
                 "workflow_phase": phase,
                 "sub_phase": None,
