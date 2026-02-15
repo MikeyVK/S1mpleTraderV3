@@ -263,6 +263,48 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
 
 
 @pytest.mark.asyncio
+async def test_git_commit_tool_with_invalid_commit_type():
+    """Test that invalid commit_type raises ValueError."""
+    with pytest.raises(ValueError, match="Invalid commit_type 'invalid_type'"):
+        GitCommitInput(
+            workflow_phase="tdd",
+            sub_phase="red",
+            commit_type="invalid_type",  # Invalid type
+            message="test commit",
+        )
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
+    """Test that commit_type is normalized to lowercase."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "case123"
+
+    params = GitCommitInput(
+        workflow_phase="tdd",
+        sub_phase="red",
+        commit_type="FEAT",  # Uppercase should be normalized
+        message="add feature",
+    )
+
+    # Should be normalized to lowercase by validator
+    assert params.commit_type == "feat"
+
+    result = await tool.execute(params)
+
+    # Should pass normalized commit_type
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="add feature",
+        sub_phase="red",
+        cycle_number=None,
+        commit_type="feat",  # Normalized to lowercase
+        files=None,
+    )
+    assert "Committed: case123" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
 async def test_git_commit_integration_workflow_phases():
     """Integration test: Full commit workflow with real workphases.yaml."""
     from pathlib import Path

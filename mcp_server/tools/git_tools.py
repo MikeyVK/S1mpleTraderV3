@@ -172,6 +172,37 @@ class GitCommitInput(BaseModel):
             raise ValueError(f"Invalid phase '{value}'. Valid phases from git.yaml: {valid_phases}")
         return value
 
+    @field_validator("commit_type")
+    @classmethod
+    def validate_commit_type(cls, value: str | None) -> str | None:
+        """Validate commit_type against Conventional Commit types. Only if provided."""
+        if value is None:
+            return None
+
+        # Conventional Commit types (https://www.conventionalcommits.org/)
+        allowed_types = [
+            "feat",
+            "fix",
+            "docs",
+            "style",
+            "refactor",
+            "test",
+            "chore",
+            "perf",
+            "ci",
+            "build",
+            "revert",
+        ]
+
+        if value.lower() not in allowed_types:
+            raise ValueError(
+                f"Invalid commit_type '{value}'. "
+                f"Valid types: {', '.join(allowed_types)}. "
+                f"See: https://www.conventionalcommits.org/"
+            )
+
+        return value.lower()  # Normalize to lowercase
+
     @model_validator(mode="after")
     def validate_phase_or_workflow_phase(self) -> "GitCommitInput":
         """Ensure either phase or workflow_phase is provided (not both, not neither)."""
