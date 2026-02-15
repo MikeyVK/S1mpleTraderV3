@@ -11,6 +11,7 @@ import pytest
 import yaml
 
 from backend.core.phase_detection import ScopeDecoder
+from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
@@ -158,8 +159,9 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
         parent_branch="main",
     )
 
-    # Initialize GitManager and ScopeDecoder
-    git_manager = GitManager()
+    # Initialize GitManager with tmp_path and ScopeDecoder
+    git_adapter = GitAdapter(repo_path=str(git_repo))
+    git_manager = GitManager(adapter=git_adapter)
     decoder = ScopeDecoder()
 
     # Phase 1: RESEARCH
@@ -168,7 +170,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     commit_hash = git_manager.commit_with_scope(
         workflow_phase="research",
         message="complete research",
-        files=["test.txt"],
+        files=[str(test_file)],
     )
     assert commit_hash is not None
 
@@ -186,7 +188,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager.commit_with_scope(
         workflow_phase="planning",
         message="create plan",
-        files=["test.txt"],
+        files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
@@ -202,7 +204,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager.commit_with_scope(
         workflow_phase="design",
         message="create design",
-        files=["test.txt"],
+        files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
@@ -221,7 +223,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
         workflow_phase="tdd",
         sub_phase="red",
         message="add failing test",
-        files=["test.txt"],
+        files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
@@ -236,7 +238,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
         workflow_phase="tdd",
         sub_phase="green",
         message="implement feature",
-        files=["test.txt"],
+        files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
@@ -251,7 +253,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
         workflow_phase="tdd",
         sub_phase="refactor",
         message="refactor code",
-        files=["test.txt"],
+        files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
@@ -268,7 +270,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager.commit_with_scope(
         workflow_phase="integration",
         message="add integration tests",
-        files=["test.txt"],
+        files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
@@ -284,7 +286,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     git_manager.commit_with_scope(
         workflow_phase="documentation",
         message="update docs",
-        files=["test.txt"],
+        files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
