@@ -1,9 +1,9 @@
 <!-- docs/development/issue135/research-pydantic-v2.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T19:00:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T19:30:00Z -->
 # Pydantic-First Scaffolding V2 Architecture Research
 
 **Status:** COMPLETE  
-**Version:** 1.5 (Consistency Blockers Fixed)
+**Version:** 1.6 (Final Consistency - 100% Clean)
 **Last Updated:** 2026-02-15
 
 ---
@@ -754,8 +754,8 @@ class {{ worker_name }}(Worker):
 - ✅ **Validated Tiers:** Tier 0-2 already proven in Issue #72 MVP
 
 **Cons:**
-- ⚠️ **Tier 3 Pattern Bloat:** tier3_patterns/ still contain defensive macros (unused in v2)
-- ⚠️ **Conceptual Confusion:** v1 Tier 3 has validation logic, v2 doesn't need it (but patterns still imported)
+- ⚠️ **Tier 3 Pattern Bloat:** tier3_patterns/ library contains 22 macros (legacy coupling, though all are OUTPUT formatters without validation logic)
+- ⚠️ **Conceptual Confusion:** v1 workflow imports Tier 3 macros (but v2 concrete templates use fewer of them - library coupling)
 - ⚠️ **Maintenance Burden:** Changes to Tier 0-2 affect both v1 and v2 (must ensure v2 compatibility)
 
 **Impact Assessment:**
@@ -1329,6 +1329,7 @@ def _enrich_context(self, context: BaseModel) -> BaseModel:
 | 1.3 | 2026-02-15 | Agent | Data consistency fix: Code (41/53%), Docs (22/28%), Tests (15/19%). Gate status fixed: GATE 2 unblocked (unresolved), GATE 3 resolved. Claims softened: "all 22 analyzed" (not "ALL"), "target 100%" (not absolute). Evidence table added for reproducibility. |
 | 1.4 | 2026-02-15 | Agent | GATE 2 replaced: Was duplicate of GATE 1 (lifecycle field injection already decided). New GATE 2: Enrichment boundary type contract (Protocol vs ABC vs Generic vs Runtime validation) - 4 options analyzed with trade-offs. User feedback: "Herformuleer naar een nieuw, echt open planning-vraagstuk." |
 | 1.5 | 2026-02-15 | Agent | Consistency blockers fixed: (1) Tier 3 inventory corrected (31→22 files, 23→14 python, 3 uncategorized added: assertions/log_enricher/translator), (2) Defensive guards contradiction resolved (macros are OUTPUT formatters, no defensive logic), (3) Next Steps updated (lifecycle already decided in GATE 1, replaced with GATE 2 enrichment boundary). User feedback: "Maak dit sluitend." |
+| 1.6 | 2026-02-15 | Agent | Final consistency fix: Option A Template Tier Reuse cons corrected - removed "defensive macros" claim (contradicts later analysis proving ALL 22 Tier 3 macros are OUTPUT formatters). Replaced with "legacy coupling/bloat" terminology. Document now 100% internally consistent. User feedback: "Herformuleer die ene Option A-con bullet naar legacy coupling i.p.v. defensive macros." |
 
 ## Next Steps
 
