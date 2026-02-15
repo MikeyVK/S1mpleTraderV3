@@ -6,11 +6,12 @@ Provides deterministic workflow phase detection from commit-scope and state.json
 NO type-heuristic guessing - unknown is acceptable outcome.
 
 @layer: Core
-@dependencies: [typing, pathlib, json, re]
+@dependencies: [typing, pathlib, json, re, yaml]
 @responsibilities:
     - Define PhaseDetectionResult TypedDict schema
     - Parse commit-scope (P_PHASE_SP_SUBPHASE format)
     - Fallback to state.json when commit-scope missing
+    - Validate phases against workphases.yaml
     - Return unknown with actionable error when both fail
 """
 
@@ -22,6 +23,7 @@ from pathlib import Path
 from typing import Literal, TypedDict
 
 # Third-party
+import yaml
 
 # Project modules
 
@@ -67,14 +69,21 @@ class ScopeDecoder:
     # Conventional Commits scope extraction
     COMMIT_SCOPE_PATTERN = re.compile(r"^[a-z]+\(([^)]+)\):", re.IGNORECASE)
 
-    def __init__(self, state_path: Path | None = None) -> None:
+    def __init__(
+        self,
+        state_path: Path | None = None,
+        workphases_path: Path | None = None,
+    ) -> None:
         """
-        Initialize ScopeDecoder with optional state.json path.
+        Initialize ScopeDecoder with optional state.json and workphases.yaml paths.
 
         Args:
             state_path: Path to state.json file (defaults to .st3/state.json)
+            workphases_path: Path to workphases.yaml file (defaults to .st3/workphases.yaml)
         """
         self.state_path = state_path or Path(".st3/state.json")
+        self.workphases_path = workphases_path or Path(".st3/workphases.yaml")
+        self._valid_phases: set[str] | None = None
 
     def detect_phase(
         self,
@@ -97,6 +106,7 @@ class ScopeDecoder:
             - Never raises exceptions (graceful degradation)
             - Returns unknown with actionable error_message when all sources fail
             - NO type-heuristic guessing from commit type
+            - Validates phase names against workphases.yaml
         """
         # Try commit-scope first (PRIMARY for context tools)
         if commit_message:
@@ -159,13 +169,51 @@ class ScopeDecoder:
         # Scope exists but doesn't match expected format
         return None
 
+    def _load_valid_phases(self) -> set[str]:
+        """
+        Load valid phase names from workphases.yaml.
+
+        Returns:
+            Set of valid phase names (lowercase)
+
+        Notes:
+            - Cached after first load
+            - Graceful degradation on missing file
+        """
+        if self._valid_phases is not None:
+            return self._valid_phases
+
+        try:
+            if not self.workphases_path.exists():
+                logger.warning(f"workphases.yaml not found at {self.workphases_path}")
+                self._valid_phases = set()
+                return self._valid_phases
+
+            with self.workphases_path.open("r", encoding="utf-8") as f:
+                workphases_data = yaml.safe_load(f)
+
+            phases = workphases_data.get("phases", {})
+            self._valid_phases = {phase_name.lower() for phase_name in phases}
+
+            logger.debug(f"Loaded {len(self._valid_phases)} valid phases from workphases.yaml")
+            return self._valid_phases
+
+        except (OSError, yaml.YAMLError) as e:
+            logger.warning(f"Failed to load workphases.yaml: {e}")
+            self._valid_phases = set()
+            return self._valid_phases
+
     def _read_state_json(self) -> PhaseDetectionResult | None:
         """
         Read workflow phase from state.json.
 
         Returns:
-            PhaseDetectionResult with medium confidence if state.json exists and has current_phase,
-            None otherwise (graceful degradation on missing file or malformed JSON)
+            PhaseDetectionResult with medium confidence if state.json exists and has valid phase,
+            None otherwise (graceful degradation on missing file, malformed JSON, or invalid phase)
+
+        Notes:
+            - Validates phase against workphases.yaml
+            - Invalid phases are rejected (returns None for unknown fallback)
         """
         try:
             if not self.state_path.exists():
@@ -176,6 +224,15 @@ class ScopeDecoder:
 
             current_phase = state_data.get("current_phase")
             if not current_phase:
+                return None
+
+            # Validate phase against workphases.yaml
+            valid_phases = self._load_valid_phases()
+            if valid_phases and current_phase.lower() not in valid_phases:
+                logger.warning(
+                    f"Invalid phase '{current_phase}' in state.json. "
+                    f"Valid phases: {sorted(valid_phases)}"
+                )
                 return None
 
             return {
