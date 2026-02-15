@@ -266,3 +266,45 @@ class TestGetWorkContextTool:
 
             assert not result.is_error
             assert "Test Issue" in result.content[0]["text"]
+
+    @pytest.mark.asyncio
+    async def test_get_context_shows_error_message_when_phase_unknown(
+        self, tool: GetWorkContextTool
+    ) -> None:
+        """Should display error_message when phase detection fails (no state.json)."""
+        with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "main"
+            # No commits with valid scope -> will fallback to unknown with error_message
+            mock_git.get_recent_commits.return_value = ["chore: random commit"]
+            mock_git_class.return_value = mock_git
+
+            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
+                mock_settings.github.token = None
+
+                # Mock ScopeDecoder to return unknown with error_message
+                with patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class:
+                    mock_decoder = MagicMock()
+                    mock_decoder.detect_phase.return_value = {
+                        "workflow_phase": "unknown",
+                        "sub_phase": None,
+                        "source": "unknown",
+                        "confidence": "unknown",
+                        "raw_scope": None,
+                        "error_message": (
+                            "Phase detection failed. "
+                            "Recovery: Run transition_phase(to_phase='<phase>') "
+                            "or commit with scope 'type(P_PHASE): message'."
+                        ),
+                    }
+                    mock_decoder_class.return_value = mock_decoder
+
+                    result = await tool.execute(GetWorkContextInput())
+
+        assert not result.is_error
+        text = result.content[0]["text"]
+        # Should show unknown phase
+        assert "unknown" in text.lower() or "❓" in text
+        # Should show recovery info with error_message
+        assert "Recovery Info" in text
+        assert "transition_phase" in text

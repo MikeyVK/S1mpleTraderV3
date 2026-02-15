@@ -124,12 +124,14 @@ class GetWorkContextTool(BaseTool):
             context["sub_phase"] = phase_result.get("sub_phase")
             context["phase_source"] = phase_result["source"]
             context["phase_confidence"] = phase_result["confidence"]
+            context["phase_error_message"] = phase_result.get("error_message")
             context["recent_commits"] = recent_commits
         except (OSError, ValueError, RuntimeError):
             context["workflow_phase"] = "unknown"
             context["sub_phase"] = None
             context["phase_source"] = "unknown"
             context["phase_confidence"] = "unknown"
+            context["phase_error_message"] = None
             context["recent_commits"] = []
 
         # Get GitHub issue details if configured
@@ -260,6 +262,11 @@ class GetWorkContextTool(BaseTool):
 
         lines.append(f"**Workflow Phase:** {phase_display}")
         lines.append(f"**Phase Detection:** {source} (confidence: {confidence})")
+
+        # Show error_message if phase detection failed with recovery info
+        error_message = context.get("phase_error_message")
+        if error_message:
+            lines.append(f"**⚠️ Recovery Info:** {error_message}")
 
         # Active Issue Details
         if "active_issue" in context:
