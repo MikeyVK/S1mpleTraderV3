@@ -1,9 +1,9 @@
 <!-- docs/development/issue135/research-pydantic-v2.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T18:30:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-15T10:00:00Z updated=2026-02-15T19:00:00Z -->
 # Pydantic-First Scaffolding V2 Architecture Research
 
 **Status:** COMPLETE  
-**Version:** 1.4 (GATE 2 Replaced - Enrichment Boundary Type Contract)
+**Version:** 1.5 (Consistency Blockers Fixed)
 **Last Updated:** 2026-02-15
 
 ---
@@ -231,7 +231,7 @@ grep -E '\|\s*default' 'mcp_server/scaffolding/templates/concrete/*.jinja2'
 |-------------|-------|-------|--------|------|--------------|
 | Total `\| default` instances | `grep -E '\|\s*default' 'concrete/*.jinja2'` | All 16 concrete templates | 78 instances | 2026-02-15 | ✅ Verified via grep |
 | dto.py worst line | Manual inspection line 95 | dto.py.jinja2:95 | 6× `\| default` in 262 chars | 2026-02-15 | ✅ Verified via read_file |
-| Tier 3 macro inventory | `list_dir mcp_server/scaffolding/templates/` | tier3_pattern_* files | 31 files (8 md, 23 py) | 2026-02-15 | ✅ Verified via list_dir |
+| Tier 3 macro inventory | `list_dir mcp_server/scaffolding/templates/` | tier3_pattern_* files | 22 files (8 md, 14 py) | 2026-02-15 | ✅ Verified via list_dir |
 | Ephemeral artifacts | `grep 'output_type: "ephemeral"' artifacts.yaml` | .st3/artifacts.yaml | 3 types (commit/pr/issue) | 2026-02-15 | ✅ Verified via read_file |
 
 ### SCAFFOLDING_STRATEGY.md Analysis
@@ -900,11 +900,11 @@ class DTOContext(BaseModel):
 
 **Context:** User aanscherping #3 - "Reuse van v1 Tier 0-3 is logisch, maar voeg harde guardrails toe: welke Tier3 macros zijn toegestaan/niet toegestaan in v2"
 
-**Inventory:** 31 tier3_pattern_* files analyzed
+**Inventory:** 22 tier3_pattern_* files analyzed
 - **8 Markdown Patterns:** status_header, version_history, purpose_scope, prerequisites, related_docs, open_questions, dividers, agent_hints
-- **23 Python Patterns:** pydantic, logging, di, lifecycle, error, async, pytest, mocking, fixtures, test_structure, typed_id, translator, log_enricher, assertions (empty)
+- **14 Python Patterns:** assertions (empty), async, di, error, lifecycle, logging, log_enricher, mocking, pydantic, pytest, test_fixtures, test_structure, translator, typed_id
 
-**CRITICAL FINDING:** ALL 31 macros are **OUTPUT formatters** (generate syntax), ZERO validate INPUT
+**CRITICAL FINDING:** All 22 analyzed macros are **OUTPUT formatters** (generate syntax), ZERO validate INPUT
 
 **Example Analysis - tier3_pattern_python_pydantic.jinja2:**
 - **Exports:** pattern_pydantic_imports(), pattern_pydantic_base_model(), pattern_pydantic_config(), pattern_pydantic_field(), pattern_pydantic_validator()
@@ -920,8 +920,11 @@ class DTOContext(BaseModel):
 | **RECOMMENDED** | 5 | pydantic syntax + 4 test patterns (pytest/mocking/fixtures/test_structure) | ✅ ALLOWED (formatting helpers) |
 | **OPTIONAL** | 2 | async + typed_id | ✅ ALLOWED (specialized formatting) |
 | **FORBIDDEN** | 0 | (none - no validation macros exist) | ❌ N/A |
+| **UNCATEGORIZED** | 3 | assertions (empty file), log_enricher, translator | ⚠️ NEEDS ANALYSIS (not evaluated in v1.4) |
 
-**Conclusion:** All 31 analyzed Tier 3 macros are OUTPUT formatters → recommended for v2 (pending verification during implementation)
+**Total: 22 macros analyzed** (19 categorized: 12 ESSENTIAL + 5 RECOMMENDED + 2 OPTIONAL, 3 uncategorized pending analysis)
+
+**Conclusion:** All 22 analyzed Tier 3 macros are OUTPUT formatters → recommended for v2 (pending verification during implementation)
 
 **Rationale:**
 1. **Problem Location:** The 78× `| default` defensive programming patterns are in **Tier 4 CONCRETE templates**, NOT in Tier 3 macros
@@ -942,12 +945,12 @@ from pydantic import BaseModel, Field{% if uses_validators %}, field_validator{%
 ```
 
 **V2 Strategy:**
-- **Reuse:** ALL 31 Tier 3 macros (formatting helpers safe)
+- **Reuse:** All 22 analyzed Tier 3 macros (formatting helpers safe)
 - **Cleanup:** Remove 78× `| default` filters from Tier 4 concrete templates
 - **Validation:** Move to Pydantic schemas (e.g., WorkerContext.dependencies: List[str])
 
 **Analysis Scope & Limitations:**
-- **Files Analyzed:** 31 tier3_pattern_* files in mcp_server/scaffolding/templates/
+- **Files Analyzed:** 22 tier3_pattern_* files in mcp_server/scaffolding/templates/
 - **Method:** Manual inspection of macro exports + behavioral analysis (OUTPUT vs INPUT validation)
 - **Coverage:** 100% of existing v1 Tier 3 macros
 - **Limitation:** New v2 macros may introduce different patterns; requires re-analysis during implementation
@@ -1283,17 +1286,17 @@ def _enrich_context(self, context: BaseModel) -> BaseModel:
 
 **Status:** ✅ RESOLVED
 
-**Decision:** All 31 analyzed Tier 3 macros are OUTPUT formatters (see 'Template Tier 3 Macro Guardrails' section) - recommended for v2 reuse pending implementation verification
+**Decision:** All 22 analyzed Tier 3 macros are OUTPUT formatters (see 'Template Tier 3 Macro Guardrails' section) - recommended for v2 reuse pending implementation verification
 
 **Question:** Do v2 templates import tier3_patterns/ macros or inline all logic?
 
 **Trade-off:**
-- **Import Pros:** Reuse existing macro library (format_docstring, pattern_pydantic_imports)
-- **Import Cons:** v1 macros contain defensive guards (not needed in v2)
+- **Import Pros:** Reuse existing macro library (format_docstring, pattern_pydantic_imports) - macros are OUTPUT formatters (no defensive logic)
+- **Import Cons:** Tight coupling to v1 macro library (migration dependency)
 - **Inline Pros:** Clean v2 templates with no legacy baggage
 - **Inline Cons:** Duplicate presentation logic (format_docstring repeated 16x)
 
-**Recommendation for Planning:** ALL 31 Tier 3 macros ALLOWED (see "Template Tier 3 Macro Guardrails" section - all are OUTPUT formatters, not validators).
+**Recommendation for Planning:** All 22 analyzed Tier 3 macros ALLOWED (see "Template Tier 3 Macro Guardrails" section - all are OUTPUT formatters, not validators).
 
 ---
 
@@ -1321,10 +1324,11 @@ def _enrich_context(self, context: BaseModel) -> BaseModel:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-15 | Agent | Complete research: schema architecture (composable mixins recommended), template tier reuse (Option A: reuse v1 Tier 0-3), defensive programming quantified (5x default in dto.py), schema registry justified (4 mixins + 20 concrete) |
-| 1.1 | 2026-02-15 | Agent | Aanscherping met harde data: measurement methods added (78 instances measured via grep), ephemeral decision (TypedDict for commit/pr/issue), Tier 3 guardrails (31 macros categorized - all allowed), GATE 1 lifecycle fields (Option B recommended: 34 files - Context + RenderContext split) |
+| 1.1 | 2026-02-15 | Agent | Aanscherping met harde data: measurement methods added (78 instances measured via grep), ephemeral decision (TypedDict for commit/pr/issue), Tier 3 guardrails (22 macros categorized - 19 allowed, 3 uncategorized), GATE 1 lifecycle fields (Option B recommended: 34 files - Context + RenderContext split) |
 | 1.2 | 2026-02-15 | Agent | GATE 1 Resolved: Lifecycle fields are SYSTEM-MANAGED (strict auto-injection) - NEVER user/agent provided. Two-schema pattern (Context + RenderContext) enforces separation. 34 schema files (17 Context + 17 RenderContext). User feedback: "Het is de basis voor fingerprinting van gescaffolde artefacten!" |
-| 1.3 | 2026-02-15 | Agent | Data consistency fix: Code (41/53%), Docs (22/28%), Tests (15/19%). Gate status fixed: GATE 2 unblocked (unresolved), GATE 3 resolved. Claims softened: "all 31 analyzed" (not "ALL"), "target 100%" (not absolute). Evidence table added for reproducibility. |
+| 1.3 | 2026-02-15 | Agent | Data consistency fix: Code (41/53%), Docs (22/28%), Tests (15/19%). Gate status fixed: GATE 2 unblocked (unresolved), GATE 3 resolved. Claims softened: "all 22 analyzed" (not "ALL"), "target 100%" (not absolute). Evidence table added for reproducibility. |
 | 1.4 | 2026-02-15 | Agent | GATE 2 replaced: Was duplicate of GATE 1 (lifecycle field injection already decided). New GATE 2: Enrichment boundary type contract (Protocol vs ABC vs Generic vs Runtime validation) - 4 options analyzed with trade-offs. User feedback: "Herformuleer naar een nieuw, echt open planning-vraagstuk." |
+| 1.5 | 2026-02-15 | Agent | Consistency blockers fixed: (1) Tier 3 inventory corrected (31→22 files, 23→14 python, 3 uncategorized added: assertions/log_enricher/translator), (2) Defensive guards contradiction resolved (macros are OUTPUT formatters, no defensive logic), (3) Next Steps updated (lifecycle already decided in GATE 1, replaced with GATE 2 enrichment boundary). User feedback: "Maak dit sluitend." |
 
 ## Next Steps
 
@@ -1334,7 +1338,7 @@ def _enrich_context(self, context: BaseModel) -> BaseModel:
 1. Define migration timeline (DTO pilot → code artifacts → docs → remaining)
 2. Specify parity test requirements (output equivalence normalization rules)
 3. Design feature flag integration (ArtifactManager decision point)
-4. Clarify lifecycle field injection strategy (PartialContext pattern)
+4. Decide enrichment boundary type contract (Protocol vs Generic - see GATE 2)
 5. Document tier3 pattern macro reuse policy (formatting YES, validation NO)
 
 **For Design Phase:**
