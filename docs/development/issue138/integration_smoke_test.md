@@ -27,5 +27,9 @@
 - **Impact:** Requires using deprecated `phase="docs"` for now
 - **Fix:** Update MCP tool registration to reflect optional parameters
 
+## VS Code Restart Test
+- **Date:** 2026-02-16
+- **Test:** Verify MCP schema cache refresh after VS Code restart
+
 ## Conclusion
 ✅ All integration checks passed. Ready for documentation phase.
