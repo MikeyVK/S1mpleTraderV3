@@ -34,6 +34,7 @@
 ## Backward Compatibility Tests
 ### Test 1: Deprecated phase parameter
 ### Test 2: New workflow_phase parameter
+### Test 4: Error case - both parameters
 
 ## Conclusion
 ✅ All integration checks passed. Ready for documentation phase.
