@@ -104,16 +104,18 @@ force_phase_transition(
 
 1. **RED Phase:**
    - Write failing test
-   - Commit: `git_add_or_commit(phase="red", message="add test for X")`
+   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="add test for X")`
+   - **Auto-detect:** `git_add_or_commit(message="add test for X")` (detects workflow_phase from state.json)
+   - **Legacy:** `git_add_or_commit(phase="red", message="...")` (DEPRECATED but still works)
 
 2. **GREEN Phase:**
    - Implement minimum code to pass
-   - Commit: `git_add_or_commit(phase="green", message="implement X")`
+   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="green", message="implement X")`
 
 3. **REFACTOR Phase:**
    - Clean up code
    - Run quality gates: `run_quality_gates(files=[...])`
-   - Commit: `git_add_or_commit(phase="refactor", message="refactor X")`
+   - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="refactor", message="refactor X")`
 
 4. **Test Execution:**
    - **During TDD:** `run_tests(path="tests/specific_test.py")` for targeted tests
@@ -160,7 +162,7 @@ force_phase_transition(
 | Create branch | `create_branch(branch_type, name, base_branch)` | `run_in_terminal("git checkout -b")` |
 | Switch branch | `git_checkout(branch)` | `run_in_terminal("git checkout")` |
 | Check status | `git_status()` | `run_in_terminal("git status")` |
-| Stage & Commit | `git_add_or_commit(phase, message, files)` | `run_in_terminal("git add/commit")` |
+| Stage & Commit | `git_add_or_commit(message, workflow_phase?, sub_phase?, commit_type?)` | `run_in_terminal("git add/commit")` |
 | List branches | `git_list_branches(verbose, remote)` | `run_in_terminal("git branch")` |
 | Push to remote | `git_push(set_upstream)` | `run_in_terminal("git push")` |
 | Pull from remote | `git_pull(rebase)` | `run_in_terminal("git pull")` |
@@ -170,6 +172,16 @@ force_phase_transition(
 | Stash changes | `git_stash(action, message, include_untracked)` | `run_in_terminal("git stash")` |
 | Restore files | `git_restore(files, source)` | `run_in_terminal("git restore")` |
 | Diff statistics | `git_diff_stat(source_branch, target_branch)` | `run_in_terminal("git diff --stat")` |
+
+**Note on git_add_or_commit:**
+- **New (Recommended):** `git_add_or_commit(message, workflow_phase?, sub_phase?, commit_type?)`  
+  - Generates scoped commits: `test(P_TDD_SP_RED): message`
+  - Auto-detects workflow_phase from state.json if omitted
+  - Supports all workflow phases (research, planning, design, tdd, integration, documentation)
+- **Legacy (DEPRECATED):** `git_add_or_commit(phase="red/green/refactor/docs", message)`  
+  - Legacy format: `test: message` (no scope)
+  - Backward compatible but will be removed in future version
+  - Use workflow_phase instead
 
 ### GitHub Issues
 | Action | ✅ USE THIS | ❌ NEVER USE |
