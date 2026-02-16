@@ -1,0 +1,68 @@
+{# Generic Document Template
+   Purpose: Flexible template for ad-hoc documentation (migration guides, references, etc.)
+   Tier: Concrete (no inheritance - standalone template)
+   
+   Required variables:
+   - title: Document title
+   - purpose: Brief purpose statement
+   - issue_number: Related GitHub issue number
+   
+   Optional variables:
+   - date: Document creation/update date
+   - breaking_changes: Breaking changes notice
+   - scope_in: What is in scope
+   - scope_out: What is out of scope
+   - related_docs: List of related document paths
+   - custom_sections: List of {heading, content} dicts
+#}
+# {{ title }}
+
+**Issue:** #{{ issue_number }}
+{%- if date %}  
+**Date:** {{ date }}
+{%- endif %}
+{%- if breaking_changes %}  
+**Breaking Changes:** {{ breaking_changes }}
+{%- endif %}
+
+---
+
+## Purpose
+
+{{ purpose }}
+
+{% if scope_in or scope_out -%}
+---
+
+## Scope
+
+{% if scope_in -%}
+**In Scope:**  
+{{ scope_in }}
+{% endif %}
+{% if scope_out -%}
+**Out of Scope:**  
+{{ scope_out }}
+{%- endif %}
+{%- endif %}
+
+{% if related_docs -%}
+---
+
+## Related Documentation
+
+{% for doc in related_docs -%}
+- [{{ doc }}]({{ doc }})
+{% endfor %}
+{%- endif %}
+
+{% if custom_sections -%}
+---
+
+{% for section in custom_sections %}
+## {{ section.heading }}
+
+{{ section.content }}
+
+{% endfor %}
+{%- endif %}
