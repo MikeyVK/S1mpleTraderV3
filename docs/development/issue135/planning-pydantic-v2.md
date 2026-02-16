@@ -23,11 +23,11 @@ Implementation code examples (design phase), class diagrams (design phase), temp
 ## Prerequisites
 
 **Source Document Verification:**
-- Research document: `research-pydantic-v2.md` v1.8 (Status: COMPLETE - All 3 gates resolved)
+- Research document: `research-pydantic-v2.md` v1.8 (Status: COMPLETE - All gates resolved with decisions made)
 - Last verified: 2026-02-15
 - GATE 1 ✅ RESOLVED: System-managed lifecycle (Context + RenderContext pattern)
 - GATE 2 ✅ RESOLVED: Naming Convention (zero maintenance, DRY)
-- GATE 3 ✅ RESOLVED: 19 Tier 3 macros analyzed (OUTPUT formatters), 3 pending
+- GATE 3 ✅ RESOLVED WITH DEFERRED FOLLOW-UP: 19 Tier 3 macros analyzed (OUTPUT formatters, safe for reuse), 3 macros deferred (assertions, log_enricher, translator - non-blocking, analyze during implementation)
 
 **Required Reading:**
 1. [research-pydantic-v2.md v1.8](research-pydantic-v2.md) - Complete architecture research with all gates resolved
@@ -202,13 +202,26 @@ tests/parity/
 ├── conftest.py                    # Shared fixtures (v1_renderer, v2_renderer)
 ├── normalization.py               # Output normalizer utilities
 ├── test_dto_parity.py            # 10 test cases
-├── test_worker_parity.py         # 10 test cases
-├── test_adapter_parity.py        # 5 test cases
-├── ... (13 code artifact test files)
-├── test_research_parity.py       # 5 test cases
-├── ... (8 doc artifact test files)
+├── test_worker_parity.py         # 10 test cases (code artifacts)
+├── test_adapter_parity.py        # 5 test cases (code artifacts)
+├── test_service_parity.py        # 5 test cases (code artifacts)
+├── test_interface_parity.py      # 5 test cases (code artifacts)
+├── test_tool_parity.py           # 5 test cases (code artifacts)
+├── test_resource_parity.py       # 5 test cases (code artifacts)
+├── test_schema_parity.py         # 5 test cases (code artifacts)
+├── test_generic_parity.py        # 5 test cases (code artifacts)
+├── test_research_parity.py       # 5 test cases (doc artifacts)
+├── test_planning_parity.py       # 3 test cases (doc artifacts)
+├── test_design_parity.py         # 3 test cases (doc artifacts)
+├── test_architecture_parity.py   # 3 test cases (doc artifacts)
+├── test_tracking_parity.py       # 3 test cases (doc artifacts)
+├── test_reference_parity.py      # 3 test cases (doc artifacts)
+├── test_unit_test_parity.py      # 5 test cases (test artifacts)
+├── test_integration_test_parity.py # 5 test cases (test artifacts)
 └── test_edge_cases.py            # 10 edge/error test cases
 ```
+
+**Total:** 95 parity tests (DTO: 10, Code: 45, Docs: 20, Tests: 10, Edge: 10)
 
 ### Error Case Handling
 **Challenge:** v1 uses `| default`, v2 uses Pydantic validation errors
@@ -259,15 +272,20 @@ ELSE:
    - Render simplified template (no `| default` needed)
 
 **Rollout Phases:**
-1. **Week 1-5:** Feature flag OFF (development/testing only, manual activation)
-2. **Week 6-7:** Feature flag ON for team (pilot group, 2-week trial)
-3. **Week 8:** Metrics review → Go/No-Go decision
-4. **Week 9+:** Feature flag ON by default (production rollout)
+1. **Week 1-6:** Feature flag OFF (development/testing only, manual activation during TDD phases)
+2. **Week 7-8:** Feature flag ON for team (pilot deployment, 2-week trial in Integration Phase)
+3. **Week 8:** Metrics review → **Go/No-Go decision** (see Integration Phase Exit Criteria for approval requirements)
+4. **Week 9+:** Feature flag default=true (production rollout) - **ONLY IF Go decision approved in Integration Phase**
+
+**Default Value Change:**
+- **Current (week 1-8):** `PYDANTIC_SCAFFOLDING_ENABLED` default = `false` (opt-in via env var)
+- **After Go decision (week 9+):** `PYDANTIC_SCAFFOLDING_ENABLED` default = `true` (v2 by default, v1 opt-out)
+- **Decision gate:** Integration Phase Exit Criteria (stakeholder sign-off required)
 
 **Rollback Strategy:**
 - Set `PYDANTIC_SCAFFOLDING_ENABLED=false` → instant v1 revert
 - Zero code changes required (flag controls routing only)
-- v1 pipeline maintained until v2 proven stable (3+ months production)
+- v1 pipeline maintained until v2 proven stable (3+ months production after Go decision)
 
 ---
 
@@ -602,7 +620,7 @@ __all__ = [
 **Success Criteria:**
 - 8 context schemas implemented (worker, adapter, service, tool, resource, schema, interface, generic)
 - 8 render context classes implemented (naming convention followed)
-- 40+ parity tests pass (5 per type minimum)
+- 45 parity tests pass (worker: 10, others: 5 per type = 35, total: 45)
 
 ---
 
@@ -618,7 +636,7 @@ __all__ = [
 **Success Criteria:**
 - 6 document context schemas implemented (research, planning, design, architecture, tracking, reference)
 - 6 document render context classes implemented
-- 18+ parity tests pass (3 per type minimum)
+- 20 parity tests pass (research: 5, others: 3 per type minimum = 20 total)
 
 ---
 
@@ -634,7 +652,7 @@ __all__ = [
 **Success Criteria:**
 - 2 test context schemas implemented (unit_test, integration_test)
 - 2 test render context classes implemented (naming convention followed)
-- 10+ parity tests pass (5 per type minimum)
+- 10 parity tests pass (5 per type)
 - **Migration complete:** All 17 non-ephemeral artifacts covered (DTO: 1, Code: 8, Docs: 6, Tests: 2)
 
 ---
@@ -702,7 +720,9 @@ __all__ = [
 - Performance benchmarks within acceptable range (measured, documented)
 - Pilot feedback incorporated (high-priority issues resolved)
 - Go/No-Go decision documented with stakeholder approval
+- **Feature flag default=true rollout decision approved** (if Go: PYDANTIC_SCAFFOLDING_ENABLED default changes to true; if No-Go: remain false, extend pilot or defer)
 - Rollback plan tested (feature flag deactivation, v1 pipeline verified)
+- Production deployment scheduled (if Go: week 9+, gradual rollout team → production)
 
 ---
 
@@ -831,3 +851,4 @@ __all__ = [
 | 1.0 | 2026-02-15 | Agent | Initial draft with GATE 2 rationale documented |
 | 1.1 | 2026-02-15 | Agent | Workflow phases restructured: TDD cycles 1-6, Integration phase (Cycle 7 → pilot deployment with measurable criteria), Documentation phase (migration guide, runbooks, technical debt register) |
 | 1.2 | 2026-02-15 | Agent | Governance consolidation: Removed Phase 4 duplication (Integration & Rollout merged into separate Integration Phase), removed Documentation from Phase 4 (now only in Documentation Phase), added TDD Cycle 7 for test artifacts (unit_test, integration_test), complete artifact coverage: 17 non-ephemeral (DTO:1 + Code:8 + Docs:6 + Tests:2) |
+| 1.3 | 2026-02-16 | Agent | Final precision fixes: (1) Test Suite Structure expanded to 17 explicit files with category labels, exact counts validated (95 total: DTO 10, Code 45, Docs 20, Tests 10, Edge 10), (2) GATE 3 clarified as "RESOLVED WITH DEFERRED FOLLOW-UP" (19 macros analyzed/safe, 3 deferred/non-blocking), (3) Feature flag default=true rollout coupled to Integration Phase Go/No-Go decision (exit criteria + rollout phases + decision gate), (4) All test counts aligned across cycles (Cycle 5: 45, Cycle 6: 20, Cycle 7: 10) |
