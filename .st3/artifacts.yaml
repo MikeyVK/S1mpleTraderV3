@@ -1,3 +1,302 @@
+# Unified Artifact Registry
+# Schema Version: 1.0
+# Purpose: Define ALL scaffoldable artifacts (code, documents)
+# Used by: ArtifactManager, TemplateScaffolder
+# Cross-references: 
+#   - project_structure.yaml: allowed_artifact_types links to type_id
+#   - policies.yaml: blocked_patterns + artifact_state_triggers (Epic #18)
+#   - workflows.yaml: phase validation for scaffold operation
+# Migration: Renamed from components.yaml, extended with document types
+# NOTE: Issue #107 will remove scaffolder_class/scaffolder_module (LEGACY fields)
+
+version: "1.0"
+
+artifact_types:
+  # ===== CODE ARTIFACTS =====
+  - type: code
+    type_id: dto
+    name: "Data Transfer Object"
+    description: "Data Transfer Object - immutable data container (Pydantic BaseModel)"
+    output_type: "file"
+    # LEGACY fields (Issue #107 - remove after unified TemplateScaffolder deployed)
+    scaffolder_class: "DTOScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.dto_scaffolder"
+    # Template paths
+    template_path: "concrete/dto.py.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: true
+    # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: worker
+    name: "Worker"
+    description: "Worker - executes single domain operation (async task processor)"
+    output_type: "file"
+    scaffolder_class: "WorkerScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.worker_scaffolder"
+    template_path: "concrete/worker.py.jinja2"
+    fallback_template: null
+    name_suffix: "Worker"
+    file_extension: ".py"
+    generate_test: true
+    # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: adapter
+    name: "Adapter"
+    description: "Adapter - integrates external systems (implements Interface)"
+    output_type: "file"
+    scaffolder_class: "AdapterScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.adapter_scaffolder"
+    template_path: null  # No template needed - adapter uses legacy scaffolder
+    fallback_template: null
+    name_suffix: "Adapter"
+    file_extension: ".py"
+    generate_test: true
+    # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: tool
+    name: "MCP Tool"
+    description: "MCP Tool - exposes functionality via MCP protocol"
+    output_type: "file"
+    scaffolder_class: "ToolScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.tool_scaffolder"
+    template_path: "concrete/tool.py.jinja2"
+    fallback_template: null
+    name_suffix: "Tool"
+    file_extension: ".py"
+    generate_test: true
+    # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: resource
+    name: "MCP Resource"
+    description: "MCP Resource - provides dynamic content"
+    output_type: "file"
+    scaffolder_class: "ResourceScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.resource_scaffolder"
+    template_path: null  # No template needed - resource uses legacy scaffolder
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: true
+    # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: schema
+    name: "Pydantic Schema"
+    description: "Pydantic Schema - validation models"
+    output_type: "file"
+    scaffolder_class: "SchemaScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.schema_scaffolder"
+    template_path: "concrete/config_schema.py.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: true
+    # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: interface
+    name: "Interface"
+    description: "Interface - abstract protocol definition"
+    output_type: "file"
+    scaffolder_class: "InterfaceScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.interface_scaffolder"
+    template_path: null  # No template needed - interface uses legacy scaffolder
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: true
+    # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: service
+    name: "Service"
+    description: "Service - orchestration or business logic"
+    output_type: "file"
+    scaffolder_class: "ServiceScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.service_scaffolder"
+    template_path: "concrete/service_command.py.jinja2"  # Default: service_command pattern
+    # DYNAMIC: service_type context field can select:
+    # orchestrator -> service_orchestrator.py.jinja2
+    # command -> service_command.py.jinja2 (default)
+    # query -> service_query.py.jinja2
+    fallback_template: null
+    name_suffix: "Service"
+    file_extension: ".py"
+    generate_test: true
+    # NOTE: NO base_path or test_base_path (D2 - use project_structure.yaml only)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: generic
+    name: "Generic Component"
+    description: "Generic component from custom template"
+    output_type: "file"
+    scaffolder_class: "GenericScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
+    template_path: "concrete/generic.py.jinja2"  # Default: minimal class
+    # DYNAMIC: template_name from context can override
+    # User provides template_name field (relative to templates/)
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: false
+    # NOTE: NO base_path (generic can be placed anywhere via output_path context field)
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: unit_test
+    name: "Unit Test"
+    description: "Unit test file with proper structure and quality gates"
+    output_type: "file"
+    scaffolder_class: "GenericScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
+    template_path: "concrete/test_unit.py.jinja2"  # Clean break: concrete/test_* instead of tests/
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: false
+    base_path: "tests/"
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: code
+    type_id: integration_test
+    name: "Integration Test"
+    description: "Integration/E2E test file with @module structure"
+    output_type: "file"
+    scaffolder_class: "GenericScaffolder"
+    scaffolder_module: "mcp_server.scaffolders.generic_scaffolder"
+    template_path: "concrete/test_integration.py.jinja2"  # Clean break: concrete/test_* instead of tests/
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".py"
+    generate_test: false
+    base_path: "tests/"
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  # ===== DOCUMENT ARTIFACTS =====
+  - type: doc
+    type_id: research
+    name: "Research Document"
+    description: "Research phase findings and questions"
+    output_type: "file"
+    template_path: "concrete/research.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [DRAFT, APPROVED, DEFINITIVE]
+      initial_state: DRAFT
+      valid_transitions:
+        - from: DRAFT
+          to: [APPROVED, DEFINITIVE]
+        - from: APPROVED
+          to: [DEFINITIVE]
+  - type: doc
+    type_id: planning
+    name: "Planning Document"
+    description: "Planning phase TDD cycle breakdown"
+    output_type: "file"
+    template_path: "concrete/planning.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [DRAFT, APPROVED, DEFINITIVE]
+      initial_state: DRAFT
+      valid_transitions:
+        - from: DRAFT
+          to: [APPROVED, DEFINITIVE]
+        - from: APPROVED
+          to: [DEFINITIVE]
+  - type: doc
+    type_id: design
+    name: "Design Document"
+    description: "Design phase schemas and specifications"
+    output_type: "file"
+    template_path: "concrete/design.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [DRAFT, APPROVED, DEFINITIVE]
+      initial_state: DRAFT
+      valid_transitions:
+        - from: DRAFT
+          to: [APPROVED, DEFINITIVE]
+        - from: APPROVED
+          to: [DEFINITIVE]
+  - type: doc
+    type_id: architecture
+    name: "Architecture Document"
+    description: "System architecture documentation"
+    output_type: "file"
+    template_path: "concrete/architecture.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [DRAFT, REVIEW, APPROVED, DEFINITIVE]
+      initial_state: DRAFT
+      valid_transitions:
+        - from: DRAFT
+          to: [REVIEW, APPROVED]
+        - from: REVIEW
+          to: [APPROVED, DRAFT]
+        - from: APPROVED
+          to: [DEFINITIVE]
+  - type: doc
+    type_id: tracking
+    name: "Tracking Document"
+    description: "Living document for tracking project status"
+    output_type: "file"
+    template_path: "docs/tracking.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [LIVING DOCUMENT]
+      initial_state: LIVING DOCUMENT
+      valid_transitions: []
   - type: doc
     type_id: reference
     name: "Reference Document"
@@ -17,9 +316,9 @@
         - from: APPROVED
           to: [DEFINITIVE]
   - type: doc
-    type_id: generic
+    type_id: generic_doc
     name: "Generic Document"
-    description: "Generic document for ad-hoc documentation (migration guides, references, etc.)"
+    description: "Generic flexible document with custom sections for migration guides and reference docs"
     output_type: "file"
     template_path: "concrete/generic.md.jinja2"
     fallback_template: null
@@ -35,3 +334,45 @@
         - from: APPROVED
           to: [DEFINITIVE]
   # ===== TRACKING ARTIFACTS =====
+  - type: tracking
+    type_id: commit
+    name: "Git Commit Message"
+    description: "Git commit message for conventional commits format"
+    output_type: "ephemeral"
+    template_path: "concrete/commit.txt.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".txt"
+    generate_test: false
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: tracking
+    type_id: pr
+    name: "Pull Request Description"
+    description: "Pull request description with changes, testing, checklist sections"
+    output_type: "ephemeral"
+    template_path: "concrete/pr.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []
+  - type: tracking
+    type_id: issue
+    name: "GitHub Issue Description"
+    description: "GitHub issue description with problem, expected, actual sections"
+    output_type: "ephemeral"
+    template_path: "concrete/issue.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [CREATED]
+      initial_state: CREATED
+      valid_transitions: []

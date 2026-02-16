@@ -1,0 +1,179 @@
+{#- concrete/generic.md.jinja2 - Generic Structured Document Template -#}
+{#- Version: 1.0.0 -#}
+{#- Purpose: Structured generic documentation for migration/reference guides without free-form dumps -#}
+{%- extends "tier2_base_markdown.jinja2" -%}
+
+{#- Import tier3 pattern macros -#}
+{%- import "tier3_pattern_markdown_status_header.jinja2" as hdr -%}
+{%- import "tier3_pattern_markdown_purpose_scope.jinja2" as ps -%}
+{%- import "tier3_pattern_markdown_prerequisites.jinja2" as prereq -%}
+{%- import "tier3_pattern_markdown_related_docs.jinja2" as related -%}
+{%- import "tier3_pattern_markdown_version_history.jinja2" as history -%}
+{%- import "tier3_pattern_markdown_dividers.jinja2" as div -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Must use structured sections (Summary, Key Changes, Migration Steps, Validation Checklist, FAQ)"
+      - "No free-form content dump field; use typed section variables"
+      - "Related docs and prerequisites must render as lists"
+      - "Suitable for migration and operational documentation"
+  extends: tier2_base_markdown.jinja2
+  imports_patterns:
+    - tier3_pattern_markdown_status_header
+    - tier3_pattern_markdown_purpose_scope
+    - tier3_pattern_markdown_prerequisites
+    - tier3_pattern_markdown_related_docs
+    - tier3_pattern_markdown_version_history
+    - tier3_pattern_markdown_dividers
+  purpose: "Concrete generic document template with enforced structure for ad-hoc docs"
+  version: "1.0.0"
+  changelog:
+    - version: "1.0.0"
+      date: "2026-02-16"
+      changes: "Initial structured generic doc template with tier inheritance and metadata fingerprint support"
+  introspection:
+    template_id: generic_doc
+    tier: concrete
+    parent: tier2_base_markdown
+    variables:
+      required:
+        - title
+        - purpose
+        - summary
+      optional:
+        - status
+        - version
+        - last_updated
+        - scope_in
+        - scope_out
+        - prerequisites
+        - related_docs
+        - key_changes
+        - migration_steps
+        - validation_checklist
+        - faq
+        - custom_sections
+  agent_hints:
+    phase: "documentation"
+    purpose: "Create structured migration/operations docs without bypassing template governance"
+    belongs_here:
+      - "Migration summaries and change overviews"
+      - "Step-by-step migration procedures"
+      - "Validation checklists and FAQ"
+      - "Additional structured sections via custom_sections"
+    does_not_belong:
+      - "Unstructured full-document blob insertion"
+      - "Raw implementation internals without doc structure"
+      - "Design-option analysis (use design.md)"
+-#}
+
+{%- block header_fields %}
+{{ hdr.pattern_status_header_basic(status | default("DRAFT"), version | default("1.0"), last_updated | default(""), timestamp) }}
+{% endblock -%}
+
+{%- block purpose_section -%}
+{{ ps.pattern_purpose_section(purpose | default("")) }}
+{%- endblock -%}
+
+{%- block scope_section -%}
+{{ ps.pattern_scope_section(scope_in | default(""), scope_out | default("")) }}
+{%- endblock -%}
+
+{%- block prerequisites_section -%}
+{%- set prereq_list = prerequisites if (prerequisites is iterable and prerequisites is not string) else ([prerequisites] if prerequisites else []) -%}
+{{ prereq.pattern_prerequisites_section(prereq_list) }}
+{%- endblock -%}
+
+{%- block document_content -%}
+{{ div.pattern_section_divider() }}
+
+## Summary
+
+{{ summary }}
+
+{% set changes = key_changes | default([]) %}
+{% if changes %}
+{{ div.pattern_section_divider() }}
+
+## Key Changes
+
+{% for item in changes -%}
+- {{ item }}
+{% endfor %}
+{% endif %}
+
+{% set steps = migration_steps | default([]) %}
+{% if steps %}
+{{ div.pattern_section_divider() }}
+
+## Migration Steps
+
+{% for step in steps -%}
+{{ loop.index }}. {{ step }}
+{% endfor %}
+{% endif %}
+
+{% set checks = validation_checklist | default([]) %}
+{% if checks %}
+{{ div.pattern_section_divider() }}
+
+## Validation Checklist
+
+{% for check in checks -%}
+- [ ] {{ check }}
+{% endfor %}
+{% endif %}
+
+{% set faq_items = faq | default([]) %}
+{% if faq_items %}
+{{ div.pattern_section_divider() }}
+
+## FAQ
+
+{% for item in faq_items -%}
+### Q: {{ item.question }}
+
+A: {{ item.answer }}
+
+{% endfor %}
+{% endif %}
+
+{% set sections = custom_sections | default([]) %}
+{% if sections %}
+{{ div.pattern_section_divider() }}
+
+{% for section in sections %}
+## {{ section.heading }}
+
+{% if section.content -%}
+{{ section.content }}
+
+{% endif -%}
+{% if section.bullets -%}
+{% for bullet in section.bullets -%}
+- {{ bullet }}
+{% endfor %}
+
+{% endif -%}
+{% if section.checklist -%}
+{% for check in section.checklist -%}
+- [ ] {{ check }}
+{% endfor %}
+
+{% endif -%}
+{% endfor %}
+{% endif %}
+{%- endblock %}
+
+{%- block related_docs_section -%}
+{%- set docs = related_docs if (related_docs is iterable and related_docs is not string) else ([related_docs] if related_docs else []) -%}
+{{ related.pattern_related_docs_section(docs) }}
+{%- endblock -%}
+
+{%- block version_history_section -%}
+{{ history.pattern_version_history_basic(version | default("1.0"), last_updated | default("")) }}
+{%- endblock -%}

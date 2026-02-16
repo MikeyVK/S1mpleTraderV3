@@ -1,10 +1,4 @@
-"""Test suite for generic document template.
-
-Tests verify that the generic.md.jinja2 template renders correctly with:
-- Minimal required fields (title, purpose, issue)
-- Optional sections (related_docs, scope, custom sections)
-- Front matter metadata formatting
-"""
+"""Unit tests for structured generic document template."""
 
 from pathlib import Path
 from typing import Any
@@ -15,113 +9,163 @@ from jinja2 import Environment, FileSystemLoader
 
 @pytest.fixture
 def template_env() -> Environment:
-    """Create Jinja2 environment with templates directory."""
-    template_dir = Path(__file__).parent.parent.parent.parent / "mcp_server" / "templates"
+    """Create Jinja2 environment rooted at scaffolding templates."""
+    template_dir = (
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+    )
     return Environment(loader=FileSystemLoader(template_dir))
 
 
 @pytest.fixture
-def minimal_context() -> dict[str, Any]:
-    """Minimal context for generic document - only required fields."""
+def base_system_context() -> dict[str, Any]:
+    """System metadata variables normally injected by scaffolder."""
     return {
-        "title": "Migration Guide: v1.x → v2.0",
-        "purpose": "Provide comprehensive upgrade path from legacy to new system",
-        "issue_number": 138,
+        "output_path": "docs/reference/mcp/migration_v2.0.md",
+        "artifact_type": "generic_doc",
+        "version_hash": "abc1234",
+        "timestamp": "2026-02-16T10:30:00Z",
+        "format": "markdown",
     }
 
 
 @pytest.fixture
-def full_context() -> dict[str, Any]:
-    """Full context with all optional fields."""
+def minimal_context(base_system_context: dict[str, Any]) -> dict[str, Any]:
+    """Minimal valid context for generic_doc template."""
     return {
+        **base_system_context,
         "title": "Migration Guide: v1.x → v2.0",
-        "purpose": "Provide comprehensive upgrade path from legacy to new system",
-        "issue_number": 138,
-        "date": "2026-02-16",
-        "breaking_changes": "Yes (but backward compatible until v3.0)",
-        "scope_in": "Backward compat, auto-detect, explicit syntax",
-        "scope_out": "Internal implementation, performance tuning",
-        "related_docs": ["agent.md", "CHANGELOG.md"],
+        "purpose": "Guide the transition to workflow-first commit scopes.",
+        "summary": "This migration updates commit scope conventions and tool parameters.",
+    }
+
+
+@pytest.fixture
+def full_context(base_system_context: dict[str, Any]) -> dict[str, Any]:
+    """Full context exercising all structured optional sections."""
+    return {
+        **base_system_context,
+        "title": "Migration Guide: v1.x → v2.0",
+        "purpose": "Guide the transition to workflow-first commit scopes.",
+        "summary": "This migration updates commit scope conventions and tool parameters.",
+        "status": "APPROVED",
+        "version": "2.0.0",
+        "last_updated": "2026-02-16",
+        "scope_in": "Commit scope migration and workflow phase mapping.",
+        "scope_out": "Implementation internals and unrelated refactors.",
+        "prerequisites": ["Read agent.md", "Initialize workflow state"],
+        "related_docs": ["agent.md", "docs/development/issue138/planning.md"],
+        "key_changes": [
+            "New P_{PHASE}_SP_{SUBPHASE} commit scope format",
+            "phase parameter deprecated in favor of workflow_phase/sub_phase",
+        ],
+        "migration_steps": [
+            "Update git_add_or_commit invocations",
+            "Use transition_phase between workflow phases",
+            "Run quality gates before merge",
+        ],
+        "validation_checklist": [
+            "All commits use workflow-first scopes",
+            "No legacy phase parameter in new changes",
+            "Tests and quality gates are green",
+        ],
+        "faq": [
+            {
+                "question": "Can old commits stay as-is?",
+                "answer": "Yes, old commits remain valid and readable.",
+            },
+            {
+                "question": "Can I skip phases?",
+                "answer": "Only via force_phase_transition with approval and reason.",
+            },
+        ],
         "custom_sections": [
-            {"heading": "Migration Paths", "content": "Three migration options available"},
-            {"heading": "Syntax Comparison", "content": "Old vs new syntax examples"},
-            {"heading": "FAQ", "content": "Common questions and answers"},
+            {
+                "heading": "Rollout Strategy",
+                "content": "Roll out in feature branches first.",
+                "bullets": ["Pilot on one team", "Expand after validation"],
+                "checklist": ["Pilot completed", "Metrics reviewed"],
+            }
         ],
     }
 
 
 class TestGenericDocTemplate:
-    """Test suite for generic.md.jinja2 template."""
+    """Behavioral coverage for generic.md.jinja2."""
 
-    def test_minimal_generic_doc_with_only_required_fields(
-        self, template_env: Environment, minimal_context: dict[str, Any]
+    def test_renders_scaffold_metadata_fingerprint(
+        self,
+        template_env: Environment,
+        minimal_context: dict[str, Any],
     ) -> None:
-        """Verify generic doc renders with minimal required fields.
-
-        Test verifies:
-        - Title rendered correctly (H1)
-        - Issue metadata present
-        - Purpose section rendered
-        - No optional sections appear
-        """
-        # Arrange: Load template
+        """Template must inherit tier0 fingerprint comments via tier chain."""
         template = template_env.get_template("concrete/generic.md.jinja2")
 
-        # Act: Render with minimal context
         result = template.render(**minimal_context)
 
-        # Assert: Required elements present
+        assert "<!-- docs/reference/mcp/migration_v2.0.md -->" in result
+        assert (
+            "<!-- template=generic_doc version=abc1234 created=2026-02-16T10:30:00Z updated= -->"
+            in result
+        )
         assert "# Migration Guide: v1.x → v2.0" in result
-        assert "**Issue:** #138" in result
-        assert "## Purpose" in result
-        assert "Provide comprehensive upgrade path" in result
 
-        # Assert: Optional elements NOT present
-        assert "**Date:**" not in result
-        assert "**Breaking Changes:**" not in result
-        assert "## Scope" not in result
-        assert "## Related Documentation" not in result
-
-    def test_generic_doc_with_custom_sections(
-        self, template_env: Environment, full_context: dict[str, Any]
+    def test_renders_structured_sections_without_freeform_content_dump(
+        self,
+        template_env: Environment,
+        full_context: dict[str, Any],
     ) -> None:
-        """Verify generic doc renders user-defined custom sections in order.
-
-        Test verifies:
-        - All custom section headers present
-        - Sections appear in specified order
-        - Section content rendered correctly
-        - Optional front matter included
-        """
-        # Arrange: Load template
+        """Template should render canonical structured sections from typed fields."""
         template = template_env.get_template("concrete/generic.md.jinja2")
 
-        # Act: Render with full context including custom sections
         result = template.render(**full_context)
 
-        # Assert: Front matter optional fields present
-        assert "**Date:** 2026-02-16" in result
-        assert "**Breaking Changes:** Yes (but backward compatible until v3.0)" in result
+        assert "## Summary" in result
+        assert "## Key Changes" in result
+        assert "## Migration Steps" in result
+        assert "## Validation Checklist" in result
+        assert "## FAQ" in result
+        assert "## Rollout Strategy" in result
+        assert "- [ ] Pilot completed" in result
+        assert "- [ ] Metrics reviewed" in result
 
-        # Assert: Scope sections present
-        assert "## Scope" in result
-        assert "**In Scope:**" in result
-        assert "Backward compat, auto-detect, explicit syntax" in result
-        assert "**Out of Scope:**" in result
-        assert "Internal implementation, performance tuning" in result
-
-        # Assert: Related docs present
         assert "## Related Documentation" in result
-        assert "- [agent.md](agent.md)" in result
-        assert "- [CHANGELOG.md](CHANGELOG.md)" in result
+        assert "- **[agent.md][related-1]**" in result
+        assert "- **[docs/development/issue138/planning.md][related-2]**" in result
 
-        # Assert: Custom sections in correct order
-        migration_pos = result.index("## Migration Paths")
-        syntax_pos = result.index("## Syntax Comparison")
-        faq_pos = result.index("## FAQ")
-        assert migration_pos < syntax_pos < faq_pos
+    def test_normalizes_scalar_inputs_for_list_sections(
+        self,
+        template_env: Environment,
+        minimal_context: dict[str, Any],
+    ) -> None:
+        """String inputs for list-like fields should not render char-by-char bullets."""
+        template = template_env.get_template("concrete/generic.md.jinja2")
 
-        # Assert: Custom section content present
-        assert "Three migration options available" in result
-        assert "Old vs new syntax examples" in result
-        assert "Common questions and answers" in result
+        context = {
+            **minimal_context,
+            "prerequisites": "Read agent.md",
+            "related_docs": "agent.md",
+        }
+
+        result = template.render(**context)
+
+        assert "1. Read agent.md" in result
+        assert "- **[agent.md][related-1]**" in result
+        assert "- **[a][related-1]**" not in result
+        assert "- **[g][related-" not in result
+
+    def test_ignores_legacy_content_field(
+        self,
+        template_env: Environment,
+        minimal_context: dict[str, Any],
+    ) -> None:
+        """Legacy free-form content field should not be rendered anymore."""
+        template = template_env.get_template("concrete/generic.md.jinja2")
+
+        context = {
+            **minimal_context,
+            "content": "THIS SHOULD NOT APPEAR IN OUTPUT",
+        }
+
+        result = template.render(**context)
+
+        assert "THIS SHOULD NOT APPEAR IN OUTPUT" not in result
