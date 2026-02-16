@@ -1,4 +1,4 @@
-<!-- docs/development/issue146/session-handoff_qa.md -->
+<!-- docs/development/issue135/session-handoff_qa.md -->
 <!-- template=research version=8b7bb3ab created=2026-02-16T00:00:00Z updated= -->
 # session-handoff
 
@@ -10,21 +10,21 @@
 
 ## Purpose
 
-Session handoff document to continue Issue #146 work on another machine with QA-focused continuity.
+Session handoff document to continue Issue #135 work on another machine with QA-focused continuity.
 
 ## Scope
 
 **In Scope:**
-Current status, decisions, open questions, next actions, validation checkpoints, and handoff instructions for Issue #146.
+Current status, decisions, open questions, next actions, validation checkpoints, and handoff instructions for Issue #135.
 
 **Out of Scope:**
-Implementation details not yet executed, unrelated issues, and historical backlog outside Issue #146.
+Implementation details not yet executed, unrelated issues, and historical backlog outside Issue #135.
 
 ## Prerequisites
 
 Read these first:
 1. Access to repository and issue branch
-2. Understanding of Issue #146 objective
+2. Understanding of Issue #135 objective
 3. Access to coding standards and workflow docs
 ---
 
@@ -39,12 +39,12 @@ Work continuity risk between machines may cause context loss, duplicated effort,
 - Make QA checkpoints explicit for next session
 
 ## Related Documentation
-- **[Issue #146][related-1]**
+- **[Issue #135][related-1]**
 - **[Repository workflow and coding standards][related-2]**
 
 <!-- Link definitions -->
 
-[related-1]: Issue #146
+[related-1]: Issue #135
 [related-2]: Repository workflow and coding standards
 
 ---
