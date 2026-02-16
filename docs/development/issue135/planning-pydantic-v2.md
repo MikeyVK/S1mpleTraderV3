@@ -1,10 +1,10 @@
 <!-- D:\dev\SimpleTraderV3-parallel\docs\development\issue135\planning-pydantic-v2.md -->
-<!-- template=planning version=130ac5ea created=2026-02-15T17:30:00Z updated=2026-02-15T17:45:00Z -->
+<!-- template=planning version=130ac5ea created=2026-02-15T17:30:00Z updated=2026-02-16T10:00:00Z -->
 # Issue #135 Pydantic-First v2 Planning
 
 **Status:** DRAFT  
-**Version:** 1.2  
-**Last Updated:** 2026-02-15
+**Version:** 1.3  
+**Last Updated:** 2026-02-16
 
 ---
 
