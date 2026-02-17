@@ -81,7 +81,7 @@ graph LR
 
 **Found:**
 - ✅ `cycle_number` parameter accepted in `GitCommitInput` (line 145)
-- ✅ `ScopeEncoder.generate_scope()` formats cycle into scope (e.g., `P_TDD_C3_SP_RED`)
+- ✅ `ScopeEncoder.generate_scope()` formats cycle into scope: `P_TDD_SP_C{N}_{SUBPHASE}`
 - ✅ `PhaseStateEngine` has transition/force_transition pattern
 - ✅ Test coverage exists: `test_git_commit_tool_with_cycle_number`
 
@@ -93,9 +93,10 @@ cycle_number: int | None = Field(
     description="Cycle number (e.g., 1, 2, 3). Optional, used in multi-cycle TDD.",
 )
 
-# backend/core/scope_encoder.py:147
+# backend/core/scope_encoder.py:144 - ACTUAL FORMAT
 if cycle_number is not None:
     return f"P_{phase_upper}_SP_C{cycle_number}_{sub_phase_upper}"
+# Generates: P_TDD_SP_C1_RED (SP before cycle number)
 ```
 
 ### 1.2 Missing Components
@@ -296,23 +297,22 @@ sequenceDiagram
 }
 ```
 
-### 3.3 Desired Tool Enhancement (Options)
+### 3.3 Desired Tool Enhancement (SRP/DRY Compliant)
 
-**Option A: Add cycle fields to existing output**
-- get_work_context() adds `tdd_cycle_info` section
-- get_project_plan() adds `planning_deliverables` section
+**User Constraint:** Extend existing tools, avoid new overlapping tools.
 
-**Option B: Separate tool**
-- New `get_tdd_cycle_context()` tool
-- Dedicated cycle-specific information
+**Approach: Enhance existing discovery tools**
+- `get_work_context()` adds `tdd_cycle_info` section (conditional on TDD phase)
+- `get_project_plan()` adds `planning_deliverables` section (always present if defined)
 
-**Option C: Merge tools**
-- Single `get_dev_context()` combining both
+**Rationale:**
+- ✅ Maintains single responsibility per tool (context vs plan)
+- ✅ No overlap with existing functionality
+- ✅ Follows established SRP pattern from QUALITY_GATES.md:69
 
-**Questions Raised:**
-- Which option maintains tool cohesion?
-- Should cycle info be always visible or only during TDD phase?
-- How to handle cycle info for projects without planning deliverables?
+**Implementation Notes:**
+- Cycle info visibility: Conditional (only shown during TDD phase in get_work_context)
+- graceful degradation: Tools work without planning_deliverables (show N/A or omit section)
 
 ### 3.4 Tool Usage Patterns
 
@@ -349,45 +349,48 @@ get_project_plan(146)    → Should show: all 4 cycles defined in planning
 
 ### 4.2 Breaking Change Scenarios
 
+**User Constraint Applied:** STRICT validation only, no warnings or opt-in modes.
+
 **Scenario 1: Old project (no planning deliverables)**
 ```python
 git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="...")
-# Option A: ERROR - "No planning deliverables found for issue #146"
-# Option B: WARNING - "Proceeding without cycle tracking"
-# Option C: REQUIRE - "Run finalize_planning first"
+# ERROR: "No planning deliverables found for issue #146. Run finalize_planning() first."
+# Recovery: finalize_planning(issue=146, tdd_cycles={...})
 ```
 
 **Scenario 2: Missing cycle_number in TDD**
 ```python
 git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="...")
-# cycle_number omitted
-# Option A: ERROR - "cycle_number required when project has planning deliverables"
-# Option B: Auto-detect from state.json current_cycle
-# Option C: ERROR always for TDD sub-phases
+# cycle_number omitted, but project has planning deliverables
+# ERROR: "cycle_number required when project has planning deliverables"
+# Recovery: Add cycle_number=N parameter
 ```
 
 **Scenario 3: Invalid cycle_number**
 ```python
 git_add_or_commit(cycle_number=99, ...)  # Project has total_cycles=4
-# Option A: ERROR - "cycle_number 99 exceeds total_cycles 4"
-# Option B: WARNING - "Creating cycle 99 outside plan"
-# Option C: ERROR with recovery options
+# ERROR: "cycle_number 99 exceeds total_cycles 4"
+# Recovery: Fix commit (git commit --amend) OR update plan (finalize_planning)
 ```
 
 ### 4.3 Recovery Options Discovery
 
-**For ERROR scenarios, what recovery paths exist?**
+**User Constraint:** Manual recovery only, no automatic migration.
 
-| Error | Recovery Option 1 | Recovery Option 2 | Recovery Option 3 |
-|-------|------------------|------------------|------------------|
-| No planning deliverables | Run `finalize_planning()` | Create minimal plan | Skip cycle tracking (opt-out flag?) |
-| Missing cycle_number | Add to commit: `cycle_number=N` | Auto-use state.json value | ERROR (no recovery) |
-| Invalid cycle_number | Fix commit: `git commit --amend` | Update plan: increase total_cycles | Force transition to valid cycle |
+**For ERROR scenarios:**
 
-**Questions Raised:**
-- Should recovery be manual-only or offer automated options?
-- Which errors are FATAL vs WARNING?
-- How to communicate recovery options in error messages?
+| Error | Recovery Option | Notes |
+|-------|----------------|-------|
+| No planning deliverables | Run `finalize_planning()` | Manual definition required |
+| Missing cycle_number | Add `cycle_number=N` to commit call | Explicit parameter required |
+| Invalid cycle_number | `git commit --amend` to fix message | Manual correction |
+|  | OR `finalize_planning()` to update plan | If genuinely need more cycles |
+
+**No Automated Recovery:**
+- ❌ No auto-detection from state.json
+- ❌ No warnings with fallback behavior
+- ❌ No opt-out flags
+- ✅ Only explicit error + manual fix
 
 ---
 
@@ -395,24 +398,24 @@ git_add_or_commit(cycle_number=99, ...)  # Project has total_cycles=4
 
 ### 5.1 Cycle Scope Format Enforcement
 
-**Current:** Both formats accepted
+**Current State:** Both formats technically possible
 ```
-P_TDD_SP_RED              ← No cycle (backward compat)
-P_TDD_C3_SP_RED          ← With cycle
+P_TDD_SP_RED              ← No cycle (currently accepted)
+P_TDD_SP_C3_RED          ← With cycle (currently accepted)
 ```
 
-**Option A: Strict enforcement (breaking change)**
-- REQUIRE cycle for TDD sub-phases
-- ERROR if missing
-- Grace period: warning → error
+**User Constraint:** Strict enforcement approach only.
 
-**Option B: Conditional enforcement**
-- REQUIRE cycle IF project has planning_deliverables
-- OPTIONAL if no deliver ables (legacy support)
+**Enforcement Strategy:**
+- REQUIRE cycle_number for TDD sub-phases when project has planning_deliverables
+- ERROR if missing (no warnings or grace period)
+- Format: `P_TDD_SP_C{N}_{SUBPHASE}` (e.g., `P_TDD_SP_C2_RED`)
 
-**Option C: Opt-in enforcement**
-- New field: `enforce_cycle_tracking: true` in projects.json
-- Only enforced if opted-in
+**No Backward Compatibility:**
+- ❌ No conditional enforcement based on project age
+- ❌ No opt-in/opt-out flags
+- ❌ No grace period (warning → error transition)
+- ✅ Immediate strict validation
 
 ### 5.2 Planning Deliverable Schema
 
