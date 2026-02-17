@@ -74,8 +74,7 @@ class PhaseStateEngine:
         self.project_manager = project_manager
 
     def initialize_branch(
-        self, branch: str, issue_number: int, initial_phase: str,
-        parent_branch: str | None = None
+        self, branch: str, issue_number: int, initial_phase: str, parent_branch: str | None = None
     ) -> dict[str, Any]:
         """Initialize branch state with workflow caching.
 
@@ -124,7 +123,7 @@ class PhaseStateEngine:
             "success": True,
             "branch": branch,
             "current_phase": initial_phase,
-            "parent_branch": parent_branch
+            "parent_branch": parent_branch,
         }
 
     def transition(
@@ -159,7 +158,7 @@ class PhaseStateEngine:
             to_phase=to_phase,
             timestamp=datetime.now(UTC).isoformat(),
             human_approval=human_approval,
-            forced=False
+            forced=False,
         )
 
         # Update state
@@ -167,18 +166,10 @@ class PhaseStateEngine:
         state["transitions"].append(self._transition_to_dict(transition))
         self._save_state(branch, state)
 
-        return {
-            "success": True,
-            "from_phase": from_phase,
-            "to_phase": to_phase
-        }
+        return {"success": True, "from_phase": from_phase, "to_phase": to_phase}
 
     def force_transition(
-        self,
-        branch: str,
-        to_phase: str,
-        skip_reason: str,
-        human_approval: str
+        self, branch: str, to_phase: str, skip_reason: str, human_approval: str
     ) -> dict[str, Any]:
         """Execute forced non-sequential phase transition.
 
@@ -204,7 +195,7 @@ class PhaseStateEngine:
             timestamp=datetime.now(UTC).isoformat(),
             human_approval=human_approval,
             forced=True,
-            skip_reason=skip_reason
+            skip_reason=skip_reason,
         )
 
         # Update state
@@ -217,7 +208,7 @@ class PhaseStateEngine:
             "from_phase": from_phase,
             "to_phase": to_phase,
             "forced": True,
-            "skip_reason": skip_reason
+            "skip_reason": skip_reason,
         }
 
     def get_current_phase(self, branch: str) -> str:
@@ -309,7 +300,7 @@ class PhaseStateEngine:
             "timestamp": transition.timestamp,
             "human_approval": transition.human_approval,
             "forced": transition.forced,
-            "skip_reason": transition.skip_reason
+            "skip_reason": transition.skip_reason,
         }
 
     # -------------------------------------------------------------------------
@@ -372,7 +363,10 @@ class PhaseStateEngine:
 
         logger.info(
             "Reconstructed state: issue=%s, phase=%s, workflow=%s, parent=%s",
-            issue_number, current_phase, project["workflow_name"], parent_branch
+            issue_number,
+            current_phase,
+            project["workflow_name"],
+            parent_branch,
         )
 
         return state
@@ -392,7 +386,7 @@ class PhaseStateEngine:
             ValueError: If branch format invalid
         """
         # Match: (feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-(.+)
-        match = re.match(r'^(?:feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-', branch)
+        match = re.match(r"^(?:feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-", branch)
         if not match:
             msg = f"Cannot extract issue number from branch '{branch}'. "
             msg += "Expected format: <type>/<number>-<title>"
@@ -400,9 +394,7 @@ class PhaseStateEngine:
 
         return int(match.group(1))
 
-    def _infer_phase_from_git(
-        self, branch: str, workflow_phases: list[str]
-    ) -> str:
+    def _infer_phase_from_git(self, branch: str, workflow_phases: list[str]) -> str:
         """Infer current phase from git commit messages.
 
         Searches for phase:label patterns in commits, validates against workflow.
@@ -468,9 +460,7 @@ class PhaseStateEngine:
             msg = "Git log command timed out"
             raise RuntimeError(msg) from e
 
-    def _detect_phase_label(
-        self, commits: list[str], workflow_phases: list[str]
-    ) -> str | None:
+    def _detect_phase_label(self, commits: list[str], workflow_phases: list[str]) -> str | None:
         """Detect phase from phase:label patterns in commits.
 
         Labels.yaml SSOT: Only phase:label format supported (no backwards compat).
@@ -488,7 +478,7 @@ class PhaseStateEngine:
 
         for commit in commits:
             # Search for phase:label pattern (case-insensitive)
-            match = re.search(r'phase:(\w+)', commit.lower())
+            match = re.search(r"phase:(\w+)", commit.lower())
             if not match:
                 continue
 
