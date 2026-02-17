@@ -725,6 +725,35 @@ Recovery:
 - Graceful degradation when planning_deliverables missing (read-only tools only)
 
 ---
+
+## Open Questions for Design Phase
+
+### 1. Planning Deliverables Finalization Tool
+**Context:** planning.md:214-218 describes workflow step "update projects.json with planning outcomes" and "creates planning.md", but no existing tool contract exists.
+
+**Design Tasks:**
+- Define tool signature (e.g., `finalize_planning_deliverables(issue_number, planning_deliverables)`)
+- Determine tool location (ProjectManager? Separate planning tools module?)
+- Schema validation for planning_deliverables input
+- Error handling when planning.md already exists or planning_deliverables already set
+- Integration with transition_phase validation (check planning complete before TDD entry)
+
+**Note:** This is NEW functionality - not extending existing tool.
+
+---
+
+### 2. Integration → Validation Rename Migration
+**Context:** workflows.yaml:13-56 still uses "integration" terminology. Research.md:621-647 proposes rename to "validation" for clarity.
+
+**Design Decision Deferred:**
+- Rename scope: All workflows or just feature/bug?
+- Migration strategy for existing projects in .st3/projects.json with "integration" phase
+- Backward compatibility: Support both terms or hard cutover?
+- Impact on PhaseStateEngine, GitManager scope encoding, documentation
+
+**Note:** Separate migration topic - NOT blocking Issue #146 implementation. Can be separate issue/PR.
+
+---
 - **[research.md][related-1]**
 - **[../issue144/planning.md][related-2]**
 - **[../../reference/mcp/phase_state_engine.md][related-3]**
