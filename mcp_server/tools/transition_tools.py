@@ -147,3 +147,33 @@ class TransitionCycleTool(BaseTool):
                 return int(match.group(1))
 
         return None
+
+
+class ForceCycleTransitionInput(BaseModel):
+    """Input for force_cycle_transition tool."""
+
+    to_cycle: int = Field(..., description="Target cycle number (any direction)")
+    skip_reason: str = Field(
+        ..., description="Reason for forced transition (backward/skip)"
+    )
+    human_approval: str = Field(
+        ..., description="Human approval (name + date, e.g., 'John approved on 2026-02-17')"
+    )
+    issue_number: int | None = Field(
+        default=None, description="Issue number (auto-detected from branch if omitted)"
+    )
+
+
+class ForceCycleTransitionTool(BaseTool):
+    """Tool to force TDD cycle transition (backward/skip) with human approval."""
+
+    name = "force_cycle_transition"
+    description = (
+        "Force transition to any TDD cycle (backward or skip). "
+        "Requires skip_reason and human_approval for audit trail."
+    )
+    args_model = ForceCycleTransitionInput
+
+    async def execute(self, params: ForceCycleTransitionInput) -> ToolResult:
+        """Execute forced cycle transition with audit trail."""
+        return ToolResult.text("Not implemented yet")
