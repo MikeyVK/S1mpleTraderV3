@@ -624,3 +624,94 @@ async def test_get_parent_branch_not_set():
         output = result.content[0]["text"]
         assert "Parent branch: (not set)" in output
         assert "main" in output
+
+
+# ===== Cycle Number Enforcement Tests (Issue #146 Cycle 5) =====
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tdd_requires_cycle_number(mock_git_manager):
+    """Test that TDD phase commits REQUIRE cycle_number (Issue #146)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+
+    # Attempt to commit in TDD phase without cycle_number
+    params = GitCommitInput(
+        message="update documentation",
+        workflow_phase="tdd",
+        # cycle_number is MISSING - should raise validation error
+    )
+
+    with pytest.raises(ValueError, match="cycle_number.*required.*TDD"):
+        await tool.execute(params)
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tdd_subphase_requires_cycle_number(mock_git_manager):
+    """Test that TDD sub-phase commits REQUIRE cycle_number (Issue #146)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+
+    # Attempt to commit in TDD sub-phase without cycle_number
+    params = GitCommitInput(
+        message="implement feature",
+        workflow_phase="tdd",
+        sub_phase="green",
+        # cycle_number is MISSING - should raise validation error
+    )
+
+    with pytest.raises(ValueError, match="cycle_number.*required.*TDD"):
+        await tool.execute(params)
+
+
+@pytest.mark.asyncio
+async def test_git_commit_non_tdd_allows_no_cycle_number(mock_git_manager):
+    """Test that non-TDD phases do NOT require cycle_number (Issue #146)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "abc1234"
+
+    # Commit in research phase without cycle_number - should succeed
+    params = GitCommitInput(
+        message="research alternatives",
+        workflow_phase="research",
+        # cycle_number is OMITTED - should be allowed
+    )
+
+    result = await tool.execute(params)
+
+    # Should succeed
+    assert "Committed: abc1234" in result.content[0]["text"]
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="research",
+        message="research alternatives",
+        sub_phase=None,
+        cycle_number=None,
+        commit_type=None,
+        files=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tdd_with_cycle_number_succeeds(mock_git_manager):
+    """Test that TDD commits WITH cycle_number succeed (Issue #146)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "def5678"
+
+    # Commit in TDD phase WITH cycle_number - should succeed
+    params = GitCommitInput(
+        message="add schema validation",
+        workflow_phase="tdd",
+        sub_phase="green",
+        cycle_number=3,
+    )
+
+    result = await tool.execute(params)
+
+    # Should succeed
+    assert "Committed: def5678" in result.content[0]["text"]
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="add schema validation",
+        sub_phase="green",
+        cycle_number=3,
+        commit_type=None,
+        files=None,
+    )
