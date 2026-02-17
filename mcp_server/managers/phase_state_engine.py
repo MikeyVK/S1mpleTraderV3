@@ -111,9 +111,12 @@ class PhaseStateEngine:
             "current_phase": initial_phase,
             "parent_branch": parent_branch,  # Store parent_branch
             "transitions": [],
-            "created_at": datetime.now(UTC).isoformat()
+            "created_at": datetime.now(UTC).isoformat(),
+            # TDD cycle tracking fields (Issue #146)
+            "current_tdd_cycle": None,
+            "last_tdd_cycle": None,
+            "tdd_cycle_history": [],
         }
-
         # Save state
         self._save_state(branch, state)
 
@@ -360,7 +363,11 @@ class PhaseStateEngine:
             "parent_branch": parent_branch,  # Reconstructed from projects.json
             "transitions": [],  # Cannot reconstruct history
             "created_at": datetime.now(UTC).isoformat(),
-            "reconstructed": True  # Audit flag
+            "reconstructed": True,  # Audit flag
+            # TDD cycle tracking fields (Issue #146)
+            "current_tdd_cycle": None,
+            "last_tdd_cycle": None,
+            "tdd_cycle_history": [],
         }
 
         logger.info(

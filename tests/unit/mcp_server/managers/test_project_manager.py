@@ -385,3 +385,62 @@ class TestPlanningDeliverablesSchema:
         assert "planning_deliverables" in plan
         assert plan["planning_deliverables"]["tdd_cycles"]["total"] == 4
         assert len(plan["planning_deliverables"]["tdd_cycles"]["cycles"]) == 1
+
+    def test_save_planning_deliverables_rejects_duplicate(self, manager: ProjectManager) -> None:
+        """Test that save_planning_deliverables rejects duplicate saves."""
+        # Arrange
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+        planning_deliverables = {"tdd_cycles": {"total": 4, "cycles": []}}
+        manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Act & Assert: Second save should fail
+        with pytest.raises(ValueError, match="already exist"):
+            manager.save_planning_deliverables(146, planning_deliverables)
+
+    def test_save_planning_deliverables_rejects_missing_tdd_cycles(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test schema validation: tdd_cycles required."""
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # Missing tdd_cycles key
+        with pytest.raises(ValueError, match="must contain 'tdd_cycles' key"):
+            manager.save_planning_deliverables(146, {"validation_plan": {}})
+
+    def test_save_planning_deliverables_rejects_malformed_tdd_cycles(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test schema validation: tdd_cycles structure."""
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # tdd_cycles not a dict
+        with pytest.raises(ValueError, match="must be a dict"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": "invalid"})
+
+        # Missing total key
+        with pytest.raises(ValueError, match="must contain 'total' key"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": {"cycles": []}})
+
+        # Invalid total (not int)
+        with pytest.raises(ValueError, match="must be a positive integer"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": {"total": "4", "cycles": []}})
+
+        # Invalid total (zero)
+        with pytest.raises(ValueError, match="must be a positive integer"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": {"total": 0, "cycles": []}})
+
+        # Missing cycles key
+        with pytest.raises(ValueError, match="must contain 'cycles' key"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": {"total": 4}})
+
+        # Invalid cycles (not list)
+        with pytest.raises(ValueError, match="must be a list"):
+            manager.save_planning_deliverables(
+                146, {"tdd_cycles": {"total": 4, "cycles": "invalid"}}
+            )

@@ -176,7 +176,7 @@ class ProjectManager:
             planning_deliverables: Planning deliverables dict (tdd_cycles, validation_plan, etc.)
 
         Raises:
-            ValueError: If project not found
+            ValueError: If project not found, deliverables already exist, or schema invalid
         """
         if not self.projects_file.exists():
             msg = f"Project {issue_number} not found - initialize_project must be called first"
@@ -188,6 +188,42 @@ class ProjectManager:
         # Check project exists
         if str(issue_number) not in projects:
             msg = f"Project {issue_number} not found - initialize_project must be called first"
+            raise ValueError(msg)
+
+        # Guard: Check if planning_deliverables already exist
+        if "planning_deliverables" in projects[str(issue_number)]:
+            msg = (
+                f"Planning deliverables already exist for issue {issue_number}. "
+                "Cannot overwrite existing deliverables."
+            )
+            raise ValueError(msg)
+
+        # Validate schema: tdd_cycles required
+        if "tdd_cycles" not in planning_deliverables:
+            msg = "planning_deliverables must contain 'tdd_cycles' key"
+            raise ValueError(msg)
+
+        tdd_cycles = planning_deliverables["tdd_cycles"]
+
+        # Validate tdd_cycles structure
+        if not isinstance(tdd_cycles, dict):
+            msg = "tdd_cycles must be a dict"
+            raise ValueError(msg)
+
+        if "total" not in tdd_cycles:
+            msg = "tdd_cycles must contain 'total' key"
+            raise ValueError(msg)
+
+        if not isinstance(tdd_cycles["total"], int) or tdd_cycles["total"] < 1:
+            msg = "tdd_cycles.total must be a positive integer"
+            raise ValueError(msg)
+
+        if "cycles" not in tdd_cycles:
+            msg = "tdd_cycles must contain 'cycles' key"
+            raise ValueError(msg)
+
+        if not isinstance(tdd_cycles["cycles"], list):
+            msg = "tdd_cycles.cycles must be a list"
             raise ValueError(msg)
 
         # Add planning_deliverables to project
