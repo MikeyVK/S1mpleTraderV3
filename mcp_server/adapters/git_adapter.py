@@ -1,4 +1,5 @@
 """Git adapter for the MCP server."""
+
 from typing import Any
 
 from git import InvalidGitRepositoryError, Repo
@@ -25,7 +26,7 @@ class GitAdapter:
             except InvalidGitRepositoryError as e:
                 raise MCPSystemError(
                     f"Invalid git repository at {self.repo_path}",
-                    fallback="Initialize git repository"
+                    fallback="Initialize git repository",
                 ) from e
             except Exception as e:
                 raise MCPSystemError(f"Failed to access git repo: {e}") from e
@@ -52,7 +53,7 @@ class GitAdapter:
             "is_clean": self.is_clean(),
             "is_dirty": self.repo.is_dirty(),
             "untracked_files": self.repo.untracked_files,
-            "modified_files": [item.a_path for item in self.repo.index.diff(None)]
+            "modified_files": [item.a_path for item in self.repo.index.diff(None)],
         }
 
     def create_branch(self, branch_name: str, base: str) -> None:
@@ -77,12 +78,14 @@ class GitAdapter:
 
         logger.debug(
             "Creating git branch",
-            extra={"props": {
-                "branch_name": branch_name,
-                "base": base,
-                "resolved_base": resolved_base,
-                "current_branch": self.get_current_branch()
-            }}
+            extra={
+                "props": {
+                    "branch_name": branch_name,
+                    "base": base,
+                    "resolved_base": resolved_base,
+                    "current_branch": self.get_current_branch(),
+                }
+            },
         )
 
         try:
@@ -94,21 +97,14 @@ class GitAdapter:
 
             logger.info(
                 "Created and checked out branch",
-                extra={"props": {
-                    "branch_name": branch_name,
-                    "base": resolved_base
-                }}
+                extra={"props": {"branch_name": branch_name, "base": resolved_base}},
             )
         except ExecutionError:
             raise
         except Exception as e:
             logger.error(
                 "Failed to create branch",
-                extra={"props": {
-                    "branch_name": branch_name,
-                    "base": base,
-                    "error": str(e)
-                }}
+                extra={"props": {"branch_name": branch_name, "base": base, "error": str(e)}},
             )
             raise ExecutionError(f"Failed to create branch {branch_name}: {e}") from e
 
@@ -146,11 +142,61 @@ class GitAdapter:
             raise ExecutionError(f"Failed to restore files: {e}") from e
 
     def checkout(self, branch_name: str) -> None:
-        """Checkout to an existing branch."""
+        """Checkout branch (local or remote-tracking).
+
+        Sequential fallback: checks local branches first (fast path), then
+        remote-tracking refs. Creates local tracking branch for remote-only.
+
+        Args:
+            branch_name: Branch name with or without 'origin/' prefix.
+                         Examples: "feature/x", "origin/feature/x"
+
+        Returns:
+            None: On successful checkout
+
+        Raises:
+            ExecutionError: In these scenarios:
+                - "Branch {name} does not exist (checked: local, origin)" (missing)
+                - "Failed to checkout {name}: {detail}" (unexpected git error)
+
+        Precondition:
+            Requires recent git_fetch() for up-to-date remote-tracking refs.
+            Does NOT auto-fetch (Decision Q3).
+
+        Performance:
+            Local branch: O(1), NO remote access (Decision D3 invariant)
+            Remote-only: O(n), n = count of remote refs
+        """
         try:
-            if branch_name not in self.repo.heads:
-                raise ExecutionError(f"Branch {branch_name} does not exist")
-            self.repo.heads[branch_name].checkout()
+            # Normalize input (Decision D2, Scenario S5)
+            normalized_branch = branch_name.removeprefix("origin/")
+
+            # Fast path: local branch exists (Scenario S1, Decision D3)
+            if normalized_branch in self.repo.heads:
+                self.repo.heads[normalized_branch].checkout()
+                return  # ← Early return, NO remote access
+
+            # Fallback: check remote-tracking refs (Scenario S2)
+            try:
+                origin = self.repo.remote("origin")
+            except ValueError as e:
+                raise ExecutionError("Origin remote not configured") from e  # Scenario S3
+
+            # Search for remote-tracking ref
+            remote_ref_name = f"origin/{normalized_branch}"
+            remote_ref = next((ref for ref in origin.refs if ref.name == remote_ref_name), None)
+
+            if remote_ref is None:
+                raise ExecutionError(
+                    f"Branch {normalized_branch} does not exist (checked: local, origin). "
+                    f"Hint: Run git_fetch to update remote branch information."
+                )  # Scenario S4
+
+            # Create local tracking branch (Scenario S2)
+            local_branch = self.repo.create_head(normalized_branch, remote_ref)
+            local_branch.set_tracking_branch(remote_ref)
+            local_branch.checkout()
+
         except ExecutionError:
             raise
         except Exception as e:
@@ -161,9 +207,7 @@ class GitAdapter:
         try:
             origin = self.repo.remote("origin")
         except ValueError as e:
-            raise ExecutionError(
-                "No origin remote configured"
-            ) from e
+            raise ExecutionError("No origin remote configured") from e
 
         try:
             branch = self.get_current_branch()
@@ -173,7 +217,6 @@ class GitAdapter:
                 origin.push()
         except Exception as e:
             raise ExecutionError(f"Failed to push: {e}") from e
-
 
     def fetch(self, remote: str = "origin", prune: bool = False) -> str:
         """Fetch updates from a remote.
@@ -215,7 +258,6 @@ class GitAdapter:
             ) from e
         except Exception as e:
             raise ExecutionError(f"Failed to fetch from remote '{remote}': {e}") from e
-
 
     def has_upstream(self) -> bool:
         """Check whether the current branch has an upstream tracking branch.
@@ -286,6 +328,7 @@ class GitAdapter:
             ) from e
         except Exception as e:
             raise ExecutionError(f"Failed to pull from remote '{remote}': {e}") from e
+
     def merge(self, branch_name: str) -> None:
         """Merge a branch into current branch."""
         try:
@@ -303,9 +346,7 @@ class GitAdapter:
             if branch_name not in self.repo.heads:
                 raise ExecutionError(f"Branch {branch_name} does not exist")
             if self.get_current_branch() == branch_name:
-                raise ExecutionError(
-                    f"Cannot delete current branch {branch_name}"
-                )
+                raise ExecutionError(f"Cannot delete current branch {branch_name}")
             self.repo.delete_head(branch_name, force=force)
         except ExecutionError:
             raise
@@ -405,9 +446,6 @@ class GitAdapter:
         """
         try:
             commits = list(self.repo.iter_commits(max_count=limit))
-            return [
-                str(commit.message).split("\n", maxsplit=1)[0]
-                for commit in commits
-            ]
+            return [str(commit.message).split("\n", maxsplit=1)[0] for commit in commits]
         except Exception as e:
             raise ExecutionError(f"Failed to get recent commits: {e}") from e
