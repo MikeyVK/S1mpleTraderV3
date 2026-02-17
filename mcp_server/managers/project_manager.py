@@ -166,7 +166,9 @@ class ProjectManager:
             "parent_branch": plan.parent_branch,
         }
 
-    def save_planning_deliverables(self, issue_number: int, planning_deliverables: dict[str, Any]) -> None:
+    def save_planning_deliverables(
+        self, issue_number: int, planning_deliverables: dict[str, Any]
+    ) -> None:
         """Save planning deliverables to projects.json.
 
         Args:
@@ -193,6 +195,7 @@ class ProjectManager:
 
         # Write to file
         self.projects_file.write_text(json.dumps(projects, indent=2))
+
     def get_project_plan(self, issue_number: int) -> dict[str, Any] | None:
         """Get stored project plan with current phase detection.
 

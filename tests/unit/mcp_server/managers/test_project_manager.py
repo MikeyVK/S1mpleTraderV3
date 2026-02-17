@@ -351,11 +351,9 @@ class TestPlanningDeliverablesSchema:
         """Create ProjectManager instance."""
         return ProjectManager(workspace_root=workspace_root)
 
-    def test_planning_deliverables_stored_in_projects_json(
-        self, manager: ProjectManager, workspace_root: Path
-    ) -> None:
+    def test_planning_deliverables_stored_in_projects_json(self, manager: ProjectManager) -> None:
         """Test that planning_deliverables are persisted to projects.json.
-        
+
         RED: This test WILL FAIL - planning_deliverables schema not implemented yet.
         """
         # Arrange: Create planning deliverables according to design.md schema
@@ -367,19 +365,17 @@ class TestPlanningDeliverablesSchema:
                         "cycle": 1,
                         "name": "Schema & Storage",
                         "deliverables": ["planning_deliverables schema", "tdd_cycle_* fields"],
-                        "exit_criteria": "Schema validated, tests pass"
+                        "exit_criteria": "Schema validated, tests pass",
                     }
-                ]
+                ],
             }
         }
 
         # Act: Initialize project and save planning deliverables
         manager.initialize_project(
-            issue_number=146,
-            issue_title="TDD Cycle Tracking",
-            workflow_name="feature"
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
         )
-        
+
         # Save planning deliverables (method doesn't exist yet - will fail)
         manager.save_planning_deliverables(146, planning_deliverables)
 
