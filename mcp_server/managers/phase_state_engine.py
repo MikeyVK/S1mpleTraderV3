@@ -255,6 +255,48 @@ class PhaseStateEngine:
         self._save_state(branch, state)
         return state
 
+    def _validate_cycle_number_range(self, cycle_number: int, issue_number: int) -> None:
+        """Validate cycle_number is within valid range [1..total].
+
+        Args:
+            cycle_number: Cycle number to validate
+            issue_number: GitHub issue number for context
+
+        Raises:
+            ValueError: If cycle_number is out of range or planning deliverables not found
+
+        Issue #146 Cycle 2: Range validation for TDD cycle transitions.
+        """
+        # Get planning deliverables
+        plan = self.project_manager.get_project_plan(issue_number)
+        if not plan or "planning_deliverables" not in plan:
+            msg = f"Planning deliverables not found for issue {issue_number}"
+            raise ValueError(msg)
+
+        # Get total cycles
+        total_cycles = plan["planning_deliverables"]["tdd_cycles"]["total"]
+
+        # Validate range [1..total]
+        if cycle_number < 1 or cycle_number > total_cycles:
+            msg = f"cycle_number must be in range [1..{total_cycles}], got {cycle_number}"
+            raise ValueError(msg)
+
+    def _validate_planning_deliverables_exist(self, issue_number: int) -> None:
+        """Validate that planning deliverables exist for issue.
+
+        Args:
+            issue_number: GitHub issue number
+
+        Raises:
+            ValueError: If planning deliverables not found
+
+        Issue #146 Cycle 2: Existence check before cycle transitions.
+        """
+        plan = self.project_manager.get_project_plan(issue_number)
+        if not plan or "planning_deliverables" not in plan:
+            msg = f"Planning deliverables not found for issue {issue_number}"
+            raise ValueError(msg)
+
     def _save_state(self, branch: str, state: dict[str, Any]) -> None:
         """Save branch state to state.json.
 
