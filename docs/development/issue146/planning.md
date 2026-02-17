@@ -330,7 +330,7 @@ force_cycle_transition(
 
 **Workflow:**
 ```
-TDD (cycles 1-4) → Integration → [bug found]
+TDD (cycles 1-4) → Validation → [bug found]
 
 force_phase_transition(
     to_phase="tdd",
