@@ -41,7 +41,7 @@ Planning document for TDD cycle tracking feature. Answers 8 research questions, 
 
 **Deliverables:**
 - ProjectManager.planning_deliverables schema
-- StateManager.tdd_cycle_* fields
+- PhaseStateEngine.tdd_cycle_* fields
 
 **Tests:**
 - Schema validation catches malformed planning_deliverables
@@ -119,7 +119,7 @@ Planning document for TDD cycle tracking feature. Answers 8 research questions, 
   "name": "Schema Design",
   "deliverables": [
     "ProjectManager.planning_deliverables schema",
-    "StateManager.tdd_cycle_* fields"
+    "PhaseStateEngine.tdd_cycle_* fields"
   ],
   "exit_criteria": "All schema tests pass"
 }
@@ -193,65 +193,84 @@ git_add_or_commit(
 ### Q4: Planning Deliverables Enforcement Timing
 **Decision:** ✅ Block at phase/cycle entry (not at first commit)
 
-**Critical Correction:** Planning deliverables come from `initialize_project`, NOT from separate finalize_planning tool.
+**Aangescherpt Model:** Planning deliverables lifecycle
 
 **Workflow:**
 ```
 1. initialize_project(issue_number=146, workflow_name="feature")
-   → Creates projects.json entry
-   → Research phase: expects research.md
-   → Planning phase: expects planning.md
+   → Creates projects.json entry with:
+      - workflow_name, required_phases from workflows.yaml
+      - expected_deliverables (templates):
+        * research: ["research.md"]
+        * planning: ["planning.md", "planning_deliverables"]
+   → NO actual planning outcomes yet (tdd_cycles, validation_plan)
 
-2. transition_phase(to_phase="tdd")
+2. transition_phase(to_phase="planning")
+   → Check: research.md exists
+   
+3. [During planning phase: answer Q1-Q8, define TDD cycles]
+
+4. [End of planning: finalize planning deliverables]
+   → Update projects.json with actual planning outcomes:
+      - planning_deliverables.tdd_cycles (defined cycles)
+      - planning_deliverables.validation_plan
+      - planning_deliverables.documentation_plan
+   → Creates planning.md
+
+5. transition_phase(to_phase="design")
+   → Check: planning.md exists
+   
+6. transition_phase(to_phase="tdd")
    → BLOCKS if planning_deliverables not in projects.json
    → Error: "Cannot enter TDD phase without planning deliverables"
-
-3. transition_cycle(to_cycle=2)
+   
+7. transition_cycle(to_cycle=2)
    → BLOCKS if cycle 1 exit criteria not met
    → Requires: force_cycle_transition with reason + approval
 ```
 
+**Key Distinction:**
+- **initialize_project**: Sets expectations (template/schema requirements)
+- **Planning phase**: Defines actual deliverables (tdd_cycles content)
+- **TDD entry validation**: Checks planning outcomes exist (not just templates)
+
 **Entry Validation:**
-- TDD phase entry: Check planning_deliverables exists and tdd_cycles.total > 0
+- TDD phase entry: Check planning_deliverables.tdd_cycles exists and total > 0
 - Cycle transition: Check previous cycle exit criteria met
 - Preventive (not reactive) - catch missing planning BEFORE work starts
 
 ---
 
 ### Q5: Cycle Info Visibility in Discovery Tools
-**Decision:** ✅ Always show (when planning_deliverables exists) - agents get full context
+**Decision:** ✅ Conditional on TDD phase (matches research.md:314)
 
 **Clarification:** `get_work_context` is agent tool, not direct user output.
 
 **Behavior:**
 ```json
-// During DESIGN phase (planning exists)
+// During DESIGN phase (planning exists, but NOT in TDD)
 {
-  "workflow_phase": "design",
-  "planning_deliverables": {
-    "tdd_cycles": {
-      "total": 4,
-      "status": "planned"  // Not started yet
-    }
-  }
+  "workflow_phase": "design"
+  // NO tdd_cycle_info shown (not in TDD yet)
 }
 
-// During TDD phase
+// During TDD phase (planning exists AND in TDD)
 {
   "workflow_phase": "tdd",
-  "current_cycle": 2,
-  "planning_deliverables": {
-    "tdd_cycles": {
-      "total": 4,
-      "status": "in_progress"
-    }
+  "tdd_cycle_info": {
+    "current": 2,
+    "total": 4,
+    "name": "Validation Logic",
+    "status": "in_progress"
   }
 }
 ```
 
 **Rationale:**
-- Agents need complete context for decision-making (even outside TDD)
-- Agent decides what to report to user (not hardcoded in tool)
+- Cycle info only relevant during TDD phase (when cycles are active)
+- Outside TDD: get_project_plan shows full planning_deliverables (if needed)
+- Consistent with research.md:314 conditional visibility decision
+- Reduces noise in get_work_context for non-TDD phases
 
 ---
 
@@ -354,7 +373,7 @@ transition_cycle(to_cycle=5)  // Continues from cycle 4
             "name": "Schema & Storage",
             "deliverables": [
               "ProjectManager.planning_deliverables schema",
-              "StateManager.tdd_cycle_* fields"
+              "PhaseStateEngine.tdd_cycle_* fields"
             ],
             "exit_criteria": "Schema validated, tests pass",
             "status": "completed"
@@ -498,10 +517,11 @@ def validate_exit_criteria(issue_number: int, cycle_number: int):
 ### get_work_context Enhancement
 
 **Changes:**
-- Add `tdd_cycle_info` section (always shown if planning exists)
+- Add `tdd_cycle_info` section (conditional on TDD phase only)
 - Compact JSON format
+- Graceful degradation if planning_deliverables missing
 
-**Output:**
+**Output (during TDD phase):**
 ```json
 {
   "workflow_phase": "tdd",
@@ -700,9 +720,9 @@ Recovery:
 - Error messages integrated
 
 ### Discovery Tools
-- Extend GetWorkContextTool with cycle info
+- Extend GetWorkContextTool with cycle info (conditional on TDD phase)
 - Extend GetProjectPlanTool with planning_deliverables
-- Maintain backward compatibility
+- Graceful degradation when planning_deliverables missing (read-only tools only)
 
 ---
 - **[research.md][related-1]**

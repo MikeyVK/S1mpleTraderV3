@@ -311,7 +311,7 @@ sequenceDiagram
 - ✅ Follows established SRP pattern from QUALITY_GATES.md:69
 
 **Implementation Notes:**
-- Cycle info visibility: Conditional (only shown during TDD phase in get_work_context)
+- Cycle info visibility: Conditional (only shown during TDD phase in get_work_context) - **Planning Decision Q5**
 - Graceful degradation: Discovery tools (get_work_context, get_project_plan) work without planning_deliverables (show N/A or omit section)
 - **Critical distinction:** Read-only discovery tools degrade gracefully, but TDD workflow (commits, transitions) MUST hard-fail without planning_deliverables (see Section 6.1)
 
