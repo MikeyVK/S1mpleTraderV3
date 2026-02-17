@@ -166,6 +166,33 @@ class ProjectManager:
             "parent_branch": plan.parent_branch,
         }
 
+    def save_planning_deliverables(self, issue_number: int, planning_deliverables: dict[str, Any]) -> None:
+        """Save planning deliverables to projects.json.
+
+        Args:
+            issue_number: GitHub issue number
+            planning_deliverables: Planning deliverables dict (tdd_cycles, validation_plan, etc.)
+
+        Raises:
+            ValueError: If project not found
+        """
+        if not self.projects_file.exists():
+            msg = f"Project {issue_number} not found - initialize_project must be called first"
+            raise ValueError(msg)
+
+        # Load existing projects
+        projects = json.loads(self.projects_file.read_text(encoding="utf-8-sig"))
+
+        # Check project exists
+        if str(issue_number) not in projects:
+            msg = f"Project {issue_number} not found - initialize_project must be called first"
+            raise ValueError(msg)
+
+        # Add planning_deliverables to project
+        projects[str(issue_number)]["planning_deliverables"] = planning_deliverables
+
+        # Write to file
+        self.projects_file.write_text(json.dumps(projects, indent=2))
     def get_project_plan(self, issue_number: int) -> dict[str, Any] | None:
         """Get stored project plan with current phase detection.
 
