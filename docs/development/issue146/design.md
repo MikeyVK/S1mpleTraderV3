@@ -445,55 +445,67 @@ def force_cycle_transition(
 
 ### 6.2. Phase Entry/Exit Hooks
 
+**Design Decision: Auto-Initialize Cycle 1 on TDD Entry**
+
+**Rationale:**
+- ✅ Single-action entry: `transition_phase("tdd")` both validates and initializes
+- ✅ Preventive validation: Blocks entry if planning deliverables missing (Q4 decision)
+- ✅ Consistent state: TDD phase always has active cycle (never None during TDD)
+- ✅ Mirrors phase philosophy: PhaseStateEngine owns both phase AND cycle state
+- ✅ Reduces user error: No forgotten `transition_cycle(1)` call
+
+**Alternative Rejected:** Explicit two-step (`transition_phase` + `transition_cycle`) adds complexity and risk of inconsistent state.
+
 **on_enter_tdd_phase():**
 ```python
 def on_enter_tdd_phase(issue_number: int):
-    """Validate planning deliverables before TDD entry."""
+    """Validate planning deliverables, auto-initialize cycle 1."""
     project = load_project(issue_number)
     
-    # Check planning_deliverables exist
+    # BLOCKING VALIDATION: Check planning_deliverables exist
     if "planning_deliverables" not in project:
-        raise ValidationError(
+        raise PhaseTransitionError(
             "Cannot enter TDD phase without planning deliverables",
-            recovery="Run finalize_planning_deliverables tool"
+            recovery=(
+                "MANUAL RECOVERY:\\n"
+                "1. Review planning.md - ensure all cycles defined\\n"
+                "2. Call finalize_planning_deliverables(...) to store schema\\n"
+                "3. Retry transition_phase(to_phase='tdd')\\n"
+            )
         )
     
-    # Check tdd_cycles defined
-    if project["planning_deliverables"]["tdd_cycles"]["total"] == 0:
-        raise ValidationError(
-            "No TDD cycles defined",
+    # BLOCKING VALIDATION: Check tdd_cycles defined
+    tdd_cycles = project["planning_deliverables"].get("tdd_cycles", {})
+    if tdd_cycles.get("total", 0) == 0:
+        raise PhaseTransitionError(
+            "No TDD cycles defined in planning deliverables",
             recovery="Update planning_deliverables with tdd_cycles"
         )
     
-    # Initialize cycle state
+    # AUTO-INITIALIZE: Set cycle 1 as active
     state = load_state()
-    state["current_tdd_cycle"] = None  # Explicit transition_cycle required
+    state["current_tdd_cycle"] = 1  # Auto-initialize to cycle 1
+    state["tdd_cycle_history"] = []  # Fresh history
     save_state(state)
+    
+    logger.info(f"TDD phase entered: auto-initialized to cycle 1/{tdd_cycles['total']}")
 ```
 
 **on_exit_tdd_phase():**
 ```python
 def on_exit_tdd_phase():
-    """Archive current cycle, validate phase exit criteria."""
+    """Preserve cycle state, validate phase exit criteria."""
     state = load_state()
     
-    # Move current to last (historical)
+    # Preserve last cycle for reference
     state["last_tdd_cycle"] = state["current_tdd_cycle"]
-    state["current_tdd_cycle"] = None
+    state["current_tdd_cycle"] = None  # Clear active cycle
     
-    # Validate phase exit criteria
-    project = load_project(state["issue_number"])
-    phase_criteria = project["planning_deliverables"]["tdd_cycles"]["phase_exit_criteria"]
-    
-    if not check_phase_exit_criteria(phase_criteria):
-        raise ValidationError(
-            f"TDD phase exit criteria not met: {phase_criteria}",
-            recovery="Use force_phase_transition with reason + approval"
-        )
+    # Validate ALL cycles completed (or force-skipped)
+    validate_phase_exit_criteria()
     
     save_state(state)
 ```
-
 ---
 
 ## 7. Validation Logic
@@ -850,6 +862,7 @@ Recovery:
 | Extend PhaseStateEngine (not separate CycleManager) | Mirrors existing pattern, avoids StateManager duplication, maintains SRP |
 | Comprehensive planning_deliverables schema | Captures all TDD cycle definitions, exit criteria, validation plans (vs minimal cycle names) |
 | Forward-only cycle transitions | Prevents accidental regression, maintains clear progression (force override available) |
+| **Auto-initialize cycle 1 on TDD entry** | **Single-action entry reduces user error, ensures consistent state (cycle never None during TDD)** |
 | Conditional visibility (TDD phase only) | Reduces noise in get_work_context for non-TDD phases |
 | Entry-time blocking validation | Prevents invalid state before work starts (vs runtime detection) |
 | Both JSON + text formatting | Dual output for agents (structured) and developers (readable) |

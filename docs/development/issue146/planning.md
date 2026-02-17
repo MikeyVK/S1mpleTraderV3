@@ -623,7 +623,8 @@ def force_cycle_transition(
 ```python
 def on_enter_tdd_phase(issue_number: int):
     validate_planning_deliverables(issue_number)
-    state["current_tdd_cycle"] = null  # Explicit transition required
+    state["current_tdd_cycle"] = 1  # Auto-initialize to cycle 1
+    state["tdd_cycle_history"] = []  # Fresh history
 ```
 
 **TDD Phase Exit:**
