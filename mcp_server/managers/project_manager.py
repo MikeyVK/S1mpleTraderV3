@@ -176,7 +176,11 @@ class ProjectManager:
             planning_deliverables: Planning deliverables dict (tdd_cycles, validation_plan, etc.)
 
         Raises:
-            ValueError: If project not found, deliverables already exist, or schema invalid
+            ValueError: If project not found, deliverables already exist, or schema invalid:
+                - total != len(cycles)
+                - Non-sequential or duplicate cycle numbers
+                - Empty deliverables arrays
+                - Empty exit_criteria strings
         """
         if not self.projects_file.exists():
             msg = f"Project {issue_number} not found - initialize_project must be called first"
@@ -221,10 +225,51 @@ class ProjectManager:
         if "cycles" not in tdd_cycles:
             msg = "tdd_cycles must contain 'cycles' key"
             raise ValueError(msg)
-
         if not isinstance(tdd_cycles["cycles"], list):
             msg = "tdd_cycles.cycles must be a list"
             raise ValueError(msg)
+
+        # Validate: total must match actual cycle count
+        if tdd_cycles["total"] != len(tdd_cycles["cycles"]):
+            msg = (
+                f"tdd_cycles.total ({tdd_cycles['total']}) must equal "
+                f"len(tdd_cycles.cycles) ({len(tdd_cycles['cycles'])})"
+            )
+            raise ValueError(msg)
+
+        # Validate each cycle: sequential numbers, non-empty fields
+        for idx, cycle in enumerate(tdd_cycles["cycles"]):
+            expected_number = idx + 1
+
+            # Check cycle_number exists and is sequential
+            if "cycle_number" not in cycle:
+                msg = f"Cycle at index {idx} missing 'cycle_number' key"
+                raise ValueError(msg)
+
+            if cycle["cycle_number"] != expected_number:
+                msg = (
+                    f"Cycle at index {idx} has cycle_number {cycle['cycle_number']}, "
+                    f"expected {expected_number} (must be sequential 1-based)"
+                )
+                raise ValueError(msg)
+
+            # Check deliverables array
+            if "deliverables" not in cycle:
+                msg = f"Cycle {expected_number} missing 'deliverables' key"
+                raise ValueError(msg)
+
+            if not isinstance(cycle["deliverables"], list) or not cycle["deliverables"]:
+                msg = f"Cycle {expected_number} deliverables must be a non-empty list"
+                raise ValueError(msg)
+
+            # Check exit_criteria string
+            if "exit_criteria" not in cycle:
+                msg = f"Cycle {expected_number} missing 'exit_criteria' key"
+                raise ValueError(msg)
+
+            if not isinstance(cycle["exit_criteria"], str) or not cycle["exit_criteria"].strip():
+                msg = f"Cycle {expected_number} exit_criteria must be a non-empty string"
+                raise ValueError(msg)
 
         # Add planning_deliverables to project
         projects[str(issue_number)]["planning_deliverables"] = planning_deliverables
