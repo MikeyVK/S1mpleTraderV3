@@ -455,11 +455,10 @@ def force_cycle_transition(
 - ✅ Reduces user error: No forgotten `transition_cycle(1)` call
 
 **Alternative Rejected:** Explicit two-step (`transition_phase` + `transition_cycle`) adds complexity and risk of inconsistent state.
-
 **on_enter_tdd_phase():**
 ```python
 def on_enter_tdd_phase(issue_number: int):
-    """Validate planning deliverables, auto-initialize cycle 1."""
+    """Validate planning deliverables, smart resume or auto-initialize."""
     project = load_project(issue_number)
     
     # BLOCKING VALIDATION: Check planning_deliverables exist
@@ -476,19 +475,41 @@ def on_enter_tdd_phase(issue_number: int):
     
     # BLOCKING VALIDATION: Check tdd_cycles defined
     tdd_cycles = project["planning_deliverables"].get("tdd_cycles", {})
-    if tdd_cycles.get("total", 0) == 0:
+    total_planned_cycles = tdd_cycles.get("total", 0)
+    if total_planned_cycles == 0:
         raise PhaseTransitionError(
             "No TDD cycles defined in planning deliverables",
             recovery="Update planning_deliverables with tdd_cycles"
         )
     
-    # AUTO-INITIALIZE: Set cycle 1 as active
+    # SMART RESUME: Check if re-entering TDD phase
     state = load_state()
-    state["current_tdd_cycle"] = 1  # Auto-initialize to cycle 1
-    state["tdd_cycle_history"] = []  # Fresh history
-    save_state(state)
+    last_tdd_cycle = state.get("last_tdd_cycle")
     
-    logger.info(f"TDD phase entered: auto-initialized to cycle 1/{tdd_cycles['total']}")
+    if last_tdd_cycle:
+        # Re-entry scenario: check if work already complete
+        if last_tdd_cycle >= total_planned_cycles:
+            raise PhaseTransitionError(
+                f"TDD phase completed ({last_tdd_cycle}/{total_planned_cycles} cycles). Cannot re-enter.\\n"
+                f"\\n"
+                f"MANUAL RECOVERY:\\n"
+                f"1. Replan: force_phase_transition('planning') → update total_cycles (e.g., 4→6)\\n"
+                f"2. New issue: Create separate issue for new work (recommended)\\n"
+                f"\\n"
+                f"Why: All planned cycles completed. New work requires replanning or new issue."
+            )
+        
+        # Incomplete work: smart resume
+        state["current_tdd_cycle"] = last_tdd_cycle + 1
+        logger.info(f"TDD phase re-entered: resuming cycle {last_tdd_cycle + 1}/{total_planned_cycles}")
+    else:
+        # First entry: auto-initialize to cycle 1
+        state["current_tdd_cycle"] = 1
+        logger.info(f"TDD phase entered: auto-initialized to cycle 1/{total_planned_cycles}")
+    
+    # Initialize fresh history
+    state["tdd_cycle_history"] = []
+    save_state(state)
 ```
 
 **on_exit_tdd_phase():**
@@ -506,8 +527,8 @@ def on_exit_tdd_phase():
     
     save_state(state)
 ```
----
 
+---
 ## 7. Validation Logic
 
 ### 7.1. Cycle Number Validation
@@ -862,7 +883,7 @@ Recovery:
 | Extend PhaseStateEngine (not separate CycleManager) | Mirrors existing pattern, avoids StateManager duplication, maintains SRP |
 | Comprehensive planning_deliverables schema | Captures all TDD cycle definitions, exit criteria, validation plans (vs minimal cycle names) |
 | Forward-only cycle transitions | Prevents accidental regression, maintains clear progression (force override available) |
-| **Auto-initialize cycle 1 on TDD entry** | **Single-action entry reduces user error, ensures consistent state (cycle never None during TDD)** |
+| **Smart resume or auto-initialize on TDD entry** | **First entry: cycle 1. Re-entry (incomplete): last+1. Re-entry (complete): BLOCKED. Semantic boundary prevents needless work.** |
 | Conditional visibility (TDD phase only) | Reduces noise in get_work_context for non-TDD phases |
 | Entry-time blocking validation | Prevents invalid state before work starts (vs runtime detection) |
 | Both JSON + text formatting | Dual output for agents (structured) and developers (readable) |

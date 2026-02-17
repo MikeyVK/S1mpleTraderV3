@@ -341,12 +341,12 @@ force_phase_transition(
 
 # State after re-entry
 {
-  "current_tdd_cycle": null,  // Explicit transition required
-  "last_tdd_cycle": 4          // Historical record
+  "current_tdd_cycle": 5,  // Smart resume: last_tdd_cycle + 1
+  "last_tdd_cycle": 4      // Historical record
 }
 
-# Resume from last
-transition_cycle(to_cycle=5)  // Continues from cycle 4
+# Auto-resumed from last_tdd_cycle + 1 (if within total_planned_cycles)
+# ✅ Assumes planning has total_cycles >= 5
 ```
 
 ---
@@ -435,12 +435,11 @@ transition_cycle(to_cycle=5)  // Continues from cycle 4
 ```
 
 **Lifecycle:**
-1. **TDD entry:** `current_tdd_cycle` = null (explicit transition required)
-2. **During TDD:** `current_tdd_cycle` = N (1-based)
-3. **TDD exit:** `current_tdd_cycle` = null, `last_tdd_cycle` = N (retained)
-4. **Re-entry:** Resume from `last_tdd_cycle + 1`
-
----
+1. **TDD entry (first time):** `current_tdd_cycle` = 1 (auto-initialize)
+2. **TDD entry (re-entry, incomplete):** `current_tdd_cycle` = last_tdd_cycle + 1 (smart resume)
+3. **TDD entry (re-entry, complete):** BLOCKED - requires replanning or new issue
+4. **During TDD:** `current_tdd_cycle` = N (1-based)
+5. **TDD exit:** `current_tdd_cycle` = null, `last_tdd_cycle` = N (retained)
 
 ## Validation Strategy
 
