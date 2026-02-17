@@ -115,7 +115,7 @@ Planning document for TDD cycle tracking feature. Answers 8 research questions, 
 **Schema:**
 ```json
 {
-  "cycle": 1,
+  "cycle_number": 1,
   "name": "Schema Design",
   "deliverables": [
     "ProjectManager.planning_deliverables schema",
@@ -145,7 +145,7 @@ Planning document for TDD cycle tracking feature. Answers 8 research questions, 
       "total": 4,
       "cycles": [
         {
-          "cycle": 1,
+          "cycle_number": 1,
           "exit_criteria": "Schema validated, tests pass"  // Cycle-level
         }
       ],
@@ -372,7 +372,7 @@ force_phase_transition(
         "phase_exit_criteria": "All cycles complete, quality gates green",
         "cycles": [
           {
-            "cycle": 1,
+            "cycle_number": 1,
             "name": "Schema & Storage",
             "deliverables": [
               "ProjectManager.planning_deliverables schema",
@@ -420,14 +420,14 @@ force_phase_transition(
   
   "tdd_cycle_history": [
     {
-      "cycle": 1,
+      "cycle_number": 1,
       "name": "Schema & Storage",
       "entered": "2026-02-15T10:00:00Z",
       "completed": "2026-02-16T14:30:00Z",
       "forced": false
     },
     {
-      "cycle": 2,
+      "cycle_number": 2,
       "name": "Validation Logic",
       "entered": "2026-02-16T14:35:00Z",
       "completed": null,
@@ -608,7 +608,7 @@ def force_cycle_transition(
 **Audit Trail:**
 ```json
 {
-  "cycle": 4,
+  "cycle_number": 4,
   "entered": "2026-02-17T11:00:00Z",
   "forced": true,
   "skip_reason": "Cycles 2-3 covered by epic",

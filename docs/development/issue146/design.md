@@ -211,7 +211,7 @@ def finalize_planning_deliverables(
     "phase_exit_criteria": "All cycles complete, quality gates green",
     "cycles": [
       {
-        "cycle": 1,
+        "cycle_number": 1,
         "name": "Schema & Storage",
         "deliverables": ["ProjectManager schema", "PhaseStateEngine fields"],
         "exit_criteria": "Schema validated, tests pass"
@@ -338,7 +338,7 @@ def force_cycle_transition(
 **Audit Trail:**
 ```json
 {
-  "cycle": 4,
+  "cycle_number": 4,
   "name": "Transition Tools",
   "entered": "2026-02-17T11:20:00Z",
   "forced": true,
@@ -426,14 +426,14 @@ def force_cycle_transition(
   "last_tdd_cycle": 2,              // Historical (persists after TDD exit)
   "tdd_cycle_history": [
     {
-      "cycle": 1,
+      "cycle_number": 1,
       "name": "Schema & Storage",
       "entered": "2026-02-15T10:00:00Z",
       "completed": "2026-02-16T14:30:00Z",
       "forced": false
     },
     {
-      "cycle": 2,
+      "cycle_number": 2,
       "name": "Validation Logic",
       "entered": "2026-02-16T14:35:00Z",
       "completed": null,
