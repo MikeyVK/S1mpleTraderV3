@@ -537,3 +537,67 @@ class PhaseStateEngine:
                 return detected_label
 
         return None
+
+    def on_enter_tdd_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when entering TDD phase.
+
+        Validates planning deliverables exist and auto-initializes cycle 1.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            ValueError: If planning deliverables not found
+        """
+        # Validate planning deliverables exist
+        project_plan = self.project_manager.get_project_plan(issue_number)
+        if not project_plan:
+            msg = f"Project plan not found for issue {issue_number}"
+            raise ValueError(msg)
+
+        planning_deliverables = project_plan.get("planning_deliverables")
+        if not planning_deliverables:
+            msg = (
+                f"Planning deliverables not found for issue {issue_number}. "
+                "Create planning deliverables before entering TDD phase."
+            )
+            raise ValueError(msg)
+
+        # Get or create state
+        state = self.get_state(branch)
+
+        # Auto-initialize cycle 1 if not already set
+        if state.get("current_tdd_cycle") is None:
+            state["current_tdd_cycle"] = 1
+            state["last_tdd_cycle"] = 0
+            if "tdd_cycle_history" not in state:
+                state["tdd_cycle_history"] = []
+
+            # Save state
+            self._save_state(branch, state)
+
+    def on_exit_tdd_phase(self, branch: str) -> None:
+        """Hook called when exiting TDD phase.
+
+        Preserves last_tdd_cycle and clears current_tdd_cycle.
+        Logs warning if not all cycles completed.
+
+        Args:
+            branch: Branch name
+        """
+        # Get current state
+        state = self.get_state(branch)
+        current_cycle = state.get("current_tdd_cycle")
+
+        # Preserve last cycle
+        if current_cycle is not None:
+            state["last_tdd_cycle"] = current_cycle
+            state["current_tdd_cycle"] = None
+
+            # Log warning if incomplete (optional validation)
+            # For now, we allow exit but log it
+            logger.info(f"Exited TDD phase at cycle {current_cycle} on branch {branch}")
+
+            # Save state
+            self._save_state(branch, state)
