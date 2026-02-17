@@ -247,6 +247,14 @@ class GitCommitTool(BaseTool):
                 extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
             )
 
+        # Enforce cycle_number for TDD phase (Issue #146, planning.md Q3)
+        if workflow_phase == "tdd" and params.cycle_number is None:
+            raise ValueError(
+                "cycle_number is required for TDD phase commits. "
+                "All TDD work belongs to a specific cycle. "
+                "Use: git_add_or_commit(workflow_phase='tdd', cycle_number=N, ...)"
+            )
+
         # NEW workflow-first path
         if workflow_phase is not None:
             commit_hash = self.manager.commit_with_scope(

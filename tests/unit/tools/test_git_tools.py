@@ -172,6 +172,7 @@ async def test_git_commit_tool_with_workflow_phase_and_subphase(mock_git_manager
         message="add failing test",
         workflow_phase="tdd",
         sub_phase="red",
+        cycle_number=1,
     )
     result = await tool.execute(params)
 
@@ -179,7 +180,7 @@ async def test_git_commit_tool_with_workflow_phase_and_subphase(mock_git_manager
         workflow_phase="tdd",
         message="add failing test",
         sub_phase="red",
-        cycle_number=None,
+        cycle_number=1,
         commit_type=None,
         files=None,
     )
@@ -221,6 +222,7 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
         message="refactor code",
         workflow_phase="tdd",
         sub_phase="refactor",
+        cycle_number=1,
         files=["src/app.py", "tests/test_app.py"],
     )
     result = await tool.execute(params)
@@ -229,7 +231,7 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
         workflow_phase="tdd",
         message="refactor code",
         sub_phase="refactor",
-        cycle_number=None,
+        cycle_number=1,
         commit_type=None,
         files=["src/app.py", "tests/test_app.py"],
     )
@@ -268,6 +270,7 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
         sub_phase="red",
         commit_type="fix",  # Override default 'test'
         message="fix failing test",
+        cycle_number=1,
     )
     result = await tool.execute(params)
 
@@ -276,7 +279,7 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
         workflow_phase="tdd",
         message="fix failing test",
         sub_phase="red",
-        cycle_number=None,
+        cycle_number=1,
         commit_type="fix",
         files=None,
     )
@@ -306,6 +309,7 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
         sub_phase="red",
         commit_type="FEAT",  # Uppercase should be normalized
         message="add feature",
+        cycle_number=1,
     )
 
     # Should be normalized to lowercase by validator
@@ -318,7 +322,7 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
         workflow_phase="tdd",
         message="add feature",
         sub_phase="red",
-        cycle_number=None,
+        cycle_number=1,
         commit_type="feat",  # Normalized to lowercase
         files=None,
     )
@@ -357,10 +361,12 @@ async def test_git_commit_integration_workflow_phases():
         message="add failing test",
         workflow_phase="tdd",
         sub_phase="red",
+        cycle_number=1,
     )
     result2 = await tool.execute(params2)
 
-    mock_adapter.commit.assert_called_with("test(P_TDD_SP_RED): add failing test", files=None)
+    assert "Committed: integration123" in result2.content[0]["text"]
+    mock_adapter.commit.assert_called_with("test(P_TDD_SP_C1_RED): add failing test", files=None)
 
     # Test 3: Coordination phase (NEW)
     params3 = GitCommitInput(
@@ -370,6 +376,7 @@ async def test_git_commit_integration_workflow_phases():
     )
     result3 = await tool.execute(params3)
 
+    assert "Committed: integration123" in result3.content[0]["text"]
     mock_adapter.commit.assert_called_with(
         "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None
     )
@@ -638,11 +645,15 @@ async def test_git_commit_tdd_requires_cycle_number(mock_git_manager):
     params = GitCommitInput(
         message="update documentation",
         workflow_phase="tdd",
-        # cycle_number is MISSING - should raise validation error
+        # cycle_number is MISSING - should return error result
     )
 
-    with pytest.raises(ValueError, match="cycle_number.*required.*TDD"):
-        await tool.execute(params)
+    result = await tool.execute(params)
+
+    assert result.is_error, "Expected error when cycle_number missing for TDD"
+    error_text = result.content[0]["text"]
+    assert "cycle_number" in error_text
+    assert "TDD" in error_text or "tdd" in error_text.lower()
 
 
 @pytest.mark.asyncio
@@ -655,11 +666,14 @@ async def test_git_commit_tdd_subphase_requires_cycle_number(mock_git_manager):
         message="implement feature",
         workflow_phase="tdd",
         sub_phase="green",
-        # cycle_number is MISSING - should raise validation error
+        # cycle_number is MISSING - should return error result
     )
 
-    with pytest.raises(ValueError, match="cycle_number.*required.*TDD"):
-        await tool.execute(params)
+    result = await tool.execute(params)
+
+    assert result.is_error, "Expected error when cycle_number missing for TDD sub-phase"
+    error_text = result.content[0]["text"]
+    assert "cycle_number" in error_text
 
 
 @pytest.mark.asyncio
