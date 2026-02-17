@@ -152,6 +152,12 @@ class PhaseStateEngine:
         # Validate transition via workflow_config (strict sequential)
         workflow_config.validate_transition(workflow_name, from_phase, to_phase)
 
+        # TDD exit hook: called when leaving TDD phase (Issue #146)
+        if from_phase == "tdd":
+            self.on_exit_tdd_phase(branch)
+            # Reload state after hook (hook may have modified state)
+            state = self.get_state(branch)
+
         # Record transition (forced=False)
         transition = TransitionRecord(
             from_phase=from_phase,
@@ -165,6 +171,11 @@ class PhaseStateEngine:
         state["current_phase"] = to_phase
         state["transitions"].append(self._transition_to_dict(transition))
         self._save_state(branch, state)
+
+        # TDD entry hook: called when entering TDD phase (Issue #146)
+        if to_phase == "tdd":
+            issue_number: int = state["issue_number"]
+            self.on_enter_tdd_phase(branch, issue_number)
 
         return {"success": True, "from_phase": from_phase, "to_phase": to_phase}
 
