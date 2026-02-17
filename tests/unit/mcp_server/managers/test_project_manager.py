@@ -336,3 +336,56 @@ phases:
         assert plan["current_phase"] == "unknown"
         assert plan["phase_source"] == "unknown"
         assert plan["phase_detection_error"] is not None
+
+
+class TestPlanningDeliverablesSchema:
+    """Test planning_deliverables schema storage (Issue #146 Cycle 1)."""
+
+    @pytest.fixture
+    def workspace_root(self, tmp_path: Path) -> Path:
+        """Create temporary workspace."""
+        return tmp_path
+
+    @pytest.fixture
+    def manager(self, workspace_root: Path) -> ProjectManager:
+        """Create ProjectManager instance."""
+        return ProjectManager(workspace_root=workspace_root)
+
+    def test_planning_deliverables_stored_in_projects_json(
+        self, manager: ProjectManager, workspace_root: Path
+    ) -> None:
+        """Test that planning_deliverables are persisted to projects.json.
+        
+        RED: This test WILL FAIL - planning_deliverables schema not implemented yet.
+        """
+        # Arrange: Create planning deliverables according to design.md schema
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {
+                        "cycle": 1,
+                        "name": "Schema & Storage",
+                        "deliverables": ["planning_deliverables schema", "tdd_cycle_* fields"],
+                        "exit_criteria": "Schema validated, tests pass"
+                    }
+                ]
+            }
+        }
+
+        # Act: Initialize project and save planning deliverables
+        manager.initialize_project(
+            issue_number=146,
+            issue_title="TDD Cycle Tracking",
+            workflow_name="feature"
+        )
+        
+        # Save planning deliverables (method doesn't exist yet - will fail)
+        manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Assert: Retrieve and verify planning deliverables persisted
+        plan = manager.get_project_plan(146)
+        assert plan is not None
+        assert "planning_deliverables" in plan
+        assert plan["planning_deliverables"]["tdd_cycles"]["total"] == 4
+        assert len(plan["planning_deliverables"]["tdd_cycles"]["cycles"]) == 1
