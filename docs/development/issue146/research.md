@@ -312,7 +312,8 @@ sequenceDiagram
 
 **Implementation Notes:**
 - Cycle info visibility: Conditional (only shown during TDD phase in get_work_context)
-- graceful degradation: Tools work without planning_deliverables (show N/A or omit section)
+- Graceful degradation: Discovery tools (get_work_context, get_project_plan) work without planning_deliverables (show N/A or omit section)
+- **Critical distinction:** Read-only discovery tools degrade gracefully, but TDD workflow (commits, transitions) MUST hard-fail without planning_deliverables (see Section 6.1)
 
 ### 3.4 Tool Usage Patterns
 
