@@ -4,6 +4,7 @@ Issue #146 Cycle 4: transition_cycle and force_cycle_transition tools.
 """
 
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -153,9 +154,7 @@ class ForceCycleTransitionInput(BaseModel):
     """Input for force_cycle_transition tool."""
 
     to_cycle: int = Field(..., description="Target cycle number (any direction)")
-    skip_reason: str = Field(
-        ..., description="Reason for forced transition (backward/skip)"
-    )
+    skip_reason: str = Field(..., description="Reason for forced transition (backward/skip)")
     human_approval: str = Field(
         ..., description="Human approval (name + date, e.g., 'John approved on 2026-02-17')"
     )
@@ -176,4 +175,112 @@ class ForceCycleTransitionTool(BaseTool):
 
     async def execute(self, params: ForceCycleTransitionInput) -> ToolResult:
         """Execute forced cycle transition with audit trail."""
-        return ToolResult.text("Not implemented yet")
+        try:
+            # Validation 1: Check skip_reason not empty
+            if not params.skip_reason or params.skip_reason.strip() == "":
+                return ToolResult.error(
+                    "skip_reason is required for forced transitions. "
+                    "Provide justification for backward/skip transition."
+                )
+
+            # Validation 2: Check human_approval not empty
+            if not params.human_approval or params.human_approval.strip() == "":
+                return ToolResult.error(
+                    "human_approval is required for forced transitions. "
+                    "Provide approval (e.g., 'John approved on 2026-02-17')."
+                )
+
+            # Get workspace root
+            workspace_root = Path(settings.server.workspace_root)
+
+            # Auto-detect issue number from branch if not provided
+            git_manager = GitManager()
+            branch = git_manager.get_current_branch()
+
+            issue_number = params.issue_number
+            if issue_number is None:
+                issue_number = TransitionCycleTool()._extract_issue_number(branch)
+                if issue_number is None:
+                    return ToolResult.error("Cannot detect issue number from branch")
+
+            # Initialize managers
+            project_manager = ProjectManager(workspace_root=workspace_root)
+            state_engine = PhaseStateEngine(
+                workspace_root=workspace_root, project_manager=project_manager
+            )
+
+            # Get current state
+            state = state_engine.get_state(branch)
+            current_phase = state.get("current_phase")
+            current_cycle = state.get("current_tdd_cycle")
+
+            # Validation 3: Check TDD phase
+            if current_phase != "tdd":
+                return ToolResult.error(
+                    f"Not in TDD phase (current: {current_phase}). "
+                    "Cycle transitions only allowed during TDD phase."
+                )
+
+            # Validation 4: Check planning deliverables exist
+            project_plan = project_manager.get_project_plan(issue_number)
+            if project_plan is None:
+                return ToolResult.error("Project plan not found")
+
+            planning_deliverables = project_plan.get("planning_deliverables")
+            if not planning_deliverables:
+                return ToolResult.error(
+                    "Planning deliverables not found. "
+                    "Create planning deliverables before transitioning cycles."
+                )
+
+            tdd_cycles = planning_deliverables.get("tdd_cycles", {})
+            total_cycles = tdd_cycles.get("total", 0)
+
+            # Validation 5: Check valid cycle range
+            if params.to_cycle < 1 or params.to_cycle > total_cycles:
+                return ToolResult.error(
+                    f"Invalid cycle number {params.to_cycle}. Valid range: 1-{total_cycles}"
+                )
+
+            # Execute forced transition
+            from_cycle = current_cycle or 0
+            state["last_tdd_cycle"] = from_cycle
+            state["current_tdd_cycle"] = params.to_cycle
+
+            # Create audit trail entry
+            if "tdd_cycle_history" not in state:
+                state["tdd_cycle_history"] = []
+
+            audit_entry = {
+                "from_cycle": from_cycle,
+                "to_cycle": params.to_cycle,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "skip_reason": params.skip_reason,
+                "human_approval": params.human_approval,
+                "transition_type": "forced",
+            }
+            state["tdd_cycle_history"].append(audit_entry)
+
+            # Save state
+            state_engine._save_state(branch, state)
+
+            # Get cycle name for message
+            cycles = tdd_cycles.get("cycles", [])
+            cycle_details = next(
+                (c for c in cycles if c.get("cycle_number") == params.to_cycle), None
+            )
+            cycle_name = cycle_details.get("name") if cycle_details else "Unknown"
+
+            # Success message
+            direction = "backward" if params.to_cycle < from_cycle else "skip"
+            message = (
+                f"✅ Forced {direction} transition to TDD Cycle "
+                f"{params.to_cycle}/{total_cycles}: {cycle_name}\n"
+                f"Reason: {params.skip_reason}\n"
+                f"Approval: {params.human_approval}"
+            )
+
+            return ToolResult.text(message)
+
+        except (OSError, ValueError, RuntimeError, KeyError) as e:
+            return ToolResult.error(f"Forced transition failed: {e}")
