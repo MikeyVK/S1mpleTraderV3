@@ -345,8 +345,11 @@ force_phase_transition(
   "last_tdd_cycle": 4      // Historical record
 }
 
-# Auto-resumed from last_tdd_cycle + 1 (if within total_planned_cycles)
-# ✅ Assumes planning has total_cycles >= 5
+# ⚠️ NOTE: This example would BLOCK with original 4 cycles (last=4, total=4)
+# User must first: force_phase_transition('planning') → update total_cycles=5+
+# OR: Create new issue for additional work
+# ✅ After replanning to total_cycles >= 5, re-entry succeeds with cycle 5
+```
 ```
 
 ---
