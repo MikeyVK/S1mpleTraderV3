@@ -515,15 +515,13 @@ Context:
 - Project workflow: feature
 - Planning deliverables: NOT FOUND in projects.json
 
-Recovery options:
-1. Run finalize_planning tool to define cycles
+Recovery:
+Run finalize_planning tool to define cycles:
    finalize_planning(issue=146, tdd_cycles={...})
-2. Skip cycle tracking for this project (NOT RECOMMENDED)
-   [Mechanism TBD in planning phase]
 
 Why this matters:
 TDD cycle tracking requires planning deliverables to validate cycle_number.
-Without a plan, cycle numbers cannot be enforced.
+Without planning deliverables, the project cannot proceed to TDD phase.
 ```
 
 ### 6.2 Invalid Cycle Number
@@ -558,7 +556,7 @@ Note: force_cycle_transition updates STATE, not commit messages.
 ValidationError: cycle_number required for TDD sub-phase
 
 Current: test(P_TDD_SP_RED): add test  ← Missing cycle
-Required: test(P_TDD_C{N}_SP_RED): add test
+Required: test(P_TDD_SP_C{N}_RED): add test
 
 Context:
 - Current phase: tdd
@@ -568,9 +566,9 @@ Context:
 - Current cycle (from state.json): 2
 
 Valid examples:
-- test(P_TDD_C2_SP_RED): add failing test
-- feat(P_TDD_C2_SP_GREEN): implement feature
-- refactor(P_TDD_C2_SP_REFACTOR): clean code
+- test(P_TDD_SP_C2_RED): add failing test
+- feat(P_TDD_SP_C2_GREEN): implement feature
+- refactor(P_TDD_SP_C2_REFACTOR): clean code
 
 Recovery:
 Add cycle_number parameter:
@@ -592,23 +590,22 @@ Add cycle_number parameter:
 - Q2: Exit criteria per cycle vs per project vs both?
 
 ### 7.2 Validation Strategy
+**User Constraint:** Always validate, no optional enforcement.
 - Q3: Require cycle_number for ALL TDD commits or only sub-phases?
-- Q4: Validate against planning deliverables always or only if present?
-- Q5: Should cycle_number=None auto-resolve from state.json?
 
 ### 7.3 Backward Compatibility
-**User Constraint:** Strict enforcement only, no grace periods or opt-in modes.
-- Q6: Manual finalize_planning only, or allow automatic migration?
+**User Constraint:** Strict enforcement only, no grace periods or opt-in modes, no automatic migration.
+- Q4: Error handling when planning_deliverables missing - block TDD entry or fail on first commit?
 
 ### 7.4 Discovery Tools
 **Answered in Section 3.3:** Extend existing get_work_context and get_project_plan (SRP compliant).
-- Q7: Show cycle info always or conditional on TDD phase?
-- Q8: How to format cycle deliverables for readability?
+- Q5: Show cycle info always or conditional on TDD phase?
+- Q6: How to format cycle deliverables for readability?
 
 ### 7.5 Transition Semantics
 **Answered in Section 5.3:** Forward-only with force_cycle_transition tool (mirrors PhaseStateEngine).
-- Q9: Skip cycles requires skip_reason + human_approval?
-- Q10: Re-entry behavior after TDD phase exit?
+- Q7: Skip cycles requires skip_reason + human_approval?
+- Q8: Re-entry behavior after TDD phase exit?
 
 ---
 
