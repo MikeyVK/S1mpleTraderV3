@@ -300,3 +300,214 @@ class TestTddCycleTrackingFields:
         assert state["current_tdd_cycle"] is None
         assert state["last_tdd_cycle"] is None
         assert state["tdd_cycle_history"] == []
+
+
+class TestCycleValidationLogic:
+    """Test TDD cycle validation helpers.
+
+    Issue #146 Cycle 2: Validation logic for cycle transitions.
+    """
+
+    @pytest.fixture
+    def workspace_root(self, tmp_path: Path) -> Path:
+        """Create temporary workspace.
+
+        Args:
+            tmp_path: Pytest tmp_path fixture
+
+        Returns:
+            Path to temporary workspace root
+        """
+        return tmp_path
+
+    @pytest.fixture
+    def project_manager(self, workspace_root: Path) -> ProjectManager:
+        """Create ProjectManager instance.
+
+        Args:
+            workspace_root: Path to workspace root
+
+        Returns:
+            ProjectManager instance
+        """
+        return ProjectManager(workspace_root=workspace_root)
+
+    @pytest.fixture
+    def engine(self, workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
+        """Create PhaseStateEngine instance.
+
+        Args:
+            workspace_root: Path to workspace root
+            project_manager: ProjectManager instance
+
+        Returns:
+            PhaseStateEngine instance
+        """
+        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+
+    def test_validate_cycle_number_range_rejects_zero(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test cycle number validation rejects zero.
+
+        Issue #146 Cycle 2: cycle_number must be in range [1..total].
+        """
+        # Setup - create project with 4 cycles
+        project_manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {
+                        "cycle_number": i,
+                        "deliverables": [f"Deliverable {i}"],
+                        "exit_criteria": f"Criteria {i}",
+                    }
+                    for i in range(1, 5)
+                ],
+            }
+        }
+        project_manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Act & Assert - cycle_number 0 should raise
+        with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
+            engine._validate_cycle_number_range(cycle_number=0, issue_number=146)
+
+    def test_validate_cycle_number_range_rejects_negative(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test cycle number validation rejects negative numbers.
+
+        Issue #146 Cycle 2: cycle_number must be positive.
+        """
+        # Setup
+        project_manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {
+                        "cycle_number": i,
+                        "deliverables": [f"Deliverable {i}"],
+                        "exit_criteria": f"Criteria {i}",
+                    }
+                    for i in range(1, 5)
+                ],
+            }
+        }
+        project_manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Act & Assert - negative cycle_number should raise
+        with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
+            engine._validate_cycle_number_range(cycle_number=-1, issue_number=146)
+
+    def test_validate_cycle_number_range_rejects_exceeds_total(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test cycle number validation rejects numbers exceeding total.
+
+        Issue #146 Cycle 2: cycle_number must not exceed total planned cycles.
+        """
+        # Setup
+        project_manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {
+                        "cycle_number": i,
+                        "deliverables": [f"Deliverable {i}"],
+                        "exit_criteria": f"Criteria {i}",
+                    }
+                    for i in range(1, 5)
+                ],
+            }
+        }
+        project_manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Act & Assert - cycle_number 5 (> 4) should raise
+        with pytest.raises(ValueError, match="cycle_number must be in range \\[1\\.\\.4\\]"):
+            engine._validate_cycle_number_range(cycle_number=5, issue_number=146)
+
+    def test_validate_cycle_number_range_accepts_valid_range(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test cycle number validation accepts valid range [1..total].
+
+        Issue #146 Cycle 2: Valid cycle numbers should pass without error.
+        """
+        # Setup
+        project_manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {
+                        "cycle_number": i,
+                        "deliverables": [f"Deliverable {i}"],
+                        "exit_criteria": f"Criteria {i}",
+                    }
+                    for i in range(1, 5)
+                ],
+            }
+        }
+        project_manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Act & Assert - all valid cycle numbers should pass
+        for cycle_num in [1, 2, 3, 4]:
+            engine._validate_cycle_number_range(
+                cycle_number=cycle_num, issue_number=146
+            )  # Should not raise
+
+    def test_validate_planning_deliverables_exist_raises_if_missing(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test validation raises if planning_deliverables not found.
+
+        Issue #146 Cycle 2: Cannot transition cycles without planning deliverables.
+        """
+        # Setup - project WITHOUT planning deliverables
+        project_manager.initialize_project(
+            issue_number=147, issue_title="No Planning", workflow_name="bug"
+        )
+
+        # Act & Assert - should raise descriptive error
+        with pytest.raises(ValueError, match="Planning deliverables not found for issue 147"):
+            engine._validate_planning_deliverables_exist(issue_number=147)
+
+    def test_validate_planning_deliverables_exist_passes_if_present(
+        self, engine: PhaseStateEngine, project_manager: ProjectManager
+    ) -> None:
+        """Test validation passes if planning_deliverables exist.
+
+        Issue #146 Cycle 2: Should not raise if deliverables are present.
+        """
+        # Setup - project WITH planning deliverables
+        project_manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {
+                        "cycle_number": i,
+                        "deliverables": [f"Deliverable {i}"],
+                        "exit_criteria": f"Criteria {i}",
+                    }
+                    for i in range(1, 5)
+                ],
+            }
+        }
+        project_manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Act & Assert - should not raise
+        engine._validate_planning_deliverables_exist(issue_number=146)
