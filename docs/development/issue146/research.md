@@ -66,7 +66,7 @@ TDD cycle tracking is disconnected from workflow state machine. Planning phase c
 ```mermaid
 graph LR
     A[GitCommitInput] -->|cycle_number| B[ScopeEncoder]
-    B -->|P_TDD_C3_SP_RED| C[GitManager]
+    B -->|P_TDD_SP_C1_RED| C[GitManager]
     C --> D[Commit Message]
     
     E[PhaseStateEngine] -->|transition| F[state.json]
@@ -442,12 +442,8 @@ P_TDD_SP_C3_RED          ← With cycle (currently accepted)
 }
 ```
 
-**Option 3: Separate files per deliverable type**
-```
-.st3/plans/issue146_tdd.json
-.st3/plans/issue146_validation.json
-.st3/plans/issue146_docs.json
-```
+**User Constraint:** Config-first approach - single source of truth in projects.json.
+No sidecar files - all planning deliverables in centralized config.
 
 ### 5.3 Cycle Transition Validation
 
@@ -526,7 +522,7 @@ Context:
 
 Recovery options:
 1. Fix commit message
-   git commit --amend -m "test(P_TDD_C3_SP_RED): ..."
+   git commit --amend -m "test(P_TDD_SP_C3_RED): ..."
 2. Update planning (if genuinely need more cycles)
    finalize_planning(issue=146, tdd_cycles={"total": 5, ...})
 3. Force cycle transition (state only, NOT for commits)
@@ -582,19 +578,18 @@ Add cycle_number parameter:
 - Q7: Should cycle_number=None auto-resolve from state.json?
 
 ### 7.3 Backward Compatibility
-- Q8: Grace period for warnings → errors?
-- Q9: Opt-in vs opt-out cycle tracking?
-- Q10: Automatic migration vs manual finalize_planning?
+**User Constraint:** Strict enforcement only, no grace periods or opt-in modes.
+- Q8: Manual finalize_planning only, or allow automatic migration?
 
 ### 7.4 Discovery Tools
-- Q11: Extend get_work_context vs new tool?
-- Q12: Show cycle info always or conditional on TDD phase?
-- Q13: How to format cycle deliverables for readability?
+**Answered in Section 3.3:** Extend existing get_work_context and get_project_plan (SRP compliant).
+- Q9: Show cycle info always or conditional on TDD phase?
+- Q10: How to format cycle deliverables for readability?
 
 ### 7.5 Transition Semantics
-- Q14: Sequential-only vs forward-only cycle transitions?
-- Q15: human_approval required for force_cycle_transition?
-- Q16: Can cycles be re-done (backwards transition)?
+- Q11: Sequential-only vs forward-only cycle transitions?
+- Q12: human_approval required for force_cycle_transition?
+- Q13: Can cycles be re-done (backwards transition)?
 
 ---
 
@@ -636,7 +631,7 @@ E2E tests are already per TDD cycle (works well). "Integration" phase is confusi
 
 ### What EXISTS:
 ✅ cycle_number parameter in GitCommitInput
-✅ ScopeEncoder formats cycle into scope (P_TDD_C3_SP_RED)
+✅ ScopeEncoder formats cycle into scope (P_TDD_SP_C1_RED)
 ✅ PhaseStateEngine transition/force_transition pattern
 ✅ Test coverage for cycle format
 
