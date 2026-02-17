@@ -18,5 +18,9 @@
       "envManager": "ms-python.python:venv",
       "packageManager": "ms-python.python:pip"
     }
-  ]
+  ],
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#4300b0",
+    "titleBar.activeForeground": "#ffffff"
+  }
 }

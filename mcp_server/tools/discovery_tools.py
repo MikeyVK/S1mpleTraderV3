@@ -1,4 +1,5 @@
 """Discovery tools for AI self-orientation."""
+
 # pyright: reportIncompatibleMethodOverride=false
 import re
 from pathlib import Path
@@ -6,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, MCPError
 from mcp_server.managers.git_manager import GitManager
@@ -18,14 +20,14 @@ from mcp_server.tools.tool_result import ToolResult
 
 class SearchDocumentationInput(BaseModel):
     """Input for SearchDocumentationTool."""
+
     query: str = Field(
-        ...,
-        description="Search query (e.g., 'how to implement a worker', 'DTO validation rules')"
+        ..., description="Search query (e.g., 'how to implement a worker', 'DTO validation rules')"
     )
     scope: str = Field(
         default="all",
         description="Optional scope to filter results",
-        pattern="^(all|architecture|coding_standards|development|reference|implementation)$"
+        pattern="^(all|architecture|coding_standards|development|reference|implementation)$",
     )
 
 
@@ -50,8 +52,8 @@ class SearchDocumentationTool(BaseTool):
                 recovery=[
                     f"Expected directory: {docs_dir}",
                     "Create docs/ directory in workspace root",
-                    "Add markdown files to document project"
-                ]
+                    "Add markdown files to document project",
+                ],
             )
 
         index = DocumentIndexer.build_index(docs_dir)
@@ -61,10 +63,7 @@ class SearchDocumentationTool(BaseTool):
 
         # Search index
         results = SearchService.search_index(
-            index=index,
-            query=params.query,
-            max_results=10,
-            scope=scope_filter
+            index=index, query=params.query, max_results=10, scope=scope_filter
         )
 
         if not results:
@@ -88,9 +87,9 @@ class SearchDocumentationTool(BaseTool):
 
 class GetWorkContextInput(BaseModel):
     """Input for GetWorkContextTool."""
+
     include_closed_recent: bool = Field(
-        default=False,
-        description="Include recently closed issues (last 7 days) for context"
+        default=False, description="Include recently closed issues (last 7 days) for context"
     )
 
 
@@ -99,11 +98,10 @@ class GetWorkContextTool(BaseTool):
 
     name = "get_work_context"
     description = (
-        "Aggregates context from GitHub Issues, current branch, and TDD phase "
-        "to understand what to work on next."
+        "Aggregates context from GitHub Issues, current branch, and workflow phase "
+        "to understand what to work on next. Uses deterministic phase detection."
     )
     args_model = GetWorkContextInput
-
 
     async def execute(self, params: GetWorkContextInput) -> ToolResult:
         """Execute work context aggregation."""
@@ -118,14 +116,22 @@ class GetWorkContextTool(BaseTool):
         issue_number = self._extract_issue_number(branch)
         context["linked_issue_number"] = issue_number
 
-        # Detect TDD phase from recent commits
+        # Detect workflow phase deterministically from commit-scope + state.json
         try:
             recent_commits = git_manager.get_recent_commits(limit=5)
-            tdd_phase = self._detect_tdd_phase(recent_commits)
-            context["tdd_phase"] = tdd_phase
+            phase_result = self._detect_workflow_phase(recent_commits)
+            context["workflow_phase"] = phase_result["workflow_phase"]
+            context["sub_phase"] = phase_result.get("sub_phase")
+            context["phase_source"] = phase_result["source"]
+            context["phase_confidence"] = phase_result["confidence"]
+            context["phase_error_message"] = phase_result.get("error_message")
             context["recent_commits"] = recent_commits
         except (OSError, ValueError, RuntimeError):
-            context["tdd_phase"] = "unknown"
+            context["workflow_phase"] = "unknown"
+            context["sub_phase"] = None
+            context["phase_source"] = "unknown"
+            context["phase_confidence"] = "unknown"
+            context["phase_error_message"] = None
             context["recent_commits"] = []
 
         # Get GitHub issue details if configured
@@ -143,14 +149,12 @@ class GetWorkContextTool(BaseTool):
                             "title": issue.title,
                             "body": (issue.body or "")[:500],
                             "labels": [label.name for label in issue.labels],
-                            "acceptance_criteria": self._extract_checklist(
-                                issue.body or ""
-                            )
+                            "acceptance_criteria": self._extract_checklist(issue.body or ""),
                         }
 
                 # Recently Closed Issues (Implemented to satisfy param)
                 if params.include_closed_recent:
-                     # This effectively implements the logic for the formerly unused argument
+                    # This effectively implements the logic for the formerly unused argument
                     closed_issues = gh_manager.list_issues(state="closed")
                     # Naively taking top 3 for brevity, assuming list_issues sorts by recent
                     context["recently_closed"] = [
@@ -177,24 +181,35 @@ class GetWorkContextTool(BaseTool):
 
         return None
 
-    def _detect_tdd_phase(self, commits: list[str]) -> str:
-        """Detect TDD phase from recent commits."""
+    def _detect_workflow_phase(self, commits: list[str]) -> PhaseDetectionResult:
+        """
+        Detect workflow phase deterministically using ScopeDecoder.
+
+        Uses commit-scope precedence: commit-scope > state.json > unknown
+        NO type-heuristic guessing.
+
+        Args:
+            commits: Recent commit messages
+
+        Returns:
+            PhaseDetectionResult dict with workflow_phase, sub_phase, source, confidence
+        """
         if not commits:
-            return "unknown"
+            return {
+                "workflow_phase": "unknown",
+                "sub_phase": None,
+                "source": "unknown",
+                "confidence": "unknown",
+                "raw_scope": None,
+                "error_message": None,
+            }
 
-        # Check most recent commit
-        latest = commits[0].lower() if commits else ""
+        # Use most recent commit for phase detection
+        latest_commit = commits[0]
 
-        if latest.startswith("test:") or "failing test" in latest:
-            return "red"
-        if latest.startswith("feat:") or "pass" in latest:
-            return "green"
-        if latest.startswith("refactor:"):
-            return "refactor"
-        if latest.startswith("docs:"):
-            return "docs"
-
-        return "unknown"
+        # Deterministic phase detection via ScopeDecoder
+        decoder = ScopeDecoder()
+        return decoder.detect_phase(commit_message=latest_commit, fallback_to_state=True)
 
     def _extract_checklist(self, body: str) -> list[str]:
         """Extract checklist items from issue body."""
@@ -215,16 +230,43 @@ class GetWorkContextTool(BaseTool):
         if context.get("linked_issue_number"):
             lines.append(f"**Linked Issue:** #{context['linked_issue_number']}")
 
-        # TDD Phase
-        phase = context.get("tdd_phase", "unknown")
+        # Workflow Phase (all 7 phases supported)
+        phase = context.get("workflow_phase", "unknown")
+        sub_phase = context.get("sub_phase")
+        source = context.get("phase_source", "unknown")
+        confidence = context.get("phase_confidence", "unknown")
+
+        # Phase emoji mapping (7 workflow phases + unknown)
         phase_emoji = {
+            "research": "🔍",
+            "planning": "📋",
+            "design": "🎨",
+            "tdd": "🧪",
+            "integration": "🔗",
+            "documentation": "📝",
+            "coordination": "🤝",
+            "unknown": "❓",
+        }.get(phase, "❓")
+
+        # Sub-phase emoji (TDD-specific for now, expandable)
+        subphase_emoji = {
             "red": "🔴",
             "green": "🟢",
             "refactor": "🔄",
-            "docs": "📝",
-            "unknown": "❓"
-        }.get(phase, "❓")
-        lines.append(f"**TDD Phase:** {phase_emoji} {phase}")
+        }
+
+        phase_display = f"{phase_emoji} {phase}"
+        if sub_phase:
+            emoji = subphase_emoji.get(sub_phase, "")
+            phase_display += f" → {emoji} {sub_phase}"
+
+        lines.append(f"**Workflow Phase:** {phase_display}")
+        lines.append(f"**Phase Detection:** {source} (confidence: {confidence})")
+
+        # Show error_message if phase detection failed with recovery info
+        error_message = context.get("phase_error_message")
+        if error_message:
+            lines.append(f"**⚠️ Recovery Info:** {error_message}")
 
         # Active Issue Details
         if "active_issue" in context:

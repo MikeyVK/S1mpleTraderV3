@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import anyio
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import MCPError
@@ -26,14 +26,12 @@ def _input_schema(args_model: type[BaseModel] | None) -> dict[str, Any]:
 
 class CreateBranchInput(BaseModel):
     """Input for CreateBranchTool."""
+
     name: str = Field(..., description="Branch name (kebab-case)")
-    branch_type: str = Field(
-        default="feature",
-        description="Branch type"
-    )
+    branch_type: str = Field(default="feature", description="Branch type")
     base_branch: str = Field(
         ...,
-        description="Base branch to create from (e.g., 'HEAD', 'main', 'refactor/51-labels-yaml')"
+        description="Base branch to create from (e.g., 'HEAD', 'main', 'refactor/51-labels-yaml')",
     )
 
     @field_validator("branch_type")
@@ -44,8 +42,7 @@ class CreateBranchInput(BaseModel):
         if not git_config.has_branch_type(value):
             valid_types = ", ".join(git_config.branch_types)
             raise ValueError(
-                f"Invalid branch_type '{value}'. "
-                f"Valid types from git.yaml: {valid_types}"
+                f"Invalid branch_type '{value}'. Valid types from git.yaml: {valid_types}"
             )
         return value
 
@@ -67,29 +64,26 @@ class CreateBranchTool(BaseTool):
     async def execute(self, params: CreateBranchInput) -> ToolResult:
         logger.info(
             "Branch creation requested",
-            extra={"props": {
-                "name": params.name,
-                "branch_type": params.branch_type,
-                "base_branch": params.base_branch
-            }}
+            extra={
+                "props": {
+                    "name": params.name,
+                    "branch_type": params.branch_type,
+                    "base_branch": params.base_branch,
+                }
+            },
         )
 
         try:
             branch_name = self.manager.create_branch(
-                params.name,
-                params.branch_type,
-                params.base_branch
+                params.name, params.branch_type, params.base_branch
             )
             return ToolResult.text(f"âœ… Created and switched to branch: {branch_name}")
         except Exception as e:
             logger.error(
-                "Branch creation failed",
-                extra={"props": {
-                    "name": params.name,
-                    "error": str(e)
-                }}
+                "Branch creation failed", extra={"props": {"name": params.name, "error": str(e)}}
             )
             raise
+
 
 class GitStatusInput(BaseModel):
     """Input for GitStatusTool (empty)."""
@@ -109,14 +103,14 @@ class GitStatusTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
-    async def execute(self, params: GitStatusInput) -> ToolResult:
+    async def execute(self, params: GitStatusInput) -> ToolResult:  # noqa: ARG002
         status = self.manager.get_status()
 
         text = f"Branch: {status['branch']}\n"
         text += f"Clean: {status['is_clean']}\n"
-        if status['untracked_files']:
+        if status["untracked_files"]:
             text += f"Untracked: {', '.join(status['untracked_files'])}\n"
-        if status['modified_files']:
+        if status["modified_files"]:
             text += f"Modified: {', '.join(status['modified_files'])}\n"
 
         return ToolResult.text(text)
@@ -124,37 +118,105 @@ class GitStatusTool(BaseTool):
 
 class GitCommitInput(BaseModel):
     """Input for GitCommitTool."""
-    phase: str = Field(
-        ...,
-        description="TDD phase (red=test, green=feat, refactor, docs)"
-    )
-    message: str = Field(..., description="Commit message (without prefix)")
+
+    message: str = Field(..., description="Commit message (without type/scope prefix)")
     files: list[str] | None = Field(
         default=None,
         description=(
             "Optional list of file paths to stage and commit. When omitted, commits all changes."
-        )
+        ),
+    )
+
+    # NEW: Workflow-first fields
+    workflow_phase: str | None = Field(
+        default=None,
+        description=(
+            "Workflow phase (research|planning|design|tdd|integration|documentation|coordination). "
+            "Required when using new workflow-first format."
+        ),
+    )
+    sub_phase: str | None = Field(
+        default=None,
+        description=(
+            "Sub-phase (MUST be in workphases.yaml[phase].subphases). "
+            "Examples: 'red', 'green', 'c1'. Optional."
+        ),
+    )
+    cycle_number: int | None = Field(
+        default=None,
+        description="Cycle number (e.g., 1, 2, 3). Optional, used in multi-cycle TDD.",
+    )
+    commit_type: str | None = Field(
+        default=None,
+        description=(
+            "Commit type override (test|feat|refactor|docs|chore|fix). "
+            "Auto-determined from workphases.yaml if omitted."
+        ),
+    )
+
+    # DEPRECATED: Backward compatibility
+    phase: str | None = Field(
+        default=None,
+        description=(
+            "DEPRECATED: TDD phase (red=test, green=feat, refactor, docs). "
+            "Use workflow_phase + sub_phase instead."
+        ),
     )
 
     @field_validator("phase")
     @classmethod
-    def validate_phase(cls, value: str) -> str:
-        """Validate phase against GitConfig (Convention #8)."""
+    def validate_phase(cls, value: str | None) -> str | None:
+        """Validate phase against GitConfig (Convention #8). Only if provided."""
+        if value is None:
+            return None
         git_config = GitConfig.from_file()
         if not git_config.has_phase(value):
             valid_phases = ", ".join(git_config.tdd_phases)
-            raise ValueError(
-                f"Invalid phase '{value}'. "
-                f"Valid phases from git.yaml: {valid_phases}"
-            )
+            raise ValueError(f"Invalid phase '{value}'. Valid phases from git.yaml: {valid_phases}")
         return value
+
+    @field_validator("commit_type")
+    @classmethod
+    def validate_commit_type(cls, value: str | None) -> str | None:
+        """Validate commit_type against GitConfig (Convention #6). Only if provided."""
+        if value is None:
+            return None
+
+        git_config = GitConfig.from_file()
+        if not git_config.has_commit_type(value):
+            valid_types = ", ".join(git_config.commit_types)
+            raise ValueError(
+                f"Invalid commit_type '{value}'. "
+                f"Valid types from git.yaml: {valid_types}. "
+                f"See: https://www.conventionalcommits.org/"
+            )
+
+        return value.lower()  # Normalize to lowercase
+
+    @model_validator(mode="after")
+    def validate_phase_or_workflow_phase(self) -> "GitCommitInput":
+        """Ensure phase and workflow_phase are not both specified.
+
+        Auto-detection: If neither is provided, workflow_phase will be auto-detected
+        from state.json in execute() method.
+        """
+        has_phase = self.phase is not None
+        has_workflow = self.workflow_phase is not None
+
+        if has_phase and has_workflow:
+            raise ValueError(
+                "Cannot specify both 'phase' (deprecated) and 'workflow_phase'. "
+                "Use workflow_phase only."
+            )
+
+        return self
 
 
 class GitCommitTool(BaseTool):
-    """Tool to commit changes with TDD phase prefix."""
+    """Tool to commit changes with workflow-scoped commit messages."""
 
     name = "git_add_or_commit"
-    description = "Commit changes with TDD phase prefix (red/green/refactor/docs)"
+    description = "Commit changes with workflow phase scope (e.g., test(P_TDD_SP_RED): message)"
     args_model = GitCommitInput
 
     def __init__(self, manager: GitManager | None = None) -> None:
@@ -165,12 +227,52 @@ class GitCommitTool(BaseTool):
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCommitInput) -> ToolResult:
-        if params.phase == "docs":
-            commit_hash = self.manager.commit_docs(params.message, files=params.files)
+        # Auto-detect workflow_phase from state.json if not provided
+        workflow_phase = params.workflow_phase
+        if workflow_phase is None and params.phase is None:
+            # Get current branch
+            current_branch = self.manager.adapter.get_current_branch()
+
+            # Read workflow_phase from state.json
+            workspace_root = Path.cwd()
+            pm = project_manager.ProjectManager(workspace_root=workspace_root)
+            state_engine = phase_state_engine.PhaseStateEngine(
+                workspace_root=workspace_root,
+                project_manager=pm,
+            )
+            workflow_phase = state_engine.get_current_phase(branch=current_branch)
+
+            logger.info(
+                "Auto-detected workflow_phase from state.json",
+                extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
+            )
+
+        # NEW workflow-first path
+        if workflow_phase is not None:
+            commit_hash = self.manager.commit_with_scope(
+                workflow_phase=workflow_phase,
+                message=params.message,
+                sub_phase=params.sub_phase,
+                cycle_number=params.cycle_number,
+                commit_type=params.commit_type,
+                files=params.files,
+            )
+        # LEGACY backward-compatible path (phase -> workflow mapping)
         else:
-            commit_hash = self.manager.commit_tdd_phase(
-                params.phase,
-                params.message,
+            legacy_phase = params.phase
+            if legacy_phase == "docs":
+                mapped_workflow_phase = "documentation"
+                mapped_sub_phase = None
+            else:
+                mapped_workflow_phase = "tdd"
+                mapped_sub_phase = legacy_phase
+
+            commit_hash = self.manager.commit_with_scope(
+                workflow_phase=mapped_workflow_phase,
+                message=params.message,
+                sub_phase=mapped_sub_phase,
+                cycle_number=params.cycle_number,
+                commit_type=params.commit_type,
                 files=params.files,
             )
         return ToolResult.text(f"Committed: {commit_hash}")
@@ -180,14 +282,9 @@ class GitRestoreInput(BaseModel):
     """Input for GitRestoreTool."""
 
     files: list[str] = Field(
-        ...,
-        min_length=1,
-        description="File paths to restore (discard local changes)"
+        ..., min_length=1, description="File paths to restore (discard local changes)"
     )
-    source: str = Field(
-        default="HEAD",
-        description="Git ref to restore from (default: HEAD)"
-    )
+    source: str = Field(default="HEAD", description="Git ref to restore from (default: HEAD)")
 
 
 class GitRestoreTool(BaseTool):
@@ -206,13 +303,12 @@ class GitRestoreTool(BaseTool):
 
     async def execute(self, params: GitRestoreInput) -> ToolResult:
         self.manager.restore(files=params.files, source=params.source)
-        return ToolResult.text(
-            f"Restored {len(params.files)} file(s) from {params.source}"
-        )
+        return ToolResult.text(f"Restored {len(params.files)} file(s) from {params.source}")
 
 
 class GitCheckoutInput(BaseModel):
     """Input for GitCheckoutTool."""
+
     branch: str = Field(..., description="Branch name to checkout")
 
 
@@ -274,9 +370,9 @@ class GitCheckoutTool(BaseTool):
 
 class GitPushInput(BaseModel):
     """Input for GitPushTool."""
+
     set_upstream: bool = Field(
-        default=False,
-        description="Set upstream tracking (for new branches)"
+        default=False, description="Set upstream tracking (for new branches)"
     )
 
 
@@ -302,6 +398,7 @@ class GitPushTool(BaseTool):
 
 class GitMergeInput(BaseModel):
     """Input for GitMergeTool."""
+
     branch: str = Field(..., description="Branch name to merge")
 
 
@@ -322,13 +419,12 @@ class GitMergeTool(BaseTool):
     async def execute(self, params: GitMergeInput) -> ToolResult:
         status = self.manager.get_status()
         self.manager.merge(params.branch)
-        return ToolResult.text(
-            f"Merged {params.branch} into {status['branch']}"
-        )
+        return ToolResult.text(f"Merged {params.branch} into {status['branch']}")
 
 
 class GitDeleteBranchInput(BaseModel):
     """Input for GitDeleteBranchTool."""
+
     branch: str = Field(..., description="Branch name to delete")
     force: bool = Field(default=False, description="Force delete unmerged branch")
 
@@ -354,18 +450,17 @@ class GitDeleteBranchTool(BaseTool):
 
 class GitStashInput(BaseModel):
     """Input for GitStashTool."""
+
     action: str = Field(
         ...,
         description="Stash action: push (save), pop (restore), list",
-        pattern="^(push|pop|list)$"
+        pattern="^(push|pop|list)$",
     )
     message: str | None = Field(
-        default=None,
-        description="Optional name for the stash (only for push)"
+        default=None, description="Optional name for the stash (only for push)"
     )
     include_untracked: bool = Field(
-        default=False,
-        description="Include untracked files when stashing (git stash push -u)"
+        default=False, description="Include untracked files when stashing (git stash push -u)"
     )
 
 
@@ -400,13 +495,11 @@ class GitStashTool(BaseTool):
         return ToolResult.text(f"Unknown action: {params.action}")
 
 
-
 class GetParentBranchInput(BaseModel):
     """Input for GetParentBranchTool."""
 
     branch: str | None = Field(
-        default=None,
-        description="Branch name to inspect (default: current branch)"
+        default=None, description="Branch name to inspect (default: current branch)"
     )
 
 

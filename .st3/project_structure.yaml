@@ -100,6 +100,7 @@ directories:
       - architecture
       - tracking
       - reference
+      - generic
     allowed_extensions:
       - ".md"
       - ".rst"
@@ -127,6 +128,14 @@ directories:
     allowed_artifact_types:
       - reference
       - architecture
+      - generic
+
+  docs/reference/mcp:
+    parent: docs/reference
+    description: "MCP server reference documentation"
+    allowed_artifact_types:
+      - generic
+      - reference
 
   docs/coding_standards:
     parent: docs

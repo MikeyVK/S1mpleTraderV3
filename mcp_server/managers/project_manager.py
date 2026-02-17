@@ -23,7 +23,9 @@ from pathlib import Path
 from typing import Any
 
 # Project modules
+from backend.core.phase_detection import ScopeDecoder
 from mcp_server.config.workflows import workflow_config
+from mcp_server.managers.git_manager import GitManager
 
 
 @dataclass
@@ -90,7 +92,7 @@ class ProjectManager:
         issue_number: int,
         issue_title: str,
         workflow_name: str,
-        options: ProjectInitOptions | None = None
+        options: ProjectInitOptions | None = None,
     ) -> dict[str, Any]:
         """Initialize project with workflow selection.
 
@@ -126,8 +128,7 @@ class ProjectManager:
         # Validate execution mode
         if exec_mode not in ("interactive", "autonomous"):
             msg = (
-                f"Invalid execution_mode: '{exec_mode}'. "
-                f"Valid values: 'interactive', 'autonomous'"
+                f"Invalid execution_mode: '{exec_mode}'. Valid values: 'interactive', 'autonomous'"
             )
             raise ValueError(msg)
 
@@ -149,7 +150,7 @@ class ProjectManager:
             required_phases=required_phases,
             skip_reason=opts.skip_reason,
             parent_branch=parent_branch,
-            created_at=datetime.now(UTC).isoformat()
+            created_at=datetime.now(UTC).isoformat(),
         )
 
         # Save to projects.json
@@ -162,17 +163,20 @@ class ProjectManager:
             "execution_mode": plan.execution_mode,
             "required_phases": plan.required_phases,
             "skip_reason": plan.skip_reason,
-            "parent_branch": plan.parent_branch
+            "parent_branch": plan.parent_branch,
         }
 
     def get_project_plan(self, issue_number: int) -> dict[str, Any] | None:
-        """Get stored project plan.
+        """Get stored project plan with current phase detection.
+
+        Issue #139: Adds current_phase, phase_source, phase_detection_error via ScopeDecoder.
+        Uses commit-scope precedence: commit-scope > state.json > unknown.
 
         Args:
             issue_number: GitHub issue number
 
         Returns:
-            Project plan dict or None if not found
+            Project plan dict with phase detection fields, or None if not found
         """
         if not self.projects_file.exists():
             return None
@@ -181,6 +185,41 @@ class ProjectManager:
             self.projects_file.read_text(encoding="utf-8-sig")  # Handle BOM if present
         )
         plan: dict[str, Any] | None = projects.get(str(issue_number))
+
+        if plan is None:
+            return None
+
+        # Detect current phase via ScopeDecoder (Issue #139)
+        git_manager = GitManager()
+        try:
+            recent_commits = git_manager.get_recent_commits(limit=1)
+        except Exception:
+            # If git fails (e.g., no repo), return unknown
+            recent_commits = []
+
+        if not recent_commits:
+            # No commits → unknown phase
+            plan["current_phase"] = "unknown"
+            plan["phase_source"] = "unknown"
+            plan["phase_detection_error"] = "No commits found in repository"
+        else:
+            # Detect phase from commit
+            decoder = ScopeDecoder()
+            result = decoder.detect_phase(commit_message=recent_commits[0], fallback_to_state=True)
+
+            # Add phase detection results to plan
+            phase = result["workflow_phase"]
+            sub_phase = result["sub_phase"]
+
+            # Format: "tdd:red" or "research" (with or without subphase)
+            if sub_phase:
+                plan["current_phase"] = f"{phase}:{sub_phase}"
+            else:
+                plan["current_phase"] = phase
+
+            plan["phase_source"] = result["source"]
+            plan["phase_detection_error"] = result.get("error_message")
+
         return plan
 
     def _save_project_plan(self, plan: ProjectPlan) -> None:
@@ -203,7 +242,7 @@ class ProjectManager:
             "required_phases": list(plan.required_phases),
             "skip_reason": plan.skip_reason,
             "parent_branch": plan.parent_branch,
-            "created_at": plan.created_at
+            "created_at": plan.created_at,
         }
 
         # Write to file

@@ -98,7 +98,7 @@ class TestGitToolsIntegration:
 
             assert "abc123def" in result.content[0]["text"]
             mock_adapter.return_value.commit.assert_called_with(
-                "feat: implement feature",
+                "feat(P_TDD_SP_GREEN): implement feature",
                 files=None,
             )
 

@@ -315,6 +315,24 @@ artifact_types:
           to: [APPROVED, DEFINITIVE]
         - from: APPROVED
           to: [DEFINITIVE]
+  - type: doc
+    type_id: generic_doc
+    name: "Generic Document"
+    description: "Generic flexible document with custom sections for migration guides and reference docs"
+    output_type: "file"
+    template_path: "concrete/generic.md.jinja2"
+    fallback_template: null
+    name_suffix: null
+    file_extension: ".md"
+    generate_test: false
+    state_machine:
+      states: [DRAFT, APPROVED, DEFINITIVE]
+      initial_state: DRAFT
+      valid_transitions:
+        - from: DRAFT
+          to: [APPROVED, DEFINITIVE]
+        - from: APPROVED
+          to: [DEFINITIVE]
   # ===== TRACKING ARTIFACTS =====
   - type: tracking
     type_id: commit

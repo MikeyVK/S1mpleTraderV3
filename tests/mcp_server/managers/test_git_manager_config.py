@@ -49,35 +49,28 @@ class TestGitManagerConfigIntegration:
         with pytest.raises(ValidationError, match="Invalid branch name: invalid_name"):
             self.manager.create_branch("invalid_name", "feature", "main")
 
-    # Cycle 4: Convention #2 - TDD phase validation
-    def test_commit_tdd_phase_uses_git_config_phases(self):
-        """Test commit_tdd_phase() validates phase via GitConfig."""
-        # Valid phases from git.yaml
-        self.manager.commit_tdd_phase("red", "test message")
-        self.manager.commit_tdd_phase("green", "feat message")
-        self.manager.commit_tdd_phase("docs", "docs message")  # NEW: docs now valid!
-
-        # Invalid phase
-        with pytest.raises(ValidationError, match="Invalid TDD phase: invalid"):
-            self.manager.commit_tdd_phase("invalid", "message")
-
-    # Cycle 5: Convention #3 - Commit prefix mapping
-    def test_commit_tdd_phase_uses_git_config_prefix_map(self):
-        """Test commit_tdd_phase() gets prefix from GitConfig."""
+    # Cycle 4/5: Workflow commit mapping + validation
+    def test_commit_with_scope_uses_workflow_and_subphase_validation(self):
+        """Test commit_with_scope validates workflow/subphase and maps types."""
         self.mock_adapter.commit.return_value = "abc123"
 
-        # Test all prefix mappings
-        self.manager.commit_tdd_phase("red", "failing test")
-        self.mock_adapter.commit.assert_called_with("test: failing test", files=None)
+        self.manager.commit_with_scope("tdd", "failing test", sub_phase="red")
+        self.mock_adapter.commit.assert_called_with(
+            "test(P_TDD_SP_RED): failing test", files=None
+        )
 
-        self.manager.commit_tdd_phase("green", "make it pass")
-        self.mock_adapter.commit.assert_called_with("feat: make it pass", files=None)
+        self.manager.commit_with_scope("tdd", "make it pass", sub_phase="green")
+        self.mock_adapter.commit.assert_called_with(
+            "feat(P_TDD_SP_GREEN): make it pass", files=None
+        )
 
-        self.manager.commit_tdd_phase("refactor", "cleanup")
-        self.mock_adapter.commit.assert_called_with("refactor: cleanup", files=None)
+        self.manager.commit_with_scope("documentation", "update README")
+        self.mock_adapter.commit.assert_called_with(
+            "docs(P_DOCUMENTATION): update README", files=None
+        )
 
-        self.manager.commit_tdd_phase("docs", "update README")
-        self.mock_adapter.commit.assert_called_with("docs: update README", files=None)
+        with pytest.raises(ValueError):
+            self.manager.commit_with_scope("invalid", "message")
 
     # Cycle 6: Convention #4 - Protected branches
     def test_delete_branch_uses_git_config_protected(self):

@@ -1,8 +1,10 @@
 # Workflow Configuration
 # Schema Version: 1.0
+# Phase definitions: .st3/workphases.yaml (phase metadata, subphase whitelists, commit type hints)
 # Documentation: docs/reference/WORKFLOWS.md
 
 version: "1.0"
+phase_source: ".st3/workphases.yaml"
 
 workflows:
   # Feature Development (full workflow)

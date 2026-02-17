@@ -1,0 +1,852 @@
+# Issue #138 Design - Dual-Source Phase Detection
+
+**Status:** DRAFT  
+**Version:** 1.1  
+**Last Updated:** 2026-02-14
+
+---
+
+## Purpose
+
+Define HOW to implement dual-source phase detection: class structures, schemas, data flows, precedence logic, interface contracts.
+
+## Scope
+
+**In Scope:**
+- Class structures (ScopeDecoder, ScopeEncoder)
+- workphases.yaml schema definition (including coordination phase)
+- Precedence resolver logic with explicit contracts
+- Tool integration interfaces
+- GitCommitInput schema changes
+- Data flow diagrams
+- Failure modes and error handling strategy
+- Strict sub_phase validation
+
+**Out of Scope:**
+- Implementation code (covered in TDD phase)
+- Test plans (covered in TDD phase)
+- Migration tooling (no backward compatibility needed)
+
+## Prerequisites
+
+Read these first:
+1. [research.md](research.md) - Dual-source model architecture (v2.3 - updated for strict validation)
+2. [planning.md](planning.md) - 4 vertical cycles breakdown (v1.3 - updated for strict validation)
+3. [docs/reference/mcp/tools/project.md](../../reference/mcp/tools/project.md) - PhaseStateEngine rationale
+4. [docs/coding_standards/TYPE_CHECKING_PLAYBOOK.md](../../coding_standards/TYPE_CHECKING_PLAYBOOK.md) - Type checking rules
+
+---
+
+## 1. Context & Requirements
+
+### 1.1. Problem Statement
+
+`git_add_or_commit` only accepts TDD phases (`red`, `green`, `refactor`, `docs`), blocking agents from committing during workflow phases (`research`, `planning`, `integration`, `documentation`). 
+
+Current implementation validates phase via `GitConfig.has_phase()` which rejects workflow phases. `get_work_context._detect_tdd_phase()` uses type-based guessing that is non-deterministic.
+
+**Core issue:** Two independent phase systems (TDD vs workflows) with no integration.
+
+### 1.2. Requirements
+
+**Functional:**
+- [ ] Parse commit-scope format: `type(P_PHASE)` or `type(P_PHASE_SP_SUBPHASE)`
+- [ ] Implement deterministic fallback: **commit-scope → state.json → unknown** (NO type-heuristic)
+- [ ] Generate scope strings from workflow phase + optional subphase
+- [ ] `get_work_context` uses commit-scope as primary source
+- [ ] `get_project_plan` uses commit-scope as primary source
+- [ ] `transition_phase` uses state.json as authoritative source (NO parsing)
+- [ ] Include `coordination` phase for epic delegation
+- [ ] **Strict sub_phase validation:** Only allow configured subphases (no free strings)
+- [ ] Unknown phase: Clear error with recovery actions (NO silent guessing)
+
+**Non-Functional:**
+- [ ] Performance: No regression vs current system (~same complexity)
+- [ ] Usability: **Actionable error messages** with exact recovery steps (Issue #121)
+- [ ] Compatibility: Mixed commit history supported (unknown phase logged, not blocking)
+- [ ] Maintainability: DRY - single ScopeDecoder utility (no duplication)
+- [ ] Observability: Log phase source (commit-scope / state.json / unknown)
+
+### 1.3. Constraints
+
+1. **Issue #39 PhaseStateEngine contracts:** state.json audit trail (forced transitions, skip_reason, human_approval), workflow_name cache for performance, atomic validation via PhaseStateEngine.transition()
+2. **No backward compatibility:** No migration scripts, mixed commit history supported (graceful degradation)
+3. **Deterministic phase detection:** NO type-heuristic guessing, unknown is acceptable outcome
+4. **Strict validation:** sub_phase must exist in workphases.yaml, no free strings
+5. **DRY principle mandatory:** Single precedence resolver (no duplicated fallback logic), reusable scope parser/encoder utilities
+
+---
+
+## 2. Design Options
+
+### 2.1. Option A: state.json-only (Rejected ❌)
+
+Keep current architecture, add workflow phases to `GitConfig.tdd_phases`.
+
+**Pros:**
+- ✅ Simple, single source of truth
+- ✅ Preserves Issue #39 audit trail
+- ✅ No git parsing complexity
+
+**Cons:**
+- ❌ Git history remains opaque (phases not visible in `git log`)
+- ❌ Doesn't solve Issue #138 (workflow phases remain second-class)
+- ❌ Branch switching: state.json not tracked, tools may lose context
+
+**Verdict:** Does not meet Issue #138 goals (workflow-first, git observability).
+
+---
+
+### 2.2. Option B: commit-scope-only (Rejected ❌)
+
+Deprecate state.json, parse all phase info from commit-scope.
+
+**Pros:**
+- ✅ Self-documenting git history
+- ✅ Standards compliant (Conventional Commits)
+- ✅ Branch switching resilience
+
+**Cons:**
+- ❌ Loses audit trail (forced transitions, skip_reason, human_approval)
+- ❌ Breaks Issue #39 architecture (PhaseStateEngine contracts violated)
+- ❌ workflow_name cache lost (performance regression)
+
+**Verdict:** Violates Issue #39 non-negotiable requirements.
+
+---
+
+### 2.3. Option C: Dual-source (SELECTED ✅)
+
+state.json remains authoritative for runtime/enforcement, commit-scope becomes primary for history/context, with explicit precedence per tool type.
+
+**Pros:**
+- ✅ Best of both worlds (Issue #39 + Issue #138)
+- ✅ Preserves audit trail (forced transitions, workflow_name cache)
+- ✅ Self-documenting git history
+- ✅ Branch switching resilience (context tools use commit-scope fallback)
+- ✅ Deterministic (no guessing, unknown is valid outcome)
+
+**Cons:**
+- ❌ More complex (requires precedence rules)
+- ❌ Synchronization needed (commit must reflect state.json)
+
+**Verdict:** Only option that meets all requirements.
+
+---
+
+## 3. Chosen Design
+
+**Decision:** Implement dual-source phase detection with per-tool-type precedence: state.json authoritative for runtime/enforcement (transitions), commit-scope primary for history/context (reporting). **NO type-heuristic guessing** - deterministic precedence chain only.
+
+**Rationale:** Dual-source preserves Issue #39 audit trail (forced transitions, workflow_name cache, atomic validation) while adding git history visibility. Per-tool-type precedence ensures correct behavior: transition tools stay authoritative on state.json (atomic validation), context tools prefer commit-scope (git history, branch switching resilience). Type-heuristic removed for determinism - unknown phase is acceptable outcome with clear error messaging.
+
+### 3.1. Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Dual-source model (not absolute SSOT) | Separates runtime enforcement (state.json) from historical observability (commit-scope) |
+| Per-tool-type precedence | Transition tools need atomicity (state.json), context tools need observability (commit-scope) |
+| **NO type-heuristic guessing** | **Deterministic detection: unknown is valid outcome, prevents silent incorrect guessing** |
+| ScopeDecoder with strict fallback | **commit-scope → state.json → unknown** (2-step, no guessing) |
+| workphases.yaml as config-SSOT | Phase metadata (display names, descriptions, **subphases whitelist**) - NOT runtime state |
+| **Strict sub_phase validation** | **Only configured subphases allowed, prevents arbitrary strings** |
+| **coordination phase included** | **Enables epic delegation to child issues** |
+| **Actionable error messages** | **Errors include: what failed, valid values, exact recovery action** |
+
+---
+
+## 4. Architecture Overview
+
+### 4.1. Source Precedence Matrix
+
+| Tool Type | Source Order | Rationale |
+|-----------|--------------|-----------|
+| **Transition Tools** (`transition_phase`, `force_phase_transition`) | state.json ONLY | Atomic validation, audit trail, workflow_name cache |
+| **Context Tools** (`get_work_context`, `get_project_plan`) | **commit-scope → state.json → unknown** | Git history observable, branch switching resilience, **NO guessing** |
+| **Commit Tools** (`git_add_or_commit`) | state.json → user input | Synchronization point: commit reflects current state |
+
+### 4.2. Component Contracts
+
+#### ScopeDecoder Interface
+
+**Responsibility:** Parse commit-scope with **deterministic** fallback chain (NO guessing).
+
+```python
+class PhaseDetectionResult(TypedDict):
+    workflow_phase: str  # Phase name or "unknown"
+    sub_phase: Optional[str]
+    source: Literal["commit-scope", "state.json", "unknown"]
+    confidence: Literal["high", "medium", "unknown"]
+    raw_scope: Optional[str]  # Original scope string for debugging
+    error_message: Optional[str]  # Actionable error if unknown
+
+class ScopeDecoder:
+    def detect_phase(
+        self,
+        commit_message: Optional[str] = None,
+        fallback_to_state: bool = True,
+    ) -> PhaseDetectionResult:
+        """
+        Detect phase with explicit precedence: commit-scope → state.json → unknown.
+        
+        NO type-heuristic guessing (removed for determinism).
+        
+        Returns:
+            PhaseDetectionResult - Always succeeds
+            - workflow_phase="unknown" if all sources fail
+            - error_message populated with recovery action
+        
+        Raises:
+            Never (graceful degradation mandatory)
+        """
+```
+
+**Contract:**
+- MUST NOT raise exceptions (graceful degradation)
+- MUST return valid `PhaseDetectionResult` even if all sources fail
+- confidence=high: commit-scope match with valid phase
+- confidence=medium: state.json read success
+- confidence=unknown: All sources failed
+- error_message MUST include recovery action (e.g., "Run transition_phase or commit with valid P_PHASE scope")
+- **NO _type_heuristic() method** (removed)
+
+---
+
+#### ScopeEncoder Interface
+
+**Responsibility:** Generate valid scope strings with **strict validation**.
+
+```python
+class ScopeEncoder:
+    def generate_scope(
+        self,
+        workflow_phase: str,
+        sub_phase: Optional[str] = None,
+        cycle_number: Optional[int] = None,
+    ) -> str:
+        """
+        Generate scope: P_PHASE or P_PHASE_SP_SUBPHASE.
+        
+        Args:
+            workflow_phase: Must exist in workphases.yaml
+            sub_phase: Must exist in workphases.yaml[phase].subphases (STRICT)
+            cycle_number: Prepends C{N}_ if provided
+        
+        Returns:
+            Scope string (e.g., "P_TDD_SP_C1_RED")
+        
+        Raises:
+            ValueError: If workflow_phase unknown OR sub_phase invalid
+            Message includes: valid phases, valid subphases, example commit
+        """
+```
+
+**Contract:**
+- MUST validate workflow_phase against workphases.yaml
+- **MUST validate sub_phase against workphases.yaml[phase].subphases** (strict, was flexible)
+- MUST raise ValueError with **actionable error message**:
+  - What went wrong
+  - Valid phases/subphases list
+  - Example valid commit
+- cycle_number: Optional, format `C{N}_` if provided
+
+---
+
+### 4.3. Data Flow: Context Tool Phase Detection (Deterministic)
+
+```
+get_work_context()
+    ↓
+Git: git log -1 --oneline
+    ↓
+"docs(P_PLANNING_SP_C1): update planning"
+    ↓
+ScopeDecoder.detect_phase()
+    ↓
+ ┌─────────────────────────────┐
+ │ Try 1: Parse commit-scope   │
+ │ Regex: P_(?<phase>[A-Z_]+) │
+ │ (?:_SP_(?<subphase>[A-Z0-9_]+))?│
+ │ Validate phase in workphases│
+ │ Validate subphase (if present)│
+ └─────────────────────────────┘
+    ↓ Valid match?
+   YES → PhaseDetectionResult(
+           workflow_phase="planning", 
+           sub_phase="c1", 
+           source="commit-scope", 
+           confidence="high",
+           error_message=None
+         )
+    ↓ NO (no scope or invalid)
+ ┌─────────────────────────────┐
+ │ Try 2: Read state.json      │
+ │ Path: .st3/state.json       │
+ │ Field: current_phase        │
+ │ Validate phase in workphases│
+ └─────────────────────────────┘
+    ↓ Success?
+   YES → PhaseDetectionResult(
+           workflow_phase="tdd", 
+           sub_phase=None, 
+           source="state.json", 
+           confidence="medium",
+           error_message=None
+         )
+    ↓ NO (FileNotFoundError or invalid phase)
+ ┌─────────────────────────────┐
+ │ Final: Unknown              │
+ │ NO type-heuristic guessing  │
+ │ Populate error_message      │
+ └─────────────────────────────┘
+    ↓
+ PhaseDetectionResult(
+   workflow_phase="unknown", 
+   sub_phase=None, 
+   source="unknown", 
+   confidence="unknown",
+   error_message="Phase detection failed. Recovery: Run transition_phase(to_phase='<phase>') or commit with scope 'type(P_PHASE): message'. Valid phases: research, planning, design, tdd, integration, documentation, coordination"
+ )
+```
+
+**Key Change:** Removed "Try 3: Type heuristic" step entirely.
+
+---
+
+### 4.4. Data Flow: Commit Synchronization (Strict Validation)
+
+```
+git_add_or_commit(message="update planning", workflow_phase="planning", sub_phase="c1")
+    ↓
+ScopeEncoder.generate_scope("planning", "c1", cycle_number=None)
+    ↓
+Validate: "planning" in workphases.yaml?
+    ↓ YES
+Validate: "c1" in workphases.yaml["planning"]["subphases"]?
+    ↓ YES (c1 configured)
+Format: f"P_{phase.upper()}_SP_{sub_phase.upper()}"
+    ↓
+"P_PLANNING_SP_C1"
+    ↓
+Get commit_type from workphases.yaml["planning"]["commit_type"] → "docs"
+    ↓
+GitManager.commit_with_scope(type="docs", scope="P_PLANNING_SP_C1", message="update planning")
+    ↓
+Format: f"{type}({scope}): {message}"
+    ↓
+git commit -m "docs(P_PLANNING_SP_C1): update planning"
+
+--- ERROR PATH ---
+
+git_add_or_commit(message="test", workflow_phase="tdd", sub_phase="invalid")
+    ↓
+ScopeEncoder.generate_scope("tdd", "invalid")
+    ↓
+Validate: "tdd" in workphases.yaml? → YES
+Validate: "invalid" in workphases.yaml["tdd"]["subphases"]? → NO
+    ↓
+Raise ValueError:
+  "Invalid sub_phase 'invalid' for workflow phase 'tdd'
+   
+   Valid subphases for tdd: red, green, refactor
+   
+   Example:
+     git_add_or_commit(
+         message='add user tests',
+         workflow_phase='tdd',
+         sub_phase='red'
+     )
+   
+   Recovery: Use one of the valid subphases listed above."
+```
+
+**Key Change:** sub_phase now validated against configured list.
+
+---
+
+## 5. workphases.yaml Schema
+
+**Location:** `.st3/workphases.yaml`
+
+**Purpose:** Config-SSOT for phase metadata + subphase whitelists.
+
+**Schema:**
+
+```yaml
+# workphases.yaml - Workflow Phase Metadata
+# Purpose: Config-SSOT (display names, commit type hints, subphase whitelist)
+# NOT runtime state (that's state.json, managed by PhaseStateEngine)
+
+phases:
+  research:
+    display_name: "🔍 Research"
+    description: "Investigate requirements, technical constraints, alternatives"
+    commit_type: "docs"
+    subphases: []  # No subphases (phase-level commits only)
+    
+  planning:
+    display_name: "📋 Planning"
+    description: "Break down work into cycles, define deliverables"
+    commit_type: "docs"
+    subphases: ["c1", "c2", "c3", "c4"]  # Cycle tracking
+    
+  design:
+    display_name: "🎨 Design"
+    description: "Class structures, schemas, data flows"
+    commit_type: "docs"
+    subphases: ["contracts", "flows", "schemas"]  # Design stages
+    
+  tdd:
+    display_name: "🔴🟢🔵 TDD"
+    description: "RED-GREEN-REFACTOR cycles"
+    commit_type: "test"
+    subphases: ["red", "green", "refactor"]  # TDD cycle steps (STRICT)
+    
+  integration:
+    display_name: "🔗 Integration"
+    description: "End-to-end testing, system integration"
+    commit_type: "test"
+    subphases: ["e2e", "acceptance"]
+    
+  documentation:
+    display_name: "📚 Documentation"
+    description: "Reference docs, agent.md updates"
+    commit_type: "docs"
+    subphases: ["reference", "guides", "agent"]
+    
+  coordination:
+    display_name: "🔀 Coordination"
+    description: "Epic coordination, child issue delegation"
+    commit_type: "chore"
+    subphases: ["delegation", "sync", "review"]
+
+version: "1.0"
+```
+
+**Usage:**
+- **Referenced by:** workflows.yaml (phase sequences), git.yaml (commit conventions)
+- **Parsed by:** ScopeDecoder (validate phase names), ScopeEncoder (validate phase + subphase)
+- **NOT used by:** transition_phase (uses state.json + workflows.yaml only)
+
+**Validation Rules:**
+- `phases` keys must match workflow phase names in workflows.yaml
+- `commit_type` must be valid Conventional Commits type (test, docs, feat, fix, refactor, chore)
+- **`subphases` is mandatory whitelist (empty list = no subphases allowed)**
+- **ScopeEncoder MUST validate sub_phase against this list**
+
+**New Phase: coordination**
+- Purpose: Epic-level coordination (Issue types with child issues)
+- Enables: `git_add_or_commit(workflow_phase="coordination", sub_phase="delegation")`
+- Use cases: Epic breakdown, child issue creation, cross-issue sync
+
+---
+
+## 6. Tool Integration Specifications
+
+### 6.1. get_work_context Changes
+
+**File:** `mcp_server/tools/context_tools.py`
+
+**Current Implementation (Issue #117):**
+```python
+def _detect_tdd_phase(self, commit_message: str) -> Optional[str]:
+    """Parse commit type (test:/feat:/docs:) → phase guess."""
+    # Problem: Type-heuristic is non-deterministic
+```
+
+**New Implementation (Cycle 1):**
+
+```python
+from mcp_server.utils.scope_decoder import ScopeDecoder
+
+def get_work_context(self, include_closed_recent: bool = False) -> dict:
+    """Get active work context with deterministic phase detection."""
+    
+    last_commit = self._get_last_commit()  # git log -1 --oneline
+    
+    decoder = ScopeDecoder(self.workphases_config, self.state_json_path)
+    detection = decoder.detect_phase(
+        commit_message=last_commit,
+        fallback_to_state=True,
+    )
+    
+    # Log with phase source for debugging
+    if detection.source == "unknown":
+        logger.warning(
+            f"Phase detection failed: {detection.error_message}"
+        )
+    else:
+        logger.info(
+            f"Phase detected: {detection.workflow_phase} "
+            f"(source: {detection.source}, confidence: {detection.confidence})"
+        )
+    
+    return {
+        "active_issue": self._get_active_issue(),
+        "current_phase": detection.workflow_phase,
+        "sub_phase": detection.sub_phase,
+        "phase_source": detection.source,
+        "phase_confidence": detection.confidence,
+        "phase_detection_error": detection.error_message,  # NEW
+        "recent_commits": self._get_recent_commits(10),
+        "blockers": self._check_blockers(),
+    }
+```
+
+**Breaking Changes:**
+- Remove `_detect_tdd_phase()` method entirely
+- Add `phase_detection_error` to output dict (actionable recovery message)
+- Logging: Warning if unknown, info if detected
+- **NO type-heuristic fallback**
+
+**Acceptance Criteria:**
+- Old commits without scope: Falls back to state.json or returns unknown
+- Invalid scope: Falls back to state.json or returns unknown (logged)
+- Unknown phase: Clear error message with recovery steps
+- No blocking errors (graceful degradation)
+
+**Example Output (unknown):**
+```python
+{
+  "current_phase": "unknown",
+  "phase_source": "unknown",
+  "phase_confidence": "unknown",
+  "phase_detection_error": "Phase detection failed. Recovery: Run transition_phase(to_phase='<phase>') or commit with scope 'type(P_PHASE): message'. Valid phases: research, planning, design, tdd, integration, documentation, coordination"
+}
+```
+
+---
+
+### 6.2. get_project_plan Changes
+
+**File:** `mcp_server/tools/project_tools.py`
+
+**Current Implementation (Issue #139):**
+```python
+def get_project_plan(self, issue_number: int) -> dict:
+    # current_phase only from state.json
+```
+
+**New Implementation (Cycle 3):**
+
+```python
+def get_project_plan(self, issue_number: int) -> dict:
+    """Get project plan with deterministic phase detection."""
+    
+    workflow_name = self._get_workflow_name(issue_number)
+    workflow_phases = self._load_workflow_phases(workflow_name)
+    
+    last_commit = self._get_last_commit()
+    decoder = ScopeDecoder(self.workphases_config, self.state_json_path)
+    detection = decoder.detect_phase(
+        commit_message=last_commit,
+        fallback_to_state=True,
+    )
+    
+    return {
+        "issue_number": issue_number,
+        "workflow_name": workflow_name,
+        "phases": workflow_phases,
+        "current_phase": detection.workflow_phase,
+        "phase_source": detection.source,
+        "phase_detection_error": detection.error_message,  # NEW
+        "completed_phases": self._get_completed_phases(issue_number),
+    }
+```
+
+**Breaking Changes:**
+- Add `current_phase` to output (was missing in Issue #139)
+- Add `phase_detection_error` for transparency
+- **NO type-heuristic fallback**
+
+---
+
+### 6.3. GitCommitInput Schema Changes
+
+**File:** `mcp_server/tools/git_tools.py`
+
+**Current Schema:**
+```python
+@tool
+def git_add_or_commit(
+    phase: str = Field(..., description="TDD phase: red | green | refactor | docs"),
+    message: str,
+    files: List[str] = Field(default_factory=list),
+) -> ToolResult:
+    # Validates phase via GitConfig.has_phase() (TDD-only)
+```
+
+**New Schema (Cycle 2):**
+
+```python
+@tool
+def git_add_or_commit(
+    message: str = Field(..., description="Commit message (without type/scope prefix)"),
+    files: List[str] = Field(default_factory=list),
+    
+    # NEW: Workflow-first fields
+    workflow_phase: Optional[str] = Field(
+        None, 
+        description="Workflow phase (research|planning|design|tdd|integration|documentation|coordination). Auto-detected from state.json if omitted."
+    ),
+    sub_phase: Optional[str] = Field(
+        None,
+        description="Sub-phase (MUST be in workphases.yaml[phase].subphases). Examples: 'red', 'green', 'c1'. Optional."
+    ),
+    commit_type: Optional[str] = Field(
+        None,
+        description="Commit type (test|docs|feat|fix|refactor|chore). Auto-detected from workphases.yaml if omitted."
+    ),
+    cycle_number: Optional[int] = Field(
+        None,
+        description="Cycle number (e.g., 1, 2, 3). Optional, used in multi-cycle TDD."
+    ),
+    
+    # DEPRECATED: Backward compatibility
+    phase: Optional[str] = Field(
+        None,
+        deprecated=True,
+        description="DEPRECATED: Use workflow_phase + sub_phase instead."
+    ),
+) -> ToolResult:
+    """
+    Stage and commit with workflow phase scope.
+    
+    Examples:
+        # Workflow phase (auto-detect commit_type from workphases.yaml)
+        git_add_or_commit(
+            message="complete research",
+            workflow_phase="research"
+        )
+        → Commit: docs(P_RESEARCH): complete research
+        
+        # TDD cycle with STRICT sub_phase validation
+        git_add_or_commit(
+            message="add user tests",
+            workflow_phase="tdd",
+            sub_phase="red",  # Must be in ["red", "green", "refactor"]
+            cycle_number=1
+        )
+        → Commit: test(P_TDD_SP_C1_RED): add user tests
+        
+        # Epic coordination
+        git_add_or_commit(
+            message="delegate to child issues",
+            workflow_phase="coordination",
+            sub_phase="delegation"
+        )
+        → Commit: chore(P_COORDINATION_SP_DELEGATION): delegate to child issues
+        
+        # ERROR: Invalid sub_phase
+        git_add_or_commit(
+            message="test",
+            workflow_phase="tdd",
+            sub_phase="invalid"  # NOT in configured subphases
+        )
+        → ValueError: Invalid sub_phase 'invalid' for workflow phase 'tdd'
+                      Valid subphases for tdd: red, green, refactor
+                      Example: [example commit shown]
+                      Recovery: Use one of the valid subphases listed above.
+    """
+```
+
+**Breaking Changes:**
+- `phase` parameter deprecated (retained for backward compat)
+- Add 4 new parameters: `workflow_phase`, `sub_phase`, `commit_type`, `cycle_number`
+- Auto-detection: Read workflow_phase from state.json if omitted
+- Auto-detection: Read commit_type from workphases.yaml if omitted
+- **STRICT sub_phase validation** (must be in configured list)
+
+**Validation:**
+- `workflow_phase` MUST exist in workphases.yaml (includes coordination)
+- **`sub_phase` MUST exist in workphases.yaml[phase].subphases** (strict)
+- Error message MUST include:
+  - What went wrong
+  - Valid phases/subphases list
+  - Example valid commit
+  - Exact recovery action
+- `commit_type`: MUST be valid Conventional Commits type
+
+---
+
+## 7. Failure Modes & Error Handling
+
+### 7.1. Missing Commit Scope
+
+**Scenario:** Old commit without `P_PHASE` scope.
+
+**Behavior:**
+1. ScopeDecoder._parse_commit_scope() returns None
+2. Fallback to state.json (if exists) → Returns phase
+3. If state.json also fails → Returns unknown with error message
+
+**User Impact:** ✅ No blocking errors, tools continue working.
+
+**Logging:** 
+```
+INFO: Phase detection: state.json (confidence: medium)
+```
+
+---
+
+### 7.2. Invalid Phase Name in Scope
+
+**Scenario:** Commit with `P_INVALIDPHASE` scope.
+
+**Behavior:**
+1. ScopeDecoder parses scope, extracts "invalidphase"
+2. Validates against workphases.yaml → NOT FOUND
+3. Returns None, activates state.json fallback
+4. If state.json also fails → Returns unknown with error message
+
+**User Impact:** ✅ No blocking errors, phase detected from state.json or unknown.
+
+**Logging:** 
+```
+WARNING: Invalid phase 'invalidphase' in commit scope, using state.json fallback
+INFO: Phase detection: state.json (confidence: medium)
+```
+
+---
+
+### 7.3. state.json Missing (Branch Switch)
+
+**Scenario:** User switches branch, state.json deleted (not tracked).
+
+**Behavior:**
+1. ScopeDecoder reads commit-scope → SUCCESS (primary source)
+2. state.json fallback not needed
+3. Tool returns phase from git history
+
+**User Impact:** ✅ Branch switching resilient (commit-scope primary for context tools).
+
+**Logging:** 
+```
+INFO: Phase detection: commit-scope (confidence: high)
+```
+
+---
+
+### 7.4. All Sources Fail (Unknown Phase)
+
+**Scenario:** No commit scope + no state.json + no valid phase.
+
+**Behavior:**
+1. commit-scope parsing fails (no scope)
+2. state.json read fails (FileNotFoundError)
+3. **NO type-heuristic guessing**
+4. Returns unknown with **actionable error message**
+
+**User Impact:** ⚠️ Unknown phase returned, tools log warning, user gets recovery steps.
+
+**Error Message:**
+```
+Phase detection failed. 
+
+Recovery actions:
+1. Run transition_phase(to_phase='<phase>') to set current phase in state.json
+2. Commit with valid scope format: type(P_PHASE): message
+
+Valid phases: research, planning, design, tdd, integration, documentation, coordination
+
+Example:
+  git_add_or_commit(
+      message="complete research",
+      workflow_phase="research"
+  )
+```
+
+**Logging:**
+```
+WARNING: Phase detection failed: No commit-scope, no state.json
+WARNING: Phase detection failed. Recovery: Run transition_phase(to_phase='<phase>') or commit with scope 'type(P_PHASE): message'. Valid phases: research, planning, design, tdd, integration, documentation, coordination
+```
+
+---
+
+### 7.5. Invalid sub_phase in git_add_or_commit
+
+**Scenario:** Agent calls `git_add_or_commit(workflow_phase="tdd", sub_phase="invalid", ...)`.
+
+**Behavior:**
+1. ScopeEncoder.generate_scope() validates phase → OK
+2. Validates sub_phase against workphases.yaml["tdd"]["subphases"] → NOT FOUND
+3. Raises ValueError with **actionable error message**
+
+**User Impact:** ❌ Blocking error (intentional - prevent invalid commits).
+
+**Error Message:**
+```
+ValueError: Invalid sub_phase 'invalid' for workflow phase 'tdd'
+
+Valid subphases for tdd: red, green, refactor
+
+Example:
+  git_add_or_commit(
+      message='add user tests',
+      workflow_phase='tdd',
+      sub_phase='red'
+  )
+
+Recovery: Use one of the valid subphases listed above.
+```
+
+---
+
+### 7.6. Unknown Workflow Phase in git_add_or_commit
+
+**Scenario:** Agent calls `git_add_or_commit(workflow_phase="invalid_phase", ...)`.
+
+**Behavior:**
+1. ScopeEncoder.generate_scope() validates against workphases.yaml
+2. Phase NOT FOUND → Raises ValueError
+3. Error message includes valid phase list + example commit + recovery action
+
+**User Impact:** ❌ Blocking error (intentional - prevent bad commits).
+
+**Error Message:**
+```
+ValueError: Unknown workflow phase: 'invalid_phase'
+
+Valid phases: research, planning, design, tdd, integration, documentation, coordination
+
+Example:
+  git_add_or_commit(
+      message="complete research",
+      workflow_phase="research"
+  )
+
+Recovery: Use one of the valid workflow phases listed above.
+```
+
+---
+
+## 8. Open Questions
+
+| # | Question | Decision | Rationale |
+|---|----------|----------|-----------|
+| 1 | Cycle number tracking: manual or auto? | ✅ **Manual** | Simpler, explicit agent control |
+| 2 | Error message format for invalid scopes? | ✅ **Both (valid list + example)** | Most actionable (Issue #121 lesson) |
+| 3 | State.json sync: automatic or explicit? | ✅ **Automatic (git_add_or_commit)** | Less cognitive load for agent |
+| 4 | Sub-phase validation: strict or flexible? | ✅ **Strict (whitelist)** | **Prevents typos, ensures consistency** |
+
+**All questions resolved** (updated per feedback).
+
+---
+
+## Related Documentation
+
+- [research.md](research.md) - Dual-source model rationale (v2.3 - updated for strict validation)
+- [planning.md](planning.md) - 4 vertical delivery cycles (v1.3 - updated for strict validation)
+- [../../reference/mcp/tools/project.md](../../reference/mcp/tools/project.md) - PhaseStateEngine contracts
+- [../../reference/mcp/tools/git.md](../../reference/mcp/tools/git.md) - Git tooling TDD-focus
+- [../../coding_standards/TYPE_CHECKING_PLAYBOOK.md](../../coding_standards/TYPE_CHECKING_PLAYBOOK.md) - Type checking rules
+
+---
+
+## Version History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.1 | 2026-02-14 | Agent | **BREAKING:** Remove type-heuristic, strict sub_phase validation, add coordination phase, actionable errors |
+| 1.0 | 2026-02-14 | Agent | Initial draft with complete architecture, interface contracts, data flows, failure modes |
