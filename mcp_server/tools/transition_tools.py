@@ -3,7 +3,8 @@
 Issue #146 Cycle 4: transition_cycle and force_cycle_transition tools.
 """
 
-from typing import Any
+import re
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
@@ -36,5 +37,113 @@ class TransitionCycleTool(BaseTool):
 
     async def execute(self, params: TransitionCycleInput) -> ToolResult:
         """Execute cycle transition with validation."""
-        # RED: Minimal implementation to make tests fail
-        return ToolResult.error("Not implemented yet")
+        try:
+            # Get workspace root
+            workspace_root = Path(settings.server.workspace_root)
+
+            # Auto-detect issue number from branch if not provided
+            git_manager = GitManager()
+            branch = git_manager.get_current_branch()
+
+            issue_number = params.issue_number
+            if issue_number is None:
+                issue_number = self._extract_issue_number(branch)
+                if issue_number is None:
+                    return ToolResult.error("Cannot detect issue number from branch")
+
+            # Initialize managers
+            project_manager = ProjectManager(workspace_root=workspace_root)
+            state_engine = PhaseStateEngine(
+                workspace_root=workspace_root, project_manager=project_manager
+            )
+
+            # Get current state
+            state = state_engine.get_state(branch)
+            current_phase = state.get("current_phase")
+            current_cycle = state.get("current_tdd_cycle")
+
+            # Validation 1: Check TDD phase
+            if current_phase != "tdd":
+                return ToolResult.error(
+                    f"Not in TDD phase (current: {current_phase}). "
+                    "Cycle transitions only allowed during TDD phase."
+                )
+
+            # Validation 2: Check planning deliverables exist
+            project_plan = project_manager.get_project_plan(issue_number)
+            if project_plan is None:
+                return ToolResult.error("Project plan not found")
+
+            planning_deliverables = project_plan.get("planning_deliverables")
+            if not planning_deliverables:
+                return ToolResult.error(
+                    "Planning deliverables not found. "
+                    "Create planning deliverables before transitioning cycles."
+                )
+
+            tdd_cycles = planning_deliverables.get("tdd_cycles", {})
+            total_cycles = tdd_cycles.get("total", 0)
+
+            # Validation 3: Check valid cycle range
+            if params.to_cycle < 1 or params.to_cycle > total_cycles:
+                return ToolResult.error(
+                    f"Invalid cycle number {params.to_cycle}. Valid range: 1-{total_cycles}"
+                )
+
+            # Validation 4: Check forward-only
+            if current_cycle is not None and params.to_cycle <= current_cycle:
+                return ToolResult.error(
+                    f"Backwards transition not allowed (current: {current_cycle}, "
+                    f"target: {params.to_cycle}). "
+                    "Use force_cycle_transition for backwards transitions."
+                )
+
+            # Validation 5: Check sequential
+            if current_cycle is not None and params.to_cycle != current_cycle + 1:
+                return ToolResult.error(
+                    f"Non-sequential transition not allowed (current: {current_cycle}, "
+                    f"target: {params.to_cycle}). "
+                    "Use force_cycle_transition to skip cycles."
+                )
+
+            # Execute transition
+            from_cycle = current_cycle or 0
+            state["last_tdd_cycle"] = from_cycle
+            state["current_tdd_cycle"] = params.to_cycle
+
+            # Update history (if not exists, create empty list)
+            if "tdd_cycle_history" not in state:
+                state["tdd_cycle_history"] = []
+
+            # Save state
+            state_engine._save_state(branch, state)
+
+            # Get cycle name for message
+            cycles = tdd_cycles.get("cycles", [])
+            cycle_details = next(
+                (c for c in cycles if c.get("cycle_number") == params.to_cycle), None
+            )
+            cycle_name = cycle_details.get("name") if cycle_details else "Unknown"
+
+            # Success message
+            message = f"✅ Transitioned to TDD Cycle {params.to_cycle}/{total_cycles}: {cycle_name}"
+
+            return ToolResult.text(message)
+
+        except (OSError, ValueError, RuntimeError, KeyError) as e:
+            return ToolResult.error(f"Transition failed: {e}")
+
+    def _extract_issue_number(self, branch: str) -> int | None:
+        """Extract issue number from branch name."""
+        patterns = [
+            r"(?:feature|fix|refactor|docs)/(\d+)-",
+            r"issue-(\d+)",
+            r"#(\d+)",
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, branch)
+            if match:
+                return int(match.group(1))
+
+        return None
