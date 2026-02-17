@@ -77,10 +77,6 @@ class TestGitManagerValidation:
         with pytest.raises(PreflightError, match="Working directory is not clean"):
             manager.create_branch("valid-name", "feature", "HEAD")
 
-    def test_commit_tdd_phase_invalid(self, manager: GitManager) -> None:
-        """Test validation of TDD phase."""
-        with pytest.raises(ValidationError, match="Invalid TDD phase"):
-            manager.commit_tdd_phase("blue", "message")
 
     def test_delete_branch_protected(self, manager: GitManager) -> None:
         """Test deletion of protected branch is prevented."""
@@ -102,39 +98,6 @@ class TestGitManagerOperations:
     def manager(self, mock_adapter: MagicMock) -> GitManager:
         """Fixture for GitManager with mocked adapter."""
         return GitManager(adapter=mock_adapter)
-
-    def test_commit_tdd_phase_valid(self, manager: GitManager, mock_adapter: MagicMock) -> None:
-        """Test valid TDD commit."""
-        mock_adapter.commit.return_value = "hash123"
-
-        result = manager.commit_tdd_phase("red", "failing test")
-
-        assert result == "hash123"
-        mock_adapter.commit.assert_called_once_with("test: failing test", files=None)
-
-    def test_commit_tdd_phase_with_files_passes_through(
-        self, manager: GitManager, mock_adapter: MagicMock
-    ) -> None:
-        """Test valid TDD commit with files."""
-        mock_adapter.commit.return_value = "hash123"
-
-        result = manager.commit_tdd_phase("green", "scoped", files=["a.py"])
-
-        assert result == "hash123"
-        mock_adapter.commit.assert_called_once_with("feat: scoped", files=["a.py"])
-
-    def test_commit_docs(self, manager: GitManager, mock_adapter: MagicMock) -> None:
-        """Test documentation commit helpers."""
-        manager.commit_docs("update readme")
-        mock_adapter.commit.assert_called_once_with("docs: update readme", files=None)
-
-    def test_commit_docs_with_files_passes_through(
-        self, manager: GitManager, mock_adapter: MagicMock
-    ) -> None:
-        """Test documentation commit helpers with files."""
-        manager.commit_docs("update docs", files=["README.md"])
-
-        mock_adapter.commit.assert_called_once_with("docs: update docs", files=["README.md"])
 
     def test_restore_success(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test restore operation."""

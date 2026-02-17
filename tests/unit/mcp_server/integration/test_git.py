@@ -49,8 +49,8 @@ def test_git_manager_invalid_name(mock_git_adapter: Mock) -> None:
         manager.create_branch("Invalid Name", "feature", "HEAD")
 
 def test_git_manager_commit_tdd(mock_git_adapter: Mock) -> None:
-    """Test TDD commit prefixes message correctly with 'test:' prefix."""
+    """Test legacy-equivalent TDD commit through workflow scope."""
     manager = GitManager(adapter=mock_git_adapter)
-    manager.commit_tdd_phase("red", "Added test")
+    manager.commit_with_scope("tdd", "Added test", sub_phase="red")
 
-    mock_git_adapter.commit.assert_called_with("test: Added test", files=None)
+    mock_git_adapter.commit.assert_called_with("test(P_TDD_SP_RED): Added test", files=None)

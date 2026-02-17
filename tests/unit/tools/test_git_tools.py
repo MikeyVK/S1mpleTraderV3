@@ -103,12 +103,19 @@ async def test_git_status_tool(mock_git_manager):
 async def test_git_commit_tool_tdd(mock_git_manager):
     """Test git commit tool with TDD phase."""
     tool = GitCommitTool(manager=mock_git_manager)
-    mock_git_manager.commit_tdd_phase.return_value = "abc1234"
+    mock_git_manager.commit_with_scope.return_value = "abc1234"
 
     params = GitCommitInput(phase="red", message="failing test")
     result = await tool.execute(params)
 
-    mock_git_manager.commit_tdd_phase.assert_called_once_with("red", "failing test", files=None)
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="failing test",
+        sub_phase="red",
+        cycle_number=None,
+        commit_type=None,
+        files=None,
+    )
     assert "Committed: abc1234" in result.content[0]["text"]
 
 
@@ -116,12 +123,19 @@ async def test_git_commit_tool_tdd(mock_git_manager):
 async def test_git_commit_tool_docs(mock_git_manager):
     """Test git commit tool with docs phase."""
     tool = GitCommitTool(manager=mock_git_manager)
-    mock_git_manager.commit_docs.return_value = "doc1234"
+    mock_git_manager.commit_with_scope.return_value = "doc1234"
 
     params = GitCommitInput(phase="docs", message="update readme")
     result = await tool.execute(params)
 
-    mock_git_manager.commit_docs.assert_called_once_with("update readme", files=None)
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="documentation",
+        message="update readme",
+        sub_phase=None,
+        cycle_number=None,
+        commit_type=None,
+        files=None,
+    )
     assert "Committed: doc1234" in result.content[0]["text"]
 
 
@@ -226,13 +240,20 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
 async def test_git_commit_tool_backward_compat_with_old_phase(mock_git_manager):
     """Test backward compatibility: old 'phase' parameter still works."""
     tool = GitCommitTool(manager=mock_git_manager)
-    mock_git_manager.commit_tdd_phase.return_value = "old1234"
+    mock_git_manager.commit_with_scope.return_value = "old1234"
 
     params = GitCommitInput(phase="red", message="old style commit")
     result = await tool.execute(params)
 
-    # Should use old path when workflow_phase is not provided
-    mock_git_manager.commit_tdd_phase.assert_called_once_with("red", "old style commit", files=None)
+    # Should map legacy phase to workflow scope path
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="old style commit",
+        sub_phase="red",
+        cycle_number=None,
+        commit_type=None,
+        files=None,
+    )
     assert "Committed: old1234" in result.content[0]["text"]
 
 

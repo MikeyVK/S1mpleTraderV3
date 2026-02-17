@@ -36,7 +36,7 @@ class GitConfig(BaseModel):
         default=["red", "green", "refactor", "docs"],
         description=(
             "DEPRECATED: Use workflow phases from workphases.yaml instead. "
-            "TDD phases for commit_tdd_phase()"
+            "Legacy TDD phase aliases for backward compatibility"
         ),
         min_length=1,
     )

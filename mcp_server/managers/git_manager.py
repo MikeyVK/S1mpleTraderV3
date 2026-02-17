@@ -88,48 +88,6 @@ class GitManager:
         )
 
         return full_name
-
-    def commit_tdd_phase(self, phase: str, message: str, files: list[str] | None = None) -> str:
-        """Commit changes with TDD phase prefix.
-
-        Args:
-            phase: TDD phase (red/green/refactor/docs).
-            message: Commit message (without prefix).
-            files: Optional list of file paths to stage + commit.
-        """
-        # Convention #2: Phase validation via GitConfig
-        if not self._git_config.has_phase(phase):
-            raise ValidationError(
-                f"Invalid TDD phase: {phase}",
-                hints=[f"Allowed phases: {', '.join(self._git_config.tdd_phases)}"],
-            )
-
-        if files is not None and not files:
-            raise ValidationError(
-                "Files list cannot be empty",
-                hints=["Omit 'files' to commit everything, or provide at least one path"],
-            )
-
-        # Convention #3: Prefix mapping via GitConfig
-        prefix = self._git_config.get_prefix(phase)
-        full_message = f"{prefix}: {message}"
-        return self.adapter.commit(full_message, files=files)
-
-    def commit_docs(self, message: str, files: list[str] | None = None) -> str:
-        """Commit changes with docs prefix.
-
-        Args:
-            message: Commit message (without prefix).
-            files: Optional list of file paths to stage + commit.
-        """
-        if files is not None and not files:
-            raise ValidationError(
-                "Files list cannot be empty",
-                hints=["Omit 'files' to commit everything, or provide at least one path"],
-            )
-        full_message = f"docs: {message}"
-        return self.adapter.commit(full_message, files=files)
-
     def commit_with_scope(
         self,
         workflow_phase: str,

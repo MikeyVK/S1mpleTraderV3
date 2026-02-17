@@ -257,13 +257,22 @@ class GitCommitTool(BaseTool):
                 commit_type=params.commit_type,
                 files=params.files,
             )
-        # OLD backward-compatible path
-        elif params.phase == "docs":
-            commit_hash = self.manager.commit_docs(params.message, files=params.files)
+        # LEGACY backward-compatible path (phase -> workflow mapping)
         else:
-            commit_hash = self.manager.commit_tdd_phase(
-                params.phase,  # type: ignore[arg-type]  # Already validated, can't be None here
-                params.message,
+            legacy_phase = params.phase
+            if legacy_phase == "docs":
+                mapped_workflow_phase = "documentation"
+                mapped_sub_phase = None
+            else:
+                mapped_workflow_phase = "tdd"
+                mapped_sub_phase = legacy_phase
+
+            commit_hash = self.manager.commit_with_scope(
+                workflow_phase=mapped_workflow_phase,
+                message=params.message,
+                sub_phase=mapped_sub_phase,
+                cycle_number=params.cycle_number,
+                commit_type=params.commit_type,
                 files=params.files,
             )
         return ToolResult.text(f"Committed: {commit_hash}")
