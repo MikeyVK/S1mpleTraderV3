@@ -577,68 +577,21 @@ class ExitCriteriaValidator:
 
 ### 8.2. Migration Strategy
 
-**Approach:** Backward-compatible dual-term support during migration
+**Approach:** Strict manual recovery (no automatic migration)
 
-**Phase 1: Alias Support**
-```python
-# PhaseStateEngine recognizes both terms
-PHASE_ALIASES = {
-    "integration": "validation",  # Old → New
-}
-
-def normalize_phase(phase: str) -> str:
-    return PHASE_ALIASES.get(phase, phase)
-```
-
-**Phase 2: Update Workflows**
+**Phase 1: Update Workflows (Hard Breaking Change)**
 ```yaml
-# workflows.yaml before
+# workflows.yaml - direct update
 required_phases:
   - research
   - planning
   - design
   - tdd
-  - integration  # OLD
-  - documentation
-
-# workflows.yaml after
-required_phases:
-  - research
-  - planning
-  - design
-  - tdd
-  - validation  # NEW
+  - validation  # Renamed from "integration"
   - documentation
 ```
 
-**Phase 3: Migrate Existing Projects**
-```python
-def migrate_integration_to_validation():
-    """Migrate existing projects.json entries."""
-    projects = load_all_projects()
-    
-    for issue_number, project in projects.items():
-        # Update current_phase
-        if project["current_phase"] == "integration":
-            project["current_phase"] = "validation"
-        
-        # Update required_phases
-        project["required_phases"] = [
-            "validation" if p == "integration" else p
-            for p in project["required_phases"]
-        ]
-        
-        # Update phase_history
-        for transition in project.get("transitions", []):
-            if transition["from_phase"] == "integration":
-                transition["from_phase"] = "validation"
-            if transition["to_phase"] == "integration":
-                transition["to_phase"] = "validation"
-    
-    save_all_projects(projects)
-```
-
-**Phase 4: Update Scope Encoding**
+**Phase 2: Update Scope Encoding**
 ```python
 # backend/core/scope_encoder.py
 PHASE_SCOPE_MAP = {
@@ -651,14 +604,52 @@ PHASE_SCOPE_MAP = {
 }
 ```
 
+**Phase 3: Error Handling for Legacy Projects**
+```python
+# PhaseStateEngine validation
+def validate_phase_exists(phase: str, workflow_name: str) -> None:
+    """Strict validation - fails on unrecognized phase."""
+    valid_phases = get_workflow_phases(workflow_name)
+    
+    if phase not in valid_phases:
+        # Check if user is using old "integration" term
+        if phase == "integration":
+            raise PhaseValidationError(
+                f"Phase 'integration' renamed to 'validation' in Issue #146.\n"
+                f"\n"
+                f"MANUAL RECOVERY:\n"
+                f"1. Edit .st3/state.json: Change 'current_phase' from 'integration' to 'validation'\n"
+                f"2. Edit .st3/projects.json: Update issue entry's 'required_phases' array\n"
+                f"3. Use transition_phase(to_phase='validation') to continue\n"
+                f"\n"
+                f"See docs/development/issue146/design.md for details."
+            )
+        
+        raise PhaseValidationError(
+            f"Unknown phase '{phase}' for workflow '{workflow_name}'.\n"
+            f"Valid phases: {', '.join(valid_phases)}"
+        )
+```
+
+**Phase 4: Documentation Updates**
+- All docs/ references to "integration" phase updated to "validation"
+- Agent.md tool references updated
+- MCP reference docs updated
+
 ### 8.3. Rollout Plan
 
-1. **TDD Cycle 1:** Implement alias support (backwards compatible)
-2. **TDD Cycle 1:** Update workflows.yaml
-3. **TDD Cycle 2:** Migrate existing projects.json
-4. **TDD Cycle 2:** Update scope encoding
-5. **TDD Cycle 3:** Update all documentation
-6. **TDD Cycle 4:** Remove alias support (strict "validation" only)
+1. **TDD Cycle 1:** Update workflows.yaml (hard breaking change)
+2. **TDD Cycle 1:** Update scope encoding (P_INTEGRATION → P_VALIDATION)
+3. **TDD Cycle 2:** Add strict validation with actionable error messages
+4. **TDD Cycle 3:** Update all documentation (docs/, agent.md, references)
+5. **Manual Migration:** Users update existing projects.json entries manually
+
+**Migration Impact:**
+- ❌ NO automatic migration code
+- ❌ NO backward-compatible aliases
+- ✅ STRICT validation fails on "integration"
+- ✅ ACTIONABLE error messages with recovery steps
+- ✅ MANUAL fix: Edit .st3/state.json and .st3/projects.json
 
 ---
 
@@ -856,12 +847,13 @@ Recovery:
 
 | Decision | Rationale |
 |----------|-----------|
-|  |  |
-|  |  |
-|  |  |
-|  |  |
-|  |  |
-|  |  |
+| Extend PhaseStateEngine (not separate CycleManager) | Mirrors existing pattern, avoids StateManager duplication, maintains SRP |
+| Comprehensive planning_deliverables schema | Captures all TDD cycle definitions, exit criteria, validation plans (vs minimal cycle names) |
+| Forward-only cycle transitions | Prevents accidental regression, maintains clear progression (force override available) |
+| Conditional visibility (TDD phase only) | Reduces noise in get_work_context for non-TDD phases |
+| Entry-time blocking validation | Prevents invalid state before work starts (vs runtime detection) |
+| Both JSON + text formatting | Dual output for agents (structured) and developers (readable) |
+| Strict Integration→Validation rename | No aliases, manual recovery only - aligns with minimal backward-compat constraint |
 
 ## Related Documentation
 - **[research.md][related-1]**
@@ -880,4 +872,4 @@ Recovery:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0 |  | Agent | Initial draft |
+| 1.0 | 2026-02-17 | Agent | Initial draft |
