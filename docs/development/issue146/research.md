@@ -419,66 +419,86 @@ P_TDD_SP_C3_RED          ← With cycle (currently accepted)
 
 ### 5.2 Planning Deliverable Schema
 
-**Option 1: Minimalist (cycles only)**
-```json
-{
-  "tdd_cycles": {
-    "total": 4,
-    "cycles": [
-      {"cycle": 1, "name": "Schema Design"}
-    ]
-  }
-}
-```
+**User Decision:** Comprehensive schema (Option 2) - all planning components in single structure.
 
-**Option 2: Comprehensive (3 components from research.md v1.2)**
 ```json
 {
   "planning_deliverables": {
-    "tdd_cycles": {...},
-    "validation_plan": {...},
-    "documentation_plan": {...}
+    "tdd_cycles": {
+      "total": 4,
+      "cycles": [
+        {"cycle": 1, "name": "Schema Design", "deliverables": [...], "exit_criteria": "..."}
+      ]
+    },
+    "validation_plan": {
+      "objectives": ["Smoke tests", "Performance", "Regression"],
+      "exit_criteria": "All smoke tests green"
+    },
+    "documentation_plan": {
+      "sections": ["API Docs", "Architecture Update"],
+      "exit_criteria": "Docs reviewed and merged"
+    }
   }
 }
 ```
 
-**User Constraint:** Config-first approach - single source of truth in projects.json.
-No sidecar files - all planning deliverables in centralized config.
+**Rationale:**
+- ✅ Complete context for planning phase (Issue #144 planning deliverables)
+- ✅ Single source of truth in projects.json (config-first)
+- ✅ Structured validation, documentation tracking alongside TDD cycles
+- ✅ Extensible for future planning components
+
+**Storage Location:** `.st3/projects.json` per issue (no sidecar files)
 
 ### 5.3 Cycle Transition Validation
 
-**Option A: Sequential-only (strict)**
-- Can only go 1→2→3→4
-- force_cycle_transition for skip
+**User Decision:** Mirror PhaseStateEngine pattern - forward-only with force tool.
 
-**Option B: Forward-only (flexible)**
-- Can go 1→3 (skip 2)
-- Cannot go backwards (3→1)
+**Transition Rules:**
+- ✅ Forward progression allowed: 1→2, 2→3, 3→4
+- ✅ Skip cycles allowed: 1→3, 1→4
+- ❌ Backward transitions blocked: 3→1, 4→2
+- ✅ Force tool for exceptional cases: `force_cycle_transition(to_cycle, skip_reason, human_approval)`
 
-**Option C: Free navigation (permissive)**
-- Any cycle → any cycle
-- Audit trail required
+**Rationale:**
+- Matches existing phase transition strictness (PhaseStateEngine)
+- Allows flexibility (skip cycles) while preventing regression (no backwards)
+- Audit trail via force_cycle_transition when skipping needed
+- Consistent developer experience across phase/cycle management
 
-**Questions Raised:**
-- Mirror phase transition strictness?
-- Should skip_reason be required for non-sequential?
-- What about re-doing a cycle (3→2 for fixes)?
+**Implementation Notes:**
+- Sequential check: `to_cycle > current_cycle` (forward-only)
+- Skip detection: `to_cycle != current_cycle + 1` (triggers skip_reason requirement)
+- Force transition: Same pattern as `force_phase_transition` (human_approval + audit)
 
 ### 5.4 State Persistence Strategy
 
-**Option A: Ephemeral cycle state**
-- current_tdd_cycle only exists during TDD phase
-- Cleared on phase exit
-- Must re-initialize on re-entry
+**User Decision:** Mirror PhaseStateEngine behavior - persistent state with historical tracking.
 
-**Option B: Persistent cycle state**
-- current_tdd_cycle retained after TDD
-- Historical record
-- Resume from last cycle on re-entry
+**State Fields in `.st3/state.json`:**
+```json
+{
+  "current_tdd_cycle": 3,           // Active cycle during TDD phase
+  "last_tdd_cycle": 3,              // Historical record (persists after TDD exit)
+  "tdd_cycle_history": [            // Audit trail
+    {"cycle": 1, "entered": "2026-02-14T10:00:00Z", "completed": "2026-02-14T14:30:00Z"},
+    {"cycle": 2, "entered": "2026-02-14T14:35:00Z", "completed": "2026-02-15T09:00:00Z"},
+    {"cycle": 3, "entered": "2026-02-15T09:05:00Z"}
+  ]
+}
+```
 
-**Option C: Hybrid**
-- Move to `last_tdd_cycle` on exit
-- New `current_tdd_cycle` on re-entry
+**Behavior:**
+- `current_tdd_cycle`: Always present during TDD phase, cleared on exit
+- `last_tdd_cycle`: Retained after TDD phase exit (like `last_phase`)
+- Re-entry: Resume from `last_tdd_cycle + 1` or allow manual override
+- History: Complete audit trail with timestamps (like phase_history)
+
+**Rationale:**
+- ✅ Matches existing PhaseStateEngine patterns (consistency)
+- ✅ Historical data preserved for analysis/debugging
+- ✅ Supports resume workflow after phase exit/re-entry
+- ✅ Audit compliance via tdd_cycle_history
 
 ---
 
@@ -567,29 +587,28 @@ Add cycle_number parameter:
 ## 7. Open Research Questions
 
 ### 7.1 Schema Design
-- Q1: Nested planning_deliverables vs flat cycle fields?
-- Q2: Store validation_plan + documentation_plan alongside tdd_cycles?
-- Q3: Per-cycle deliverables list vs just cycle names?
-- Q4: Exit criteria per cycle vs per project?
+**Answered in Section 5.2:** Comprehensive nested schema with validation_plan + documentation_plan.
+- Q1: Per-cycle deliverables list or just names?
+- Q2: Exit criteria per cycle vs per project vs both?
 
 ### 7.2 Validation Strategy
-- Q5: Require cycle_number for ALL TDD commits or only sub-phases?
-- Q6: Validate against planning deliverables always or only if present?
-- Q7: Should cycle_number=None auto-resolve from state.json?
+- Q3: Require cycle_number for ALL TDD commits or only sub-phases?
+- Q4: Validate against planning deliverables always or only if present?
+- Q5: Should cycle_number=None auto-resolve from state.json?
 
 ### 7.3 Backward Compatibility
 **User Constraint:** Strict enforcement only, no grace periods or opt-in modes.
-- Q8: Manual finalize_planning only, or allow automatic migration?
+- Q6: Manual finalize_planning only, or allow automatic migration?
 
 ### 7.4 Discovery Tools
 **Answered in Section 3.3:** Extend existing get_work_context and get_project_plan (SRP compliant).
-- Q9: Show cycle info always or conditional on TDD phase?
-- Q10: How to format cycle deliverables for readability?
+- Q7: Show cycle info always or conditional on TDD phase?
+- Q8: How to format cycle deliverables for readability?
 
 ### 7.5 Transition Semantics
-- Q11: Sequential-only vs forward-only cycle transitions?
-- Q12: human_approval required for force_cycle_transition?
-- Q13: Can cycles be re-done (backwards transition)?
+**Answered in Section 5.3:** Forward-only with force_cycle_transition tool (mirrors PhaseStateEngine).
+- Q9: Skip cycles requires skip_reason + human_approval?
+- Q10: Re-entry behavior after TDD phase exit?
 
 ---
 
