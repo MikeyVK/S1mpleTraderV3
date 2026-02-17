@@ -742,16 +742,18 @@ Recovery:
 
 ---
 
-### 2. Integration → Validation Rename Migration
-**Context:** workflows.yaml:13-56 still uses "integration" terminology. Research.md:621-647 proposes rename to "validation" for clarity.
+### 2. Integration → Validation Phase Rename
+**Context:** Research.md:621-647 + original issue body #146 identified "integration" phase terminology as confusing. E2E tests are per TDD cycle (works well), but "integration" phase should be "validation" (real-life proven operation).
 
-**Design Decision Deferred:**
-- Rename scope: All workflows or just feature/bug?
-- Migration strategy for existing projects in .st3/projects.json with "integration" phase
-- Backward compatibility: Support both terms or hard cutover?
-- Impact on PhaseStateEngine, GitManager scope encoding, documentation
+**Design Tasks:**
+- Update workflows.yaml: Rename "integration" → "validation" in all workflows
+- Migration strategy for existing projects.json with "integration" phase
+- Update PhaseStateEngine transition logic (if hardcoded phase names exist)
+- Update GitManager scope encoding (P_INTEGRATION → P_VALIDATION)
+- Update all documentation references
+- Create migration script for existing projects
 
-**Note:** Separate migration topic - NOT blocking Issue #146 implementation. Can be separate issue/PR.
+**Note:** Part of Issue #146 scope - NOT separate issue.
 
 ---
 - **[research.md][related-1]**
