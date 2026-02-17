@@ -621,11 +621,22 @@ def force_cycle_transition(
 **TDD Phase Entry:**
 ```python
 def on_enter_tdd_phase(issue_number: int):
+    """Smart resume or auto-initialize based on last_tdd_cycle."""
     validate_planning_deliverables(issue_number)
-    state["current_tdd_cycle"] = 1  # Auto-initialize to cycle 1
-    state["tdd_cycle_history"] = []  # Fresh history
+    
+    total_cycles = get_total_cycles(issue_number)
+    last_cycle = state.get("last_tdd_cycle")
+    
+    if last_cycle:
+        # Re-entry: check if complete
+        if last_cycle >= total_cycles:
+            raise PhaseTransitionError("TDD complete - requires replanning or new issue")
+        state["current_tdd_cycle"] = last_cycle + 1  # Smart resume
+    else:
+        state["current_tdd_cycle"] = 1  # First entry
+    
+    state["tdd_cycle_history"] = []
 ```
-
 **TDD Phase Exit:**
 ```python
 def on_exit_tdd_phase():
