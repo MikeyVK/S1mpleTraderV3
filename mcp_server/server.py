@@ -74,6 +74,7 @@ from mcp_server.tools.milestone_tools import (
     ListMilestonesTool,
 )
 from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
+from mcp_server.tools.transition_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
 from mcp_server.tools.project_tools import GetProjectPlanTool, InitializeProjectTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
@@ -157,6 +158,9 @@ class MCPServer:
             # Phase tools (Phase B)
             TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
             ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
+            # TDD Cycle tools (Issue #146)
+            TransitionCycleTool(),
+            ForceCycleTransitionTool(),
             # Scaffold tools (unified artifact scaffolding)
             ScaffoldArtifactTool(
                 manager=ArtifactManager(
