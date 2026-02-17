@@ -11,7 +11,7 @@
 ## Scope
 
 **In Scope:**
-Tool signatures, class diagrams, sequence diagrams, module organization, integration patterns, phase rename implementation
+Tool signatures, class diagrams, sequence diagrams, module organization, validation patterns, phase rename (manual recovery)
 
 **Out of Scope:**
 Implementation code, test cases, performance optimization
@@ -39,7 +39,7 @@ TDD cycle tracking missing: no planning deliverables storage, no cycle state in 
 - [ ] Graceful degradation for discovery tools
 - [ ] Strict validation for TDD workflow
 - [ ] Audit trail for forced transitions
-- [ ] Backward compatibility for project migration
+- [ ] Manual recovery errors for "integration" → "validation" rename
 
 ### 1.3. Constraints
 
