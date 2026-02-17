@@ -187,3 +187,91 @@ class TestTDDPhaseHooks:
         state = state_engine.get_state(branch)
         assert state.get("last_tdd_cycle") == 2
         assert state.get("current_tdd_cycle") is None
+
+
+class TestTransitionHooksWiring:
+    """Tests that transition() automatically calls entry/exit hooks (Issue #146 Cycle 5 D3)."""
+
+    @pytest.fixture()
+    def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
+        """Create project with planning deliverables."""
+        workspace_root = tmp_path
+        issue_number = 999
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        project_manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Hook Wiring Test",
+            workflow_name="feature",
+        )
+        project_manager.save_planning_deliverables(
+            issue_number=issue_number,
+            planning_deliverables={"tdd_cycles": {"total": 1, "cycles": [
+                {"cycle_number": 1, "name": "Basic", "deliverables": ["A"], "exit_criteria": "pass"}
+            ]}},
+        )
+        return workspace_root, issue_number
+
+    def test_transition_to_tdd_calls_enter_hook(
+        self, setup_project: tuple[Path, int]
+    ) -> None:
+        """Test that transition() to 'tdd' auto-calls on_enter_tdd_phase (Issue #146)."""
+        workspace_root, issue_number = setup_project
+        branch = "feature/999-hook-wiring"
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+
+        # Initialize branch in design phase
+        state_engine.initialize_branch(
+            branch=branch, issue_number=issue_number, initial_phase="design"
+        )
+
+        # Verify no TDD cycle before transition
+        state = state_engine.get_state(branch)
+        assert state.get("current_tdd_cycle") is None
+
+        # Transition to TDD - should auto-call on_enter_tdd_phase
+        state_engine.transition(branch=branch, to_phase="tdd")
+
+        # Assert: hook was triggered and cycle 1 was initialized
+        state = state_engine.get_state(branch)
+        assert state.get("current_tdd_cycle") == 1, (
+            "on_enter_tdd_phase was not called by transition() - "
+            "current_tdd_cycle should be 1 after entering TDD phase"
+        )
+
+    def test_transition_from_tdd_calls_exit_hook(
+        self, setup_project: tuple[Path, int]
+    ) -> None:
+        """Test that transition() from 'tdd' auto-calls on_exit_tdd_phase (Issue #146)."""
+        workspace_root, issue_number = setup_project
+        branch = "feature/999-hook-wiring"
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+
+        # Initialize branch in TDD phase at cycle 2
+        state_engine.initialize_branch(
+            branch=branch, issue_number=issue_number, initial_phase="tdd"
+        )
+        state = state_engine.get_state(branch)
+        state["current_tdd_cycle"] = 2
+        state_engine._save_state(branch, state)
+
+        # Transition away from TDD - should auto-call on_exit_tdd_phase
+        state_engine.transition(branch=branch, to_phase="integration")
+
+        # Assert: hook was triggered and last_tdd_cycle was preserved
+        state = state_engine.get_state(branch)
+        assert state.get("last_tdd_cycle") == 2, (
+            "on_exit_tdd_phase was not called by transition() - "
+            "last_tdd_cycle should be 2 after exiting TDD phase"
+        )
+        assert state.get("current_tdd_cycle") is None, (
+            "current_tdd_cycle should be None after exiting TDD phase"
+        )
