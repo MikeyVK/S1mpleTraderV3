@@ -810,3 +810,207 @@ class TestTransitionCycleHistory:
         assert history[1]["cycle_number"] == 3
         assert history[0]["forced"] is False
         assert history[1]["forced"] is False
+
+
+class TestTransitionCycleExitCriteria:
+    """Tests for transition_cycle exit criteria validation.
+
+    Issue #146 Cycle 6 D3: transition_cycle must validate that the current cycle
+    has a non-empty exit_criteria before allowing transition to next cycle.
+    Design.md:287 (validate_exit_criteria(current_tdd_cycle)).
+    """
+
+    @pytest.fixture()
+    def tool(self) -> TransitionCycleTool:
+        """Fixture to instantiate TransitionCycleTool."""
+        return TransitionCycleTool()
+
+    def _make_project(
+        self,
+        tmp_path: Path,
+        cycles: list[dict],
+        current_cycle: int = 1,
+        *,
+        bypass_validation: bool = False,
+    ) -> Path:
+        """Helper to create a project with given cycle definitions.
+
+        Args:
+            bypass_validation: If True, writes cycle data directly to state file,
+                bypassing save_planning_deliverables validation. Used to test edge cases
+                where external/corrupt state has invalid exit_criteria.
+        """
+        workspace_root = tmp_path
+        issue_number = 146
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+
+        project_manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="TDD Cycle Tracking",
+            workflow_name="feature",
+        )
+
+        if bypass_validation:
+            # Write planning deliverables directly to bypass schema validation
+            # Used to simulate corrupt/external state for testing robustness
+            import json
+
+            projects_file = workspace_root / ".st3" / "projects.json"
+            with projects_file.open() as f:
+                projects = json.load(f)
+
+            projects[str(issue_number)]["planning_deliverables"] = {
+                "tdd_cycles": {"total": len(cycles), "cycles": cycles}
+            }
+            with projects_file.open("w") as f:
+                json.dump(projects, f, indent=2)
+        else:
+            planning_deliverables = {
+                "tdd_cycles": {
+                    "total": len(cycles),
+                    "cycles": cycles,
+                }
+            }
+            project_manager.save_planning_deliverables(issue_number, planning_deliverables)
+
+        branch = "feature/146-tdd-cycle-tracking"
+        state_engine.initialize_branch(
+            branch=branch,
+            issue_number=issue_number,
+            initial_phase="tdd",
+        )
+        state = state_engine.get_state(branch)
+        state["current_phase"] = "tdd"
+        state["current_tdd_cycle"] = current_cycle
+        state["last_tdd_cycle"] = None
+        state["tdd_cycle_history"] = []
+        state_engine._save_state(branch, state)
+
+        return workspace_root
+
+    @pytest.mark.asyncio()
+    async def test_transition_blocked_when_current_cycle_has_empty_exit_criteria(
+        self, tool: TransitionCycleTool, tmp_path: Path
+    ) -> None:
+        """transition_cycle must block when current cycle has empty exit_criteria.
+
+        Issue #146 Cycle 6 D3: Design.md:287 - validate_exit_criteria before transition.
+        """
+        workspace_root = self._make_project(
+            tmp_path,
+            bypass_validation=True,
+            cycles=[
+                {
+                    "cycle_number": 1,
+                    "name": "Schema",
+                    "deliverables": ["Schema"],
+                    "exit_criteria": "",  # Empty - bypasses save_planning_deliverables validation
+                },
+                {
+                    "cycle_number": 2,
+                    "name": "Validation",
+                    "deliverables": ["Validators"],
+                    "exit_criteria": "All validators pass",
+                },
+            ],
+        )
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+
+        assert result.is_error, "Must block when exit_criteria is empty"
+        text = result.content[0]["text"]
+        assert "exit" in text.lower() or "criteria" in text.lower()
+
+    @pytest.mark.asyncio()
+    async def test_transition_blocked_when_current_cycle_missing_exit_criteria(
+        self, tool: TransitionCycleTool, tmp_path: Path
+    ) -> None:
+        """transition_cycle must block when current cycle is missing exit_criteria key.
+
+        Issue #146 Cycle 6 D3: exit_criteria key is mandatory.
+        """
+        workspace_root = self._make_project(
+            tmp_path,
+            bypass_validation=True,
+            cycles=[
+                {
+                    "cycle_number": 1,
+                    "name": "Schema",
+                    "deliverables": ["Schema"],
+                    # No exit_criteria key at all
+                },
+                {
+                    "cycle_number": 2,
+                    "name": "Validation",
+                    "deliverables": ["Validators"],
+                    "exit_criteria": "All validators pass",
+                },
+            ],
+        )
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+
+        assert result.is_error, "Must block when exit_criteria key is missing"
+        text = result.content[0]["text"]
+        assert "exit" in text.lower() or "criteria" in text.lower()
+
+    @pytest.mark.asyncio()
+    async def test_transition_succeeds_when_exit_criteria_present(
+        self, tool: TransitionCycleTool, tmp_path: Path
+    ) -> None:
+        """transition_cycle must succeed when current cycle has non-empty exit_criteria.
+
+        Issue #146 Cycle 6 D3: Normal path - exit criteria defined means transition allowed.
+        """
+        workspace_root = self._make_project(
+            tmp_path,
+            cycles=[
+                {
+                    "cycle_number": 1,
+                    "name": "Schema",
+                    "deliverables": ["Schema"],
+                    "exit_criteria": "All schema tests pass",
+                },
+                {
+                    "cycle_number": 2,
+                    "name": "Validation",
+                    "deliverables": ["Validators"],
+                    "exit_criteria": "All validators pass",
+                },
+            ],
+        )
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+
+        assert not result.is_error, f"Must succeed when exit_criteria present: {result.content}"
