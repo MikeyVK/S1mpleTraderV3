@@ -45,7 +45,7 @@ Full CRUD for GitHub issues with filtering and updates.
 
 | Tool | Purpose | Parameters | Returns |
 |------|---------|------------|---------|
-| **CreateIssueTool** | Create new issue | `title`, `body`, `labels` (optional), `milestone_number` (optional), `assignees` (optional) | Issue number, URL |
+| **CreateIssueTool** | Create new issue | **Required:** `issue_type` (feature/bug/hotfix/refactor/docs/chore/epic), `title`, `priority` (critical/high/medium/low/triage), `scope` (architecture/mcp-server/platform/tooling/workflow/documentation), `body` ({`problem`, `expected`?, `actual`?, `context`?, `steps_to_reproduce`?, `related_docs`?}) · **Optional:** `is_epic` (bool), `parent_issue` (int), `milestone` (title string), `assignees` (list) | Issue number, URL |
 | **ListIssuesTool** | List issues with filters | `state` (open/closed/all), `labels` (optional list) | Formatted list with numbers, titles, labels |
 | **GetIssueTool** | Get issue details | `issue_number` | Full issue data, acceptance criteria extracted |
 | **CloseIssueTool** | Close issue | `issue_number`, `comment` (optional) | Confirmation message |
@@ -292,8 +292,7 @@ File: `.vscode/mcp.json`
 4. close_issue issue_number=47 comment="Fixed in PR #124"
 ```
 
-Labels are assembled automatically from `issue_type`, `priority`, `scope` and optional flags
-(`is_epic`, `parent_issue`). Do not pass a `labels` list — the tool enforces label policy from
+Labels are assembled automatically from the required and optional fields. Do not pass a `labels` list — the tool enforces label policy from
 `.st3/issues.yaml` and `.st3/labels.yaml`. `body` is a structured object (not a free-form string);
 `problem` is the only required field.
 
