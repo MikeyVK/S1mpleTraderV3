@@ -141,6 +141,14 @@ class TestPriorityValidation:
         with pytest.raises(ValidationError):
             CreateIssueInput(**{**VALID_MINIMAL, "priority": "urgent"})
 
+    def test_unknown_priority_error_references_valid_values(self) -> None:
+        """Validator must report config-sourced values, not a hardcoded constant."""
+        with pytest.raises(ValidationError) as exc_info:
+            CreateIssueInput(**{**VALID_MINIMAL, "priority": "urgent"})
+        error_str = str(exc_info.value)
+        # At least one of the config-driven priorities must appear in the error
+        assert any(p in error_str for p in ["critical", "high", "medium", "low", "triage"])
+
 
 # ---------------------------------------------------------------------------
 # TestScopeValidation

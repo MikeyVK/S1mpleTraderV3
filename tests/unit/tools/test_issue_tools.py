@@ -44,6 +44,46 @@ async def test_create_issue_tool(mock_github_manager: MagicMock) -> None:
 
 
 @pytest.mark.asyncio
+async def test_create_issue_tool_forwards_milestone(mock_github_manager: MagicMock) -> None:
+    tool = CreateIssueTool(manager=mock_github_manager)
+    issue_mock = {"number": 7, "url": "http://github.com/issues/7", "title": "Milestone Issue"}
+    mock_github_manager.create_issue.return_value = issue_mock
+
+    params = CreateIssueInput(
+        issue_type="feature",
+        title="Milestone Issue",
+        priority="medium",
+        scope="mcp-server",
+        body=IssueBody(problem="Needs milestone"),
+        milestone="v2.0",
+    )
+    await tool.execute(params)
+
+    call_kwargs = mock_github_manager.create_issue.call_args.kwargs
+    assert call_kwargs["milestone"] == "v2.0"
+
+
+@pytest.mark.asyncio
+async def test_create_issue_tool_milestone_none_when_not_set(
+    mock_github_manager: MagicMock,
+) -> None:
+    tool = CreateIssueTool(manager=mock_github_manager)
+    mock_github_manager.create_issue.return_value = {"number": 8, "url": "", "title": "No ms"}
+
+    params = CreateIssueInput(
+        issue_type="feature",
+        title="No milestone",
+        priority="medium",
+        scope="mcp-server",
+        body=IssueBody(problem="No milestone set"),
+    )
+    await tool.execute(params)
+
+    call_kwargs = mock_github_manager.create_issue.call_args.kwargs
+    assert call_kwargs["milestone"] is None
+
+
+@pytest.mark.asyncio
 async def test_update_issue_tool(mock_github_manager: MagicMock) -> None:
     tool = UpdateIssueTool(manager=mock_github_manager)
     mock_github_manager.update_issue.return_value = MagicMock(number=123)

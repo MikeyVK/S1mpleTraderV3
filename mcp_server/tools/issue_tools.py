@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator
 from mcp_server.config.contributor_config import ContributorConfig
 from mcp_server.config.git_config import GitConfig
 from mcp_server.config.issue_config import IssueConfig
+from mcp_server.config.label_config import LabelConfig
 from mcp_server.config.milestone_config import MilestoneConfig
 from mcp_server.config.scope_config import ScopeConfig
 from mcp_server.config.template_config import get_template_root
@@ -77,9 +78,6 @@ class IssueBody(BaseModel):
     }
 
 
-_VALID_PRIORITIES = {"critical", "high", "medium", "low", "triage"}
-
-
 class CreateIssueInput(BaseModel):
     """Structured input for creating a GitHub issue.
 
@@ -129,8 +127,10 @@ class CreateIssueInput(BaseModel):
     @field_validator("priority")
     @classmethod
     def validate_priority(cls, v: str) -> str:
-        if v not in _VALID_PRIORITIES:
-            raise ValueError(f"Unknown priority: '{v}'. Valid values: {sorted(_VALID_PRIORITIES)}")
+        cfg = LabelConfig.load()
+        valid = {lbl.name.split(":", 1)[1] for lbl in cfg.get_labels_by_category("priority")}
+        if v not in valid:
+            raise ValueError(f"Unknown priority: '{v}'. Valid values: {sorted(valid)}")
         return v
 
     @field_validator("scope")
@@ -234,7 +234,7 @@ class CreateIssueTool(BaseTool):
                 title=title_safe,
                 body=body_safe,
                 labels=None,  # labels assembled in Cycle 5
-                milestone=None,
+                milestone=params.milestone,
                 assignees=params.assignees,
             )
             return ToolResult.text(f"Created issue #{issue['number']}: {issue['title']}")
