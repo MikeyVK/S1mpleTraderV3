@@ -470,7 +470,7 @@
       "planning",
       "design",
       "tdd",
-      "integration",
+      "validation",
       "documentation"
     ],
     "skip_reason": null,
