@@ -64,9 +64,7 @@ class TestParentLabelPattern:
 
     def test_parent_pattern_is_numeric_only(self, labels_data: dict) -> None:
         patterns = {p["pattern"] for p in labels_data.get("label_patterns", [])}
-        assert r"^parent:\d+$" in patterns, (
-            f"Expected '^parent:\\d+$' but got: {patterns}"
-        )
+        assert r"^parent:\d+$" in patterns, f"Expected '^parent:\\d+$' but got: {patterns}"
 
     def test_old_parent_pattern_is_gone(self, labels_data: dict) -> None:
         patterns = {p["pattern"] for p in labels_data.get("label_patterns", [])}
