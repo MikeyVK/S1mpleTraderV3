@@ -116,6 +116,13 @@ class TransitionCycleTool(BaseTool):
             if "tdd_cycle_history" not in state:
                 state["tdd_cycle_history"] = []
 
+            history_entry = {
+                "cycle_number": params.to_cycle,
+                "forced": False,
+                "entered": datetime.now(UTC).isoformat(),
+            }
+            state["tdd_cycle_history"].append(history_entry)
+
             # Save state
             state_engine._save_state(branch, state)
 
@@ -247,29 +254,33 @@ class ForceCycleTransitionTool(BaseTool):
             state["last_tdd_cycle"] = from_cycle
             state["current_tdd_cycle"] = params.to_cycle
 
-            # Create audit trail entry
-            if "tdd_cycle_history" not in state:
-                state["tdd_cycle_history"] = []
-
-            audit_entry = {
-                "from_cycle": from_cycle,
-                "to_cycle": params.to_cycle,
-                "timestamp": datetime.now(UTC).isoformat(),
-                "skip_reason": params.skip_reason,
-                "human_approval": params.human_approval,
-                "transition_type": "forced",
-            }
-            state["tdd_cycle_history"].append(audit_entry)
-
-            # Save state
-            state_engine._save_state(branch, state)
-
-            # Get cycle name for message
+            # Get cycle name (needed for audit entry)
             cycles = tdd_cycles.get("cycles", [])
             cycle_details = next(
                 (c for c in cycles if c.get("cycle_number") == params.to_cycle), None
             )
             cycle_name = cycle_details.get("name") if cycle_details else "Unknown"
+
+            # Create audit trail entry (spec: cycle_number, forced, skipped_cycles)
+            if "tdd_cycle_history" not in state:
+                state["tdd_cycle_history"] = []
+
+            skipped_cycles = list(
+                range(min(from_cycle, params.to_cycle) + 1, max(from_cycle, params.to_cycle))
+            )
+            audit_entry = {
+                "cycle_number": params.to_cycle,
+                "name": cycle_name,
+                "entered": datetime.now(UTC).isoformat(),
+                "forced": True,
+                "skip_reason": params.skip_reason,
+                "human_approval": params.human_approval,
+                "skipped_cycles": skipped_cycles,
+            }
+            state["tdd_cycle_history"].append(audit_entry)
+
+            # Save state
+            state_engine._save_state(branch, state)
 
             # Success message
             direction = "backward" if params.to_cycle < from_cycle else "skip"

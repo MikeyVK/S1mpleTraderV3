@@ -9,6 +9,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.transition_tools import (
     ForceCycleTransitionInput,
     ForceCycleTransitionTool,
@@ -19,7 +21,7 @@ from mcp_server.tools.transition_tools import (
 
 class TestTransitionCycleTool:
     """Tests for transition_cycle tool.
-    
+
     Issue #146 Cycle 4: Sequential cycle progressions with validation.
     """
 
@@ -31,9 +33,6 @@ class TestTransitionCycleTool:
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
         """Create project with planning deliverables and state."""
-        from mcp_server.managers.project_manager import ProjectManager
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-
         workspace_root = tmp_path
         issue_number = 146
 
@@ -100,10 +99,10 @@ class TestTransitionCycleTool:
         self, tool: TransitionCycleTool, setup_project: tuple[Path, int]
     ) -> None:
         """Test successful forward transition from cycle 1 to 2.
-        
+
         Issue #146 Cycle 4: Sequential progression validation.
         """
-        workspace_root, issue_number = setup_project
+        workspace_root, _ = setup_project
 
         # Mock git and settings
         with (
@@ -120,11 +119,8 @@ class TestTransitionCycleTool:
 
         # Assert successful transition
         assert not result.is_error, f"Expected success: {result.content}"
-        
-        # Check state updated
-        from mcp_server.managers.project_manager import ProjectManager
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
 
+        # Check state updated
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -138,15 +134,12 @@ class TestTransitionCycleTool:
         self, tool: TransitionCycleTool, setup_project: tuple[Path, int]
     ) -> None:
         """Test that backward transitions are blocked.
-        
+
         Issue #146 Cycle 4: Forward-only enforcement.
         """
-        workspace_root, issue_number = setup_project
+        workspace_root, _ = setup_project
 
         # Set current cycle to 2
-        from mcp_server.managers.project_manager import ProjectManager
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -179,10 +172,10 @@ class TestTransitionCycleTool:
         self, tool: TransitionCycleTool, setup_project: tuple[Path, int]
     ) -> None:
         """Test that skipping cycles requires force_cycle_transition.
-        
+
         Issue #146 Cycle 4: Sequential validation.
         """
-        workspace_root, issue_number = setup_project
+        workspace_root, _ = setup_project
 
         # Mock git
         with (
@@ -209,15 +202,12 @@ class TestTransitionCycleTool:
         self, tool: TransitionCycleTool, setup_project: tuple[Path, int]
     ) -> None:
         """Test that transition only works during TDD phase.
-        
+
         Issue #146 Cycle 4: Phase enforcement.
         """
-        workspace_root, issue_number = setup_project
+        workspace_root, _ = setup_project
 
         # Change phase to design
-        from mcp_server.managers.project_manager import ProjectManager
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -247,7 +237,7 @@ class TestTransitionCycleTool:
 
 class TestForceCycleTransitionTool:
     """Tests for force_cycle_transition tool.
-    
+
     Issue #146 Cycle 4: Forced transitions with audit trail.
     """
 
@@ -259,9 +249,6 @@ class TestForceCycleTransitionTool:
     @pytest.fixture()
     def setup_forced_project(self, tmp_path: Path) -> tuple[Path, int]:
         """Create project in TDD phase at cycle 2 for forced transitions."""
-        from mcp_server.managers.project_manager import ProjectManager
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-
         workspace_root = tmp_path
         issue_number = 146
 
@@ -329,7 +316,7 @@ class TestForceCycleTransitionTool:
         self, tool: ForceCycleTransitionTool, setup_forced_project: tuple[Path, int]
     ) -> None:
         """Test that forced backward transition (2→1) works with approval."""
-        workspace_root, issue_number = setup_forced_project
+        workspace_root, _ = setup_forced_project
 
         with (
             patch("mcp_server.tools.transition_tools.settings") as mock_settings,
@@ -356,9 +343,6 @@ class TestForceCycleTransitionTool:
         assert "1" in text
 
         # Verify state updated
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -371,8 +355,8 @@ class TestForceCycleTransitionTool:
         history = state.get("tdd_cycle_history", [])
         assert len(history) > 0, "Expected audit trail entry"
         last_entry = history[-1]
-        assert last_entry.get("from_cycle") == 2
-        assert last_entry.get("to_cycle") == 1
+        assert last_entry.get("cycle_number") == 1
+        assert last_entry.get("forced") is True
         assert "Re-testing schema changes" in last_entry.get("skip_reason", "")
         assert "John approved" in last_entry.get("human_approval", "")
 
@@ -381,7 +365,7 @@ class TestForceCycleTransitionTool:
         self, tool: ForceCycleTransitionTool, setup_forced_project: tuple[Path, int]
     ) -> None:
         """Test that forced skip transition (2→4) works with approval."""
-        workspace_root, issue_number = setup_forced_project
+        workspace_root, _ = setup_forced_project
 
         with (
             patch("mcp_server.tools.transition_tools.settings") as mock_settings,
@@ -408,9 +392,6 @@ class TestForceCycleTransitionTool:
         assert "4" in text
 
         # Verify state
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -423,7 +404,7 @@ class TestForceCycleTransitionTool:
         self, tool: ForceCycleTransitionTool, setup_forced_project: tuple[Path, int]
     ) -> None:
         """Test that forced transition blocks when skip_reason is empty."""
-        workspace_root, issue_number = setup_forced_project
+        workspace_root, _ = setup_forced_project
 
         with (
             patch("mcp_server.tools.transition_tools.settings") as mock_settings,
@@ -453,7 +434,7 @@ class TestForceCycleTransitionTool:
         self, tool: ForceCycleTransitionTool, setup_forced_project: tuple[Path, int]
     ) -> None:
         """Test that forced transition blocks when human_approval is empty."""
-        workspace_root, issue_number = setup_forced_project
+        workspace_root, _ = setup_forced_project
 
         with (
             patch("mcp_server.tools.transition_tools.settings") as mock_settings,
@@ -495,9 +476,6 @@ class TestForceCycleAuditSchema:
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
         """Create project in TDD phase at cycle 2."""
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         workspace_root = tmp_path
         issue_number = 146
 
@@ -589,9 +567,6 @@ class TestForceCycleAuditSchema:
 
         assert not result.is_error, f"Expected success: {result.content}"
 
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -633,9 +608,6 @@ class TestForceCycleAuditSchema:
                     human_approval="John approved",
                 )
             )
-
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
 
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
@@ -680,9 +652,6 @@ class TestForceCycleAuditSchema:
 
         assert not result.is_error
 
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -711,9 +680,6 @@ class TestTransitionCycleHistory:
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
         """Create project in TDD phase at cycle 1."""
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         workspace_root = tmp_path
         issue_number = 146
 
@@ -793,9 +759,6 @@ class TestTransitionCycleHistory:
 
         assert not result.is_error, f"Expected success: {result.content}"
 
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -835,9 +798,6 @@ class TestTransitionCycleHistory:
             result2 = await tool.execute(TransitionCycleInput(to_cycle=3))
             assert not result2.is_error
 
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -850,4 +810,3 @@ class TestTransitionCycleHistory:
         assert history[1]["cycle_number"] == 3
         assert history[0]["forced"] is False
         assert history[1]["forced"] is False
-
