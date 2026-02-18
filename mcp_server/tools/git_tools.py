@@ -248,7 +248,12 @@ class GitCommitTool(BaseTool):
             )
 
         # Enforce cycle_number for TDD phase (Issue #146, planning.md Q3)
-        if workflow_phase == "tdd" and params.cycle_number is None:
+        # Must check BEFORE the legacy path maps phase -> tdd to avoid bypass (Cycle 7)
+        effective_phase = workflow_phase
+        if effective_phase is None and params.phase is not None and params.phase != "docs":
+            effective_phase = "tdd"  # legacy phases "red"/"green"/"refactor" all map to tdd
+
+        if effective_phase == "tdd" and params.cycle_number is None:
             raise ValueError(
                 "cycle_number is required for TDD phase commits. "
                 "All TDD work belongs to a specific cycle. "
