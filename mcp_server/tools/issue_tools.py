@@ -1,5 +1,6 @@
 """Issue management tools."""
 
+import json
 import unicodedata
 from typing import Any, Literal
 
@@ -118,8 +119,6 @@ class CreateIssueInput(BaseModel):
         'is not of type object'.
         """
         if isinstance(v, str):
-            import json
-
             try:
                 parsed = json.loads(v)
             except json.JSONDecodeError as e:

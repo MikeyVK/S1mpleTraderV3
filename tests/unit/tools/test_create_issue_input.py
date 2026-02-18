@@ -10,6 +10,8 @@ Tests:
 - Breaking change: body must be IssueBody, not str
 """
 
+import json
+
 import pytest
 from pydantic import ValidationError
 
@@ -247,7 +249,6 @@ class TestBodyJsonStringCoercion:
 
     def test_body_json_string_minimal_is_coerced(self) -> None:
         """A JSON string with only `problem` is parsed into IssueBody."""
-        import json
         body_str = json.dumps({"problem": "Widget crashes on startup."})
         inp = CreateIssueInput(**{**VALID_MINIMAL, "body": body_str})
         assert isinstance(inp.body, IssueBody)
@@ -255,7 +256,6 @@ class TestBodyJsonStringCoercion:
 
     def test_body_json_string_full_is_coerced(self) -> None:
         """A JSON string with all optional fields is fully parsed."""
-        import json
         body_str = json.dumps({
             "problem": "Login fails.",
             "expected": "Redirect to dashboard.",
@@ -271,7 +271,6 @@ class TestBodyJsonStringCoercion:
 
     def test_body_json_string_missing_problem_raises(self) -> None:
         """A JSON string without `problem` raises ValidationError."""
-        import json
         body_str = json.dumps({"expected": "Something"})
         with pytest.raises(ValidationError):
             CreateIssueInput(**{**VALID_MINIMAL, "body": body_str})
