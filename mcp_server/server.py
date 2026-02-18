@@ -1,4 +1,5 @@
 """MCP Server Entrypoint."""
+
 import asyncio
 import sys
 import time
@@ -74,7 +75,6 @@ from mcp_server.tools.milestone_tools import (
     ListMilestonesTool,
 )
 from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
-from mcp_server.tools.transition_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
 from mcp_server.tools.project_tools import GetProjectPlanTool, InitializeProjectTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
@@ -83,6 +83,7 @@ from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
 from mcp_server.tools.template_validation_tool import TemplateValidationTool
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.tools.transition_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
 # Initialize logging
@@ -164,8 +165,7 @@ class MCPServer:
             # Scaffold tools (unified artifact scaffolding)
             ScaffoldArtifactTool(
                 manager=ArtifactManager(
-                    workspace_root=workspace_root,
-                    template_registry=self.template_registry
+                    workspace_root=workspace_root, template_registry=self.template_registry
                 )
             ),
             # Discovery tools
@@ -177,36 +177,40 @@ class MCPServer:
         github_token = settings.github.token
         if github_token:
             self.resources.append(GitHubIssuesResource())
-            self.tools.extend([
-                # GitHub Issue tools
-                CreateIssueTool(),
-                ListIssuesTool(),
-                GetIssueTool(),
-                CloseIssueTool(),
-                UpdateIssueTool(),
-                # PR and Label tools (require token at init time)
-                CreatePRTool(),
-                ListPRsTool(),
-                MergePRTool(),
-                AddLabelsTool(),
-                ListLabelsTool(),
-                CreateLabelTool(),
-                DeleteLabelTool(),
-                RemoveLabelsTool(),
-                ListMilestonesTool(),
-                CreateMilestoneTool(),
-                CloseMilestoneTool(),
-            ])
+            self.tools.extend(
+                [
+                    # GitHub Issue tools
+                    CreateIssueTool(),
+                    ListIssuesTool(),
+                    GetIssueTool(),
+                    CloseIssueTool(),
+                    UpdateIssueTool(),
+                    # PR and Label tools (require token at init time)
+                    CreatePRTool(),
+                    ListPRsTool(),
+                    MergePRTool(),
+                    AddLabelsTool(),
+                    ListLabelsTool(),
+                    CreateLabelTool(),
+                    DeleteLabelTool(),
+                    RemoveLabelsTool(),
+                    ListMilestonesTool(),
+                    CreateMilestoneTool(),
+                    CloseMilestoneTool(),
+                ]
+            )
             logger.info("GitHub integration enabled")
         else:
             # Register issue tools without token so schemas are available; execution will error.
-            self.tools.extend([
-                CreateIssueTool(),
-                ListIssuesTool(),
-                GetIssueTool(),
-                CloseIssueTool(),
-                UpdateIssueTool(),
-            ])
+            self.tools.extend(
+                [
+                    CreateIssueTool(),
+                    ListIssuesTool(),
+                    GetIssueTool(),
+                    CloseIssueTool(),
+                    UpdateIssueTool(),
+                ]
+            )
             logger.info(
                 "GitHub token not configured - GitHub issue tools available but will "
                 "return error on use. Set GITHUB_TOKEN to enable full functionality."
@@ -215,11 +219,7 @@ class MCPServer:
         self.setup_handlers()
 
     def _validate_tool_arguments(
-        self,
-        tool: BaseTool,
-        arguments: dict[str, Any] | None,
-        call_id: str,
-        name: str
+        self, tool: BaseTool, arguments: dict[str, Any] | None, call_id: str, name: str
     ) -> BaseModel | dict[str, Any] | list[TextContent | ImageContent | EmbeddedResource]:
         """Validate tool arguments against args_model.
 
@@ -234,38 +234,41 @@ class MCPServer:
         model_cls = cast(type[BaseModel], tool.args_model)
         logger.debug(
             "Validating tool arguments",
-            extra={"props": {
-                "call_id": call_id,
-                "tool_name": name,
-                "model": model_cls.__name__,
-            }}
+            extra={
+                "props": {
+                    "call_id": call_id,
+                    "tool_name": name,
+                    "model": model_cls.__name__,
+                }
+            },
         )
         try:
             model_validated = model_cls(**(arguments or {}))
             logger.debug(
                 "Arguments validated successfully",
-                extra={"props": {
-                    "call_id": call_id,
-                    "tool_name": name,
-                }}
+                extra={
+                    "props": {
+                        "call_id": call_id,
+                        "tool_name": name,
+                    }
+                },
             )
             return model_validated
         except ValidationError as validation_error:
             logger.warning(
                 "Argument validation failed: %s",
                 validation_error,
-                extra={"props": {
-                    "call_id": call_id,
-                    "tool_name": name,
-                    "model": model_cls.__name__,
-                    "arguments": arguments,
-                }}
+                extra={
+                    "props": {
+                        "call_id": call_id,
+                        "tool_name": name,
+                        "model": model_cls.__name__,
+                        "arguments": arguments,
+                    }
+                },
             )
             error_details = str(validation_error)
-            return [TextContent(
-                type="text",
-                text=f"Invalid input for {name}: {error_details}"
-            )]
+            return [TextContent(type="text", text=f"Invalid input for {name}: {error_details}")]
 
     @staticmethod
     def _augment_text_with_error_metadata(text: str, result: ToolResult) -> str:
@@ -282,8 +285,7 @@ class MCPServer:
         return text
 
     def _convert_tool_result_to_content(
-        self,
-        result: ToolResult
+        self, result: ToolResult
     ) -> list[TextContent | ImageContent | EmbeddedResource]:
         """Convert ToolResult to MCP content list."""
         response_content: list[TextContent | ImageContent | EmbeddedResource] = []
@@ -294,16 +296,13 @@ class MCPServer:
                 text = self._augment_text_with_error_metadata(text, result)
                 response_content.append(TextContent(type="text", text=text))
             elif content.get("type") == "image":
-                response_content.append(ImageContent(
-                    type="image",
-                    data=content["data"],
-                    mimeType=content["mimeType"]
-                ))
+                response_content.append(
+                    ImageContent(type="image", data=content["data"], mimeType=content["mimeType"])
+                )
             elif content.get("type") == "resource":
-                response_content.append(EmbeddedResource(
-                    type="resource",
-                    resource=content["resource"]
-                ))
+                response_content.append(
+                    EmbeddedResource(type="resource", resource=content["resource"])
+                )
 
         return response_content
 
@@ -317,7 +316,7 @@ class MCPServer:
                     uri=AnyUrl(r.uri_pattern),
                     name=r.uri_pattern.rsplit("/", maxsplit=1)[-1],
                     description=r.description,
-                    mimeType=r.mime_type
+                    mimeType=r.mime_type,
                 )
                 for r in self.resources
             ]
@@ -332,18 +331,13 @@ class MCPServer:
         @self.server.list_tools()  # type: ignore[no-untyped-call, untyped-decorator]
         async def handle_list_tools() -> list[Tool]:
             return [
-                Tool(
-                    name=t.name,
-                    description=t.description,
-                    inputSchema=t.input_schema
-                )
+                Tool(name=t.name, description=t.description, inputSchema=t.input_schema)
                 for t in self.tools
             ]
 
         @self.server.call_tool()  # type: ignore[untyped-decorator]
         async def handle_call_tool(
-            name: str,
-            arguments: dict[str, Any] | None
+            name: str, arguments: dict[str, Any] | None
         ) -> list[TextContent | ImageContent | EmbeddedResource]:
             call_id = uuid.uuid4().hex
             start_time = time.perf_counter()
@@ -351,20 +345,20 @@ class MCPServer:
 
             logger.debug(
                 "Tool call received",
-                extra={"props": {
-                    "call_id": call_id,
-                    "tool_name": name,
-                    "argument_keys": argument_keys,
-                }}
+                extra={
+                    "props": {
+                        "call_id": call_id,
+                        "tool_name": name,
+                        "argument_keys": argument_keys,
+                    }
+                },
             )
 
             for tool in self.tools:
                 if tool.name == name:
                     try:
                         # Validate arguments
-                        validated = self._validate_tool_arguments(
-                            tool, arguments, call_id, name
-                        )
+                        validated = self._validate_tool_arguments(tool, arguments, call_id, name)
                         # Early return if validation failed
                         if isinstance(validated, list):
                             return validated
@@ -378,22 +372,26 @@ class MCPServer:
                         duration_ms = (time.perf_counter() - start_time) * 1000.0
                         logger.debug(
                             "Tool call completed",
-                            extra={"props": {
-                                "call_id": call_id,
-                                "tool_name": name,
-                                "duration_ms": duration_ms,
-                            }}
+                            extra={
+                                "props": {
+                                    "call_id": call_id,
+                                    "tool_name": name,
+                                    "duration_ms": duration_ms,
+                                }
+                            },
                         )
                         return response_content
                     except asyncio.CancelledError:
                         duration_ms = (time.perf_counter() - start_time) * 1000.0
                         logger.info(
                             "Tool call cancelled",
-                            extra={"props": {
-                                "call_id": call_id,
-                                "tool_name": name,
-                                "duration_ms": duration_ms,
-                            }}
+                            extra={
+                                "props": {
+                                    "call_id": call_id,
+                                    "tool_name": name,
+                                    "duration_ms": duration_ms,
+                                }
+                            },
                         )
                         raise
                     except (KeyError, AttributeError, TypeError) as e:
@@ -403,17 +401,18 @@ class MCPServer:
                             "Response processing failed: %s",
                             e,
                             exc_info=True,
-                            extra={"props": {
-                                "call_id": call_id,
-                                "tool_name": name,
-                                "duration_ms": duration_ms,
-                                "error_type": type(e).__name__,
-                            }}
+                            extra={
+                                "props": {
+                                    "call_id": call_id,
+                                    "tool_name": name,
+                                    "duration_ms": duration_ms,
+                                    "error_type": type(e).__name__,
+                                }
+                            },
                         )
-                        return [TextContent(
-                            type="text",
-                            text=f"Error processing tool response: {e!s}"
-                        )]
+                        return [
+                            TextContent(type="text", text=f"Error processing tool response: {e!s}")
+                        ]
             raise ValueError(f"Tool not found: {name}")
 
     async def run(self) -> None:
@@ -423,10 +422,7 @@ class MCPServer:
         # Validate label configuration at startup
         validate_label_config_on_startup()
 
-        logger.info(
-            "Starting MCP server: %s",
-            server_name
-        )
+        logger.info("Starting MCP server: %s", server_name)
         lifecycle_logger.info("MCP server running")
 
         # Force LF only on Windows to prevent "invalid trailing data"
@@ -436,9 +432,7 @@ class MCPServer:
         try:
             async with stdio_server(stdout=stdout) as (read_stream, write_stream):
                 await self.server.run(
-                    read_stream,
-                    write_stream,
-                    self.server.create_initialization_options()
+                    read_stream, write_stream, self.server.create_initialization_options()
                 )
         except KeyboardInterrupt:
             lifecycle_logger.info("MCP server interrupted by user")
@@ -447,10 +441,7 @@ class MCPServer:
                 "MCP server crashed: %s",
                 e,
                 exc_info=True,
-                extra={"props": {
-                    "error_type": type(e).__name__,
-                    "error_message": str(e)
-                }}
+                extra={"props": {"error_type": type(e).__name__, "error_message": str(e)}},
             )
             # Re-raise to ensure proper exit code
             raise
