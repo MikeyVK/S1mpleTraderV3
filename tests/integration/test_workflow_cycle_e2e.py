@@ -212,6 +212,24 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["workflow_phase"] == "design"
     assert result["source"] == "commit-scope"
 
+    # Save planning deliverables (required by on_enter_tdd_phase hook, Issue #146)
+    pm.save_planning_deliverables(
+        999,
+        {
+            "tdd_cycles": {
+                "total": 1,
+                "cycles": [
+                    {
+                        "cycle_number": 1,
+                        "name": "End-to-end TDD cycle",
+                        "deliverables": ["test_workflow_cycle_e2e"],
+                        "exit_criteria": "E2E test passes",
+                    }
+                ],
+            }
+        },
+    )
+
     # Transition to TDD
     state_engine.transition(branch="feature/999-e2e-test", to_phase="tdd")
 
