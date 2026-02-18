@@ -125,3 +125,41 @@ class TestRenderBody:
         result = tool._render_body(body)
         assert isinstance(result, str)
         assert len(result) > 0
+
+
+# ---------------------------------------------------------------------------
+# TestRenderBodyTitleAndFormat  (Cycle 7 RED — bug fixes for issue #157)
+# ---------------------------------------------------------------------------
+
+
+class TestRenderBodyTitleAndFormat:
+    """_render_body() must forward title as H1 and hide the SCAFFOLD header."""
+
+    def test_render_body_title_appears_as_h1(self, tool: CreateIssueTool) -> None:
+        """Title arg must be rendered as `# <title>` in the output."""
+        body = IssueBody(problem="Widget explodes on startup")
+        result = tool._render_body(body, title="Widget Login Bug")
+        assert "# Widget Login Bug" in result
+
+    def test_render_body_scaffold_not_visible_as_plain_text(self, tool: CreateIssueTool) -> None:
+        """SCAFFOLD metadata must NOT appear as visible plain text (must be HTML comment)."""
+        body = IssueBody(problem="p")
+        result = tool._render_body(body, title="Test")
+        # Plain-text form from non-markdown rendering — must not be present
+        assert "# template=" not in result
+        assert "# version=" not in result
+
+    def test_render_body_scaffold_is_html_comment(self, tool: CreateIssueTool) -> None:
+        """SCAFFOLD metadata must be rendered as an HTML comment (invisible on GitHub)."""
+        body = IssueBody(problem="p")
+        result = tool._render_body(body, title="Test")
+        assert "<!-- template=" in result
+
+    def test_render_body_different_titles_produce_different_h1(self, tool: CreateIssueTool) -> None:
+        """Different titles produce different H1 headings."""
+        body = IssueBody(problem="p")
+        result_a = tool._render_body(body, title="Alpha")
+        result_b = tool._render_body(body, title="Beta")
+        assert "# Alpha" in result_a
+        assert "# Beta" in result_b
+        assert "# Alpha" not in result_b
