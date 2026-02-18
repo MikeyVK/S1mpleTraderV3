@@ -1,0 +1,4 @@
+version: "1.0"
+contributors: []
+# Schema: { login: str, name: str (optional) }
+# Populate manually or via future sync tooling.

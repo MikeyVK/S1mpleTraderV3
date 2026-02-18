@@ -7,6 +7,7 @@
 """
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -48,7 +49,9 @@ def _populated_contributors_path() -> Path:
 
 
 @pytest.fixture(name="empty_contributor_config")
-def _empty_contributor_config(empty_contributors_path: Path) -> ContributorConfig:
+def _empty_contributor_config(
+    empty_contributors_path: Path,
+) -> Generator[ContributorConfig, None, None]:
     ContributorConfig.reset_instance()
     cfg = ContributorConfig.from_file(str(empty_contributors_path))
     yield cfg
@@ -56,7 +59,9 @@ def _empty_contributor_config(empty_contributors_path: Path) -> ContributorConfi
 
 
 @pytest.fixture(name="populated_contributor_config")
-def _populated_contributor_config(populated_contributors_path: Path) -> ContributorConfig:
+def _populated_contributor_config(
+    populated_contributors_path: Path,
+) -> Generator[ContributorConfig, None, None]:
     ContributorConfig.reset_instance()
     cfg = ContributorConfig.from_file(str(populated_contributors_path))
     yield cfg
@@ -71,9 +76,7 @@ def _populated_contributor_config(populated_contributors_path: Path) -> Contribu
 class TestContributorConfigFromFile:
     """Loading and singleton behaviour."""
 
-    def test_from_file_loads_empty_list(
-        self, empty_contributor_config: ContributorConfig
-    ) -> None:
+    def test_from_file_loads_empty_list(self, empty_contributor_config: ContributorConfig) -> None:
         assert empty_contributor_config.contributors == []
 
     def test_from_file_loads_populated_list(
@@ -87,9 +90,7 @@ class TestContributorConfigFromFile:
         self, populated_contributor_config: ContributorConfig
     ) -> None:
         """name field is optional — bob has no name."""
-        bob = next(
-            c for c in populated_contributor_config.contributors if c.login == "bob"
-        )
+        bob = next(c for c in populated_contributor_config.contributors if c.login == "bob")
         assert bob.name is None
 
     def test_from_file_raises_on_missing_file(self) -> None:

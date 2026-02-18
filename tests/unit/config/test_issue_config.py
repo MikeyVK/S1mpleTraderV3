@@ -7,6 +7,7 @@
 """
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -46,7 +47,7 @@ def _issues_yaml_path() -> Path:
 
 
 @pytest.fixture(name="issue_config")
-def _issue_config(issues_yaml_path: Path) -> IssueConfig:
+def _issue_config(issues_yaml_path: Path) -> Generator[IssueConfig, None, None]:
     """Return a fresh IssueConfig loaded from temporary yaml."""
     IssueConfig.reset_instance()
     cfg = IssueConfig.from_file(str(issues_yaml_path))
@@ -93,9 +94,7 @@ class TestIssueConfigGetWorkflow:
     def test_get_workflow_hotfix(self, issue_config: IssueConfig) -> None:
         assert issue_config.get_workflow("hotfix") == "hotfix"
 
-    def test_get_workflow_chore_maps_to_feature_workflow(
-        self, issue_config: IssueConfig
-    ) -> None:
+    def test_get_workflow_chore_maps_to_feature_workflow(self, issue_config: IssueConfig) -> None:
         assert issue_config.get_workflow("chore") == "feature"
 
     def test_get_workflow_raises_on_unknown_type(self, issue_config: IssueConfig) -> None:

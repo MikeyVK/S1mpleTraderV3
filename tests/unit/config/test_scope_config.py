@@ -7,6 +7,7 @@
 """
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -34,7 +35,7 @@ def _scopes_yaml_path() -> Path:
 
 
 @pytest.fixture(name="scope_config")
-def _scope_config(scopes_yaml_path: Path) -> ScopeConfig:
+def _scope_config(scopes_yaml_path: Path) -> Generator[ScopeConfig, None, None]:
     ScopeConfig.reset_instance()
     cfg = ScopeConfig.from_file(str(scopes_yaml_path))
     yield cfg
@@ -72,14 +73,10 @@ class TestScopeConfigHasScope:
     def test_has_scope_returns_true_for_known_scope(self, scope_config: ScopeConfig) -> None:
         assert scope_config.has_scope("tooling") is True
 
-    def test_has_scope_returns_true_for_hyphenated_scope(
-        self, scope_config: ScopeConfig
-    ) -> None:
+    def test_has_scope_returns_true_for_hyphenated_scope(self, scope_config: ScopeConfig) -> None:
         assert scope_config.has_scope("mcp-server") is True
 
-    def test_has_scope_returns_false_for_unknown_scope(
-        self, scope_config: ScopeConfig
-    ) -> None:
+    def test_has_scope_returns_false_for_unknown_scope(self, scope_config: ScopeConfig) -> None:
         assert scope_config.has_scope("unknown-scope") is False
 
     def test_has_scope_is_case_sensitive(self, scope_config: ScopeConfig) -> None:

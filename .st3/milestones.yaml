@@ -1,0 +1,4 @@
+version: "1.0"
+milestones: []
+# Schema: { number: int, title: str, state: "open"|"closed" }
+# Populate manually or via future sync tooling.

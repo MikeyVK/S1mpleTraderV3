@@ -7,6 +7,7 @@
 """
 
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -48,7 +49,7 @@ def _populated_milestones_path() -> Path:
 
 
 @pytest.fixture(name="empty_milestone_config")
-def _empty_milestone_config(empty_milestones_path: Path) -> MilestoneConfig:
+def _empty_milestone_config(empty_milestones_path: Path) -> Generator[MilestoneConfig, None, None]:
     MilestoneConfig.reset_instance()
     cfg = MilestoneConfig.from_file(str(empty_milestones_path))
     yield cfg
@@ -56,7 +57,9 @@ def _empty_milestone_config(empty_milestones_path: Path) -> MilestoneConfig:
 
 
 @pytest.fixture(name="populated_milestone_config")
-def _populated_milestone_config(populated_milestones_path: Path) -> MilestoneConfig:
+def _populated_milestone_config(
+    populated_milestones_path: Path,
+) -> Generator[MilestoneConfig, None, None]:
     MilestoneConfig.reset_instance()
     cfg = MilestoneConfig.from_file(str(populated_milestones_path))
     yield cfg
