@@ -8,6 +8,8 @@ import pytest
 from pydantic import ValidationError
 
 from mcp_server.config.settings import settings
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.discovery_tools import (
     GetWorkContextInput,
     GetWorkContextTool,
@@ -309,7 +311,6 @@ class TestGetWorkContextTool:
         assert "Recovery Info" in text
 
 
-
 class TestGetWorkContextTddCycleInfo:
     """Tests for TDD cycle info in get_work_context.
 
@@ -332,9 +333,6 @@ class TestGetWorkContextTddCycleInfo:
         workspace_root = tmp_path
 
         # Create minimal project structure
-        from mcp_server.managers.project_manager import ProjectManager
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -409,11 +407,12 @@ class TestGetWorkContextTddCycleInfo:
         assert not result.is_error, f"Expected success, got error: {result.content}"
         text = result.content[0]["text"]
         # Check for TDD cycle info (case insensitive)
-        assert (
-            "TDD Cycle" in text or "tdd cycle" in text.lower()
-        ), f"Expected cycle info in output: {text}"
+        assert "TDD Cycle" in text or "tdd cycle" in text.lower(), (
+            f"Expected cycle info in output: {text}"
+        )
         assert "Validation Logic" in text, f"Expected cycle name in output: {text}"
         assert "2" in text, f"Expected current cycle number in output: {text}"
+
     @pytest.mark.asyncio
     async def test_tdd_cycle_info_hidden_outside_tdd_phase(
         self, tool: GetWorkContextTool, tmp_path: Path
@@ -425,9 +424,6 @@ class TestGetWorkContextTddCycleInfo:
         workspace_root = tmp_path
 
         # Create minimal project structure
-        from mcp_server.managers.project_manager import ProjectManager
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -491,9 +487,7 @@ class TestGetWorkContextTddCycleInfo:
         text = result.content[0]["text"]
         # Should NOT mention TDD cycle info or cycle names
         assert "TDD Cycle" not in text, f"Expected NO cycle info in design phase: {text}"
-        assert (
-            "Validation Logic" not in text
-        ), f"Expected NO cycle name in design phase: {text}"
+        assert "Validation Logic" not in text, f"Expected NO cycle name in design phase: {text}"
 
     @pytest.mark.asyncio
     async def test_tdd_cycle_info_graceful_degradation(
@@ -506,9 +500,6 @@ class TestGetWorkContextTddCycleInfo:
         workspace_root = tmp_path
 
         # Create minimal project structure WITHOUT planning deliverables
-        from mcp_server.managers.project_manager import ProjectManager
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
             workspace_root=workspace_root, project_manager=project_manager
@@ -580,9 +571,6 @@ class TestTddCycleInfoStatusField:
         Issue #146 Cycle 7 D2: Align implementation with design spec.
         The status field is always 'in_progress' when the cycle is active.
         """
-        from mcp_server.managers.phase_state_engine import PhaseStateEngine
-        from mcp_server.managers.project_manager import ProjectManager
-
         workspace_root = tmp_path
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
@@ -624,9 +612,7 @@ class TestTddCycleInfoStatusField:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             # Provide a non-empty commits list so ScopeDecoder is invoked (not short-circuited)
-            mock_git.get_recent_commits.return_value = [
-                "test(P_TDD_SP_RED): add status field test"
-            ]
+            mock_git.get_recent_commits.return_value = ["test(P_TDD_SP_RED): add status field test"]
             mock_git_class.return_value = mock_git
 
             mock_settings.github.token = None
@@ -647,6 +633,6 @@ class TestTddCycleInfoStatusField:
         assert not result.is_error, f"Tool failed: {result.content}"
         # The status field must appear in the rendered output (in_progress)
         text = result.content[0]["text"]
-        assert (
-            "in_progress" in text or "in progress" in text.lower()
-        ), f"Expected 'in_progress' status in tdd_cycle_info output: {text}"
+        assert "in_progress" in text or "in progress" in text.lower(), (
+            f"Expected 'in_progress' status in tdd_cycle_info output: {text}"
+        )

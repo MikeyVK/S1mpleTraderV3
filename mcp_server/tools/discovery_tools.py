@@ -171,7 +171,8 @@ class GetWorkContextTool(BaseTool):
                             "name": cycle_details.get("name"),
                             "deliverables": cycle_details.get("deliverables", []),
                             "exit_criteria": cycle_details.get("exit_criteria"),
-                            "status": "in_progress",  # Always in_progress when cycle is active (Issue #146, design.md:375)
+                            # Always in_progress when cycle is active (Issue #146, design.md:375)
+                            "status": "in_progress",
                         }
             except (OSError, ValueError, RuntimeError, KeyError):
                 pass  # Graceful degradation if cycle info unavailable
