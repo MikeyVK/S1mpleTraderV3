@@ -1,6 +1,7 @@
 """Tests for Transition Tools (transition_cycle, force_cycle_transition).
 
 Issue #146 Cycle 4: TDD Cycle transition management.
+Issue #146 Cycle 6: Spec alignment - audit schema, history entries, exit criteria.
 """
 
 from pathlib import Path
@@ -476,4 +477,377 @@ class TestForceCycleTransitionTool:
         assert result.is_error, "Expected error when human_approval is empty"
         text = result.content[0]["text"]
         assert "approval" in text.lower() or "human" in text.lower()
+
+
+class TestForceCycleAuditSchema:
+    """Tests for force_cycle_transition audit schema alignment.
+
+    Issue #146 Cycle 6 D1: force_cycle_transition should produce
+    {cycle_number, forced: True, skipped_cycles: [...]} not {from_cycle, to_cycle}.
+    Design.md:340-354.
+    """
+
+    @pytest.fixture()
+    def tool(self) -> ForceCycleTransitionTool:
+        """Fixture to instantiate ForceCycleTransitionTool."""
+        return ForceCycleTransitionTool()
+
+    @pytest.fixture()
+    def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
+        """Create project in TDD phase at cycle 2."""
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        workspace_root = tmp_path
+        issue_number = 146
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+
+        project_manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="TDD Cycle Tracking",
+            workflow_name="feature",
+        )
+
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {
+                        "cycle_number": 1,
+                        "name": "Schema",
+                        "deliverables": ["Schema"],
+                        "exit_criteria": "Tests pass",
+                    },
+                    {
+                        "cycle_number": 2,
+                        "name": "Validation",
+                        "deliverables": ["Validators"],
+                        "exit_criteria": "All scenarios covered",
+                    },
+                    {
+                        "cycle_number": 3,
+                        "name": "Discovery",
+                        "deliverables": ["get_work_context"],
+                        "exit_criteria": "Tools work",
+                    },
+                    {
+                        "cycle_number": 4,
+                        "name": "Transition",
+                        "deliverables": ["transition_cycle"],
+                        "exit_criteria": "Transitions work",
+                    },
+                ],
+            }
+        }
+        project_manager.save_planning_deliverables(issue_number, planning_deliverables)
+
+        branch = "feature/146-tdd-cycle-tracking"
+        state_engine.initialize_branch(
+            branch=branch,
+            issue_number=issue_number,
+            initial_phase="tdd",
+        )
+        state = state_engine.get_state(branch)
+        state["current_phase"] = "tdd"
+        state["current_tdd_cycle"] = 2
+        state["last_tdd_cycle"] = 1
+        state["tdd_cycle_history"] = []
+        state_engine._save_state(branch, state)
+
+        return workspace_root, issue_number
+
+    @pytest.mark.asyncio()
+    async def test_force_audit_entry_has_cycle_number_not_from_to(
+        self, tool: ForceCycleTransitionTool, setup_project: tuple[Path, int]
+    ) -> None:
+        """Audit entry must use cycle_number (not from_cycle/to_cycle).
+
+        Issue #146 Cycle 6 D1: Design.md:344 requires cycle_number field.
+        """
+        workspace_root, _ = setup_project
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result = await tool.execute(
+                ForceCycleTransitionInput(
+                    to_cycle=4,
+                    skip_reason="Cycles 3 covered by parent",
+                    human_approval="John approved on 2026-02-17",
+                )
+            )
+
+        assert not result.is_error, f"Expected success: {result.content}"
+
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+        state = state_engine.get_state("feature/146-tdd-cycle-tracking")
+        history = state.get("tdd_cycle_history", [])
+
+        assert len(history) > 0, "Expected audit entry in tdd_cycle_history"
+        entry = history[-1]
+
+        assert "cycle_number" in entry, "Audit entry must have cycle_number field"
+        assert entry["cycle_number"] == 4, "cycle_number must be the target cycle"
+        assert "from_cycle" not in entry, "Audit entry must not use from_cycle (old schema)"
+        assert "to_cycle" not in entry, "Audit entry must not use to_cycle (old schema)"
+
+    @pytest.mark.asyncio()
+    async def test_force_audit_entry_has_forced_true(
+        self, tool: ForceCycleTransitionTool, setup_project: tuple[Path, int]
+    ) -> None:
+        """Audit entry must explicitly set forced=True.
+
+        Issue #146 Cycle 6 D1: Design.md:344 requires forced: true.
+        """
+        workspace_root, _ = setup_project
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            await tool.execute(
+                ForceCycleTransitionInput(
+                    to_cycle=1,
+                    skip_reason="Re-testing",
+                    human_approval="John approved",
+                )
+            )
+
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+        state = state_engine.get_state("feature/146-tdd-cycle-tracking")
+        history = state.get("tdd_cycle_history", [])
+
+        assert len(history) > 0
+        entry = history[-1]
+        assert "forced" in entry, "Audit entry must have forced field"
+        assert entry["forced"] is True, "forced must be True for force_cycle_transition"
+        assert "transition_type" not in entry, "Must not use transition_type (old schema)"
+
+    @pytest.mark.asyncio()
+    async def test_force_audit_entry_has_skipped_cycles(
+        self, tool: ForceCycleTransitionTool, setup_project: tuple[Path, int]
+    ) -> None:
+        """Audit entry must include list of skipped_cycles.
+
+        Issue #146 Cycle 6 D1: Design.md:346 requires skipped_cycles field.
+        Skipping from cycle 2 -> cycle 4 means cycles [3] are skipped.
+        """
+        workspace_root, _ = setup_project
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result = await tool.execute(
+                ForceCycleTransitionInput(
+                    to_cycle=4,
+                    skip_reason="Cycles 3 covered by parent tests",
+                    human_approval="Jane approved on 2026-02-17",
+                )
+            )
+
+        assert not result.is_error
+
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+        state = state_engine.get_state("feature/146-tdd-cycle-tracking")
+        history = state.get("tdd_cycle_history", [])
+
+        assert len(history) > 0
+        entry = history[-1]
+        assert "skipped_cycles" in entry, "Audit entry must have skipped_cycles field"
+        assert entry["skipped_cycles"] == [3], f"Expected [3], got {entry['skipped_cycles']}"
+
+
+class TestTransitionCycleHistory:
+    """Tests for transition_cycle history entry (forced=False).
+
+    Issue #146 Cycle 6 D2: Normal transition_cycle should write
+    {cycle_number, forced: False} to tdd_cycle_history. Design.md:291-297.
+    """
+
+    @pytest.fixture()
+    def tool(self) -> TransitionCycleTool:
+        """Fixture to instantiate TransitionCycleTool."""
+        return TransitionCycleTool()
+
+    @pytest.fixture()
+    def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
+        """Create project in TDD phase at cycle 1."""
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        workspace_root = tmp_path
+        issue_number = 146
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+
+        project_manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="TDD Cycle Tracking",
+            workflow_name="feature",
+        )
+
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 3,
+                "cycles": [
+                    {
+                        "cycle_number": 1,
+                        "name": "Cycle One",
+                        "deliverables": ["D1"],
+                        "exit_criteria": "EC1",
+                    },
+                    {
+                        "cycle_number": 2,
+                        "name": "Cycle Two",
+                        "deliverables": ["D2"],
+                        "exit_criteria": "EC2",
+                    },
+                    {
+                        "cycle_number": 3,
+                        "name": "Cycle Three",
+                        "deliverables": ["D3"],
+                        "exit_criteria": "EC3",
+                    },
+                ],
+            }
+        }
+        project_manager.save_planning_deliverables(issue_number, planning_deliverables)
+
+        branch = "feature/146-tdd-cycle-tracking"
+        state_engine.initialize_branch(
+            branch=branch,
+            issue_number=issue_number,
+            initial_phase="tdd",
+        )
+        state = state_engine.get_state(branch)
+        state["current_phase"] = "tdd"
+        state["current_tdd_cycle"] = 1
+        state["last_tdd_cycle"] = None
+        state["tdd_cycle_history"] = []
+        state_engine._save_state(branch, state)
+
+        return workspace_root, issue_number
+
+    @pytest.mark.asyncio()
+    async def test_normal_transition_writes_history_entry(
+        self, tool: TransitionCycleTool, setup_project: tuple[Path, int]
+    ) -> None:
+        """Normal transition_cycle must write a history entry with forced=False.
+
+        Issue #146 Cycle 6 D2: Design.md:291-297.
+        """
+        workspace_root, _ = setup_project
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result = await tool.execute(TransitionCycleInput(to_cycle=2))
+
+        assert not result.is_error, f"Expected success: {result.content}"
+
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+        state = state_engine.get_state("feature/146-tdd-cycle-tracking")
+        history = state.get("tdd_cycle_history", [])
+
+        assert len(history) == 1, f"Expected 1 history entry, got {len(history)}"
+        entry = history[0]
+        assert "cycle_number" in entry, "History entry must have cycle_number"
+        assert entry["cycle_number"] == 2, "cycle_number must be the target cycle"
+        assert "forced" in entry, "History entry must have forced field"
+        assert entry["forced"] is False, "forced must be False for normal transition"
+
+    @pytest.mark.asyncio()
+    async def test_multiple_transitions_accumulate_history(
+        self, tool: TransitionCycleTool, setup_project: tuple[Path, int]
+    ) -> None:
+        """Multiple normal transitions accumulate in tdd_cycle_history.
+
+        Issue #146 Cycle 6 D2: History is cumulative.
+        """
+        workspace_root, _ = setup_project
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result1 = await tool.execute(TransitionCycleInput(to_cycle=2))
+            assert not result1.is_error
+
+            result2 = await tool.execute(TransitionCycleInput(to_cycle=3))
+            assert not result2.is_error
+
+        from mcp_server.managers.phase_state_engine import PhaseStateEngine
+        from mcp_server.managers.project_manager import ProjectManager
+
+        project_manager = ProjectManager(workspace_root=workspace_root)
+        state_engine = PhaseStateEngine(
+            workspace_root=workspace_root, project_manager=project_manager
+        )
+        state = state_engine.get_state("feature/146-tdd-cycle-tracking")
+        history = state.get("tdd_cycle_history", [])
+
+        assert len(history) == 2, f"Expected 2 history entries, got {len(history)}"
+        assert history[0]["cycle_number"] == 2
+        assert history[1]["cycle_number"] == 3
+        assert history[0]["forced"] is False
+        assert history[1]["forced"] is False
 
