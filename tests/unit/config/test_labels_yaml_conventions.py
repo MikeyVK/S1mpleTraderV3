@@ -95,6 +95,13 @@ class TestParentLabelPattern:
 # ---------------------------------------------------------------------------
 
 
+class TestDroppedLabels:
+    def test_type_enhancement_removed(self, labels_data: dict) -> None:
+        """type:enhancement was dropped per research — replaced by type:feature."""
+        names = [lbl["name"] for lbl in labels_data["labels"]]
+        assert "type:enhancement" not in names
+
+
 class TestTypeChoreLabel:
     def test_type_chore_label_exists(self, labels_data: dict) -> None:
         names = [lbl["name"] for lbl in labels_data["labels"]]
