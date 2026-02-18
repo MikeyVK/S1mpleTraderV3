@@ -55,11 +55,29 @@ Don't guess the phase or status. **Query the system:**
 
 **Workflow Sequence:**
 ```
-1. create_issue          → Create GitHub issue (labels validated against .st3/labels.yaml)
+1. create_issue(issue_type, title, priority, scope, body) → Create GitHub issue (labels assembled from config, body rendered via Jinja2)
 2. create_branch         → Create feature/bug/docs/refactor/hotfix branch
 3. git_checkout          → Switch to new branch  
 4. initialize_project    → Set up workflow, phase state, parent tracking
 5. get_project_plan      → Verify workflow phases loaded
+```
+
+**Example `create_issue` call (all required fields):**
+```python
+create_issue(
+    issue_type="feature",
+    title="Add Redis caching to strategy loader",
+    priority="high",
+    scope="mcp-server",
+    body={
+        "problem": "Strategy loader re-reads YAML on every call, causing latency spikes.",
+        "expected": "Cached reads with TTL, invalidated on file change.",
+        "context": "Observed on high-frequency backtests (>500 calls/s)."
+    }
+    # Optional: is_epic=False, parent_issue=76, milestone="v1.0.0", assignees=["alice"]
+)
+# → Creates issue with labels: type:feature, priority:high, scope:mcp-server
+# → Returns: issue #47: Add Redis caching to strategy loader
 ```
 
 **Workflow Types (from `.st3/workflows.yaml`):**
@@ -186,7 +204,7 @@ force_phase_transition(
 ### GitHub Issues
 | Action | ✅ USE THIS | ❌ NEVER USE |
 |--------|-------------|------------|
-| Create issue | `create_issue(title, body, labels, assignees, milestone)` | GitHub CLI / manual |
+| Create issue | `create_issue(issue_type, title, priority, scope, body, is_epic?, parent_issue?, milestone?, assignees?)` | GitHub CLI / manual |
 | List issues | `list_issues(state, labels)` | `run_in_terminal("gh issue list")` |
 | Get issue details | `get_issue(issue_number)` | `run_in_terminal("gh issue view")` |
 | Update issue | `update_issue(issue_number, title, body, state, labels)` | GitHub CLI / manual |

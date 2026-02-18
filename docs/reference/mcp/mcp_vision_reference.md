@@ -272,17 +272,67 @@ docs/
 ```yaml
 .st3/
 ├── workflows.yaml           # 6 workflows (feature, bug, hotfix, etc.)
+├── workphases.yaml          # Phase/sub-phase definitions for commits
 ├── validation.yaml          # Template validation rules
 ├── artifacts.yaml           # Unified artifact registry (code + docs)
 ├── policies.yaml            # Operation policies (scaffold/create_file/commit)
 ├── project_structure.yaml   # 15 directory definitions
 ├── quality.yaml             # Quality gate definitions
-└── git.yaml                 # Git conventions (branches, commits, TDD)
+├── git.yaml                 # Git conventions (branches, commits, TDD)
+├── labels.yaml              # Label taxonomy + dynamic label patterns
+├── issues.yaml              # Issue types, workflows, required label categories
+├── scopes.yaml              # Valid scope values for scope:* labels
+├── milestones.yaml          # Milestone whitelist (permissive when empty)
+└── contributors.yaml        # Contributor/assignee whitelist (permissive when empty)
 ```
 
 **Result**: Invalid configs **FAIL AT STARTUP**, zero runtime errors
 
 **Note**: `artifacts.yaml` unifies code and document scaffolding (Issue #56 complete, January 2026)
+
+#### Issue Configuration Files (added Issue #149)
+
+These four files drive the `create_issue` tool's label assembly and validation:
+
+| File | Purpose | Owner | Permissive when empty? |
+|------|---------|-------|----------------------|
+| `issues.yaml` | Maps `issue_type` → workflow + `type:*` label; defines required/optional label categories | Dev team | No — `issue_types` list must be non-empty |
+| `scopes.yaml` | Lists valid values for `scope` parameter → assembled as `scope:{value}` label | Dev team | No — empty list rejects all scopes |
+| `milestones.yaml` | Whitelist of known milestones for title-based lookup | Sync tooling | **Yes** — empty list skips milestone validation |
+| `contributors.yaml` | Whitelist of valid assignee logins | Sync tooling | **Yes** — empty list skips assignee validation |
+
+**`issues.yaml` structure:**
+```yaml
+version: "1.0"
+issue_types:
+  - name: feature           # Matches create_issue(issue_type="feature")
+    workflow: feature        # Which workflow.yaml workflow to use
+    label: "type:feature"   # type:* label applied automatically
+required_label_categories: [type, priority, scope]
+optional_label_inputs:
+  is_epic:
+    type: bool
+    label: "type:epic"
+    behavior: "Overrides type:* label from issue_type"
+  parent_issue:
+    type: int
+    label_pattern: "parent:{value}"   # Dynamic label, created on-demand
+```
+
+**`scopes.yaml` structure:**
+```yaml
+version: "1.0"
+scopes: [architecture, mcp-server, platform, tooling, workflow, documentation]
+```
+
+**`milestones.yaml` / `contributors.yaml` structure (permissive-when-empty):**
+```yaml
+version: "1.0"
+milestones: []   # { number: int, title: str, state: "open"|"closed" }
+# contributors: []   # { login: str, name: str (optional) }
+# When list is empty, validation is skipped — tool accepts any value.
+# Populate manually or via future sync tooling.
+```
 
 ### The Critical Architectural Distinction
 

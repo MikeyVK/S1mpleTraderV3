@@ -133,3 +133,19 @@ labels:
   - name: "scope:documentation"
     color: "BFD4F2"
     description: "Documentation scope"
+
+# ---------------------------------------------------------------------------
+# CHANGELOG
+# ---------------------------------------------------------------------------
+# v1.0  (Issue #149 — Redesign create_issue tool)
+#   REMOVED: status:* label category (status:open, status:in-progress,
+#             status:closed, status:blocked) — workflow state is tracked via
+#             GitHub issue state + phase:* labels instead of explicit status
+#             labels. This avoids label proliferation and state drift.
+#   CHANGED: parent:{n} is now a dynamic label pattern (see label_patterns
+#             above) rather than a pre-created label. Labels are created
+#             on-demand when a parent_issue is provided to create_issue.
+#             Pattern: "^parent:\\d+$", color: EDEDED, example: "parent:91"
+#   ADDED:   label_patterns section — declares dynamic label patterns that
+#            are validated by regex but not pre-created in the repository.
+# ---------------------------------------------------------------------------
