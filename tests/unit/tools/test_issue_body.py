@@ -83,9 +83,7 @@ class TestRenderBody:
         assert "## Problem" in result
         assert "Widget explodes on startup" in result
 
-    def test_render_minimal_body_excludes_optional_sections(
-        self, tool: CreateIssueTool
-    ) -> None:
+    def test_render_minimal_body_excludes_optional_sections(self, tool: CreateIssueTool) -> None:
         body = IssueBody(problem="minimal")
         result = tool._render_body(body)
         assert "## Expected Behavior" not in result

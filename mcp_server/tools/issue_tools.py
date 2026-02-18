@@ -1,11 +1,14 @@
 """Issue management tools."""
+
 import unicodedata
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.scaffolding.renderer import JinjaRenderer
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -19,21 +22,59 @@ def normalize_unicode(text: str) -> str:
     """
     # Step 1: Encode to UTF-8 bytes, handling surrogates
     try:
-        utf8_bytes = text.encode('utf-8', errors='surrogatepass')
+        utf8_bytes = text.encode("utf-8", errors="surrogatepass")
     except UnicodeEncodeError:
         # Fallback: replace bad surrogates
-        utf8_bytes = text.encode('utf-8', errors='replace')
+        utf8_bytes = text.encode("utf-8", errors="replace")
 
     # Step 2: Decode back to string
-    normalized = utf8_bytes.decode('utf-8', errors='replace')
+    normalized = utf8_bytes.decode("utf-8", errors="replace")
 
     # Step 3: Apply Unicode normalization (NFC = canonical composition)
-    return unicodedata.normalize('NFC', normalized)
+    return unicodedata.normalize("NFC", normalized)
 
+
+class IssueBody(BaseModel):
+    """Structured body for a GitHub issue, rendered via issue.md.jinja2.
+
+    json_schema_extra examples:
+    - Minimal: only `problem` provided — all other fields omitted
+    - Full: all optional sections populated for a comprehensive report
+    """
+
+    problem: str = Field(..., description="Clear description of the problem or feature request")
+    expected: str | None = Field(default=None, description="Expected behavior")
+    actual: str | None = Field(default=None, description="Actual behavior observed")
+    context: str | None = Field(default=None, description="Relevant background or environment info")
+    steps_to_reproduce: str | None = Field(
+        default=None, description="Numbered steps to reproduce the issue"
+    )
+    related_docs: list[str] | None = Field(
+        default=None, description="List of related documentation paths or URLs"
+    )
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "problem": "The create_issue tool does not validate issue_type.",
+                },
+                {
+                    "problem": "Login fails on Windows when username contains spaces.",
+                    "expected": "Login succeeds and redirects to dashboard.",
+                    "actual": "500 Internal Server Error is returned.",
+                    "context": "Observed on Windows 11, Python 3.13.",
+                    "steps_to_reproduce": "1. Enter username with space\n2. Click Login",
+                    "related_docs": ["docs/development/issue149/research.md"],
+                },
+            ]
+        }
+    }
 
 
 class CreateIssueInput(BaseModel):
     """Input for CreateIssueTool."""
+
     title: str = Field(..., description="Issue title")
     body: str = Field(..., description="Issue description")
     labels: list[str] | None = Field(default=None, description="List of labels")
@@ -50,10 +91,24 @@ class CreateIssueTool(BaseTool):
 
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
+        self._renderer = JinjaRenderer(template_dir=get_template_root())
 
     @property
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
+
+    def _render_body(self, body: IssueBody) -> str:
+        """Render an IssueBody to markdown via issue.md.jinja2."""
+        return self._renderer.render(
+            "concrete/issue.md.jinja2",
+            title="",
+            problem=body.problem,
+            expected=body.expected,
+            actual=body.actual,
+            context=body.context,
+            steps_to_reproduce=body.steps_to_reproduce,
+            related_docs=body.related_docs,
+        )
 
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
@@ -76,6 +131,7 @@ class CreateIssueTool(BaseTool):
 
 class GetIssueInput(BaseModel):
     """Input for GetIssueTool."""
+
     issue_number: int = Field(..., description="The issue number to retrieve")
 
 
@@ -117,6 +173,7 @@ class GetIssueTool(BaseTool):
 
 class ListIssuesInput(BaseModel):
     """Input for ListIssuesTool."""
+
     state: IssueState | None = Field(default=None, description="Filter by issue state")
     labels: list[str] | None = Field(default=None, description="Filter by labels")
 
@@ -140,10 +197,7 @@ class ListIssuesTool(BaseTool):
             # `IssueState` is a typing.Literal alias, not a runtime type.
             # Pydantic will give us either a string value or None.
             state_str = params.state
-            issues = self.manager.list_issues(
-                state=state_str or "open",
-                labels=params.labels
-            )
+            issues = self.manager.list_issues(state=state_str or "open", labels=params.labels)
             if not issues:
                 return ToolResult.text("No issues found.")
 
@@ -155,18 +209,15 @@ class ListIssuesTool(BaseTool):
 
 class UpdateIssueInput(BaseModel):
     """Input for UpdateIssueTool."""
+
     issue_number: int = Field(..., description="Issue number to update")
     title: str | None = Field(default=None, description="New title")
     body: str | None = Field(default=None, description="Updated description")
     state: IssueState | None = Field(default=None, description="Target state")
-    labels: list[str] | None = Field(
-        default=None,
-        description="Replace labels with this list"
-    )
+    labels: list[str] | None = Field(default=None, description="Replace labels with this list")
     milestone: int | None = Field(default=None, description="Milestone number to assign")
     assignees: list[str] | None = Field(
-        default=None,
-        description="Replace assignees with this list"
+        default=None, description="Replace assignees with this list"
     )
 
 
@@ -202,6 +253,7 @@ class UpdateIssueTool(BaseTool):
 
 class CloseIssueInput(BaseModel):
     """Input for CloseIssueTool."""
+
     issue_number: int = Field(..., description="The issue number to close")
     comment: str | None = Field(default=None, description="Optional comment to add before closing")
 
