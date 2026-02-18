@@ -1,5 +1,6 @@
 """Issue management tools."""
 
+import copy
 import json
 import unicodedata
 from typing import Any, Literal
@@ -41,6 +42,45 @@ def normalize_unicode(text: str) -> str:
 
     # Step 3: Apply Unicode normalization (NFC = canonical composition)
     return unicodedata.normalize("NFC", normalized)
+
+
+def _resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
+    """Inline all $ref references in a JSON Schema.
+
+    VS Code / Copilot Chat does not resolve JSON Schema $ref when constructing
+    MCP tool call arguments, so the model cannot build nested objects described
+    with  body: {"$ref": "#/$defs/IssueBody"}.
+
+    This function resolves all $ref entries by inlining the corresponding
+    definition from $defs, producing a fully self-contained schema without
+    $defs or $ref.
+
+    Args:
+        schema: A JSON Schema dict (typically from model_json_schema()).
+
+    Returns:
+        A new schema dict with all $ref references inlined.
+    """
+    schema = copy.deepcopy(schema)
+    defs: dict[str, Any] = schema.pop("$defs", {})
+
+    def _resolve(node: Any) -> Any:  # type: ignore[return]  # noqa: ANN401
+        if isinstance(node, dict):
+            if "$ref" in node:
+                ref_path: str = node["$ref"]  # e.g. "#/$defs/IssueBody"
+                def_name = ref_path.split("/")[-1]
+                resolved = copy.deepcopy(defs.get(def_name, {}))
+                # Merge any sibling keys from the $ref node (e.g. description)
+                for k, v in node.items():
+                    if k != "$ref":
+                        resolved[k] = v
+                return _resolve(resolved)
+            return {k: _resolve(v) for k, v in node.items()}
+        if isinstance(node, list):
+            return [_resolve(item) for item in node]
+        return node
+
+    return _resolve(schema)  # type: ignore[return-value]
 
 
 class IssueBody(BaseModel):
@@ -232,7 +272,12 @@ class CreateIssueTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return super().input_schema
+        """Return inlined JSON Schema without $ref/$defs for VS Code compatibility.
+
+        VS Code / Copilot Chat does not resolve $ref when constructing tool
+        call arguments, so we inline IssueBody directly into the schema.
+        """
+        return _resolve_schema_refs(CreateIssueInput.model_json_schema())
 
     def _render_body(self, body: IssueBody, title: str = "") -> str:
         """Render an IssueBody to markdown via issue.md.jinja2.
