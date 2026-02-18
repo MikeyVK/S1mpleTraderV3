@@ -13,7 +13,7 @@ from mcp_server.managers.project_manager import ProjectManager
 
 class TestTDDPhaseHooks:
     """Tests for TDD phase entry/exit hooks.
-    
+
     Issue #146 Cycle 4: on_enter_tdd_phase and on_exit_tdd_phase.
     """
 
@@ -70,9 +70,7 @@ class TestTDDPhaseHooks:
 
         return workspace_root, issue_number
 
-    def test_on_enter_tdd_phase_initializes_cycle_1(
-        self, setup_project: tuple[Path, int]
-    ) -> None:
+    def test_on_enter_tdd_phase_initializes_cycle_1(self, setup_project: tuple[Path, int]) -> None:
         """Test that entering TDD phase auto-initializes cycle 1."""
         # Arrange
         workspace_root, issue_number = setup_project
@@ -100,9 +98,7 @@ class TestTDDPhaseHooks:
         assert state.get("current_tdd_cycle") == 1
         assert state.get("last_tdd_cycle") == 0
 
-    def test_on_enter_tdd_phase_blocks_without_planning_deliverables(
-        self, tmp_path: Path
-    ) -> None:
+    def test_on_enter_tdd_phase_blocks_without_planning_deliverables(self, tmp_path: Path) -> None:
         """Test that entering TDD phase blocks if planning deliverables missing."""
         # Arrange
         workspace_root = tmp_path
@@ -129,9 +125,7 @@ class TestTDDPhaseHooks:
         with pytest.raises(ValueError, match="planning deliverables"):
             state_engine.on_enter_tdd_phase(branch, issue_number)
 
-    def test_on_exit_tdd_phase_preserves_last_cycle(
-        self, setup_project: tuple[Path, int]
-    ) -> None:
+    def test_on_exit_tdd_phase_preserves_last_cycle(self, setup_project: tuple[Path, int]) -> None:
         """Test that exiting TDD phase preserves last_tdd_cycle."""
         # Arrange
         workspace_root, issue_number = setup_project
@@ -158,9 +152,7 @@ class TestTDDPhaseHooks:
         assert state.get("last_tdd_cycle") == 3
         assert state.get("current_tdd_cycle") is None
 
-    def test_on_exit_tdd_phase_validates_completion(
-        self, setup_project: tuple[Path, int]
-    ) -> None:
+    def test_on_exit_tdd_phase_validates_completion(self, setup_project: tuple[Path, int]) -> None:
         """Test that exiting TDD phase validates all cycles completed."""
         # Arrange
         workspace_root, issue_number = setup_project
@@ -206,15 +198,23 @@ class TestTransitionHooksWiring:
         )
         project_manager.save_planning_deliverables(
             issue_number=issue_number,
-            planning_deliverables={"tdd_cycles": {"total": 1, "cycles": [
-                {"cycle_number": 1, "name": "Basic", "deliverables": ["A"], "exit_criteria": "pass"}
-            ]}},
+            planning_deliverables={
+                "tdd_cycles": {
+                    "total": 1,
+                    "cycles": [
+                        {
+                            "cycle_number": 1,
+                            "name": "Basic",
+                            "deliverables": ["A"],
+                            "exit_criteria": "pass",
+                        }
+                    ],
+                }
+            },
         )
         return workspace_root, issue_number
 
-    def test_transition_to_tdd_calls_enter_hook(
-        self, setup_project: tuple[Path, int]
-    ) -> None:
+    def test_transition_to_tdd_calls_enter_hook(self, setup_project: tuple[Path, int]) -> None:
         """Test that transition() to 'tdd' auto-calls on_enter_tdd_phase (Issue #146)."""
         workspace_root, issue_number = setup_project
         branch = "feature/999-hook-wiring"
@@ -243,9 +243,7 @@ class TestTransitionHooksWiring:
             "current_tdd_cycle should be 1 after entering TDD phase"
         )
 
-    def test_transition_from_tdd_calls_exit_hook(
-        self, setup_project: tuple[Path, int]
-    ) -> None:
+    def test_transition_from_tdd_calls_exit_hook(self, setup_project: tuple[Path, int]) -> None:
         """Test that transition() from 'tdd' auto-calls on_exit_tdd_phase (Issue #146)."""
         workspace_root, issue_number = setup_project
         branch = "feature/999-hook-wiring"
@@ -264,7 +262,7 @@ class TestTransitionHooksWiring:
         state_engine._save_state(branch, state)
 
         # Transition away from TDD - should auto-call on_exit_tdd_phase
-        state_engine.transition(branch=branch, to_phase="integration")
+        state_engine.transition(branch=branch, to_phase="validation")
 
         # Assert: hook was triggered and last_tdd_cycle was preserved
         state = state_engine.get_state(branch)

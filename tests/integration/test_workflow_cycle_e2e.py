@@ -280,20 +280,20 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["sub_phase"] == "refactor"
     assert result["source"] == "commit-scope"
 
-    # Transition to INTEGRATION
-    state_engine.transition(branch="feature/999-e2e-test", to_phase="integration")
+    # Transition to VALIDATION
+    state_engine.transition(branch="feature/999-e2e-test", to_phase="validation")
 
-    # Phase 5: INTEGRATION
-    test_file.write_text("integration phase\n")
+    # Phase 5: VALIDATION
+    test_file.write_text("validation phase\n")
     git_manager.commit_with_scope(
-        workflow_phase="integration",
-        message="add integration tests",
+        workflow_phase="validation",
+        message="add validation tests",
         files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
     result = decoder.detect_phase(commit_message=commits[0], fallback_to_state=False)
-    assert result["workflow_phase"] == "integration"
+    assert result["workflow_phase"] == "validation"
     assert result["source"] == "commit-scope"
 
     # Transition to DOCUMENTATION
