@@ -22,10 +22,6 @@ labels:
     color: "1D76DB"
     description: "New functionality or capability"
   
-  - name: "type:enhancement"
-    color: "A2EEEF"
-    description: "Improvement to existing feature"
-  
   - name: "type:bug"
     color: "D73A4A"
     description: "Something isn't working"
