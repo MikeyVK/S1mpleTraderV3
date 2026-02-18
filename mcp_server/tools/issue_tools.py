@@ -108,6 +108,27 @@ class CreateIssueInput(BaseModel):
     milestone: str | None = Field(default=None, description="Milestone title")
     assignees: list[str] | None = Field(default=None, description="List of GitHub logins to assign")
 
+    @field_validator("body", mode="before")
+    @classmethod
+    def coerce_body_from_json_string(cls, v: object) -> object:
+        """Accept a JSON string for body and parse it into a dict for IssueBody.
+
+        The MCP chat interface (Copilot Chat) serializes nested objects as JSON
+        strings. Without this coercion every chat call fails with
+        'is not of type object'.
+        """
+        if isinstance(v, str):
+            import json
+
+            try:
+                parsed = json.loads(v)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"body must be a valid JSON string or object: {e}") from e
+            if not isinstance(parsed, dict):
+                raise ValueError("body JSON string must decode to an object, not a list or scalar")
+            return parsed
+        return v
+
     @field_validator("issue_type")
     @classmethod
     def validate_issue_type(cls, v: str) -> str:
