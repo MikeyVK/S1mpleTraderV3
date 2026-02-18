@@ -4,6 +4,7 @@ Issue #146 Cycle 4: TDD Cycle transition management.
 Issue #146 Cycle 6: Spec alignment - audit schema, history entries, exit criteria.
 """
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -857,8 +858,6 @@ class TestTransitionCycleExitCriteria:
         if bypass_validation:
             # Write planning deliverables directly to bypass schema validation
             # Used to simulate corrupt/external state for testing robustness
-            import json
-
             projects_file = workspace_root / ".st3" / "projects.json"
             with projects_file.open() as f:
                 projects = json.load(f)

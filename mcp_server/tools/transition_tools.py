@@ -107,6 +107,20 @@ class TransitionCycleTool(BaseTool):
                     "Use force_cycle_transition to skip cycles."
                 )
 
+            # Validation 6: Check exit criteria of current cycle
+            if current_cycle is not None:
+                cycles_list = tdd_cycles.get("cycles", [])
+                current_cycle_data = next(
+                    (c for c in cycles_list if c.get("cycle_number") == current_cycle), None
+                )
+                if current_cycle_data is not None:
+                    exit_criteria = current_cycle_data.get("exit_criteria", "")
+                    if not exit_criteria or not exit_criteria.strip():
+                        return ToolResult.error(
+                            f"Cycle {current_cycle} exit criteria not defined. "
+                            "Define exit_criteria in planning deliverables before transitioning."
+                        )
+
             # Execute transition
             from_cycle = current_cycle or 0
             state["last_tdd_cycle"] = from_cycle
