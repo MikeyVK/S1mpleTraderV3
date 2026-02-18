@@ -171,6 +171,7 @@ class GetWorkContextTool(BaseTool):
                             "name": cycle_details.get("name"),
                             "deliverables": cycle_details.get("deliverables", []),
                             "exit_criteria": cycle_details.get("exit_criteria"),
+                            "status": "in_progress",  # Always in_progress when cycle is active (Issue #146, design.md:375)
                         }
             except (OSError, ValueError, RuntimeError, KeyError):
                 pass  # Graceful degradation if cycle info unavailable
@@ -316,6 +317,8 @@ class GetWorkContextTool(BaseTool):
             lines.append(
                 f"**Cycle {cycle_info['current']}/{cycle_info['total']}:** {cycle_info['name']}"
             )
+            if cycle_info.get("status"):
+                lines.append(f"**Status:** {cycle_info['status']}")
             lines.append("\n**Deliverables:**")
             for deliverable in cycle_info.get("deliverables", []):
                 lines.append(f"- {deliverable}")
