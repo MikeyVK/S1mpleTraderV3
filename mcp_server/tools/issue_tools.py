@@ -280,6 +280,8 @@ class CreateIssueTool(BaseTool):
                 f"Body rendering failed: {e}. "
                 "Check that issue.md.jinja2 exists in the templates directory."
             )
+        except ValueError as e:
+            return ToolResult.error(f"Label assembly failed: {e}.")
         except ExecutionError as e:
             return ToolResult.error(str(e))
 
