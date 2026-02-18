@@ -41,8 +41,8 @@ phases:
       - "green"        # Implement minimum code to pass
       - "refactor"     # Clean up code
 
-  integration:
-    display_name: "Integration"
+  validation:
+    display_name: "Validation"
     description: "End-to-end testing, acceptance testing, system integration"
     commit_type_hint: "test"
     subphases:
