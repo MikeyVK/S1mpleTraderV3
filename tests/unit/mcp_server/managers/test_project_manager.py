@@ -56,7 +56,7 @@ class TestProjectManagerWorkflows:
         """Test feature workflow from workflows.yaml."""
         workflow = workflow_config.get_workflow("feature")
         assert len(workflow.phases) == 6
-        expected = ["research", "planning", "design", "tdd", "integration", "documentation"]
+        expected = ["research", "planning", "design", "tdd", "validation", "documentation"]
         assert workflow.phases == expected
         assert workflow.default_execution_mode == "interactive"
 
@@ -64,7 +64,7 @@ class TestProjectManagerWorkflows:
         """Test hotfix workflow from workflows.yaml."""
         workflow = workflow_config.get_workflow("hotfix")
         assert len(workflow.phases) == 3
-        assert workflow.phases == ["tdd", "integration", "documentation"]
+        assert workflow.phases == ["tdd", "validation", "documentation"]
         assert workflow.default_execution_mode == "autonomous"
 
     def test_initialize_project_with_feature_workflow(
@@ -131,7 +131,7 @@ class TestProjectManagerWorkflows:
         self, manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test initialize_project with custom phases."""
-        custom_phases = ("research", "planning", "design", "tdd", "integration", "documentation")
+        custom_phases = ("research", "planning", "design", "tdd", "validation", "documentation")
 
         result = manager.initialize_project(
             issue_number=50,

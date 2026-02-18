@@ -99,7 +99,7 @@ class TestPhaseStateEngineMode2:
         # Mock commits with phase:label format (labels.yaml SSOT)
         with patch.object(state_engine, '_get_git_commits') as mock_git:
             mock_git.return_value = [
-                "phase:integration - Test cross-machine scenario",
+                "phase:validation - Test cross-machine scenario",
                 "phase:green - Implement feature",
                 "phase:red - Write failing test",
                 "phase:design - Complete design",
@@ -108,7 +108,7 @@ class TestPhaseStateEngineMode2:
             state = state_engine.get_state("fix/39-test")
 
             # Should detect most recent phase
-            assert state["current_phase"] == "integration"
+            assert state["current_phase"] == "validation"
 
     @pytest.mark.asyncio
     async def test_tdd_phases_map_to_tdd(

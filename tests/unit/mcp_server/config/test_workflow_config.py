@@ -38,13 +38,13 @@ def valid_workflows_yaml(tmp_path: Path) -> Path:
                 "name": "feature",
                 "description": "Full development workflow",
                 "default_execution_mode": "interactive",
-                "phases": ["research", "planning", "design", "tdd", "integration", "documentation"]
+                "phases": ["research", "planning", "design", "tdd", "validation", "documentation"]
             },
             "hotfix": {
                 "name": "hotfix",
                 "description": "Emergency fix workflow",
                 "default_execution_mode": "autonomous",
-                "phases": ["tdd", "integration", "documentation"]
+                "phases": ["tdd", "validation", "documentation"]
             }
         }
     }
@@ -284,7 +284,7 @@ class TestWorkflowLookup:
         assert isinstance(workflow, WorkflowTemplate)
         assert workflow.name == "feature"
         assert workflow.phases == [
-            "research", "planning", "design", "tdd", "integration", "documentation"
+            "research", "planning", "design", "tdd", "validation", "documentation"
         ]
         assert workflow.default_execution_mode == "interactive"
 
@@ -335,7 +335,7 @@ class TestTransitionValidation:
         # Valid transitions: research ÔåÆ planning, planning ÔåÆ design, etc.
         assert config.validate_transition("feature", "research", "planning") is True
         assert config.validate_transition("feature", "planning", "design") is True
-        assert config.validate_transition("hotfix", "tdd", "integration") is True
+        assert config.validate_transition("hotfix", "tdd", "validation") is True
 
     def test_validate_transition_skip_phase(self, valid_workflows_yaml: Path) -> None:
         """Test validating transition that skips a phase (invalid).

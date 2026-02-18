@@ -205,7 +205,7 @@ class TestGetWorkContextTool:
             ("chore(P_PLANNING): define tasks", "planning", "📋"),
             ("docs(P_DESIGN): architecture design", "design", "🎨"),
             ("feat(P_TDD_SP_GREEN): implement feature", "tdd", "🧪"),
-            ("test(P_INTEGRATION_SP_E2E): e2e tests", "integration", "🔗"),
+            ("test(P_VALIDATION_SP_E2E): e2e tests", "validation", "✅"),
             ("docs(P_DOCUMENTATION): update readme", "documentation", "📝"),
             ("chore(P_COORDINATION): sync with team", "coordination", "🤝"),
         ]

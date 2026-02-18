@@ -285,7 +285,7 @@ class GetWorkContextTool(BaseTool):
             "planning": "📋",
             "design": "🎨",
             "tdd": "🧪",
-            "integration": "🔗",
+            "validation": "✅",
             "documentation": "📝",
             "coordination": "🤝",
             "unknown": "❓",

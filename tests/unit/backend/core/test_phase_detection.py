@@ -89,7 +89,7 @@ class TestScopeDecoder:
         # Arrange
         state_file = tmp_path / "state.json"
         state_file.write_text(
-            json.dumps({"current_phase": "integration", "workflow_name": "feature"})
+            json.dumps({"current_phase": "validation", "workflow_name": "feature"})
         )
         decoder = ScopeDecoder(state_path=state_file)
         commit_message = "docs: update README"  # No scope
@@ -98,7 +98,7 @@ class TestScopeDecoder:
         result = decoder.detect_phase(commit_message, fallback_to_state=True)
 
         # Assert - state.json fallback with medium confidence
-        assert result["workflow_phase"] == "integration"
+        assert result["workflow_phase"] == "validation"
         assert result["sub_phase"] is None
         assert result["source"] == "state.json"
         assert result["confidence"] == "medium"
@@ -198,7 +198,7 @@ class TestScopeDecoder:
             "planning",
             "design",
             "tdd",
-            "integration",
+            "validation",
             "documentation",
             "coordination",
         ]
@@ -241,7 +241,7 @@ class TestScopeDecoder:
             ("chore(P_PLANNING): planning", "planning"),
             ("docs(P_DESIGN): design", "design"),
             ("test(P_TDD_SP_RED): tdd test", "tdd"),
-            ("test(P_INTEGRATION): integration", "integration"),
+            ("test(P_VALIDATION): validation", "validation"),
             ("docs(P_DOCUMENTATION): docs", "documentation"),
             ("chore(P_COORDINATION): coordination", "coordination"),
         ]
