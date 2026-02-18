@@ -1,4 +1,4 @@
-﻿"""Tests for workflow configuration (WorkflowConfig, WorkflowTemplate).
+"""Tests for workflow configuration (WorkflowConfig, WorkflowTemplate).
 
 Test Coverage:
 - Config loading (valid YAML, missing file, invalid YAML, invalid schema)
@@ -38,15 +38,15 @@ def valid_workflows_yaml(tmp_path: Path) -> Path:
                 "name": "feature",
                 "description": "Full development workflow",
                 "default_execution_mode": "interactive",
-                "phases": ["research", "planning", "design", "tdd", "validation", "documentation"]
+                "phases": ["research", "planning", "design", "tdd", "validation", "documentation"],
             },
             "hotfix": {
                 "name": "hotfix",
                 "description": "Emergency fix workflow",
                 "default_execution_mode": "autonomous",
-                "phases": ["tdd", "validation", "documentation"]
-            }
-        }
+                "phases": ["tdd", "validation", "documentation"],
+            },
+        },
     }
 
     yaml_path = tmp_path / "workflows.yaml"
@@ -87,9 +87,9 @@ def invalid_schema_yaml(tmp_path: Path) -> Path:
             "broken": {
                 "name": "broken",
                 # Missing required 'phases' field
-                "default_execution_mode": "interactive"
-            }
-        }
+                "default_execution_mode": "interactive",
+            },
+        },
     }
 
     yaml_path = tmp_path / "invalid_schema.yaml"
@@ -102,6 +102,7 @@ def invalid_schema_yaml(tmp_path: Path) -> Path:
 # =============================================================================
 # Phase 1: Config Loading Tests (GREEN)
 # =============================================================================
+
 
 class TestWorkflowConfigLoading:
     """Test WorkflowConfig.load() method."""
@@ -215,7 +216,7 @@ class TestWorkflowTemplateValidation:
             WorkflowTemplate(
                 name="test",
                 phases=["research", "planning", "research"],  # Duplicate
-                default_execution_mode="interactive"
+                default_execution_mode="interactive",
             )
 
         error_msg = str(exc_info.value)
@@ -234,7 +235,7 @@ class TestWorkflowTemplateValidation:
             WorkflowTemplate(
                 name="test",
                 phases=["research", "  ", "planning"],  # Empty phase
-                default_execution_mode="interactive"
+                default_execution_mode="interactive",
             )
 
         error_msg = str(exc_info.value)
@@ -252,7 +253,7 @@ class TestWorkflowTemplateValidation:
             WorkflowTemplate(
                 name="test",
                 phases=["research"],
-                default_execution_mode="manual"  # type: ignore[arg-type]
+                default_execution_mode="manual",  # type: ignore[arg-type]
             )
 
         error_msg = str(exc_info.value)
@@ -262,6 +263,7 @@ class TestWorkflowTemplateValidation:
 # =============================================================================
 # Phase 2: Workflow Lookup Tests (RED)
 # =============================================================================
+
 
 class TestWorkflowLookup:
     """Test WorkflowConfig.get_workflow() method."""
@@ -284,7 +286,12 @@ class TestWorkflowLookup:
         assert isinstance(workflow, WorkflowTemplate)
         assert workflow.name == "feature"
         assert workflow.phases == [
-            "research", "planning", "design", "tdd", "validation", "documentation"
+            "research",
+            "planning",
+            "design",
+            "tdd",
+            "validation",
+            "documentation",
         ]
         assert workflow.default_execution_mode == "interactive"
 
@@ -317,6 +324,7 @@ class TestWorkflowLookup:
 # Phase 3: Transition Validation Tests (RED)
 # =============================================================================
 
+
 class TestTransitionValidation:
     """Test WorkflowConfig.validate_transition() method."""
 
@@ -332,7 +340,7 @@ class TestTransitionValidation:
         """
         config = WorkflowConfig.load(valid_workflows_yaml)
 
-        # Valid transitions: research ÔåÆ planning, planning ÔåÆ design, etc.
+        # Valid transitions: research -> planning, planning -> design, etc.
         assert config.validate_transition("feature", "research", "planning") is True
         assert config.validate_transition("feature", "planning", "design") is True
         assert config.validate_transition("hotfix", "tdd", "validation") is True
@@ -382,9 +390,7 @@ class TestTransitionValidation:
         assert "design" in error_msg
         assert "planning" in error_msg
 
-    def test_validate_transition_invalid_current_phase(
-        self, valid_workflows_yaml: Path
-    ) -> None:
+    def test_validate_transition_invalid_current_phase(self, valid_workflows_yaml: Path) -> None:
         """Test validation with invalid current phase.
 
         Expected behavior:
@@ -404,9 +410,7 @@ class TestTransitionValidation:
         assert "Current phase 'invalid' not in workflow 'feature'" in error_msg
         assert "Valid phases:" in error_msg
 
-    def test_validate_transition_invalid_target_phase(
-        self, valid_workflows_yaml: Path
-    ) -> None:
+    def test_validate_transition_invalid_target_phase(self, valid_workflows_yaml: Path) -> None:
         """Test validation with invalid target phase.
 
         Expected behavior:

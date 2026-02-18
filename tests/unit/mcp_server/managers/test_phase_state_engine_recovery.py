@@ -10,6 +10,7 @@ Tests verify:
 5. Reconstructed flag set for audit
 6. Safe fallback to first phase
 """
+
 from pathlib import Path
 from unittest.mock import patch
 
@@ -34,9 +35,7 @@ class TestPhaseStateEngineMode2:
         manager = ProjectManager(workspace_root=workspace_root)
         # Initialize project for testing
         manager.initialize_project(
-            issue_number=39,
-            issue_title="Test auto-recovery",
-            workflow_name="bug"
+            issue_number=39, issue_title="Test auto-recovery", workflow_name="bug"
         )
         return manager
 
@@ -45,10 +44,7 @@ class TestPhaseStateEngineMode2:
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=project_manager
-        )
+        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
 
     @pytest.mark.asyncio
     async def test_missing_state_triggers_reconstruction(
@@ -65,11 +61,11 @@ class TestPhaseStateEngineMode2:
             state_file.unlink()
 
         # Mock git to return commits with phase labels
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = [
                 "phase:design - Complete technical specifications",
                 "phase:planning - Define implementation goals",
-                "phase:research - Analyze problem"
+                "phase:research - Analyze problem",
             ]
 
             # Call get_state - should auto-recover
@@ -97,7 +93,7 @@ class TestPhaseStateEngineMode2:
             state_file.unlink()
 
         # Mock commits with phase:label format (labels.yaml SSOT)
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = [
                 "phase:validation - Test cross-machine scenario",
                 "phase:green - Implement feature",
@@ -119,11 +115,11 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = [
                 "phase:green - Implement Mode 1",
                 "phase:red - Write failing tests",
-                "phase:design - Complete specs"
+                "phase:design - Complete specs",
             ]
 
             state = state_engine.get_state("fix/39-test")
@@ -142,11 +138,11 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = [
                 "Initial commit",
                 "Add README",
-                "Setup project"
+                "Setup project",
             ]
 
             state = state_engine.get_state("fix/39-test")
@@ -166,7 +162,7 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = ["phase:planning - Define goals"]
 
             # Should not raise any exceptions
@@ -184,7 +180,7 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = ["phase:research - Start work"]
 
             state = state_engine.get_state("fix/39-test-recovery")
@@ -206,7 +202,7 @@ class TestPhaseStateEngineMode2:
         if projects_file.exists():
             projects_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = ["phase:research - Start"]
 
             # Should raise ValueError with helpful message
@@ -222,7 +218,7 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = ["phase:research - Start"]
 
             # Invalid branch name (no issue number)
@@ -238,7 +234,7 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.side_effect = RuntimeError("Git command failed")
 
             # Should not crash, fallback to first phase
@@ -258,7 +254,7 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             mock_git.return_value = ["phase:design - Complete specs"]
 
             # First call - reconstruction
@@ -281,11 +277,11 @@ class TestPhaseStateEngineMode2:
         if state_file.exists():
             state_file.unlink()
 
-        with patch.object(state_engine, '_get_git_commits') as mock_git:
+        with patch.object(state_engine, "_get_git_commits") as mock_git:
             # phase:invalid not in bug workflow
             mock_git.return_value = [
                 "phase:invalid - This should be ignored",
-                "phase:design - Valid phase"
+                "phase:design - Valid phase",
             ]
 
             state = state_engine.get_state("fix/39-test")
