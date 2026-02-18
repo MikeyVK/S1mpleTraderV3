@@ -372,6 +372,7 @@ class MCPServer:
                         response_content = self._convert_tool_result_to_content(result)
 
                         duration_ms = (time.perf_counter() - start_time) * 1000.0
+
                         logger.debug(
                             "Tool call completed",
                             extra={"props": {
