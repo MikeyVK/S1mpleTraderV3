@@ -3,6 +3,7 @@
 Phase 1.3: Verify all tools are operational and return expected results.
 These tests use mocks but test the full flow from Tool -> Manager -> Adapter.
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -35,7 +36,7 @@ from mcp_server.tools.git_tools import (
 from mcp_server.tools.health_tools import HealthCheckInput, HealthCheckTool
 
 # GitHub Tools (imported here for availability, require manager injection)
-from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool
+from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 from mcp_server.tools.label_tools import AddLabelsInput, AddLabelsTool
 from mcp_server.tools.pr_tools import CreatePRInput, CreatePRTool
 
@@ -61,11 +62,7 @@ class TestGitToolsIntegration:
 
             tool = CreateBranchTool()
             result = await tool.execute(
-                CreateBranchInput(
-                    name="test-feature",
-                    branch_type="feature",
-                    base_branch="HEAD"
-                )
+                CreateBranchInput(name="test-feature", branch_type="feature", base_branch="HEAD")
             )
 
             assert "feature/test-feature" in result.content[0]["text"]
@@ -78,7 +75,7 @@ class TestGitToolsIntegration:
                 "branch": "main",
                 "is_clean": True,
                 "untracked_files": [],
-                "modified_files": []
+                "modified_files": [],
             }
 
             tool = GitStatusTool()
@@ -155,9 +152,7 @@ class TestGitToolsIntegration:
             result = await tool.execute(GitDeleteBranchInput(branch="feature/old"))
 
             assert "feature/old" in result.content[0]["text"]
-            mock_adapter.return_value.delete_branch.assert_called_with(
-                "feature/old", force=False
-            )
+            mock_adapter.return_value.delete_branch.assert_called_with("feature/old", force=False)
 
     @pytest.mark.asyncio
     async def test_git_stash_tool_push_flow(self) -> None:
@@ -186,9 +181,7 @@ class TestGitToolsIntegration:
     async def test_git_stash_tool_list_flow(self) -> None:
         """Test git stash list tool complete flow."""
         with patch("mcp_server.managers.git_manager.GitAdapter") as mock_adapter:
-            mock_adapter.return_value.stash_list.return_value = [
-                "stash@{0}: WIP on main"
-            ]
+            mock_adapter.return_value.stash_list.return_value = ["stash@{0}: WIP on main"]
 
             tool = GitStashTool()
             result = await tool.execute(GitStashInput(action="list"))
@@ -205,7 +198,7 @@ class TestQualityToolsIntegration:
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "overall_pass": True,
-            "gates": [{"name": "Linting", "passed": True, "score": "10/10"}]
+            "gates": [{"name": "Linting", "passed": True, "score": "10/10"}],
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
@@ -230,16 +223,17 @@ class TestQualityToolsIntegration:
     async def test_validate_dto_tool_flow(self) -> None:
         """Test DTO validation tool complete flow."""
         mock_content = (
-            "from dataclasses import dataclass\n\n"
-            "@dataclass(frozen=True)\nclass TestDTO:\n    pass"
+            "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass TestDTO:\n    pass"
         )
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.read_text", return_value=mock_content):
-                tool = ValidateDTOTool()
-                result = await tool.execute(ValidateDTOInput(file_path="backend/dtos/test.py"))
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value=mock_content),
+        ):
+            tool = ValidateDTOTool()
+            result = await tool.execute(ValidateDTOInput(file_path="backend/dtos/test.py"))
 
-                assert result.is_error is False
-                assert "DTO validation passed" in result.content[0]["text"]
+            assert result.is_error is False
+            assert "DTO validation passed" in result.content[0]["text"]
 
 
 class TestDevelopmentToolsIntegration:
@@ -259,10 +253,9 @@ class TestDevelopmentToolsIntegration:
         """Test create file tool complete flow."""
         with patch("pathlib.Path.mkdir"), patch("builtins.open", MagicMock()):
             tool = CreateFileTool()
-            result = await tool.execute(CreateFileInput(
-                path="test/file.py",
-                content="# Test content"
-            ))
+            result = await tool.execute(
+                CreateFileInput(path="test/file.py", content="# Test content")
+            )
 
             assert result.content is not None
 
@@ -277,14 +270,19 @@ class TestGitHubToolsIntegration:
         mock_manager.create_issue.return_value = {
             "number": 42,
             "url": "https://github.com/test/repo/issues/42",
-            "title": "Test Issue"
+            "title": "Test Issue",
         }
 
         tool = CreateIssueTool(manager=mock_manager)
-        result = await tool.execute(CreateIssueInput(
-            title="Test Issue",
-            body="Test body"
-        ))
+        result = await tool.execute(
+            CreateIssueInput(
+                issue_type="feature",
+                title="Test Issue",
+                priority="medium",
+                scope="mcp-server",
+                body=IssueBody(problem="Test body"),
+            )
+        )
 
         assert "42" in result.content[0]["text"] or "issue" in result.content[0]["text"].lower()
 
@@ -294,16 +292,13 @@ class TestGitHubToolsIntegration:
         mock_manager = MagicMock()
         mock_manager.create_pr.return_value = {
             "number": 99,
-            "url": "https://github.com/test/repo/pull/99"
+            "url": "https://github.com/test/repo/pull/99",
         }
 
         tool = CreatePRTool(manager=mock_manager)
-        result = await tool.execute(CreatePRInput(
-            title="Test PR",
-            body="Test body",
-            head="feature/test",
-            base="main"
-        ))
+        result = await tool.execute(
+            CreatePRInput(title="Test PR", body="Test body", head="feature/test", base="main")
+        )
 
         assert "99" in result.content[0]["text"] or "pr" in result.content[0]["text"].lower()
 
@@ -314,10 +309,9 @@ class TestGitHubToolsIntegration:
         mock_manager.add_labels.return_value = ["bug", "priority:high"]
 
         tool = AddLabelsTool(manager=mock_manager)
-        result = await tool.execute(AddLabelsInput(
-            issue_number=42,
-            labels=["bug", "priority:high"]
-        ))
+        result = await tool.execute(
+            AddLabelsInput(issue_number=42, labels=["bug", "priority:high"])
+        )
 
         assert result.content is not None
 

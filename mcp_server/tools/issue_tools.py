@@ -3,8 +3,13 @@
 import unicodedata
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from mcp_server.config.contributor_config import ContributorConfig
+from mcp_server.config.git_config import GitConfig
+from mcp_server.config.issue_config import IssueConfig
+from mcp_server.config.milestone_config import MilestoneConfig
+from mcp_server.config.scope_config import ScopeConfig
 from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
@@ -72,14 +77,124 @@ class IssueBody(BaseModel):
     }
 
 
-class CreateIssueInput(BaseModel):
-    """Input for CreateIssueTool."""
+_VALID_PRIORITIES = {"critical", "high", "medium", "low", "triage"}
 
-    title: str = Field(..., description="Issue title")
-    body: str = Field(..., description="Issue description")
-    labels: list[str] | None = Field(default=None, description="List of labels")
-    milestone: int | None = Field(default=None, description="Milestone number")
-    assignees: list[str] | None = Field(default=None, description="List of usernames")
+
+class CreateIssueInput(BaseModel):
+    """Structured input for creating a GitHub issue.
+
+    All fields are validated against project config (issues.yaml, scopes.yaml,
+    milestones.yaml, contributors.yaml, git.yaml). No free-form labels accepted —
+    labels are assembled internally by CreateIssueTool.
+
+    json_schema_extra examples are below: minimal (required fields only) and full.
+    """
+
+    issue_type: str = Field(..., description="Issue type: feature, bug, hotfix, chore, docs, epic")
+    title: str = Field(..., description="Issue title (max 72 chars from git.yaml)")
+    priority: str = Field(..., description="Priority: critical, high, medium, low, triage")
+    scope: str = Field(
+        ...,
+        description=(
+            "Scope from scopes.yaml: architecture, mcp-server, platform,"
+            " tooling, workflow, documentation"
+        ),
+    )
+    body: IssueBody = Field(..., description="Structured issue body (IssueBody)")
+    is_epic: bool = Field(default=False, description="Mark this issue as an epic")
+    parent_issue: int | None = Field(
+        default=None, description="Parent issue number (positive integer)", ge=1
+    )
+    milestone: str | None = Field(default=None, description="Milestone title")
+    assignees: list[str] | None = Field(default=None, description="List of GitHub logins to assign")
+
+    @field_validator("issue_type")
+    @classmethod
+    def validate_issue_type(cls, v: str) -> str:
+        cfg = IssueConfig.from_file()
+        if not cfg.has_issue_type(v):
+            valid = sorted(e.name for e in cfg.issue_types)
+            raise ValueError(f"Unknown issue type: '{v}'. Valid values: {valid}")
+        return v
+
+    @field_validator("title")
+    @classmethod
+    def validate_title_length(cls, v: str) -> str:
+        git_cfg = GitConfig.from_file()
+        max_len = git_cfg.issue_title_max_length
+        if len(v) > max_len:
+            raise ValueError(f"Title too long: {len(v)} chars (max {max_len} from git.yaml)")
+        return v
+
+    @field_validator("priority")
+    @classmethod
+    def validate_priority(cls, v: str) -> str:
+        if v not in _VALID_PRIORITIES:
+            raise ValueError(f"Unknown priority: '{v}'. Valid values: {sorted(_VALID_PRIORITIES)}")
+        return v
+
+    @field_validator("scope")
+    @classmethod
+    def validate_scope(cls, v: str) -> str:
+        cfg = ScopeConfig.from_file()
+        if not cfg.has_scope(v):
+            raise ValueError(f"Unknown scope: '{v}'. Valid values: {sorted(cfg.scopes)}")
+        return v
+
+    @field_validator("milestone")
+    @classmethod
+    def validate_milestone(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        cfg = MilestoneConfig.from_file()
+        if not cfg.validate_milestone(v):
+            raise ValueError(f"Unknown milestone: '{v}'. Must match a title in milestones.yaml.")
+        return v
+
+    @field_validator("assignees")
+    @classmethod
+    def validate_assignee(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return None
+        cfg = ContributorConfig.from_file()
+        for login in v:
+            if not cfg.validate_assignee(login):
+                raise ValueError(
+                    f"Unknown assignee: '{login}'. Must be listed in contributors.yaml."
+                )
+        return v
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "issue_type": "feature",
+                    "title": "Add structured issue creation",
+                    "priority": "medium",
+                    "scope": "mcp-server",
+                    "body": {"problem": "The create_issue tool lacks validation."},
+                },
+                {
+                    "issue_type": "bug",
+                    "title": "Login fails on Windows when username contains spaces",
+                    "priority": "high",
+                    "scope": "platform",
+                    "body": {
+                        "problem": "Login fails with 500 error.",
+                        "expected": "Redirect to dashboard.",
+                        "actual": "500 Internal Server Error.",
+                        "context": "Windows 11, Python 3.13.",
+                        "steps_to_reproduce": "1. Enter username with space\n2. Click Login",
+                        "related_docs": ["docs/development/issue149/research.md"],
+                    },
+                    "is_epic": False,
+                    "parent_issue": 91,
+                    "milestone": "v2.0",
+                    "assignees": ["alice"],
+                },
+            ]
+        }
+    }
 
 
 class CreateIssueTool(BaseTool):
@@ -112,16 +227,14 @@ class CreateIssueTool(BaseTool):
 
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
-            # Normalize Unicode to prevent JSON-RPC encoding errors
-            # This preserves emoji while fixing malformed surrogates
             title_safe = normalize_unicode(params.title)
-            body_safe = normalize_unicode(params.body)
+            body_safe = normalize_unicode(self._render_body(params.body))
 
             issue = self.manager.create_issue(
                 title=title_safe,
                 body=body_safe,
-                labels=params.labels,
-                milestone=params.milestone,
+                labels=None,  # labels assembled in Cycle 5
+                milestone=None,
                 assignees=params.assignees,
             )
             return ToolResult.text(f"Created issue #{issue['number']}: {issue['title']}")
