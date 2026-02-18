@@ -214,11 +214,24 @@ class CreateIssueTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return super().input_schema
 
-    def _render_body(self, body: IssueBody) -> str:
-        """Render an IssueBody to markdown via issue.md.jinja2."""
+    def _render_body(self, body: IssueBody, title: str = "") -> str:
+        """Render an IssueBody to markdown via issue.md.jinja2.
+
+        Args:
+            body: Structured issue body fields.
+            title: Issue title rendered as H1 heading.
+
+        Returns:
+            Markdown string with SCAFFOLD metadata as invisible HTML comments.
+        """
         return self._renderer.render(
             "concrete/issue.md.jinja2",
-            title="",
+            format="markdown",
+            title=title,
+            output_path="",
+            artifact_type="",
+            version_hash="",
+            timestamp="",
             problem=body.problem,
             expected=body.expected,
             actual=body.actual,
@@ -264,7 +277,7 @@ class CreateIssueTool(BaseTool):
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
             title_safe = normalize_unicode(params.title)
-            body_safe = normalize_unicode(self._render_body(params.body))
+            body_safe = normalize_unicode(self._render_body(params.body, title=params.title))
             labels = self._assemble_labels(params)
 
             issue = self.manager.create_issue(
