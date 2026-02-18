@@ -3,6 +3,7 @@
 import unicodedata
 from typing import Any, Literal
 
+import jinja2
 from pydantic import BaseModel, Field, field_validator
 
 from mcp_server.config.contributor_config import ContributorConfig
@@ -274,6 +275,11 @@ class CreateIssueTool(BaseTool):
                 assignees=params.assignees,
             )
             return ToolResult.text(f"Created issue #{issue['number']}: {issue['title']}")
+        except jinja2.TemplateError as e:
+            return ToolResult.error(
+                f"Body rendering failed: {e}. "
+                "Check that issue.md.jinja2 exists in the templates directory."
+            )
         except ExecutionError as e:
             return ToolResult.error(str(e))
 

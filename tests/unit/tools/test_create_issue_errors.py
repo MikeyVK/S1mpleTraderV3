@@ -18,6 +18,7 @@ from unittest.mock import MagicMock, patch
 import jinja2
 import pytest
 
+from mcp_server.core.exceptions import ExecutionError
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 
 # ---------------------------------------------------------------------------
@@ -51,8 +52,6 @@ class TestExecutionErrorHandling:
     @pytest.mark.asyncio
     async def test_execution_error_returns_tool_result_error(self) -> None:
         """ExecutionError from GitHubManager must produce ToolResult.error()."""
-        from mcp_server.core.exceptions import ExecutionError
-
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("GitHub API rate limit exceeded")
         tool = CreateIssueTool(manager=mock_manager)
@@ -63,8 +62,6 @@ class TestExecutionErrorHandling:
 
     @pytest.mark.asyncio
     async def test_execution_error_message_is_included(self) -> None:
-        from mcp_server.core.exceptions import ExecutionError
-
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("GitHub API rate limit exceeded")
         tool = CreateIssueTool(manager=mock_manager)
@@ -77,8 +74,6 @@ class TestExecutionErrorHandling:
     @pytest.mark.asyncio
     async def test_execution_error_does_not_raise(self) -> None:
         """execute() must not raise — it must return ToolResult.error()."""
-        from mcp_server.core.exceptions import ExecutionError
-
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("Network error")
         tool = CreateIssueTool(manager=mock_manager)
@@ -189,8 +184,6 @@ class TestNoExceptionLeaks:
     @pytest.mark.asyncio
     async def test_execution_error_does_not_propagate(self) -> None:
         """No known error type should propagate out of execute()."""
-        from mcp_server.core.exceptions import ExecutionError
-
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("fail")
         tool = CreateIssueTool(manager=mock_manager)
@@ -203,9 +196,7 @@ class TestNoExceptionLeaks:
     @pytest.mark.asyncio
     async def test_template_error_does_not_propagate(self) -> None:
         tool = make_tool()
-        with patch.object(
-            tool, "_render_body", side_effect=jinja2.TemplateError("fail")
-        ):
+        with patch.object(tool, "_render_body", side_effect=jinja2.TemplateError("fail")):
             try:
                 await tool.execute(VALID_PARAMS)
             except Exception as exc:  # noqa: BLE001
