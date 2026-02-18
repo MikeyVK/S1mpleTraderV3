@@ -12,6 +12,7 @@ from mcp_server.config.label_config import LabelConfig
 from mcp_server.config.milestone_config import MilestoneConfig
 from mcp_server.config.scope_config import ScopeConfig
 from mcp_server.config.template_config import get_template_root
+from mcp_server.config.workflow_config import WorkflowConfig
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.scaffolding.renderer import JinjaRenderer
@@ -225,15 +226,50 @@ class CreateIssueTool(BaseTool):
             related_docs=body.related_docs,
         )
 
+    def _assemble_labels(self, params: CreateIssueInput) -> list[str]:
+        """Assemble the full label list from structured input fields.
+
+        Assembly rules (in order):
+          type_label     = "type:epic"                        if is_epic
+                         = IssueConfig.get_label(issue_type)  otherwise
+          scope_label    = "scope:{scope}"
+          priority_label = "priority:{priority}"
+          phase_label    = "phase:{first_phase}"              from workflows.yaml
+          parent_label   = "parent:{n}"                      if parent_issue is not None
+        """
+        issue_cfg = IssueConfig.from_file()
+        workflow_cfg = WorkflowConfig.from_file()
+
+        # type label
+        type_label = "type:epic" if params.is_epic else issue_cfg.get_label(params.issue_type)
+
+        # phase label — derive from first phase of the issue type's workflow
+        workflow_name = issue_cfg.get_workflow(params.issue_type)
+        first_phase = workflow_cfg.get_first_phase(workflow_name)
+        phase_label = f"phase:{first_phase}"
+
+        labels: list[str] = [
+            type_label,
+            f"scope:{params.scope}",
+            f"priority:{params.priority}",
+            phase_label,
+        ]
+
+        if params.parent_issue is not None:
+            labels.append(f"parent:{params.parent_issue}")
+
+        return labels
+
     async def execute(self, params: CreateIssueInput) -> ToolResult:
         try:
             title_safe = normalize_unicode(params.title)
             body_safe = normalize_unicode(self._render_body(params.body))
+            labels = self._assemble_labels(params)
 
             issue = self.manager.create_issue(
                 title=title_safe,
                 body=body_safe,
-                labels=None,  # labels assembled in Cycle 5
+                labels=labels,
                 milestone=params.milestone,
                 assignees=params.assignees,
             )

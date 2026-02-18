@@ -28,7 +28,7 @@ from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, Issu
 BODY = IssueBody(problem="Test problem")
 
 
-def make_params(**overrides) -> CreateIssueInput:  # type: ignore[no-untyped-def]
+def make_params(**overrides: object) -> CreateIssueInput:
     """Return a minimal valid CreateIssueInput with optional overrides."""
     base = {
         "issue_type": "feature",
@@ -79,7 +79,7 @@ class TestTypeLabelAssembly:
     def test_no_duplicate_type_labels(self) -> None:
         tool = CreateIssueTool(manager=MagicMock())
         labels = tool._assemble_labels(make_params(issue_type="feature"))
-        type_labels = [l for l in labels if l.startswith("type:")]
+        type_labels = [lbl for lbl in labels if lbl.startswith("type:")]
         assert len(type_labels) == 1
 
 
@@ -159,7 +159,7 @@ class TestPhaseLabelAssembly:
     def test_no_duplicate_phase_labels(self) -> None:
         tool = CreateIssueTool(manager=MagicMock())
         labels = tool._assemble_labels(make_params(issue_type="feature"))
-        phase_labels = [l for l in labels if l.startswith("phase:")]
+        phase_labels = [lbl for lbl in labels if lbl.startswith("phase:")]
         assert len(phase_labels) == 1
 
 
@@ -177,7 +177,7 @@ class TestParentLabelAssembly:
     def test_parent_issue_none_produces_no_parent_label(self) -> None:
         tool = CreateIssueTool(manager=MagicMock())
         labels = tool._assemble_labels(make_params(parent_issue=None))
-        assert not any(l.startswith("parent:") for l in labels)
+        assert not any(lbl.startswith("parent:") for lbl in labels)
 
     def test_parent_issue_different_value(self) -> None:
         tool = CreateIssueTool(manager=MagicMock())
