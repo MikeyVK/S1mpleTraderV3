@@ -230,3 +230,59 @@ class TestOptionalFields:
     def test_assignees_list_accepted(self) -> None:
         inp = CreateIssueInput(**{**VALID_MINIMAL, "assignees": ["alice", "bob"]})
         assert inp.assignees == ["alice", "bob"]
+
+
+# ---------------------------------------------------------------------------
+# TestBodyJsonStringCoercion  (Cycle 8 RED — MCP chat interface compat)
+# ---------------------------------------------------------------------------
+
+
+class TestBodyJsonStringCoercion:
+    """body field must accept a JSON string and coerce it to IssueBody.
+
+    The MCP chat interface (Copilot Chat) serializes nested objects as JSON
+    strings before passing them to the tool. Without coercion, every chat
+    invocation fails with 'is not of type object'.
+    """
+
+    def test_body_json_string_minimal_is_coerced(self) -> None:
+        """A JSON string with only `problem` is parsed into IssueBody."""
+        import json
+        body_str = json.dumps({"problem": "Widget crashes on startup."})
+        inp = CreateIssueInput(**{**VALID_MINIMAL, "body": body_str})
+        assert isinstance(inp.body, IssueBody)
+        assert inp.body.problem == "Widget crashes on startup."
+
+    def test_body_json_string_full_is_coerced(self) -> None:
+        """A JSON string with all optional fields is fully parsed."""
+        import json
+        body_str = json.dumps({
+            "problem": "Login fails.",
+            "expected": "Redirect to dashboard.",
+            "actual": "500 error.",
+            "context": "Windows 11.",
+            "steps_to_reproduce": "1. Open\n2. Click",
+            "related_docs": ["docs/planning.md"],
+        })
+        inp = CreateIssueInput(**{**VALID_MINIMAL, "body": body_str})
+        assert inp.body.expected == "Redirect to dashboard."
+        assert inp.body.related_docs == ["docs/planning.md"]
+        assert inp.body.steps_to_reproduce == "1. Open\n2. Click"
+
+    def test_body_json_string_missing_problem_raises(self) -> None:
+        """A JSON string without `problem` raises ValidationError."""
+        import json
+        body_str = json.dumps({"expected": "Something"})
+        with pytest.raises(ValidationError):
+            CreateIssueInput(**{**VALID_MINIMAL, "body": body_str})
+
+    def test_body_invalid_json_string_raises(self) -> None:
+        """A non-JSON string raises ValidationError with clear message."""
+        with pytest.raises(ValidationError):
+            CreateIssueInput(**{**VALID_MINIMAL, "body": "not valid json"})
+
+    def test_body_dict_still_accepted(self) -> None:
+        """Plain dict input still works (existing behavior must not break)."""
+        inp = CreateIssueInput(**{**VALID_MINIMAL, "body": {"problem": "Dict input still works."}})
+        assert isinstance(inp.body, IssueBody)
+        assert inp.body.problem == "Dict input still works."
