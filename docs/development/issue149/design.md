@@ -20,8 +20,8 @@ Define the detailed technical design for the redesigned `create_issue` tool: new
 - `mcp_server/config/scope_config.py` (new)
 - `mcp_server/config/milestone_config.py` (new)
 - `mcp_server/config/contributor_config.py` (new)
-- `.st3/issues.yaml`
-- `.st3/scopes.yaml`
+- `.st3/issues.yaml` (new — list schema with `label` field)
+- `.st3/scopes.yaml` (new — flat list: `architecture`, `mcp-server`, `platform`, `tooling`, `workflow`, `documentation`)
 - `.st3/milestones.yaml` (new, empty)
 - `.st3/contributors.yaml` (new, empty)
 - `.st3/labels.yaml` (cleanup: remove `status:*`, fix `parent:*` pattern, add `type:chore`)
@@ -57,7 +57,7 @@ Define the detailed technical design for the redesigned `create_issue` tool: new
 | REQ-F1 | `CreateIssueInput` must require `issue_type`, validated against `issues.yaml`; unknown values produce `ValidationError` with list of valid types |
 | REQ-F2 | `title` must have max length from `git.yaml` (`issue_title_max_length: 72`) |
 | REQ-F3 | `priority` required, validated against `labels.yaml` `priority:*` category |
-| REQ-F4 | `scope` required, validated against `scopes.yaml` names |
+| REQ-F4 | `scope` required, validated against `scopes.yaml` names (`architecture`, `mcp-server`, `platform`, `tooling`, `workflow`, `documentation`) |
 | REQ-F5 | `body` required as `IssueBody` instance (not `str`); `problem` field required within `IssueBody` |
 | REQ-F6 | `is_epic=True` must override `type:*` label to `type:epic` regardless of `issue_type` |
 | REQ-F7 | `parent_issue >= 1` must produce label `parent:{n}`; values `< 1` must be rejected |
@@ -141,43 +141,83 @@ def from_file(cls, path: Path | None = None) -> "IssueConfig":
 
 ```python
 class IssueTypeEntry(BaseModel):
+    name: str
     workflow: str
-    description: str | None = None
+    label: str          # e.g. "type:bug" — hotfix maps to "type:bug", not "type:hotfix"
 
 class IssueConfig(BaseModel):
-    issue_types: dict[str, IssueTypeEntry]
+    version: str
+    issue_types: list[IssueTypeEntry]
+    optional_label_inputs: dict[str, Any] = {}
+
+    def get_workflow(self, issue_type: str) -> str: ...
+    def get_label(self, issue_type: str) -> str: ...
 ```
+
+`get_label()` is the key method for label assembly: `hotfix` returns `"type:bug"`, not `"type:hotfix"`.
 
 **`.st3/issues.yaml` schema:**
 
 ```yaml
+version: "1.0"
 issue_types:
-  feature:
+  - name: feature
     workflow: feature
-    description: "New capability"
-  bug:
+    label: "type:feature"
+  - name: bug
     workflow: bug
-  hotfix:
+    label: "type:bug"
+  - name: hotfix
     workflow: hotfix
-  refactor:
+    label: "type:bug"
+  - name: refactor
     workflow: refactor
-  docs:
+    label: "type:refactor"
+  - name: docs
     workflow: docs
-  chore:
+    label: "type:docs"
+  - name: chore
     workflow: feature
-    description: "Maintenance task (maps to feature workflow)"
-  epic:
+    label: "type:chore"
+  - name: epic
     workflow: epic
+    label: "type:epic"
+required_label_categories:
+  - type
+  - priority
+  - scope
+optional_label_inputs:
+  is_epic:
+    type: bool
+    label: "type:epic"
+    behavior: "Overrides type:* label from issue_type"
+  parent_issue:
+    type: int
+    label_pattern: "parent:{value}"
+    description: "Applies parent:{issue_number} label (e.g., parent:91)"
 ```
 
 #### `ScopeConfig` (`.st3/scopes.yaml`)
 
 ```python
-class ScopeEntry(BaseModel):
-    description: str | None = None
-
 class ScopeConfig(BaseModel):
-    scopes: dict[str, ScopeEntry]
+    version: str
+    scopes: list[str]
+
+    def has_scope(self, name: str) -> bool: ...
+```
+
+**`.st3/scopes.yaml` schema (flat list):**
+
+```yaml
+version: "1.0"
+scopes:
+  - architecture
+  - mcp-server
+  - platform
+  - tooling
+  - workflow
+  - documentation
 ```
 
 No `label` field — label is `scope:{name}` by convention.
@@ -186,25 +226,34 @@ No `label` field — label is `scope:{name}` by convention.
 
 ```python
 class MilestoneEntry(BaseModel):
+    number: int
     title: str
+    state: str = "open"
 
 class MilestoneConfig(BaseModel):
+    version: str
     milestones: list[MilestoneEntry] = []
+
+    def validate_milestone(self, title: str) -> bool: ...
 ```
 
-Starts empty. Validation permissive when `milestones` is `[]`.
+Starts empty. Validation is permissive when `milestones` is `[]`.
 
 #### `ContributorConfig` (`.st3/contributors.yaml`)
 
 ```python
 class ContributorEntry(BaseModel):
-    github_username: str
+    login: str
+    name: str | None = None
 
 class ContributorConfig(BaseModel):
+    version: str
     contributors: list[ContributorEntry] = []
+
+    def validate_assignee(self, login: str) -> bool: ...
 ```
 
-Starts empty. Validation permissive when `contributors` is `[]`.
+Starts empty. Validation is permissive when `contributors` is `[]`.
 
 ---
 
@@ -217,7 +266,7 @@ class IssueBody(BaseModel):
     actual: str | None = None
     context: str | None = None
     steps_to_reproduce: str | None = None
-    related_docs: str | None = None
+    related_docs: list[str] | None = None
 ```
 
 Maps directly to the variables consumed by `issue.md.jinja2`.
@@ -274,8 +323,8 @@ class CreateIssueInput(BaseModel):
 **Assembly rules (in order):**
 
 ```
-type_label     = "type:epic"              if is_epic
-               = "type:{issue_type}"      otherwise
+type_label     = "type:epic"                              if is_epic
+               = IssueConfig.get_label(issue_type)        otherwise  # hotfix → "type:bug"
 scope_label    = "scope:{scope}"
 priority_label = "priority:{priority}"
 phase_label    = "phase:{first_phase}"    from workflows.yaml via issue_type → workflow
@@ -375,26 +424,17 @@ optional_label_inputs:
 
 #### `.st3/scopes.yaml`
 
-New file. Initially populated with known project scopes:
+New file — flat list of valid scope names. See §5.1 for full schema.
 
 ```yaml
+version: "1.0"
 scopes:
-  core:
-    description: "Core trading engine"
-  config:
-    description: "Configuration layer"
-  tools:
-    description: "MCP tool layer"
-  workers:
-    description: "Worker layer"
-  dtos:
-    description: "Data transfer objects"
-  tests:
-    description: "Test infrastructure"
-  docs:
-    description: "Documentation"
-  ci:
-    description: "CI/CD pipeline"
+  - architecture
+  - mcp-server
+  - platform
+  - tooling
+  - workflow
+  - documentation
 ```
 
 ---
