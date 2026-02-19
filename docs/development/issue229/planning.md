@@ -31,7 +31,7 @@ Plan the TDD cycles needed to implement phase deliverable enforcement in PhaseSt
 
 Read these first:
 1. `research.md` approved (findings + gap analysis complete)
-2. `findings.md` updated with validation strategy decision (Option C)
+2. `findings.md` updated with validation strategy decision (structural checks only — no acceptance tests per phase)
 3. State in `state.json`: planning phase, no `planning_deliverables` in `projects.json` yet
 
 ---

@@ -142,6 +142,8 @@ Fields are **optional** — phases without them behave identically to current be
 | `absent_text` | `file`, `text` | File does NOT contain `text` |
 | `key_path` | `file`, `path` | Dot-notation path resolves to a value in JSON/YAML |
 
+> **SCAFFOLD-header check** (referenced in `findings.md` as the `.md` deliverable check) is implemented as `contains_text` with `text = "<!-- template="`. No special type needed — this is a concrete application of the generic `contains_text` check.
+
 **Interface:**
 
 ```python

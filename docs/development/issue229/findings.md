@@ -65,7 +65,7 @@ This document records gaps and observations found during the live trial run of t
 
 ## Validation Strategy Discussion
 
-**Decision: Option C — Structural checks only (no acceptance tests per phase)**
+**Decision: Structural checks only — no acceptance tests per phase**
 
 Rationale:
 - Acceptance tests written by the same agent doing the phase work = "slager keurt eigen vlees" — self-verification without independence
