@@ -23,6 +23,12 @@ from mcp_server.tools.scaffold_artifact import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _force_v1_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force V1 pipeline: these tests validate V1 scaffolding infrastructure."""
+    monkeypatch.setenv("PYDANTIC_SCAFFOLDING_ENABLED", "false")
+
+
 @pytest.mark.asyncio
 async def test_validation_error_returns_schema(
     artifact_manager: ArtifactManager, temp_workspace: Path

@@ -41,9 +41,7 @@ class TemplateScaffolder(BaseScaffolder):
     """Unified scaffolder using artifact registry templates."""
 
     def __init__(
-        self,
-        registry: ArtifactRegistryConfig | None = None,
-        renderer: JinjaRenderer | None = None
+        self, registry: ArtifactRegistryConfig | None = None, renderer: JinjaRenderer | None = None
     ) -> None:
         """Initialize with dependency injection.
 
@@ -80,23 +78,15 @@ class TemplateScaffolder(BaseScaffolder):
         artifact = self.registry.get_artifact(artifact_type)
 
         # Get template path
-        template_path = self._resolve_template_path(
-            artifact_type,
-            artifact,
-            kwargs
-        )
+        template_path = self._resolve_template_path(artifact_type, artifact, kwargs)
 
         if not template_path:
-            raise ValidationError(
-                f"No template configured for artifact type: {artifact_type}"
-            )
+            raise ValidationError(f"No template configured for artifact type: {artifact_type}")
 
         # Extract schema from template via inheritance-aware introspection (Task 2.1)
         # This resolves the entire inheritance chain to detect ALL variables
         if self._renderer.env.loader is None:
-            raise ValidationError(
-                f"Template loader not configured for {artifact_type}"
-            )
+            raise ValidationError(f"Template loader not configured for {artifact_type}")
 
         # Type guard: loader is FileSystemLoader with searchpath
         loader = self._renderer.env.loader
@@ -114,14 +104,13 @@ class TemplateScaffolder(BaseScaffolder):
 
         if missing:
             error = ValidationError(
-                f"Missing required fields for {artifact_type}: "
-                f"{', '.join(missing)}",
+                f"Missing required fields for {artifact_type}: {', '.join(missing)}",
                 hints=[
                     f"Required: {', '.join(schema.required)}",
                     f"Optional: {', '.join(schema.optional)}",
-                    f"Missing: {', '.join(missing)}"
+                    f"Missing: {', '.join(missing)}",
                 ],
-                schema=schema
+                schema=schema,
             )
             # Track missing/provided for structured response
             error.missing = missing
@@ -130,11 +119,18 @@ class TemplateScaffolder(BaseScaffolder):
 
         return True
 
-    def scaffold(self, artifact_type: str, **kwargs: Any) -> ScaffoldResult:
+    def scaffold(
+        self,
+        artifact_type: str,
+        skip_validation: bool = False,
+        **kwargs: Any,
+    ) -> ScaffoldResult:
         """Scaffold artifact from template.
 
         Args:
             artifact_type: Artifact type_id from registry
+            skip_validation: If True, skip introspection-based validation.
+                Used by V2 pipeline where Pydantic schemas already validated input.
             **kwargs: Context for template rendering
 
         Returns:
@@ -143,23 +139,19 @@ class TemplateScaffolder(BaseScaffolder):
         Raises:
             ValidationError: If validation fails or template missing
         """
-        # Validate first
-        self.validate(artifact_type, **kwargs)
+        # Validate via introspection (V1 pipeline only).
+        # V2 pipeline uses Pydantic schemas for validation — skip introspection here.
+        if not skip_validation:
+            self.validate(artifact_type, **kwargs)
 
         # Get artifact definition
         artifact = self.registry.get_artifact(artifact_type)
 
         # Get template path (handle special cases)
-        template_path = self._resolve_template_path(
-            artifact_type,
-            artifact,
-            kwargs
-        )
+        template_path = self._resolve_template_path(artifact_type, artifact, kwargs)
 
         if not template_path:
-            raise ValidationError(
-                f"No template configured for artifact type: {artifact_type}"
-            )
+            raise ValidationError(f"No template configured for artifact type: {artifact_type}")
 
         # Render template via JinjaRenderer (safe FileSystemLoader)
         # Add artifact_type to render context (needed by Tier 0 SCAFFOLD block)
@@ -176,10 +168,7 @@ class TemplateScaffolder(BaseScaffolder):
         output_path = kwargs.get("output_path") or f"{name}{suffix}{extension}"
 
         # Use provided timestamp or generate ISO 8601 (UTC, minute precision)
-        timestamp = (
-            kwargs.get("timestamp") or
-            datetime.now(UTC).strftime("%Y-%m-%dT%H:%MZ")
-        )
+        timestamp = kwargs.get("timestamp") or datetime.now(UTC).strftime("%Y-%m-%dT%H:%MZ")
 
         # template_version must be provided by caller (artifact_manager injects version_hash)
         template_version = kwargs.get("template_version", "1.0")
@@ -190,7 +179,7 @@ class TemplateScaffolder(BaseScaffolder):
             "format": format_value,
             "timestamp": timestamp,
             "template_version": template_version,
-            "output_path": output_path
+            "output_path": output_path,
         }
         rendered = self._load_and_render_template(template_path, **render_context)
 
@@ -200,10 +189,7 @@ class TemplateScaffolder(BaseScaffolder):
         return ScaffoldResult(content=rendered, file_name=file_name)
 
     def _resolve_template_path(
-        self,
-        artifact_type: str,
-        artifact: Any,
-        context: dict[str, Any]
+        self, artifact_type: str, artifact: Any, context: dict[str, Any]
     ) -> str | None:
         """Resolve template path from artifact definition or context.
 
@@ -239,6 +225,11 @@ class TemplateScaffolder(BaseScaffolder):
             if template_name and isinstance(template_name, str):
                 return str(template_name)  # PRIORITY: context overrides artifacts.yaml
 
+        # GENERAL OVERRIDE: Any artifact can override via template_name (Cycle 4 v2 templates)
+        template_name_override = context.get("template_name")
+        if template_name_override and isinstance(template_name_override, str):
+            return str(template_name_override)
+
         # DEFAULT: Use template_path from artifacts.yaml
         template_path: str | None = artifact.template_path
 
@@ -251,11 +242,7 @@ class TemplateScaffolder(BaseScaffolder):
 
         return template_path
 
-    def _load_and_render_template(
-        self,
-        template_name: str,
-        **kwargs: Any
-    ) -> str:
+    def _load_and_render_template(self, template_name: str, **kwargs: Any) -> str:
         """Load and render template using JinjaRenderer.
 
         Uses FileSystemLoader for safe template access (no arbitrary

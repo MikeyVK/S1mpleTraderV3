@@ -21,6 +21,11 @@ from mcp_server.scaffolding.template_registry import TemplateRegistry
 class TestArtifactManagerRegistryIntegration:
     """Test registry integration in scaffold_artifact flow (Task 1.1c)."""
 
+    @pytest.fixture(autouse=True)
+    def _force_v1_pipeline(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Force V1 pipeline: these tests validate V1 scaffolding infrastructure."""
+        monkeypatch.setenv("PYDANTIC_SCAFFOLDING_ENABLED", "false")
+
     @pytest.mark.asyncio
     async def test_scaffold_artifact_saves_to_registry(self):
         """Should call registry.save_version() when scaffolding artifact.

@@ -1,0 +1,111 @@
+{#- concrete/dto_v2.py.jinja2 - Data Transfer Object (Pydantic BaseModel) - V2 SCHEMA-TYPED -#}
+{#- Version: 2.0.0 -#}
+{#- Purpose: Generate Pydantic DTOs with schema-typed validation (NO defensive | default patterns) -#}
+{%- extends "tier2_base_python.jinja2" -%}
+
+{%- import "tier3_pattern_python_pydantic.jinja2" as pydantic -%}
+
+{#-
+TEMPLATE_METADATA:
+  enforcement: GUIDELINE
+  level: content
+  validates:
+    guidelines:
+      - "Pydantic BaseModel inheritance"
+      - "Field definitions with type hints"
+      - "Schema-typed context (DTORenderContext)"
+  extends: tier2_base_python.jinja2
+  purpose: "V2 Pydantic-validated DTO template (Issue #135)"
+  version: "2.0.0"
+  changelog:
+    - version: "2.0.0"
+      date: "2026-02-17"
+      changes: "V2 schema-typed template - eliminates defensive | default patterns via DTORenderContext validation"
+  introspection:
+    template_id: dto_v2
+    tier: concrete
+    parent: tier2_base_python
+    variables:
+      required:
+        - dto_name (from DTOContext)
+        - fields (from DTOContext, list[str])
+        - template_id (from LifecycleMixin via DTORenderContext)
+        - output_path (from LifecycleMixin)
+        - scaffold_created (from LifecycleMixin)
+        - version_hash (from LifecycleMixin, rendered as template_version)
+      optional: []
+  agent_hints:
+    phase: "green"
+    purpose: "V2 schema-validated DTO generation with Pydantic pre-validation"
+    v2_features:
+      - "NO defensive | default patterns (schema guarantees field presence)"
+      - "Direct field access (context.dto_name, context.fields)"
+      - "Pydantic validates BEFORE template rendering"
+      - "Line 95 reduction: 262 → 36 characters (86%) in v1→v2"
+    belongs_here:
+      - "Schema-typed DTO scaffolding (PYDANTIC_SCAFFOLDING_ENABLED=true)"
+      - "Clean templates without defensive checks"
+    does_not_belong:
+      - "Dict-based contexts (use dto.py.jinja2 v1)"
+      - "Defensive patterns (schema validation replaces them)"
+    workflow_context:
+      - "Feature flag PYDANTIC_SCAFFOLDING_ENABLED must be true"
+      - "Context validated via DTOContext → enriched to DTORenderContext"
+      - "Template receives DTORenderContext (6 guaranteed fields)"
+-#}
+
+{% block module_docstring %}
+"""{{ dto_name }} DTO module.
+
+Data Transfer Object for {{ dto_name }}.
+
+@layer: DTOs
+@dependencies: pydantic.BaseModel
+@responsibilities: Data validation, type safety
+"""
+{% endblock %}
+
+{% block imports_section %}
+# Third-party
+{{ pydantic.pattern_pydantic_imports(include_field_validator=false) }}
+
+# Project modules
+{% endblock %}
+
+{% block class_structure %}
+class {{ dto_name }}(BaseModel):
+{% block class_docstring %}
+    """{{ dto_name }} DTO.
+
+    Data Transfer Object for {{ dto_name }}.
+    {% if fields %}
+
+    Fields:
+{% for field_def in fields %}
+        {{ field_def.split(':')[0].strip() }}: {{ field_def.split(':')[1].strip() if ':' in field_def else 'str' }}
+{% endfor -%}
+    {% endif %}
+    """
+{% endblock -%}
+{% block field_definitions %}
+{% if fields -%}
+{% for field_def in fields %}
+{% set field_parts = field_def.split(':') %}
+{% set field_name = field_parts[0].strip() %}
+{% set field_type = field_parts[1].strip() if field_parts | length > 1 else 'str' %}
+    {{ field_name }}: {{ field_type }} = Field(
+        description="{{ field_name }} field",
+    )
+{% endfor -%}
+{% else -%}
+    pass
+{% endif -%}
+{% endblock -%}
+{% block config_section %}
+
+    model_config = {
+        "frozen": False,
+        "extra": "forbid",
+    }
+{% endblock -%}
+{% endblock %}

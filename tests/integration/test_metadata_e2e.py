@@ -23,6 +23,11 @@ from mcp_server.scaffolding.template_registry import TemplateRegistry
 class TestMetadataEndToEnd:
     """E2E tests for scaffold metadata workflow."""
 
+    @pytest.fixture(autouse=True)
+    def _force_v1_pipeline(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Force V1 pipeline: these tests validate V1 scaffolding infrastructure."""
+        monkeypatch.setenv("PYDANTIC_SCAFFOLDING_ENABLED", "false")
+
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create manager with workspace_root set."""

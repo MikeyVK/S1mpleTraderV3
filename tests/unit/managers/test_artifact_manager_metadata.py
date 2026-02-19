@@ -12,6 +12,11 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 class TestArtifactManagerMetadataEnrichment:
     """Test metadata field injection via public API."""
 
+    @pytest.fixture(autouse=True)
+    def _force_v1_pipeline(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Force V1 pipeline: these tests validate V1 scaffolding infrastructure."""
+        monkeypatch.setenv("PYDANTIC_SCAFFOLDING_ENABLED", "false")
+
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create manager with mocked collaborators."""
@@ -141,6 +146,11 @@ class TestArtifactManagerNullTemplate:
 
 class TestArtifactManagerTierChainExtraction:
     """Test version extraction from TEMPLATE_METADATA via scaffold behavior."""
+
+    @pytest.fixture(autouse=True)
+    def _force_v1_pipeline(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Force V1 pipeline: these tests validate V1 scaffolding infrastructure."""
+        monkeypatch.setenv("PYDANTIC_SCAFFOLDING_ENABLED", "false")
 
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:

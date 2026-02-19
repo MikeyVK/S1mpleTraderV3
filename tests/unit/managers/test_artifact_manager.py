@@ -12,6 +12,10 @@ from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
 class TestArtifactManagerCore:
     """Test ArtifactManager core functionality."""
+    @pytest.fixture(autouse=True)
+    def _force_v1_pipeline(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Force V1 pipeline: these tests validate V1 scaffolding infrastructure."""
+        monkeypatch.setenv("PYDANTIC_SCAFFOLDING_ENABLED", "false")
 
     def test_constructor_accepts_optional_registry(self):
         """Test that constructor accepts optional registry parameter."""
