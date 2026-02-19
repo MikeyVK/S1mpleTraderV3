@@ -16,8 +16,9 @@ This document records gaps and observations found during the live trial run of t
 | [GAP-02](#gap-02) | High | PhaseStateEngine | ✅ Fixed (C2) |
 | [GAP-03](#gap-03) | Medium | PhaseStateEngine | Pending (C3) |
 | [GAP-04](#gap-04) | Medium | MCP Tools | Pending (C4) |
-| [GAP-05](#gap-05) | Medium | DeliverableChecker | Pending (C2 re-run) |
+| [GAP-05](#gap-05) | Medium | DeliverableChecker | ✅ Fixed (C2 re-run) |
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | Pending (C4) |
+| [GAP-07](#gap-07) | Medium | MCP Git Tool | Pending (C2 re-run) |
 
 ---
 
@@ -71,8 +72,9 @@ Discovered during smoke-test of the live implementation and follow-up Q&A after 
 
 | ID | Severity | Area | Status |
 |----|----------|------|--------|
-| [GAP-05](#gap-05) | Medium | DeliverableChecker | Pending |
+| [GAP-05](#gap-05) | Medium | DeliverableChecker | ✅ Fixed |
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | Pending |
+| [GAP-07](#gap-07) | Medium | MCP Git Tool | Pending |
 
 ---
 
@@ -96,6 +98,18 @@ Discovered during smoke-test of the live implementation and follow-up Q&A after 
 **Expected:** The tool should validate each `validates` entry on write, and return a structured error listing available types and required fields per type — matching the pattern established by the scaffold tool.  
 **Note:** MCP tool input schema (JSON Schema exposed via the MCP protocol) serves as Layer 1 contract — agents know the top-level parameter shape. Layer 2 (semantic validation inside the tool at runtime) is needed for the `validates` sub-entries which are dynamically typed (`type` determines which other fields are required).  
 **Addressed by:** #229 Cycle 4 scope extension (schema validation + helpful error messages)
+
+---
+
+## GAP-07
+
+**Title:** `git_add_or_commit` does not validate `workflow_phase` + `cycle_number` against `state.json`  
+**Severity:** Medium  
+**Observed:** Agent committed with `workflow_phase="tdd"`, `cycle_number=2` while `state.json.current_phase="design"`. Tool accepted the call without error. Commits were scoped correctly per the parameters, but the state was inconsistent — no enforcement of the actual project phase.  
+**Expected:** Tool blocks when the provided `workflow_phase` doesn't match `state.json.current_phase`, or (in TDD) when `cycle_number` doesn't match `state.json.current_tdd_cycle`. Error message should name the mismatch and the transitions needed to resolve it.  
+**Root cause:** `git_add_or_commit` uses `workflow_phase` / `cycle_number` purely for commit message scope generation — it never reads `state.json`.  
+**Proposed fix:** Before generating the commit, read `state.json`, compare `workflow_phase` vs `current_phase` (and `cycle_number` vs `current_tdd_cycle` when phase is `tdd`), raise `CommitPhaseMismatchError` with actionable message if mismatched.  
+**Addressed by:** #229 Cycle 2 re-run (D2.4) — small addition to existing C2 scope
 
 ---
 

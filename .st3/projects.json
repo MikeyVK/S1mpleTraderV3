@@ -556,6 +556,15 @@
                   "file": "mcp_server/managers/deliverable_checker.py",
                   "text": "file_glob"
                 }
+              },
+              {
+                "id": "D2.4",
+                "description": "git_add_or_commit validates workflow_phase + cycle_number against state.json (GAP-07) — blocks on phase mismatch",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "phase_mismatch"
+                }
               }
             ],
             "exit_criteria": "All 9 tests pass; planning exit gate wired to WorkphasesConfig+DeliverableChecker; file_glob type available"

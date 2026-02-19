@@ -73,9 +73,9 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ---
 
-### Cycle 2: Gate relocation + file_glob support — GAP-01 + GAP-02 + GAP-05
+### Cycle 2: Gate relocation + file_glob support + commit phase guard — GAP-01 + GAP-02 + GAP-05 + GAP-07
 
-**Goal:** Fix the architectural misplacement identified in GAP-01 and GAP-02. Wire the structural checker into the planning phase exit. Remove the planning-deliverables check from TDD entry. Add `file_glob` check type to `DeliverableChecker` (GAP-05) — agents need pattern-based file existence checks without knowing exact filenames.
+**Goal:** Fix the architectural misplacement identified in GAP-01 and GAP-02. Wire the structural checker into the planning phase exit. Remove the planning-deliverables check from TDD entry. Add `file_glob` check type to `DeliverableChecker` (GAP-05) — agents need pattern-based file existence checks without knowing exact filenames. Add phase/cycle mismatch guard to `git_add_or_commit` (GAP-07) — tool should block commits when the provided phase/cycle doesn't match `state.json`.
 
 **Tests (original — gate relocation):**
 - `test_planning_exit_gate_blocks_transition_when_deliverables_missing`
@@ -90,11 +90,15 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 - `test_deliverable_checker_file_glob_no_match_raises`
 - `test_deliverable_checker_file_glob_pattern_in_subdir_passes`
 
+**Tests (re-run addition — commit phase guard):**
+- `test_git_add_or_commit_raises_on_phase_mismatch`
+
 **Success Criteria:**
 - `planning → design` raises when `exit_requires` deliverables are absent
 - `planning → design` passes when all deliverables present
 - Entering TDD no longer independently blocks on planning deliverables
 - `file_glob` type: at least one matching file → pass; zero matches → `DeliverableCheckError`
+- `git_add_or_commit` raises `CommitPhaseMismatchError` when `workflow_phase` ≠ `state.json.current_phase` (or `cycle_number` ≠ `current_tdd_cycle`)
 - All tests pass
 
 **Dependencies:** Cycle 1
