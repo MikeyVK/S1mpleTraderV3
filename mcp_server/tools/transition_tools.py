@@ -310,9 +310,7 @@ class ForceCycleTransitionTool(BaseTool):
             checker = DeliverableChecker(workspace_root=workspace_root)
             unvalidated: list[str] = []
             for cycle_num in skipped_cycles:
-                cycle_data = next(
-                    (c for c in cycles if c.get("cycle_number") == cycle_num), None
-                )
+                cycle_data = next((c for c in cycles if c.get("cycle_number") == cycle_num), None)
                 if cycle_data is None:
                     continue
                 for deliverable in cycle_data.get("deliverables", []):
@@ -328,9 +326,7 @@ class ForceCycleTransitionTool(BaseTool):
                     except Exception:
                         unvalidated.append(f"cycle:{cycle_num}:{d_id} ({d_desc})")
             if unvalidated:
-                message += (
-                    f"\n⚠️ Unvalidated cycle deliverables: {', '.join(unvalidated)}"
-                )
+                message += f"\n⚠️ Unvalidated cycle deliverables: {', '.join(unvalidated)}"
 
             return ToolResult.text(message)
 

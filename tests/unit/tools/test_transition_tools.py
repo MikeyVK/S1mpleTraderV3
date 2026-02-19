@@ -567,7 +567,8 @@ class TestForceCycleTransitionSkippedDeliverables:
         Issue #229 D3.2 (GAP-08).
         """
         workspace_root, _ = self._setup_project_with_validates_deliverables(
-            tmp_path, cycle3_file_contains=None  # File absent → check fails
+            tmp_path,
+            cycle3_file_contains=None,  # File absent → check fails
         )
 
         with (
@@ -575,9 +576,7 @@ class TestForceCycleTransitionSkippedDeliverables:
             patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
-            mock_git.get_current_branch.return_value = (
-                "feature/229-phase-deliverables-enforcement"
-            )
+            mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
             mock_git_class.return_value = mock_git
             mock_settings.server.workspace_root = workspace_root
 
@@ -614,9 +613,7 @@ class TestForceCycleTransitionSkippedDeliverables:
             patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
-            mock_git.get_current_branch.return_value = (
-                "feature/229-phase-deliverables-enforcement"
-            )
+            mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
             mock_git_class.return_value = mock_git
             mock_settings.server.workspace_root = workspace_root
 
