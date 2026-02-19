@@ -532,7 +532,7 @@
             "deliverables": [
               {
                 "id": "D2.1",
-                "description": "PhaseStateEngine: on_exit_planning_phase wired to structural checker",
+                "description": "PhaseStateEngine: on_exit_planning_phase wired to WorkphasesConfig + DeliverableChecker (Option B)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/phase_state_engine.py",
@@ -547,9 +547,18 @@
                   "file": "mcp_server/managers/phase_state_engine.py",
                   "text": "planning_deliverables"
                 }
+              },
+              {
+                "id": "D2.3",
+                "description": "DeliverableChecker: file_glob type added (GAP-05) — pattern-based file existence check",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/deliverable_checker.py",
+                  "text": "file_glob"
+                }
               }
             ],
-            "exit_criteria": "All 4 tests pass; planning exit blocks without deliverables; TDD entry silent"
+            "exit_criteria": "All 9 tests pass; planning exit gate wired to WorkphasesConfig+DeliverableChecker; file_glob type available"
           },
           {
             "cycle_number": 3,
@@ -586,9 +595,18 @@
                   "file": "mcp_server/server.py",
                   "text": "SavePlanningDeliverablesTool"
                 }
+              },
+              {
+                "id": "D4.3",
+                "description": "Layer 2 schema validation: validates entry type + required fields checked before persisting (GAP-06)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/project_tools.py",
+                  "text": "validate_spec"
+                }
               }
             ],
-            "exit_criteria": "All 3 tests pass; tool callable via MCP, rejects duplicate and invalid payload"
+            "exit_criteria": "All 6 tests pass; tool callable via MCP; rejects invalid validates.type with helpful error listing available types and required fields"
           }
         ]
       }

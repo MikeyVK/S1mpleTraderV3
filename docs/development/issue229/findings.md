@@ -12,10 +12,12 @@ This document records gaps and observations found during the live trial run of t
 
 | ID | Severity | Area | Status |
 |----|----------|------|--------|
-| [GAP-01](#gap-01) | High | PhaseStateEngine | Confirmed |
-| [GAP-02](#gap-02) | High | PhaseStateEngine | Confirmed |
-| [GAP-03](#gap-03) | Medium | PhaseStateEngine | Confirmed |
-| [GAP-04](#gap-04) | Medium | MCP Tools | Confirmed |
+| [GAP-01](#gap-01) | High | PhaseStateEngine | ✅ Fixed (C2) |
+| [GAP-02](#gap-02) | High | PhaseStateEngine | ✅ Fixed (C2) |
+| [GAP-03](#gap-03) | Medium | PhaseStateEngine | Pending (C3) |
+| [GAP-04](#gap-04) | Medium | MCP Tools | Pending (C4) |
+| [GAP-05](#gap-05) | Medium | DeliverableChecker | Pending (C2 re-run) |
+| [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | Pending (C4) |
 
 ---
 
@@ -60,6 +62,40 @@ This document records gaps and observations found during the live trial run of t
 **Expected:** Agent/user should be able to call a tool to persist deliverables from the planning phase without directly editing `projects.json`  
 **Impact:** Trial run required direct `projects.json` editing to set up deliverables — not a valid workflow  
 **Addressed by:** #229 Cycle 4 (D4.1/D4.2) — `SavePlanningDeliverablesTool` in `project_tools.py` + registered in `server.py`
+
+---
+
+## Post-Implementation Gaps (2026-02-19 smoke-test session)
+
+Discovered during smoke-test of the live implementation and follow-up Q&A after C1+C2 completion.
+
+| ID | Severity | Area | Status |
+|----|----------|------|--------|
+| [GAP-05](#gap-05) | Medium | DeliverableChecker | Pending |
+| [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | Pending |
+
+---
+
+## GAP-05
+
+**Title:** `file_exists` has no glob/pattern support  
+**Severity:** Medium  
+**Observed:** `_check_file_exists` resolves `spec["file"]` as a literal path via `Path(relative_file)`. A pattern like `docs/development/issue229/*research*.md` is interpreted as a filename and fails because no such literal file exists.  
+**Expected:** Agents should be able to declare deliverables without knowing the exact filename upfront — e.g. "a `*research*.md` file must exist in `docs/development/issue229/`".  
+**Root cause:** `_resolve()` always produces a single `Path` object; `glob()` is never called.  
+**Proposed fix:** Add `file_glob` check type (or optional `glob: true` flag on `file_exists`) that uses `Path.glob()` and raises if no matches are found.  
+**Addressed by:** #229 Cycle 2 re-run
+
+---
+
+## GAP-06
+
+**Title:** `SavePlanningDeliverablesTool` has no input schema validation  
+**Severity:** Medium  
+**Observed (anticipated):** The tool will accept any JSON payload via MCP. An agent can save deliverables with invalid or incomplete `validates` entries (wrong `type`, missing `file`, etc.) that only fail at planning exit gate — not at save time.  
+**Expected:** The tool should validate each `validates` entry on write, and return a structured error listing available types and required fields per type — matching the pattern established by the scaffold tool.  
+**Note:** MCP tool input schema (JSON Schema exposed via the MCP protocol) serves as Layer 1 contract — agents know the top-level parameter shape. Layer 2 (semantic validation inside the tool at runtime) is needed for the `validates` sub-entries which are dynamically typed (`type` determines which other fields are required).  
+**Addressed by:** #229 Cycle 4 scope extension (schema validation + helpful error messages)
 
 ---
 
