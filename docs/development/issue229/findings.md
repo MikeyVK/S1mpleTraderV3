@@ -20,6 +20,9 @@ This document records gaps and observations found during the live trial run of t
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | ✅ Fixed (C4) |
 | [GAP-07](#gap-07) | Medium | MCP Git Tool | ✅ Fixed (C2 re-run) |
 | [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | ✅ Fixed (C3) |
+| [GAP-09](#gap-09) | Medium | SavePlanningDeliverablesTool | Pending |
+| [GAP-10](#gap-10) | Medium | PhaseStateEngine / workphases.yaml | Pending |
+| [GAP-11](#gap-11) | Medium | PhaseStateEngine / planning schema | Pending |
 
 ---
 
@@ -77,6 +80,9 @@ Discovered during smoke-test of the live implementation and follow-up Q&A after 
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | ✅ Fixed (C4) |
 | [GAP-07](#gap-07) | Medium | MCP Git Tool | ✅ Fixed (C2 re-run) |
 | [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | ✅ Fixed (C3) |
+| [GAP-09](#gap-09) | Medium | SavePlanningDeliverablesTool | Pending |
+| [GAP-10](#gap-10) | Medium | PhaseStateEngine / workphases.yaml | Pending |
+| [GAP-11](#gap-11) | Medium | PhaseStateEngine / planning schema | Pending |
 
 ---
 
@@ -162,6 +168,62 @@ Conditionally verbose: alleen rapporteren wanneer er daadwerkelijk een gate was.
 - Detailed validation logic per artifact type beyond the two checks above
 
 **Extension path:** The `validates` schema on each deliverable entry is intentionally simple now. A future issue can add `type: yaml_key_value`, `type: test_passes`, etc. without breaking existing deliverables.
+
+---
+
+---
+
+## GAP-09
+
+**Title:** `save_planning_deliverables` is write-once — no update path for evolving cycles  
+**Severity:** Medium  
+**Observed:** A second call to `save_planning_deliverables` for the same issue raises `ValueError: Cannot overwrite existing deliverables`. During the #229 trial run, D3.2 (GAP-08) and several cycle extensions were applied via direct `safe_edit_file` on `projects.json` — bypassing the tool entirely.  
+**Expected:** The agent must be able to add cycles, update deliverable specs, or append entries to existing planning deliverables as the project evolves during research/planning iterations.  
+**Root cause:** `ProjectManager.save_planning_deliverables()` has an explicit write-once guard. There is no update/merge operation.  
+**Proposed fix:** Add `update_planning_deliverables` MCP tool (**Optie A**) with merge-strategy: new cycles append, existing cycle deliverables merge by `id`. Keep the original `save_planning_deliverables` as the initial write (write-once stays intentional for the first commit).  
+**Addressed by:** #229 pending — new TDD cycle
+
+---
+
+## GAP-10
+
+**Title:** `exit_requires` in `workphases.yaml` only supports `key:` checks — no file-system gates  
+**Severity:** Medium  
+**Observed:** The `research` phase has no `exit_requires` entry. Adding a file-existence gate (e.g. "a `*research*.md` must exist") requires a new `type: file_glob` variant — the current mechanism only checks for keys in `projects.json`.  
+**Expected:** `workphases.yaml` should support static file-system exit gates per phase, with `{issue_number}` interpolation, so the research phase can enforce artifact existence before transitioning to planning.  
+**Root cause:** `PhaseStateEngine.force_transition()` / `transition()` only read `key:` entries from `exit_requires`; `DeliverableChecker` runs only on `planning_deliverables`, not on phase config.  
+**Proposed fix:** Extend `exit_requires` schema with `type: file_glob` + `file:` with `{issue_number}` placeholder. Interpolate at gate-check time and delegate to `DeliverableChecker._check_file_glob()`. Then configure:
+```yaml
+research:
+  exit_requires:
+    - type: file_glob
+      file: "docs/development/issue{issue_number}/*research*.md"
+      description: "Research document aanwezig"
+```
+**Addressed by:** #229 pending — new TDD cycle
+
+---
+
+## GAP-11
+
+**Title:** `planning_deliverables` schema is TDD-centric — no deliverable gates for design/validation/documentation phases  
+**Severity:** Medium  
+**Observed:** `save_planning_deliverables` only accepts `tdd_cycles` as the structured key. Phases like `design`, `validation`, and `documentation` cannot have planning-defined deliverable gates — meaning those phase transitions are always unvalidated, even when deliverables are known upfront.  
+**Expected:** Planning should be able to define expected deliverables for *any* phase in the workflow, e.g.:
+```json
+{
+  "planning_deliverables": {
+    "tdd_cycles": { "total": 2, "cycles": [...] },
+    "design": { "deliverables": [...] },
+    "validation": { "deliverables": [...] },
+    "documentation": { "deliverables": [...] }
+  }
+}
+```
+`PhaseStateEngine` should then check `planning_deliverables.<phase>.deliverables` as the exit gate for each respective phase (same `DeliverableChecker` pattern).  
+**Root cause:** Schema design in `save_planning_deliverables` and `PhaseStateEngine` assumes TDD is the only phase with structured deliverables.  
+**Note:** `hotfix` workflow intentionally has no planning phase and therefore no deliverable gates — accepted trade-off.  
+**Addressed by:** #229 pending — new TDD cycle (requires design phase for schema impact analysis)
 
 ---
 
