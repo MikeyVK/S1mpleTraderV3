@@ -88,6 +88,11 @@ class GitConfig(BaseModel):
         default="main", description="Default base branch for PR creation"
     )
 
+    # Convention #12: Issue title maximum length (Issue #149)
+    issue_title_max_length: int = Field(
+        default=72, description="Maximum allowed length for issue titles", ge=1
+    )
+
     # Compiled regex (cached after validation)
     _compiled_pattern: ClassVar[re.Pattern[str] | None] = None
 

@@ -1,0 +1,36 @@
+version: "1.0"
+issue_types:
+  - name: feature
+    workflow: feature
+    label: "type:feature"
+  - name: bug
+    workflow: bug
+    label: "type:bug"
+  - name: hotfix
+    workflow: hotfix
+    label: "type:bug"
+  - name: refactor
+    workflow: refactor
+    label: "type:refactor"
+  - name: docs
+    workflow: docs
+    label: "type:docs"
+  - name: chore
+    workflow: feature
+    label: "type:chore"
+  - name: epic
+    workflow: epic
+    label: "type:epic"
+required_label_categories:
+  - type
+  - priority
+  - scope
+optional_label_inputs:
+  is_epic:
+    type: bool
+    label: "type:epic"
+    behavior: "Overrides type:* label from issue_type"
+  parent_issue:
+    type: int
+    label_pattern: "parent:{value}"
+    description: "Applies parent:{issue_number} label (e.g., parent:91)"

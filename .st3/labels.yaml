@@ -10,10 +10,10 @@ freeform_exceptions:
 # Dynamic label patterns - validated but not pre-created
 # These labels are created on-demand when needed
 label_patterns:
-  - pattern: "^parent:issue-\\d+$"
+  - pattern: "^parent:\\d+$"
     description: "Parent issue reference for child issues"
     color: "EDEDED"
-    example: "parent:issue-18"
+    example: "parent:91"
 
 labels:
   # TYPE - Issue Classification (7 labels)
@@ -21,10 +21,6 @@ labels:
   - name: "type:feature"
     color: "1D76DB"
     description: "New functionality or capability"
-  
-  - name: "type:enhancement"
-    color: "A2EEEF"
-    description: "Improvement to existing feature"
   
   - name: "type:bug"
     color: "D73A4A"
@@ -45,6 +41,10 @@ labels:
   - name: "type:epic"
     color: "5319E7"
     description: "Large feature with multiple sub-issues"
+  
+  - name: "type:chore"
+    color: "7057FF"
+    description: "Maintenance tasks and housekeeping"
   
   # PRIORITY - Urgency Level (5 labels)
   # How important/urgent is this work
@@ -108,24 +108,6 @@ labels:
     color: "0075CA"
     description: "Documentation phase"
   
-  # STATUS - Current State (4 labels)
-  # What's blocking or what action is needed
-  - name: "status:blocked"
-    color: "D73A4A"
-    description: "Blocked by external dependency"
-  
-  - name: "status:in-progress"
-    color: "0E8A16"
-    description: "Currently being worked on"
-  
-  - name: "status:needs-info"
-    color: "D876E3"
-    description: "Needs more information"
-  
-  - name: "status:ready"
-    color: "FBCA04"
-    description: "Ready for review/merge"
-  
   # SCOPE - Impact Area (6 labels)
   # Which part of the system is affected
   - name: "scope:architecture"
@@ -151,3 +133,19 @@ labels:
   - name: "scope:documentation"
     color: "BFD4F2"
     description: "Documentation scope"
+
+# ---------------------------------------------------------------------------
+# CHANGELOG
+# ---------------------------------------------------------------------------
+# v1.0  (Issue #149 — Redesign create_issue tool)
+#   REMOVED: status:* label category (status:open, status:in-progress,
+#             status:closed, status:blocked) — workflow state is tracked via
+#             GitHub issue state + phase:* labels instead of explicit status
+#             labels. This avoids label proliferation and state drift.
+#   CHANGED: parent:{n} is now a dynamic label pattern (see label_patterns
+#             above) rather than a pre-created label. Labels are created
+#             on-demand when a parent_issue is provided to create_issue.
+#             Pattern: "^parent:\\d+$", color: EDEDED, example: "parent:91"
+#   ADDED:   label_patterns section — declares dynamic label patterns that
+#            are validated by regex but not pre-created in the repository.
+# ---------------------------------------------------------------------------

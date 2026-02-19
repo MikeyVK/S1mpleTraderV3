@@ -460,5 +460,21 @@
     "skip_reason": null,
     "parent_branch": null,
     "created_at": "2026-02-14T20:01:14.099861+00:00"
+  },
+  "149": {
+    "issue_title": "Redesign create_issue tool: structured input, config-driven validation, Jinja2 body scaffolding",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "integration",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-02-18T14:34:40.512360+00:00"
   }
 }

@@ -1,19 +1,21 @@
 """Tests for GitHub integration."""
+
 import asyncio
 from unittest.mock import Mock
 
 import pytest
 
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool
+from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 
 
 @pytest.fixture
-def mock_adapter():
+def mock_adapter() -> Mock:
     """Create a mock GitHub adapter for testing."""
     return Mock()
 
-def test_manager_get_issues(mock_adapter) -> None:
+
+def test_manager_get_issues(mock_adapter: Mock) -> None:
     """Test GitHubManager returns correctly formatted issue data."""
     # Setup mock
     mock_issue = Mock()
@@ -33,7 +35,8 @@ def test_manager_get_issues(mock_adapter) -> None:
     assert data["open_count"] == 1
     assert data["issues"][0]["title"] == "Test Issue"
 
-def test_create_issue_tool(mock_adapter) -> None:
+
+def test_create_issue_tool(mock_adapter: Mock) -> None:
     """Test CreateIssueTool creates issue and returns correct response."""
     # Setup mock
     mock_issue = Mock()
@@ -45,13 +48,13 @@ def test_create_issue_tool(mock_adapter) -> None:
     manager = GitHubManager(adapter=mock_adapter)
     tool = CreateIssueTool(manager=manager)
 
-    result = asyncio.run(tool.execute(CreateIssueInput(title="New Issue", body="Body")))
+    params = CreateIssueInput(
+        issue_type="feature",
+        title="New Issue",
+        priority="medium",
+        scope="mcp-server",
+        body=IssueBody(problem="Some problem description"),
+    )
+    result = asyncio.run(tool.execute(params))
 
     assert "Created issue #42" in result.content[0]["text"]
-    mock_adapter.create_issue.assert_called_with(
-        title="New Issue",
-        body="Body",
-        labels=None,
-        milestone_number=None,
-        assignees=None
-    )

@@ -49,3 +49,6 @@ commit_types:
 
 # Conventions #9-11: Default base branch for PR creation
 default_base_branch: main
+
+# Convention #12: Issue title maximum length (Issue #149)
+issue_title_max_length: 72
