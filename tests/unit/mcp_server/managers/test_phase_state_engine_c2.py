@@ -5,7 +5,7 @@ GAP-02: planning_deliverables check in on_enter_tdd_phase is wrong layer —
         remove it there; gate belongs at planning exit, not TDD entry.
 
 C2 Deliverables:
-  D2.1: on_exit_planning_phase exists and raises when planning_deliverables absent.
+  D2.1: on_exit_planning_phase wired to WorkphasesConfig + DeliverableChecker (Option B).
   D2.2: on_enter_tdd_phase no longer raises when planning_deliverables absent.
 """
 
@@ -23,7 +23,26 @@ from mcp_server.managers.project_manager import ProjectManager
 
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
-    """Temporary workspace root."""
+    """Temporary workspace root with .st3/workphases.yaml providing exit_requires."""
+    st3 = tmp_path / ".st3"
+    st3.mkdir()
+    (st3 / "workphases.yaml").write_text(
+        """
+phases:
+  planning:
+    display_name: "Planning"
+    exit_requires:
+      - key: "planning_deliverables"
+        description: "TDD cycle breakdown"
+  tdd:
+    display_name: "TDD"
+    entry_expects:
+      - key: "planning_deliverables"
+        description: "Expected from planning"
+  design:
+    display_name: "Design"
+"""
+    )
     return tmp_path
 
 
@@ -45,7 +64,7 @@ def engine(workspace_root: Path, project_manager: ProjectManager) -> PhaseStateE
 
 
 class TestOnExitPlanningPhase:
-    """on_exit_planning_phase enforces planning_deliverables at planning exit."""
+    """on_exit_planning_phase uses WorkphasesConfig + DeliverableChecker (Option B)."""
 
     def test_on_exit_planning_phase_raises_when_planning_deliverables_absent(
         self,
@@ -61,7 +80,7 @@ class TestOnExitPlanningPhase:
             issue_title="Phase deliverables enforcement",
             workflow_name="feature",
         )
-        # No planning_deliverables saved → should raise
+        # No planning_deliverables saved → exit_requires key missing → should raise
         with pytest.raises(ValueError, match="planning_deliverables"):
             engine.on_exit_planning_phase(branch="feature/229-test", issue_number=229)
 
@@ -90,6 +109,65 @@ class TestOnExitPlanningPhase:
         )
         # Should not raise
         engine.on_exit_planning_phase(branch="feature/229-test", issue_number=229)
+
+    def test_on_exit_planning_phase_uses_workphases_config_for_required_keys(
+        self,
+        engine: PhaseStateEngine,
+        project_manager: ProjectManager,
+        workspace_root: Path,
+    ) -> None:
+        """on_exit_planning_phase reads exit_requires from workphases.yaml, not hardcoded.
+
+        Issue #229 C2 — D2.1: gate is WorkphasesConfig-driven (Option B).
+        A phase with no exit_requires in workphases.yaml must pass unconditionally.
+        """
+        # Write workphases.yaml WITHOUT exit_requires on planning
+        (workspace_root / ".st3" / "workphases.yaml").write_text(
+            "phases:\n  planning:\n    display_name: Planning\n"
+        )
+        project_manager.initialize_project(
+            issue_number=230,
+            issue_title="No planning gate",
+            workflow_name="feature",
+        )
+        # No planning_deliverables AND no exit_requires → must NOT raise
+        engine.on_exit_planning_phase(branch="feature/230-test", issue_number=230)
+
+    def test_on_exit_planning_phase_runs_deliverable_checker_on_validates_entries(
+        self,
+        engine: PhaseStateEngine,
+        project_manager: ProjectManager,
+    ) -> None:
+        """on_exit_planning_phase runs DeliverableChecker on planning_deliverables.validates.
+
+        Issue #229 C2 — D2.1: wired to structural checker (Option B full flow).
+        A validates entry that fails must propagate as DeliverableCheckError (ValueError).
+        """
+        project_manager.initialize_project(
+            issue_number=229,
+            issue_title="Phase deliverables enforcement",
+            workflow_name="feature",
+        )
+        # planning_deliverables exists but has a failing validates entry
+        project_manager.save_planning_deliverables(
+            229,
+            {
+                "tdd_cycles": {
+                    "total": 1,
+                    "cycles": [{"cycle_number": 1, "deliverables": ["D1"], "exit_criteria": "x"}],
+                },
+                "validates": [
+                    {
+                        "id": "gate-check",
+                        "type": "file_exists",
+                        "file": "nonexistent/missing.py",
+                    }
+                ],
+            },
+        )
+        # DeliverableChecker must raise on the failing file_exists
+        with pytest.raises(ValueError, match="gate-check"):
+            engine.on_exit_planning_phase(branch="feature/229-test", issue_number=229)
 
 
 # ---------------------------------------------------------------------------

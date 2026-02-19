@@ -30,6 +30,8 @@ from typing import Any, cast
 
 # Project modules
 from mcp_server.config.workflows import workflow_config
+from mcp_server.config.workphases_config import WorkphasesConfig
+from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.project_manager import ProjectManager
 
 logger = logging.getLogger(__name__)
@@ -580,25 +582,45 @@ class PhaseStateEngine:
         logger.info(f"Entered TDD phase for issue {issue_number} on branch {branch}")
 
     def on_exit_planning_phase(self, branch: str, issue_number: int) -> None:
-        """Hook called when exiting planning phase — hard gate (Issue #229).
+        """Hook called when exiting planning phase — hard gate (Issue #229, Option B).
 
-        Validates that planning_deliverables exist in projects.json before
-        the branch is allowed to leave the planning phase.
+        Reads exit_requires from workphases.yaml via WorkphasesConfig, checks that
+        each required key exists in projects.json, and runs DeliverableChecker.check()
+        on any ``validates`` entries declared directly under the key value.
 
         Args:
             branch: Branch name
             issue_number: GitHub issue number
 
         Raises:
-            ValueError: If planning_deliverables not present in project plan
+            ValueError: If a required key is absent from the project plan
+            DeliverableCheckError: If a validates entry fails structural checks
         """
+        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        wp_config = WorkphasesConfig(workphases_path)
+        exit_requires = wp_config.get_exit_requires("planning")
+
+        if not exit_requires:
+            logger.info(f"No exit_requires for planning phase; gate skipped for branch {branch}")
+            return
+
         project_plan = self.project_manager.get_project_plan(issue_number)
-        if not project_plan or "planning_deliverables" not in project_plan:
-            msg = (
-                f"planning_deliverables not found for issue {issue_number}. "
-                "Save planning deliverables before leaving the planning phase."
-            )
-            raise ValueError(msg)
+        checker = DeliverableChecker(workspace_root=self.workspace_root)
+
+        for requirement in exit_requires:
+            key = requirement["key"]
+            if not project_plan or key not in project_plan:
+                msg = (
+                    f"{key} not found for issue {issue_number}. "
+                    f"Save {key} before leaving the planning phase."
+                )
+                raise ValueError(msg)
+
+            # Run top-level validates entries declared directly under the key value
+            plan_value = project_plan[key]
+            if isinstance(plan_value, dict):
+                for validate_spec in plan_value.get("validates", []):
+                    checker.check(validate_spec.get("id", key), validate_spec)
 
         logger.info(f"Planning exit gate passed for branch {branch} (issue {issue_number})")
 
