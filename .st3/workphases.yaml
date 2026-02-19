@@ -22,6 +22,9 @@ phases:
       - "c2"  # Cycle 2
       - "c3"  # Cycle 3
       - "c4"  # Cycle 4
+    exit_requires:
+      - key: "planning_deliverables"
+        description: "TDD cycle breakdown with validates specs (Issue #229)"
 
   design:
     display_name: "Design"
@@ -40,6 +43,9 @@ phases:
       - "red"          # Write failing test
       - "green"        # Implement minimum code to pass
       - "refactor"     # Clean up code
+    entry_expects:
+      - key: "planning_deliverables"
+        description: "TDD cycle breakdown expected from planning phase (Issue #229)"
 
   validation:
     display_name: "Validation"
