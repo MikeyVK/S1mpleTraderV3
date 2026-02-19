@@ -1,5 +1,6 @@
 """Git tools."""
 
+import json
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -21,6 +22,39 @@ logger = get_logger("tools.git")
 
 class CommitPhaseMismatchError(MCPError):
     """Raised when the provided workflow_phase/cycle_number doesn't match state.json."""
+
+
+def build_phase_guard(workspace_root: Path) -> Callable[[str, str, int | None], None]:
+    """Build a guard callable that blocks commits when phase/cycle mismatches state.json."""
+    state_file = workspace_root / ".st3" / "state.json"
+
+    def phase_mismatch(branch: str, workflow_phase: str, cycle_number: int | None) -> None:
+        if not state_file.exists():
+            return
+        data: dict[str, Any] = json.loads(state_file.read_text(encoding="utf-8"))
+        if data.get("branch") != branch:
+            return  # state.json belongs to a different branch — skip
+
+        current_phase = data.get("current_phase", "unknown")
+        if workflow_phase != current_phase:
+            msg = (
+                f"Phase mismatch: committing as '{workflow_phase}' "
+                f"but state.json shows current_phase='{current_phase}'.\n"
+                f"Run first: transition_phase(branch='{branch}', to_phase='{workflow_phase}')"
+            )
+            raise CommitPhaseMismatchError(msg)
+
+        if workflow_phase == "tdd" and cycle_number is not None:
+            current_cycle = data.get("current_tdd_cycle")
+            if current_cycle is not None and cycle_number != current_cycle:
+                msg = (
+                    f"Cycle mismatch: committing as cycle {cycle_number} "
+                    f"but state.json shows current_tdd_cycle={current_cycle}.\n"
+                    f"Run first: transition_cycle(to_cycle={cycle_number})"
+                )
+                raise CommitPhaseMismatchError(msg)
+
+    return phase_mismatch
 
 
 def _input_schema(args_model: type[BaseModel] | None) -> dict[str, Any]:
