@@ -4,13 +4,20 @@ Issue #79: Tests for parent_branch in InitializeProjectTool.
 - Accepts explicit parent_branch parameter
 - Auto-detects parent_branch from git reflog (best effort)
 - Handles auto-detection failure gracefully
+
+Issue #229 Cycle 4: SavePlanningDeliverablesTool (D4.1/D4.2/D4.3/GAP-04/GAP-06).
 """
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from mcp_server.tools.project_tools import InitializeProjectInput, InitializeProjectTool
+from mcp_server.tools.project_tools import (
+    InitializeProjectInput,
+    InitializeProjectTool,
+    SavePlanningDeliverablesTool,
+    SavePlanningDeliverablesInput,
+)
 
 
 class TestInitializeProjectToolParentBranch:
@@ -154,3 +161,189 @@ class TestInitializeProjectToolParentBranch:
         content_text = result.content[0]["text"]
         assert '"parent_branch": "epic/special"' in content_text
         mock_detect.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _minimal_deliverables(validates: dict | None = None) -> dict:
+    """Return a minimal valid planning_deliverables dict with one cycle.
+
+    If *validates* is given it is attached to the single deliverable entry,
+    allowing L2 validation to be exercised.
+    """
+    deliverable: dict = {"id": "D1.1", "description": "placeholder"}
+    if validates is not None:
+        deliverable["validates"] = validates
+    return {
+        "tdd_cycles": {
+            "total": 1,
+            "cycles": [
+                {
+                    "cycle_number": 1,
+                    "deliverables": [deliverable],
+                    "exit_criteria": "Tests pass",
+                }
+            ],
+        }
+    }
+
+
+class TestSavePlanningDeliverablesTool:
+    """Tests for SavePlanningDeliverablesTool.
+
+    Issue #229 Cycle 4 (GAP-04 + GAP-06):
+    - D4.1: tool defined in project_tools.py
+    - D4.2: tool registered in server.py (integration test, see test_server_tool_registration.py)
+    - D4.3: Layer 2 validates-entry schema validation before persisting
+    """
+
+    @pytest.fixture()
+    def tool(self, tmp_path: Path) -> SavePlanningDeliverablesTool:
+        return SavePlanningDeliverablesTool(workspace_root=tmp_path)
+
+    @pytest.fixture()
+    def initialized(self, tmp_path: Path) -> tuple[Path, int]:
+        """Initialize a project so save_planning_deliverables can run."""
+        from mcp_server.managers.project_manager import ProjectManager
+
+        pm = ProjectManager(workspace_root=tmp_path)
+        pm.initialize_project(
+            issue_number=229,
+            issue_title="Phase deliverables enforcement",
+            workflow_name="feature",
+        )
+        return tmp_path, 229
+
+    # ------------------------------------------------------------------
+    # D4.1: basic persistence
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio()
+    async def test_save_planning_deliverables_tool_persists_to_projects_json(
+        self, tool: SavePlanningDeliverablesTool, initialized: tuple[Path, int]
+    ) -> None:
+        """Happy path: valid payload is written to projects.json. (D4.1)"""
+        workspace_root, issue_number = initialized
+        tool_with_root = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool_with_root.execute(
+            SavePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables=_minimal_deliverables(),
+            )
+        )
+
+        assert not result.is_error, f"Expected success, got: {result.content}"
+        import json
+        from mcp_server.managers.project_manager import ProjectManager
+        pm = ProjectManager(workspace_root=workspace_root)
+        plan = pm.get_project_plan(issue_number)
+        assert plan is not None
+        assert "planning_deliverables" in plan
+
+    @pytest.mark.asyncio()
+    async def test_save_planning_deliverables_tool_rejects_duplicate(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """Duplicate call is rejected with clear error."""
+        workspace_root, issue_number = initialized
+        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+        params = SavePlanningDeliverablesInput(
+            issue_number=issue_number,
+            planning_deliverables=_minimal_deliverables(),
+        )
+        await tool.execute(params)  # First call succeeds
+        result = await tool.execute(params)  # Second call must fail
+
+        assert result.is_error
+        assert "already exist" in result.content[0]["text"].lower()
+
+    @pytest.mark.asyncio()
+    async def test_save_planning_deliverables_tool_rejects_missing_tdd_cycles(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """Payload without tdd_cycles key is rejected."""
+        workspace_root, issue_number = initialized
+        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            SavePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={"notes": "forgot the tdd_cycles key"},
+            )
+        )
+
+        assert result.is_error
+        assert "tdd_cycles" in result.content[0]["text"]
+
+    # ------------------------------------------------------------------
+    # D4.3: Layer 2 validates-entry schema validation
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio()
+    async def test_save_planning_deliverables_tool_rejects_unknown_validates_type(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """validates entry with unknown type is rejected before persisting. (D4.3)"""
+        workspace_root, issue_number = initialized
+        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            SavePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables=_minimal_deliverables(
+                    validates={"type": "does_not_exist", "file": "x.py"}
+                ),
+            )
+        )
+
+        assert result.is_error
+        text = result.content[0]["text"]
+        assert "does_not_exist" in text
+        assert "D1.1" in text  # deliverable ID surfaced in error
+
+    @pytest.mark.asyncio()
+    async def test_save_planning_deliverables_tool_rejects_validates_missing_required_field(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """validates entry missing required field (text for contains_text) is rejected. (D4.3)"""
+        workspace_root, issue_number = initialized
+        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            SavePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables=_minimal_deliverables(
+                    validates={"type": "contains_text", "file": "x.py"}  # missing 'text'
+                ),
+            )
+        )
+
+        assert result.is_error
+        text = result.content[0]["text"]
+        assert "text" in text  # missing field name surfaced
+
+    @pytest.mark.asyncio()
+    async def test_save_planning_deliverables_tool_error_lists_available_types_and_fields(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """Error on unknown type lists all valid types and their required fields. (D4.3)"""
+        workspace_root, issue_number = initialized
+        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            SavePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables=_minimal_deliverables(
+                    validates={"type": "wrong_type"}
+                ),
+            )
+        )
+
+        assert result.is_error
+        text = result.content[0]["text"]
+        # Must list all valid types
+        for valid_type in ("file_exists", "file_glob", "contains_text", "absent_text", "key_path"):
+            assert valid_type in text, f"Expected '{valid_type}' listed in error, got: {text}"
