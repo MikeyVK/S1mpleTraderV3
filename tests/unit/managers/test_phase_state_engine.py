@@ -1,12 +1,15 @@
 """Tests for PhaseStateEngine entry/exit hooks.
 
 Issue #146 Cycle 4: TDD phase lifecycle hooks.
+Issue #229 Cycle 6: Research phase exit gate — file_glob support (GAP-10).
 """
 
 from pathlib import Path
 
 import pytest
+import yaml
 
+from mcp_server.managers.deliverable_checker import DeliverableCheckError
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 
@@ -278,3 +281,150 @@ class TestTransitionHooksWiring:
         assert state.get("current_tdd_cycle") is None, (
             "current_tdd_cycle should be None after exiting TDD phase"
         )
+
+
+class TestResearchExitGate:
+    """Tests for research phase exit gate (Issue #229 C6, GAP-10).
+
+    on_exit_research_phase() reads exit_requires from workphases.yaml for 'research'.
+    Supports type: file_glob with {issue_number} interpolation.
+    - D6.1: file_glob dispatch in PhaseStateEngine
+    - D6.2: research.exit_requires in workphases.yaml
+    """
+
+    def _workphases_yaml(self, tmp_path: Path, research_exit_requires: list | None = None) -> Path:
+        """Write a minimal workphases.yaml to tmp_path / .st3 / workphases.yaml."""
+        content: dict = {"version": "1.0", "phases": {"research": {}}}
+        if research_exit_requires is not None:
+            content["phases"]["research"]["exit_requires"] = research_exit_requires
+        path = tmp_path / ".st3" / "workphases.yaml"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.dump(content))
+        return path
+
+    def _setup_project(self, tmp_path: Path, issue_number: int, phase: str = "research") -> None:
+        """Initialize a project in the given phase."""
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Research exit gate test",
+            workflow_name="feature",
+        )
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine.initialize_branch(
+            branch=f"feature/{issue_number}-test",
+            issue_number=issue_number,
+            initial_phase=phase,
+        )
+
+    def test_on_exit_research_phase_silent_when_no_exit_requires(self, tmp_path: Path) -> None:
+        """No exit_requires configured → passes without raising. (D6.1)"""
+        self._workphases_yaml(tmp_path, research_exit_requires=None)
+        self._setup_project(tmp_path, issue_number=300)
+        manager = ProjectManager(workspace_root=tmp_path)
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+
+        # Must not raise
+        engine.on_exit_research_phase(branch="feature/300-test", issue_number=300)
+
+    def test_on_exit_research_phase_passes_when_file_glob_matches(self, tmp_path: Path) -> None:
+        """file_glob exit gate passes when at least one file matches. (D6.1)"""
+        self._workphases_yaml(
+            tmp_path,
+            research_exit_requires=[
+                {
+                    "type": "file_glob",
+                    "file": "docs/development/issue{issue_number}/*research*.md",
+                    "description": "Research document aanwezig",
+                }
+            ],
+        )
+        self._setup_project(tmp_path, issue_number=301)
+
+        # Create matching file
+        doc_dir = tmp_path / "docs" / "development" / "issue301"
+        doc_dir.mkdir(parents=True)
+        (doc_dir / "my-research-notes.md").write_text("# Research")
+
+        manager = ProjectManager(workspace_root=tmp_path)
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+
+        # Must not raise
+        engine.on_exit_research_phase(branch="feature/301-test", issue_number=301)
+
+    def test_on_exit_research_phase_raises_when_file_glob_not_found(self, tmp_path: Path) -> None:
+        """file_glob exit gate raises when no file matches the pattern. (D6.1)"""
+        self._workphases_yaml(
+            tmp_path,
+            research_exit_requires=[
+                {
+                    "type": "file_glob",
+                    "file": "docs/development/issue{issue_number}/*research*.md",
+                    "description": "Research document aanwezig",
+                }
+            ],
+        )
+        self._setup_project(tmp_path, issue_number=302)
+
+        # No matching file created
+        manager = ProjectManager(workspace_root=tmp_path)
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+
+        with pytest.raises(DeliverableCheckError):
+            engine.on_exit_research_phase(branch="feature/302-test", issue_number=302)
+
+    def test_on_exit_research_phase_interpolates_issue_number(self, tmp_path: Path) -> None:
+        """Pattern {issue_number} is substituted before globbing. (D6.1)"""
+        issue_number = 303
+        self._workphases_yaml(
+            tmp_path,
+            research_exit_requires=[
+                {
+                    "type": "file_glob",
+                    "file": "docs/development/issue{issue_number}/*research*.md",
+                    "description": "Research document",
+                }
+            ],
+        )
+        self._setup_project(tmp_path, issue_number=issue_number)
+
+        # Create file for the WRONG issue number — must still fail
+        wrong_dir = tmp_path / "docs" / "development" / "issue999"
+        wrong_dir.mkdir(parents=True)
+        (wrong_dir / "my-research.md").write_text("# Research")
+
+        manager = ProjectManager(workspace_root=tmp_path)
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+
+        with pytest.raises(DeliverableCheckError):
+            engine.on_exit_research_phase(branch="feature/303-test", issue_number=issue_number)
+
+    def test_transition_from_research_triggers_exit_hook(self, tmp_path: Path) -> None:
+        """transition(research→planning) calls on_exit_research_phase. (D6.1 wiring)"""
+        issue_number = 304
+        self._workphases_yaml(
+            tmp_path,
+            research_exit_requires=[
+                {
+                    "type": "file_glob",
+                    "file": "docs/development/issue{issue_number}/*research*.md",
+                    "description": "Research document aanwezig",
+                }
+            ],
+        )
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Transition wiring test",
+            workflow_name="feature",
+        )
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine.initialize_branch(
+            branch="feature/304-test",
+            issue_number=issue_number,
+            initial_phase="research",
+        )
+
+        # No matching file → transition must raise DeliverableCheckError
+        with pytest.raises(DeliverableCheckError):
+            engine.transition(branch="feature/304-test", to_phase="planning")
