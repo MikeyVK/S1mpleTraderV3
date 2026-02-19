@@ -7,6 +7,7 @@ Issue #79: Tests for parent_branch in InitializeProjectTool.
 
 Issue #229 Cycle 4: SavePlanningDeliverablesTool (D4.1/D4.2/D4.3/GAP-04/GAP-06).
 Issue #229 Cycle 5: UpdatePlanningDeliverablesTool (D5.1/D5.2/D5.3/GAP-09).
+Issue #229 Cycle 7: Per-phase deliverables schema in save_planning_deliverables (D7.1).
 """
 
 import json
@@ -522,3 +523,69 @@ class TestUpdatePlanningDeliverablesTool:
         text = result.content[0]["text"]
         for valid_type in ("file_exists", "file_glob", "contains_text", "absent_text", "key_path"):
             assert valid_type in text, f"Expected '{valid_type}' listed in error, got: {text}"
+
+
+class TestPlanningDeliverablesPhaseSchema:
+    """Tests for per-phase deliverables schema in save_planning_deliverables.
+
+    Issue #229 Cycle 7 (GAP-11):
+    - D7.1: save_planning_deliverables accepts phase keys alongside tdd_cycles
+    """
+
+    @pytest.fixture()
+    def initialized(self, tmp_path: Path) -> tuple[Path, int]:
+        """Initialize a project (no deliverables yet)."""
+        issue_number = 229
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Phase deliverables schema test",
+            workflow_name="feature",
+        )
+        return tmp_path, issue_number
+
+    @pytest.mark.asyncio()
+    async def test_save_accepts_design_phase_key(self, initialized: tuple[Path, int]) -> None:
+        """save_planning_deliverables accepts design phase key alongside tdd_cycles. (D7.1)"""
+        workspace_root, issue_number = initialized
+        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            SavePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    **_minimal_deliverables(),
+                    "design": {
+                        "deliverables": [
+                            {"id": "D-design-1", "description": "Design doc created"}
+                        ]
+                    },
+                },
+            )
+        )
+
+        assert not result.is_error
+        data = json.loads(
+            (workspace_root / ".st3" / "projects.json").read_text()
+        )[str(issue_number)]
+        assert "design" in data["planning_deliverables"]
+
+    @pytest.mark.asyncio()
+    async def test_save_rejects_unknown_phase_key(self, initialized: tuple[Path, int]) -> None:
+        """save_planning_deliverables rejects unrecognised phase keys. (D7.1)"""
+        workspace_root, issue_number = initialized
+        tool = SavePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            SavePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    **_minimal_deliverables(),
+                    "unknown_phase": {"deliverables": []},
+                },
+            )
+        )
+
+        assert result.is_error
+        text = result.content[0]["text"]
+        assert "unknown_phase" in text

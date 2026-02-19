@@ -2,8 +2,10 @@
 
 Issue #146 Cycle 4: TDD phase lifecycle hooks.
 Issue #229 Cycle 6: Research phase exit gate — file_glob support (GAP-10).
+Issue #229 Cycle 7: Per-phase deliverable gate on design exit (GAP-11/D7.2).
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -430,3 +432,89 @@ class TestResearchExitGate:
         # No matching file → transition must raise DeliverableCheckError
         with pytest.raises(DeliverableCheckError):
             engine.transition(branch="feature/304-test", to_phase="planning")
+
+
+class TestPerPhaseDeliverableGate:
+    """Tests for per-phase deliverable gate on design exit (Issue #229 C7, GAP-11).
+
+    on_exit_design_phase() reads planning_deliverables.design.deliverables and
+    runs DeliverableChecker.check() for each entry that has a validates spec.
+    - D7.1: save_planning_deliverables accepts optional phase keys
+    - D7.2: gate check in PhaseStateEngine.on_exit_design_phase()
+    """
+
+    def _make_engine(
+        self, tmp_path: Path, issue_number: int = 229, deliverables_state: dict | None = None
+    ) -> PhaseStateEngine:
+        """Build a PhaseStateEngine in design phase with optional planning_deliverables injected."""
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Per-phase deliverable gate test",
+            workflow_name="feature",
+        )
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine.initialize_branch(
+            branch=f"feature/{issue_number}-test",
+            issue_number=issue_number,
+            initial_phase="design",
+        )
+        # Inject planning_deliverables directly into state.json if provided
+        if deliverables_state is not None:
+            state_path = tmp_path / ".st3" / "state.json"
+            state_data: dict = json.loads(state_path.read_text())
+            # state.json is a flat dict (branch stored as "branch" field, no wrapper key)
+            state_data["planning_deliverables"] = deliverables_state
+            state_path.write_text(json.dumps(state_data, indent=2))
+        return engine
+
+    def test_on_exit_design_gate_silent_when_phase_key_absent(self, tmp_path: Path) -> None:
+        """Gate is optional: no planning_deliverables.design → silent pass."""
+        engine = self._make_engine(tmp_path, deliverables_state={"tdd_cycles": {}})
+        # Should not raise even though no design key present
+        engine.on_exit_design_phase(branch="feature/229-test", issue_number=229)
+
+    def test_on_exit_design_gate_passes_when_validates_spec_satisfied(self, tmp_path: Path) -> None:
+        """Gate passes when DeliverableChecker.check() succeeds for all deliverables."""
+        # Create matching file in tmp_path (which is the workspace root used by _make_engine)
+        docs_dir = tmp_path / "docs" / "development" / "issue229"
+        docs_dir.mkdir(parents=True)
+        (docs_dir / "design.md").write_text("# Design")
+
+        deliverables_state = {
+            "design": {
+                "deliverables": [
+                    {
+                        "id": "D7.1",
+                        "description": "Design document",
+                        "validates": {
+                            "type": "file_glob",
+                            "file": "docs/development/issue229/design*.md",
+                        },
+                    }
+                ]
+            }
+        }
+        engine = self._make_engine(tmp_path, deliverables_state=deliverables_state)
+        # Should not raise
+        engine.on_exit_design_phase(branch="feature/229-test", issue_number=229)
+
+    def test_on_exit_design_gate_raises_when_validates_spec_fails(self, tmp_path: Path) -> None:
+        """Gate raises DeliverableCheckError when required file is missing."""
+        deliverables_state = {
+            "design": {
+                "deliverables": [
+                    {
+                        "id": "D7.1",
+                        "description": "Design document",
+                        "validates": {
+                            "type": "file_glob",
+                            "file": "docs/development/issue229/design*.md",
+                        },
+                    }
+                ]
+            }
+        }
+        engine = self._make_engine(tmp_path, deliverables_state=deliverables_state)
+        with pytest.raises(DeliverableCheckError):
+            engine.on_exit_design_phase(branch="feature/229-test", issue_number=229)
