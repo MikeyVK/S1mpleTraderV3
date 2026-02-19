@@ -18,7 +18,8 @@ This document records gaps and observations found during the live trial run of t
 | [GAP-04](#gap-04) | Medium | MCP Tools | Pending (C4) |
 | [GAP-05](#gap-05) | Medium | DeliverableChecker | ✅ Fixed (C2 re-run) |
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | Pending (C4) |
-| [GAP-07](#gap-07) | Medium | MCP Git Tool | Pending (C2 re-run) |
+| [GAP-07](#gap-07) | Medium | MCP Git Tool | ✅ Fixed (C2 re-run) |
+| [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | Pending (C3) |
 
 ---
 
@@ -74,7 +75,8 @@ Discovered during smoke-test of the live implementation and follow-up Q&A after 
 |----|----------|------|--------|
 | [GAP-05](#gap-05) | Medium | DeliverableChecker | ✅ Fixed |
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | Pending |
-| [GAP-07](#gap-07) | Medium | MCP Git Tool | Pending |
+| [GAP-07](#gap-07) | Medium | MCP Git Tool | ✅ Fixed (C2 re-run) |
+| [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | Pending (C3) |
 
 ---
 
@@ -110,6 +112,18 @@ Discovered during smoke-test of the live implementation and follow-up Q&A after 
 **Root cause:** `git_add_or_commit` uses `workflow_phase` / `cycle_number` purely for commit message scope generation — it never reads `state.json`.  
 **Proposed fix:** Before generating the commit, read `state.json`, compare `workflow_phase` vs `current_phase` (and `cycle_number` vs `current_tdd_cycle` when phase is `tdd`), raise `CommitPhaseMismatchError` with actionable message if mismatched.  
 **Addressed by:** #229 Cycle 2 re-run (D2.4) — small addition to existing C2 scope
+
+---
+
+## GAP-08
+
+**Title:** `force_cycle_transition` does not warn when skipped cycles have unvalidated deliverables  
+**Severity:** Medium  
+**Observed:** `force_cycle_transition(to_cycle=4)` while cycle 3 deliverables (D3.1) not yet validated — tool succeeded silently. The `skipped_cycles` list is written to the audit trail, but no warning is surfaced about unvalidated work.  
+**Expected:** Tool warns when any skipped cycle has deliverables that don't pass `DeliverableChecker`. The transition still succeeds (forced = unconditional escape hatch), but the agent/user sees which deliverables were bypassed.  
+**Root cause:** `ForceCycleTransitionTool.execute()` checks `planning_deliverables` for existence but never runs `DeliverableChecker` on the skipped cycles' deliverables.  
+**Proposed fix:** After computing `skipped_cycles`, iterate each skipped cycle's `deliverables` list, run `DeliverableChecker.check()` per entry, collect failures, and append `⚠️ Unvalidated cycle deliverables: cycle:N:ID (description)` to the tool response — same pattern as GAP-03.  
+**Addressed by:** #229 Cycle 3 (D3.2) — scope extension aligned with GAP-03 pattern
 
 ---
 

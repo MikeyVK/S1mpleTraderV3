@@ -105,19 +105,23 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ---
 
-### Cycle 3: Forced transition skipped-gate warning — GAP-03
+### Cycle 3: Forced transition skipped-gate warning — GAP-03 + GAP-08
 
-**Goal:** When a forced transition bypasses one or more exit or entry gates, log a warning that lists which gates were skipped. The transition itself still succeeds — forced transitions remain an unconditional escape hatch.
+**Goal:** When a forced transition bypasses one or more exit or entry gates, log a warning that lists which gates were skipped (GAP-03). Additionally, when `force_cycle_transition` skips cycles with unvalidated deliverables, warn about those too (GAP-08). Both transitions remain unconditional escape hatches — warnings are informational only.
 
 **Tests:**
 - `test_force_transition_logs_warning_for_skipped_exit_gate`
 - `test_force_transition_logs_warning_for_skipped_entry_expects`
 - `test_force_transition_without_gates_logs_no_warning`
+- `test_force_cycle_transition_warns_unvalidated_skipped_cycle_deliverables` *(D3.2)*
+- `test_force_cycle_transition_no_warning_when_skipped_cycles_pass_checks` *(D3.2)*
 
 **Success Criteria:**
 - Forced transition on a phase with `exit_requires` produces a `logger.warning` naming the skipped gates
 - Forced transition on a phase without gates remains silent
-- All 3 tests pass
+- `force_cycle_transition` skip from C2→C4 produces `⚠️ Unvalidated cycle deliverables: cycle:3:D3.1 (...)` in tool response when C3 deliverables fail checks
+- `force_cycle_transition` skip produces no warning when all skipped cycle deliverables pass checks
+- All 5 tests pass
 
 **Dependencies:** Cycle 2 (gates must exist to have something to skip)
 
@@ -165,7 +169,7 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 - Cycle 1 GREEN: `workphases.yaml` schema + structural checker passing (8 tests)
 - Cycle 2 GREEN: planning exit gate wired, TDD entry gate removed, `file_glob` type added (GAP-01 + GAP-02 + GAP-05)
-- Cycle 3 GREEN: forced transition logs skipped gates (GAP-03 fixed)
+- Cycle 3 GREEN: forced transition logs skipped gates (GAP-03 fixed); force_cycle_transition warns unvalidated skipped cycles (GAP-08 fixed)
 - Cycle 4 GREEN: `save_planning_deliverables` callable via MCP with Layer 2 schema validation (GAP-04 + GAP-06 fixed)
 - All gaps confirmed resolved in `findings.md`
 

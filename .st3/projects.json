@@ -580,9 +580,18 @@
                   "file": "mcp_server/managers/phase_state_engine.py",
                   "text": "skipped_gates"
                 }
+              },
+              {
+                "id": "D3.2",
+                "description": "force_cycle_transition warns about unvalidated deliverables in skipped cycles (GAP-08)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "Unvalidated cycle deliverables"
+                }
               }
             ],
-            "exit_criteria": "All 3 tests pass; forced transition produces logger.warning when gates exist"
+            "exit_criteria": "All 5 tests pass; forced phase transition warns skipped gates; forced cycle transition warns unvalidated skipped cycle deliverables"
           },
           {
             "cycle_number": 4,
