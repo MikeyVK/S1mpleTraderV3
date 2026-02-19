@@ -215,3 +215,68 @@ class TestDeliverableChecker:
                     "path": "229.planning_deliverables",
                 },
             )
+
+    # --- file_glob ---
+
+    def test_deliverable_checker_file_glob_match_passes(
+        self, checker: DeliverableChecker, tmp_path: Path
+    ) -> None:
+        """file_glob passes silently when at least one file matches the pattern.
+
+        Issue #229 C2 re-run — GAP-05: agents should not need exact filenames.
+        """
+        docs = tmp_path / "docs" / "development" / "issue229"
+        docs.mkdir(parents=True)
+        (docs / "research_summary.md").write_text("# Research\n")
+
+        # Must not raise — one match exists
+        checker.check(
+            "D2.3",
+            {
+                "type": "file_glob",
+                "dir": "docs/development/issue229",
+                "pattern": "*research*.md",
+            },
+        )
+
+    def test_deliverable_checker_file_glob_no_match_raises(
+        self, checker: DeliverableChecker, tmp_path: Path
+    ) -> None:
+        """file_glob raises DeliverableCheckError when no files match the pattern.
+
+        Issue #229 C2 re-run — GAP-05.
+        """
+        docs = tmp_path / "docs" / "development" / "issue229"
+        docs.mkdir(parents=True)
+        (docs / "planning.md").write_text("# Planning\n")
+
+        with pytest.raises(DeliverableCheckError, match="D2.4"):
+            checker.check(
+                "D2.4",
+                {
+                    "type": "file_glob",
+                    "dir": "docs/development/issue229",
+                    "pattern": "*research*.md",
+                },
+            )
+
+    def test_deliverable_checker_file_glob_pattern_in_subdir_passes(
+        self, checker: DeliverableChecker, tmp_path: Path
+    ) -> None:
+        """file_glob resolves dir relative to workspace_root and matches recursively.
+
+        Issue #229 C2 re-run — GAP-05: dir + pattern together locate the file.
+        """
+        nested = tmp_path / "mcp_server" / "managers"
+        nested.mkdir(parents=True)
+        (nested / "deliverable_checker.py").write_text("# module\n")
+
+        # Must not raise — file matches *.py in mcp_server/managers
+        checker.check(
+            "D2.5",
+            {
+                "type": "file_glob",
+                "dir": "mcp_server/managers",
+                "pattern": "deliverable_*.py",
+            },
+        )
