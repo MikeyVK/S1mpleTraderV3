@@ -10,6 +10,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from mcp_server.config.settings import settings
+from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
@@ -304,6 +305,32 @@ class ForceCycleTransitionTool(BaseTool):
                 f"Reason: {params.skip_reason}\n"
                 f"Approval: {params.human_approval}"
             )
+
+            # Warn about unvalidated deliverables in skipped cycles (GAP-08)
+            checker = DeliverableChecker(workspace_root=workspace_root)
+            unvalidated: list[str] = []
+            for cycle_num in skipped_cycles:
+                cycle_data = next(
+                    (c for c in cycles if c.get("cycle_number") == cycle_num), None
+                )
+                if cycle_data is None:
+                    continue
+                for deliverable in cycle_data.get("deliverables", []):
+                    if not isinstance(deliverable, dict):
+                        continue  # Skip plain-string deliverables (backward compat)
+                    validates = deliverable.get("validates")
+                    if validates is None:
+                        continue
+                    d_id = deliverable.get("id", "?")
+                    d_desc = deliverable.get("description", "")
+                    try:
+                        checker.check(d_id, validates)
+                    except Exception:
+                        unvalidated.append(f"cycle:{cycle_num}:{d_id} ({d_desc})")
+            if unvalidated:
+                message += (
+                    f"\n⚠️ Unvalidated cycle deliverables: {', '.join(unvalidated)}"
+                )
 
             return ToolResult.text(message)
 
