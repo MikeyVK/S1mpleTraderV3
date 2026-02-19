@@ -14,12 +14,12 @@ This document records gaps and observations found during the live trial run of t
 |----|----------|------|--------|
 | [GAP-01](#gap-01) | High | PhaseStateEngine | ✅ Fixed (C2) |
 | [GAP-02](#gap-02) | High | PhaseStateEngine | ✅ Fixed (C2) |
-| [GAP-03](#gap-03) | Medium | PhaseStateEngine | Pending (C3) |
+| [GAP-03](#gap-03) | Medium | PhaseStateEngine | ✅ Fixed (C3) |
 | [GAP-04](#gap-04) | Medium | MCP Tools | Pending (C4) |
 | [GAP-05](#gap-05) | Medium | DeliverableChecker | ✅ Fixed (C2 re-run) |
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | Pending (C4) |
 | [GAP-07](#gap-07) | Medium | MCP Git Tool | ✅ Fixed (C2 re-run) |
-| [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | Pending (C3) |
+| [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | ✅ Fixed (C3) |
 
 ---
 
@@ -76,7 +76,7 @@ Discovered during smoke-test of the live implementation and follow-up Q&A after 
 | [GAP-05](#gap-05) | Medium | DeliverableChecker | ✅ Fixed |
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | Pending |
 | [GAP-07](#gap-07) | Medium | MCP Git Tool | ✅ Fixed (C2 re-run) |
-| [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | Pending (C3) |
+| [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | ✅ Fixed (C3) |
 
 ---
 
