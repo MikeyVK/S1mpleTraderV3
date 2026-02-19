@@ -116,7 +116,7 @@ flowchart TD
         C -->|save_planning_deliverables| D[projects.json populated]
         D -->|planning → design → tdd| E[on_enter_tdd_phase hook]
         E -->|current_tdd_cycle = 1| F[TDD cycles]
-        F -->|commit cycle_number + sub_phase| G[P_TDD_SP_C{N}_{PHASE} scope]
+        F -->|commit cycle_number + sub_phase| G["P_TDD_SP_CN_PHASE scope"]
         F -->|cycle_number out of range| H[ValueError — range gate]
         F -->|transition_cycle| I[cycle history updated]
         I -->|tdd → validation| J[on_exit_tdd_phase hook]
