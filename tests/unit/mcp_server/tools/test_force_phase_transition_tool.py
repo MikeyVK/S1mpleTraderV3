@@ -199,3 +199,100 @@ class TestForcePhaseTransitionTool:
         assert valid.to_phase == feature_phases[2]  # design
         assert valid.skip_reason == "Valid reason"
         assert valid.human_approval == "Approved"
+
+
+# ---------------------------------------------------------------------------
+# C3 extension: skipped-gates warning surfaced in tool response (GAP-03 Optie 1)
+# ---------------------------------------------------------------------------
+
+
+class TestForcePhaseTransitionToolSkippedGatesResponse:
+    """Test that tool response includes skipped-gates warning when gates are bypassed."""
+
+    @pytest.fixture
+    def workspace_with_gates(self, tmp_path: Path) -> Path:
+        """Workspace with workphases.yaml that has exit_requires on planning."""
+        st3 = tmp_path / ".st3"
+        st3.mkdir()
+        (st3 / "workphases.yaml").write_text(
+            """
+phases:
+  planning:
+    display_name: "Planning"
+    exit_requires:
+      - key: "planning_deliverables"
+        description: "TDD cycle breakdown"
+  design:
+    display_name: "Design"
+"""
+        )
+        return tmp_path
+
+    @pytest.fixture
+    def workspace_no_gates(self, tmp_path: Path) -> Path:
+        """Workspace with workphases.yaml that has no gates defined."""
+        st3 = tmp_path / ".st3"
+        st3.mkdir()
+        (st3 / "workphases.yaml").write_text(
+            """
+phases:
+  planning:
+    display_name: "Planning"
+  design:
+    display_name: "Design"
+"""
+        )
+        return tmp_path
+
+    def _init_branch(self, workspace: Path, branch: str, phase: str) -> None:
+        """Helper: initialize project + branch state."""
+        pm = ProjectManager(workspace_root=workspace)
+        pm.initialize_project(issue_number=42, issue_title="Test", workflow_name="feature")
+        engine = PhaseStateEngine(workspace_root=workspace, project_manager=pm)
+        engine.initialize_branch(branch=branch, issue_number=42, initial_phase=phase)
+
+    @pytest.mark.asyncio
+    async def test_force_transition_tool_response_includes_skipped_gates_warning(
+        self, workspace_with_gates: Path
+    ) -> None:
+        """Tool response includes ⚠️ skipped gates line when gates are bypassed (GAP-03)."""
+        branch = "feature/42-test"
+        self._init_branch(workspace_with_gates, branch, "planning")
+
+        tool = ForcePhaseTransitionTool(workspace_root=workspace_with_gates)
+        params = ForcePhaseTransitionInput(
+            branch=branch,
+            to_phase="design",
+            skip_reason="Emergency skip",
+            human_approval="Michel approved on 2026-02-19",
+        )
+
+        result = await tool.execute(params)
+
+        text = result.content[0]["text"]
+        assert "✅" in text
+        assert "⚠️" in text
+        assert "skipped" in text.lower()
+        assert "planning_deliverables" in text
+
+    @pytest.mark.asyncio
+    async def test_force_transition_tool_response_no_warning_when_no_gates(
+        self, workspace_no_gates: Path
+    ) -> None:
+        """Tool response has no ⚠️ when neither phase has gates (GAP-03)."""
+        branch = "feature/42-test"
+        self._init_branch(workspace_no_gates, branch, "planning")
+
+        tool = ForcePhaseTransitionTool(workspace_root=workspace_no_gates)
+        params = ForcePhaseTransitionInput(
+            branch=branch,
+            to_phase="design",
+            skip_reason="Emergency skip",
+            human_approval="Michel approved on 2026-02-19",
+        )
+
+        result = await tool.execute(params)
+
+        text = result.content[0]["text"]
+        assert "✅" in text
+        assert "⚠️" not in text
