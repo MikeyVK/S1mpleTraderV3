@@ -783,17 +783,21 @@ async def test_git_add_or_commit_raises_on_phase_mismatch(mock_git_manager):
     """CommitPhaseMismatchError when workflow_phase doesn't match state.json (GAP-07)."""
     from mcp_server.tools.git_tools import CommitPhaseMismatchError
 
-    def phase_guard(branch: str, workflow_phase: str, cycle_number: int | None) -> None:
+    def phase_guard(_branch: str, workflow_phase: str, _cycle_number: int | None) -> None:
         raise CommitPhaseMismatchError(
             f"phase_mismatch: commit says '{workflow_phase}' but state.json says 'design'"
         )
 
     tool = GitCommitTool(manager=mock_git_manager, phase_guard=phase_guard)
-    mock_git_manager.adapter.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
+    mock_git_manager.adapter.get_current_branch.return_value = (
+        "feature/229-phase-deliverables-enforcement"
+    )
 
     params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="add red test")
-    with pytest.raises(CommitPhaseMismatchError, match="phase_mismatch"):
-        await tool.execute(params)
+    result = await tool.execute(params)
+
+    assert result.is_error
+    assert "phase_mismatch" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
@@ -801,17 +805,21 @@ async def test_git_add_or_commit_raises_on_cycle_mismatch(mock_git_manager):
     """CommitPhaseMismatchError when cycle_number doesn't match state.json current_tdd_cycle (GAP-07)."""
     from mcp_server.tools.git_tools import CommitPhaseMismatchError
 
-    def phase_guard(branch: str, workflow_phase: str, cycle_number: int | None) -> None:
+    def phase_guard(_branch: str, _workflow_phase: str, cycle_number: int | None) -> None:
         raise CommitPhaseMismatchError(
             f"phase_mismatch: commit says cycle {cycle_number} but state.json says cycle 3"
         )
 
     tool = GitCommitTool(manager=mock_git_manager, phase_guard=phase_guard)
-    mock_git_manager.adapter.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
+    mock_git_manager.adapter.get_current_branch.return_value = (
+        "feature/229-phase-deliverables-enforcement"
+    )
 
     params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="add green impl")
-    with pytest.raises(CommitPhaseMismatchError, match="phase_mismatch"):
-        await tool.execute(params)
+    result = await tool.execute(params)
+
+    assert result.is_error
+    assert "phase_mismatch" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
@@ -819,11 +827,13 @@ async def test_git_add_or_commit_passes_when_phase_and_cycle_match(mock_git_mana
     """No error when workflow_phase and cycle_number match state.json (GAP-07)."""
     from mcp_server.tools.git_tools import CommitPhaseMismatchError  # noqa: F401
 
-    def phase_guard(branch: str, workflow_phase: str, cycle_number: int | None) -> None:
+    def phase_guard(_branch: str, _workflow_phase: str, _cycle_number: int | None) -> None:
         pass  # phase=tdd, cycle=2 matches state.json
 
     tool = GitCommitTool(manager=mock_git_manager, phase_guard=phase_guard)
-    mock_git_manager.adapter.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
+    mock_git_manager.adapter.get_current_branch.return_value = (
+        "feature/229-phase-deliverables-enforcement"
+    )
     mock_git_manager.commit_with_scope.return_value = "abc1234"
 
     params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="implement guard")
