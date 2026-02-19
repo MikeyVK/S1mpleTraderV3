@@ -101,7 +101,9 @@ class TestTDDPhaseHooks:
         assert state.get("current_tdd_cycle") == 1
         assert state.get("last_tdd_cycle") == 0
 
-    def test_on_enter_tdd_phase_does_not_block_without_planning_deliverables(self, tmp_path: Path) -> None:
+    def test_on_enter_tdd_phase_does_not_block_without_planning_deliverables(
+        self, tmp_path: Path
+    ) -> None:
         """Test that entering TDD phase does NOT block on missing planning deliverables.
 
         GAP-02 fix (Issue #229 C2): the planning-deliverables check was moved to

@@ -31,7 +31,7 @@ from typing import Any, cast
 # Project modules
 from mcp_server.config.workflows import workflow_config
 from mcp_server.config.workphases_config import WorkphasesConfig
-from mcp_server.managers.deliverable_checker import DeliverableCheckError, DeliverableChecker
+from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
 from mcp_server.managers.project_manager import ProjectManager
 
 logger = logging.getLogger(__name__)
