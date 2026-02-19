@@ -31,7 +31,7 @@ from typing import Any, cast
 # Project modules
 from mcp_server.config.workflows import workflow_config
 from mcp_server.config.workphases_config import WorkphasesConfig
-from mcp_server.managers.deliverable_checker import DeliverableChecker
+from mcp_server.managers.deliverable_checker import DeliverableCheckError, DeliverableChecker
 from mcp_server.managers.project_manager import ProjectManager
 
 logger = logging.getLogger(__name__)
@@ -158,6 +158,11 @@ class PhaseStateEngine:
         if from_phase == "planning":
             issue_number_exit: int = state["issue_number"]
             self.on_exit_planning_phase(branch, issue_number_exit)
+
+        # Research exit hook: called when leaving research phase (Issue #229 C6)
+        if from_phase == "research":
+            issue_number_exit = state["issue_number"]
+            self.on_exit_research_phase(branch, issue_number_exit)
 
         # TDD exit hook: called when leaving TDD phase (Issue #146)
         if from_phase == "tdd":
@@ -649,6 +654,55 @@ class PhaseStateEngine:
                     checker.check(validate_spec.get("id", key), validate_spec)
 
         logger.info(f"Planning exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_research_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting research phase — file_glob gate (Issue #229 C6).
+
+        Reads exit_requires from workphases.yaml for 'research'. For entries with
+        ``type: file_glob``, interpolates ``{issue_number}`` and checks that at least
+        one file matches the resulting glob pattern.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            DeliverableCheckError: If a file_glob gate finds no matching files.
+            ValueError: If a key-type gate key is absent from projects.json.
+        """
+        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        if not workphases_path.exists():
+            return
+
+        wp_config = WorkphasesConfig(workphases_path)
+        exit_requires = wp_config.get_exit_requires("research")
+
+        if not exit_requires:
+            logger.info(f"No exit_requires for research phase; gate skipped for branch {branch}")
+            return
+
+        for requirement in exit_requires:
+            req_type = requirement.get("type", "key")
+            if req_type == "file_glob":
+                pattern = requirement["file"].format(issue_number=issue_number)
+                matches = list(self.workspace_root.glob(pattern))
+                if not matches:
+                    description = requirement.get("description", f"file_glob: {pattern}")
+                    raise DeliverableCheckError(
+                        f"[research.exit_requires] {description}: "
+                        f"no files matching '{pattern}' in workspace root"
+                    )
+            else:
+                key = requirement["key"]
+                plan = self.project_manager.get_project_plan(issue_number)
+                if not plan or key not in plan:
+                    msg = (
+                        f"{key} not found for issue {issue_number}. "
+                        f"Save {key} before leaving the research phase."
+                    )
+                    raise ValueError(msg)
+
+        logger.info(f"Research exit gate passed for branch {branch} (issue {issue_number})")
 
     def on_exit_tdd_phase(self, branch: str) -> None:
         """Hook called when exiting TDD phase.
