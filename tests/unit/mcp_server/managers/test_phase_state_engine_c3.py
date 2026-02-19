@@ -123,9 +123,7 @@ class TestForceTransitionSkippedGateWarning:
             initial_phase="planning",
         )
 
-        with caplog.at_level(
-            logging.WARNING, logger="mcp_server.managers.phase_state_engine"
-        ):
+        with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
             engine_with_gates.force_transition(
                 branch="feature/229-c3",
                 to_phase="design",
@@ -157,9 +155,7 @@ class TestForceTransitionSkippedGateWarning:
             initial_phase="research",
         )
 
-        with caplog.at_level(
-            logging.WARNING, logger="mcp_server.managers.phase_state_engine"
-        ):
+        with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
             engine_with_gates.force_transition(
                 branch="feature/229-c3b",
                 to_phase="tdd",
@@ -191,9 +187,7 @@ class TestForceTransitionSkippedGateWarning:
             initial_phase="research",
         )
 
-        with caplog.at_level(
-            logging.WARNING, logger="mcp_server.managers.phase_state_engine"
-        ):
+        with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
             engine_no_gates.force_transition(
                 branch="feature/229-c3c",
                 to_phase="planning",

@@ -206,6 +206,24 @@ class PhaseStateEngine:
         state = self.get_state(branch)
         from_phase: str = state["current_phase"]
 
+        # Warn about skipped gates (GAP-03)
+        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        if workphases_path.exists():
+            wp_config = WorkphasesConfig(workphases_path)
+            skipped_gates: list[str] = []
+            for entry in wp_config.get_exit_requires(from_phase):
+                skipped_gates.append(f"exit:{from_phase}:{entry['key']}")
+            for entry in wp_config.get_entry_expects(to_phase):
+                skipped_gates.append(f"entry:{to_phase}:{entry['key']}")
+            if skipped_gates:
+                logger.warning(
+                    "force_transition skipped_gates=%s (from=%s, to=%s, skip_reason=%r)",
+                    skipped_gates,
+                    from_phase,
+                    to_phase,
+                    skip_reason,
+                )
+
         # Record forced transition (forced=True)
         transition = TransitionRecord(
             from_phase=from_phase,
