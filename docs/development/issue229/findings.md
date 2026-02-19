@@ -93,6 +93,16 @@ Rationale:
 | Config key (YAML/JSON) | Key path exists in file | Engine resolves dot-notation path |
 | Future | Structural diff against template schema | Not in scope for #229 |
 
+**Response verbosity design:**
+
+| Scenario | Response |
+|----------|----------|
+| Transition with exit gate — deliverables pass | `✅ planning → design \| exit gate: N/N deliverables checked (D1.1 ✓ D1.2 ✓ ...)` |
+| Transition without exit gate | `✅ research → planning` (stil, geen gate) |
+| Transition with exit gate — deliverable fails | `❌ ... \| exit gate: D1.2 FAILED — file not found: mcp_server/managers/deliverable_checker.py` |
+
+Conditionally verbose: alleen rapporteren wanneer er daadwerkelijk een gate was. Onderdeel van Cycle 2.
+
 **Deliberately out of scope for #229:**
 - Validating scaffold output *content* against template structure
 - YAML-key value validation (presence is enough)

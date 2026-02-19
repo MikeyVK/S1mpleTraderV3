@@ -3,7 +3,7 @@
 # Phase Deliverables Enforcement — exit gate (hard) + entry warning (soft)
 
 **Status:** DRAFT  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-02-19
 
 ---
@@ -147,15 +147,45 @@ These are the gaps that #229 itself will close — observing them during the tri
 | Entering TDD with missing `planning_deliverables` raises in wrong place | `on_enter_tdd_phase` raises `ValueError` — should be planning exit |
 | Forced `design → tdd` skips the planning deliverables check entirely | No error, no warning |
 
+### MCP tool registration pattern
+
+New tools follow the `BaseTool` subclass pattern. Tools in `mcp_server/tools/project_tools.py` already handle `initialize_project` and `get_project_plan`. `save_planning_deliverables` will become `SavePlanningDeliverablesTool` in that same file, registered in `server.py` alongside the existing project tools.
+
+### Structured deliverables schema (`projects.json`)
+
+During the planning phase trial, the `planning_deliverables` schema was extended with a `validates` key per deliverable — the same schema that the Option-C checker will consume at phase exit:
+
+```jsonc
+{
+  "id": "D1.2",
+  "description": "DeliverableChecker implementation",
+  "validates": {
+    "type": "file_exists",           // file_exists | contains_text | absent_text | key_path
+    "file": "mcp_server/managers/deliverable_checker.py"
+  }
+}
+```
+
+Supported `type` values:
+
+| Type | Applies to | Check |
+|------|-----------|-------|
+| `file_exists` | Any file | File is present on disk |
+| `contains_text` | `.py`, `.md`, any text | File contains literal string `text` |
+| `absent_text` | `.py`, `.md`, any text | File does NOT contain `text` |
+| `key_path` | `.json`, `.yaml` | Dot-notation path resolves to a value |
+
+Note: SCAFFOLD-header check (original Option-C formulation) is a special case of `contains_text` where `text = "<!-- template="`.
+
 ---
 
 ## Open Questions
 
-- ❓ Should `force_transition()` also invoke exit/entry hooks, or is that deliberately out of scope (forced = audit trail sufficient)?
-- ❓ Should `entry_expects` be checked before or after saving the transition to `state.json`?
-- ❓ How to handle phases with no deliverables — empty `exit_requires: []` or absence of the field?
-- ❓ Should `exit_requires` keys reference top-level keys in the project plan, or can nested paths be used (e.g. `planning_deliverables.tdd_cycles`)?
-- ❓ Is `tdd_cycle_history` a meaningful exit gate for TDD, or is it too strict (what if 0 cycles were run)?
+- ✅ **Should `force_transition()` invoke hooks?** No — forced transitions are an audit-trail escape hatch by design. Invoking gates would defeat the purpose. GAP-03 scope: log a warning listing which gates were skipped. Not blocked.
+- ✅ **`entry_expects` before or after saving transition to `state.json`?** Before — a failed entry warning should never leave residual state.
+- ✅ **Phases with no deliverables — empty `exit_requires: []` or absence of field?** Absence of field = no-op. Empty list also = no-op. Existing phases without the field must not break.
+- ✅ **`exit_requires` references — top-level keys or nested paths?** Nested dot-notation paths allowed; the checker resolves them in JSON/YAML. Python files use `contains_text`/`absent_text` instead.
+- ✅ **Is `tdd_cycle_history` a meaningful exit gate for TDD?** Out of scope for #229 — too strict, breaks legitimate 0-cycle exits. Not added to `exit_requires` on `tdd` phase.
 
 ---
 
@@ -180,5 +210,6 @@ These are the gaps that #229 itself will close — observing them during the tri
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.2 | 2026-02-19 | Agent | Added structured deliverables schema, MCP tool pattern, answered all open questions |
 | 1.1 | 2026-02-19 | Agent | Translated to English, fixed list rendering, added Mermaid diagram |
 | 1.0 | 2026-02-19 | Agent | Initial draft |

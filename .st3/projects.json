@@ -499,22 +499,66 @@
           {
             "cycle_number": 1,
             "deliverables": [
-              "workphases.yaml exit_requires/entry_expects schema parsed",
-              "DeliverableChecker: file_exists + SCAFFOLD-header for .md",
-              "DeliverableChecker: dot-notation key-path for JSON/YAML"
+              {
+                "id": "D1.1",
+                "description": "workphases.yaml: exit_requires + entry_expects fields on planning phase",
+                "validates": {
+                  "type": "key_path",
+                  "file": ".st3/workphases.yaml",
+                  "path": "phases.planning.exit_requires"
+                }
+              },
+              {
+                "id": "D1.2",
+                "description": "DeliverableChecker implementation",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/managers/deliverable_checker.py"
+                }
+              },
+              {
+                "id": "D1.3",
+                "description": "DeliverableChecker unit tests",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/unit/mcp_server/managers/test_deliverable_checker.py"
+                }
+              }
             ],
             "exit_criteria": "All 7 unit tests pass (schema + checker)"
           },
           {
             "cycle_number": 2,
             "deliverables": [
-              "PhaseStateEngine generic exit/entry gate dispatch",
-              "on_exit_planning_phase hard gate (relocated from on_enter_tdd_phase)",
-              "on_enter_* soft warning for entry_expects",
-              "force_transition logs skipped gates",
-              "save_planning_deliverables exposed as MCP tool"
+              {
+                "id": "D2.1",
+                "description": "PhaseStateEngine: on_exit_planning_phase exists and raises PhaseDeliverableError",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_planning_phase"
+                }
+              },
+              {
+                "id": "D2.2",
+                "description": "PhaseStateEngine: on_enter_tdd_phase no longer references planning_deliverables",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "planning_deliverables"
+                }
+              },
+              {
+                "id": "D2.3",
+                "description": "SavePlanningDeliverablesTool class defined in project_tools.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/project_tools.py",
+                  "text": "SavePlanningDeliverablesTool"
+                }
+              }
             ],
-            "exit_criteria": "All 6 tests pass; happy path planning->design->tdd succeeds"
+            "exit_criteria": "All 6 tests pass; planning->design raises without deliverables; on_enter_tdd silent"
           }
         ]
       }
