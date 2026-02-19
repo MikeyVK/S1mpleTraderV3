@@ -6,6 +6,7 @@ Issue #79: Tests for parent_branch in InitializeProjectTool.
 - Handles auto-detection failure gracefully
 
 Issue #229 Cycle 4: SavePlanningDeliverablesTool (D4.1/D4.2/D4.3/GAP-04/GAP-06).
+Issue #229 Cycle 5: UpdatePlanningDeliverablesTool (D5.1/D5.2/D5.3/GAP-09).
 """
 
 from pathlib import Path
@@ -19,6 +20,8 @@ from mcp_server.tools.project_tools import (
     InitializeProjectTool,
     SavePlanningDeliverablesInput,
     SavePlanningDeliverablesTool,
+    UpdatePlanningDeliverablesInput,
+    UpdatePlanningDeliverablesTool,
 )
 
 
@@ -342,5 +345,177 @@ class TestSavePlanningDeliverablesTool:
         assert result.is_error
         text = result.content[0]["text"]
         # Must list all valid types
+        for valid_type in ("file_exists", "file_glob", "contains_text", "absent_text", "key_path"):
+            assert valid_type in text, f"Expected '{valid_type}' listed in error, got: {text}"
+
+
+class TestUpdatePlanningDeliverablesTool:
+    """Tests for UpdatePlanningDeliverablesTool.
+
+    Issue #229 Cycle 5 (GAP-09):
+    - D5.1: tool defined in project_tools.py
+    - D5.2: update_planning_deliverables in project_manager.py
+    - D5.3: tool registered in server.py
+    """
+
+    @pytest.fixture()
+    def initialized(self, tmp_path: Path) -> tuple[Path, int]:
+        """Create workspace with initial planning deliverables already saved."""
+        issue_number = 229
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            branch="feature/229-test",
+            workflow_name="feature",
+            parent_branch="main",
+        )
+        manager.save_planning_deliverables(
+            issue_number=issue_number,
+            planning_deliverables=_minimal_deliverables(),
+        )
+        return tmp_path, issue_number
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_tool_appends_new_cycle(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """Sending a new cycle_number appends it to tdd_cycles.cycles. (D5.1)"""
+        workspace_root, issue_number = initialized
+        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "tdd_cycles": {
+                        "total": 2,
+                        "cycles": [
+                            {
+                                "cycle_number": 2,
+                                "deliverables": [{"id": "D2.1", "description": "new cycle"}],
+                                "exit_criteria": "Tests pass",
+                            }
+                        ],
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        manager = ProjectManager(workspace_root=workspace_root)
+        data = manager.load_project(issue_number=issue_number)
+        cycles = data["planning_deliverables"]["tdd_cycles"]["cycles"]
+        assert len(cycles) == 2  # original C1 + new C2
+        assert cycles[1]["cycle_number"] == 2
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_tool_merges_deliverable_by_id(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """New deliverable id in existing cycle is appended. (D5.1)"""
+        workspace_root, issue_number = initialized
+        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [
+                            {
+                                "cycle_number": 1,
+                                "deliverables": [{"id": "D1.2", "description": "second deliverable"}],
+                                "exit_criteria": "Tests pass",
+                            }
+                        ],
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        manager = ProjectManager(workspace_root=workspace_root)
+        data = manager.load_project(issue_number=issue_number)
+        cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
+        ids = [d["id"] for d in cycle1["deliverables"]]
+        assert "D1.1" in ids  # original preserved
+        assert "D1.2" in ids  # new one appended
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_tool_updates_existing_deliverable_by_id(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """Existing deliverable id in existing cycle is overwritten. (D5.1)"""
+        workspace_root, issue_number = initialized
+        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [
+                            {
+                                "cycle_number": 1,
+                                "deliverables": [{"id": "D1.1", "description": "updated description"}],
+                                "exit_criteria": "Tests pass",
+                            }
+                        ],
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        manager = ProjectManager(workspace_root=workspace_root)
+        data = manager.load_project(issue_number=issue_number)
+        cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
+        d1_1 = next(d for d in cycle1["deliverables"] if d["id"] == "D1.1")
+        assert d1_1["description"] == "updated description"
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_tool_rejects_before_initial_save(
+        self, tmp_path: Path
+    ) -> None:
+        """Returns error when called before save_planning_deliverables. (D5.1)"""
+        issue_number = 229
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            branch="feature/229-test",
+            workflow_name="feature",
+            parent_branch="main",
+        )
+        tool = UpdatePlanningDeliverablesTool(workspace_root=tmp_path)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables=_minimal_deliverables(),
+            )
+        )
+
+        assert result.is_error
+        assert "save_planning_deliverables" in result.content[0]["text"]
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_tool_validates_validates_entry_schema(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """Invalid validates entry is rejected before persisting. (D5.1)"""
+        workspace_root, issue_number = initialized
+        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables=_minimal_deliverables(validates={"type": "unknown_type"}),
+            )
+        )
+
+        assert result.is_error
+        text = result.content[0]["text"]
         for valid_type in ("file_exists", "file_glob", "contains_text", "absent_text", "key_path"):
             assert valid_type in text, f"Expected '{valid_type}' listed in error, got: {text}"
