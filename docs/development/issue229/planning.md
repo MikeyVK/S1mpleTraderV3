@@ -168,6 +168,6 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.2 | 2026-02-19 | Agent | Split Cycle 2 into 3 targeted cycles — one per gap (GAP-01/02, GAP-03, GAP-04) |
+| 1.2 | 2026-02-19 | Agent | Expanded to 4 cycles: C1 infrastructure, C2 GAP-01/02, C3 GAP-03, C4 GAP-04; milestones aligned |
 | 1.1 | 2026-02-19 | Agent | Remove design creep from scope/goals/criteria/risks; fix GAP-04 scope |
 | 1.0 | 2026-02-19 | Agent | Initial draft |

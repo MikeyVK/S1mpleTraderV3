@@ -49,7 +49,7 @@ This document records gaps and observations found during the live trial run of t
 **Observed:** `force_transition(tdd → planning)` succeeded with no hooks, no warnings, no checks  
 **Expected:** At minimum a `logger.warning` that a forced transition skipped deliverable validation  
 **Note:** Forced transitions already require `skip_reason + human_approval` — the audit trail exists, but nothing is logged about skipped gates  
-**Addressed by:** #229 (open question: in or out of scope for this issue)
+**Addressed by:** #229 Cycle 3 — forced transition skipped-gate warning
 
 ---
 
@@ -60,7 +60,7 @@ This document records gaps and observations found during the live trial run of t
 **Observed:** No MCP tool exists to save planning deliverables — only `ProjectManager.save_planning_deliverables()` as internal API  
 **Expected:** Agent/user should be able to call a tool to persist deliverables from the planning phase without directly editing `projects.json`  
 **Impact:** Trial run required direct `projects.json` editing to set up deliverables — not a valid workflow  
-**Addressed by:** #229 Cycle 2 (D2.3) — `SavePlanningDeliverablesTool` in `project_tools.py`
+**Addressed by:** #229 Cycle 4 (D4.1/D4.2) — `SavePlanningDeliverablesTool` in `project_tools.py` + registered in `server.py`
 
 ---
 
@@ -113,7 +113,9 @@ Conditionally verbose: alleen rapporteren wanneer er daadwerkelijk een gate was.
 
 ---
 
-## #146 Trial Observations
+## #146 Trial Observations *(pre-remediation snapshot)*
+
+> These observations were recorded before planning was finalised. They reflect the system state with no deliverable gates in place. Do not use as post-remediation validation — see design/TDD phase for that.
 
 | Step | Result | Notes |
 |------|--------|-------|
