@@ -152,6 +152,11 @@ class PhaseStateEngine:
         # Validate transition via workflow_config (strict sequential)
         workflow_config.validate_transition(workflow_name, from_phase, to_phase)
 
+        # Planning exit hook: called when leaving planning phase (Issue #229)
+        if from_phase == "planning":
+            issue_number_exit: int = state["issue_number"]
+            self.on_exit_planning_phase(branch, issue_number_exit)
+
         # TDD exit hook: called when leaving TDD phase (Issue #146)
         if from_phase == "tdd":
             self.on_exit_tdd_phase(branch)
@@ -552,29 +557,13 @@ class PhaseStateEngine:
     def on_enter_tdd_phase(self, branch: str, issue_number: int) -> None:
         """Hook called when entering TDD phase.
 
-        Validates planning deliverables exist and auto-initializes cycle 1.
+        Auto-initializes TDD cycle 1 in branch state. Planning deliverables
+        are validated at planning exit (on_exit_planning_phase) — not here.
 
         Args:
             branch: Branch name
             issue_number: GitHub issue number
-
-        Raises:
-            ValueError: If planning deliverables not found
         """
-        # Validate planning deliverables exist
-        project_plan = self.project_manager.get_project_plan(issue_number)
-        if not project_plan:
-            msg = f"Project plan not found for issue {issue_number}"
-            raise ValueError(msg)
-
-        planning_deliverables = project_plan.get("planning_deliverables")
-        if not planning_deliverables:
-            msg = (
-                f"Planning deliverables not found for issue {issue_number}. "
-                "Create planning deliverables before entering TDD phase."
-            )
-            raise ValueError(msg)
-
         # Get or create state
         state = self.get_state(branch)
 
@@ -587,6 +576,27 @@ class PhaseStateEngine:
 
             # Save state
             self._save_state(branch, state)
+
+    def on_exit_planning_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting planning phase — hard gate (Issue #229).
+
+        Validates that planning_deliverables exist in projects.json before
+        the branch is allowed to leave the planning phase.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            ValueError: If planning_deliverables not present in project plan
+        """
+        project_plan = self.project_manager.get_project_plan(issue_number)
+        if not project_plan or "planning_deliverables" not in project_plan:
+            msg = (
+                f"planning_deliverables not found for issue {issue_number}. "
+                "Save planning deliverables before leaving the planning phase."
+            )
+            raise ValueError(msg)
 
     def on_exit_tdd_phase(self, branch: str) -> None:
         """Hook called when exiting TDD phase.
