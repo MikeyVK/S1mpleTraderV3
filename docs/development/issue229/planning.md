@@ -154,6 +154,75 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ---
 
+### Cycle 5: update_planning_deliverables tool — GAP-09
+
+**Goal:** Add `update_planning_deliverables` MCP tool with merge-strategy so cycles and deliverables can evolve after the initial write. Keep `save_planning_deliverables` write-once (intentional first-commit guard). The new tool merges: new cycles append by cycle number; existing cycle deliverables merge by `id`; existing entries update in place.
+
+**Tests:**
+- `test_update_planning_deliverables_tool_appends_new_cycle`
+- `test_update_planning_deliverables_tool_merges_deliverable_by_id`
+- `test_update_planning_deliverables_tool_updates_existing_deliverable_by_id`
+- `test_update_planning_deliverables_tool_rejects_before_initial_save`
+- `test_update_planning_deliverables_tool_validates_validates_entry_schema`
+
+**Success Criteria:**
+- New cycle appended without touching existing cycles
+- Existing deliverable with matching `id` updated (description/validates)
+- New deliverable with new `id` added to existing cycle
+- Call before `save_planning_deliverables` raises clear error
+- Layer 2 validates-schema validation identical to `save_planning_deliverables`
+- All tests pass
+
+**Dependencies:** Cycle 4 (Layer 2 `validate_spec` reusable)
+
+---
+
+### Cycle 6: exit_requires file_glob support + research phase gate — GAP-10
+
+**Goal:** Extend `exit_requires` in `workphases.yaml` with a `type: file_glob` variant that checks the file system instead of `projects.json`. Support `{issue_number}` placeholder interpolation. Configure the research phase with a gate requiring a `*research*.md` file.
+
+**Tests:**
+- `test_exit_requires_file_glob_passes_when_file_exists`
+- `test_exit_requires_file_glob_blocks_when_no_match`
+- `test_exit_requires_file_glob_interpolates_issue_number`
+- `test_research_exit_gate_blocks_without_research_doc`
+- `test_research_exit_gate_passes_with_research_doc`
+
+**Success Criteria:**
+- `PhaseStateEngine` reads `type: file_glob` entries from `exit_requires`
+- `{issue_number}` in `file:` is interpolated at gate-check time
+- Research → planning blocked when no `*research*.md` exists for issue
+- Research → planning passes when file exists
+- Forced transition logs `⚠️ Skipped gates: research.exit_requires[0]` (reuses C3 pattern)
+- All tests pass
+
+**Dependencies:** Cycle 1 (DeliverableChecker._check_file_glob), Cycle 3 (skipped-gate warning pattern)
+
+---
+
+### Cycle 7: planning_deliverables schema generalization — GAP-11
+
+**Goal:** Extend `planning_deliverables` to support per-phase deliverable definitions beyond `tdd_cycles`. `PhaseStateEngine` exit gate for each phase checks `planning_deliverables.<phase>.deliverables` via `DeliverableChecker`. `hotfix` workflow remains exempt (no planning phase).
+
+**Tests:**
+- `test_save_planning_deliverables_accepts_design_phase_deliverables`
+- `test_save_planning_deliverables_accepts_validation_phase_deliverables`
+- `test_phase_exit_gate_checks_planning_deliverables_for_phase`
+- `test_phase_exit_gate_skips_when_no_phase_key_in_planning_deliverables`
+- `test_update_planning_deliverables_accepts_non_tdd_phase_deliverables`
+
+**Success Criteria:**
+- `save_planning_deliverables` accepts `design`, `validation`, `documentation` keys alongside `tdd_cycles`
+- `PhaseStateEngine` exit gate for `design` checks `planning_deliverables.design.deliverables` when present
+- When key absent, gate is skipped (optional — not all agents plan all phases)
+- `DeliverableChecker` reused without modification
+- `hotfix` workflow unaffected
+- All tests pass
+
+**Dependencies:** Cycle 5 (update_planning_deliverables for evolving phase deliverables), Cycle 6 (gate pattern)
+
+---
+
 ## Risks & Mitigation
 
 - **Risk:** `workphases.yaml` additive fields break existing phase load
@@ -171,6 +240,9 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 - Cycle 2 GREEN: planning exit gate wired, TDD entry gate removed, `file_glob` type added (GAP-01 + GAP-02 + GAP-05)
 - Cycle 3 GREEN: forced transition logs skipped gates (GAP-03 fixed); force_cycle_transition warns unvalidated skipped cycles (GAP-08 fixed)
 - Cycle 4 GREEN: `save_planning_deliverables` callable via MCP with Layer 2 schema validation (GAP-04 + GAP-06 fixed)
+- Cycle 5 GREEN: `update_planning_deliverables` tool with merge-strategy (GAP-09 fixed)
+- Cycle 6 GREEN: `exit_requires` supports `type: file_glob` + `{issue_number}` interpolation; research phase gate configured (GAP-10 fixed)
+- Cycle 7 GREEN: `planning_deliverables` generalised to all phases; exit gates per phase (GAP-11 fixed)
 - All gaps confirmed resolved in `findings.md`
 
 ## Related Documentation
@@ -192,6 +264,7 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.4 | 2026-02-19 | Agent | Added C5 (GAP-09), C6 (GAP-10), C7 (GAP-11) — discovered during validation phase smoke-test |
 | 1.3 | 2026-02-19 | Agent | C2 extended with file_glob (GAP-05); C4 extended with Layer 2 schema validation + error messages (GAP-06); scope + milestones updated |
 | 1.2 | 2026-02-19 | Agent | Expanded to 4 cycles: C1 infrastructure, C2 GAP-01/02, C3 GAP-03, C4 GAP-04; milestones aligned |
 | 1.1 | 2026-02-19 | Agent | Remove design creep from scope/goals/criteria/risks; fix GAP-04 scope |
