@@ -196,3 +196,79 @@ class TestForceTransitionSkippedGateWarning:
             )
 
         assert "skipped_gates" not in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# C3 bugfix: warning must be silent when deliverables ARE present in projects.json
+# ---------------------------------------------------------------------------
+
+
+class TestForceTransitionNoWarningWhenDeliverablesPresent:
+    """Warning must NOT fire when the gated deliverable key exists in projects.json (GAP-03 bugfix).
+
+    The original implementation warned based on config presence alone.
+    The correct behaviour: only warn when the key is actually absent from projects.json.
+    """
+
+    def _setup(self, workspace_root: Path, initial_phase: str) -> tuple[ProjectManager, PhaseStateEngine, str]:
+        """Initialize project + branch and inject planning_deliverables directly."""
+        pm = ProjectManager(workspace_root=workspace_root)
+        pm.initialize_project(
+            issue_number=229,
+            issue_title="Phase deliverables enforcement",
+            workflow_name="feature",
+        )
+        # Inject the key directly (bypasses schema validation — tests engine check logic only)
+        import json as _json
+        projects = _json.loads(pm.projects_file.read_text(encoding="utf-8"))
+        projects["229"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
+        pm.projects_file.write_text(_json.dumps(projects, indent=2))
+
+        engine = PhaseStateEngine(workspace_root=workspace_root, project_manager=pm)
+        branch = "feature/229-bugfix"
+        engine.initialize_branch(branch=branch, issue_number=229, initial_phase=initial_phase)
+        return pm, engine, branch
+
+    def test_force_transition_no_warning_when_exit_key_present(
+        self,
+        workspace_root: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """No skipped_gates warning when exit_requires key exists in projects.json.
+
+        Scenario: planning → design forced, planning_deliverables IS saved.
+        Expected: transition succeeds silently (no ⚠️).
+        """
+        _, engine, branch = self._setup(workspace_root, initial_phase="planning")
+
+        with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
+            engine.force_transition(
+                branch=branch,
+                to_phase="design",
+                skip_reason="test: deliverables present",
+                human_approval="tester approved",
+            )
+
+        assert "skipped_gates" not in caplog.text
+
+    def test_force_transition_no_warning_when_entry_key_present(
+        self,
+        workspace_root: Path,
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """No skipped_gates warning when entry_expects key exists in projects.json.
+
+        Scenario: planning → tdd forced, planning_deliverables IS saved.
+        Expected: transition succeeds silently (no ⚠️).
+        """
+        _, engine, branch = self._setup(workspace_root, initial_phase="planning")
+
+        with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
+            engine.force_transition(
+                branch=branch,
+                to_phase="tdd",
+                skip_reason="test: deliverables present, entry gate should be silent",
+                human_approval="tester approved",
+            )
+
+        assert "skipped_gates" not in caplog.text
