@@ -66,6 +66,7 @@ class DeliverableChecker:
         check_type: str = validates.get("type", "")
         dispatch = {
             "file_exists": self._check_file_exists,
+            "file_glob": self._check_file_glob,
             "contains_text": self._check_contains_text,
             "absent_text": self._check_absent_text,
             "key_path": self._check_key_path,
@@ -108,6 +109,26 @@ class DeliverableChecker:
             raise DeliverableCheckError(
                 f"[{deliverable_id}] file_exists FAILED: '{spec['file']}' not found "
                 f"(resolved: {path})"
+            )
+
+    def _check_file_glob(self, deliverable_id: str, spec: dict) -> None:
+        """Raise if no files match spec['pattern'] inside spec['dir'].
+
+        Args:
+            deliverable_id: ID for error message.
+            spec: Must contain ``dir`` and ``pattern`` keys.
+                  ``dir`` is relative to workspace root; ``pattern`` is a glob expression.
+
+        Raises:
+            DeliverableCheckError: No matching files found.
+        """
+        base = self._workspace_root / Path(spec["dir"])
+        pattern: str = spec["pattern"]
+        matches = list(base.glob(pattern))
+        if not matches:
+            raise DeliverableCheckError(
+                f"[{deliverable_id}] file_glob FAILED: no files matching '{pattern}' "
+                f"in '{spec['dir']}' (resolved: {base})"
             )
 
     def _check_contains_text(self, deliverable_id: str, spec: dict) -> None:
