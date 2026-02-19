@@ -1,61 +1,64 @@
 <!-- docs/development/issue229/research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-19 updated= -->
+<!-- template=research version=8b7bb3ab created=2026-02-19 updated=2026-02-19 -->
 # Phase Deliverables Enforcement — exit gate (hard) + entry warning (soft)
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-02-19
 
 ---
 
 ## Purpose
 
-Onderzoek de huidige implementatie van fase-transitie hooks en bepaal de vereisten voor een config-gedreven deliverables enforcement strategie.
+Investigate the current implementation of phase-transition hooks in `PhaseStateEngine` and establish the requirements for a config-driven deliverables enforcement strategy.
 
 ## Scope
 
 **In Scope:**
 - `PhaseStateEngine`: `on_enter_tdd_phase`, `on_exit_tdd_phase`, `transition()`, `force_transition()`
-- `workphases.yaml`: huidige structuur en uitbreidbaarheid
-- `projects.json`: `planning_deliverables` schema (zoals geïntroduceerd in #146)
-- Bestaande tests die raken aan fase-hooks en transitie-validatie
+- `workphases.yaml`: current structure and extensibility
+- `projects.json`: `planning_deliverables` schema (as introduced in #146)
+- Existing tests touching phase hooks and transition validation
 
 **Out of Scope:**
-- Design-beslissingen over de nieuwe implementatie (→ design.md)
-- Implementatie van `exit_requires` / `entry_expects` (→ TDD fase)
-- Andere deliverable-types buiten `planning_deliverables` en `tdd_cycle_history`
-- Aanpassingen aan `workflow_config.py` of `workflows.yaml`
+- Design decisions for the new implementation (→ design.md)
+- Implementation of `exit_requires` / `entry_expects` (→ TDD phase)
+- Deliverable types beyond `planning_deliverables` and `tdd_cycle_history`
+- Changes to `workflow_config.py` or `workflows.yaml`
 
 ## Prerequisites
 
 Read these first:
-1. Issue #146 branch actief: feature/146-tdd-cycle-tracking
-2. Kennis van PhaseStateEngine architectuur (mcp_server/managers/phase_state_engine.py)
-3. workphases.yaml gelezen en begrepen
+1. Issue #146 branch: `feature/146-tdd-cycle-tracking`
+2. `PhaseStateEngine` architecture: [mcp_server/managers/phase_state_engine.py](../../../mcp_server/managers/phase_state_engine.py)
+3. `workphases.yaml`: [.st3/workphases.yaml](../../../.st3/workphases.yaml)
+
 ---
 
 ## Problem Statement
 
-De huidige `on_enter_tdd_phase` hook valideert of `planning_deliverables` aanwezig zijn in `projects.json`. Dit is architectureel incorrect: TDD-fase kent verantwoordelijkheid die bij de Planning-fase hoort. Bovendien is de check te omzeilen via een geforceerde transitie. Er is geen consistent mechanisme voor fase-uitgang/binnenkomst validatie van deliverables.
+The current `on_enter_tdd_phase` hook validates whether `planning_deliverables` exist in `projects.json`, raising a `ValueError` if they are absent. This is architecturally incorrect: the TDD phase has no responsibility for the output of the Planning phase. Furthermore, the check can be bypassed entirely via a forced transition. There is no consistent mechanism for validating deliverables at phase exit or entry.
 
 ## Research Goals
 
-- Begrijpen hoe de huidige fase-transitie hooks geïmplementeerd zijn in PhaseStateEngine
-- Inventariseren welke deliverables per fase relevant zijn (nu en uitbreidbaar)
-- Onderzoeken of workphases.yaml geschikt is als SSOT voor deliverable-contracten per fase
-- Bepalen hoe de engine dynamisch exit_requires / entry_expects kan lezen en afdwingen
-- Inventariseren welke bestaande tests aangepast moeten worden
-- Vastleggen van open vragen voor de planning-fase
+- Understand how the current phase-transition hooks are implemented in `PhaseStateEngine`
+- Inventory which deliverables are relevant per phase (current and extensible)
+- Determine whether `workphases.yaml` is suitable as SSOT for per-phase deliverable contracts
+- Establish how the engine can dynamically read and enforce `exit_requires` / `entry_expects`
+- Inventory which existing tests must be updated
+- Document open questions for the planning phase
 
 ---
 
 ## Background
 
-In issue #146 (TDD Cycle Tracking) werd `on_enter_tdd_phase` geïntroduceerd als hook die valideert of `planning_deliverables` bestaan. Tijdens de validation-fase van #146 is vastgesteld dat deze gate op de verkeerde plek zit: de TDD-fase kent geen verantwoordelijkheid voor Planning-output. Tegelijkertijd ontbreekt een exit gate op de Planning-fase zelf, waardoor deliverables niet worden afgedwongen bij het verlaten van die fase. Dit issue introduceert een generieke, config-gedreven oplossing.
+Issue #146 (TDD Cycle Tracking) introduced `on_enter_tdd_phase` as a hook that validates the presence of `planning_deliverables`. During the validation phase of #146, it was identified that this gate is placed at the wrong layer: the TDD phase should not be responsible for Planning output. At the same time, there is no exit gate on the Planning phase itself, meaning deliverables are never enforced when leaving that phase. This issue introduces a generic, config-driven solution.
 
 ---
 
 ## Findings
+
+### Current hook flow
 
 ```mermaid
 sequenceDiagram
@@ -63,57 +66,68 @@ sequenceDiagram
     participant PSE as PhaseStateEngine
     participant PM as ProjectManager
 
-    Note over Caller,PM: Huidige situatie — gate op verkeerde plek
+    Note over Caller,PM: Current situation — gate placed at wrong layer
 
     Caller->>PSE: transition(branch, to_phase="tdd")
     PSE->>PSE: workflow_config.validate_transition()
     PSE->>PSE: on_enter_tdd_phase(branch, issue_number)
     PSE->>PM: get_project_plan(issue_number)
-    PM-->>PSE: plan (met / zonder planning_deliverables)
-    alt planning_deliverables ontbreekt
-        PSE-->>Caller: ❌ ValueError (gate op TDD-entry)
-    else aanwezig
-        PSE->>PSE: current_tdd_cycle = 1
-        PSE-->>Caller: ✅ success
+    PM-->>PSE: plan (with / without planning_deliverables)
+    alt planning_deliverables missing
+        PSE-->>Caller: ValueError — gate fires on TDD entry
+    else present
+        PSE->>PSE: current_tdd_cycle = 1 (auto-init)
+        PSE-->>Caller: success
     end
 
-    Note over Caller,PM: Geforceerde transitie omzeilt alles
+    Note over Caller,PM: Forced transition bypasses everything
 
     Caller->>PSE: force_transition(branch, to_phase="tdd", ...)
-    PSE-->>Caller: ✅ success (geen hooks, geen checks)
+    PSE-->>Caller: success — no hooks, no checks
 ```
 
-- **`on_enter_tdd_phase` (regel 552):** Valideert `planning_deliverables` aanwezig in project plan → gooit `ValueError` als ze ontbreken. Dit is een harde gate op entry — architectureel incorrect.
-- **`on_exit_tdd_phase` (regel 574):** Slaat `last_tdd_cycle` op en wist `current_tdd_cycle`. Logt een warning als de fase verlaten wordt zonder cycles — maar blokkeert niet (zachte gate).
-- **`transition()` (regel 129):** Roept `on_exit_tdd_phase` aan bij verlaten van TDD, en `on_enter_tdd_phase` bij binnenkomst. Beide hooks zijn hardcoded per fase-naam — geen generiek mechanisme.
-- **`force_transition()` (regel 193):** Omzeilt alle workflow-validatie én fase-hooks volledig — geen enkel deliverable-check mogelijk bij geforceerde transities.
-- **`workphases.yaml`:** Bevat momenteel `subphases`, `default_commit_type` en `display_name` per fase. Geen `exit_requires` of `entry_expects` velden — uitbreidbaar zonder breaking changes.
-- **`projects.json` schema:** `planning_deliverables` wordt opgeslagen via `save_planning_deliverables()` in `ProjectManager`. Sleutelstructuur: `{ tdd_cycles: { total, cycles: [...] } }`. Veld is optioneel — niet alle issues hebben het.
-- **Bestaande tests:** `tests/unit/managers/test_phase_state_engine.py` — `TestTDDPhaseHooks` en `TestTransitionHooksWiring`. Deze moeten herzien worden bij refactor van `on_enter_tdd_phase`.
+### Hook implementation details
+
+- **`on_enter_tdd_phase` (line 552):** Validates `planning_deliverables` present in project plan → raises `ValueError` if absent. Hard gate on TDD entry — architecturally incorrect.
+- **`on_exit_tdd_phase` (line 574):** Preserves `last_tdd_cycle`, clears `current_tdd_cycle`. Logs a warning if the phase is exited without any cycles — does not block (soft gate).
+- **`transition()` (line 129):** Calls `on_exit_tdd_phase` when leaving TDD, and `on_enter_tdd_phase` when entering. Both hooks are hardcoded by phase name — no generic mechanism.
+- **`force_transition()` (line 193):** Bypasses all workflow validation and phase hooks entirely — no deliverable check possible on forced transitions.
+
+### Configuration and schema
+
+- **`workphases.yaml`:** Currently defines `subphases`, `default_commit_type`, and `display_name` per phase. No `exit_requires` or `entry_expects` fields — extensible without breaking changes.
+- **`projects.json` schema:** `planning_deliverables` is stored via `save_planning_deliverables()` in `ProjectManager`. Key structure: `{ tdd_cycles: { total, cycles: [...] } }`. Field is optional — not all issues populate it.
+
+### Test impact
+
+- **`tests/unit/managers/test_phase_state_engine.py`** — `TestTDDPhaseHooks` and `TestTransitionHooksWiring` must be revised when refactoring `on_enter_tdd_phase`.
+
+---
 
 ## Open Questions
 
-- ❓ Moet `force_transition()` ook exit/entry hooks aanroepen, of blijft dat bewust buiten scope (forced = audit trail volstaat)?
-- ❓ Wordt `entry_expects` gecontroleerd vóór of ná het opslaan van de transitie in state.json?
-- ❓ Hoe wordt omgegaan met fases die geen deliverables hebben — lege `exit_requires: []` of afwezigheid van het veld?
-- ❓ Moeten `exit_requires` sleutels verwijzen naar top-level keys in het project plan, of kan het ook geneste paden zijn (bijv. `planning_deliverables.tdd_cycles`)?
-- ❓ Is `tdd_cycle_history` een zinvolle exit gate voor TDD, of is het te streng (wat als er 0 cycles zijn gedraaid)?
+- ❓ Should `force_transition()` also invoke exit/entry hooks, or is that deliberately out of scope (forced = audit trail sufficient)?
+- ❓ Should `entry_expects` be checked before or after saving the transition to `state.json`?
+- ❓ How to handle phases with no deliverables — empty `exit_requires: []` or absence of the field?
+- ❓ Should `exit_requires` keys reference top-level keys in the project plan, or can nested paths be used (e.g. `planning_deliverables.tdd_cycles`)?
+- ❓ Is `tdd_cycle_history` a meaningful exit gate for TDD, or is it too strict (what if 0 cycles were run)?
 
+---
 
 ## Related Documentation
-- **[mcp_server/managers/phase_state_engine.py — volledige implementatie fase hooks][related-1]**
-- **[.st3/workphases.yaml — huidige fase-metadata structuur][related-2]**
-- **[mcp_server/managers/project_manager.py — save_planning_deliverables(), get_project_plan()][related-3]**
-- **[tests/unit/managers/test_phase_state_engine.py — TestTDDPhaseHooks, TestTransitionHooksWiring][related-4]**
-- **[docs/development/issue146/design.md — TDD cycle tracking design inclusief planning_deliverables schema][related-5]**
+
+- **[PhaseStateEngine implementation][related-1]**
+- **[workphases.yaml — phase metadata SSOT][related-2]**
+- **[ProjectManager — save_planning_deliverables(), get_project_plan()][related-3]**
+- **[test_phase_state_engine.py — TestTDDPhaseHooks, TestTransitionHooksWiring][related-4]**
+- **[Issue #146 design — TDD cycle tracking + planning_deliverables schema][related-5]**
 
 <!-- Link definitions -->
-
-[related-1]: mcp_server/managers/phase_state_engine.py — volledige implementatie fase hooks
-[related-2]: .st3/workphases.yaml — huidige fase-metadata structuur
-[related-3]: mcp_server/managers/project_manager.py — save_planning_deliverables(), get_project_plan()
-[related-4]: tests/unit/managers/test_phase_state_engine.py — TestTDDPhaseHooks, TestTransitionHooksWiring
-[related-5]: docs/development/issue146/design.md — TDD cycle tracking design inclusief planning_deliverables schema
+[related-1]: ../../../mcp_server/managers/phase_state_engine.py
+[related-2]: ../../../.st3/workphases.yaml
+[related-3]: ../../../mcp_server/managers/project_manager.py
+[related-4]: ../../../tests/unit/managers/test_phase_state_engine.py
+[related-5]: ../issue146/design.md
 
 ---
 
@@ -121,4 +135,5 @@ sequenceDiagram
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1 | 2026-02-19 | Agent | Translated to English, fixed list rendering, added Mermaid diagram |
 | 1.0 | 2026-02-19 | Agent | Initial draft |
