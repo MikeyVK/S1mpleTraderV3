@@ -445,3 +445,77 @@ class SavePlanningDeliverablesTool(BaseTool):
             )
         except ValueError as e:
             return ToolResult.error(str(e))
+
+
+class UpdatePlanningDeliverablesInput(BaseModel):
+    """Input for update_planning_deliverables tool."""
+
+    issue_number: int = Field(..., description="GitHub issue number")
+    planning_deliverables: dict[str, Any] = Field(
+        ...,
+        description=(
+            "Partial or full planning deliverables to merge into the existing entry. "
+            "New cycles are appended; existing cycles have deliverables merged by id."
+        ),
+    )
+
+
+class UpdatePlanningDeliverablesTool(BaseTool):
+    """Tool to merge-update planning deliverables for an issue in projects.json.
+
+    Issue #229 Cycle 5 — GAP-09:
+    - Requires save_planning_deliverables to have been called first (write-once guard preserved).
+    - Merge strategy: new cycle → append; existing cycle + new id → append; existing id → overwrite.
+    - Layer 2: validates every ``validates`` entry before writing (same as SavePlanningDeliverablesTool).
+    """
+
+    name = "update_planning_deliverables"
+    description = (
+        "Merge-update TDD cycle planning deliverables for an issue in projects.json. "
+        "Must be preceded by save_planning_deliverables. "
+        "New cycles are appended; deliverables within existing cycles are merged by id."
+    )
+    args_model = UpdatePlanningDeliverablesInput
+
+    def __init__(self, workspace_root: Path | str) -> None:
+        """Initialize tool.
+
+        Args:
+            workspace_root: Workspace root used to resolve project data.
+        """
+        super().__init__()
+        self._manager = ProjectManager(workspace_root=workspace_root)
+
+    async def execute(self, params: UpdatePlanningDeliverablesInput) -> ToolResult:
+        """Merge planning deliverables with Layer 2 schema validation.
+
+        Args:
+            params: issue_number + planning_deliverables payload.
+
+        Returns:
+            ToolResult success or structured error.
+        """
+        # Layer 2: validate every validates entry before touching disk
+        tdd_cycles = params.planning_deliverables.get("tdd_cycles", {})
+        for cycle in tdd_cycles.get("cycles", []):
+            for deliverable in cycle.get("deliverables", []):
+                if not isinstance(deliverable, dict):
+                    continue
+                validates = deliverable.get("validates")
+                if validates is None:
+                    continue
+                d_id = deliverable.get("id", "?")
+                error = validate_spec(d_id, validates)
+                if error:
+                    return ToolResult.error(error)
+
+        try:
+            self._manager.update_planning_deliverables(
+                issue_number=params.issue_number,
+                planning_deliverables=params.planning_deliverables,
+            )
+            return ToolResult.text(
+                f"✅ Planning deliverables updated for issue #{params.issue_number}"
+            )
+        except ValueError as e:
+            return ToolResult.error(str(e))

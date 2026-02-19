@@ -277,6 +277,88 @@ class ProjectManager:
         # Write to file
         self.projects_file.write_text(json.dumps(projects, indent=2))
 
+    def update_planning_deliverables(
+        self, issue_number: int, planning_deliverables: dict[str, Any]
+    ) -> None:
+        """Merge incoming planning deliverables into existing ones (Issue #229, C5).
+
+        Merge strategy for ``tdd_cycles.cycles``:
+        - New ``cycle_number`` → append cycle
+        - Existing ``cycle_number`` + new deliverable ``id`` → append deliverable
+        - Existing ``cycle_number`` + existing deliverable ``id`` → overwrite in place
+        - ``tdd_cycles.total`` updated to max(existing, highest incoming cycle_number)
+
+        Args:
+            issue_number: GitHub issue number
+            planning_deliverables: Partial or full planning deliverables to merge in.
+
+        Raises:
+            ValueError: If project not found or planning_deliverables not yet initialised
+                (call save_planning_deliverables first).
+        """
+        if not self.projects_file.exists():
+            msg = f"Project {issue_number} not found - initialize_project must be called first"
+            raise ValueError(msg)
+
+        projects = json.loads(self.projects_file.read_text(encoding="utf-8-sig"))
+
+        if str(issue_number) not in projects:
+            msg = f"Project {issue_number} not found - initialize_project must be called first"
+            raise ValueError(msg)
+
+        project = projects[str(issue_number)]
+
+        if "planning_deliverables" not in project:
+            msg = (
+                f"No planning deliverables found for issue {issue_number}. "
+                "Call save_planning_deliverables first before updating."
+            )
+            raise ValueError(msg)
+
+        existing_pd = project["planning_deliverables"]
+        incoming_tc = planning_deliverables.get("tdd_cycles", {})
+        incoming_cycles = incoming_tc.get("cycles", [])
+
+        existing_tc = existing_pd.setdefault("tdd_cycles", {})
+        existing_cycles_list: list[dict[str, Any]] = existing_tc.setdefault("cycles", [])
+
+        # Build lookup: cycle_number → index in existing_cycles_list
+        existing_cycle_index: dict[int, int] = {
+            c["cycle_number"]: i for i, c in enumerate(existing_cycles_list)
+        }
+
+        for incoming_cycle in incoming_cycles:
+            cn: int = incoming_cycle["cycle_number"]
+            if cn not in existing_cycle_index:
+                # New cycle → append
+                existing_cycles_list.append(incoming_cycle)
+                existing_cycle_index[cn] = len(existing_cycles_list) - 1
+            else:
+                # Existing cycle → merge deliverables by id
+                target_cycle = existing_cycles_list[existing_cycle_index[cn]]
+                existing_deliverables: list[dict[str, Any]] = target_cycle.setdefault(
+                    "deliverables", []
+                )
+                existing_deliv_index: dict[str, int] = {
+                    d["id"]: i for i, d in enumerate(existing_deliverables)
+                }
+                for incoming_deliv in incoming_cycle.get("deliverables", []):
+                    d_id: str = incoming_deliv["id"]
+                    if d_id in existing_deliv_index:
+                        # Overwrite in place
+                        existing_deliverables[existing_deliv_index[d_id]] = incoming_deliv
+                    else:
+                        # Append new deliverable
+                        existing_deliverables.append(incoming_deliv)
+                        existing_deliv_index[d_id] = len(existing_deliverables) - 1
+
+        # Update total to reflect highest cycle number seen
+        if existing_cycles_list:
+            highest_cn = max(c["cycle_number"] for c in existing_cycles_list)
+            existing_tc["total"] = max(existing_tc.get("total", 0), highest_cn)
+
+        self.projects_file.write_text(json.dumps(projects, indent=2))
+
     def get_project_plan(self, issue_number: int) -> dict[str, Any] | None:
         """Get stored project plan with current phase detection.
 

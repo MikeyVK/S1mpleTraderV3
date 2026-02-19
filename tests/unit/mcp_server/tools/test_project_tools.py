@@ -9,6 +9,7 @@ Issue #229 Cycle 4: SavePlanningDeliverablesTool (D4.1/D4.2/D4.3/GAP-04/GAP-06).
 Issue #229 Cycle 5: UpdatePlanningDeliverablesTool (D5.1/D5.2/D5.3/GAP-09).
 """
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -365,9 +366,8 @@ class TestUpdatePlanningDeliverablesTool:
         manager = ProjectManager(workspace_root=tmp_path)
         manager.initialize_project(
             issue_number=issue_number,
-            branch="feature/229-test",
+            issue_title="Phase deliverables enforcement",
             workflow_name="feature",
-            parent_branch="main",
         )
         manager.save_planning_deliverables(
             issue_number=issue_number,
@@ -403,7 +403,7 @@ class TestUpdatePlanningDeliverablesTool:
 
         assert not result.is_error
         manager = ProjectManager(workspace_root=workspace_root)
-        data = manager.load_project(issue_number=issue_number)
+        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
         cycles = data["planning_deliverables"]["tdd_cycles"]["cycles"]
         assert len(cycles) == 2  # original C1 + new C2
         assert cycles[1]["cycle_number"] == 2
@@ -436,7 +436,7 @@ class TestUpdatePlanningDeliverablesTool:
 
         assert not result.is_error
         manager = ProjectManager(workspace_root=workspace_root)
-        data = manager.load_project(issue_number=issue_number)
+        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
         cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
         ids = [d["id"] for d in cycle1["deliverables"]]
         assert "D1.1" in ids  # original preserved
@@ -470,7 +470,7 @@ class TestUpdatePlanningDeliverablesTool:
 
         assert not result.is_error
         manager = ProjectManager(workspace_root=workspace_root)
-        data = manager.load_project(issue_number=issue_number)
+        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
         cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
         d1_1 = next(d for d in cycle1["deliverables"] if d["id"] == "D1.1")
         assert d1_1["description"] == "updated description"
@@ -484,9 +484,8 @@ class TestUpdatePlanningDeliverablesTool:
         manager = ProjectManager(workspace_root=tmp_path)
         manager.initialize_project(
             issue_number=issue_number,
-            branch="feature/229-test",
+            issue_title="Phase deliverables enforcement",
             workflow_name="feature",
-            parent_branch="main",
         )
         tool = UpdatePlanningDeliverablesTool(workspace_root=tmp_path)
 
