@@ -22,7 +22,7 @@ Plan the TDD cycles needed to implement phase deliverable enforcement in PhaseSt
 - Expose `save_planning_deliverables` as MCP tool (fixing GAP-04)
 
 **Out of Scope:**
-- Content validation of scaffold output against template structure (GAP-05, future issue)
+- Content validation of scaffold output against template structure (separate issue, already in progress)
 - YAML key-value validation (presence check is sufficient for now)
 - Acceptance test files per phase
 - Phase deliverable enforcement for non-Python artifact types

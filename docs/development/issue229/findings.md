@@ -16,7 +16,6 @@ This document records gaps and observations found during the live trial run of t
 | [GAP-02](#gap-02) | High | PhaseStateEngine | Confirmed |
 | [GAP-03](#gap-03) | Medium | PhaseStateEngine | Confirmed |
 | [GAP-04](#gap-04) | Medium | MCP Tools | Confirmed |
-| [GAP-05](#gap-05) | Low | Scaffold templates | Confirmed |
 
 ---
 
@@ -61,17 +60,6 @@ This document records gaps and observations found during the live trial run of t
 **Expected:** Agent/user should be able to call a tool to persist deliverables from the planning phase without directly editing `projects.json`  
 **Impact:** Trial run required direct `projects.json` editing to set up deliverables — not a valid workflow  
 **Addressed by:** #229 Cycle 4 (D4.1/D4.2) — `SavePlanningDeliverablesTool` in `project_tools.py` + registered in `server.py`
-
----
-
-## GAP-05
-
-**Title:** Scaffold template renders list fields as Python repr instead of Markdown bullets  
-**Severity:** Low  
-**Observed:** `scope_in`, `scope_out`, and `findings` in `research.md` were rendered as `['item1', 'item2']` instead of `- item1\n- item2`  
-**Root cause:** Template likely lacks a loop/join filter for list-type context variables  
-**Impact:** Manual post-scaffold editing required to fix list formatting  
-**Addressed by:** Separate issue needed (template bug, out of scope for #229)
 
 ---
 
