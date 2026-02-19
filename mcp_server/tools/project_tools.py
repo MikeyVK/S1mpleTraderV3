@@ -465,8 +465,10 @@ class UpdatePlanningDeliverablesTool(BaseTool):
 
     Issue #229 Cycle 5 — GAP-09:
     - Requires save_planning_deliverables to have been called first (write-once guard preserved).
-    - Merge strategy: new cycle → append; existing cycle + new id → append; existing id → overwrite.
-    - Layer 2: validates every ``validates`` entry before writing (same as SavePlanningDeliverablesTool).
+    - Merge strategy: new cycle → append; existing cycle + new id → append;
+      existing id → overwrite.
+    - Layer 2: validates every ``validates`` entry before writing
+      (same as SavePlanningDeliverablesTool).
     """
 
     name = "update_planning_deliverables"

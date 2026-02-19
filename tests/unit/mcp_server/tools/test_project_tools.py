@@ -425,7 +425,9 @@ class TestUpdatePlanningDeliverablesTool:
                         "cycles": [
                             {
                                 "cycle_number": 1,
-                                "deliverables": [{"id": "D1.2", "description": "second deliverable"}],
+                                "deliverables": [
+                                    {"id": "D1.2", "description": "second deliverable"}
+                                ],
                                 "exit_criteria": "Tests pass",
                             }
                         ],
@@ -459,7 +461,9 @@ class TestUpdatePlanningDeliverablesTool:
                         "cycles": [
                             {
                                 "cycle_number": 1,
-                                "deliverables": [{"id": "D1.1", "description": "updated description"}],
+                                "deliverables": [
+                                    {"id": "D1.1", "description": "updated description"}
+                                ],
                                 "exit_criteria": "Tests pass",
                             }
                         ],
