@@ -207,14 +207,21 @@ class PhaseStateEngine:
         from_phase: str = state["current_phase"]
 
         # Warn about skipped gates (GAP-03)
+        # Only warn when the deliverable key is actually absent from projects.json.
         workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
         skipped_gates: list[str] = []
         if workphases_path.exists():
+            issue_number: int = state["issue_number"]
+            plan = self.project_manager.get_project_plan(issue_number)
             wp_config = WorkphasesConfig(workphases_path)
             for entry in wp_config.get_exit_requires(from_phase):
-                skipped_gates.append(f"exit:{from_phase}:{entry['key']}")
+                key = entry["key"]
+                if plan is None or key not in plan:
+                    skipped_gates.append(f"exit:{from_phase}:{key}")
             for entry in wp_config.get_entry_expects(to_phase):
-                skipped_gates.append(f"entry:{to_phase}:{entry['key']}")
+                key = entry["key"]
+                if plan is None or key not in plan:
+                    skipped_gates.append(f"entry:{to_phase}:{key}")
             if skipped_gates:
                 logger.warning(
                     "force_transition skipped_gates=%s (from=%s, to=%s, skip_reason=%r)",

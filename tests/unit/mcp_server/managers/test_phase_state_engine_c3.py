@@ -6,6 +6,7 @@ C3 Deliverables:
   D3.1: force_transition logs warning listing skipped_gates when gates exist.
 """
 
+import json
 import logging
 from pathlib import Path
 
@@ -210,7 +211,9 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
     The correct behaviour: only warn when the key is actually absent from projects.json.
     """
 
-    def _setup(self, workspace_root: Path, initial_phase: str) -> tuple[ProjectManager, PhaseStateEngine, str]:
+    def _setup(
+        self, workspace_root: Path, initial_phase: str
+    ) -> tuple[ProjectManager, PhaseStateEngine, str]:
         """Initialize project + branch and inject planning_deliverables directly."""
         pm = ProjectManager(workspace_root=workspace_root)
         pm.initialize_project(
@@ -219,10 +222,9 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
             workflow_name="feature",
         )
         # Inject the key directly (bypasses schema validation — tests engine check logic only)
-        import json as _json
-        projects = _json.loads(pm.projects_file.read_text(encoding="utf-8"))
+        projects = json.loads(pm.projects_file.read_text(encoding="utf-8"))
         projects["229"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
-        pm.projects_file.write_text(_json.dumps(projects, indent=2))
+        pm.projects_file.write_text(json.dumps(projects, indent=2))
 
         engine = PhaseStateEngine(workspace_root=workspace_root, project_manager=pm)
         branch = "feature/229-bugfix"
