@@ -494,7 +494,7 @@
     "created_at": "2026-02-19T09:50:48.221403+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 2,
+        "total": 4,
         "cycles": [
           {
             "cycle_number": 1,
@@ -525,14 +525,14 @@
                 }
               }
             ],
-            "exit_criteria": "All 7 unit tests pass (schema + checker)"
+            "exit_criteria": "All 8 unit tests pass (schema backward compat + checker)"
           },
           {
             "cycle_number": 2,
             "deliverables": [
               {
                 "id": "D2.1",
-                "description": "PhaseStateEngine: on_exit_planning_phase exists and raises PhaseDeliverableError",
+                "description": "PhaseStateEngine: on_exit_planning_phase wired to structural checker",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/phase_state_engine.py",
@@ -541,24 +541,54 @@
               },
               {
                 "id": "D2.2",
-                "description": "PhaseStateEngine: on_enter_tdd_phase no longer references planning_deliverables",
+                "description": "PhaseStateEngine: on_enter_tdd_phase no longer validates planning_deliverables independently",
                 "validates": {
                   "type": "absent_text",
                   "file": "mcp_server/managers/phase_state_engine.py",
                   "text": "planning_deliverables"
                 }
-              },
+              }
+            ],
+            "exit_criteria": "All 4 tests pass; planning exit blocks without deliverables; TDD entry silent"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
               {
-                "id": "D2.3",
-                "description": "SavePlanningDeliverablesTool class defined in project_tools.py",
+                "id": "D3.1",
+                "description": "force_transition logs warning listing skipped gates",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "skipped_gates"
+                }
+              }
+            ],
+            "exit_criteria": "All 3 tests pass; forced transition produces logger.warning when gates exist"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "D4.1",
+                "description": "SavePlanningDeliverablesTool defined in project_tools.py",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/tools/project_tools.py",
                   "text": "SavePlanningDeliverablesTool"
                 }
+              },
+              {
+                "id": "D4.2",
+                "description": "SavePlanningDeliverablesTool registered in server.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "SavePlanningDeliverablesTool"
+                }
               }
             ],
-            "exit_criteria": "All 6 tests pass; planning->design raises without deliverables; on_enter_tdd silent"
+            "exit_criteria": "All 3 tests pass; tool callable via MCP, rejects duplicate and invalid payload"
           }
         ]
       }

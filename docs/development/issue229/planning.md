@@ -3,7 +3,7 @@
 # Phase Deliverables Enforcement — Planning
 
 **Status:** DRAFT  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-02-19
 
 ---
@@ -51,13 +51,14 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ## TDD Cycles
 
-### Cycle 1: workphases.yaml schema + structural checker
+### Cycle 1: workphases.yaml schema + structural deliverable checker
 
-**Goal:** Extend `workphases.yaml` with `exit_requires` and `entry_expects` fields per phase, and introduce a structural checker that validates each declared deliverable type (`file_exists`, SCAFFOLD-header, key-path).
+**Goal:** Extend `workphases.yaml` with `exit_requires` and `entry_expects` fields per phase, and introduce a structural checker that can validate each declared deliverable (`file_exists`, SCAFFOLD-header, key-path). No engine wiring yet — this cycle produces the foundational component.
 
 **Tests:**
 - `test_workphases_schema_exit_requires_field_is_parsed`
 - `test_workphases_schema_entry_expects_field_is_parsed`
+- `test_workphases_schema_backward_compat_phases_without_field`
 - `test_deliverable_checker_file_not_found_raises`
 - `test_deliverable_checker_md_missing_scaffold_header_raises`
 - `test_deliverable_checker_md_valid_scaffold_header_passes`
@@ -65,34 +66,67 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 - `test_deliverable_checker_json_key_path_missing_raises`
 
 **Success Criteria:**
-- `workphases.yaml` accepts `exit_requires` and `entry_expects` without breaking existing phase load
-- Structural checker validates SCAFFOLD-header presence in `.md` files (first 3 lines)
+- All existing phases without `exit_requires` load without error (backward compat)
+- Structural checker validates SCAFFOLD-header presence in `.md` files
 - Structural checker resolves dot-notation key paths in JSON/YAML files
-- All 7 unit tests pass
+- All 8 unit tests pass
 
 ---
 
-### Cycle 2: PhaseStateEngine generic dispatch + gate relocation
+### Cycle 2: Gate relocation — GAP-01 + GAP-02
 
-**Goal:** Wire the structural checker into the phase transition engine reading `workphases.yaml`. Planning exit must block when declared deliverables are absent. TDD entry must no longer validate planning deliverables independently. Forced transitions must log which gates were skipped. Expose `save_planning_deliverables` as a callable MCP tool.
+**Goal:** Fix the architectural misplacement identified in GAP-01 and GAP-02. Wire the structural checker into the planning phase exit. Remove the planning-deliverables check from TDD entry. These two changes are tightly coupled — both must land in the same cycle.
 
 **Tests:**
 - `test_planning_exit_gate_blocks_transition_when_deliverables_missing`
 - `test_planning_exit_gate_passes_when_deliverables_present`
+- `test_planning_exit_gate_response_includes_deliverable_ids`
 - `test_tdd_entry_no_longer_validates_planning_deliverables`
-- `test_entry_expects_warning_logged_when_deliverable_absent`
-- `test_force_transition_logs_skipped_gates_warning`
-- `test_save_planning_deliverables_mcp_tool_exposed`
 
 **Success Criteria:**
-- `planning → design` raises when `exit_requires` deliverables are missing
-- `planning → design` passes silently when all deliverables are present
-- Entering TDD no longer blocks independently on planning deliverables
-- Forced transition produces a logged warning listing skipped gates
-- `save_planning_deliverables` is reachable via MCP (integration test)
-- All 6 tests pass
+- `planning → design` raises when `exit_requires` deliverables are absent
+- `planning → design` passes and reports checked deliverable IDs when all present
+- Entering TDD no longer independently blocks on planning deliverables
+- All 4 tests pass
 
-**Dependencies:** Cycle 1 (DeliverableChecker + workphases.yaml schema)
+**Dependencies:** Cycle 1
+
+---
+
+### Cycle 3: Forced transition skipped-gate warning — GAP-03
+
+**Goal:** When a forced transition bypasses one or more exit or entry gates, log a warning that lists which gates were skipped. The transition itself still succeeds — forced transitions remain an unconditional escape hatch.
+
+**Tests:**
+- `test_force_transition_logs_warning_for_skipped_exit_gate`
+- `test_force_transition_logs_warning_for_skipped_entry_expects`
+- `test_force_transition_without_gates_logs_no_warning`
+
+**Success Criteria:**
+- Forced transition on a phase with `exit_requires` produces a `logger.warning` naming the skipped gates
+- Forced transition on a phase without gates remains silent
+- All 3 tests pass
+
+**Dependencies:** Cycle 2 (gates must exist to have something to skip)
+
+---
+
+### Cycle 4: SavePlanningDeliverablesTool — GAP-04
+
+**Goal:** Expose `save_planning_deliverables` as a callable MCP tool so no direct `projects.json` editing is needed. Trial run confirmed this gap: deliverables had to be written manually.
+
+**Tests:**
+- `test_save_planning_deliverables_tool_persists_to_projects_json`
+- `test_save_planning_deliverables_tool_rejects_duplicate`
+- `test_save_planning_deliverables_tool_rejects_missing_tdd_cycles`
+
+**Success Criteria:**
+- Tool callable via MCP resolves to the same behaviour as internal `ProjectManager` method
+- Duplicate calls are rejected with a clear error
+- Invalid payload (missing `tdd_cycles`) is rejected with a clear error
+- All 3 tests pass
+
+**Dependencies:** None (orthogonal to Cycles 1–3)
 
 ---
 
@@ -109,10 +143,11 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ## Milestones
 
-- Cycle 1 GREEN: `workphases.yaml` schema + `DeliverableChecker` passing
-- Cycle 2 GREEN: exit gate on planning, entry warning on all phases, MCP tool exposed
-- Happy path trial: `planning → design → tdd` succeeds with deliverables present
-- GAP-01/02/03/04 confirmed resolved in `findings.md`
+- Cycle 1 GREEN: `workphases.yaml` schema + structural checker passing (8 tests)
+- Cycle 2 GREEN: planning exit gate wired, TDD entry gate removed (GAP-01 + GAP-02 fixed)
+- Cycle 3 GREEN: forced transition logs skipped gates (GAP-03 fixed)
+- Cycle 4 GREEN: `save_planning_deliverables` callable via MCP (GAP-04 fixed)
+- All gaps confirmed resolved in `findings.md`
 
 ## Related Documentation
 - **[docs/development/issue229/research.md][related-1]**
@@ -133,5 +168,6 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.2 | 2026-02-19 | Agent | Split Cycle 2 into 3 targeted cycles — one per gap (GAP-01/02, GAP-03, GAP-04) |
 | 1.1 | 2026-02-19 | Agent | Remove design creep from scope/goals/criteria/risks; fix GAP-04 scope |
 | 1.0 | 2026-02-19 | Agent | Initial draft |
