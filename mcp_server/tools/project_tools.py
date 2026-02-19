@@ -5,6 +5,7 @@ Issue #39: Atomic initialization of projects.json + state.json.
 Issue #79: Parent branch tracking with auto-detection.
 Issue #229 Cycle 4: SavePlanningDeliverablesTool with Layer 2 validates schema validation.
 """
+
 import contextlib
 import json
 import logging
@@ -38,7 +39,7 @@ class InitializeProjectInput(BaseModel):
         description=(
             "Workflow from workflows.yaml: feature (7 phases), bug (6), docs (4), "
             "refactor (5), hotfix (3), or custom"
-        )
+        ),
     )
     parent_branch: str | None = Field(
         default=None,
@@ -46,16 +47,12 @@ class InitializeProjectInput(BaseModel):
             "Parent branch this feature/bug branches from. "
             "If not provided, attempts auto-detection from git reflog. "
             "Example: 'epic/76-quality-gates-tooling'"
-        )
+        ),
     )
     custom_phases: tuple[str, ...] | None = Field(
-        default=None,
-        description="Custom phase list (required if workflow_name=custom)"
+        default=None, description="Custom phase list (required if workflow_name=custom)"
     )
-    skip_reason: str | None = Field(
-        default=None,
-        description="Reason for custom phases"
-    )
+    skip_reason: str | None = Field(default=None, description="Reason for custom phases")
 
 
 class InitializeProjectTool(BaseTool):
@@ -84,8 +81,7 @@ class InitializeProjectTool(BaseTool):
         self.manager = ProjectManager(workspace_root=workspace_root)
         self.git_manager = GitManager()
         self.state_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=self.manager
+            workspace_root=workspace_root, project_manager=self.manager
         )
 
     @property
@@ -220,10 +216,7 @@ class InitializeProjectTool(BaseTool):
                 )
 
                 if parent_branch:
-                    logger.info(
-                        "Auto-detected parent_branch: %s for %s",
-                        parent_branch, branch
-                    )
+                    logger.info("Auto-detected parent_branch: %s for %s", parent_branch, branch)
 
             # Step 2: Create projects.json (workflow definition)
             options = None
@@ -231,7 +224,7 @@ class InitializeProjectTool(BaseTool):
                 options = ProjectInitOptions(
                     custom_phases=params.custom_phases,
                     skip_reason=params.skip_reason,
-                    parent_branch=parent_branch
+                    parent_branch=parent_branch,
                 )
 
             init_start = time.perf_counter()
@@ -280,8 +273,8 @@ class InitializeProjectTool(BaseTool):
                 "execution_mode": result["execution_mode"],
                 "files_created": [
                     ".st3/projects.json (workflow definition)",
-                    ".st3/state.json (branch state)"
-                ]
+                    ".st3/state.json (branch state)",
+                ],
             }
 
             # Add template info if not custom
@@ -365,7 +358,8 @@ def validate_spec(deliverable_id: str, validates: dict[str, Any]) -> str | None:
     check_type = validates.get("type", "")
     if check_type not in _VALIDATES_REQUIRED_FIELDS:
         valid_summary = ", ".join(
-            f"{t} (requires: {', '.join(fields)})" for t, fields in _VALIDATES_REQUIRED_FIELDS.items()
+            f"{t} (requires: {', '.join(fields)})"
+            for t, fields in _VALIDATES_REQUIRED_FIELDS.items()
         )
         return (
             f"[{deliverable_id}] Unknown validates type '{check_type}'. "

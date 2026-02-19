@@ -7,16 +7,18 @@ Issue #79: Tests for parent_branch in InitializeProjectTool.
 
 Issue #229 Cycle 4: SavePlanningDeliverablesTool (D4.1/D4.2/D4.3/GAP-04/GAP-06).
 """
+
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.project_tools import (
     InitializeProjectInput,
     InitializeProjectTool,
-    SavePlanningDeliverablesTool,
     SavePlanningDeliverablesInput,
+    SavePlanningDeliverablesTool,
 )
 
 
@@ -65,7 +67,7 @@ class TestInitializeProjectToolParentBranch:
                     issue_number=79,
                     issue_title="Test",
                     workflow_name="feature",
-                    parent_branch="epic/76-quality-gates"
+                    parent_branch="epic/76-quality-gates",
                 )
             )
 
@@ -76,25 +78,23 @@ class TestInitializeProjectToolParentBranch:
         assert '"parent_branch": "epic/76-quality-gates"' in content_text
 
     @pytest.mark.asyncio
-    async def test_initialize_auto_detects_parent_branch(
-        self, tool: InitializeProjectTool
-    ) -> None:
+    async def test_initialize_auto_detects_parent_branch(self, tool: InitializeProjectTool) -> None:
         """Test auto-detection of parent_branch via git reflog.
 
         Issue #79: If parent_branch not provided, auto-detect from git reflog.
         """
         # Mock git operations
-        with patch.object(tool.git_manager, "get_current_branch") as mock_branch, \
-             patch.object(tool, "_detect_parent_branch_from_reflog") as mock_detect:
+        with (
+            patch.object(tool.git_manager, "get_current_branch") as mock_branch,
+            patch.object(tool, "_detect_parent_branch_from_reflog") as mock_detect,
+        ):
             mock_branch.return_value = "feature/80-test"
             mock_detect.return_value = "main"  # Auto-detected
 
             # Execute - no parent_branch parameter
             result = await tool.execute(
                 InitializeProjectInput(
-                    issue_number=80,
-                    issue_title="Test Auto-detect",
-                    workflow_name="bug"
+                    issue_number=80, issue_title="Test Auto-detect", workflow_name="bug"
                 )
             )
 
@@ -113,17 +113,17 @@ class TestInitializeProjectToolParentBranch:
         Issue #79: If git reflog fails, parent_branch should be None.
         """
         # Mock git operations
-        with patch.object(tool.git_manager, "get_current_branch") as mock_branch, \
-             patch.object(tool, "_detect_parent_branch_from_reflog") as mock_detect:
+        with (
+            patch.object(tool.git_manager, "get_current_branch") as mock_branch,
+            patch.object(tool, "_detect_parent_branch_from_reflog") as mock_detect,
+        ):
             mock_branch.return_value = "feature/81-test"
             mock_detect.return_value = None  # Detection failed
 
             # Execute
             result = await tool.execute(
                 InitializeProjectInput(
-                    issue_number=81,
-                    issue_title="Test Failed Detect",
-                    workflow_name="docs"
+                    issue_number=81, issue_title="Test Failed Detect", workflow_name="docs"
                 )
             )
 
@@ -142,8 +142,10 @@ class TestInitializeProjectToolParentBranch:
         Issue #79: If parent_branch provided, don't call git reflog.
         """
         # Mock git operations
-        with patch.object(tool.git_manager, "get_current_branch") as mock_branch, \
-             patch.object(tool, "_detect_parent_branch_from_reflog") as mock_detect:
+        with (
+            patch.object(tool.git_manager, "get_current_branch") as mock_branch,
+            patch.object(tool, "_detect_parent_branch_from_reflog") as mock_detect,
+        ):
             mock_branch.return_value = "feature/82-test"
 
             # Execute with explicit parent_branch
@@ -152,7 +154,7 @@ class TestInitializeProjectToolParentBranch:
                     issue_number=82,
                     issue_title="Test Override",
                     workflow_name="feature",
-                    parent_branch="epic/special"
+                    parent_branch="epic/special",
                 )
             )
 
@@ -166,6 +168,7 @@ class TestInitializeProjectToolParentBranch:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _minimal_deliverables(validates: dict | None = None) -> dict:
     """Return a minimal valid planning_deliverables dict with one cycle.
@@ -206,8 +209,6 @@ class TestSavePlanningDeliverablesTool:
     @pytest.fixture()
     def initialized(self, tmp_path: Path) -> tuple[Path, int]:
         """Initialize a project so save_planning_deliverables can run."""
-        from mcp_server.managers.project_manager import ProjectManager
-
         pm = ProjectManager(workspace_root=tmp_path)
         pm.initialize_project(
             issue_number=229,
@@ -222,7 +223,7 @@ class TestSavePlanningDeliverablesTool:
 
     @pytest.mark.asyncio()
     async def test_save_planning_deliverables_tool_persists_to_projects_json(
-        self, tool: SavePlanningDeliverablesTool, initialized: tuple[Path, int]
+        self, initialized: tuple[Path, int]
     ) -> None:
         """Happy path: valid payload is written to projects.json. (D4.1)"""
         workspace_root, issue_number = initialized
@@ -236,8 +237,6 @@ class TestSavePlanningDeliverablesTool:
         )
 
         assert not result.is_error, f"Expected success, got: {result.content}"
-        import json
-        from mcp_server.managers.project_manager import ProjectManager
         pm = ProjectManager(workspace_root=workspace_root)
         plan = pm.get_project_plan(issue_number)
         assert plan is not None
@@ -336,9 +335,7 @@ class TestSavePlanningDeliverablesTool:
         result = await tool.execute(
             SavePlanningDeliverablesInput(
                 issue_number=issue_number,
-                planning_deliverables=_minimal_deliverables(
-                    validates={"type": "wrong_type"}
-                ),
+                planning_deliverables=_minimal_deliverables(validates={"type": "wrong_type"}),
             )
         )
 
