@@ -98,8 +98,12 @@ class TestTDDPhaseHooks:
         assert state.get("current_tdd_cycle") == 1
         assert state.get("last_tdd_cycle") == 0
 
-    def test_on_enter_tdd_phase_blocks_without_planning_deliverables(self, tmp_path: Path) -> None:
-        """Test that entering TDD phase blocks if planning deliverables missing."""
+    def test_on_enter_tdd_phase_does_not_block_without_planning_deliverables(self, tmp_path: Path) -> None:
+        """Test that entering TDD phase does NOT block on missing planning deliverables.
+
+        GAP-02 fix (Issue #229 C2): the planning-deliverables check was moved to
+        on_exit_planning_phase. TDD entry must no longer enforce this contract.
+        """
         # Arrange
         workspace_root = tmp_path
         issue_number = 146
@@ -121,9 +125,10 @@ class TestTDDPhaseHooks:
             branch=branch, issue_number=issue_number, initial_phase="design"
         )
 
-        # Act & Assert
-        with pytest.raises(ValueError, match="planning deliverables"):
-            state_engine.on_enter_tdd_phase(branch, issue_number)
+        # Act & Assert — must NOT raise; gate lives at planning exit now
+        state_engine.on_enter_tdd_phase(branch, issue_number)
+        state = state_engine.get_state(branch)
+        assert state.get("current_tdd_cycle") == 1
 
     def test_on_exit_tdd_phase_preserves_last_cycle(self, setup_project: tuple[Path, int]) -> None:
         """Test that exiting TDD phase preserves last_tdd_cycle."""
