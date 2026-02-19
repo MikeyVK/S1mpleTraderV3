@@ -164,6 +164,11 @@ class PhaseStateEngine:
             issue_number_exit = state["issue_number"]
             self.on_exit_research_phase(branch, issue_number_exit)
 
+        # Design exit hook: called when leaving design phase (Issue #229 C7)
+        if from_phase == "design":
+            issue_number_design: int = state["issue_number"]
+            self.on_exit_design_phase(branch, issue_number_design)
+
         # TDD exit hook: called when leaving TDD phase (Issue #146)
         if from_phase == "tdd":
             self.on_exit_tdd_phase(branch)
@@ -703,6 +708,39 @@ class PhaseStateEngine:
                     raise ValueError(msg)
 
         logger.info(f"Research exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_design_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting design phase — per-phase deliverable gate (Issue #229 C7).
+
+        Reads ``planning_deliverables.design.deliverables`` from state.json. For entries
+        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
+        Gate is optional: if no design key is present, the check is skipped silently.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            DeliverableCheckError: If a validates spec is not satisfied.
+        """
+        state = self.get_state(branch)
+        phase_delivs: dict[str, Any] = (
+            state.get("planning_deliverables", {}).get("design", {})
+        )
+        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
+
+        if not deliverables:
+            logger.info(
+                f"No design deliverables gate defined; skipped for branch {branch}"
+            )
+            return
+
+        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        for deliverable in deliverables:
+            if "validates" in deliverable:
+                checker.check(deliverable["id"], deliverable["validates"])
+
+        logger.info(f"Design exit gate passed for branch {branch} (issue {issue_number})")
 
     def on_exit_tdd_phase(self, branch: str) -> None:
         """Hook called when exiting TDD phase.

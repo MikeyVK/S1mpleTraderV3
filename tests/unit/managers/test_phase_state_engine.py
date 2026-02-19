@@ -489,7 +489,8 @@ class TestPerPhaseDeliverableGate:
                         "description": "Design document",
                         "validates": {
                             "type": "file_glob",
-                            "file": "docs/development/issue229/design*.md",
+                            "dir": "docs/development/issue229",
+                            "pattern": "design*.md",
                         },
                     }
                 ]
@@ -509,7 +510,8 @@ class TestPerPhaseDeliverableGate:
                         "description": "Design document",
                         "validates": {
                             "type": "file_glob",
-                            "file": "docs/development/issue229/design*.md",
+                            "dir": "docs/development/issue229",
+                            "pattern": "design*.md",
                         },
                     }
                 ]
