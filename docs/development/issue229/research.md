@@ -104,6 +104,51 @@ sequenceDiagram
 
 ---
 
+## Issue #146 Validation Opportunities
+
+This branch (`feature/229-phase-deliverables-enforcement`) is based on `feature/146-tdd-cycle-tracking`, making every workflow action on this branch a live exercise of #146 machinery. The table below maps each planned #229 workflow step to the #146 feature it exercises, and what the expected observable outcome is.
+
+```mermaid
+flowchart TD
+    subgraph "Issue #146 features under live test"
+        A[initialize_project] -->|auto-init state.json fields| B[research phase]
+        B -->|sequential transition| C[planning phase]
+        C -->|save_planning_deliverables| D[projects.json populated]
+        D -->|planning → design → tdd| E[on_enter_tdd_phase hook]
+        E -->|current_tdd_cycle = 1| F[TDD cycles]
+        F -->|commit cycle_number + sub_phase| G[P_TDD_SP_C{N}_{PHASE} scope]
+        F -->|cycle_number out of range| H[ValueError — range gate]
+        F -->|transition_cycle| I[cycle history updated]
+        I -->|tdd → validation| J[on_exit_tdd_phase hook]
+        J -->|last_tdd_cycle preserved| K[validation phase]
+    end
+```
+
+| #229 Workflow Step | #146 Feature Exercised | Expected Outcome |
+|--------------------|------------------------|------------------|
+| `initialize_project(229)` | State init with `current_tdd_cycle=None`, `tdd_cycle_history=[]` | Fields present in `state.json` |
+| `research → planning` (sequential) | `workflow_config.validate_transition()` | Transition succeeds |
+| `planning → research` (forced) | `force_transition()` audit trail | `forced=True`, `skip_reason` in `state.json` |
+| `save_planning_deliverables(229, {...})` | `ProjectManager.save_planning_deliverables()` | Key present in `projects.json["229"]` |
+| `planning → design → tdd` | `on_enter_tdd_phase` hook | `current_tdd_cycle=1` auto-initialized |
+| Commit with `cycle_number=1, sub_phase="red"` | Scope generation `P_TDD_SP_C{N}_{PHASE}` | Commit message: `test(P_TDD_SP_C1_RED): ...` |
+| Commit with `cycle_number=1, sub_phase="green"` | Scope generation | Commit message: `feat(P_TDD_SP_C1_GREEN): ...` |
+| `transition_cycle(to_cycle=2)` | Cycle transition + history append | `current_tdd_cycle=2`, cycle 1 in `tdd_cycle_history` |
+| Commit with `cycle_number=99` (out of range) | Range validation `_validate_cycle_number_range` | `ValueError: cycle_number must be in range [1..N]` |
+| `tdd → validation` | `on_exit_tdd_phase` hook | `last_tdd_cycle` set, `current_tdd_cycle=None` |
+
+### What #146 does NOT yet enforce (expected gaps)
+
+These are the gaps that #229 itself will close — observing them during the trial confirms the need for this issue:
+
+| Gap | Where it manifests |
+|-----|--------------------|
+| Leaving Planning without `planning_deliverables` is silent | `planning → design` succeeds with no deliverables present |
+| Entering TDD with missing `planning_deliverables` raises in wrong place | `on_enter_tdd_phase` raises `ValueError` — should be planning exit |
+| Forced `design → tdd` skips the planning deliverables check entirely | No error, no warning |
+
+---
+
 ## Open Questions
 
 - ❓ Should `force_transition()` also invoke exit/entry hooks, or is that deliberately out of scope (forced = audit trail sufficient)?
