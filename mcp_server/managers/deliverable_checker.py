@@ -18,10 +18,10 @@ Quality Requirements:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
-import json
 import yaml
 
 
@@ -174,11 +174,7 @@ class DeliverableChecker:
             )
         content = path.read_text(encoding="utf-8")
         suffix = path.suffix.lower()
-        data: Any
-        if suffix == ".json":
-            data = json.loads(content)
-        else:
-            data = yaml.safe_load(content)
+        data: Any = json.loads(content) if suffix == ".json" else yaml.safe_load(content)
 
         key_path: str = spec["path"]
         current: Any = data
