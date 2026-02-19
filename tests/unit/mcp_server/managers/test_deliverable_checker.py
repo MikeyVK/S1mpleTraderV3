@@ -8,11 +8,12 @@ import json
 from pathlib import Path
 
 import pytest
-import yaml
 
 from mcp_server.config.workphases_config import WorkphasesConfig
-from mcp_server.managers.deliverable_checker import DeliverableCheckError, DeliverableChecker
-
+from mcp_server.managers.deliverable_checker import (
+    DeliverableChecker,
+    DeliverableCheckError,
+)
 
 # ---------------------------------------------------------------------------
 # WorkphasesConfig schema tests
@@ -68,9 +69,7 @@ phases:
         assert len(entry_expects) == 1
         assert entry_expects[0]["key"] == "planning_deliverables"
 
-    def test_workphases_schema_backward_compat_phases_without_field(
-        self, tmp_path: Path
-    ) -> None:
+    def test_workphases_schema_backward_compat_phases_without_field(self, tmp_path: Path) -> None:
         """Phases without exit_requires/entry_expects return empty list.
 
         Issue #229 C1: existing phases must not break when fields are absent.
@@ -114,9 +113,7 @@ class TestDeliverableChecker:
 
     # --- file_exists ---
 
-    def test_deliverable_checker_file_not_found_raises(
-        self, checker: DeliverableChecker
-    ) -> None:
+    def test_deliverable_checker_file_not_found_raises(self, checker: DeliverableChecker) -> None:
         """file_exists check raises DeliverableCheckError when file absent.
 
         Issue #229 C1.
@@ -159,7 +156,9 @@ class TestDeliverableChecker:
         """
         md_file = tmp_path / "docs" / "planning.md"
         md_file.parent.mkdir(parents=True)
-        md_file.write_text("<!-- template=planning version=abc created=2026-02-19 -->\n# Planning\n")
+        md_file.write_text(
+            "<!-- template=planning version=abc created=2026-02-19 -->\n# Planning\n"
+        )
 
         # Must not raise
         checker.check(

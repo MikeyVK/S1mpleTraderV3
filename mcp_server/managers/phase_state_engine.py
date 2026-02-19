@@ -577,6 +577,8 @@ class PhaseStateEngine:
             # Save state
             self._save_state(branch, state)
 
+        logger.info(f"Entered TDD phase for issue {issue_number} on branch {branch}")
+
     def on_exit_planning_phase(self, branch: str, issue_number: int) -> None:
         """Hook called when exiting planning phase — hard gate (Issue #229).
 
@@ -597,6 +599,8 @@ class PhaseStateEngine:
                 "Save planning deliverables before leaving the planning phase."
             )
             raise ValueError(msg)
+
+        logger.info(f"Planning exit gate passed for branch {branch} (issue {issue_number})")
 
     def on_exit_tdd_phase(self, branch: str) -> None:
         """Hook called when exiting TDD phase.

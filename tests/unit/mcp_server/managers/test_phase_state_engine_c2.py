@@ -14,8 +14,7 @@ from pathlib import Path
 import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
-
+from mcp_server.managers.project_manager import ProjectManager
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -124,12 +123,12 @@ class TestOnEnterTddPhaseGateRemoved:
         # No planning_deliverables → must NOT raise after GAP-02 fix
         engine.on_enter_tdd_phase(branch="feature/229-test", issue_number=229)
 
-    def test_transition_to_tdd_calls_on_exit_planning_phase(
+    def test_transition_from_planning_calls_exit_planning_gate(
         self,
         engine: PhaseStateEngine,
         project_manager: ProjectManager,
     ) -> None:
-        """transition() from planning to design calls on_exit_planning_phase gate.
+        """transition() from planning calls on_exit_planning_phase gate.
 
         Issue #229 C2: gate is wired into transition() dispatch so it cannot be
         bypassed by callers who call transition() directly.
