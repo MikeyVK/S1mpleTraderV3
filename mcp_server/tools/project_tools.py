@@ -3,6 +3,7 @@
 Phase 0.5: Project initialization with workflow selection.
 Issue #39: Atomic initialization of projects.json + state.json.
 Issue #79: Parent branch tracking with auto-detection.
+Issue #229 Cycle 4: SavePlanningDeliverablesTool with Layer 2 validates schema validation.
 """
 import contextlib
 import json
@@ -335,4 +336,118 @@ class GetProjectPlanTool(BaseTool):
                 return ToolResult.text(json.dumps(plan, indent=2))
             return ToolResult.error(f"No project plan found for issue #{params.issue_number}")
         except (ValueError, OSError) as e:
+            return ToolResult.error(str(e))
+
+
+# ---------------------------------------------------------------------------
+# Layer 2 validates-entry schema validation
+# ---------------------------------------------------------------------------
+
+#: Valid check types and the fields each requires (beyond 'type').
+_VALIDATES_REQUIRED_FIELDS: dict[str, list[str]] = {
+    "file_exists": ["file"],
+    "file_glob": ["file"],
+    "contains_text": ["file", "text"],
+    "absent_text": ["file", "text"],
+    "key_path": ["file", "path"],
+}
+
+
+def validate_spec(deliverable_id: str, validates: dict[str, Any]) -> str | None:
+    """Check one *validates* entry for schema correctness.
+
+    Returns an error string when the entry is invalid, else ``None``.
+
+    Args:
+        deliverable_id: Deliverable ID for error context (e.g. "D1.1").
+        validates: The ``validates`` sub-dict from a deliverable entry.
+    """
+    check_type = validates.get("type", "")
+    if check_type not in _VALIDATES_REQUIRED_FIELDS:
+        valid_summary = ", ".join(
+            f"{t} (requires: {', '.join(fields)})" for t, fields in _VALIDATES_REQUIRED_FIELDS.items()
+        )
+        return (
+            f"[{deliverable_id}] Unknown validates type '{check_type}'. "
+            f"Valid types: {valid_summary}"
+        )
+    for field in _VALIDATES_REQUIRED_FIELDS[check_type]:
+        if field not in validates:
+            required = ", ".join(_VALIDATES_REQUIRED_FIELDS[check_type])
+            return (
+                f"[{deliverable_id}] validates type '{check_type}' requires field '{field}'. "
+                f"Required fields: {required}"
+            )
+    return None
+
+
+class SavePlanningDeliverablesInput(BaseModel):
+    """Input for save_planning_deliverables tool."""
+
+    issue_number: int = Field(..., description="GitHub issue number")
+    planning_deliverables: dict[str, Any] = Field(
+        ...,
+        description=(
+            "Planning deliverables dict with tdd_cycles.total + cycles[]. "
+            "Each deliverable entry may include a 'validates' spec with type + required fields."
+        ),
+    )
+
+
+class SavePlanningDeliverablesTool(BaseTool):
+    """Tool to persist planning deliverables for an issue to projects.json.
+
+    Issue #229 Cycle 4 — GAP-04 + GAP-06:
+    - Layer 1: MCP JSON Schema (Pydantic, automatic)
+    - Layer 2: Runtime validation of every ``validates`` entry before writing.
+    """
+
+    name = "save_planning_deliverables"
+    description = (
+        "Save TDD cycle planning deliverables for an issue to projects.json. "
+        "Validates each 'validates' entry schema before persisting."
+    )
+    args_model = SavePlanningDeliverablesInput
+
+    def __init__(self, workspace_root: Path | str) -> None:
+        """Initialize tool.
+
+        Args:
+            workspace_root: Workspace root used to resolve project data.
+        """
+        super().__init__()
+        self._manager = ProjectManager(workspace_root=workspace_root)
+
+    async def execute(self, params: SavePlanningDeliverablesInput) -> ToolResult:
+        """Persist planning deliverables with Layer 2 schema validation.
+
+        Args:
+            params: issue_number + planning_deliverables payload.
+
+        Returns:
+            ToolResult success or structured error.
+        """
+        # Layer 2: validate every validates entry before touching disk
+        tdd_cycles = params.planning_deliverables.get("tdd_cycles", {})
+        for cycle in tdd_cycles.get("cycles", []):
+            for deliverable in cycle.get("deliverables", []):
+                if not isinstance(deliverable, dict):
+                    continue
+                validates = deliverable.get("validates")
+                if validates is None:
+                    continue
+                d_id = deliverable.get("id", "?")
+                error = validate_spec(d_id, validates)
+                if error:
+                    return ToolResult.error(error)
+
+        try:
+            self._manager.save_planning_deliverables(
+                issue_number=params.issue_number,
+                planning_deliverables=params.planning_deliverables,
+            )
+            return ToolResult.text(
+                f"✅ Planning deliverables saved for issue #{params.issue_number}"
+            )
+        except ValueError as e:
             return ToolResult.error(str(e))

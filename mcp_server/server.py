@@ -77,7 +77,7 @@ from mcp_server.tools.milestone_tools import (
 )
 from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
 from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
-from mcp_server.tools.project_tools import GetProjectPlanTool, InitializeProjectTool
+from mcp_server.tools.project_tools import GetProjectPlanTool, InitializeProjectTool, SavePlanningDeliverablesTool
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.safe_edit_tool import SafeEditTool
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
@@ -157,6 +157,7 @@ class MCPServer:
             # Project tools (Phase 0.5)
             InitializeProjectTool(workspace_root=Path(settings.server.workspace_root)),
             GetProjectPlanTool(workspace_root=Path(settings.server.workspace_root)),
+            SavePlanningDeliverablesTool(workspace_root=Path(settings.server.workspace_root)),
             # Phase tools (Phase B)
             TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
             ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
