@@ -459,13 +459,12 @@ class TestPerPhaseDeliverableGate:
             issue_number=issue_number,
             initial_phase="design",
         )
-        # Inject planning_deliverables directly into state.json if provided
+        # Inject planning_deliverables into projects.json (gate reads from project plan)
         if deliverables_state is not None:
-            state_path = tmp_path / ".st3" / "state.json"
-            state_data: dict = json.loads(state_path.read_text())
-            # state.json is a flat dict (branch stored as "branch" field, no wrapper key)
-            state_data["planning_deliverables"] = deliverables_state
-            state_path.write_text(json.dumps(state_data, indent=2))
+            projects_path = tmp_path / ".st3" / "projects.json"
+            projects_data: dict = json.loads(projects_path.read_text())
+            projects_data[str(issue_number)]["planning_deliverables"] = deliverables_state
+            projects_path.write_text(json.dumps(projects_data, indent=2))
         return engine
 
     def test_on_exit_design_gate_silent_when_phase_key_absent(self, tmp_path: Path) -> None:

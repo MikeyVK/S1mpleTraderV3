@@ -435,6 +435,20 @@ class SavePlanningDeliverablesTool(BaseTool):
                 if error:
                     return ToolResult.error(error)
 
+        # Layer 2: also validate phase-key deliverables (design/validation/documentation)
+        for phase_key in ("design", "validation", "documentation"):
+            phase_entry = params.planning_deliverables.get(phase_key, {})
+            for deliverable in phase_entry.get("deliverables", []):
+                if not isinstance(deliverable, dict):
+                    continue
+                validates = deliverable.get("validates")
+                if validates is None:
+                    continue
+                d_id = deliverable.get("id", "?")
+                error = validate_spec(d_id, validates)
+                if error:
+                    return ToolResult.error(error)
+
         try:
             self._manager.save_planning_deliverables(
                 issue_number=params.issue_number,
@@ -501,6 +515,20 @@ class UpdatePlanningDeliverablesTool(BaseTool):
         tdd_cycles = params.planning_deliverables.get("tdd_cycles", {})
         for cycle in tdd_cycles.get("cycles", []):
             for deliverable in cycle.get("deliverables", []):
+                if not isinstance(deliverable, dict):
+                    continue
+                validates = deliverable.get("validates")
+                if validates is None:
+                    continue
+                d_id = deliverable.get("id", "?")
+                error = validate_spec(d_id, validates)
+                if error:
+                    return ToolResult.error(error)
+
+        # Layer 2: also validate phase-key deliverables (design/validation/documentation)
+        for phase_key in ("design", "validation", "documentation"):
+            phase_entry = params.planning_deliverables.get(phase_key, {})
+            for deliverable in phase_entry.get("deliverables", []):
                 if not isinstance(deliverable, dict):
                     continue
                 validates = deliverable.get("validates")

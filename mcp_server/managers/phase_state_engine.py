@@ -225,12 +225,12 @@ class PhaseStateEngine:
             plan = self.project_manager.get_project_plan(issue_number)
             wp_config = WorkphasesConfig(workphases_path)
             for entry in wp_config.get_exit_requires(from_phase):
-                key = entry["key"]
-                if plan is None or key not in plan:
+                key = entry.get("key")
+                if key and (plan is None or key not in plan):
                     skipped_gates.append(f"exit:{from_phase}:{key}")
             for entry in wp_config.get_entry_expects(to_phase):
-                key = entry["key"]
-                if plan is None or key not in plan:
+                key = entry.get("key")
+                if key and (plan is None or key not in plan):
                     skipped_gates.append(f"entry:{to_phase}:{key}")
             if skipped_gates:
                 logger.warning(
@@ -658,6 +658,24 @@ class PhaseStateEngine:
                 for validate_spec in plan_value.get("validates", []):
                     checker.check(validate_spec.get("id", key), validate_spec)
 
+                # Validate nested cycle deliverables validates specs
+                tdd_cycles = plan_value.get("tdd_cycles", {})
+                for cycle in tdd_cycles.get("cycles", []):
+                    for deliverable in cycle.get("deliverables", []):
+                        if not isinstance(deliverable, dict):
+                            continue
+                        if "validates" in deliverable:
+                            checker.check(deliverable.get("id", "?"), deliverable["validates"])
+
+                # Validate phase-key deliverables validates specs (design/validation/documentation)
+                for phase_key in ("design", "validation", "documentation"):
+                    phase_entry = plan_value.get(phase_key, {})
+                    for deliverable in phase_entry.get("deliverables", []):
+                        if not isinstance(deliverable, dict):
+                            continue
+                        if "validates" in deliverable:
+                            checker.check(deliverable.get("id", "?"), deliverable["validates"])
+
         logger.info(f"Planning exit gate passed for branch {branch} (issue {issue_number})")
 
     def on_exit_research_phase(self, branch: str, issue_number: int) -> None:
@@ -723,8 +741,10 @@ class PhaseStateEngine:
         Raises:
             DeliverableCheckError: If a validates spec is not satisfied.
         """
-        state = self.get_state(branch)
-        phase_delivs: dict[str, Any] = state.get("planning_deliverables", {}).get("design", {})
+        plan = self.project_manager.get_project_plan(issue_number)
+        phase_delivs: dict[str, Any] = (
+            (plan or {}).get("planning_deliverables", {}).get("design", {})
+        )
         deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
 
         if not deliverables:
