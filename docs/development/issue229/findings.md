@@ -60,7 +60,7 @@ This document records gaps and observations found during the live trial run of t
 **Observed:** No MCP tool exists to save planning deliverables — only `ProjectManager.save_planning_deliverables()` as internal API  
 **Expected:** Agent/user should be able to call a tool to persist deliverables from the planning phase without directly editing `projects.json`  
 **Impact:** Trial run required direct `projects.json` editing to set up deliverables — not a valid workflow  
-**Addressed by:** Separate issue needed (out of scope for #229)
+**Addressed by:** #229 Cycle 2 (D2.3) — `SavePlanningDeliverablesTool` in `project_tools.py`
 
 ---
 

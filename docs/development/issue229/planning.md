@@ -3,7 +3,7 @@
 # Phase Deliverables Enforcement — Planning
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-02-19
 
 ---
@@ -16,9 +16,8 @@ Plan the TDD cycles needed to implement phase deliverable enforcement in PhaseSt
 
 **In Scope:**
 - Add `exit_requires` / `entry_expects` schema to `workphases.yaml` per phase
-- Generic hook dispatch in `PhaseStateEngine._transition()` for exit/entry gates
-- Structural deliverable checker: `file_exists` + SCAFFOLD-header for `.md`, key-path for `.yaml`/`.json`
-- Relocate planning deliverables hard gate from `on_enter_tdd_phase` to `on_exit_planning_phase`
+- Per-phase structural deliverable checker: `file_exists`, SCAFFOLD-header for `.md`, key-path for `.yaml`/`.json`
+- Hard exit gate on the planning phase — blocked transition when declared deliverables are absent
 - Soft entry warning on phases that declare `entry_expects`
 - Expose `save_planning_deliverables` as MCP tool (fixing GAP-04)
 
@@ -54,7 +53,7 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ### Cycle 1: workphases.yaml schema + structural checker
 
-**Goal:** Add `exit_requires` / `entry_expects` fields to `workphases.yaml` and implement `DeliverableChecker` that validates `file_exists` + SCAFFOLD-header (`.md`) or key-path (`.yaml`/`.json`).
+**Goal:** Extend `workphases.yaml` with `exit_requires` and `entry_expects` fields per phase, and introduce a structural checker that validates each declared deliverable type (`file_exists`, SCAFFOLD-header, key-path).
 
 **Tests:**
 - `test_workphases_schema_exit_requires_field_is_parsed`
@@ -67,15 +66,15 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 **Success Criteria:**
 - `workphases.yaml` accepts `exit_requires` and `entry_expects` without breaking existing phase load
-- `DeliverableChecker` validates `.md` SCAFFOLD-header in first 3 lines
-- `DeliverableChecker` resolves dot-notation key paths in JSON/YAML
+- Structural checker validates SCAFFOLD-header presence in `.md` files (first 3 lines)
+- Structural checker resolves dot-notation key paths in JSON/YAML files
 - All 7 unit tests pass
 
 ---
 
 ### Cycle 2: PhaseStateEngine generic dispatch + gate relocation
 
-**Goal:** Replace hardcoded `on_enter_tdd_phase` planning-deliverables check with a generic exit/entry gate dispatch that reads `workphases.yaml` `exit_requires` / `entry_expects`. Move hard gate to `on_exit_planning_phase`. Add soft entry warning on `on_enter_*` for `entry_expects` mismatches.
+**Goal:** Wire the structural checker into the phase transition engine reading `workphases.yaml`. Planning exit must block when declared deliverables are absent. TDD entry must no longer validate planning deliverables independently. Forced transitions must log which gates were skipped. Expose `save_planning_deliverables` as a callable MCP tool.
 
 **Tests:**
 - `test_planning_exit_gate_blocks_transition_when_deliverables_missing`
@@ -86,11 +85,11 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 - `test_save_planning_deliverables_mcp_tool_exposed`
 
 **Success Criteria:**
-- `planning → design` raises `PhaseDeliverableError` when `exit_requires` deliverables missing
-- `planning → design` passes silently when deliverables present
-- `on_enter_tdd_phase` no longer references `planning_deliverables` directly (test verifies absence)
-- `force_transition` logs a warning listing skipped gates
-- `save_planning_deliverables` is callable via MCP tool (integration test)
+- `planning → design` raises when `exit_requires` deliverables are missing
+- `planning → design` passes silently when all deliverables are present
+- Entering TDD no longer blocks independently on planning deliverables
+- Forced transition produces a logged warning listing skipped gates
+- `save_planning_deliverables` is reachable via MCP (integration test)
 - All 6 tests pass
 
 **Dependencies:** Cycle 1 (DeliverableChecker + workphases.yaml schema)
@@ -99,12 +98,12 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ## Risks & Mitigation
 
-- **Risk:** `workphases.yaml` additive fields break existing phase load if parser is strict
-  - **Mitigation:** Use optional fields with default empty lists; add schema test for backward compat in Cycle 1
-- **Risk:** Generic hook dispatch may miss edge cases for phases with no `exit_requires` defined
-  - **Mitigation:** Default to no-op when `exit_requires` is absent; explicit test case in Cycle 2
-- **Risk:** Relocating the gate from `on_enter_tdd` to `on_exit_planning` changes observable behavior for existing callers
-  - **Mitigation:** Test backward compat: `on_enter_tdd` must NOT raise after relocation (Cycle 2 test)
+- **Risk:** `workphases.yaml` additive fields break existing phase load
+  - **Mitigation:** Backward compat test for all existing phases without `exit_requires` in Cycle 1
+- **Risk:** Phase engine mishandles phases with no `exit_requires` defined
+  - **Mitigation:** Explicit test case for phases without the field in Cycle 2
+- **Risk:** Relocating the planning deliverables gate changes observable behavior for existing tests
+  - **Mitigation:** Backward compat test verifying TDD entry no longer raises independently (Cycle 2)
 
 ---
 
@@ -134,4 +133,5 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1 | 2026-02-19 | Agent | Remove design creep from scope/goals/criteria/risks; fix GAP-04 scope |
 | 1.0 | 2026-02-19 | Agent | Initial draft |
