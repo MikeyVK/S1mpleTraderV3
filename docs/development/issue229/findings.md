@@ -77,18 +77,29 @@ This document records gaps and observations found during the live trial run of t
 
 ## Validation Strategy Discussion
 
-**Open question from trial:** How do we validate that phase deliverables are *actually* delivered, beyond a JSON entry that is essentially self-declared?
+**Decision: Option C — Structural checks only (no acceptance tests per phase)**
 
-Options under consideration (see planning.md when created):
+Rationale:
+- Acceptance tests written by the same agent doing the phase work = "slager keurt eigen vlees" — self-verification without independence
+- Per-phase test files distract the agent from the actual phase deliverable
+- Content-level validation of scaffold output against template structure is not yet possible (no template-vs-artifact diff tooling)
+- Extensibility: structural checks are a sound foundation to layer richer checks on later
 
-| Option | Mechanism | Depth |
-|--------|-----------|-------|
-| A | `validates` key per deliverable: `yaml_key`, `file_exists`, `scaffold_header` checks | Structural |
-| B | Acceptance test per phase: `tests/acceptance/issue229/` | Test-suite integrated |
-| C | SCAFFOLD-header check for docs + key-path check for config | Hybrid structural |
-| D | Combination of C + B | Structural + automated |
+**Selected approach:**
 
-**Current lean:** Option D — structural checks in the engine, acceptance tests in the suite.
+| Deliverable type | Check | Mechanism |
+|-----------------|-------|-----------|
+| Scaffolded document (`.md`) | File exists + `<!-- template=X version=Y -->` SCAFFOLD header present | Engine reads first 3 lines |
+| Config key (YAML/JSON) | Key path exists in file | Engine resolves dot-notation path |
+| Future | Structural diff against template schema | Not in scope for #229 |
+
+**Deliberately out of scope for #229:**
+- Validating scaffold output *content* against template structure
+- YAML-key value validation (presence is enough)
+- Acceptance test files per phase
+- Detailed validation logic per artifact type beyond the two checks above
+
+**Extension path:** The `validates` schema on each deliverable entry is intentionally simple now. A future issue can add `type: yaml_key_value`, `type: test_passes`, etc. without breaking existing deliverables.
 
 ---
 
