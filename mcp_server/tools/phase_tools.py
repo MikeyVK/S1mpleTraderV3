@@ -13,6 +13,7 @@ phase transitions via PhaseStateEngine.
     - Validate input parameters
     - Format success/error messages
 """
+
 # Standard library
 from pathlib import Path
 from typing import Any
@@ -33,10 +34,7 @@ class TransitionPhaseInput(BaseModel):
 
     branch: str = Field(description="Branch name (e.g., 'feature/123-name')")
     to_phase: str = Field(description="Target phase to transition to")
-    human_approval: str | None = Field(
-        default=None,
-        description="Optional human approval message"
-    )
+    human_approval: str | None = Field(default=None, description="Optional human approval message")
 
 
 class ForcePhaseTransitionInput(BaseModel):
@@ -82,10 +80,7 @@ class _BasePhaseTransitionTool(BaseTool):
             PhaseStateEngine instance with initialized managers
         """
         project_manager = ProjectManager(workspace_root=self.workspace_root)
-        return PhaseStateEngine(
-            workspace_root=self.workspace_root,
-            project_manager=project_manager
-        )
+        return PhaseStateEngine(workspace_root=self.workspace_root, project_manager=project_manager)
 
 
 class TransitionPhaseTool(_BasePhaseTransitionTool):
@@ -115,9 +110,7 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
 
         def do_transition() -> dict[str, Any]:
             return engine.transition(
-                branch=params.branch,
-                to_phase=params.to_phase,
-                human_approval=params.human_approval
+                branch=params.branch, to_phase=params.to_phase, human_approval=params.human_approval
             )
 
         try:
@@ -163,17 +156,22 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
                 branch=params.branch,
                 to_phase=params.to_phase,
                 skip_reason=params.skip_reason,
-                human_approval=params.human_approval
+                human_approval=params.human_approval,
             )
 
         try:
             result = await anyio.to_thread.run_sync(do_force_transition)
 
-            return ToolResult.text(
+            lines = [
                 f"✅ Forced transition '{params.branch}' "
                 f"from {result['from_phase']} → {result['to_phase']} "
                 f"(forced=True, reason: {params.skip_reason})"
-            )
+            ]
+            skipped = result.get("skipped_gates", [])
+            if skipped:
+                lines.append(f"⚠️ Skipped gates: {', '.join(skipped)}")
+
+            return ToolResult.text("\n".join(lines))
 
         except ValueError as e:
             return ToolResult.error(f"❌ Force transition failed: {e}")

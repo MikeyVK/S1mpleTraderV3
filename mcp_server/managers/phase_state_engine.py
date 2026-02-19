@@ -208,9 +208,9 @@ class PhaseStateEngine:
 
         # Warn about skipped gates (GAP-03)
         workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        skipped_gates: list[str] = []
         if workphases_path.exists():
             wp_config = WorkphasesConfig(workphases_path)
-            skipped_gates: list[str] = []
             for entry in wp_config.get_exit_requires(from_phase):
                 skipped_gates.append(f"exit:{from_phase}:{entry['key']}")
             for entry in wp_config.get_entry_expects(to_phase):
@@ -245,6 +245,7 @@ class PhaseStateEngine:
             "to_phase": to_phase,
             "forced": True,
             "skip_reason": skip_reason,
+            "skipped_gates": skipped_gates,
         }
 
     def get_current_phase(self, branch: str) -> str:
