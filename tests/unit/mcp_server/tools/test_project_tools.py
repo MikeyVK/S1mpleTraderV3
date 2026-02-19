@@ -556,18 +556,16 @@ class TestPlanningDeliverablesPhaseSchema:
                 planning_deliverables={
                     **_minimal_deliverables(),
                     "design": {
-                        "deliverables": [
-                            {"id": "D-design-1", "description": "Design doc created"}
-                        ]
+                        "deliverables": [{"id": "D-design-1", "description": "Design doc created"}]
                     },
                 },
             )
         )
 
         assert not result.is_error
-        data = json.loads(
-            (workspace_root / ".st3" / "projects.json").read_text()
-        )[str(issue_number)]
+        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+            str(issue_number)
+        ]
         assert "design" in data["planning_deliverables"]
 
     @pytest.mark.asyncio()

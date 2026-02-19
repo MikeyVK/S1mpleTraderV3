@@ -724,15 +724,11 @@ class PhaseStateEngine:
             DeliverableCheckError: If a validates spec is not satisfied.
         """
         state = self.get_state(branch)
-        phase_delivs: dict[str, Any] = (
-            state.get("planning_deliverables", {}).get("design", {})
-        )
+        phase_delivs: dict[str, Any] = state.get("planning_deliverables", {}).get("design", {})
         deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
 
         if not deliverables:
-            logger.info(
-                f"No design deliverables gate defined; skipped for branch {branch}"
-            )
+            logger.info(f"No design deliverables gate defined; skipped for branch {branch}")
             return
 
         checker = DeliverableChecker(workspace_root=self.workspace_root)

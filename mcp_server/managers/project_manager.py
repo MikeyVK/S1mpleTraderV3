@@ -274,23 +274,18 @@ class ProjectManager:
         # Validate optional phase keys (D7.1 — Issue #229 C7)
         _known_phase_keys = {"tdd_cycles", "design", "validation", "documentation", "validates"}
         _phase_entry_keys = {"design", "validation", "documentation"}
-        for key in planning_deliverables:
+        for key, value in planning_deliverables.items():
             if key not in _known_phase_keys:
                 msg = (
                     f"Unknown key '{key}' in planning_deliverables. "
                     "Valid phase keys: tdd_cycles, design, validation, documentation"
                 )
                 raise ValueError(msg)
-            if key in _phase_entry_keys:
-                phase_entry = planning_deliverables[key]
-                if not isinstance(phase_entry, dict) or not isinstance(
-                    phase_entry.get("deliverables"), list
-                ):
-                    msg = (
-                        f"planning_deliverables['{key}'] must be a dict with "
-                        "a 'deliverables' list"
-                    )
-                    raise ValueError(msg)
+            if key in _phase_entry_keys and (
+                not isinstance(value, dict) or not isinstance(value.get("deliverables"), list)
+            ):
+                msg = f"planning_deliverables['{key}'] must be a dict with a 'deliverables' list"
+                raise ValueError(msg)
 
         # Add planning_deliverables to project
         projects[str(issue_number)]["planning_deliverables"] = planning_deliverables
