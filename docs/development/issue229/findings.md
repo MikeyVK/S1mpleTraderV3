@@ -20,9 +20,12 @@ This document records gaps and observations found during the live trial run of t
 | [GAP-06](#gap-06) | Medium | SavePlanningDeliverablesTool | ✅ Fixed (C4) |
 | [GAP-07](#gap-07) | Medium | MCP Git Tool | ✅ Fixed (C2 re-run) |
 | [GAP-08](#gap-08) | Medium | ForceCycleTransitionTool | ✅ Fixed (C3) |
-| [GAP-09](#gap-09) | Medium | SavePlanningDeliverablesTool | Pending |
-| [GAP-10](#gap-10) | Medium | PhaseStateEngine / workphases.yaml | Pending |
-| [GAP-11](#gap-11) | Medium | PhaseStateEngine / planning schema | Pending |
+| [GAP-09](#gap-09) | Medium | SavePlanningDeliverablesTool | ✅ Fixed (C5) |
+| [GAP-10](#gap-10) | Medium | PhaseStateEngine / workphases.yaml | ✅ Fixed (C6) |
+| [GAP-11](#gap-11) | Medium | PhaseStateEngine / planning schema | ✅ Fixed (C7) |
+| [GAP-12](#gap-12) | Low | UpdatePlanningDeliverablesTool | Pending |
+| [GAP-13](#gap-13) | Low | UpdatePlanningDeliverablesTool | Pending |
+| [GAP-14](#gap-14) | Medium | projects.json / D7 validates specs | Pending |
 
 ---
 
@@ -224,6 +227,77 @@ research:
 **Root cause:** Schema design in `save_planning_deliverables` and `PhaseStateEngine` assumes TDD is the only phase with structured deliverables.  
 **Note:** `hotfix` workflow intentionally has no planning phase and therefore no deliverable gates — accepted trade-off.  
 **Addressed by:** #229 pending — new TDD cycle (requires design phase for schema impact analysis)
+
+---
+
+---
+
+## Validation Phase Findings (2026-02-20)
+
+Discovered during live validation of cycles 5–7 in the validation phase. Tests run via Python engine invocations and live MCP tool calls.
+
+### Cycle 5 validation — UpdatePlanningDeliverablesTool ✅ (with gaps)
+
+| Test | Result |
+|------|--------|
+| Merge bestaande cycle (D7.1 desc bijgewerkt, D7.2 intact) | ✅ |
+| Nieuwe cycle appenden | ✅ |
+| Update vóór save (geïnitialiseerd project zonder plan) | ✅ Duidelijk foutbericht |
+| Update op niet-bestaand issue | ✅ Duidelijk foutbericht |
+
+### Cycle 6 validation — research exit gate ✅
+
+| Test | Result |
+|------|--------|
+| Transitie zonder `*research*.md` → blokkeert | ✅ `DeliverableCheckError` met pad in bericht |
+| Transitie met `*research*.md` aanwezig → passeert | ✅ |
+
+### Cycle 7 validation — per-fase exit gate ✅ (met GAP-14)
+
+| Test | Result |
+|------|--------|
+| Geen design key → stilte (optioneel gate) | ✅ |
+| Design key met falende `validates` spec → blokkeert | ✅ `DeliverableCheckError` |
+| Design key met slagende `validates` spec → passeert | ✅ |
+| `phase_deliverables` letterlijk aanwezig in code | ❌ GAP-14 |
+
+---
+
+## GAP-12
+
+**Title:** `exit_criteria` op cycle-niveau wordt niet geüpdated bij merge  
+**Severity:** Low  
+**Observed:** `update_planning_deliverables` met gewijzigde `exit_criteria` op een bestaande cycle → `exit_criteria` bleef de originele waarde; alleen deliverables in die cycle werden gemerged by id.  
+**Expected:** Als `exit_criteria` meegegeven wordt in een update, wordt die ook overschreven (shallow merge op het cycle-object).  
+**Root cause:** De merge-logica itereert alleen over `deliverables` by id; andere cycle-velden worden genegeerd.  
+**Impact:** Low — agenten kunnen `exit_criteria` niet corrigeren zonder `projects.json` direct te editen.
+
+---
+
+## GAP-13
+
+**Title:** Geen mechanisme om een foutief toegevoegde cycle te verwijderen  
+**Severity:** Low  
+**Observed:** Na een test-cycle (cycle 8) toe te voegen via `update_planning_deliverables` was er geen tool-call om die cycle weer te verwijderen. Cleanup vereiste directe `projects.json` edit.  
+**Expected:** Ofwel een `delete_planning_cycle` tool, ofwel expliciete vermelding in documentatie dat cycles permanent zijn na toevoeging.  
+**Impact:** Low — bewuste keuze is verdedigbaar (immutability), maar niet gedocumenteerd.
+
+---
+
+## GAP-14
+
+**Title:** D7.1 en D7.2 `validates.text` specs komen niet overeen met de werkelijke implementatietekst  
+**Severity:** Medium  
+**Observed:** Deliverable specs in `projects.json` (issue 229) bevatten:  
+- D7.1: `{"type": "contains_text", "file": "mcp_server/managers/project_manager.py", "text": "phase_deliverables"}`
+- D7.2: `{"type": "contains_text", "file": "mcp_server/managers/phase_state_engine.py", "text": "phase_deliverables"}`  
+De tekst `"phase_deliverables"` komt **niet voor** in beide bestanden. De implementatie gebruikt:
+- `project_manager.py`: `_known_phase_keys = {"tdd_cycles", "design", "validation", ...}`
+- `phase_state_engine.py`: `.get("planning_deliverables", {}).get("design", {})`  
+**Expected:** `validates.text` spec matcht een string die daadwerkelijk in de implementatie staat.  
+**Root cause:** Specs zijn geschreven vóór implementatie; namen zijn afgedwaald tijdens het codeerproces.  
+**Impact:** Medium — als de DeliverableChecker gebruikt zou worden om D7 te valideren, zouden beide checks falen terwijl de functionaliteit correct is geïmplementeerd. Misleidend voor toekomstige sessies.  
+**Proposed fix:** D7.1 `text` aanpassen naar `_known_phase_keys` of `"design"`, D7.2 naar `on_exit_design_phase`.
 
 ---
 
