@@ -4,7 +4,7 @@
 
 **Status:** DRAFT  
 **Version:** 1.2  
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-02-20
 
 ---
 
@@ -223,6 +223,66 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ---
 
+### Cycle 8: update_planning_deliverables completeness — GAP-12 + GAP-15
+
+**Goal:** Two gaps found during C7 live validation reveal that `update_planning_deliverables` is incomplete in two distinct ways.
+
+**GAP-15:** Per-fase keys (`design`, `validation`, `documentation`) are silently ignored. A call with `{"design": {"deliverables": [...]}}` returns `✅ Planning deliverables updated` but nothing changes in `projects.json`. The merge loop only processes `tdd_cycles`. Without this fix, agents cannot evolve per-phase gate specs after the initial `save_planning_deliverables` call — a direct `projects.json` edit is the only workaround.
+
+**GAP-12:** `exit_criteria` at the cycle level is ignored during merge. When a cycle update includes a corrected `exit_criteria`, only the `deliverables` list is merged by id; the cycle-level `exit_criteria` string is left unchanged. This makes it impossible to fix a typo or tighten criteria after the initial save.
+
+**Rationale for combining in one cycle:** Both gaps are in the same method (`ProjectManager.update_planning_deliverables`). Fixing one without the other leaves the tool partially broken. The test surface is small and self-contained; splitting into two cycles would add overhead without benefit.
+
+**Note on GAP-13** (no mechanism to delete a cycle): Treated as a design decision rather than a bug — cycles are intentionally append-only to preserve audit history. This will be documented as a constraint in the tool's docstring rather than fixed.
+
+**Tests:**
+- `test_update_planning_deliverables_merges_design_key`
+- `test_update_planning_deliverables_merges_validation_key`
+- `test_update_planning_deliverables_merges_documentation_key`
+- `test_update_planning_deliverables_per_phase_merge_by_id`
+- `test_update_planning_deliverables_updates_exit_criteria_on_existing_cycle`
+- `test_update_planning_deliverables_tdd_cycles_backward_compat`
+
+**Success Criteria:**
+- `update_planning_deliverables(229, {"design": {"deliverables": [...]}})` updates `projects.json` design deliverables
+- Per-fase merge by id: existing entry with matching `id` updated, new `id` appended
+- `exit_criteria` on an existing cycle is overwritten when provided in the update payload
+- `tdd_cycles` merge behaviour unchanged (backward compat)
+- All 6 tests pass
+
+**Dependencies:** Cycle 7 (per-fase keys schema in place), Cycle 5 (original tdd_cycles merge logic to extend)
+
+---
+
+### Cycle 9: validation + documentation exit hooks — GAP-16
+
+**Goal:** C7 introduced per-phase deliverable exit gates but only wired `on_exit_design_phase`. GAP-16, confirmed by live test on 2026-02-20: a `validation → documentation` transition passes without error even when `planning_deliverables.validation.deliverables` contains a spec pointing to a non-existent file. The same gap exists for `documentation → done`. `on_exit_validation_phase` and `on_exit_documentation_phase` do not exist; neither is wired in `transition()`.
+
+**Rationale:** The design intent in C7 was to generalise gate enforcement to all non-tdd phases. The implementation stopped at `design`. Completing enforcement for `validation` and `documentation` is a direct continuation of that design — the pattern (`on_exit_<phase>_phase` → `DeliverableChecker`) is already established and reusable.
+
+**Note on GAP-14** (`validates.text` specs in D7.1/D7.2 not matching actual implementation): Fixed as part of this cycle's success criteria — D7.1 and D7.2 specs in the live `projects.json` will be corrected via `update_planning_deliverables` once C8 is implemented.
+
+**Tests:**
+- `test_validation_exit_gate_blocks_transition_when_deliverable_missing`
+- `test_validation_exit_gate_passes_when_deliverable_present`
+- `test_validation_exit_gate_skips_when_no_validation_key_in_plan`
+- `test_documentation_exit_gate_blocks_transition_when_deliverable_missing`
+- `test_documentation_exit_gate_passes_when_deliverable_present`
+- `test_documentation_exit_gate_skips_when_no_documentation_key_in_plan`
+
+**Success Criteria:**
+- `on_exit_validation_phase` implemented and wired in `transition()` for `from_phase == "validation"`
+- `on_exit_documentation_phase` implemented and wired in `transition()` for `from_phase == "documentation"`
+- Both gates are optional: silent pass when key absent in `planning_deliverables`
+- `DeliverableChecker` reused without modification
+- Forced transition still bypasses hooks (uses existing C3 skip-warning pattern)
+- D7.1 and D7.2 `validates.text` specs in `projects.json` corrected via `update_planning_deliverables` (GAP-14 resolved)
+- All 6 tests pass
+
+**Dependencies:** Cycle 7 (on_exit_design_phase pattern), Cycle 8 (update_planning_deliverables per-fase merge needed to fix GAP-14 specs)
+
+---
+
 ## Risks & Mitigation
 
 - **Risk:** `workphases.yaml` additive fields break existing phase load
@@ -243,6 +303,8 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 - Cycle 5 GREEN: `update_planning_deliverables` tool with merge-strategy (GAP-09 fixed)
 - Cycle 6 GREEN: `exit_requires` supports `type: file_glob` + `{issue_number}` interpolation; research phase gate configured (GAP-10 fixed)
 - Cycle 7 GREEN: `planning_deliverables` generalised to all phases; exit gates per phase (GAP-11 fixed)
+- Cycle 8 GREEN: `update_planning_deliverables` merges per-fase keys + `exit_criteria` (GAP-12 + GAP-15 fixed)
+- Cycle 9 GREEN: `on_exit_validation_phase` + `on_exit_documentation_phase` wired; GAP-14 specs corrected (GAP-16 fixed)
 - All gaps confirmed resolved in `findings.md`
 
 ## Related Documentation
@@ -264,7 +326,8 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.4 | 2026-02-19 | Agent | Added C5 (GAP-09), C6 (GAP-10), C7 (GAP-11) — discovered during validation phase smoke-test |
+| 1.6 | 2026-02-20 | Agent | Added C8 (GAP-12 + GAP-15) and C9 (GAP-16); GAP-13 as design decision; GAP-14 resolved in C9; milestones updated |
+| 1.5 | 2026-02-19 | Agent | Added C5 (GAP-09), C6 (GAP-10), C7 (GAP-11) — discovered during validation phase smoke-test |
 | 1.3 | 2026-02-19 | Agent | C2 extended with file_glob (GAP-05); C4 extended with Layer 2 schema validation + error messages (GAP-06); scope + milestones updated |
 | 1.2 | 2026-02-19 | Agent | Expanded to 4 cycles: C1 infrastructure, C2 GAP-01/02, C3 GAP-03, C4 GAP-04; milestones aligned |
 | 1.1 | 2026-02-19 | Agent | Remove design creep from scope/goals/criteria/risks; fix GAP-04 scope |
