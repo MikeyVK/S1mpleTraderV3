@@ -3,6 +3,7 @@
 Issue #146 Cycle 4: TDD phase lifecycle hooks.
 Issue #229 Cycle 6: Research phase exit gate — file_glob support (GAP-10).
 Issue #229 Cycle 7: Per-phase deliverable gate on design exit (GAP-11/D7.2).
+Issue #229 Cycle 9: Per-phase deliverable gates for validation and documentation exit (GAP-16).
 """
 
 import json
@@ -519,3 +520,165 @@ class TestPerPhaseDeliverableGate:
         engine = self._make_engine(tmp_path, deliverables_state=deliverables_state)
         with pytest.raises(DeliverableCheckError):
             engine.on_exit_design_phase(branch="feature/229-test", issue_number=229)
+
+
+class TestValidationAndDocumentationExitGates:
+    """Tests for on_exit_validation_phase and on_exit_documentation_phase (Issue #229 C9, GAP-16).
+
+    Both hooks mirror on_exit_design_phase: optional, run DeliverableChecker for each
+    deliverable that has a 'validates' spec, silent pass when phase key absent.
+    - D9.1: on_exit_validation_phase implemented
+    - D9.2: on_exit_documentation_phase implemented
+    - D9.3: both wired in transition() for the matching from_phase
+    """
+
+    def _make_engine(
+        self,
+        tmp_path: Path,
+        issue_number: int = 229,
+        initial_phase: str = "validation",
+        deliverables_state: dict | None = None,
+    ) -> PhaseStateEngine:
+        """Build a PhaseStateEngine in the given phase with optional planning_deliverables."""
+        from mcp_server.managers.project_manager import ProjectManager
+
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Validation/documentation gate test",
+            workflow_name="feature",
+        )
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine.initialize_branch(
+            branch=f"feature/{issue_number}-test",
+            issue_number=issue_number,
+            initial_phase=initial_phase,
+        )
+        if deliverables_state is not None:
+            projects_path = tmp_path / ".st3" / "projects.json"
+            projects_data: dict = json.loads(projects_path.read_text())
+            projects_data[str(issue_number)]["planning_deliverables"] = deliverables_state
+            projects_path.write_text(json.dumps(projects_data, indent=2))
+        return engine
+
+    # --- on_exit_validation_phase ---
+
+    def test_validation_exit_gate_skips_when_no_validation_key_in_plan(
+        self, tmp_path: Path
+    ) -> None:
+        """Gate is optional: no planning_deliverables.validation → silent pass."""
+        engine = self._make_engine(tmp_path, deliverables_state={"tdd_cycles": {}})
+        engine.on_exit_validation_phase(branch="feature/229-test", issue_number=229)
+
+    def test_validation_exit_gate_passes_when_deliverable_present(
+        self, tmp_path: Path
+    ) -> None:
+        """Gate passes when DeliverableChecker.check() succeeds for spec file."""
+        report_dir = tmp_path / "docs" / "development" / "issue229"
+        report_dir.mkdir(parents=True)
+        (report_dir / "validation_report.md").write_text("# Validation Report")
+
+        deliverables_state = {
+            "validation": {
+                "deliverables": [
+                    {
+                        "id": "Dval.1",
+                        "description": "Validation report",
+                        "validates": {
+                            "type": "file_glob",
+                            "dir": "docs/development/issue229",
+                            "pattern": "validation_report*.md",
+                        },
+                    }
+                ]
+            }
+        }
+        engine = self._make_engine(tmp_path, deliverables_state=deliverables_state)
+        engine.on_exit_validation_phase(branch="feature/229-test", issue_number=229)
+
+    def test_validation_exit_gate_blocks_transition_when_deliverable_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """Gate raises DeliverableCheckError when required file is missing."""
+        deliverables_state = {
+            "validation": {
+                "deliverables": [
+                    {
+                        "id": "Dval.1",
+                        "description": "Validation report",
+                        "validates": {
+                            "type": "file_glob",
+                            "dir": "docs/development/issue229",
+                            "pattern": "validation_report*.md",
+                        },
+                    }
+                ]
+            }
+        }
+        engine = self._make_engine(tmp_path, deliverables_state=deliverables_state)
+        with pytest.raises(DeliverableCheckError):
+            engine.on_exit_validation_phase(branch="feature/229-test", issue_number=229)
+
+    # --- on_exit_documentation_phase ---
+
+    def test_documentation_exit_gate_skips_when_no_documentation_key_in_plan(
+        self, tmp_path: Path
+    ) -> None:
+        """Gate is optional: no planning_deliverables.documentation → silent pass."""
+        engine = self._make_engine(
+            tmp_path, initial_phase="documentation", deliverables_state={"tdd_cycles": {}}
+        )
+        engine.on_exit_documentation_phase(branch="feature/229-test", issue_number=229)
+
+    def test_documentation_exit_gate_passes_when_deliverable_present(
+        self, tmp_path: Path
+    ) -> None:
+        """Gate passes when DeliverableChecker.check() succeeds for spec file."""
+        docs_dir = tmp_path / "docs" / "development" / "issue229"
+        docs_dir.mkdir(parents=True)
+        (docs_dir / "README_feature.md").write_text("# Docs")
+
+        deliverables_state = {
+            "documentation": {
+                "deliverables": [
+                    {
+                        "id": "Ddoc.1",
+                        "description": "Feature docs",
+                        "validates": {
+                            "type": "file_glob",
+                            "dir": "docs/development/issue229",
+                            "pattern": "README_feature*.md",
+                        },
+                    }
+                ]
+            }
+        }
+        engine = self._make_engine(
+            tmp_path, initial_phase="documentation", deliverables_state=deliverables_state
+        )
+        engine.on_exit_documentation_phase(branch="feature/229-test", issue_number=229)
+
+    def test_documentation_exit_gate_blocks_transition_when_deliverable_missing(
+        self, tmp_path: Path
+    ) -> None:
+        """Gate raises DeliverableCheckError when required file is missing."""
+        deliverables_state = {
+            "documentation": {
+                "deliverables": [
+                    {
+                        "id": "Ddoc.1",
+                        "description": "Feature docs",
+                        "validates": {
+                            "type": "file_glob",
+                            "dir": "docs/development/issue229",
+                            "pattern": "README_feature*.md",
+                        },
+                    }
+                ]
+            }
+        }
+        engine = self._make_engine(
+            tmp_path, initial_phase="documentation", deliverables_state=deliverables_state
+        )
+        with pytest.raises(DeliverableCheckError):
+            engine.on_exit_documentation_phase(branch="feature/229-test", issue_number=229)
