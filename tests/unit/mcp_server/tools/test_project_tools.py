@@ -8,6 +8,7 @@ Issue #79: Tests for parent_branch in InitializeProjectTool.
 Issue #229 Cycle 4: SavePlanningDeliverablesTool (D4.1/D4.2/D4.3/GAP-04/GAP-06).
 Issue #229 Cycle 5: UpdatePlanningDeliverablesTool (D5.1/D5.2/D5.3/GAP-09).
 Issue #229 Cycle 7: Per-phase deliverables schema in save_planning_deliverables (D7.1).
+Issue #229 Cycle 8: update_planning_deliverables per-phase merge + exit_criteria (D8.1/D8.2/D8.3/GAP-12/GAP-15).
 """
 
 import json
@@ -587,3 +588,260 @@ class TestPlanningDeliverablesPhaseSchema:
         assert result.is_error
         text = result.content[0]["text"]
         assert "unknown_phase" in text
+
+
+class TestUpdatePlanningDeliverablesPerPhase:
+    """Tests for per-phase merge in update_planning_deliverables.
+
+    Issue #229 Cycle 8 (GAP-12 + GAP-15):
+    - D8.1: update merges design/validation/documentation keys
+    - D8.2: per-phase deliverables merged by id
+    - D8.3: exit_criteria on existing cycle overwritten when provided
+    """
+
+    @pytest.fixture()
+    def initialized(self, tmp_path: Path) -> tuple[Path, int]:
+        """Initialize a project with tdd_cycles + design phase deliverables."""
+        issue_number = 229
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Phase deliverables update test",
+            workflow_name="feature",
+        )
+        manager.save_planning_deliverables(
+            issue_number=issue_number,
+            planning_deliverables={
+                **_minimal_deliverables(),
+                "design": {
+                    "deliverables": [
+                        {"id": "Des1", "description": "original design deliverable"}
+                    ]
+                },
+            },
+        )
+        return tmp_path, issue_number
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_merges_design_key(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """update_planning_deliverables with design key updates projects.json. (D8.1/GAP-15)"""
+        workspace_root, issue_number = initialized
+        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "design": {
+                        "deliverables": [
+                            {"id": "Des2", "description": "new design deliverable"}
+                        ]
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        data = json.loads(
+            (workspace_root / ".st3" / "projects.json").read_text()
+        )[str(issue_number)]
+        design_ids = [
+            d["id"] for d in data["planning_deliverables"]["design"]["deliverables"]
+        ]
+        assert "Des1" in design_ids  # original preserved
+        assert "Des2" in design_ids  # new one appended (D8.1)
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_merges_validation_key(
+        self, tmp_path: Path
+    ) -> None:
+        """update_planning_deliverables with validation key updates projects.json. (D8.1/GAP-15)"""
+        issue_number = 229
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Validation phase test",
+            workflow_name="feature",
+        )
+        manager.save_planning_deliverables(
+            issue_number=issue_number,
+            planning_deliverables={
+                **_minimal_deliverables(),
+                "validation": {
+                    "deliverables": [
+                        {"id": "Val1", "description": "original validation deliverable"}
+                    ]
+                },
+            },
+        )
+        tool = UpdatePlanningDeliverablesTool(workspace_root=tmp_path)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "validation": {
+                        "deliverables": [
+                            {"id": "Val2", "description": "new validation deliverable"}
+                        ]
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        data = json.loads(
+            (tmp_path / ".st3" / "projects.json").read_text()
+        )[str(issue_number)]
+        val_ids = [
+            d["id"] for d in data["planning_deliverables"]["validation"]["deliverables"]
+        ]
+        assert "Val1" in val_ids
+        assert "Val2" in val_ids
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_merges_documentation_key(
+        self, tmp_path: Path
+    ) -> None:
+        """update_planning_deliverables with documentation key updates projects.json. (D8.1/GAP-15)"""
+        issue_number = 229
+        manager = ProjectManager(workspace_root=tmp_path)
+        manager.initialize_project(
+            issue_number=issue_number,
+            issue_title="Documentation phase test",
+            workflow_name="feature",
+        )
+        manager.save_planning_deliverables(
+            issue_number=issue_number,
+            planning_deliverables={
+                **_minimal_deliverables(),
+                "documentation": {
+                    "deliverables": [
+                        {"id": "Doc1", "description": "original doc deliverable"}
+                    ]
+                },
+            },
+        )
+        tool = UpdatePlanningDeliverablesTool(workspace_root=tmp_path)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "documentation": {
+                        "deliverables": [
+                            {"id": "Doc2", "description": "new doc deliverable"}
+                        ]
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        data = json.loads(
+            (tmp_path / ".st3" / "projects.json").read_text()
+        )[str(issue_number)]
+        doc_ids = [
+            d["id"] for d in data["planning_deliverables"]["documentation"]["deliverables"]
+        ]
+        assert "Doc1" in doc_ids
+        assert "Doc2" in doc_ids
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_per_phase_merge_by_id(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """Existing per-phase deliverable id updated in place; new id appended. (D8.2)"""
+        workspace_root, issue_number = initialized
+        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "design": {
+                        "deliverables": [
+                            {"id": "Des1", "description": "updated description"},
+                            {"id": "Des2", "description": "brand new"},
+                        ]
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        data = json.loads(
+            (workspace_root / ".st3" / "projects.json").read_text()
+        )[str(issue_number)]
+        deliverables = data["planning_deliverables"]["design"]["deliverables"]
+        by_id = {d["id"]: d for d in deliverables}
+        assert by_id["Des1"]["description"] == "updated description"  # overwritten (D8.2)
+        assert "Des2" in by_id  # appended
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_updates_exit_criteria_on_existing_cycle(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """exit_criteria on existing cycle overwritten when provided in update. (D8.3/GAP-12)"""
+        workspace_root, issue_number = initialized
+        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "tdd_cycles": {
+                        "cycles": [
+                            {
+                                "cycle_number": 1,
+                                "deliverables": [],
+                                "exit_criteria": "Updated exit criteria",
+                            }
+                        ]
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        data = json.loads(
+            (workspace_root / ".st3" / "projects.json").read_text()
+        )[str(issue_number)]
+        cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
+        assert cycle1["exit_criteria"] == "Updated exit criteria"  # (D8.3)
+
+    @pytest.mark.asyncio()
+    async def test_update_planning_deliverables_tdd_cycles_backward_compat(
+        self, initialized: tuple[Path, int]
+    ) -> None:
+        """tdd_cycles merge behaviour unchanged after per-phase support added. (D8.1 backward compat)"""
+        workspace_root, issue_number = initialized
+        tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
+
+        result = await tool.execute(
+            UpdatePlanningDeliverablesInput(
+                issue_number=issue_number,
+                planning_deliverables={
+                    "tdd_cycles": {
+                        "cycles": [
+                            {
+                                "cycle_number": 2,
+                                "deliverables": [{"id": "D2.1", "description": "new cycle"}],
+                                "exit_criteria": "Tests pass",
+                            }
+                        ]
+                    }
+                },
+            )
+        )
+
+        assert not result.is_error
+        data = json.loads(
+            (workspace_root / ".st3" / "projects.json").read_text()
+        )[str(issue_number)]
+        cycles = data["planning_deliverables"]["tdd_cycles"]["cycles"]
+        assert len(cycles) == 2  # original C1 + new C2 appended
+        assert cycles[0]["cycle_number"] == 1  # original C1 untouched
+        assert cycles[1]["cycle_number"] == 2  # C2 appended
