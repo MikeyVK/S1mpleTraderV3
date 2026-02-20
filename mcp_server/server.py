@@ -51,6 +51,7 @@ from mcp_server.tools.git_tools import (
     GitRestoreTool,
     GitStashTool,
     GitStatusTool,
+    build_phase_guard,
 )
 from mcp_server.tools.health_tools import HealthCheckTool
 
@@ -76,13 +77,19 @@ from mcp_server.tools.milestone_tools import (
 )
 from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
 from mcp_server.tools.pr_tools import CreatePRTool, ListPRsTool, MergePRTool
-from mcp_server.tools.project_tools import GetProjectPlanTool, InitializeProjectTool
+from mcp_server.tools.project_tools import (
+    GetProjectPlanTool,
+    InitializeProjectTool,
+    SavePlanningDeliverablesTool,
+    UpdatePlanningDeliverablesTool,
+)
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.safe_edit_tool import SafeEditTool
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
 from mcp_server.tools.template_validation_tool import TemplateValidationTool
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.tool_result import ToolResult
+from mcp_server.tools.transition_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
 # Initialize logging
@@ -129,7 +136,7 @@ class MCPServer:
             # Git tools
             CreateBranchTool(),
             GitStatusTool(),
-            GitCommitTool(),
+            GitCommitTool(phase_guard=build_phase_guard(Path(settings.server.workspace_root))),
             GitCheckoutTool(),
             GitFetchTool(),
             GitPullTool(),
@@ -155,9 +162,14 @@ class MCPServer:
             # Project tools (Phase 0.5)
             InitializeProjectTool(workspace_root=Path(settings.server.workspace_root)),
             GetProjectPlanTool(workspace_root=Path(settings.server.workspace_root)),
+            SavePlanningDeliverablesTool(workspace_root=Path(settings.server.workspace_root)),
+            UpdatePlanningDeliverablesTool(workspace_root=Path(settings.server.workspace_root)),
             # Phase tools (Phase B)
             TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
             ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
+            # TDD Cycle tools (Issue #146)
+            TransitionCycleTool(),
+            ForceCycleTransitionTool(),
             # Scaffold tools (unified artifact scaffolding)
             ScaffoldArtifactTool(
                 manager=ArtifactManager(

@@ -1,9 +1,11 @@
 """Unit tests for git_tools.py."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.git_tools import (
     CreateBranchInput,
     CreateBranchTool,
@@ -101,22 +103,68 @@ async def test_git_status_tool(mock_git_manager):
 
 @pytest.mark.asyncio
 async def test_git_commit_tool_tdd(mock_git_manager):
-    """Test git commit tool with TDD phase."""
+    """Test git commit tool with TDD phase (legacy path, with cycle_number)."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "abc1234"
 
-    params = GitCommitInput(phase="red", message="failing test")
+    # Legacy phase="red" must include cycle_number (Issue #146 Cycle 7)
+    params = GitCommitInput(phase="red", message="failing test", cycle_number=1)
     result = await tool.execute(params)
 
     mock_git_manager.commit_with_scope.assert_called_once_with(
         workflow_phase="tdd",
         message="failing test",
         sub_phase="red",
-        cycle_number=None,
+        cycle_number=1,
         commit_type=None,
         files=None,
     )
     assert "Committed: abc1234" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_legacy_phase_tdd_requires_cycle_number(mock_git_manager):
+    """Legacy phase='red' maps to TDD and must enforce cycle_number.
+
+    Issue #146 Cycle 7: Bypass via legacy path must be closed.
+    git_tools.py:251-256 only checks workflow_phase but legacy path maps
+    phase='red' -> tdd AFTER the check, allowing None cycle_number to slip through.
+    """
+    tool = GitCommitTool(manager=mock_git_manager)
+
+    result = await tool.execute(GitCommitInput(phase="red", message="failing test"))
+
+    assert result.is_error, "Expected error when phase='red' used without cycle_number"
+    assert "cycle_number is required" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_legacy_phase_green_requires_cycle_number(mock_git_manager):
+    """Legacy phase='green' maps to TDD and must enforce cycle_number.
+
+    Issue #146 Cycle 7: All non-docs legacy phases map to TDD scope.
+    """
+    tool = GitCommitTool(manager=mock_git_manager)
+
+    result = await tool.execute(GitCommitInput(phase="green", message="implement feature"))
+
+    assert result.is_error, "Expected error when phase='green' used without cycle_number"
+    assert "cycle_number is required" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_commit_legacy_phase_docs_does_not_require_cycle_number(mock_git_manager):
+    """Legacy phase='docs' maps to documentation (not TDD), so no cycle_number needed.
+
+    Issue #146 Cycle 7: Only TDD-mapped phases require cycle_number.
+    phase='docs' -> documentation phase -> no enforcement.
+    """
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "doc5678"
+
+    result = await tool.execute(GitCommitInput(phase="docs", message="update readme"))
+
+    assert "Committed: doc5678" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
@@ -172,6 +220,7 @@ async def test_git_commit_tool_with_workflow_phase_and_subphase(mock_git_manager
         message="add failing test",
         workflow_phase="tdd",
         sub_phase="red",
+        cycle_number=1,
     )
     result = await tool.execute(params)
 
@@ -179,7 +228,7 @@ async def test_git_commit_tool_with_workflow_phase_and_subphase(mock_git_manager
         workflow_phase="tdd",
         message="add failing test",
         sub_phase="red",
-        cycle_number=None,
+        cycle_number=1,
         commit_type=None,
         files=None,
     )
@@ -221,6 +270,7 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
         message="refactor code",
         workflow_phase="tdd",
         sub_phase="refactor",
+        cycle_number=1,
         files=["src/app.py", "tests/test_app.py"],
     )
     result = await tool.execute(params)
@@ -229,7 +279,7 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
         workflow_phase="tdd",
         message="refactor code",
         sub_phase="refactor",
-        cycle_number=None,
+        cycle_number=1,
         commit_type=None,
         files=["src/app.py", "tests/test_app.py"],
     )
@@ -238,11 +288,12 @@ async def test_git_commit_tool_with_workflow_phase_and_files(mock_git_manager):
 
 @pytest.mark.asyncio
 async def test_git_commit_tool_backward_compat_with_old_phase(mock_git_manager):
-    """Test backward compatibility: old 'phase' parameter still works."""
+    """Test backward compatibility: old 'phase' parameter still works with cycle_number."""
     tool = GitCommitTool(manager=mock_git_manager)
     mock_git_manager.commit_with_scope.return_value = "old1234"
 
-    params = GitCommitInput(phase="red", message="old style commit")
+    # Legacy phase="red" requires cycle_number (Issue #146 Cycle 7)
+    params = GitCommitInput(phase="red", message="old style commit", cycle_number=2)
     result = await tool.execute(params)
 
     # Should map legacy phase to workflow scope path
@@ -250,7 +301,7 @@ async def test_git_commit_tool_backward_compat_with_old_phase(mock_git_manager):
         workflow_phase="tdd",
         message="old style commit",
         sub_phase="red",
-        cycle_number=None,
+        cycle_number=2,
         commit_type=None,
         files=None,
     )
@@ -268,6 +319,7 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
         sub_phase="red",
         commit_type="fix",  # Override default 'test'
         message="fix failing test",
+        cycle_number=1,
     )
     result = await tool.execute(params)
 
@@ -276,7 +328,7 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
         workflow_phase="tdd",
         message="fix failing test",
         sub_phase="red",
-        cycle_number=None,
+        cycle_number=1,
         commit_type="fix",
         files=None,
     )
@@ -306,6 +358,7 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
         sub_phase="red",
         commit_type="FEAT",  # Uppercase should be normalized
         message="add feature",
+        cycle_number=1,
     )
 
     # Should be normalized to lowercase by validator
@@ -318,7 +371,7 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
         workflow_phase="tdd",
         message="add feature",
         sub_phase="red",
-        cycle_number=None,
+        cycle_number=1,
         commit_type="feat",  # Normalized to lowercase
         files=None,
     )
@@ -328,9 +381,6 @@ async def test_git_commit_tool_commit_type_case_insensitive(mock_git_manager):
 @pytest.mark.asyncio
 async def test_git_commit_integration_workflow_phases():
     """Integration test: Full commit workflow with real workphases.yaml."""
-    from pathlib import Path
-    from unittest.mock import MagicMock
-
     # Create a real GitManager with mocked adapter but real workphases.yaml
     mock_adapter = MagicMock()
     mock_adapter.commit.return_value = "integration123"
@@ -339,8 +389,6 @@ async def test_git_commit_integration_workflow_phases():
     workphases_path = Path(".st3/workphases.yaml")
     if not workphases_path.exists():
         pytest.skip("workphases.yaml not found - skipping integration test")
-
-    from mcp_server.managers.git_manager import GitManager
 
     manager = GitManager(adapter=mock_adapter, workphases_path=workphases_path)
     tool = GitCommitTool(manager=manager)
@@ -357,10 +405,12 @@ async def test_git_commit_integration_workflow_phases():
         message="add failing test",
         workflow_phase="tdd",
         sub_phase="red",
+        cycle_number=1,
     )
     result2 = await tool.execute(params2)
 
-    mock_adapter.commit.assert_called_with("test(P_TDD_SP_RED): add failing test", files=None)
+    assert "Committed: integration123" in result2.content[0]["text"]
+    mock_adapter.commit.assert_called_with("test(P_TDD_SP_C1_RED): add failing test", files=None)
 
     # Test 3: Coordination phase (NEW)
     params3 = GitCommitInput(
@@ -370,6 +420,7 @@ async def test_git_commit_integration_workflow_phases():
     )
     result3 = await tool.execute(params3)
 
+    assert "Committed: integration123" in result3.content[0]["text"]
     mock_adapter.commit.assert_called_with(
         "chore(P_COORDINATION_SP_DELEGATION): delegate to child issues", files=None
     )
@@ -624,3 +675,168 @@ async def test_get_parent_branch_not_set():
         output = result.content[0]["text"]
         assert "Parent branch: (not set)" in output
         assert "main" in output
+
+
+# ===== Cycle Number Enforcement Tests (Issue #146 Cycle 5) =====
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tdd_requires_cycle_number(mock_git_manager):
+    """Test that TDD phase commits REQUIRE cycle_number (Issue #146)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+
+    # Attempt to commit in TDD phase without cycle_number
+    params = GitCommitInput(
+        message="update documentation",
+        workflow_phase="tdd",
+        # cycle_number is MISSING - should return error result
+    )
+
+    result = await tool.execute(params)
+
+    assert result.is_error, "Expected error when cycle_number missing for TDD"
+    error_text = result.content[0]["text"]
+    assert "cycle_number" in error_text
+    assert "TDD" in error_text or "tdd" in error_text.lower()
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tdd_subphase_requires_cycle_number(mock_git_manager):
+    """Test that TDD sub-phase commits REQUIRE cycle_number (Issue #146)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+
+    # Attempt to commit in TDD sub-phase without cycle_number
+    params = GitCommitInput(
+        message="implement feature",
+        workflow_phase="tdd",
+        sub_phase="green",
+        # cycle_number is MISSING - should return error result
+    )
+
+    result = await tool.execute(params)
+
+    assert result.is_error, "Expected error when cycle_number missing for TDD sub-phase"
+    error_text = result.content[0]["text"]
+    assert "cycle_number" in error_text
+
+
+@pytest.mark.asyncio
+async def test_git_commit_non_tdd_allows_no_cycle_number(mock_git_manager):
+    """Test that non-TDD phases do NOT require cycle_number (Issue #146)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "abc1234"
+
+    # Commit in research phase without cycle_number - should succeed
+    params = GitCommitInput(
+        message="research alternatives",
+        workflow_phase="research",
+        # cycle_number is OMITTED - should be allowed
+    )
+
+    result = await tool.execute(params)
+
+    # Should succeed
+    assert "Committed: abc1234" in result.content[0]["text"]
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="research",
+        message="research alternatives",
+        sub_phase=None,
+        cycle_number=None,
+        commit_type=None,
+        files=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_git_commit_tdd_with_cycle_number_succeeds(mock_git_manager):
+    """Test that TDD commits WITH cycle_number succeed (Issue #146)."""
+    tool = GitCommitTool(manager=mock_git_manager)
+    mock_git_manager.commit_with_scope.return_value = "def5678"
+
+    # Commit in TDD phase WITH cycle_number - should succeed
+    params = GitCommitInput(
+        message="add schema validation",
+        workflow_phase="tdd",
+        sub_phase="green",
+        cycle_number=3,
+    )
+
+    result = await tool.execute(params)
+
+    # Should succeed
+    assert "Committed: def5678" in result.content[0]["text"]
+    mock_git_manager.commit_with_scope.assert_called_once_with(
+        workflow_phase="tdd",
+        message="add schema validation",
+        sub_phase="green",
+        cycle_number=3,
+        commit_type=None,
+        files=None,
+    )
+
+
+# --- C2 re-run: commit phase mismatch guard (GAP-07) ---
+
+
+@pytest.mark.asyncio
+async def test_git_add_or_commit_raises_on_phase_mismatch(mock_git_manager):
+    """CommitPhaseMismatchError when workflow_phase doesn't match state.json (GAP-07)."""
+    from mcp_server.tools.git_tools import CommitPhaseMismatchError
+
+    def phase_guard(_branch: str, workflow_phase: str, _cycle_number: int | None) -> None:
+        raise CommitPhaseMismatchError(
+            f"phase_mismatch: commit says '{workflow_phase}' but state.json says 'design'"
+        )
+
+    tool = GitCommitTool(manager=mock_git_manager, phase_guard=phase_guard)
+    mock_git_manager.adapter.get_current_branch.return_value = (
+        "feature/229-phase-deliverables-enforcement"
+    )
+
+    params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="add red test")
+    result = await tool.execute(params)
+
+    assert result.is_error
+    assert "phase_mismatch" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_add_or_commit_raises_on_cycle_mismatch(mock_git_manager):
+    """CommitPhaseMismatchError when cycle_number doesn't match state.json current_tdd_cycle (GAP-07)."""
+    from mcp_server.tools.git_tools import CommitPhaseMismatchError
+
+    def phase_guard(_branch: str, _workflow_phase: str, cycle_number: int | None) -> None:
+        raise CommitPhaseMismatchError(
+            f"phase_mismatch: commit says cycle {cycle_number} but state.json says cycle 3"
+        )
+
+    tool = GitCommitTool(manager=mock_git_manager, phase_guard=phase_guard)
+    mock_git_manager.adapter.get_current_branch.return_value = (
+        "feature/229-phase-deliverables-enforcement"
+    )
+
+    params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="add green impl")
+    result = await tool.execute(params)
+
+    assert result.is_error
+    assert "phase_mismatch" in result.content[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_git_add_or_commit_passes_when_phase_and_cycle_match(mock_git_manager):
+    """No error when workflow_phase and cycle_number match state.json (GAP-07)."""
+    from mcp_server.tools.git_tools import CommitPhaseMismatchError  # noqa: F401
+
+    def phase_guard(_branch: str, _workflow_phase: str, _cycle_number: int | None) -> None:
+        pass  # phase=tdd, cycle=2 matches state.json
+
+    tool = GitCommitTool(manager=mock_git_manager, phase_guard=phase_guard)
+    mock_git_manager.adapter.get_current_branch.return_value = (
+        "feature/229-phase-deliverables-enforcement"
+    )
+    mock_git_manager.commit_with_scope.return_value = "abc1234"
+
+    params = GitCommitInput(workflow_phase="tdd", cycle_number=2, message="implement guard")
+    result = await tool.execute(params)
+
+    assert "Committed: abc1234" in result.content[0]["text"]

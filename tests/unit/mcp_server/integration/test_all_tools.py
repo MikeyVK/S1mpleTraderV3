@@ -91,11 +91,18 @@ class TestGitToolsIntegration:
             mock_adapter.return_value.commit.return_value = "abc123def"
 
             tool = GitCommitTool()
-            result = await tool.execute(GitCommitInput(phase="green", message="implement feature"))
+            result = await tool.execute(
+                GitCommitInput(
+                    workflow_phase="tdd",
+                    cycle_number=1,
+                    sub_phase="green",
+                    message="implement feature",
+                )
+            )
 
             assert "abc123def" in result.content[0]["text"]
             mock_adapter.return_value.commit.assert_called_with(
-                "feat(P_TDD_SP_GREEN): implement feature",
+                "feat(P_TDD_SP_C1_GREEN): implement feature",
                 files=None,
             )
 

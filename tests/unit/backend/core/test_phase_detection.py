@@ -26,7 +26,7 @@ from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 class TestPhaseDetectionResult:
     """Test suite for PhaseDetectionResult TypedDict schema."""
 
-    def test_phase_detection_result_schema(self):
+    def test_phase_detection_result_schema(self) -> None:
         """Verify PhaseDetectionResult has all 6 required fields with correct types."""
         # Arrange - Create instance using TypedDict syntax
         result: PhaseDetectionResult = {
@@ -50,7 +50,7 @@ class TestPhaseDetectionResult:
 class TestScopeDecoder:
     """Test suite for ScopeDecoder deterministic phase detection."""
 
-    def test_parse_commit_scope_phase_only(self):
+    def test_parse_commit_scope_phase_only(self) -> None:
         """Parse commit scope with P_PHASE format (no subphase)."""
         # Arrange
         decoder = ScopeDecoder()
@@ -67,7 +67,7 @@ class TestScopeDecoder:
         assert result["raw_scope"] == "P_RESEARCH"
         assert result["error_message"] is None
 
-    def test_parse_commit_scope_phase_and_subphase(self):
+    def test_parse_commit_scope_phase_and_subphase(self) -> None:
         """Parse commit scope with P_PHASE_SP_SUBPHASE format."""
         # Arrange
         decoder = ScopeDecoder()
@@ -84,12 +84,12 @@ class TestScopeDecoder:
         assert result["raw_scope"] == "P_TDD_SP_RED"
         assert result["error_message"] is None
 
-    def test_fallback_to_state_json_when_commit_scope_missing(self, tmp_path):
+    def test_fallback_to_state_json_when_commit_scope_missing(self, tmp_path: Path) -> None:
         """Fallback to state.json when commit message has no valid scope (medium confidence)."""
         # Arrange
         state_file = tmp_path / "state.json"
         state_file.write_text(
-            json.dumps({"current_phase": "integration", "workflow_name": "feature"})
+            json.dumps({"current_phase": "validation", "workflow_name": "feature"})
         )
         decoder = ScopeDecoder(state_path=state_file)
         commit_message = "docs: update README"  # No scope
@@ -98,14 +98,14 @@ class TestScopeDecoder:
         result = decoder.detect_phase(commit_message, fallback_to_state=True)
 
         # Assert - state.json fallback with medium confidence
-        assert result["workflow_phase"] == "integration"
+        assert result["workflow_phase"] == "validation"
         assert result["sub_phase"] is None
         assert result["source"] == "state.json"
         assert result["confidence"] == "medium"
         assert result["raw_scope"] is None
         assert result["error_message"] is None
 
-    def test_fallback_to_state_json_on_invalid_scope_format(self, tmp_path):
+    def test_fallback_to_state_json_on_invalid_scope_format(self, tmp_path: Path) -> None:
         """Fallback to state.json when commit scope format is invalid."""
         # Arrange
         state_file = tmp_path / "state.json"
@@ -121,7 +121,7 @@ class TestScopeDecoder:
         assert result["source"] == "state.json"
         assert result["confidence"] == "medium"
 
-    def test_unknown_fallback_when_all_sources_fail(self):
+    def test_unknown_fallback_when_all_sources_fail(self) -> None:
         """Return unknown with actionable error when commit-scope and state.json both fail."""
         # Arrange
         decoder = ScopeDecoder(state_path=Path("/nonexistent/state.json"))
@@ -138,7 +138,7 @@ class TestScopeDecoder:
         assert result["raw_scope"] is None
         assert result["error_message"] is not None
 
-    def test_unknown_error_message_contains_recovery_steps(self):
+    def test_unknown_error_message_contains_recovery_steps(self) -> None:
         """Verify unknown fallback includes actionable recovery instructions."""
         # Arrange
         decoder = ScopeDecoder()
@@ -148,12 +148,13 @@ class TestScopeDecoder:
         result = decoder.detect_phase(commit_message, fallback_to_state=False)
 
         # Assert - error message has recovery steps
+        assert result["error_message"] is not None
         assert "Phase detection failed" in result["error_message"]
         assert "transition_phase" in result["error_message"]
         assert "type(P_PHASE): message" in result["error_message"]
         assert "research, planning, design, tdd" in result["error_message"]
 
-    def test_graceful_degradation_old_commit_format(self, tmp_path):
+    def test_graceful_degradation_old_commit_format(self, tmp_path: Path) -> None:
         """Old commits without scope gracefully fallback without errors."""
         # Arrange
         state_file = tmp_path / "state.json"
@@ -170,7 +171,7 @@ class TestScopeDecoder:
         assert result["confidence"] == "medium"
         # No exception raised - graceful degradation
 
-    def test_validate_phase_from_state_json_against_workphases(self, tmp_path):
+    def test_validate_phase_from_state_json_against_workphases(self, tmp_path: Path) -> None:
         """Invalid phase in state.json should fallback to unknown."""
         # Arrange
         state_file = tmp_path / "state.json"
@@ -188,9 +189,10 @@ class TestScopeDecoder:
         assert result["workflow_phase"] == "unknown"
         assert result["source"] == "unknown"
         assert result["confidence"] == "unknown"
+        assert result["error_message"] is not None
         assert "Phase detection failed" in result["error_message"]
 
-    def test_validate_phase_accepts_valid_phases_from_workphases(self, tmp_path):
+    def test_validate_phase_accepts_valid_phases_from_workphases(self, tmp_path: Path) -> None:
         """Valid phase in state.json should be accepted."""
         # Arrange - use all valid phases from workphases.yaml
         valid_phases = [
@@ -198,7 +200,7 @@ class TestScopeDecoder:
             "planning",
             "design",
             "tdd",
-            "integration",
+            "validation",
             "documentation",
             "coordination",
         ]
@@ -217,7 +219,7 @@ class TestScopeDecoder:
             assert result["source"] == "state.json"
             assert result["confidence"] == "medium"
 
-    def test_validate_commit_scope_phase_against_workphases(self, tmp_path):
+    def test_validate_commit_scope_phase_against_workphases(self, tmp_path: Path) -> None:
         """Invalid phase in commit-scope should be rejected (fallback to state.json)."""
         # Arrange - commit with invalid phase, state.json with valid phase
         state_file = tmp_path / "state.json"
@@ -233,7 +235,7 @@ class TestScopeDecoder:
         assert result["source"] == "state.json"  # Fallback source
         assert result["confidence"] == "medium"  # Medium confidence from state
 
-    def test_validate_commit_scope_accepts_valid_phases(self):
+    def test_validate_commit_scope_accepts_valid_phases(self) -> None:
         """Valid phase in commit-scope should be accepted."""
         # Arrange - valid phases from workphases.yaml
         valid_commits = [
@@ -241,7 +243,7 @@ class TestScopeDecoder:
             ("chore(P_PLANNING): planning", "planning"),
             ("docs(P_DESIGN): design", "design"),
             ("test(P_TDD_SP_RED): tdd test", "tdd"),
-            ("test(P_INTEGRATION): integration", "integration"),
+            ("test(P_VALIDATION): validation", "validation"),
             ("docs(P_DOCUMENTATION): docs", "documentation"),
             ("chore(P_COORDINATION): coordination", "coordination"),
         ]

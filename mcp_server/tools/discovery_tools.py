@@ -12,6 +12,8 @@ from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, MCPError
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.services.document_indexer import DocumentIndexer
 from mcp_server.services.search_service import SearchService
 from mcp_server.tools.base import BaseTool
@@ -134,6 +136,47 @@ class GetWorkContextTool(BaseTool):
             context["phase_error_message"] = None
             context["recent_commits"] = []
 
+        # Issue #146 Cycle 3: TDD Cycle Info (conditional visibility)
+        if context.get("workflow_phase") == "tdd" and issue_number:
+            try:
+                workspace_root = Path(settings.server.workspace_root)
+                project_manager = ProjectManager(workspace_root=workspace_root)
+                state_engine = PhaseStateEngine(
+                    workspace_root=workspace_root, project_manager=project_manager
+                )
+
+                # Get current TDD cycle from state
+                state = state_engine.get_state(branch)
+                current_cycle = state.get("current_tdd_cycle")
+
+                # Get planning deliverables
+                project_plan = project_manager.get_project_plan(issue_number)
+                if project_plan is None:
+                    raise ValueError("Project plan not found")
+                planning_deliverables = project_plan.get("planning_deliverables")
+                if planning_deliverables and current_cycle:
+                    tdd_cycles = planning_deliverables.get("tdd_cycles", {})
+                    cycles = tdd_cycles.get("cycles", [])
+                    total = tdd_cycles.get("total", 0)
+
+                    # Find current cycle details
+                    cycle_details = next(
+                        (c for c in cycles if c.get("cycle_number") == current_cycle), None
+                    )
+
+                    if cycle_details:
+                        context["tdd_cycle_info"] = {
+                            "current": current_cycle,
+                            "total": total,
+                            "name": cycle_details.get("name"),
+                            "deliverables": cycle_details.get("deliverables", []),
+                            "exit_criteria": cycle_details.get("exit_criteria"),
+                            # Always in_progress when cycle is active (Issue #146, design.md:375)
+                            "status": "in_progress",
+                        }
+            except (OSError, ValueError, RuntimeError, KeyError):
+                pass  # Graceful degradation if cycle info unavailable
+
         # Get GitHub issue details if configured
         if settings.github.token:
             try:
@@ -242,7 +285,7 @@ class GetWorkContextTool(BaseTool):
             "planning": "📋",
             "design": "🎨",
             "tdd": "🧪",
-            "integration": "🔗",
+            "validation": "✅",
             "documentation": "📝",
             "coordination": "🤝",
             "unknown": "❓",
@@ -267,6 +310,20 @@ class GetWorkContextTool(BaseTool):
         error_message = context.get("phase_error_message")
         if error_message:
             lines.append(f"**⚠️ Recovery Info:** {error_message}")
+
+        # Issue #146 Cycle 3: TDD Cycle Info (conditional visibility during TDD phase)
+        if "tdd_cycle_info" in context:
+            cycle_info = context["tdd_cycle_info"]
+            lines.append("\n### 🧪 TDD Cycle Progress")
+            lines.append(
+                f"**Cycle {cycle_info['current']}/{cycle_info['total']}:** {cycle_info['name']}"
+            )
+            if cycle_info.get("status"):
+                lines.append(f"**Status:** {cycle_info['status']}")
+            lines.append("\n**Deliverables:**")
+            for deliverable in cycle_info.get("deliverables", []):
+                lines.append(f"- {deliverable}")
+            lines.append(f"\n**Exit Criteria:** {cycle_info.get('exit_criteria', 'N/A')}")
 
         # Active Issue Details
         if "active_issue" in context:
