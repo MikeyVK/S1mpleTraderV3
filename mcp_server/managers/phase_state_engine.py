@@ -800,7 +800,7 @@ class PhaseStateEngine:
         logger.info(f"Validation exit gate passed for branch {branch} (issue {issue_number})")
 
     def on_exit_documentation_phase(self, branch: str, issue_number: int) -> None:
-        """Hook called when exiting documentation phase — per-phase deliverable gate (Issue #229 C9).
+        """Hook called when exiting documentation phase — deliverable gate (Issue #229 C9).
 
         Reads ``planning_deliverables.documentation.deliverables`` from state.json. For entries
         that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
@@ -820,9 +820,7 @@ class PhaseStateEngine:
         deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
 
         if not deliverables:
-            logger.info(
-                f"No documentation deliverables gate defined; skipped for branch {branch}"
-            )
+            logger.info(f"No documentation deliverables gate defined; skipped for branch {branch}")
             return
 
         checker = DeliverableChecker(workspace_root=self.workspace_root)
