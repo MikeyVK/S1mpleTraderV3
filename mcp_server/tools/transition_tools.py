@@ -331,14 +331,10 @@ class ForceCycleTransitionTool(BaseTool):
 
             parts: list[str] = []
             if unvalidated:
-                parts.append(
-                    f"⚠️ Unvalidated cycle deliverables: {', '.join(unvalidated)}"
-                )
+                parts.append(f"⚠️ Unvalidated cycle deliverables: {', '.join(unvalidated)}")
             parts.append(success_line)
             if validated:
-                parts.append(
-                    f"ℹ️ Validated skipped deliverables: {', '.join(validated)}"
-                )
+                parts.append(f"ℹ️ Validated skipped deliverables: {', '.join(validated)}")
             message = "\n".join(parts)
 
             return ToolResult.text(message)

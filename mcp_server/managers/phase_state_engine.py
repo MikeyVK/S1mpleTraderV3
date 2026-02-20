@@ -229,8 +229,8 @@ class PhaseStateEngine:
         # Warn about skipped gates (GAP-03)
         # Distinguish blocking gates (key absent) from passing gates (key present) (C10/GAP-17).
         workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
-        skipped_gates: list[str] = []   # blocking: key absent from projects.json
-        passing_gates: list[str] = []   # passing: key present in projects.json
+        skipped_gates: list[str] = []  # blocking: key absent from projects.json
+        passing_gates: list[str] = []  # passing: key present in projects.json
         if workphases_path.exists():
             issue_number: int = state["issue_number"]
             plan = self.project_manager.get_project_plan(issue_number)
