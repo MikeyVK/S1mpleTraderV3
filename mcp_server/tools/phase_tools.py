@@ -162,14 +162,30 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
         try:
             result = await anyio.to_thread.run_sync(do_force_transition)
 
-            lines = [
+            blocking = result.get("skipped_gates", [])
+            passing = result.get("passing_gates", [])
+
+            lines: list[str] = []
+
+            # Blocking gates BEFORE ✅ (C10/GAP-17)
+            if blocking:
+                lines.append(
+                    f"⚠️ ACTION REQUIRED: {len(blocking)} skipped gate(s) would have"
+                    " BLOCKED a normal transition:"
+                )
+                for gate in blocking:
+                    lines.append(f"  - {gate}")
+                lines.append("  Verify or resolve before proceeding.")
+
+            lines.append(
                 f"✅ Forced transition '{params.branch}' "
                 f"from {result['from_phase']} → {result['to_phase']} "
                 f"(forced=True, reason: {params.skip_reason})"
-            ]
-            skipped = result.get("skipped_gates", [])
-            if skipped:
-                lines.append(f"⚠️ Skipped gates: {', '.join(skipped)}")
+            )
+
+            # Passing gates AFTER ✅ (informational)
+            if passing:
+                lines.append(f"ℹ️ Gates that would have passed: {', '.join(passing)}")
 
             return ToolResult.text("\n".join(lines))
 

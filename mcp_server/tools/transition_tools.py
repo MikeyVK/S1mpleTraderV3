@@ -297,18 +297,10 @@ class ForceCycleTransitionTool(BaseTool):
             # Save state
             state_engine._save_state(branch, state)
 
-            # Success message
-            direction = "backward" if params.to_cycle < from_cycle else "skip"
-            message = (
-                f"✅ Forced {direction} transition to TDD Cycle "
-                f"{params.to_cycle}/{total_cycles}: {cycle_name}\n"
-                f"Reason: {params.skip_reason}\n"
-                f"Approval: {params.human_approval}"
-            )
-
-            # Warn about unvalidated deliverables in skipped cycles (GAP-08)
+            # Check deliverables in skipped cycles: split blocking vs validated (C10/GAP-17)
             checker = DeliverableChecker(workspace_root=workspace_root)
             unvalidated: list[str] = []
+            validated: list[str] = []
             for cycle_num in skipped_cycles:
                 cycle_data = next((c for c in cycles if c.get("cycle_number") == cycle_num), None)
                 if cycle_data is None:
@@ -321,12 +313,33 @@ class ForceCycleTransitionTool(BaseTool):
                         continue
                     d_id = deliverable.get("id", "?")
                     d_desc = deliverable.get("description", "")
+                    label = f"cycle:{cycle_num}:{d_id} ({d_desc})"
                     try:
                         checker.check(d_id, validates)
+                        validated.append(label)
                     except Exception:
-                        unvalidated.append(f"cycle:{cycle_num}:{d_id} ({d_desc})")
+                        unvalidated.append(label)
+
+            # Build response: blocking BEFORE ✅, informational AFTER ✅ (C10/GAP-17)
+            direction = "backward" if params.to_cycle < from_cycle else "skip"
+            success_line = (
+                f"✅ Forced {direction} transition to TDD Cycle "
+                f"{params.to_cycle}/{total_cycles}: {cycle_name}\n"
+                f"Reason: {params.skip_reason}\n"
+                f"Approval: {params.human_approval}"
+            )
+
+            parts: list[str] = []
             if unvalidated:
-                message += f"\n⚠️ Unvalidated cycle deliverables: {', '.join(unvalidated)}"
+                parts.append(
+                    f"⚠️ Unvalidated cycle deliverables: {', '.join(unvalidated)}"
+                )
+            parts.append(success_line)
+            if validated:
+                parts.append(
+                    f"ℹ️ Validated skipped deliverables: {', '.join(validated)}"
+                )
+            message = "\n".join(parts)
 
             return ToolResult.text(message)
 

@@ -227,21 +227,32 @@ class PhaseStateEngine:
         from_phase: str = state["current_phase"]
 
         # Warn about skipped gates (GAP-03)
-        # Only warn when the deliverable key is actually absent from projects.json.
+        # Distinguish blocking gates (key absent) from passing gates (key present) (C10/GAP-17).
         workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
-        skipped_gates: list[str] = []
+        skipped_gates: list[str] = []   # blocking: key absent from projects.json
+        passing_gates: list[str] = []   # passing: key present in projects.json
         if workphases_path.exists():
             issue_number: int = state["issue_number"]
             plan = self.project_manager.get_project_plan(issue_number)
             wp_config = WorkphasesConfig(workphases_path)
             for entry in wp_config.get_exit_requires(from_phase):
                 key = entry.get("key")
-                if key and (plan is None or key not in plan):
-                    skipped_gates.append(f"exit:{from_phase}:{key}")
+                if not key:
+                    continue
+                gate_id = f"exit:{from_phase}:{key}"
+                if plan is None or key not in plan:
+                    skipped_gates.append(gate_id)
+                else:
+                    passing_gates.append(gate_id)
             for entry in wp_config.get_entry_expects(to_phase):
                 key = entry.get("key")
-                if key and (plan is None or key not in plan):
-                    skipped_gates.append(f"entry:{to_phase}:{key}")
+                if not key:
+                    continue
+                gate_id = f"entry:{to_phase}:{key}"
+                if plan is None or key not in plan:
+                    skipped_gates.append(gate_id)
+                else:
+                    passing_gates.append(gate_id)
             if skipped_gates:
                 logger.warning(
                     "force_transition skipped_gates=%s (from=%s, to=%s, skip_reason=%r)",
@@ -273,6 +284,7 @@ class PhaseStateEngine:
             "forced": True,
             "skip_reason": skip_reason,
             "skipped_gates": skipped_gates,
+            "passing_gates": passing_gates,
         }
 
     def get_current_phase(self, branch: str) -> str:
