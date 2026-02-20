@@ -2,6 +2,7 @@
 
 Issue #146 Cycle 4: TDD Cycle transition management.
 Issue #146 Cycle 6: Spec alignment - audit schema, history entries, exit criteria.
+Issue #229 Cycle 10: GAP-17 — blocking deliverables must appear BEFORE ✅ in response.
 """
 
 import json
@@ -1185,3 +1186,158 @@ class TestTransitionCycleExitCriteria:
             result = await tool.execute(TransitionCycleInput(to_cycle=2))
 
         assert not result.is_error, f"Must succeed when exit_criteria present: {result.content}"
+
+
+# ---------------------------------------------------------------------------
+# C10: GAP-17 — force_cycle_transition: blocking deliverables BEFORE ✅ (Issue #229)
+# ---------------------------------------------------------------------------
+
+
+class TestForceCycleTransitionResponseFormat:
+    """Blocking deliverables appear BEFORE ✅; passing deliverables appear AFTER ✅.
+
+    Issue #229 Cycle 10 (GAP-17):
+    D10.4: Unvalidated (blocking) deliverables emitted before ✅ in force_cycle_transition.
+    D10.5: Validated (passing) deliverables listed informatively after ✅.
+    """
+
+    @pytest.fixture()
+    def tool(self) -> ForceCycleTransitionTool:
+        """Fixture to instantiate ForceCycleTransitionTool."""
+        return ForceCycleTransitionTool()
+
+    def _setup_for_cycle_transition(
+        self, tmp_path: Path, *, cycle3_file_present: bool
+    ) -> tuple[Path, int, str]:
+        """Build project in TDD phase C2; cycle 3 has a file_glob deliverable."""
+        workspace_root = tmp_path
+        issue_number = 229
+        branch = "feature/229-phase-deliverables-enforcement"
+
+        pm = ProjectManager(workspace_root=workspace_root)
+        se = PhaseStateEngine(workspace_root=workspace_root, project_manager=pm)
+
+        pm.initialize_project(
+            issue_number=issue_number,
+            issue_title="Phase deliverables enforcement",
+            workflow_name="feature",
+        )
+
+        if cycle3_file_present:
+            target_dir = workspace_root / "mcp_server" / "tools"
+            target_dir.mkdir(parents=True, exist_ok=True)
+            (target_dir / "transition_tools.py").write_text("# validated content")
+
+        planning_deliverables: dict = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {"cycle_number": 1, "deliverables": [{"id": "D1.1", "description": "p"}], "exit_criteria": "C1"},
+                    {"cycle_number": 2, "deliverables": [{"id": "D2.1", "description": "p"}], "exit_criteria": "C2"},
+                    {
+                        "cycle_number": 3,
+                        "deliverables": [
+                            {
+                                "id": "D3.2",
+                                "description": "transition_tools.py exists",
+                                "validates": {
+                                    "type": "file_glob",
+                                    "dir": "mcp_server/tools",
+                                    "pattern": "transition_tools.py",
+                                },
+                            }
+                        ],
+                        "exit_criteria": "D3.2 passes",
+                    },
+                    {"cycle_number": 4, "deliverables": [{"id": "D4.1", "description": "p"}], "exit_criteria": "C4"},
+                ],
+            }
+        }
+        pm.save_planning_deliverables(
+            issue_number=issue_number, planning_deliverables=planning_deliverables
+        )
+
+        state = se.get_state(branch)
+        state["current_phase"] = "tdd"
+        state["current_tdd_cycle"] = 2
+        state["last_tdd_cycle"] = 1
+        state["tdd_cycle_history"] = []
+        se._save_state(branch, state)
+
+        return workspace_root, issue_number, branch
+
+    @pytest.mark.asyncio()
+    async def test_force_cycle_transition_response_blocking_deliverable_appears_before_success(
+        self, tool: ForceCycleTransitionTool, tmp_path: Path
+    ) -> None:
+        """Unvalidated (blocking) deliverables appear BEFORE ✅ in response (GAP-17/D10.4)."""
+        workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
+            tmp_path, cycle3_file_present=False  # file absent → deliverable FAILS → blocks
+        )
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result = await tool.execute(
+                ForceCycleTransitionInput(
+                    to_cycle=4,
+                    skip_reason="Force skip C3",
+                    human_approval="Approved",
+                    issue_number=issue_number,
+                )
+            )
+
+        assert not result.is_error, f"Forced transition must succeed: {result.content}"
+        text = result.content[0]["text"]
+
+        assert "Unvalidated" in text, f"Expected 'Unvalidated' in response: {text}"
+        assert "✅" in text
+        # Blocking warning MUST appear BEFORE ✅
+        assert text.index("Unvalidated") < text.index("✅"), (
+            f"Blocking warning must precede ✅, got:\n{text}"
+        )
+
+    @pytest.mark.asyncio()
+    async def test_force_cycle_transition_response_passing_deliverable_appears_after_success(
+        self, tool: ForceCycleTransitionTool, tmp_path: Path
+    ) -> None:
+        """Validated (passing) deliverables listed informatively AFTER ✅ (GAP-17/D10.5)."""
+        workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
+            tmp_path, cycle3_file_present=True  # file present → deliverable PASSES
+        )
+
+        with (
+            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+        ):
+            mock_git = MagicMock()
+            mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
+            mock_git_class.return_value = mock_git
+            mock_settings.server.workspace_root = workspace_root
+
+            result = await tool.execute(
+                ForceCycleTransitionInput(
+                    to_cycle=4,
+                    skip_reason="Force skip C3 (validated)",
+                    human_approval="Approved",
+                    issue_number=issue_number,
+                )
+            )
+
+        assert not result.is_error, f"Forced transition must succeed: {result.content}"
+        text = result.content[0]["text"]
+
+        assert "✅" in text
+        # Validated deliverable D3.2 should be reported informatively AFTER ✅
+        assert "cycle:3:D3.2" in text, (
+            f"Expected cycle:3:D3.2 in informational section: {text}"
+        )
+        assert text.index("✅") < text.index("cycle:3:D3.2"), (
+            f"Informational deliverable info must follow ✅, got:\n{text}"
+        )

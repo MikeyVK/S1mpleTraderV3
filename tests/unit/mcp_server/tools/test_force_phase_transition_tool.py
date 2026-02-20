@@ -4,6 +4,7 @@ Issue #50 - Step 4: Force Transition Tool
 
 Tests MCP tool that exposes PhaseStateEngine.force_transition() to users.
 Allows non-sequential phase transitions with skip_reason and approval.
+Issue #229 Cycle 10: GAP-17 — blocking gates must appear BEFORE ✅ in response.
 """
 
 from pathlib import Path
@@ -286,3 +287,139 @@ phases:
         text = result.content[0]["text"]
         assert "✅" in text
         assert "⚠️" not in text
+
+
+# ---------------------------------------------------------------------------
+# C10: GAP-17 — force transition response: blocking gates BEFORE ✅ (Issue #229)
+# ---------------------------------------------------------------------------
+
+
+class TestForceTransitionResponseFormat:
+    """Blocking gates appear BEFORE ✅; passing gates appear AFTER ✅ (Issue #229 C10, GAP-17).
+
+    D10.1: ⚠️ ACTION REQUIRED block emitted before ✅ when a gate would have blocked.
+    D10.2: ℹ️ informational block emitted after ✅ when a gate would have passed.
+    D10.3: No extra output when no gates defined.
+    """
+
+    def _setup_workspace(
+        self, tmp_path: Path, *, with_gate_key: bool = True
+    ) -> tuple[Path, str]:
+        """Build workspace with workphases.yaml gate + optional planning_deliverables key."""
+        st3 = tmp_path / ".st3"
+        st3.mkdir()
+        (st3 / "workphases.yaml").write_text(
+            """
+phases:
+  planning:
+    display_name: "Planning"
+    exit_requires:
+      - key: "planning_deliverables"
+        description: "TDD cycle breakdown"
+  design:
+    display_name: "Design"
+"""
+        )
+        branch = "feature/42-test"
+        pm = ProjectManager(workspace_root=tmp_path)
+        pm.initialize_project(issue_number=42, issue_title="Test", workflow_name="feature")
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=pm)
+        engine.initialize_branch(branch=branch, issue_number=42, initial_phase="planning")
+
+        if with_gate_key:
+            # Inject planning_deliverables so gate would have PASSED
+            projects_path = tmp_path / ".st3" / "projects.json"
+            import json
+
+            data = json.loads(projects_path.read_text())
+            data["42"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
+            projects_path.write_text(json.dumps(data, indent=2))
+
+        return tmp_path, branch
+
+    @pytest.mark.asyncio
+    async def test_force_phase_transition_response_blocking_gate_appears_before_success(
+        self, tmp_path: Path
+    ) -> None:
+        """Blocking gates (key absent) emit ⚠️ ACTION REQUIRED BEFORE ✅ (GAP-17/D10.1)."""
+        workspace, branch = self._setup_workspace(tmp_path, with_gate_key=False)  # key absent → BLOCKS
+        tool = ForcePhaseTransitionTool(workspace_root=workspace)
+        params = ForcePhaseTransitionInput(
+            branch=branch,
+            to_phase="design",
+            skip_reason="Force test",
+            human_approval="Approved",
+        )
+
+        result = await tool.execute(params)
+        text = result.content[0]["text"]
+
+        assert "ACTION REQUIRED" in text, f"Expected ACTION REQUIRED in response: {text}"
+        assert "✅" in text
+        # Blocking warning must appear BEFORE ✅
+        assert text.index("ACTION REQUIRED") < text.index("✅"), (
+            f"ACTION REQUIRED must precede ✅, got:\n{text}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_force_phase_transition_response_passing_gate_appears_after_success(
+        self, tmp_path: Path
+    ) -> None:
+        """Passing gates (key present) emitted as informational text AFTER ✅ (GAP-17/D10.2)."""
+        workspace, branch = self._setup_workspace(tmp_path, with_gate_key=True)  # key present → passes
+        tool = ForcePhaseTransitionTool(workspace_root=workspace)
+        params = ForcePhaseTransitionInput(
+            branch=branch,
+            to_phase="design",
+            skip_reason="Force test",
+            human_approval="Approved",
+        )
+
+        result = await tool.execute(params)
+        text = result.content[0]["text"]
+
+        assert "✅" in text
+        # planning_deliverables key should appear as informational AFTER ✅
+        assert "planning_deliverables" in text, (
+            f"Expected gate key in informational section: {text}"
+        )
+        assert text.index("✅") < text.index("planning_deliverables"), (
+            f"Informational gate must follow ✅, got:\n{text}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_force_phase_transition_response_no_gates_no_warning(
+        self, tmp_path: Path
+    ) -> None:
+        """No gates defined → only ✅ in response, no ⚠️ or ACTION REQUIRED (GAP-17/D10.3)."""
+        st3 = tmp_path / ".st3"
+        st3.mkdir()
+        (st3 / "workphases.yaml").write_text(
+            """
+phases:
+  planning:
+    display_name: "Planning"
+  design:
+    display_name: "Design"
+"""
+        )
+        branch = "feature/42-test"
+        pm = ProjectManager(workspace_root=tmp_path)
+        pm.initialize_project(issue_number=42, issue_title="Test", workflow_name="feature")
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=pm)
+        engine.initialize_branch(branch=branch, issue_number=42, initial_phase="planning")
+
+        tool = ForcePhaseTransitionTool(workspace_root=tmp_path)
+        params = ForcePhaseTransitionInput(
+            branch=branch,
+            to_phase="design",
+            skip_reason="Force test",
+            human_approval="Approved",
+        )
+
+        result = await tool.execute(params)
+        text = result.content[0]["text"]
+
+        assert "✅" in text
+        assert "ACTION REQUIRED" not in text, f"Unexpected ACTION REQUIRED: {text}"
+        assert "⚠️" not in text, f"Unexpected ⚠️: {text}"
