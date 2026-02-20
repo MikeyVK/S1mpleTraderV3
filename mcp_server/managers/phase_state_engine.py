@@ -169,6 +169,16 @@ class PhaseStateEngine:
             issue_number_design: int = state["issue_number"]
             self.on_exit_design_phase(branch, issue_number_design)
 
+        # Validation exit hook: called when leaving validation phase (Issue #229 C9)
+        if from_phase == "validation":
+            issue_number_validation: int = state["issue_number"]
+            self.on_exit_validation_phase(branch, issue_number_validation)
+
+        # Documentation exit hook: called when leaving documentation phase (Issue #229 C9)
+        if from_phase == "documentation":
+            issue_number_documentation: int = state["issue_number"]
+            self.on_exit_documentation_phase(branch, issue_number_documentation)
+
         # TDD exit hook: called when leaving TDD phase (Issue #146)
         if from_phase == "tdd":
             self.on_exit_tdd_phase(branch)
@@ -757,6 +767,70 @@ class PhaseStateEngine:
                 checker.check(deliverable["id"], deliverable["validates"])
 
         logger.info(f"Design exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_validation_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting validation phase — per-phase deliverable gate (Issue #229 C9).
+
+        Reads ``planning_deliverables.validation.deliverables`` from state.json. For entries
+        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
+        Gate is optional: if no validation key is present, the check is skipped silently.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            DeliverableCheckError: If a validates spec is not satisfied.
+        """
+        plan = self.project_manager.get_project_plan(issue_number)
+        phase_delivs: dict[str, Any] = (
+            (plan or {}).get("planning_deliverables", {}).get("validation", {})
+        )
+        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
+
+        if not deliverables:
+            logger.info(f"No validation deliverables gate defined; skipped for branch {branch}")
+            return
+
+        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        for deliverable in deliverables:
+            if "validates" in deliverable:
+                checker.check(deliverable["id"], deliverable["validates"])
+
+        logger.info(f"Validation exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_documentation_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting documentation phase — per-phase deliverable gate (Issue #229 C9).
+
+        Reads ``planning_deliverables.documentation.deliverables`` from state.json. For entries
+        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
+        Gate is optional: if no documentation key is present, the check is skipped silently.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            DeliverableCheckError: If a validates spec is not satisfied.
+        """
+        plan = self.project_manager.get_project_plan(issue_number)
+        phase_delivs: dict[str, Any] = (
+            (plan or {}).get("planning_deliverables", {}).get("documentation", {})
+        )
+        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
+
+        if not deliverables:
+            logger.info(
+                f"No documentation deliverables gate defined; skipped for branch {branch}"
+            )
+            return
+
+        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        for deliverable in deliverables:
+            if "validates" in deliverable:
+                checker.check(deliverable["id"], deliverable["validates"])
+
+        logger.info(f"Documentation exit gate passed for branch {branch} (issue {issue_number})")
 
     def on_exit_tdd_phase(self, branch: str) -> None:
         """Hook called when exiting TDD phase.
