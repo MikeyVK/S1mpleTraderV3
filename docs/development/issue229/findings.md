@@ -28,6 +28,7 @@ This document records gaps and observations found during the live trial run of t
 | [GAP-14](#gap-14) | Medium | projects.json / D7 validates specs | Pending |
 | [GAP-15](#gap-15) | High | ProjectManager / update_planning_deliverables | Pending |
 | [GAP-16](#gap-16) | High | PhaseStateEngine / exit hooks | Pending |
+| [GAP-17](#gap-17) | High | ForcePhaseTool / force_cycle_transition response format | Pending |
 
 ---
 
@@ -326,6 +327,34 @@ De tekst `"phase_deliverables"` komt **niet voor** in beide bestanden. De implem
 **Root cause:** `phase_state_engine.py` `transition()` heeft exit hooks voor `planning`, `research`, `design`, `tdd` — maar **niet** voor `validation` of `documentation`. Methoden `on_exit_validation_phase` en `on_exit_documentation_phase` bestaan niet.  
 **Impact:** High — het per-fase gate systeem dat C7 introduceert is onvolledig. Validation en documentation deliverables worden opgeslagen in `projects.json` maar nooit gecontroleerd; enforcement geldt enkel voor de `design` fase.  
 **Proposed fix:** `on_exit_validation_phase` en `on_exit_documentation_phase` methoden implementeren analoog aan `on_exit_design_phase`, en ze wiren in `transition()` bij de overeenkomstige `from_phase` checks.
+
+---
+
+## GAP-17
+
+**Title:** Force transition tool response buries actionable warnings below `✅` success line — agents miss them  
+**Severity:** High  
+**Observed:** Live session 2026-02-20: `force_phase_transition(planning → tdd)` returned:
+```
+✅ Forced transition ... succeeded
+⚠️ Skipped gates: entry:tdd:planning_deliverables
+```
+Agent parsed `✅` as completion signal and proceeded without resolving the missing `planning_deliverables`. The same pattern caused a second missed warning during the same session. `force_cycle_transition` has the same response structure.  
+**Expected:** Skipped gates that **would have blocked** a normal transition are surfaced **before** the success line, in an `ACTION REQUIRED` format that cannot be overlooked:
+```
+⚠️ ACTION REQUIRED: 1 skipped gate would have BLOCKED a normal transition:
+  - entry:tdd:planning_deliverables (key absent in projects.json)
+  Verify or resolve before proceeding.
+✅ Forced transition succeeded
+```
+Gates that would have **passed** normally remain informational and can be omitted or shown below the success line.  
+**Root cause:** Both `force_phase_transition` and `force_cycle_transition` tool responses place `✅` first, regardless of whether any skipped gates represent real blockers. The current code collects `skipped_gates` but does not distinguish passing gates from blocking gates — all are appended to a flat warning after the success message.  
+**Impact:** High — agents operating in tool-call loops consistently treat `✅` as a terminal success signal. Blocking warnings placed below it are effectively invisible in practice, as confirmed by two missed instances in session.  
+**Proposed fix:**  
+1. In `force_phase_transition` and `force_cycle_transition`: evaluate each skipped gate with `DeliverableChecker` / key-presence check to classify as `would_block` vs `would_pass`  
+2. Emit `⚠️ ACTION REQUIRED` block **first** for any `would_block` gate, listing gate id + reason  
+3. Emit `✅ Forced transition succeeded` **last**  
+4. Omit or append `would_pass` gates as low-priority info after the success line
 
 ---
 

@@ -283,6 +283,40 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 ---
 
+### Cycle 10: Force transition response format — GAP-17
+
+**Goal:** Force transition tool responses (`force_phase_transition`, `force_cycle_transition`) currently place `✅` first and any gate warnings below — causing agents to miss actionable blockers. Confirmed by two live misses in session 2026-02-20: agent parsed `✅` as completion signal and proceeded without resolving the skipped gate.
+
+**Root cause:** The tools do not distinguish between skipped gates that *would have passed* (informational) and those that *would have blocked* (actionable). All are emitted as a flat warning after the success line.
+
+**Fix:** Evaluate each skipped gate at force-transition time. Gates that would block are promoted to `⚠️ ACTION REQUIRED` and emitted **before** the `✅` line. Gates that would pass are informational and appended after. The transition itself remains unconditional — only the response ordering changes.
+
+**Response format (new):**
+```
+⚠️ ACTION REQUIRED: N skipped gate(s) would have BLOCKED a normal transition:
+  - entry:tdd:planning_deliverables (key absent in projects.json)
+  Verify or resolve before proceeding.
+✅ Forced transition succeeded
+```
+
+**Tests:**
+- `test_force_phase_transition_response_blocking_gate_appears_before_success`
+- `test_force_phase_transition_response_passing_gate_appears_after_success`
+- `test_force_phase_transition_response_no_gates_no_warning`
+- `test_force_cycle_transition_response_blocking_deliverable_appears_before_success`
+- `test_force_cycle_transition_response_passing_deliverable_appears_after_success`
+
+**Success Criteria:**
+- `⚠️ ACTION REQUIRED` block emitted before `✅` whenever any skipped gate would have blocked
+- Gates that would have passed appear after `✅` or are omitted
+- No change to transition behaviour — forced transitions remain unconditional
+- Both `force_phase_transition` and `force_cycle_transition` follow the new format
+- All 5 tests pass
+
+**Dependencies:** Cycle 3 (existing skipped-gate collection logic to extend), Cycle 8 (per-fase key check needed for complete gate evaluation)
+
+---
+
 ## Risks & Mitigation
 
 - **Risk:** `workphases.yaml` additive fields break existing phase load
@@ -305,6 +339,7 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 - Cycle 7 GREEN: `planning_deliverables` generalised to all phases; exit gates per phase (GAP-11 fixed)
 - Cycle 8 GREEN: `update_planning_deliverables` merges per-fase keys + `exit_criteria` (GAP-12 + GAP-15 fixed)
 - Cycle 9 GREEN: `on_exit_validation_phase` + `on_exit_documentation_phase` wired; GAP-14 specs corrected (GAP-16 fixed)
+- Cycle 10 GREEN: force transition response emits `⚠️ ACTION REQUIRED` before `✅` for blocking gates (GAP-17 fixed)
 - All gaps confirmed resolved in `findings.md`
 
 ## Related Documentation
@@ -326,6 +361,7 @@ Issue #229 introduces a two-layer enforcement model for phase deliverables: a ha
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.7 | 2026-02-20 | Agent | Added C10 (GAP-17): force transition response format — blocking gates before ✅ |
 | 1.6 | 2026-02-20 | Agent | Added C8 (GAP-12 + GAP-15) and C9 (GAP-16); GAP-13 as design decision; GAP-14 resolved in C9; milestones updated |
 | 1.5 | 2026-02-19 | Agent | Added C5 (GAP-09), C6 (GAP-10), C7 (GAP-11) — discovered during validation phase smoke-test |
 | 1.3 | 2026-02-19 | Agent | C2 extended with file_glob (GAP-05); C4 extended with Layer 2 schema validation + error messages (GAP-06); scope + milestones updated |
