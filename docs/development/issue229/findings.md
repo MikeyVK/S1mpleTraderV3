@@ -2,7 +2,7 @@
 
 **Type:** LIVING DOCUMENT  
 **Branch:** `feature/229-phase-deliverables-enforcement`  
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-02-20
 
 This document records gaps and observations found during the live trial run of the #229 branch. It covers both #146 machinery validation and newly discovered gaps not present in research.md.
 
@@ -26,6 +26,8 @@ This document records gaps and observations found during the live trial run of t
 | [GAP-12](#gap-12) | Low | UpdatePlanningDeliverablesTool | Pending |
 | [GAP-13](#gap-13) | Low | UpdatePlanningDeliverablesTool | Pending |
 | [GAP-14](#gap-14) | Medium | projects.json / D7 validates specs | Pending |
+| [GAP-15](#gap-15) | High | ProjectManager / update_planning_deliverables | Pending |
+| [GAP-16](#gap-16) | High | PhaseStateEngine / exit hooks | Pending |
 
 ---
 
@@ -252,14 +254,16 @@ Discovered during live validation of cycles 5–7 in the validation phase. Tests
 | Transitie zonder `*research*.md` → blokkeert | ✅ `DeliverableCheckError` met pad in bericht |
 | Transitie met `*research*.md` aanwezig → passeert | ✅ |
 
-### Cycle 7 validation — per-fase exit gate ✅ (met GAP-14)
+### Cycle 7 validation — per-fase exit gate (live tests 2026-02-20)
 
-| Test | Result |
-|------|--------|
-| Geen design key → stilte (optioneel gate) | ✅ |
-| Design key met falende `validates` spec → blokkeert | ✅ `DeliverableCheckError` |
-| Design key met slagende `validates` spec → passeert | ✅ |
-| `phase_deliverables` letterlijk aanwezig in code | ❌ GAP-14 |
+| Test | R | Resultaat |
+|------|---|-----------|
+| `save_planning_deliverables` met `design` key → persisted | R1 | ✅ PASS |
+| Design gate via `transition(design→tdd)` op bestaand bestand | R2/R3 | ✅ PASS |
+| Design gate via `transition(design→tdd)` op niet-bestaand bestand | R2 | ✅ BLOKKEERT correct |
+| `update_planning_deliverables` met `design` key → genegeerd | R4 | ❌ GAP-15 |
+| `transition(validation→documentation)` met falende spec → passeert | R6 | ❌ GAP-16 |
+| `phase_deliverables` letterlijk aanwezig in code | — | ❌ GAP-14 |
 
 ---
 
@@ -298,6 +302,30 @@ De tekst `"phase_deliverables"` komt **niet voor** in beide bestanden. De implem
 **Root cause:** Specs zijn geschreven vóór implementatie; namen zijn afgedwaald tijdens het codeerproces.  
 **Impact:** Medium — als de DeliverableChecker gebruikt zou worden om D7 te valideren, zouden beide checks falen terwijl de functionaliteit correct is geïmplementeerd. Misleidend voor toekomstige sessies.  
 **Proposed fix:** D7.1 `text` aanpassen naar `_known_phase_keys` of `"design"`, D7.2 naar `on_exit_design_phase`.
+
+---
+
+## GAP-15
+
+**Title:** `update_planning_deliverables` negeert per-fase keys (`design`, `validation`, `documentation`) volledig  
+**Severity:** High  
+**Observed:** Live test (2026-02-20) via `update_planning_deliverables(9900, {"design": {"deliverables": [...]}})` — server gaf `✅ Planning deliverables updated` terug, maar na `get_project_plan(9900)` bleek het `design.deliverables` payload volledig genegeerd. Het opgeslagen bestand (via `safe_edit_file`) wél aanpast worden.  
+**Expected:** Per-fase keys worden op dezelfde manier door `update_planning_deliverables` verwerkt als `tdd_cycles`: bestaande deliverables worden gemerged by id, nieuwe worden toegevoegd.  
+**Root cause:** `update_planning_deliverables` in `project_manager.py` haalt uitsluitend `incoming_tc = planning_deliverables.get("tdd_cycles", {})` op. Per-fase keys worden nooit gelezen uit de payload.  
+**Impact:** High — per-fase gate specs kunnen niet worden gecorrigeerd of aangevuld via de tool API. Workaround vereist directe `projects.json` edit. In cycle 7-context: de design gate werkt correct bij save, maar aanpassingen daarna zijn onmogelijk via de tool.  
+**Proposed fix:** `update_planning_deliverables` uitbreiden met een merge-loop over `_known_phase_keys - {"tdd_cycles", "validates"}` analoog aan de tdd_cycles merge.
+
+---
+
+## GAP-16
+
+**Title:** Geen `on_exit_validation_phase` en `on_exit_documentation_phase` hooks — per-fase gates vuren niet bij validation en documentation  
+**Severity:** High  
+**Observed:** Live test (2026-02-20): `validation.deliverables` spec toegevoegd met niet-bestaand bestand (`validation-DOES-NOT-EXIST.md`). Transitie `validation → documentation` via normale `transition_phase` — **slaagde zonder fout**, terwijl het bestand niet bestaat.  
+**Expected:** Net als de `design` fase heeft `validation` een `on_exit_validation_phase` hook in `PhaseStateEngine.transition()` die `planning_deliverables.validation.deliverables` controleert vóór doorgang.  
+**Root cause:** `phase_state_engine.py` `transition()` heeft exit hooks voor `planning`, `research`, `design`, `tdd` — maar **niet** voor `validation` of `documentation`. Methoden `on_exit_validation_phase` en `on_exit_documentation_phase` bestaan niet.  
+**Impact:** High — het per-fase gate systeem dat C7 introduceert is onvolledig. Validation en documentation deliverables worden opgeslagen in `projects.json` maar nooit gecontroleerd; enforcement geldt enkel voor de `design` fase.  
+**Proposed fix:** `on_exit_validation_phase` en `on_exit_documentation_phase` methoden implementeren analoog aan `on_exit_design_phase`, en ze wiren in `transition()` bij de overeenkomstige `from_phase` checks.
 
 ---
 
