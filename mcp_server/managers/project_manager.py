@@ -27,6 +27,11 @@ from backend.core.phase_detection import ScopeDecoder
 from mcp_server.config.workflows import workflow_config
 from mcp_server.managers.git_manager import GitManager
 
+# Per-phase keys recognised in planning_deliverables (C8/GAP-15)
+_known_phase_keys: frozenset[str] = frozenset(
+    {"tdd_cycles", "design", "validation", "documentation", "validates"}
+)
+
 
 @dataclass
 class ProjectInitOptions:
@@ -272,7 +277,6 @@ class ProjectManager:
                 raise ValueError(msg)
 
         # Validate optional phase keys (D7.1 — Issue #229 C7)
-        _known_phase_keys = {"tdd_cycles", "design", "validation", "documentation", "validates"}
         _phase_entry_keys = {"design", "validation", "documentation"}
         for key, value in planning_deliverables.items():
             if key not in _known_phase_keys:
@@ -296,13 +300,19 @@ class ProjectManager:
     def update_planning_deliverables(
         self, issue_number: int, planning_deliverables: dict[str, Any]
     ) -> None:
-        """Merge incoming planning deliverables into existing ones (Issue #229, C5).
+        """Merge incoming planning deliverables into existing ones (Issue #229, C5/C8).
 
         Merge strategy for ``tdd_cycles.cycles``:
         - New ``cycle_number`` → append cycle
         - Existing ``cycle_number`` + new deliverable ``id`` → append deliverable
         - Existing ``cycle_number`` + existing deliverable ``id`` → overwrite in place
+        - ``exit_criteria`` on existing cycle → overwritten when provided (C8/GAP-12)
         - ``tdd_cycles.total`` updated to max(existing, highest incoming cycle_number)
+
+        Merge strategy for per-phase keys (design, validation, documentation) (C8/GAP-15):
+        - Key absent in existing → set from incoming
+        - Key present in existing → merge deliverables by id (same strategy as tdd_cycles)
+        - New deliverable ``id`` → append; existing ``id`` → overwrite in place
 
         Args:
             issue_number: GitHub issue number
@@ -350,8 +360,10 @@ class ProjectManager:
                 existing_cycles_list.append(incoming_cycle)
                 existing_cycle_index[cn] = len(existing_cycles_list) - 1
             else:
-                # Existing cycle → merge deliverables by id
+                # Existing cycle → merge deliverables by id + overwrite exit_criteria (C8/GAP-12)
                 target_cycle = existing_cycles_list[existing_cycle_index[cn]]
+                if "exit_criteria" in incoming_cycle:
+                    target_cycle["exit_criteria"] = incoming_cycle["exit_criteria"]
                 existing_deliverables: list[dict[str, Any]] = target_cycle.setdefault(
                     "deliverables", []
                 )
@@ -372,6 +384,31 @@ class ProjectManager:
         if existing_cycles_list:
             highest_cn = max(c["cycle_number"] for c in existing_cycles_list)
             existing_tc["total"] = max(existing_tc.get("total", 0), highest_cn)
+
+        # Merge per-phase keys (design, validation, documentation) (C8/GAP-15)
+        _phase_keys = _known_phase_keys - {"tdd_cycles", "validates"}
+        for incoming_phase in _phase_keys:
+            if incoming_phase not in planning_deliverables:
+                continue
+            incoming_phase_data: dict[str, Any] = planning_deliverables[incoming_phase]
+            if incoming_phase not in existing_pd:
+                # Phase key absent → set from incoming
+                existing_pd[incoming_phase] = incoming_phase_data
+            else:
+                # Phase key present → merge deliverables by id
+                existing_phase_delivs: list[dict[str, Any]] = existing_pd[incoming_phase].setdefault(
+                    "deliverables", []
+                )
+                existing_phase_deliv_index: dict[str, int] = {
+                    d["id"]: i for i, d in enumerate(existing_phase_delivs)
+                }
+                for incoming_deliv in incoming_phase_data.get("deliverables", []):
+                    d_id = incoming_deliv["id"]
+                    if d_id in existing_phase_deliv_index:
+                        existing_phase_delivs[existing_phase_deliv_index[d_id]] = incoming_deliv
+                    else:
+                        existing_phase_delivs.append(incoming_deliv)
+                        existing_phase_deliv_index[d_id] = len(existing_phase_delivs) - 1
 
         self.projects_file.write_text(json.dumps(projects, indent=2))
 
