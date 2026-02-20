@@ -494,7 +494,7 @@
     "created_at": "2026-02-19T09:50:48.221403+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 7,
+        "total": 9,
         "cycles": [
           {
             "cycle_number": 1,
@@ -550,7 +550,7 @@
               },
               {
                 "id": "D2.3",
-                "description": "DeliverableChecker: file_glob type added (GAP-05) — pattern-based file existence check",
+                "description": "DeliverableChecker: file_glob type added (GAP-05) \u2014 pattern-based file existence check",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/managers/deliverable_checker.py",
@@ -559,7 +559,7 @@
               },
               {
                 "id": "D2.4",
-                "description": "git_add_or_commit validates workflow_phase + cycle_number against state.json (GAP-07) — blocks on phase mismatch",
+                "description": "git_add_or_commit validates workflow_phase + cycle_number against state.json (GAP-07) \u2014 blocks on phase mismatch",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/tools/git_tools.py",
@@ -706,6 +706,72 @@
               }
             ],
             "exit_criteria": "All 5 tests pass; per-phase deliverable gates optional; hotfix workflow unaffected"
+          },
+          {
+            "cycle_number": 8,
+            "deliverables": [
+              {
+                "id": "D8.1",
+                "description": "update_planning_deliverables merges design/validation/documentation keys analoog aan tdd_cycles",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "incoming_phase"
+                }
+              },
+              {
+                "id": "D8.2",
+                "description": "Per-fase merge by id: bestaande entry met matching id updated, nieuwe id toegevoegd",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "_known_phase_keys"
+                }
+              },
+              {
+                "id": "D8.3",
+                "description": "exit_criteria op bestaande cycle wordt overschreven bij update",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "exit_criteria"
+                }
+              }
+            ],
+            "exit_criteria": "All 6 tests pass; update met design key updated projects.json; update tdd_cycles backward compat"
+          },
+          {
+            "cycle_number": 9,
+            "deliverables": [
+              {
+                "id": "D9.1",
+                "description": "PhaseStateEngine.on_exit_validation_phase() geimplementeerd analoog aan on_exit_design_phase",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_validation_phase"
+                }
+              },
+              {
+                "id": "D9.2",
+                "description": "PhaseStateEngine.on_exit_documentation_phase() geimplementeerd analoog aan on_exit_design_phase",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_documentation_phase"
+                }
+              },
+              {
+                "id": "D9.3",
+                "description": "transition() wired: on_exit_validation_phase en on_exit_documentation_phase aangeroepen bij juiste from_phase",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_documentation_phase"
+                }
+              }
+            ],
+            "exit_criteria": "All 6 tests pass; validation->documentation blokkeert op falende spec; gate optioneel; GAP-14 specs gecorrigeerd"
           }
         ]
       }
