@@ -396,9 +396,9 @@ class ProjectManager:
                 existing_pd[incoming_phase] = incoming_phase_data
             else:
                 # Phase key present → merge deliverables by id
-                existing_phase_delivs: list[dict[str, Any]] = existing_pd[incoming_phase].setdefault(
-                    "deliverables", []
-                )
+                existing_phase_delivs: list[dict[str, Any]] = existing_pd[
+                    incoming_phase
+                ].setdefault("deliverables", [])
                 existing_phase_deliv_index: dict[str, int] = {
                     d["id"]: i for i, d in enumerate(existing_phase_delivs)
                 }
