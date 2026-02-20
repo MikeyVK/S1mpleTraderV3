@@ -470,7 +470,7 @@
       "planning",
       "design",
       "tdd",
-      "integration",
+      "validation",
       "documentation"
     ],
     "skip_reason": null,
@@ -485,11 +485,360 @@
       "research",
       "planning",
       "tdd",
-      "integration",
+      "validation",
       "documentation"
     ],
     "skip_reason": null,
     "parent_branch": null,
     "created_at": "2026-02-14T20:53:55.634622+00:00"
+  },
+  "146": {
+    "issue_title": "TDD Cycle Tracking &amp; Validation (Planning Outcome \u2192 State Machine)",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": null,
+    "created_at": "2026-02-17T08:37:24.636799+00:00"
+  },
+  "229": {
+    "issue_title": "Phase deliverables enforcement: exit gate (hard) + entry warning (soft)",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "feature/146-tdd-cycle-tracking",
+    "created_at": "2026-02-19T09:50:48.221403+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 10,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "workphases.yaml: exit_requires + entry_expects fields on planning phase",
+                "validates": {
+                  "type": "key_path",
+                  "file": ".st3/workphases.yaml",
+                  "path": "phases.planning.exit_requires"
+                }
+              },
+              {
+                "id": "D1.2",
+                "description": "DeliverableChecker implementation",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/managers/deliverable_checker.py"
+                }
+              },
+              {
+                "id": "D1.3",
+                "description": "DeliverableChecker unit tests",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/unit/mcp_server/managers/test_deliverable_checker.py"
+                }
+              }
+            ],
+            "exit_criteria": "All 8 unit tests pass (schema backward compat + checker)"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "PhaseStateEngine: on_exit_planning_phase wired to WorkphasesConfig + DeliverableChecker (Option B)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_planning_phase"
+                }
+              },
+              {
+                "id": "D2.2",
+                "description": "PhaseStateEngine: on_enter_tdd_phase no longer validates planning_deliverables independently",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "planning_deliverables"
+                }
+              },
+              {
+                "id": "D2.3",
+                "description": "DeliverableChecker: file_glob type added (GAP-05) \u2014 pattern-based file existence check",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/deliverable_checker.py",
+                  "text": "file_glob"
+                }
+              },
+              {
+                "id": "D2.4",
+                "description": "git_add_or_commit validates workflow_phase + cycle_number against state.json (GAP-07) \u2014 blocks on phase mismatch",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "phase_mismatch"
+                }
+              }
+            ],
+            "exit_criteria": "All 9 tests pass; planning exit gate wired to WorkphasesConfig+DeliverableChecker; file_glob type available"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": "force_transition logs warning listing skipped gates",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "skipped_gates"
+                }
+              },
+              {
+                "id": "D3.2",
+                "description": "force_cycle_transition warns about unvalidated deliverables in skipped cycles (GAP-08)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "Unvalidated cycle deliverables"
+                }
+              }
+            ],
+            "exit_criteria": "All 5 tests pass; forced phase transition warns skipped gates; forced cycle transition warns unvalidated skipped cycle deliverables"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "D4.1",
+                "description": "SavePlanningDeliverablesTool defined in project_tools.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/project_tools.py",
+                  "text": "SavePlanningDeliverablesTool"
+                }
+              },
+              {
+                "id": "D4.2",
+                "description": "SavePlanningDeliverablesTool registered in server.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "SavePlanningDeliverablesTool"
+                }
+              },
+              {
+                "id": "D4.3",
+                "description": "Layer 2 schema validation: validates entry type + required fields checked before persisting (GAP-06)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/project_tools.py",
+                  "text": "validate_spec"
+                }
+              }
+            ],
+            "exit_criteria": "All 6 tests pass; tool callable via MCP; rejects invalid validates.type with helpful error listing available types and required fields"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "D5.1",
+                "description": "UpdatePlanningDeliverablesTool defined in project_tools.py with merge-strategy",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/project_tools.py",
+                  "text": "UpdatePlanningDeliverablesTool"
+                }
+              },
+              {
+                "id": "D5.2",
+                "description": "ProjectManager.update_planning_deliverables() merge logic implemented",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "update_planning_deliverables"
+                }
+              },
+              {
+                "id": "D5.3",
+                "description": "UpdatePlanningDeliverablesTool registered in server.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "UpdatePlanningDeliverablesTool"
+                }
+              }
+            ],
+            "exit_criteria": "All 5 tests pass; new cycles append, existing deliverables merge by id; call before initial save raises clear error"
+          },
+          {
+            "cycle_number": 6,
+            "deliverables": [
+              {
+                "id": "D6.1",
+                "description": "PhaseStateEngine reads type:file_glob from exit_requires and checks filesystem",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "file_glob"
+                }
+              },
+              {
+                "id": "D6.2",
+                "description": "workphases.yaml research phase configured with file_glob exit gate",
+                "validates": {
+                  "type": "key_path",
+                  "file": ".st3/workphases.yaml",
+                  "path": "phases.research.exit_requires"
+                }
+              }
+            ],
+            "exit_criteria": "All 5 tests pass; research phase blocks transition without *research*.md; {issue_number} interpolated correctly"
+          },
+          {
+            "cycle_number": 7,
+            "deliverables": [
+              {
+                "id": "D7.1",
+                "description": "save_planning_deliverables accepts per-phase keys (design, validation, documentation) alongside tdd_cycles",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "phase_deliverables"
+                }
+              },
+              {
+                "id": "D7.2",
+                "description": "PhaseStateEngine exit gate checks planning_deliverables.<phase>.deliverables when present",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "phase_deliverables"
+                }
+              }
+            ],
+            "exit_criteria": "All 5 tests pass; per-phase deliverable gates optional; hotfix workflow unaffected"
+          },
+          {
+            "cycle_number": 8,
+            "deliverables": [
+              {
+                "id": "D8.1",
+                "description": "update_planning_deliverables merges design/validation/documentation keys analoog aan tdd_cycles",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "incoming_phase"
+                }
+              },
+              {
+                "id": "D8.2",
+                "description": "Per-fase merge by id: bestaande entry met matching id updated, nieuwe id toegevoegd",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "_known_phase_keys"
+                }
+              },
+              {
+                "id": "D8.3",
+                "description": "exit_criteria op bestaande cycle wordt overschreven bij update",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "exit_criteria"
+                }
+              }
+            ],
+            "exit_criteria": "All 6 tests pass; update met design key updated projects.json; update tdd_cycles backward compat"
+          },
+          {
+            "cycle_number": 9,
+            "deliverables": [
+              {
+                "id": "D9.1",
+                "description": "PhaseStateEngine.on_exit_validation_phase() geimplementeerd analoog aan on_exit_design_phase",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_validation_phase"
+                }
+              },
+              {
+                "id": "D9.2",
+                "description": "PhaseStateEngine.on_exit_documentation_phase() geimplementeerd analoog aan on_exit_design_phase",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_documentation_phase"
+                }
+              },
+              {
+                "id": "D9.3",
+                "description": "transition() wired: on_exit_validation_phase en on_exit_documentation_phase aangeroepen bij juiste from_phase",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "on_exit_documentation_phase"
+                }
+              }
+            ],
+            "exit_criteria": "All 6 tests pass; validation->documentation blokkeert op falende spec; gate optioneel; GAP-14 specs gecorrigeerd"
+          },
+          {
+            "cycle_number": 10,
+            "deliverables": [
+              {
+                "description": "force_phase_transition response emits blocking gates before \u2705 success line",
+                "id": "D10.1",
+                "validates": {
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "ACTION REQUIRED",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "force_cycle_transition response emits blocking deliverables before \u2705 success line",
+                "id": "D10.2",
+                "validates": {
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "ACTION REQUIRED",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Skipped gates classified as would_block vs would_pass before emitting response",
+                "id": "D10.3",
+                "validates": {
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "would_block",
+                  "type": "contains_text"
+                }
+              }
+            ],
+            "exit_criteria": "All 5 tests pass; blocking gates appear before \u2705; passing gates appear after or omitted; transition behaviour unchanged"
+          }
+        ]
+      }
+    }
   }
 }

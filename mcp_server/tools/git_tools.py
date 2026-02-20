@@ -1,6 +1,8 @@
 """Git tools."""
 
+import json
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,43 @@ from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
 logger = get_logger("tools.git")
+
+
+class CommitPhaseMismatchError(MCPError):
+    """Raised when the provided workflow_phase/cycle_number doesn't match state.json."""
+
+
+def build_phase_guard(workspace_root: Path) -> Callable[[str, str, int | None], None]:
+    """Build a guard callable that blocks commits when phase/cycle mismatches state.json."""
+    state_file = workspace_root / ".st3" / "state.json"
+
+    def phase_mismatch(branch: str, workflow_phase: str, cycle_number: int | None) -> None:
+        if not state_file.exists():
+            return
+        data: dict[str, Any] = json.loads(state_file.read_text(encoding="utf-8"))
+        if data.get("branch") != branch:
+            return  # state.json belongs to a different branch — skip
+
+        current_phase = data.get("current_phase", "unknown")
+        if workflow_phase != current_phase:
+            msg = (
+                f"Phase mismatch: committing as '{workflow_phase}' "
+                f"but state.json shows current_phase='{current_phase}'.\n"
+                f"Run first: transition_phase(branch='{branch}', to_phase='{workflow_phase}')"
+            )
+            raise CommitPhaseMismatchError(msg)
+
+        if workflow_phase == "tdd" and cycle_number is not None:
+            current_cycle = data.get("current_tdd_cycle")
+            if current_cycle is not None and cycle_number != current_cycle:
+                msg = (
+                    f"Cycle mismatch: committing as cycle {cycle_number} "
+                    f"but state.json shows current_tdd_cycle={current_cycle}.\n"
+                    f"Run first: transition_cycle(to_cycle={cycle_number})"
+                )
+                raise CommitPhaseMismatchError(msg)
+
+    return phase_mismatch
 
 
 def _input_schema(args_model: type[BaseModel] | None) -> dict[str, Any]:
@@ -219,8 +258,13 @@ class GitCommitTool(BaseTool):
     description = "Commit changes with workflow phase scope (e.g., test(P_TDD_SP_RED): message)"
     args_model = GitCommitInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
+    def __init__(
+        self,
+        manager: GitManager | None = None,
+        phase_guard: Callable[[str, str, int | None], None] | None = None,
+    ) -> None:
         self.manager = manager or GitManager()
+        self._phase_guard = phase_guard
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -246,6 +290,24 @@ class GitCommitTool(BaseTool):
                 "Auto-detected workflow_phase from state.json",
                 extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
             )
+
+        # Enforce cycle_number for TDD phase (Issue #146, planning.md Q3)
+        # Must check BEFORE the legacy path maps phase -> tdd to avoid bypass (Cycle 7)
+        effective_phase = workflow_phase
+        if effective_phase is None and params.phase is not None and params.phase != "docs":
+            effective_phase = "tdd"  # legacy phases "red"/"green"/"refactor" all map to tdd
+
+        if effective_phase == "tdd" and params.cycle_number is None:
+            raise ValueError(
+                "cycle_number is required for TDD phase commits. "
+                "All TDD work belongs to a specific cycle. "
+                "Use: git_add_or_commit(workflow_phase='tdd', cycle_number=N, ...)"
+            )
+
+        # Phase guard: validate workflow_phase + cycle_number against state.json (GAP-07)
+        if self._phase_guard is not None and workflow_phase is not None:
+            current_branch = self.manager.adapter.get_current_branch()
+            self._phase_guard(current_branch, workflow_phase, params.cycle_number)
 
         # NEW workflow-first path
         if workflow_phase is not None:

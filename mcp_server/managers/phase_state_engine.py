@@ -30,6 +30,8 @@ from typing import Any, cast
 
 # Project modules
 from mcp_server.config.workflows import workflow_config
+from mcp_server.config.workphases_config import WorkphasesConfig
+from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
 from mcp_server.managers.project_manager import ProjectManager
 
 logger = logging.getLogger(__name__)
@@ -74,8 +76,7 @@ class PhaseStateEngine:
         self.project_manager = project_manager
 
     def initialize_branch(
-        self, branch: str, issue_number: int, initial_phase: str,
-        parent_branch: str | None = None
+        self, branch: str, issue_number: int, initial_phase: str, parent_branch: str | None = None
     ) -> dict[str, Any]:
         """Initialize branch state with workflow caching.
 
@@ -111,9 +112,12 @@ class PhaseStateEngine:
             "current_phase": initial_phase,
             "parent_branch": parent_branch,  # Store parent_branch
             "transitions": [],
-            "created_at": datetime.now(UTC).isoformat()
+            "created_at": datetime.now(UTC).isoformat(),
+            # TDD cycle tracking fields (Issue #146)
+            "current_tdd_cycle": None,
+            "last_tdd_cycle": None,
+            "tdd_cycle_history": [],
         }
-
         # Save state
         self._save_state(branch, state)
 
@@ -121,7 +125,7 @@ class PhaseStateEngine:
             "success": True,
             "branch": branch,
             "current_phase": initial_phase,
-            "parent_branch": parent_branch
+            "parent_branch": parent_branch,
         }
 
     def transition(
@@ -150,13 +154,44 @@ class PhaseStateEngine:
         # Validate transition via workflow_config (strict sequential)
         workflow_config.validate_transition(workflow_name, from_phase, to_phase)
 
+        # Planning exit hook: called when leaving planning phase (Issue #229)
+        if from_phase == "planning":
+            issue_number_exit: int = state["issue_number"]
+            self.on_exit_planning_phase(branch, issue_number_exit)
+
+        # Research exit hook: called when leaving research phase (Issue #229 C6)
+        if from_phase == "research":
+            issue_number_exit = state["issue_number"]
+            self.on_exit_research_phase(branch, issue_number_exit)
+
+        # Design exit hook: called when leaving design phase (Issue #229 C7)
+        if from_phase == "design":
+            issue_number_design: int = state["issue_number"]
+            self.on_exit_design_phase(branch, issue_number_design)
+
+        # Validation exit hook: called when leaving validation phase (Issue #229 C9)
+        if from_phase == "validation":
+            issue_number_validation: int = state["issue_number"]
+            self.on_exit_validation_phase(branch, issue_number_validation)
+
+        # Documentation exit hook: called when leaving documentation phase (Issue #229 C9)
+        if from_phase == "documentation":
+            issue_number_documentation: int = state["issue_number"]
+            self.on_exit_documentation_phase(branch, issue_number_documentation)
+
+        # TDD exit hook: called when leaving TDD phase (Issue #146)
+        if from_phase == "tdd":
+            self.on_exit_tdd_phase(branch)
+            # Reload state after hook (hook may have modified state)
+            state = self.get_state(branch)
+
         # Record transition (forced=False)
         transition = TransitionRecord(
             from_phase=from_phase,
             to_phase=to_phase,
             timestamp=datetime.now(UTC).isoformat(),
             human_approval=human_approval,
-            forced=False
+            forced=False,
         )
 
         # Update state
@@ -164,18 +199,15 @@ class PhaseStateEngine:
         state["transitions"].append(self._transition_to_dict(transition))
         self._save_state(branch, state)
 
-        return {
-            "success": True,
-            "from_phase": from_phase,
-            "to_phase": to_phase
-        }
+        # TDD entry hook: called when entering TDD phase (Issue #146)
+        if to_phase == "tdd":
+            issue_number: int = state["issue_number"]
+            self.on_enter_tdd_phase(branch, issue_number)
+
+        return {"success": True, "from_phase": from_phase, "to_phase": to_phase}
 
     def force_transition(
-        self,
-        branch: str,
-        to_phase: str,
-        skip_reason: str,
-        human_approval: str
+        self, branch: str, to_phase: str, skip_reason: str, human_approval: str
     ) -> dict[str, Any]:
         """Execute forced non-sequential phase transition.
 
@@ -194,6 +226,42 @@ class PhaseStateEngine:
         state = self.get_state(branch)
         from_phase: str = state["current_phase"]
 
+        # Warn about skipped gates (GAP-03)
+        # Distinguish blocking gates (key absent) from passing gates (key present) (C10/GAP-17).
+        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        skipped_gates: list[str] = []  # blocking: key absent from projects.json
+        passing_gates: list[str] = []  # passing: key present in projects.json
+        if workphases_path.exists():
+            issue_number: int = state["issue_number"]
+            plan = self.project_manager.get_project_plan(issue_number)
+            wp_config = WorkphasesConfig(workphases_path)
+            for entry in wp_config.get_exit_requires(from_phase):
+                key = entry.get("key")
+                if not key:
+                    continue
+                gate_id = f"exit:{from_phase}:{key}"
+                if plan is None or key not in plan:
+                    skipped_gates.append(gate_id)
+                else:
+                    passing_gates.append(gate_id)
+            for entry in wp_config.get_entry_expects(to_phase):
+                key = entry.get("key")
+                if not key:
+                    continue
+                gate_id = f"entry:{to_phase}:{key}"
+                if plan is None or key not in plan:
+                    skipped_gates.append(gate_id)
+                else:
+                    passing_gates.append(gate_id)
+            if skipped_gates:
+                logger.warning(
+                    "force_transition skipped_gates=%s (from=%s, to=%s, skip_reason=%r)",
+                    skipped_gates,
+                    from_phase,
+                    to_phase,
+                    skip_reason,
+                )
+
         # Record forced transition (forced=True)
         transition = TransitionRecord(
             from_phase=from_phase,
@@ -201,7 +269,7 @@ class PhaseStateEngine:
             timestamp=datetime.now(UTC).isoformat(),
             human_approval=human_approval,
             forced=True,
-            skip_reason=skip_reason
+            skip_reason=skip_reason,
         )
 
         # Update state
@@ -214,7 +282,9 @@ class PhaseStateEngine:
             "from_phase": from_phase,
             "to_phase": to_phase,
             "forced": True,
-            "skip_reason": skip_reason
+            "skip_reason": skip_reason,
+            "skipped_gates": skipped_gates,
+            "passing_gates": passing_gates,
         }
 
     def get_current_phase(self, branch: str) -> str:
@@ -261,6 +331,48 @@ class PhaseStateEngine:
         self._save_state(branch, state)
         return state
 
+    def _validate_cycle_number_range(self, cycle_number: int, issue_number: int) -> None:
+        """Validate cycle_number is within valid range [1..total].
+
+        Args:
+            cycle_number: Cycle number to validate
+            issue_number: GitHub issue number for context
+
+        Raises:
+            ValueError: If cycle_number is out of range or planning deliverables not found
+
+        Issue #146 Cycle 2: Range validation for TDD cycle transitions.
+        """
+        # Get planning deliverables
+        plan = self.project_manager.get_project_plan(issue_number)
+        if not plan or "planning_deliverables" not in plan:
+            msg = f"Planning deliverables not found for issue {issue_number}"
+            raise ValueError(msg)
+
+        # Get total cycles
+        total_cycles = plan["planning_deliverables"]["tdd_cycles"]["total"]
+
+        # Validate range [1..total]
+        if cycle_number < 1 or cycle_number > total_cycles:
+            msg = f"cycle_number must be in range [1..{total_cycles}], got {cycle_number}"
+            raise ValueError(msg)
+
+    def _validate_planning_deliverables_exist(self, issue_number: int) -> None:
+        """Validate that planning deliverables exist for issue.
+
+        Args:
+            issue_number: GitHub issue number
+
+        Raises:
+            ValueError: If planning deliverables not found
+
+        Issue #146 Cycle 2: Existence check before cycle transitions.
+        """
+        plan = self.project_manager.get_project_plan(issue_number)
+        if not plan or "planning_deliverables" not in plan:
+            msg = f"Planning deliverables not found for issue {issue_number}"
+            raise ValueError(msg)
+
     def _save_state(self, branch: str, state: dict[str, Any]) -> None:
         """Save branch state to state.json.
 
@@ -306,7 +418,7 @@ class PhaseStateEngine:
             "timestamp": transition.timestamp,
             "human_approval": transition.human_approval,
             "forced": transition.forced,
-            "skip_reason": transition.skip_reason
+            "skip_reason": transition.skip_reason,
         }
 
     # -------------------------------------------------------------------------
@@ -360,12 +472,19 @@ class PhaseStateEngine:
             "parent_branch": parent_branch,  # Reconstructed from projects.json
             "transitions": [],  # Cannot reconstruct history
             "created_at": datetime.now(UTC).isoformat(),
-            "reconstructed": True  # Audit flag
+            "reconstructed": True,  # Audit flag
+            # TDD cycle tracking fields (Issue #146)
+            "current_tdd_cycle": None,
+            "last_tdd_cycle": None,
+            "tdd_cycle_history": [],
         }
 
         logger.info(
             "Reconstructed state: issue=%s, phase=%s, workflow=%s, parent=%s",
-            issue_number, current_phase, project["workflow_name"], parent_branch
+            issue_number,
+            current_phase,
+            project["workflow_name"],
+            parent_branch,
         )
 
         return state
@@ -385,7 +504,7 @@ class PhaseStateEngine:
             ValueError: If branch format invalid
         """
         # Match: (feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-(.+)
-        match = re.match(r'^(?:feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-', branch)
+        match = re.match(r"^(?:feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-", branch)
         if not match:
             msg = f"Cannot extract issue number from branch '{branch}'. "
             msg += "Expected format: <type>/<number>-<title>"
@@ -393,9 +512,7 @@ class PhaseStateEngine:
 
         return int(match.group(1))
 
-    def _infer_phase_from_git(
-        self, branch: str, workflow_phases: list[str]
-    ) -> str:
+    def _infer_phase_from_git(self, branch: str, workflow_phases: list[str]) -> str:
         """Infer current phase from git commit messages.
 
         Searches for phase:label patterns in commits, validates against workflow.
@@ -461,9 +578,7 @@ class PhaseStateEngine:
             msg = "Git log command timed out"
             raise RuntimeError(msg) from e
 
-    def _detect_phase_label(
-        self, commits: list[str], workflow_phases: list[str]
-    ) -> str | None:
+    def _detect_phase_label(self, commits: list[str], workflow_phases: list[str]) -> str | None:
         """Detect phase from phase:label patterns in commits.
 
         Labels.yaml SSOT: Only phase:label format supported (no backwards compat).
@@ -481,7 +596,7 @@ class PhaseStateEngine:
 
         for commit in commits:
             # Search for phase:label pattern (case-insensitive)
-            match = re.search(r'phase:(\w+)', commit.lower())
+            match = re.search(r"phase:(\w+)", commit.lower())
             if not match:
                 continue
 
@@ -498,3 +613,256 @@ class PhaseStateEngine:
                 return detected_label
 
         return None
+
+    def on_enter_tdd_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when entering TDD phase.
+
+        Auto-initializes TDD cycle 1 in branch state. Planning deliverables
+        are validated at planning exit (on_exit_planning_phase) — not here.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+        """
+        # Get or create state
+        state = self.get_state(branch)
+
+        # Auto-initialize cycle 1 if not already set
+        if state.get("current_tdd_cycle") is None:
+            state["current_tdd_cycle"] = 1
+            state["last_tdd_cycle"] = 0
+            if "tdd_cycle_history" not in state:
+                state["tdd_cycle_history"] = []
+
+            # Save state
+            self._save_state(branch, state)
+
+        logger.info(f"Entered TDD phase for issue {issue_number} on branch {branch}")
+
+    def on_exit_planning_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting planning phase — hard gate (Issue #229, Option B).
+
+        Reads exit_requires from workphases.yaml via WorkphasesConfig, checks that
+        each required key exists in projects.json, and runs DeliverableChecker.check()
+        on any ``validates`` entries declared directly under the key value.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            ValueError: If a required key is absent from the project plan
+            DeliverableCheckError: If a validates entry fails structural checks
+        """
+        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        wp_config = WorkphasesConfig(workphases_path)
+        exit_requires = wp_config.get_exit_requires("planning")
+
+        if not exit_requires:
+            logger.info(f"No exit_requires for planning phase; gate skipped for branch {branch}")
+            return
+
+        project_plan = self.project_manager.get_project_plan(issue_number)
+        checker = DeliverableChecker(workspace_root=self.workspace_root)
+
+        for requirement in exit_requires:
+            key = requirement["key"]
+            if not project_plan or key not in project_plan:
+                msg = (
+                    f"{key} not found for issue {issue_number}. "
+                    f"Save {key} before leaving the planning phase."
+                )
+                raise ValueError(msg)
+
+            # Run top-level validates entries declared directly under the key value
+            plan_value = project_plan[key]
+            if isinstance(plan_value, dict):
+                for validate_spec in plan_value.get("validates", []):
+                    checker.check(validate_spec.get("id", key), validate_spec)
+
+                # Validate nested cycle deliverables validates specs
+                tdd_cycles = plan_value.get("tdd_cycles", {})
+                for cycle in tdd_cycles.get("cycles", []):
+                    for deliverable in cycle.get("deliverables", []):
+                        if not isinstance(deliverable, dict):
+                            continue
+                        if "validates" in deliverable:
+                            checker.check(deliverable.get("id", "?"), deliverable["validates"])
+
+                # Validate phase-key deliverables validates specs (design/validation/documentation)
+                for phase_key in ("design", "validation", "documentation"):
+                    phase_entry = plan_value.get(phase_key, {})
+                    for deliverable in phase_entry.get("deliverables", []):
+                        if not isinstance(deliverable, dict):
+                            continue
+                        if "validates" in deliverable:
+                            checker.check(deliverable.get("id", "?"), deliverable["validates"])
+
+        logger.info(f"Planning exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_research_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting research phase — file_glob gate (Issue #229 C6).
+
+        Reads exit_requires from workphases.yaml for 'research'. For entries with
+        ``type: file_glob``, interpolates ``{issue_number}`` and checks that at least
+        one file matches the resulting glob pattern.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            DeliverableCheckError: If a file_glob gate finds no matching files.
+            ValueError: If a key-type gate key is absent from projects.json.
+        """
+        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        if not workphases_path.exists():
+            return
+
+        wp_config = WorkphasesConfig(workphases_path)
+        exit_requires = wp_config.get_exit_requires("research")
+
+        if not exit_requires:
+            logger.info(f"No exit_requires for research phase; gate skipped for branch {branch}")
+            return
+
+        for requirement in exit_requires:
+            req_type = requirement.get("type", "key")
+            if req_type == "file_glob":
+                pattern = requirement["file"].format(issue_number=issue_number)
+                matches = list(self.workspace_root.glob(pattern))
+                if not matches:
+                    description = requirement.get("description", f"file_glob: {pattern}")
+                    raise DeliverableCheckError(
+                        f"[research.exit_requires] {description}: "
+                        f"no files matching '{pattern}' in workspace root"
+                    )
+            else:
+                key = requirement["key"]
+                plan = self.project_manager.get_project_plan(issue_number)
+                if not plan or key not in plan:
+                    msg = (
+                        f"{key} not found for issue {issue_number}. "
+                        f"Save {key} before leaving the research phase."
+                    )
+                    raise ValueError(msg)
+
+        logger.info(f"Research exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_design_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting design phase — per-phase deliverable gate (Issue #229 C7).
+
+        Reads ``planning_deliverables.design.deliverables`` from state.json. For entries
+        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
+        Gate is optional: if no design key is present, the check is skipped silently.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            DeliverableCheckError: If a validates spec is not satisfied.
+        """
+        plan = self.project_manager.get_project_plan(issue_number)
+        phase_delivs: dict[str, Any] = (
+            (plan or {}).get("planning_deliverables", {}).get("design", {})
+        )
+        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
+
+        if not deliverables:
+            logger.info(f"No design deliverables gate defined; skipped for branch {branch}")
+            return
+
+        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        for deliverable in deliverables:
+            if "validates" in deliverable:
+                checker.check(deliverable["id"], deliverable["validates"])
+
+        logger.info(f"Design exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_validation_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting validation phase — per-phase deliverable gate (Issue #229 C9).
+
+        Reads ``planning_deliverables.validation.deliverables`` from state.json. For entries
+        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
+        Gate is optional: if no validation key is present, the check is skipped silently.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            DeliverableCheckError: If a validates spec is not satisfied.
+        """
+        plan = self.project_manager.get_project_plan(issue_number)
+        phase_delivs: dict[str, Any] = (
+            (plan or {}).get("planning_deliverables", {}).get("validation", {})
+        )
+        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
+
+        if not deliverables:
+            logger.info(f"No validation deliverables gate defined; skipped for branch {branch}")
+            return
+
+        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        for deliverable in deliverables:
+            if "validates" in deliverable:
+                checker.check(deliverable["id"], deliverable["validates"])
+
+        logger.info(f"Validation exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_documentation_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when exiting documentation phase — deliverable gate (Issue #229 C9).
+
+        Reads ``planning_deliverables.documentation.deliverables`` from state.json. For entries
+        that include a ``validates`` spec, runs ``DeliverableChecker.check()``.
+        Gate is optional: if no documentation key is present, the check is skipped silently.
+
+        Args:
+            branch: Branch name
+            issue_number: GitHub issue number
+
+        Raises:
+            DeliverableCheckError: If a validates spec is not satisfied.
+        """
+        plan = self.project_manager.get_project_plan(issue_number)
+        phase_delivs: dict[str, Any] = (
+            (plan or {}).get("planning_deliverables", {}).get("documentation", {})
+        )
+        deliverables: list[dict[str, Any]] = phase_delivs.get("deliverables", [])
+
+        if not deliverables:
+            logger.info(f"No documentation deliverables gate defined; skipped for branch {branch}")
+            return
+
+        checker = DeliverableChecker(workspace_root=self.workspace_root)
+        for deliverable in deliverables:
+            if "validates" in deliverable:
+                checker.check(deliverable["id"], deliverable["validates"])
+
+        logger.info(f"Documentation exit gate passed for branch {branch} (issue {issue_number})")
+
+    def on_exit_tdd_phase(self, branch: str) -> None:
+        """Hook called when exiting TDD phase.
+
+        Preserves last_tdd_cycle and clears current_tdd_cycle.
+        Logs warning if not all cycles completed.
+
+        Args:
+            branch: Branch name
+        """
+        # Get current state
+        state = self.get_state(branch)
+        current_cycle = state.get("current_tdd_cycle")
+
+        # Preserve last cycle
+        if current_cycle is not None:
+            state["last_tdd_cycle"] = current_cycle
+            state["current_tdd_cycle"] = None
+
+            # Log warning if incomplete (optional validation)
+            # For now, we allow exit but log it
+            logger.info(f"Exited TDD phase at cycle {current_cycle} on branch {branch}")
+
+            # Save state
+            self._save_state(branch, state)

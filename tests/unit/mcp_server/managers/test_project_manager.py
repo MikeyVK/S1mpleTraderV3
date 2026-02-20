@@ -56,7 +56,7 @@ class TestProjectManagerWorkflows:
         """Test feature workflow from workflows.yaml."""
         workflow = workflow_config.get_workflow("feature")
         assert len(workflow.phases) == 6
-        expected = ["research", "planning", "design", "tdd", "integration", "documentation"]
+        expected = ["research", "planning", "design", "tdd", "validation", "documentation"]
         assert workflow.phases == expected
         assert workflow.default_execution_mode == "interactive"
 
@@ -64,7 +64,7 @@ class TestProjectManagerWorkflows:
         """Test hotfix workflow from workflows.yaml."""
         workflow = workflow_config.get_workflow("hotfix")
         assert len(workflow.phases) == 3
-        assert workflow.phases == ["tdd", "integration", "documentation"]
+        assert workflow.phases == ["tdd", "validation", "documentation"]
         assert workflow.default_execution_mode == "autonomous"
 
     def test_initialize_project_with_feature_workflow(
@@ -131,7 +131,7 @@ class TestProjectManagerWorkflows:
         self, manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test initialize_project with custom phases."""
-        custom_phases = ("research", "planning", "design", "tdd", "integration", "documentation")
+        custom_phases = ("research", "planning", "design", "tdd", "validation", "documentation")
 
         result = manager.initialize_project(
             issue_number=50,
@@ -336,3 +336,347 @@ phases:
         assert plan["current_phase"] == "unknown"
         assert plan["phase_source"] == "unknown"
         assert plan["phase_detection_error"] is not None
+
+
+class TestPlanningDeliverablesSchema:
+    """Test planning_deliverables schema storage (Issue #146 Cycle 1)."""
+
+    @pytest.fixture
+    def workspace_root(self, tmp_path: Path) -> Path:
+        """Create temporary workspace."""
+        return tmp_path
+
+    @pytest.fixture
+    def manager(self, workspace_root: Path) -> ProjectManager:
+        """Create ProjectManager instance."""
+        return ProjectManager(workspace_root=workspace_root)
+
+    def test_planning_deliverables_stored_in_projects_json(self, manager: ProjectManager) -> None:
+        """Test that planning_deliverables are persisted to projects.json.
+
+        RED: This test WILL FAIL - planning_deliverables schema not implemented yet.
+        """
+        # Arrange: Create planning deliverables according to design.md schema
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 4,
+                "cycles": [
+                    {
+                        "cycle_number": 1,
+                        "name": "Schema & Storage",
+                        "deliverables": ["planning_deliverables schema", "tdd_cycle_* fields"],
+                        "exit_criteria": "Schema validated, tests pass",
+                    },
+                    {
+                        "cycle_number": 2,
+                        "name": "Validation Logic",
+                        "deliverables": ["cycle_number validation", "planning checks"],
+                        "exit_criteria": "Validation tests pass",
+                    },
+                    {
+                        "cycle_number": 3,
+                        "name": "Discovery Tools",
+                        "deliverables": ["get_work_context enhancement"],
+                        "exit_criteria": "Discovery tools tested",
+                    },
+                    {
+                        "cycle_number": 4,
+                        "name": "Transition Tools",
+                        "deliverables": ["transition_cycle", "force_cycle_transition"],
+                        "exit_criteria": "All tools implemented",
+                    },
+                ],
+            }
+        }
+
+        # Act: Initialize project and save planning deliverables
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # Save planning deliverables (method doesn't exist yet - will fail)
+        manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Assert: Retrieve and verify planning deliverables persisted
+        plan = manager.get_project_plan(146)
+        assert plan is not None
+        assert "planning_deliverables" in plan
+        assert plan["planning_deliverables"]["tdd_cycles"]["total"] == 4
+        assert len(plan["planning_deliverables"]["tdd_cycles"]["cycles"]) == 4
+
+    def test_save_planning_deliverables_rejects_duplicate(self, manager: ProjectManager) -> None:
+        """Test that save_planning_deliverables rejects duplicate saves."""
+        # Arrange
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+        planning_deliverables = {
+            "tdd_cycles": {
+                "total": 1,
+                "cycles": [
+                    {
+                        "cycle_number": 1,
+                        "deliverables": ["test deliverable"],
+                        "exit_criteria": "test criteria",
+                    }
+                ],
+            }
+        }
+        manager.save_planning_deliverables(146, planning_deliverables)
+
+        # Act & Assert: Second save should fail
+        with pytest.raises(ValueError, match="already exist"):
+            manager.save_planning_deliverables(146, planning_deliverables)
+
+    def test_save_planning_deliverables_rejects_missing_tdd_cycles(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test schema validation: tdd_cycles required."""
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # Missing tdd_cycles key
+        with pytest.raises(ValueError, match="must contain 'tdd_cycles' key"):
+            manager.save_planning_deliverables(146, {"validation_plan": {}})
+
+    def test_save_planning_deliverables_rejects_malformed_tdd_cycles(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test schema validation: tdd_cycles structure."""
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # tdd_cycles not a dict
+        with pytest.raises(ValueError, match="must be a dict"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": "invalid"})
+
+        # Missing total key
+        with pytest.raises(ValueError, match="must contain 'total' key"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": {"cycles": []}})
+
+        # Invalid total (not int)
+        with pytest.raises(ValueError, match="must be a positive integer"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": {"total": "4", "cycles": []}})
+
+        # Invalid total (zero)
+        with pytest.raises(ValueError, match="must be a positive integer"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": {"total": 0, "cycles": []}})
+
+        # Missing cycles key
+        with pytest.raises(ValueError, match="must contain 'cycles' key"):
+            manager.save_planning_deliverables(146, {"tdd_cycles": {"total": 4}})
+
+        # Invalid cycles (not list)
+        # Invalid cycles (not list)
+        with pytest.raises(ValueError, match="must be a list"):
+            manager.save_planning_deliverables(
+                146, {"tdd_cycles": {"total": 4, "cycles": "invalid"}}
+            )
+
+    def test_save_planning_deliverables_rejects_total_mismatch(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test validation: total must equal len(cycles)."""
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # total=4 but only 2 cycles provided
+        with pytest.raises(ValueError, match="must equal len\\(tdd_cycles.cycles\\)"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 4,
+                        "cycles": [
+                            {
+                                "cycle_number": 1,
+                                "deliverables": ["Schema"],
+                                "exit_criteria": "Tests pass",
+                            },
+                            {
+                                "cycle_number": 2,
+                                "deliverables": ["Validation"],
+                                "exit_criteria": "Tests pass",
+                            },
+                        ],
+                    }
+                },
+            )
+
+    def test_save_planning_deliverables_rejects_non_sequential_cycles(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test validation: cycle_number must be sequential 1-based."""
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # Missing cycle_number
+        with pytest.raises(ValueError, match="missing 'cycle_number' key"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [{"deliverables": ["Schema"], "exit_criteria": "Tests pass"}],
+                    }
+                },
+            )
+
+        # Non-sequential cycle_number (starts at 0)
+        with pytest.raises(ValueError, match="must be sequential 1-based"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [
+                            {
+                                "cycle_number": 0,
+                                "deliverables": ["Schema"],
+                                "exit_criteria": "Tests pass",
+                            }
+                        ],
+                    }
+                },
+            )
+
+        # Skip cycle_number (1, 3 instead of 1, 2)
+        with pytest.raises(ValueError, match="must be sequential 1-based"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 2,
+                        "cycles": [
+                            {
+                                "cycle_number": 1,
+                                "deliverables": ["Schema"],
+                                "exit_criteria": "Tests pass",
+                            },
+                            {
+                                "cycle_number": 3,
+                                "deliverables": ["Validation"],
+                                "exit_criteria": "Tests pass",
+                            },
+                        ],
+                    }
+                },
+            )
+
+    def test_save_planning_deliverables_rejects_empty_deliverables(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test validation: deliverables array must not be empty."""
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # Missing deliverables key
+        with pytest.raises(ValueError, match="missing 'deliverables' key"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [{"cycle_number": 1, "exit_criteria": "Tests pass"}],
+                    }
+                },
+            )
+
+        # Empty deliverables array
+        with pytest.raises(ValueError, match="deliverables must be a non-empty list"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [
+                            {"cycle_number": 1, "deliverables": [], "exit_criteria": "Tests pass"}
+                        ],
+                    }
+                },
+            )
+
+        # deliverables not a list
+        with pytest.raises(ValueError, match="deliverables must be a non-empty list"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [
+                            {
+                                "cycle_number": 1,
+                                "deliverables": "Schema",
+                                "exit_criteria": "Tests pass",
+                            }
+                        ],
+                    }
+                },
+            )
+
+    def test_save_planning_deliverables_rejects_empty_exit_criteria(
+        self, manager: ProjectManager
+    ) -> None:
+        """Test validation: exit_criteria must be non-empty string."""
+        manager.initialize_project(
+            issue_number=146, issue_title="TDD Cycle Tracking", workflow_name="feature"
+        )
+
+        # Missing exit_criteria key
+        with pytest.raises(ValueError, match="missing 'exit_criteria' key"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [{"cycle_number": 1, "deliverables": ["Schema"]}],
+                    }
+                },
+            )
+
+        # Empty exit_criteria string
+        with pytest.raises(ValueError, match="exit_criteria must be a non-empty string"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [
+                            {"cycle_number": 1, "deliverables": ["Schema"], "exit_criteria": ""}
+                        ],
+                    }
+                },
+            )
+
+        # Whitespace-only exit_criteria
+        with pytest.raises(ValueError, match="exit_criteria must be a non-empty string"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [
+                            {"cycle_number": 1, "deliverables": ["Schema"], "exit_criteria": "   "}
+                        ],
+                    }
+                },
+            )
+
+        # exit_criteria not a string
+        with pytest.raises(ValueError, match="exit_criteria must be a non-empty string"):
+            manager.save_planning_deliverables(
+                146,
+                {
+                    "tdd_cycles": {
+                        "total": 1,
+                        "cycles": [
+                            {"cycle_number": 1, "deliverables": ["Schema"], "exit_criteria": 123}
+                        ],
+                    }
+                },
+            )

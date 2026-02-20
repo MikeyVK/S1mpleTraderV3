@@ -33,3 +33,43 @@ def test_scaffold_artifact_tool_has_correct_name():
     tool = scaffold_tools[0]
     assert tool.name == 'scaffold_artifact', \
         f"Expected name 'scaffold_artifact', got '{tool.name}'"
+
+
+def test_transition_cycle_tool_registered():
+    """Verify TransitionCycleTool is registered in server tools list (Issue #146)."""
+    server = MCPServer()
+    tool_names = [type(t).__name__ for t in server.tools]
+    assert 'TransitionCycleTool' in tool_names, (
+        f"TransitionCycleTool not found in registered tools. "
+        f"Registered: {tool_names}"
+    )
+
+
+def test_force_cycle_transition_tool_registered():
+    """Verify ForceCycleTransitionTool is registered in server tools list (Issue #146)."""
+    server = MCPServer()
+    tool_names = [type(t).__name__ for t in server.tools]
+    assert 'ForceCycleTransitionTool' in tool_names, (
+        f"ForceCycleTransitionTool not found in registered tools. "
+        f"Registered: {tool_names}"
+    )
+
+
+def test_transition_cycle_tool_has_correct_name():
+    """Verify TransitionCycleTool MCP name matches expected value (Issue #146)."""
+    server = MCPServer()
+    tools = [t for t in server.tools if type(t).__name__ == 'TransitionCycleTool']
+    assert len(tools) == 1, "Expected exactly one TransitionCycleTool"
+    assert tools[0].name == 'transition_cycle', (
+        f"Expected name 'transition_cycle', got '{tools[0].name}'"
+    )
+
+
+def test_force_cycle_transition_tool_has_correct_name():
+    """Verify ForceCycleTransitionTool MCP name matches expected value (Issue #146)."""
+    server = MCPServer()
+    tools = [t for t in server.tools if type(t).__name__ == 'ForceCycleTransitionTool']
+    assert len(tools) == 1, "Expected exactly one ForceCycleTransitionTool"
+    assert tools[0].name == 'force_cycle_transition', (
+        f"Expected name 'force_cycle_transition', got '{tools[0].name}'"
+    )

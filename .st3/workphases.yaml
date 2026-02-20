@@ -12,6 +12,10 @@ phases:
     description: "Problem analysis, requirements gathering, technical exploration"
     commit_type_hint: "docs"
     subphases: []  # No subphases for research
+    exit_requires:
+      - type: file_glob
+        file: "docs/development/issue{issue_number}/*research*.md"
+        description: "Research document aanwezig (Issue #229 C6)"
 
   planning:
     display_name: "Planning"
@@ -22,6 +26,9 @@ phases:
       - "c2"  # Cycle 2
       - "c3"  # Cycle 3
       - "c4"  # Cycle 4
+    exit_requires:
+      - key: "planning_deliverables"
+        description: "TDD cycle breakdown with validates specs (Issue #229)"
 
   design:
     display_name: "Design"
@@ -40,9 +47,12 @@ phases:
       - "red"          # Write failing test
       - "green"        # Implement minimum code to pass
       - "refactor"     # Clean up code
+    entry_expects:
+      - key: "planning_deliverables"
+        description: "TDD cycle breakdown expected from planning phase (Issue #229)"
 
-  integration:
-    display_name: "Integration"
+  validation:
+    display_name: "Validation"
     description: "End-to-end testing, acceptance testing, system integration"
     commit_type_hint: "test"
     subphases:
