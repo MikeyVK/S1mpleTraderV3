@@ -494,7 +494,7 @@
     "created_at": "2026-02-19T09:50:48.221403+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 9,
+        "total": 10,
         "cycles": [
           {
             "cycle_number": 1,
@@ -772,6 +772,39 @@
               }
             ],
             "exit_criteria": "All 6 tests pass; validation->documentation blokkeert op falende spec; gate optioneel; GAP-14 specs gecorrigeerd"
+          },
+          {
+            "cycle_number": 10,
+            "deliverables": [
+              {
+                "description": "force_phase_transition response emits blocking gates before \u2705 success line",
+                "id": "D10.1",
+                "validates": {
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "ACTION REQUIRED",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "force_cycle_transition response emits blocking deliverables before \u2705 success line",
+                "id": "D10.2",
+                "validates": {
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "ACTION REQUIRED",
+                  "type": "contains_text"
+                }
+              },
+              {
+                "description": "Skipped gates classified as would_block vs would_pass before emitting response",
+                "id": "D10.3",
+                "validates": {
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "would_block",
+                  "type": "contains_text"
+                }
+              }
+            ],
+            "exit_criteria": "All 5 tests pass; blocking gates appear before \u2705; passing gates appear after or omitted; transition behaviour unchanged"
           }
         ]
       }
