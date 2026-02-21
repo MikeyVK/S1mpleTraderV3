@@ -180,6 +180,38 @@ All code must meet these standards before merge:
 6. **Documentation** - Module headers, concise docstrings
 7. **No Shortcuts** - Quality is non-negotiable
 
+## Test File Placement (Guardrail — Issue #247)
+
+> **Violation of this rule caused Issue #247 (169 test files scattered across `tests/`).**
+
+| Source module | Test destination |
+|---|---|
+| `mcp_server/**` | `tests/mcp_server/unit/<mirror-path>/` |
+| `mcp_server/**` (E2E) | `tests/mcp_server/integration/` |
+| `backend/**` | `tests/backend/<mirror-path>/` |
+| **❌ NEVER** | `tests/*.py` root or `tests/unit/` |
+
+**Enforcement:**
+- `base_path` in `.st3/artifacts.yaml` for `unit_test` → `tests/mcp_server/unit/`
+- `base_path` in `.st3/artifacts.yaml` for `integration_test` → `tests/mcp_server/integration/`
+- For backend code, override via `output_path="tests/backend/..."` in `scaffold_artifact`
+- `pytest` zonder args = enkel `tests/mcp_server/` (via `testpaths` in `pyproject.toml`)
+- `pytest tests/backend/` = explicit backend run
+
+**Scaffolding:**
+```python
+# MCP server unit test (default base_path werkt automatisch)
+scaffold_artifact(artifact_type="unit_test", name="TestMyTool", context={...})
+# → tests/mcp_server/unit/test_my_tool.py
+
+# Backend unit test (output_path verplicht)
+scaffold_artifact(
+    artifact_type="unit_test", name="TestMyWorker",
+    output_path="tests/backend/workers/test_my_worker.py",
+    context={...}
+)
+```
+
 ## Historical Context
 
 **Recent violations (commits 1d4258a, d3418dd, 7b62902):**

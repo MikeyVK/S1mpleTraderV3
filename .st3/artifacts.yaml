@@ -186,7 +186,10 @@ artifact_types:
     name_suffix: null
     file_extension: ".py"
     generate_test: false
-    base_path: "tests/"
+    base_path: "tests/mcp_server/unit/"
+    # GUARDRAIL: MCP code tests → tests/mcp_server/unit/  (default)
+    #            Backend code tests → specify output_path="tests/backend/<subdir>/"
+    # DO NOT use base_path "tests/" — files placed there break discovery isolation
     state_machine:
       states: [CREATED]
       initial_state: CREATED
@@ -203,7 +206,9 @@ artifact_types:
     name_suffix: null
     file_extension: ".py"
     generate_test: false
-    base_path: "tests/"
+    base_path: "tests/mcp_server/integration/"
+    # GUARDRAIL: Integration tests always in tests/mcp_server/integration/
+    # DO NOT use base_path "tests/" or "tests/integration/"
     state_machine:
       states: [CREATED]
       initial_state: CREATED
