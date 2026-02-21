@@ -8,6 +8,7 @@ LayeredTemplateValidator → TemplateAnalyzer → TEMPLATE_METADATA
 @layer: Tests (Integration)
 @dependencies: [pytest, SafeEditTool, ValidationService]
 """
+
 # pyright: reportCallIssue=false
 # Standard library
 import tempfile
@@ -36,9 +37,7 @@ class TestSafeEditValidationIntegration:
 
     @pytest.mark.asyncio
     async def test_safe_edit_blocks_on_format_error(
-        self,
-        tool: SafeEditTool,
-        temp_dir: Path
+        self, tool: SafeEditTool, temp_dir: Path
     ) -> None:
         """Test that FORMAT-level violations prevent file save.
 
@@ -52,16 +51,18 @@ class TestSafeEditValidationIntegration:
 Missing frontmatter.
 """
 
-        result = await tool.execute(SafeEditInput(
-            path=str(test_file),
-            content=invalid_md,
-            mode="strict",
-            line_edits=None,
-            insert_lines=None,
-            search=None,
-            replace=None,
-            search_count=None,
-        ))
+        result = await tool.execute(
+            SafeEditInput(
+                path=str(test_file),
+                content=invalid_md,
+                mode="strict",
+                line_edits=None,
+                insert_lines=None,
+                search=None,
+                replace=None,
+                search_count=None,
+            )
+        )
 
         # Should NOT create file (FORMAT violation blocks)
         text = result.content[0]["text"]
@@ -77,9 +78,7 @@ Missing frontmatter.
 
     @pytest.mark.asyncio
     async def test_safe_edit_blocks_on_architectural_error(
-        self,
-        tool: SafeEditTool,
-        temp_dir: Path
+        self, tool: SafeEditTool, temp_dir: Path
     ) -> None:
         """Test that ARCHITECTURAL-level violations prevent file save.
 
@@ -95,16 +94,18 @@ class TestDTO:  # Missing BaseModel inheritance
     pass
 '''
 
-        result = await tool.execute(SafeEditInput(
-            path=str(test_file),
-            content=invalid_dto,
-            mode="strict",
-            line_edits=None,
-            insert_lines=None,
-            search=None,
-            replace=None,
-            search_count=None,
-        ))
+        result = await tool.execute(
+            SafeEditInput(
+                path=str(test_file),
+                content=invalid_dto,
+                mode="strict",
+                line_edits=None,
+                insert_lines=None,
+                search=None,
+                replace=None,
+                search_count=None,
+            )
+        )
 
         text = result.content[0]["text"]
 
@@ -116,9 +117,7 @@ class TestDTO:  # Missing BaseModel inheritance
 
     @pytest.mark.asyncio
     async def test_safe_edit_allows_with_guideline_warnings(
-        self,
-        tool: SafeEditTool,
-        temp_dir: Path
+        self, tool: SafeEditTool, temp_dir: Path
     ) -> None:
         """Test strict-mode behavior for STRICT (architectural) violations.
 
@@ -135,16 +134,18 @@ class TestDTO:  # Missing BaseModel - STRICT violation
     name: str
 '''
 
-        result = await tool.execute(SafeEditInput(
-            path=str(test_file),
-            content=invalid_dto,
-            mode="strict",
-            line_edits=None,
-            insert_lines=None,
-            search=None,
-            replace=None,
-            search_count=None,
-        ))
+        result = await tool.execute(
+            SafeEditInput(
+                path=str(test_file),
+                content=invalid_dto,
+                mode="strict",
+                line_edits=None,
+                insert_lines=None,
+                search=None,
+                replace=None,
+                search_count=None,
+            )
+        )
 
         text = result.content[0]["text"].lower()
         # Accept either: file rejected OR file saved (depends on STRICT validator maturity)
@@ -158,11 +159,7 @@ class TestDTO:  # Missing BaseModel - STRICT violation
             assert "basemodel" in text or "base_class" in text
 
     @pytest.mark.asyncio
-    async def test_safe_edit_includes_agent_hints(
-        self,
-        tool: SafeEditTool,
-        temp_dir: Path
-    ) -> None:
+    async def test_safe_edit_includes_agent_hints(self, tool: SafeEditTool, temp_dir: Path) -> None:
         """Test that validation responses include actionable hints.
 
         Per planning.md: Hints passed to response.
@@ -178,16 +175,18 @@ class TestDTO(BaseModel):
     name: str
 '''
 
-        result = await tool.execute(SafeEditInput(
-            path=str(test_file),
-            content=invalid_dto,
-            mode="strict",
-            line_edits=None,
-            insert_lines=None,
-            search=None,
-            replace=None,
-            search_count=None,
-        ))
+        result = await tool.execute(
+            SafeEditInput(
+                path=str(test_file),
+                content=invalid_dto,
+                mode="strict",
+                line_edits=None,
+                insert_lines=None,
+                search=None,
+                replace=None,
+                search_count=None,
+            )
+        )
 
         text = result.content[0]["text"]
 
@@ -196,9 +195,7 @@ class TestDTO(BaseModel):
 
     @pytest.mark.asyncio
     async def test_validator_registry_loads_from_templates(
-        self,
-        tool: SafeEditTool,
-        temp_dir: Path
+        self, tool: SafeEditTool, temp_dir: Path
     ) -> None:
         """Test that ValidationService loads rules from TEMPLATE_METADATA.
 
@@ -208,9 +205,9 @@ class TestDTO(BaseModel):
         # Valid worker matching worker.py.jinja2 TEMPLATE_METADATA
         test_file = temp_dir / "test_worker.py"
         valid_worker = '''"""Test Worker"""
-from backend.core.interfaces.base_worker import BaseWorker
+from abc import ABC
 
-class TestWorker(BaseWorker[dict, dict]):
+class TestWorker(ABC):
     """Valid worker."""
 
     async def process(self, data: dict) -> dict:
@@ -218,16 +215,18 @@ class TestWorker(BaseWorker[dict, dict]):
         return data
 '''
 
-        result = await tool.execute(SafeEditInput(
-            path=str(test_file),
-            content=valid_worker,
-            mode="strict",
-            line_edits=None,
-            insert_lines=None,
-            search=None,
-            replace=None,
-            search_count=None,
-        ))
+        result = await tool.execute(
+            SafeEditInput(
+                path=str(test_file),
+                content=valid_worker,
+                mode="strict",
+                line_edits=None,
+                insert_lines=None,
+                search=None,
+                replace=None,
+                search_count=None,
+            )
+        )
 
         text = result.content[0]["text"]
 
@@ -242,23 +241,25 @@ class TestWorker(BaseWorker[dict, dict]):
         # Test invalid worker
         test_file2 = temp_dir / "invalid_worker.py"
         invalid_worker = '''"""Invalid Worker"""
-from backend.core.interfaces.base_worker import BaseWorker
+from abc import ABC
 
-class InvalidWorker(BaseWorker[dict, dict]):
-    """Worker missing process()."""
+class InvalidWorker(ABC):
+    """Class missing process()."""
     pass
 '''
 
-        result2 = await tool.execute(SafeEditInput(
-            path=str(test_file2),
-            content=invalid_worker,
-            mode="strict",
-            line_edits=None,
-            insert_lines=None,
-            search=None,
-            replace=None,
-            search_count=None,
-        ))
+        result2 = await tool.execute(
+            SafeEditInput(
+                path=str(test_file2),
+                content=invalid_worker,
+                mode="strict",
+                line_edits=None,
+                insert_lines=None,
+                search=None,
+                replace=None,
+                search_count=None,
+            )
+        )
 
         text2 = result2.content[0]["text"]
 

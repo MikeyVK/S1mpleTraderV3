@@ -89,10 +89,10 @@ class TestScaffoldedOutputCodingStandards:
             responsibilities=["Define data contract", "Validate input"],
             fields=[
                 {"name": "id", "type": "str", "description": "Unique identifier"},
-                {"name": "value", "type": "int", "description": "Numeric value"}
+                {"name": "value", "type": "int", "description": "Numeric value"},
             ],
             frozen=True,
-            examples=[{"id": "test-123", "value": 42}]
+            examples=[{"id": "test-123", "value": 42}],
         )
 
         # REQUIREMENT: Module docstring must exist after SCAFFOLD header (2-line format)
@@ -112,8 +112,9 @@ class TestScaffoldedOutputCodingStandards:
         if not lines[docstring_start_idx].strip():
             docstring_start_idx = 3
 
-        assert lines[docstring_start_idx].strip().startswith('"""'), \
+        assert lines[docstring_start_idx].strip().startswith('"""'), (
             f"Module docstring must follow SCAFFOLD header, found: {lines[docstring_start_idx]}"
+        )
 
         # Collect full docstring
         docstring_lines = []
@@ -132,18 +133,18 @@ class TestScaffoldedOutputCodingStandards:
         docstring_text = "\n".join(docstring_lines)
 
         # REQUIREMENT: Must contain @layer
-        assert "@layer:" in docstring_text, \
-            "Module docstring must contain @layer annotation"
-        assert "Backend (DTOs)" in docstring_text, \
-            "Module docstring must contain layer value"
+        assert "@layer:" in docstring_text, "Module docstring must contain @layer annotation"
+        assert "Backend (DTOs)" in docstring_text, "Module docstring must contain layer value"
 
         # REQUIREMENT: Must contain @dependencies
-        assert "@dependencies:" in docstring_text, \
+        assert "@dependencies:" in docstring_text, (
             "Module docstring must contain @dependencies annotation"
+        )
 
         # REQUIREMENT: Must contain @responsibilities
-        assert "@responsibilities:" in docstring_text, \
+        assert "@responsibilities:" in docstring_text, (
             "Module docstring must contain @responsibilities annotation"
+        )
 
     def test_scaffolded_worker_has_import_section_headers(self):
         """Scaffolded worker must have import section headers.
@@ -162,27 +163,26 @@ class TestScaffoldedOutputCodingStandards:
             layer="Backend (Workers)",
             dependencies=["typing", "asyncio"],
             responsibilities=["Process background tasks"],
-            imports={
-                "stdlib": ["asyncio", "typing"],
-                "third_party": [],
-                "project": []
-            }
+            imports={"stdlib": ["asyncio", "typing"], "third_party": [], "project": []},
         )
 
         content = result.content
         lines = content.split("\n")
 
         # REQUIREMENT: Must have "# Standard library" header
-        assert any("# Standard library" in line for line in lines), \
+        assert any("# Standard library" in line for line in lines), (
             "Import section must have '# Standard library' header"
+        )
 
         # REQUIREMENT: Must have "# Third-party" header
-        assert any("# Third-party" in line for line in lines), \
+        assert any("# Third-party" in line for line in lines), (
             "Import section must have '# Third-party' header"
+        )
 
         # REQUIREMENT: Must have "# Project modules" header
-        assert any("# Project modules" in line for line in lines), \
+        assert any("# Project modules" in line for line in lines), (
             "Import section must have '# Project modules' header"
+        )
 
     def test_scaffolded_generic_has_complete_coding_standards(self):
         """Scaffolded generic class must have both module docstring AND import headers.
@@ -204,8 +204,8 @@ class TestScaffoldedOutputCodingStandards:
             imports={
                 "stdlib": ["import os", "import sys"],
                 "third_party": ["from typing import Any"],
-                "project": ["from backend.core import Something"]
-            }
+                "project": ["from myproject.utils import Something"],
+            },
         )
 
         content = result.content
@@ -230,13 +230,13 @@ class TestWorkerIWorkerLifecyclePattern:
     - initialize(self, strategy_cache, **capabilities) - Runtime init (DI)
     - shutdown(self) - Cleanup phase
     - name property (IWorker requirement)
-    
+
     This ensures V3 two-phase initialization pattern (not V2 constructor injection).
     """
 
     def test_scaffolded_worker_has_iworker_lifecycle_imports(self):
         """Worker must import IWorker, IWorkerLifecycle, BuildSpec, and related types.
-        
+
         RED: This test WILL FAIL until worker.py.jinja2 exists with IWorkerLifecycle pattern.
         """
         registry = ArtifactRegistryConfig.from_file()
@@ -254,23 +254,21 @@ class TestWorkerIWorkerLifecyclePattern:
         content = result.content
 
         # REQUIREMENT: Must import IWorker + IWorkerLifecycle protocols
-        assert "from backend.core.interfaces.worker import IWorker" in content or \
-               "from backend.core.interfaces.worker import IWorkerLifecycle" in content, \
-               "Worker must import IWorker/IWorkerLifecycle protocols"
-        
+        assert "IWorker" in content or "IWorkerLifecycle" in content, (
+            "Worker must import IWorker/IWorkerLifecycle protocols"
+        )
+
         # REQUIREMENT: Must import BuildSpec for construction
-        assert "from backend.core.interfaces.config import BuildSpec" in content or \
-               "BuildSpec" in content, \
-               "Worker must import BuildSpec for __init__ signature"
-        
+        assert "BuildSpec" in content, "Worker must import BuildSpec for __init__ signature"
+
         # REQUIREMENT: Must import IStrategyCache for initialize()
-        assert "from backend.core.interfaces.cache import IStrategyCache" in content or \
-               "IStrategyCache" in content, \
-               "Worker must import IStrategyCache for initialize() signature"
+        assert "IStrategyCache" in content, (
+            "Worker must import IStrategyCache for initialize() signature"
+        )
 
     def test_scaffolded_worker_implements_protocols(self):
         """Worker class must explicitly implement IWorker and IWorkerLifecycle.
-        
+
         RED: This test WILL FAIL until template generates protocol implementation.
         """
         registry = ArtifactRegistryConfig.from_file()
@@ -288,13 +286,14 @@ class TestWorkerIWorkerLifecyclePattern:
         content = result.content
 
         # REQUIREMENT: Class must implement both protocols
-        assert "class SignalDetector(IWorker, IWorkerLifecycle):" in content or \
-               "class SignalDetector(IWorkerLifecycle):" in content, \
-               "Worker class must implement IWorker + IWorkerLifecycle protocols"
+        assert (
+            "class SignalDetector(IWorker, IWorkerLifecycle):" in content
+            or "class SignalDetector(IWorkerLifecycle):" in content
+        ), "Worker class must implement IWorker + IWorkerLifecycle protocols"
 
     def test_scaffolded_worker_has_build_spec_constructor(self):
         """Worker __init__ must accept BuildSpec only (no dependencies).
-        
+
         RED: This test WILL FAIL until template generates V3 construction pattern.
         """
         registry = ArtifactRegistryConfig.from_file()
@@ -312,20 +311,23 @@ class TestWorkerIWorkerLifecyclePattern:
         content = result.content
 
         # REQUIREMENT: __init__ signature must be (self, build_spec: BuildSpec)
-        assert "def __init__(self, build_spec: BuildSpec)" in content, \
-               "Worker __init__ must accept BuildSpec only (V3 pattern, not V2 constructor injection)"
-        
+        assert "def __init__(self, build_spec: BuildSpec)" in content, (
+            "Worker __init__ must accept BuildSpec only (V3 pattern, not V2 constructor injection)"
+        )
+
         # REQUIREMENT: Must NOT have dependency parameters in __init__
         # (dependencies injected via initialize(), not constructor)
-        init_section = content[content.find("def __init__"):content.find("def __init__") + 200]
-        assert "EventBus" not in init_section, \
-               "Worker __init__ must NOT accept EventBus (use initialize() for DI)"
-        assert "Logger" not in init_section or "# " in init_section, \
-               "Worker __init__ must NOT accept Logger in parameters (use initialize() for DI)"
+        init_section = content[content.find("def __init__") : content.find("def __init__") + 200]
+        assert "EventBus" not in init_section, (
+            "Worker __init__ must NOT accept EventBus (use initialize() for DI)"
+        )
+        assert "Logger" not in init_section or "# " in init_section, (
+            "Worker __init__ must NOT accept Logger in parameters (use initialize() for DI)"
+        )
 
     def test_scaffolded_worker_has_initialize_method(self):
         """Worker must have initialize() method for two-phase initialization.
-        
+
         RED: This test WILL FAIL until template generates initialize() method.
         """
         registry = ArtifactRegistryConfig.from_file()
@@ -343,18 +345,22 @@ class TestWorkerIWorkerLifecyclePattern:
         content = result.content
 
         # REQUIREMENT: Must have initialize() method (can be multi-line)
-        assert "def initialize(" in content and "strategy_cache: IStrategyCache" in content and "**capabilities" in content, \
-               "Worker must have initialize() method for runtime DI"
-        
+        assert (
+            "def initialize(" in content
+            and "strategy_cache: IStrategyCache" in content
+            and "**capabilities" in content
+        ), "Worker must have initialize() method for runtime DI"
+
         # REQUIREMENT: Must validate strategy_cache based on worker_scope
         if "worker_scope='platform'" in content or 'worker_scope="platform"' in content:
             # Platform workers expect cache=None
-            assert "strategy_cache is None" in content or "cache validation" in content, \
-                   "Platform worker must validate strategy_cache is None"
+            assert "strategy_cache is None" in content or "cache validation" in content, (
+                "Platform worker must validate strategy_cache is None"
+            )
 
     def test_scaffolded_worker_has_shutdown_method(self):
         """Worker must have shutdown() method for cleanup.
-        
+
         RED: This test WILL FAIL until template generates shutdown() method.
         """
         registry = ArtifactRegistryConfig.from_file()
@@ -372,19 +378,21 @@ class TestWorkerIWorkerLifecyclePattern:
         content = result.content
 
         # REQUIREMENT: Must have shutdown() method
-        assert "def shutdown(self)" in content, \
-               "Worker must have shutdown() method for cleanup"
-        
+        assert "def shutdown(self)" in content, "Worker must have shutdown() method for cleanup"
+
         # REQUIREMENT: Shutdown must be idempotent (comment or implementation)
-        shutdown_section = content[content.find("def shutdown"):content.find("def shutdown") + 300]
-        assert "idempotent" in shutdown_section.lower() or \
-               "safely called multiple times" in shutdown_section.lower() or \
-               "pass" in shutdown_section, \
-               "shutdown() must document idempotent behavior"
+        shutdown_section = content[
+            content.find("def shutdown") : content.find("def shutdown") + 300
+        ]
+        assert (
+            "idempotent" in shutdown_section.lower()
+            or "safely called multiple times" in shutdown_section.lower()
+            or "pass" in shutdown_section
+        ), "shutdown() must document idempotent behavior"
 
     def test_scaffolded_worker_has_name_property(self):
         """Worker must have name property (IWorker requirement).
-        
+
         RED: This test WILL FAIL until template generates name property.
         """
         registry = ArtifactRegistryConfig.from_file()
@@ -402,23 +410,23 @@ class TestWorkerIWorkerLifecyclePattern:
         content = result.content
 
         # REQUIREMENT: Must have @property decorator + name getter
-        assert "@property" in content and "def name(self)" in content, \
-               "Worker must have name property (IWorker protocol requirement)"
-        
+        assert "@property" in content and "def name(self)" in content, (
+            "Worker must have name property (IWorker protocol requirement)"
+        )
+
         # REQUIREMENT: Name should return worker name
-        assert "return" in content[content.find("def name"):content.find("def name") + 150], \
-               "name property must return worker name"
+        assert "return" in content[content.find("def name") : content.find("def name") + 150], (
+            "name property must return worker name"
+        )
 
 
 class TestConcreteTemplateStructure:
     """Test that concrete templates have required Jinja2 structure (Task 1.6 RED)."""
 
-    @pytest.mark.parametrize("template_name", [
-        "dto.py.jinja2",
-        "worker.py.jinja2",
-        "service_command.py.jinja2",
-        "generic.py.jinja2"
-    ])
+    @pytest.mark.parametrize(
+        "template_name",
+        ["dto.py.jinja2", "worker.py.jinja2", "service_command.py.jinja2", "generic.py.jinja2"],
+    )
     def test_python_templates_have_scaffold_metadata(self, template_name: str):
         """Python concrete templates must have SCAFFOLD metadata block.
 
@@ -435,12 +443,12 @@ class TestConcreteTemplateStructure:
         content = template_path.read_text(encoding="utf-8")
 
         # REQUIREMENT: Must contain TEMPLATE_METADATA block
-        assert "TEMPLATE_METADATA" in content, \
-            f"{template_name} missing TEMPLATE_METADATA"
+        assert "TEMPLATE_METADATA" in content, f"{template_name} missing TEMPLATE_METADATA"
 
         # REQUIREMENT: Must extend tier chain (inheritance)
-        assert "extends" in content or "{% extends" in content, \
+        assert "extends" in content or "{% extends" in content, (
             f"{template_name} must extend base template for inheritance"
+        )
 
     def test_design_template_has_scaffold_metadata(self):
         """design.md.jinja2 must have SCAFFOLD metadata block."""

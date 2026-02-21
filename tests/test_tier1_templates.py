@@ -35,7 +35,7 @@ class TestTier1CodeTemplate:
             output_path="src/workers/test.py",
             format="python",
             class_name="TestWorker",
-            class_docstring="Test worker class"
+            class_docstring="Test worker class",
         )
 
         lines = result.strip().split("\n")
@@ -58,7 +58,7 @@ class TestTier1CodeTemplate:
             output_path="src/workers/test.py",
             format="python",
             class_name="MyWorker",
-            class_docstring="Worker for processing tasks"
+            class_docstring="Worker for processing tasks",
         )
 
         assert "class MyWorker:" in result
@@ -81,14 +81,14 @@ class TestTier1CodeTemplate:
             imports={
                 "stdlib": ["import os", "from pathlib import Path"],
                 "third_party": ["import yaml"],
-                "project": ["from backend.core import Worker"]
-            }
+                "project": ["from myproject.core import Worker"],
+            },
         )
 
         assert "import os" in result
         assert "from pathlib import Path" in result
         assert "import yaml" in result
-        assert "from backend.core import Worker" in result
+        assert "from myproject.core import Worker" in result
 
 
 class TestTier1DocumentTemplate:
@@ -112,7 +112,7 @@ class TestTier1DocumentTemplate:
             timestamp="2026-01-23T09:00:00Z",
             output_path="docs/research.md",
             format="markdown",
-            title="Issue #72 Research"
+            title="Issue #72 Research",
         )
 
         lines = result.strip().split("\n")
@@ -134,13 +134,16 @@ class TestTier1DocumentTemplate:
             timestamp="2026-01-23T09:00:00Z",
             output_path="docs/research.md",
             format="markdown",
-            title="Template Library Design"
+            title="Template Library Design",
         )
 
         assert "# Template Library Design" in result
 
     def test_renders_sections(self):
-        """tier1_base_document renders BASE_TEMPLATE structure (Purpose, Scope, Related Docs, Version History)."""
+        """tier1_base_document renders BASE_TEMPLATE structure.
+
+        Sections: Purpose, Scope, Related Docs, Version History.
+        """
         env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
         template = env.get_template("tier1_base_document.jinja2")
 
@@ -187,7 +190,7 @@ class TestTier1ConfigTemplate:
             timestamp="2026-01-23T11:00:00Z",
             output_path=".github/workflows/ci.yaml",
             format="yaml",
-            config_name="CI Pipeline"
+            config_name="CI Pipeline",
         )
 
         lines = result.strip().split("\n")
@@ -208,7 +211,7 @@ class TestTier1ConfigTemplate:
             timestamp="2026-01-23T11:00:00Z",
             output_path=".github/workflows/ci.yaml",
             format="yaml",
-            config_name="CI Workflow"
+            config_name="CI Workflow",
         )
 
         assert "name: CI Workflow" in result
@@ -225,11 +228,7 @@ class TestTier1ConfigTemplate:
             output_path=".github/workflows/ci.yaml",
             format="yaml",
             config_name="CI",
-            config_entries={
-                "on": "push",
-                "jobs": "build",
-                "runs-on": "ubuntu-latest"
-            }
+            config_entries={"on": "push", "jobs": "build", "runs-on": "ubuntu-latest"},
         )
 
         assert "on: push" in result
