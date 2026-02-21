@@ -26,10 +26,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Jinja2 environment rooted at the scaffolding templates directory."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -97,9 +94,9 @@ class TestTier3PatternPythonError:
         assert "WorkerInitializationError" in imports_rendered
 
         assert "raise" in raise_rendered
-        assert "f\"{self._name}: initialization failed\"" in raise_rendered
+        assert 'f"{self._name}: initialization failed"' in raise_rendered
 
         assert "try" in wrap_rendered
         assert "except Exception" in wrap_rendered
         assert "from exc" in wrap_rendered
-        assert "f\"{self._name}: initialization failed\"" in wrap_rendered
+        assert 'f"{self._name}: initialization failed"' in wrap_rendered

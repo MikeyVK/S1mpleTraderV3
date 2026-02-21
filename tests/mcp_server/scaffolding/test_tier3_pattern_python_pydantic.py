@@ -28,10 +28,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Jinja2 environment rooted at the scaffolding templates directory."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -113,8 +110,8 @@ class TestTier3PatternPythonPydantic:
         assert "(BaseModel" in base_rendered
 
         assert "model_config" in config_rendered
-        assert "\"extra\": \"forbid\"" in config_rendered
-        assert "\"frozen\": True" in config_rendered
+        assert '"extra": "forbid"' in config_rendered
+        assert '"frozen": True' in config_rendered
 
         assert "Field" in field_rendered
         assert "default_factory=generate_signal_id" in field_rendered

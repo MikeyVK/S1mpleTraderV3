@@ -5,7 +5,7 @@ from typing import Any
 
 import yaml
 
-from backend.core.scope_encoder import ScopeEncoder
+from mcp_server.core.scope_encoder import ScopeEncoder
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError

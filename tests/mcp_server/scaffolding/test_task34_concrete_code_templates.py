@@ -90,9 +90,7 @@ def test_concrete_code_templates_use_tier3_imports(
     content = template_path.read_text(encoding="utf-8")
 
     for import_stmt in required_imports:
-        assert import_stmt in content, (
-            f"{template_name} missing tier3 import: {import_stmt}"
-        )
+        assert import_stmt in content, f"{template_name} missing tier3 import: {import_stmt}"
 
 
 @pytest.mark.parametrize(

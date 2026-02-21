@@ -67,17 +67,13 @@ def test_planning_md_renders_with_patterns(jinja_env):
     assert "Read architecture.md" in output, "Prerequisite 2 should render"
 
     assert "## Related Documentation" in output, "Related docs section should render"
-    assert (
-        "[docs/design.md][related-1]" in output
-    ), "Related doc 1 link ref should render"
-    assert (
-        "[docs/research.md][related-2]" in output
-    ), "Related doc 2 link ref should render"
+    assert "[docs/design.md][related-1]" in output, "Related doc 1 link ref should render"
+    assert "[docs/research.md][related-2]" in output, "Related doc 2 link ref should render"
 
     assert "## Version History" in output, "Version history section should render"
-    assert (
-        "| Version | Date | Author | Changes |" in output
-    ), "Version history table header (4 columns) should render"
+    assert "| Version | Date | Author | Changes |" in output, (
+        "Version history table header (4 columns) should render"
+    )
     assert "| Agent |" in output, "Version history Agent column should render"
 
     # Verify planning-specific content
@@ -131,17 +127,13 @@ def test_research_md_renders_with_patterns(jinja_env):
 
     # Related docs uses 'references' context variable for research.md
     assert "## Related Documentation" in output, "Related docs section should render"
-    assert (
-        "[docs/architecture.md][related-1]" in output
-    ), "Reference 1 link ref should render"
-    assert (
-        "[docs/planning.md][related-2]" in output
-    ), "Reference 2 link ref should render"
+    assert "[docs/architecture.md][related-1]" in output, "Reference 1 link ref should render"
+    assert "[docs/planning.md][related-2]" in output, "Reference 2 link ref should render"
 
     assert "## Version History" in output, "Version history section should render"
-    assert (
-        "| Version | Date | Author | Changes |" in output
-    ), "Version history table header (4 columns) should render"
+    assert "| Version | Date | Author | Changes |" in output, (
+        "Version history table header (4 columns) should render"
+    )
     assert "| Agent |" in output, "Version history Agent column should render"
 
     # Verify research-specific content (questions pattern works)
@@ -208,17 +200,13 @@ def test_design_md_renders_with_extended_header(jinja_env):
     assert "Read research.md" in output, "Prerequisite 2 should render"
 
     assert "## Related Documentation" in output, "Related docs section should render"
-    assert (
-        "[docs/planning.md][related-1]" in output
-    ), "Related doc 1 link ref should render"
-    assert (
-        "[docs/architecture.md][related-2]" in output
-    ), "Related doc 2 link ref should render"
+    assert "[docs/planning.md][related-1]" in output, "Related doc 1 link ref should render"
+    assert "[docs/architecture.md][related-2]" in output, "Related doc 2 link ref should render"
 
     assert "## Version History" in output, "Version history section should render"
-    assert (
-        "| Version | Date | Author | Changes |" in output
-    ), "Version history table header (4 columns) should render"
+    assert "| Version | Date | Author | Changes |" in output, (
+        "Version history table header (4 columns) should render"
+    )
     assert "| Agent |" in output, "Version history Agent column should render"
 
     # Verify design-specific content
@@ -277,17 +265,13 @@ def test_architecture_md_renders_with_numbered_sections(jinja_env):
     assert "Read design.md" in output, "Prerequisite should render"
 
     assert "## Related Documentation" in output, "Related docs section should render"
-    assert (
-        "[docs/design.md][related-1]" in output
-    ), "Related doc 1 link ref should render"
-    assert (
-        "[docs/research.md][related-2]" in output
-    ), "Related doc 2 link ref should render"
+    assert "[docs/design.md][related-1]" in output, "Related doc 1 link ref should render"
+    assert "[docs/research.md][related-2]" in output, "Related doc 2 link ref should render"
 
     assert "## Version History" in output, "Version history section should render"
-    assert (
-        "| Version | Date | Author | Changes |" in output
-    ), "Version history table header (4 columns) should render"
+    assert "| Version | Date | Author | Changes |" in output, (
+        "Version history table header (4 columns) should render"
+    )
     assert "| Agent |" in output, "Version history Agent column should render"
 
     # Verify architecture-specific content (numbered sections work)

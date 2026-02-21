@@ -84,11 +84,48 @@ directories:
 
   tests:
     parent: null
-    description: "Test suite"
-    allowed_artifact_types: []  # No artifact types (manual test files)
+    description: "Test suite root — NO test files here directly"
+    allowed_artifact_types: []  # Tests must go in tests/mcp_server/ or tests/backend/
     allowed_extensions:
       - ".py"
-    require_scaffold_for: []  # Tests not required to be scaffolded
+    require_scaffold_for: []
+
+  tests/mcp_server:
+    parent: tests
+    description: "MCP server test suite (default discovery via testpaths in pyproject.toml)"
+    allowed_artifact_types:
+      - unit_test
+      - integration_test
+    allowed_extensions:
+      - ".py"
+    require_scaffold_for: []
+
+  tests/mcp_server/unit:
+    parent: tests/mcp_server
+    description: "MCP unit tests — no real I/O, no fixtures from tests/backend/"
+    allowed_artifact_types:
+      - unit_test
+    allowed_extensions:
+      - ".py"
+    require_scaffold_for: []
+
+  tests/mcp_server/integration:
+    parent: tests/mcp_server
+    description: "MCP integration / E2E tests — marked @integration, excluded from default run"
+    allowed_artifact_types:
+      - integration_test
+    allowed_extensions:
+      - ".py"
+    require_scaffold_for: []
+
+  tests/backend:
+    parent: tests
+    description: "Backend unit tests — pure Python, no MCP imports"
+    allowed_artifact_types:
+      - unit_test
+    allowed_extensions:
+      - ".py"
+    require_scaffold_for: []
 
   docs:
     parent: null

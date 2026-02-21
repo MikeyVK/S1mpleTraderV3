@@ -1,4 +1,5 @@
 """Tests for GitConfig (Issue #55)."""
+
 import pytest
 
 from mcp_server.config.git_config import GitConfig
@@ -23,7 +24,7 @@ class TestGitConfig:
             "red": "test",
             "green": "feat",
             "refactor": "refactor",
-            "docs": "docs"
+            "docs": "docs",
         }
         assert config.protected_branches == ["main", "master", "develop"]
         assert config.branch_name_pattern == r"^[a-z0-9-]+$"

@@ -28,7 +28,7 @@ def test_research_md_imports_seven_patterns() -> None:
     """research.md must import 7 tier3 patterns."""
     template_path = TEMPLATE_ROOT / "research.md.jinja2"
     content = template_path.read_text(encoding="utf-8")
-    
+
     # Check for {% import %} or {%- import %} statements
     required_patterns = [
         "tier3_pattern_markdown_status_header",
@@ -39,17 +39,18 @@ def test_research_md_imports_seven_patterns() -> None:
         "tier3_pattern_markdown_version_history",
         "tier3_pattern_markdown_open_questions",
     ]
-    
+
     for pattern in required_patterns:
-        assert 'import "{}.jinja2"'.format(pattern) in content, \
+        assert 'import "{}.jinja2"'.format(pattern) in content, (
             "research.md missing import: {}".format(pattern)
+        )
 
 
 def test_planning_md_imports_six_patterns() -> None:
     """planning.md must import 6 tier3 patterns."""
     template_path = TEMPLATE_ROOT / "planning.md.jinja2"
     content = template_path.read_text(encoding="utf-8")
-    
+
     required_patterns = [
         "tier3_pattern_markdown_status_header",
         "tier3_pattern_markdown_purpose_scope",
@@ -58,17 +59,18 @@ def test_planning_md_imports_six_patterns() -> None:
         "tier3_pattern_markdown_related_docs",
         "tier3_pattern_markdown_version_history",
     ]
-    
+
     for pattern in required_patterns:
-        assert 'import "{}.jinja2"'.format(pattern) in content, \
+        assert 'import "{}.jinja2"'.format(pattern) in content, (
             "planning.md missing import: {}".format(pattern)
+        )
 
 
 def test_design_md_imports_seven_patterns() -> None:
     """design.md must import 7 tier3 patterns."""
     template_path = TEMPLATE_ROOT / "design.md.jinja2"
     content = template_path.read_text(encoding="utf-8")
-    
+
     required_patterns = [
         "tier3_pattern_markdown_status_header",
         "tier3_pattern_markdown_purpose_scope",
@@ -78,7 +80,8 @@ def test_design_md_imports_seven_patterns() -> None:
         "tier3_pattern_markdown_open_questions",
         "tier3_pattern_markdown_dividers",
     ]
-    
+
     for pattern in required_patterns:
-        assert 'import "{}.jinja2"'.format(pattern) in content, \
+        assert 'import "{}.jinja2"'.format(pattern) in content, (
             "design.md missing import: {}".format(pattern)
+        )

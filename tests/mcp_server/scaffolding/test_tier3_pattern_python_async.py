@@ -15,10 +15,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Create Jinja2 environment with test templates path."""
     templates_path = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_path)))
 
@@ -93,6 +90,7 @@ class TestTier3PatternPythonAsync:
         )
         content = template_path.read_text(encoding="utf-8")
         assert "{% macro pattern_async_context_managers" in content
+
     def test_pattern_async_imports_renders(self, jinja_env):
         """Test that pattern_async_imports macro renders correctly."""
         template = jinja_env.get_template("tier3_pattern_python_async.jinja2")
@@ -104,8 +102,7 @@ class TestTier3PatternPythonAsync:
         """Test that pattern_async_methods macro renders async method structure."""
         template = jinja_env.get_template("tier3_pattern_python_async.jinja2")
         rendered = template.module.pattern_async_methods(
-            method_name="process_data",
-            params="data: str"
+            method_name="process_data", params="data: str"
         )
         assert "async def process_data" in rendered
         assert "data: str" in rendered
@@ -113,8 +110,7 @@ class TestTier3PatternPythonAsync:
     def test_pattern_async_context_managers_renders(self, jinja_env):
         """Test that pattern_async_context_managers macro renders."""
         template = jinja_env.get_template("tier3_pattern_python_async.jinja2")
-        rendered = template.module.pattern_async_context_managers(
-        )
+        rendered = template.module.pattern_async_context_managers()
         assert "async" in rendered and ("__aenter__" in rendered or "__aexit__" in rendered)
 
     def test_macro_imports_include_awaitable(self, jinja_env):
@@ -127,9 +123,7 @@ class TestTier3PatternPythonAsync:
         """Test that async methods support await keyword."""
         template = jinja_env.get_template("tier3_pattern_python_async.jinja2")
         rendered = template.module.pattern_async_methods(
-            method_name="fetch",
-            params="url: str",
-            body="return await http_client.get(url)"
+            method_name="fetch", params="url: str", body="return await http_client.get(url)"
         )
         assert "async def fetch" in rendered
         assert "await" in rendered

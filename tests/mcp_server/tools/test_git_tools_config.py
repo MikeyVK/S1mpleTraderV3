@@ -6,6 +6,7 @@ Conventions tested:
 - #7: Branch type validation pattern
 - #8: TDD phase validation pattern
 """
+
 import tempfile
 from pathlib import Path
 
@@ -46,14 +47,10 @@ class TestGitToolsConfigIntegration:
             },
             "protected_branches": ["main"],
             "branch_name_pattern": "^[a-z0-9-]+$",
-            "default_base_branch": "main"
+            "default_base_branch": "main",
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.yaml',
-            delete=False
-        ) as temp_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
             yaml.dump(custom_config, temp_file)
             temp_path = temp_file.name
 
@@ -63,9 +60,7 @@ class TestGitToolsConfigIntegration:
 
             # "hotfix" should pass (in custom config)
             input_hotfix = CreateBranchInput(
-                name="test-branch",
-                branch_type="hotfix",
-                base_branch="main"
+                name="test-branch", branch_type="hotfix", base_branch="main"
             )
             assert input_hotfix.branch_type == "hotfix"
 
@@ -74,7 +69,7 @@ class TestGitToolsConfigIntegration:
                 CreateBranchInput(
                     name="test-branch",
                     branch_type="feature",  # Not in custom config
-                    base_branch="main"
+                    base_branch="main",
                 )
             # Validator uses GitConfig, rejects "feature"
             error_str = str(exc_info.value)
@@ -97,14 +92,10 @@ class TestGitToolsConfigIntegration:
             "commit_prefix_map": {"test": "test", "impl": "feat"},
             "protected_branches": ["main"],
             "branch_name_pattern": "^[a-z0-9-]+$",
-            "default_base_branch": "main"
+            "default_base_branch": "main",
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.yaml',
-            delete=False
-        ) as temp_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
             yaml.dump(custom_config, temp_file)
             temp_path = temp_file.name
 
@@ -113,17 +104,14 @@ class TestGitToolsConfigIntegration:
             _ = GitConfig.from_file(temp_path)
 
             # "impl" should pass (in custom config)
-            input_impl = GitCommitInput(
-                phase="impl",
-                message="test message"
-            )
+            input_impl = GitCommitInput(phase="impl", message="test message")
             assert input_impl.phase == "impl"
 
             # "red" should FAIL (NOT in custom config)
             with pytest.raises(ValidationError) as exc_info:
                 GitCommitInput(
                     phase="red",  # Not in custom config
-                    message="test message"
+                    message="test message",
                 )
             # Validator uses GitConfig, rejects "red"
             error_str = str(exc_info.value)

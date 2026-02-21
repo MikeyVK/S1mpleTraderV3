@@ -26,10 +26,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Jinja2 environment rooted at the scaffolding templates directory."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -115,11 +112,11 @@ class TestTier3PatternPythonDi:
         assert "raise WorkerInitializationError" in require_dep_rendered
         assert "di.dependency.strategy_cache" in require_dep_rendered
 
-        assert "if \"dto_types\" not in capabilities" in require_cap_rendered
+        assert 'if "dto_types" not in capabilities' in require_cap_rendered
         assert "raise WorkerInitializationError" in require_cap_rendered
         assert "di.capability.dto_types" in require_cap_rendered
         assert "self._cache" in set_dep_rendered
         assert "= strategy_cache" in set_dep_rendered
 
         assert "self._dto_types" in set_cap_rendered
-        assert "capabilities[\"dto_types\"]" in set_cap_rendered
+        assert 'capabilities["dto_types"]' in set_cap_rendered

@@ -139,7 +139,6 @@ def test_restart_events_logged_to_audit_trail(monkeypatch):
     marker_path.unlink(missing_ok=True)
 
 
-
 def test_verify_server_restarted_with_valid_marker():
     """RED: Test verify_server_restarted with valid marker.
 
@@ -158,7 +157,7 @@ def test_verify_server_restarted_with_valid_marker():
         "timestamp": past_time + 5,  # 5 seconds ago (after past_time)
         "pid": 99999,  # Different PID
         "reason": "Test restart verification",
-        "iso_time": datetime.now(UTC).isoformat()
+        "iso_time": datetime.now(UTC).isoformat(),
     }
     marker_path.write_text(json.dumps(marker_data), encoding="utf-8")
 
@@ -211,7 +210,7 @@ def test_verify_server_restarted_old_marker():
         "timestamp": old_time,
         "pid": 99999,
         "reason": "Old restart",
-        "iso_time": datetime.now(UTC).isoformat()
+        "iso_time": datetime.now(UTC).isoformat(),
     }
     marker_path.write_text(json.dumps(marker_data), encoding="utf-8")
 
@@ -282,14 +281,15 @@ def test_restart_uses_sys_exit_42_not_os_execv(tmp_path, monkeypatch):
         asyncio.run(run_test())
 
     # Should exit with code 42 (restart request for supervisor)
-    assert exc_info.value.code == 42, \
+    assert exc_info.value.code == 42, (
         f"Expected exit code 42 (supervisor restart), got {exc_info.value.code}"
+    )
 
     # Verify sys.exit(42) was called
     assert len(exit_calls) == 1, "sys.exit should be called once"
-    assert exit_calls[0] == 42, \
+    assert exit_calls[0] == 42, (
         f"Expected sys.exit(42) for supervisor restart, got sys.exit({exit_calls[0]})"
+    )
 
     # Verify os.execv was NOT called (old approach, breaks MCP protocol)
-    assert not execv_calls, \
-        "os.execv should NOT be called (use sys.exit(42) + supervisor instead)"
+    assert not execv_calls, "os.execv should NOT be called (use sys.exit(42) + supervisor instead)"

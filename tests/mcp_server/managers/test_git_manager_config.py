@@ -1,4 +1,5 @@
 """Tests for GitManager (Issue #55 integration)."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -55,9 +56,7 @@ class TestGitManagerConfigIntegration:
         self.mock_adapter.commit.return_value = "abc123"
 
         self.manager.commit_with_scope("tdd", "failing test", sub_phase="red")
-        self.mock_adapter.commit.assert_called_with(
-            "test(P_TDD_SP_RED): failing test", files=None
-        )
+        self.mock_adapter.commit.assert_called_with("test(P_TDD_SP_RED): failing test", files=None)
 
         self.manager.commit_with_scope("tdd", "make it pass", sub_phase="green")
         self.mock_adapter.commit.assert_called_with(

@@ -28,10 +28,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Create Jinja2 environment with template loader."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -41,9 +38,7 @@ class TestTier3PatternPythonTestFixtures:
 
     def test_template_exists(self, jinja_env):
         """Test that template exists and loads."""
-        template = jinja_env.get_template(
-            "tier3_pattern_python_test_fixtures.jinja2"
-        )
+        template = jinja_env.get_template("tier3_pattern_python_test_fixtures.jinja2")
         assert template is not None
 
     def test_template_has_no_extends(self):
@@ -57,9 +52,9 @@ class TestTier3PatternPythonTestFixtures:
         )
         content = template_path.read_text(encoding="utf-8")
         assert "{% extends" not in content
-        
+
         # Check for blocks in non-comment code
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
     def test_template_has_metadata(self):
@@ -98,7 +93,7 @@ def my_fixture():
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         assert "@pytest.fixture" in result
         assert "def my_fixture():" in result
 
@@ -110,7 +105,7 @@ def my_fixture():
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         assert '@pytest.fixture(scope="session")' in result
 
     def test_macro_generates_fixture_with_autouse(self, jinja_env):
@@ -121,7 +116,7 @@ def my_fixture():
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         assert "@pytest.fixture(autouse=True)" in result
 
     def test_macro_generates_fixture_with_params(self, jinja_env):
@@ -132,7 +127,7 @@ def my_fixture():
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         assert "@pytest.fixture(params=[1, 2, 3])" in result
 
     def test_macro_can_be_imported(self, jinja_env):
@@ -170,12 +165,12 @@ def my_fixture():
             / "tier3_pattern_python_test_fixtures.jinja2"
         )
         content = template_path.read_text(encoding="utf-8")
-        
+
         # Count macros in actual code (not comments)
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         macro_count = no_comments.count("{% macro")
         assert macro_count == 1
-        
+
         # No example fixture implementations (old blocks had ~200 lines)
         assert "def sample_fixture():" not in content
         assert "yield" not in content.lower() or "yield" in "{#"  # Only in comments

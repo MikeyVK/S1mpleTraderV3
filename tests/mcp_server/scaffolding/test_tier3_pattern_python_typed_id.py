@@ -26,10 +26,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Jinja2 environment rooted at the scaffolding templates directory."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
