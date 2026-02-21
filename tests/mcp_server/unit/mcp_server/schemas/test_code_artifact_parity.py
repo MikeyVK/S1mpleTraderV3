@@ -54,7 +54,7 @@ logger = logging.getLogger(__name__)
 # Shared helpers
 # ---------------------------------------------------------------------------
 
-_TEMPLATE_ROOT = Path(__file__).parents[4] / "mcp_server" / "scaffolding" / "templates"
+_TEMPLATE_ROOT = Path(__file__).parents[5] / "mcp_server" / "scaffolding" / "templates"
 
 # Tier2 structural vars that exist in parent templates but are overridden in concrete templates.
 # Concrete templates (test_unit, test_integration, worker, etc.) override all tier2 blocks,

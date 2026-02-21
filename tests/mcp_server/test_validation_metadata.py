@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for Issue #52 alignment - Validation TEMPLATE_METADATA (Issue #72 Task 1.5).
 
 RED phase: Tests for TemplateAnalyzer.extract_metadata() on Tier 0-2 templates.
@@ -18,7 +18,7 @@ class TestTier0ValidationMetadata:
     @staticmethod
     def get_templates_dir():
         """Get templates directory path."""
-        return Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
+        return Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
     def test_tier0_has_validation_metadata(self):
         """Tier 0 template should have validation TEMPLATE_METADATA."""
@@ -62,7 +62,7 @@ class TestTier1ValidationMetadata:
     @staticmethod
     def get_templates_dir():
         """Get templates directory path."""
-        return Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
+        return Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
     def test_tier1_code_has_validation_metadata(self):
         """Tier 1 CODE template should have validation metadata."""
@@ -163,7 +163,7 @@ class TestValidationMetadataStructure:
     @staticmethod
     def get_templates_dir():
         """Get templates directory path."""
-        return Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
+        return Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
     @pytest.mark.parametrize("template_file", [
         "tier0_base_artifact.jinja2",

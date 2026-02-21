@@ -28,7 +28,7 @@ from mcp_server.managers.artifact_manager import ArtifactManager
 # Fixtures
 # ---------------------------------------------------------------------------
 
-_PROJECT_ROOT = Path(__file__).parent.parent.parent
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 
 @pytest.fixture(autouse=True)

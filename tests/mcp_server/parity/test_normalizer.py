@@ -18,7 +18,7 @@ Parity test framework for template output normalization and equivalence validati
 import pytest
 
 # Project modules
-from tests.parity.normalization import (
+from tests.mcp_server.parity.normalization import (
     assert_equivalent,
     normalize_imports,
     normalize_output,

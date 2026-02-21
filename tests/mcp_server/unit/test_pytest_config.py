@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 def _load_addopts() -> list[str]:
-    pyproject = Path(__file__).parent.parent.parent / "pyproject.toml"
+    pyproject = Path(__file__).parent.parent.parent.parent / "pyproject.toml"
     with pyproject.open("rb") as f:
         data = tomllib.load(f)
     return data["tool"]["pytest"]["ini_options"]["addopts"]

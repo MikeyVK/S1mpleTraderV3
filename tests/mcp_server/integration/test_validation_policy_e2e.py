@@ -16,7 +16,7 @@ import pytest
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.core.exceptions import ValidationError
-from tests.fixtures.artifact_test_harness import (
+from tests.mcp_server.fixtures.artifact_test_harness import (
     ArtifactIdentity,
     ArtifactSpec,
     TemplateFields,

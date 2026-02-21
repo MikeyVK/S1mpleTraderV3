@@ -1,4 +1,4 @@
-# SCAFFOLD: template=test_unit version=xxx created=2026-01-26T21:30:00Z
+﻿# SCAFFOLD: template=test_unit version=xxx created=2026-01-26T21:30:00Z
 """
 Tests for Tier 1 document template (Issue #72, TDD Cycle 3).
 
@@ -17,7 +17,7 @@ from jinja2 import Environment, FileSystemLoader
 
 # Template directory
 TEMPLATE_DIR = (
-    Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
+    Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 )
 
 

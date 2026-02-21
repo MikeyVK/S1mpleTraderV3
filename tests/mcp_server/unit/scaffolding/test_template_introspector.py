@@ -178,7 +178,7 @@ class TestTemplateIntrospectorInheritance:
         # Arrange
 
         template_root = (
-            Path(__file__).parent.parent.parent.parent
+            Path(__file__).parent.parent.parent.parent.parent
             / "mcp_server"
             / "scaffolding"
             / "templates"
@@ -207,7 +207,7 @@ class TestTemplateIntrospectorInheritance:
         # Arrange
 
         template_root = (
-            Path(__file__).parent.parent.parent.parent
+            Path(__file__).parent.parent.parent.parent.parent
             / "mcp_server"
             / "scaffolding"
             / "templates"
@@ -245,7 +245,7 @@ class TestTemplateIntrospectorInheritance:
         # Arrange
 
         template_root = (
-            Path(__file__).parent.parent.parent.parent
+            Path(__file__).parent.parent.parent.parent.parent
             / "mcp_server"
             / "scaffolding"
             / "templates"

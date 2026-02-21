@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for Tier 0 base template rendering (Issue #72 Task 1.3).
 
 RED phase: Tests for tier0_base_artifact.jinja2 SCAFFOLD metadata generation
@@ -10,7 +10,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 # Template directory
-TEMPLATE_DIR = Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
+TEMPLATE_DIR = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
 
 class TestTier0BaseArtifactRendering:

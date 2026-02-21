@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for Tier 1 base templates (Issue #72 Task 1.3).
 
 RED phase: Tests for tier1_base_{code,document,config}.jinja2 inheritance
@@ -10,7 +10,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 # Template directory
-TEMPLATE_DIR = Path(__file__).parent.parent / "mcp_server" / "scaffolding" / "templates"
+TEMPLATE_DIR = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
 
 class TestTier1CodeTemplate:
