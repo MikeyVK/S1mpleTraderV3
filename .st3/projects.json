@@ -852,5 +852,143 @@
     "skip_reason": null,
     "parent_branch": "main",
     "created_at": "2026-02-21T10:03:18.664629+00:00"
+  },
+  "237": {
+    "issue_title": "Exclude integration marker from default pytest run",
+    "workflow_name": "hotfix",
+    "execution_mode": "autonomous",
+    "required_phases": [
+      "tdd",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-02-21T14:44:51.488448+00:00"
+  },
+  "239": {
+    "issue_title": "Make tier0 SCAFFOLD header fields conditional for non-file artifacts",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "tdd",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-02-21T14:59:20.795498+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 3,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "tier0_base_artifact.jinja2: conditional header \u2014 {% if output_path %} wacht twee-regel formaat, else compacte HTML-comment",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/scaffolding/templates/tier0_base_artifact.jinja2",
+                  "text": "output_path is not none"
+                }
+              },
+              {
+                "id": "D1.2",
+                "description": "Test: render met output_path=None \u2192 compacte header (geen filepath, geen created/updated)",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/unit/mcp_server/test_tier0_conditional_header.py"
+                }
+              },
+              {
+                "id": "D1.3",
+                "description": "Test: render met output_path='src/foo.py' \u2192 twee-regel formaat ongewijzigd",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/unit/mcp_server/test_tier0_conditional_header.py"
+                }
+              }
+            ],
+            "exit_criteria": "Alle tier0-tests groen (incl. bestaande); output_path=None \u2192 compacte HTML-comment; output_path=str \u2192 twee-regel ongewijzigd"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "template_scaffolder.validate(): ValueError/ValidationError als output_type='file' en output_path leeg/None",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/scaffolders/template_scaffolder.py",
+                  "text": "output_path is required"
+                }
+              },
+              {
+                "id": "D2.2",
+                "description": "Test: file-artifact + lege output_path \u2192 ValidationError met hint",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/unit/mcp_server/test_scaffolder_output_path_validation.py"
+                }
+              },
+              {
+                "id": "D2.3",
+                "description": "Test: ephemeral-artifact + output_path=None \u2192 geen fout",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/unit/mcp_server/test_scaffolder_output_path_validation.py"
+                }
+              }
+            ],
+            "exit_criteria": "Stille fallback (rule 168) is dood code; ValidationError gegooid bij file-artifact zonder output_path; ephemeral ongewijzigd"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": "_render_body() geeft output_path=None door aan scaffolder",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/issue_tools.py",
+                  "text": "output_path=None"
+                }
+              },
+              {
+                "id": "D3.2",
+                "description": "_render_body() berekent version_hash via compute_version_hash() op issue.md.jinja2",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/issue_tools.py",
+                  "text": "compute_version_hash"
+                }
+              },
+              {
+                "id": "D3.3",
+                "description": "Test: rendered body bevat 'template=issue version=<8-char hex>'",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/unit/mcp_server/test_render_body_scaffold_header.py"
+                }
+              },
+              {
+                "id": "D3.4",
+                "description": "Test: rendered body bevat GEEN 'created=' of lege filepath-regel",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/unit/mcp_server/test_render_body_scaffold_header.py"
+                }
+              }
+            ],
+            "exit_criteria": "GitHub issue body heeft `<!-- template=issue version=XXXXXXXX -->` header; hash reproduceerbaar; geen lege SCAFFOLD-velden"
+          }
+        ]
+      }
+    }
   }
 }
