@@ -209,7 +209,9 @@ class ArtifactManager:
 
         return enriched
 
-    def _enrich_context_v2(self, context: BaseContext, artifact_type: str, provided_output_path: str | None = None) -> BaseRenderContext:
+    def _enrich_context_v2(
+        self, context: BaseContext, artifact_type: str, provided_output_path: str | None = None
+    ) -> BaseRenderContext:
         """Enrich template context with schema validation (v2 pipeline).
 
         Uses Naming Convention + globals() lookup to find RenderContext class:
@@ -564,6 +566,13 @@ class ArtifactManager:
         artifact = self.registry.get_artifact(artifact_type)
         template_file = artifact.template_path
 
+        # C2 gate: require output_path for file artifacts (Issue #239 C2)
+        if getattr(artifact, "output_type", None) == "file" and output_path is None:
+            raise ValidationError(
+                f"Missing output_path for file artifact '{artifact_type}'",
+                hints=["output_path is required for file artifacts"],
+            )
+
         # QA-2: Fail-fast if template_path is null (not yet implemented)
         if template_file is None:
             raise ConfigError(
@@ -618,7 +627,9 @@ class ArtifactManager:
                     #   must receive it so Pydantic can validate it as a required field.
                     _always_strip: set[str] = {"output_path"}
                     _model_field_names = set(context_class.model_fields.keys())
-                    _v2_strip_keys = _always_strip | ({"name"} if "name" not in _model_field_names else set())
+                    _v2_strip_keys = _always_strip | (
+                        {"name"} if "name" not in _model_field_names else set()
+                    )
                     v2_user_context = {k: v for k, v in context.items() if k not in _v2_strip_keys}
                     context_schema = context_class.model_validate(v2_user_context)
                 except Exception as e:
@@ -633,7 +644,9 @@ class ArtifactManager:
                     ) from e
 
                 # 2. Enrich to RenderContext (adds lifecycle fields)
-                render_context = self._enrich_context_v2(context_schema, artifact_type, provided_output_path=output_path)
+                render_context = self._enrich_context_v2(
+                    context_schema, artifact_type, provided_output_path=output_path
+                )
 
                 # 3. Update version_hash in render_context
                 # CRITICAL: BaseRenderContext has version_hash from LifecycleMixin
