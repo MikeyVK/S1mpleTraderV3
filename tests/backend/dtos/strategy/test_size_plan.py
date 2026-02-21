@@ -24,7 +24,7 @@ class TestSizePlanCreation:
         plan = SizePlan(
             position_size=Decimal("0.5"),
             position_value=Decimal("50000.00"),
-            risk_amount=Decimal("1000.00")
+            risk_amount=Decimal("1000.00"),
         )
 
         assert plan.position_size == Decimal("0.5")
@@ -41,7 +41,7 @@ class TestSizePlanCreation:
             position_size=Decimal("1.0"),
             position_value=Decimal("100000.00"),
             risk_amount=Decimal("2000.00"),
-            leverage=Decimal("2.0")
+            leverage=Decimal("2.0"),
         )
 
         assert plan.position_size == Decimal("1.0")
@@ -56,10 +56,7 @@ class TestSizePlanValidation:
     def test_requires_position_size(self):
         """position_size is required."""
         with pytest.raises(ValidationError) as exc_info:
-            SizePlan(
-                position_value=Decimal("50000.00"),
-                risk_amount=Decimal("1000.00")
-            )
+            SizePlan(position_value=Decimal("50000.00"), risk_amount=Decimal("1000.00"))
 
         errors = exc_info.value.errors()
         assert any(e["loc"] == ("position_size",) for e in errors)
@@ -67,10 +64,7 @@ class TestSizePlanValidation:
     def test_requires_position_value(self):
         """position_value is required."""
         with pytest.raises(ValidationError) as exc_info:
-            SizePlan(
-                position_size=Decimal("0.5"),
-                risk_amount=Decimal("1000.00")
-            )
+            SizePlan(position_size=Decimal("0.5"), risk_amount=Decimal("1000.00"))
 
         errors = exc_info.value.errors()
         assert any(e["loc"] == ("position_value",) for e in errors)
@@ -78,10 +72,7 @@ class TestSizePlanValidation:
     def test_requires_risk_amount(self):
         """risk_amount is required."""
         with pytest.raises(ValidationError) as exc_info:
-            SizePlan(
-                position_size=Decimal("0.5"),
-                position_value=Decimal("50000.00")
-            )
+            SizePlan(position_size=Decimal("0.5"), position_value=Decimal("50000.00"))
 
         errors = exc_info.value.errors()
         assert any(e["loc"] == ("risk_amount",) for e in errors)
@@ -92,14 +83,14 @@ class TestSizePlanValidation:
             SizePlan(
                 position_size=Decimal("0.0"),
                 position_value=Decimal("50000.00"),
-                risk_amount=Decimal("1000.00")
+                risk_amount=Decimal("1000.00"),
             )
 
         with pytest.raises(ValidationError):
             SizePlan(
                 position_size=Decimal("-0.5"),
                 position_value=Decimal("50000.00"),
-                risk_amount=Decimal("1000.00")
+                risk_amount=Decimal("1000.00"),
             )
 
     def test_position_value_must_be_positive(self):
@@ -108,7 +99,7 @@ class TestSizePlanValidation:
             SizePlan(
                 position_size=Decimal("0.5"),
                 position_value=Decimal("0.0"),
-                risk_amount=Decimal("1000.00")
+                risk_amount=Decimal("1000.00"),
             )
 
     def test_risk_amount_must_be_positive(self):
@@ -117,7 +108,7 @@ class TestSizePlanValidation:
             SizePlan(
                 position_size=Decimal("0.5"),
                 position_value=Decimal("50000.00"),
-                risk_amount=Decimal("0.0")
+                risk_amount=Decimal("0.0"),
             )
 
     def test_leverage_must_be_positive(self):
@@ -127,7 +118,7 @@ class TestSizePlanValidation:
                 position_size=Decimal("0.5"),
                 position_value=Decimal("50000.00"),
                 risk_amount=Decimal("1000.00"),
-                leverage=Decimal("0.5")
+                leverage=Decimal("0.5"),
             )
 
 
@@ -139,12 +130,12 @@ class TestSizePlanDefaultValues:
         plan1 = SizePlan(
             position_size=Decimal("0.5"),
             position_value=Decimal("50000.00"),
-            risk_amount=Decimal("1000.00")
+            risk_amount=Decimal("1000.00"),
         )
         plan2 = SizePlan(
             position_size=Decimal("0.5"),
             position_value=Decimal("50000.00"),
-            risk_amount=Decimal("1000.00")
+            risk_amount=Decimal("1000.00"),
         )
 
         # Check unique plan IDs
@@ -159,7 +150,7 @@ class TestSizePlanDefaultValues:
         plan = SizePlan(
             position_size=Decimal("0.5"),
             position_value=Decimal("50000.00"),
-            risk_amount=Decimal("1000.00")
+            risk_amount=Decimal("1000.00"),
         )
 
         assert plan.leverage == Decimal("1.0")
@@ -174,7 +165,7 @@ class TestSizePlanSerialization:
             position_size=Decimal("0.5"),
             position_value=Decimal("50000.00"),
             risk_amount=Decimal("1000.00"),
-            leverage=Decimal("2.0")
+            leverage=Decimal("2.0"),
         )
 
         data = plan.model_dump()
@@ -191,7 +182,7 @@ class TestSizePlanSerialization:
         plan = SizePlan(
             position_size=Decimal("0.5"),
             position_value=Decimal("50000.00"),
-            risk_amount=Decimal("1000.00")
+            risk_amount=Decimal("1000.00"),
         )
 
         json_str = plan.model_dump_json()
@@ -207,7 +198,7 @@ class TestSizePlanSerialization:
             "position_size": "0.5",
             "position_value": "50000.00",
             "risk_amount": "1000.00",
-            "leverage": "1.0"
+            "leverage": "1.0",
         }
 
         plan = SizePlan.model_validate(data)
@@ -225,7 +216,7 @@ class TestSizePlanUseCases:
             position_size=Decimal("0.25"),
             position_value=Decimal("25000.00"),
             risk_amount=Decimal("1000.00"),  # 1% of 100k account
-            leverage=Decimal("1.0")
+            leverage=Decimal("1.0"),
         )
 
         assert plan.risk_amount == Decimal("1000.00")
@@ -237,7 +228,7 @@ class TestSizePlanUseCases:
             position_size=Decimal("1.0"),
             position_value=Decimal("100000.00"),
             risk_amount=Decimal("2000.00"),
-            leverage=Decimal("2.0")
+            leverage=Decimal("2.0"),
         )
 
         assert plan.leverage == Decimal("2.0")
@@ -249,7 +240,7 @@ class TestSizePlanUseCases:
             position_size=Decimal("0.1"),
             position_value=Decimal("10000.00"),
             risk_amount=Decimal("500.00"),  # 0.5% risk
-            leverage=Decimal("1.0")
+            leverage=Decimal("1.0"),
         )
 
         assert plan.risk_amount == Decimal("500.00")

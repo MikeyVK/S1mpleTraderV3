@@ -28,23 +28,27 @@ from backend.core.strategy_cache import StrategyCache
 # Mock DTOs for testing
 class MockContextDTO(BaseModel):
     """Mock context DTO for testing."""
+
     value: str
 
 
 class MockSignalDTO(BaseModel):
     """Mock signal DTO for testing."""
+
     signal: str
     confidence: float
 
 
 class MockDataDTO(BaseModel):
     """Another mock DTO for testing."""
+
     data: int
 
 
 # Mock worker for testing
 class MockWorker:
     """Simple mock worker."""
+
     def __init__(self, name: str):
         self.name = name
 
@@ -88,10 +92,7 @@ class TestStrategyCache:
     # --- start_new_strategy_run Tests ---
 
     def test_start_new_strategy_run_with_empty_cache(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
+        self, cache, empty_strategy_cache, test_timestamp
     ):
         """Should successfully start run with empty cache."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
@@ -100,10 +101,7 @@ class TestStrategyCache:
         assert anchor.timestamp == test_timestamp
 
     def test_start_new_strategy_run_with_prefilled_cache(
-        self,
-        cache,
-        prefilled_strategy_cache,
-        test_timestamp
+        self, cache, prefilled_strategy_cache, test_timestamp
     ):
         """Should successfully start run with pre-filled cache."""
         cache.start_new_strategy_run(prefilled_strategy_cache, test_timestamp)
@@ -112,10 +110,7 @@ class TestStrategyCache:
         assert cache.has_dto(MockContextDTO) is True
 
     def test_start_new_strategy_run_replaces_previous_run(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
+        self, cache, empty_strategy_cache, test_timestamp
     ):
         """Starting new run should replace previous run."""
         # Start first run
@@ -134,10 +129,7 @@ class TestStrategyCache:
     # --- get_run_anchor Tests ---
 
     def test_get_run_anchor_returns_correct_timestamp(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
+        self, cache, empty_strategy_cache, test_timestamp
     ):
         """Should return RunAnchor with correct timestamp."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
@@ -153,12 +145,7 @@ class TestStrategyCache:
 
         assert "No active strategy run" in str(exc_info.value)
 
-    def test_run_anchor_is_immutable(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
-    ):
+    def test_run_anchor_is_immutable(self, cache, empty_strategy_cache, test_timestamp):
         """RunAnchor should be frozen/immutable."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
         anchor = cache.get_run_anchor()
@@ -169,12 +156,7 @@ class TestStrategyCache:
 
     # --- set_result_dto Tests ---
 
-    def test_set_result_dto_stores_dto(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
-    ):
+    def test_set_result_dto_stores_dto(self, cache, empty_strategy_cache, test_timestamp):
         """Should store DTO in cache."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
 
@@ -186,10 +168,7 @@ class TestStrategyCache:
         assert cache.has_dto(MockSignalDTO) is True
 
     def test_set_result_dto_overwrites_existing_dto_of_same_type(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
+        self, cache, empty_strategy_cache, test_timestamp
     ):
         """Should overwrite if DTO of same type already exists."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
@@ -222,10 +201,7 @@ class TestStrategyCache:
     # --- get_required_dtos Tests ---
 
     def test_get_required_dtos_returns_all_dtos_in_cache(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
+        self, cache, empty_strategy_cache, test_timestamp
     ):
         """Should return all DTOs in cache."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
@@ -243,10 +219,7 @@ class TestStrategyCache:
         assert len(dtos) == 2
 
     def test_get_required_dtos_includes_prefilled_dtos(
-        self,
-        cache,
-        prefilled_strategy_cache,
-        test_timestamp
+        self, cache, prefilled_strategy_cache, test_timestamp
     ):
         """Should include DTOs that were pre-filled at run start."""
         cache.start_new_strategy_run(prefilled_strategy_cache, test_timestamp)
@@ -269,10 +242,7 @@ class TestStrategyCache:
     # --- has_dto Tests ---
 
     def test_has_dto_returns_true_for_existing_dto(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
+        self, cache, empty_strategy_cache, test_timestamp
     ):
         """Should return True for DTO that exists in cache."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
@@ -283,10 +253,7 @@ class TestStrategyCache:
         assert cache.has_dto(MockSignalDTO) is True
 
     def test_has_dto_returns_false_for_missing_dto(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
+        self, cache, empty_strategy_cache, test_timestamp
     ):
         """Should return False for DTO that doesn't exist in cache."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
@@ -299,12 +266,7 @@ class TestStrategyCache:
 
     # --- clear_cache Tests ---
 
-    def test_clear_cache_removes_all_dtos(
-        self,
-        cache,
-        empty_strategy_cache,
-        test_timestamp
-    ):
+    def test_clear_cache_removes_all_dtos(self, cache, empty_strategy_cache, test_timestamp):
         """Should clear all DTOs from cache."""
         cache.start_new_strategy_run(empty_strategy_cache, test_timestamp)
 
@@ -326,11 +288,7 @@ class TestStrategyCache:
 
     # --- Integration Tests ---
 
-    def test_full_strategy_run_workflow(
-        self,
-        cache,
-        test_timestamp
-    ):
+    def test_full_strategy_run_workflow(self, cache, test_timestamp):
         """Test complete workflow of a strategy run."""
         # 1. Start run with pre-filled platform data
         platform_data = {
@@ -344,16 +302,10 @@ class TestStrategyCache:
 
         # 3. Workers add their DTOs
         worker1 = MockWorker("ema_detector")
-        cache.set_result_dto(
-            worker1,
-            MockSignalDTO(signal="context_ready", confidence=1.0)
-        )
+        cache.set_result_dto(worker1, MockSignalDTO(signal="context_ready", confidence=1.0))
 
         worker2 = MockWorker("momentum_signal")
-        cache.set_result_dto(
-            worker2,
-            MockDataDTO(data=123)
-        )
+        cache.set_result_dto(worker2, MockDataDTO(data=123))
 
         # 4. Verify all DTOs available
         assert cache.has_dto(MockContextDTO) is True  # Platform

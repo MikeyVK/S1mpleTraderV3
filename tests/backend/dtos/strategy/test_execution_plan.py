@@ -30,7 +30,7 @@ class TestExecutionPlanCreation:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.82"),
             visibility_preference=Decimal("0.20"),
-            max_slippage_pct=Decimal("0.0100")
+            max_slippage_pct=Decimal("0.0100"),
         )
 
         assert intent.plan_id == "EXP_20251028_143022_a8f3c"
@@ -60,7 +60,7 @@ class TestExecutionPlanCreation:
             preferred_execution_style="TWAP",
             chunk_count_hint=5,
             chunk_distribution="UNIFORM",
-            min_fill_ratio=Decimal("0.80")
+            min_fill_ratio=Decimal("0.80"),
         )
 
         assert intent.plan_id == "EXP_20251028_143025_b7c4d"
@@ -84,7 +84,7 @@ class TestExecutionPlanCreation:
             visibility_preference=Decimal("0.30"),
             max_slippage_pct=Decimal("0.0075"),
             preferred_execution_style="VWAP",
-            chunk_count_hint=10
+            chunk_count_hint=10,
         )
 
         assert intent.preferred_execution_style == "VWAP"
@@ -104,7 +104,7 @@ class TestExecutionPlanValidation:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.0"),  # Min valid
             visibility_preference=Decimal("0.5"),
-            max_slippage_pct=Decimal("0.01")
+            max_slippage_pct=Decimal("0.01"),
         )
         assert intent_min.execution_urgency == Decimal("0.0")
 
@@ -113,7 +113,7 @@ class TestExecutionPlanValidation:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("1.0"),  # Max valid
             visibility_preference=Decimal("0.5"),
-            max_slippage_pct=Decimal("0.01")
+            max_slippage_pct=Decimal("0.01"),
         )
         assert intent_max.execution_urgency == Decimal("1.0")
 
@@ -123,7 +123,7 @@ class TestExecutionPlanValidation:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.5"),
             visibility_preference=Decimal("0.5"),
-            max_slippage_pct=Decimal("0.01")
+            max_slippage_pct=Decimal("0.01"),
         )
         assert intent_mid.execution_urgency == Decimal("0.5")
 
@@ -136,7 +136,7 @@ class TestExecutionPlanValidation:
                 action=ExecutionAction.EXECUTE_TRADE,
                 execution_urgency=Decimal("-0.1"),  # Invalid
                 visibility_preference=Decimal("0.5"),
-                max_slippage_pct=Decimal("0.01")
+                max_slippage_pct=Decimal("0.01"),
             )
 
         # Above maximum
@@ -146,7 +146,7 @@ class TestExecutionPlanValidation:
                 action=ExecutionAction.EXECUTE_TRADE,
                 execution_urgency=Decimal("1.5"),  # Invalid
                 visibility_preference=Decimal("0.5"),
-                max_slippage_pct=Decimal("0.01")
+                max_slippage_pct=Decimal("0.01"),
             )
 
     def test_visibility_validation_in_range(self):
@@ -157,7 +157,7 @@ class TestExecutionPlanValidation:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.5"),
             visibility_preference=Decimal("0.0"),  # Min valid
-            max_slippage_pct=Decimal("0.01")
+            max_slippage_pct=Decimal("0.01"),
         )
         assert intent_min.visibility_preference == Decimal("0.0")
 
@@ -166,7 +166,7 @@ class TestExecutionPlanValidation:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.5"),
             visibility_preference=Decimal("1.0"),  # Max valid
-            max_slippage_pct=Decimal("0.01")
+            max_slippage_pct=Decimal("0.01"),
         )
         assert intent_max.visibility_preference == Decimal("1.0")
 
@@ -178,7 +178,7 @@ class TestExecutionPlanValidation:
                 action=ExecutionAction.EXECUTE_TRADE,
                 execution_urgency=Decimal("0.5"),
                 visibility_preference=Decimal("2.0"),  # Invalid
-                max_slippage_pct=Decimal("0.01")
+                max_slippage_pct=Decimal("0.01"),
             )
 
     def test_slippage_validation_in_range(self):
@@ -189,7 +189,7 @@ class TestExecutionPlanValidation:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.5"),
             visibility_preference=Decimal("0.5"),
-            max_slippage_pct=Decimal("0.0")  # Valid
+            max_slippage_pct=Decimal("0.0"),  # Valid
         )
         assert intent_zero.max_slippage_pct == Decimal("0.0")
 
@@ -199,7 +199,7 @@ class TestExecutionPlanValidation:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.5"),
             visibility_preference=Decimal("0.5"),
-            max_slippage_pct=Decimal("0.0200")  # 2%
+            max_slippage_pct=Decimal("0.0200"),  # 2%
         )
         assert intent_normal.max_slippage_pct == Decimal("0.0200")
 
@@ -211,7 +211,7 @@ class TestExecutionPlanValidation:
                 action=ExecutionAction.EXECUTE_TRADE,
                 execution_urgency=Decimal("0.5"),
                 visibility_preference=Decimal("0.5"),
-                max_slippage_pct=Decimal("1.5")  # Invalid (150%!)
+                max_slippage_pct=Decimal("1.5"),  # Invalid (150%!)
             )
 
 
@@ -225,7 +225,7 @@ class TestExecutionPlanActions:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.90"),
             visibility_preference=Decimal("0.70"),
-            max_slippage_pct=Decimal("0.0100")
+            max_slippage_pct=Decimal("0.0100"),
         )
 
         assert intent.action == ExecutionAction.EXECUTE_TRADE
@@ -238,7 +238,7 @@ class TestExecutionPlanActions:
             action=ExecutionAction.CANCEL_ORDER,
             execution_urgency=Decimal("1.0"),  # Max urgency for cancel
             visibility_preference=Decimal("0.5"),
-            max_slippage_pct=Decimal("0.0")  # N/A for cancel
+            max_slippage_pct=Decimal("0.0"),  # N/A for cancel
         )
 
         assert intent.action == ExecutionAction.CANCEL_ORDER
@@ -251,7 +251,7 @@ class TestExecutionPlanActions:
             execution_urgency=Decimal("1.0"),  # Emergency cancel
             visibility_preference=Decimal("0.5"),
             max_slippage_pct=Decimal("0.0"),
-            must_complete_immediately=True
+            must_complete_immediately=True,
         )
 
         assert intent.action == ExecutionAction.CANCEL_GROUP
@@ -264,7 +264,7 @@ class TestExecutionPlanActions:
             action=ExecutionAction.MODIFY_ORDER,
             execution_urgency=Decimal("0.60"),
             visibility_preference=Decimal("0.40"),
-            max_slippage_pct=Decimal("0.0050")
+            max_slippage_pct=Decimal("0.0050"),
         )
 
         assert intent.action == ExecutionAction.MODIFY_ORDER
@@ -280,7 +280,7 @@ class TestExecutionPlanImmutability:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.50"),
             visibility_preference=Decimal("0.30"),
-            max_slippage_pct=Decimal("0.0075")
+            max_slippage_pct=Decimal("0.0075"),
         )
 
         # Attempt to mutate should raise ValidationError (Pydantic frozen)
@@ -297,13 +297,11 @@ class TestExecutionPlanImmutability:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.50"),
             visibility_preference=Decimal("0.30"),
-            max_slippage_pct=Decimal("0.0075")
+            max_slippage_pct=Decimal("0.0075"),
         )
 
         # Create new instance with modified urgency (Pydantic model_copy)
-        updated = original.model_copy(
-            update={"execution_urgency": Decimal("0.90")}
-        )
+        updated = original.model_copy(update={"execution_urgency": Decimal("0.90")})
 
         # Original unchanged
         assert original.execution_urgency == Decimal("0.50")
@@ -335,7 +333,7 @@ class TestExecutionPlanSerialization:  # pylint: disable=too-few-public-methods
             preferred_execution_style="TWAP",
             chunk_count_hint=5,
             chunk_distribution="UNIFORM",
-            min_fill_ratio=Decimal("0.80")
+            min_fill_ratio=Decimal("0.80"),
         )
 
         # Serialize to dict (Pydantic model_dump)
@@ -374,7 +372,7 @@ class TestExecutionPlanEdgeCases:
             execution_urgency=Decimal("0.95"),  # Very high
             visibility_preference=Decimal("0.70"),
             max_slippage_pct=Decimal("0.0200"),  # Willing to pay for speed
-            must_complete_immediately=True
+            must_complete_immediately=True,
         )
 
         assert intent.execution_urgency == Decimal("0.95")
@@ -392,7 +390,7 @@ class TestExecutionPlanEdgeCases:
             must_complete_immediately=False,
             max_execution_window_minutes=60,  # 1 hour window
             preferred_execution_style="TWAP",
-            chunk_count_hint=20  # Many small chunks
+            chunk_count_hint=20,  # Many small chunks
         )
 
         assert intent.execution_urgency == Decimal("0.15")
@@ -407,7 +405,7 @@ class TestExecutionPlanEdgeCases:
             action=ExecutionAction.EXECUTE_TRADE,
             execution_urgency=Decimal("0.50"),
             visibility_preference=Decimal("0.50"),
-            max_slippage_pct=Decimal("0.0")  # Exact fills only
+            max_slippage_pct=Decimal("0.0"),  # Exact fills only
         )
 
         assert intent.max_slippage_pct == Decimal("0.0")
@@ -422,4 +420,3 @@ class TestExecutionPlanEdgeCases:
 # - 3 edge case tests (bonus)
 #
 # Expected result: ALL RED ❌ until ExecutionPlan DTO implemented
-

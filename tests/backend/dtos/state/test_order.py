@@ -62,9 +62,7 @@ def market_order_data() -> dict:
 class TestOrderCreation:
     """Tests for Order instantiation."""
 
-    def test_create_limit_order_with_required_fields(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_create_limit_order_with_required_fields(self, valid_order_data: dict) -> None:
         """Should create limit Order with required fields."""
         order = Order(**valid_order_data)
 
@@ -77,9 +75,7 @@ class TestOrderCreation:
         assert order.price == Decimal("95000.00")
         assert order.status == OrderStatus.PENDING
 
-    def test_create_market_order_without_price(
-        self, market_order_data: dict
-    ) -> None:
+    def test_create_market_order_without_price(self, market_order_data: dict) -> None:
         """Should create market Order without price."""
         order = Order(**market_order_data)
 
@@ -87,9 +83,7 @@ class TestOrderCreation:
         assert order.price is None
         assert order.stop_price is None
 
-    def test_auto_generates_order_id_with_correct_prefix(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_auto_generates_order_id_with_correct_prefix(self, valid_order_data: dict) -> None:
         """Should auto-generate ID with ORD_ prefix."""
         order = Order(**valid_order_data)
         order_id = order.order_id
@@ -99,16 +93,12 @@ class TestOrderCreation:
         assert len(parts) == 4
         assert parts[0] == "ORD"
 
-    def test_connector_order_id_defaults_to_none(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_connector_order_id_defaults_to_none(self, valid_order_data: dict) -> None:
         """Should default connector_order_id to None."""
         order = Order(**valid_order_data)
         assert order.connector_order_id is None
 
-    def test_can_set_connector_order_id(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_can_set_connector_order_id(self, valid_order_data: dict) -> None:
         """Should accept connector_order_id from exchange."""
         valid_order_data["connector_order_id"] = "binance_12345678"
         order = Order(**valid_order_data)
@@ -123,54 +113,42 @@ class TestOrderCreation:
 class TestOrderValidation:
     """Tests for Order field validation."""
 
-    def test_rejects_invalid_parent_group_id_prefix(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_rejects_invalid_parent_group_id_prefix(self, valid_order_data: dict) -> None:
         """Should reject parent_group_id without EXG_ prefix."""
         valid_order_data["parent_group_id"] = "INVALID_20251201_145955_xyz789"
         with pytest.raises(ValidationError) as exc_info:
             Order(**valid_order_data)
         assert "parent_group_id" in str(exc_info.value)
 
-    def test_rejects_invalid_symbol_format(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_rejects_invalid_symbol_format(self, valid_order_data: dict) -> None:
         """Should reject invalid symbol format."""
         valid_order_data["symbol"] = "btc-usdt"  # lowercase, wrong separator
         with pytest.raises(ValidationError) as exc_info:
             Order(**valid_order_data)
         assert "symbol" in str(exc_info.value)
 
-    def test_rejects_invalid_side(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_rejects_invalid_side(self, valid_order_data: dict) -> None:
         """Should reject invalid side value."""
         valid_order_data["side"] = "LONG"  # Not BUY/SELL
         with pytest.raises(ValidationError) as exc_info:
             Order(**valid_order_data)
         assert "side" in str(exc_info.value)
 
-    def test_rejects_zero_quantity(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_rejects_zero_quantity(self, valid_order_data: dict) -> None:
         """Should reject quantity <= 0."""
         valid_order_data["quantity"] = Decimal("0")
         with pytest.raises(ValidationError) as exc_info:
             Order(**valid_order_data)
         assert "quantity" in str(exc_info.value)
 
-    def test_rejects_negative_quantity(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_rejects_negative_quantity(self, valid_order_data: dict) -> None:
         """Should reject negative quantity."""
         valid_order_data["quantity"] = Decimal("-0.5")
         with pytest.raises(ValidationError) as exc_info:
             Order(**valid_order_data)
         assert "quantity" in str(exc_info.value)
 
-    def test_limit_order_requires_price(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_limit_order_requires_price(self, valid_order_data: dict) -> None:
         """Should require price for LIMIT orders."""
         valid_order_data["order_type"] = OrderType.LIMIT
         valid_order_data["price"] = None
@@ -178,9 +156,7 @@ class TestOrderValidation:
             Order(**valid_order_data)
         assert "price" in str(exc_info.value).lower()
 
-    def test_stop_limit_order_requires_stop_price(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_stop_limit_order_requires_stop_price(self, valid_order_data: dict) -> None:
         """Should require stop_price for STOP_LIMIT orders."""
         valid_order_data["order_type"] = OrderType.STOP_LIMIT
         valid_order_data["stop_price"] = None
@@ -188,9 +164,7 @@ class TestOrderValidation:
             Order(**valid_order_data)
         assert "stop_price" in str(exc_info.value).lower()
 
-    def test_market_order_ignores_price(
-        self, market_order_data: dict
-    ) -> None:
+    def test_market_order_ignores_price(self, market_order_data: dict) -> None:
         """Should allow market orders without price."""
         order = Order(**market_order_data)
         assert order.price is None
@@ -204,34 +178,26 @@ class TestOrderValidation:
 class TestOrderMutability:
     """Tests for Order mutability (frozen=False)."""
 
-    def test_can_update_status(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_can_update_status(self, valid_order_data: dict) -> None:
         """Should allow status updates (mutable)."""
         order = Order(**valid_order_data)
         order.status = OrderStatus.FILLED
         assert order.status == OrderStatus.FILLED
 
-    def test_can_update_connector_order_id(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_can_update_connector_order_id(self, valid_order_data: dict) -> None:
         """Should allow connector_order_id updates."""
         order = Order(**valid_order_data)
         order.connector_order_id = "exchange_order_123"
         assert order.connector_order_id == "exchange_order_123"
 
-    def test_can_update_updated_at(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_can_update_updated_at(self, valid_order_data: dict) -> None:
         """Should allow updated_at timestamp changes."""
         order = Order(**valid_order_data)
         new_time = datetime.now(UTC)
         order.updated_at = new_time
         assert order.updated_at == new_time
 
-    def test_order_id_is_effectively_immutable(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_order_id_is_effectively_immutable(self, valid_order_data: dict) -> None:
         """order_id should not change after creation (by convention)."""
         order = Order(**valid_order_data)
         original_id = order.order_id
@@ -248,36 +214,28 @@ class TestOrderMutability:
 class TestOrderStatusTransitions:
     """Tests for Order status transitions."""
 
-    def test_pending_to_open(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_pending_to_open(self, valid_order_data: dict) -> None:
         """Should allow PENDING → OPEN transition."""
         order = Order(**valid_order_data)
         assert order.status == OrderStatus.PENDING
         order.status = OrderStatus.OPEN
         assert order.status == OrderStatus.OPEN
 
-    def test_open_to_filled(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_open_to_filled(self, valid_order_data: dict) -> None:
         """Should allow OPEN → FILLED transition."""
         valid_order_data["status"] = OrderStatus.OPEN
         order = Order(**valid_order_data)
         order.status = OrderStatus.FILLED
         assert order.status == OrderStatus.FILLED
 
-    def test_open_to_partially_filled(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_open_to_partially_filled(self, valid_order_data: dict) -> None:
         """Should allow OPEN → PARTIALLY_FILLED transition."""
         valid_order_data["status"] = OrderStatus.OPEN
         order = Order(**valid_order_data)
         order.status = OrderStatus.PARTIALLY_FILLED
         assert order.status == OrderStatus.PARTIALLY_FILLED
 
-    def test_open_to_cancelled(
-        self, valid_order_data: dict
-    ) -> None:
+    def test_open_to_cancelled(self, valid_order_data: dict) -> None:
         """Should allow OPEN → CANCELLED transition."""
         valid_order_data["status"] = OrderStatus.OPEN
         order = Order(**valid_order_data)

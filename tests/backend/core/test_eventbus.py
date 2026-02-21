@@ -41,11 +41,7 @@ class TestEventBusInitialization:
         """Test that EventBus has no subscriptions initially."""
         bus = EventBus()
         # Should publish without errors (no subscribers)
-        bus.publish(
-            "TEST_EVENT",
-            EventPayloadDTO(message="test", value=1),
-            ScopeLevel.PLATFORM
-        )
+        bus.publish("TEST_EVENT", EventPayloadDTO(message="test", value=1), ScopeLevel.PLATFORM)
 
 
 class TestBasicPublishSubscribe:
@@ -63,10 +59,7 @@ class TestBasicPublishSubscribe:
         sub_id = bus.subscribe(
             event_name="TEST_EVENT",
             handler=handler,
-            scope=SubscriptionScope(
-                level=ScopeLevel.PLATFORM,
-                target_strategy_ids=None
-            )
+            scope=SubscriptionScope(level=ScopeLevel.PLATFORM, target_strategy_ids=None),
         )
 
         assert sub_id is not None
@@ -89,18 +82,12 @@ class TestBasicPublishSubscribe:
 
         # Subscribe and unsubscribe
         sub_id = bus.subscribe(
-            "TEST_EVENT",
-            handler,
-            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
+            "TEST_EVENT", handler, SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
         )
         bus.unsubscribe(sub_id)
 
         # Publish after unsubscribe
-        bus.publish(
-            "TEST_EVENT",
-            EventPayloadDTO(message="test", value=1),
-            ScopeLevel.PLATFORM
-        )
+        bus.publish("TEST_EVENT", EventPayloadDTO(message="test", value=1), ScopeLevel.PLATFORM)
 
         # Should not receive
         assert len(received_events) == 0
@@ -114,12 +101,12 @@ class TestBasicPublishSubscribe:
         bus.subscribe(
             "TEST_EVENT",
             received_a.append,
-            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
+            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
         )
         bus.subscribe(
             "TEST_EVENT",
             received_b.append,
-            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
+            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
         )
 
         payload = EventPayloadDTO(message="test", value=1)
@@ -138,20 +125,16 @@ class TestBasicPublishSubscribe:
         bus.subscribe(
             "EVENT_A",
             received_a.append,
-            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
+            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
         )
         bus.subscribe(
             "EVENT_B",
             received_b.append,
-            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
+            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
         )
 
         # Publish to EVENT_A
-        bus.publish(
-            "EVENT_A",
-            EventPayloadDTO(message="a", value=1),
-            ScopeLevel.PLATFORM
-        )
+        bus.publish("EVENT_A", EventPayloadDTO(message="a", value=1), ScopeLevel.PLATFORM)
 
         # Only EVENT_A handler should receive
         assert len(received_a) == 1
@@ -169,10 +152,7 @@ class TestStrategyScoping:
         bus.subscribe(
             "TICK",
             received.append,
-            SubscriptionScope(
-                level=ScopeLevel.STRATEGY,
-                strategy_instance_id="STR_A"
-            )
+            SubscriptionScope(level=ScopeLevel.STRATEGY, strategy_instance_id="STR_A"),
         )
 
         # Publish from STR_A
@@ -180,7 +160,7 @@ class TestStrategyScoping:
             "TICK",
             EventPayloadDTO(message="tick", value=1),
             ScopeLevel.STRATEGY,
-            strategy_instance_id="STR_A"
+            strategy_instance_id="STR_A",
         )
 
         assert len(received) == 1
@@ -193,10 +173,7 @@ class TestStrategyScoping:
         bus.subscribe(
             "TICK",
             received.append,
-            SubscriptionScope(
-                level=ScopeLevel.STRATEGY,
-                strategy_instance_id="STR_A"
-            )
+            SubscriptionScope(level=ScopeLevel.STRATEGY, strategy_instance_id="STR_A"),
         )
 
         # Publish from STR_B
@@ -204,7 +181,7 @@ class TestStrategyScoping:
             "TICK",
             EventPayloadDTO(message="tick", value=1),
             ScopeLevel.STRATEGY,
-            strategy_instance_id="STR_B"
+            strategy_instance_id="STR_B",
         )
 
         # STR_A subscriber should not receive
@@ -218,18 +195,11 @@ class TestStrategyScoping:
         bus.subscribe(
             "RISK_ALERT",
             received.append,
-            SubscriptionScope(
-                level=ScopeLevel.STRATEGY,
-                strategy_instance_id="STR_A"
-            )
+            SubscriptionScope(level=ScopeLevel.STRATEGY, strategy_instance_id="STR_A"),
         )
 
         # Publish platform event
-        bus.publish(
-            "RISK_ALERT",
-            EventPayloadDTO(message="risk", value=1),
-            ScopeLevel.PLATFORM
-        )
+        bus.publish("RISK_ALERT", EventPayloadDTO(message="risk", value=1), ScopeLevel.PLATFORM)
 
         # Strategy subscriber should receive platform events
         assert len(received) == 1
@@ -248,8 +218,8 @@ class TestPlatformScoping:
             received.append,
             SubscriptionScope(
                 level=ScopeLevel.PLATFORM,
-                target_strategy_ids=None  # Unrestricted
-            )
+                target_strategy_ids=None,  # Unrestricted
+            ),
         )
 
         # Publish from multiple strategies
@@ -257,13 +227,13 @@ class TestPlatformScoping:
             "LEDGER_UPDATE",
             EventPayloadDTO(message="a", value=1),
             ScopeLevel.STRATEGY,
-            strategy_instance_id="STR_A"
+            strategy_instance_id="STR_A",
         )
         bus.publish(
             "LEDGER_UPDATE",
             EventPayloadDTO(message="b", value=2),
             ScopeLevel.STRATEGY,
-            strategy_instance_id="STR_B"
+            strategy_instance_id="STR_B",
         )
 
         # Should receive both
@@ -277,10 +247,7 @@ class TestPlatformScoping:
         bus.subscribe(
             "DEBUG_EVENT",
             received.append,
-            SubscriptionScope(
-                level=ScopeLevel.PLATFORM,
-                target_strategy_ids={"STR_A", "STR_C"}
-            )
+            SubscriptionScope(level=ScopeLevel.PLATFORM, target_strategy_ids={"STR_A", "STR_C"}),
         )
 
         # Publish from multiple strategies
@@ -288,19 +255,19 @@ class TestPlatformScoping:
             "DEBUG_EVENT",
             EventPayloadDTO(message="a", value=1),
             ScopeLevel.STRATEGY,
-            strategy_instance_id="STR_A"
+            strategy_instance_id="STR_A",
         )
         bus.publish(
             "DEBUG_EVENT",
             EventPayloadDTO(message="b", value=2),
             ScopeLevel.STRATEGY,
-            strategy_instance_id="STR_B"  # Not in target set
+            strategy_instance_id="STR_B",  # Not in target set
         )
         bus.publish(
             "DEBUG_EVENT",
             EventPayloadDTO(message="c", value=3),
             ScopeLevel.STRATEGY,
-            strategy_instance_id="STR_C"
+            strategy_instance_id="STR_C",
         )
 
         # Should receive STR_A and STR_C, not STR_B
@@ -328,21 +295,17 @@ class TestErrorHandling:
             "TEST_EVENT",
             failing_handler,
             SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
-            is_critical=False
+            is_critical=False,
         )
         bus.subscribe(
             "TEST_EVENT",
             success_handler,
             SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
-            is_critical=False
+            is_critical=False,
         )
 
         # Publish should not crash
-        bus.publish(
-            "TEST_EVENT",
-            EventPayloadDTO(message="test", value=1),
-            ScopeLevel.PLATFORM
-        )
+        bus.publish("TEST_EVENT", EventPayloadDTO(message="test", value=1), ScopeLevel.PLATFORM)
 
         # Success handler should still execute
         assert len(received) == 1
@@ -358,16 +321,12 @@ class TestErrorHandling:
             "TEST_EVENT",
             failing_handler,
             SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
-            is_critical=True  # Critical!
+            is_critical=True,  # Critical!
         )
 
         # Should raise CriticalEventHandlerError
         with pytest.raises(CriticalEventHandlerError):
-            bus.publish(
-                "TEST_EVENT",
-                EventPayloadDTO(message="test", value=1),
-                ScopeLevel.PLATFORM
-            )
+            bus.publish("TEST_EVENT", EventPayloadDTO(message="test", value=1), ScopeLevel.PLATFORM)
 
 
 class TestThreadSafety:
@@ -384,9 +343,7 @@ class TestThreadSafety:
                 received.append(payload)
 
         bus.subscribe(
-            "TEST_EVENT",
-            handler,
-            SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
+            "TEST_EVENT", handler, SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
         )
 
         # Publish from multiple threads
@@ -395,11 +352,10 @@ class TestThreadSafety:
                 bus.publish(
                     "TEST_EVENT",
                     EventPayloadDTO(message=f"thread_{thread_id}", value=i),
-                    ScopeLevel.PLATFORM
+                    ScopeLevel.PLATFORM,
                 )
 
-        threads = [threading.Thread(target=publish_events, args=(i,))
-                   for i in range(5)]
+        threads = [threading.Thread(target=publish_events, args=(i,)) for i in range(5)]
 
         for t in threads:
             t.start()
@@ -420,15 +376,14 @@ class TestThreadSafety:
                 sub_id = bus.subscribe(
                     "TEST_EVENT",
                     lambda p: None,
-                    SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
+                    SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
                 )
                 with lock:
                     subscription_ids.append(sub_id)
                 time.sleep(0.001)  # Small delay
                 bus.unsubscribe(sub_id)
 
-        threads = [threading.Thread(target=subscribe_unsubscribe)
-                   for _ in range(3)]
+        threads = [threading.Thread(target=subscribe_unsubscribe) for _ in range(3)]
 
         for t in threads:
             t.start()
@@ -451,7 +406,7 @@ class TestSubscriptionIDUniqueness:
             sub_id = bus.subscribe(
                 "TEST_EVENT",
                 lambda p: None,
-                SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None)
+                SubscriptionScope(ScopeLevel.PLATFORM, target_strategy_ids=None),
             )
             subscription_ids.add(sub_id)
 
@@ -478,5 +433,5 @@ class TestInvalidOperations:
                 "TEST_EVENT",
                 EventPayloadDTO(message="test", value=1),
                 ScopeLevel.STRATEGY,
-                strategy_instance_id=None  # Missing required ID!
+                strategy_instance_id=None,  # Missing required ID!
             )

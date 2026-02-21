@@ -46,7 +46,7 @@ class TestBirthIDGeneration:
         """Test that tick IDs contain valid datetime format."""
         tick_id = generate_tick_id()
         # Format: TCK_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^TCK_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^TCK_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, tick_id), f"Invalid format: {tick_id}"
 
     def test_generate_tick_id_is_unique(self):
@@ -64,7 +64,7 @@ class TestBirthIDGeneration:
         """Test that schedule IDs contain valid datetime format."""
         schedule_id = generate_schedule_id()
         # Format: SCH_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^SCH_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^SCH_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, schedule_id), f"Invalid format: {schedule_id}"
 
     def test_generate_news_id_has_correct_prefix(self):
@@ -76,7 +76,7 @@ class TestBirthIDGeneration:
         """Test that news IDs contain valid datetime format."""
         news_id = generate_news_id()
         # Format: NWS_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^NWS_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^NWS_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, news_id), f"Invalid format: {news_id}"
 
 
@@ -92,7 +92,7 @@ class TestWorkerOutputIDGeneration:
         """Test that signal IDs contain valid datetime format."""
         sig_id = generate_signal_id()
         # Format: SIG_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^SIG_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^SIG_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, sig_id), f"Invalid format: {sig_id}"
 
     def test_generate_signal_id_is_unique(self):
@@ -110,7 +110,7 @@ class TestWorkerOutputIDGeneration:
         """Test that risk IDs contain valid datetime format."""
         risk_id = generate_risk_id()
         # Format: RSK_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^RSK_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^RSK_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, risk_id), f"Invalid format: {risk_id}"
 
     def test_generate_risk_id_is_unique(self):
@@ -133,7 +133,7 @@ class TestWorkerOutputIDGeneration:
         """Test that directive IDs contain valid datetime format."""
         directive_id = generate_strategy_directive_id()
         # Format: STR_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^STR_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^STR_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, directive_id), f"Invalid format: {directive_id}"
 
     def test_generate_entry_plan_id_has_correct_prefix(self):
@@ -160,7 +160,7 @@ class TestWorkerOutputIDGeneration:
         """Test that execution command IDs contain valid datetime format."""
         command_id = generate_execution_command_id()
         # Format: EXC_YYYYMMDD_HHMMSS_8charhash
-        pattern = r'^EXC_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^EXC_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, command_id), f"Invalid format: {command_id}"
 
     def test_generate_execution_command_id_is_unique(self):
@@ -273,10 +273,7 @@ class TestIDTimestampExtraction:
         time_str = parts[2]  # HHMMSS
 
         # Reconstruct expected datetime
-        expected = datetime.strptime(
-            f"{date_str}_{time_str}",
-            "%Y%m%d_%H%M%S"
-        ).replace(tzinfo=UTC)
+        expected = datetime.strptime(f"{date_str}_{time_str}", "%Y%m%d_%H%M%S").replace(tzinfo=UTC)
 
         # Should match
         assert timestamp == expected

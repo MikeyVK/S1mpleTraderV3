@@ -39,7 +39,7 @@ class TestExecutionGroupCreation:
             order_ids=[],
             status=GroupStatus.PENDING,
             created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
+            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
         )
 
         assert group.group_id == "EXG_20251028_143022_a8f3c"
@@ -67,7 +67,7 @@ class TestExecutionGroupCreation:
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("30.0"),
             cancelled_at=None,
-            completed_at=None
+            completed_at=None,
         )
 
         assert group.group_id == "EXG_20251028_143025_b7c4d"
@@ -76,6 +76,7 @@ class TestExecutionGroupCreation:
         assert len(group.order_ids) == 3
         assert group.target_quantity == Decimal("100.0")
         assert group.filled_quantity == Decimal("30.0")
+
 
 class TestExecutionGroupValidation:
     """Test ExecutionGroup validation rules."""
@@ -91,7 +92,7 @@ class TestExecutionGroupValidation:
                 order_ids=[],
                 status=GroupStatus.PENDING,
                 created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
+                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
             )
 
     def test_parent_command_id_format_validation(self):
@@ -105,7 +106,7 @@ class TestExecutionGroupValidation:
                 order_ids=[],
                 status=GroupStatus.PENDING,
                 created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
+                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
             )
 
     def test_unique_order_ids_validation(self):
@@ -118,7 +119,7 @@ class TestExecutionGroupValidation:
                 order_ids=["binance_123", "binance_123"],  # Duplicate!
                 status=GroupStatus.ACTIVE,
                 created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
+                updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
             )
 
     def test_fill_ratio_validation(self):
@@ -133,7 +134,7 @@ class TestExecutionGroupValidation:
                 created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
                 updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
                 target_quantity=Decimal("100.0"),
-                filled_quantity=Decimal("150.0")  # Exceeds target!
+                filled_quantity=Decimal("150.0"),  # Exceeds target!
             )
 
     def test_final_state_xor_validation(self):
@@ -148,7 +149,7 @@ class TestExecutionGroupValidation:
                 created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
                 updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC),
                 cancelled_at=datetime(2025, 10, 28, 14, 35, 0, tzinfo=UTC),
-                completed_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC)
+                completed_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC),
             )
 
     def test_target_quantity_positive_validation(self):
@@ -162,7 +163,7 @@ class TestExecutionGroupValidation:
                 status=GroupStatus.PENDING,
                 created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
                 updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-                target_quantity=Decimal("-100.0")  # Negative!
+                target_quantity=Decimal("-100.0"),  # Negative!
             )
 
 
@@ -181,7 +182,7 @@ class TestExecutionGroupStrategies:
             updated_at=datetime(2025, 10, 28, 12, 0, 1, tzinfo=UTC),
             target_quantity=Decimal("10.0"),
             filled_quantity=Decimal("10.0"),
-            completed_at=datetime(2025, 10, 28, 12, 0, 1, tzinfo=UTC)
+            completed_at=datetime(2025, 10, 28, 12, 0, 1, tzinfo=UTC),
         )
 
         assert group.execution_strategy == ExecutionStrategyType.SINGLE
@@ -198,7 +199,7 @@ class TestExecutionGroupStrategies:
             created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
             updated_at=datetime(2025, 10, 28, 14, 35, 15, tzinfo=UTC),
             target_quantity=Decimal("100.0"),
-            filled_quantity=Decimal("30.0")
+            filled_quantity=Decimal("30.0"),
         )
 
         assert group.execution_strategy == ExecutionStrategyType.TWAP
@@ -215,7 +216,7 @@ class TestExecutionGroupStrategies:
             created_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 10, 28, 15, 0, 0, tzinfo=UTC),
             target_quantity=Decimal("500.0"),
-            filled_quantity=Decimal("0.0")
+            filled_quantity=Decimal("0.0"),
         )
 
         assert group.execution_strategy == ExecutionStrategyType.ICEBERG
@@ -232,7 +233,7 @@ class TestExecutionGroupStrategies:
             created_at=datetime(2025, 10, 28, 10, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 10, 28, 12, 0, 0, tzinfo=UTC),
             target_quantity=Decimal("50.0"),
-            filled_quantity=Decimal("30.0")
+            filled_quantity=Decimal("30.0"),
         )
 
         assert group.execution_strategy == ExecutionStrategyType.LAYERED
@@ -247,7 +248,7 @@ class TestExecutionGroupStrategies:
             order_ids=[],
             status=GroupStatus.PENDING,
             created_at=datetime(2025, 10, 28, 11, 0, 0, tzinfo=UTC),
-            updated_at=datetime(2025, 10, 28, 11, 0, 0, tzinfo=UTC)
+            updated_at=datetime(2025, 10, 28, 11, 0, 0, tzinfo=UTC),
         )
 
         assert group.execution_strategy == ExecutionStrategyType.VWAP
@@ -261,7 +262,7 @@ class TestExecutionGroupStrategies:
             order_ids=[],
             status=GroupStatus.PENDING,
             created_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC),
-            updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC)
+            updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC),
         )
 
         assert group.execution_strategy == ExecutionStrategyType.POV
@@ -280,7 +281,7 @@ class TestExecutionGroupStatus:
             order_ids=[],
             status=GroupStatus.PENDING,
             created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
+            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
         )
 
         assert group.status == GroupStatus.PENDING
@@ -294,7 +295,7 @@ class TestExecutionGroupStatus:
             order_ids=["binance_123"],
             status=GroupStatus.ACTIVE,
             created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-            updated_at=datetime(2025, 10, 28, 14, 30, 25, tzinfo=UTC)
+            updated_at=datetime(2025, 10, 28, 14, 30, 25, tzinfo=UTC),
         )
 
         assert active_group.status == GroupStatus.ACTIVE
@@ -311,7 +312,7 @@ class TestExecutionGroupStatus:
             updated_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC),
             target_quantity=Decimal("50.0"),
             filled_quantity=Decimal("50.0"),
-            completed_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC)
+            completed_at=datetime(2025, 10, 28, 14, 0, 0, tzinfo=UTC),
         )
 
         assert group.status == GroupStatus.COMPLETED
@@ -330,7 +331,7 @@ class TestExecutionGroupStatus:
             updated_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=UTC),
             target_quantity=Decimal("200.0"),
             filled_quantity=Decimal("40.0"),
-            cancelled_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=UTC)
+            cancelled_at=datetime(2025, 10, 28, 16, 5, 30, tzinfo=UTC),
         )
 
         assert group.status == GroupStatus.CANCELLED
@@ -346,7 +347,7 @@ class TestExecutionGroupStatus:
             order_ids=[],
             status=GroupStatus.FAILED,
             created_at=datetime(2025, 10, 28, 17, 0, 0, tzinfo=UTC),
-            updated_at=datetime(2025, 10, 28, 17, 0, 5, tzinfo=UTC)
+            updated_at=datetime(2025, 10, 28, 17, 0, 5, tzinfo=UTC),
         )
 
         assert group.status == GroupStatus.FAILED
@@ -362,7 +363,7 @@ class TestExecutionGroupStatus:
             created_at=datetime(2025, 10, 28, 18, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 10, 28, 18, 10, 0, tzinfo=UTC),
             target_quantity=Decimal("100.0"),
-            filled_quantity=Decimal("45.0")
+            filled_quantity=Decimal("45.0"),
         )
 
         assert group.status == GroupStatus.PARTIAL
@@ -383,7 +384,7 @@ class TestExecutionGroupStatus:
             status=GroupStatus.COMPLETED,
             created_at=datetime(2025, 10, 28, 19, 0, 0, tzinfo=UTC),
             updated_at=datetime(2025, 10, 28, 19, 0, 1, tzinfo=UTC),
-            completed_at=datetime(2025, 10, 28, 19, 0, 1, tzinfo=UTC)
+            completed_at=datetime(2025, 10, 28, 19, 0, 1, tzinfo=UTC),
         )
 
         assert group.status == GroupStatus.COMPLETED
@@ -402,7 +403,7 @@ class TestExecutionGroupMutation:
             order_ids=[],
             status=GroupStatus.ACTIVE,
             created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
+            updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
         )
 
         # Initial state
@@ -428,7 +429,7 @@ class TestExecutionGroupMutation:
             created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
             updated_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
             target_quantity=Decimal("100.0"),
-            filled_quantity=Decimal("0.0")
+            filled_quantity=Decimal("0.0"),
         )
 
         # Initial state
@@ -437,9 +438,7 @@ class TestExecutionGroupMutation:
         # Update fill (would need model_copy in Pydantic, but testing concept)
         # In real implementation, use group = group.model_copy(update={...})
         # For test, we validate that the field can hold updated values
-        updated_group = group.model_copy(
-            update={"filled_quantity": Decimal("30.0")}
-        )
+        updated_group = group.model_copy(update={"filled_quantity": Decimal("30.0")})
 
         assert updated_group.filled_quantity == Decimal("30.0")
         assert updated_group.filled_quantity is not None
@@ -463,7 +462,7 @@ class TestExecutionGroupSerialization:  # pylint: disable=too-few-public-methods
             target_quantity=Decimal("100.0"),
             filled_quantity=Decimal("30.0"),
             cancelled_at=None,
-            completed_at=None
+            completed_at=None,
         )
 
         # Serialize to dict (Pydantic model_dump)

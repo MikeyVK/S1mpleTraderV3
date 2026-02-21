@@ -21,6 +21,7 @@ from backend.dtos.shared.disposition_envelope import DispositionEnvelope
 
 class MockSystemDTO(BaseModel):
     """Mock System DTO for testing event payloads."""
+
     value: float
     description: str
 
@@ -48,7 +49,7 @@ class TestDispositionEnvelopeContinue:
         envelope = DispositionEnvelope(
             disposition="CONTINUE",
             event_name="IGNORED",
-            event_payload=MockSystemDTO(value=1.0, description="test")
+            event_payload=MockSystemDTO(value=1.0, description="test"),
         )
         assert envelope.disposition == "CONTINUE"
 
@@ -60,8 +61,7 @@ class TestDispositionEnvelopePublish:
         """Test that PUBLISH disposition requires event_name."""
         with pytest.raises(ValidationError) as exc_info:
             DispositionEnvelope(
-                disposition="PUBLISH",
-                event_payload=MockSystemDTO(value=1.0, description="test")
+                disposition="PUBLISH", event_payload=MockSystemDTO(value=1.0, description="test")
             )
 
         assert "event_name is required" in str(exc_info.value)
@@ -69,10 +69,7 @@ class TestDispositionEnvelopePublish:
     def test_publish_allows_no_payload(self):
         """Test that PUBLISH disposition works without payload (pure signal)."""
         # Pure signal events don't need payload
-        envelope = DispositionEnvelope(
-            disposition="PUBLISH",
-            event_name="EMERGENCY_HALT"
-        )
+        envelope = DispositionEnvelope(disposition="PUBLISH", event_name="EMERGENCY_HALT")
 
         assert envelope.disposition == "PUBLISH"
         assert envelope.event_name == "EMERGENCY_HALT"
@@ -82,9 +79,7 @@ class TestDispositionEnvelopePublish:
         """Test PUBLISH disposition with valid event_name and event_payload."""
         payload = MockSystemDTO(value=42.0, description="Test signal")
         envelope = DispositionEnvelope(
-            disposition="PUBLISH",
-            event_name="SIGNAL_GENERATED",
-            event_payload=payload
+            disposition="PUBLISH", event_name="SIGNAL_GENERATED", event_payload=payload
         )
 
         assert envelope.disposition == "PUBLISH"
@@ -99,9 +94,7 @@ class TestDispositionEnvelopePublish:
         # We test that valid BaseModel instances work correctly
         payload = MockSystemDTO(value=42.0, description="Valid DTO")
         envelope = DispositionEnvelope(
-            disposition="PUBLISH",
-            event_name="TEST_EVENT",
-            event_payload=payload
+            disposition="PUBLISH", event_name="TEST_EVENT", event_payload=payload
         )
         assert isinstance(envelope.event_payload, BaseModel)
         assert envelope.event_payload == payload
@@ -122,7 +115,7 @@ class TestDispositionEnvelopeStop:
         envelope = DispositionEnvelope(
             disposition="STOP",
             event_name="IGNORED",
-            event_payload=MockSystemDTO(value=1.0, description="test")
+            event_payload=MockSystemDTO(value=1.0, description="test"),
         )
         assert envelope.disposition == "STOP"
 
@@ -142,7 +135,7 @@ class TestDispositionEnvelopeImmutability:
         with pytest.raises(ValidationError) as exc_info:
             DispositionEnvelope(
                 disposition="CONTINUE",
-                extra_field="not_allowed"  # type: ignore
+                extra_field="not_allowed",  # type: ignore
             )
 
         assert "extra_field" in str(exc_info.value).lower()
@@ -172,69 +165,48 @@ class TestDispositionEnvelopeEventNameValidation:
         ]
 
         for name in valid_names:
-            envelope = DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name=name
-            )
+            envelope = DispositionEnvelope(disposition="PUBLISH", event_name=name)
             assert envelope.event_name == name
 
     def test_event_name_rejects_lowercase(self):
         """Test that lowercase event names are rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name="signal_generated"
-            )
+            DispositionEnvelope(disposition="PUBLISH", event_name="signal_generated")
 
         assert "UPPER_SNAKE_CASE" in str(exc_info.value)
 
     def test_event_name_rejects_camel_case(self):
         """Test that camelCase event names are rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name="signalGenerated"
-            )
+            DispositionEnvelope(disposition="PUBLISH", event_name="signalGenerated")
 
         assert "UPPER_SNAKE_CASE" in str(exc_info.value)
 
     def test_event_name_rejects_kebab_case(self):
         """Test that kebab-case event names are rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name="SIGNAL-GENERATED"
-            )
+            DispositionEnvelope(disposition="PUBLISH", event_name="SIGNAL-GENERATED")
 
         assert "UPPER_SNAKE_CASE" in str(exc_info.value)
 
     def test_event_name_rejects_reserved_system_prefix(self):
         """Test that SYSTEM_ prefix is reserved."""
         with pytest.raises(ValidationError) as exc_info:
-            DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name="SYSTEM_OVERRIDE"
-            )
+            DispositionEnvelope(disposition="PUBLISH", event_name="SYSTEM_OVERRIDE")
 
         assert "reserved prefix" in str(exc_info.value).lower()
 
     def test_event_name_rejects_reserved_internal_prefix(self):
         """Test that INTERNAL_ prefix is reserved."""
         with pytest.raises(ValidationError) as exc_info:
-            DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name="INTERNAL_EVENT"
-            )
+            DispositionEnvelope(disposition="PUBLISH", event_name="INTERNAL_EVENT")
 
         assert "reserved prefix" in str(exc_info.value).lower()
 
     def test_event_name_rejects_underscore_prefix(self):
         """Test that _ prefix is reserved."""
         with pytest.raises(ValidationError) as exc_info:
-            DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name="_PRIVATE_EVENT"
-            )
+            DispositionEnvelope(disposition="PUBLISH", event_name="_PRIVATE_EVENT")
 
         assert "reserved prefix" in str(exc_info.value).lower()
 
@@ -243,19 +215,13 @@ class TestDispositionEnvelopeEventNameValidation:
         long_name = "A" * 101
 
         with pytest.raises(ValidationError) as exc_info:
-            DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name=long_name
-            )
+            DispositionEnvelope(disposition="PUBLISH", event_name=long_name)
 
         assert "100" in str(exc_info.value)
 
     def test_event_name_minimum_length(self):
         """Test that event names must be at least 3 characters."""
         with pytest.raises(ValidationError) as exc_info:
-            DispositionEnvelope(
-                disposition="PUBLISH",
-                event_name="AB"
-            )
+            DispositionEnvelope(disposition="PUBLISH", event_name="AB")
 
         assert "at least 3 characters" in str(exc_info.value).lower()

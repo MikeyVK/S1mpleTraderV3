@@ -45,7 +45,7 @@ def create_test_origin(origin_type: OriginType = OriginType.TICK) -> Origin:
     type_map = {
         OriginType.TICK: "TCK_20251027_100000_abc123",
         OriginType.NEWS: "NWS_20251027_100000_def456",
-        OriginType.SCHEDULE: "SCH_20251027_100000_ghi789"
+        OriginType.SCHEDULE: "SCH_20251027_100000_ghi789",
     }
     return Origin(id=type_map[origin_type], type=origin_type)
 
@@ -58,25 +58,21 @@ class TestExecutionCommandCreation:
         causality = CausalityChain(origin=create_test_origin())
 
         entry = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="LIMIT",
-            limit_price=Decimal("100000.00")
+            symbol="BTCUSDT", direction="BUY", order_type="LIMIT", limit_price=Decimal("100000.00")
         )
         size = SizePlan(
             position_size=Decimal("0.5"),
             position_value=Decimal("50000.00"),
-            risk_amount=Decimal("500.00")
+            risk_amount=Decimal("500.00"),
         )
         exit_plan = ExitPlan(
-            stop_loss_price=Decimal("95000.00"),
-            take_profit_price=Decimal("105000.00")
+            stop_loss_price=Decimal("95000.00"), take_profit_price=Decimal("105000.00")
         )
         execution_plan = ExecutionPlan(
             execution_urgency=Decimal("0.80"),
             visibility_preference=Decimal("0.50"),
             max_slippage_pct=Decimal("0.0050"),
-            must_complete_immediately=False
+            must_complete_immediately=False,
         )
 
         command = ExecutionCommand(
@@ -84,7 +80,7 @@ class TestExecutionCommandCreation:
             entry_plan=entry,
             size_plan=size,
             exit_plan=exit_plan,
-            execution_plan=execution_plan
+            execution_plan=execution_plan,
         )
 
         assert command.command_id.startswith("EXC_")
@@ -105,14 +101,9 @@ class TestExecutionCommandCreation:
         causality = CausalityChain(origin=create_test_origin())
 
         # Only exit plan - trailing stop adjustment
-        exit_plan = ExitPlan(
-            stop_loss_price=Decimal("98000.00")
-        )
+        exit_plan = ExitPlan(stop_loss_price=Decimal("98000.00"))
 
-        command = ExecutionCommand(
-            causality=causality,
-            exit_plan=exit_plan
-        )
+        command = ExecutionCommand(causality=causality, exit_plan=exit_plan)
 
         assert command.command_id.startswith("EXC_")
         assert command.entry_plan is None
@@ -130,13 +121,10 @@ class TestExecutionCommandCreation:
             execution_urgency=Decimal("1.0"),
             visibility_preference=Decimal("0.50"),
             max_slippage_pct=Decimal("0.0"),
-            must_complete_immediately=True
+            must_complete_immediately=True,
         )
 
-        command = ExecutionCommand(
-            causality=causality,
-            execution_plan=execution_plan
-        )
+        command = ExecutionCommand(causality=causality, execution_plan=execution_plan)
 
         assert command.command_id.startswith("EXC_")
         assert command.entry_plan is None
@@ -150,16 +138,9 @@ class TestExecutionCommandCreation:
     def test_command_id_auto_generated(self):
         """Test that command_id is auto-generated with correct format."""
         causality = CausalityChain(origin=create_test_origin())
-        entry = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="MARKET"
-        )
+        entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
 
-        command = ExecutionCommand(
-            causality=causality,
-            entry_plan=entry
-        )
+        command = ExecutionCommand(causality=causality, entry_plan=entry)
 
         # EXC_YYYYMMDD_HHMMSS_hash format
         assert command.command_id.startswith("EXC_")
@@ -178,11 +159,7 @@ class TestExecutionCommandValidation:
 
     def test_causality_required(self):
         """Test that causality is required."""
-        entry = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="MARKET"
-        )
+        entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
 
         with pytest.raises(ValueError):
             ExecutionCommand(entry_plan=entry)  # Missing causality
@@ -195,7 +172,7 @@ class TestExecutionCommandValidation:
         size = SizePlan(
             position_size=Decimal("0.5"),
             position_value=Decimal("50000"),
-            risk_amount=Decimal("500")
+            risk_amount=Decimal("500"),
         )
 
         # Entry + Size only
@@ -229,7 +206,7 @@ class TestExecutionCommandImmutability:
             ExecutionCommand(
                 causality=causality,
                 entry_plan=entry,
-                strategy_metadata="not allowed"  # Extra field
+                strategy_metadata="not allowed",  # Extra field
             )
 
 
@@ -244,7 +221,7 @@ class TestExecutionCommandIdFormat:
         command = ExecutionCommand(causality=causality, entry_plan=entry)
 
         # Should match: EXC_YYYYMMDD_HHMMSS_hash
-        pattern = r'^EXC_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^EXC_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, command.command_id)
 
     def test_command_id_uniqueness(self):
@@ -267,7 +244,7 @@ class TestExecutionCommandCausalityChain:
         causality = CausalityChain(
             origin=create_test_origin(),
             signal_ids=["SIG_20251027_100001_def456"],
-            strategy_directive_id="STR_20251027_100002_ghi789"
+            strategy_directive_id="STR_20251027_100002_ghi789",
         )
         entry = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
 
@@ -300,7 +277,7 @@ class TestExecutionCommandBatchCreation:
             batch_id="BAT_20251028_143022_a8f3c",
             commands=[command],
             execution_mode=ExecutionMode.SEQUENTIAL,
-            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC)
+            created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
         )
 
         assert batch.batch_id == "BAT_20251028_143022_a8f3c"
@@ -316,7 +293,7 @@ class TestExecutionCommandBatchCreation:
             commands=commands,
             execution_mode=ExecutionMode.ATOMIC,
             created_at=datetime(2025, 10, 28, 14, 30, 22, tzinfo=UTC),
-            rollback_on_failure=True
+            rollback_on_failure=True,
         )
 
         assert len(batch.commands) == 3
@@ -330,7 +307,7 @@ class TestExecutionCommandBatchCreation:
             commands=[command],
             execution_mode=ExecutionMode.PARALLEL,
             created_at=datetime.now(UTC),
-            metadata={"reason": "FLASH_CRASH", "trigger_price": 45000}
+            metadata={"reason": "FLASH_CRASH", "trigger_price": 45000},
         )
 
         assert batch.metadata is not None
@@ -346,7 +323,7 @@ class TestExecutionCommandBatchCreation:
             commands=[command],
             execution_mode=ExecutionMode.SEQUENTIAL,
             created_at=datetime.now(UTC),
-            timeout_seconds=30
+            timeout_seconds=30,
         )
 
         assert batch.timeout_seconds == 30
@@ -365,7 +342,7 @@ class TestExecutionCommandBatchValidation:
                 batch_id="INVALID_ID",
                 commands=[command],
                 execution_mode=ExecutionMode.SEQUENTIAL,
-                created_at=datetime.now(UTC)
+                created_at=datetime.now(UTC),
             )
 
     def test_commands_non_empty_validation(self):
@@ -375,7 +352,7 @@ class TestExecutionCommandBatchValidation:
                 batch_id="BAT_20251028_143022_a8f3c",
                 commands=[],
                 execution_mode=ExecutionMode.SEQUENTIAL,
-                created_at=datetime.now(UTC)
+                created_at=datetime.now(UTC),
             )
 
     def test_unique_command_ids_validation(self):
@@ -385,7 +362,7 @@ class TestExecutionCommandBatchValidation:
         command2 = ExecutionCommand(
             command_id=command1.command_id,  # Duplicate ID
             causality=CausalityChain(origin=create_test_origin()),
-            entry_plan=EntryPlan(symbol="ETH_USDT", direction="SELL", order_type="MARKET")
+            entry_plan=EntryPlan(symbol="ETH_USDT", direction="SELL", order_type="MARKET"),
         )
 
         with pytest.raises(ValueError, match="unique"):
@@ -393,7 +370,7 @@ class TestExecutionCommandBatchValidation:
                 batch_id="BAT_20251028_143022_a8f3c",
                 commands=[command1, command2],
                 execution_mode=ExecutionMode.SEQUENTIAL,
-                created_at=datetime.now(UTC)
+                created_at=datetime.now(UTC),
             )
 
     def test_atomic_requires_rollback(self):
@@ -406,7 +383,7 @@ class TestExecutionCommandBatchValidation:
                 commands=[command],
                 execution_mode=ExecutionMode.ATOMIC,
                 created_at=datetime.now(UTC),
-                rollback_on_failure=False
+                rollback_on_failure=False,
             )
 
     def test_timeout_must_be_positive(self):
@@ -419,7 +396,7 @@ class TestExecutionCommandBatchValidation:
                 commands=[command],
                 execution_mode=ExecutionMode.SEQUENTIAL,
                 created_at=datetime.now(UTC),
-                timeout_seconds=0
+                timeout_seconds=0,
             )
 
 
@@ -433,7 +410,7 @@ class TestExecutionCommandBatchImmutability:
             batch_id="BAT_20251028_143022_a8f3c",
             commands=[command],
             execution_mode=ExecutionMode.SEQUENTIAL,
-            created_at=datetime.now(UTC)
+            created_at=datetime.now(UTC),
         )
 
         with pytest.raises(ValueError, match="frozen"):
@@ -451,7 +428,7 @@ class TestExecutionCommandBatchModes:
             commands=commands,
             execution_mode=ExecutionMode.SEQUENTIAL,
             created_at=datetime.now(UTC),
-            rollback_on_failure=False  # Allowed for SEQUENTIAL
+            rollback_on_failure=False,  # Allowed for SEQUENTIAL
         )
 
         assert batch.execution_mode == ExecutionMode.SEQUENTIAL
@@ -465,7 +442,7 @@ class TestExecutionCommandBatchModes:
             commands=commands,
             execution_mode=ExecutionMode.PARALLEL,
             created_at=datetime.now(UTC),
-            rollback_on_failure=False  # Allowed for PARALLEL
+            rollback_on_failure=False,  # Allowed for PARALLEL
         )
 
         assert batch.execution_mode == ExecutionMode.PARALLEL
@@ -478,7 +455,7 @@ class TestExecutionCommandBatchModes:
             commands=commands,
             execution_mode=ExecutionMode.ATOMIC,
             created_at=datetime.now(UTC),
-            rollback_on_failure=True  # Required for ATOMIC
+            rollback_on_failure=True,  # Required for ATOMIC
         )
 
         assert batch.execution_mode == ExecutionMode.ATOMIC

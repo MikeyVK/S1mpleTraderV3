@@ -1,4 +1,4 @@
-﻿# tests/unit/dtos/strategy/test_signal.py
+# tests/unit/dtos/strategy/test_signal.py
 """
 Unit tests for Signal DTO.
 
@@ -35,11 +35,11 @@ class TestSignalCreation:
             timestamp=datetime.now(UTC),
             symbol="BTC_USDT",
             direction="long",
-            signal_type="FVG_ENTRY"
+            signal_type="FVG_ENTRY",
         )
 
         # Verify NO causality field (Signal is pre-causality)
-        assert not hasattr(signal, 'causality')
+        assert not hasattr(signal, "causality")
         # Verify ID formats
         signal_id = str(signal.signal_id)
         assert signal_id.startswith("SIG_")
@@ -55,7 +55,7 @@ class TestSignalCreation:
             symbol="ETH_USDT",
             direction="short",
             signal_type="EMA_CROSS",
-            confidence=Decimal("0.85")
+            confidence=Decimal("0.85"),
         )
 
         assert signal.confidence == Decimal("0.85")
@@ -64,10 +64,7 @@ class TestSignalCreation:
     def test_signal_id_auto_generated(self):
         """Test that signal_id is auto-generated if not provided."""
         signal = Signal(
-            timestamp=datetime.now(UTC),
-            symbol="BTC_EUR",
-            direction="long",
-            signal_type="FVG_ENTRY"
+            timestamp=datetime.now(UTC), symbol="BTC_EUR", direction="long", signal_type="FVG_ENTRY"
         )
 
         signal_id = str(signal.signal_id)
@@ -81,7 +78,7 @@ class TestSignalCreation:
             timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
-            signal_type="FVG_ENTRY"
+            signal_type="FVG_ENTRY",
         )
 
         assert signal.signal_id == custom_id
@@ -93,14 +90,11 @@ class TestSignalPreCausality:
     def test_signal_has_no_causality_field(self):
         """Signal should NOT have a causality field - it's pre-causality."""
         signal = Signal(
-            timestamp=datetime.now(UTC),
-            symbol="BTC_USDT",
-            direction="long",
-            signal_type="BREAKOUT"
+            timestamp=datetime.now(UTC), symbol="BTC_USDT", direction="long", signal_type="BREAKOUT"
         )
 
         # Signal is pre-causality - CausalityChain is created by StrategyPlanner
-        assert not hasattr(signal, 'causality')
+        assert not hasattr(signal, "causality")
 
     def test_signal_creation_without_causality_succeeds(self):
         """Should create Signal without any causality parameter."""
@@ -109,7 +103,7 @@ class TestSignalPreCausality:
             timestamp=datetime.now(UTC),
             symbol="ETH_USDT",
             direction="short",
-            signal_type="REVERSAL"
+            signal_type="REVERSAL",
         )
 
         assert signal.signal_id.startswith("SIG_")
@@ -125,7 +119,7 @@ class TestSignalIDValidation:
             timestamp=datetime.now(UTC),
             symbol="BTC_EUR",
             direction="long",
-            signal_type="TEST"
+            signal_type="TEST",
         )
 
         signal_id = str(signal.signal_id)
@@ -139,7 +133,7 @@ class TestSignalIDValidation:
                 timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
-                signal_type="TEST"
+                signal_type="TEST",
             )
 
         assert "signal_id" in str(exc_info.value)
@@ -151,12 +145,7 @@ class TestSignalTimestampValidation:
     def test_naive_datetime_converted_to_utc(self):
         """Test that naive datetime is assumed to be UTC."""
         naive_dt = datetime(2025, 1, 15, 10, 30, 0)
-        signal = Signal(
-            timestamp=naive_dt,
-            symbol="BTC_EUR",
-            direction="long",
-            signal_type="TEST"
-        )
+        signal = Signal(timestamp=naive_dt, symbol="BTC_EUR", direction="long", signal_type="TEST")
 
         # Naive datetime gets timezone applied - verify with aware_dt
         assert naive_dt.year == 2025
@@ -167,12 +156,7 @@ class TestSignalTimestampValidation:
     def test_aware_datetime_preserved(self):
         """Test that timezone-aware datetime is preserved."""
         aware_dt = datetime(2025, 1, 15, 10, 30, 0, tzinfo=UTC)
-        signal = Signal(
-            timestamp=aware_dt,
-            symbol="BTC_EUR",
-            direction="long",
-            signal_type="TEST"
-        )
+        signal = Signal(timestamp=aware_dt, symbol="BTC_EUR", direction="long", signal_type="TEST")
 
         assert signal.timestamp == aware_dt
 
@@ -192,22 +176,14 @@ class TestSignalSymbolValidation:
 
         for symbol in valid_symbols:
             signal = Signal(
-                timestamp=datetime.now(UTC),
-                symbol=symbol,
-                direction="long",
-                signal_type="TEST"
+                timestamp=datetime.now(UTC), symbol=symbol, direction="long", signal_type="TEST"
             )
             assert signal.symbol == symbol
 
     def test_symbol_too_short_rejected(self):
         """Test that too short symbol is rejected (min 3 chars)."""
         with pytest.raises(ValidationError) as exc_info:
-            Signal(
-                timestamp=datetime.now(UTC),
-                symbol="AB",
-                direction="long",
-                signal_type="TEST"
-            )
+            Signal(timestamp=datetime.now(UTC), symbol="AB", direction="long", signal_type="TEST")
 
         assert "symbol" in str(exc_info.value)
 
@@ -219,7 +195,7 @@ class TestSignalSymbolValidation:
                 timestamp=datetime.now(UTC),
                 symbol=long_symbol,
                 direction="long",
-                signal_type="TEST"
+                signal_type="TEST",
             )
 
         assert "symbol" in str(exc_info.value)
@@ -227,12 +203,12 @@ class TestSignalSymbolValidation:
     def test_symbol_invalid_format_rejected(self):
         """Test that invalid symbol format is rejected."""
         invalid_symbols = [
-            "btc_eur",      # lowercase
-            "BTC/EUR",      # slash instead of underscore (OLD format)
-            "BTC-EUR",      # dash separator
-            "BTC_eur",      # mixed case
-            "btc_EUR",      # mixed case
-            "123_456",      # starts with number
+            "btc_eur",  # lowercase
+            "BTC/EUR",  # slash instead of underscore (OLD format)
+            "BTC-EUR",  # dash separator
+            "BTC_eur",  # mixed case
+            "btc_EUR",  # mixed case
+            "123_456",  # starts with number
         ]
 
         for invalid_symbol in invalid_symbols:
@@ -241,7 +217,7 @@ class TestSignalSymbolValidation:
                     timestamp=datetime.now(UTC),
                     symbol=invalid_symbol,
                     direction="long",
-                    signal_type="TEST"
+                    signal_type="TEST",
                 )
 
 
@@ -251,10 +227,7 @@ class TestSignalDirectionValidation:
     def test_long_direction_accepted(self):
         """Test that 'long' direction is accepted."""
         signal = Signal(
-            timestamp=datetime.now(UTC),
-            symbol="BTC_EUR",
-            direction="long",
-            signal_type="TEST"
+            timestamp=datetime.now(UTC), symbol="BTC_EUR", direction="long", signal_type="TEST"
         )
 
         assert signal.direction == "long"
@@ -262,10 +235,7 @@ class TestSignalDirectionValidation:
     def test_short_direction_accepted(self):
         """Test that 'short' direction is accepted."""
         signal = Signal(
-            timestamp=datetime.now(UTC),
-            symbol="BTC_EUR",
-            direction="short",
-            signal_type="TEST"
+            timestamp=datetime.now(UTC), symbol="BTC_EUR", direction="short", signal_type="TEST"
         )
 
         assert signal.direction == "short"
@@ -277,7 +247,7 @@ class TestSignalDirectionValidation:
                 timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="neutral",  # type: ignore
-                signal_type="TEST"
+                signal_type="TEST",
             )
 
         assert "direction" in str(exc_info.value)
@@ -301,7 +271,7 @@ class TestSignalTypeValidation:
                 timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
-                signal_type=signal_type
+                signal_type=signal_type,
             )
             assert signal.signal_type == signal_type
 
@@ -309,10 +279,7 @@ class TestSignalTypeValidation:
         """Test that signal_type < 3 chars is rejected."""
         with pytest.raises(ValidationError) as exc_info:
             Signal(
-                timestamp=datetime.now(UTC),
-                symbol="BTC_EUR",
-                direction="long",
-                signal_type="AB"
+                timestamp=datetime.now(UTC), symbol="BTC_EUR", direction="long", signal_type="AB"
             )
 
         assert "signal_type" in str(exc_info.value)
@@ -324,7 +291,7 @@ class TestSignalTypeValidation:
                 timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
-                signal_type="A" * 26
+                signal_type="A" * 26,
             )
 
         assert "signal_type" in str(exc_info.value)
@@ -336,18 +303,14 @@ class TestSignalTypeValidation:
                 timestamp=datetime.now(UTC),
                 symbol="BTC_EUR",
                 direction="long",
-                signal_type="fvg_entry"
+                signal_type="fvg_entry",
             )
 
         assert "signal_type" in str(exc_info.value)
 
     def test_signal_type_reserved_prefix_rejected(self):
         """Test that reserved prefixes are rejected."""
-        reserved_types = [
-            "SYSTEM_EVENT",
-            "INTERNAL_SIGNAL",
-            "_PRIVATE"
-        ]
+        reserved_types = ["SYSTEM_EVENT", "INTERNAL_SIGNAL", "_PRIVATE"]
 
         for reserved_type in reserved_types:
             with pytest.raises(ValidationError) as exc_info:
@@ -355,7 +318,7 @@ class TestSignalTypeValidation:
                     timestamp=datetime.now(UTC),
                     symbol="BTC_EUR",
                     direction="long",
-                    signal_type=reserved_type
+                    signal_type=reserved_type,
                 )
 
             assert "reserved prefix" in str(exc_info.value).lower()
@@ -367,10 +330,7 @@ class TestSignalConfidenceValidation:
     def test_confidence_none_by_default(self):
         """Test that confidence is None if not provided."""
         signal = Signal(
-            timestamp=datetime.now(UTC),
-            symbol="BTC_EUR",
-            direction="long",
-            signal_type="TEST"
+            timestamp=datetime.now(UTC), symbol="BTC_EUR", direction="long", signal_type="TEST"
         )
 
         assert signal.confidence is None
@@ -382,7 +342,7 @@ class TestSignalConfidenceValidation:
             symbol="BTC_EUR",
             direction="long",
             signal_type="TEST",
-            confidence=Decimal("0.75")
+            confidence=Decimal("0.75"),
         )
 
         assert isinstance(signal.confidence, Decimal)
@@ -395,7 +355,7 @@ class TestSignalConfidenceValidation:
             symbol="BTC_EUR",
             direction="long",
             signal_type="TEST",
-            confidence=0.85
+            confidence=0.85,
         )
 
         # Should be converted to Decimal
@@ -408,7 +368,7 @@ class TestSignalConfidenceValidation:
             Decimal("0.25"),
             Decimal("0.5"),
             Decimal("0.75"),
-            Decimal("1.0")
+            Decimal("1.0"),
         ]
 
         for conf in valid_values:
@@ -417,7 +377,7 @@ class TestSignalConfidenceValidation:
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
-                confidence=conf
+                confidence=conf,
             )
             assert signal.confidence == conf
 
@@ -429,7 +389,7 @@ class TestSignalConfidenceValidation:
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
-                confidence=Decimal("-0.1")
+                confidence=Decimal("-0.1"),
             )
 
         assert "confidence" in str(exc_info.value)
@@ -442,7 +402,7 @@ class TestSignalConfidenceValidation:
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
-                confidence=Decimal("1.1")
+                confidence=Decimal("1.1"),
             )
 
         assert "confidence" in str(exc_info.value)
@@ -454,10 +414,7 @@ class TestSignalImmutability:
     def test_signal_is_frozen(self):
         """Test that Signal is immutable after creation."""
         signal = Signal(
-            timestamp=datetime.now(UTC),
-            symbol="BTC_EUR",
-            direction="long",
-            signal_type="TEST"
+            timestamp=datetime.now(UTC), symbol="BTC_EUR", direction="long", signal_type="TEST"
         )
 
         with pytest.raises(ValidationError):
@@ -471,7 +428,7 @@ class TestSignalImmutability:
                 symbol="BTC_EUR",
                 direction="long",
                 signal_type="TEST",
-                extra_field="not allowed"  # type: ignore
+                extra_field="not allowed",  # type: ignore
             )
 
         assert "extra_field" in str(exc_info.value).lower()
@@ -487,10 +444,10 @@ class TestSignalSerialization:
             symbol="BTC_USDT",
             direction="long",
             signal_type="FVG_ENTRY",
-            confidence=Decimal("0.85")
+            confidence=Decimal("0.85"),
         )
 
-        json_data = signal.model_dump(mode='json')
+        json_data = signal.model_dump(mode="json")
 
         assert json_data["symbol"] == "BTC_USDT"
         assert json_data["direction"] == "long"
@@ -506,7 +463,7 @@ class TestSignalSerialization:
             "symbol": "ETH_USDT",
             "direction": "short",
             "signal_type": "REVERSAL",
-            "confidence": "0.72"
+            "confidence": "0.72",
         }
 
         signal = Signal.model_validate(json_data)

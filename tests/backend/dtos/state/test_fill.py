@@ -55,9 +55,7 @@ def minimal_fill_data() -> dict:
 class TestFillCreation:
     """Tests for Fill instantiation."""
 
-    def test_create_with_required_fields(
-        self, minimal_fill_data: dict
-    ) -> None:
+    def test_create_with_required_fields(self, minimal_fill_data: dict) -> None:
         """Should create Fill with required fields only."""
         fill = Fill(**minimal_fill_data)
 
@@ -69,9 +67,7 @@ class TestFillCreation:
         assert fill.commission is None
         assert fill.commission_asset is None
 
-    def test_create_with_all_fields(
-        self, valid_fill_data: dict
-    ) -> None:
+    def test_create_with_all_fields(self, valid_fill_data: dict) -> None:
         """Should create Fill with all fields."""
         fill = Fill(**valid_fill_data)
 
@@ -83,9 +79,7 @@ class TestFillCreation:
         assert fill.commission == Decimal("0.003")
         assert fill.commission_asset == "BNB"
 
-    def test_auto_generates_fill_id_with_correct_prefix(
-        self, minimal_fill_data: dict
-    ) -> None:
+    def test_auto_generates_fill_id_with_correct_prefix(self, minimal_fill_data: dict) -> None:
         """Should auto-generate ID with FIL_ prefix."""
         fill = Fill(**minimal_fill_data)
         assert fill.fill_id.startswith("FIL_")
@@ -103,63 +97,49 @@ class TestFillCreation:
 class TestFillValidation:
     """Tests for Fill field validation."""
 
-    def test_rejects_invalid_parent_order_id_prefix(
-        self, minimal_fill_data: dict
-    ) -> None:
+    def test_rejects_invalid_parent_order_id_prefix(self, minimal_fill_data: dict) -> None:
         """Should reject parent_order_id without ORD_ prefix."""
         minimal_fill_data["parent_order_id"] = "INVALID_20251201_150100_xyz"
         with pytest.raises(ValidationError) as exc_info:
             Fill(**minimal_fill_data)
         assert "parent_order_id" in str(exc_info.value)
 
-    def test_rejects_zero_filled_quantity(
-        self, minimal_fill_data: dict
-    ) -> None:
+    def test_rejects_zero_filled_quantity(self, minimal_fill_data: dict) -> None:
         """Should reject filled_quantity <= 0."""
         minimal_fill_data["filled_quantity"] = Decimal("0")
         with pytest.raises(ValidationError) as exc_info:
             Fill(**minimal_fill_data)
         assert "filled_quantity" in str(exc_info.value)
 
-    def test_rejects_negative_filled_quantity(
-        self, minimal_fill_data: dict
-    ) -> None:
+    def test_rejects_negative_filled_quantity(self, minimal_fill_data: dict) -> None:
         """Should reject negative filled_quantity."""
         minimal_fill_data["filled_quantity"] = Decimal("-0.5")
         with pytest.raises(ValidationError) as exc_info:
             Fill(**minimal_fill_data)
         assert "filled_quantity" in str(exc_info.value)
 
-    def test_rejects_zero_fill_price(
-        self, minimal_fill_data: dict
-    ) -> None:
+    def test_rejects_zero_fill_price(self, minimal_fill_data: dict) -> None:
         """Should reject fill_price <= 0."""
         minimal_fill_data["fill_price"] = Decimal("0")
         with pytest.raises(ValidationError) as exc_info:
             Fill(**minimal_fill_data)
         assert "fill_price" in str(exc_info.value)
 
-    def test_rejects_negative_fill_price(
-        self, minimal_fill_data: dict
-    ) -> None:
+    def test_rejects_negative_fill_price(self, minimal_fill_data: dict) -> None:
         """Should reject negative fill_price."""
         minimal_fill_data["fill_price"] = Decimal("-100.00")
         with pytest.raises(ValidationError) as exc_info:
             Fill(**minimal_fill_data)
         assert "fill_price" in str(exc_info.value)
 
-    def test_rejects_negative_commission(
-        self, valid_fill_data: dict
-    ) -> None:
+    def test_rejects_negative_commission(self, valid_fill_data: dict) -> None:
         """Should reject commission < 0."""
         valid_fill_data["commission"] = Decimal("-0.001")
         with pytest.raises(ValidationError) as exc_info:
             Fill(**valid_fill_data)
         assert "commission" in str(exc_info.value)
 
-    def test_accepts_zero_commission(
-        self, valid_fill_data: dict
-    ) -> None:
+    def test_accepts_zero_commission(self, valid_fill_data: dict) -> None:
         """Should accept commission = 0 (maker rebates possible)."""
         valid_fill_data["commission"] = Decimal("0")
         fill = Fill(**valid_fill_data)
@@ -174,33 +154,25 @@ class TestFillValidation:
 class TestFillImmutability:
     """Tests for Fill immutability (frozen=True)."""
 
-    def test_cannot_modify_fill_price(
-        self, valid_fill_data: dict
-    ) -> None:
+    def test_cannot_modify_fill_price(self, valid_fill_data: dict) -> None:
         """Should raise error when modifying fill_price."""
         fill = Fill(**valid_fill_data)
         with pytest.raises(ValidationError):
             fill.fill_price = Decimal("9999.99")
 
-    def test_cannot_modify_filled_quantity(
-        self, valid_fill_data: dict
-    ) -> None:
+    def test_cannot_modify_filled_quantity(self, valid_fill_data: dict) -> None:
         """Should raise error when modifying filled_quantity."""
         fill = Fill(**valid_fill_data)
         with pytest.raises(ValidationError):
             fill.filled_quantity = Decimal("999.0")
 
-    def test_cannot_modify_fill_id(
-        self, valid_fill_data: dict
-    ) -> None:
+    def test_cannot_modify_fill_id(self, valid_fill_data: dict) -> None:
         """Should raise error when modifying fill_id."""
         fill = Fill(**valid_fill_data)
         with pytest.raises(ValidationError):
             fill.fill_id = "FIL_FAKE_ID_12345678"
 
-    def test_cannot_modify_executed_at(
-        self, valid_fill_data: dict
-    ) -> None:
+    def test_cannot_modify_executed_at(self, valid_fill_data: dict) -> None:
         """Should raise error when modifying executed_at."""
         fill = Fill(**valid_fill_data)
         with pytest.raises(ValidationError):
@@ -241,17 +213,13 @@ class TestFillExamples:
 class TestFillValueCalculation:
     """Tests for computed values based on Fill data."""
 
-    def test_fill_value_can_be_computed(
-        self, valid_fill_data: dict
-    ) -> None:
+    def test_fill_value_can_be_computed(self, valid_fill_data: dict) -> None:
         """Should be able to compute fill value (qty * price)."""
         fill = Fill(**valid_fill_data)
         fill_value = fill.filled_quantity * fill.fill_price
         assert fill_value == Decimal("6900.50")  # 2.0 * 3450.25
 
-    def test_multiple_fills_same_order_different_prices(
-        self, minimal_fill_data: dict
-    ) -> None:
+    def test_multiple_fills_same_order_different_prices(self, minimal_fill_data: dict) -> None:
         """Multiple fills for same order can have different prices."""
         fill1 = Fill(**minimal_fill_data)
         minimal_fill_data["fill_price"] = Decimal("3451.00")
@@ -262,4 +230,3 @@ class TestFillValueCalculation:
         assert fill1.fill_price != fill2.fill_price
         # But different fill_ids
         assert fill1.fill_id != fill2.fill_id
-

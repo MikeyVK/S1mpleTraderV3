@@ -22,11 +22,7 @@ class TestEntryPlanCreation:
 
     def test_minimal_market_entry(self):
         """Can create minimal market entry plan."""
-        plan = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="MARKET"
-        )
+        plan = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
 
         assert plan.symbol == "BTCUSDT"
         assert plan.direction == "BUY"
@@ -40,10 +36,7 @@ class TestEntryPlanCreation:
     def test_complete_limit_entry(self):
         """Can create complete limit entry plan."""
         plan = EntryPlan(
-            symbol="ETHUSDT",
-            direction="SELL",
-            order_type="LIMIT",
-            limit_price=Decimal("3510.00")
+            symbol="ETHUSDT", direction="SELL", order_type="LIMIT", limit_price=Decimal("3510.00")
         )
 
         assert plan.symbol == "ETHUSDT"
@@ -59,7 +52,7 @@ class TestEntryPlanCreation:
             direction="BUY",
             order_type="STOP_LIMIT",
             stop_price=Decimal("125.00"),
-            limit_price=Decimal("125.50")
+            limit_price=Decimal("125.50"),
         )
 
         assert plan.order_type == "STOP_LIMIT"
@@ -73,10 +66,7 @@ class TestEntryPlanValidation:
     def test_requires_symbol(self):
         """symbol is required."""
         with pytest.raises(ValidationError) as exc_info:
-            EntryPlan(
-                direction="BUY",
-                order_type="MARKET"
-            )
+            EntryPlan(direction="BUY", order_type="MARKET")
 
         errors = exc_info.value.errors()
         assert any(e["loc"] == ("symbol",) for e in errors)
@@ -84,10 +74,7 @@ class TestEntryPlanValidation:
     def test_requires_direction(self):
         """direction is required."""
         with pytest.raises(ValidationError) as exc_info:
-            EntryPlan(
-                symbol="BTCUSDT",
-                order_type="MARKET"
-            )
+            EntryPlan(symbol="BTCUSDT", order_type="MARKET")
 
         errors = exc_info.value.errors()
         assert any(e["loc"] == ("direction",) for e in errors)
@@ -98,7 +85,7 @@ class TestEntryPlanValidation:
             EntryPlan(
                 symbol="BTCUSDT",
                 direction="HOLD",  # type: ignore[arg-type]  # Invalid direction
-                order_type="MARKET"
+                order_type="MARKET",
             )
 
         errors = exc_info.value.errors()
@@ -107,10 +94,7 @@ class TestEntryPlanValidation:
     def test_requires_order_type(self):
         """order_type is required."""
         with pytest.raises(ValidationError) as exc_info:
-            EntryPlan(
-                symbol="BTCUSDT",
-                direction="BUY"
-            )
+            EntryPlan(symbol="BTCUSDT", direction="BUY")
 
         errors = exc_info.value.errors()
         assert any(e["loc"] == ("order_type",) for e in errors)
@@ -121,7 +105,7 @@ class TestEntryPlanValidation:
             EntryPlan(
                 symbol="BTCUSDT",
                 direction="BUY",
-                order_type="TRAILING_STOP"  # type: ignore[arg-type]  # Invalid order type
+                order_type="TRAILING_STOP",  # type: ignore[arg-type]  # Invalid order type
             )
 
         errors = exc_info.value.errors()
@@ -133,16 +117,8 @@ class TestEntryPlanDefaultValues:
 
     def test_auto_generates_plan_id(self):
         """plan_id is auto-generated with ENT_ prefix."""
-        plan1 = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="MARKET"
-        )
-        plan2 = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="MARKET"
-        )
+        plan1 = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
+        plan2 = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
 
         # Check unique plan IDs
         plan1_id = str(plan1.plan_id)
@@ -153,11 +129,7 @@ class TestEntryPlanDefaultValues:
 
     def test_optional_fields_default_to_none(self):
         """Optional fields default to None."""
-        plan = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="MARKET"
-        )
+        plan = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
 
         assert plan.limit_price is None
         assert plan.stop_price is None
@@ -168,11 +140,7 @@ class TestEntryPlanSerialization:
 
     def test_can_serialize_to_dict(self):
         """Can serialize EntryPlan to dict."""
-        plan = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="MARKET"
-        )
+        plan = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
 
         data = plan.model_dump()
 
@@ -185,10 +153,7 @@ class TestEntryPlanSerialization:
     def test_can_serialize_to_json(self):
         """Can serialize EntryPlan to JSON."""
         plan = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="LIMIT",
-            limit_price=Decimal("95000.00")
+            symbol="BTCUSDT", direction="BUY", order_type="LIMIT", limit_price=Decimal("95000.00")
         )
 
         json_str = plan.model_dump_json()
@@ -204,7 +169,7 @@ class TestEntryPlanSerialization:
             "plan_id": "ENT_20250125_120000_abc12345",
             "symbol": "BTCUSDT",
             "direction": "BUY",
-            "order_type": "MARKET"
+            "order_type": "MARKET",
         }
 
         plan = EntryPlan.model_validate(data)
@@ -218,11 +183,7 @@ class TestEntryPlanUseCases:
 
     def test_immediate_market_order(self):
         """Immediate market entry (pure WHAT/WHERE)."""
-        plan = EntryPlan(
-            symbol="BTCUSDT",
-            direction="BUY",
-            order_type="MARKET"
-        )
+        plan = EntryPlan(symbol="BTCUSDT", direction="BUY", order_type="MARKET")
 
         assert plan.order_type == "MARKET"
         assert plan.limit_price is None
@@ -231,10 +192,7 @@ class TestEntryPlanUseCases:
     def test_limit_entry_at_specific_price(self):
         """Limit entry at specific price level."""
         plan = EntryPlan(
-            symbol="ETHUSDT",
-            direction="BUY",
-            order_type="LIMIT",
-            limit_price=Decimal("3495.00")
+            symbol="ETHUSDT", direction="BUY", order_type="LIMIT", limit_price=Decimal("3495.00")
         )
 
         assert plan.order_type == "LIMIT"
@@ -248,7 +206,7 @@ class TestEntryPlanUseCases:
             direction="BUY",
             order_type="STOP_LIMIT",
             stop_price=Decimal("125.00"),
-            limit_price=Decimal("125.50")
+            limit_price=Decimal("125.50"),
         )
 
         assert plan.order_type == "STOP_LIMIT"

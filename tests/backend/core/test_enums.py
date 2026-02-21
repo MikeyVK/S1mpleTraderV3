@@ -29,14 +29,12 @@ class TestContextType:
             "MICROSTRUCTURE_ANALYSIS",
             "TEMPORAL_CONTEXT",
             "SENTIMENT_ENRICHMENT",
-            "FUNDAMENTAL_ENRICHMENT"
+            "FUNDAMENTAL_ENRICHMENT",
         }
 
         actual = {ct.value for ct in ContextType}
         assert actual == expected, (
-            f"ContextType enum changed! "
-            f"Added: {actual - expected}, "
-            f"Removed: {expected - actual}"
+            f"ContextType enum changed! Added: {actual - expected}, Removed: {expected - actual}"
         )
 
     def test_context_type_is_string_enum(self):
@@ -67,14 +65,12 @@ class TestSignalType:
             "CONTINUATION_DETECTION",
             "ARBITRAGE_DETECTION",
             "STATISTICAL_EDGE",
-            "SENTIMENT_EXTREME"
+            "SENTIMENT_EXTREME",
         }
 
         actual = {ot.value for ot in SignalType}
         assert actual == expected, (
-            f"SignalType enum changed! "
-            f"Added: {actual - expected}, "
-            f"Removed: {expected - actual}"
+            f"SignalType enum changed! Added: {actual - expected}, Removed: {expected - actual}"
         )
 
     def test_signal_type_is_string_enum(self):
@@ -93,14 +89,12 @@ class TestRiskType:
             "DRAWDOWN_MONITORING",
             "VOLATILITY_MONITORING",
             "CORRELATION_MONITORING",
-            "SYSTEMIC_RISK_DETECTION"
+            "SYSTEMIC_RISK_DETECTION",
         }
 
         actual = {tt.value for tt in RiskType}
         assert actual == expected, (
-            f"RiskType enum changed! "
-            f"Added: {actual - expected}, "
-            f"Removed: {expected - actual}"
+            f"RiskType enum changed! Added: {actual - expected}, Removed: {expected - actual}"
         )
 
     def test_risk_type_is_string_enum(self):
@@ -114,18 +108,11 @@ class TestPlanningPhase:
 
     def test_all_planning_phases_present(self):
         """Test that all expected planning phases are defined."""
-        expected = {
-            "ENTRY_PLANNING",
-            "RISK_SIZING",
-            "EXIT_PLANNING",
-            "EXECUTION_ROUTING"
-        }
+        expected = {"ENTRY_PLANNING", "RISK_SIZING", "EXIT_PLANNING", "EXECUTION_ROUTING"}
 
         actual = {pp.value for pp in PlanningPhase}
         assert actual == expected, (
-            f"PlanningPhase enum changed! "
-            f"Added: {actual - expected}, "
-            f"Removed: {expected - actual}"
+            f"PlanningPhase enum changed! Added: {actual - expected}, Removed: {expected - actual}"
         )
 
     def test_planning_phase_is_string_enum(self):
@@ -139,18 +126,11 @@ class TestExecutionType:
 
     def test_all_execution_types_present(self):
         """Test that all expected execution types are defined."""
-        expected = {
-            "ORDER_PLACEMENT",
-            "ORDER_MANAGEMENT",
-            "POSITION_MANAGEMENT",
-            "REPORTING"
-        }
+        expected = {"ORDER_PLACEMENT", "ORDER_MANAGEMENT", "POSITION_MANAGEMENT", "REPORTING"}
 
         actual = {et.value for et in ExecutionType}
         assert actual == expected, (
-            f"ExecutionType enum changed! "
-            f"Added: {actual - expected}, "
-            f"Removed: {expected - actual}"
+            f"ExecutionType enum changed! Added: {actual - expected}, Removed: {expected - actual}"
         )
 
     def test_execution_type_is_string_enum(self):
@@ -169,25 +149,23 @@ class TestEnumCrossCutting:
             SignalType,
             RiskType,
             PlanningPhase,
-            ExecutionType
+            ExecutionType,
         ]
 
         for enum_class in enums_to_test:
             values = [e.value for e in enum_class]
-            assert len(values) == len(set(values)), (
-                f"{enum_class.__name__} has duplicate values"
-            )
+            assert len(values) == len(set(values)), f"{enum_class.__name__} has duplicate values"
 
     def test_all_enum_values_uppercase_snake_case(self):
         """Test that all enum values follow UPPER_SNAKE_CASE."""
-        pattern = re.compile(r'^[A-Z][A-Z0-9_]*$')
+        pattern = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
         enums_to_test: list[type[Enum]] = [
             ContextType,
             SignalType,
             RiskType,
             PlanningPhase,
-            ExecutionType
+            ExecutionType,
         ]
 
         for enum_class in enums_to_test:

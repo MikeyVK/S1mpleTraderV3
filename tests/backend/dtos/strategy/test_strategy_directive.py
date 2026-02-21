@@ -40,7 +40,7 @@ class TestStrategyDirectiveCreation:
             strategy_planner_id="signal_risk_planner_v1",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.75")
+            confidence=Decimal("0.75"),
         )
 
         assert directive.strategy_planner_id == "signal_risk_planner_v1"
@@ -62,22 +62,21 @@ class TestStrategyDirectiveCreation:
                 symbol="BTCUSDT",
                 direction="BUY",
                 timing_preference=Decimal("0.8"),
-                max_acceptable_slippage=Decimal("0.001")
+                max_acceptable_slippage=Decimal("0.001"),
             ),
             size_directive=SizeDirective(
                 aggressiveness=Decimal("0.6"),
                 max_risk_amount=Decimal("100.00"),
-                account_risk_pct=Decimal("0.02")
+                account_risk_pct=Decimal("0.02"),
             ),
             exit_directive=ExitDirective(
                 profit_taking_preference=Decimal("0.7"),
                 risk_reward_ratio=Decimal("2.5"),
-                stop_loss_tolerance=Decimal("0.015")
+                stop_loss_tolerance=Decimal("0.015"),
             ),
             routing_directive=ExecutionDirective(
-                execution_urgency=Decimal("0.9"),
-                max_total_slippage_pct=Decimal("0.002")
-            )
+                execution_urgency=Decimal("0.9"), max_total_slippage_pct=Decimal("0.002")
+            ),
         )
 
         assert directive.entry_directive is not None
@@ -104,7 +103,7 @@ class TestStrategyDirectiveValidation:
             StrategyDirective(
                 causality=CausalityChain(origin=create_test_origin()),
                 scope=DirectiveScope.NEW_TRADE,
-                confidence=Decimal("0.5")
+                confidence=Decimal("0.5"),
             )
         assert "strategy_planner_id" in str(exc_info.value)
 
@@ -115,7 +114,7 @@ class TestStrategyDirectiveValidation:
                 strategy_planner_id="test_planner",
                 causality=CausalityChain(origin=create_test_origin()),
                 scope=DirectiveScope.NEW_TRADE,
-                confidence=Decimal("1.5")  # Invalid: > 1.0
+                confidence=Decimal("1.5"),  # Invalid: > 1.0
             )
 
     def test_scope_must_be_valid_enum(self):
@@ -126,7 +125,7 @@ class TestStrategyDirectiveValidation:
                 strategy_planner_id="test_planner",
                 causality=CausalityChain(origin=create_test_origin()),
                 scope="INVALID_SCOPE",  # type: ignore[arg-type]
-                confidence=Decimal("0.5")
+                confidence=Decimal("0.5"),
             )
 
 
@@ -139,13 +138,13 @@ class TestStrategyDirectiveDefaultValues:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
         directive2 = StrategyDirective(
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
 
         # Check unique directive IDs
@@ -162,7 +161,7 @@ class TestStrategyDirectiveDefaultValues:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
         after = datetime.now(UTC)
 
@@ -180,7 +179,7 @@ class TestStrategyDirectiveDefaultValues:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
 
         assert directive.entry_directive is None
@@ -194,7 +193,7 @@ class TestStrategyDirectiveDefaultValues:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
 
         assert not directive.target_plan_ids
@@ -205,12 +204,11 @@ class TestStrategyDirectiveDefaultValues:
             strategy_planner_id="test",
             causality=CausalityChain(
                 origin=create_test_origin(),
-                signal_ids=["SIG_20251026_100001_b2c3d4e5",
-                                        "SIG_20251026_100002_c3d4e5f6"],
-                risk_ids=["RSK_20251026_100003_d4e5f6a7"]
+                signal_ids=["SIG_20251026_100001_b2c3d4e5", "SIG_20251026_100002_c3d4e5f6"],
+                risk_ids=["RSK_20251026_100003_d4e5f6a7"],
             ),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.75")
+            confidence=Decimal("0.75"),
         )
 
         # CausalityChain enable Journal causality reconstruction
@@ -228,7 +226,7 @@ class TestStrategyDirectiveSerialization:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.75")
+            confidence=Decimal("0.75"),
         )
 
         data = directive.model_dump()
@@ -244,7 +242,7 @@ class TestStrategyDirectiveSerialization:
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.MODIFY_EXISTING,
             target_plan_ids=["TPL_001"],
-            confidence=Decimal("0.6")
+            confidence=Decimal("0.6"),
         )
 
         json_str = directive.model_dump_json()
@@ -257,15 +255,12 @@ class TestStrategyDirectiveSerialization:
         data: dict[str, object] = {
             "strategy_planner_id": "test",
             "causality": {
-                "origin": {
-                    "id": "TCK_20251026_100000_a1b2c3d4",
-                    "type": "TICK"
-                },
+                "origin": {"id": "TCK_20251026_100000_a1b2c3d4", "type": "TICK"},
                 "signal_ids": [],
-                "risk_ids": []
+                "risk_ids": [],
             },
             "scope": "NEW_TRADE",
-            "confidence": "0.5"
+            "confidence": "0.5",
         }
 
         directive = StrategyDirective(**data)  # type: ignore[arg-type]
@@ -287,13 +282,13 @@ class TestStrategyDirectiveUseCases:
                 symbol="BTCUSDT",
                 direction="BUY",
                 timing_preference=Decimal("0.9"),
-                max_acceptable_slippage=Decimal("0.001")
+                max_acceptable_slippage=Decimal("0.001"),
             ),
             size_directive=SizeDirective(
                 aggressiveness=Decimal("0.7"),
                 max_risk_amount=Decimal("200.00"),
-                account_risk_pct=Decimal("0.02")
-            )
+                account_risk_pct=Decimal("0.02"),
+            ),
         )
 
         assert directive.scope == DirectiveScope.NEW_TRADE
@@ -314,8 +309,8 @@ class TestStrategyDirectiveUseCases:
             exit_directive=ExitDirective(
                 profit_taking_preference=Decimal("0.3"),
                 risk_reward_ratio=Decimal("1.5"),
-                stop_loss_tolerance=Decimal("0.02")
-            )
+                stop_loss_tolerance=Decimal("0.02"),
+            ),
         )
 
         assert directive.scope == DirectiveScope.MODIFY_EXISTING
@@ -331,9 +326,8 @@ class TestStrategyDirectiveUseCases:
             target_plan_ids=["TPL_001", "TPL_002"],
             confidence=Decimal("0.95"),
             routing_directive=ExecutionDirective(
-                execution_urgency=Decimal("1.0"),
-                max_total_slippage_pct=Decimal("0.005")
-            )
+                execution_urgency=Decimal("1.0"), max_total_slippage_pct=Decimal("0.005")
+            ),
         )
 
         assert directive.scope == DirectiveScope.CLOSE_EXISTING
@@ -351,10 +345,8 @@ class TestStrategyDirectiveUseCases:
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.6"),
             entry_directive=EntryDirective(
-                symbol="ETHUSDT",
-                direction="SELL",
-                timing_preference=Decimal("0.5")
-            )
+                symbol="ETHUSDT", direction="SELL", timing_preference=Decimal("0.5")
+            ),
         )
 
         assert directive.entry_directive is not None
@@ -367,6 +359,7 @@ class TestStrategyDirectiveUseCases:
 # IMMUTABILITY TESTS (TDD: RED phase - frozen=True)
 # =============================================================================
 
+
 class TestStrategyDirectiveImmutability:
     """Test StrategyDirective immutability (frozen=True)."""
 
@@ -376,7 +369,7 @@ class TestStrategyDirectiveImmutability:
             strategy_planner_id="original_planner",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
 
         with pytest.raises(ValidationError):
@@ -388,7 +381,7 @@ class TestStrategyDirectiveImmutability:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
 
         with pytest.raises(ValidationError):
@@ -400,7 +393,7 @@ class TestStrategyDirectiveImmutability:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
 
         with pytest.raises(ValidationError):
@@ -413,7 +406,7 @@ class TestStrategyDirectiveImmutability:
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.MODIFY_EXISTING,
             target_plan_ids=["TPL_001"],
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
 
         with pytest.raises(ValidationError):
@@ -423,6 +416,7 @@ class TestStrategyDirectiveImmutability:
 # =============================================================================
 # EXECUTION POLICY TESTS (TDD: RED phase - new field)
 # =============================================================================
+
 
 class TestExecutionPolicy:
     """Test ExecutionPolicy creation and validation."""
@@ -436,20 +430,14 @@ class TestExecutionPolicy:
 
     def test_create_with_coordinated_mode(self):
         """Can create ExecutionPolicy with COORDINATED mode."""
-        policy = ExecutionPolicy(
-            mode=BatchExecutionMode.COORDINATED,
-            timeout_seconds=30
-        )
+        policy = ExecutionPolicy(mode=BatchExecutionMode.COORDINATED, timeout_seconds=30)
 
         assert policy.mode == BatchExecutionMode.COORDINATED
         assert policy.timeout_seconds == 30
 
     def test_create_with_sequential_mode(self):
         """Can create ExecutionPolicy with SEQUENTIAL mode."""
-        policy = ExecutionPolicy(
-            mode=BatchExecutionMode.SEQUENTIAL,
-            timeout_seconds=60
-        )
+        policy = ExecutionPolicy(mode=BatchExecutionMode.SEQUENTIAL, timeout_seconds=60)
 
         assert policy.mode == BatchExecutionMode.SEQUENTIAL
         assert policy.timeout_seconds == 60
@@ -479,23 +467,20 @@ class TestStrategyDirectiveExecutionPolicy:
             strategy_planner_id="test",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
-            confidence=Decimal("0.5")
+            confidence=Decimal("0.5"),
         )
 
         assert directive.execution_policy is None
 
     def test_can_create_with_execution_policy(self):
         """Can create directive with execution_policy."""
-        policy = ExecutionPolicy(
-            mode=BatchExecutionMode.COORDINATED,
-            timeout_seconds=30
-        )
+        policy = ExecutionPolicy(mode=BatchExecutionMode.COORDINATED, timeout_seconds=30)
         directive = StrategyDirective(
             strategy_planner_id="pair_trade_planner",
             causality=CausalityChain(origin=create_test_origin()),
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.85"),
-            execution_policy=policy
+            execution_policy=policy,
         )
 
         assert directive.execution_policy is not None
@@ -511,12 +496,8 @@ class TestStrategyDirectiveExecutionPolicy:
             scope=DirectiveScope.CLOSE_EXISTING,
             target_plan_ids=["TPL_001", "TPL_002", "TPL_003"],
             confidence=Decimal("0.99"),
-            execution_policy=ExecutionPolicy(
-                mode=BatchExecutionMode.INDEPENDENT
-            ),
-            routing_directive=ExecutionDirective(
-                execution_urgency=Decimal("1.0")
-            )
+            execution_policy=ExecutionPolicy(mode=BatchExecutionMode.INDEPENDENT),
+            routing_directive=ExecutionDirective(execution_urgency=Decimal("1.0")),
         )
 
         exec_policy = cast(ExecutionPolicy, directive.execution_policy)
@@ -530,9 +511,8 @@ class TestStrategyDirectiveExecutionPolicy:
             scope=DirectiveScope.NEW_TRADE,
             confidence=Decimal("0.85"),
             execution_policy=ExecutionPolicy(
-                mode=BatchExecutionMode.COORDINATED,
-                timeout_seconds=30
-            )
+                mode=BatchExecutionMode.COORDINATED, timeout_seconds=30
+            ),
         )
 
         exec_policy = cast(ExecutionPolicy, directive.execution_policy)

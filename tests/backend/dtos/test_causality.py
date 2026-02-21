@@ -25,7 +25,7 @@ def create_test_origin(origin_type: OriginType = OriginType.TICK) -> Origin:
     type_map = {
         OriginType.TICK: "TCK_20251109_143000_abc123",
         OriginType.NEWS: "NWS_20251109_143000_def456",
-        OriginType.SCHEDULE: "SCH_20251109_143000_ghi789"
+        OriginType.SCHEDULE: "SCH_20251109_143000_ghi789",
     }
     return Origin(id=type_map[origin_type], type=origin_type)
 
@@ -114,10 +114,7 @@ class TestCausalityChainWorkerIDs:
     def test_add_single_signal_id(self):
         """Test adding single signal ID."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            signal_ids=["SIG_20251026_100001_def5e6f7"]
-        )
+        chain = CausalityChain(origin=origin, signal_ids=["SIG_20251026_100001_def5e6f7"])
 
         assert len(chain.signal_ids) == 1
         assert chain.signal_ids[0] == "SIG_20251026_100001_def5e6f7"
@@ -127,10 +124,7 @@ class TestCausalityChainWorkerIDs:
         origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
             origin=origin,
-            signal_ids=[
-                "SIG_20251026_100001_def5e6f7",
-                "SIG_20251026_100002_abc1d2e3"
-            ]
+            signal_ids=["SIG_20251026_100001_def5e6f7", "SIG_20251026_100002_abc1d2e3"],
         )
 
         assert len(chain.signal_ids) == 2
@@ -140,10 +134,7 @@ class TestCausalityChainWorkerIDs:
     def test_add_risk_ids(self):
         """Test adding risk IDs (critical risk events)."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            risk_ids=["RSK_20251026_100001_b2c3d4e5"]
-        )
+        chain = CausalityChain(origin=origin, risk_ids=["RSK_20251026_100001_b2c3d4e5"])
 
         assert len(chain.risk_ids) == 1
         assert chain.risk_ids[0] == "RSK_20251026_100001_b2c3d4e5"
@@ -151,10 +142,7 @@ class TestCausalityChainWorkerIDs:
     def test_add_strategy_directive_id(self):
         """Test adding strategy directive ID."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            strategy_directive_id="STR_20251026_100002_def5e6f7"
-        )
+        chain = CausalityChain(origin=origin, strategy_directive_id="STR_20251026_100002_def5e6f7")
 
         assert chain.strategy_directive_id == "STR_20251026_100002_def5e6f7"
 
@@ -166,7 +154,7 @@ class TestCausalityChainWorkerIDs:
             entry_plan_id="ENT_20251026_100003_abc1d2e3",
             size_plan_id="SIZ_20251026_100004_def5e6f7",
             exit_plan_id="EXT_20251026_100005_abc1d2e3",
-            execution_plan_id="EXP_20251026_100006_def5e6f7"
+            execution_plan_id="EXP_20251026_100006_def5e6f7",
         )
 
         assert chain.entry_plan_id == "ENT_20251026_100003_abc1d2e3"
@@ -177,20 +165,14 @@ class TestCausalityChainWorkerIDs:
     def test_add_execution_command_id(self):
         """Test adding execution command ID (final stage)."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            execution_command_id="EXC_20251026_100007_abc1d2e3"
-        )
+        chain = CausalityChain(origin=origin, execution_command_id="EXC_20251026_100007_abc1d2e3")
 
         assert chain.execution_command_id == "EXC_20251026_100007_abc1d2e3"
 
     def test_add_order_ids(self):
         """Test adding order IDs (execution intent)."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            order_ids=["ORD_20251026_100008_abc1d2e3"]
-        )
+        chain = CausalityChain(origin=origin, order_ids=["ORD_20251026_100008_abc1d2e3"])
 
         assert len(chain.order_ids) == 1
         assert chain.order_ids[0] == "ORD_20251026_100008_abc1d2e3"
@@ -200,10 +182,7 @@ class TestCausalityChainWorkerIDs:
         origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
             origin=origin,
-            order_ids=[
-                "ORD_20251026_100008_abc1d2e3",
-                "ORD_20251026_100008_def5e6f7"
-            ]
+            order_ids=["ORD_20251026_100008_abc1d2e3", "ORD_20251026_100008_def5e6f7"],
         )
 
         assert len(chain.order_ids) == 2
@@ -213,10 +192,7 @@ class TestCausalityChainWorkerIDs:
     def test_add_fill_ids(self):
         """Test adding fill IDs (execution reality)."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            fill_ids=["FIL_20251026_100009_abc1d2e3"]
-        )
+        chain = CausalityChain(origin=origin, fill_ids=["FIL_20251026_100009_abc1d2e3"])
 
         assert len(chain.fill_ids) == 1
         assert chain.fill_ids[0] == "FIL_20251026_100009_abc1d2e3"
@@ -225,11 +201,7 @@ class TestCausalityChainWorkerIDs:
         """Test adding multiple fill IDs (partial fills scenario)."""
         origin = create_test_origin(OriginType.TICK)
         chain = CausalityChain(
-            origin=origin,
-            fill_ids=[
-                "FIL_20251026_100009_abc1d2e3",
-                "FIL_20251026_100010_def5e6f7"
-            ]
+            origin=origin, fill_ids=["FIL_20251026_100009_abc1d2e3", "FIL_20251026_100010_def5e6f7"]
         )
 
         assert len(chain.fill_ids) == 2
@@ -245,9 +217,7 @@ class TestCausalityChainModelCopyPattern:
         origin = create_test_origin(OriginType.TICK)
         original = CausalityChain(origin=origin)
 
-        copy = original.model_copy(update={
-            "signal_ids": ["SIG_20251026_100001_def5e6f7"]
-        })
+        copy = original.model_copy(update={"signal_ids": ["SIG_20251026_100001_def5e6f7"]})
 
         assert copy.origin == origin
         assert copy.signal_ids == ["SIG_20251026_100001_def5e6f7"]
@@ -255,14 +225,11 @@ class TestCausalityChainModelCopyPattern:
     def test_model_copy_extends_worker_ids(self):
         """Test that model_copy can extend worker IDs."""
         origin = create_test_origin(OriginType.TICK)
-        original = CausalityChain(
-            origin=origin,
-            signal_ids=["SIG_20251026_100001_def5e6f7"]
-        )
+        original = CausalityChain(origin=origin, signal_ids=["SIG_20251026_100001_def5e6f7"])
 
-        extended = original.model_copy(update={
-            "strategy_directive_id": "STR_20251026_100002_abc1d2e3"
-        })
+        extended = original.model_copy(
+            update={"strategy_directive_id": "STR_20251026_100002_abc1d2e3"}
+        )
 
         assert extended.origin == origin
         assert extended.signal_ids == ["SIG_20251026_100001_def5e6f7"]
@@ -276,19 +243,17 @@ class TestCausalityChainModelCopyPattern:
         birth = CausalityChain(origin=origin)
 
         # SignalDetector
-        after_opp = birth.model_copy(update={
-            "signal_ids": ["SIG_20251026_100001_def5e6f7"]
-        })
+        after_opp = birth.model_copy(update={"signal_ids": ["SIG_20251026_100001_def5e6f7"]})
 
         # StrategyPlanner
-        after_strategy = after_opp.model_copy(update={
-            "strategy_directive_id": "STR_20251026_100002_abc1d2e3"
-        })
+        after_strategy = after_opp.model_copy(
+            update={"strategy_directive_id": "STR_20251026_100002_abc1d2e3"}
+        )
 
         # EntryPlanner
-        after_entry = after_strategy.model_copy(update={
-            "entry_plan_id": "ENT_20251026_100003_def5e6f7"
-        })
+        after_entry = after_strategy.model_copy(
+            update={"entry_plan_id": "ENT_20251026_100003_def5e6f7"}
+        )
 
         # Verify full chain
         assert after_entry.origin == origin
@@ -303,10 +268,7 @@ class TestCausalityChainSerialization:
     def test_model_dump_includes_all_fields(self):
         """Test that model_dump includes all fields."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            signal_ids=["SIG_20251026_100001_def5e6f7"]
-        )
+        chain = CausalityChain(origin=origin, signal_ids=["SIG_20251026_100001_def5e6f7"])
 
         data = chain.model_dump()
 
@@ -329,7 +291,7 @@ class TestCausalityChainSerialization:
         chain = CausalityChain(
             origin=origin,
             signal_ids=["SIG_20251026_100001_def5e6f7"],
-            strategy_directive_id="STR_20251026_100002_abc1d2e3"
+            strategy_directive_id="STR_20251026_100002_abc1d2e3",
         )
 
         data = chain.model_dump()
@@ -348,7 +310,7 @@ class TestCausalityChainSerialization:
             "size_plan_id": None,
             "exit_plan_id": None,
             "execution_plan_id": None,
-            "execution_command_id": None
+            "execution_command_id": None,
         }
 
         chain = CausalityChain.model_validate(data)
@@ -364,20 +326,14 @@ class TestCausalityChainEdgeCases:
     def test_empty_signal_ids_list(self):
         """Test that empty list is valid for signal_ids."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            signal_ids=[]
-        )
+        chain = CausalityChain(origin=origin, signal_ids=[])
 
         assert chain.signal_ids == []
 
     def test_empty_risk_ids_list(self):
         """Test that empty list is valid for risk_ids."""
         origin = create_test_origin(OriginType.TICK)
-        chain = CausalityChain(
-            origin=origin,
-            risk_ids=[]
-        )
+        chain = CausalityChain(origin=origin, risk_ids=[])
 
         assert chain.risk_ids == []
 
@@ -391,7 +347,7 @@ class TestCausalityChainEdgeCases:
             size_plan_id=None,
             exit_plan_id=None,
             execution_plan_id=None,
-            execution_command_id=None
+            execution_command_id=None,
         )
 
         assert chain.strategy_directive_id is None
@@ -409,7 +365,7 @@ class TestCausalityChainEdgeCases:
             size_plan_id="SIZ_20251026_100006_abc1d2e3",
             exit_plan_id="EXT_20251026_100007_def5e6f7",
             execution_plan_id="EXP_20251026_100008_abc1d2e3",
-            execution_command_id="EXC_20251026_100009_def5e6f7"
+            execution_command_id="EXC_20251026_100009_def5e6f7",
         )
 
         # Verify all fields populated
@@ -465,7 +421,7 @@ class TestCausalityChainOriginIntegration:
         chain = CausalityChain(
             origin=origin,
             signal_ids=["SIG_20251109_143001_xyz789"],
-            strategy_directive_id="STR_20251109_143002_abc456"
+            strategy_directive_id="STR_20251109_143002_abc456",
         )
 
         assert chain.origin == origin

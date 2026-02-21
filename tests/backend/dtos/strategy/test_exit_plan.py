@@ -27,10 +27,7 @@ class TestExitPlanCreation:
 
     def test_create_exit_plan_with_both_prices(self):
         """Test creating ExitPlan with both SL and TP."""
-        plan = ExitPlan(
-            stop_loss_price=Decimal("95000.00"),
-            take_profit_price=Decimal("105000.00")
-        )
+        plan = ExitPlan(stop_loss_price=Decimal("95000.00"), take_profit_price=Decimal("105000.00"))
 
         assert plan.plan_id.startswith("EXT_")
         assert plan.stop_loss_price == Decimal("95000.00")
@@ -38,9 +35,7 @@ class TestExitPlanCreation:
 
     def test_create_exit_plan_sl_only(self):
         """Test creating ExitPlan with SL only (no TP)."""
-        plan = ExitPlan(
-            stop_loss_price=Decimal("95000.00")
-        )
+        plan = ExitPlan(stop_loss_price=Decimal("95000.00"))
 
         assert plan.plan_id.startswith("EXT_")
         assert plan.stop_loss_price == Decimal("95000.00")
@@ -48,9 +43,7 @@ class TestExitPlanCreation:
 
     def test_plan_id_auto_generated(self):
         """Test that plan_id is auto-generated with correct format."""
-        plan = ExitPlan(
-            stop_loss_price=Decimal("95000.00")
-        )
+        plan = ExitPlan(stop_loss_price=Decimal("95000.00"))
 
         # EXT_YYYYMMDD_HHMMSS_hash format
         assert plan.plan_id.startswith("EXT_")
@@ -63,28 +56,18 @@ class TestExitPlanValidation:
     def test_stop_loss_price_must_be_positive(self):
         """Test that stop_loss_price must be > 0."""
         with pytest.raises(ValueError, match="greater than 0"):
-            ExitPlan(
-                stop_loss_price=Decimal("0.00")
-            )
+            ExitPlan(stop_loss_price=Decimal("0.00"))
 
         with pytest.raises(ValueError, match="greater than 0"):
-            ExitPlan(
-                stop_loss_price=Decimal("-100.00")
-            )
+            ExitPlan(stop_loss_price=Decimal("-100.00"))
 
     def test_take_profit_price_must_be_positive_if_set(self):
         """Test that take_profit_price must be > 0 when provided."""
         with pytest.raises(ValueError, match="greater than 0"):
-            ExitPlan(
-                stop_loss_price=Decimal("95000.00"),
-                take_profit_price=Decimal("0.00")
-            )
+            ExitPlan(stop_loss_price=Decimal("95000.00"), take_profit_price=Decimal("0.00"))
 
         with pytest.raises(ValueError, match="greater than 0"):
-            ExitPlan(
-                stop_loss_price=Decimal("95000.00"),
-                take_profit_price=Decimal("-1000.00")
-            )
+            ExitPlan(stop_loss_price=Decimal("95000.00"), take_profit_price=Decimal("-1000.00"))
 
     def test_stop_loss_required(self):
         """Test that stop_loss_price is required."""
@@ -94,8 +77,7 @@ class TestExitPlanValidation:
     def test_precision_preserved(self):
         """Test that Decimal precision is preserved."""
         plan = ExitPlan(
-            stop_loss_price=Decimal("95000.12345678"),
-            take_profit_price=Decimal("105000.87654321")
+            stop_loss_price=Decimal("95000.12345678"), take_profit_price=Decimal("105000.87654321")
         )
 
         assert plan.stop_loss_price == Decimal("95000.12345678")
@@ -107,10 +89,7 @@ class TestExitPlanImmutability:
 
     def test_exit_plan_is_frozen(self):
         """Test that ExitPlan is immutable after creation."""
-        plan = ExitPlan(
-            stop_loss_price=Decimal("95000.00"),
-            take_profit_price=Decimal("105000.00")
-        )
+        plan = ExitPlan(stop_loss_price=Decimal("95000.00"), take_profit_price=Decimal("105000.00"))
 
         with pytest.raises(ValueError, match="frozen"):
             plan.stop_loss_price = Decimal("96000.00")
@@ -120,7 +99,7 @@ class TestExitPlanImmutability:
         with pytest.raises(ValueError):
             ExitPlan(
                 stop_loss_price=Decimal("95000.00"),
-                trailing_stop=True  # Not allowed in lean spec
+                trailing_stop=True,  # Not allowed in lean spec
             )
 
 
@@ -129,12 +108,10 @@ class TestExitPlanPlanIdFormat:
 
     def test_plan_id_matches_pattern(self):
         """Test that generated plan_id matches EXT_ pattern."""
-        plan = ExitPlan(
-            stop_loss_price=Decimal("95000.00")
-        )
+        plan = ExitPlan(stop_loss_price=Decimal("95000.00"))
 
         # Should match: EXT_YYYYMMDD_HHMMSS_hash
-        pattern = r'^EXT_\d{8}_\d{6}_[0-9a-f]{8}$'
+        pattern = r"^EXT_\d{8}_\d{6}_[0-9a-f]{8}$"
         assert re.match(pattern, plan.plan_id)
 
     def test_plan_id_uniqueness(self):

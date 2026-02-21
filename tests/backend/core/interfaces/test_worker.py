@@ -70,15 +70,13 @@ class TestIWorkerLifecycleProtocol:
             """Test worker implementation."""
 
             def initialize(
-                self,
-                strategy_cache: IStrategyCache | None = None,
-                **capabilities
+                self, strategy_cache: IStrategyCache | None = None, **capabilities
             ) -> None:
                 """Initialize worker."""
 
         worker: IWorkerLifecycle = ValidWorker()  # type: ignore[assignment]
         # Protocol compliance check passes (structural typing)
-        assert hasattr(worker, 'initialize')
+        assert hasattr(worker, "initialize")
 
     def test_iworkerlifecycle_has_shutdown_method(self) -> None:
         """IWorkerLifecycle requires shutdown() method."""
@@ -90,7 +88,7 @@ class TestIWorkerLifecycleProtocol:
                 """Shutdown worker."""
 
         worker: IWorkerLifecycle = ValidWorker()  # type: ignore[assignment]
-        assert hasattr(worker, 'shutdown')
+        assert hasattr(worker, "shutdown")
 
     def test_iworkerlifecycle_initialize_signature(self) -> None:
         """Initialize method has correct signature with kwargs for capabilities."""
@@ -104,9 +102,7 @@ class TestIWorkerLifecycleProtocol:
                 self.capabilities = {}
 
             def initialize(
-                self,
-                strategy_cache: IStrategyCache | None = None,
-                **capabilities
+                self, strategy_cache: IStrategyCache | None = None, **capabilities
             ) -> None:
                 """Initialize with dependencies."""
                 self.cache = strategy_cache
@@ -120,7 +116,7 @@ class TestIWorkerLifecycleProtocol:
 
         worker.initialize(strategy_cache=cache, persistence=persistence)
         assert worker.cache is cache
-        assert worker.capabilities == {'persistence': persistence}
+        assert worker.capabilities == {"persistence": persistence}
 
     def test_iworkerlifecycle_initialize_with_none_cache(self) -> None:
         """Platform workers can initialize with strategy_cache=None."""
@@ -134,9 +130,7 @@ class TestIWorkerLifecycleProtocol:
                 self.capabilities = {}
 
             def initialize(
-                self,
-                strategy_cache: IStrategyCache | None = None,
-                **capabilities
+                self, strategy_cache: IStrategyCache | None = None, **capabilities
             ) -> None:
                 """Initialize without strategy cache."""
                 self.cache = strategy_cache
@@ -152,7 +146,7 @@ class TestIWorkerLifecycleProtocol:
         worker.initialize(strategy_cache=None, market_connection=market_connection)
 
         assert worker.cache is None
-        assert worker.capabilities == {'market_connection': market_connection}
+        assert worker.capabilities == {"market_connection": market_connection}
 
     def test_iworkerlifecycle_shutdown_signature(self) -> None:
         """Shutdown method has correct signature (no parameters)."""
@@ -175,9 +169,7 @@ class TestIWorkerLifecycleProtocol:
             """Test worker implementation."""
 
             def initialize(
-                self,
-                strategy_cache: IStrategyCache | None = None,
-                **capabilities
+                self, strategy_cache: IStrategyCache | None = None, **capabilities
             ) -> None:
                 """Initialize worker."""
 
@@ -199,9 +191,7 @@ class TestIWorkerLifecycleProtocol:
                 return "complete_worker"
 
             def initialize(
-                self,
-                strategy_cache: IStrategyCache | None = None,
-                **capabilities
+                self, strategy_cache: IStrategyCache | None = None, **capabilities
             ) -> None:
                 """Initialize worker."""
 
@@ -250,11 +240,10 @@ class TestProtocolCompliance:
             """Test worker with missing shutdown method."""
 
             def initialize(
-                self,
-                strategy_cache: IStrategyCache | None = None,
-                **capabilities
+                self, strategy_cache: IStrategyCache | None = None, **capabilities
             ) -> None:
                 """Initialize worker."""
+
             # Missing shutdown() method!
 
         worker = IncompleteWorker()
@@ -273,9 +262,7 @@ class TestProtocolCompliance:
                 self.cache = None
 
             def initialize(
-                self,
-                strategy_cache: IStrategyCache | None = None,
-                **capabilities
+                self, strategy_cache: IStrategyCache | None = None, **capabilities
             ) -> None:
                 """Initialize with dependencies."""
                 self.cache = strategy_cache
@@ -288,5 +275,5 @@ class TestProtocolCompliance:
 
         # Type checker validates this at compile time
         # Runtime test confirms protocol compliance
-        assert hasattr(worker, 'initialize')
-        assert hasattr(worker, 'shutdown')
+        assert hasattr(worker, "initialize")
+        assert hasattr(worker, "shutdown")

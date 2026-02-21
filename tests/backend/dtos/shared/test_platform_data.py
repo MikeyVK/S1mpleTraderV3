@@ -47,7 +47,7 @@ def create_test_origin(origin_type: OriginType = OriginType.TICK) -> Origin:
     type_map = {
         OriginType.TICK: "TCK_20251109_143000_abc123",
         OriginType.NEWS: "NWS_20251109_143000_def456",
-        OriginType.SCHEDULE: "SCH_20251109_143000_ghi789"
+        OriginType.SCHEDULE: "SCH_20251109_143000_ghi789",
     }
     return Origin(id=type_map[origin_type], type=origin_type)
 
@@ -61,11 +61,7 @@ class TestPlatformDataDTOStructure:
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin(OriginType.TICK)
 
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         assert dto.origin == origin
         assert dto.timestamp == timestamp
@@ -80,7 +76,7 @@ class TestPlatformDataDTOStructure:
         candle_dto = PlatformDataDTO(
             origin=origin,
             timestamp=timestamp,
-            payload=MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
+            payload=MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0),
         )
         assert isinstance(candle_dto.payload, MockCandleWindow)
 
@@ -88,7 +84,7 @@ class TestPlatformDataDTOStructure:
         orderbook_dto = PlatformDataDTO(
             origin=create_test_origin(OriginType.NEWS),
             timestamp=timestamp,
-            payload=MockOrderBookSnapshot(symbol="ETH", bid_price=3000.0, ask_price=3001.0)
+            payload=MockOrderBookSnapshot(symbol="ETH", bid_price=3000.0, ask_price=3001.0),
         )
         assert isinstance(orderbook_dto.payload, MockOrderBookSnapshot)
 
@@ -138,7 +134,7 @@ class TestPlatformDataDTOValidation:
             PlatformDataDTO(
                 origin=origin,
                 timestamp=[1, 2, 3],  # type: ignore
-                payload=payload
+                payload=payload,
             )
 
         errors = exc_info.value.errors()
@@ -153,7 +149,7 @@ class TestPlatformDataDTOValidation:
             PlatformDataDTO(
                 origin=origin,
                 timestamp=timestamp,
-                payload="not_a_basemodel"  # type: ignore
+                payload="not_a_basemodel",  # type: ignore
             )
 
         errors = exc_info.value.errors()
@@ -168,11 +164,7 @@ class TestPlatformDataDTOImmutability:
         timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin(OriginType.TICK)
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         new_origin = create_test_origin(OriginType.NEWS)
         with pytest.raises(ValidationError, match="frozen"):
@@ -183,11 +175,7 @@ class TestPlatformDataDTOImmutability:
         timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin()
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         new_timestamp = datetime(2025, 11, 6, 15, 0, 0, tzinfo=UTC)
         with pytest.raises(ValidationError, match="frozen"):
@@ -198,11 +186,7 @@ class TestPlatformDataDTOImmutability:
         timestamp = datetime(2025, 11, 6, 14, 0, 0, tzinfo=UTC)
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin()
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         new_payload = MockCandleWindow(symbol="ETH", timeframe="4h", close=3000.0)
         with pytest.raises(ValidationError, match="frozen"):
@@ -219,11 +203,7 @@ class TestPlatformDataDTOEdgeCases:
 
         for origin_type in [OriginType.TICK, OriginType.NEWS, OriginType.SCHEDULE]:
             origin = create_test_origin(origin_type)
-            dto = PlatformDataDTO(
-                origin=origin,
-                timestamp=timestamp,
-                payload=payload
-            )
+            dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
             assert dto.origin.type == origin_type
 
     def test_timestamp_with_microseconds(self):
@@ -232,11 +212,7 @@ class TestPlatformDataDTOEdgeCases:
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = create_test_origin()
 
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         assert dto.timestamp.microsecond == 123456
 
@@ -247,14 +223,10 @@ class TestPlatformDataDTOEdgeCases:
         payload2 = MockCandleWindow(symbol="ETH", timeframe="4h", close=3000.0)
 
         dto1 = PlatformDataDTO(
-            origin=create_test_origin(OriginType.TICK),
-            timestamp=timestamp,
-            payload=payload1
+            origin=create_test_origin(OriginType.TICK), timestamp=timestamp, payload=payload1
         )
         dto2 = PlatformDataDTO(
-            origin=create_test_origin(OriginType.NEWS),
-            timestamp=timestamp,
-            payload=payload2
+            origin=create_test_origin(OriginType.NEWS), timestamp=timestamp, payload=payload2
         )
 
         assert dto1.origin.type != dto2.origin.type
@@ -270,11 +242,7 @@ class TestPlatformDataDTOOriginIntegration:
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = Origin(id="TCK_20251109_143000_abc123", type=OriginType.TICK)
 
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         assert dto.origin == origin
         assert dto.origin.type == OriginType.TICK
@@ -286,11 +254,7 @@ class TestPlatformDataDTOOriginIntegration:
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = Origin(id="NWS_20251109_143000_def456", type=OriginType.NEWS)
 
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         assert dto.origin == origin
         assert dto.origin.type == OriginType.NEWS
@@ -301,11 +265,7 @@ class TestPlatformDataDTOOriginIntegration:
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = Origin(id="SCH_20251109_143000_ghi789", type=OriginType.SCHEDULE)
 
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         assert dto.origin == origin
         assert dto.origin.type == OriginType.SCHEDULE
@@ -316,10 +276,7 @@ class TestPlatformDataDTOOriginIntegration:
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
 
         with pytest.raises(ValidationError, match="origin"):
-            PlatformDataDTO(
-                timestamp=timestamp,
-                payload=payload
-            )
+            PlatformDataDTO(timestamp=timestamp, payload=payload)
 
     def test_origin_immutability(self):
         """Test that origin cannot be modified after creation."""
@@ -327,11 +284,7 @@ class TestPlatformDataDTOOriginIntegration:
         payload = MockCandleWindow(symbol="BTC", timeframe="1h", close=50000.0)
         origin = Origin(id="TCK_20251109_143000_abc123", type=OriginType.TICK)
 
-        dto = PlatformDataDTO(
-            origin=origin,
-            timestamp=timestamp,
-            payload=payload
-        )
+        dto = PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
 
         new_origin = Origin(id="NWS_20251109_143000_def456", type=OriginType.NEWS)
         with pytest.raises((ValidationError, AttributeError)):
@@ -345,8 +298,4 @@ class TestPlatformDataDTOOriginIntegration:
         # Invalid: wrong prefix for type
         with pytest.raises(ValidationError):
             origin = Origin(id="NWS_20251109_143000_abc123", type=OriginType.TICK)
-            PlatformDataDTO(
-                origin=origin,
-                timestamp=timestamp,
-                payload=payload
-            )
+            PlatformDataDTO(origin=origin, timestamp=timestamp, payload=payload)
