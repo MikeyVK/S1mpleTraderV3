@@ -13,10 +13,31 @@ from pathlib import Path
 
 
 def _load_addopts() -> list[str]:
+    return _load_pytest_config()["addopts"]
+
+
+def _load_pytest_config() -> dict:
     pyproject = Path(__file__).parent.parent.parent.parent / "pyproject.toml"
     with pyproject.open("rb") as f:
         data = tomllib.load(f)
-    return data["tool"]["pytest"]["ini_options"]["addopts"]
+    return data["tool"]["pytest"]["ini_options"]
+
+
+def test_testpaths_set_to_mcp_server() -> None:
+    """Default pytest run must only collect tests/mcp_server/.
+
+    Backend tests are run explicitly via pytest tests/backend/ and should
+    NOT be included in the default discovery. testpaths in pyproject.toml
+    enforces this separation.
+    """
+    config = _load_pytest_config()
+    assert "testpaths" in config, (
+        "testpaths must be set in [tool.pytest.ini_options] to restrict "
+        "default discovery to tests/mcp_server/"
+    )
+    assert config["testpaths"] == ["tests/mcp_server"], (
+        f"testpaths must be ['tests/mcp_server']; got {config['testpaths']}"
+    )
 
 
 def test_addopts_excludes_integration_marker() -> None:
