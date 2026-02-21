@@ -294,10 +294,13 @@ class ArtifactManager:
                     output_path_value = artifact_path
         elif artifact.output_type == "ephemeral":
             # Ephemeral artifacts write to .st3/temp/ at write time (uuid-based filename).
-            # Use a stable placeholder for RenderContext validation — actual path determined
-            # by _validate_and_write. Templates for tracking artifacts do NOT use output_path.
-            ext = getattr(artifact, "file_extension", ".txt")
-            output_path_value = Path(".st3/temp") / f"{artifact_type}_render{ext}"
+            # If caller provided explicit output_path, use it for the SCAFFOLD header.
+            # Otherwise, use a stable placeholder — actual path determined by _validate_and_write.
+            if provided_output_path is not None:
+                output_path_value = Path(provided_output_path)
+            else:
+                ext = getattr(artifact, "file_extension", ".txt")
+                output_path_value = Path(".st3/temp") / f"{artifact_type}_render{ext}"
 
         # Instantiate RenderContext with lifecycle fields + user context fields
         # This validates all fields via Pydantic
@@ -491,8 +494,18 @@ class ArtifactManager:
         artifact_path = self.get_artifact_path(artifact_type, name)
         return str(artifact_path)
 
-    async def _validate_and_write(self, artifact_type: str, output_path: str, content: str) -> str:
-        """Validate content and write to file."""
+    async def _validate_and_write(
+        self, artifact_type: str, output_path: str, content: str, explicit: bool = False
+    ) -> str:
+        """Validate content and write to file.
+
+        Args:
+            artifact_type: Artifact type_id from registry
+            output_path: Resolved output path
+            content: Rendered artifact content
+            explicit: True if output_path was explicitly provided by the caller.
+                      When True, always writes to output_path even for ephemeral artifacts.
+        """
         artifact = self.registry.get_artifact(artifact_type)
 
         passed, issues = await self.validation_service.validate(output_path, content)
@@ -514,7 +527,7 @@ class ArtifactManager:
                 issues,
             )
 
-        if artifact.output_type == "ephemeral":
+        if artifact.output_type == "ephemeral" and not explicit:
             temp_dir = Path(".st3/temp")
             temp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -712,7 +725,9 @@ class ArtifactManager:
         final_path = self._resolve_output_path(artifact_type, output_path, enriched_context)
 
         # 4. Validate and write
-        return await self._validate_and_write(artifact_type, final_path, result.content)
+        return await self._validate_and_write(
+            artifact_type, final_path, result.content, explicit=output_path is not None
+        )
 
     def validate_artifact(self, artifact_type: str, **kwargs: Any) -> bool:  # noqa: ANN401
         """Validate artifact without scaffolding.
