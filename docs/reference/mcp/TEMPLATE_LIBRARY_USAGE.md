@@ -35,7 +35,7 @@ Unified tool to scaffold any registered artifact type (code or document). Resolv
 **Methods:**
 
 - `scaffold_artifact(artifact_type: str, name: str, output_path: str | None = None, context: dict | None = None)`
-  - **Parameters:** artifact_type: registry type_id; name: PascalCase (code) / kebab-case (docs); output_path: override file location; context: template variables
+  - **Parameters:** artifact_type: registry type_id; name: PascalCase (code) / kebab-case (docs); output_path: **required for file artifacts** (dto, worker, adapter, tool, …) — omitting raises `ERR_VALIDATION`; optional for ephemeral artifacts (issue, tracking, …) — when provided writes to that path instead of `.st3/temp/`; context: template variables
   - **Returns:** Path to scaffolded artifact
 
 ---

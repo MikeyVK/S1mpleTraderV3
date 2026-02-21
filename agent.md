@@ -247,7 +247,11 @@ force_phase_transition(
 **Template System (Issue #72 - Multi-Tier Architecture):**
 - **5-tier Jinja2 hierarchy:** Tier 0 (universal SCAFFOLD) → Tier 1 (CODE/DOCUMENT/CONFIG format) → Tier 2 (Python/Markdown/YAML language) → Tier 3 (component/data/tool specialization) → Concrete (worker.py, research.md)
 - **Inheritance-aware introspection:** `introspect_template(name, with_inheritance=True)` returns complete variable schema (all tiers)
-- **SCAFFOLD metadata:** All scaffolded files include 1-line header: `# SCAFFOLD: {type}:{hash} | {timestamp} | {path}`
+- **SCAFFOLD metadata:** Header format depends on artifact type (Issue #239):
+  - **File artifacts** (dto, worker, adapter, …): two-line Python comment — `# path/to/file.py` + `# template=X version=Y created=Z updated=`
+  - **Ephemeral artifacts** (issue, tracking, …): compact HTML comment — `<!-- template=X version=Y -->`
+  - `output_path` **required** for file artifacts — omitting it raises `ERR_VALIDATION`
+  - `output_path` optional for ephemeral artifacts — when provided, artifact is written there instead of `.st3/temp/`
 - **Template registry:** `.st3/template_registry.json` maps version hashes to tier chains
 - **Validation integration:** All generated code passes Issue #52 validation (TEMPLATE_METADATA enforcement)
 

@@ -54,7 +54,7 @@ Generate any artifact type (code or document) from unified registry.
 |-----------|------|----------|-------------|
 | `artifact_type` | `str` | **Yes** | Artifact type ID from registry (e.g., `"dto"`, `"design"`, `"worker"`) |
 | `name` | `str` | **Yes** | Artifact name — PascalCase for code, kebab-case for docs |
-| `output_path` | `str` | No | Optional explicit path (overrides auto-resolution from project_structure.yaml) |
+| `output_path` | `str` | **Yes** (file artifacts) / No (ephemeral) | Explicit output path. **Required** for file artifacts (`dto`, `worker`, `adapter`, `tool`, etc.) — omitting raises `ERR_VALIDATION`. Optional for ephemeral artifacts (`issue`, `tracking`, …) — when provided, artifact is written there instead of `.st3/temp/`. |
 | `context` | `dict` | No | Template rendering context (varies by artifact type) — default: `{}` |
 
 #### Returns
@@ -86,14 +86,10 @@ Generate any artifact type (code or document) from unified registry.
 {
   "artifact_type": "dto",
   "name": "OrderDTO",
+  "output_path": "backend/dtos/OrderDTO.py",
   "context": {
-    "fields": [
-      {"name": "id", "type": "int", "description": "Order ID"},
-      {"name": "user_id", "type": "int", "description": "User who placed order"},
-      {"name": "total", "type": "Decimal", "description": "Order total amount"},
-      {"name": "items", "type": "list[OrderItem]", "description": "Order items"}
-    ],
-    "imports": ["from decimal import Decimal", "from .order_item import OrderItem"]
+    "dto_name": "OrderDTO",
+    "fields": ["id: int", "user_id: int", "total: Decimal"]
   }
 }
 ```
