@@ -116,11 +116,51 @@ SUPPORTING FILES CLASSIFICATION:
 - tests/parity/normalization.py → backend (used by test_normalizer.py)
 - tests/baselines/ → MCP (used by regression tests)
 
+## Additional Findings (2026-02-21 session)
+
+### 1. tests/test_tier1_templates.py — NOT a backend test
+Initial classification as "backend" was wrong. The two `backend.*` references are string literals used as Jinja2 render input and assertion data — the test verifies that the template passes through whatever project import string you give it. The test itself is purely MCP scaffolding validation. Fix: replace `"from backend.core import Worker"` with a neutral string like `"from myproject.core import Worker"`. No semantic change, coupling removed.
+
+### 2. MIXED files — coupling should be removed, not accommodated
+The 3 MIXED integration files accumulated backend imports over time. Each case is different:
+
+**test_concrete_templates.py** (3 clusters of `backend.*`):
+- Line 207: string literal `"from backend.core import Something"` → replace with neutral string
+- Lines 257–267: asserts that the scaffolded worker template generates specific `backend.core.interfaces.*` import paths → change to pattern-based assertions (e.g., assert `"IWorkerLifecycle"` appears, not the full import path). This is the correct approach: the test validates behaviour (worker implements the protocol), not the hardcoded namespace.
+
+**test_safe_edit_validation_integration.py** (lines 211, 245):
+- Both occurrences are inside multiline string fixtures written to a temp file to trigger SafeEditTool validation. Fix: replace `BaseWorker` fixture with a generic ABC subclass that triggers the same validation path.
+
+**test_workflow_cycle_e2e.py** (line 13):
+- Real Python import: `from backend.core.phase_detection import ScopeDecoder`
+- Root cause: `scope_encoder.py` and `phase_detection.py` are mis-placed in `backend/core/`. Both files have zero `backend.*` imports — only stdlib + yaml. They implement MCP workflow tooling (commit-scope encoding, phase detection from state.json). They belong in `mcp_server/core/`.
+- Fix: move both files to `mcp_server/core/`, update 6 import sites (see below), tests become pure MCP.
+
+### 3. scope_encoder.py and phase_detection.py mis-placed in backend/
+Blast radius — all current import sites:
+```
+mcp_server/managers/git_manager.py:8          from backend.core.scope_encoder import ScopeEncoder
+mcp_server/managers/project_manager.py:26     from backend.core.phase_detection import ScopeDecoder
+mcp_server/tools/discovery_tools.py:10        from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
+tests/unit/backend/core/test_scope_encoder.py:18   from backend.core.scope_encoder import ScopeEncoder
+tests/unit/backend/core/test_phase_detection.py:23 from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
+tests/integration/test_workflow_cycle_e2e.py:13    from backend.core.phase_detection import ScopeDecoder
+```
+Total: 3 production files, 2 test files, 1 integration test = 6 sites.
+
+### 4. tests/unit/test_pytest_config.py
+No `backend.*` or `mcp_server.*` imports — reads `pyproject.toml` only. Tests the MCP workflow guard (`-m not integration` in addopts prevents live GitHub API calls). Classification: MCP infrastructure. Target: `tests/mcp_server/unit/test_pytest_config.py`.
+
+### 5. Test files for relocated modules
+After moving `scope_encoder.py` and `phase_detection.py`:
+- `tests/unit/backend/core/test_scope_encoder.py` → `tests/mcp_server/unit/core/test_scope_encoder.py`
+- `tests/unit/backend/core/test_phase_detection.py` → `tests/mcp_server/unit/core/test_phase_detection.py`
+
+---
+
 ## Open Questions
 
-- ❓ MIXED files: should they live in mcp_server/integration/ with a comment noting backend dependency, or in a shared/integration/ folder?
-- ❓ tests/unit/test_pytest_config.py: meta-test for pytest config — belongs to neither, place in mcp_server/ or tests/ root?
-- ❓ tests/test_tier1_templates.py imports backend but tests template rendering — correct owner is mcp_server scaffolding, not backend. Needs content review before move.
+*All open questions resolved — see Additional Findings above.*
 
 
 ## Related Documentation
