@@ -150,11 +150,11 @@ Reorganiseer tests/ van een gevlochten structuur naar twee strikte trees: tests/
   - Root `tests/conftest.py`: minimaal, geen MCP-imports
   - `tests/backend/conftest.py`: backend-specifieke fixtures (geen MCP)
   - `tests/mcp_server/conftest.py`: autouse MCP-singleton reset (huidige inhoud)
-- Update `pyproject.toml`: `testpaths = ["tests/mcp_server", "plugins"]`
+- Update `pyproject.toml`: `testpaths = ["tests/mcp_server"]`
   - Backend-tests vallen hierdoor buiten de default discovery — `pytest` (geen args) = alleen MCP-tests
   - Backend-tests expliciet aanroepbaar via `pytest tests/backend/`
   - Mechanisme: `testpaths` in `[tool.pytest.ini_options]`, geen conftest.py-aanpassing nodig
-- Verplaats `tests/unit/test_pytest_config.py` → `tests/mcp_server/unit/test_pytest_config.py`; update assertions: huidige test bewaakt `not integration` in addopts — voeg assertion toe dat `testpaths` geen `tests/backend` bevat (of gelijkwaardig: alleen `tests/mcp_server` en `plugins`)
+- Verplaats `tests/unit/test_pytest_config.py` → `tests/mcp_server/unit/test_pytest_config.py`; update assertions: huidige test bewaakt `not integration` in addopts — voeg assertion toe dat `testpaths == ["tests/mcp_server"]`
 
 **REFACTOR:** Verwijder alle nu-lege `tests/unit/` subdirectories. Verwijder `tests/parity/` als leeg na Cycle 4. Verwijder `tests/fixtures/` en `tests/baselines/` als leeg na Cycle 5.
 
