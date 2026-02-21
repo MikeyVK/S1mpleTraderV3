@@ -77,6 +77,14 @@ class TemplateScaffolder(BaseScaffolder):
         # Get artifact definition (raises ConfigError if unknown)
         artifact = self.registry.get_artifact(artifact_type)
 
+        # Gate: file artifacts require a non-empty output_path (Issue #239)
+        # output_path=None or '' means non-file / ephemeral artifact — valid only for output_type != "file"
+        if artifact.output_type == "file" and not kwargs.get("output_path"):
+            raise ValidationError(
+                f"Missing output_path for file artifact '{artifact_type}'",
+                hints=["output_path is required for file artifacts"],
+            )
+
         # Get template path
         template_path = self._resolve_template_path(artifact_type, artifact, kwargs)
 

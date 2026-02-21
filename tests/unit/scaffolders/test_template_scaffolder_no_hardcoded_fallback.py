@@ -11,6 +11,7 @@ This approach tests behavior, not implementation details, making tests:
 - Focused on user-visible outcomes
 @layer: Tests (Unit - Behavioral)
 """
+
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -20,13 +21,15 @@ from mcp_server.config.artifact_registry_config import (
     ArtifactDefinition,
     ArtifactRegistryConfig,
 )
+from mcp_server.config.template_config import get_template_root
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
 
 
 class TestServiceTemplateResolution:
     """Service artifacts use ONLY artifacts.yaml template paths."""
-    def test_service_scaffolds_successfully_with_artifacts_yaml_template(self):
+
+    def test_service_scaffolds_successfully_with_artifacts_yaml_template(self) -> None:
         """Service scaffold succeeds using template_path from artifacts.yaml."""
         # Arrange: Load real registry (has service with concrete/service_command.py.jinja2)
         registry = ArtifactRegistryConfig.from_file()
@@ -38,7 +41,8 @@ class TestServiceTemplateResolution:
             description="Process customer orders",
             service_type="command",
             input_dto="OrderRequest",
-            output_dto="OrderResponse"
+            output_dto="OrderResponse",
+            output_path="backend/services/ProcessOrderService.py",
         )
         # Assert: Successfully scaffolded using correct template
         assert result.content is not None
@@ -51,9 +55,12 @@ class TestServiceTemplateResolution:
         assert "template=" in lines[1], "Line 2 should have metadata"
         # If hardcoded fallback to components/ was active, this would fail
         # because template wouldn't exist or would have different structure
+
+
 class TestGenericTemplateResolution:
     """Generic artifacts support context override with template_name."""
-    def test_generic_scaffolds_with_default_template_from_artifacts_yaml(self):
+
+    def test_generic_scaffolds_with_default_template_from_artifacts_yaml(self) -> None:
         """Generic without template_name uses artifacts.yaml default."""
         # Arrange
         registry = ArtifactRegistryConfig.from_file()
@@ -62,17 +69,18 @@ class TestGenericTemplateResolution:
         result = scaffolder.scaffold(
             artifact_type="generic",
             name="CustomComponent",
-            description="A custom component"
+            description="A custom component",
+            output_path="src/components/CustomComponent.py",
         )
         # Assert: Successfully used default template
         assert result.content is not None
         assert "CustomComponent" in result.content
         # Default generic template should have basic structure
         assert "class CustomComponent" in result.content or "CustomComponent" in result.content
-    def test_generic_with_custom_template_uses_context_override(self):
+
+    def test_generic_with_custom_template_uses_context_override(self) -> None:
         """Generic with template_name context uses specified template."""
         # Arrange: Create custom template for testing
-        from mcp_server.config.template_config import get_template_root
         registry = ArtifactRegistryConfig.from_file()
         scaffolder = TemplateScaffolder(registry=registry)
         # Get template root and create custom template
@@ -93,7 +101,8 @@ class TestGenericTemplateResolution:
                 artifact_type="generic",
                 name="SpecialComponent",
                 description="Uses custom template",
-                template_name="test_custom/special_component.py.jinja2"
+                template_name="test_custom/special_component.py.jinja2",
+                output_path="src/components/SpecialComponent.py",
             )
             # Assert: Custom template was used (verify unique marker)
             assert result.content is not None
@@ -105,13 +114,15 @@ class TestGenericTemplateResolution:
             custom_template.unlink()
             if not any(custom_dir.iterdir()):
                 custom_dir.rmdir()
-    def test_generic_without_template_raises_validation_error(self):
+
+    def test_generic_without_template_raises_validation_error(self) -> None:
         """Generic with no template_path in artifacts.yaml and no context fails."""
         # Arrange: Mock registry with generic artifact that has no template
         artifact = Mock(spec=ArtifactDefinition)
         artifact.type_id = "generic"
         artifact.template_path = None  # No default template!
         artifact.fallback_template = None
+        artifact.output_type = "file"
         registry = Mock(spec=ArtifactRegistryConfig)
         registry.get_artifact.return_value = artifact
         scaffolder = TemplateScaffolder(registry=registry)
@@ -120,14 +131,18 @@ class TestGenericTemplateResolution:
             scaffolder.scaffold(
                 artifact_type="generic",
                 name="TestComponent",
-                description="Should fail"
+                description="Should fail",
+                output_path="src/components/TestComponent.py",
                 # NO template_name provided!
             )
         # Verify error message is helpful
         assert "template_name" in str(exc_info.value).lower()
+
+
 class TestNoLegacyComponentsFallback:
     """Verify no hardcoded fallbacks to legacy 'components/' directory."""
-    def test_all_artifacts_use_concrete_templates(self):
+
+    def test_all_artifacts_use_concrete_templates(self) -> None:
         """All artifacts must use concrete/ templates - NO components/ allowed."""
         # Arrange
         registry = ArtifactRegistryConfig.from_file()
@@ -142,12 +157,11 @@ class TestNoLegacyComponentsFallback:
                 )
                 # Verify uses approved paths
                 assert (
-                    artifact.template_path.startswith("concrete/") or
-                    artifact.template_path.startswith("docs/") or
-                    artifact.template_path.startswith("test_")  # Test templates ok
+                    artifact.template_path.startswith("concrete/")
+                    or artifact.template_path.startswith("docs/")
+                    or artifact.template_path.startswith("test_")  # Test templates ok
                 ), (
                     f"Artifact '{artifact.type_id}' uses unexpected template path: "
                     f"{artifact.template_path}\n"
                     f"Expected: concrete/*, docs/*, or test_*"
                 )
-
