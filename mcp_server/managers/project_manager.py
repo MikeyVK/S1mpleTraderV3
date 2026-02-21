@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 # Project modules
-from backend.core.phase_detection import ScopeDecoder
+from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.config.workflows import workflow_config
 from mcp_server.managers.git_manager import GitManager
 

@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
+from mcp_server.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError, MCPError
 from mcp_server.managers.git_manager import GitManager
