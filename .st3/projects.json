@@ -1019,6 +1019,145 @@
     ],
     "skip_reason": null,
     "parent_branch": "main",
-    "created_at": "2026-02-21T20:16:47.408544+00:00"
+    "created_at": "2026-02-21T20:16:47.408544+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 6,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "scope_encoder.py verplaatst naar mcp_server/core/"
+              },
+              {
+                "id": "D1.2",
+                "description": "phase_detection.py verplaatst naar mcp_server/core/"
+              },
+              {
+                "id": "D1.3",
+                "description": "3 productie-importsites bijgewerkt (git_manager, project_manager, discovery_tools)"
+              },
+              {
+                "id": "D1.4",
+                "description": "backend/core/__init__.py exports gecontroleerd en verwijderd indien aanwezig"
+              }
+            ],
+            "exit_criteria": "pytest tests/ -k 'scope_encoder or phase_detection' groen; grep vindt 0 backend.core.scope_encoder/phase_detection imports"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "test_scope_encoder.py import bijgewerkt naar mcp_server.core"
+              },
+              {
+                "id": "D2.2",
+                "description": "test_phase_detection.py import bijgewerkt naar mcp_server.core"
+              },
+              {
+                "id": "D2.3",
+                "description": "test_workflow_cycle_e2e.py import bijgewerkt naar mcp_server.core"
+              },
+              {
+                "id": "D2.4",
+                "description": "Beide test files verplaatst naar tests/mcp_server/unit/core/"
+              }
+            ],
+            "exit_criteria": "pytest tests/ -k 'scope_encoder or phase_detection or workflow_cycle_e2e' volledig groen; geen files meer in tests/unit/backend/core/"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": "test_tier1_templates.py: string literal 'from backend.core import Worker' vervangen door neutraal"
+              },
+              {
+                "id": "D3.2",
+                "description": "test_concrete_templates.py regel 207: string literal vervangen door neutraal"
+              },
+              {
+                "id": "D3.3",
+                "description": "test_concrete_templates.py regels 257-267: patroon-assertions op symboolnaam ipv hardcoded import-paden"
+              },
+              {
+                "id": "D3.4",
+                "description": "test_safe_edit_validation_integration.py: BaseWorker fixture vervangen door generieke ABC-subclass"
+              }
+            ],
+            "exit_criteria": "grep vindt 0 'from backend.' in 4 aangepaste files; alle betrokken tests groen"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "D4.1",
+                "description": "tests/backend/ directory-tree aangemaakt met __init__.py per subdir"
+              },
+              {
+                "id": "D4.2",
+                "description": "27 backend test-files verplaatst naar tests/backend/"
+              },
+              {
+                "id": "D4.3",
+                "description": "tests/parity/normalization.py verplaatst naar tests/backend/parity/normalization.py"
+              },
+              {
+                "id": "D4.4",
+                "description": "Lege dirs tests/unit/assembly/ en tests/unit/dtos/build_specs/ verwijderd"
+              }
+            ],
+            "exit_criteria": "pytest tests/backend/ -v slaagt voor 27 tests zonder MCP-imports"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "D5.1",
+                "description": "tests/fixtures/, baselines/, regression/, acceptance/, integration/ verplaatst naar tests/mcp_server/"
+              },
+              {
+                "id": "D5.2",
+                "description": "Alle MCP unit-files verplaatst naar tests/mcp_server/unit/"
+              },
+              {
+                "id": "D5.3",
+                "description": "pytest_plugins en relatieve imports bijgewerkt naar nieuwe paden"
+              },
+              {
+                "id": "D5.4",
+                "description": "tests/ root tier0/tier1/tier2/cycle-files verplaatst naar tests/mcp_server/"
+              }
+            ],
+            "exit_criteria": "pytest tests/mcp_server/ -v slaagt voor ~169 tests"
+          },
+          {
+            "cycle_number": 6,
+            "deliverables": [
+              {
+                "id": "D6.1",
+                "description": "tests/conftest.py gesplitst: root minimaal, tests/backend/conftest.py, tests/mcp_server/conftest.py met autouse MCP-singleton reset"
+              },
+              {
+                "id": "D6.2",
+                "description": "pyproject.toml testpaths bijgewerkt naar [tests/mcp_server]"
+              },
+              {
+                "id": "D6.3",
+                "description": "test_pytest_config.py verplaatst naar tests/mcp_server/unit/ en assertions bijgewerkt"
+              },
+              {
+                "id": "D6.4",
+                "description": "Lege resten van tests/unit/, tests/parity/, tests/fixtures/, tests/baselines/ verwijderd"
+              }
+            ],
+            "exit_criteria": "pytest (geen args) draait alleen MCP-tests; pytest tests/backend/ geeft 27 groene tests; pytest tests/backend/ tests/mcp_server/ geeft 2318 tests totaal"
+          }
+        ]
+      }
+    }
   }
 }
