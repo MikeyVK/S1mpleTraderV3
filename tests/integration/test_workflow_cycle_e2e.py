@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from backend.core.phase_detection import ScopeDecoder
+from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
