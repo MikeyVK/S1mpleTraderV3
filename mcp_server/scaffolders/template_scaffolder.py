@@ -60,7 +60,7 @@ class TemplateScaffolder(BaseScaffolder):
             renderer = JinjaRenderer(template_dir=template_dir)
         self._renderer = renderer
 
-    def validate(self, artifact_type: str, **kwargs: Any) -> bool:
+    def validate(self, artifact_type: str, **kwargs: Any) -> bool:  # noqa: ANN401
         """Validate scaffolding arguments using template introspection.
 
         Args:
@@ -78,7 +78,8 @@ class TemplateScaffolder(BaseScaffolder):
         artifact = self.registry.get_artifact(artifact_type)
 
         # Gate: file artifacts require a non-empty output_path (Issue #239)
-        # output_path=None or '' means non-file / ephemeral artifact — valid only for output_type != "file"
+        # output_path=None or '' means non-file / ephemeral artifact
+        # — valid only for output_type != "file"
         if artifact.output_type == "file" and not kwargs.get("output_path"):
             raise ValidationError(
                 f"Missing output_path for file artifact '{artifact_type}'",
@@ -131,7 +132,7 @@ class TemplateScaffolder(BaseScaffolder):
         self,
         artifact_type: str,
         skip_validation: bool = False,
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ANN401
     ) -> ScaffoldResult:
         """Scaffold artifact from template.
 
@@ -197,7 +198,10 @@ class TemplateScaffolder(BaseScaffolder):
         return ScaffoldResult(content=rendered, file_name=file_name)
 
     def _resolve_template_path(
-        self, artifact_type: str, artifact: Any, context: dict[str, Any]
+        self,
+        artifact_type: str,
+        artifact: Any,  # noqa: ANN401
+        context: dict[str, Any],
     ) -> str | None:
         """Resolve template path from artifact definition or context.
 
@@ -250,7 +254,7 @@ class TemplateScaffolder(BaseScaffolder):
 
         return template_path
 
-    def _load_and_render_template(self, template_name: str, **kwargs: Any) -> str:
+    def _load_and_render_template(self, template_name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Load and render template using JinjaRenderer.
 
         Uses FileSystemLoader for safe template access (no arbitrary
@@ -272,7 +276,7 @@ class TemplateScaffolder(BaseScaffolder):
         # (template loading is execution/config, not input validation)
         return self._renderer.render(template_name, **kwargs)
 
-    def _determine_format(self, artifact: Any) -> str:
+    def _determine_format(self, artifact: Any) -> str:  # noqa: ANN401
         """Determine format for SCAFFOLD header comment style.
 
         Args:
