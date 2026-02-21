@@ -580,7 +580,7 @@ class ArtifactManager:
         template_file = artifact.template_path
 
         # C2 gate: require output_path for file artifacts (Issue #239 C2)
-        if getattr(artifact, "output_type", None) == "file" and output_path is None:
+        if getattr(artifact, "output_type", None) == "file" and not output_path:
             raise ValidationError(
                 f"Missing output_path for file artifact '{artifact_type}'",
                 hints=["output_path is required for file artifacts"],

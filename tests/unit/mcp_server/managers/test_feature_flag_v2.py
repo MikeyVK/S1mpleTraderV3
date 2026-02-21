@@ -70,7 +70,7 @@ class TestFeatureFlagV2Routing:
         # Act: Scaffold with dict-based context
         context = {"dto_name": "TestDTO", "fields": ["id: int", "name: str"]}
 
-        asyncio.run(manager.scaffold_artifact("dto", **context))
+        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **context))
 
         # Assert: v1 pipeline was used
         assert v1_called, "V1 pipeline (_enrich_context) should be called when flag OFF"
@@ -106,7 +106,7 @@ class TestFeatureFlagV2Routing:
         # Act: Scaffold with dict-based context (will be validated to DTOContext)
         context = {"dto_name": "TestDTO", "fields": ["id: int"]}
 
-        asyncio.run(manager.scaffold_artifact("dto", **context))
+        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **context))
 
         # Assert: v2 pipeline was used
         assert v2_called, "V2 pipeline (_enrich_context_v2) should be called when flag ON"
@@ -139,7 +139,7 @@ class TestFeatureFlagV2Routing:
             original_v1(*args, **kw),
         )[1]
 
-        asyncio.run(manager.scaffold_artifact("dto", **context))
+        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **context))
         assert len(v1_calls) == 1, "V1 should be called when flag OFF"
 
         # Test 2: Flag ON → v2
@@ -151,7 +151,7 @@ class TestFeatureFlagV2Routing:
             original_v2(*args, **kw),
         )[1]
 
-        asyncio.run(manager.scaffold_artifact("dto", **context))
+        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **context))
         assert len(v2_calls) == 1, "V2 should be called when flag ON (runtime toggle)"
 
         # Cleanup
@@ -183,7 +183,7 @@ class TestFeatureFlagV2Routing:
         # Act: Scaffold with v1 dict-based context
         context = {"dto_name": "TestDTO", "fields": ["id: int", "name: str"], "frozen": True}
 
-        asyncio.run(manager.scaffold_artifact("dto", **context))
+        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **context))
 
         # Assert: v1 enrichment fields present (dict-based)
         assert "template_id" in captured_context, "V1 should add template_id"
@@ -206,7 +206,7 @@ class TestFeatureFlagV2Routing:
         }
 
         with pytest.raises(ValidationError) as exc_info:
-            asyncio.run(manager.scaffold_artifact("dto", **invalid_context))
+            asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **invalid_context))
 
         # Verify error message mentions Pydantic validation
         assert "V2 pipeline" in str(exc_info.value), "Error should mention V2 pipeline"

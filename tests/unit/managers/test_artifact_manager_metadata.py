@@ -25,8 +25,7 @@ class TestArtifactManagerMetadataEnrichment:
         manager.scaffolder = Mock()
         header = "# SCAFFOLD: dto:abc123 | 2026-01-24T10:00:00Z | test.py"
         manager.scaffolder.scaffold.return_value = Mock(
-            content=f"{header}\nclass Test: pass",
-            file_name="test.py"
+            content=f"{header}\nclass Test: pass", file_name="test.py"
         )
         # Mock validation to avoid file I/O
         manager.validation_service = Mock()
@@ -36,7 +35,9 @@ class TestArtifactManagerMetadataEnrichment:
     @pytest.mark.asyncio
     async def test_enrichment_adds_template_id(self, manager: ArtifactManager) -> None:
         """Context should include template_id from artifact type."""
-        await manager.scaffold_artifact("dto", name="UserDTO")
+        await manager.scaffold_artifact(
+            "dto", output_path="test_scaffold_output.py", name="UserDTO"
+        )
 
         call_kwargs = manager.scaffolder.scaffold.call_args[1]
         assert "template_id" in call_kwargs
@@ -47,7 +48,9 @@ class TestArtifactManagerMetadataEnrichment:
         self, manager: ArtifactManager
     ) -> None:
         """Context should include scaffold_created in ISO 8601 UTC."""
-        await manager.scaffold_artifact("dto", name="UserDTO")
+        await manager.scaffold_artifact(
+            "dto", output_path="test_scaffold_output.py", name="UserDTO"
+        )
 
         call_kwargs = manager.scaffolder.scaffold.call_args[1]
         assert "scaffold_created" in call_kwargs
@@ -61,7 +64,9 @@ class TestArtifactManagerMetadataEnrichment:
         self, manager: ArtifactManager
     ) -> None:
         """File artifacts should get output_path field."""
-        await manager.scaffold_artifact("dto", name="UserDTO")
+        await manager.scaffold_artifact(
+            "dto", output_path="test_scaffold_output.py", name="UserDTO"
+        )
 
         call_kwargs = manager.scaffolder.scaffold.call_args[1]
         assert "output_path" in call_kwargs
@@ -69,15 +74,14 @@ class TestArtifactManagerMetadataEnrichment:
         assert len(call_kwargs["output_path"]) > 0
 
     @pytest.mark.asyncio
-    async def test_enrichment_preserves_original_context(
-        self, manager: ArtifactManager
-    ) -> None:
+    async def test_enrichment_preserves_original_context(self, manager: ArtifactManager) -> None:
         """Original context fields should be preserved."""
         await manager.scaffold_artifact(
             "dto",
+            output_path="test_scaffold_output.py",
             name="UserDTO",
             description="User data transfer object",
-            fields=["id", "name"]
+            fields=["id", "name"],
         )
 
         call_kwargs = manager.scaffolder.scaffold.call_args[1]
@@ -88,14 +92,16 @@ class TestArtifactManagerMetadataEnrichment:
         assert "scaffold_created" in call_kwargs
 
     @pytest.mark.asyncio
-    async def test_timestamp_format_is_consistent(
-        self, manager: ArtifactManager
-    ) -> None:
+    async def test_timestamp_format_is_consistent(self, manager: ArtifactManager) -> None:
         """Timestamps should always use same ISO 8601 format."""
-        await manager.scaffold_artifact("dto", name="UserDTO")
+        await manager.scaffold_artifact(
+            "dto", output_path="test_scaffold_output.py", name="UserDTO"
+        )
         enriched1 = manager.scaffolder.scaffold.call_args[1]
 
-        await manager.scaffold_artifact("dto", name="ProductDTO")
+        await manager.scaffold_artifact(
+            "dto", output_path="test_scaffold_output.py", name="ProductDTO"
+        )
         enriched2 = manager.scaffolder.scaffold.call_args[1]
 
         assert enriched1["scaffold_created"].endswith("Z")
@@ -104,11 +110,11 @@ class TestArtifactManagerMetadataEnrichment:
         assert ts_len in (19, 20)
 
     @pytest.mark.asyncio
-    async def test_enrichment_includes_version_hash(
-        self, manager: ArtifactManager
-    ) -> None:
+    async def test_enrichment_includes_version_hash(self, manager: ArtifactManager) -> None:
         """scaffold_artifact() should inject version_hash into context."""
-        await manager.scaffold_artifact("dto", name="UserDTO")
+        await manager.scaffold_artifact(
+            "dto", output_path="test_scaffold_output.py", name="UserDTO"
+        )
 
         call_kwargs = manager.scaffolder.scaffold.call_args[1]
         assert "template_id" in call_kwargs
@@ -126,7 +132,7 @@ class TestArtifactManagerNullTemplate:
 
     @pytest.mark.asyncio
     async def test_scaffold_raises_config_error_for_null_template_path(
-        self, manager: ArtifactManager
+        self, manager: ArtifactManager, tmp_path: Path
     ) -> None:
         """QA-2: scaffold_artifact should fail fast if template_path is null."""
         # Worker artifact NOW HAS a template configured (template_path exists)
@@ -134,9 +140,10 @@ class TestArtifactManagerNullTemplate:
         # Test that worker scaffold succeeds instead
         result = await manager.scaffold_artifact(
             "worker",
+            output_path=str(tmp_path / "TestWorker.py"),
             name="TestWorker",
             layer="Backend",
-            responsibilities=["Test responsibility"]
+            responsibilities=["Test responsibility"],
         )
 
         # Should succeed without ConfigError
@@ -160,8 +167,7 @@ class TestArtifactManagerTierChainExtraction:
         manager.scaffolder = Mock()
         header = "# SCAFFOLD: dto:abc123 | 2026-01-24T10:00:00Z | test.py"
         manager.scaffolder.scaffold.return_value = Mock(
-            content=f"{header}\nclass Test: pass",
-            file_name="test.py"
+            content=f"{header}\nclass Test: pass", file_name="test.py"
         )
         # Mock validation to avoid file I/O
         manager.validation_service = Mock()
@@ -173,7 +179,9 @@ class TestArtifactManagerTierChainExtraction:
         self, manager: ArtifactManager
     ) -> None:
         """Scaffold should compute version_hash from template tier chain."""
-        await manager.scaffold_artifact("dto", name="UserDTO")
+        await manager.scaffold_artifact(
+            "dto", output_path="test_scaffold_output.py", name="UserDTO"
+        )
 
         call_kwargs = manager.scaffolder.scaffold.call_args[1]
         # version_hash should be present (computed from tier chain)

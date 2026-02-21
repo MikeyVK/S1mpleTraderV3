@@ -63,7 +63,7 @@ def _run_v1(manager: ArtifactManager, artifact_type: str, context: dict) -> str:
     )
 
     os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
-    asyncio.run(manager.scaffold_artifact(artifact_type, **context))
+    asyncio.run(manager.scaffold_artifact(artifact_type, output_path="test_scaffold_output.py", **context))
     assert len(output_captured) == 1, f"V1 pipeline produced no output for {artifact_type}"
     return output_captured[0]
 
@@ -82,7 +82,7 @@ def _run_v2(manager: ArtifactManager, artifact_type: str, context: dict) -> str:
 
     os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
     try:
-        asyncio.run(manager.scaffold_artifact(artifact_type, **context))
+        asyncio.run(manager.scaffold_artifact(artifact_type, output_path="test_scaffold_output.py", **context))
     finally:
         os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
@@ -176,7 +176,7 @@ class TestWorkerV2Parity:
 
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         try:
-            asyncio.run(manager.scaffold_artifact("worker", **self._MINIMAL))
+            asyncio.run(manager.scaffold_artifact("worker", output_path="test_scaffold_output.py", **self._MINIMAL))
         finally:
             os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
@@ -248,7 +248,7 @@ class TestToolV2Parity:
 
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         try:
-            asyncio.run(manager.scaffold_artifact("tool", **self._MINIMAL))
+            asyncio.run(manager.scaffold_artifact("tool", output_path="test_scaffold_output.py", **self._MINIMAL))
         finally:
             os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
@@ -318,7 +318,7 @@ class TestSchemaV2Parity:
 
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         try:
-            asyncio.run(manager.scaffold_artifact("schema", **self._MINIMAL))
+            asyncio.run(manager.scaffold_artifact("schema", output_path="test_scaffold_output.py", **self._MINIMAL))
         finally:
             os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
@@ -388,7 +388,7 @@ class TestServiceV2Parity:
 
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         try:
-            asyncio.run(manager.scaffold_artifact("service", **self._MINIMAL))
+            asyncio.run(manager.scaffold_artifact("service", output_path="test_scaffold_output.py", **self._MINIMAL))
         finally:
             os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
@@ -457,7 +457,7 @@ class TestGenericV2Parity:
 
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         try:
-            asyncio.run(manager.scaffold_artifact("generic", **self._MINIMAL))
+            asyncio.run(manager.scaffold_artifact("generic", output_path="test_scaffold_output.py", **self._MINIMAL))
         finally:
             os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
@@ -546,7 +546,7 @@ class TestUnitTestV2Parity:
 
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         try:
-            asyncio.run(manager.scaffold_artifact("unit_test", **self._MINIMAL))
+            asyncio.run(manager.scaffold_artifact("unit_test", output_path="test_scaffold_output.py", **self._MINIMAL))
         finally:
             os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
@@ -629,7 +629,7 @@ class TestIntegrationTestV2Parity:
 
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         try:
-            asyncio.run(manager.scaffold_artifact("integration_test", **self._MINIMAL))
+            asyncio.run(manager.scaffold_artifact("integration_test", output_path="test_scaffold_output.py", **self._MINIMAL))
         finally:
             os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 

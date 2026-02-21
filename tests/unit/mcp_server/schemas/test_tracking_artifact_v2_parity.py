@@ -8,7 +8,8 @@ SCOPE (Cycle 7 - Tracking Artifact V2):
 3 tests per artifact type (9 total):
   1. context_validates_minimal  - schema creates with required fields only; fails if schema absent
   2. v2_routing_confirmed       - _enrich_context_v2 IS called; fails while not in registry
-  3. v2_rejects_invalid_context - empty context raises ValidationError; fails while V1 fallback active
+  3. v2_rejects_invalid_context - empty context raises ValidationError;
+     fails while V1 fallback active
 
 Note on ephemeral artifacts:
   Tracking artifacts (commit, pr, issue) use output_type: ephemeral — they write to .st3/temp/
@@ -19,6 +20,7 @@ Note on parity definition (aligned with Cycles 5+6 docstring):
   Parity = smoke: both pipelines produce valid output with routing confirmed.
   Tracking artifacts have no SCAFFOLD header (output_type=ephemeral, no disk persistence).
 """
+
 import asyncio  # noqa: I001
 import os
 from pathlib import Path
@@ -52,6 +54,7 @@ def _run_v2_tracking(manager: ArtifactManager, artifact_type: str, context: dict
         art_type: str,  # noqa: ARG001
         path: str,  # noqa: ARG001
         content: str,
+        **kwargs: object,  # noqa: ARG001
     ) -> str:
         output_captured.append(content)
         return "mocked_path"
