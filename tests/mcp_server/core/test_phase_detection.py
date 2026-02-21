@@ -1,12 +1,12 @@
-# tests/unit/backend/core/test_phase_detection.py
+# tests/mcp_server/core/test_phase_detection.py
 # template=unit_test version=6b0f1f7e created=2026-02-15T06:35Z updated=
 """
-Unit tests for backend.core.phase_detection.
+Unit tests for mcp_server.core.phase_detection.
 
 Test PhaseDetectionResult TypedDict schema validation and field types
 
 @layer: Tests (Unit)
-@dependencies: [pytest, backend.core.phase_detection, unittest.mock]
+@dependencies: [pytest, mcp_server.core.phase_detection, unittest.mock]
 @responsibilities:
     - Test PhaseDetectionResult TypedDict schema
     - Verify ScopeDecoder.detect_phase() deterministic precedence
