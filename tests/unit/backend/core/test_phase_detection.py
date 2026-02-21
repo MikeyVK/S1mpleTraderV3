@@ -20,7 +20,7 @@ from pathlib import Path
 
 # Third-party
 # Project modules
-from backend.core.phase_detection import PhaseDetectionResult, ScopeDecoder
+from mcp_server.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 
 
 class TestPhaseDetectionResult:

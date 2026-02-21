@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from backend.core.scope_encoder import ScopeEncoder
+from mcp_server.core.scope_encoder import ScopeEncoder
 
 
 @pytest.fixture
