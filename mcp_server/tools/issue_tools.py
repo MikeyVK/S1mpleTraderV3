@@ -19,6 +19,8 @@ from mcp_server.config.workflow_config import WorkflowConfig
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.scaffolding.renderer import JinjaRenderer
+from mcp_server.scaffolding.template_introspector import introspect_template_with_inheritance
+from mcp_server.scaffolding.version_hash import compute_version_hash
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -68,7 +70,7 @@ def _resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
         if isinstance(node, dict):
             if "$ref" in node:
                 ref_path: str = node["$ref"]  # e.g. "#/$defs/IssueBody"
-                def_name = ref_path.split("/")[-1]
+                def_name = ref_path.split("/")[-1]  # noqa: PLC0207
                 resolved = copy.deepcopy(defs.get(def_name, {}))
                 # Merge any sibling keys from the $ref node (e.g. description)
                 for k, v in node.items():
@@ -289,13 +291,23 @@ class CreateIssueTool(BaseTool):
         Returns:
             Markdown string with SCAFFOLD metadata as invisible HTML comments.
         """
+        # Compute version_hash from issue template inheritance chain (Issue #239 C3)
+        # output_path=None → compact SCAFFOLD header (no file path, no created/updated)
+        _template_path = "concrete/issue.md.jinja2"
+        _template_root = get_template_root()
+        _schema = introspect_template_with_inheritance(_template_root, _template_path)
+        _tier_chain = (
+            [(p, "1.0") for p in _schema.parent_chain] if hasattr(_schema, "parent_chain") else []
+        )
+        _version_hash = compute_version_hash("issue", _template_path, _tier_chain)
+
         return self._renderer.render(
-            "concrete/issue.md.jinja2",
+            _template_path,
             format="markdown",
             title=title,
-            output_path="",
-            artifact_type="",
-            version_hash="",
+            output_path=None,
+            artifact_type="issue",
+            version_hash=_version_hash,
             timestamp="",
             problem=body.problem,
             expected=body.expected,

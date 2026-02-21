@@ -75,9 +75,7 @@ class TestRenderBodyScaffoldHeader:
         assert "<!--  -->" not in result, f"Unexpected empty HTML comment in:\n{result}"
         assert "<!-- -->" not in result, f"Unexpected empty HTML comment in:\n{result}"
 
-    def test_hash_is_deterministic(
-        self, tool: CreateIssueTool, minimal_body: IssueBody
-    ) -> None:
+    def test_hash_is_deterministic(self, tool: CreateIssueTool, minimal_body: IssueBody) -> None:
         """Same template produces same hash in repeated _render_body calls."""
         result1 = tool._render_body(minimal_body, title="Issue A")
         result2 = tool._render_body(minimal_body, title="Issue B")
@@ -100,9 +98,7 @@ class TestRenderBodyScaffoldHeader:
 
         # First line should be HTML comment, not Python comment
         first_line = lines[0]
-        assert first_line.startswith("<!--"), (
-            f"Expected HTML comment header, got: {first_line!r}"
-        )
+        assert first_line.startswith("<!--"), f"Expected HTML comment header, got: {first_line!r}"
         assert not first_line.startswith("# "), (
             f"Got Python comment instead of HTML comment: {first_line!r}"
         )
