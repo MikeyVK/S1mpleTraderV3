@@ -33,10 +33,12 @@ class TestServerToolRegistration:
 
     def test_github_tools_registered_with_token(self) -> None:
         """GitHub tools should be registered when token is configured."""
-        with patch("mcp_server.server.settings") as mock_settings, \
-             patch("mcp_server.resources.github.GitHubManager") as mock_res_manager, \
-             patch("mcp_server.tools.pr_tools.GitHubManager") as mock_pr_manager, \
-             patch("mcp_server.tools.label_tools.GitHubManager") as mock_label_manager:
+        with (
+            patch("mcp_server.server.settings") as mock_settings,
+            patch("mcp_server.resources.github.GitHubManager") as mock_res_manager,
+            patch("mcp_server.tools.pr_tools.GitHubManager") as mock_pr_manager,
+            patch("mcp_server.tools.label_tools.GitHubManager") as mock_label_manager,
+        ):
             mock_settings.server.name = "test-server"
             mock_settings.github.token = "test-token"
             mock_settings.github.owner = "test"

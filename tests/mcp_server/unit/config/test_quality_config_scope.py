@@ -9,8 +9,7 @@ class TestGateScopeModel:
     def test_scope_with_includes_and_excludes(self) -> None:
         """GateScope should accept include and exclude globs."""
         scope = GateScope(
-            include_globs=["backend/**/*.py", "mcp_server/**/*.py"],
-            exclude_globs=["tests/**/*.py"]
+            include_globs=["backend/**/*.py", "mcp_server/**/*.py"], exclude_globs=["tests/**/*.py"]
         )
 
         assert len(scope.include_globs) == 2
@@ -20,9 +19,7 @@ class TestGateScopeModel:
 
     def test_scope_with_includes_only(self) -> None:
         """GateScope should work with includes only (no excludes)."""
-        scope = GateScope(
-            include_globs=["mcp_server/**/*.py"]
-        )
+        scope = GateScope(include_globs=["mcp_server/**/*.py"])
 
         assert len(scope.include_globs) == 1
         assert not scope.exclude_globs
@@ -41,11 +38,7 @@ class TestScopeFiltering:
     def test_filter_includes_matching_files(self) -> None:
         """Should include files matching include globs."""
         scope = GateScope(include_globs=["mcp_server/**/*.py"])
-        files = [
-            "mcp_server/config/quality_config.py",
-            "tests/unit/test_qa.py",
-            "backend/core.py"
-        ]
+        files = ["mcp_server/config/quality_config.py", "tests/unit/test_qa.py", "backend/core.py"]
 
         filtered = scope.filter_files(files)
 
@@ -54,15 +47,8 @@ class TestScopeFiltering:
 
     def test_filter_excludes_matching_files(self) -> None:
         """Should exclude files matching exclude globs."""
-        scope = GateScope(
-            include_globs=["**/*.py"],
-            exclude_globs=["tests/**/*.py"]
-        )
-        files = [
-            "mcp_server/config/quality_config.py",
-            "tests/unit/test_qa.py",
-            "backend/core.py"
-        ]
+        scope = GateScope(include_globs=["**/*.py"], exclude_globs=["tests/**/*.py"])
+        files = ["mcp_server/config/quality_config.py", "tests/unit/test_qa.py", "backend/core.py"]
 
         filtered = scope.filter_files(files)
 
@@ -74,10 +60,7 @@ class TestScopeFiltering:
     def test_empty_scope_returns_all_files(self) -> None:
         """Empty scope should return all files (no filtering)."""
         scope = GateScope()
-        files = [
-            "mcp_server/config/quality_config.py",
-            "tests/unit/test_qa.py"
-        ]
+        files = ["mcp_server/config/quality_config.py", "tests/unit/test_qa.py"]
 
         filtered = scope.filter_files(files)
 
@@ -87,10 +70,7 @@ class TestScopeFiltering:
     def test_windows_paths_normalized_to_posix(self) -> None:
         """Should handle Windows backslash paths."""
         scope = GateScope(include_globs=["mcp_server/**/*.py"])
-        files = [
-            r"mcp_server\config\quality_config.py",
-            r"tests\unit\test_qa.py"
-        ]
+        files = [r"mcp_server\config\quality_config.py", r"tests\unit\test_qa.py"]
 
         filtered = scope.filter_files(files)
 

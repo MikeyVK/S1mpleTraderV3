@@ -260,21 +260,13 @@ async def test_v2_smoke_produces_nonempty_output(
     assert isinstance(result, str), (
         f"[{artifact_type}] scaffold_artifact should return str, got {type(result).__name__}"
     )
-    assert result.strip(), (
-        f"[{artifact_type}] scaffold_artifact returned empty string"
-    )
+    assert result.strip(), f"[{artifact_type}] scaffold_artifact returned empty string"
 
     # Verify output file exists on disk
     result_path = Path(result)
-    assert result_path.exists(), (
-        f"[{artifact_type}] output file not found at {result_path}"
-    )
-    assert result_path.is_file(), (
-        f"[{artifact_type}] output path is not a file: {result_path}"
-    )
+    assert result_path.exists(), f"[{artifact_type}] output file not found at {result_path}"
+    assert result_path.is_file(), f"[{artifact_type}] output path is not a file: {result_path}"
 
     # Verify content is non-trivial (at least some chars)
     content = result_path.read_text(encoding="utf-8")
-    assert len(content.strip()) > 0, (
-        f"[{artifact_type}] output file is empty: {result_path}"
-    )
+    assert len(content.strip()) > 0, f"[{artifact_type}] output file is empty: {result_path}"

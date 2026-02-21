@@ -1,4 +1,4 @@
-﻿# SCAFFOLD: template=test_unit version=xxx created=2026-01-26T21:20:00Z
+# SCAFFOLD: template=test_unit version=xxx created=2026-01-26T21:20:00Z
 """
 Tests for Tier 0 base template rendering (Issue #72, TDD Cycle 2).
 
@@ -13,9 +13,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 # Template directory
-TEMPLATE_DIR = (
-    Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
-)
+TEMPLATE_DIR = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
 
 class TestTier0TwoLineScaffoldFormat:
@@ -36,11 +34,13 @@ class TestTier0TwoLineScaffoldFormat:
 
         lines = result.strip().split("\n")
         # Line 1: ONLY filepath (no SCAFFOLD: prefix)
-        assert lines[0] == "# src/workers/MyWorker.py", \
+        assert lines[0] == "# src/workers/MyWorker.py", (
             f"Line 1 must be filepath only, got: {lines[0]}"
+        )
         # Line 2: metadata (no SCAFFOLD: prefix)
-        assert lines[1].startswith("# template=worker version=a3f7b2c1"), \
+        assert lines[1].startswith("# template=worker version=a3f7b2c1"), (
             f"Line 2 must start with metadata, got: {lines[1]}"
+        )
         assert "created=2026-01-23T10:30:00Z" in lines[1]
         assert "updated=" in lines[1]
         # NO "SCAFFOLD:" anywhere
@@ -61,11 +61,13 @@ class TestTier0TwoLineScaffoldFormat:
 
         lines = result.strip().split("\n")
         # Line 1: ONLY filepath in HTML comment
-        assert lines[0] == "<!-- docs/development/issue72/research.md -->", \
+        assert lines[0] == "<!-- docs/development/issue72/research.md -->", (
             f"Line 1 must be filepath only, got: {lines[0]}"
+        )
         # Line 2: metadata in HTML comment
-        assert lines[1].startswith("<!-- template=research version=b4e8f3c2"), \
+        assert lines[1].startswith("<!-- template=research version=b4e8f3c2"), (
             f"Line 2 must start with metadata, got: {lines[1]}"
+        )
         assert "created=2026-01-23T09:15:00Z" in lines[1]
         assert "updated=" in lines[1]
         assert "-->" in lines[1]

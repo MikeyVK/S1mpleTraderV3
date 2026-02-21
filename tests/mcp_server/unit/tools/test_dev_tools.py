@@ -36,9 +36,7 @@ async def test_run_tests_tool() -> None:
 async def test_create_file_tool(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     """Test CreateFileTool creates file with correct content in subdirectory."""
 
-    monkeypatch.setattr(
-        "mcp_server.config.settings.settings.server.workspace_root", str(tmp_path)
-    )
+    monkeypatch.setattr("mcp_server.config.settings.settings.server.workspace_root", str(tmp_path))
 
     tool = CreateFileTool()
 
@@ -53,9 +51,7 @@ async def test_create_file_tool(tmp_path: Path, monkeypatch: MonkeyPatch) -> Non
 async def test_create_file_security_check(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     """Test CreateFileTool rejects path traversal attempts."""
 
-    monkeypatch.setattr(
-        "mcp_server.config.settings.settings.server.workspace_root", str(tmp_path)
-    )
+    monkeypatch.setattr("mcp_server.config.settings.settings.server.workspace_root", str(tmp_path))
 
     tool = CreateFileTool()
 

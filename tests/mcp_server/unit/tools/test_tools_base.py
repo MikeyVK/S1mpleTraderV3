@@ -1,4 +1,5 @@
 """Tests for base tool classes."""
+
 import pytest
 
 from mcp_server.tools.base import BaseTool
@@ -14,6 +15,7 @@ class TestTool(BaseTool):
     async def execute(self, **kwargs) -> ToolResult:
         return ToolResult.text(f"Executed with {kwargs}")
 
+
 def test_tool_result_helpers() -> None:
     """Test ToolResult.text and ToolResult.error helper methods."""
     # Test text helper
@@ -26,6 +28,7 @@ def test_tool_result_helpers() -> None:
     assert error.content[0]["text"] == "Failed"
     assert error.is_error
 
+
 @pytest.mark.asyncio
 async def test_base_tool_execution() -> None:
     """Test that BaseTool execute method works correctly."""
@@ -33,6 +36,7 @@ async def test_base_tool_execution() -> None:
     result = await tool.execute(param="value")
     assert "value" in result.content[0]["text"]
     assert not result.is_error
+
 
 def test_base_tool_schema() -> None:
     """Test that BaseTool provides default input schema."""

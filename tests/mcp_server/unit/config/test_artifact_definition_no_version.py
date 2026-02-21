@@ -6,7 +6,6 @@ Rationale: artifacts.yaml = selection config (variants), registry = provenance (
 Having ArtifactDefinition.version conflicts with "templates+registry=SSOT" principle.
 """
 
-
 from mcp_server.config.artifact_registry_config import ArtifactDefinition
 
 
@@ -29,8 +28,8 @@ class TestArtifactDefinitionNoVersion:
             "state_machine": {
                 "initial_state": "draft",
                 "states": ["draft", "final"],
-                "valid_transitions": []
-            }
+                "valid_transitions": [],
+            },
         }
 
         # After Task 1.5b, this should work without version
@@ -39,7 +38,7 @@ class TestArtifactDefinitionNoVersion:
         # REQUIREMENT: version should NOT be a field
         # Currently FAILS because version exists with default "1.0"
         # After Task 1.5b fix:
-        assert not hasattr(artifact, 'version')
+        assert not hasattr(artifact, "version")
 
     def test_artifact_yaml_without_version_is_valid(self):
         """artifacts.yaml entries should NOT require version field.
@@ -56,8 +55,8 @@ class TestArtifactDefinitionNoVersion:
             "state_machine": {
                 "initial_state": "draft",
                 "states": ["draft", "final"],
-                "valid_transitions": []
-            }
+                "valid_transitions": [],
+            },
         }
 
         # Should parse without version field
@@ -66,7 +65,7 @@ class TestArtifactDefinitionNoVersion:
         # REQUIREMENT: No version attribute
         # Currently FAILS - gets default "1.0"
         # After Task 1.5b fix:
-        assert not hasattr(artifact, 'version')
+        assert not hasattr(artifact, "version")
 
 
 class TestArtifactManagerNoVersionContext:

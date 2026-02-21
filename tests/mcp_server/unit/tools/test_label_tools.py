@@ -1,4 +1,5 @@
 """Unit tests for label_tools.py."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,6 +23,7 @@ from mcp_server.tools.label_tools import (
 def mock_github_manager():
     return MagicMock()
 
+
 @pytest.fixture
 def test_label_config(tmp_path):
     """Create a temp label config with test labels."""
@@ -42,12 +44,13 @@ labels:
     yield
     LabelConfig.reset()
 
+
 @pytest.mark.asyncio
 async def test_list_labels_tool(mock_github_manager):
     tool = ListLabelsTool(manager=mock_github_manager)
     mock_github_manager.list_labels.return_value = [
         MagicMock(name="bug", color="red", description="Its a feature"),
-        MagicMock(name="feat", color="green", description="")
+        MagicMock(name="feat", color="green", description=""),
     ]
 
     result = await tool.execute(ListLabelsInput())
@@ -55,6 +58,7 @@ async def test_list_labels_tool(mock_github_manager):
     mock_github_manager.list_labels.assert_called_once()
     assert "bug" in result.content[0]["text"]
     assert "feat" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_create_label_tool(mock_github_manager, test_label_config):
@@ -71,6 +75,7 @@ async def test_create_label_tool(mock_github_manager, test_label_config):
     )
     assert "Created label: **type:hotfix**" in result.content[0]["text"]
 
+
 @pytest.mark.asyncio
 async def test_delete_label_tool(mock_github_manager):
     tool = DeleteLabelTool(manager=mock_github_manager)
@@ -81,6 +86,7 @@ async def test_delete_label_tool(mock_github_manager):
     mock_github_manager.delete_label.assert_called_with("old-label")
     assert "Deleted label: **old-label**" in result.content[0]["text"]
 
+
 @pytest.mark.asyncio
 async def test_add_labels_tool(mock_github_manager, test_label_config):
     tool = AddLabelsTool(manager=mock_github_manager)
@@ -89,6 +95,7 @@ async def test_add_labels_tool(mock_github_manager, test_label_config):
 
     mock_github_manager.add_labels.assert_called_with(10, ["bug", "p1"])
     assert "Added labels to #10" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_remove_labels_tool(mock_github_manager):

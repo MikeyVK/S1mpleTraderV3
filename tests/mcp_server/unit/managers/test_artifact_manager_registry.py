@@ -36,30 +36,29 @@ class TestArtifactManagerRegistryIntegration:
         # Setup
         mock_scaffolder = Mock(spec=TemplateScaffolder)
         mock_scaffolder.scaffold.return_value = Mock(
-            content='"""Test."""\nclass Test:\n    pass\n',
-            file_name='test.py'
+            content='"""Test."""\nclass Test:\n    pass\n', file_name="test.py"
         )
 
         mock_registry = Mock(spec=TemplateRegistry)
         mock_fs_adapter = Mock()
-        mock_fs_adapter.resolve_path.return_value = Path('/test/test.py')
+        mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
         mock_validation_service = Mock()
         mock_validation_service.validate = AsyncMock(return_value=(True, []))
 
-        with patch.object(
-            ArtifactManager, 'get_artifact_path', return_value=Path('/test/test.py')
-        ):
+        with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
                 fs_adapter=mock_fs_adapter,
-                validation_service=mock_validation_service
+                validation_service=mock_validation_service,
             )
 
             # Inject mock_registry into manager
             manager.template_registry = mock_registry
 
-            await manager.scaffold_artifact('dto', output_path='test_scaffold_output.py', name='Test', fields=[])
+            await manager.scaffold_artifact(
+                "dto", output_path="test_scaffold_output.py", name="Test", fields=[]
+            )
 
         # After Task 1.1c GREEN:
         mock_registry.save_version.assert_called_once()
@@ -74,33 +73,32 @@ class TestArtifactManagerRegistryIntegration:
         # Setup
         mock_scaffolder = Mock(spec=TemplateScaffolder)
         mock_scaffolder.scaffold.return_value = Mock(
-            content='# SCAFFOLD: dto:abc123ef | 2026-01-23 | test.py\n',
-            file_name='test.py'
+            content="# SCAFFOLD: dto:abc123ef | 2026-01-23 | test.py\n", file_name="test.py"
         )
 
         mock_fs_adapter = Mock()
-        mock_fs_adapter.resolve_path.return_value = Path('/test/test.py')
+        mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
         mock_validation_service = Mock()
         mock_validation_service.validate = AsyncMock(return_value=(True, []))
 
-        with patch.object(
-            ArtifactManager, 'get_artifact_path', return_value=Path('/test/test.py')
-        ):
+        with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
                 fs_adapter=mock_fs_adapter,
-                validation_service=mock_validation_service
+                validation_service=mock_validation_service,
             )
 
-            await manager.scaffold_artifact('dto', output_path='test_scaffold_output.py', name='Test', fields=[])
+            await manager.scaffold_artifact(
+                "dto", output_path="test_scaffold_output.py", name="Test", fields=[]
+            )
 
         # REQUIREMENT: scaffolder.scaffold() should receive version_hash in context
         call_args = mock_scaffolder.scaffold.call_args
 
         # After Task 1.1c GREEN:
-        assert 'version_hash' in call_args[1]
-        assert len(call_args[1]['version_hash']) == 8  # 8-char hash
+        assert "version_hash" in call_args[1]
+        assert len(call_args[1]["version_hash"]) == 8  # 8-char hash
 
     @pytest.mark.asyncio
     async def test_scaffold_artifact_includes_artifact_type_in_context(self):
@@ -112,33 +110,32 @@ class TestArtifactManagerRegistryIntegration:
         # Setup
         mock_scaffolder = Mock(spec=TemplateScaffolder)
         mock_scaffolder.scaffold.return_value = Mock(
-            content='"""Test."""\nclass Test:\n    pass\n',
-            file_name='test.py'
+            content='"""Test."""\nclass Test:\n    pass\n', file_name="test.py"
         )
 
         mock_fs_adapter = Mock()
-        mock_fs_adapter.resolve_path.return_value = Path('/test/test.py')
+        mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
         mock_validation_service = Mock()
         mock_validation_service.validate = AsyncMock(return_value=(True, []))
 
-        with patch.object(
-            ArtifactManager, 'get_artifact_path', return_value=Path('/test/test.py')
-        ):
+        with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
                 fs_adapter=mock_fs_adapter,
-                validation_service=mock_validation_service
+                validation_service=mock_validation_service,
             )
 
-            await manager.scaffold_artifact('dto', output_path='test_scaffold_output.py', name='Test', fields=[])
+            await manager.scaffold_artifact(
+                "dto", output_path="test_scaffold_output.py", name="Test", fields=[]
+            )
 
         # REQUIREMENT: artifact_type should be in context
         call_args = mock_scaffolder.scaffold.call_args
 
         # This might already work if _enrich_context adds it
         # But verify it's available for SCAFFOLD metadata
-        assert 'template_id' in call_args[1]  # Currently 'template_id' is used
+        assert "template_id" in call_args[1]  # Currently 'template_id' is used
         # After Task 1.1c, should also have 'artifact_type'
 
     @pytest.mark.asyncio
@@ -150,26 +147,25 @@ class TestArtifactManagerRegistryIntegration:
         # Setup - simulate first run (no registry file)
         mock_scaffolder = Mock(spec=TemplateScaffolder)
         mock_scaffolder.scaffold.return_value = Mock(
-            content='"""Test."""\nclass Test:\n    pass\n',
-            file_name='test.py'
+            content='"""Test."""\nclass Test:\n    pass\n', file_name="test.py"
         )
 
         mock_fs_adapter = Mock()
-        mock_fs_adapter.resolve_path.return_value = Path('/test/test.py')
+        mock_fs_adapter.resolve_path.return_value = Path("/test/test.py")
 
         mock_validation_service = Mock()
         mock_validation_service.validate = AsyncMock(return_value=(True, []))
 
-        with patch.object(
-            ArtifactManager, 'get_artifact_path', return_value=Path('/test/test.py')
-        ):
+        with patch.object(ArtifactManager, "get_artifact_path", return_value=Path("/test/test.py")):
             manager = ArtifactManager(
                 scaffolder=mock_scaffolder,
                 fs_adapter=mock_fs_adapter,
-                validation_service=mock_validation_service
+                validation_service=mock_validation_service,
             )
 
-            await manager.scaffold_artifact('dto', output_path='test_scaffold_output.py', name='Test', fields=[])
+            await manager.scaffold_artifact(
+                "dto", output_path="test_scaffold_output.py", name="Test", fields=[]
+            )
 
         # REQUIREMENT: .st3/template_registry.yaml should exist after scaffolding
         # Currently FAILS - registry not integrated

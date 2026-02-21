@@ -32,9 +32,7 @@ class TestSearchServiceIntegration:
         # Create reference doc
         ref_dir = docs_dir / "reference"
         ref_dir.mkdir()
-        (ref_dir / "api.md").write_text(
-            "# API Reference\n\nJavaScript API documentation."
-        )
+        (ref_dir / "api.md").write_text("# API Reference\n\nJavaScript API documentation.")
 
         return docs_dir
 
@@ -48,8 +46,7 @@ class TestSearchServiceIntegration:
 
         # Should find 2 documents containing "Python"
         assert len(results) == 2
-        assert all("Python" in r["title"] or "Python" in r["content"]
-                  for r in results)
+        assert all("Python" in r["title"] or "Python" in r["content"] for r in results)
 
     def test_scope_filtering_works_with_real_docs(self, sample_docs_dir):
         """Test scope filtering with real directory structure."""
@@ -57,9 +54,7 @@ class TestSearchServiceIntegration:
         index = DocumentIndexer.build_index(sample_docs_dir)
 
         # Search only in architecture scope
-        results = SearchService.search_index(
-            index, "architecture", scope="architecture"
-        )
+        results = SearchService.search_index(index, "architecture", scope="architecture")
 
         # Should only return architecture docs
         assert len(results) >= 1
@@ -91,8 +86,7 @@ class TestSearchServiceIntegration:
 
         # All results should have snippets
         assert all("_snippet" in r for r in results)
-        assert all("Python" in r["_snippet"] or "python" in r["_snippet"]
-                  for r in results)
+        assert all("Python" in r["_snippet"] or "python" in r["_snippet"] for r in results)
 
     def test_empty_directory_returns_empty_index(self, tmp_path):
         """Test indexing empty directory."""

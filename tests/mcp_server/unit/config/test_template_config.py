@@ -9,6 +9,7 @@ Tests cover:
 
 Coverage goal: 100% of get_template_root() function.
 """
+
 import os
 from unittest.mock import patch
 
@@ -167,9 +168,7 @@ class TestGetTemplateRoot:
             result2 = get_template_root()
 
             # Assert
-            assert result1 == result2, (
-                "get_template_root() should be deterministic"
-            )
+            assert result1 == result2, "get_template_root() should be deterministic"
 
     def test_error_message_includes_path_when_missing(self):
         """FileNotFoundError includes the problematic path in error message."""

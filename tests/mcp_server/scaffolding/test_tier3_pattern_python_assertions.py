@@ -27,10 +27,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Create Jinja2 environment with template loader."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -40,9 +37,7 @@ class TestTier3PatternPythonAssertions:
 
     def test_template_exists(self, jinja_env):
         """Test that template exists and loads."""
-        template = jinja_env.get_template(
-            "tier3_pattern_python_assertions.jinja2"
-        )
+        template = jinja_env.get_template("tier3_pattern_python_assertions.jinja2")
         assert template is not None
 
     def test_template_has_no_extends(self):
@@ -56,9 +51,9 @@ class TestTier3PatternPythonAssertions:
         )
         content = template_path.read_text(encoding="utf-8")
         assert "{% extends" not in content
-        
+
         # Check for blocks in non-comment code
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
     def test_template_has_metadata(self):
@@ -87,7 +82,7 @@ class TestTier3PatternPythonAssertions:
         content = template_path.read_text(encoding="utf-8")
         # Assertions pattern has no macros - assertions are written inline
         # Remove comments to check actual template code
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% macro" not in no_comments
 
     def test_import_from_concrete_template(self, jinja_env):
@@ -104,9 +99,7 @@ class TestTier3PatternPythonAssertions:
 
     def test_template_renders_empty(self, jinja_env):
         """Test that template renders to minimal output (no code generation)."""
-        template = jinja_env.get_template(
-            "tier3_pattern_python_assertions.jinja2"
-        )
+        template = jinja_env.get_template("tier3_pattern_python_assertions.jinja2")
         result = template.render()
         # Should be minimal/empty since no macros are defined
         assert result.strip() == ""

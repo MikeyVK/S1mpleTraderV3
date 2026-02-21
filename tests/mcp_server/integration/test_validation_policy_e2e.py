@@ -42,7 +42,7 @@ async def test_invalid_code_artifact_blocks_no_file(
             name="Invalid DTO",
             template_path="components/dto_invalid.py.jinja2",
             file_extension=".py",
-        )
+        ),
     )
 
     # Create template with INVALID Python (syntax error)
@@ -100,7 +100,7 @@ async def test_invalid_doc_artifact_warns_writes_file(
             template_path="documents/design_minimal.md.jinja2",
             file_extension=".md",
             template_fields=TemplateFields(required=["title"]),
-        )
+        ),
     )
 
     # Create minimal doc template (MISSING H1 - will trigger validation error)
@@ -172,7 +172,7 @@ async def test_valid_code_artifact_writes_successfully(
             name="Valid DTO",
             template_path="components/dto_valid.py.jinja2",
             file_extension=".py",
-        )
+        ),
     )
 
     # Create VALID Python template (with SCAFFOLD header for validation)

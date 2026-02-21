@@ -47,8 +47,10 @@ class TestValidatorRegistry:
 
         # We patch the PRIVATE attributes. Pylint might still flag this if string-based
         # patching wasn't used, but patch.object(Class, 'name') uses strings.
-        with patch.object(ValidatorRegistry, '_extension_map', new_ext_map), \
-             patch.object(ValidatorRegistry, '_pattern_map', new_pattern_map):
+        with (
+            patch.object(ValidatorRegistry, "_extension_map", new_ext_map),
+            patch.object(ValidatorRegistry, "_pattern_map", new_pattern_map),
+        ):
             yield
 
     def test_register_extension(self) -> None:
@@ -100,7 +102,7 @@ class TestValidatorRegistry:
         # Should get 2 validators: 1 from .py extension, 1 from pattern
         assert len(validators) == 2
         assert isinstance(validators[0], MockValidator)  # Extension match first
-        assert validators[1] is pattern_val              # Pattern match second
+        assert validators[1] is pattern_val  # Pattern match second
 
     def test_get_validator_deprecated(self) -> None:
         """Test deprecated get_validator method returns primary match."""

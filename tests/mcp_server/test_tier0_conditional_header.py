@@ -1,4 +1,4 @@
-﻿# tests\test_tier0_conditional_header.py
+# tests\test_tier0_conditional_header.py
 # template=unit_test version=3d15d309 created=2026-02-21T15:27Z updated=
 """
 Unit tests for tier0_base_artifact.jinja2.

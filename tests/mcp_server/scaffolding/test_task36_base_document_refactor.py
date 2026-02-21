@@ -26,8 +26,7 @@ def test_tier1_base_document_has_purpose_block(tier1_base_document):
     This enables tier3 patterns to inject custom purpose content.
     """
     content = tier1_base_document
-    assert "block purpose_section" in content, \
-        "tier1_base_document missing purpose_section block"
+    assert "block purpose_section" in content, "tier1_base_document missing purpose_section block"
 
 
 def test_tier1_base_document_has_scope_block(tier1_base_document):
@@ -36,8 +35,7 @@ def test_tier1_base_document_has_scope_block(tier1_base_document):
     This enables tier3 patterns to inject custom scope content.
     """
     content = tier1_base_document
-    assert "block scope_section" in content, \
-        "tier1_base_document missing scope_section block"
+    assert "block scope_section" in content, "tier1_base_document missing scope_section block"
 
 
 def test_tier1_base_document_has_prerequisites_block(tier1_base_document):
@@ -46,8 +44,9 @@ def test_tier1_base_document_has_prerequisites_block(tier1_base_document):
     This enables tier3 patterns to inject custom prerequisites content.
     """
     content = tier1_base_document
-    assert "block prerequisites_section" in content, \
+    assert "block prerequisites_section" in content, (
         "tier1_base_document missing prerequisites_section block"
+    )
 
 
 def test_tier1_base_document_has_related_docs_block(tier1_base_document):
@@ -56,8 +55,9 @@ def test_tier1_base_document_has_related_docs_block(tier1_base_document):
     This enables tier3 patterns to inject custom related docs content.
     """
     content = tier1_base_document
-    assert "block related_docs_section" in content, \
+    assert "block related_docs_section" in content, (
         "tier1_base_document missing related_docs_section block"
+    )
 
 
 def test_tier1_base_document_has_version_history_block(tier1_base_document):
@@ -66,5 +66,6 @@ def test_tier1_base_document_has_version_history_block(tier1_base_document):
     This enables tier3 patterns to inject custom version history content.
     """
     content = tier1_base_document
-    assert "block version_history_section" in content, \
+    assert "block version_history_section" in content, (
         "tier1_base_document missing version_history_section block"
+    )

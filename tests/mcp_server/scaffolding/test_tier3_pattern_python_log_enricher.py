@@ -26,10 +26,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Jinja2 environment rooted at the scaffolding templates directory."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -134,20 +131,20 @@ class TestTier3PatternPythonLogEnricher:
         assert "indent" in child_rendered
 
         # Backend convenience methods
-        assert "self.logger.setup(\"log.setup.example\"" in setup_rendered
+        assert 'self.logger.setup("log.setup.example"' in setup_rendered
         assert "worker_name=worker_name" in setup_rendered
 
-        assert "self.logger.match(\"log.match.example\"" in match_rendered
+        assert 'self.logger.match("log.match.example"' in match_rendered
         assert "symbol=symbol" in match_rendered
 
-        assert "self.logger.filter(\"log.filter.example\"" in filter_rendered
+        assert 'self.logger.filter("log.filter.example"' in filter_rendered
         assert "count=count" in filter_rendered
 
-        assert "self.logger.policy(\"log.policy.example\"" in policy_rendered
+        assert 'self.logger.policy("log.policy.example"' in policy_rendered
         assert "rule=rule" in policy_rendered
 
-        assert "self.logger.result(\"log.result.example\"" in result_rendered
+        assert 'self.logger.result("log.result.example"' in result_rendered
         assert "ok=ok" in result_rendered
 
-        assert "self.logger.trade(\"log.trade.example\"" in trade_rendered
+        assert 'self.logger.trade("log.trade.example"' in trade_rendered
         assert "trade_id=trade_id" in trade_rendered

@@ -126,12 +126,16 @@ class TestDTOParityHappyPath:
         # Act v1: Scaffold with feature flag OFF
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "false"
         manager.fs_adapter.write_file = Mock(side_effect=capture_v1_write)
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2: Scaffold with feature flag ON
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(side_effect=capture_v2_write)
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -200,12 +204,16 @@ class TestDTOParityHappyPath:
         # Act v1
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "false"
         manager.fs_adapter.write_file = Mock(side_effect=capture_v1_write)
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(side_effect=capture_v2_write)
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -247,14 +255,18 @@ class TestDTOParityHappyPath:
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v1_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v2_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -292,14 +304,18 @@ class TestDTOParityHappyPath:
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v1_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v2_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -340,14 +356,18 @@ class TestDTOParityHappyPath:
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v1_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v2_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -388,14 +408,18 @@ class TestDTOParityHappyPath:
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v1_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v2_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -439,14 +463,18 @@ class TestDTOParityHappyPath:
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v1_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v2_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -507,14 +535,18 @@ class TestDTOParityHappyPath:
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v1_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v2_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -563,14 +595,18 @@ class TestDTOParityHappyPath:
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v1_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v2_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 
@@ -630,14 +666,18 @@ class TestDTOParityHappyPath:
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v1_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v1_context)
+        )
 
         # Act v2
         os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
         manager.fs_adapter.write_file = Mock(
             side_effect=lambda p, c: v2_output_captured.append(c)  # noqa: ARG005
         )
-        asyncio.run(manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context))
+        asyncio.run(
+            manager.scaffold_artifact("dto", output_path="test_scaffold_output.py", **v2_context)
+        )
 
         # SMOKE TEST VALIDATIONS
 

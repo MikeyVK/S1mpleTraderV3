@@ -14,6 +14,7 @@ Note on parity definition (aligned with Cycle 5 docstring):
   Parity = smoke: both pipelines produce valid markdown with metadata header.
   True output-equivalence deferred to Cycle 6 template simplification.
 """
+
 import asyncio  # noqa: I001
 import os
 from pathlib import Path
@@ -48,7 +49,11 @@ def _run_v2(manager: ArtifactManager, artifact_type: str, context: dict) -> str:
 
     os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
     try:
-        asyncio.run(manager.scaffold_artifact(artifact_type, output_path="test_scaffold_output.py", **context))
+        asyncio.run(
+            manager.scaffold_artifact(
+                artifact_type, output_path="test_scaffold_output.py", **context
+            )
+        )
     finally:
         os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
@@ -172,7 +177,10 @@ class TestDesignV2Parity:
         "status": "DRAFT",
         "version": "1.0",
         "problem_statement": "No Pydantic schemas exist for document artifact types",
-        "requirements_functional": ["Schema validates required fields", "RenderContext adds lifecycle"],
+        "requirements_functional": [
+            "Schema validates required fields",
+            "RenderContext adds lifecycle",
+        ],
         "requirements_nonfunctional": ["Consistent with existing BaseContext pattern"],
         "decision": "Implement XxxContext + XxxRenderContext for each doc type",
         "rationale": "Uniform V2 pipeline coverage for all concrete templates",
@@ -270,9 +278,7 @@ class TestReferenceV2Parity:
         """Reference V2 pipeline routes via _enrich_context_v2 (not V1 fallback)."""
         calls = _spy_v2_routed(manager)
         _run_v2(manager, "reference", self._MINIMAL)
-        assert len(calls) == 1, (
-            "V2 routing not active for reference — not in _v2_context_registry"
-        )
+        assert len(calls) == 1, "V2 routing not active for reference — not in _v2_context_registry"
 
     def test_reference_v2_rejects_invalid_context(self, manager: ArtifactManager) -> None:
         """Reference V2 pipeline rejects empty context with ValidationError."""

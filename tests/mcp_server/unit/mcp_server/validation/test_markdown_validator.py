@@ -35,9 +35,7 @@ class TestMarkdownValidator:
         assert str(validator) == "MarkdownValidator()"
 
     @pytest.mark.asyncio
-    async def test_validate_implicit_read_missing_file(
-        self, validator: MarkdownValidator
-    ) -> None:
+    async def test_validate_implicit_read_missing_file(self, validator: MarkdownValidator) -> None:
         """Test validation failure when file does not exist (implicit read)."""
         with patch("pathlib.Path.exists", return_value=False):
             result = await validator.validate("im_ghost.md")
@@ -47,8 +45,10 @@ class TestMarkdownValidator:
     @pytest.mark.asyncio
     async def test_validate_read_error(self, validator: MarkdownValidator) -> None:
         """Test validation failure on file read error."""
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("pathlib.Path.read_text", side_effect=OSError("Access denied")):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", side_effect=OSError("Access denied")),
+        ):
             result = await validator.validate("locked.md")
             assert result.passed is False
             assert "Failed to read file" in result.issues[0].message
@@ -106,7 +106,7 @@ class TestMarkdownValidator:
             result = await validator.validate("doc.md", content)
 
             assert result.passed is True  # Broken links are WARNINGS (severity='warning')
-            assert result.score < 10.0    # check score penalty
+            assert result.score < 10.0  # check score penalty
             assert len(result.issues) == 1
             assert "Broken link" in result.issues[0].message
             assert result.issues[0].severity == "warning"

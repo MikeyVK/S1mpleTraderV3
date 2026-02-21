@@ -10,6 +10,7 @@ Created: 2026-01-26
 Issue: #72 (Template Library Management)
 TDD Cycle: 1
 """
+
 from pathlib import Path
 
 import pytest
@@ -38,15 +39,11 @@ def artifacts_config() -> ArtifactRegistryConfig:
 class TestArtifactsTypeField:
     """Test type field validation for all artifacts (Issue #72, Cycle 1)."""
 
-    def test_all_artifacts_have_type_field(
-        self, artifacts_config: ArtifactRegistryConfig
-    ) -> None:
+    def test_all_artifacts_have_type_field(self, artifacts_config: ArtifactRegistryConfig) -> None:
         """All artifacts must have type field (code|doc|config)."""
         # RED: Every artifact must have a type field
         for artifact in artifacts_config.artifact_types:
-            assert hasattr(artifact, "type"), (
-                f"Artifact {artifact.type_id} missing 'type' field"
-            )
+            assert hasattr(artifact, "type"), f"Artifact {artifact.type_id} missing 'type' field"
             assert artifact.type in [
                 ArtifactType.CODE,
                 ArtifactType.DOC,
@@ -75,8 +72,7 @@ class TestArtifactsTypeField:
             artifact = artifacts_config.get_artifact(type_id)
             if artifact:  # Skip if artifact doesn't exist yet
                 assert artifact.type == ArtifactType.CODE, (
-                    f"Code artifact '{type_id}' MUST have type=CODE, "
-                    f"got {artifact.type}"
+                    f"Code artifact '{type_id}' MUST have type=CODE, got {artifact.type}"
                 )
 
     def test_document_artifacts_have_correct_type(
@@ -96,6 +92,5 @@ class TestArtifactsTypeField:
             artifact = artifacts_config.get_artifact(type_id)
             if artifact:  # Skip if artifact doesn't exist yet
                 assert artifact.type == ArtifactType.DOC, (
-                    f"Document artifact '{type_id}' MUST have type=DOC, "
-                    f"got {artifact.type}"
+                    f"Document artifact '{type_id}' MUST have type=DOC, got {artifact.type}"
                 )

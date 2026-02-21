@@ -1,4 +1,5 @@
 """Test fixtures for MCP server unit tests."""
+
 import pytest
 
 

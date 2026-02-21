@@ -36,8 +36,9 @@ class TestArtifactsYamlTypeField:
         for artifact in artifact_types:
             type_id = artifact.get("type_id", "unknown")
             assert "type" in artifact, f"Artifact {type_id} missing 'type' field"
-            assert artifact["type"] in valid_types, \
+            assert artifact["type"] in valid_types, (
                 f"Artifact {type_id} has invalid type: {artifact['type']} (expected: {valid_types})"
+            )
 
     def test_design_artifact_has_doc_type(self, artifacts_data):
         """Design artifact must have type: doc."""
@@ -54,8 +55,9 @@ class TestArtifactsYamlTypeField:
         for type_id in code_type_ids:
             artifact = next((a for a in artifact_types if a.get("type_id") == type_id), None)
             if artifact:  # Only check if exists
-                assert artifact.get("type") == "code", \
+                assert artifact.get("type") == "code", (
                     f"Artifact {type_id} has wrong type: {artifact.get('type')}"
+                )
 
     def test_document_artifacts_have_doc_type(self, artifacts_data):
         """Research, planning, design, architecture, tracking, reference must have type: doc."""
@@ -65,5 +67,6 @@ class TestArtifactsYamlTypeField:
         for type_id in doc_type_ids:
             artifact = next((a for a in artifact_types if a.get("type_id") == type_id), None)
             if artifact:  # Only check if exists
-                assert artifact.get("type") == "doc", \
+                assert artifact.get("type") == "doc", (
                     f"Artifact {type_id} has wrong type: {artifact.get('type')}"
+                )

@@ -13,6 +13,7 @@ Tests for LifecycleMixin and base schema classes (Cycle 2)
     - Test lifecycle fields are system-controlled (not user-overridable)
     - Test system can mutate lifecycle fields in controlled enrichment paths
 """
+
 # Standard library
 import logging
 from datetime import UTC, datetime

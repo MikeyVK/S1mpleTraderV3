@@ -9,6 +9,7 @@ Tests configuration loading from artifacts.yaml with:
 Author: AI Agent
 Created: 2024
 """
+
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
@@ -50,9 +51,7 @@ def minimal_yaml() -> dict[str, Any]:
 
 
 @pytest.fixture
-def temp_yaml_file(
-    minimal_yaml: dict[str, Any], tmp_path: Path
-) -> Path:
+def temp_yaml_file(minimal_yaml: dict[str, Any], tmp_path: Path) -> Path:
     """Create temporary artifacts.yaml file."""
     file_path = tmp_path / "artifacts.yaml"
     with open(file_path, "w", encoding="utf-8") as f:
@@ -71,9 +70,7 @@ def reset_singleton() -> Generator[None, None, None]:
 class TestArtifactRegistryConfigLoading:
     """Test configuration loading and singleton pattern."""
 
-    def test_loads_from_file(
-        self, temp_yaml_file: Path
-    ) -> None:
+    def test_loads_from_file(self, temp_yaml_file: Path) -> None:
         """Config loads from artifacts.yaml."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
 
@@ -81,18 +78,14 @@ class TestArtifactRegistryConfigLoading:
         assert len(config.artifact_types) == 1
         assert config.artifact_types[0].type_id == "dto"
 
-    def test_singleton_pattern(
-        self, temp_yaml_file: Path
-    ) -> None:
+    def test_singleton_pattern(self, temp_yaml_file: Path) -> None:
         """Subsequent calls return cached instance."""
         config1 = ArtifactRegistryConfig.from_file(temp_yaml_file)
         config2 = ArtifactRegistryConfig.from_file(temp_yaml_file)
 
         assert config1 is config2
 
-    def test_reset_instance_clears_singleton(
-        self, temp_yaml_file: Path
-    ) -> None:
+    def test_reset_instance_clears_singleton(self, temp_yaml_file: Path) -> None:
         """reset_instance() clears cached instance."""
         config1 = ArtifactRegistryConfig.from_file(temp_yaml_file)
         ArtifactRegistryConfig.reset_instance()
@@ -110,9 +103,7 @@ class TestArtifactRegistryConfigLoading:
         assert "not found" in str(exc_info.value)
         assert "Fix:" in str(exc_info.value)
 
-    def test_empty_file_raises_config_error(
-        self, tmp_path: Path
-    ) -> None:
+    def test_empty_file_raises_config_error(self, tmp_path: Path) -> None:
         """ConfigError raised on empty YAML."""
         empty_file = tmp_path / "empty.yaml"
         empty_file.write_text("")
@@ -122,9 +113,7 @@ class TestArtifactRegistryConfigLoading:
 
         assert "Empty" in str(exc_info.value)
 
-    def test_invalid_yaml_syntax(
-        self, tmp_path: Path
-    ) -> None:
+    def test_invalid_yaml_syntax(self, tmp_path: Path) -> None:
         """ConfigError raised on invalid YAML syntax."""
         invalid_file = tmp_path / "invalid.yaml"
         invalid_file.write_text("invalid: yaml: syntax: error:")
@@ -139,9 +128,7 @@ class TestArtifactRegistryConfigLoading:
 class TestArtifactDefinitionValidation:
     """Test artifact definition field validation."""
 
-    def test_validates_required_fields(
-        self, tmp_path: Path
-    ) -> None:
+    def test_validates_required_fields(self, tmp_path: Path) -> None:
         """Missing required field raises validation error."""
         invalid_data = {
             "version": "1.0",
@@ -179,9 +166,7 @@ class TestArtifactDefinitionValidation:
                 fallback_template=None,
                 name_suffix=None,
                 generate_test=False,
-                state_machine=StateMachine(
-                    states=["CREATED"], initial_state="CREATED"
-                ),
+                state_machine=StateMachine(states=["CREATED"], initial_state="CREATED"),
             )
 
         assert "lowercase" in str(exc_info.value)
@@ -205,9 +190,7 @@ class TestArtifactDefinitionValidation:
 class TestArtifactRegistryConfigMethods:
     """Test configuration access methods."""
 
-    def test_get_artifact_by_type_id(
-        self, temp_yaml_file: Path
-    ) -> None:
+    def test_get_artifact_by_type_id(self, temp_yaml_file: Path) -> None:
         """get_artifact() returns definition by type_id."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
         artifact = config.get_artifact("dto")
@@ -215,9 +198,7 @@ class TestArtifactRegistryConfigMethods:
         assert artifact.type_id == "dto"
         assert artifact.name == "Data Transfer Object"
 
-    def test_get_artifact_not_found(
-        self, temp_yaml_file: Path
-    ) -> None:
+    def test_get_artifact_not_found(self, temp_yaml_file: Path) -> None:
         """get_artifact() raises ConfigError for unknown type_id."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
 
@@ -228,18 +209,14 @@ class TestArtifactRegistryConfigMethods:
         assert "Available types:" in str(exc_info.value)
         assert "Fix:" in str(exc_info.value)
 
-    def test_list_type_ids_all(
-        self, temp_yaml_file: Path
-    ) -> None:
+    def test_list_type_ids_all(self, temp_yaml_file: Path) -> None:
         """list_type_ids() returns all type_ids."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
         type_ids = config.list_type_ids()
 
         assert type_ids == ["dto"]
 
-    def test_list_type_ids_filtered(
-        self, tmp_path: Path
-    ) -> None:
+    def test_list_type_ids_filtered(self, tmp_path: Path) -> None:
         """list_type_ids() filters by ArtifactType."""
         mixed_data = {
             "version": "1.0",
@@ -285,9 +262,7 @@ class TestArtifactRegistryConfigMethods:
 class TestArtifactDefinitionFields:
     """Test ArtifactDefinition field parsing (Cycle 2)."""
 
-    def test_parses_all_required_fields(
-        self, tmp_path: Path
-    ) -> None:
+    def test_parses_all_required_fields(self, tmp_path: Path) -> None:
         """Parses artifact with all required fields."""
         data = {
             "version": "1.0",
@@ -320,9 +295,7 @@ class TestArtifactDefinitionFields:
         assert artifact.file_extension == ".py"
         assert artifact.state_machine.states == ["CREATED"]
 
-    def test_optional_fields_work(
-        self, tmp_path: Path
-    ) -> None:
+    def test_optional_fields_work(self, tmp_path: Path) -> None:
         """Optional fields (LEGACY, template, suffix) parse correctly."""
         data = {
             "version": "1.0",
@@ -371,9 +344,7 @@ class TestArtifactDefinitionFields:
         assert artifact.required_fields == ["name", "input_dto"]
         assert artifact.optional_fields == ["dependencies"]
 
-    def test_optional_fields_default_to_none_or_empty(
-        self, tmp_path: Path
-    ) -> None:
+    def test_optional_fields_default_to_none_or_empty(self, tmp_path: Path) -> None:
         """Optional fields have sensible defaults when omitted."""
         data = {
             "version": "1.0",
@@ -412,9 +383,7 @@ class TestArtifactDefinitionFields:
 class TestStateMachineDefinition:
     """Test state machine structure (Epic #18 will use)."""
 
-    def test_state_machine_parsed(
-        self, temp_yaml_file: Path
-    ) -> None:
+    def test_state_machine_parsed(self, temp_yaml_file: Path) -> None:
         """State machine definitions parsed correctly."""
         config = ArtifactRegistryConfig.from_file(temp_yaml_file)
         artifact = config.get_artifact("dto")
@@ -423,9 +392,7 @@ class TestStateMachineDefinition:
         assert artifact.state_machine.initial_state == "CREATED"
         assert artifact.state_machine.valid_transitions == []
 
-    def test_state_transitions_parsed(
-        self, tmp_path: Path
-    ) -> None:
+    def test_state_transitions_parsed(self, tmp_path: Path) -> None:
         """State transitions with from/to parsed correctly."""
         data = {
             "version": "1.0",
@@ -439,9 +406,7 @@ class TestStateMachineDefinition:
                     "state_machine": {
                         "states": ["DRAFT", "APPROVED"],
                         "initial_state": "DRAFT",
-                        "valid_transitions": [
-                            {"from": "DRAFT", "to": ["APPROVED"]}
-                        ],
+                        "valid_transitions": [{"from": "DRAFT", "to": ["APPROVED"]}],
                     },
                 }
             ],

@@ -5,6 +5,7 @@ TDD Cycle 10: Verify PR tools use GitConfig for default base branch.
 Convention tested:
 - #9-11: Default base branch for PR creation
 """
+
 import tempfile
 from pathlib import Path
 
@@ -38,14 +39,10 @@ class TestPRToolsConfigIntegration:
             "commit_prefix_map": {"red": "test", "green": "feat"},
             "protected_branches": ["main", "develop"],
             "branch_name_pattern": "^[a-z0-9-]+$",
-            "default_base_branch": "develop"  # Custom default
+            "default_base_branch": "develop",  # Custom default
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode='w',
-            suffix='.yaml',
-            delete=False
-        ) as temp_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as temp_file:
             yaml.dump(custom_config, temp_file)
             temp_path = temp_file.name
 
@@ -57,7 +54,7 @@ class TestPRToolsConfigIntegration:
             pr_input = CreatePRInput(
                 title="Test PR",
                 body="Test body",
-                head="feature/123-test"
+                head="feature/123-test",
                 # base omitted - should use default_base_branch from git.yaml
             )
 

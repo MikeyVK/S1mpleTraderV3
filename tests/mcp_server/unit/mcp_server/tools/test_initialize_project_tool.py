@@ -9,6 +9,7 @@ Tests verify:
 4. state.json properly initialized with correct structure
 5. Error handling when git or state creation fails
 """
+
 import json
 from pathlib import Path
 from unittest.mock import patch
@@ -47,9 +48,7 @@ class TestInitializeProjectToolMode1:
 
             # Execute initialization
             params = InitializeProjectInput(
-                issue_number=39,
-                issue_title="Fix initialization gap",
-                workflow_name="bug"
+                issue_number=39, issue_title="Fix initialization gap", workflow_name="bug"
             )
             result = await tool.execute(params)
 
@@ -93,9 +92,7 @@ class TestInitializeProjectToolMode1:
             mock_git.return_value = "feature/42-user-auth"
 
             params = InitializeProjectInput(
-                issue_number=42,
-                issue_title="Add user authentication",
-                workflow_name="feature"
+                issue_number=42, issue_title="Add user authentication", workflow_name="feature"
             )
             result = await tool.execute(params)
 
@@ -118,9 +115,7 @@ class TestInitializeProjectToolMode1:
             mock_git.return_value = "hotfix/99-security"
 
             params = InitializeProjectInput(
-                issue_number=99,
-                issue_title="Security fix",
-                workflow_name="hotfix"
+                issue_number=99, issue_title="Security fix", workflow_name="hotfix"
             )
             result = await tool.execute(params)
 
@@ -155,7 +150,7 @@ class TestInitializeProjectToolMode1:
                 "bug": "fix",
                 "docs": "docs",
                 "refactor": "refactor",
-                "hotfix": "hotfix"
+                "hotfix": "hotfix",
             }
             prefix = branch_prefix_map[workflow_name]
             issue_num = workflows_to_test.index(workflow_name) + 1
@@ -172,7 +167,7 @@ class TestInitializeProjectToolMode1:
                 params = InitializeProjectInput(
                     issue_number=issue_num,
                     issue_title=f"Test {workflow_name}",
-                    workflow_name=workflow_name
+                    workflow_name=workflow_name,
                 )
                 result = await tool.execute(params)
 
@@ -180,22 +175,18 @@ class TestInitializeProjectToolMode1:
 
                 state = json.loads(state_file.read_text())
                 assert state["branch"] == branch
-                assert state["current_phase"] == expected_first_phase, \
-                    f"{workflow_name} must start at {expected_first_phase} " \
-                    f"(from workflows.yaml)"
+                assert state["current_phase"] == expected_first_phase, (
+                    f"{workflow_name} must start at {expected_first_phase} (from workflows.yaml)"
+                )
 
     @pytest.mark.asyncio
-    async def test_error_handling_git_failure(
-        self, tool: InitializeProjectTool
-    ) -> None:
+    async def test_error_handling_git_failure(self, tool: InitializeProjectTool) -> None:
         """Test error handling when GitManager fails to get branch."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
             mock_git.side_effect = RuntimeError("Not a git repository")
 
             params = InitializeProjectInput(
-                issue_number=39,
-                issue_title="Test error",
-                workflow_name="bug"
+                issue_number=39, issue_title="Test error", workflow_name="bug"
             )
             result = await tool.execute(params)
 
@@ -214,9 +205,7 @@ class TestInitializeProjectToolMode1:
                 mock_init.side_effect = OSError("Permission denied")
 
                 params = InitializeProjectInput(
-                    issue_number=39,
-                    issue_title="Test error",
-                    workflow_name="bug"
+                    issue_number=39, issue_title="Test error", workflow_name="bug"
                 )
                 result = await tool.execute(params)
 
@@ -232,9 +221,7 @@ class TestInitializeProjectToolMode1:
             mock_git.return_value = "fix/39-test"
 
             params = InitializeProjectInput(
-                issue_number=39,
-                issue_title="Test format",
-                workflow_name="bug"
+                issue_number=39, issue_title="Test format", workflow_name="bug"
             )
             result = await tool.execute(params)
 
@@ -247,8 +234,9 @@ class TestInitializeProjectToolMode1:
 
             # Core required fields must exist
             required_fields = {"workflow_name", "required_phases", "execution_mode"}
-            assert required_fields.issubset(project.keys()), \
+            assert required_fields.issubset(project.keys()), (
                 f"Missing required fields: {required_fields - set(project.keys())}"
+            )
 
     @pytest.mark.asyncio
     async def test_state_json_not_in_projects_json(
@@ -259,9 +247,7 @@ class TestInitializeProjectToolMode1:
             mock_git.return_value = "fix/39-test"
 
             params = InitializeProjectInput(
-                issue_number=39,
-                issue_title="Test separation",
-                workflow_name="bug"
+                issue_number=39, issue_title="Test separation", workflow_name="bug"
             )
             result = await tool.execute(params)
 

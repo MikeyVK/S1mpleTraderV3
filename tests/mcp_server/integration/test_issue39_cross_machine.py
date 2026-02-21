@@ -9,6 +9,7 @@ Tests the complete flow:
 
 This validates that the dual-mode system works end-to-end across machines.
 """
+
 import json
 import subprocess
 from pathlib import Path
@@ -30,39 +31,29 @@ class TestIssue39CrossMachine:
         workspace.mkdir()
 
         # Initialize git repo
-        subprocess.run(
-            ["git", "init"],
-            cwd=workspace,
-            check=True,
-            capture_output=True
-        )
+        subprocess.run(["git", "init"], cwd=workspace, check=True, capture_output=True)
         subprocess.run(
             ["git", "config", "user.email", "test@example.com"],
             cwd=workspace,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
         subprocess.run(
             ["git", "config", "user.name", "Test User"],
             cwd=workspace,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # Create initial commit
         readme = workspace / "README.md"
         readme.write_text("# Test Project")
-        subprocess.run(
-            ["git", "add", "README.md"],
-            cwd=workspace,
-            check=True,
-            capture_output=True
-        )
+        subprocess.run(["git", "add", "README.md"], cwd=workspace, check=True, capture_output=True)
         subprocess.run(
             ["git", "commit", "-m", "Initial commit"],
             cwd=workspace,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         return workspace
@@ -84,7 +75,7 @@ class TestIssue39CrossMachine:
             ["git", "checkout", "-b", "fix/42-cross-machine-test"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # Initialize project (Mode 1 - atomic creation)
@@ -93,15 +84,12 @@ class TestIssue39CrossMachine:
         git_manager.get_current_branch.return_value = "fix/42-cross-machine-test"
 
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=project_manager
+            workspace_root=workspace_root, project_manager=project_manager
         )
 
         # Initialize project atomically (Mode 1)
         project_manager.initialize_project(
-            issue_number=42,
-            issue_title="Cross-machine test",
-            workflow_name="bug"
+            issue_number=42, issue_title="Cross-machine test", workflow_name="bug"
         )
 
         # Get first phase from workflow
@@ -110,9 +98,7 @@ class TestIssue39CrossMachine:
 
         # Initialize state
         state_engine.initialize_branch(
-            branch="fix/42-cross-machine-test",
-            issue_number=42,
-            initial_phase=first_phase
+            branch="fix/42-cross-machine-test", issue_number=42, initial_phase=first_phase
         )
 
         # Verify both files created
@@ -139,13 +125,13 @@ class TestIssue39CrossMachine:
             ["git", "add", ".st3/projects.json"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
         subprocess.run(
             ["git", "commit", "-m", "phase:research - Initial analysis"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # Simulate phase transitions with commits
@@ -153,19 +139,19 @@ class TestIssue39CrossMachine:
             ["git", "commit", "--allow-empty", "-m", "phase:planning - Define goals"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
         subprocess.run(
             ["git", "commit", "--allow-empty", "-m", "phase:design - Technical specs"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
         subprocess.run(
             ["git", "commit", "--allow-empty", "-m", "phase:red - Write failing tests"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # =====================================================================
@@ -187,8 +173,7 @@ class TestIssue39CrossMachine:
         # Create PhaseStateEngine (like tools would do)
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=project_manager
+            workspace_root=workspace_root, project_manager=project_manager
         )
 
         # Get state - should trigger auto-recovery
@@ -225,15 +210,13 @@ class TestIssue39CrossMachine:
             ["git", "checkout", "-b", "fix/43-no-labels"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # Initialize project
         project_manager = ProjectManager(workspace_root=workspace_root)
         project_manager.initialize_project(
-            issue_number=43,
-            issue_title="No labels test",
-            workflow_name="feature"
+            issue_number=43, issue_title="No labels test", workflow_name="feature"
         )
 
         # Make commits WITHOUT phase labels
@@ -241,13 +224,13 @@ class TestIssue39CrossMachine:
             ["git", "commit", "--allow-empty", "-m", "Add feature code"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
         subprocess.run(
             ["git", "commit", "--allow-empty", "-m", "Fix bug"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # Delete state.json
@@ -257,8 +240,7 @@ class TestIssue39CrossMachine:
 
         # Auto-recovery should fallback to first phase
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=project_manager
+            workspace_root=workspace_root, project_manager=project_manager
         )
 
         recovered_state = state_engine.get_state("fix/43-no-labels")
@@ -275,15 +257,13 @@ class TestIssue39CrossMachine:
             ["git", "checkout", "-b", "docs/44-documentation"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # Initialize with docs workflow (only has: research, planning, design, documentation)
         project_manager = ProjectManager(workspace_root=workspace_root)
         project_manager.initialize_project(
-            issue_number=44,
-            issue_title="Docs test",
-            workflow_name="docs"
+            issue_number=44, issue_title="Docs test", workflow_name="docs"
         )
 
         # Make commits with phases NOT in docs workflow
@@ -292,25 +272,25 @@ class TestIssue39CrossMachine:
             ["git", "commit", "--allow-empty", "-m", "phase:integration - Not in docs workflow"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
         subprocess.run(
             ["git", "commit", "--allow-empty", "-m", "phase:tdd - Also not in docs workflow"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
         subprocess.run(
             ["git", "commit", "--allow-empty", "-m", "phase:design - VALID and most recent"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
         subprocess.run(
             ["git", "commit", "--allow-empty", "-m", "phase:planning - Valid but earlier"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # Delete state.json
@@ -320,8 +300,7 @@ class TestIssue39CrossMachine:
 
         # Auto-recovery should ignore invalid phases
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=project_manager
+            workspace_root=workspace_root, project_manager=project_manager
         )
 
         recovered_state = state_engine.get_state("docs/44-documentation")
@@ -340,14 +319,13 @@ class TestIssue39CrossMachine:
             ["git", "checkout", "-b", "invalid-branch-name"],
             cwd=workspace_root,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
         # Try to recover - should fail with clear error
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=project_manager
+            workspace_root=workspace_root, project_manager=project_manager
         )
 
         with pytest.raises(ValueError, match="Cannot extract issue number"):

@@ -17,6 +17,7 @@ class TestToolErrorHandler:
     @pytest.mark.asyncio
     async def test_value_error_returns_error_result(self) -> None:
         """ValueError should be caught and returned as ToolResult.error (USER error)."""
+
         @tool_error_handler
         async def failing_tool() -> ToolResult:
             raise ValueError("Invalid input parameter")
@@ -30,6 +31,7 @@ class TestToolErrorHandler:
     @pytest.mark.asyncio
     async def test_file_not_found_returns_error_result(self) -> None:
         """FileNotFoundError should be caught and returned as ToolResult.error (CONFIG error)."""
+
         @tool_error_handler
         async def failing_tool() -> ToolResult:
             raise FileNotFoundError("Config file missing")
@@ -43,6 +45,7 @@ class TestToolErrorHandler:
     @pytest.mark.asyncio
     async def test_generic_exception_returns_error_result(self) -> None:
         """Generic exceptions should be caught and returned as ToolResult.error (BUG)."""
+
         @tool_error_handler
         async def failing_tool() -> ToolResult:
             raise RuntimeError("Unexpected error")
@@ -56,6 +59,7 @@ class TestToolErrorHandler:
     @pytest.mark.asyncio
     async def test_successful_execution_passthrough(self) -> None:
         """Successful tool execution should pass through unchanged."""
+
         @tool_error_handler
         async def working_tool() -> ToolResult:
             return ToolResult.text("Success!")
@@ -69,6 +73,7 @@ class TestToolErrorHandler:
     @pytest.mark.asyncio
     async def test_preserves_function_metadata(self) -> None:
         """Decorator should preserve function name and docstring."""
+
         @tool_error_handler
         async def my_tool() -> ToolResult:
             """My tool docstring."""
@@ -80,6 +85,7 @@ class TestToolErrorHandler:
     @pytest.mark.asyncio
     async def test_decorator_with_args_and_kwargs(self) -> None:
         """Decorator should work with functions that have args and kwargs."""
+
         @tool_error_handler
         async def tool_with_params(param1: str, param2: int = 42) -> ToolResult:
             return ToolResult.text(f"{param1}-{param2}")

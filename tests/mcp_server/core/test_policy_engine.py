@@ -25,7 +25,7 @@ class TestPolicyEngineConfigDriven:
             operation="scaffold",
             path="backend/dtos/user_dto.py",
             phase="tdd",
-            context={"component_type": "dto"}
+            context={"component_type": "dto"},
         )
         assert decision.allowed is True
         assert "scaffold" in decision.reason.lower()
@@ -34,11 +34,7 @@ class TestPolicyEngineConfigDriven:
     def test_scaffold_blocked_in_review_phase(self):
         """Test scaffold operation blocked in review phase."""
         engine = PolicyEngine()
-        decision = engine.decide(
-            operation="scaffold",
-            phase="review",
-            context={}
-        )
+        decision = engine.decide(operation="scaffold", phase="review", context={})
         assert decision.allowed is False
         assert "review" in decision.reason.lower()
 
@@ -49,7 +45,7 @@ class TestPolicyEngineConfigDriven:
             operation="create_file",
             path="backend/services/user_service.py",
             phase="tdd",
-            context={}
+            context={},
         )
         assert decision.allowed is False
         assert "blocked" in decision.reason.lower() or "scaffold" in decision.reason.lower()
@@ -58,10 +54,7 @@ class TestPolicyEngineConfigDriven:
         """Test create_file allowed for markdown files."""
         engine = PolicyEngine()
         decision = engine.decide(
-            operation="create_file",
-            path="docs/README.md",
-            phase="docs",
-            context={}
+            operation="create_file", path="docs/README.md", phase="docs", context={}
         )
         assert decision.allowed is True
 
@@ -69,9 +62,7 @@ class TestPolicyEngineConfigDriven:
         """Test commit requires TDD phase prefix."""
         engine = PolicyEngine()
         decision = engine.decide(
-            operation="commit",
-            phase="tdd",
-            context={"message": "add user dto"}
+            operation="commit", phase="tdd", context={"message": "add user dto"}
         )
         assert decision.allowed is False
         assert "prefix" in decision.reason.lower()
@@ -80,9 +71,7 @@ class TestPolicyEngineConfigDriven:
         """Test commit allowed with feat: prefix (green phase maps to feat:)."""
         engine = PolicyEngine()
         decision = engine.decide(
-            operation="commit",
-            phase="tdd",
-            context={"message": "feat: implement user dto"}
+            operation="commit", phase="tdd", context={"message": "feat: implement user dto"}
         )
         assert decision.allowed is True
 
@@ -93,7 +82,7 @@ class TestPolicyEngineConfigDriven:
             operation="scaffold",
             path="backend/dtos/service.py",
             phase="tdd",
-            context={"component_type": "service"}  # Service not allowed in dtos/
+            context={"component_type": "service"},  # Service not allowed in dtos/
         )
         assert decision.allowed is False
         assert "service" in decision.reason.lower()
@@ -102,10 +91,7 @@ class TestPolicyEngineConfigDriven:
         """Test file extension validation."""
         engine = PolicyEngine()
         decision = engine.decide(
-            operation="create_file",
-            path="docs/design.txt",
-            phase="design",
-            context={}
+            operation="create_file", path="docs/design.txt", phase="design", context={}
         )
         # .txt should be allowed for docs directory
         assert decision.allowed is True
@@ -117,7 +103,7 @@ class TestPolicyEngineConfigDriven:
             operation="scaffold",
             path="backend/dtos/user_dto.py",
             phase="tdd",
-            context={"component_type": "dto"}
+            context={"component_type": "dto"},
         )
         trail = engine.get_audit_trail()
         assert len(trail) == 1
@@ -131,7 +117,7 @@ class TestPolicyEngineConfigDriven:
             operation="scaffold",
             path="backend/dtos/user_dto.py",
             phase="tdd",
-            context={"component_type": "dto"}
+            context={"component_type": "dto"},
         )
         assert decision.directory_policy is not None
         assert decision.directory_policy.path == "backend/dtos"
@@ -139,11 +125,7 @@ class TestPolicyEngineConfigDriven:
     def test_error_handling_denies_by_default(self):
         """Test errors result in denied decision (fail-safe)."""
         engine = PolicyEngine()
-        decision = engine.decide(
-            operation="invalid_operation",
-            phase="tdd",
-            context={}
-        )
+        decision = engine.decide(operation="invalid_operation", phase="tdd", context={})
         # Invalid operation should be denied or require approval
         # Config-driven engine should handle gracefully
         assert decision is not None

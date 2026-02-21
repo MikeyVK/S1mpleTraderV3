@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for Tier 0 base template rendering (Issue #72 Task 1.3).
 
 RED phase: Tests for tier0_base_artifact.jinja2 SCAFFOLD metadata generation
@@ -26,7 +26,7 @@ class TestTier0BaseArtifactRendering:
             version_hash="a3f7b2c1",
             timestamp="2026-01-23T10:30:00Z",
             output_path="src/workers/MyWorker.py",
-            format="python"
+            format="python",
         )
 
         lines = result.strip().split("\n")
@@ -52,7 +52,7 @@ class TestTier0BaseArtifactRendering:
             version_hash="c5d6e7f8",
             timestamp="2026-01-23T11:00:00Z",
             output_path=".github/workflows/ci.yaml",
-            format="yaml"
+            format="yaml",
         )
 
         lines = result.strip().split("\n")
@@ -70,7 +70,7 @@ class TestTier0BaseArtifactRendering:
             version_hash="b4e8f3c2",
             timestamp="2026-01-23T09:15:00Z",
             output_path="docs/development/issue72/research.md",
-            format="markdown"
+            format="markdown",
         )
 
         lines = result.strip().split("\n")
@@ -93,7 +93,7 @@ class TestTier0BaseArtifactRendering:
             version_hash="d7e9f0a1",
             timestamp="2026-01-23T12:00:00Z",
             output_path="scripts/deploy.sh",
-            format="shell"
+            format="shell",
         )
 
         lines = result.strip().split("\n")
@@ -110,7 +110,7 @@ class TestTier0BaseArtifactRendering:
             version_hash="e8f1a2b3",
             timestamp="2026-01-23T13:00:00Z",
             output_path="config.xml",
-            format="xml"
+            format="xml",
         )
 
         lines = result.strip().split("\n")
@@ -132,7 +132,7 @@ class TestTier0BaseArtifactBlocks:
             version_hash="12345678",
             timestamp="2026-01-23T10:00:00Z",
             output_path="test.py",
-            format="python"
+            format="python",
         )
 
         lines = result.strip().split("\n")
@@ -152,7 +152,7 @@ class TestTier0BaseArtifactBlocks:
             version_hash="12345678",
             timestamp="2026-01-23T10:00:00Z",
             output_path="test.py",
-            format="python"
+            format="python",
         )
 
         # Content block is empty in Tier 0, should have 2 lines (SCAFFOLD metadata)

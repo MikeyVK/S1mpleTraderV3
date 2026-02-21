@@ -8,6 +8,7 @@
     - Test ValidationError.to_resource_dict() integration with ToolResult
     - Verify schema returned on missing required fields
 """
+
 # Standard library
 import json
 from pathlib import Path
@@ -44,7 +45,7 @@ async def test_validation_error_returns_schema(
         context={
             "name": "TestDTO"
             # Missing 'description' - required by DTO template
-        }
+        },
     )
 
     # WHEN: Attempting to scaffold DTO artifact without required 'description' field
@@ -55,20 +56,18 @@ async def test_validation_error_returns_schema(
     assert len(result.content) >= 2, "Should have error text and schema resource"
 
     # First item is error text
-    assert result.content[0]['type'] == "text", "First content should be error message"
+    assert result.content[0]["type"] == "text", "First content should be error message"
 
     # Second item is schema resource
     schema_content = result.content[1]
-    assert schema_content['type'] == "resource", "Should return resource with schema"
-    assert (
-        "schema://validation" in schema_content['resource']['uri']
-    ), "Schema URI should indicate validation"
-    assert (
-        "application/json" in schema_content['resource']['mimeType']
-    ), "Schema should be JSON"
+    assert schema_content["type"] == "resource", "Should return resource with schema"
+    assert "schema://validation" in schema_content["resource"]["uri"], (
+        "Schema URI should indicate validation"
+    )
+    assert "application/json" in schema_content["resource"]["mimeType"], "Schema should be JSON"
 
     # Verify schema contains expected structure
-    schema_json = json.loads(schema_content['resource']['text'])
+    schema_json = json.loads(schema_content["resource"]["text"])
     assert "required" in schema_json, "Schema should have required fields"
     assert "optional" in schema_json, "Schema should have optional fields"
     assert "description" in schema_json["required"], "description should be required"
@@ -86,11 +85,7 @@ async def test_success_response_includes_schema(
         artifact_type="dto",
         name="TestDTO",
         output_path=str(output_path),
-        context={
-            "name": "TestDTO",
-            "description": "Test data transfer object",
-            "fields": []
-        }
+        context={"name": "TestDTO", "description": "Test data transfer object", "fields": []},
     )
 
     # WHEN: Successfully scaffolding DTO artifact with all required fields
@@ -119,7 +114,7 @@ async def test_system_fields_filtered_from_schema(
         context={
             "name": "TestDTO"
             # Missing description - will trigger validation error with schema
-        }
+        },
     )
 
     # WHEN: Validation error occurs and schema is returned
@@ -130,18 +125,16 @@ async def test_system_fields_filtered_from_schema(
     assert len(result.content) >= 2, "Should have error text and schema resource"
 
     schema_content = result.content[1]
-    assert schema_content['type'] == "resource", "Error should include schema resource"
+    assert schema_content["type"] == "resource", "Error should include schema resource"
 
     # Verify system fields NOT in schema
-    schema_json = json.loads(schema_content['resource']['text'])
-    system_fields = [
-        "template_id", "template_version", "scaffold_created", "output_path"
-    ]
+    schema_json = json.loads(schema_content["resource"]["text"])
+    system_fields = ["template_id", "template_version", "scaffold_created", "output_path"]
 
     for field in system_fields:
-        assert (
-            field not in schema_json["required"]
-        ), f"System field {field} should not be in required"
-        assert (
-            field not in schema_json["optional"]
-        ), f"System field {field} should not be in optional"
+        assert field not in schema_json["required"], (
+            f"System field {field} should not be in required"
+        )
+        assert field not in schema_json["optional"], (
+            f"System field {field} should not be in optional"
+        )

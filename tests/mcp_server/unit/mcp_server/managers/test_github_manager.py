@@ -85,11 +85,7 @@ class TestGitHubManager:
         assert result["number"] == 10
         assert result["url"] == "http://issue/10"
         mock_adapter.create_issue.assert_called_with(
-            title="New Issue",
-            body="Body",
-            labels=None,
-            milestone_number=None,
-            assignees=None
+            title="New Issue", body="Body", labels=None, milestone_number=None, assignees=None
         )
 
     def test_create_pr(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
@@ -135,9 +131,7 @@ class TestGitHubManager:
     def test_create_label(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
         """Test creating label."""
         manager.create_label("bug", "red")
-        mock_adapter.create_label.assert_called_with(
-            name="bug", color="red", description=""
-        )
+        mock_adapter.create_label.assert_called_with(name="bug", color="red", description="")
 
     def test_delete_label(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
         """Test deleting label."""
@@ -153,8 +147,13 @@ class TestGitHubManager:
         """Test updating issue."""
         manager.update_issue(1, title="New")
         mock_adapter.update_issue.assert_called_with(
-            issue_number=1, title="New", body=None, state=None,
-            labels=None, milestone_number=None, assignees=None
+            issue_number=1,
+            title="New",
+            body=None,
+            state=None,
+            labels=None,
+            milestone_number=None,
+            assignees=None,
         )
 
     def test_list_milestones(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
@@ -165,9 +164,7 @@ class TestGitHubManager:
     def test_create_milestone(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
         """Test creating milestone."""
         manager.create_milestone("v1")
-        mock_adapter.create_milestone.assert_called_with(
-            title="v1", description=None, due_on=None
-        )
+        mock_adapter.create_milestone.assert_called_with(title="v1", description=None, due_on=None)
 
     def test_close_milestone(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
         """Test closing milestone."""

@@ -1,4 +1,5 @@
 """Unit tests for milestone_tools.py."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -17,6 +18,7 @@ from mcp_server.tools.milestone_tools import (
 def mock_github_manager():
     return MagicMock()
 
+
 @pytest.mark.asyncio
 async def test_list_milestones_tool(mock_github_manager):
     tool = ListMilestonesTool(manager=mock_github_manager)
@@ -30,6 +32,7 @@ async def test_list_milestones_tool(mock_github_manager):
     mock_github_manager.list_milestones.assert_called_with(state="open")
     assert "#1: M1" in result.content[0]["text"]
 
+
 @pytest.mark.asyncio
 async def test_create_milestone_tool(mock_github_manager):
     tool = CreateMilestoneTool(manager=mock_github_manager)
@@ -42,6 +45,7 @@ async def test_create_milestone_tool(mock_github_manager):
         title="Sprint 1", description=None, due_on=None
     )
     assert "Created milestone #2" in result.content[0]["text"]
+
 
 @pytest.mark.asyncio
 async def test_close_milestone_tool(mock_github_manager):

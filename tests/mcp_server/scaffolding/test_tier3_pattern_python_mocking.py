@@ -28,10 +28,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Create Jinja2 environment with template loader."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -41,9 +38,7 @@ class TestTier3PatternPythonMocking:
 
     def test_template_exists(self, jinja_env):
         """Test that template exists and loads."""
-        template = jinja_env.get_template(
-            "tier3_pattern_python_mocking.jinja2"
-        )
+        template = jinja_env.get_template("tier3_pattern_python_mocking.jinja2")
         assert template is not None
 
     def test_template_has_no_extends(self):
@@ -57,9 +52,9 @@ class TestTier3PatternPythonMocking:
         )
         content = template_path.read_text(encoding="utf-8")
         assert "{% extends" not in content
-        
+
         # Check for blocks in non-comment code
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
     def test_template_has_metadata(self):
@@ -96,7 +91,7 @@ class TestTier3PatternPythonMocking:
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         # Check for all expected imports
         assert "from unittest.mock import" in result
         assert "Mock" in result
@@ -138,7 +133,7 @@ class TestTier3PatternPythonMocking:
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         # Valid Python import: starts with 'from', contains 'import', has comma-separated names
         assert result.startswith("from unittest.mock import")
         assert "," in result  # Multiple imports comma-separated
@@ -153,12 +148,12 @@ class TestTier3PatternPythonMocking:
             / "tier3_pattern_python_mocking.jinja2"
         )
         content = template_path.read_text(encoding="utf-8")
-        
+
         # Count macros in actual code (not comments)
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         macro_count = no_comments.count("{% macro")
         assert macro_count == 1
-        
+
         # No example mocking code (old blocks had ~150 lines of examples)
         assert "mock_obj = Mock()" not in content
-        assert "@patch(" not in content.lower() or "@patch(" in "{% macro" # Only in macro name
+        assert "@patch(" not in content.lower() or "@patch(" in "{% macro"  # Only in macro name

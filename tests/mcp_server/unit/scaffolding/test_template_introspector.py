@@ -15,6 +15,7 @@ Following TDD: These tests are written BEFORE implementation (RED phase).
     - Test error handling for invalid templates
     - Test sorting of schema fields
 """
+
 # pyright: basic, reportPrivateUsage=false
 # Standard library
 from pathlib import Path
@@ -36,6 +37,7 @@ def fixture_jinja2_env() -> jinja2.Environment:
     """Provides configured Jinja2 environment for template parsing"""
     return jinja2.Environment()
 
+
 @pytest.fixture(name="sample_dto_template")
 def fixture_sample_dto_template() -> str:
     """Provides sample DTO template with required and optional fields"""
@@ -45,6 +47,7 @@ def fixture_sample_dto_template() -> str:
         id: int
         {% if include_timestamps %}created_at: datetime{% endif %}
     '''
+
 
 @pytest.fixture(name="system_fields")
 def fixture_system_fields() -> set[str]:
@@ -56,9 +59,7 @@ class TestTemplateIntrospector:
     """Tests for TemplateIntrospector."""
 
     def test_introspect_extracts_required_variables(
-        self,
-        jinja2_env: jinja2.Environment,
-        sample_dto_template: str
+        self, jinja2_env: jinja2.Environment, sample_dto_template: str
     ) -> None:
         """RED: introspect_template() identifies required variables (no defaults)"""
         # Arrange
@@ -73,9 +74,7 @@ class TestTemplateIntrospector:
         assert len(schema.required) == 2
 
     def test_introspect_extracts_optional_variables(
-        self,
-        jinja2_env: jinja2.Environment,
-        sample_dto_template: str
+        self, jinja2_env: jinja2.Environment, sample_dto_template: str
     ) -> None:
         """RED: introspect_template() identifies optional variables (with defaults)"""
         # Arrange
@@ -89,9 +88,7 @@ class TestTemplateIntrospector:
         assert len(schema.optional) == 1
 
     def test_introspect_filters_system_fields(
-        self,
-        jinja2_env: jinja2.Environment,
-        system_fields: set[str]
+        self, jinja2_env: jinja2.Environment, system_fields: set[str]
     ) -> None:
         """RED: introspect_template() excludes system-injected fields from schema"""
         # Arrange
@@ -112,10 +109,7 @@ class TestTemplateIntrospector:
         # Only 'name' should be required (user-provided)
         assert "name" in schema.required
 
-    def test_introspect_sorts_fields_alphabetically(
-        self,
-        jinja2_env: jinja2.Environment
-    ) -> None:
+    def test_introspect_sorts_fields_alphabetically(self, jinja2_env: jinja2.Environment) -> None:
         """RED: introspect_template() returns fields in sorted order"""
         # Arrange
         template = """
@@ -134,8 +128,7 @@ class TestTemplateIntrospector:
         assert schema.optional == ["optional_a", "optional_z"]
 
     def test_introspect_handles_invalid_template_syntax(
-        self,
-        jinja2_env: jinja2.Environment
+        self, jinja2_env: jinja2.Environment
     ) -> None:
         """RED: introspect_template() raises ExecutionError for invalid Jinja2 syntax"""
         # Arrange
@@ -229,16 +222,14 @@ class TestTemplateIntrospectorInheritance:
             "module_description",
         }
         detected_tier1 = tier1_vars & all_vars
-        assert (
-            len(detected_tier1) >= 2
-        ), f"Should detect tier1 vars, found: {detected_tier1}"
+        assert len(detected_tier1) >= 2, f"Should detect tier1 vars, found: {detected_tier1}"
 
         # Concrete contributes: name, worker_scope, capabilities
         concrete_vars = {"name", "worker_scope", "capabilities"}
         detected_concrete = concrete_vars & all_vars
-        assert (
-            len(detected_concrete) >= 2
-        ), f"Should detect concrete vars, found: {detected_concrete}"
+        assert len(detected_concrete) >= 2, (
+            f"Should detect concrete vars, found: {detected_concrete}"
+        )
 
     def test_introspect_with_inheritance_filters_system_fields(self) -> None:
         """RED: Verify system fields from tier0 are still filtered out."""
@@ -265,9 +256,6 @@ class TestTemplateIntrospectorInheritance:
             "timestamp",
         }
 
-        assert not (
-            system_fields & all_vars
-        ), (
-            f"System fields should be filtered: "
-            f"{system_fields & all_vars}"
+        assert not (system_fields & all_vars), (
+            f"System fields should be filtered: {system_fields & all_vars}"
         )

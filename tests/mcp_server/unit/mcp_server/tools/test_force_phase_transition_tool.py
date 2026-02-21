@@ -302,9 +302,7 @@ class TestForceTransitionResponseFormat:
     D10.3: No extra output when no gates defined.
     """
 
-    def _setup_workspace(
-        self, tmp_path: Path, *, with_gate_key: bool = True
-    ) -> tuple[Path, str]:
+    def _setup_workspace(self, tmp_path: Path, *, with_gate_key: bool = True) -> tuple[Path, str]:
         """Build workspace with workphases.yaml gate + optional planning_deliverables key."""
         st3 = tmp_path / ".st3"
         st3.mkdir()
@@ -342,7 +340,9 @@ phases:
         self, tmp_path: Path
     ) -> None:
         """Blocking gates (key absent) emit ⚠️ ACTION REQUIRED BEFORE ✅ (GAP-17/D10.1)."""
-        workspace, branch = self._setup_workspace(tmp_path, with_gate_key=False)  # key absent → BLOCKS
+        workspace, branch = self._setup_workspace(
+            tmp_path, with_gate_key=False
+        )  # key absent → BLOCKS
         tool = ForcePhaseTransitionTool(workspace_root=workspace)
         params = ForcePhaseTransitionInput(
             branch=branch,
@@ -366,7 +366,9 @@ phases:
         self, tmp_path: Path
     ) -> None:
         """Passing gates (key present) emitted as informational text AFTER ✅ (GAP-17/D10.2)."""
-        workspace, branch = self._setup_workspace(tmp_path, with_gate_key=True)  # key present → passes
+        workspace, branch = self._setup_workspace(
+            tmp_path, with_gate_key=True
+        )  # key present → passes
         tool = ForcePhaseTransitionTool(workspace_root=workspace)
         params = ForcePhaseTransitionInput(
             branch=branch,

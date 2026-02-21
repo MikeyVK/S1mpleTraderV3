@@ -85,6 +85,7 @@ class TestValidationEnforcementConsistency:
                 f"Concrete CODE templates must use GUIDELINE enforcement (content-level guidance), "
                 f"but {template_name} has {metadata.get('enforcement')}"
             )
+
     def test_strict_enforcement_blocks_on_missing_sections(self):
         """STRICT enforcement should block save when required sections missing."""
         template_root = Path("mcp_server/scaffolding/templates")
@@ -122,9 +123,7 @@ class TestValidationEnforcementConsistency:
         # Guidelines should exist (not strict rules)
         assert "validates" in metadata
         guidelines = metadata["validates"].get("guidelines", [])
-        assert len(guidelines) > 0, (
-            "GUIDELINE templates should define guidelines"
-        )
+        assert len(guidelines) > 0, "GUIDELINE templates should define guidelines"
 
     def test_tier_chain_traceable_via_extends(self):
         """Template inheritance chain should be traceable via extends field."""

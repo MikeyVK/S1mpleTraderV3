@@ -30,11 +30,7 @@ class TestLabelCreation:
 
     def test_label_creation_with_description(self):
         """Create label with optional description."""
-        label = Label(
-            name="type:bug",
-            color="D73A4A",
-            description="Something isn't working"
-        )
+        label = Label(name="type:bug", color="D73A4A", description="Something isn't working")
         assert label.name == "type:bug"
         assert label.color == "D73A4A"
         assert label.description == "Something isn't working"
@@ -95,29 +91,17 @@ class TestLabelConversion:
 
     def test_label_to_github_dict(self):
         """Convert Label to GitHub API format."""
-        label = Label(
-            name="type:feature",
-            color="1D76DB",
-            description="New feature"
-        )
+        label = Label(name="type:feature", color="1D76DB", description="New feature")
         result = label.to_github_dict()
 
-        assert result == {
-            "name": "type:feature",
-            "color": "1D76DB",
-            "description": "New feature"
-        }
+        assert result == {"name": "type:feature", "color": "1D76DB", "description": "New feature"}
 
     def test_label_to_github_dict_no_description(self):
         """Convert Label without description to GitHub format."""
         label = Label(name="priority:high", color="D93F0B")
         result = label.to_github_dict()
 
-        assert result == {
-            "name": "priority:high",
-            "color": "D93F0B",
-            "description": ""
-        }
+        assert result == {"name": "priority:high", "color": "D93F0B", "description": ""}
 
 
 class TestLabelConfigLoading:

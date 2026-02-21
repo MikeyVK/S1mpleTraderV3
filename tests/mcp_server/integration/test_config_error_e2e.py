@@ -43,7 +43,8 @@ def test_config_error_for_missing_required_field(tmp_path: Path) -> None:
     """ConfigError raised when artifacts.yaml missing required fields."""
     # Create YAML with missing required field (state_machine)
     incomplete_yaml = tmp_path / "incomplete_artifacts.yaml"
-    incomplete_yaml.write_text("""version: "1.0"
+    incomplete_yaml.write_text(
+        """version: "1.0"
 artifact_types:
   - type: doc
     type_id: test
@@ -54,7 +55,9 @@ artifact_types:
     name_suffix: null
     file_extension: ".md"
     generate_test: false
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     ArtifactRegistryConfig.reset_instance()
 

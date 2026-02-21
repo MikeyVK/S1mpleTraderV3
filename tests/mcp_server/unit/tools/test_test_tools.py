@@ -1,4 +1,5 @@
 """Unit tests for test_tools.py."""
+
 from unittest.mock import patch
 
 import pytest
@@ -12,11 +13,13 @@ def mock_run_pytest_sync():
     with patch("mcp_server.tools.test_tools._run_pytest_sync") as mock:
         yield mock
 
+
 @pytest.fixture
 def mock_settings():
     with patch("mcp_server.tools.test_tools.settings") as mock:
         mock.server.workspace_root = "/workspace"
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_run_tests_success(mock_run_pytest_sync, mock_settings):
@@ -34,8 +37,9 @@ async def test_run_tests_success(mock_run_pytest_sync, mock_settings):
     call_args = mock_run_pytest_sync.call_args
     assert call_args is not None
     cmd = call_args[0][0]
-    assert "pytest" in cmd[2] or "pytest" in cmd[1] # Depending on if run as module
+    assert "pytest" in cmd[2] or "pytest" in cmd[1]  # Depending on if run as module
     assert "tests/unit" in cmd
+
 
 @pytest.mark.asyncio
 async def test_run_tests_failure(mock_run_pytest_sync, mock_settings):
@@ -48,6 +52,7 @@ async def test_run_tests_failure(mock_run_pytest_sync, mock_settings):
     assert "Error info" in result.content[0]["text"]
     assert "❌ Tests failed" in result.content[0]["text"]
 
+
 @pytest.mark.asyncio
 async def test_run_tests_markers(mock_run_pytest_sync, mock_settings):
     tool = RunTestsTool()
@@ -58,6 +63,7 @@ async def test_run_tests_markers(mock_run_pytest_sync, mock_settings):
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "-m" in cmd
     assert "integration" in cmd
+
 
 @pytest.mark.asyncio
 async def test_run_tests_exception(mock_run_pytest_sync, mock_settings):

@@ -10,6 +10,7 @@ Fix: Use write_text() instead of open()+flush().
 @layer: Tests
 @issue: #85
 """
+
 import ast
 import json
 from pathlib import Path
@@ -46,16 +47,9 @@ class TestSaveStateNonBlocking:
         state_file = st3_dir / "state.json"
 
         project_manager = MagicMock(spec=ProjectManager)
-        engine = PhaseStateEngine(
-            workspace_root=tmp_path,
-            project_manager=project_manager
-        )
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=project_manager)
 
-        test_state = {
-            "branch": "test/123-test",
-            "current_phase": "tdd",
-            "issue_number": 123
-        }
+        test_state = {"branch": "test/123-test", "current_phase": "tdd", "issue_number": 123}
 
         # Act - call _save_state (protected access needed for testing)
         engine._save_state("test/123-test", test_state)  # noqa: SLF001
@@ -83,10 +77,7 @@ class TestSaveStateNonBlocking:
         st3_dir.mkdir()
 
         project_manager = MagicMock(spec=ProjectManager)
-        engine = PhaseStateEngine(
-            workspace_root=tmp_path,
-            project_manager=project_manager
-        )
+        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=project_manager)
 
         test_state = {"branch": "test/123-test", "current_phase": "tdd"}
 
@@ -100,7 +91,7 @@ class TestSaveStateNonBlocking:
             return original_open(*args, **kwargs)
 
         # Patch open in the module where it's used
-        with patch('builtins.open', tracking_open):
+        with patch("builtins.open", tracking_open):
             engine._save_state("test/123-test", test_state)  # noqa: SLF001
 
         # Assert - open() should NOT be called (we use write_text now)
@@ -138,27 +129,25 @@ class TestPhaseToolsAsyncSafe:
             "from_phase": "research",
             "to_phase": "design",
             "forced": True,
-            "skip_reason": "test"
+            "skip_reason": "test",
         }
 
         # Track if anyio.to_thread.run_sync is used
         run_sync_was_called = False
         original_run_sync = anyio.to_thread.run_sync
 
-        async def tracking_run_sync(
-            func: Any, *args: Any, **kwargs: Any
-        ) -> Any:
+        async def tracking_run_sync(func: Any, *args: Any, **kwargs: Any) -> Any:
             nonlocal run_sync_was_called
             run_sync_was_called = True
             return await original_run_sync(func, *args, **kwargs)
 
-        with patch.object(tool, '_create_engine', return_value=mock_engine):
-            with patch('anyio.to_thread.run_sync', tracking_run_sync):
+        with patch.object(tool, "_create_engine", return_value=mock_engine):
+            with patch("anyio.to_thread.run_sync", tracking_run_sync):
                 params = ForcePhaseTransitionInput(
                     branch="test/123-test",
                     to_phase="design",
                     skip_reason="test reason",
-                    human_approval="test approval"
+                    human_approval="test approval",
                 )
                 await tool.execute(params)
 
@@ -186,25 +175,21 @@ class TestPhaseToolsAsyncSafe:
         mock_engine.transition.return_value = {
             "success": True,
             "from_phase": "design",
-            "to_phase": "tdd"
+            "to_phase": "tdd",
         }
 
         run_sync_was_called = False
         original_run_sync = anyio.to_thread.run_sync
 
-        async def tracking_run_sync(
-            func: Any, *args: Any, **kwargs: Any
-        ) -> Any:
+        async def tracking_run_sync(func: Any, *args: Any, **kwargs: Any) -> Any:
             nonlocal run_sync_was_called
             run_sync_was_called = True
             return await original_run_sync(func, *args, **kwargs)
 
-        with patch.object(tool, '_create_engine', return_value=mock_engine):
-            with patch('anyio.to_thread.run_sync', tracking_run_sync):
+        with patch.object(tool, "_create_engine", return_value=mock_engine):
+            with patch("anyio.to_thread.run_sync", tracking_run_sync):
                 params = TransitionPhaseInput(
-                    branch="test/123-test",
-                    to_phase="tdd",
-                    human_approval="test approval"
+                    branch="test/123-test", to_phase="tdd", human_approval="test approval"
                 )
                 await tool.execute(params)
 
@@ -237,7 +222,7 @@ class TestGitCheckoutEncapsulation:
         save_state_calls = []
 
         for node in ast.walk(tree):
-            if isinstance(node, ast.Attribute) and node.attr == '_save_state':
+            if isinstance(node, ast.Attribute) and node.attr == "_save_state":
                 save_state_calls.append(node)
 
         assert not save_state_calls, (

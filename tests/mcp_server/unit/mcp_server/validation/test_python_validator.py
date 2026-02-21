@@ -44,8 +44,8 @@ class TestPythonValidator:
             "overall_pass": True,
             "gates": [
                 {"name": "Linting", "passed": True, "score": "10.00/10", "issues": []},
-                {"name": "Type Checking", "passed": True, "score": "Pass", "issues": []}
-            ]
+                {"name": "Type Checking", "passed": True, "score": "Pass", "issues": []},
+            ],
         }
 
         # Execute
@@ -76,15 +76,10 @@ class TestPythonValidator:
                     "passed": False,
                     "score": "5.00/10",
                     "issues": [
-                        {
-                            "message": "Missing docstring",
-                            "line": 1,
-                            "column": 0,
-                            "code": "C0111"
-                        }
-                    ]
+                        {"message": "Missing docstring", "line": 1, "column": 0, "code": "C0111"}
+                    ],
                 }
-            ]
+            ],
         }
 
         # Execute
@@ -116,10 +111,11 @@ class TestPythonValidator:
         temp_path = "/tmp/random_temp_file.py"
 
         # Patch system calls to control temp file generation
-        with patch("mcp_server.validation.python_validator.tempfile.mkstemp") as mock_mkstemp, \
-             patch("mcp_server.validation.python_validator.os.fdopen", MagicMock()), \
-             patch("mcp_server.validation.python_validator.os.name", "posix"):
-
+        with (
+            patch("mcp_server.validation.python_validator.tempfile.mkstemp") as mock_mkstemp,
+            patch("mcp_server.validation.python_validator.os.fdopen", MagicMock()),
+            patch("mcp_server.validation.python_validator.os.name", "posix"),
+        ):
             mock_mkstemp.return_value = (123, temp_path)
 
             # Mock QA to fail on the temp path
@@ -131,9 +127,9 @@ class TestPythonValidator:
                         "issues": [
                             # The tool reports the error using the temp path it scanned
                             {"message": f"{temp_path}:1: error: Invalid syntax"}
-                        ]
+                        ],
                     }
-                ]
+                ],
             }
 
             # Execute

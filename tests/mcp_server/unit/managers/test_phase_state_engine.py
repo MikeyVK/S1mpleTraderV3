@@ -570,9 +570,7 @@ class TestValidationAndDocumentationExitGates:
         engine = self._make_engine(tmp_path, deliverables_state={"tdd_cycles": {}})
         engine.on_exit_validation_phase(branch="feature/229-test", issue_number=229)
 
-    def test_validation_exit_gate_passes_when_deliverable_present(
-        self, tmp_path: Path
-    ) -> None:
+    def test_validation_exit_gate_passes_when_deliverable_present(self, tmp_path: Path) -> None:
         """Gate passes when DeliverableChecker.check() succeeds for spec file."""
         report_dir = tmp_path / "docs" / "development" / "issue229"
         report_dir.mkdir(parents=True)
@@ -630,9 +628,7 @@ class TestValidationAndDocumentationExitGates:
         )
         engine.on_exit_documentation_phase(branch="feature/229-test", issue_number=229)
 
-    def test_documentation_exit_gate_passes_when_deliverable_present(
-        self, tmp_path: Path
-    ) -> None:
+    def test_documentation_exit_gate_passes_when_deliverable_present(self, tmp_path: Path) -> None:
         """Gate passes when DeliverableChecker.check() succeeds for spec file."""
         docs_dir = tmp_path / "docs" / "development" / "issue229"
         docs_dir.mkdir(parents=True)

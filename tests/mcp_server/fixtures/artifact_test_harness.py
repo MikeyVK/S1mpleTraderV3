@@ -27,9 +27,7 @@ from mcp_server.validation.validation_service import ValidationService
 
 
 @pytest.fixture(name="temp_workspace")
-def _temp_workspace(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> Generator[Path, None, None]:
+def _temp_workspace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[Path, None, None]:
     """
     Hermetic workspace with temp directory.
 
@@ -126,8 +124,7 @@ def _artifacts_yaml_file_st3(
 
     dummy_design_template = template_dir / "design.md.jinja2"
     dummy_design_template.write_text(
-        "# {{ title }}\n\nIssue: #{{ issue_number }}\nAuthor: {{ author }}\n",
-        encoding="utf-8"
+        "# {{ title }}\n\nIssue: #{{ issue_number }}\nAuthor: {{ author }}\n", encoding="utf-8"
     )
 
     # Create code template for dto
@@ -137,14 +134,14 @@ def _artifacts_yaml_file_st3(
     dummy_dto_template = code_template_dir / "dto.py.jinja2"
     dummy_dto_template.write_text(
         '"""{{ description }}"""\n'
-        'from pydantic import BaseModel\n\n'
-        'class {{ name }}(BaseModel):\n'
+        "from pydantic import BaseModel\n\n"
+        "class {{ name }}(BaseModel):\n"
         '    """{{ description }}"""\n'
         '    model_config = {"frozen": True, "extra": "forbid"}\n\n'
-        '{% for field in fields %}'
-        '    {{ field.name }}: {{ field.type }}\n'
-        '{% endfor %}',
-        encoding="utf-8"
+        "{% for field in fields %}"
+        "    {{ field.name }}: {{ field.type }}\n"
+        "{% endfor %}",
+        encoding="utf-8",
     )
 
     return artifacts_file
@@ -218,9 +215,11 @@ def _artifact_manager(
 
 # Helper functions for dynamic artifact/template creation
 
+
 @dataclass
 class ArtifactIdentity:
     """Artifact type and ID."""
+
     type_id: str
     artifact_type: str  # 'code' or 'doc'
 
@@ -228,6 +227,7 @@ class ArtifactIdentity:
 @dataclass
 class TemplateFields:
     """Template field specification."""
+
     required: list[str] = field(default_factory=list)
     optional: list[str] = field(default_factory=list)
 
@@ -235,6 +235,7 @@ class TemplateFields:
 @dataclass
 class ArtifactSpec:
     """Specification for adding an artifact to artifacts.yaml."""
+
     identity: ArtifactIdentity
     name: str
     template_path: str
@@ -244,10 +245,7 @@ class ArtifactSpec:
     generate_test: bool = False
 
 
-def add_artifact_to_yaml(
-    artifacts_yaml_path: Path,
-    spec: ArtifactSpec
-) -> None:
+def add_artifact_to_yaml(artifacts_yaml_path: Path, spec: ArtifactSpec) -> None:
     """
     Add artifact type to existing artifacts.yaml.
 
@@ -275,8 +273,8 @@ def add_artifact_to_yaml(
         "state_machine": {
             "states": ["CREATED"],
             "initial_state": "CREATED",
-            "valid_transitions": []
-        }
+            "valid_transitions": [],
+        },
     }
 
     # Append to artifact_types
@@ -287,11 +285,7 @@ def add_artifact_to_yaml(
         yaml.dump(data, f, default_flow_style=False, sort_keys=False)
 
 
-def create_template(
-    workspace_root: Path,
-    template_relpath: str,
-    template_content: str
-) -> Path:
+def create_template(workspace_root: Path, template_relpath: str, template_content: str) -> Path:
     """
     Create template file in workspace.
 

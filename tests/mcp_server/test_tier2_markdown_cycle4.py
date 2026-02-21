@@ -1,4 +1,4 @@
-﻿# SCAFFOLD: template=test_unit version=xxx created=2026-01-26T21:40:00Z
+# SCAFFOLD: template=test_unit version=xxx created=2026-01-26T21:40:00Z
 """
 Tests for Tier 2 Markdown template (Issue #72, TDD Cycle 4).
 
@@ -13,9 +13,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 # Template directory
-TEMPLATE_DIR = (
-    Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
-)
+TEMPLATE_DIR = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
 
 class TestTier2MarkdownLinkDefinitions:
@@ -36,10 +34,7 @@ class TestTier2MarkdownLinkDefinitions:
             purpose="Test",
             scope_in="X",
             scope_out="Y",
-            related_docs=[
-                "docs/research.md",
-                "docs/planning.md"
-            ],
+            related_docs=["docs/research.md", "docs/planning.md"],
         )
 
         # Link definitions use auto-generated IDs: [related-1], [related-2], etc.
@@ -66,9 +61,7 @@ class TestTier2MarkdownLinkDefinitions:
             purpose="Test",
             scope_in="X",
             scope_out="Y",
-            related_docs=[
-                "docs/development/issue72/research.md"
-            ],
+            related_docs=["docs/development/issue72/research.md"],
         )
 
         # Format: [related-N]: path/to/file.md (auto-generated ID)
@@ -109,9 +102,7 @@ class TestTier2MarkdownLinkDefinitions:
             purpose="Test",
             scope_in="X",
             scope_out="Y",
-            related_docs=[
-                "docs/planning.md"
-            ],
+            related_docs=["docs/planning.md"],
         )
 
         # Link definition format (invisible in rendered Markdown) with auto-generated ID

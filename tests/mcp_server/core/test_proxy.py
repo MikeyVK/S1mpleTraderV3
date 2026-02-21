@@ -7,6 +7,7 @@ Tests:
 - UTF-8 encoding handling
 - Transparent restart flow
 """
+
 import pytest
 
 from mcp_server.core.proxy import RESTART_MARKER, MCPProxy
@@ -39,8 +40,8 @@ class TestInitializeCapture:
             "method": "initialize",
             "params": {
                 "protocolVersion": "2025-11-25",
-                "clientInfo": {"name": "Visual Studio Code", "version": "1.0"}
-            }
+                "clientInfo": {"name": "Visual Studio Code", "version": "1.0"},
+            },
         }
 
         # Simulate capturing init request
@@ -61,7 +62,7 @@ class TestRestartMarkerDetection:
         """Test proxy detects restart marker in stderr stream."""
         # Placeholder for future implementation
         proxy = MCPProxy()
-        assert hasattr(proxy, 'trigger_restart')  # Method exists
+        assert hasattr(proxy, "trigger_restart")  # Method exists
 
 
 class TestUTF8Encoding:
@@ -72,9 +73,10 @@ class TestUTF8Encoding:
         # This test verifies the module-level UTF-8 setup
         # If we get here without errors, UTF-8 setup worked
         import sys  # pylint: disable=import-outside-toplevel
-        if sys.platform == 'win32':
-            assert sys.stdout.encoding == 'utf-8'
-            assert sys.stderr.encoding == 'utf-8'
+
+        if sys.platform == "win32":
+            assert sys.stdout.encoding == "utf-8"
+            assert sys.stderr.encoding == "utf-8"
 
 
 class TestTransparentRestart:
@@ -194,7 +196,7 @@ class TestProxyIntegration:
         """
         import os
 
-        if not os.getenv('RUN_MANUAL_TESTS'):
+        if not os.getenv("RUN_MANUAL_TESTS"):
             pytest.skip(
                 "Manual integration test - requires full MCP server environment.\n"
                 "To run: export RUN_MANUAL_TESTS=1 && pytest tests/mcp_server/core/test_proxy.py::TestProxyIntegration\n"
@@ -243,4 +245,3 @@ class TestProxyIntegration:
         #     if process.poll() is None:
         #         process.terminate()
         #         process.wait(timeout=5)
-

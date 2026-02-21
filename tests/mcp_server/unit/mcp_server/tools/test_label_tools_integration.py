@@ -1,4 +1,4 @@
-﻿"""
+"""
 Unit tests for label tool integration with LabelConfig.
 
 Tests validation hooks in CreateLabelTool, AddLabelsTool, and DetectLabelDriftTool.
@@ -28,6 +28,7 @@ from mcp_server.tools.label_tools import (
 # Test Helper
 class _MockLabel:  # pylint: disable=too-few-public-methods
     """Mock label object for testing (avoids Mock.name conflict)."""
+
     def __init__(self, name: str, color: str, description: str = "") -> None:
         self.name = name
         self.color = color
@@ -94,9 +95,7 @@ labels:
         LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        mock_manager.create_label = Mock(
-            return_value=_MockLabel(name="type:bug", color="FF0000")
-        )
+        mock_manager.create_label = Mock(return_value=_MockLabel(name="type:bug", color="FF0000"))
 
         tool = CreateLabelTool(manager=mock_manager)
         params = CreateLabelInput(name="type:bug", color="FF0000")
@@ -176,15 +175,11 @@ labels:
 
         mock_manager = Mock()
         tool = AddLabelsTool(manager=mock_manager)
-        params = AddLabelsInput(
-            issue_number=1, labels=["type:feature", "priority:high"]
-        )
+        params = AddLabelsInput(issue_number=1, labels=["type:feature", "priority:high"])
 
         result = await tool.execute(params)
         assert "Added labels" in result.content[0]["text"]
-        mock_manager.add_labels.assert_called_once_with(
-            1, ["type:feature", "priority:high"]
-        )
+        mock_manager.add_labels.assert_called_once_with(1, ["type:feature", "priority:high"])
 
     @pytest.mark.asyncio
     async def test_add_labels_partial_invalid_rejects_all(self, tmp_path):
@@ -202,9 +197,7 @@ labels:
 
         mock_manager = Mock()
         tool = AddLabelsTool(manager=mock_manager)
-        params = AddLabelsInput(
-            issue_number=1, labels=["type:feature", "undefined"]
-        )
+        params = AddLabelsInput(issue_number=1, labels=["type:feature", "undefined"])
 
         result = await tool.execute(params)
         assert "not defined in labels.yaml" in result.content[0]["text"]
@@ -323,9 +316,7 @@ labels:
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
-            return_value=[
-                MockLabel(name="type:feature", color="FF0000", description="")
-            ]
+            return_value=[MockLabel(name="type:feature", color="FF0000", description="")]
         )
 
         tool = DetectLabelDriftTool(manager=mock_manager)
@@ -389,9 +380,7 @@ labels:
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
-            return_value=[
-                _MockLabel(name="type:feature", color="1D76DB", description="Test")
-            ]
+            return_value=[_MockLabel(name="type:feature", color="1D76DB", description="Test")]
         )
 
         tool = DetectLabelDriftTool(manager=mock_manager)

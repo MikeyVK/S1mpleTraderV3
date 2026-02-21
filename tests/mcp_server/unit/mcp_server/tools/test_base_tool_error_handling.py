@@ -22,6 +22,7 @@ class TestToolErrorHandlingIntegration:
 
         class TestTool(BaseTool):
             """Test tool."""
+
             name = "test_tool"
             description = "Test tool"
 
@@ -41,6 +42,7 @@ class TestToolErrorHandlingIntegration:
 
         class TestTool(BaseTool):
             """Test tool."""
+
             name = "test_tool"
             description = "Test tool"
 
@@ -60,6 +62,7 @@ class TestToolErrorHandlingIntegration:
 
         class Tool1(BaseTool):
             """Tool 1."""
+
             name = "tool1"
             description = "Tool 1"
 
@@ -68,6 +71,7 @@ class TestToolErrorHandlingIntegration:
 
         class Tool2(BaseTool):
             """Tool 2."""
+
             name = "tool2"
             description = "Tool 2"
 

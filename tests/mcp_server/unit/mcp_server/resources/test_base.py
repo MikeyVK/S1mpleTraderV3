@@ -11,6 +11,7 @@ from mcp_server.resources.base import BaseResource
 
 class ConcreteResource(BaseResource):
     """Concrete implementation for testing."""
+
     uri_pattern = "test://resource"
 
     async def read(self, uri: str) -> str:

@@ -1,4 +1,5 @@
 """Tests for GitCheckoutTool async execution."""
+
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

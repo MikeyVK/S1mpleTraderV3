@@ -1,4 +1,5 @@
 """Tests for CLI."""
+
 from unittest.mock import patch
 
 from mcp_server.cli import main
@@ -25,6 +26,7 @@ def test_cli_version(capsys) -> None:
 
     captured = capsys.readouterr()
     assert "ST3 Workflow MCP Server v1.0.0" in captured.out
+
 
 def test_cli_run() -> None:
     """Test that main() calls server_main when no arguments provided."""

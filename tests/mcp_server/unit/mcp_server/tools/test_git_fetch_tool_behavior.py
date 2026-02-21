@@ -25,7 +25,6 @@ def test_git_fetch_input_schema_helper_returns_model_schema() -> None:
     assert "properties" in schema
 
 
-
 def test_git_fetch_tool_input_schema_property() -> None:
     """Tool.input_schema delegates to _input_schema(args_model)."""
 

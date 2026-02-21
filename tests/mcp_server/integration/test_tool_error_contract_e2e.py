@@ -9,6 +9,7 @@ This test proves that the unified exception hierarchy works end-to-end:
 
 This addresses Gap A from slice1_gaps.md.
 """
+
 from unittest.mock import Mock
 
 import pytest

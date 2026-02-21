@@ -1,4 +1,5 @@
 """Tests for core exceptions."""
+
 from mcp_server.core.exceptions import (
     ExecutionError,
     MCPError,

@@ -61,9 +61,10 @@ class TestSafeEditTool:
 
         with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
             # Mock file writing
-            with patch("pathlib.Path.write_text") as mock_write, \
-                 patch("pathlib.Path.parent") as mock_parent:
-
+            with (
+                patch("pathlib.Path.write_text") as mock_write,
+                patch("pathlib.Path.parent") as mock_parent,
+            ):
                 mock_parent.mkdir = MagicMock()
 
                 # Execute
@@ -176,10 +177,11 @@ class TestSafeEditTool:
 
         with patch.object(tool.validation_service, "validate", side_effect=mock_validate):
             # Mock file read/write
-            with patch("pathlib.Path.exists", return_value=True), \
-                 patch("pathlib.Path.read_text", return_value=old_content), \
-                 patch("pathlib.Path.write_text") as mock_write:
-
+            with (
+                patch("pathlib.Path.exists", return_value=True),
+                patch("pathlib.Path.read_text", return_value=old_content),
+                patch("pathlib.Path.write_text") as mock_write,
+            ):
                 # Execute in strict mode (should reject + show diff)
                 result = await tool.execute(
                     SafeEditInput(path=path, content=new_content, mode="strict", show_diff=True)
@@ -205,7 +207,7 @@ class TestSafeEditTool:
         """Test with REAL validation (no mocks) to catch duplicate bug."""
 
         # Create temp file with invalid Python
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write("valid = True\n")
             temp_path = f.name
 
@@ -216,7 +218,7 @@ class TestSafeEditTool:
                     path=temp_path,
                     content="invalid syntax here @@@ not python",
                     mode="strict",
-                    show_diff=True
+                    show_diff=True,
                 )
             )
 
@@ -240,7 +242,7 @@ class TestSafeEditTool:
 
         # Create temp file with content
         content = """# Header\nline 1\nline 2\nline 3\nline 4\nline 5\n"""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(content)
             temp_path = f.name
 
@@ -251,7 +253,7 @@ class TestSafeEditTool:
                     path=temp_path,
                     search="this pattern does not exist",
                     replace="new text",
-                    mode="strict"
+                    mode="strict",
                 )
             )
 
@@ -275,9 +277,7 @@ class TestSafeEditTool:
             Path(temp_path).unlink(missing_ok=True)
 
     @pytest.mark.asyncio
-    async def test_concurrent_edits_blocked(
-        self, tool: SafeEditTool, tmp_path: Path
-    ) -> None:
+    async def test_concurrent_edits_blocked(self, tool: SafeEditTool, tmp_path: Path) -> None:
         """Test that concurrent edits on same file are blocked (mutex protection)."""
 
         # Create test file
@@ -286,18 +286,21 @@ class TestSafeEditTool:
 
         # Track edit order
         edit_results = []
+
         async def edit_task(task_id: int) -> None:
             """Simulate concurrent edit."""
             try:
                 result = await tool.execute(
                     SafeEditInput(
                         path=str(test_file),
-                        line_edits=[{
-                            "start_line": 1,
-                            "end_line": 1,
-                            "new_content": f"task {task_id} line 1\n"
-                        }],
-                        mode="interactive"
+                        line_edits=[
+                            {
+                                "start_line": 1,
+                                "end_line": 1,
+                                "new_content": f"task {task_id} line 1\n",
+                            }
+                        ],
+                        mode="interactive",
                     )
                 )
                 edit_results.append({"task": task_id, "success": True, "result": result})

@@ -21,7 +21,7 @@ class TestComputeVersionHashBasic:
                 ("tier0_base_artifact", "1.0.0"),
                 ("tier1_base_code", "1.1.0"),
                 ("tier2_base_python", "2.0.0"),
-            ]
+            ],
         )
 
         assert len(result) == 8
@@ -99,9 +99,7 @@ class TestComputeVersionHashEdgeCases:
     def test_compute_hash_with_empty_tier_chain(self):
         """Should handle empty tier chain (Tier 4 concrete only)."""
         result = compute_version_hash(
-            artifact_type="worker",
-            template_file="worker.py.jinja2",
-            tier_chain=[]
+            artifact_type="worker", template_file="worker.py.jinja2", tier_chain=[]
         )
 
         assert len(result) == 8

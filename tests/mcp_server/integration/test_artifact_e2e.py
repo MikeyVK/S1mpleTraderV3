@@ -96,7 +96,7 @@ async def test_artifact_scaffolding_code_to_disk(
             {"name": "id", "type": "int"},
             {"name": "username", "type": "str"},
             {"name": "email", "type": "str"},
-        ]
+        ],
     )
 
     # Assert

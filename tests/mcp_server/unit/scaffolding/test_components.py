@@ -1,4 +1,5 @@
 """Unit tests for scaffolding components."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -37,7 +38,7 @@ class TestDTOScaffolder:
             name="TestDTO",
             fields=[],
             id_prefix="TES",  # Derived
-            docstring="TestDTO data transfer object."  # Default
+            docstring="TestDTO data transfer object.",  # Default
         )
 
 
@@ -47,16 +48,9 @@ class TestWorkerScaffolder:
     def test_scaffold_defaults(self, renderer_mock: MagicMock) -> None:
         """Test worker scaffolding."""
         scaffolder = WorkerScaffolder(renderer_mock)
-        result = scaffolder.scaffold(
-            name="MyWorker",
-            input_dto="In",
-            output_dto="Out"
-        )
+        result = scaffolder.scaffold(name="MyWorker", input_dto="In", output_dto="Out")
 
         assert result == "rendered_content"
         renderer_mock.render.assert_called_with(
-            "components/worker.py.jinja2",
-            name="MyWorker",
-            input_dto="In",
-            output_dto="Out"
+            "components/worker.py.jinja2", name="MyWorker", input_dto="In", output_dto="Out"
         )

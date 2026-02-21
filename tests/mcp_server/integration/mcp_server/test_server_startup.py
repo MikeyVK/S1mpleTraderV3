@@ -1,4 +1,5 @@
 """Integration tests for the MCP server."""
+
 import pytest
 
 
@@ -19,9 +20,6 @@ async def test_list_resources(server):
 @pytest.mark.asyncio
 async def test_read_resource(server):
     """Test that resources can be read."""
-    resource = next(
-        r for r in server.resources
-        if r.uri_pattern == "st3://rules/coding_standards"
-    )
+    resource = next(r for r in server.resources if r.uri_pattern == "st3://rules/coding_standards")
     content = await resource.read("st3://rules/coding_standards")
     assert "python" in content

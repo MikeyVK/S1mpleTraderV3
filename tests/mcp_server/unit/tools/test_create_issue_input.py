@@ -256,14 +256,16 @@ class TestBodyJsonStringCoercion:
 
     def test_body_json_string_full_is_coerced(self) -> None:
         """A JSON string with all optional fields is fully parsed."""
-        body_str = json.dumps({
-            "problem": "Login fails.",
-            "expected": "Redirect to dashboard.",
-            "actual": "500 error.",
-            "context": "Windows 11.",
-            "steps_to_reproduce": "1. Open\n2. Click",
-            "related_docs": ["docs/planning.md"],
-        })
+        body_str = json.dumps(
+            {
+                "problem": "Login fails.",
+                "expected": "Redirect to dashboard.",
+                "actual": "500 error.",
+                "context": "Windows 11.",
+                "steps_to_reproduce": "1. Open\n2. Click",
+                "related_docs": ["docs/planning.md"],
+            }
+        )
         inp = CreateIssueInput(**{**VALID_MINIMAL, "body": body_str})
         assert inp.body.expected == "Redirect to dashboard."
         assert inp.body.related_docs == ["docs/planning.md"]

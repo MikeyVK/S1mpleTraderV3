@@ -1,4 +1,5 @@
 """E2E tests for SearchDocumentationTool with production docs."""
+
 import pytest
 
 from mcp_server.config.settings import settings
@@ -32,16 +33,12 @@ class TestSearchDocumentationE2E:
         # Create coding_standards doc
         coding_dir = docs_dir / "coding_standards"
         coding_dir.mkdir()
-        (coding_dir / "style.md").write_text(
-            "# Code Style\n\nFollow PEP 8 style guidelines."
-        )
+        (coding_dir / "style.md").write_text("# Code Style\n\nFollow PEP 8 style guidelines.")
 
         # Create reference doc
         ref_dir = docs_dir / "reference"
         ref_dir.mkdir()
-        (ref_dir / "api.md").write_text(
-            "# API Reference\n\nJavaScript API documentation."
-        )
+        (ref_dir / "api.md").write_text("# API Reference\n\nJavaScript API documentation.")
 
         return docs_dir
 

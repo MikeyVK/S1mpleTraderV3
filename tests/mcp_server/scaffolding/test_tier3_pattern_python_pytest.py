@@ -45,7 +45,7 @@ class TestTier3PatternPythonPytest:
         assert "{% extends" not in content, "Macro library must not use {% extends %}"
         # Check for {% block %} in Jinja code (not in comments)
         # Remove comments (lines starting with {#)
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments, "Macro library must use {% macro %} not {% block %}"
 
     def test_template_has_metadata(self):

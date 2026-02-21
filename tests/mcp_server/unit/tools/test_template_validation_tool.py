@@ -64,7 +64,9 @@ class TestTemplateValidationTool:
             mock_validator_cls.return_value = mock_instance
 
             # Execute
-            result = await tool.execute(TemplateValidationInput(path=path, template_type=template_type))
+            result = await tool.execute(
+                TemplateValidationInput(path=path, template_type=template_type)
+            )
 
             # Verify
             assert "Template Validation Passed" in result.content[0]["text"]
@@ -86,14 +88,16 @@ class TestTemplateValidationTool:
                 return ValidationResult(
                     passed=False,
                     score=0.0,
-                    issues=[ValidationIssue(message="Missing method", severity="error")]
+                    issues=[ValidationIssue(message="Missing method", severity="error")],
                 )
 
             mock_instance.validate.side_effect = async_validate
             mock_validator_cls.return_value = mock_instance
 
             # Execute
-            result = await tool.execute(TemplateValidationInput(path=path, template_type=template_type))
+            result = await tool.execute(
+                TemplateValidationInput(path=path, template_type=template_type)
+            )
 
             # Verify
             text = result.content[0]["text"]
@@ -121,7 +125,9 @@ class TestTemplateValidationTool:
             mock_instance.validate.side_effect = OSError("Access denied")
             mock_validator_cls.return_value = mock_instance
 
-            result = await tool.execute(TemplateValidationInput(path=path, template_type=template_type))
+            result = await tool.execute(
+                TemplateValidationInput(path=path, template_type=template_type)
+            )
 
             assert "Validation error" in result.content[0]["text"]
             assert "Access denied" in result.content[0]["text"]

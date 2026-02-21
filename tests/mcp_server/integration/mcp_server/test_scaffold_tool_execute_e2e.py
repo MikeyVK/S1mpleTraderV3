@@ -26,8 +26,7 @@ def _force_v1_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_tool_execute_scaffolds_design_doc(
-    temp_workspace: Path,
-    artifact_manager: ArtifactManager
+    temp_workspace: Path, artifact_manager: ArtifactManager
 ) -> None:
     """
     E2E test: ScaffoldArtifactTool.execute() scaffolds design doc to disk.
@@ -46,7 +45,7 @@ async def test_tool_execute_scaffolds_design_doc(
             "issue_number": "42",
             "title": "Test Design via Tool",
             "author": "E2E Test",
-        }
+        },
     )
 
     # Act
@@ -78,8 +77,7 @@ async def test_tool_execute_scaffolds_design_doc(
 
 @pytest.mark.asyncio
 async def test_tool_execute_scaffolds_dto(
-    temp_workspace: Path,
-    artifact_manager: ArtifactManager
+    temp_workspace: Path, artifact_manager: ArtifactManager
 ) -> None:
     """
     E2E test: ScaffoldArtifactTool.execute() scaffolds DTO code to disk.
@@ -98,8 +96,8 @@ async def test_tool_execute_scaffolds_dto(
             "fields": [
                 {"name": "id", "type": "int"},
                 {"name": "name", "type": "str"},
-            ]
-        }
+            ],
+        },
     )
 
     # Act

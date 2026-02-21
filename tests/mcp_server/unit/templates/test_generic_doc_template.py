@@ -11,7 +11,10 @@ from jinja2 import Environment, FileSystemLoader
 def template_env() -> Environment:
     """Create Jinja2 environment rooted at scaffolding templates."""
     template_dir = (
-        Path(__file__).parent.parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        Path(__file__).parent.parent.parent.parent.parent
+        / "mcp_server"
+        / "scaffolding"
+        / "templates"
     )
     return Environment(loader=FileSystemLoader(template_dir))
 

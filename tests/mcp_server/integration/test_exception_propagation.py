@@ -1,4 +1,4 @@
-﻿"""
+"""
 @module: tests.integration.test_exception_propagation
 @layer: Test Infrastructure
 @dependencies: pytest, mcp_server.core.exceptions, mcp_server.managers

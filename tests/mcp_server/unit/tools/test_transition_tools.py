@@ -1232,8 +1232,16 @@ class TestForceCycleTransitionResponseFormat:
             "tdd_cycles": {
                 "total": 4,
                 "cycles": [
-                    {"cycle_number": 1, "deliverables": [{"id": "D1.1", "description": "p"}], "exit_criteria": "C1"},
-                    {"cycle_number": 2, "deliverables": [{"id": "D2.1", "description": "p"}], "exit_criteria": "C2"},
+                    {
+                        "cycle_number": 1,
+                        "deliverables": [{"id": "D1.1", "description": "p"}],
+                        "exit_criteria": "C1",
+                    },
+                    {
+                        "cycle_number": 2,
+                        "deliverables": [{"id": "D2.1", "description": "p"}],
+                        "exit_criteria": "C2",
+                    },
                     {
                         "cycle_number": 3,
                         "deliverables": [
@@ -1249,7 +1257,11 @@ class TestForceCycleTransitionResponseFormat:
                         ],
                         "exit_criteria": "D3.2 passes",
                     },
-                    {"cycle_number": 4, "deliverables": [{"id": "D4.1", "description": "p"}], "exit_criteria": "C4"},
+                    {
+                        "cycle_number": 4,
+                        "deliverables": [{"id": "D4.1", "description": "p"}],
+                        "exit_criteria": "C4",
+                    },
                 ],
             }
         }
@@ -1272,7 +1284,8 @@ class TestForceCycleTransitionResponseFormat:
     ) -> None:
         """Unvalidated (blocking) deliverables appear BEFORE ✅ in response (GAP-17/D10.4)."""
         workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
-            tmp_path, cycle3_file_present=False  # file absent → deliverable FAILS → blocks
+            tmp_path,
+            cycle3_file_present=False,  # file absent → deliverable FAILS → blocks
         )
 
         with (
@@ -1309,7 +1322,8 @@ class TestForceCycleTransitionResponseFormat:
     ) -> None:
         """Validated (passing) deliverables listed informatively AFTER ✅ (GAP-17/D10.5)."""
         workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
-            tmp_path, cycle3_file_present=True  # file present → deliverable PASSES
+            tmp_path,
+            cycle3_file_present=True,  # file present → deliverable PASSES
         )
 
         with (
@@ -1335,9 +1349,7 @@ class TestForceCycleTransitionResponseFormat:
 
         assert "✅" in text
         # Validated deliverable D3.2 should be reported informatively AFTER ✅
-        assert "cycle:3:D3.2" in text, (
-            f"Expected cycle:3:D3.2 in informational section: {text}"
-        )
+        assert "cycle:3:D3.2" in text, f"Expected cycle:3:D3.2 in informational section: {text}"
         assert text.index("✅") < text.index("cycle:3:D3.2"), (
             f"Informational deliverable info must follow ✅, got:\n{text}"
         )

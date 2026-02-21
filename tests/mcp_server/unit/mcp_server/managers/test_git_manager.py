@@ -77,7 +77,6 @@ class TestGitManagerValidation:
         with pytest.raises(PreflightError, match="Working directory is not clean"):
             manager.create_branch("valid-name", "feature", "HEAD")
 
-
     def test_delete_branch_protected(self, manager: GitManager) -> None:
         """Test deletion of protected branch is prevented."""
         with pytest.raises(ValidationError, match="Cannot delete protected branch"):

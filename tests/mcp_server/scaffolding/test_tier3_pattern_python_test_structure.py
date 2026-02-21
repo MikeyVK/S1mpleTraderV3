@@ -28,10 +28,7 @@ from jinja2 import Environment, FileSystemLoader
 def jinja_env():
     """Create Jinja2 environment with template loader."""
     templates_dir = (
-        Path(__file__).parent.parent.parent.parent
-        / "mcp_server"
-        / "scaffolding"
-        / "templates"
+        Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
     )
     return Environment(loader=FileSystemLoader(str(templates_dir)))
 
@@ -41,9 +38,7 @@ class TestTier3PatternPythonTestStructure:
 
     def test_template_exists(self, jinja_env):
         """Test that template exists and loads."""
-        template = jinja_env.get_template(
-            "tier3_pattern_python_test_structure.jinja2"
-        )
+        template = jinja_env.get_template("tier3_pattern_python_test_structure.jinja2")
         assert template is not None
 
     def test_template_has_no_extends(self):
@@ -57,9 +52,9 @@ class TestTier3PatternPythonTestStructure:
         )
         content = template_path.read_text(encoding="utf-8")
         assert "{% extends" not in content
-        
+
         # Check for blocks in non-comment code
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         assert "{% block" not in no_comments
 
     def test_template_has_metadata(self):
@@ -96,7 +91,7 @@ class TestTier3PatternPythonTestStructure:
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         assert "# Arrange" in result
         assert "Setup" in result or "test data" in result.lower()
 
@@ -108,7 +103,7 @@ class TestTier3PatternPythonTestStructure:
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         assert "# Act" in result
         assert "Execute" in result or "functionality" in result.lower()
 
@@ -120,7 +115,7 @@ class TestTier3PatternPythonTestStructure:
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         assert "# Assert" in result
         assert "Verify" in result or "expected" in result.lower()
 
@@ -159,12 +154,12 @@ class TestTier3PatternPythonTestStructure:
             / "tier3_pattern_python_test_structure.jinja2"
         )
         content = template_path.read_text(encoding="utf-8")
-        
+
         # Count macros in actual code (not comments)
-        no_comments = re.sub(r'\{#.*?#\}', '', content, flags=re.DOTALL)
+        no_comments = re.sub(r"\{#.*?#\}", "", content, flags=re.DOTALL)
         macro_count = no_comments.count("{% macro")
         assert macro_count == 1
-        
+
         # No example test structure code (old blocks had ~240 lines)
         assert "class Test" not in content
         assert 'Test that"""' not in content  # No example docstrings
@@ -177,7 +172,7 @@ class TestTier3PatternPythonTestStructure:
 """
         template = jinja_env.from_string(template_str)
         result = template.render().strip()
-        
+
         # Valid Python comment starts with #
         assert result.startswith("#")
         # Comment is a single line (no newlines in middle)

@@ -45,9 +45,7 @@ class TestTemplateRootConfiguration:
         nonexistent_path = Path("/does/not/exist/templates")
 
         with patch.dict(os.environ, {"TEMPLATE_ROOT": str(nonexistent_path)}):
-            with pytest.raises(
-                FileNotFoundError, match="Template root.*does not exist"
-            ):
+            with pytest.raises(FileNotFoundError, match="Template root.*does not exist"):
                 TemplateScaffolder()
 
     def test_no_fallback_to_legacy_templates_dir(self):
@@ -72,6 +70,5 @@ class TestTemplateRootConfiguration:
 
         # pylint: disable=protected-access
         assert (
-            scaffolder._renderer.template_dir
-            == validation_service.template_analyzer.template_root
+            scaffolder._renderer.template_dir == validation_service.template_analyzer.template_root
         ), "Scaffolder and ValidationService must use same template root"

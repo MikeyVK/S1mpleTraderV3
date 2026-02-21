@@ -1,4 +1,5 @@
 """Tests for GitCheckoutTool state synchronization with PhaseStateEngine."""
+
 from unittest.mock import Mock, patch
 
 import pytest
@@ -22,18 +23,19 @@ class TestGitCheckoutStateSync:
 
         mock_engine = Mock()
         mock_engine.get_state.return_value = {
-            'current_phase': 'tdd',
-            'phase_history': ['research', 'planning', 'design', 'tdd']
+            "current_phase": "tdd",
+            "phase_history": ["research", "planning", "design", "tdd"],
         }
 
         # Patch imports that happen inside execute()
-        with patch(
-            'mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine',
-            return_value=mock_engine
-        ), \
-             patch('mcp_server.tools.git_tools.project_manager.ProjectManager'), \
-             patch('pathlib.Path.cwd', return_value=Mock()):
-
+        with (
+            patch(
+                "mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine",
+                return_value=mock_engine,
+            ),
+            patch("mcp_server.tools.git_tools.project_manager.ProjectManager"),
+            patch("pathlib.Path.cwd", return_value=Mock()),
+        ):
             # Execute
             result = await tool.execute(params)
 
@@ -60,13 +62,14 @@ class TestGitCheckoutStateSync:
         mock_engine.get_state.side_effect = ValueError("State sync failed")
 
         # Patch imports
-        with patch(
-            'mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine',
-            return_value=mock_engine
-        ), \
-             patch('mcp_server.tools.git_tools.project_manager.ProjectManager'), \
-             patch('pathlib.Path.cwd', return_value=Mock()):
-
+        with (
+            patch(
+                "mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine",
+                return_value=mock_engine,
+            ),
+            patch("mcp_server.tools.git_tools.project_manager.ProjectManager"),
+            patch("pathlib.Path.cwd", return_value=Mock()),
+        ):
             # Execute
             result = await tool.execute(params)
 
@@ -90,13 +93,14 @@ class TestGitCheckoutStateSync:
         mock_engine.get_state.return_value = {}  # No current_phase key
 
         # Patch imports
-        with patch(
-            'mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine',
-            return_value=mock_engine
-        ), \
-             patch('mcp_server.tools.git_tools.project_manager.ProjectManager'), \
-             patch('pathlib.Path.cwd', return_value=Mock()):
-
+        with (
+            patch(
+                "mcp_server.tools.git_tools.phase_state_engine.PhaseStateEngine",
+                return_value=mock_engine,
+            ),
+            patch("mcp_server.tools.git_tools.project_manager.ProjectManager"),
+            patch("pathlib.Path.cwd", return_value=Mock()),
+        ):
             # Execute
             result = await tool.execute(params)
 

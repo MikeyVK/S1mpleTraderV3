@@ -41,10 +41,7 @@ class TestScaffoldArtifactTool:
             ScaffoldArtifactInput()  # type: ignore[call-arg]
 
         # Valid input
-        input_data = ScaffoldArtifactInput(
-            artifact_type="dto",
-            name="User"
-        )
+        input_data = ScaffoldArtifactInput(artifact_type="dto", name="User")
         assert input_data.artifact_type == "dto"
         assert input_data.name == "User"
 
@@ -52,18 +49,14 @@ class TestScaffoldArtifactTool:
     async def test_scaffolds_code_artifact(self, tool, mock_manager):
         """Should scaffold code artifact (DTO)."""
         input_data = ScaffoldArtifactInput(
-            artifact_type="dto",
-            name="User",
-            context={"fields": [{"name": "id", "type": "int"}]}
+            artifact_type="dto", name="User", context={"fields": [{"name": "id", "type": "int"}]}
         )
 
         result = await tool.execute(input_data)
 
         # Verify manager called
         mock_manager.scaffold_artifact.assert_called_once_with(
-            "dto",
-            name="User",
-            fields=[{"name": "id", "type": "int"}]
+            "dto", name="User", fields=[{"name": "id", "type": "int"}]
         )
 
         # Verify result
@@ -79,11 +72,7 @@ class TestScaffoldArtifactTool:
         input_data = ScaffoldArtifactInput(
             artifact_type="design",
             name="system-architecture",
-            context={
-                "title": "System Architecture",
-                "author": "GitHub Copilot",
-                "status": "DRAFT"
-            }
+            context={"title": "System Architecture", "author": "GitHub Copilot", "status": "DRAFT"},
         )
 
         result = await tool.execute(input_data)
@@ -94,7 +83,7 @@ class TestScaffoldArtifactTool:
             name="system-architecture",
             title="System Architecture",
             author="GitHub Copilot",
-            status="DRAFT"
+            status="DRAFT",
         )
 
         # Verify result
@@ -116,14 +105,10 @@ class TestScaffoldArtifactTool:
     async def test_validation_error_returns_error_result(self, tool, mock_manager):
         """Should return error result on validation failure with hints in result.hints."""
         mock_manager.scaffold_artifact.side_effect = ValidationError(
-            "Invalid artifact type: unknown",
-            hints=["Available types: dto, worker, design"]
+            "Invalid artifact type: unknown", hints=["Available types: dto, worker, design"]
         )
 
-        input_data = ScaffoldArtifactInput(
-            artifact_type="unknown",
-            name="Test"
-        )
+        input_data = ScaffoldArtifactInput(artifact_type="unknown", name="Test")
 
         result = await tool.execute(input_data)
 
@@ -144,13 +129,10 @@ class TestScaffoldArtifactTool:
         """Should return error result on config error."""
         mock_manager.scaffold_artifact.side_effect = ConfigError(
             "No valid directory found for artifact type: dto",
-            file_path=".st3/project_structure.yaml"
+            file_path=".st3/project_structure.yaml",
         )
 
-        input_data = ScaffoldArtifactInput(
-            artifact_type="dto",
-            name="User"
-        )
+        input_data = ScaffoldArtifactInput(artifact_type="dto", name="User")
 
         result = await tool.execute(input_data)
 
@@ -168,8 +150,8 @@ class TestScaffoldArtifactTool:
             context={
                 "fields": [{"name": "id", "type": "int"}],
                 "docstring": "User data transfer object",
-                "generate_test": True
-            }
+                "generate_test": True,
+            },
         )
 
         await tool.execute(input_data)
@@ -180,16 +162,13 @@ class TestScaffoldArtifactTool:
             name="User",
             fields=[{"name": "id", "type": "int"}],
             docstring="User data transfer object",
-            generate_test=True
+            generate_test=True,
         )
 
     @pytest.mark.asyncio
     async def test_empty_context_dict_allowed(self, tool, mock_manager):
         """Should allow empty context dict."""
-        input_data = ScaffoldArtifactInput(
-            artifact_type="dto",
-            name="Simple"
-        )
+        input_data = ScaffoldArtifactInput(artifact_type="dto", name="Simple")
 
         result = await tool.execute(input_data)
 

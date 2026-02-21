@@ -6,6 +6,7 @@ cached instance after the schema file has been modified.
 NOTE: Tests use protected _instance access to demonstrate the bug.
 This is intentional test code that should trigger the protected-access warning.
 """
+
 import time
 from pathlib import Path
 
@@ -15,9 +16,7 @@ from mcp_server.config.label_config import LabelConfig
 class TestLabelConfigSingletonFix:
     """Verify Issue #67 fix: Singleton cache invalidation works correctly."""
 
-    def test_singleton_automatically_reloads_after_file_change(
-        self, tmp_path: Path
-    ) -> None:
+    def test_singleton_automatically_reloads_after_file_change(self, tmp_path: Path) -> None:
         """
         FIX VERIFICATION:
         1. Load LabelConfig from labels.yaml (cached in _instance)
@@ -121,9 +120,7 @@ freeform_exceptions: []
         assert len(config2.labels) == 2  # ✅ Works after reset
         assert config1 is not config2  # Different objects
 
-    def test_label_tools_get_fresh_data_after_file_change(
-        self, tmp_path: Path
-    ) -> None:
+    def test_label_tools_get_fresh_data_after_file_change(self, tmp_path: Path) -> None:
         """
         FIX VERIFICATION: Tools using label_exists() get fresh data.
         """
@@ -165,9 +162,7 @@ freeform_exceptions: []
 class TestLabelConfigCacheInvalidation:
     """Test cache invalidation based on file modification time (Issue #67 fix)."""
 
-    def test_load_detects_file_modification_and_reloads(
-        self, tmp_path: Path
-    ) -> None:
+    def test_load_detects_file_modification_and_reloads(self, tmp_path: Path) -> None:
         """RED: Test that load() reloads when file mtime changes."""
         config_file = tmp_path / "labels.yaml"
         initial_yaml = """

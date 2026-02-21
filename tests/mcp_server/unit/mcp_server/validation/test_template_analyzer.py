@@ -7,6 +7,7 @@ Tests according to TDD principles with comprehensive coverage.
 @layer: Tests (Unit)
 @dependencies: [pytest]
 """
+
 # Standard library
 from pathlib import Path
 
@@ -131,9 +132,7 @@ class TestTemplateAnalyzer:
         # Assert
         assert base is None
 
-    def test_get_inheritance_chain(
-        self, analyzer: TemplateAnalyzer, template_root: Path
-    ) -> None:
+    def test_get_inheritance_chain(self, analyzer: TemplateAnalyzer, template_root: Path) -> None:
         """Test getting full inheritance chain from specific to base."""
         # Arrange
         base_dir = template_root / "base"
@@ -142,9 +141,7 @@ class TestTemplateAnalyzer:
         base_template.write_text("Base content")
 
         worker_template = template_root / "worker.py.jinja2"
-        worker_template.write_text(
-            '{% extends "base/base_component.py.jinja2" %}'
-        )
+        worker_template.write_text('{% extends "base/base_component.py.jinja2" %}')
 
         # Act
         chain = analyzer.get_inheritance_chain(worker_template)
@@ -154,25 +151,11 @@ class TestTemplateAnalyzer:
         assert chain[0].name == "worker.py.jinja2"
         assert chain[1].name == "base_component.py.jinja2"
 
-    def test_merge_metadata_concatenates_strict_rules(
-        self, analyzer: TemplateAnalyzer
-    ) -> None:
+    def test_merge_metadata_concatenates_strict_rules(self, analyzer: TemplateAnalyzer) -> None:
         """Test merging metadata concatenates strict rules."""
         # Arrange
-        child = {
-            "validates": {
-                "strict": [
-                    {"rule": "child_rule", "description": "Child"}
-                ]
-            }
-        }
-        parent = {
-            "validates": {
-                "strict": [
-                    {"rule": "parent_rule", "description": "Parent"}
-                ]
-            }
-        }
+        child = {"validates": {"strict": [{"rule": "child_rule", "description": "Child"}]}}
+        parent = {"validates": {"strict": [{"rule": "parent_rule", "description": "Parent"}]}}
 
         # Act
         merged = analyzer.merge_metadata(child, parent)
@@ -182,9 +165,7 @@ class TestTemplateAnalyzer:
         assert merged["validates"]["strict"][0]["rule"] == "child_rule"
         assert merged["validates"]["strict"][1]["rule"] == "parent_rule"
 
-    def test_merge_metadata_child_overrides_enforcement(
-        self, analyzer: TemplateAnalyzer
-    ) -> None:
+    def test_merge_metadata_child_overrides_enforcement(self, analyzer: TemplateAnalyzer) -> None:
         """Test child enforcement level overrides parent."""
         # Arrange
         child = {"enforcement": "ARCHITECTURAL"}
@@ -196,9 +177,7 @@ class TestTemplateAnalyzer:
         # Assert
         assert merged["enforcement"] == "ARCHITECTURAL"
 
-    def test_extract_jinja_variables(
-        self, analyzer: TemplateAnalyzer, template_root: Path
-    ) -> None:
+    def test_extract_jinja_variables(self, analyzer: TemplateAnalyzer, template_root: Path) -> None:
         """Test extracting undeclared Jinja2 variables from template."""
         # Arrange
         template_file = template_root / "test.jinja2"

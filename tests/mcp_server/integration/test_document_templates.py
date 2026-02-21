@@ -62,9 +62,7 @@ class TestResearchTemplate:
 
         lines = result.split("\n")
         # After comment headers, first non-comment line should be title
-        non_comment_lines = [
-            line for line in lines if not line.startswith("<!--")
-        ]
+        non_comment_lines = [line for line in lines if not line.startswith("<!--")]
         assert non_comment_lines[0].startswith("# ")
 
     def test_has_proper_dividers_with_blank_lines(self, template):

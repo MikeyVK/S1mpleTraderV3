@@ -1,4 +1,5 @@
 """Test server lifecycle audit logging."""
+
 import json
 from unittest.mock import MagicMock, patch
 
@@ -37,7 +38,8 @@ async def test_server_startup_logged_to_audit(tmp_path):
 
             # Should have at least one startup message
             startup_entries = [
-                entry for entry in log_entries
+                entry
+                for entry in log_entries
                 if "server_lifecycle" in entry.get("logger", "")
                 and entry.get("message") == "MCP server starting"
             ]
@@ -76,7 +78,8 @@ async def test_server_shutdown_logged_to_audit(tmp_path):
 
             # Should have shutdown message
             shutdown_entries = [
-                entry for entry in log_entries
+                entry
+                for entry in log_entries
                 if "server_lifecycle" in entry.get("logger", "")
                 and entry.get("message") == "MCP server shutting down"
             ]

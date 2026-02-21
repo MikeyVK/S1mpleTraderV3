@@ -67,10 +67,7 @@ async def test_template_missing_error_propagates_through_call_chain(
       initial_state: CREATED
       valid_transitions: []
 """
-    content = content.replace(
-        "artifact_types:",
-        f"artifact_types:{missing_artifact}"
-    )
+    content = content.replace("artifact_types:", f"artifact_types:{missing_artifact}")
     artifacts_yaml.write_text(content, encoding="utf-8")
 
     # Reload registry to pick up new artifact type
@@ -79,9 +76,7 @@ async def test_template_missing_error_propagates_through_call_chain(
     # Reinitialize manager with updated registry (hermetic fixture uses temp workspace)
     # The artifact_manager fixture already has temp renderer injected
     # We just need to reload the registry
-    artifact_manager.scaffolder.registry = ArtifactRegistryConfig.from_file(
-        artifacts_yaml
-    )
+    artifact_manager.scaffolder.registry = ArtifactRegistryConfig.from_file(artifacts_yaml)
 
     # Create tool with real manager (no mocks!)
     tool = ScaffoldArtifactTool(manager=artifact_manager)
@@ -98,7 +93,7 @@ async def test_template_missing_error_propagates_through_call_chain(
             artifact_type="dto_missing",
             name="TestDTO",
             output_path="mcp_server/dtos/test.py",
-            context={"description": "Test DTO"}
+            context={"description": "Test DTO"},
         )
     )
 
@@ -115,8 +110,7 @@ async def test_template_missing_error_propagates_through_call_chain(
     # Hints should mention registry, artifacts.yaml, or available types
     hints_text = " ".join(result.hints).lower()
     assert any(
-        keyword in hints_text
-        for keyword in ["registry", "artifacts.yaml", "available", "check"]
+        keyword in hints_text for keyword in ["registry", "artifacts.yaml", "available", "check"]
     ), f"Expected registry-related hints, got: {result.hints}"
 
     # Verify message contains artifact type information (not template - error happens before
@@ -124,12 +118,8 @@ async def test_template_missing_error_propagates_through_call_chain(
     assert result.content is not None
     assert len(result.content) > 0
     message = result.content[0]["text"]
-    assert "dto_missing" in message, (
-        f"Expected artifact type name in message, got: {message}"
-    )
-    assert "artifacts.yaml" in message, (
-        f"Expected config file reference in message, got: {message}"
-    )
+    assert "dto_missing" in message, f"Expected artifact type name in message, got: {message}"
+    assert "artifacts.yaml" in message, f"Expected config file reference in message, got: {message}"
 
     # Note: No file_path expectation - ExecutionError does not have file_path
     # (only ConfigError has file_path in exceptions.py contract)

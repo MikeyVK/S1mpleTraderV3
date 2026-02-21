@@ -93,8 +93,7 @@ class TestScaffoldDesignDocumentE2E:
         assert expected_path in result
 
         expected_meta = (
-            "<!-- template=design version=abc123def456 "
-            "created=2026-01-26T15:30:00Z updated= -->"
+            "<!-- template=design version=abc123def456 created=2026-01-26T15:30:00Z updated= -->"
         )
         assert expected_meta in result
 
@@ -139,8 +138,7 @@ class TestScaffoldDesignDocumentE2E:
         # NO frontmatter (removed per BASE_TEMPLATE alignment)
         lines = result.split("\n")
         non_comment_lines = [
-            line for line in lines
-            if line.strip() and not line.strip().startswith("<!--")
+            line for line in lines if line.strip() and not line.strip().startswith("<!--")
         ]
         # First non-comment line should be title
         assert non_comment_lines[0].startswith("# ")

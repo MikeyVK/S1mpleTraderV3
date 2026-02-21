@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for Issue #52 alignment - Validation TEMPLATE_METADATA (Issue #72 Task 1.5).
 
 RED phase: Tests for TemplateAnalyzer.extract_metadata() on Tier 0-2 templates.
@@ -134,7 +134,10 @@ class TestTier1ValidationMetadata:
         assert "validates" in metadata
         strict_rules = metadata["validates"].get("strict", [])
         # Should validate Python patterns: class, def, docstrings
-        assert any("class" in rule.lower() or "def" in rule.lower() or '"""' in rule for rule in strict_rules)
+        assert any(
+            "class" in rule.lower() or "def" in rule.lower() or '"""' in rule
+            for rule in strict_rules
+        )
 
     def test_tier2_markdown_has_validation_metadata(self):
         """Tier 2 Markdown template should have validation metadata."""
@@ -165,15 +168,18 @@ class TestValidationMetadataStructure:
         """Get templates directory path."""
         return Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 
-    @pytest.mark.parametrize("template_file", [
-        "tier0_base_artifact.jinja2",
-        "tier1_base_code.jinja2",
-        "tier1_base_document.jinja2",
-        "tier1_base_config.jinja2",
-        "tier2_base_python.jinja2",
-        "tier2_base_markdown.jinja2",
-        "tier2_base_yaml.jinja2",
-    ])
+    @pytest.mark.parametrize(
+        "template_file",
+        [
+            "tier0_base_artifact.jinja2",
+            "tier1_base_code.jinja2",
+            "tier1_base_document.jinja2",
+            "tier1_base_config.jinja2",
+            "tier2_base_python.jinja2",
+            "tier2_base_markdown.jinja2",
+            "tier2_base_yaml.jinja2",
+        ],
+    )
     def test_all_templates_have_required_fields(self, template_file):
         """All base templates should have required validation metadata fields."""
         analyzer = TemplateAnalyzer(self.get_templates_dir())
@@ -200,4 +206,8 @@ class TestValidationMetadataStructure:
             assert isinstance(validates, dict)
             if metadata["enforcement"] == "STRICT":
                 # Strict enforcement can have strict rules OR structural validation
-                assert "strict" in validates or "required_blocks" in validates or "structure" in validates
+                assert (
+                    "strict" in validates
+                    or "required_blocks" in validates
+                    or "structure" in validates
+                )

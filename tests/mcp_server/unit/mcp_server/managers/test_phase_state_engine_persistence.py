@@ -7,6 +7,7 @@ Tests verify:
 2. Branch switch overwrites state.json completely
 3. State is immediately written and readable after get_state()
 """
+
 import json
 from pathlib import Path
 
@@ -30,15 +31,11 @@ class TestPhaseStateEnginePersistence:
         manager = ProjectManager(workspace_root=workspace_root)
         # Create project 1
         manager.initialize_project(
-            issue_number=1,
-            issue_title="First feature",
-            workflow_name="feature"
+            issue_number=1, issue_title="First feature", workflow_name="feature"
         )
         # Create project 2
         manager.initialize_project(
-            issue_number=2,
-            issue_title="Second feature",
-            workflow_name="feature"
+            issue_number=2, issue_title="Second feature", workflow_name="feature"
         )
         return manager
 
@@ -47,10 +44,7 @@ class TestPhaseStateEnginePersistence:
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=project_manager
-        )
+        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
 
     def test_state_json_contains_single_branch_only(
         self, state_engine: PhaseStateEngine, workspace_root: Path
@@ -69,20 +63,24 @@ class TestPhaseStateEnginePersistence:
         state_file = workspace_root / ".st3" / "state.json"
         assert state_file.exists(), "state.json should be created"
 
-        with open(state_file, encoding='utf-8') as f:
+        with open(state_file, encoding="utf-8") as f:
             disk_state = json.load(f)
 
         # Verify single-branch model: top-level dict should BE the branch state
-        assert disk_state.get("branch") == "feature/1-first-feature", \
+        assert disk_state.get("branch") == "feature/1-first-feature", (
             "state.json should contain the current branch at top level"
-        assert disk_state.get("issue_number") == 1, \
+        )
+        assert disk_state.get("issue_number") == 1, (
             "state.json should contain branch fields at top level"
+        )
 
         # Verify no nested branch dictionaries
-        assert "feature/1-first-feature" not in disk_state, \
+        assert "feature/1-first-feature" not in disk_state, (
             "state.json should NOT contain branch name as nested key"
-        assert "feature/2-second-feature" not in disk_state, \
+        )
+        assert "feature/2-second-feature" not in disk_state, (
             "state.json should NOT contain other branches"
+        )
 
     def test_branch_switch_overwrites_state_json_completely(
         self, state_engine: PhaseStateEngine, workspace_root: Path
@@ -102,20 +100,20 @@ class TestPhaseStateEnginePersistence:
 
         # Read state.json
         state_file = workspace_root / ".st3" / "state.json"
-        with open(state_file, encoding='utf-8') as f:
+        with open(state_file, encoding="utf-8") as f:
             disk_state = json.load(f)
 
         # Verify complete overwrite
-        assert disk_state.get("branch") == "feature/2-second-feature", \
+        assert disk_state.get("branch") == "feature/2-second-feature", (
             "state.json should contain new branch"
-        assert disk_state.get("issue_number") == 2, \
-            "state.json should contain new issue number"
+        )
+        assert disk_state.get("issue_number") == 2, "state.json should contain new issue number"
 
         # Verify old branch is gone
-        assert disk_state.get("issue_number") != 1, \
-            "Old branch data should be completely removed"
-        assert "feature/1-first-feature" not in json.dumps(disk_state), \
+        assert disk_state.get("issue_number") != 1, "Old branch data should be completely removed"
+        assert "feature/1-first-feature" not in json.dumps(disk_state), (
             "No reference to old branch should exist"
+        )
 
     def test_state_immediately_readable_after_get_state(
         self, state_engine: PhaseStateEngine, workspace_root: Path
@@ -134,9 +132,8 @@ class TestPhaseStateEnginePersistence:
         state_file = workspace_root / ".st3" / "state.json"
         assert state_file.exists(), "state.json should exist immediately"
 
-        with open(state_file, encoding='utf-8') as f:
+        with open(state_file, encoding="utf-8") as f:
             disk_state = json.load(f)
 
         # Verify content matches
-        assert disk_state == returned_state, \
-            "Disk state should match returned state immediately"
+        assert disk_state == returned_state, "Disk state should match returned state immediately"

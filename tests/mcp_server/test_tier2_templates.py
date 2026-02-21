@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for Tier 2 language base templates (Issue #72 Task 1.4).
 
 RED phase: Tests for tier2_base_{python,markdown,yaml}.jinja2 inheritance
@@ -16,12 +16,16 @@ class TestTier2PythonTemplate:
     @staticmethod
     def get_env() -> Environment:
         """Get Jinja2 environment with templates directory."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         return Environment(loader=FileSystemLoader(str(templates_dir)))
 
     def test_inherits_from_tier1_code(self):
         """Tier 2 Python template should inherit from Tier 1 CODE template."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         template_path = templates_dir / "tier2_base_python.jinja2"
         content = template_path.read_text(encoding="utf-8")
         assert 'extends "tier1_base_code.jinja2"' in content
@@ -115,12 +119,16 @@ class TestTier2MarkdownTemplate:
     @staticmethod
     def get_env() -> Environment:
         """Get Jinja2 environment with templates directory."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         return Environment(loader=FileSystemLoader(str(templates_dir)))
 
     def test_inherits_from_tier1_document(self):
         """Tier 2 Markdown template should inherit from Tier 1 DOCUMENT template."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         template_path = templates_dir / "tier2_base_markdown.jinja2"
         content = template_path.read_text(encoding="utf-8")
         assert 'extends "tier1_base_document.jinja2"' in content
@@ -197,12 +205,16 @@ class TestTier2YAMLTemplate:
     @staticmethod
     def get_env() -> Environment:
         """Get Jinja2 environment with templates directory."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         return Environment(loader=FileSystemLoader(str(templates_dir)))
 
     def test_inherits_from_tier1_config(self):
         """Tier 2 YAML template should inherit from Tier 1 CONFIG template."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         template_path = templates_dir / "tier2_base_yaml.jinja2"
         content = template_path.read_text(encoding="utf-8")
         assert 'extends "tier1_base_config.jinja2"' in content
@@ -271,12 +283,16 @@ class TestTier2MetadataStructure:
     @staticmethod
     def get_env():
         """Get Jinja2 environment with templates directory."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         return Environment(loader=FileSystemLoader(str(templates_dir)))
 
     def test_python_template_has_metadata(self):
         """Tier 2 Python template should have TEMPLATE_METADATA."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         template_path = templates_dir / "tier2_base_python.jinja2"
         content = template_path.read_text(encoding="utf-8")
         assert "TEMPLATE_METADATA:" in content
@@ -286,7 +302,9 @@ class TestTier2MetadataStructure:
 
     def test_markdown_template_has_metadata(self):
         """Tier 2 Markdown template should have TEMPLATE_METADATA."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         template_path = templates_dir / "tier2_base_markdown.jinja2"
         content = template_path.read_text(encoding="utf-8")
         assert "TEMPLATE_METADATA:" in content
@@ -296,7 +314,9 @@ class TestTier2MetadataStructure:
 
     def test_yaml_template_has_metadata(self):
         """Tier 2 YAML template should have TEMPLATE_METADATA."""
-        templates_dir = Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        templates_dir = (
+            Path(__file__).parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
+        )
         template_path = templates_dir / "tier2_base_yaml.jinja2"
         content = template_path.read_text(encoding="utf-8")
         assert "TEMPLATE_METADATA:" in content
