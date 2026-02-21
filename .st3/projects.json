@@ -840,5 +840,17 @@
         ]
       }
     }
+  },
+  "236": {
+    "issue_title": "Backfill existing issues: clean titles, add labels, re-scaffold bodies",
+    "workflow_name": "docs",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "planning",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-02-21T10:03:18.664629+00:00"
   }
 }
