@@ -60,7 +60,7 @@ phases:
     subphases: ["delegation", "sync", "review"]
 
 version: "1.0"
-""")
+""", encoding="utf-8")
     return config_path
 
 

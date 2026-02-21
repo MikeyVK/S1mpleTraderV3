@@ -45,7 +45,7 @@ class ScopeEncoder:
             FileNotFoundError: workphases.yaml not found
         """
         if self._config is None:
-            with open(self.workphases_path) as f:
+            with open(self.workphases_path, encoding="utf-8") as f:
                 loaded = yaml.safe_load(f)
                 self._config = loaded if loaded is not None else {}
 
