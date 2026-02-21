@@ -31,6 +31,7 @@ def fixture_registry() -> ArtifactRegistryConfig:
     """Provides artifact registry configuration"""
     return ArtifactRegistryConfig.from_file()
 
+
 @pytest.fixture(name="scaffolder")
 def fixture_scaffolder(registry: ArtifactRegistryConfig) -> TemplateScaffolder:
     """Provides TemplateScaffolder instance with introspection"""
@@ -40,10 +41,7 @@ def fixture_scaffolder(registry: ArtifactRegistryConfig) -> TemplateScaffolder:
 class TestTemplateScaffolderIntrospection:
     """Tests for TemplateScaffolder introspection integration."""
 
-    def test_validate_uses_introspection_not_yaml(
-        self,
-        scaffolder: TemplateScaffolder
-    ) -> None:
+    def test_validate_uses_introspection_not_yaml(self, scaffolder: TemplateScaffolder) -> None:
         """RED: validate() should use template introspection for schema extraction"""
         # Arrange - DTO template has {{ name }}, {{ description }}, {% if frozen %}
         # System fields should be filtered
@@ -57,24 +55,20 @@ class TestTemplateScaffolderIntrospection:
             examples=[{"test": "data"}],
             fields=[{"name": "test", "type": "str", "description": "Test"}],
             dependencies=["pydantic"],
-            responsibilities=["Validation"]
+            responsibilities=["Validation"],
+            output_path="src/dtos/TestDTO.py",
         )
 
         # Assert - validation passes (frozen is optional, system fields not required)
         assert result is True
 
-    def test_validate_error_includes_template_schema(
-        self,
-        scaffolder: TemplateScaffolder
-    ) -> None:
+    def test_validate_error_includes_template_schema(self, scaffolder: TemplateScaffolder) -> None:
         """RED: validate() raises ValidationError with schema when fields missing"""
         # Arrange - Concrete DTO template requires only 'name' (fields is optional)
 
         # Act & Assert
         with pytest.raises(ValidationError) as exc_info:
-            scaffolder.validate("dto")  # Missing name (required)
-
-        # Assert - error should have schema attribute with template-derived fields
+            scaffolder.validate("dto", output_path="src/dtos/TestDTO.py")  # Missing name (required)
         error = exc_info.value
         assert hasattr(error, "schema"), "ValidationError should have schema attribute"
         # Concrete DTO template: name=required, fields/description/validators=optional
@@ -82,10 +76,7 @@ class TestTemplateScaffolderIntrospection:
         assert "fields" in error.schema.optional
         assert "description" in error.schema.optional
 
-    def test_validate_allows_optional_fields_omitted(
-        self,
-        scaffolder: TemplateScaffolder
-    ) -> None:
+    def test_validate_allows_optional_fields_omitted(self, scaffolder: TemplateScaffolder) -> None:
         """RED: validate() allows optional fields to be omitted"""
         # Arrange - DTO has optional 'frozen' field ({% if frozen %})
 
@@ -98,17 +89,15 @@ class TestTemplateScaffolderIntrospection:
             examples=[{"test": "data"}],
             fields=[{"name": "test", "type": "str", "description": "Test"}],
             dependencies=["pydantic"],
-            responsibilities=["Validation"]
+            responsibilities=["Validation"],
+            output_path="src/dtos/TestDTO.py",
             # validators omitted - should be OK (optional)
         )
 
         # Assert
         assert result is True
 
-    def test_validate_skips_system_fields(
-        self,
-        scaffolder: TemplateScaffolder
-    ) -> None:
+    def test_validate_skips_system_fields(self, scaffolder: TemplateScaffolder) -> None:
         """RED: validate() does NOT require system-injected fields"""
         # Arrange - template uses {{ template_id }}, {{ template_version }}, etc.
         # These are injected by ArtifactManager, NOT provided by agent
@@ -122,7 +111,8 @@ class TestTemplateScaffolderIntrospection:
             examples=[{"test": "data"}],
             fields=[{"name": "test", "type": "str", "description": "Test"}],
             dependencies=["pydantic"],
-            responsibilities=["Validation"]
+            responsibilities=["Validation"],
+            output_path="src/dtos/TestDTO.py",
             # NO template_id, template_version, scaffold_created, output_path
         )
 

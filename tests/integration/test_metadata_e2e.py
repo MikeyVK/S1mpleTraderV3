@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.core.exceptions import ConfigError, MetadataParseError
+from mcp_server.core.exceptions import MetadataParseError, ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolding.metadata import ScaffoldMetadataParser
 from mcp_server.scaffolding.template_registry import TemplateRegistry
@@ -40,22 +40,23 @@ class TestMetadataEndToEnd:
 
     @pytest.mark.asyncio
     async def test_scaffold_file_artifact_has_metadata(
-        self, manager: ArtifactManager, parser: ScaffoldMetadataParser
+        self, manager: ArtifactManager, parser: ScaffoldMetadataParser, tmp_path: Path
     ) -> None:
         """E2E: Scaffold DTO → file written → metadata parsed."""
         # Scaffold DTO artifact (file type)
         result = await manager.scaffold_artifact(
             "dto",
+            output_path=str(tmp_path / "UserDTO.py"),
             name="UserDTO",
             description="User data transfer object",
             frozen=False,  # User state is mutable
             examples=[{"id": 123, "name": "John Doe"}],
             fields=[
                 {"name": "id", "type": "int", "description": "User ID"},
-                {"name": "name", "type": "str", "description": "User name"}
+                {"name": "name", "type": "str", "description": "User name"},
             ],
             dependencies=["pydantic"],
-            responsibilities=["User data validation"]
+            responsibilities=["User data validation"],
         )
 
         # Should return path (file artifact)
@@ -82,18 +83,19 @@ class TestMetadataEndToEnd:
 
     @pytest.mark.asyncio
     async def test_scaffold_file_artifact_returns_path(
-        self, manager: ArtifactManager
+        self, manager: ArtifactManager, tmp_path: Path
     ) -> None:
         """E2E: Scaffold file artifact → returns path → file exists."""
         result = await manager.scaffold_artifact(
             "dto",
+            output_path=str(tmp_path / "TestDTO.py"),
             name="TestDTO",
             description="Test DTO",
             frozen=True,
             examples=[{"test": "data"}],
             fields=[{"name": "test", "type": "str", "description": "Test field"}],
             dependencies=["pydantic"],
-            responsibilities=["Data validation"]
+            responsibilities=["Data validation"],
         )
 
         # Should return path string
@@ -126,7 +128,7 @@ class TestMetadataEndToEnd:
         invalid_file.write_text(
             "# backend/dtos/invalid.py\n"
             "# template=dto version=NOT_A_VERSION created=2026-01-20T14:00:00Z updated=\n",
-            encoding="utf-8"
+            encoding="utf-8",
         )
 
         # Parse should raise MetadataParseError for invalid version format
@@ -135,15 +137,13 @@ class TestMetadataEndToEnd:
         # Error is raised successfully - test passed!
 
     @pytest.mark.asyncio
-    async def test_workspace_root_not_set_gives_helpful_error(
-        self
-    ) -> None:
-        """E2E: workspace_root not set → ConfigError with hints."""
+    async def test_workspace_root_not_set_gives_helpful_error(self) -> None:
+        """E2E: workspace_root not set + no output_path → ValidationError (C2 gate)."""
         # Create manager WITHOUT workspace_root
         manager = ArtifactManager()
 
-        # Scaffold without output_path should fail with helpful error
-        with pytest.raises(ConfigError) as exc_info:
+        # Scaffold without output_path should fail with C2 gate error
+        with pytest.raises(ValidationError) as exc_info:
             await manager.scaffold_artifact(
                 "dto",
                 name="TestDTO",
@@ -152,25 +152,22 @@ class TestMetadataEndToEnd:
                 examples=[{"test": "data"}],
                 fields=[{"name": "test", "type": "str", "description": "Test field"}],
                 dependencies=["pydantic"],
-                responsibilities=["Validation"]
+                responsibilities=["Validation"],
             )
 
-        # Error should have helpful hints
+        # Error should be the C2 gate error (output_path required for file artifacts)
         error_msg = str(exc_info.value)
-        assert "workspace_root not configured" in error_msg
-        assert "Option 1:" in error_msg or "Option 2:" in error_msg or "Option 3:" in error_msg
+        assert "output_path is required for file artifacts" in error_msg
 
     @pytest.mark.skip(reason="commit_message template in wrong location (separate issue)")
     @pytest.mark.asyncio
-    async def test_scaffold_ephemeral_returns_temp_path(
-        self, manager: ArtifactManager
-    ) -> None:
+    async def test_scaffold_ephemeral_returns_temp_path(self, manager: ArtifactManager) -> None:
         """E2E: Scaffold ephemeral artifact → writes to .st3/temp/ and returns path."""
         result = await manager.scaffold_artifact(
             "commit_message",
             type="feat",
             summary="Add new feature",
-            description="Detailed description of the feature"
+            description="Detailed description of the feature",
         )
 
         # Should return temp file path string
@@ -190,6 +187,7 @@ class TestMetadataEndToEnd:
         metadata = parser.parse(content, ".txt")
         assert metadata is not None
         assert metadata["template"] == "commit_message"
+
     @pytest.mark.asyncio
     async def test_scaffold_registry_roundtrip(
         self, tmp_path: Path, parser: ScaffoldMetadataParser
@@ -208,21 +206,19 @@ class TestMetadataEndToEnd:
         template_registry = TemplateRegistry(registry_path=registry_path)
 
         # Create manager WITH registry DI
-        manager = ArtifactManager(
-            workspace_root=str(tmp_path),
-            template_registry=template_registry
-        )
+        manager = ArtifactManager(workspace_root=str(tmp_path), template_registry=template_registry)
 
         # 1. Scaffold artifact
         result = await manager.scaffold_artifact(
             "dto",
+            output_path=str(tmp_path / "ProvenanceDto.py"),
             name="ProvenanceDto",
             description="Test provenance tracking",
             frozen=True,
             examples=[{"tracking_id": "test-123"}],
             fields=[{"name": "tracking_id", "type": "str", "description": "Tracking ID"}],
             dependencies=["pydantic"],
-            responsibilities=["Provenance data validation"]
+            responsibilities=["Provenance data validation"],
         )
 
         # Verify file was created

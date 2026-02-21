@@ -59,7 +59,7 @@ class TestArtifactManagerRegistryIntegration:
             # Inject mock_registry into manager
             manager.template_registry = mock_registry
 
-            await manager.scaffold_artifact('dto', name='Test', fields=[])
+            await manager.scaffold_artifact('dto', output_path='test_scaffold_output.py', name='Test', fields=[])
 
         # After Task 1.1c GREEN:
         mock_registry.save_version.assert_called_once()
@@ -93,7 +93,7 @@ class TestArtifactManagerRegistryIntegration:
                 validation_service=mock_validation_service
             )
 
-            await manager.scaffold_artifact('dto', name='Test', fields=[])
+            await manager.scaffold_artifact('dto', output_path='test_scaffold_output.py', name='Test', fields=[])
 
         # REQUIREMENT: scaffolder.scaffold() should receive version_hash in context
         call_args = mock_scaffolder.scaffold.call_args
@@ -131,7 +131,7 @@ class TestArtifactManagerRegistryIntegration:
                 validation_service=mock_validation_service
             )
 
-            await manager.scaffold_artifact('dto', name='Test', fields=[])
+            await manager.scaffold_artifact('dto', output_path='test_scaffold_output.py', name='Test', fields=[])
 
         # REQUIREMENT: artifact_type should be in context
         call_args = mock_scaffolder.scaffold.call_args
@@ -169,7 +169,7 @@ class TestArtifactManagerRegistryIntegration:
                 validation_service=mock_validation_service
             )
 
-            await manager.scaffold_artifact('dto', name='Test', fields=[])
+            await manager.scaffold_artifact('dto', output_path='test_scaffold_output.py', name='Test', fields=[])
 
         # REQUIREMENT: .st3/template_registry.yaml should exist after scaffolding
         # Currently FAILS - registry not integrated

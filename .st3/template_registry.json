@@ -359,6 +359,19 @@
         "template_id": "generic.md",
         "version": "1.0.0"
       }
+    },
+    "3d15d309": {
+      "artifact_type": "unit_test",
+      "created": "2026-02-21T15:27:47.853461+00:00",
+      "hash_algorithm": "SHA256",
+      "concrete": {
+        "template_id": "test_unit.py",
+        "version": "1.0"
+      },
+      "tier0": {
+        "template_id": "tier2_base_python",
+        "version": "1.2.0"
+      }
     }
   },
   "current_versions": {
@@ -373,7 +386,7 @@
     "service": "5d5b489a",
     "schema": "74378193",
     "tool": "27130d2b",
-    "unit_test": "6b0f1f7e",
+    "unit_test": "3d15d309",
     "integration_test": "85ea75d4",
     "pr": "93bb9b4e",
     "issue": "8dd42510",
@@ -381,5 +394,5 @@
     "generic_doc": "43c84181"
   },
   "templates": {},
-  "last_updated": "2026-02-16T22:29:29.798444+00:00"
+  "last_updated": "2026-02-21T15:27:47.853477+00:00"
 }

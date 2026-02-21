@@ -48,7 +48,7 @@ def _run_v2(manager: ArtifactManager, artifact_type: str, context: dict) -> str:
 
     os.environ["PYDANTIC_SCAFFOLDING_ENABLED"] = "true"
     try:
-        asyncio.run(manager.scaffold_artifact(artifact_type, **context))
+        asyncio.run(manager.scaffold_artifact(artifact_type, output_path="test_scaffold_output.py", **context))
     finally:
         os.environ.pop("PYDANTIC_SCAFFOLDING_ENABLED", None)
 
