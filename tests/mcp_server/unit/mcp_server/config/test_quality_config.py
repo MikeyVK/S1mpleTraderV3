@@ -22,7 +22,7 @@ import pytest
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
-from mcp_server.config.quality_config import QualityConfig, QualityGate, GateScope
+from mcp_server.config.quality_config import GateScope, QualityConfig, QualityGate
 
 
 @pytest.fixture(name="quality_yaml_path")
