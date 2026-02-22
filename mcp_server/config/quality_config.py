@@ -40,6 +40,35 @@ class ViolationDTO:
     severity: str = "error"
 
 
+class JsonViolationsParsing(BaseModel):
+    """JSON parsing strategy: extracts violations from structured tool output.
+
+    Used for gates that emit a JSON array of violation objects (ruff check,
+    pyright). ``field_map`` maps ViolationDTO field names to source JSON keys
+    (optionally as ``/``-separated paths for nested access).
+    """
+
+    field_map: dict[str, str] = Field(
+        ...,
+        min_length=1,
+        description="ViolationDTO field → source JSON key mapping.",
+    )
+    violations_path: str | None = Field(
+        default=None,
+        description="Dot-separated path to the violations array (None = root).",
+    )
+    line_offset: int = Field(
+        default=0,
+        description="Added to the mapped line value to normalize 0-based indices.",
+    )
+    fixable_when: str | None = Field(
+        default=None,
+        description="Source JSON key; sets fixable=True when the extracted value is truthy.",
+    )
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
 class ExecutionConfig(BaseModel):
     """How to execute a gate tool."""
 
