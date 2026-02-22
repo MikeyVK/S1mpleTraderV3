@@ -10,11 +10,13 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
 
-pytestmark = pytest.mark.integration
+pytestmark = pytest.mark.asyncio
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,30 +45,30 @@ def make_input(**overrides: object) -> CreateIssueInput:
 
 @pytest.mark.asyncio
 async def test_minimal_input_creates_issue_with_correct_labels() -> None:
-    """Create an issue with only required fields; verify label set on GitHub."""
-    tool = CreateIssueTool()
+    """Minimal input assembles correct label set — verified via mock GitHubManager.
+
+    Verifies label assembly logic (type, scope, priority, phase) without live API call.
+    """
+    mock_manager = MagicMock()
+    mock_manager.create_issue.return_value = {
+        "number": 42,
+        "title": "[e2e smoke] create_issue integration test",
+    }
+
+    tool = CreateIssueTool(manager=mock_manager)
     params = make_input()
 
     result = await tool.execute(params)
 
     assert not result.is_error, f"Expected success, got error: {result.content}"
-    assert "Created issue #" in result.content[0]["text"]
+    assert "Created issue #42" in result.content[0]["text"]
 
-    # Parse the issue number from the result message
-    text: str = result.content[0]["text"]
-    issue_number = int(text.split("#")[1].split(":")[0].strip())
-
-    # Fetch the created issue and verify labels
-    from mcp_server.managers.github_manager import GitHubManager
-
-    manager = GitHubManager()
-    issue = manager.get_issue(issue_number)
-    label_names = {lbl.name for lbl in issue.labels}
+    _, call_kwargs = mock_manager.create_issue.call_args
+    label_names = set(call_kwargs["labels"])
 
     assert "type:feature" in label_names, f"Missing type:feature in {label_names}"
     assert "scope:tooling" in label_names, f"Missing scope:tooling in {label_names}"
     assert "priority:low" in label_names, f"Missing priority:low in {label_names}"
-    # feature workflow first phase = research
     assert "phase:research" in label_names, f"Missing phase:research in {label_names}"
 
 
@@ -77,8 +79,17 @@ async def test_minimal_input_creates_issue_with_correct_labels() -> None:
 
 @pytest.mark.asyncio
 async def test_all_options_creates_issue_with_full_label_set() -> None:
-    """Create an epic issue with parent; verify type:epic + parent:N labels."""
-    tool = CreateIssueTool()
+    """All options assemble complete label set — verified via mock GitHubManager.
+
+    Verifies type:epic, parent:N, scope, priority and phase labels are all present.
+    """
+    mock_manager = MagicMock()
+    mock_manager.create_issue.return_value = {
+        "number": 99,
+        "title": "[e2e smoke] create_issue full-options test",
+    }
+
+    tool = CreateIssueTool(manager=mock_manager)
     params = make_input(
         title="[e2e smoke] create_issue full-options test",
         issue_type="feature",
@@ -87,7 +98,7 @@ async def test_all_options_creates_issue_with_full_label_set() -> None:
         priority="medium",
         scope="mcp-server",
         body=IssueBody(
-            problem="[e2e smoke] Full-options test — safe to close.",
+            problem="[e2e smoke] Full-options test.",
             expected="Issue created with complete label set.",
         ),
     )
@@ -96,14 +107,8 @@ async def test_all_options_creates_issue_with_full_label_set() -> None:
 
     assert not result.is_error, f"Expected success, got error: {result.content}"
 
-    text: str = result.content[0]["text"]
-    issue_number = int(text.split("#")[1].split(":")[0].strip())
-
-    from mcp_server.managers.github_manager import GitHubManager
-
-    manager = GitHubManager()
-    issue = manager.get_issue(issue_number)
-    label_names = {lbl.name for lbl in issue.labels}
+    _, call_kwargs = mock_manager.create_issue.call_args
+    label_names = set(call_kwargs["labels"])
 
     assert "type:epic" in label_names, f"Missing type:epic in {label_names}"
     assert "parent:149" in label_names, f"Missing parent:149 in {label_names}"

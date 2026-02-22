@@ -14,16 +14,17 @@ from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
 
 @pytest.mark.asyncio
 async def test_run_tests_tool() -> None:
-    """Test RunTestsTool executes pytest and returns output."""
+    """Test RunTestsTool executes pytest and returns JSON output."""
 
     tool = RunTestsTool()
 
     with patch("mcp_server.tools.test_tools._run_pytest_sync") as mock_run:
-        mock_run.return_value = ("Tests passed", "", 0)
+        mock_run.return_value = ("2 passed in 0.10s\n", "", 0)
 
         result = await tool.execute(RunTestsInput(path="tests/unit"))
 
-        assert "Tests passed" in result.content[0]["text"]
+        assert result.content[0]["type"] == "json"
+        assert result.content[0]["json"]["summary"]["passed"] == 2
         mock_run.assert_called_once()
 
         call_args = mock_run.call_args[0]

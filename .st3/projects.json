@@ -1004,7 +1004,204 @@
     ],
     "skip_reason": null,
     "parent_branch": "main",
-    "created_at": "2026-02-21T19:43:38.843635+00:00"
+    "created_at": "2026-02-21T22:34:50.536535+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 4,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "_parse_pytest_output() private function aanwezig in test_tools.py",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/test_tools.py",
+                  "text": "_parse_pytest_output"
+                }
+              },
+              {
+                "id": "D1.2",
+                "description": "RunTestsInput heeft geen verbose veld meer",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/test_tools.py",
+                  "text": "verbose"
+                }
+              },
+              {
+                "id": "D1.3",
+                "description": "JSON-response met summary.failed key aanwezig in execute()",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/test_tools.py",
+                  "text": "\"failed\""
+                }
+              },
+              {
+                "id": "D1.4",
+                "description": "Unit tests voor RunTestsTool aanwezig",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/unit/tools/test_run_tests_tool.py"
+                }
+              }
+            ],
+            "exit_criteria": "Tests groen: response bij 0 failures toont alleen summary; response bij failures toont summary + test_id/short_reason/location; geen temp-file"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "last_failed_only veld aanwezig in RunTestsInput",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/test_tools.py",
+                  "text": "last_failed_only"
+                }
+              },
+              {
+                "id": "D2.2",
+                "description": "_build_cmd() private methode geextraheerd in RunTestsTool",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/test_tools.py",
+                  "text": "_build_cmd"
+                }
+              },
+              {
+                "id": "D2.3",
+                "description": "pytest --lf flag aanwezig in cmd-builder logica",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/test_tools.py",
+                  "text": "--lf"
+                }
+              }
+            ],
+            "exit_criteria": "Tests groen: last_failed_only=True voegt --lf toe; default gedrag onveranderd; combinatie met path werkt"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": "integration markerdefinitie aanwezig in pyproject.toml",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "pyproject.toml",
+                  "text": "end-to-end"
+                }
+              },
+              {
+                "id": "D3.2",
+                "description": "slow markerdefinitie aanwezig in pyproject.toml",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "pyproject.toml",
+                  "text": "slow"
+                }
+              },
+              {
+                "id": "D3.3",
+                "description": "test_qa.py verplaatst naar tests/mcp_server/integration/",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "tests/mcp_server/integration/test_qa.py"
+                }
+              },
+              {
+                "id": "D3.4",
+                "description": "asyncio_mode = strict in pyproject.toml",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "pyproject.toml",
+                  "text": "asyncio_mode = \"strict\""
+                }
+              }
+            ],
+            "exit_criteria": "Tests groen: QA-tests standaard geskipt; integration marker heeft formele definitie; test_create_issue_e2e.py slaagt zonder live verbinding; asyncio_mode=strict actief"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "D4.1",
+                "description": "pytest-xdist aanwezig in requirements-dev.txt",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "requirements-dev.txt",
+                  "text": "pytest-xdist"
+                }
+              },
+              {
+                "id": "D4.2",
+                "description": "-n auto aanwezig in pyproject.toml addopts",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "pyproject.toml",
+                  "text": "-n auto"
+                }
+              },
+              {
+                "id": "D4.3",
+                "description": "xdist_group markers aanwezig op filesystem-touching tests",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "tests/mcp_server/integration/test_qa.py",
+                  "text": "xdist_group"
+                }
+              }
+            ],
+            "exit_criteria": "Optionele cycle: pytest -n auto slaagt zonder extra failures; wall clock < 40s; geen race conditions"
+          }
+        ]
+      },
+      "validation": {
+        "deliverables": [
+          {
+            "id": "V1",
+            "description": "Volledige testsuite zonder integration markers groen",
+            "validates": {
+              "type": "contains_text",
+              "file": "pyproject.toml",
+              "text": "not integration"
+            }
+          },
+          {
+            "id": "V2",
+            "description": "RunTestsTool retourneert JSON-response zonder temp-file bij integratierun",
+            "validates": {
+              "type": "absent_text",
+              "file": "mcp_server/tools/test_tools.py",
+              "text": "tmp"
+            }
+          }
+        ]
+      },
+      "documentation": {
+        "deliverables": [
+          {
+            "id": "DOC1",
+            "description": "planning.md version history bijgewerkt met finale versie",
+            "validates": {
+              "type": "file_exists",
+              "file": "docs/development/issue103/planning.md"
+            }
+          },
+          {
+            "id": "DOC2",
+            "description": "Issue #103 acceptatiecriteria bijgewerkt conform geimplementeerde cycles",
+            "validates": {
+              "type": "file_exists",
+              "file": "docs/development/issue103/research.md"
+            }
+          }
+        ]
+      }
+    }
   },
   "247": {
     "issue_title": "Strict test structure separation: backend/ vs mcp_server/",

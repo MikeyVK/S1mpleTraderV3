@@ -1,11 +1,13 @@
 """Test execution tools."""
+
 import asyncio
 import os
+import re
 import subprocess
 import sys
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError
@@ -13,11 +15,7 @@ from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
 
-def _run_pytest_sync(
-    cmd: list[str],
-    cwd: str,
-    timeout: int
-) -> tuple[str, str, int]:
+def _run_pytest_sync(cmd: list[str], cwd: str, timeout: int) -> tuple[str, str, int]:
     """Run pytest synchronously - to be called from thread pool."""
     # Build proper environment for venv
     env = os.environ.copy()
@@ -35,7 +33,7 @@ def _run_pytest_sync(
         text=True,
         cwd=cwd,
         env=env,
-        creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+        creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
     ) as proc:
         try:
             stdout, stderr = proc.communicate(timeout=timeout)
@@ -46,12 +44,111 @@ def _run_pytest_sync(
             raise
 
 
+def _parse_pytest_output(stdout: str) -> dict[str, Any]:
+    """Parse pytest stdout into a structured dict.
+
+    Returns a dict with:
+    - summary: {"passed": int, "failed": int}
+    - summary_line: human-readable one-liner (e.g. "2 passed in 0.45s")
+    - failures: list of {"test_id", "location", "short_reason", "traceback"} — only when failed > 0
+    """
+    # --- Pass 1: extract per-test tracebacks from FAILURES section ---
+    tb_by_test_id: dict[str, str] = {}
+    in_failures = False
+    current_id = ""
+    current_tb: list[str] = []
+    for line in stdout.splitlines():
+        if re.match(r"^=+ FAILURES =+", line):
+            in_failures = True
+            continue
+        if not in_failures:
+            continue
+        header = re.match(r"^_+\s+(.+?)\s+_+$", line)
+        if header:
+            if current_id and current_tb:
+                tb_by_test_id[current_id] = "\n".join(current_tb).strip()
+            current_id = header.group(1).strip()
+            current_tb = []
+        elif re.match(r"^=+", line):
+            if current_id and current_tb:
+                tb_by_test_id[current_id] = "\n".join(current_tb).strip()
+            in_failures = False
+        else:
+            current_tb.append(line)
+
+    # --- Pass 2: build failures list from FAILED lines ---
+    failures: list[dict[str, str]] = []
+    for line in stdout.splitlines():
+        match = re.match(r"^FAILED (.+?) - (.+)$", line.strip())
+        if match:
+            location = match.group(1).strip()
+            short_reason = match.group(2).strip()
+            test_id = location.split("::")[-1] if "::" in location else location
+            failures.append(
+                {
+                    "test_id": test_id,
+                    "location": location,
+                    "short_reason": short_reason,
+                    "traceback": tb_by_test_id.get(test_id, ""),
+                }
+            )
+
+    # --- Pass 3: extract summary counts and summary_line ---
+    passed = 0
+    failed = 0
+    summary_line = ""
+    for line in stdout.splitlines():
+        m_fail = re.search(r"(\d+) failed", line)
+        if m_fail:
+            failed = int(m_fail.group(1))
+        m_pass = re.search(r"(\d+) passed", line)
+        if m_pass:
+            passed = int(m_pass.group(1))
+        # Extract the summary line (the one with "passed" or "failed" stats inside ====)
+        if re.search(r"\d+ (passed|failed)", line):
+            cleaned = re.sub(r"^=+\s*", "", line.strip())
+            cleaned = re.sub(r"\s*=+$", "", cleaned).strip()
+            if cleaned:
+                summary_line = cleaned
+
+    result: dict[str, Any] = {
+        "summary": {"passed": passed, "failed": failed},
+        "summary_line": summary_line,
+    }
+    if failures:
+        result["failures"] = failures
+    return result
+
+
 class RunTestsInput(BaseModel):
     """Input for RunTestsTool."""
-    path: str = Field(default="tests/", description="Path to test file or directory")
+
+    path: str | None = Field(
+        default=None,
+        description=(
+            "Path to test file or directory. "
+            "Multiple paths can be space-separated, e.g. 'tests/unit tests/integration'."
+        ),
+    )
+    scope: Literal["full"] | None = Field(
+        default=None,
+        description="Set to 'full' to run the entire test suite. Mutually exclusive with path.",
+    )
     markers: str | None = Field(default=None, description="Pytest markers to filter by")
     timeout: int = Field(default=300, description="Timeout in seconds (default: 300)")
-    verbose: bool = Field(default=True, description="Verbose output (-v flag)")
+    last_failed_only: bool = Field(
+        default=False,
+        description="Re-run only previously failed tests (pytest --lf)",
+    )
+
+    @model_validator(mode="after")
+    def validate_path_or_scope(self) -> "RunTestsInput":
+        """Ensure exactly one of path or scope is provided."""
+        if self.path is None and self.scope is None:
+            raise ValueError("Either 'path' or 'scope' must be provided")
+        if self.path is not None and self.scope is not None:
+            raise ValueError("'path' and 'scope' are mutually exclusive — provide one, not both")
+        return self
 
 
 class RunTestsTool(BaseTool):
@@ -66,19 +163,24 @@ class RunTestsTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return self.args_model.model_json_schema()  # type: ignore[union-attr]
+
+    def _build_cmd(self, params: RunTestsInput) -> list[str]:
+        """Build the pytest command from input parameters."""
+        cmd = [sys.executable, "-m", "pytest"]
+        if params.path is not None:
+            cmd.extend(params.path.split())
+        # scope="full" → no path args: pytest runs entire configured suite
+        cmd.append("--tb=short")
+        if params.last_failed_only:
+            cmd.append("--lf")
+        if params.markers:
+            cmd.extend(["-m", params.markers])
+        return cmd
 
     async def execute(self, params: RunTestsInput) -> ToolResult:
         """Execute the tool."""
-        cmd = [sys.executable, "-m", "pytest", params.path]
-
-        if params.verbose:
-            cmd.append("-v")
-
-        cmd.append("--tb=short")  # Always use short traceback
-
-        if params.markers:
-            cmd.extend(["-m", params.markers])
+        cmd = self._build_cmd(params)
 
         effective_timeout = params.timeout or self.DEFAULT_TIMEOUT
 
@@ -87,24 +189,27 @@ class RunTestsTool(BaseTool):
             workspace_root = settings.server.workspace_root
 
             # Run subprocess in thread pool to avoid blocking event loop
-            stdout, stderr, returncode = await asyncio.to_thread(
+            stdout, stderr, _ = await asyncio.to_thread(
                 _run_pytest_sync,
                 cmd,
                 workspace_root,
-                effective_timeout
+                effective_timeout,
             )
 
             output = stdout or ""
             if stderr:
                 output += "\nSTDERR:\n" + stderr
 
-            # Add summary line
-            if returncode == 0:
-                output += "\n\n✅ Tests passed"
-            else:
-                output += f"\n\n❌ Tests failed (exit code: {returncode})"
-
-            return ToolResult.text(output)
+            parsed = _parse_pytest_output(output)
+            s = parsed["summary"]
+            fallback = f"{s.get('passed', 0)} passed, {s.get('failed', 0)} failed"
+            summary_line = parsed.get("summary_line") or fallback
+            return ToolResult(
+                content=[
+                    {"type": "json", "json": parsed},
+                    {"type": "text", "text": summary_line},
+                ]
+            )
 
         except subprocess.TimeoutExpired:
             raise ExecutionError(

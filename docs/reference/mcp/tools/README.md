@@ -158,7 +158,7 @@ Automated quality gates, test execution, and architectural validation.
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
 | `run_quality_gates` | Run config-driven quality gates (Ruff, Pyright) | `files` |
-| `run_tests` | Run pytest with markers/timeout | `path`, `markers`, `verbose`, `timeout` |
+| `run_tests` | Run pytest — structured JSON output with traceback per failure | `path` (space-sep), `scope` (`"full"`), `markers`, `last_failed_only`, `timeout` |
 | `validate_architecture` | Validate code against patterns | `scope` (all/dtos/workers/platform) |
 | `validate_dto` | Validate DTO definition | `file_path` |
 | `validate_template` | Validate file structure vs template | `path`, `template_type` |
