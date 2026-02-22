@@ -260,8 +260,8 @@ Different active gates produce fundamentally different raw outputs. Without a no
 {
   file: string,        // relative path — always present
   line: int | null,    // null for file-level violations (Gate 0)
-  column: int | null,  // null if tool doesn't provide it
-  code: string | null, // rule code (e.g. "E501", "return-value") — null if not applicable
+  col: int | null,  // null if tool doesn't provide it
+  rule: string | null, // rule code (e.g. "E501", "return-value") — null if not applicable
   message: string,     // human-readable, always present, actionable
   severity: "error" | "warning" | "info",  // default "error"
   fixable: bool        // true if tool supports auto-fix for this violation
@@ -273,27 +273,27 @@ Different active gates produce fundamentally different raw outputs. Without a no
 **Gate 0 — ruff format (text diff → file-level violations):**
 `ruff format --check` exits 1 when files need reformatting. There is no line-level JSON from `ruff format`. The violation is file-level:
 ```json
-{ "file": "mcp_server/tools/quality_tools.py", "line": null, "code": "FORMAT",
+{ "file": "mcp_server/tools/quality_tools.py", "line": null, "rule": "FORMAT",
   "message": "File requires formatting. Run: python -m ruff format mcp_server/tools/quality_tools.py",
   "fixable": true }
 ```
 One entry per file that needs formatting. The raw diff moves to the artifact log only — **the agent does not see the diff in the MCP response**, so the `message` must be self-contained and actionable.
 
 **Gates 1–3 — ruff check (JSON → already normalized):**
-`_parse_ruff_json` already produces `{file, line, column, code, message, fixable}`. Map `location.row → line`, `location.column → column`. Already close to the target schema — minor field renames.
+`_parse_ruff_json` already produces `{file, line, col, rule, message, fixable}`. Map `location.row → line`, `location.column → col`. Already close to the target schema — minor field renames.
 
 **Gate 4 — mypy (text → needs new parser `_parse_mypy_text`):**
 mypy output format: `path/to/file.py:42: error: Incompatible return value [return-value]`
 Regex: `^(?P<file>[^:]+):(?P<line>\d+): (?P<severity>\w+): (?P<message>.+?)(?:\s+\[(?P<code>[^\]]+)\])?$`
 ```json
-{ "file": "mcp_server/foo.py", "line": 42, "column": null, "code": "return-value",
+{ "file": "mcp_server/foo.py", "line": 42, "col": null, "rule": "return-value",
   "message": "Incompatible return value type (got \"str\", expected \"int\")",
   "severity": "error", "fixable": false }
 ```
 This replaces the current truncated text blob with a structured list — no truncation needed.
 
 **Gate 4b — pyright (JSON → already normalized):**
-`_parse_json_field_issues` already extracts `{file, line, column, message, code, severity}`. Matches target schema.
+`_parse_json_field_issues` already extracts `{file, line, col, message, rule, severity}`. Matches target schema.
 
 **Gate M (future pymarkdownlnt):**
 pymarkdownlnt supports `--log-format jsonl` output. Each line is `{file, line_number, column_number, rule_id, description}`. New parser `_parse_pymarkdownlnt_json` maps cleanly to the normalized schema.
@@ -313,7 +313,7 @@ pymarkdownlnt supports `--log-format jsonl` output. Each line is `{file, line_nu
       "name": "Gate 0: Ruff Format",
       "status": "failed",
       "violations": [
-        { "file": "mcp_server/tools/quality_tools.py", "line": null, "code": "FORMAT",
+        { "file": "mcp_server/tools/quality_tools.py", "line": null, "rule": "FORMAT",
           "message": "File requires formatting", "fixable": true }
       ],
       "fix_hint": "Run: python -m ruff format mcp_server/tools/quality_tools.py"
@@ -323,8 +323,8 @@ pymarkdownlnt supports `--log-format jsonl` output. Each line is `{file, line_nu
       "name": "Gate 1: Ruff Strict Lint",
       "status": "failed",
       "violations": [
-        { "file": "mcp_server/tools/quality_tools.py", "line": 42, "column": 1,
-          "code": "ANN201", "message": "Missing return type annotation for public function",
+        { "file": "mcp_server/tools/quality_tools.py", "line": 42, "col": 1,
+          "rule": "ANN201", "message": "Missing return type annotation for public function",
           "severity": "error", "fixable": false }
       ],
       "fix_hint": "Add return type annotations to all public functions"
@@ -694,11 +694,11 @@ MYPY_LINE = re.compile(
 Produces normalized violations:
 ```json
 [
-  { "file": "mcp_server/managers/qa_manager.py", "line": 42, "column": null,
-    "code": "return-value", "message": "Incompatible return value type ...",
+  { "file": "mcp_server/managers/qa_manager.py", "line": 42, "col": null,
+    "rule": "return-value", "message": "Incompatible return value type ...",
     "severity": "error", "fixable": false },
-  { "file": "mcp_server/managers/qa_manager.py", "line": 57, "column": null,
-    "code": "arg-type", "message": "Argument 1 to \"run\" has incompatible type ...",
+  { "file": "mcp_server/managers/qa_manager.py", "line": 57, "col": null,
+    "rule": "arg-type", "message": "Argument 1 to \"run\" has incompatible type ...",
     "severity": "error", "fixable": false }
 ]
 ```
@@ -795,8 +795,8 @@ parsing:
   field_map:
     file: "filename"
     line: "location/row"
-    column: "location/column"
-    code: "code"
+    col: "location/column"
+    rule: "code"
     message: "message"
   fixable_when: "fix/applicability == 'safe'"
 
@@ -808,8 +808,8 @@ parsing:
   field_map:
     file: "file"
     line: "range/start/line"
-    column: "range/start/character"
-    code: "rule"
+    col: "range/start/character"
+    rule: "rule"
     message: "message"
     severity: "severity"
 ```
@@ -1022,3 +1022,4 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | 1.5 | 2026-02-22 | Agent | Fix F14 dual-section confusion: Inv. 5 = problem statement, Inv. 14 = stepping stone with upfront banner; remove duplicate `### F14:` heading |
 | 1.6 | 2026-02-22 | Agent | Fix backward compat inconsistency (Inv. 6 table vs Open Questions); explicit Gate 0 `message` with `{file}` interpolation; `{fieldname}` interpolation in `TextViolationsParsing.defaults`; QUALITY_GATES.md doc-phase obligation in Open Questions |
 | 1.7 | 2026-02-22 | Agent | Align no-baseline fallback with design: `scope="project"` (was `scope="branch"`); update edge-case text and state machine diagram |
+| 1.8 | 2026-02-22 | Agent | Harmonize ViolationDTO field names: `column`→`col`, `code`→`rule` throughout schema definitions, JSON examples, and field_map YAML |
