@@ -295,7 +295,6 @@ class TestExecuteGate:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -422,7 +421,6 @@ class TestArtifactLogging:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -528,7 +526,6 @@ class TestRuffGateExecution:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": True,
-                    "produces_json": False,
                 },
             }
         )
@@ -550,7 +547,6 @@ class TestRuffGateExecution:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -580,7 +576,6 @@ class TestRuffGateExecution:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -720,7 +715,6 @@ class TestPytestJsonReportFeatureDetection:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -798,7 +792,6 @@ class TestConfigDrivenExecution:
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": True,
-                        "produces_json": False,
                     },
                 },
                 "gate2_imports": {
@@ -821,7 +814,6 @@ class TestConfigDrivenExecution:
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": False,
-                        "produces_json": False,
                     },
                 },
                 "gate3_line_length": {
@@ -837,7 +829,6 @@ class TestConfigDrivenExecution:
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": False,
-                        "produces_json": False,
                     },
                 },
             },
@@ -877,55 +868,43 @@ class TestConfigDrivenExecution:
             finally:
                 Path(test_file).unlink(missing_ok=True)
 
-    def test_repo_scoped_mode_runs_pytest_gates(self, manager: QAManager) -> None:
-        """Test empty files list triggers project-level mode (pytest gates only).
+    def test_repo_scoped_mode_has_no_pytest_gates(self, manager: QAManager) -> None:
+        """Test empty files list triggers project-level mode with no pytest gates.
 
-        When run_quality_gates(files=[]) is called with empty list:
-        - File-based static gates (0-4) should skip (no file discovery in project-level mode)
-        - Pytest gates (5, 6) should run (project-level test validation)
-        - This enables coverage enforcement (Gate 6)
+        After C0 (Issue #251): gate5_tests + gate6_coverage removed from active_gates.
+        With files=[] (repo-scoped mode):
+        - Static gates (0-4b) skip (no file discovery in project-level mode)
+        - No pytest/coverage gates exist in config
 
-        Issue #133: Gate 5 & 6 always skipped
+        Issue #133: Gate 5 & 6 always skipped → resolved by removing them from config (C0).
         """
         with patch("subprocess.run") as mock_run:
-            # Mock successful execution for all gates
             mock_proc = MagicMock()
             mock_proc.returncode = 0
             mock_proc.stdout = ""
             mock_proc.stderr = ""
             mock_run.return_value = mock_proc
 
-            # Call with EMPTY files list (repo-scoped mode)
             result = manager.run_quality_gates(files=[])
 
-            # Verify pytest gates were NOT skipped
             gate_names = [g["name"] for g in result["gates"]]
-            skipped_gates = [g for g in result["gates"] if "Skipped" in g.get("score", "")]
 
-            # Gate 5 (Tests) and Gate 6 (Coverage) should be in results
-            assert any("Tests" in name or "Test" in name for name in gate_names), (
-                f"Gate 5 (Tests) not found in gate names: {gate_names}"
+            # Gates 0-4b present, no pytest/coverage gates
+            assert not any("Tests" in name or "Coverage" in name for name in gate_names), (
+                f"Unexpected pytest/coverage gates found: {gate_names}"
             )
-            assert any("Coverage" in name or "Cov" in name for name in gate_names), (
-                f"Gate 6 (Coverage) not found in gate names: {gate_names}"
-            )
+            # At least the 6 known static gates appear
+            assert len(gate_names) >= 6, f"Expected ≥6 gates, got {gate_names}"
 
-            # Pytest gates should NOT be in skipped list
-            pytest_skipped = [
-                g["name"] for g in skipped_gates if "Test" in g["name"] or "Coverage" in g["name"]
-            ]
-            assert not pytest_skipped, (
-                f"Pytest gates should NOT be skipped in repo-scoped mode: {pytest_skipped}"
-            )
+    def test_file_specific_mode_has_no_pytest_gates(self, manager: QAManager) -> None:
+        """Test populated files list triggers file-specific mode (no pytest gates in config).
 
-    def test_file_specific_mode_skips_pytest_gates(self, manager: QAManager) -> None:
-        """Test populated files list triggers file-specific mode (skips pytest gates).
+        After C0 (Issue #251): gate5_tests + gate6_coverage removed from active_gates.
+        With files=["file.py"]:
+        - Static gates (0-4b) run on specified files
+        - No pytest/coverage gates exist to skip
 
-        When run_quality_gates(files=["file.py"]) is called with files:
-        - File-based gates (0-4) should run on specified files
-        - Pytest gates (5, 6) should be skipped (not file-specific)
-
-        This is existing behavior - ensuring it's not broken.
+        This ensures C0 removal did not silently break file-specific execution.
         """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tf:
             tf.write("print('test')")
@@ -939,18 +918,14 @@ class TestConfigDrivenExecution:
                 mock_proc.stderr = ""
                 mock_run.return_value = mock_proc
 
-                # Call with populated files list (file-specific mode)
                 result = manager.run_quality_gates(files=[test_file])
 
-                # Pytest gates SHOULD be skipped in file-specific mode
-                skipped_pytest = [
-                    g
-                    for g in result["gates"]
-                    if ("Test" in g["name"] or "Coverage" in g["name"])
-                    and "Skipped" in g.get("score", "")
-                ]
+                gate_names = [g["name"] for g in result["gates"]]
 
-                assert skipped_pytest, "Pytest gates should be skipped in file-specific mode"
+                # No pytest/coverage gates should appear
+                assert not any("Tests" in name or "Coverage" in name for name in gate_names), (
+                    f"Unexpected pytest/coverage gates in file-specific mode: {gate_names}"
+                )
         finally:
             Path(test_file).unlink(missing_ok=True)
 
@@ -976,7 +951,6 @@ class TestStrategyBasedParsing:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1124,7 +1098,6 @@ class TestSkipReasonLogic:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1145,7 +1118,6 @@ class TestSkipReasonLogic:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1208,8 +1180,6 @@ class TestRuffJsonParsing:
             ]
         )
 
-        # Create a mock gate with produces_json=true
-
         mock_gate = QualityGate(
             name="Test Ruff Gate",
             description="Test gate for JSON parsing",
@@ -1222,7 +1192,6 @@ class TestRuffJsonParsing:
             capabilities=CapabilitiesMetadata(
                 file_types=[".py"],
                 supports_autofix=True,
-                produces_json=True,  # This is the key
             ),
         )
 
@@ -1238,39 +1207,9 @@ class TestRuffJsonParsing:
 
             assert not result["passed"], "Gate should fail with violations"
 
-            # Check structured issues
-            issues = result.get("issues", [])
-            assert len(issues) == 2, f"Expected 2 issues, got {len(issues)}"
-
-            # Verify issue structure
-            issue1 = issues[0]
-            assert "file" in issue1, "Issue missing 'file' field"
-            assert "line" in issue1, "Issue missing 'line' field"
-            assert "column" in issue1, "Issue missing 'column' field"
-            assert "code" in issue1, "Issue missing 'code' field"
-            assert "message" in issue1, "Issue missing 'message' field"
-            assert "fixable" in issue1, "Issue missing 'fixable' field"
-
-            # Verify parsed values
-            assert issue1["code"] == "E501"
-            assert issue1["line"] == 123
-            assert issue1["column"] == 101
-            assert issue1["fixable"] is False  # No fix provided
-
-            issue2 = issues[1]
-            assert issue2["code"] == "F401"
-            assert issue2["line"] == 10
-            assert issue2["fixable"] is True  # Fix available
-
-            # Verify score message
-            assert "2 violations" in result["score"]
-            assert "1 auto-fixable" in result["score"]
-
     def test_ruff_json_parsing_with_clean_code(self, manager: QAManager) -> None:
         """Test Ruff JSON output when no violations found."""
         ruff_json_output = json.dumps([])  # Empty array = no violations
-
-        # Create a mock gate with produces_json=true
 
         mock_gate = QualityGate(
             name="Test Ruff Gate",
@@ -1284,7 +1223,6 @@ class TestRuffJsonParsing:
             capabilities=CapabilitiesMetadata(
                 file_types=[".py"],
                 supports_autofix=True,
-                produces_json=True,  # This is the key
             ),
         )
 
@@ -1322,7 +1260,6 @@ class TestGateSchemaEnrichment:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1351,7 +1288,6 @@ class TestGateSchemaEnrichment:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1526,7 +1462,6 @@ class TestDurationAndCommandMetadata:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1558,7 +1493,6 @@ class TestDurationAndCommandMetadata:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1598,7 +1532,6 @@ class TestDurationAndCommandMetadata:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1639,7 +1572,6 @@ class TestExtractJsonFields:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": True,
                 },
             }
         )
@@ -1665,7 +1597,6 @@ class TestExtractJsonFields:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -1688,7 +1619,6 @@ class TestExtractJsonFields:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": True,
                 },
             }
         )
@@ -1727,7 +1657,6 @@ class TestJsonFieldSuccessCriteria:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": True,
                 },
             }
         )
@@ -1839,7 +1768,6 @@ class TestJsonFieldSuccessCriteria:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": True,
                 },
             }
         )
@@ -1981,7 +1909,6 @@ class TestTruncationFullLogPath:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -2017,7 +1944,6 @@ class TestTruncationFullLogPath:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )
@@ -2057,7 +1983,6 @@ class TestPytestJsonReportFlag:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             }
         )

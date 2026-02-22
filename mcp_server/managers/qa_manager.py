@@ -619,54 +619,23 @@ class QAManager:
             if gate.parsing.strategy == "exit_code":
                 ok_codes = set(gate.success.exit_codes_ok)
 
-                if gate.capabilities.produces_json:
-                    parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
-                    parsed_issues = self._parse_ruff_json(parser_input)
-                    if parsed_issues:
-                        result["passed"] = False
-                        fixable_count = sum(1 for issue in parsed_issues if issue.get("fixable"))
-                        result["score"] = (
-                            f"{len(parsed_issues)} violations, {fixable_count} auto-fixable"
-                        )
-                        result["issues"] = parsed_issues
-                        result["output"] = self._build_output_capture(
-                            proc.stdout or "", proc.stderr or ""
-                        )
-                    elif proc.returncode in ok_codes:
-                        result["score"] = "Pass"
-                        result["passed"] = True
-                        result["issues"] = []
-                    else:
-                        result["passed"] = False
-                        result["score"] = f"Fail (exit={proc.returncode})"
-                        output_capture = self._build_output_capture(
-                            proc.stdout or "", proc.stderr or ""
-                        )
-                        result["output"] = output_capture
-                        result["issues"] = [
-                            {
-                                "message": f"Gate failed with exit code {proc.returncode}",
-                                "details": output_capture["details"],
-                            }
-                        ]
+                if proc.returncode in ok_codes:
+                    result["passed"] = True
+                    result["score"] = "Pass"
+                    result["issues"] = []
                 else:
-                    if proc.returncode in ok_codes:
-                        result["passed"] = True
-                        result["score"] = "Pass"
-                        result["issues"] = []
-                    else:
-                        result["passed"] = False
-                        result["score"] = f"Fail (exit={proc.returncode})"
-                        output_capture = self._build_output_capture(
-                            proc.stdout or "", proc.stderr or ""
-                        )
-                        result["output"] = output_capture
-                        result["issues"] = [
-                            {
-                                "message": f"Gate failed with exit code {proc.returncode}",
-                                "details": output_capture["details"],
-                            }
-                        ]
+                    result["passed"] = False
+                    result["score"] = f"Fail (exit={proc.returncode})"
+                    output_capture = self._build_output_capture(
+                        proc.stdout or "", proc.stderr or ""
+                    )
+                    result["output"] = output_capture
+                    result["issues"] = [
+                        {
+                            "message": f"Gate failed with exit code {proc.returncode}",
+                            "details": output_capture["details"],
+                        }
+                    ]
 
             elif gate.parsing.strategy == "json_field":
                 # Prefer stdout for JSON parsing (more reliable than combined)

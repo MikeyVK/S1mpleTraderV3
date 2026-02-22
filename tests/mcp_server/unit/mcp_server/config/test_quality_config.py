@@ -22,7 +22,12 @@ import pytest
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
-from mcp_server.config.quality_config import GateScope, QualityConfig, QualityGate, CapabilitiesMetadata
+from mcp_server.config.quality_config import (
+    CapabilitiesMetadata,
+    GateScope,
+    QualityConfig,
+    QualityGate,
+)
 
 
 @pytest.fixture(name="quality_yaml_path")
@@ -59,7 +64,6 @@ def fixture_quality_yaml_path(tmp_path: Path) -> Path:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": False,
                 },
             },
             "pyright": {
@@ -86,7 +90,6 @@ def fixture_quality_yaml_path(tmp_path: Path) -> Path:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": True,
                 },
             },
             "ruff": {
@@ -102,7 +105,6 @@ def fixture_quality_yaml_path(tmp_path: Path) -> Path:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": True,
-                    "produces_json": False,
                 },
             },
         },
@@ -171,7 +173,6 @@ class TestQualityConfigValidation:
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": False,
-                        "produces_json": False,
                     },
                     "enabled": True,
                 }
@@ -200,7 +201,6 @@ class TestQualityConfigValidation:
                             "capabilities": {
                                 "file_types": [".py"],
                                 "supports_autofix": True,
-                                "produces_json": False,
                             },
                         }
                     },
@@ -230,7 +230,6 @@ class TestQualityConfigValidation:
                             "capabilities": {
                                 "file_types": [".py"],
                                 "supports_autofix": False,
-                                "produces_json": True,
                             },
                         }
                     },
@@ -266,7 +265,6 @@ class TestQualityConfigValidation:
                             "capabilities": {
                                 "file_types": [".py"],
                                 "supports_autofix": False,
-                                "produces_json": False,
                             },
                         }
                     },
@@ -296,7 +294,6 @@ class TestActiveGatesField:
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": True,
-                            "produces_json": False,
                         },
                     }
                 },
@@ -324,7 +321,6 @@ class TestActiveGatesField:
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": False,
-                            "produces_json": False,
                         },
                     },
                     "gate2": {
@@ -340,7 +336,6 @@ class TestActiveGatesField:
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": False,
-                            "produces_json": False,
                         },
                     },
                 },
@@ -368,7 +363,6 @@ class TestActiveGatesField:
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": True,
-                            "produces_json": False,
                         },
                     }
                 },
@@ -396,7 +390,6 @@ class TestActiveGatesField:
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": False,
-                            "produces_json": False,
                         },
                     },
                     "gate2": {
@@ -412,7 +405,6 @@ class TestActiveGatesField:
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": False,
-                            "produces_json": False,
                         },
                     },
                 },
@@ -440,7 +432,6 @@ class TestActiveGatesField:
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": True,
-                        "produces_json": False,
                     },
                 }
             },
@@ -479,7 +470,6 @@ class TestArtifactLoggingConfig:
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": True,
-                            "produces_json": False,
                         },
                     }
                 },
@@ -513,7 +503,6 @@ class TestArtifactLoggingConfig:
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": True,
-                            "produces_json": False,
                         },
                     }
                 },
@@ -640,7 +629,6 @@ class TestProjectScopeField:
         "capabilities": {
             "file_types": [".py"],
             "supports_autofix": True,
-            "produces_json": False,
         },
     }
 
