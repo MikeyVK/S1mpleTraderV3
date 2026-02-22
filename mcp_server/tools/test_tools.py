@@ -1,4 +1,5 @@
 """Test execution tools."""
+
 import asyncio
 import os
 import re
@@ -14,11 +15,7 @@ from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
 
-def _run_pytest_sync(
-    cmd: list[str],
-    cwd: str,
-    timeout: int
-) -> tuple[str, str, int]:
+def _run_pytest_sync(cmd: list[str], cwd: str, timeout: int) -> tuple[str, str, int]:
     """Run pytest synchronously - to be called from thread pool."""
     # Build proper environment for venv
     env = os.environ.copy()
@@ -36,7 +33,7 @@ def _run_pytest_sync(
         text=True,
         cwd=cwd,
         env=env,
-        creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, 'CREATE_NO_WINDOW') else 0
+        creationflags=subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0,
     ) as proc:
         try:
             stdout, stderr = proc.communicate(timeout=timeout)
@@ -61,11 +58,13 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
             location = match.group(1).strip()
             short_reason = match.group(2).strip()
             test_id = location.split("::")[-1] if "::" in location else location
-            failures.append({
-                "test_id": test_id,
-                "location": location,
-                "short_reason": short_reason,
-            })
+            failures.append(
+                {
+                    "test_id": test_id,
+                    "location": location,
+                    "short_reason": short_reason,
+                }
+            )
 
     passed = 0
     failed = 0
@@ -85,6 +84,7 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
 
 class RunTestsInput(BaseModel):
     """Input for RunTestsTool."""
+
     path: str = Field(default="tests/", description="Path to test file or directory")
     markers: str | None = Field(default=None, description="Pytest markers to filter by")
     timeout: int = Field(default=300, description="Timeout in seconds (default: 300)")
@@ -102,7 +102,7 @@ class RunTestsTool(BaseTool):
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return self.args_model.model_json_schema()  # type: ignore[union-attr]
 
     async def execute(self, params: RunTestsInput) -> ToolResult:
         """Execute the tool."""
@@ -120,11 +120,11 @@ class RunTestsTool(BaseTool):
             workspace_root = settings.server.workspace_root
 
             # Run subprocess in thread pool to avoid blocking event loop
-            stdout, stderr, returncode = await asyncio.to_thread(
+            stdout, stderr, _ = await asyncio.to_thread(
                 _run_pytest_sync,
                 cmd,
                 workspace_root,
-                effective_timeout
+                effective_timeout,
             )
 
             output = stdout or ""
