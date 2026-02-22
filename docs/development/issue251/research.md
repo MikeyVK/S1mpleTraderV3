@@ -187,11 +187,11 @@ The new `run_quality_gates` output model should follow this exact pattern — th
 
 ---
 
-## Investigation 5: Architecture — Output model (no summary_line, too much data)
+## Investigation 5: Architecture — Output model (F5, F14)
 
-### Finding: output blob is 3–8 KB; no top-level text content item
+### F5: Output blob is 3–8 KB; summary_line missing as top-level MCP content item
 
-**Current output structure:**
+**Current output structure (what the agent receives today):**
 ```json
 {
   "version": "2.0",
@@ -201,7 +201,7 @@ The new `run_quality_gates` output model should follow this exact pattern — th
   "gates": [ { /* full gate with command, environment, output, hints */ } ],
   "overall_pass": false,
   "timings": { ... },
-  "text_output": "..."     ← appended at end, not a MCP text content item
+  "text_output": "..."     ← buried at end of JSON, NOT a separate MCP content item
 }
 ```
 
@@ -209,48 +209,140 @@ The new `run_quality_gates` output model should follow this exact pattern — th
 ```python
 return ToolResult(
     content=[
-        {"type": "json", "json": parsed},    # compact: summary + failures[] only
-        {"type": "text", "text": summary_line},  # "3 passed in 1.2s"
+        {"type": "text", "text": summary_line},  # ← FIRST: "3 passed in 1.2s"
+        {"type": "json", "json": parsed},         # ← SECOND: compact details
     ]
 )
 ```
 
-The agent reads the `text` content item first — it's the summary line. Only when there are failures does the agent inspect the `json` content.
+The agent reads the `text` content item first — it's the summary line. Only when there are failures does it inspect the JSON. This is the pattern to follow.
 
-**Target output model for `run_quality_gates`:**
+**Target ToolResult for `run_quality_gates`:**
 ```python
 return ToolResult(
     content=[
-        {"type": "json", "json": compact_result},  # summary + violations[] only
-        {"type": "text", "text": summary_line},     # "✅ 6/6 gates passed (42 files)" or "❌ 2/6 failed: Gate 0, Gate 1"
+        {"type": "text", "text": summary_line},    # ← FIRST: one-line verdict
+        {"type": "json", "json": compact_result},  # ← SECOND: violations only
     ]
 )
 ```
 
-**Compact result structure (agent-optimized):**
-```json
+Examples of `summary_line`:
+- `"✅ 6/6 gates passed — 42 files checked (auto)"`
+- `"❌ 2/6 gates failed — 14 violations (8 auto-fixable): Gate 0, Gate 1"`
+- `"⏭️ 0/0 gates active — nothing to check (no changes since baseline)"`
+
+---
+
+### F14: Tool output formats are heterogeneous — no normalized violation schema
+
+Different active gates produce fundamentally different raw outputs. Without a normalized schema, agents cannot uniformly parse violations across gate types.
+
+**Current output diversity:**
+
+| Gate | Tool | Raw output format | Current parsed result |
+|------|------|-------------------|-----------------------|
+| Gate 0 | ruff format | Text diff (`--- a/file\n+++ b/file\n@@ ...`) | `{message: "Gate failed exit=1", details: "<truncated diff>"}` — **not actionable** |
+| Gate 1-3 | ruff check | JSON array `[{code, message, location, fix}]` | ✅ Structured via `_parse_ruff_json` |
+| Gate 4 | mypy | Text `file.py:42: error: message [rule]` | `{message: "Gate failed exit=1", details: "<truncated text>"}` — **not actionable** |
+| Gate 4b | pyright | JSON `{generalDiagnostics: [{file, range, message, rule}]}` | ✅ Structured via `_parse_json_field_issues` |
+| Gate M (future) | pymarkdownlnt | JSON (SARIF-compatible) | Would need new parser |
+
+**Problems:**
+- Gate 0 and Gate 4 currently produce `{message: "Gate failed"}` — the agent knows nothing failed but not *what* or *where*
+- Gate 4 mypy text is parsed as a blob and truncated at 50 lines — the truncation silently hides violations
+
+**Required: normalized `ViolationDTO` schema across all gates:**
+
+```typescript
 {
-  "overall_pass": false,
-  "summary_line": "❌ 2/6 gates failed — 14 violations (8 auto-fixable)",
-  "summary": { "passed": 4, "failed": 2, "skipped": 0 },
-  "gates": [
-    {
-      "name": "Gate 0: Ruff Format",
-      "passed": false,
-      "violations": [
-        { "file": "mcp_server/tools/quality_tools.py", "line": 42, "code": "W291", "message": "...", "fixable": true }
-      ]
-    }
-  ],
-  "scope": { "mode": "auto", "files_checked": 3, "baseline_sha": "abc123" }
+  file: string,        // relative path — always present
+  line: int | null,    // null for file-level violations (Gate 0)
+  column: int | null,  // null if tool doesn't provide it
+  code: string | null, // rule code (e.g. "E501", "return-value") — null if not applicable
+  message: string,     // human-readable, always present, actionable
+  severity: "error" | "warning" | "info",  // default "error"
+  fixable: bool        // true if tool supports auto-fix for this violation
 }
 ```
 
-**What is removed from current output per gate:**
-- `command` object (executable, args, cwd, environment) — moves to artifact log only
-- `output.stdout/stderr` — moves to artifact log only
-- `hints` — useful but verbose; keep only for failed gates, max 1 hint per gate
-- `duration_ms` — keep in `timings` top-level but not per-gate in compact view
+**Mapping each gate to the normalized schema:**
+
+**Gate 0 — ruff format (text diff → file-level violations):**
+`ruff format --check` exits 1 when files need reformatting. There is no line-level JSON from `ruff format`. The violation is file-level:
+```json
+{ "file": "mcp_server/tools/quality_tools.py", "line": null, "code": "FORMAT",
+  "message": "File requires formatting (run: ruff format <file>)", "fixable": true }
+```
+One entry per file that needs formatting. The raw diff moves to the artifact log only.
+
+**Gates 1–3 — ruff check (JSON → already normalized):**
+`_parse_ruff_json` already produces `{file, line, column, code, message, fixable}`. Map `location.row → line`, `location.column → column`. Already close to the target schema — minor field renames.
+
+**Gate 4 — mypy (text → needs new parser `_parse_mypy_text`):**
+mypy output format: `path/to/file.py:42: error: Incompatible return value [return-value]`
+Regex: `^(?P<file>[^:]+):(?P<line>\d+): (?P<severity>\w+): (?P<message>.+?)(?:\s+\[(?P<code>[^\]]+)\])?$`
+```json
+{ "file": "mcp_server/foo.py", "line": 42, "column": null, "code": "return-value",
+  "message": "Incompatible return value type (got \"str\", expected \"int\")",
+  "severity": "error", "fixable": false }
+```
+This replaces the current truncated text blob with a structured list — no truncation needed.
+
+**Gate 4b — pyright (JSON → already normalized):**
+`_parse_json_field_issues` already extracts `{file, line, column, message, code, severity}`. Matches target schema.
+
+**Gate M (future pymarkdownlnt):**
+pymarkdownlnt supports `--log-format jsonl` output. Each line is `{file, line_number, column_number, rule_id, description}`. New parser `_parse_pymarkdownlnt_json` maps cleanly to the normalized schema.
+
+---
+
+**Compact result structure (agent-optimized):**
+
+```json
+{
+  "overall_pass": false,
+  "summary": { "passed": 4, "failed": 2, "skipped": 0, "total_violations": 14, "auto_fixable": 8 },
+  "scope": { "mode": "auto", "files_checked": 3, "baseline_sha": "abc123" },
+  "gates": [
+    {
+      "id": "gate0_ruff_format",
+      "name": "Gate 0: Ruff Format",
+      "status": "failed",
+      "violations": [
+        { "file": "mcp_server/tools/quality_tools.py", "line": null, "code": "FORMAT",
+          "message": "File requires formatting", "fixable": true }
+      ],
+      "fix_hint": "Run: python -m ruff format mcp_server/tools/quality_tools.py"
+    },
+    {
+      "id": "gate1_formatting",
+      "name": "Gate 1: Ruff Strict Lint",
+      "status": "failed",
+      "violations": [
+        { "file": "mcp_server/tools/quality_tools.py", "line": 42, "column": 1,
+          "code": "ANN201", "message": "Missing return type annotation for public function",
+          "severity": "error", "fixable": false }
+      ],
+      "fix_hint": "Add return type annotations to all public functions"
+    },
+    {
+      "id": "gate4_types",
+      "name": "Gate 4: Types",
+      "status": "skipped",
+      "skip_reason": "No matching files in scope (gate scoped to backend/dtos/**)"
+    }
+  ],
+  "timings": { "total_ms": 1840 }
+}
+```
+
+**What is removed from current output (moved to artifact log only):**
+- `command` object (executable, args, environment) — debug info, not actionable
+- `output.stdout / output.stderr` — raw tool output, only needed when debugging
+- Per-gate `duration_ms` — replaced by top-level `timings.total_ms`
+- `hints[]` array — replaced by single `fix_hint` string per failed gate
+- `version`, `mode`, `files[]` top-level fields — replaced by `scope` object
 
 ---
 
@@ -416,139 +508,9 @@ if failures:
 
 ---
 
----
+## Investigation 10: quality.yaml Analysis — Config-Over-Code Principle (F9, F10)
 
-## Investigation 11: _filter_files() — Global .py Hardcode is a SOLID Violation
-
-### Finding: global pre-filtering prevents non-Python gate support
-
-```python
-def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
-    python_files = [f for f in files if str(f).endswith(".py")]  # ← hardcoded
-```
-
-This is called once in `run_quality_gates()` before any gates execute. All subsequent gates receive only `.py` files, regardless of their `capabilities.file_types` config.
-
-**OCP violation:** Adding a markdown gate (`file_types: [".md"]`) would require code changes — the global filter would eliminate all `.md` files before any gate sees them.
-
-**Correct architecture:** Remove `_filter_files()`. After scope resolution, the full file list (all types) is passed to gate execution. Each gate filters for its own `file_types` via:
-
-```python
-def _files_for_gate(self, gate: QualityGate, all_files: list[str]) -> list[str]:
-    return [
-        f for f in all_files
-        if any(f.endswith(ext) for ext in gate.capabilities.file_types)
-        and (gate.scope is None or gate.scope.matches(f))
-    ]
-```
-
-This makes adding a markdown/YAML/JSON gate a pure config operation (new gate in `quality.yaml`, new package in `requirements-dev.txt`). No code changes needed.
-
-**Note:** Markdown gate (`pymarkdownlnt`) and YAML gate (`yamllint`) are explicitly out-of-scope for this issue but become possible after this refactor.
-
----
-
-## Investigation 12: Pytest-Specific Dead Code in QAManager
-
-### Finding: 4 methods become completely dead after pytest removal from active_gates
-
-With `gate5_tests` and `gate6_coverage` removed from `active_gates`, the following methods have no remaining callers:
-
-| Method | Lines | Purpose | Status after refactor |
-|--------|-------|---------|----------------------|
-| `_is_pytest_gate()` | ~8 | Detect pytest by command inspection | Dead code → remove |
-| `_maybe_enable_pytest_json_report()` | ~10 | Add `--json-report` flag if plugin installed | Dead code → remove |
-| `_get_skip_reason()` | ~15 | Mode-based skip logic for pytest vs static gates | Dead code → remove (entire mode split dissolves) |
-| `_files_for_gate()` | ~12 | Return `[]` for pytest, filter by file_types for static | Rewrite without pytest branch |
-
-**Additionally:** The `is_file_specific_mode` boolean and the entire mode-split block in `run_quality_gates()` dissolves. Current structure:
-
-```python
-# CURRENT — pytest-driven architecture
-is_file_specific_mode = bool(files)
-if is_file_specific_mode:
-    python_files = self._filter_files(files)
-else:
-    python_files = []   # empty so static gates skip, pytest proceeds
-
-for gate in active_gates:
-    gate_files = self._files_for_gate(gate, python_files)  # [] for pytest
-    skip_reason = self._get_skip_reason(gate, gate_files, is_file_specific_mode)
-```
-
-**After refactor — fully generic:**
-
-```python
-# NEW — scope-driven architecture
-files = self._resolve_scope(scope, state)       # always a non-empty list
-for gate in active_gates:
-    gate_files = self._files_for_gate(gate, files)  # filter by file_types + scope
-    if not gate_files:
-        # standard skip: no matching files for this gate
-        ...
-```
-
-No special-casing for any tool. The QAManager becomes a truly generic gate executor — consistent with the config-over-code principle.
-
----
-
-## Investigation 13: pyproject.toml — Relationship to This Refactor
-
-### Finding: no pyproject.toml changes required; testpaths confirms correct globs
-
-**`pyproject.toml` is not modified by this refactor.** However, it provides important facts:
-
-```toml
-[tool.pytest.ini_options]
-testpaths = ["tests/mcp_server"]   # ← confirms test scope
-addopts = ["-n", "auto", ...]      # ← cause of exit code 4 bug (requires pytest-xdist in venv)
-```
-
-**Confirmed `project_scope` globs (F13 correction):**
-```yaml
-project_scope:
-  include_globs:
-    - "mcp_server/**/*.py"
-    - "tests/mcp_server/**/*.py"
-  exclude_globs: []
-```
-
-`backend/` is **not** in scope for quality gates — the project's quality enforcement targets the MCP server codebase. This is consistent with `testpaths = ["tests/mcp_server"]`.
-
-**pyproject.toml role vs quality.yaml role:**
-
-| Config | Purpose | Authority |
-|--------|---------|-----------|
-| `pyproject.toml` | IDE baseline, tool defaults, pytest runtime config | Developer productivity |
-| `.st3/quality.yaml` | CI/CD enforcement, gate catalog, project scope | Quality authority |
-
-Gates 0–3 use `--isolated` to explicitly ignore `pyproject.toml` ruff settings — this is documented in `QUALITY_GATES.md` and is intentional. The refactor does not change this relationship.
-
----
-
-## Findings Summary
-
-| # | Finding | Severity | Fix |
-|---|---------|---------|-----|
-| F1 | System pytest used for Gate 5/6 | Bug | Remove Gate 5/6 from active_gates |
-| F2 | Gate 0 ruff format diff silently truncated | Bug | Increase limits + explicit truncation in issues[] |
-| F3 | Double JSON in MCP response | Bug | Adopt ToolResult content[] pattern from run_tests |
-| F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` parameter — no backward compat |
-| F5 | No summary_line / giant JSON response | Architecture | Compact output + summary_line |
-| F6 | Scope manually provided by agent | Architecture | git-diff auto scope with baseline state machine |
-| F7 | No failure-narrowing on re-run | Architecture | `failed_files ∪ changed_since_last_run` |
-| F8 | Pytest mixed with static analysis gates | Architecture | Pytest → run_tests only |
-| F9 | Project-level file discovery hardcoded | SOLID violation | `project_scope` field in quality.yaml — reuse `QualityGateScope` model |
-| F10 | gate5/gate6 use bare `pytest` binary in config | Bug (config) | Remove from active_gates; commands are also wrong (should use `python -m pytest`) |
-| F11 | `_filter_files()` hardcodes `.py` globally | SOLID violation | Remove — each gate filters via `capabilities.file_types` |
-| F12 | 4 pytest-specific methods in QAManager | Dead code after refactor | Remove all 4: `_is_pytest_gate`, `_files_for_gate`, `_get_skip_reason`, `_maybe_enable_pytest_json_report`. Simplify `run_quality_gates`. |
-| F13 | `project_scope` globs incorrect in earlier draft | Config error | Correct globs: `mcp_server/**/*.py`, `tests/mcp_server/**/*.py` (confirmed by `testpaths` in pyproject.toml) |
-
----
-
-## Investigation 10: quality.yaml Analysis — Config-Over-Code Principle
-
-### Finding: per-gate scope already exists; project-level discovery scope is missing
+### F9: Per-gate scope exists; top-level project discovery scope is missing
 
 **quality.yaml already has per-gate scope config (example `gate4_types`):**
 ```yaml
@@ -560,64 +522,214 @@ gate4_types:
       - "tests/**/*.py"
 ```
 
-This is the correct pattern from the project's config-over-code principle documented in `docs/coding_standards/QUALITY_GATES.md`:
-> Gates apply to production AND test code — all Python files in `backend/`, `mcp_server/`, and `tests/` must pass
+This is the correct pattern. The coding standard (`QUALITY_GATES.md`) states:
+> Gates apply to production AND test code — all Python files in `mcp_server/` and `tests/mcp_server/` must pass
 
-**What is missing:** A top-level `project_scope` section in `quality.yaml` to define which directories are discovered when `scope="project"`. Currently the QAManager would need to hardcode `["backend/**/*.py", "mcp_server/**/*.py", "tests/**/*.py"]` — which directly violates config-over-code.
+**What is missing:** A top-level `project_scope` section in `quality.yaml` to define which paths are discovered when `scope="project"`. Without it, `QAManager` would need to hardcode these paths — a direct OCP violation.
 
-**SOLID violation if hardcoded:** Open/Closed Principle — adding a new source directory (e.g., `scripts/`) would require a code change instead of a config change.
-
-**Solution — add `project_scope` to quality.yaml:**
+**Solution — add `project_scope` to quality.yaml (correct globs per Investigation 13):**
 ```yaml
 project_scope:
   include_globs:
-    - "backend/**/*.py"
     - "mcp_server/**/*.py"
-    - "tests/**/*.py"
+    - "tests/mcp_server/**/*.py"
   exclude_globs: []
 ```
 
-This follows the identical schema already used for per-gate scope (`QualityGateScope` Pydantic model). **No new model needed** — reuse `QualityGateScope` as type for `project_scope`.
-
-**Also requires add to `QualityConfig` Pydantic model:**
+`QualityGateScope` Pydantic model is reused — no new model needed. `QualityConfig` gains one optional field:
 ```python
 class QualityConfig(BaseModel):
     version: str
     active_gates: list[str]
-    project_scope: QualityGateScope | None = None  # new field
+    project_scope: QualityGateScope | None = None  # new
     artifact_logging: ArtifactLoggingConfig
     gates: dict[str, QualityGate]
 ```
 
-### Finding: gate5_tests and gate6_coverage use bare `pytest` binary — double bug
+### F10: gate5/gate6 use bare `pytest` command in quality.yaml config
 
-Confirmed in quality.yaml:
-```yaml
-gate5_tests:
-  execution:
-    command: ["pytest", "tests/", "--tb=short"]   # ← bare "pytest", not "python -m pytest"
+Both gate commands start with `"pytest"` (bare binary), not `"python", "-m", "pytest"`. Every other gate uses `python -m <tool>`. Since gate5/gate6 are removed from `active_gates`, the config fix is to remove them from the list. Gate definitions are kept as legacy reference in the catalog.
 
-gate6_coverage:
-  execution:
-    command: ["pytest", "tests/", "--cov=backend", ...]  # ← same
-```
-
-Both the code (`_resolve_command` ignores bare `pytest`) **and** the config are wrong. Even if we extend `_resolve_command` to handle bare `pytest`, the command should use the canonical `["python", "-m", "pytest", ...]` form. This is consistent with all other gates (gate0–gate4 all use `python -m <tool>`).
-
-Since gate5/gate6 are being **removed from `active_gates`** (decision #1), the config fix is to remove them from `active_gates` only. The gate definitions are kept in the catalog as legacy reference.
-
-### Finding: `scope="auto"` baseline config not yet in quality.yaml
-
-The new baseline state machine requires configuration for which git state to use. Per config-over-code: the scope modes and their fallback chain should be documentable. However, the runtime state (baseline SHA, failed_files) is branch-scoped and belongs in `state.json` — not `quality.yaml`. The distinction is:
+### Separation: static config vs dynamic runtime state
 
 | Data | Location | Reason |
 |------|----------|--------|
-| `project_scope` globs | `quality.yaml` | Static config, same for all branches |
-| `baseline_sha` | `state.json` | Dynamic runtime state, branch-specific |
-| `failed_files` | `state.json` | Dynamic runtime state, branch-specific |
-| `active_gates` | `quality.yaml` | Static config, same for all branches |
+| `project_scope` globs | `quality.yaml` | Static policy, identical for all branches |
+| `baseline_sha` | `state.json` | Dynamic runtime state, branch-scoped |
+| `failed_files` | `state.json` | Dynamic runtime state, branch-scoped |
+| `active_gates` | `quality.yaml` | Static policy, identical for all branches |
 
-This separation is correct and SOLID-compliant (Single Responsibility: config file = static policy, state file = dynamic runtime).
+This separation is SOLID-compliant (Single Responsibility: config = static policy, state = dynamic runtime).
+
+---
+
+## Investigation 11: _filter_files() — Global .py Hardcode is a SOLID Violation (F11)
+
+### F11: Global pre-filtering prevents non-Python gate support
+
+```python
+def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
+    python_files = [f for f in files if str(f).endswith(".py")]  # ← hardcoded
+```
+
+This is called once before any gates execute. All subsequent gates receive only `.py` files, regardless of their `capabilities.file_types` config.
+
+**OCP violation:** Adding a markdown gate (`file_types: [".md"]`) requires a code change — the global filter eliminates all `.md` files before any gate sees them.
+
+**Correct architecture:** Remove `_filter_files()`. The full scope-resolved file list is passed to gate execution. Each gate filters for its own `file_types`:
+
+```python
+def _files_for_gate(self, gate: QualityGate, all_files: list[str]) -> list[str]:
+    return [
+        f for f in all_files
+        if any(f.endswith(ext) for ext in gate.capabilities.file_types)
+        and (gate.scope is None or gate.scope.matches(f))
+    ]
+```
+
+Adding a markdown/YAML/JSON gate becomes a pure config operation. No code changes needed.
+
+---
+
+## Investigation 12: Pytest-Specific Dead Code in QAManager (F12)
+
+### F12: 4 methods become dead code after pytest removal from active_gates
+
+| Method | Purpose | Status after refactor |
+|--------|---------|----------------------|
+| `_is_pytest_gate()` | Detect pytest by command inspection | Remove |
+| `_maybe_enable_pytest_json_report()` | Add `--json-report` flag if plugin installed | Remove |
+| `_get_skip_reason()` | Mode-based skip logic for pytest vs static gates | Remove (mode split dissolves) |
+| `_files_for_gate()` | Return `[]` for pytest, filter by file_types for static | Rewrite without pytest branch |
+
+The `is_file_specific_mode` boolean and the entire mode-split block in `run_quality_gates()` also dissolves:
+
+```python
+# CURRENT — pytest-driven architecture leaking into all gate execution
+is_file_specific_mode = bool(files)
+if is_file_specific_mode:
+    python_files = self._filter_files(files)
+else:
+    python_files = []   # empty so static gates skip, pytest proceeds
+for gate in active_gates:
+    gate_files = self._files_for_gate(gate, python_files)  # [] for pytest
+    skip_reason = self._get_skip_reason(gate, gate_files, is_file_specific_mode)
+```
+
+```python
+# NEW — scope-driven, fully generic
+files = self._resolve_scope(scope, state)
+for gate in active_gates:
+    gate_files = self._files_for_gate(gate, files)  # filter by file_types + gate.scope
+    if not gate_files:
+        # standard skip: no matching files
+        ...
+```
+
+No special-casing for any tool. QAManager becomes a true generic gate executor.
+
+---
+
+## Investigation 13: pyproject.toml Relationship + Correct project_scope Globs (F13)
+
+### F13: project_scope globs must match testpaths in pyproject.toml
+
+`pyproject.toml` is not modified by this refactor. It confirms:
+
+```toml
+testpaths = ["tests/mcp_server"]   # ← quality gate scope = mcp_server + tests/mcp_server
+addopts = ["-n", "auto", ...]      # ← exact cause of exit code 4 bug
+```
+
+**Correct `project_scope` (replaces earlier incorrect draft with `backend/`):**
+```yaml
+project_scope:
+  include_globs:
+    - "mcp_server/**/*.py"
+    - "tests/mcp_server/**/*.py"
+  exclude_globs: []
+```
+
+Quality gates enforce the MCP server codebase only. `backend/` is out of QG scope. The `pyproject.toml` / `quality.yaml` two-tier authority model (IDE baseline vs CI authority) is unchanged by this refactor.
+
+---
+
+## Investigation 14: Mypy Text Output — Missing Violation Parser (F14)
+
+### F14: Gate 4 mypy produces unstructured text; violations not actionable for agent
+
+Gate 4 uses `parsing.strategy: "exit_code"` without JSON output. The current result when failing:
+
+```json
+{
+  "issues": [{ "message": "Gate failed with exit code 1", "details": "<truncated mypy text>" }]
+}
+```
+
+The agent knows the gate failed but cannot see which file/line/rule is violating. The raw text is truncated at 50 lines, silently hiding further violations.
+
+**mypy text output format:**
+```
+mcp_server/managers/qa_manager.py:42: error: Incompatible return value type (got "str", expected "int")  [return-value]
+mcp_server/managers/qa_manager.py:57: error: Argument 1 to "run" has incompatible type  [arg-type]
+Found 2 errors in 1 file (checked 3 source files)
+```
+
+**New `_parse_mypy_text(stdout: str) -> list[ViolationDTO]`:**
+```python
+MYPY_LINE = re.compile(
+    r"^(?P<file>[^:]+):(?P<line>\d+): (?P<severity>error|warning|note): "
+    r"(?P<message>.+?)(?:\s+\[(?P<code>[^\]]+)\])?$"
+)
+```
+
+Produces normalized violations:
+```json
+[
+  { "file": "mcp_server/managers/qa_manager.py", "line": 42, "column": null,
+    "code": "return-value", "message": "Incompatible return value type ...",
+    "severity": "error", "fixable": false },
+  { "file": "mcp_server/managers/qa_manager.py", "line": 57, "column": null,
+    "code": "arg-type", "message": "Argument 1 to \"run\" has incompatible type ...",
+    "severity": "error", "fixable": false }
+]
+```
+
+No truncation needed — each violation is a compact struct. The "Found N errors" summary line is parsed separately into `gate.score`.
+
+**quality.yaml needs a hint to use this parser.** Two options:
+- Option A: Add `produces_text_violations: true` to capabilities → QAManager detects and uses text parser
+- Option B: Add `parsing.strategy: "text_violations"` as a new strategy in quality.yaml → explicit, config-driven
+
+**Decision: Option B** — consistent with the existing strategy enum (`exit_code`, `json_field`, `text_regex`). New strategy `"text_violations"` with `parser: "mypy"` field. Config-over-code: parser selection lives in quality.yaml, not detected in code.
+
+```yaml
+gate4_types:
+  parsing:
+    strategy: "text_violations"
+    parser: "mypy"   # selects _parse_mypy_text in QAManager
+```
+
+---
+
+## Findings Summary
+
+| # | Finding | Severity | Fix |
+|---|---------|---------|-----|
+| F1 | System pytest used for Gate 5/6 | Bug | Remove Gate 5/6 from active_gates |
+| F2 | Gate 0 ruff format diff silently truncated | Bug | File-level violation `{code: "FORMAT", fixable: true}` — diff to artifact log only |
+| F3 | Double JSON in MCP response | Bug | `ToolResult.content[]` with `text` first, `json` second |
+| F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` enum — no backward compat |
+| F5 | No summary_line as first MCP content item | Architecture | `summary_line` as `{"type": "text"}` first in ToolResult |
+| F6 | Scope manually provided by agent | Architecture | git-diff auto scope with baseline state machine in state.json |
+| F7 | No failure-narrowing on re-run | Architecture | `failed_files ∪ changed_since_last_run` |
+| F8 | Pytest mixed with static analysis gates | Architecture | Pytest → run_tests only; remove gate5/gate6 from active_gates |
+| F9 | Project-level file discovery hardcoded | SOLID/OCP | `project_scope` in quality.yaml — reuse `QualityGateScope` model |
+| F10 | gate5/gate6 use bare `pytest` binary in config | Config bug | Remove from active_gates (gate defs kept as legacy reference) |
+| F11 | `_filter_files()` hardcodes `.py` globally | SOLID/OCP | Remove — each gate filters via `capabilities.file_types` |
+| F12 | 4 pytest-specific methods in QAManager | Dead code | Remove `_is_pytest_gate`, `_maybe_enable_pytest_json_report`, `_get_skip_reason`; rewrite `_files_for_gate` |
+| F13 | project_scope globs wrong in earlier draft | Config error | Correct: `mcp_server/**/*.py`, `tests/mcp_server/**/*.py` |
+| F14 | Gate 4 mypy violations unstructured/truncated | Architecture | New `text_violations` parsing strategy + `_parse_mypy_text()` |
 
 ---
 
