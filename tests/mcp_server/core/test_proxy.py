@@ -8,6 +8,9 @@ Tests:
 - Transparent restart flow
 """
 
+import os
+import sys
+
 import pytest
 
 from mcp_server.core.proxy import RESTART_MARKER, MCPProxy
@@ -16,7 +19,7 @@ from mcp_server.core.proxy import RESTART_MARKER, MCPProxy
 class TestMCPProxyInitialization:
     """Test proxy initialization."""
 
-    def test_proxy_init(self):
+    def test_proxy_init(self) -> None:
         """Test proxy initializes with correct defaults."""
         proxy = MCPProxy()
 
@@ -30,7 +33,7 @@ class TestMCPProxyInitialization:
 class TestInitializeCapture:
     """Test initialize handshake capture."""
 
-    def test_captures_initialize_request(self):
+    def test_captures_initialize_request(self) -> None:
         """Test proxy captures initialize request for replay."""
         proxy = MCPProxy()
 
@@ -54,11 +57,11 @@ class TestInitializeCapture:
 class TestRestartMarkerDetection:
     """Test restart marker detection on stderr."""
 
-    def test_restart_marker_constant(self):
+    def test_restart_marker_constant(self) -> None:
         """Test restart marker constant is defined."""
         assert RESTART_MARKER == "__MCP_RESTART_REQUEST__"
 
-    def test_detects_restart_marker_in_stderr(self):
+    def test_detects_restart_marker_in_stderr(self) -> None:
         """Test proxy detects restart marker in stderr stream."""
         # Placeholder for future implementation
         proxy = MCPProxy()
@@ -68,12 +71,10 @@ class TestRestartMarkerDetection:
 class TestUTF8Encoding:
     """Test UTF-8 encoding fixes for Windows."""
 
-    def test_utf8_forced_on_windows(self):
+    def test_utf8_forced_on_windows(self) -> None:
         """Test UTF-8 is forced on stdout/stderr on Windows."""
         # This test verifies the module-level UTF-8 setup
         # If we get here without errors, UTF-8 setup worked
-        import sys  # pylint: disable=import-outside-toplevel
-
         if sys.platform == "win32":
             assert sys.stdout.encoding == "utf-8"
             assert sys.stderr.encoding == "utf-8"
@@ -82,7 +83,7 @@ class TestUTF8Encoding:
 class TestTransparentRestart:
     """Test transparent restart flow."""
 
-    def test_restart_increments_counter(self):
+    def test_restart_increments_counter(self) -> None:
         """Test restart counter increments on each restart."""
         proxy = MCPProxy()
 
@@ -165,7 +166,7 @@ class TestProxyIntegration:
     See: docs/testing/integration_tests.md (if created)
     """
 
-    def test_end_to_end_restart_flow(self):
+    def test_end_to_end_restart_flow(self) -> None:
         """Test complete transparent restart flow with real server process.
 
         Coverage:
@@ -192,12 +193,11 @@ class TestProxyIntegration:
         Raises:
             pytest.skip: If RUN_MANUAL_TESTS not set (default behavior)
         """
-        import os
-
         if not os.getenv("RUN_MANUAL_TESTS"):
             pytest.skip(
                 "Manual integration test - requires full MCP server environment.\n"
-                "To run: export RUN_MANUAL_TESTS=1 && pytest tests/mcp_server/core/test_proxy.py::TestProxyIntegration\n"
+                "To run: RUN_MANUAL_TESTS=1 pytest "
+                "tests/mcp_server/core/test_proxy.py::TestProxyIntegration\n"
                 "See TestProxyIntegration class docstring for detailed instructions."
             )
 

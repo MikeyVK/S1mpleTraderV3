@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
@@ -47,8 +49,6 @@ async def test_minimal_input_creates_issue_with_correct_labels() -> None:
 
     Verifies label assembly logic (type, scope, priority, phase) without live API call.
     """
-    from unittest.mock import MagicMock
-
     mock_manager = MagicMock()
     mock_manager.create_issue.return_value = {
         "number": 42,
@@ -83,8 +83,6 @@ async def test_all_options_creates_issue_with_full_label_set() -> None:
 
     Verifies type:epic, parent:N, scope, priority and phase labels are all present.
     """
-    from unittest.mock import MagicMock
-
     mock_manager = MagicMock()
     mock_manager.create_issue.return_value = {
         "number": 99,
