@@ -234,9 +234,11 @@ Examples of `summary_line`:
 
 ---
 
-### F14: Tool output formats are heterogeneous — no normalized violation schema
+### F14 — Problem statement: heterogeneous gate outputs, no uniform ViolationDTO contract
 
 Different active gates produce fundamentally different raw outputs. Without a normalized schema, agents cannot uniformly parse violations across gate types.
+
+> *Mypy-specific analysis and initial parser design: Investigation 14. Architectural solution for all gates: Investigation 15 (F15).*
 
 **Current output diversity:**
 
@@ -654,9 +656,13 @@ Quality gates enforce the MCP server codebase only. `backend/` is out of QG scop
 
 ---
 
-## Investigation 14: Mypy Text Output — Missing Violation Parser (F14)
+## Investigation 14: F14 Drill-down — Mypy Text Parser (stepping stone)
 
-### F14: Gate 4 mypy produces unstructured text; violations not actionable for agent
+> ⚠️ **Stepping stone — superseded by Investigation 15.** This investigation analyzed the mypy-specific case of F14 and proposed a dedicated `_parse_mypy_text()` method with a `parser: "mypy"` field in [quality.yaml](#f-quality-yaml). Investigation 15 generalized this into the declarative `text_violations` strategy, eliminating all tool-specific methods from `QAManager`. Read this section to understand the reasoning chain; see Investigation 15 for the final design.
+>
+> *Problem statement: Investigation 5 (F14). Final solution: Investigation 15 (F15).*
+
+### Mypy-specific case of F14
 
 Gate 4 uses `parsing.strategy: "exit_code"` without JSON output. The current result when failing:
 
@@ -709,8 +715,6 @@ gate4_types:
     strategy: "text_violations"
     parser: "mypy"   # selects _parse_mypy_text in QAManager
 ```
-
-> ⚠️ **Superseded by Investigation 15.** The `parser: "mypy"` field and dedicated `_parse_mypy_text()` method were the initial design. Investigation 15 generalized this into the `text_violations` strategy using a declarative `pattern` + `defaults` in [quality.yaml](#f-quality-yaml), eliminating all tool-specific methods from `QAManager`. See Investigation 15 for the final design. The Findings Summary column for F14 reflects the Investigation 15 resolution.
 
 ---
 
