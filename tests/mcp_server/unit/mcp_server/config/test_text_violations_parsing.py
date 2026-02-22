@@ -63,7 +63,9 @@ class TestTextViolationsParsingFields:
 
     def test_mypy_variant_pattern(self) -> None:
         """Realistic mypy-style pattern parses without error."""
-        pattern = r"(?P<file>[^:]+):(?P<line>\d+):\s*(?P<severity>error|warning|note):\s*(?P<message>.+)"
+        pattern = (
+            r"(?P<file>[^:]+):(?P<line>\d+):\s*(?P<severity>error|warning|note):\s*(?P<message>.+)"
+        )
         model = TextViolationsParsing(
             pattern=pattern,
             severity_default="error",
