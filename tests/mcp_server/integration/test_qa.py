@@ -1,6 +1,20 @@
-"""Tests for QA integration.
+# tests\mcp_server\integration\test_qa.py
+# template=integration_test version=85ea75d4 created=2026-02-22T13:43Z updated=
+"""
+Integration tests for QA tool execution with real workspace files.
 
-Integration tests for real QA tool execution with actual files.
+These tests run ruff/mypy on real files in the workspace (not tmp_path),
+making them true integration tests — they depend on the real filesystem state.
+
+Marked @pytest.mark.integration: skipped by default, run via:
+    pytest tests/mcp_server/ -m integration
+
+@layer: Tests (Integration)
+@dependencies: [pytest, pytest-asyncio, QAManager, RunQualityGatesTool]
+@responsibilities:
+    - Test end-to-end QA tool execution with real workspace files
+    - Verify RunQualityGatesTool JSON output structure
+    - Validate dynamic gate switching via quality.yaml
 """
 
 import json
@@ -13,27 +27,22 @@ from mcp_server.config.quality_config import QualityConfig
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 
+pytestmark = pytest.mark.integration
+
 
 def test_qa_manager_run_gates_with_real_file() -> None:
-    """Test QAManager runs quality gates on a real clean file."""
+    """QAManager runs quality gates on a real clean file."""
     manager = QAManager()
-    # Use a real file that is known to be clean
     result = manager.run_quality_gates(["backend/core/enums.py"])
 
-    # Should have all active gates from quality.yaml (8 gates configured)
-    # Some gates may be skipped (e.g., Gate 5/6 in file-specific mode)
     assert len(result["gates"]) >= 6, f"Expected at least 6 gates, got {len(result['gates'])}"
-
-    # Verify first gate is Ruff Format (Gate 0)
     assert "Ruff Format" in result["gates"][0]["name"]
-
-    # overall_pass depends on actual file quality
     assert isinstance(result["overall_pass"], bool)
 
 
 @pytest.mark.asyncio
 async def test_quality_tool_output_format() -> None:
-    """Test RunQualityGatesTool returns schema-first JSON with text_output."""
+    """RunQualityGatesTool returns schema-first JSON with text_output."""
     manager = QAManager()
     tool = RunQualityGatesTool(manager=manager)
 
@@ -48,7 +57,6 @@ async def test_quality_tool_output_format() -> None:
     assert result.content[1]["type"] == "text"
     assert isinstance(result.content[1]["text"], str)
 
-    # Verify JSON structure
     assert "version" in data
     assert "mode" in data
     assert data["mode"] == "file-specific"
@@ -56,27 +64,19 @@ async def test_quality_tool_output_format() -> None:
     assert "gates" in data
     assert "text_output" in data
     assert "overall_pass" in data
-
-    # Summary has totals
     assert "total_violations" in data["summary"]
     assert "auto_fixable" in data["summary"]
-
-    # text_output contains human-readable content
     assert "Quality Gates Results" in data["text_output"]
-    assert "Ruff Format" in data["text_output"] or "Gate 0" in data["text_output"]
-
-    # Gates have enriched schema
     for gate in data["gates"]:
         assert "status" in gate, f"Gate '{gate.get('name')}' missing 'status'"
 
 
 def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
-    """Integration test: switching active_gates in quality.yaml changes which gates run.
+    """Switching active_gates in quality.yaml changes which gates run.
 
-    Verifies acceptance criteria for Issue #131: QAManager dynamically loads gates
-    from active_gates list in quality.yaml.
+    Verifies acceptance criteria for Issue #131: QAManager dynamically loads
+    gates from active_gates list in quality.yaml.
     """
-    # Create a custom quality.yaml with only 2 gates active
     custom_config = {
         "version": "1.0",
         "active_gates": ["gate1_formatting", "gate3_line_length"],
@@ -126,7 +126,6 @@ def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
     config_file = tmp_path / "quality.yaml"
     config_file.write_text(json.dumps(custom_config), encoding="utf-8")
 
-    # Mock QualityConfig.load to return our custom config
     def mock_load() -> QualityConfig:
         return QualityConfig.model_validate(custom_config)
 
@@ -134,13 +133,10 @@ def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
         manager = QAManager()
         result = manager.run_quality_gates(["backend/core/enums.py"])
 
-        # Should only have 2 gates (the ones in active_gates)
         gate_names = [gate["name"] for gate in result["gates"]]
         assert len(gate_names) == 2, f"Expected 2 gates, got {len(gate_names)}: {gate_names}"
         assert "Gate 1: Formatting" in gate_names
         assert "Gate 3: Line Length" in gate_names
-
-        # Verify gates NOT in active_gates are NOT executed
-        assert not any("Gate 0:" in name for name in gate_names), "Gate 0 should not run"
-        assert not any("Gate 2:" in name for name in gate_names), "Gate 2 should not run"
-        assert not any("Gate 4:" in name for name in gate_names), "Gate 4 should not run"
+        assert not any("Gate 0:" in name for name in gate_names)
+        assert not any("Gate 2:" in name for name in gate_names)
+        assert not any("Gate 4:" in name for name in gate_names)

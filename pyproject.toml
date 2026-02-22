@@ -50,12 +50,12 @@ addopts = [
 # Coverage is enforced separately via Gate 6 (branch coverage >= 90%)
 # To run with coverage: pytest --cov=backend --cov=mcp_server --cov-branch --cov-fail-under=90
 markers = [
-    "integration: Integration tests requiring real dependencies",
-    "slow: Tests that take more than 5 seconds to complete",
+    "integration: Tests that validate end-to-end behaviour across the full scope, using real subprocesses, external services, or the full MCP system. Skipped by default; explicitly enabled in the validation phase.",
+    "slow: Fully hermetic tests that spawns real subprocesses or git operations on tmp_path. Enabled by default; skip via -m 'not slow' for fast dev-runs.",
     "manual: Manual tests requiring full environment setup and explicit enablement (RUN_MANUAL_TESTS=1)",
     "asyncio: Mark async tests for pytest-asyncio",
 ]
-asyncio_mode = "auto"
+asyncio_mode = "strict"
 
 [tool.mypy]
 python_version = "3.11"
