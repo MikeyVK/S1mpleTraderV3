@@ -509,95 +509,97 @@ select = ["E", "W", "F"]  # Does NOT include PLC0415ignore = ["PLC0415"]  # Atte
 **Class:** `RunTestsTool`  
 **File:** [mcp_server/tools/test_tools.py](../../../../mcp_server/tools/test_tools.py)
 
-Run pytest with optional markers, path filtering, and timeout.
+Run pytest with structured JSON output. Returns per-failure details including traceback. Optimised for large test suites (1000+ tests).
 
 #### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `path` | `str` | No | Path to test file or directory (default: `"tests/"`) |
-| `markers` | `str` | No | Pytest markers to filter by (e.g., `"unit"`, `"integration"`) |
-| `verbose` | `bool` | No | Verbose output (`-v` flag) (default: `True`) |
-| `timeout` | `int` | No | Timeout in seconds (default: `300`) |
+| `path` | `str` | No* | Path(s) to test file(s) or director(y/ies). Space-separated for multiple: `"tests/unit tests/core/test_proxy.py"`. Mutually exclusive with `scope`. |
+| `scope` | `str` | No* | Set to `"full"` to run the entire suite without path restriction. Mutually exclusive with `path`. |
+| `markers` | `str` | No | Pytest marker expression, passed 1-to-1 as `-m`. Supports all pytest syntax: `"slow"`, `"not slow"`, `"slow or unit"`. |
+| `last_failed_only` | `bool` | No | Re-run only previously failed tests (`--lf`). Default: `false`. |
+| `timeout` | `int` | No | Timeout in seconds. Default: `300`. |
+
+\* Either `path` or `scope` must be provided. Providing both raises a `ValidationError`.
 
 #### Returns
 
+Two content items are returned:
+
+1. **JSON** — structured result:
+
 ```json
 {
-  "success": true,
   "summary": {
-    "total": 45,
     "passed": 43,
-    "failed": 2,
-    "skipped": 0,
-    "duration": 12.5
+    "failed": 2
   },
+  "summary_line": "2 failed, 43 passed in 12.50s",
   "failures": [
     {
-      "test": "tests/test_user.py::test_create_user",
-      "message": "AssertionError: Expected 'admin' but got 'user'"
-    },
-    {
-      "test": "tests/test_auth.py::test_login_expired_token",
-      "message": "ValidationError: Token expired"
+      "test_id": "test_create_user",
+      "location": "tests/test_user.py::test_create_user",
+      "short_reason": "AssertionError: Expected 'admin' but got 'user'",
+      "traceback": "tests/test_user.py:25: in test_create_user\n    assert role == 'admin'\nE   AssertionError: Expected 'admin' but got 'user'"
     }
-  ],
-  "output": "============================= test session starts ==============================\n..."
+  ]
 }
 ```
+
+> `failures` key is only present when `failed > 0`.
+
+2. **Text** — human-readable summary line (e.g. `"2 failed, 43 passed in 12.50s"`).
 
 #### Example Usage
 
-**Run all tests:**
-```json
-{
-  "path": "tests/"
-}
-```
-
 **Run specific test file:**
 ```json
-{
-  "path": "tests/test_user.py",
-  "verbose": true
-}
+{ "path": "tests/mcp_server/unit/tools/test_test_tools.py" }
 ```
 
-**Run tests with markers:**
+**Run multiple paths (space-separated):**
 ```json
-{
-  "path": "tests/",
-  "markers": "unit",
-  "timeout": 60
-}
+{ "path": "tests/mcp_server/unit tests/mcp_server/core/test_proxy.py" }
 ```
 
-**Run integration tests only:**
+**Run full suite:**
 ```json
-{
-  "markers": "integration",
-  "timeout": 600
-}
+{ "scope": "full" }
+```
+
+**Re-run only previously failed tests:**
+```json
+{ "path": "tests/", "last_failed_only": true }
+```
+
+**Run tests with marker filter:**
+```json
+{ "path": "tests/", "markers": "slow" }
+```
+
+**Exclude slow tests:**
+```json
+{ "path": "tests/", "markers": "not slow" }
 ```
 
 #### Pytest Markers
 
-Common markers (defined in [pytest.ini](../../../../pytest.ini)):
+Markers currently defined in `pyproject.toml`:
 
-| Marker | Description | Example |
-|--------|-------------|---------|
-| `unit` | Fast unit tests | `@pytest.mark.unit` |
-| `integration` | Slower integration tests | `@pytest.mark.integration` |
-| `slow` | Slow-running tests | `@pytest.mark.slow` |
-| `github` | Tests requiring GitHub API | `@pytest.mark.github` |
+| Marker | Description |
+|--------|-------------|
+| `slow` | Slow-running tests, skipped by default in CI |
+| `manual` | Tests requiring manual setup or live credentials |
+| `asyncio` | Async tests (asyncio_mode = strict) |
 
 #### Behavior Notes
 
-- **Default Path:** If no path specified, runs all tests in `tests/` directory
-- **Timeout:** Returns error if tests exceed timeout (kills pytest process)
-- **Verbose:** Default `verbose=True` provides detailed output
-- **Failure Details:** Captures failure messages and stack traces
-- **Exit Code:** `success=false` if any tests fail or timeout exceeded
+- **No temp file:** Output is returned directly in the tool response — no intermediate file.
+- **--tb=short:** Always active; traceback per failure is captured in the `traceback` field.
+- **Structured output:** `summary`, `summary_line`, and `failures` (with traceback) are always present.
+- **Timeout:** Kills the pytest process and raises `ExecutionError` if exceeded.
+- **venv-aware:** Uses `sys.executable -m pytest` — always the venv's pytest, never system pytest.
 
 ---
 

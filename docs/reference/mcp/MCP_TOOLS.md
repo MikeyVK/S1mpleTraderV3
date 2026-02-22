@@ -119,7 +119,7 @@ Run quality gates (Ruff, Pyright), tests, and validate code.
 | **ValidateDocTool** | Check doc structure | `file_path` | Validation results (headings, links, etc.) |
 | **ValidationTool** | Generic code validation | `file_path` | Issues found |
 | **ValidateDTOTool** | Validate DTO schema | `file_path` | DTO structure validation |
-| **RunTestsTool** | Run pytest | `path` (default: tests/), `markers` (optional), `verbose` (optional), `timeout` (default: 300s) | Test results, pass/fail count |
+| **RunTestsTool** | Run pytest | `path` (space-sep, mutually exclusive with `scope`), `scope` (`"full"`), `markers`, `last_failed_only`, `timeout` | JSON: `summary`, `summary_line`, `failures[]` with traceback |
 | **HealthCheckTool** | Server health status | None | OK/ERROR |
 
 **Quality Gates Standard (`.st3/quality.yaml`):**
