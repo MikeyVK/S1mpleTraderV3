@@ -712,12 +712,244 @@ gate4_types:
 
 ---
 
+## Investigation 15: Parsing Architecture — Config-Driven Violation Normalization (F15)
+
+### Root cause analysis: three structural defects in the current parsing dispatch
+
+Reading `qa_manager.py` lines 619–717 reveals that the dispatch contains implicit coupling and a dead config path that block adding any new tool without Python code changes.
+
+#### Defect 1: `produces_json=true` is an implicit selector for `_parse_ruff_json`
+
+```python
+# execute_gate, line 619
+if gate.parsing.strategy == "exit_code":
+    if gate.capabilities.produces_json:          # ← hidden: "this means ruff check"
+        parsed_issues = self._parse_ruff_json(parser_input)   # ← hardcoded
+```
+
+The `produces_json` flag in `CapabilitiesMetadata` was intended as metadata ("does this tool output JSON?"). In practice it is used as a parser selector: `produces_json=true` → call `_parse_ruff_json`. This is a hidden coupling that silently breaks for any other JSON-emitting tool. Adding `pymarkdownlnt` with `--log-format jsonl` (also JSON) and `produces_json=true` would call `_parse_ruff_json` — which expects a ruff violation array and would silently produce wrong output.
+
+#### Defect 2: `text_regex` strategy — config exists, executor is a stub
+
+`TextRegexParsing` has a full Pydantic model with `patterns: list[RegexPattern]`:
+```python
+class TextRegexParsing(BaseModel):
+    strategy: Literal["text_regex"]
+    patterns: list[RegexPattern] = Field(..., min_length=1)
+```
+
+But `execute_gate` for `text_regex`:
+```python
+elif gate.parsing.strategy == "text_regex":     # line 694
+    if proc.returncode in set(gate.success.exit_codes_ok):
+        result["passed"] = True
+        result["issues"] = []
+    else:
+        result["passed"] = False
+        result["issues"] = [{"message": f"Gate failed..."}]   # no regex parsing at all
+```
+
+The `patterns` are parsed by Pydantic and then ignored. This is dead config — the regex-to-violations path is never executed. F14 (mypy text normalization) cannot be solved by simply adding a `patterns` entry to quality.yaml because the executor does nothing with it.
+
+#### Defect 3: `json_field` is semi-generic but does not output ViolationDTO
+
+`_parse_json_field_issues` uses `diagnostics_path` (JSON Pointer) to locate the violations array, then extracts fields such as `file`, `range.start.line`, `rule`, `severity`. This is closer to config-driven behavior, but:
+- Line numbers are adjusted (`+1`) because pyright uses 0-based indices — this offset is hardcoded in the method, not in config
+- The resulting dict is not a `ViolationDTO` — it's an ad-hoc `dict[str, Any]` with inconsistent field presence
+- `_parse_ruff_json` and `_parse_json_field_issues` exist as separate methods with different field conventions
+
+**Net result:** Each tool has its own extraction path and its own output shape. The agent receives heterogeneous `issues[]` per gate — no guaranteed field contract.
+
+---
+
+### F15: Solution — two new declarative parsing strategies, zero tool-specific methods
+
+**Design principle:** Move all tool output knowledge to `quality.yaml`. QAManager gains two generic executors; all tool-specific field paths are config. Adding a new tool = add YAML + Python package, zero Python code changes.
+
+#### New strategy: `json_violations` (replaces `exit_code+produces_json` and `json_field`)
+
+```python
+class JsonViolationsParsing(BaseModel):
+    strategy: Literal["json_violations"]
+    violations_path: str = Field(default="/")   # JSON Pointer to violations array
+    field_map: dict[str, str] = Field(...)      # ViolationDTO field → path inside each item
+    fixable_when: str | None = Field(default=None)  # "path == 'value'" expression
+    line_offset: int = Field(default=0)         # normalize 0-based to 1-based (+1 for pyright)
+```
+
+`field_map` uses `/`-separated JSON Pointer fragments local to each violation object (no RFC 6901 `#` anchors needed at item level):
+
+```yaml
+# gate1_formatting (ruff check)
+parsing:
+  strategy: "json_violations"
+  violations_path: "/"                 # ruff outputs a root-level array
+  field_map:
+    file: "filename"
+    line: "location/row"
+    column: "location/column"
+    code: "code"
+    message: "message"
+  fixable_when: "fix/applicability == 'safe'"
+
+# gate4_pyright
+parsing:
+  strategy: "json_violations"
+  violations_path: "/generalDiagnostics"   # pyright nests under this key
+  line_offset: 1                           # pyright is 0-based, ViolationDTO is 1-based
+  field_map:
+    file: "file"
+    line: "range/start/line"
+    column: "range/start/character"
+    code: "rule"
+    message: "message"
+    severity: "severity"
+```
+
+`_parse_json_violations()` in QAManager (fully generic, ~25 lines):
+```python
+def _parse_json_violations(self, stdout: str, p: JsonViolationsParsing) -> list[ViolationDTO]:
+    try:
+        data = json.loads(stdout)
+    except (json.JSONDecodeError, ValueError):
+        return []
+    arr = self._resolve_json_pointer(data, p.violations_path)
+    if not isinstance(arr, list):
+        return []
+    violations = []
+    for item in arr:
+        mapped: dict[str, Any] = {}
+        for dto_field, path in p.field_map.items():
+            val = self._resolve_path_fragment(item, path)
+            if val is not None:
+                mapped[dto_field] = val
+        if p.fixable_when and "/" in p.fixable_when:
+            path, _, expected = p.fixable_when.partition(" == ")
+            raw = self._resolve_path_fragment(item, path.strip())
+            mapped["fixable"] = str(raw) == expected.strip().strip("'\"")
+        if "line" in mapped and isinstance(mapped["line"], int):
+            mapped["line"] += p.line_offset
+        violations.append(ViolationDTO(**mapped))
+    return violations
+```
+
+`_resolve_path_fragment(item, "location/row")` splits on `/` and recursively gets nested keys. No third-party dependency — 4 lines of standard dict traversal.
+
+#### New strategy: `text_violations` (replaces `text_regex` stub and resolves F14)
+
+```python
+class TextViolationsParsing(BaseModel):
+    strategy: Literal["text_violations"]
+    pattern: str = Field(...)              # regex with named groups → ViolationDTO fields
+    defaults: dict[str, Any] = Field(default_factory=dict)   # literals for unmatched fields
+    severity_default: str = Field(default="error")
+```
+
+```yaml
+# gate4_types (mypy)
+parsing:
+  strategy: "text_violations"
+  pattern: "^(?P<file>[^:]+):(?P<line>\\d+): (?P<severity>\\w+): (?P<message>.+?)(?:\\s+\\[(?P<code>[^\\]]+)\\])?$"
+  defaults:
+    fixable: false
+
+# gate0_ruff_format
+parsing:
+  strategy: "text_violations"
+  pattern: "^--- a/(?P<file>.+)$"         # each diff hunk starts with --- a/<file>
+  defaults:
+    code: "FORMAT"
+    message: "File requires formatting (run: ruff format <file>)"
+    fixable: true
+    severity: "error"
+```
+
+`_parse_text_violations()` in QAManager (fully generic, ~15 lines):
+```python
+def _parse_text_violations(self, stdout: str, p: TextViolationsParsing) -> list[ViolationDTO]:
+    compiled = re.compile(p.pattern, re.MULTILINE)
+    violations = []
+    for match in compiled.finditer(stdout):
+        groups = {k: v for k, v in match.groupdict().items() if v is not None}
+        dto = {**p.defaults, **groups}   # defaults first, named groups override
+        if "severity" not in dto:
+            dto["severity"] = p.severity_default
+        if "line" in dto:
+            dto["line"] = int(dto["line"])
+        violations.append(ViolationDTO(**dto))
+    return violations
+```
+
+#### Updated execute_gate dispatch (no tool names, no flags)
+
+```python
+match gate.parsing.strategy:
+    case "json_violations":
+        parser_input = proc.stdout if proc.stdout.strip() else combined_output
+        violations = self._parse_json_violations(parser_input, gate.parsing)
+    case "text_violations":
+        violations = self._parse_text_violations(combined_output, gate.parsing)
+    case "exit_code":
+        violations = []   # pass/fail only — no violations (used for tools with no output)
+    case _:
+        violations = [ViolationDTO(message=f"Unsupported strategy: {gate.parsing.strategy}")]
+```
+
+**Zero `if tool == "..."` statements. Zero `produces_json` flag checks.**
+
+---
+
+### Impact: what is removed vs what is added
+
+**Removed from QAManager:**
+| Method | Reason |
+|--------|--------|
+| `_parse_ruff_json()` | Inlined into `field_map` config in quality.yaml |
+| `_parse_json_field_issues()` | Replaced by `_parse_json_violations()` (generic) |
+| `produces_json` flag branch in `execute_gate` | Replaced by `json_violations` strategy |
+
+**Removed from Pydantic models (`quality_config.py`):**
+| Model | Change |
+|-------|--------|
+| `TextRegexParsing` | Replace: add `TextViolationsParsing` (patterns → single `pattern`, add `defaults`) |
+| `JsonFieldParsing` | Replace: add `JsonViolationsParsing` (field_map + violations_path + line_offset) |
+| `CapabilitiesMetadata.produces_json` | Remove flag — strategy is now explicit in `parsing.strategy` |
+
+**Added to QAManager:**
+| Method | Size |
+|--------|------|
+| `_parse_json_violations()` | ~25 lines, fully generic |
+| `_parse_text_violations()` | ~15 lines, fully generic |
+| `_resolve_path_fragment()` | ~4 lines, recursive dict traversal |
+
+**Net: 2 tool-specific methods → 3 generic methods. New tool requires zero Python changes.**
+
+---
+
+### Constraint: `fixable_when` expression syntax
+
+`fixable_when` is a single `"path == 'value'"` string — parsed by splitting on ` == `, trimming quotes. This covers all known cases:
+- ruff: `fix/applicability == 'safe'`
+- (All other current tools have constant `fixable: false`)
+
+If future tools need `!=` or `in` expressions, `fixable_when` can be extended. No DSL is needed for the current gate catalog.
+
+---
+
+### Gate 0 special case: ruff format diff → file-level violations
+
+`ruff format --check --diff` outputs a unified diff. The `text_violations` strategy with pattern `^--- a/(?P<file>.+)$` extracts one violation per file from the diff (each diff hunk's `--- a/<file>` header line). This is both minimal (no external process needed) and accurate (matches exactly the files ruff reports as needing format).
+
+**The full diff content** still moves to the artifact log — `_build_output_capture` writes it there. The agent sees only file-level `{code: "FORMAT", fixable: true}` violations in the MCP result.
+
+---
+
 ## Findings Summary
 
 | # | Finding | Severity | Fix |
 |---|---------|---------|-----|
 | F1 | System pytest used for Gate 5/6 | Bug | Remove Gate 5/6 from active_gates |
-| F2 | Gate 0 ruff format diff silently truncated | Bug | File-level violation `{code: "FORMAT", fixable: true}` — diff to artifact log only |
+| F2 | Gate 0 ruff format diff silently truncated | Bug | `text_violations` strategy extracts file-level FORMAT violations; diff → artifact log |
 | F3 | Double JSON in MCP response | Bug | `ToolResult.content[]` with `text` first, `json` second |
 | F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` enum — no backward compat |
 | F5 | No summary_line as first MCP content item | Architecture | `summary_line` as `{"type": "text"}` first in ToolResult |
@@ -729,7 +961,8 @@ gate4_types:
 | F11 | `_filter_files()` hardcodes `.py` globally | SOLID/OCP | Remove — each gate filters via `capabilities.file_types` |
 | F12 | 4 pytest-specific methods in QAManager | Dead code | Remove `_is_pytest_gate`, `_maybe_enable_pytest_json_report`, `_get_skip_reason`; rewrite `_files_for_gate` |
 | F13 | project_scope globs wrong in earlier draft | Config error | Correct: `mcp_server/**/*.py`, `tests/mcp_server/**/*.py` |
-| F14 | Gate 4 mypy violations unstructured/truncated | Architecture | New `text_violations` parsing strategy + `_parse_mypy_text()` |
+| F14 | Gate 4 mypy violations unstructured/truncated | Architecture | `text_violations` strategy with mypy regex pattern + `defaults` in quality.yaml |
+| F15 | `produces_json` implicit coupling + `text_regex` dead config + `json_field` no ViolationDTO | Architecture | New `json_violations` + `text_violations` strategies; remove `_parse_ruff_json` + `_parse_json_field_issues`; zero tool-specific methods in QAManager |
 
 ---
 
@@ -746,3 +979,6 @@ gate4_types:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-22 | Agent | Initial complete research — 9 investigations, 8 findings, 7 user decisions |
+| 1.1 | 2026-02-22 | Agent | Add Inv. 10–13 (SOLID, dead code, globs), F9–F13; fix ordering |
+| 1.2 | 2026-02-22 | Agent | Rewrite Inv. 5 (output model, ViolationDTO schema); add Inv. 14 (F14, mypy parsing) |
+| 1.3 | 2026-02-22 | Agent | Add Inv. 15 (F15): config-driven parsing architecture; `json_violations` + `text_violations` strategies; zero tool-specific methods in QAManager |
