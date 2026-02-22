@@ -407,3 +407,30 @@ async def test_run_tests_text_content_is_summary_line_on_failure(
     text = result.content[1]["text"]
     assert not text.startswith("{"), f"content[1]['text'] should be summary_line not JSON: {text!r}"
     assert "failed" in text
+
+
+# ---------------------------------------------------------------------------
+# C6 RED (D6.2): traceback in failure items
+# ---------------------------------------------------------------------------
+
+
+def test_parse_pytest_output_failure_has_traceback_key() -> None:
+    """Each failure item must contain a 'traceback' key."""
+    from mcp_server.tools.test_tools import _parse_pytest_output  # noqa: PLC0415
+
+    result = _parse_pytest_output(_PYTEST_STDOUT_WITH_TB_SHORT)
+
+    assert len(result["failures"]) == 1
+    failure = result["failures"][0]
+    assert "traceback" in failure
+
+
+def test_parse_pytest_output_traceback_contains_assertion_error() -> None:
+    """The 'traceback' value must contain the --tb=short block for the failure."""
+    from mcp_server.tools.test_tools import _parse_pytest_output  # noqa: PLC0415
+
+    result = _parse_pytest_output(_PYTEST_STDOUT_WITH_TB_SHORT)
+
+    traceback = result["failures"][0]["traceback"]
+    assert "AssertionError" in traceback
+    assert "assert 1 == 2" in traceback
