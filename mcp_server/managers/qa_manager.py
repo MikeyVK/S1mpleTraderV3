@@ -664,9 +664,7 @@ class QAManager:
                 ]
                 result["passed"] = len(text_violations) == 0
                 result["score"] = (
-                    "Pass"
-                    if result["passed"]
-                    else f"Fail ({len(text_violations)} violations)"
+                    "Pass" if result["passed"] else f"Fail ({len(text_violations)} violations)"
                 )
 
             elif gate.parsing.strategy == "exit_code":

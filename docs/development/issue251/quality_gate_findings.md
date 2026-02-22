@@ -70,6 +70,39 @@ B023 — Function definition does not bind loop variable `safe_groups` (line 792
 
 ---
 
+### [C13 REFACTOR] Ruff Format — ternary en nested literal-args uitbreiden
+
+**Gate:** Gate 0: Ruff Format
+**Files:** `qa_manager.py`, `test_execute_gate_dispatch.py`
+**Fout 1 — ternary op 3 regels:**
+```python
+# Te lang als 3-regelversie
+result["score"] = (
+    "Pass"
+    if result["passed"]
+    else f"Fail ({len(text_violations)} violations)"
+)
+# Ruff wil: één regel binnen ()
+result["score"] = (
+    "Pass" if result["passed"] else f"Fail ({len(text_violations)} violations)"
+)
+```
+**Fout 2 — dict/list met trailing comma als directe functie-argument:**
+```python
+# Ruff expandeert ZOWEL de buitenste aanroep ALS het literal
+return _make_gate({**caps, "key": val})  # ❌
+return _make_gate(          # ✅
+    {
+        **caps,
+        "key": val,         # trailing comma → ruff breidt beide uit
+    }
+)
+# Zelfde voor json.dumps([{"key": "val"},])  →  json.dumps(\n    [...]\n)
+```
+**Patroon (nieuw):** Een dict of list met trailing comma als enig argument van een functie-aanroep → ruff breidt zowel de binnenste literal als de buitenste aanroep uit naar meerdere regels. Schrijf dit direct zo bij het opstellen van tests.
+
+---
+
 ## Overzicht per cycle
 
 | Cycle | Gate | Regel | Bestand | Actie |
@@ -80,6 +113,8 @@ B023 — Function definition does not bind loop variable `safe_groups` (line 792
 | C11 REFACTOR | Gate 3 Line Length | E501 | `test_parse_text_violations.py` | `# noqa: E501` op regex constante-regel |
 | C12 REFACTOR | Gate 1 Ruff Strict Lint | B023 | `qa_manager.py` | `_resolve` → `@staticmethod _resolve_text_field` |
 | C12 REFACTOR | Gate 0 Ruff Format | constructor/method calls > 100 chars | `test_parse_text_violations_defaults.py`, `qa_manager.py` | collapsed / gesplitst |
+| C13 REFACTOR | Gate 0 Ruff Format | ternary 3-regels: 1 regel in `()` | `qa_manager.py` | ternary op 1 regel |
+| C13 REFACTOR | Gate 0 Ruff Format | dict/list trailing-comma arg → expand | `test_execute_gate_dispatch.py` | `_make_gate(\n    {...}\n)`, `json.dumps(\n    [...]\n)` |
 
 ---
 

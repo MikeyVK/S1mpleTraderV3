@@ -93,17 +93,21 @@ class TestExecuteGateJsonViolationsDispatch:
         return QAManager()
 
     def _gate(self) -> QualityGate:
-        return _make_gate({
-            **_BASE_CAPS,
-            "parsing_strategy": "json_violations",
-            "json_violations": _JSON_PARSING,
-        })
+        return _make_gate(
+            {
+                **_BASE_CAPS,
+                "parsing_strategy": "json_violations",
+                "json_violations": _JSON_PARSING,
+            }
+        )
 
     def test_violations_from_json_output_become_issues(self, manager: QAManager) -> None:
         """JSON output is parsed into issues via the json_violations pipeline."""
-        payload = json.dumps([
-            {"filename": "a.py", "message": "some error", "code": "E001"},
-        ])
+        payload = json.dumps(
+            [
+                {"filename": "a.py", "message": "some error", "code": "E001"},
+            ]
+        )
         with patch("subprocess.run", return_value=_mock_proc(payload)):
             result = manager._execute_gate(self._gate(), ["a.py"], gate_number=1)
         assert result["passed"] is False
@@ -130,11 +134,13 @@ class TestExecuteGateTextViolationsDispatch:
         return QAManager()
 
     def _gate(self) -> QualityGate:
-        return _make_gate({
-            **_BASE_CAPS,
-            "parsing_strategy": "text_violations",
-            "text_violations": _TEXT_PARSING,
-        })
+        return _make_gate(
+            {
+                **_BASE_CAPS,
+                "parsing_strategy": "text_violations",
+                "text_violations": _TEXT_PARSING,
+            }
+        )
 
     def test_text_output_violations_become_issues(self, manager: QAManager) -> None:
         """Text output is parsed into issues via the text_violations pipeline."""
