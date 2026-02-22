@@ -48,12 +48,12 @@ async def test_run_tests_success(mock_run_pytest_sync, mock_settings):
     tool = RunTestsTool()
 
     # Mock return: stdout, stderr, returncode
-    mock_run_pytest_sync.return_value = ("Test Output", "", 0)
+    mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    result = await tool.execute(RunTestsInput(path="tests/unit", verbose=False))
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
 
-    assert "Test Output" in result.content[0]["text"]
-    assert "✅ Tests passed" in result.content[0]["text"]
+    assert result.content[0]["type"] == "json"
+    assert result.content[0]["json"]["summary"]["passed"] == 1
 
     # Verify call args
     call_args = mock_run_pytest_sync.call_args
@@ -66,13 +66,16 @@ async def test_run_tests_success(mock_run_pytest_sync, mock_settings):
 @pytest.mark.asyncio
 async def test_run_tests_failure(mock_run_pytest_sync, mock_settings):
     tool = RunTestsTool()
-    mock_run_pytest_sync.return_value = ("Tests Failed", "Error info", 1)
+    mock_run_pytest_sync.return_value = (
+        "FAILED tests/foo.py::test_x - AssertionError: nope\n1 failed in 0.10s\n",
+        "Error info",
+        1,
+    )
 
     result = await tool.execute(RunTestsInput(path="tests/foo.py"))
 
-    assert "Tests Failed" in result.content[0]["text"]
-    assert "Error info" in result.content[0]["text"]
-    assert "❌ Tests failed" in result.content[0]["text"]
+    assert result.content[0]["type"] == "json"
+    assert result.content[0]["json"]["summary"]["failed"] == 1
 
 
 @pytest.mark.asyncio

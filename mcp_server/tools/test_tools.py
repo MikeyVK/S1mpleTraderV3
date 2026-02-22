@@ -1,6 +1,7 @@
 """Test execution tools."""
 import asyncio
 import os
+import re
 import subprocess
 import sys
 from typing import Any
@@ -46,12 +47,47 @@ def _run_pytest_sync(
             raise
 
 
+def _parse_pytest_output(stdout: str) -> dict[str, Any]:
+    """Parse pytest stdout into a structured dict.
+
+    Returns a dict with:
+    - summary: {"passed": int, "failed": int}
+    - failures: list of {"test_id", "location", "short_reason"}  — only present when failed > 0
+    """
+    failures: list[dict[str, str]] = []
+    for line in stdout.splitlines():
+        match = re.match(r"^FAILED (.+?) - (.+)$", line.strip())
+        if match:
+            location = match.group(1).strip()
+            short_reason = match.group(2).strip()
+            test_id = location.split("::")[-1] if "::" in location else location
+            failures.append({
+                "test_id": test_id,
+                "location": location,
+                "short_reason": short_reason,
+            })
+
+    passed = 0
+    failed = 0
+    for line in stdout.splitlines():
+        m_fail = re.search(r"(\d+) failed", line)
+        if m_fail:
+            failed = int(m_fail.group(1))
+        m_pass = re.search(r"(\d+) passed", line)
+        if m_pass:
+            passed = int(m_pass.group(1))
+
+    result: dict[str, Any] = {"summary": {"passed": passed, "failed": failed}}
+    if failures:
+        result["failures"] = failures
+    return result
+
+
 class RunTestsInput(BaseModel):
     """Input for RunTestsTool."""
     path: str = Field(default="tests/", description="Path to test file or directory")
     markers: str | None = Field(default=None, description="Pytest markers to filter by")
     timeout: int = Field(default=300, description="Timeout in seconds (default: 300)")
-    verbose: bool = Field(default=True, description="Verbose output (-v flag)")
 
 
 class RunTestsTool(BaseTool):
@@ -71,9 +107,6 @@ class RunTestsTool(BaseTool):
     async def execute(self, params: RunTestsInput) -> ToolResult:
         """Execute the tool."""
         cmd = [sys.executable, "-m", "pytest", params.path]
-
-        if params.verbose:
-            cmd.append("-v")
 
         cmd.append("--tb=short")  # Always use short traceback
 
@@ -98,13 +131,8 @@ class RunTestsTool(BaseTool):
             if stderr:
                 output += "\nSTDERR:\n" + stderr
 
-            # Add summary line
-            if returncode == 0:
-                output += "\n\n✅ Tests passed"
-            else:
-                output += f"\n\n❌ Tests failed (exit code: {returncode})"
-
-            return ToolResult.text(output)
+            parsed = _parse_pytest_output(output)
+            return ToolResult.json_data(parsed)
 
         except subprocess.TimeoutExpired:
             raise ExecutionError(
