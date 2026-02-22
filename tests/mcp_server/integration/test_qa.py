@@ -27,7 +27,7 @@ from mcp_server.config.quality_config import QualityConfig
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 
-pytestmark = [pytest.mark.integration, pytest.mark.xdist_group("integration")]
+pytestmark = pytest.mark.asyncio
 
 
 def test_qa_manager_run_gates_with_real_file() -> None:

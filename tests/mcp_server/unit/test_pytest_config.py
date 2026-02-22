@@ -40,18 +40,15 @@ def test_testpaths_set_to_mcp_server() -> None:
     )
 
 
-def test_addopts_excludes_integration_marker() -> None:
-    """Default pytest run must never execute integration-marked tests.
+def test_addopts_has_no_marker_filter() -> None:
+    """Default pytest run must not contain any -m marker filter.
 
-    Integration tests call the live GitHub API and create real issues.
-    Exclusion via -m 'not integration' in addopts is the fix for #237.
+    Markers zijn afgeschaft — de default suite draait alles zonder uitzondering.
+    Verification that C4 cleanup is complete.
     """
     addopts = _load_addopts()
-    addopts_str = " ".join(addopts)
-    assert "not integration" in addopts_str, (
-        "addopts must contain '-m not integration' to prevent integration tests "
-        "from running in the default suite. "
-        f"Current addopts: {addopts}"
+    assert "-m" not in addopts, (
+        f"addopts must not contain -m marker filter; current: {addopts}"
     )
 
 
@@ -62,21 +59,6 @@ def test_addopts_excludes_integration_marker() -> None:
 
 def _load_markers() -> list[str]:
     return _load_pytest_config()["markers"]
-
-
-def test_integration_marker_has_formal_definition() -> None:
-    """integration marker must have formal definition containing 'end-to-end'.
-
-    Formal definition per planning.md: tests that validate end-to-end
-    behaviour across the full scope using real subprocesses, external
-    services or the full MCP system.
-    """
-    markers = _load_markers()
-    integration_desc = next((m for m in markers if m.startswith("integration:")), None)
-    assert integration_desc is not None, "integration marker must be defined in pyproject.toml"
-    assert "end-to-end" in integration_desc, (
-        f"integration marker description must contain 'end-to-end'; got: {integration_desc}"
-    )
 
 
 def test_slow_marker_has_formal_definition() -> None:

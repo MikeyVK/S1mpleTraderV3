@@ -92,8 +92,6 @@ class TestTransparentRestart:
 
 
 # Marker for manual integration testing
-@pytest.mark.integration
-@pytest.mark.manual
 class TestProxyIntegration:
     """Manual integration tests for MCPProxy.
 
