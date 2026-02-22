@@ -6,8 +6,6 @@ for the uniform violation contract returned by all gate parsers.
 
 from __future__ import annotations
 
-import pytest
-
 from mcp_server.config.quality_config import ViolationDTO
 
 
