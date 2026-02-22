@@ -69,6 +69,31 @@ class JsonViolationsParsing(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
+class TextViolationsParsing(BaseModel):
+    """Text parsing strategy: extracts violations from line-based tool output.
+
+    Used for gates that emit violations as plain text (mypy, pylint, bandit).
+    ``pattern`` is a regex with named groups that map to ViolationDTO fields
+    (e.g. ``file``, ``line``, ``col``, ``message``, ``rule``, ``severity``).
+    ``defaults`` supplies static values for fields absent from the pattern.
+    """
+
+    pattern: str = Field(
+        ...,
+        description="Regex with named groups mapping to ViolationDTO fields.",
+    )
+    severity_default: str = Field(
+        default="error",
+        description="Severity used when the pattern has no 'severity' group.",
+    )
+    defaults: dict[str, str] = Field(
+        default_factory=dict,
+        description="Static default values for ViolationDTO fields not captured by the pattern.",
+    )
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
 class ExecutionConfig(BaseModel):
     """How to execute a gate tool."""
 
