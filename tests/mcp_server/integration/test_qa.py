@@ -99,7 +99,6 @@ def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": True,
-                    "produces_json": True,
                 },
                 "scope": None,
             },
@@ -116,7 +115,6 @@ def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
-                    "produces_json": True,
                 },
                 "scope": None,
             },
