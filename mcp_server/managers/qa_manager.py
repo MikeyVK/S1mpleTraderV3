@@ -14,7 +14,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
-from mcp_server.config.quality_config import QualityConfig, QualityGate
+from mcp_server.config.quality_config import (
+    JsonViolationsParsing,
+    QualityConfig,
+    QualityGate,
+    ViolationDTO,
+)
 
 DEFAULT_ARTIFACT_LOG_MAX_FILES = 200
 MAX_OUTPUT_LINES = 50
@@ -736,6 +741,43 @@ class QAManager:
             else:
                 return None
         return current
+
+    def _parse_json_violations(
+        self,
+        payload: list[dict[str, Any]],
+        parsing: JsonViolationsParsing,
+    ) -> list[ViolationDTO]:
+        """Map a root-array JSON payload to a list of ViolationDTOs.
+
+        Each item in *payload* is a flat dict.  The ``parsing.field_map``
+        maps ViolationDTO field names to the corresponding key in the dict.
+        Missing keys in the item result in ``None`` for optional fields.
+        The ``fixable`` field is determined by truthiness of the mapped value.
+
+        Args:
+            payload: List of parsed JSON objects (root-array format).
+            parsing: Describes how to extract fields from each item.
+
+        Returns:
+            List of ViolationDTO instances.
+        """
+        result: list[ViolationDTO] = []
+        for item in payload:
+            fmap = parsing.field_map
+            fixable_key = fmap.get("fixable")
+            fixable_val = item.get(fixable_key) if fixable_key else None
+            result.append(
+                ViolationDTO(
+                    file=item.get(fmap["file"]) if "file" in fmap else None,
+                    message=item.get(fmap["message"]) if "message" in fmap else None,
+                    line=item.get(fmap["line"]) if "line" in fmap else None,
+                    col=item.get(fmap["col"]) if "col" in fmap else None,
+                    rule=item.get(fmap["rule"]) if "rule" in fmap else None,
+                    fixable=bool(fixable_val),
+                    severity=None,
+                )
+            )
+        return result
 
     def _parse_json_field_issues(
         self, output: str, diagnostics_path: str | None = None
