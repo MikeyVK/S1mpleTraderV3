@@ -88,7 +88,10 @@ class RunTestsInput(BaseModel):
     path: str = Field(default="tests/", description="Path to test file or directory")
     markers: str | None = Field(default=None, description="Pytest markers to filter by")
     timeout: int = Field(default=300, description="Timeout in seconds (default: 300)")
-    last_failed_only: bool = Field(default=False, description="Re-run only previously failed tests (pytest --lf)")
+    last_failed_only: bool = Field(
+        default=False,
+        description="Re-run only previously failed tests (pytest --lf)",
+    )
 
 
 class RunTestsTool(BaseTool):
