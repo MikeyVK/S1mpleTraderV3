@@ -1387,45 +1387,12 @@ class TestSummaryTotals:
             assert summary["auto_fixable"] == 0
 
 
-class TestJsonFieldParserConfig:
-    """Test json_field parser respects config pointers (P1-AC4)."""
+class TestJsonPointerResolution:
+    """Test _resolve_json_pointer for field extraction (P1-AC4)."""
 
     @pytest.fixture
     def manager(self) -> QAManager:
         return QAManager()
-
-    def test_diagnostics_path_is_used_when_provided(self, manager: QAManager) -> None:
-        """Test _parse_json_field_issues uses diagnostics_path from config."""
-        json_output = json.dumps(
-            {
-                "summary": {"total": 1},
-                "customDiagnostics": [
-                    {
-                        "message": "Found error",
-                        "file": "test.py",
-                        "range": {"start": {"line": 5, "character": 0}},
-                    }
-                ],
-            }
-        )
-        issues = manager._parse_json_field_issues(
-            json_output, diagnostics_path="/customDiagnostics"
-        )
-        assert len(issues) == 1
-        assert issues[0]["message"] == "Found error"
-
-    def test_falls_back_to_general_diagnostics_when_no_path(self, manager: QAManager) -> None:
-        """Test _parse_json_field_issues falls back to generalDiagnostics."""
-        json_output = json.dumps(
-            {
-                "generalDiagnostics": [
-                    {"message": "General error"},
-                ]
-            }
-        )
-        issues = manager._parse_json_field_issues(json_output)
-        assert len(issues) == 1
-        assert issues[0]["message"] == "General error"
 
     def test_resolve_json_pointer_nested(self, manager: QAManager) -> None:
         """Test _resolve_json_pointer handles nested paths."""
@@ -1677,7 +1644,7 @@ class TestJsonFieldSuccessCriteria:
             assert result["passed"] is True
 
     def test_max_errors_zero_fails_with_issues(self, manager: QAManager) -> None:
-        """Test max_errors=0 fails when there are diagnostics."""
+        """Test json_field gate fails when exit code is non-zero (issue parsing now via capabilities)."""
         gate = self._make_json_field_gate(max_errors=0)
         output = json.dumps(
             {
@@ -1699,10 +1666,10 @@ class TestJsonFieldSuccessCriteria:
 
             result = manager._execute_gate(gate, ["f.py"], gate_number=1)
             assert result["passed"] is False
-            assert "1 errors" in result["score"]
+            assert "Fail" in result["score"]
 
-    def test_require_no_issues_true_fails_with_issues(self, manager: QAManager) -> None:
-        """Test require_no_issues=True fails when any issue is present."""
+    def test_require_no_issues_true_passes_with_zero_exit(self, manager: QAManager) -> None:
+        """Test json_field gate passes with exit code 0 (issue parsing moved to capabilities)."""
         gate = self._make_json_field_gate(require_no_issues=True)
         output = json.dumps(
             {
@@ -1723,7 +1690,8 @@ class TestJsonFieldSuccessCriteria:
             mock_run.return_value = mock_proc
 
             result = manager._execute_gate(gate, ["f.py"], gate_number=1)
-            assert result["passed"] is False
+            # json_field branch now uses exit-code-only; issue parsing via capabilities.parsing_strategy
+            assert result["passed"] is True
 
     def test_require_no_issues_false_passes_even_with_issues(self, manager: QAManager) -> None:
         """Test require_no_issues=False passes regardless of issues."""

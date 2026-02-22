@@ -689,25 +689,21 @@ class QAManager:
                     ]
 
             elif gate.parsing.strategy == "json_field":
-                # Prefer stdout for JSON parsing (more reliable than combined)
+                # Issue parsing is now handled via capabilities.parsing_strategy.
+                # This branch only extracts additional fields (e.g. error_count) from JSON.
                 parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
-                diagnostics_path = getattr(gate.parsing, "diagnostics_path", None)
-                issues = self._parse_json_field_issues(parser_input, diagnostics_path)
-
-                # Extract additional fields from JSON via configured pointers
                 fields_data = self._extract_json_fields(parser_input, gate)
-
-                # Apply success criteria (max_errors / require_no_issues)
-                issue_count = len(issues)
-                if gate.success.max_errors is not None:
-                    result["passed"] = issue_count <= gate.success.max_errors
-                elif gate.success.require_no_issues:
-                    result["passed"] = issue_count == 0
-                else:
+                ok_codes = set(gate.success.exit_codes_ok)
+                if proc.returncode in ok_codes:
                     result["passed"] = True
-
-                result["issues"] = issues
-                result["score"] = "Pass" if result["passed"] else f"Fail ({issue_count} errors)"
+                    result["score"] = "Pass"
+                    result["issues"] = []
+                else:
+                    result["passed"] = False
+                    result["score"] = f"Fail (exit={proc.returncode})"
+                    result["issues"] = [
+                        {"message": f"Gate failed with exit code {proc.returncode}"}
+                    ]
                 if fields_data:
                     result["fields"] = fields_data
 
@@ -974,68 +970,6 @@ class QAManager:
             )
         return result
 
-    def _parse_json_field_issues(
-        self, output: str, diagnostics_path: str | None = None
-    ) -> list[dict[str, Any]]:
-        """Best-effort JSON diagnostic parsing.
-
-        This is primarily intended for pyright-like tools that emit JSON diagnostics.
-
-        Args:
-            output: Raw JSON string from tool stdout/stderr.
-            diagnostics_path: Optional JSON Pointer (RFC 6901) to diagnostics array.
-                Falls back to 'generalDiagnostics' when not provided.
-        """
-
-        try:
-            data = json.loads(output)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            # If output isn't JSON, surface as plain issue.
-            text = output.strip()
-            return [{"message": text}] if text else []
-
-        if diagnostics_path:
-            diagnostics = self._resolve_json_pointer(data, diagnostics_path)
-        else:
-            diagnostics = data.get("generalDiagnostics")
-        if not isinstance(diagnostics, list):
-            return []
-
-        issues: list[dict[str, Any]] = []
-        for diag in diagnostics:
-            if not isinstance(diag, dict):
-                continue
-
-            issue: dict[str, Any] = {
-                "message": str(diag.get("message", "Unknown issue")),
-            }
-
-            file_path = diag.get("file")
-            if isinstance(file_path, str):
-                issue["file"] = file_path
-
-            rng = diag.get("range") or {}
-            start = (rng.get("start") or {}) if isinstance(rng, dict) else {}
-
-            line = start.get("line")
-            char = start.get("character")
-            if isinstance(line, int):
-                issue["line"] = line + 1
-            if isinstance(char, int):
-                issue["column"] = char + 1
-
-            rule = diag.get("rule")
-            if rule is not None:
-                issue["code"] = str(rule)
-
-            sev = diag.get("severity")
-            if sev is not None:
-                issue["severity"] = str(sev)
-
-            issues.append(issue)
-
-        return issues
-
     def _extract_json_fields(self, output: str, gate: QualityGate) -> dict[str, object]:
         """Extract named fields from JSON output using configured pointers.
 
@@ -1065,62 +999,3 @@ class QAManager:
             if value is not None:
                 extracted[field_name] = value
         return extracted
-
-    def _parse_ruff_json(self, output: str) -> list[dict[str, Any]]:
-        """Parse Ruff JSON output into structured violation issues.
-
-        Ruff's --output-format=json produces an array of violation objects.
-        Each violation has:
-        - code: Rule code (e.g., "E501", "F401")
-        - message: Description of the violation
-        - location: {row: int, column: int}
-        - filename: Path to the file
-        - fix: Optional fix object with {applicability: "safe" | "unsafe" | "display"}
-
-        Args:
-            output: JSON string from Ruff command stdout
-
-        Returns:
-            List of structured issue dicts with fields: file, line, column, code, message, fixable
-        """
-        try:
-            violations = json.loads(output)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            # Not valid JSON, return empty (caller handles exit code as failure)
-            return []
-
-        if not isinstance(violations, list):
-            return []
-
-        issues: list[dict[str, Any]] = []
-        for violation in violations:
-            if not isinstance(violation, dict):
-                continue
-
-            issue: dict[str, Any] = {
-                "code": violation.get("code", "UNKNOWN"),
-                "message": violation.get("message", "No message"),
-            }
-
-            # Extract location
-            location = violation.get("location", {})
-            if isinstance(location, dict):
-                issue["line"] = location.get("row")
-                issue["column"] = location.get("column")
-
-            # Extract filename
-            filename = violation.get("filename")
-            if filename:
-                issue["file"] = str(filename)
-
-            # Determine fixability
-            fix = violation.get("fix")
-            if fix is not None and isinstance(fix, dict):
-                applicability = fix.get("applicability")
-                issue["fixable"] = applicability == "safe"
-            else:
-                issue["fixable"] = False
-
-            issues.append(issue)
-
-        return issues

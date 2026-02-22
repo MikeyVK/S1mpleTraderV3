@@ -175,6 +175,17 @@ gates:
     capabilities:
       file_types: [".py"]
       supports_autofix: false
+      parsing_strategy: "json_violations"
+      json_violations:
+        violations_path: "generalDiagnostics"
+        field_map:
+          file: "file"
+          line: "range/start/line"
+          col: "range/start/character"
+          message: "message"
+          rule: "rule"
+          severity: "severity"
+        line_offset: 1
 
   # Gate 5: Unit Tests (Pytest)
   gate5_tests:
