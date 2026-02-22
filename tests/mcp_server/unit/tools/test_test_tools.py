@@ -1,6 +1,7 @@
 """Unit tests for test_tools.py."""
 
-from unittest.mock import patch
+from collections.abc import Generator
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -30,21 +31,24 @@ _PYTEST_STDOUT_RED = (
 
 
 @pytest.fixture
-def mock_run_pytest_sync():
+def mock_run_pytest_sync() -> Generator[MagicMock, None, None]:
     """Patch the synchronous test runner."""
     with patch("mcp_server.tools.test_tools._run_pytest_sync") as mock:
         yield mock
 
 
 @pytest.fixture
-def mock_settings():
+def _mock_settings() -> Generator[MagicMock, None, None]:
+    """Patch the settings module."""
     with patch("mcp_server.tools.test_tools.settings") as mock:
         mock.server.workspace_root = "/workspace"
         yield mock
 
 
 @pytest.mark.asyncio
-async def test_run_tests_success(mock_run_pytest_sync, mock_settings):
+async def test_run_tests_success(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     tool = RunTestsTool()
 
     # Mock return: stdout, stderr, returncode
@@ -64,7 +68,9 @@ async def test_run_tests_success(mock_run_pytest_sync, mock_settings):
 
 
 @pytest.mark.asyncio
-async def test_run_tests_failure(mock_run_pytest_sync, mock_settings):
+async def test_run_tests_failure(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = (
         "FAILED tests/foo.py::test_x - AssertionError: nope\n1 failed in 0.10s\n",
@@ -79,7 +85,9 @@ async def test_run_tests_failure(mock_run_pytest_sync, mock_settings):
 
 
 @pytest.mark.asyncio
-async def test_run_tests_markers(mock_run_pytest_sync, mock_settings):
+async def test_run_tests_markers(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("", "", 0)
 
@@ -91,7 +99,9 @@ async def test_run_tests_markers(mock_run_pytest_sync, mock_settings):
 
 
 @pytest.mark.asyncio
-async def test_run_tests_exception(mock_run_pytest_sync, mock_settings):
+async def test_run_tests_exception(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     tool = RunTestsTool()
     mock_run_pytest_sync.side_effect = OSError("Boom")
 
@@ -106,14 +116,14 @@ async def test_run_tests_exception(mock_run_pytest_sync, mock_settings):
 # ---------------------------------------------------------------------------
 
 
-def test_parse_pytest_output_importable():
+def test_parse_pytest_output_importable() -> None:
     """_parse_pytest_output must be importable from test_tools."""
     from mcp_server.tools.test_tools import _parse_pytest_output  # noqa: PLC0415
 
     assert callable(_parse_pytest_output)
 
 
-def test_parse_pytest_output_green():
+def test_parse_pytest_output_green() -> None:
     """Green run: summary with failed=0, no failures list."""
     from mcp_server.tools.test_tools import _parse_pytest_output  # noqa: PLC0415
 
@@ -124,7 +134,7 @@ def test_parse_pytest_output_green():
     assert result.get("failures", []) == []
 
 
-def test_parse_pytest_output_red():
+def test_parse_pytest_output_red() -> None:
     """Red run: summary with failed count, each failure has test_id/short_reason/location."""
     from mcp_server.tools.test_tools import _parse_pytest_output  # noqa: PLC0415
 
@@ -139,7 +149,9 @@ def test_parse_pytest_output_red():
 
 
 @pytest.mark.asyncio
-async def test_run_tests_json_response_on_success(mock_run_pytest_sync, mock_settings):
+async def test_run_tests_json_response_on_success(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     """Successful run: content[0] is JSON with summary.failed==0, content[1] is text fallback."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
@@ -153,7 +165,9 @@ async def test_run_tests_json_response_on_success(mock_run_pytest_sync, mock_set
 
 
 @pytest.mark.asyncio
-async def test_run_tests_json_response_on_failure(mock_run_pytest_sync, mock_settings):
+async def test_run_tests_json_response_on_failure(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     """Failed run: content[0] is JSON with failures list, content[1] is text fallback."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
@@ -171,7 +185,7 @@ async def test_run_tests_json_response_on_failure(mock_run_pytest_sync, mock_set
     assert result.content[1]["type"] == "text"
 
 
-def test_run_tests_input_has_no_verbose_field():
+def test_run_tests_input_has_no_verbose_field() -> None:
     """verbose field must be removed from RunTestsInput (unix-style: no output_mode)."""
     assert "verbose" not in RunTestsInput.model_fields
 
@@ -181,32 +195,36 @@ def test_run_tests_input_has_no_verbose_field():
 # ---------------------------------------------------------------------------
 
 
-def test_run_tests_input_has_last_failed_only_field():
+def test_run_tests_input_has_last_failed_only_field() -> None:
     """RunTestsInput must have last_failed_only field defaulting to False."""
     assert "last_failed_only" in RunTestsInput.model_fields
     field_info = RunTestsInput.model_fields["last_failed_only"]
     assert field_info.default is False
 
 
-def test_build_cmd_method_exists_on_tool():
+def test_build_cmd_method_exists_on_tool() -> None:
     """_build_cmd must be a callable method on RunTestsTool."""
     assert callable(getattr(RunTestsTool, "_build_cmd", None))
 
 
 @pytest.mark.asyncio
-async def test_last_failed_only_adds_lf_flag(mock_run_pytest_sync, mock_settings):
+async def test_last_failed_only_adds_lf_flag(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     """last_failed_only=True must add --lf to the subprocess command."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    await tool.execute(RunTestsInput(path="tests/", last_failed_only=True))  # type: ignore[call-arg]
+    await tool.execute(RunTestsInput(path="tests/", last_failed_only=True))
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "--lf" in cmd
 
 
 @pytest.mark.asyncio
-async def test_last_failed_only_default_no_lf_flag(mock_run_pytest_sync, mock_settings):
+async def test_last_failed_only_default_no_lf_flag(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     """Default (last_failed_only=False) must NOT add --lf."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
@@ -218,12 +236,14 @@ async def test_last_failed_only_default_no_lf_flag(mock_run_pytest_sync, mock_se
 
 
 @pytest.mark.asyncio
-async def test_last_failed_only_combined_with_path(mock_run_pytest_sync, mock_settings):
+async def test_last_failed_only_combined_with_path(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     """last_failed_only=True combined with path: both --lf and path present in cmd."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    await tool.execute(RunTestsInput(path="tests/unit", last_failed_only=True))  # type: ignore[call-arg]
+    await tool.execute(RunTestsInput(path="tests/unit", last_failed_only=True))
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "--lf" in cmd
@@ -235,7 +255,7 @@ async def test_last_failed_only_combined_with_path(mock_run_pytest_sync, mock_se
 # ---------------------------------------------------------------------------
 
 
-def test_path_accepts_list_of_strings():
+def test_path_accepts_list_of_strings() -> None:
     """RunTestsInput must accept path as list[str] without ValidationError."""
     from pydantic import ValidationError  # noqa: PLC0415
 
@@ -246,7 +266,7 @@ def test_path_accepts_list_of_strings():
     assert inp.path == ["tests/unit/test_a.py", "tests/unit/test_b.py"]
 
 
-def test_scope_full_field_exists_and_is_accepted():
+def test_scope_full_field_exists_and_is_accepted() -> None:
     """RunTestsInput must accept scope='full' without ValidationError."""
     from pydantic import ValidationError  # noqa: PLC0415
 
@@ -257,7 +277,7 @@ def test_scope_full_field_exists_and_is_accepted():
     assert inp.scope == "full"  # type: ignore[attr-defined]
 
 
-def test_no_path_no_scope_raises_validation_error():
+def test_no_path_no_scope_raises_validation_error() -> None:
     """RunTestsInput() without path or scope must raise ValidationError."""
     from pydantic import ValidationError  # noqa: PLC0415
 
@@ -265,7 +285,7 @@ def test_no_path_no_scope_raises_validation_error():
         RunTestsInput()
 
 
-def test_path_and_scope_mutual_exclusion_raises_validation_error():
+def test_path_and_scope_mutual_exclusion_raises_validation_error() -> None:
     """Providing both path and scope must raise ValidationError."""
     from pydantic import ValidationError  # noqa: PLC0415
 
@@ -274,7 +294,9 @@ def test_path_and_scope_mutual_exclusion_raises_validation_error():
 
 
 @pytest.mark.asyncio
-async def test_path_list_produces_multiple_args_in_cmd(mock_run_pytest_sync, mock_settings):
+async def test_path_list_produces_multiple_args_in_cmd(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     """path=['a.py', 'b.py'] must result in both paths as separate cmd args."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("2 passed in 0.20s\n", "", 0)
@@ -287,7 +309,9 @@ async def test_path_list_produces_multiple_args_in_cmd(mock_run_pytest_sync, moc
 
 
 @pytest.mark.asyncio
-async def test_scope_full_produces_no_path_args_in_cmd(mock_run_pytest_sync, mock_settings):
+async def test_scope_full_produces_no_path_args_in_cmd(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
     """scope='full' must run pytest without any explicit path arguments."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("10 passed in 1.00s\n", "", 0)
@@ -296,5 +320,7 @@ async def test_scope_full_produces_no_path_args_in_cmd(mock_run_pytest_sync, moc
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     # cmd should not contain any test path arguments (only flags/options)
-    path_like = [arg for arg in cmd if not arg.startswith("-") and arg not in (cmd[0], cmd[1], cmd[2])]
+    path_like = [
+        arg for arg in cmd if not arg.startswith("-") and arg not in (cmd[0], cmd[1], cmd[2])
+    ]
     assert path_like == [], f"Expected no path args for scope='full', got: {path_like}"
