@@ -88,6 +88,7 @@ class RunTestsInput(BaseModel):
     path: str = Field(default="tests/", description="Path to test file or directory")
     markers: str | None = Field(default=None, description="Pytest markers to filter by")
     timeout: int = Field(default=300, description="Timeout in seconds (default: 300)")
+    last_failed_only: bool = Field(default=False, description="Re-run only previously failed tests (pytest --lf)")
 
 
 class RunTestsTool(BaseTool):
@@ -104,14 +105,19 @@ class RunTestsTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()  # type: ignore[union-attr]
 
-    async def execute(self, params: RunTestsInput) -> ToolResult:
-        """Execute the tool."""
+    def _build_cmd(self, params: RunTestsInput) -> list[str]:
+        """Build the pytest command from input parameters."""
         cmd = [sys.executable, "-m", "pytest", params.path]
-
-        cmd.append("--tb=short")  # Always use short traceback
-
+        cmd.append("--tb=short")
+        if params.last_failed_only:
+            cmd.append("--lf")
         if params.markers:
             cmd.extend(["-m", params.markers])
+        return cmd
+
+    async def execute(self, params: RunTestsInput) -> ToolResult:
+        """Execute the tool."""
+        cmd = self._build_cmd(params)
 
         effective_timeout = params.timeout or self.DEFAULT_TIMEOUT
 
