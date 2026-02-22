@@ -286,6 +286,10 @@ class QualityConfig(BaseModel):
         default_factory=list, description="List of active gate names to execute from gates catalog"
     )
     artifact_logging: ArtifactLoggingConfig = Field(default_factory=ArtifactLoggingConfig)
+    project_scope: GateScope | None = Field(
+        default=None,
+        description="Glob patterns for project-level scope (scope=project scanning).",
+    )
     gates: dict[str, QualityGate] = Field(..., min_length=1)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
