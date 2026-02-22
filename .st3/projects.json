@@ -1356,5 +1356,20 @@
         ]
       }
     }
+  },
+  "251": {
+    "issue_title": "Refactor run_quality_gates: fix venv pytest + structured output aligned with run_tests",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "tdd",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-02-22T17:05:14.107952+00:00"
   }
 }
