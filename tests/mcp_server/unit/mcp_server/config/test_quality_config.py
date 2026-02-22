@@ -22,7 +22,7 @@ import pytest
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
-from mcp_server.config.quality_config import GateScope, QualityConfig, QualityGate
+from mcp_server.config.quality_config import GateScope, QualityConfig, QualityGate, CapabilitiesMetadata
 
 
 @pytest.fixture(name="quality_yaml_path")
@@ -675,3 +675,26 @@ class TestProjectScopeField:
             }
         )
         assert isinstance(config.project_scope, GateScope)
+
+
+class TestProducesJsonRemoved:
+    """Guard tests: produces_json must no longer be a field on CapabilitiesMetadata (Issue #251 C4).
+
+    After removal, passing produces_json is an extra field and must raise
+    ValidationError (CapabilitiesMetadata uses extra="forbid").
+    """
+
+    def test_produces_json_raises_validation_error(self) -> None:
+        """CapabilitiesMetadata rejects produces_json as an unknown field."""
+        with pytest.raises(ValidationError):
+            CapabilitiesMetadata(
+                file_types=[".py"],
+                supports_autofix=False,
+                produces_json=False,  # type: ignore[call-arg]
+            )
+
+    def test_capabilities_valid_without_produces_json(self) -> None:
+        """CapabilitiesMetadata accepts the minimal valid set without produces_json."""
+        caps = CapabilitiesMetadata(file_types=[".py"], supports_autofix=False)
+        assert caps.file_types == [".py"]
+        assert caps.supports_autofix is False
