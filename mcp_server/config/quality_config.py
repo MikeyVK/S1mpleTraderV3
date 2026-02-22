@@ -282,6 +282,18 @@ class CapabilitiesMetadata(BaseModel):
 
     file_types: list[str] = Field(..., min_length=1)
     supports_autofix: bool
+    parsing_strategy: Literal["json_violations", "text_violations"] | None = Field(
+        default=None,
+        description="New-style violation-parsing strategy (json_violations or text_violations).",
+    )
+    json_violations: JsonViolationsParsing | None = Field(
+        default=None,
+        description="Config for json_violations parsing strategy.",
+    )
+    text_violations: TextViolationsParsing | None = Field(
+        default=None,
+        description="Config for text_violations parsing strategy.",
+    )
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 

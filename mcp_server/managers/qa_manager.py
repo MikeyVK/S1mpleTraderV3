@@ -623,7 +623,53 @@ class QAManager:
 
             combined_output = (proc.stdout or "") + (proc.stderr or "")
 
-            if gate.parsing.strategy == "exit_code":
+            if gate.capabilities.parsing_strategy == "json_violations":
+                raw: list[dict[str, Any]] | dict[str, Any] = json.loads(proc.stdout or "[]")
+                violations = self._parse_json_violations(
+                    self._extract_violations_array(raw, gate.capabilities.json_violations),
+                    gate.capabilities.json_violations,
+                )
+                result["issues"] = [
+                    {
+                        "message": v.message,
+                        "file": v.file,
+                        "line": v.line,
+                        "col": v.col,
+                        "rule": v.rule,
+                        "severity": v.severity,
+                        "fixable": v.fixable,
+                    }
+                    for v in violations
+                ]
+                result["passed"] = len(violations) == 0
+                result["score"] = (
+                    "Pass" if result["passed"] else f"Fail ({len(violations)} violations)"
+                )
+
+            elif gate.capabilities.parsing_strategy == "text_violations":
+                text_violations = self._parse_text_violations(
+                    proc.stdout or "", gate.capabilities.text_violations
+                )
+                result["issues"] = [
+                    {
+                        "message": v.message,
+                        "file": v.file,
+                        "line": v.line,
+                        "col": v.col,
+                        "rule": v.rule,
+                        "severity": v.severity,
+                        "fixable": v.fixable,
+                    }
+                    for v in text_violations
+                ]
+                result["passed"] = len(text_violations) == 0
+                result["score"] = (
+                    "Pass"
+                    if result["passed"]
+                    else f"Fail ({len(text_violations)} violations)"
+                )
+
+            elif gate.parsing.strategy == "exit_code":
                 ok_codes = set(gate.success.exit_codes_ok)
 
                 if proc.returncode in ok_codes:
