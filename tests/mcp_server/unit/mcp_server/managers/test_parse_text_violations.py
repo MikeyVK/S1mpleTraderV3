@@ -6,7 +6,7 @@ from mcp_server.config.quality_config import TextViolationsParsing, ViolationDTO
 from mcp_server.managers.qa_manager import QAManager
 
 # Pattern that captures file, line, col, rule, message (mypy-like)
-_MYPY_PATTERN = r"(?P<file>[^:]+):(?P<line>\d+):(?P<col>\d+): (?P<severity>\w+): (?P<message>.+)  \[(?P<rule>\w+)\]"
+_MYPY_PATTERN = r"(?P<file>[^:]+):(?P<line>\d+):(?P<col>\d+): (?P<severity>\w+): (?P<message>.+)  \[(?P<rule>\w+)\]"  # noqa: E501
 
 # Simpler pattern without severity or rule groups
 _SIMPLE_PATTERN = r"(?P<file>[^:]+):(?P<line>\d+): (?P<message>.+)"
