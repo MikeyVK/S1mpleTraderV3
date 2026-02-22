@@ -3,7 +3,7 @@
 # run_quality_gates Refactor — Scope-Driven Architecture, Config-Driven Parsing, ViolationDTO
 
 **Status:** DRAFT  
-**Version:** 1.0  
+**Version:** 1.1  
 **Last Updated:** 2026-02-22
 
 ---
@@ -153,10 +153,10 @@ All gate parsers return `list[ViolationDTO]`. No parser may return a plain dict 
 **JsonViolationsParsing** — for gates that emit JSON (ruff, pyright):
 ```python
 class JsonViolationsParsing(BaseModel):
-    field_map: dict[str, str]           # violation key → ViolationDTO field name
+    field_map: dict[str, str]           # ViolationDTO field → source JSON key (e.g. "file": "filename")
     violations_path: str | None = None  # dotted path to array (e.g. "generalDiagnostics")
     line_offset: int = 0                # applied to mapped line value (pyright is 0-based)
-    fixable_when: str | None = None     # field name whose truthiness sets fixable=True
+    fixable_when: str | None = None     # source JSON key whose truthiness sets fixable=True
 ```
 
 **TextViolationsParsing** — for gates that emit text (mypy, ruff format):
@@ -289,17 +289,17 @@ No `if gate.name == ...` or `if gate.id == ...` comparisons anywhere in dispatch
 
 ### 4.7. Baseline State Machine Contract
 
-**Location:** `.st3/state.json` key path: `branches.<branch>.quality_gates`
+**Location:** `.st3/state.json` — top-level key `quality_gates` alongside existing branch metadata
+
+`state.json` is already branch-scoped (one file per active branch, contains `"branch": "..."` at top level). The `quality_gates` key is added at the same level:
 
 ```json
 {
-  "branches": {
-    "refactor/251-refactor-run-quality-gates": {
-      "quality_gates": {
-        "baseline_sha": "abc123",
-        "failed_files": ["mcp_server/managers/qa_manager.py"]
-      }
-    }
+  "branch": "refactor/251-refactor-run-quality-gates",
+  "issue_number": 251,
+  "quality_gates": {
+    "baseline_sha": "abc123",
+    "failed_files": ["mcp_server/managers/qa_manager.py"]
   }
 }
 ```
@@ -360,3 +360,4 @@ No `stdout`, `stderr`, or `raw_output` fields in payload.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-02-22 | Agent | Initial design — 8 interface contracts, 2 design options, decision rationale |
+| 1.1 | 2026-02-22 | Agent | Consistency fixes: state.json shape corrected to flat top-level quality_gates; field_map direction clarified to DTO field → source key |

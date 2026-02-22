@@ -374,7 +374,7 @@ git status --porcelain -- "*.py"                     # untracked new files
 **Edge cases:**
 1. **Untracked files** — `git diff` misses new `.py` files not yet staged. Supplement with `git status --porcelain | grep "^\?\? .*\.py"`.
 2. **Renamed files** — `git diff --name-only --diff-filter=AMRTD` catches renames. Ruff/mypy need the new filename.
-3. **No baseline (first run)** — fallback to `scope="branch"`. Parent branch known from `state.json`.
+3. **No baseline (first run)** — fallback to `scope="project"`. A full project scan is required to establish a clean baseline; a branch diff would miss pre-existing failures already present in the parent.
 4. **Empty diff** — if `baseline_sha == HEAD`, no files changed → check `failed_files` only. If both empty, return early with `overall_pass=true` (nothing to check).
 
 **Implementation location:** `QAManager._resolve_scope(scope: str, state: QGState) -> list[str]` — pure function, easy to test.
@@ -403,7 +403,7 @@ git status --porcelain -- "*.py"                     # untracked new files
 [no baseline_sha]
       │
       ▼
-  First run → scope="branch" (diff vs parent_branch)
+  First run → scope="project" (full scan to establish clean baseline)
       │
       ├─ RED (any gate fails) → baseline_sha unchanged, failed_files = union(prev_failed, new_failed)
       │
@@ -1021,3 +1021,4 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | 1.4 | 2026-02-22 | Agent | Consistency pass: fix header version, Investigation 2 Fix aligned with Inv. 15, Inv. 5 title, superseded note on Inv. 14, HTML file-reference table, anchor links throughout |
 | 1.5 | 2026-02-22 | Agent | Fix F14 dual-section confusion: Inv. 5 = problem statement, Inv. 14 = stepping stone with upfront banner; remove duplicate `### F14:` heading |
 | 1.6 | 2026-02-22 | Agent | Fix backward compat inconsistency (Inv. 6 table vs Open Questions); explicit Gate 0 `message` with `{file}` interpolation; `{fieldname}` interpolation in `TextViolationsParsing.defaults`; QUALITY_GATES.md doc-phase obligation in Open Questions |
+| 1.7 | 2026-02-22 | Agent | Align no-baseline fallback with design: `scope="project"` (was `scope="branch"`); update edge-case text and state machine diagram |

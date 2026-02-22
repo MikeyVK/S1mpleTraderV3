@@ -3,7 +3,7 @@
 # Issue #251: Refactor run_quality_gates — Scope-Driven Architecture, Config-Driven Parsing, ViolationDTO
 
 **Status:** DRAFT  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-02-22
 
 ---
