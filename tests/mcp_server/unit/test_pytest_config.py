@@ -121,3 +121,47 @@ def test_asyncio_mode_is_strict() -> None:
         "Change asyncio_mode in [tool.pytest.ini_options] and add "
         "pytestmark = pytest.mark.asyncio to each async test module."
     )
+
+
+# ---------------------------------------------------------------------------
+# C4 RED: pytest-xdist parallel execution
+# ---------------------------------------------------------------------------
+
+
+def test_xdist_in_requirements_dev() -> None:
+    """pytest-xdist must be listed in requirements-dev.txt.
+
+    Parallel test execution with `-n auto` requires pytest-xdist.
+    """
+    req_dev = Path(__file__).parent.parent.parent.parent / "requirements-dev.txt"
+    content = req_dev.read_text(encoding="utf-8")
+    assert "pytest-xdist" in content, (
+        "pytest-xdist must be added to requirements-dev.txt for parallel execution support"
+    )
+
+
+def test_addopts_has_n_auto() -> None:
+    """addopts must contain '-n auto' to enable parallel test execution.
+
+    Running 1800+ tests sequentially takes ~66s; xdist typically halves that.
+    """
+    addopts = _load_addopts()
+    addopts_str = " ".join(addopts)
+    assert "-n auto" in addopts_str, (
+        f"addopts must contain '-n auto' for parallel execution; current: {addopts}"
+    )
+
+
+def test_qa_tests_have_xdist_group_marker() -> None:
+    """Filesystem-touching integration tests must carry @pytest.mark.xdist_group.
+
+    Without xdist_group, parallel workers may collide on the same tmp_path
+    or workspace files, causing flaky failures.
+    """
+    repo_root = Path(__file__).parent.parent.parent.parent
+    qa_path = repo_root / "tests" / "mcp_server" / "integration" / "test_qa.py"
+    content = qa_path.read_text(encoding="utf-8")
+    assert "xdist_group" in content, (
+        "tests/mcp_server/integration/test_qa.py must use "
+        "pytest.mark.xdist_group to prevent worker collisions under -n auto"
+    )
