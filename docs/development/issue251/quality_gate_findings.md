@@ -115,6 +115,7 @@ return _make_gate(          # ✅
 | C12 REFACTOR | Gate 0 Ruff Format | constructor/method calls > 100 chars | `test_parse_text_violations_defaults.py`, `qa_manager.py` | collapsed / gesplitst |
 | C13 REFACTOR | Gate 0 Ruff Format | ternary 3-regels: 1 regel in `()` | `qa_manager.py` | ternary op 1 regel |
 | C13 REFACTOR | Gate 0 Ruff Format | dict/list trailing-comma arg → expand | `test_execute_gate_dispatch.py` | `_make_gate(\n    {...}\n)`, `json.dumps(\n    [...]\n)` |
+| C14 REFACTOR | Gate 3 Line Length | E501 docstring te lang (105→101→91 chars) | `test_qa_manager.py` | docstring verkort op regel 1647 |
 
 ---
 

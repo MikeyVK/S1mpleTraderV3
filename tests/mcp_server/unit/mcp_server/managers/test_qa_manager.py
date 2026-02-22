@@ -1644,7 +1644,7 @@ class TestJsonFieldSuccessCriteria:
             assert result["passed"] is True
 
     def test_max_errors_zero_fails_with_issues(self, manager: QAManager) -> None:
-        """Test json_field gate fails when exit code is non-zero (issue parsing now via capabilities)."""
+        """json_field gate fails on non-zero exit code (issue parsing via capabilities)."""
         gate = self._make_json_field_gate(max_errors=0)
         output = json.dumps(
             {
@@ -1690,7 +1690,7 @@ class TestJsonFieldSuccessCriteria:
             mock_run.return_value = mock_proc
 
             result = manager._execute_gate(gate, ["f.py"], gate_number=1)
-            # json_field branch now uses exit-code-only; issue parsing via capabilities.parsing_strategy
+            # json_field: exit-code-only; issue parsing via capabilities.parsing_strategy
             assert result["passed"] is True
 
     def test_require_no_issues_false_passes_even_with_issues(self, manager: QAManager) -> None:
