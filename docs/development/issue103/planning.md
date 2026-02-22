@@ -2,8 +2,8 @@
 <!-- template=planning version=130ac5ea created=2026-02-22T12:56Z updated=2026-02-22 -->
 # Enhance run_tests tool for large test suites
 
-**Status:** DRAFT  
-**Version:** 1.3  
+**Status:** IN PROGRESS  
+**Version:** 2.0  
 **Last Updated:** 2026-02-22
 
 ---
@@ -16,269 +16,234 @@ Concretiseer de TDD-cycles voor issue #103 op basis van de research-conclusies i
 ## Scope
 
 **In Scope:**
-`RunTestsTool` output-formaat, `last_failed_only` parameter, `integration` marker
-sanering (definitie + test-verplaatsing), optioneel pytest-xdist.
+`RunTestsTool` output-formaat, `last_failed_only` parameter, `integration`/`slow`
+marker sanering (definitie + test-verplaatsing), `scope` parameter op `RunTestsTool`
+die markers benut.
 
 **Out of Scope:**
-test suite SOLID clean-up (issue #250), CI/CD integratie.
+test suite SOLID clean-up (issue #250), CI/CD integratie, `output_mode` parameter
+(minimal/failures/full — bewust niet geïmplementeerd), pytest-xdist als doel op zich.
 
 ## Prerequisites
 
-1. Issue #247 afgerond — `tests/backend/` en `tests/mcp_server/` gescheiden
-2. Research afgerond — [docs/development/issue103/research.md](research.md)
+1. Issue #247 afgerond — `tests/backend/` en `tests/mcp_server/` gescheiden ✅
+2. Research afgerond — [docs/development/issue103/research.md](research.md) ✅
 
 ---
 
-## Summary
+## Voortgang
 
-Verbeter de `RunTestsTool` op drie fronten, met een optionele vierde:
+| Cycle | Doel | Status |
+|-------|------|--------|
+| C1 | Unix-style JSON output, `_parse_pytest_output` | ✅ DONE |
+| C2 | `last_failed_only`, `_build_cmd` | ✅ DONE |
+| C3 | Marker sanering — definitie + test-verplaatsing | ⚠️ INCOMPLETE |
+| C4 | Marker sanering — afmaken + `slow` marker op hermetic tests | 🔜 TODO |
+| C5 | `scope` parameter op `RunTestsTool` | 🔜 TODO |
+| C6 | Output verbetering: `summary_line` + traceback in failures | 🔜 TODO |
 
-1. **Unix-style output** — geen output bij succes, failure-details bij falen. Geen
-   output_mode keuze, geen backward compatibility last.
-2. **`last_failed_only` parameter** — wraps `pytest --lf` voor snelle re-runs.
-3. **`integration` marker saneren** — definitie formaliseren, misgeplaatste tests naar
-   de juiste map, marker consequent toepassen op echte e2e tests.
-4. **(Optioneel C4) pytest-xdist** — parallelle testuitvoering, afhankelijk van
-   compatibiliteitsonderzoek met `asyncio_mode = "auto"`.
+**C3 wat WEL gedaan is:**
+- `test_qa.py` verplaatst naar `tests/mcp_server/integration/` met `@pytest.mark.integration`
+- `pyproject.toml` markerdefinities formeel vastgelegd (`integration`, `slow`)
+- `asyncio_mode = "strict"` doorgevoerd
+- `xdist_group` marker gedefinieerd (als bijvangst van C4-vooruit-lopen)
+- `pytest-xdist` en `-n auto` toegevoegd (als bijvangst — niet gepland maar niet schadelijk)
 
-**Geldt voor alle cycles:**  
-Tijdens de REFACTOR fase van elke cycle: `run_quality_gates` draaien op gewijzigde
-bestanden vóór commit.
+**C3 wat NIET gedaan is (blokkeert C4/C5):**
+- `test_create_issue_e2e.py` — 2 API-tests nog steeds live GitHub; 5 validatietests hebben nog `pytestmark = pytest.mark.integration`
+- `test_workflow_cycle_e2e.py` — hermetisch (lokale git op tmp_path), maar géén `@pytest.mark.slow`
+- `test_issue39_cross_machine.py` — hermetisch, maar géén `@pytest.mark.slow`
 
 ---
 
 ## TDD Cycles
 
-### Cycle 1: Unix-style output — JSON-response inline
+### Cycle 1 ✅ — Unix-style JSON output
 
-**Goal:**  
-`RunTestsTool` retourneert een gestructureerde JSON-response, altijd inline (geen
-temp-file). Gedrag: bij alle tests groen → alleen summary. Bij failures → summary +
-lijst van gefailde tests met locatie en failureregel. Geen `output_mode` parameter.
-`full` mode wordt niet geïmplementeerd.
+**Wat geïmplementeerd:**
+- `_parse_pytest_output(stdout) -> dict` — parseert failures + summary
+- `verbose` veld verwijderd uit `RunTestsInput`
+- `execute()` retourneert `ToolResult.json_data(parsed)` — JSON primair, text fallback
 
-**Betrokken bestanden:**
-- `mcp_server/tools/test_tools.py` — `RunTestsInput`, `RunTestsTool.execute()`
-- `tests/mcp_server/unit/tools/test_run_tests_tool.py` — nieuw of uitbreiden
-
-**RED — wat de test controleert:**
-- Response bij 0 failures: `content[0]["type"] == "json"`, `summary.failed == 0`,
-  geen `failures`-key aanwezig (of lege lijst)
-- Response bij ≥1 failure: `content[0]["type"] == "json"`, `summary.failed >= 1`,
-  `failures[0]` bevat `test_id`, `short_reason`, `location`
-- `content[1]["type"] == "text"` als human-readable fallback altijd aanwezig
-- Bestaande `path`, `markers`, `timeout` parameters werken onveranderd
-
-**GREEN — minimale implementatie:**
-- `RunTestsInput`: `verbose` veld verwijderen (niet meer nodig), rest onveranderd
-- Pytest stdout parsen: extract summary-regel (`N passed, M failed`) en
-  `FAILED path::test_name — reden` regels
-- `ToolResult` retourneren met JSON primair + text-fallback (patroon van
-  `RunQualityGatesTool`)
-
-**REFACTOR:**
-- Parser extraheren naar private functie `_parse_pytest_output(stdout: str) -> dict`
-- `DeprecationWarning` dedupliceren: maximaal één keer per uniek bericht in de
-  text-fallback
-- `run_quality_gates` draaien op `mcp_server/tools/test_tools.py`
-
-**Acceptatiecriteria C1:**
-- [ ] Response bij groene run: alleen summary, geen failures-lijst
-- [ ] Response bij rode run: summary + failures met `test_id`, `short_reason`,
-  `location`
-- [ ] Geen temp-file in geen enkel scenario
-- [ ] `path`-parameter werkt onveranderd (gerichte TDD-run op specifiek bestand)
+**Bekende tekortkoming (aangepakt in C6):**
+- `summary_line` ontbreekt in response (de mensleesbare "3 failed, 45 passed in 2.3s")
+- `failures[].short_reason` bevat alleen de `FAILED path::test - reason` regel,
+  niet de `--tb=short` traceback-regels
 
 ---
 
-### Cycle 2: last_failed_only parameter
+### Cycle 2 ✅ — last_failed_only parameter
 
-**Goal:**  
-`RunTestsTool` ondersteunt `last_failed_only=True`, dat `pytest --lf` toevoegt aan de
-subprocess-aanroep. Standaard `False` — gedrag onveranderd.
-
-**Betrokken bestanden:**
-- `mcp_server/tools/test_tools.py` — `RunTestsInput`, cmd-builder
-- Bestaand testbestand voor `RunTestsTool`
-
-**RED — wat de test controleert:**
-- Bij `last_failed_only=True`: subprocess-cmd bevat `--lf`
-- Bij `last_failed_only=False` (default): `--lf` afwezig
-- Combinatie met `path` parameter werkt correct
-
-**GREEN — minimale implementatie:**
-- `RunTestsInput`: `last_failed_only: bool = False`
-- Cmd-builder: `if params.last_failed_only: cmd.append("--lf")`
-
-**REFACTOR:**
-- Cmd-builder logica extraheren naar private methode `_build_cmd(params) -> list[str]`
-- `run_quality_gates` draaien op `mcp_server/tools/test_tools.py`
-
-**Acceptatiecriteria C2:**
-- [ ] `last_failed_only=True` voegt `--lf` toe aan de cmd
-- [ ] Default gedrag onveranderd
+**Wat geïmplementeerd:**
+- `last_failed_only: bool = Field(default=False)` in `RunTestsInput`
+- `_build_cmd(params)` private methode op `RunTestsTool`
+- `--lf` flag in cmd bij `last_failed_only=True`
 
 ---
 
-### Cycle 3: integration marker saneren
+### Cycle 4: Marker sanering — afmaken
 
 **Goal:**  
-De `integration` marker krijgt een formele definitie en wordt consequent toegepast.
-Tests die echte e2e gedrag over de volledige scope testen (en dus externe dependencies
-of het volledige systeem aanroepen) krijgen de marker en verhuizen naar
-`tests/mcp_server/integration/`. Tests die misplaatst zijn in de unit-boom worden
-gecorrigeerd.
-
-**Definitie `integration` marker (vast te leggen in `pyproject.toml`):**
-> Tests die end-to-end gedrag over de volledige scope valideren en daarbij echte
-> subprocessen, externe services of het volledige MCP-systeem aanroepen. Worden
-> standaard geskipt in TDD-runs; expliciet ingeschakeld in de validatiefase.
-
-**Definitie `slow` marker:**
-> Volledig hermetisch maar spawnt echte subprocessen of git-operaties op tmp_path.
-> Standaard ingeschakeld; te skippen via `pytest -m "not slow"` voor snelle dev-run.
+De drie overgeslagen acties uit C3 alsnog uitvoeren. Na deze cycle klopt de
+marker-situatie in de suite volledig:
+- Hermetic subprocess-tests dragen `@pytest.mark.slow`
+- `test_create_issue_e2e.py` slaagt zonder live GitHub-verbinding
 
 **Concrete acties:**
 
 | Bestand | Actie |
 |---|---|
-| `tests/mcp_server/unit/mcp_server/integration/test_qa.py` | Verplaatsen naar `tests/mcp_server/integration/test_qa.py` + `@pytest.mark.integration` |
-| `tests/mcp_server/integration/test_create_issue_e2e.py` | 2 API-tests: mock `GitHubManager`; 5 validatietests: `pytestmark` verwijderen |
-| `tests/mcp_server/integration/test_workflow_cycle_e2e.py` | Controleren: hermetisch (tmp_path + lokale git) → `@pytest.mark.slow`, géén `integration` |
-| `tests/mcp_server/integration/test_issue39_cross_machine.py` | Idem — hermetisch → `@pytest.mark.slow` |
-| `pyproject.toml` | Markerdefinities bijwerken met bovenstaande definities |
+| `tests/mcp_server/integration/test_create_issue_e2e.py` | 2 API-tests: `GitHubManager` mocken; 5 validatietests: `pytestmark` verwijderen |
+| `tests/mcp_server/integration/test_workflow_cycle_e2e.py` | Inspecteren → als hermetisch: `@pytest.mark.slow` toevoegen |
+| `tests/mcp_server/integration/test_issue39_cross_machine.py` | Inspecteren → als hermetisch: `@pytest.mark.slow` toevoegen |
 
 **Betrokken bestanden:**
-- Bovenstaande testbestanden
-- `pyproject.toml`
-- `tests/mcp_server/unit/mcp_server/integration/` map (leeg na verplaatsing)
+- Bovenstaande drie testbestanden
 
 **RED — wat de test controleert:**
-- `test_pytest_config.py` uitbreiding: marker `integration` aanwezig in pyproject met
-  de nieuwe definitie
-- `test_pytest_config.py` uitbreiding: marker `slow` aanwezig met definitie
-- `test_create_issue_e2e.py` tests slagen zonder live GitHub-verbinding (mock-based)
-- `test_qa.py` tests draaien niet standaard mee (gefilterd door `not integration`)
+- `test_pytest_config.py`: `tests/mcp_server/integration/test_workflow_cycle_e2e.py`
+  draagt `slow` marker (bestandsinhoud bevat `pytest.mark.slow`)
+- `test_pytest_config.py`: `tests/mcp_server/integration/test_issue39_cross_machine.py`
+  idem
+- `test_create_issue_e2e.py` zelf: alle 7 tests slagen zonder live verbinding
+  (geslaagd wanneer `GH_TOKEN` afwezig is)
 
 **GREEN — minimale implementatie:**
 Bovenstaande concrete acties uitvoeren.
 
 **REFACTOR:**
-- `run_quality_gates` draaien op gewijzigde bestanden
-- Controleer: `pytest tests/mcp_server/ -q` — alle tests die hermetisch zijn draaien
-  standaard mee; `integration`-gemarkte tests worden geskipt
-- `asyncio_mode = "auto"` wijzigen naar `"strict"` in `pyproject.toml`:
-  elk testbestand met async tests krijgt `pytestmark = pytest.mark.asyncio` op
-  module-niveau. Sync tests betalen geen event loop overhead meer. Dit is een
-  vereiste prereq voor C4 (xdist heeft bekende edge cases met `asyncio_mode = "auto"`).
+- `run_quality_gates` op gewijzigde bestanden
+- `pytest tests/mcp_server/ -q` — controleer: `slow`-tests draaien mee; integration-tests geskipt
 
-**Acceptatiecriteria C3:**
-- [ ] `pytest tests/mcp_server/` — QA-tests standaard geskipt (gemarked integration)
-- [ ] `pytest tests/mcp_server/ -m integration` — QA-tests draaien
-- [ ] `test_create_issue_e2e.py` — alle 7 tests slagen zonder live verbinding
-- [ ] Markerdefinities in `pyproject.toml` beschrijven duidelijk wanneer elke marker
-  van toepassing is
+**Acceptatiecriteria C4:**
+- [ ] `test_workflow_cycle_e2e.py` draagt `@pytest.mark.slow`
+- [ ] `test_issue39_cross_machine.py` draagt `@pytest.mark.slow`
+- [ ] `test_create_issue_e2e.py` — alle tests slagen zonder `GH_TOKEN`
+- [ ] Default suite draait exclusief de 5 (nu unmarked) validatietests uit test_create_issue_e2e
 
 ---
 
-### Cycle 4 (optioneel): pytest-xdist parallelle uitvoering
+### Cycle 5: `scope` parameter op `RunTestsTool`
 
 **Goal:**  
-Onderzoek en implementeer parallelle testuitvoering via `pytest-xdist`. Doel: wall
-clock tijd van 73s significant reduceren door tests over meerdere CPU-cores te
-verdelen.
+`RunTestsTool` krijgt een `scope` parameter die direct koppelt aan de marker-structuur.
+Dit geeft de markers hun concrete nut: de agent kiest expliciet welke laag te draaien.
 
-**Waarom optioneel:**  
-Drie afhankelijkheden moeten eerst geverifieerd worden:
-1. `asyncio_mode = "strict"` vereist (afgehandeld in C3 REFACTOR) — xdist heeft bekende edge cases met `"auto"`
-2. Gedrag van `reset_config_singletons` fixture bij worker-processen
-3. Filesystem-contention bij tests die ruff/mypy/git aanroepen op gedeelde bestanden
+**Parameter definitie:**
+```python
+scope: Literal["unit", "all"] = Field(
+    default="unit",
+    description="'unit' skips slow tests (fast TDD loop); 'all' includes slow tests"
+)
+```
 
-**Analyse:**
+**Gedrag:**
+- `scope="unit"` (default) → `-m "not slow"` — snelle TDD-loop, <5s
+- `scope="all"` → geen extra markerfilter — inclusief `slow` subprocess-tests
 
-- **Async per test**: xdist elimineert de event-loop overhead niet, maar verdeelt hem
-  over workers. Wall clock tijd daalt proportioneel met aantal workers.
-- **Singletons**: elk xdist-worker is een apart proces met eigen module-geheugen.
-  Cross-worker contaminatie bestaat niet. De `reset_config_singletons` fixture blijft
-  nuttig binnen één worker (opeenvolgende tests).
-- **Filesystem-touching tests**: `test_qa.py` (ruff/mypy op workspace-bestanden) en
-  git-operaties kunnen race conditions veroorzaken bij parallelle workers. Oplossing:
-  `@pytest.mark.xdist_group("qa")` en `@pytest.mark.xdist_group("git")` — tests
-  binnen een groep draaien altijd op dezelfde worker.
-- **Distributiestrategie**: `--dist loadgroup` (ipv `--dist load`) is nodig zodat
-  xdist_group-markeringen gerespecteerd worden.
+**Betrokken bestanden:**
+- `mcp_server/tools/test_tools.py` — `RunTestsInput`, `_build_cmd()`
+- `tests/mcp_server/unit/tools/test_test_tools.py` — uitbreiden
 
 **RED — wat de test controleert:**
-- `test_pytest_config.py`: `pytest-xdist` aanwezig als dependency
-- Smoke: `pytest tests/mcp_server/ -n auto -q` slaagt zonder failures (zelfde
-  resultaat als sequentieel)
+- `scope="unit"` → cmd bevat `-m "not slow"`
+- `scope="all"` → cmd bevat géén `-m "not slow"`
+- Combinatie `scope="unit"` + `markers="foo"` → cmd bevat `-m "not slow and foo"`
+- Default `scope` is `"unit"`
 
 **GREEN — minimale implementatie:**
-- `pytest-xdist` toevoegen aan `requirements-dev.txt`
-- `pyproject.toml addopts`: `-n auto` toevoegen (of separaat `pytest-xdist`-sectie)
-- `@pytest.mark.xdist_group` toevoegen aan filesystem-touching tests
+- `scope` veld toevoegen aan `RunTestsInput`
+- `_build_cmd()` uitbreiden: scope-naar-markerfilter logica
 
 **REFACTOR:**
-- Timing vergelijken: sequentieel vs. parallel
-- `run_quality_gates` draaien
-- Baseline in research doc bijwerken met nieuwe timing
+- `run_quality_gates` op `test_tools.py`
+- Tool description bijwerken met scope-uitleg
 
-**Acceptatiecriteria C4:**
-- [ ] `pytest tests/mcp_server/ -n auto` slaagt zonder extra failures
-- [ ] Wall clock tijd < 40s (streefwaarde bij 2 workers, afhankelijk van hardware)
-- [ ] Geen race conditions op filesystem-touching tests
+**Acceptatiecriteria C5:**
+- [ ] `scope="unit"` slaat `slow` tests over
+- [ ] `scope="all"` draait alles
+- [ ] Combinatie met bestaande `markers` parameter werkt correct
+
+---
+
+### Cycle 6: Output verbetering
+
+**Goal:**  
+De JSON-response bevat een mensleesbare `summary_line` en de failure-details bevatten
+de volledige `--tb=short` traceback, niet alleen de `FAILED`-regel.
+
+**Concrete wijzigingen:**
+
+1. **`summary_line`** — de ruwe pytest-samenvatting toegevoegd aan JSON:
+   ```json
+   {"summary_line": "3 failed, 45 passed in 2.31s", "summary": {...}, "failures": [...]}
+   ```
+
+2. **`text` content item** — wordt `summary_line` i.p.v. `json.dumps(data)`:
+   - Groen: `"45 passed in 2.31s"`
+   - Rood: `"3 failed, 45 passed in 2.31s"`
+
+3. **failure `traceback`** — `--tb=short` blokken geparsed per test:
+   ```json
+   {"test_id": "test_foo", "location": "tests/foo.py::test_foo",
+    "traceback": "tests/foo.py:15: in test_foo\n    assert result == 2\nE   AssertionError: assert 1 == 2"}
+   ```
+
+**Betrokken bestanden:**
+- `mcp_server/tools/test_tools.py` — `_parse_pytest_output()`
+- `tests/mcp_server/unit/tools/test_test_tools.py` — uitbreiden
+
+**RED — wat de test controleert:**
+- Response bevat `summary_line` key met de ruwe pytest-samenvatting
+- `content[1]["text"]` == `summary_line` (niet json.dumps)
+- Bij failure: `failures[0]` bevat `traceback` key met de `--tb=short` regels
+
+**GREEN — minimale implementatie:**
+- `_parse_pytest_output()` uitbreiden: `summary_line` extraheren + `--tb=short`
+  blokken per test parsen
+- `ToolResult` constructie aanpassen: text fallback = `summary_line`
+
+**REFACTOR:**
+- `run_quality_gates` op `test_tools.py`
+- Edge cases: geen summary_line gevonden → `summary_line = ""`
+
+**Acceptatiecriteria C6:**
+- [ ] Response bevat `summary_line` bij zowel groene als rode run
+- [ ] `content[1]["text"]` is de mensleesbare summary, niet een JSON-dump
+- [ ] Failures bevatten traceback-regels van `--tb=short`
 
 ---
 
 ## Risks & Mitigation
 
-- **Risico C1:** Pytest output-format parser fragiel bij andere pytest-versies.
-  - **Mitigatie:** Parser werkt op de stabiele samenvattingsregel
-    (`N passed, M failed in Xs`); bij parse-fout: `summary.total = -1` met
-    foutmelding in response, nooit een crash.
-
-- **Risico C3:** Mock van `GitHubManager` dekt label assembly niet — test wordt
-  triviaal groen.
+- **Risico C4:** Mock van `GitHubManager` dekt label assembly niet volledig.
   - **Mitigatie:** Mock retourneert echte structuren; assertions controleren de
-    argumenten van de `create_issue` aanroep (welke labels worden meegegeven),
-    niet alleen de retourwaarde.
+    argumenten van de `create_issue` aanroep (welke labels worden meegegeven).
 
-- **Risico C4:** `pytest-asyncio` + `pytest-xdist` incompatibiliteit.
-  - **Mitigatie:** Compatibiliteit verifiëren als eerste stap van C4 RED; als niet
-    oplosbaar zonder grote refactor → C4 niet implementeren.
+- **Risico C5:** Combinatie `scope` + `markers` levert onverwachte markerexpressie op.
+  - **Mitigatie:** Unit tests dekken alle combinaties expliciet.
+
+- **Risico C6:** `--tb=short` output-formaat verschilt tussen pytest-versies.
+  - **Mitigatie:** Parser is defensief; bij parse-fout valt `traceback` terug op
+    lege string zonder crash.
 
 ---
 
 ## Dependencies
 
-- C2 bouwt voort op de cmd-builder die in C1-refactor is geëxtraheerd
-- C3 is onafhankelijk van C1 en C2 — kan parallel lopen
-- C4 vereist C3 (xdist_group markers voor integration tests)
-
----
-
-## Milestones
-
-- **Na C1:** agent leest testresultaten direct uit JSON-response; geen grep op
-  temp file meer
-- **Na C3:** `integration` marker heeft formele definitie en is consequent toegepast;
-  validatiefase is de authoritative plek voor echte e2e runs
-- **Na C4 (optioneel):** wall clock tijd < 40s
-
----
-
-## Related Documentation
-
-- [docs/development/issue103/research.md](research.md)
-- [Issue #250](https://github.com/MikeyVK/S1mpleTraderV3/issues/250) — test suite
-  SOLID clean-up (buiten scope van #103)
+- C4 heeft geen code-afhankelijkheden van C1/C2 — puur testbestanden + pyproject
+- C5 bouwt voort op `_build_cmd()` uit C2
+- C6 bouwt voort op `_parse_pytest_output()` uit C1
+- C5 vereist C4 (markers moeten kloppen vóór tool ze benut)
 
 ---
 
 ## Version History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-02-22 | Agent | Scaffold aangemaakt |
-| 1.1 | 2026-02-22 | Agent | TDD cycles uitgewerkt op basis van research |
-| 1.2 | 2026-02-22 | Agent | C1 unix-style (geen output_mode), C3 integration-sanering ipv afschaffing, C4 xdist + async analyse, quality gates expliciet per cycle |
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-02-22 | Scaffold aangemaakt |
+| 1.1 | 2026-02-22 | TDD cycles uitgewerkt op basis van research |
+| 1.2 | 2026-02-22 | C1 unix-style, C3 integration-sanering, C4 xdist |
+| 1.3 | 2026-02-22 | asyncio_mode strict aan C3 REFACTOR + C4 prereq |
+| 2.0 | 2026-02-22 | Volledige herziening: C1/C2 completed, C3 incomplete → C4 continuation, nieuwe C5 (scope parameter), nieuwe C6 (output verbetering), xdist buiten scope |
