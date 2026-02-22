@@ -239,7 +239,6 @@ class CapabilitiesMetadata(BaseModel):
 
     file_types: list[str] = Field(..., min_length=1)
     supports_autofix: bool
-    produces_json: bool
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
