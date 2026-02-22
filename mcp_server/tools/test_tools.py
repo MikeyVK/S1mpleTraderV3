@@ -1,7 +1,6 @@
 """Test execution tools."""
 
 import asyncio
-import json
 import os
 import re
 import subprocess
@@ -51,8 +50,33 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
     Returns a dict with:
     - summary: {"passed": int, "failed": int}
     - summary_line: human-readable one-liner (e.g. "2 passed in 0.45s")
-    - failures: list of {"test_id", "location", "short_reason"}  — only present when failed > 0
+    - failures: list of {"test_id", "location", "short_reason", "traceback"} — only when failed > 0
     """
+    # --- Pass 1: extract per-test tracebacks from FAILURES section ---
+    tb_by_test_id: dict[str, str] = {}
+    in_failures = False
+    current_id = ""
+    current_tb: list[str] = []
+    for line in stdout.splitlines():
+        if re.match(r"^=+ FAILURES =+", line):
+            in_failures = True
+            continue
+        if not in_failures:
+            continue
+        header = re.match(r"^_+\s+(.+?)\s+_+$", line)
+        if header:
+            if current_id and current_tb:
+                tb_by_test_id[current_id] = "\n".join(current_tb).strip()
+            current_id = header.group(1).strip()
+            current_tb = []
+        elif re.match(r"^=+", line):
+            if current_id and current_tb:
+                tb_by_test_id[current_id] = "\n".join(current_tb).strip()
+            in_failures = False
+        else:
+            current_tb.append(line)
+
+    # --- Pass 2: build failures list from FAILED lines ---
     failures: list[dict[str, str]] = []
     for line in stdout.splitlines():
         match = re.match(r"^FAILED (.+?) - (.+)$", line.strip())
@@ -65,9 +89,11 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
                     "test_id": test_id,
                     "location": location,
                     "short_reason": short_reason,
+                    "traceback": tb_by_test_id.get(test_id, ""),
                 }
             )
 
+    # --- Pass 3: extract summary counts and summary_line ---
     passed = 0
     failed = 0
     summary_line = ""
@@ -175,7 +201,9 @@ class RunTestsTool(BaseTool):
                 output += "\nSTDERR:\n" + stderr
 
             parsed = _parse_pytest_output(output)
-            summary_line = parsed.get("summary_line") or json.dumps(parsed)
+            s = parsed["summary"]
+            fallback = f"{s.get('passed', 0)} passed, {s.get('failed', 0)} failed"
+            summary_line = parsed.get("summary_line") or fallback
             return ToolResult(
                 content=[
                     {"type": "json", "json": parsed},
