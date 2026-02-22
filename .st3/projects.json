@@ -1370,6 +1370,333 @@
     ],
     "skip_reason": null,
     "parent_branch": "main",
-    "created_at": "2026-02-22T17:05:14.107952+00:00"
+    "created_at": "2026-02-22T17:05:14.107952+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 32,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "C0: Remove gate5_tests and gate6_coverage from active_gates in .st3/quality.yaml"
+              }
+            ],
+            "exit_criteria": "Config contract test passes; active_gates contains no pytest or coverage entries; QualityConfig.model_validate raises no warnings"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "C1: ViolationDTO dataclass added to quality_config.py with 7 fields"
+              }
+            ],
+            "exit_criteria": "Unit test passes for required and optional field construction; no type errors"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": "C2: JsonViolationsParsing Pydantic model added to quality_config.py"
+              }
+            ],
+            "exit_criteria": "Validation tests pass for ruff and pyright schema variants"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "D4.1",
+                "description": "C3: project_scope: GateScope | None added to QualityConfig"
+              }
+            ],
+            "exit_criteria": "Config model validation passes with and without project_scope"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "D5.1",
+                "description": "C4: produces_json field removed from CapabilitiesMetadata and all usages"
+              }
+            ],
+            "exit_criteria": "Zero produces_json references in codebase"
+          },
+          {
+            "cycle_number": 6,
+            "deliverables": [
+              {
+                "id": "D6.1",
+                "description": "C5: TextViolationsParsing Pydantic model added to quality_config.py"
+              }
+            ],
+            "exit_criteria": "Validation tests for model construction pass"
+          },
+          {
+            "cycle_number": 7,
+            "deliverables": [
+              {
+                "id": "D7.1",
+                "description": "C6: Model validator added to TextViolationsParsing enforcing {field} placeholder references"
+              }
+            ],
+            "exit_criteria": "Unknown placeholder raises ValidationError with actionable message"
+          },
+          {
+            "cycle_number": 8,
+            "deliverables": [
+              {
+                "id": "D8.1",
+                "description": "C7: _parse_json_violations happy path for root-array JSON"
+              }
+            ],
+            "exit_criteria": "Ruff-like sample converts to expected ViolationDTO list"
+          },
+          {
+            "cycle_number": 9,
+            "deliverables": [
+              {
+                "id": "D9.1",
+                "description": "C8: Dotted-path extraction helper for nested dict fields"
+              }
+            ],
+            "exit_criteria": "Nested pyright fields resolve correctly; missing path returns None"
+          },
+          {
+            "cycle_number": 10,
+            "deliverables": [
+              {
+                "id": "D10.1",
+                "description": "C9: violations_path extraction resolves nested array before field mapping"
+              }
+            ],
+            "exit_criteria": "Pyright-like payload produces ViolationDTO list from nested array"
+          },
+          {
+            "cycle_number": 11,
+            "deliverables": [
+              {
+                "id": "D11.1",
+                "description": "C10: line_offset normalization and fixable_when boolean applied in JSON parser"
+              }
+            ],
+            "exit_criteria": "Parser returns expected normalized line and correct fixable flag"
+          },
+          {
+            "cycle_number": 12,
+            "deliverables": [
+              {
+                "id": "D12.1",
+                "description": "C11: _parse_text_violations using regex named groups"
+              }
+            ],
+            "exit_criteria": "Mypy-style line parses into one ViolationDTO"
+          },
+          {
+            "cycle_number": 13,
+            "deliverables": [
+              {
+                "id": "D13.1",
+                "description": "C12: defaults interpolation with {field} substitution applied in text parser"
+              }
+            ],
+            "exit_criteria": "Ruff-format line yields configured default message with interpolated file path"
+          },
+          {
+            "cycle_number": 14,
+            "deliverables": [
+              {
+                "id": "D14.1",
+                "description": "C13: execute_gate dispatch switched to match/case on parsing_strategy"
+              }
+            ],
+            "exit_criteria": "execute_gate parses via strategy without any gate-name checks"
+          },
+          {
+            "cycle_number": 15,
+            "deliverables": [
+              {
+                "id": "D15.1",
+                "description": "C14: _parse_ruff_json, _parse_json_field_issues and obsolete parser branches deleted"
+              }
+            ],
+            "exit_criteria": "Zero references to removed parser methods; regression suite green"
+          },
+          {
+            "cycle_number": 16,
+            "deliverables": [
+              {
+                "id": "D16.1",
+                "description": "C15: _files_for_gate filtering by gate.capabilities.file_types"
+              }
+            ],
+            "exit_criteria": "Filtering respects each gate's configured file types"
+          },
+          {
+            "cycle_number": 17,
+            "deliverables": [
+              {
+                "id": "D17.1",
+                "description": "C16: _filter_files removed"
+              }
+            ],
+            "exit_criteria": "_filter_files no longer exists; all call sites updated"
+          },
+          {
+            "cycle_number": 18,
+            "deliverables": [
+              {
+                "id": "D18.1",
+                "description": "C17: Dead pytest-specific helper methods deleted from qa_manager.py"
+              }
+            ],
+            "exit_criteria": "No pytest helper methods remain; regression suite green"
+          },
+          {
+            "cycle_number": 19,
+            "deliverables": [
+              {
+                "id": "D19.1",
+                "description": "C18: is_file_specific_mode bifurcation block removed"
+              }
+            ],
+            "exit_criteria": "Single execution path remains for all scopes"
+          },
+          {
+            "cycle_number": 20,
+            "deliverables": [
+              {
+                "id": "D20.1",
+                "description": "C19: Baseline advance on all-pass: baseline_sha=HEAD, failed_files=[] persisted to state.json"
+              }
+            ],
+            "exit_criteria": "State contains new baseline SHA and empty failed_files after all-pass run"
+          },
+          {
+            "cycle_number": 21,
+            "deliverables": [
+              {
+                "id": "D21.1",
+                "description": "C20: Failure accumulation: failed_files union persisted to state.json; baseline_sha unchanged"
+              }
+            ],
+            "exit_criteria": "failed_files equals union of old and new failures"
+          },
+          {
+            "cycle_number": 22,
+            "deliverables": [
+              {
+                "id": "D22.1",
+                "description": "C21: _resolve_scope('project') expands project_scope.include_globs against workspace root"
+              }
+            ],
+            "exit_criteria": "scope=project returns expected Python file set"
+          },
+          {
+            "cycle_number": 23,
+            "deliverables": [
+              {
+                "id": "D23.1",
+                "description": "C22: _resolve_scope('branch') collects changed files via git diff parent..HEAD"
+              }
+            ],
+            "exit_criteria": "scope=branch returns changed files from diff output"
+          },
+          {
+            "cycle_number": 24,
+            "deliverables": [
+              {
+                "id": "D24.1",
+                "description": "C23: _resolve_scope('auto') happy path: union of diff files and failed_files"
+              }
+            ],
+            "exit_criteria": "scope=auto returns exact union set when baseline present"
+          },
+          {
+            "cycle_number": 25,
+            "deliverables": [
+              {
+                "id": "D25.1",
+                "description": "C24: _resolve_scope('auto') edge cases: no-baseline fallback and empty-change early return"
+              }
+            ],
+            "exit_criteria": "No-baseline falls back to project scope; empty set returns early"
+          },
+          {
+            "cycle_number": 26,
+            "deliverables": [
+              {
+                "id": "D26.1",
+                "description": "C25: _format_summary_line formatter for pass/fail/skip outcomes"
+              }
+            ],
+            "exit_criteria": "Formatter tests pass for all three scenarios"
+          },
+          {
+            "cycle_number": 27,
+            "deliverables": [
+              {
+                "id": "D27.1",
+                "description": "C26: Compact JSON payload builder with per-gate violations list, no debug fields"
+              }
+            ],
+            "exit_criteria": "Payload contains only agreed schema fields; no stdout/stderr/raw_output"
+          },
+          {
+            "cycle_number": 28,
+            "deliverables": [
+              {
+                "id": "D28.1",
+                "description": "C27: ToolResult content contract normalized: item 0 text, item 1 json, exactly two items"
+              }
+            ],
+            "exit_criteria": "Tool response always has exactly two items; content[0] is text; content[1] is json"
+          },
+          {
+            "cycle_number": 29,
+            "deliverables": [
+              {
+                "id": "D29.1",
+                "description": "C28: RunQualityGatesTool signature: scope replaces files"
+              }
+            ],
+            "exit_criteria": "scope API accepted; files API rejected; tool schema updated"
+          },
+          {
+            "cycle_number": 30,
+            "deliverables": [
+              {
+                "id": "D30.1",
+                "description": "C29: run_tests content order inverted: text summary first, json payload second (contract change)"
+              }
+            ],
+            "exit_criteria": "content[0] is summary text; content[1] is json payload; existing callers updated"
+          },
+          {
+            "cycle_number": 31,
+            "deliverables": [
+              {
+                "id": "D31.1",
+                "description": "C30: quality.yaml gate activation updated: gate5/6 removed, project_scope added"
+              }
+            ],
+            "exit_criteria": "Config validation passes; active gates match design; no gate5/gate6 references"
+          },
+          {
+            "cycle_number": 32,
+            "deliverables": [
+              {
+                "id": "D32.1",
+                "description": "C31: quality.yaml parsing strategy migrated: json_violations and text_violations replace old blocks"
+              }
+            ],
+            "exit_criteria": "Live quality.yaml validates against new models with no compatibility shim"
+          }
+        ]
+      }
+    }
   }
 }
