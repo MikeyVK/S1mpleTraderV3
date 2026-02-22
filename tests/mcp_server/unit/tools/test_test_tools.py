@@ -324,3 +324,86 @@ async def test_scope_full_produces_no_path_args_in_cmd(
         arg for arg in cmd if not arg.startswith("-") and arg not in (cmd[0], cmd[1], cmd[2])
     ]
     assert path_like == [], f"Expected no path args for scope='full', got: {path_like}"
+
+
+# ---------------------------------------------------------------------------
+# C6 RED: summary_line in output + text content = summary_line
+# ---------------------------------------------------------------------------
+
+_PYTEST_STDOUT_WITH_TB_SHORT = (
+    "collected 1 item\n"
+    "\n"
+    "FAILED tests/unit/test_foo.py::test_bar\n"
+    "\n"
+    "=========================== FAILURES ===========================\n"
+    "___________________________ test_bar ___________________________\n"
+    "\n"
+    "    def test_bar():\n"
+    ">       assert 1 == 2\n"
+    "E   AssertionError: assert 1 == 2\n"
+    "\n"
+    "tests/unit/test_foo.py:5: AssertionError\n"
+    "FAILED tests/unit/test_foo.py::test_bar - AssertionError: assert 1 == 2\n"
+    "\n"
+    "============================== 1 failed in 0.10s ==============================\n"
+)
+
+
+def test_parse_pytest_output_returns_summary_line() -> None:
+    """_parse_pytest_output must return a 'summary_line' key with human-readable text."""
+    from mcp_server.tools.test_tools import _parse_pytest_output  # noqa: PLC0415
+
+    result = _parse_pytest_output(_PYTEST_STDOUT_GREEN)
+
+    assert "summary_line" in result
+
+
+def test_parse_pytest_output_summary_line_content() -> None:
+    """summary_line must be the '... passed in ...' line from pytest output."""
+    from mcp_server.tools.test_tools import _parse_pytest_output  # noqa: PLC0415
+
+    result = _parse_pytest_output(_PYTEST_STDOUT_GREEN)
+
+    assert "2 passed" in result["summary_line"]
+    assert "0.45s" in result["summary_line"]
+
+
+def test_parse_pytest_output_summary_line_on_failure() -> None:
+    """summary_line must contain 'failed' when tests fail."""
+    from mcp_server.tools.test_tools import _parse_pytest_output  # noqa: PLC0415
+
+    result = _parse_pytest_output(_PYTEST_STDOUT_RED)
+
+    assert "failed" in result["summary_line"]
+    assert "passed" in result["summary_line"]
+
+
+@pytest.mark.asyncio
+async def test_run_tests_text_content_is_summary_line(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
+    """content[1]['text'] must be the summary_line, not json.dumps of the full response."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
+
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
+
+    text = result.content[1]["text"]
+    # Must be summary line, not a JSON blob
+    assert not text.startswith("{"), f"content[1]['text'] should be summary_line not JSON: {text!r}"
+    assert "passed" in text
+
+
+@pytest.mark.asyncio
+async def test_run_tests_text_content_is_summary_line_on_failure(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
+    """content[1]['text'] must be the summary_line even when tests fail."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
+
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
+
+    text = result.content[1]["text"]
+    assert not text.startswith("{"), f"content[1]['text'] should be summary_line not JSON: {text!r}"
+    assert "failed" in text
