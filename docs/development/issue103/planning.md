@@ -81,45 +81,41 @@ test suite SOLID clean-up (issue #250), CI/CD integratie, `output_mode` paramete
 
 ---
 
-### Cycle 4: Marker sanering — afmaken
+### Cycle 4: Markers opruimen + live tests mocken
 
 **Goal:**  
-De drie overgeslagen acties uit C3 alsnog uitvoeren. Na deze cycle klopt de
-marker-situatie in de suite volledig:
-- Hermetic subprocess-tests dragen `@pytest.mark.slow`
-- `test_create_issue_e2e.py` slaagt zonder live GitHub-verbinding
+Alle `integration`/`slow`/`xdist_group` markers verdwijnen uit de codebase. De 2 live
+GitHub-tests in `test_create_issue_e2e.py` worden gemockt zodat ze standaard meelopen.
+Na deze cycle zijn er géén markers meer die de default suite beïnvloeden.
 
 **Concrete acties:**
 
 | Bestand | Actie |
 |---|---|
-| `tests/mcp_server/integration/test_create_issue_e2e.py` | 2 API-tests: `GitHubManager` mocken; 5 validatietests: `pytestmark` verwijderen |
-| `tests/mcp_server/integration/test_workflow_cycle_e2e.py` | Inspecteren → als hermetisch: `@pytest.mark.slow` toevoegen |
-| `tests/mcp_server/integration/test_issue39_cross_machine.py` | Inspecteren → als hermetisch: `@pytest.mark.slow` toevoegen |
+| `tests/mcp_server/integration/test_create_issue_e2e.py` | `pytestmark` verwijderen; 2 live API-tests mocken via `GitHubManager` |
+| `tests/mcp_server/integration/test_qa.py` | `pytestmark` verwijderen, `xdist_group` verwijderen |
+| `tests/mcp_server/core/test_proxy.py` | `@pytest.mark.integration` + `@pytest.mark.manual` verwijderen van `TestProxyIntegration` |
+| `pyproject.toml` | `"-m", "not integration"` uit `addopts`; marker-definities `integration`, `slow`, `xdist_group` verwijderen |
 
 **Betrokken bestanden:**
-- Bovenstaande drie testbestanden
+- Bovenstaande vier bestanden
 
 **RED — wat de test controleert:**
-- `test_pytest_config.py`: `tests/mcp_server/integration/test_workflow_cycle_e2e.py`
-  draagt `slow` marker (bestandsinhoud bevat `pytest.mark.slow`)
-- `test_pytest_config.py`: `tests/mcp_server/integration/test_issue39_cross_machine.py`
-  idem
-- `test_create_issue_e2e.py` zelf: alle 7 tests slagen zonder live verbinding
-  (geslaagd wanneer `GH_TOKEN` afwezig is)
+- `test_pytest_config.py`: `addopts` bevat géén `-m`/`not integration`
+- `test_pytest_config.py`: markers-lijst bevat géén `integration` definitie
+- `test_create_issue_e2e.py`: alle 7 tests slagen zonder `GH_TOKEN`
 
 **GREEN — minimale implementatie:**
 Bovenstaande concrete acties uitvoeren.
 
 **REFACTOR:**
 - `run_quality_gates` op gewijzigde bestanden
-- `pytest tests/mcp_server/ -q` — controleer: `slow`-tests draaien mee; integration-tests geskipt
+- `pytest tests/mcp_server/ -q` — alle tests draaien, geen filter meer
 
 **Acceptatiecriteria C4:**
-- [ ] `test_workflow_cycle_e2e.py` draagt `@pytest.mark.slow`
-- [ ] `test_issue39_cross_machine.py` draagt `@pytest.mark.slow`
-- [ ] `test_create_issue_e2e.py` — alle tests slagen zonder `GH_TOKEN`
-- [ ] Default suite draait exclusief de 5 (nu unmarked) validatietests uit test_create_issue_e2e
+- [ ] `addopts` bevat geen `-m`/`not integration` meer
+- [ ] Geen `pytestmark` met `integration`/`slow`/`xdist_group` in enig testbestand
+- [ ] `test_create_issue_e2e.py` — alle 7 tests slagen zonder live verbinding
 
 ---
 
@@ -261,3 +257,4 @@ de volledige `--tb=short` traceback, niet alleen de `FAILED`-regel.
 | 1.3 | 2026-02-22 | asyncio_mode strict aan C3 REFACTOR + C4 prereq |
 | 2.0 | 2026-02-22 | Volledige herziening: C1/C2 completed, C3 incomplete → C4 continuation, nieuwe C5 (scope parameter), nieuwe C6 (output verbetering), xdist buiten scope |
 | 2.1 | 2026-02-22 | C5: scope="full" als expliciete opt-in (path required by default), path: str → str\|list[str]\|None, wederzijdse exclusie op Pydantic-niveau |
+| 2.2 | 2026-02-22 | C4: slow markers geschrapt — alle markers verwijderen (geen toevoegen), pyproject.toml addopts opschonen |
