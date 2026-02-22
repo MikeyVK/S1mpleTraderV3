@@ -423,19 +423,96 @@ if failures:
 | F1 | System pytest used for Gate 5/6 | Bug | Remove Gate 5/6 from active_gates |
 | F2 | Gate 0 ruff format diff silently truncated | Bug | Increase limits + explicit truncation in issues[] |
 | F3 | Double JSON in MCP response | Bug | Adopt ToolResult content[] pattern from run_tests |
-| F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` parameter |
+| F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` parameter — no backward compat |
 | F5 | No summary_line / giant JSON response | Architecture | Compact output + summary_line |
 | F6 | Scope manually provided by agent | Architecture | git-diff auto scope with baseline state machine |
 | F7 | No failure-narrowing on re-run | Architecture | `failed_files ∪ changed_since_last_run` |
 | F8 | Pytest mixed with static analysis gates | Architecture | Pytest → run_tests only |
+| F9 | Project-level file discovery hardcoded | SOLID violation | `project_scope` field in quality.yaml — reuse `QualityGateScope` model |
+| F10 | gate5/gate6 use bare `pytest` binary in config | Bug (config) | Remove from active_gates; commands are also wrong (should use `python -m pytest`) |
+
+---
+
+## Investigation 10: quality.yaml Analysis — Config-Over-Code Principle
+
+### Finding: per-gate scope already exists; project-level discovery scope is missing
+
+**quality.yaml already has per-gate scope config (example `gate4_types`):**
+```yaml
+gate4_types:
+  scope:
+    include_globs:
+      - "backend/dtos/**/*.py"
+    exclude_globs:
+      - "tests/**/*.py"
+```
+
+This is the correct pattern from the project's config-over-code principle documented in `docs/coding_standards/QUALITY_GATES.md`:
+> Gates apply to production AND test code — all Python files in `backend/`, `mcp_server/`, and `tests/` must pass
+
+**What is missing:** A top-level `project_scope` section in `quality.yaml` to define which directories are discovered when `scope="project"`. Currently the QAManager would need to hardcode `["backend/**/*.py", "mcp_server/**/*.py", "tests/**/*.py"]` — which directly violates config-over-code.
+
+**SOLID violation if hardcoded:** Open/Closed Principle — adding a new source directory (e.g., `scripts/`) would require a code change instead of a config change.
+
+**Solution — add `project_scope` to quality.yaml:**
+```yaml
+project_scope:
+  include_globs:
+    - "backend/**/*.py"
+    - "mcp_server/**/*.py"
+    - "tests/**/*.py"
+  exclude_globs: []
+```
+
+This follows the identical schema already used for per-gate scope (`QualityGateScope` Pydantic model). **No new model needed** — reuse `QualityGateScope` as type for `project_scope`.
+
+**Also requires add to `QualityConfig` Pydantic model:**
+```python
+class QualityConfig(BaseModel):
+    version: str
+    active_gates: list[str]
+    project_scope: QualityGateScope | None = None  # new field
+    artifact_logging: ArtifactLoggingConfig
+    gates: dict[str, QualityGate]
+```
+
+### Finding: gate5_tests and gate6_coverage use bare `pytest` binary — double bug
+
+Confirmed in quality.yaml:
+```yaml
+gate5_tests:
+  execution:
+    command: ["pytest", "tests/", "--tb=short"]   # ← bare "pytest", not "python -m pytest"
+
+gate6_coverage:
+  execution:
+    command: ["pytest", "tests/", "--cov=backend", ...]  # ← same
+```
+
+Both the code (`_resolve_command` ignores bare `pytest`) **and** the config are wrong. Even if we extend `_resolve_command` to handle bare `pytest`, the command should use the canonical `["python", "-m", "pytest", ...]` form. This is consistent with all other gates (gate0–gate4 all use `python -m <tool>`).
+
+Since gate5/gate6 are being **removed from `active_gates`** (decision #1), the config fix is to remove them from `active_gates` only. The gate definitions are kept in the catalog as legacy reference.
+
+### Finding: `scope="auto"` baseline config not yet in quality.yaml
+
+The new baseline state machine requires configuration for which git state to use. Per config-over-code: the scope modes and their fallback chain should be documentable. However, the runtime state (baseline SHA, failed_files) is branch-scoped and belongs in `state.json` — not `quality.yaml`. The distinction is:
+
+| Data | Location | Reason |
+|------|----------|--------|
+| `project_scope` globs | `quality.yaml` | Static config, same for all branches |
+| `baseline_sha` | `state.json` | Dynamic runtime state, branch-specific |
+| `failed_files` | `state.json` | Dynamic runtime state, branch-specific |
+| `active_gates` | `quality.yaml` | Static config, same for all branches |
+
+This separation is correct and SOLID-compliant (Single Responsibility: config file = static policy, state file = dynamic runtime).
 
 ---
 
 ## Open Questions
 
-1. **`scope="project"` discovery paths**: glob `backend/**/*.py + mcp_server/**/*.py + tests/**/*.py` — should `tests/` be included for static analysis (import checks etc.)? **Tentative: yes for format/lint, no for type gates (mypy scope config handles this).**
-2. **Backward compatibility**: existing callers that pass `files=[...]` should still work. `files=[...]` maps to `scope="files"` internally. `files=[]` should be deprecated and mapped to `scope="auto"`.
-3. **`run_tests` summary_line**: user requested this also be moved to top in `run_tests`. Track as follow-up task in planning.
+1. ~~`scope="project"` discovery paths~~ — **RESOLVED:** `tests/` is included. Discovery paths are config-driven via `project_scope` in `quality.yaml` (see Investigation 10). Per-gate exclusions via `gate.scope` still apply (e.g., `gate4_types` excludes `tests/`).
+2. ~~Backward compatibility~~ — **RESOLVED by user: No backward compatibility.** The `files` parameter is removed. New API uses `scope` enum exclusively.
+3. ~~`run_tests` summary_line~~ — **RESOLVED:** Add as a separate TDD cycle in planning phase.
 
 ---
 
