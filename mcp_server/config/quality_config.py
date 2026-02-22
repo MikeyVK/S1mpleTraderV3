@@ -12,6 +12,7 @@ Quality Requirements:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Literal, TypeAlias
 
@@ -19,6 +20,24 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 RegexFlag = Literal["IGNORECASE", "MULTILINE", "DOTALL"]
+
+
+@dataclass
+class ViolationDTO:
+    """Uniform violation contract returned by every gate parser.
+
+    ``file`` and ``message`` are always present.  All other fields
+    are optional and default to ``None`` / ``False`` / ``"error"``
+    so callers can construct minimal stubs for file-level violations.
+    """
+
+    file: str
+    message: str
+    line: int | None = None
+    col: int | None = None
+    rule: str | None = None
+    fixable: bool = False
+    severity: str = "error"
 
 
 class ExecutionConfig(BaseModel):
