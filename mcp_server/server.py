@@ -1,6 +1,7 @@
 """MCP Server Entrypoint."""
 
 import asyncio
+import json
 import sys
 import time
 import uuid
@@ -303,6 +304,13 @@ class MCPServer:
                 text = content["text"]
                 text = self._augment_text_with_error_metadata(text, result)
                 response_content.append(TextContent(type="text", text=text))
+            elif content.get("type") == "json":
+                response_content.append(
+                    TextContent(
+                        type="text",
+                        text=json.dumps(content["json"], indent=2, default=str),
+                    )
+                )
             elif content.get("type") == "image":
                 response_content.append(
                     ImageContent(type="image", data=content["data"], mimeType=content["mimeType"])
