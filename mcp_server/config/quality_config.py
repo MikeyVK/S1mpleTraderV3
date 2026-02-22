@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Literal, TypeAlias
 
+import re
+
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -90,6 +92,23 @@ class TextViolationsParsing(BaseModel):
         default_factory=dict,
         description="Static default values for ViolationDTO fields not captured by the pattern.",
     )
+
+    @model_validator(mode="after")
+    def _validate_defaults_placeholders(self) -> TextViolationsParsing:
+        """Ensure every {placeholder} in defaults refers to a named group in pattern."""
+        named_groups = set(re.findall(r"\(\?P<(\w+)>", self.pattern))
+        unknown: list[str] = []
+        for value in self.defaults.values():
+            for token in re.findall(r"\{(\w+)\}", value):
+                if token not in named_groups:
+                    unknown.append(token)
+        if unknown:
+            raise ValueError(
+                f"defaults references placeholder(s) not in pattern named groups: "
+                f"{', '.join(sorted(set(unknown)))}. "
+                f"Known groups: {sorted(named_groups) or '(none)'}."
+            )
+        return self
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
