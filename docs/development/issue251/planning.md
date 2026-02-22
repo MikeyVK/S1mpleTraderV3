@@ -94,7 +94,7 @@ Each cycle is atomic: one observable behavior, one parser concern, or one API co
 
 **GREEN:**
 - Set the gate activation config in `.st3/quality.yaml` to include only the static analysis gates (0–4b).
-- Remove or comment out `gate5_tests` and `gate6_coverage` entries.
+- Remove `gate5_tests` and `gate6_coverage` from the `active_gates` list entirely. Do not comment out.
 
 **REFACTOR:** Verify that removing these entries produces no schema validation warnings from `QualityConfig.model_validate`.
 
