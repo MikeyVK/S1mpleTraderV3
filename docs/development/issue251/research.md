@@ -1,9 +1,9 @@
 <!-- docs\development\issue251\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-22T21:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-22T21:30Z -->
 # Issue #251 Research: Refactor run_quality_gates — venv pytest, structured output, smart scope
 
 **Status:** COMPLETE  
-**Version:** 1.3  
+**Version:** 1.5  
 **Last Updated:** 2026-02-22
 
 ---
@@ -1010,3 +1010,4 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | 1.2 | 2026-02-22 | Agent | Rewrite Inv. 5 (output model, ViolationDTO schema); add Inv. 14 (F14, mypy parsing) |
 | 1.3 | 2026-02-22 | Agent | Add Inv. 15 (F15): config-driven parsing architecture; `json_violations` + `text_violations` strategies; zero tool-specific methods in QAManager |
 | 1.4 | 2026-02-22 | Agent | Consistency pass: fix header version, Investigation 2 Fix aligned with Inv. 15, Inv. 5 title, superseded note on Inv. 14, HTML file-reference table, anchor links throughout |
+| 1.5 | 2026-02-22 | Agent | Fix F14 dual-section confusion: Inv. 5 = problem statement, Inv. 14 = stepping stone with upfront banner; remove duplicate `### F14:` heading |
