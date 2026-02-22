@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,7 @@ from mcp_server.config.quality_config import (
     JsonViolationsParsing,
     QualityConfig,
     QualityGate,
+    TextViolationsParsing,
     ViolationDTO,
 )
 
@@ -741,6 +743,51 @@ class QAManager:
             else:
                 return None
         return current
+
+    def _parse_text_violations(
+        self,
+        output: str,
+        parsing: TextViolationsParsing,
+    ) -> list[ViolationDTO]:
+        """Parse line-based tool output into ViolationDTOs using a named-group regex.
+
+        Each line of *output* is matched against ``parsing.pattern``.  Lines
+        that do not match are silently skipped.  Named groups in the pattern
+        map directly to ViolationDTO fields:
+        ``file``, ``line``, ``col``, ``rule``, ``message``, ``severity``.
+
+        ``line`` and ``col`` groups are converted to ``int`` when present.
+        The ``severity`` group falls back to ``parsing.severity_default`` when
+        absent from the pattern or not captured on a given line.
+
+        Args:
+            output: Raw stdout/stderr from a quality gate tool.
+            parsing: Pattern and defaults for text-based parsing.
+
+        Returns:
+            List of ViolationDTO instances, one per matching line.
+        """
+        pattern = re.compile(parsing.pattern)
+        result: list[ViolationDTO] = []
+        for raw_line in output.splitlines():
+            m = pattern.search(raw_line)
+            if m is None:
+                continue
+            groups = m.groupdict()
+            raw_line_num = groups.get("line")
+            raw_col_num = groups.get("col")
+            result.append(
+                ViolationDTO(
+                    file=groups.get("file"),
+                    message=groups.get("message"),
+                    line=int(raw_line_num) if raw_line_num is not None else None,
+                    col=int(raw_col_num) if raw_col_num is not None else None,
+                    rule=groups.get("rule"),
+                    fixable=False,
+                    severity=groups.get("severity") or parsing.severity_default,
+                )
+            )
+        return result
 
     def _extract_violations_array(
         self,
