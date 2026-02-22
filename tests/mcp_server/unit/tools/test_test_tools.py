@@ -227,3 +227,73 @@ async def test_last_failed_only_combined_with_path(mock_run_pytest_sync, mock_se
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "--lf" in cmd
     assert "tests/unit" in cmd
+
+
+# ---------------------------------------------------------------------------
+# C5 RED: path as list[str] + scope="full" + mutual exclusion validation
+# ---------------------------------------------------------------------------
+
+
+def test_path_accepts_list_of_strings():
+    """RunTestsInput must accept path as list[str] without ValidationError."""
+    from pydantic import ValidationError  # noqa: PLC0415
+
+    try:
+        inp = RunTestsInput(path=["tests/unit/test_a.py", "tests/unit/test_b.py"])
+    except (ValidationError, TypeError):
+        pytest.fail("RunTestsInput should accept path as list[str]")
+    assert inp.path == ["tests/unit/test_a.py", "tests/unit/test_b.py"]
+
+
+def test_scope_full_field_exists_and_is_accepted():
+    """RunTestsInput must accept scope='full' without ValidationError."""
+    from pydantic import ValidationError  # noqa: PLC0415
+
+    try:
+        inp = RunTestsInput(scope="full")
+    except (ValidationError, TypeError):
+        pytest.fail("RunTestsInput should accept scope='full'")
+    assert inp.scope == "full"  # type: ignore[attr-defined]
+
+
+def test_no_path_no_scope_raises_validation_error():
+    """RunTestsInput() without path or scope must raise ValidationError."""
+    from pydantic import ValidationError  # noqa: PLC0415
+
+    with pytest.raises(ValidationError):
+        RunTestsInput()
+
+
+def test_path_and_scope_mutual_exclusion_raises_validation_error():
+    """Providing both path and scope must raise ValidationError."""
+    from pydantic import ValidationError  # noqa: PLC0415
+
+    with pytest.raises(ValidationError):
+        RunTestsInput(path="tests/unit.py", scope="full")
+
+
+@pytest.mark.asyncio
+async def test_path_list_produces_multiple_args_in_cmd(mock_run_pytest_sync, mock_settings):
+    """path=['a.py', 'b.py'] must result in both paths as separate cmd args."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = ("2 passed in 0.20s\n", "", 0)
+
+    await tool.execute(RunTestsInput(path=["tests/test_a.py", "tests/test_b.py"]))
+
+    cmd = mock_run_pytest_sync.call_args[0][0]
+    assert "tests/test_a.py" in cmd
+    assert "tests/test_b.py" in cmd
+
+
+@pytest.mark.asyncio
+async def test_scope_full_produces_no_path_args_in_cmd(mock_run_pytest_sync, mock_settings):
+    """scope='full' must run pytest without any explicit path arguments."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = ("10 passed in 1.00s\n", "", 0)
+
+    await tool.execute(RunTestsInput(scope="full"))
+
+    cmd = mock_run_pytest_sync.call_args[0][0]
+    # cmd should not contain any test path arguments (only flags/options)
+    path_like = [arg for arg in cmd if not arg.startswith("-") and arg not in (cmd[0], cmd[1], cmd[2])]
+    assert path_like == [], f"Expected no path args for scope='full', got: {path_like}"
