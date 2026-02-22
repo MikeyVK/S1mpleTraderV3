@@ -154,16 +154,41 @@ def test_addopts_has_n_auto() -> None:
     )
 
 
-def test_qa_tests_have_xdist_group_marker() -> None:
-    """Filesystem-touching integration tests must carry @pytest.mark.xdist_group.
 
-    Without xdist_group, parallel workers may collide on the same tmp_path
-    or workspace files, causing flaky failures.
+# ---------------------------------------------------------------------------
+# C4 RED: markers opruimen — geen integration/xdist_group meer in suite
+# ---------------------------------------------------------------------------
+
+
+def test_addopts_does_not_exclude_integration() -> None:
+    """addopts must NOT contain '-m not integration'.
+
+    Markers zijn afgeschaft: default suite draait alles zonder filteruitzondering.
     """
-    repo_root = Path(__file__).parent.parent.parent.parent
-    qa_path = repo_root / "tests" / "mcp_server" / "integration" / "test_qa.py"
-    content = qa_path.read_text(encoding="utf-8")
-    assert "xdist_group" in content, (
-        "tests/mcp_server/integration/test_qa.py must use "
-        "pytest.mark.xdist_group to prevent worker collisions under -n auto"
+    addopts = _load_addopts()
+    addopts_str = " ".join(addopts)
+    assert "not integration" not in addopts_str, (
+        f"addopts must not contain 'not integration'; current: {addopts}"
+    )
+
+
+def test_integration_marker_not_defined() -> None:
+    """'integration' marker must NOT be defined in pyproject.toml.
+
+    Markers zijn afgeschaft — 'integration' definitie is niet meer nodig.
+    """
+    markers = _load_markers()
+    assert not any(m.startswith("integration:") for m in markers), (
+        "integration marker must be removed from pyproject.toml markers list"
+    )
+
+
+def test_xdist_group_marker_not_defined() -> None:
+    """'xdist_group' marker must NOT be defined in pyproject.toml.
+
+    Niet meer nodig — alle tests gebruiken tmp_path of zijn read-only.
+    """
+    markers = _load_markers()
+    assert not any(m.startswith("xdist_group:") for m in markers), (
+        "xdist_group marker must be removed from pyproject.toml markers list"
     )
