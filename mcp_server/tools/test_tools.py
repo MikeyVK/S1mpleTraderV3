@@ -5,9 +5,9 @@ import os
 import re
 import subprocess
 import sys
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.config.settings import settings
 from mcp_server.core.exceptions import ExecutionError
@@ -85,13 +85,29 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
 class RunTestsInput(BaseModel):
     """Input for RunTestsTool."""
 
-    path: str = Field(default="tests/", description="Path to test file or directory")
+    path: str | list[str] | None = Field(
+        default=None,
+        description="Path to test file or directory. Supports a list of paths.",
+    )
+    scope: Literal["full"] | None = Field(
+        default=None,
+        description="Set to 'full' to run the entire test suite. Mutually exclusive with path.",
+    )
     markers: str | None = Field(default=None, description="Pytest markers to filter by")
     timeout: int = Field(default=300, description="Timeout in seconds (default: 300)")
     last_failed_only: bool = Field(
         default=False,
         description="Re-run only previously failed tests (pytest --lf)",
     )
+
+    @model_validator(mode="after")
+    def validate_path_or_scope(self) -> "RunTestsInput":
+        """Ensure exactly one of path or scope is provided."""
+        if self.path is None and self.scope is None:
+            raise ValueError("Either 'path' or 'scope' must be provided")
+        if self.path is not None and self.scope is not None:
+            raise ValueError("'path' and 'scope' are mutually exclusive — provide one, not both")
+        return self
 
 
 class RunTestsTool(BaseTool):
@@ -110,7 +126,13 @@ class RunTestsTool(BaseTool):
 
     def _build_cmd(self, params: RunTestsInput) -> list[str]:
         """Build the pytest command from input parameters."""
-        cmd = [sys.executable, "-m", "pytest", params.path]
+        cmd = [sys.executable, "-m", "pytest"]
+        if params.path is not None:
+            if isinstance(params.path, list):
+                cmd.extend(params.path)
+            else:
+                cmd.append(params.path)
+        # scope="full" → no path args: pytest runs entire configured suite
         cmd.append("--tb=short")
         if params.last_failed_only:
             cmd.append("--lf")

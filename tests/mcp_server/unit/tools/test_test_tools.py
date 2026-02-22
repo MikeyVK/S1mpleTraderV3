@@ -83,7 +83,7 @@ async def test_run_tests_markers(mock_run_pytest_sync, mock_settings):
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("", "", 0)
 
-    await tool.execute(RunTestsInput(markers="integration"))
+    await tool.execute(RunTestsInput(path="tests/", markers="integration"))
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "-m" in cmd
@@ -95,7 +95,7 @@ async def test_run_tests_exception(mock_run_pytest_sync, mock_settings):
     tool = RunTestsTool()
     mock_run_pytest_sync.side_effect = OSError("Boom")
 
-    result = await tool.execute(RunTestsInput())
+    result = await tool.execute(RunTestsInput(path="tests/"))
 
     assert result.is_error
     assert "Failed to run tests: Boom" in result.content[0]["text"]
@@ -184,7 +184,8 @@ def test_run_tests_input_has_no_verbose_field():
 def test_run_tests_input_has_last_failed_only_field():
     """RunTestsInput must have last_failed_only field defaulting to False."""
     assert "last_failed_only" in RunTestsInput.model_fields
-    assert RunTestsInput().last_failed_only is False  # type: ignore[union-attr]
+    field_info = RunTestsInput.model_fields["last_failed_only"]
+    assert field_info.default is False
 
 
 def test_build_cmd_method_exists_on_tool():
@@ -198,7 +199,7 @@ async def test_last_failed_only_adds_lf_flag(mock_run_pytest_sync, mock_settings
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    await tool.execute(RunTestsInput(last_failed_only=True))  # type: ignore[call-arg]
+    await tool.execute(RunTestsInput(path="tests/", last_failed_only=True))  # type: ignore[call-arg]
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "--lf" in cmd
@@ -210,7 +211,7 @@ async def test_last_failed_only_default_no_lf_flag(mock_run_pytest_sync, mock_se
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
 
-    await tool.execute(RunTestsInput())
+    await tool.execute(RunTestsInput(path="tests/"))
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "--lf" not in cmd
