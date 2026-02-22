@@ -22,7 +22,7 @@ import pytest
 import yaml  # type: ignore[import-untyped]
 from pydantic import ValidationError
 
-from mcp_server.config.quality_config import QualityConfig, QualityGate
+from mcp_server.config.quality_config import QualityConfig, QualityGate, GateScope
 
 
 @pytest.fixture(name="quality_yaml_path")
@@ -618,3 +618,60 @@ class TestActiveGatesContract:
             "gate4_pyright",
         }
         assert expected.issubset(set(config.active_gates))
+
+
+class TestProjectScopeField:
+    """Tests for project_scope field on QualityConfig (Issue #251 C3).
+
+    These tests enforce that QualityConfig accepts an optional GateScope
+    under the ``project_scope`` key for project-level scanning.
+    """
+
+    _MINIMAL_GATE: dict = {
+        "name": "Ruff",
+        "description": "Fast linter",
+        "execution": {
+            "command": ["ruff", "check"],
+            "timeout_seconds": 60,
+            "working_dir": None,
+        },
+        "parsing": {"strategy": "exit_code"},
+        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+        "capabilities": {
+            "file_types": [".py"],
+            "supports_autofix": True,
+            "produces_json": False,
+        },
+    }
+
+    def test_accepts_project_scope_with_include_globs(self) -> None:
+        """QualityConfig accepts project_scope.include_globs without validation error."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "gates": {"ruff": self._MINIMAL_GATE},
+                "project_scope": {
+                    "include_globs": ["mcp_server/**/*.py", "tests/mcp_server/**/*.py"],
+                },
+            }
+        )
+        assert config.project_scope is not None
+        assert "mcp_server/**/*.py" in config.project_scope.include_globs
+
+    def test_project_scope_defaults_to_none(self) -> None:
+        """QualityConfig.project_scope is None when not specified."""
+        config = QualityConfig.model_validate(
+            {"version": "1.0", "gates": {"ruff": self._MINIMAL_GATE}}
+        )
+        assert config.project_scope is None
+
+    def test_project_scope_is_gate_scope_instance(self) -> None:
+        """project_scope is a GateScope instance when provided."""
+        config = QualityConfig.model_validate(
+            {
+                "version": "1.0",
+                "gates": {"ruff": self._MINIMAL_GATE},
+                "project_scope": {"include_globs": ["backend/**/*.py"]},
+            }
+        )
+        assert isinstance(config.project_scope, GateScope)
