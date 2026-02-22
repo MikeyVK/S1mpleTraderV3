@@ -45,6 +45,7 @@ addopts = [
     "--strict-markers",
     "--tb=short",
     "-m", "not integration",
+    "-n", "auto",
 ]
 # Coverage decoupled from default pytest runs per TODO 6 (Issue #131)
 # Coverage is enforced separately via Gate 6 (branch coverage >= 90%)
@@ -54,6 +55,7 @@ markers = [
     "slow: Fully hermetic tests that spawns real subprocesses or git operations on tmp_path. Enabled by default; skip via -m 'not slow' for fast dev-runs.",
     "manual: Manual tests requiring full environment setup and explicit enablement (RUN_MANUAL_TESTS=1)",
     "asyncio: Mark async tests for pytest-asyncio",
+    "xdist_group: Group tests on the same xdist worker to prevent filesystem race conditions under -n auto",
 ]
 asyncio_mode = "strict"
 
