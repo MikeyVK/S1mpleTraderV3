@@ -1,9 +1,9 @@
 <!-- docs\development\issue251\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-22T21:30Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-22T21:45Z -->
 # Issue #251 Research: Refactor run_quality_gates — venv pytest, structured output, smart scope
 
 **Status:** COMPLETE  
-**Version:** 1.5  
+**Version:** 1.6  
 **Last Updated:** 2026-02-22
 
 ---
@@ -274,9 +274,10 @@ Different active gates produce fundamentally different raw outputs. Without a no
 `ruff format --check` exits 1 when files need reformatting. There is no line-level JSON from `ruff format`. The violation is file-level:
 ```json
 { "file": "mcp_server/tools/quality_tools.py", "line": null, "code": "FORMAT",
-  "message": "File requires formatting (run: ruff format <file>)", "fixable": true }
+  "message": "File requires formatting. Run: python -m ruff format mcp_server/tools/quality_tools.py",
+  "fixable": true }
 ```
-One entry per file that needs formatting. The raw diff moves to the artifact log only.
+One entry per file that needs formatting. The raw diff moves to the artifact log only — **the agent does not see the diff in the MCP response**, so the `message` must be self-contained and actionable.
 
 **Gates 1–3 — ruff check (JSON → already normalized):**
 `_parse_ruff_json` already produces `{file, line, column, code, message, fixable}`. Map `location.row → line`, `location.column → column`. Already close to the target schema — minor field renames.
@@ -358,8 +359,9 @@ pymarkdownlnt supports `--log-format jsonl` output. Each line is `{file, line_nu
 |------|---------|---------------------|
 | `auto` | default | `git diff <baseline_sha>..HEAD --name-only *.py` ∪ `state.quality_gates.failed_files` |
 | `branch` | explicit / first run (no baseline) | `git diff <parent_branch>..HEAD --name-only *.py` |
-| `project` | explicit / pre-PR | All `.py` files in `backend/`, `mcp_server/`, `tests/` |
-| `files=[...]` | explicit | Caller-provided list (backward compat) |
+| `project` | explicit / pre-PR | All `.py` files in `mcp_server/`, `tests/mcp_server/` |
+
+> **No backward compatibility:** the `files=[...]` parameter is removed entirely. Callers that currently pass explicit file lists must switch to `scope="auto"` (see Open Questions #2).
 
 **Git commands required:**
 
@@ -865,10 +867,12 @@ parsing:
   pattern: "^--- a/(?P<file>.+)$"         # each diff hunk starts with --- a/<file>
   defaults:
     code: "FORMAT"
-    message: "File requires formatting (run: ruff format <file>)"
+    message: "File requires formatting. Fix: python -m ruff format {file}"  # {file} interpolated from named group
     fixable: true
     severity: "error"
 ```
+
+> **`{fieldname}` interpolation in `defaults`:** `TextViolationsParsing.defaults` string values support `str.format(**groups)` expansion using the matched named groups. This allows `message: "... {file}"` to produce a fully concrete command per violation. The executor adds one line: `dto = {k: v.format(**groups) if isinstance(v, str) else v for k, v in {**p.defaults, **groups}.items()}`. The agent sees a self-contained, actionable message without needing to read the artifact log.
 
 `_parse_text_violations()` in QAManager (fully generic, ~15 lines):
 ```python
@@ -877,7 +881,11 @@ def _parse_text_violations(self, stdout: str, p: TextViolationsParsing) -> list[
     violations = []
     for match in compiled.finditer(stdout):
         groups = {k: v for k, v in match.groupdict().items() if v is not None}
-        dto = {**p.defaults, **groups}   # defaults first, named groups override
+        # Merge defaults + named groups; interpolate {fieldname} in default strings
+        dto = {
+            k: v.format(**groups) if isinstance(v, str) else v
+            for k, v in {**p.defaults, **groups}.items()
+        }
         if "severity" not in dto:
             dto["severity"] = p.severity_default
         if "line" in dto:
@@ -974,9 +982,10 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 
 ## Open Questions
 
-1. ~~`scope="project"` discovery paths~~ — **RESOLVED:** `tests/` is included. Discovery paths are config-driven via `project_scope` in `quality.yaml` (see Investigation 10). Per-gate exclusions via `gate.scope` still apply (e.g., `gate4_types` excludes `tests/`).
+1. ~~`scope="project"` discovery paths~~ — **RESOLVED:** Discovery paths are config-driven via `project_scope` in `quality.yaml` (see Investigation 10). Per-gate exclusions via `gate.scope` still apply.
 2. ~~Backward compatibility~~ — **RESOLVED by user: No backward compatibility.** The `files` parameter is removed. New API uses `scope` enum exclusively.
 3. ~~`run_tests` summary_line~~ — **RESOLVED:** Add as a separate TDD cycle in planning phase.
+4. **Documentation phase obligation (carry to planning):** `QUALITY_GATES.md` currently describes Gate 5 (tests) and Gate 6 (coverage) as part of the quality gates checklist. Removing them from `active_gates` is a config-only change in `quality.yaml`, but the doc still implies a single tool runs all 7 gates. In the documentation phase, `QUALITY_GATES.md` must be updated to clarify: the conceptual 7-gate checklist still applies for a PR, but execution is now split — `run_quality_gates` runs Gates 0–4b (static analysis), `run_tests` runs Gates 5–6 (tests and coverage).
 
 ---
 
@@ -1011,3 +1020,4 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | 1.3 | 2026-02-22 | Agent | Add Inv. 15 (F15): config-driven parsing architecture; `json_violations` + `text_violations` strategies; zero tool-specific methods in QAManager |
 | 1.4 | 2026-02-22 | Agent | Consistency pass: fix header version, Investigation 2 Fix aligned with Inv. 15, Inv. 5 title, superseded note on Inv. 14, HTML file-reference table, anchor links throughout |
 | 1.5 | 2026-02-22 | Agent | Fix F14 dual-section confusion: Inv. 5 = problem statement, Inv. 14 = stepping stone with upfront banner; remove duplicate `### F14:` heading |
+| 1.6 | 2026-02-22 | Agent | Fix backward compat inconsistency (Inv. 6 table vs Open Questions); explicit Gate 0 `message` with `{file}` interpolation; `{fieldname}` interpolation in `TextViolationsParsing.defaults`; QUALITY_GATES.md doc-phase obligation in Open Questions |
