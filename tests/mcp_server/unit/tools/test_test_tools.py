@@ -251,19 +251,19 @@ async def test_last_failed_only_combined_with_path(
 
 
 # ---------------------------------------------------------------------------
-# C5 RED: path as list[str] + scope="full" + mutual exclusion validation
+# C5 RED: path as space-separated str + scope="full" + mutual exclusion validation
 # ---------------------------------------------------------------------------
 
 
-def test_path_accepts_list_of_strings() -> None:
-    """RunTestsInput must accept path as list[str] without ValidationError."""
+def test_path_accepts_space_separated_string() -> None:
+    """RunTestsInput must accept multiple paths as a space-separated string."""
     from pydantic import ValidationError  # noqa: PLC0415
 
     try:
-        inp = RunTestsInput(path=["tests/unit/test_a.py", "tests/unit/test_b.py"])
+        inp = RunTestsInput(path="tests/unit/test_a.py tests/unit/test_b.py")
     except (ValidationError, TypeError):
-        pytest.fail("RunTestsInput should accept path as list[str]")
-    assert inp.path == ["tests/unit/test_a.py", "tests/unit/test_b.py"]
+        pytest.fail("RunTestsInput should accept path as space-separated string")
+    assert inp.path == "tests/unit/test_a.py tests/unit/test_b.py"
 
 
 def test_scope_full_field_exists_and_is_accepted() -> None:
@@ -294,14 +294,14 @@ def test_path_and_scope_mutual_exclusion_raises_validation_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_path_list_produces_multiple_args_in_cmd(
+async def test_space_separated_paths_produce_multiple_args_in_cmd(
     mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
 ) -> None:
-    """path=['a.py', 'b.py'] must result in both paths as separate cmd args."""
+    """path='a.py b.py' must result in both paths as separate cmd args."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = ("2 passed in 0.20s\n", "", 0)
 
-    await tool.execute(RunTestsInput(path=["tests/test_a.py", "tests/test_b.py"]))
+    await tool.execute(RunTestsInput(path="tests/test_a.py tests/test_b.py"))
 
     cmd = mock_run_pytest_sync.call_args[0][0]
     assert "tests/test_a.py" in cmd

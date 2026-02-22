@@ -123,9 +123,12 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
 class RunTestsInput(BaseModel):
     """Input for RunTestsTool."""
 
-    path: str | list[str] | None = Field(
+    path: str | None = Field(
         default=None,
-        description="Path to test file or directory. Supports a list of paths.",
+        description=(
+            "Path to test file or directory. "
+            "Multiple paths can be space-separated, e.g. 'tests/unit tests/integration'."
+        ),
     )
     scope: Literal["full"] | None = Field(
         default=None,
@@ -166,10 +169,7 @@ class RunTestsTool(BaseTool):
         """Build the pytest command from input parameters."""
         cmd = [sys.executable, "-m", "pytest"]
         if params.path is not None:
-            if isinstance(params.path, list):
-                cmd.extend(params.path)
-            else:
-                cmd.append(params.path)
+            cmd.extend(params.path.split())
         # scope="full" → no path args: pytest runs entire configured suite
         cmd.append("--tb=short")
         if params.last_failed_only:
