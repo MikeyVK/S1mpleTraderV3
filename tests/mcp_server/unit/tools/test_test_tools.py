@@ -174,3 +174,56 @@ async def test_run_tests_json_response_on_failure(mock_run_pytest_sync, mock_set
 def test_run_tests_input_has_no_verbose_field():
     """verbose field must be removed from RunTestsInput (unix-style: no output_mode)."""
     assert "verbose" not in RunTestsInput.model_fields
+
+
+# ---------------------------------------------------------------------------
+# C2 RED: last_failed_only parameter + _build_cmd extraction
+# ---------------------------------------------------------------------------
+
+
+def test_run_tests_input_has_last_failed_only_field():
+    """RunTestsInput must have last_failed_only field defaulting to False."""
+    assert "last_failed_only" in RunTestsInput.model_fields
+    assert RunTestsInput().last_failed_only is False  # type: ignore[union-attr]
+
+
+def test_build_cmd_method_exists_on_tool():
+    """_build_cmd must be a callable method on RunTestsTool."""
+    assert callable(getattr(RunTestsTool, "_build_cmd", None))
+
+
+@pytest.mark.asyncio
+async def test_last_failed_only_adds_lf_flag(mock_run_pytest_sync, mock_settings):
+    """last_failed_only=True must add --lf to the subprocess command."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
+
+    await tool.execute(RunTestsInput(last_failed_only=True))  # type: ignore[call-arg]
+
+    cmd = mock_run_pytest_sync.call_args[0][0]
+    assert "--lf" in cmd
+
+
+@pytest.mark.asyncio
+async def test_last_failed_only_default_no_lf_flag(mock_run_pytest_sync, mock_settings):
+    """Default (last_failed_only=False) must NOT add --lf."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
+
+    await tool.execute(RunTestsInput())
+
+    cmd = mock_run_pytest_sync.call_args[0][0]
+    assert "--lf" not in cmd
+
+
+@pytest.mark.asyncio
+async def test_last_failed_only_combined_with_path(mock_run_pytest_sync, mock_settings):
+    """last_failed_only=True combined with path: both --lf and path present in cmd."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = ("1 passed in 0.10s\n", "", 0)
+
+    await tool.execute(RunTestsInput(path="tests/unit", last_failed_only=True))  # type: ignore[call-arg]
+
+    cmd = mock_run_pytest_sync.call_args[0][0]
+    assert "--lf" in cmd
+    assert "tests/unit" in cmd
