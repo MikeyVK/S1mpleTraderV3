@@ -55,8 +55,8 @@ class TestDefaultsPlaceholderValidation:
             TextViolationsParsing(
                 pattern=r"(?P<file>.+):(?P<line>\d+): (?P<message>.+)",
                 defaults={
-                    "display": "{file}",       # valid — 'file' in pattern
-                    "rule": "{bad_group}",      # invalid — 'bad_group' not in pattern
+                    "display": "{file}",  # valid — 'file' in pattern
+                    "rule": "{bad_group}",  # invalid — 'bad_group' not in pattern
                 },
             )
 

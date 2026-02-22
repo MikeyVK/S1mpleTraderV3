@@ -12,11 +12,10 @@ Quality Requirements:
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Annotated, Literal, TypeAlias
-
-import re
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
