@@ -1,6 +1,7 @@
 """Test execution tools."""
 
 import asyncio
+import json
 import os
 import re
 import subprocess
@@ -49,6 +50,7 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
 
     Returns a dict with:
     - summary: {"passed": int, "failed": int}
+    - summary_line: human-readable one-liner (e.g. "2 passed in 0.45s")
     - failures: list of {"test_id", "location", "short_reason"}  — only present when failed > 0
     """
     failures: list[dict[str, str]] = []
@@ -68,6 +70,7 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
 
     passed = 0
     failed = 0
+    summary_line = ""
     for line in stdout.splitlines():
         m_fail = re.search(r"(\d+) failed", line)
         if m_fail:
@@ -75,8 +78,17 @@ def _parse_pytest_output(stdout: str) -> dict[str, Any]:
         m_pass = re.search(r"(\d+) passed", line)
         if m_pass:
             passed = int(m_pass.group(1))
+        # Extract the summary line (the one with "passed" or "failed" stats inside ====)
+        if re.search(r"\d+ (passed|failed)", line):
+            cleaned = re.sub(r"^=+\s*", "", line.strip())
+            cleaned = re.sub(r"\s*=+$", "", cleaned).strip()
+            if cleaned:
+                summary_line = cleaned
 
-    result: dict[str, Any] = {"summary": {"passed": passed, "failed": failed}}
+    result: dict[str, Any] = {
+        "summary": {"passed": passed, "failed": failed},
+        "summary_line": summary_line,
+    }
     if failures:
         result["failures"] = failures
     return result
@@ -163,7 +175,13 @@ class RunTestsTool(BaseTool):
                 output += "\nSTDERR:\n" + stderr
 
             parsed = _parse_pytest_output(output)
-            return ToolResult.json_data(parsed)
+            summary_line = parsed.get("summary_line") or json.dumps(parsed)
+            return ToolResult(
+                content=[
+                    {"type": "json", "json": parsed},
+                    {"type": "text", "text": summary_line},
+                ]
+            )
 
         except subprocess.TimeoutExpired:
             raise ExecutionError(
