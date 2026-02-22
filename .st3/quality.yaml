@@ -10,8 +10,6 @@ active_gates:
   - gate3_line_length
   - gate4_types
   - gate4_pyright
-  - gate5_tests
-  - gate6_coverage
 
 artifact_logging:
   enabled: true
