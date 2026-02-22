@@ -3,7 +3,7 @@
 # Enhance run_tests tool for large test suites
 
 **Status:** DRAFT  
-**Version:** 1.2  
+**Version:** 1.3  
 **Last Updated:** 2026-02-22
 
 ---
@@ -167,6 +167,10 @@ Bovenstaande concrete acties uitvoeren.
 - `run_quality_gates` draaien op gewijzigde bestanden
 - Controleer: `pytest tests/mcp_server/ -q` — alle tests die hermetisch zijn draaien
   standaard mee; `integration`-gemarkte tests worden geskipt
+- `asyncio_mode = "auto"` wijzigen naar `"strict"` in `pyproject.toml`:
+  elk testbestand met async tests krijgt `pytestmark = pytest.mark.asyncio` op
+  module-niveau. Sync tests betalen geen event loop overhead meer. Dit is een
+  vereiste prereq voor C4 (xdist heeft bekende edge cases met `asyncio_mode = "auto"`).
 
 **Acceptatiecriteria C3:**
 - [ ] `pytest tests/mcp_server/` — QA-tests standaard geskipt (gemarked integration)
@@ -186,7 +190,7 @@ verdelen.
 
 **Waarom optioneel:**  
 Drie afhankelijkheden moeten eerst geverifieerd worden:
-1. Compatibiliteit `pytest-xdist` + `asyncio_mode = "auto"` in de huidige versies
+1. `asyncio_mode = "strict"` vereist (afgehandeld in C3 REFACTOR) — xdist heeft bekende edge cases met `"auto"`
 2. Gedrag van `reset_config_singletons` fixture bij worker-processen
 3. Filesystem-contention bij tests die ruff/mypy/git aanroepen op gedeelde bestanden
 
