@@ -355,24 +355,107 @@ hardcoded config-waarden die ook via een config-object beschikbaar zijn.
 
 ---
 
-## Open vragen voor de planning fase
+## Bevinding 6: `test_create_issue_e2e.py` — de enige `integration` marker is onnodig
 
-1. **Welk outputformaat kiest de planning:** primair JSON met text-fallback (zoals
-   RunQualityGatesTool), of primair text met structured metadata?
+### Situatie
 
-2. **Welke `output_mode` defaults zijn juist?** De issue stelt `failures` als default voor.
-   Is dat ook de gewenste default bij de `run_tests` MCP tool-aanroep, of willen we per
-   context differentiëren (TDD-run vs. pre-merge run)?
+`tests/mcp_server/integration/test_create_issue_e2e.py` is het enige bestand in de
+gehele suite met `pytestmark = pytest.mark.integration`. Dit maakt het de enige reden
+dat de `integration` marker überhaupt actief is. Bij nader inzien bestaat het bestand
+uit twee categorieën die fundamenteel verschillen:
 
-3. **Marker-definitie beslissing:** Wie stelt de authoritative definitie vast van
-   `integration` vs. `slow` vs. geen marker? Dit is een inhoudelijke beslissing die niet
-   aan de agent gedelegeerd kan worden.
+**2 tests die écht de live GitHub API raken:**
+- `test_minimal_input_creates_issue_with_correct_labels` — maakt een echt issue aan,
+  haalt het terug om labels te verifiëren
+- `test_all_options_creates_issue_with_full_label_set` — idem met epic + parent-label
 
-4. **Scope van de clean-up:** Los issue voor test-clean-up, of geïntegreerd in de
-   refactor-cycles van issue #103?
+**5 tests die de GitHub API nooit aanraken:**
+- `test_invalid_issue_type_is_refused_before_api_call`
+- `test_invalid_scope_is_refused_before_api_call`
+- `test_invalid_priority_is_refused_before_api_call`
+- `test_title_too_long_is_refused_before_api_call`
+- `test_milestone_accepted_when_milestones_yaml_is_empty`
 
-5. **Blast radius afdwinging niveau:** Review-criterium (haalbaar nu) of tooling
-   (vereist investering) — en van welk niveau is de ROI het hoogst?
+Die laatste 5 zijn pure Pydantic-validatietests. Ze testen of `CreateIssueInput` ongeldige
+input weigert vóórdat er iets naar GitHub gaat. Ze dragen de `integration` marker omdat
+ze toevallig in hetzelfde bestand staan als de 2 echte API-tests — niet op inhoudelijke
+gronden.
+
+### Conclusie
+
+De 2 API-tests horen te worden herschreven met een gemockte `GitHubManager`. Wat je
+bij mocking verliest is de verificatie dat het label daadwerkelijk op het GitHub issue
+staat — maar dat is precies wat de **validatiefase** van iedere issue-cyclus structureel
+dekt. Wat je wint:
+
+- De test draait standaard mee en bewaakt label assembly-logica continu
+- Geen echte issues als bijwerking van een testrun
+- De `integration` marker verdwijnt volledig uit de suite — er is dan geen uitzondering
+  meer, wat Bevinding 2 structureel oplost
+
+De 5 validatietests hoeven alleen de `pytestmark`-regel te verliezen — geen verdere
+aanpassing nodig.
+
+---
+
+## Conclusies — open vragen beantwoord
+
+### 1. Outputformaat: JSON primair, text als fallback
+
+Beslissing: zelfde patroon als `RunQualityGatesTool`. De primaire response is een
+gestructureerd JSON-object; een mensleesbare textsamenvatting als tweede content-item
+voor legacy clients. Motivatie: een agent kan `response["summary"]["failed"]` direct
+lezen zonder parsing. Geen temp-file indirectie mogelijk met een respons die altijd klein
+is (summary + failures-lijst, geen volledige output).
+
+### 2. output_mode default: `failures`
+
+Beslissing: `failures` als default. Rationale: in een TDD-cyclus wil de agent bij een
+rode run direct de fout zien zonder te zoeken in volledige output; bij een groene run
+volstaat de samenvattingsregel. `full` is beschikbaar maar enkel op expliciete aanvraag.
+Drie modi:
+- `minimal` — alleen summary counts
+- `failures` — summary + gefailde tests met locatie en failureregel **(default)**
+- `full` — huidige gedrag
+
+### 3. Marker-strategie: `integration` afschaffen, alleen `slow` behouden
+
+Beslissing: de `integration` marker wordt afgeschaft. Bevinding 6 toont dat de enige
+gebruiker (test_create_issue_e2e.py) herschreven wordt met een gemockte GitHubManager,
+waarna er geen tests meer zijn die de marker rechtvaardigen. Echte externe calls worden
+uitsluitend gedekt door de **validatiefase** van iedere issue-cyclus.
+
+De `slow` marker blijft als opt-out voor subprocess-zware hermetische tests (>500ms).
+Definitie: `slow` = volledig hermetisch maar spawnt echte subprocessen of git-operaties
+op tmp_path. Standaard ingeschakeld; bij expliciete snelle dev-run te skippen via
+`pytest -m "not slow"`.
+
+Gevolg voor `pyproject.toml`:
+- `addopts` verliest `"-m", "not integration"` — alle niet-slow tests draaien standaard
+- Markerdefinitie `integration` wordt verwijderd
+- Markerdefinitie `slow` blijft en wordt uitgebreid met bovenstaande definitie
+
+### 4. Test suite clean-up: apart issue
+
+Beslissing: clean-up (deprecated tests verwijderen, setup-duplicaten naar conftest,
+SOLID-audit van bestaande testbestanden) wordt een apart issue. Issue #103 blijft
+gefocust op de run_tests tool verbetering. Motivatie: mix van scope maakt #103
+moeilijker te sluiten en de clean-up verdient eigen TDD-cycles.
+
+### 5. Blast radius afdwinging: review-criterium nu, tooling later
+
+Beslissing: begin met review-criterium als PR-check, geen tooling-investering in deze
+cyclus. Motivatie: review-criterium pakt schendingen op het moment van introductie,
+voorkomt ophoping, en vereist nul infrastructuur. Twee concrete criteria om nu te
+handhaven:
+
+1. Een nieuwe test mag geen fixture-setup herhalen die al in een conftest op hetzelfde
+   of hoger niveau beschikbaar is.
+2. Een test mag geen hardcoded verwachte waarde bevatten voor een waarde die ook via
+   een config-object (`WorkflowConfig`, `ScopeConfig`, etc.) beschikbaar is.
+
+Mutatietesten (`mutmut`) staat op de agenda als de suite schoon genoeg is voor een
+zinvolle baseline — niet nu.
 
 ---
 
