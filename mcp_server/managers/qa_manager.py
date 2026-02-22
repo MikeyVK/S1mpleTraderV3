@@ -742,6 +742,40 @@ class QAManager:
                 return None
         return current
 
+    def _extract_violations_array(
+        self,
+        payload: list[dict[str, Any]] | dict[str, Any],
+        parsing: JsonViolationsParsing,
+    ) -> list[dict[str, Any]]:
+        """Extract the violations array from *payload* using ``parsing.violations_path``.
+
+        When ``violations_path`` is ``None`` the payload itself must be a list
+        and is returned as-is.  When the path is given it is treated as a
+        dot-separated key sequence that is used to descend into the dict.
+        Returns an empty list when any step in the path is missing or the
+        resolved value is not a list.
+
+        Args:
+            payload: Root JSON value – either a list (root-array tools) or a
+                dict (tools that wrap diagnostics under a key).
+            parsing: Provides ``violations_path``.
+
+        Returns:
+            The extracted list of violation dicts, or ``[]`` on any miss.
+        """
+        if parsing.violations_path is None:
+            return payload if isinstance(payload, list) else []
+
+        current: Any = payload
+        for segment in parsing.violations_path.split("."):
+            if not isinstance(current, dict):
+                return []
+            current = current.get(segment)
+            if current is None:
+                return []
+
+        return current if isinstance(current, list) else []
+
     @staticmethod
     def _resolve_field_path(item: dict[str, Any], path: str) -> Any:  # noqa: ANN401
         """Resolve a field value from *item* using a flat or nested *path*.
