@@ -760,6 +760,10 @@ class QAManager:
         The ``severity`` group falls back to ``parsing.severity_default`` when
         absent from the pattern or not captured on a given line.
 
+        When a group is absent or None, ``parsing.defaults`` is consulted.
+        Default values may contain ``{placeholder}`` references to other
+        captured group names; those are resolved via ``str.format_map``.
+
         Args:
             output: Raw stdout/stderr from a quality gate tool.
             parsing: Pattern and defaults for text-based parsing.
@@ -774,17 +778,32 @@ class QAManager:
             if m is None:
                 continue
             groups = m.groupdict()
-            raw_line_num = groups.get("line")
-            raw_col_num = groups.get("col")
+            # Safe mapping for interpolation: replace None with "" so format_map works
+            safe_groups = {k: (v or "") for k, v in groups.items()}
+
+            def _resolve(field: str) -> str | None:
+                val = groups.get(field)
+                if val is not None:
+                    return val
+                template = parsing.defaults.get(field)
+                if template is None:
+                    return None
+                try:
+                    return template.format_map(safe_groups) or None
+                except KeyError:
+                    return None
+
+            raw_line_num = _resolve("line")
+            raw_col_num = _resolve("col")
             result.append(
                 ViolationDTO(
-                    file=groups.get("file"),
-                    message=groups.get("message"),
+                    file=_resolve("file"),
+                    message=_resolve("message"),
                     line=int(raw_line_num) if raw_line_num is not None else None,
                     col=int(raw_col_num) if raw_col_num is not None else None,
-                    rule=groups.get("rule"),
+                    rule=_resolve("rule"),
                     fixable=False,
-                    severity=groups.get("severity") or parsing.severity_default,
+                    severity=_resolve("severity") or parsing.severity_default,
                 )
             )
         return result
