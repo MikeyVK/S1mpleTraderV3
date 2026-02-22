@@ -101,7 +101,9 @@ def test_qa_tests_relocated_to_integration_directory() -> None:
     """
     repo_root = Path(__file__).parent.parent.parent.parent
     target_path = repo_root / "tests" / "mcp_server" / "integration" / "test_qa.py"
-    wrong_path = repo_root / "tests" / "mcp_server" / "unit" / "mcp_server" / "integration" / "test_qa.py"
+    wrong_path = (
+        repo_root / "tests" / "mcp_server" / "unit" / "mcp_server" / "integration" / "test_qa.py"
+    )
     assert target_path.exists(), (
         f"test_qa.py must be at {target_path.relative_to(repo_root)}; "
         f"currently found at wrong location: {wrong_path.relative_to(repo_root)}"
