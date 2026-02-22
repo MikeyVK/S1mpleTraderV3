@@ -743,7 +743,7 @@ class QAManager:
         return current
 
     @staticmethod
-    def _resolve_field_path(item: dict[str, Any], path: str) -> Any:
+    def _resolve_field_path(item: dict[str, Any], path: str) -> Any:  # noqa: ANN401
         """Resolve a field value from *item* using a flat or nested *path*.
 
         A path without ``/`` is a flat key lookup: ``item.get(path)``.

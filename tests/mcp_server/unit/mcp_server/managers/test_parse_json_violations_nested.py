@@ -76,9 +76,7 @@ class TestParseJsonViolationsNestedPaths:
         assert result[0].line == 5
         assert result[0].col is None
 
-    def test_nested_path_three_segments(
-        self, manager: QAManager
-    ) -> None:
+    def test_nested_path_three_segments(self, manager: QAManager) -> None:
         """Three-level nested path 'a/b/c' resolves item['a']['b']['c']."""
         parsing = JsonViolationsParsing(field_map={"line": "outer/inner/value"})
         payload = [{"outer": {"inner": {"value": 99}}}]
