@@ -742,6 +742,31 @@ class QAManager:
                 return None
         return current
 
+    @staticmethod
+    def _resolve_field_path(item: dict[str, Any], path: str) -> Any:
+        """Resolve a field value from *item* using a flat or nested *path*.
+
+        A path without ``/`` is a flat key lookup: ``item.get(path)``.
+        A path with ``/`` is a nested lookup: each segment descends one level
+        into the dict.  Returns ``None`` if any intermediate key is absent or
+        the value is not a dict.
+
+        Args:
+            item: The JSON object to extract from.
+            path: Dot-free path where ``/`` separates nesting levels.
+
+        Returns:
+            The resolved value, or ``None`` if the path cannot be traversed.
+        """
+        if "/" not in path:
+            return item.get(path)
+        current: Any = item
+        for segment in path.split("/"):
+            if not isinstance(current, dict):
+                return None
+            current = current.get(segment)
+        return current
+
     def _parse_json_violations(
         self,
         payload: list[dict[str, Any]],
@@ -749,9 +774,11 @@ class QAManager:
     ) -> list[ViolationDTO]:
         """Map a root-array JSON payload to a list of ViolationDTOs.
 
-        Each item in *payload* is a flat dict.  The ``parsing.field_map``
-        maps ViolationDTO field names to the corresponding key in the dict.
-        Missing keys in the item result in ``None`` for optional fields.
+        Each item in *payload* is a flat dict or nested object.
+        The ``parsing.field_map`` maps ViolationDTO field names to the
+        corresponding key path in the item.  A path containing ``/`` is
+        resolved as a nested lookup; plain keys use flat ``dict.get`` access.
+        Missing keys result in ``None`` for optional fields.
         The ``fixable`` field is determined by truthiness of the mapped value.
 
         Args:
@@ -762,17 +789,18 @@ class QAManager:
             List of ViolationDTO instances.
         """
         result: list[ViolationDTO] = []
+        resolve = self._resolve_field_path
         for item in payload:
             fmap = parsing.field_map
             fixable_key = fmap.get("fixable")
-            fixable_val = item.get(fixable_key) if fixable_key else None
+            fixable_val = resolve(item, fixable_key) if fixable_key else None
             result.append(
                 ViolationDTO(
-                    file=item.get(fmap["file"]) if "file" in fmap else None,
-                    message=item.get(fmap["message"]) if "message" in fmap else None,
-                    line=item.get(fmap["line"]) if "line" in fmap else None,
-                    col=item.get(fmap["col"]) if "col" in fmap else None,
-                    rule=item.get(fmap["rule"]) if "rule" in fmap else None,
+                    file=resolve(item, fmap["file"]) if "file" in fmap else None,
+                    message=resolve(item, fmap["message"]) if "message" in fmap else None,
+                    line=resolve(item, fmap["line"]) if "line" in fmap else None,
+                    col=resolve(item, fmap["col"]) if "col" in fmap else None,
+                    rule=resolve(item, fmap["rule"]) if "rule" in fmap else None,
                     fixable=bool(fixable_val),
                     severity=None,
                 )
