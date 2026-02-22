@@ -53,3 +53,71 @@ def test_addopts_excludes_integration_marker() -> None:
         "from running in the default suite. "
         f"Current addopts: {addopts}"
     )
+
+
+# ---------------------------------------------------------------------------
+# C3 RED: integration marker saneren
+# ---------------------------------------------------------------------------
+
+
+def _load_markers() -> list[str]:
+    return _load_pytest_config()["markers"]
+
+
+def test_integration_marker_has_formal_definition() -> None:
+    """integration marker must have formal definition containing 'end-to-end'.
+
+    Formal definition per planning.md: tests that validate end-to-end
+    behaviour across the full scope using real subprocesses, external
+    services or the full MCP system.
+    """
+    markers = _load_markers()
+    integration_desc = next((m for m in markers if m.startswith("integration:")), None)
+    assert integration_desc is not None, "integration marker must be defined in pyproject.toml"
+    assert "end-to-end" in integration_desc, (
+        f"integration marker description must contain 'end-to-end'; got: {integration_desc}"
+    )
+
+
+def test_slow_marker_has_formal_definition() -> None:
+    """slow marker must have formal definition describing subprocess-spawning tests.
+
+    Formal definition per planning.md: fully hermetic but spawns real
+    subprocesses or git operations on tmp_path. Enabled by default.
+    """
+    markers = _load_markers()
+    slow_desc = next((m for m in markers if m.startswith("slow:")), None)
+    assert slow_desc is not None, "slow marker must be defined in pyproject.toml"
+    assert "subprocess" in slow_desc or "spawns" in slow_desc, (
+        f"slow marker description must mention subprocess-spawning behaviour; got: {slow_desc}"
+    )
+
+
+def test_qa_tests_relocated_to_integration_directory() -> None:
+    """test_qa.py must live in tests/mcp_server/integration/ (not in unit/ subtree).
+
+    The QA tests (ruff/mypy on real workspace files) are integration tests
+    because they operate on the real filesystem, not on isolated tmp_path.
+    """
+    repo_root = Path(__file__).parent.parent.parent.parent
+    target_path = repo_root / "tests" / "mcp_server" / "integration" / "test_qa.py"
+    wrong_path = repo_root / "tests" / "mcp_server" / "unit" / "mcp_server" / "integration" / "test_qa.py"
+    assert target_path.exists(), (
+        f"test_qa.py must be at {target_path.relative_to(repo_root)}; "
+        f"currently found at wrong location: {wrong_path.relative_to(repo_root)}"
+    )
+
+
+def test_asyncio_mode_is_strict() -> None:
+    """asyncio_mode must be 'strict' to avoid event-loop overhead on sync tests.
+
+    'auto' makes all 1812 tests pay event-loop setup cost; 1456 are sync and
+    don't need it. 'strict' is also a required prerequisite for pytest-xdist (C4).
+    """
+    config = _load_pytest_config()
+    asyncio_mode = config.get("asyncio_mode")
+    assert asyncio_mode == "strict", (
+        f"asyncio_mode must be 'strict'; got '{asyncio_mode}'. "
+        "Change asyncio_mode in [tool.pytest.ini_options] and add "
+        "pytestmark = pytest.mark.asyncio to each async test module."
+    )
