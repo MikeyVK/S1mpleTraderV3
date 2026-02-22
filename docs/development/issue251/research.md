@@ -416,6 +416,116 @@ if failures:
 
 ---
 
+---
+
+## Investigation 11: _filter_files() — Global .py Hardcode is a SOLID Violation
+
+### Finding: global pre-filtering prevents non-Python gate support
+
+```python
+def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
+    python_files = [f for f in files if str(f).endswith(".py")]  # ← hardcoded
+```
+
+This is called once in `run_quality_gates()` before any gates execute. All subsequent gates receive only `.py` files, regardless of their `capabilities.file_types` config.
+
+**OCP violation:** Adding a markdown gate (`file_types: [".md"]`) would require code changes — the global filter would eliminate all `.md` files before any gate sees them.
+
+**Correct architecture:** Remove `_filter_files()`. After scope resolution, the full file list (all types) is passed to gate execution. Each gate filters for its own `file_types` via:
+
+```python
+def _files_for_gate(self, gate: QualityGate, all_files: list[str]) -> list[str]:
+    return [
+        f for f in all_files
+        if any(f.endswith(ext) for ext in gate.capabilities.file_types)
+        and (gate.scope is None or gate.scope.matches(f))
+    ]
+```
+
+This makes adding a markdown/YAML/JSON gate a pure config operation (new gate in `quality.yaml`, new package in `requirements-dev.txt`). No code changes needed.
+
+**Note:** Markdown gate (`pymarkdownlnt`) and YAML gate (`yamllint`) are explicitly out-of-scope for this issue but become possible after this refactor.
+
+---
+
+## Investigation 12: Pytest-Specific Dead Code in QAManager
+
+### Finding: 4 methods become completely dead after pytest removal from active_gates
+
+With `gate5_tests` and `gate6_coverage` removed from `active_gates`, the following methods have no remaining callers:
+
+| Method | Lines | Purpose | Status after refactor |
+|--------|-------|---------|----------------------|
+| `_is_pytest_gate()` | ~8 | Detect pytest by command inspection | Dead code → remove |
+| `_maybe_enable_pytest_json_report()` | ~10 | Add `--json-report` flag if plugin installed | Dead code → remove |
+| `_get_skip_reason()` | ~15 | Mode-based skip logic for pytest vs static gates | Dead code → remove (entire mode split dissolves) |
+| `_files_for_gate()` | ~12 | Return `[]` for pytest, filter by file_types for static | Rewrite without pytest branch |
+
+**Additionally:** The `is_file_specific_mode` boolean and the entire mode-split block in `run_quality_gates()` dissolves. Current structure:
+
+```python
+# CURRENT — pytest-driven architecture
+is_file_specific_mode = bool(files)
+if is_file_specific_mode:
+    python_files = self._filter_files(files)
+else:
+    python_files = []   # empty so static gates skip, pytest proceeds
+
+for gate in active_gates:
+    gate_files = self._files_for_gate(gate, python_files)  # [] for pytest
+    skip_reason = self._get_skip_reason(gate, gate_files, is_file_specific_mode)
+```
+
+**After refactor — fully generic:**
+
+```python
+# NEW — scope-driven architecture
+files = self._resolve_scope(scope, state)       # always a non-empty list
+for gate in active_gates:
+    gate_files = self._files_for_gate(gate, files)  # filter by file_types + scope
+    if not gate_files:
+        # standard skip: no matching files for this gate
+        ...
+```
+
+No special-casing for any tool. The QAManager becomes a truly generic gate executor — consistent with the config-over-code principle.
+
+---
+
+## Investigation 13: pyproject.toml — Relationship to This Refactor
+
+### Finding: no pyproject.toml changes required; testpaths confirms correct globs
+
+**`pyproject.toml` is not modified by this refactor.** However, it provides important facts:
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests/mcp_server"]   # ← confirms test scope
+addopts = ["-n", "auto", ...]      # ← cause of exit code 4 bug (requires pytest-xdist in venv)
+```
+
+**Confirmed `project_scope` globs (F13 correction):**
+```yaml
+project_scope:
+  include_globs:
+    - "mcp_server/**/*.py"
+    - "tests/mcp_server/**/*.py"
+  exclude_globs: []
+```
+
+`backend/` is **not** in scope for quality gates — the project's quality enforcement targets the MCP server codebase. This is consistent with `testpaths = ["tests/mcp_server"]`.
+
+**pyproject.toml role vs quality.yaml role:**
+
+| Config | Purpose | Authority |
+|--------|---------|-----------|
+| `pyproject.toml` | IDE baseline, tool defaults, pytest runtime config | Developer productivity |
+| `.st3/quality.yaml` | CI/CD enforcement, gate catalog, project scope | Quality authority |
+
+Gates 0–3 use `--isolated` to explicitly ignore `pyproject.toml` ruff settings — this is documented in `QUALITY_GATES.md` and is intentional. The refactor does not change this relationship.
+
+---
+
 ## Findings Summary
 
 | # | Finding | Severity | Fix |
@@ -430,6 +540,9 @@ if failures:
 | F8 | Pytest mixed with static analysis gates | Architecture | Pytest → run_tests only |
 | F9 | Project-level file discovery hardcoded | SOLID violation | `project_scope` field in quality.yaml — reuse `QualityGateScope` model |
 | F10 | gate5/gate6 use bare `pytest` binary in config | Bug (config) | Remove from active_gates; commands are also wrong (should use `python -m pytest`) |
+| F11 | `_filter_files()` hardcodes `.py` globally | SOLID violation | Remove — each gate filters via `capabilities.file_types` |
+| F12 | 4 pytest-specific methods in QAManager | Dead code after refactor | Remove all 4: `_is_pytest_gate`, `_files_for_gate`, `_get_skip_reason`, `_maybe_enable_pytest_json_report`. Simplify `run_quality_gates`. |
+| F13 | `project_scope` globs incorrect in earlier draft | Config error | Correct globs: `mcp_server/**/*.py`, `tests/mcp_server/**/*.py` (confirmed by `testpaths` in pyproject.toml) |
 
 ---
 
