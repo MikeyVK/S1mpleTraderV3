@@ -48,6 +48,7 @@ ANN401 — Dynamically typed expressions (typing.Any) are disallowed in `_resolv
 |-------|------|-------|---------|-------|
 | C8 REFACTOR | Gate 1 Ruff Strict Lint | ANN401 | `qa_manager.py` | `# noqa: ANN401` |
 | C8 REFACTOR | Gate 0 Ruff Format | signatuur samenvoegen | `test_parse_json_violations_nested.py` | signatuur op één regel |
+| C9 REFACTOR | Gate 0 Ruff Format | constructor call samenvoegen | `test_extract_violations_array.py` | `JsonViolationsParsing(...)` op één regel; signatuur collapsed |
 
 ---
 

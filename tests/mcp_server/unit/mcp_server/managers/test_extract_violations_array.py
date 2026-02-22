@@ -53,18 +53,14 @@ class TestExtractViolationsArray:
             ],
             "summary": {"errorCount": 1},
         }
-        parsing = JsonViolationsParsing(
-            field_map=_FLAT_MAP, violations_path="generalDiagnostics"
-        )
+        parsing = JsonViolationsParsing(field_map=_FLAT_MAP, violations_path="generalDiagnostics")
         result = manager._extract_violations_array(raw, parsing)
         assert result == raw["generalDiagnostics"]
 
     def test_single_key_missing_returns_empty_list(self, manager: QAManager) -> None:
         """Missing path key returns empty list (graceful degradation)."""
         raw = {"summary": {}}
-        parsing = JsonViolationsParsing(
-            field_map=_FLAT_MAP, violations_path="generalDiagnostics"
-        )
+        parsing = JsonViolationsParsing(field_map=_FLAT_MAP, violations_path="generalDiagnostics")
         result = manager._extract_violations_array(raw, parsing)
         assert result == []
 
@@ -75,20 +71,14 @@ class TestExtractViolationsArray:
     def test_dotted_path_extracts_deep_array(self, manager: QAManager) -> None:
         """Multi-segment dot path descends into nested dicts."""
         raw = {"result": {"diagnostics": [{"filename": "b.py", "message": "deep"}]}}
-        parsing = JsonViolationsParsing(
-            field_map=_FLAT_MAP, violations_path="result.diagnostics"
-        )
+        parsing = JsonViolationsParsing(field_map=_FLAT_MAP, violations_path="result.diagnostics")
         result = manager._extract_violations_array(raw, parsing)
         assert result == [{"filename": "b.py", "message": "deep"}]
 
-    def test_dotted_path_partial_missing_returns_empty_list(
-        self, manager: QAManager
-    ) -> None:
+    def test_dotted_path_partial_missing_returns_empty_list(self, manager: QAManager) -> None:
         """Partial path miss returns empty list."""
         raw = {"result": {}}  # 'diagnostics' key missing
-        parsing = JsonViolationsParsing(
-            field_map=_FLAT_MAP, violations_path="result.diagnostics"
-        )
+        parsing = JsonViolationsParsing(field_map=_FLAT_MAP, violations_path="result.diagnostics")
         result = manager._extract_violations_array(raw, parsing)
         assert result == []
 
@@ -109,9 +99,7 @@ class TestExtractViolationsArray:
                 }
             ]
         }
-        parsing = JsonViolationsParsing(
-            field_map=_FLAT_MAP, violations_path="generalDiagnostics"
-        )
+        parsing = JsonViolationsParsing(field_map=_FLAT_MAP, violations_path="generalDiagnostics")
         array = manager._extract_violations_array(raw, parsing)
         dtos = manager._parse_json_violations(array, parsing)
         assert len(dtos) == 1
