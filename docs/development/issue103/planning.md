@@ -123,46 +123,59 @@ Bovenstaande concrete acties uitvoeren.
 
 ---
 
-### Cycle 5: `scope` parameter op `RunTestsTool`
+### Cycle 5: `path` als lijst + `scope` parameter
 
 **Goal:**  
-`RunTestsTool` krijgt een `scope` parameter die direct koppelt aan de marker-structuur.
-Dit geeft de markers hun concrete nut: de agent kiest expliciet welke laag te draaien.
+`path` accepteert meerdere bestanden/dirs zodat een agent gericht meerdere testbestanden
+kan opgeven. `scope="full"` vervangt het markers-mechanisme als expliciete opt-in voor
+de volledige suite — en sluit `path` dan uit.
 
-**Parameter definitie:**
+**Parameter wijzigingen:**
+
 ```python
-scope: Literal["unit", "all"] = Field(
-    default="unit",
-    description="'unit' skips slow tests (fast TDD loop); 'all' includes slow tests"
+path: str | list[str] | None = Field(
+    default=None,
+    description="Test file(s) or directory. Required unless scope='full'."
+)
+scope: Literal["full"] | None = Field(
+    default=None,
+    description="'full' runs the entire suite (no path allowed). Default: None (path required)."
 )
 ```
 
 **Gedrag:**
-- `scope="unit"` (default) → `-m "not slow"` — snelle TDD-loop, <5s
-- `scope="all"` → geen extra markerfilter — inclusief `slow` subprocess-tests
+- `path="tests/foo.py"` → één bestand, geen markerfilter
+- `path=["tests/foo.py", "tests/bar.py"]` → meerdere bestanden als losse pytest-args
+- `scope="full"` → geen path-arg, default testpaths uit pyproject.toml
+- `path` + `scope="full"` → `ValidationError` (sluiten elkaar uit)
+- Geen `path` én geen `scope` → `ValidationError`
 
 **Betrokken bestanden:**
 - `mcp_server/tools/test_tools.py` — `RunTestsInput`, `_build_cmd()`
 - `tests/mcp_server/unit/tools/test_test_tools.py` — uitbreiden
 
 **RED — wat de test controleert:**
-- `scope="unit"` → cmd bevat `-m "not slow"`
-- `scope="all"` → cmd bevat géén `-m "not slow"`
-- Combinatie `scope="unit"` + `markers="foo"` → cmd bevat `-m "not slow and foo"`
-- Default `scope` is `"unit"`
+- `path=["a.py", "b.py"]` → cmd bevat beide bestanden als losse args
+- `scope="full"` → cmd bevat géén path-args (pytest gebruikt testpaths uit config)
+- `path=None, scope=None` → `ValidationError`
+- `path="foo.py", scope="full"` → `ValidationError`
+- Default: `path` is `None`, `scope` is `None`
 
 **GREEN — minimale implementatie:**
-- `scope` veld toevoegen aan `RunTestsInput`
-- `_build_cmd()` uitbreiden: scope-naar-markerfilter logica
+- `path` type wijzigen naar `str | list[str] | None`
+- `scope` veld toevoegen
+- Pydantic `model_validator` voor de wederzijdse exclusie
+- `_build_cmd()`: paths uitpakken als losse args; bij `scope="full"` geen path-args
 
 **REFACTOR:**
 - `run_quality_gates` op `test_tools.py`
-- Tool description bijwerken met scope-uitleg
+- Tool description bijwerken
 
 **Acceptatiecriteria C5:**
-- [ ] `scope="unit"` slaat `slow` tests over
-- [ ] `scope="all"` draait alles
-- [ ] Combinatie met bestaande `markers` parameter werkt correct
+- [ ] `path` als lijst werkt: elk element als apart pytest-arg
+- [ ] `scope="full"` draait suite zonder path-args
+- [ ] Wederzijdse exclusie gevalideerd op Pydantic-niveau
+- [ ] `last_failed_only` werkt nog onveranderd
 
 ---
 
@@ -247,3 +260,4 @@ de volledige `--tb=short` traceback, niet alleen de `FAILED`-regel.
 | 1.2 | 2026-02-22 | C1 unix-style, C3 integration-sanering, C4 xdist |
 | 1.3 | 2026-02-22 | asyncio_mode strict aan C3 REFACTOR + C4 prereq |
 | 2.0 | 2026-02-22 | Volledige herziening: C1/C2 completed, C3 incomplete → C4 continuation, nieuwe C5 (scope parameter), nieuwe C6 (output verbetering), xdist buiten scope |
+| 2.1 | 2026-02-22 | C5: scope="full" als expliciete opt-in (path required by default), path: str → str\|list[str]\|None, wederzijdse exclusie op Pydantic-niveau |
