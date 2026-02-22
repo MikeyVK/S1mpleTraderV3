@@ -781,32 +781,48 @@ class QAManager:
             # Safe mapping for interpolation: replace None with "" so format_map works
             safe_groups = {k: (v or "") for k, v in groups.items()}
 
-            def _resolve(field: str) -> str | None:
-                val = groups.get(field)
-                if val is not None:
-                    return val
-                template = parsing.defaults.get(field)
-                if template is None:
-                    return None
-                try:
-                    return template.format_map(safe_groups) or None
-                except KeyError:
-                    return None
-
-            raw_line_num = _resolve("line")
-            raw_col_num = _resolve("col")
+            raw_line_num = self._resolve_text_field("line", groups, safe_groups, parsing.defaults)
+            raw_col_num = self._resolve_text_field("col", groups, safe_groups, parsing.defaults)
             result.append(
                 ViolationDTO(
-                    file=_resolve("file"),
-                    message=_resolve("message"),
+                    file=self._resolve_text_field("file", groups, safe_groups, parsing.defaults),
+                    message=self._resolve_text_field(
+                        "message", groups, safe_groups, parsing.defaults
+                    ),
                     line=int(raw_line_num) if raw_line_num is not None else None,
                     col=int(raw_col_num) if raw_col_num is not None else None,
-                    rule=_resolve("rule"),
+                    rule=self._resolve_text_field("rule", groups, safe_groups, parsing.defaults),
                     fixable=False,
-                    severity=_resolve("severity") or parsing.severity_default,
+                    severity=self._resolve_text_field(
+                        "severity", groups, safe_groups, parsing.defaults
+                    )
+                    or parsing.severity_default,
                 )
             )
         return result
+
+    @staticmethod
+    def _resolve_text_field(
+        field: str,
+        groups: dict[str, str | None],
+        safe_groups: dict[str, str],
+        defaults: dict[str, str],
+    ) -> str | None:
+        """Return captured group value or an interpolated default for *field*.
+
+        Priority: captured group value (non-None) → defaults[field] with
+        {placeholder} interpolation via safe_groups → None.
+        """
+        val = groups.get(field)
+        if val is not None:
+            return val
+        template = defaults.get(field)
+        if template is None:
+            return None
+        try:
+            return template.format_map(safe_groups) or None
+        except KeyError:
+            return None
 
     def _extract_violations_array(
         self,

@@ -42,6 +42,34 @@ ANN401 — Dynamically typed expressions (typing.Any) are disallowed in `_resolv
 
 ---
 
+### [C12 REFACTOR] B023 — inner function bindt loop-variabelen niet
+
+**Gate:** Gate 1: Ruff Strict Lint (`B` ruleset — flake8-bugbear)
+**File:** `mcp_server/managers/qa_manager.py`
+**Methode:** `_parse_text_violations`
+**Fout:**
+```
+B023 — Function definition does not bind loop variable `groups` (line 785)
+B023 — Function definition does not bind loop variable `safe_groups` (line 792)
+```
+**Context:** `_resolve` was een inner-functie gedefinieerd *binnen* de `for raw_line in output.splitlines()` loop die `groups` en `safe_groups` (loop-variabelen) sloot. Ruff B023 blokkeert dit omdat in Python inner functions in loops de variabele binden op het moment van *aanroep*, niet aanmaken — wat tot subtiele bugs kan leiden als de functie als callback wordt doorgegeven.
+**Fix:** `_resolve` geëxtraheerd als `@staticmethod _resolve_text_field(field, groups, safe_groups, defaults) -> str | None`. Aanroepen: `self._resolve_text_field("field", groups, safe_groups, parsing.defaults)`.
+**Vraag voor later:**
+- B023 is terecht: inner functions in loops zijn tricky. Extracting naar static method is de cleanste oplossing.
+
+---
+
+### [C12 REFACTOR] Ruff Format — constructor calls én methode-calls ingekort
+
+**Gate:** Gate 0: Ruff Format
+**Files:** `test_parse_text_violations_defaults.py`, `qa_manager.py`
+**Fout (test file):** 3 `TextViolationsParsing(pattern=..., defaults=...)` calls over 3 regels → samenvoegen op één regel (beide args passen in ≤ 100 tekens).
+**Fout (qa_manager.py):** 2 `self._resolve_text_field("message", ...)` en `self._resolve_text_field("severity", ...)` aanroepen net > 100 tekens → ruff wil ze opsplitsen naar argument op eigen regel.
+**Fix:** Constructor calls collapsed; lange method calls gesplitst met argument op inliggende regel.
+**Patroon:** Bij 4 args in één method-call van `self.method("key", groups, safe_groups, parsing.defaults)` snel > 100 tekens. Ruff wil dan splitting; vooraf al opsplitsen is het veiligst.
+
+---
+
 ## Overzicht per cycle
 
 | Cycle | Gate | Regel | Bestand | Actie |
@@ -50,6 +78,8 @@ ANN401 — Dynamically typed expressions (typing.Any) are disallowed in `_resolv
 | C8 REFACTOR | Gate 0 Ruff Format | signatuur samenvoegen | `test_parse_json_violations_nested.py` | signatuur op één regel |
 | C9 REFACTOR | Gate 0 Ruff Format | constructor call samenvoegen | `test_extract_violations_array.py` | `JsonViolationsParsing(...)` op één regel; signatuur collapsed |
 | C11 REFACTOR | Gate 3 Line Length | E501 | `test_parse_text_violations.py` | `# noqa: E501` op regex constante-regel |
+| C12 REFACTOR | Gate 1 Ruff Strict Lint | B023 | `qa_manager.py` | `_resolve` → `@staticmethod _resolve_text_field` |
+| C12 REFACTOR | Gate 0 Ruff Format | constructor/method calls > 100 chars | `test_parse_text_violations_defaults.py`, `qa_manager.py` | collapsed / gesplitst |
 
 ---
 
