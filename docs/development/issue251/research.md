@@ -1,9 +1,9 @@
 <!-- docs\development\issue251\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-22 -->
+<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-22T21:00Z -->
 # Issue #251 Research: Refactor run_quality_gates — venv pytest, structured output, smart scope
 
 **Status:** COMPLETE  
-**Version:** 1.0  
+**Version:** 1.3  
 **Last Updated:** 2026-02-22
 
 ---
@@ -25,7 +25,7 @@ CI/CD pipeline changes, non-Python gate support, frontend changes, pyproject.tom
 Read these first:
 1. Issue #251 read and understood
 2. `run_quality_gates(files=[])` executed — output observed (venv bug confirmed, double JSON output confirmed)
-3. `run_tests` reference implementation read in [mcp_server/tools/test_tools.py](../../../../mcp_server/tools/test_tools.py)
+3. `run_tests` reference implementation read in [mcp_server/tools/test_tools.py](#f-test-tools)
 4. User decisions recorded (see Section 6)
 
 ---
@@ -52,13 +52,13 @@ Read these first:
 - Identify all changes needed in `QAManager`, `RunQualityGatesTool`, `state.json`, `quality.yaml`
 
 ## Related Documentation
-- **[docs/reference/mcp/tools/quality.md](../../../../docs/reference/mcp/tools/quality.md)**
-- **[docs/development/issue103/](../../../../docs/development/issue103/)**
-- **[mcp_server/tools/test_tools.py](../../../../mcp_server/tools/test_tools.py)**
-- **[mcp_server/managers/qa_manager.py](../../../../mcp_server/managers/qa_manager.py)**
-- **[mcp_server/tools/quality_tools.py](../../../../mcp_server/tools/quality_tools.py)**
-- **[.st3/quality.yaml](../../../../.st3/quality.yaml)**
-- **[.st3/state.json](../../../../.st3/state.json)**
+- **[docs/reference/mcp/tools/quality.md](#f-docs-quality)**
+- **[docs/development/issue103/](#f-issue103)**
+- **[mcp_server/tools/test_tools.py](#f-test-tools)**
+- **[mcp_server/managers/qa_manager.py](#f-qa-manager)**
+- **[mcp_server/tools/quality_tools.py](#f-quality-tools)**
+- **[.st3/quality.yaml](#f-quality-yaml)**
+- **[.st3/state.json](#f-state-json)**
 
 ---
 
@@ -66,7 +66,7 @@ Read these first:
 
 ### Finding: `_resolve_command` does not handle bare `pytest` executable
 
-**Root cause** in [mcp_server/managers/qa_manager.py](../../../../mcp_server/managers/qa_manager.py):
+**Root cause** in [mcp_server/managers/qa_manager.py](#f-qa-manager):
 
 ```python
 def _resolve_command(self, base_command: list[str], files: list[str]) -> list[str]:
@@ -140,7 +140,7 @@ MAX_OUTPUT_BYTES = 5120
 
 **Root cause:** The `_build_output_capture` method caps text output, which is correct for reducing noise. But for gates that do NOT produce JSON (Gate 0, Gate 4 mypy text mode), the raw text diff IS the structured output — there is no violation list to fall back to.
 
-**Fix:** For Gate 0 (ruff format), use `ruff format --check` with a separate `ruff format --output-format=json` pass to produce structured output, OR increase limits significantly and emit an explicit truncation issue in `issues[]`. Given the agreed removal of reliance on raw text and the introduction of `violations[]`, the cleanest fix is to implement a `mode="fix"` that runs `ruff format` automatically, making Gate 0 failures self-healing.
+**Fix (aligned with Investigation 15):** Gate 0 acquires `parsing.strategy: "text_violations"` in [quality.yaml](#f-quality-yaml) with `pattern: "^--- a/(?P<file>.+)$"` and `defaults: {code: "FORMAT", message: "File requires formatting", fixable: true}`. The `text_violations` executor in `QAManager._parse_text_violations()` extracts one `ViolationDTO` per file from the diff `--- a/<file>` header lines. The full diff content moves to the artifact log only via `_build_output_capture`. `MAX_OUTPUT_LINES` / `MAX_OUTPUT_BYTES` constants are removed from the signal path — raw output is artifact-only.
 
 ---
 
@@ -187,7 +187,7 @@ The new `run_quality_gates` output model should follow this exact pattern — th
 
 ---
 
-## Investigation 5: Architecture — Output model (F5, F14)
+## Investigation 5: Architecture — Output model (F5) and ViolationDTO contract (F14 intro)
 
 ### F5: Output blob is 3–8 KB; summary_line missing as top-level MCP content item
 
@@ -710,6 +710,8 @@ gate4_types:
     parser: "mypy"   # selects _parse_mypy_text in QAManager
 ```
 
+> ⚠️ **Superseded by Investigation 15.** The `parser: "mypy"` field and dedicated `_parse_mypy_text()` method were the initial design. Investigation 15 generalized this into the `text_violations` strategy using a declarative `pattern` + `defaults` in [quality.yaml](#f-quality-yaml), eliminating all tool-specific methods from `QAManager`. See Investigation 15 for the final design. The Findings Summary column for F14 reflects the Investigation 15 resolution.
+
 ---
 
 ## Investigation 15: Parsing Architecture — Config-Driven Violation Normalization (F15)
@@ -974,6 +976,27 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 
 ---
 
+## Referenced Files
+
+<table id="file-references">
+<thead>
+  <tr><th>Anchor</th><th>File</th><th>Path</th></tr>
+</thead>
+<tbody>
+  <tr id="f-qa-manager"><td><code>f-qa-manager</code></td><td><code>qa_manager.py</code></td><td><code>mcp_server/managers/qa_manager.py</code></td></tr>
+  <tr id="f-quality-tools"><td><code>f-quality-tools</code></td><td><code>quality_tools.py</code></td><td><code>mcp_server/tools/quality_tools.py</code></td></tr>
+  <tr id="f-test-tools"><td><code>f-test-tools</code></td><td><code>test_tools.py</code></td><td><code>mcp_server/tools/test_tools.py</code></td></tr>
+  <tr id="f-quality-config"><td><code>f-quality-config</code></td><td><code>quality_config.py</code></td><td><code>mcp_server/config/quality_config.py</code></td></tr>
+  <tr id="f-quality-yaml"><td><code>f-quality-yaml</code></td><td><code>quality.yaml</code></td><td><code>.st3/quality.yaml</code></td></tr>
+  <tr id="f-state-json"><td><code>f-state-json</code></td><td><code>state.json</code></td><td><code>.st3/state.json</code></td></tr>
+  <tr id="f-pyproject"><td><code>f-pyproject</code></td><td><code>pyproject.toml</code></td><td><code>pyproject.toml</code></td></tr>
+  <tr id="f-docs-quality"><td><code>f-docs-quality</code></td><td><code>quality.md</code></td><td><code>docs/reference/mcp/tools/quality.md</code></td></tr>
+  <tr id="f-issue103"><td><code>f-issue103</code></td><td><code>issue103/</code></td><td><code>docs/development/issue103/</code></td></tr>
+</tbody>
+</table>
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |
@@ -982,3 +1005,4 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | 1.1 | 2026-02-22 | Agent | Add Inv. 10–13 (SOLID, dead code, globs), F9–F13; fix ordering |
 | 1.2 | 2026-02-22 | Agent | Rewrite Inv. 5 (output model, ViolationDTO schema); add Inv. 14 (F14, mypy parsing) |
 | 1.3 | 2026-02-22 | Agent | Add Inv. 15 (F15): config-driven parsing architecture; `json_violations` + `text_violations` strategies; zero tool-specific methods in QAManager |
+| 1.4 | 2026-02-22 | Agent | Consistency pass: fix header version, Investigation 2 Fix aligned with Inv. 15, Inv. 5 title, superseded note on Inv. 14, HTML file-reference table, anchor links throughout |
