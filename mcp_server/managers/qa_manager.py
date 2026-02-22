@@ -813,7 +813,12 @@ class QAManager:
         corresponding key path in the item.  A path containing ``/`` is
         resolved as a nested lookup; plain keys use flat ``dict.get`` access.
         Missing keys result in ``None`` for optional fields.
-        The ``fixable`` field is determined by truthiness of the mapped value.
+
+        ``parsing.line_offset`` is added to the extracted line number (useful
+        for tools that report 0-based lines).
+
+        ``parsing.fixable_when`` overrides ``field_map["fixable"]``: when set,
+        the named source key is used for the truthy fixable check.
 
         Args:
             payload: List of parsed JSON objects (root-array format).
@@ -824,15 +829,17 @@ class QAManager:
         """
         result: list[ViolationDTO] = []
         resolve = self._resolve_field_path
+        fixable_key = parsing.fixable_when or parsing.field_map.get("fixable")
         for item in payload:
             fmap = parsing.field_map
-            fixable_key = fmap.get("fixable")
+            raw_line = resolve(item, fmap["line"]) if "line" in fmap else None
+            line = (raw_line + parsing.line_offset) if isinstance(raw_line, int) else raw_line
             fixable_val = resolve(item, fixable_key) if fixable_key else None
             result.append(
                 ViolationDTO(
                     file=resolve(item, fmap["file"]) if "file" in fmap else None,
                     message=resolve(item, fmap["message"]) if "message" in fmap else None,
-                    line=resolve(item, fmap["line"]) if "line" in fmap else None,
+                    line=line,
                     col=resolve(item, fmap["col"]) if "col" in fmap else None,
                     rule=resolve(item, fmap["rule"]) if "rule" in fmap else None,
                     fixable=bool(fixable_val),
