@@ -586,3 +586,35 @@ class TestArtifactLoggingConfig:
             assert gate.parsing.strategy == "exit_code"
             assert gate.success.mode == "exit_code"
             assert gate.success.exit_codes_ok == [0]
+
+
+class TestActiveGatesContract:
+    """Config-contract tests for active_gates list (Issue #251 C0).
+
+    These tests enforce that the active gates list in .st3/quality.yaml
+    does not contain pytest/coverage gates that would invoke the test-runner
+    as a quality gate — a broken pattern identified in F1/F10.
+    """
+
+    def test_gate5_tests_not_in_active_gates(self) -> None:
+        """gate5_tests must not appear in active_gates (F1/F10 guard)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        assert "gate5_tests" not in config.active_gates
+
+    def test_gate6_coverage_not_in_active_gates(self) -> None:
+        """gate6_coverage must not appear in active_gates (F1/F10 guard)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        assert "gate6_coverage" not in config.active_gates
+
+    def test_static_analysis_gates_remain_active(self) -> None:
+        """Static analysis gates 0–4b must still be active after gate5/6 removal."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        expected = {
+            "gate0_ruff_format",
+            "gate1_formatting",
+            "gate2_imports",
+            "gate3_line_length",
+            "gate4_types",
+            "gate4_pyright",
+        }
+        assert expected.issubset(set(config.active_gates))
