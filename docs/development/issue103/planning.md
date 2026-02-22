@@ -3,7 +3,7 @@
 # Enhance run_tests tool for large test suites
 
 **Status:** DRAFT  
-**Version:** 1.1  
+**Version:** 1.2  
 **Last Updated:** 2026-02-22
 
 ---
@@ -16,13 +16,11 @@ Concretiseer de TDD-cycles voor issue #103 op basis van de research-conclusies i
 ## Scope
 
 **In Scope:**
-`RunTestsTool` output-formaat en parameters, pytest marker cleanup (`integration`
-afschaffen + `slow` definitie), `test_create_issue_e2e.py` refactor, `pyproject.toml`
-addopts.
+`RunTestsTool` output-formaat, `last_failed_only` parameter, `integration` marker
+sanering (definitie + test-verplaatsing), optioneel pytest-xdist.
 
 **Out of Scope:**
-pytest-xdist parallellisatie, changed-files based running, test suite SOLID clean-up
-(issue #250), CI/CD integratie.
+test suite SOLID clean-up (issue #250), CI/CD integratie.
 
 ## Prerequisites
 
@@ -33,60 +31,63 @@ pytest-xdist parallellisatie, changed-files based running, test suite SOLID clea
 
 ## Summary
 
-Verbeter de `RunTestsTool` op drie fronten:
+Verbeter de `RunTestsTool` op drie fronten, met een optionele vierde:
 
-1. **Gestructureerde JSON-response inline** — `output_mode` parameter
-   (minimal / failures / full), geen temp-file meer
-2. **`last_failed_only` parameter** — wraps `pytest --lf` voor snelle re-runs
-3. **Afschaffen `integration` marker** — inclusief refactor van
-   `test_create_issue_e2e.py` (2 API-tests → gemockte `GitHubManager`)
+1. **Unix-style output** — geen output bij succes, failure-details bij falen. Geen
+   output_mode keuze, geen backward compatibility last.
+2. **`last_failed_only` parameter** — wraps `pytest --lf` voor snelle re-runs.
+3. **`integration` marker saneren** — definitie formaliseren, misgeplaatste tests naar
+   de juiste map, marker consequent toepassen op echte e2e tests.
+4. **(Optioneel C4) pytest-xdist** — parallelle testuitvoering, afhankelijk van
+   compatibiliteitsonderzoek met `asyncio_mode = "auto"`.
 
-Doel: agent-bruikbare output bij elke testrun, geen grep-workaround op temp file meer.
+**Geldt voor alle cycles:**  
+Tijdens de REFACTOR fase van elke cycle: `run_quality_gates` draaien op gewijzigde
+bestanden vóór commit.
 
 ---
 
 ## TDD Cycles
 
-### Cycle 1: output_mode parameter + JSON-response
+### Cycle 1: Unix-style output — JSON-response inline
 
 **Goal:**  
-`RunTestsTool` retourneert een gestructureerde JSON-response inline. Bij `failures`
-(default) bevat de response een summary-object en een lijst van gefailde tests met
-locatie en failureregel. Bij `minimal` alleen de summary. Bij `full` het huidige
-gedrag als text-fallback. Geen temp-file indirectie meer.
+`RunTestsTool` retourneert een gestructureerde JSON-response, altijd inline (geen
+temp-file). Gedrag: bij alle tests groen → alleen summary. Bij failures → summary +
+lijst van gefailde tests met locatie en failureregel. Geen `output_mode` parameter.
+`full` mode wordt niet geïmplementeerd.
 
 **Betrokken bestanden:**
 - `mcp_server/tools/test_tools.py` — `RunTestsInput`, `RunTestsTool.execute()`
-- `tests/mcp_server/unit/tools/test_run_tests_tool.py` — nieuw testbestand (of
-  uitbreiding van bestaand)
+- `tests/mcp_server/unit/tools/test_run_tests_tool.py` — nieuw of uitbreiden
 
 **RED — wat de test controleert:**
 - Response bij 0 failures: `content[0]["type"] == "json"`, `summary.failed == 0`,
-  geen `failures`-lijst
+  geen `failures`-key aanwezig (of lege lijst)
 - Response bij ≥1 failure: `content[0]["type"] == "json"`, `summary.failed >= 1`,
   `failures[0]` bevat `test_id`, `short_reason`, `location`
-- `output_mode="minimal"` retourneert alleen summary, geen `failures`-key
-- `output_mode="full"` retourneert `content[0]["type"] == "text"` (huidig gedrag)
-- Default `output_mode` is `failures`
+- `content[1]["type"] == "text"` als human-readable fallback altijd aanwezig
+- Bestaande `path`, `markers`, `timeout` parameters werken onveranderd
 
 **GREEN — minimale implementatie:**
-- `RunTestsInput` uitbreiden met `output_mode: Literal["minimal", "failures", "full"]`
-- Pytest output parsen: extract summary-regel (`N passed, M failed`) en
+- `RunTestsInput`: `verbose` veld verwijderen (niet meer nodig), rest onveranderd
+- Pytest stdout parsen: extract summary-regel (`N passed, M failed`) en
   `FAILED path::test_name — reden` regels
-- `ToolResult` retourneren met JSON primair + text-fallback (analoog aan
+- `ToolResult` retourneren met JSON primair + text-fallback (patroon van
   `RunQualityGatesTool`)
 
 **REFACTOR:**
 - Parser extraheren naar private functie `_parse_pytest_output(stdout: str) -> dict`
-- Warnings-filtering: deduplicate `DeprecationWarning` naar maximaal één per uniek
-  bericht
+- `DeprecationWarning` dedupliceren: maximaal één keer per uniek bericht in de
+  text-fallback
+- `run_quality_gates` draaien op `mcp_server/tools/test_tools.py`
 
 **Acceptatiecriteria C1:**
-- [ ] `pytest tests/mcp_server/unit/tools/test_run_tests_tool.py` slaagt
-- [ ] Agent kan `result["summary"]["failed"]` direct lezen zonder extra tool call
-- [ ] `output_mode="full"` gedraagt zich identiek aan huidige implementatie
-  (backward compatible)
-- [ ] Geen temp-file bij geen van de drie modi
+- [ ] Response bij groene run: alleen summary, geen failures-lijst
+- [ ] Response bij rode run: summary + failures met `test_id`, `short_reason`,
+  `location`
+- [ ] Geen temp-file in geen enkel scenario
+- [ ] `path`-parameter werkt onveranderd (gerichte TDD-run op specifiek bestand)
 
 ---
 
@@ -94,109 +95,171 @@ gedrag als text-fallback. Geen temp-file indirectie meer.
 
 **Goal:**  
 `RunTestsTool` ondersteunt `last_failed_only=True`, dat `pytest --lf` toevoegt aan de
-subprocess-aanroep. Hiermee hervoert de agent alleen de tests die bij de vorige run
-faalden — nuttig bij iteratief debuggen zonder de hele suite opnieuw te draaien.
+subprocess-aanroep. Standaard `False` — gedrag onveranderd.
 
 **Betrokken bestanden:**
-- `mcp_server/tools/test_tools.py` — `RunTestsInput`, cmd-builder in `execute()`
-- Bestaand(e) testbestand(en) voor `RunTestsTool`
+- `mcp_server/tools/test_tools.py` — `RunTestsInput`, cmd-builder
+- Bestaand testbestand voor `RunTestsTool`
 
 **RED — wat de test controleert:**
-- Bij `last_failed_only=True` bevat de subprocess-cmd het argument `--lf`
-- Bij `last_failed_only=False` (default) is `--lf` afwezig
-- Combinatie met `output_mode` werkt correct
+- Bij `last_failed_only=True`: subprocess-cmd bevat `--lf`
+- Bij `last_failed_only=False` (default): `--lf` afwezig
+- Combinatie met `path` parameter werkt correct
 
 **GREEN — minimale implementatie:**
-- `RunTestsInput` uitbreiden met `last_failed_only: bool = False`
+- `RunTestsInput`: `last_failed_only: bool = False`
 - Cmd-builder: `if params.last_failed_only: cmd.append("--lf")`
 
 **REFACTOR:**
 - Cmd-builder logica extraheren naar private methode `_build_cmd(params) -> list[str]`
-  zodat `execute()` leesbaar blijft
+- `run_quality_gates` draaien op `mcp_server/tools/test_tools.py`
 
 **Acceptatiecriteria C2:**
-- [ ] `pytest tests/mcp_server/unit/tools/test_run_tests_tool.py` slaagt
 - [ ] `last_failed_only=True` voegt `--lf` toe aan de cmd
-- [ ] Backward compatible: `last_failed_only=False` (default) — gedrag onveranderd
+- [ ] Default gedrag onveranderd
 
 ---
 
-### Cycle 3: integration marker afschaffen + test_create_issue_e2e.py refactor
+### Cycle 3: integration marker saneren
 
 **Goal:**  
-De `integration` marker verdwijnt volledig uit de suite. De 2 live API-tests in
-`test_create_issue_e2e.py` worden herschreven met een gemockte `GitHubManager` zodat
-ze standaard meedraaien. De 5 pure validatietests in hetzelfde bestand verliezen
-alleen de `pytestmark`-regel. `pyproject.toml` verliest de `integration`-filter uit
-`addopts` en de markerdefinitie.
+De `integration` marker krijgt een formele definitie en wordt consequent toegepast.
+Tests die echte e2e gedrag over de volledige scope testen (en dus externe dependencies
+of het volledige systeem aanroepen) krijgen de marker en verhuizen naar
+`tests/mcp_server/integration/`. Tests die misplaatst zijn in de unit-boom worden
+gecorrigeerd.
+
+**Definitie `integration` marker (vast te leggen in `pyproject.toml`):**
+> Tests die end-to-end gedrag over de volledige scope valideren en daarbij echte
+> subprocessen, externe services of het volledige MCP-systeem aanroepen. Worden
+> standaard geskipt in TDD-runs; expliciet ingeschakeld in de validatiefase.
+
+**Definitie `slow` marker:**
+> Volledig hermetisch maar spawnt echte subprocessen of git-operaties op tmp_path.
+> Standaard ingeschakeld; te skippen via `pytest -m "not slow"` voor snelle dev-run.
+
+**Concrete acties:**
+
+| Bestand | Actie |
+|---|---|
+| `tests/mcp_server/unit/mcp_server/integration/test_qa.py` | Verplaatsen naar `tests/mcp_server/integration/test_qa.py` + `@pytest.mark.integration` |
+| `tests/mcp_server/integration/test_create_issue_e2e.py` | 2 API-tests: mock `GitHubManager`; 5 validatietests: `pytestmark` verwijderen |
+| `tests/mcp_server/integration/test_workflow_cycle_e2e.py` | Controleren: hermetisch (tmp_path + lokale git) → `@pytest.mark.slow`, géén `integration` |
+| `tests/mcp_server/integration/test_issue39_cross_machine.py` | Idem — hermetisch → `@pytest.mark.slow` |
+| `pyproject.toml` | Markerdefinities bijwerken met bovenstaande definities |
 
 **Betrokken bestanden:**
-- `tests/mcp_server/integration/test_create_issue_e2e.py`
+- Bovenstaande testbestanden
 - `pyproject.toml`
-- `tests/mcp_server/unit/mcp_server/integration/test_qa.py` — optioneel: `slow` marker
-  toevoegen (3 tests > 2s elk)
+- `tests/mcp_server/unit/mcp_server/integration/` map (leeg na verplaatsing)
 
 **RED — wat de test controleert:**
-- Nieuwe test: `test_pytest_config.py` uitbreiden met assertion dat `integration`
-  marker **niet** in `pyproject.toml` markers staat
-- Nieuwe test: assertion dat `addopts` de string `"not integration"` niet bevat
-- Bestaande tests in `test_create_issue_e2e.py` slagen zonder live GitHub-verbinding
-  (mock-gebaseerd)
+- `test_pytest_config.py` uitbreiding: marker `integration` aanwezig in pyproject met
+  de nieuwe definitie
+- `test_pytest_config.py` uitbreiding: marker `slow` aanwezig met definitie
+- `test_create_issue_e2e.py` tests slagen zonder live GitHub-verbinding (mock-based)
+- `test_qa.py` tests draaien niet standaard mee (gefilterd door `not integration`)
 
 **GREEN — minimale implementatie:**
-1. `test_create_issue_e2e.py`:
-   - `pytestmark` verwijderen
-   - `test_minimal_input_creates_issue_with_correct_labels`: mock `GitHubManager` via
-     `unittest.mock.patch`, assert op de argumenten waarmee `create_issue` aangeroepen
-     wordt + retourneer een mock-issue met de juiste label-namen
-   - `test_all_options_creates_issue_with_full_label_set`: idem
-2. `pyproject.toml`: `"-m", "not integration"` uit `addopts`, `integration`-definitie
-   uit `markers`
-3. Optioneel: `@pytest.mark.slow` op de 3 tests in `test_qa.py`
+Bovenstaande concrete acties uitvoeren.
 
 **REFACTOR:**
-- ruff format op gewijzigde bestanden
-- Controleer: `pytest tests/mcp_server/ -q` — telcount onveranderd of hoger
-  (de 7 voorheen geskipte tests draaien nu mee)
+- `run_quality_gates` draaien op gewijzigde bestanden
+- Controleer: `pytest tests/mcp_server/ -q` — alle tests die hermetisch zijn draaien
+  standaard mee; `integration`-gemarkte tests worden geskipt
 
 **Acceptatiecriteria C3:**
-- [ ] `pytest tests/mcp_server/` — geen `deselected` meer door `integration` filter
-- [ ] `test_pytest_config.py` assertion slaagt: geen `integration` in markers of
-  addopts
-- [ ] `test_create_issue_e2e.py` — alle 7 tests slagen zonder live GitHub-verbinding
-- [ ] `pyproject.toml` bevat geen verwijzing naar `integration` marker meer
+- [ ] `pytest tests/mcp_server/` — QA-tests standaard geskipt (gemarked integration)
+- [ ] `pytest tests/mcp_server/ -m integration` — QA-tests draaien
+- [ ] `test_create_issue_e2e.py` — alle 7 tests slagen zonder live verbinding
+- [ ] Markerdefinities in `pyproject.toml` beschrijven duidelijk wanneer elke marker
+  van toepassing is
+
+---
+
+### Cycle 4 (optioneel): pytest-xdist parallelle uitvoering
+
+**Goal:**  
+Onderzoek en implementeer parallelle testuitvoering via `pytest-xdist`. Doel: wall
+clock tijd van 73s significant reduceren door tests over meerdere CPU-cores te
+verdelen.
+
+**Waarom optioneel:**  
+Drie afhankelijkheden moeten eerst geverifieerd worden:
+1. Compatibiliteit `pytest-xdist` + `asyncio_mode = "auto"` in de huidige versies
+2. Gedrag van `reset_config_singletons` fixture bij worker-processen
+3. Filesystem-contention bij tests die ruff/mypy/git aanroepen op gedeelde bestanden
+
+**Analyse:**
+
+- **Async per test**: xdist elimineert de event-loop overhead niet, maar verdeelt hem
+  over workers. Wall clock tijd daalt proportioneel met aantal workers.
+- **Singletons**: elk xdist-worker is een apart proces met eigen module-geheugen.
+  Cross-worker contaminatie bestaat niet. De `reset_config_singletons` fixture blijft
+  nuttig binnen één worker (opeenvolgende tests).
+- **Filesystem-touching tests**: `test_qa.py` (ruff/mypy op workspace-bestanden) en
+  git-operaties kunnen race conditions veroorzaken bij parallelle workers. Oplossing:
+  `@pytest.mark.xdist_group("qa")` en `@pytest.mark.xdist_group("git")` — tests
+  binnen een groep draaien altijd op dezelfde worker.
+- **Distributiestrategie**: `--dist loadgroup` (ipv `--dist load`) is nodig zodat
+  xdist_group-markeringen gerespecteerd worden.
+
+**RED — wat de test controleert:**
+- `test_pytest_config.py`: `pytest-xdist` aanwezig als dependency
+- Smoke: `pytest tests/mcp_server/ -n auto -q` slaagt zonder failures (zelfde
+  resultaat als sequentieel)
+
+**GREEN — minimale implementatie:**
+- `pytest-xdist` toevoegen aan `requirements-dev.txt`
+- `pyproject.toml addopts`: `-n auto` toevoegen (of separaat `pytest-xdist`-sectie)
+- `@pytest.mark.xdist_group` toevoegen aan filesystem-touching tests
+
+**REFACTOR:**
+- Timing vergelijken: sequentieel vs. parallel
+- `run_quality_gates` draaien
+- Baseline in research doc bijwerken met nieuwe timing
+
+**Acceptatiecriteria C4:**
+- [ ] `pytest tests/mcp_server/ -n auto` slaagt zonder extra failures
+- [ ] Wall clock tijd < 40s (streefwaarde bij 2 workers, afhankelijk van hardware)
+- [ ] Geen race conditions op filesystem-touching tests
 
 ---
 
 ## Risks & Mitigation
 
-- **Risico:** Mock van `GitHubManager` in C3 dekt label assembly niet volledig —
-  test wordt triviaal groen terwijl de echte label-logica niet getest wordt.
-  - **Mitigatie:** Mock retourneert een echte `IssueBody`-structuur; assertions
-    controleren de argumenten van de `create_issue`-aanroep (welke labels worden
-    meegegeven), niet alleen de retourwaarde.
+- **Risico C1:** Pytest output-format parser fragiel bij andere pytest-versies.
+  - **Mitigatie:** Parser werkt op de stabiele samenvattingsregel
+    (`N passed, M failed in Xs`); bij parse-fout: `summary.total = -1` met
+    foutmelding in response, nooit een crash.
 
-- **Risico:** Pytest output-format parser in C1 is fragiel bij andere pytest-versies of
-  onverwachte output-layout.
-  - **Mitigatie:** Parser werkt op de gestandaardiseerde samenvattingsregel
-    (`N passed, M failed in Xs`) die stabiel is across pytest versies; fallback naar
-    `summary.total = -1` bij parse-fout met foutmelding in de response.
+- **Risico C3:** Mock van `GitHubManager` dekt label assembly niet — test wordt
+  triviaal groen.
+  - **Mitigatie:** Mock retourneert echte structuren; assertions controleren de
+    argumenten van de `create_issue` aanroep (welke labels worden meegegeven),
+    niet alleen de retourwaarde.
+
+- **Risico C4:** `pytest-asyncio` + `pytest-xdist` incompatibiliteit.
+  - **Mitigatie:** Compatibiliteit verifiëren als eerste stap van C4 RED; als niet
+    oplosbaar zonder grote refactor → C4 niet implementeren.
 
 ---
 
 ## Dependencies
 
-- C3 is onafhankelijk van C1 en C2 — volgorde is flexibel
-- C1 levert direct waarde voor de agent en wordt als eerste uitgevoerd
 - C2 bouwt voort op de cmd-builder die in C1-refactor is geëxtraheerd
+- C3 is onafhankelijk van C1 en C2 — kan parallel lopen
+- C4 vereist C3 (xdist_group markers voor integration tests)
 
 ---
 
 ## Milestones
 
-- **Na C1:** agent kan test output lezen zonder grep op temp file; response altijd
-  inline
-- **Na C3:** `integration` marker volledig weg, alle tests draaien standaard mee
+- **Na C1:** agent leest testresultaten direct uit JSON-response; geen grep op
+  temp file meer
+- **Na C3:** `integration` marker heeft formele definitie en is consequent toegepast;
+  validatiefase is de authoritative plek voor echte e2e runs
+- **Na C4 (optioneel):** wall clock tijd < 40s
 
 ---
 
@@ -204,7 +267,7 @@ alleen de `pytestmark`-regel. `pyproject.toml` verliest de `integration`-filter 
 
 - [docs/development/issue103/research.md](research.md)
 - [Issue #250](https://github.com/MikeyVK/S1mpleTraderV3/issues/250) — test suite
-  clean-up (uit scope van #103)
+  SOLID clean-up (buiten scope van #103)
 
 ---
 
@@ -214,3 +277,4 @@ alleen de `pytestmark`-regel. `pyproject.toml` verliest de `integration`-filter 
 |---------|------|--------|---------|
 | 1.0 | 2026-02-22 | Agent | Scaffold aangemaakt |
 | 1.1 | 2026-02-22 | Agent | TDD cycles uitgewerkt op basis van research |
+| 1.2 | 2026-02-22 | Agent | C1 unix-style (geen output_mode), C3 integration-sanering ipv afschaffing, C4 xdist + async analyse, quality gates expliciet per cycle |
