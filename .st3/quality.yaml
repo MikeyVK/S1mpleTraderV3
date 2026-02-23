@@ -16,6 +16,11 @@ artifact_logging:
   output_dir: "mcp_server/logs/qa_logs"
   max_files: 200
 
+project_scope:
+  include_globs:
+    - "mcp_server/**/*.py"
+    - "tests/mcp_server/**/*.py"
+
 gates:
   # Gate 0: Formatter (Ruff)
   gate0_ruff_format:

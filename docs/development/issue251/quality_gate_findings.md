@@ -121,6 +121,77 @@ return _make_gate(          # ✅
 | C19 REFACTOR | Gate 1 Ruff Strict Lint | F401 unused imports | `test_baseline_advance.py` | `import subprocess` + `import pytest` verwijderd (resterend na refactor) |
 | C19 REFACTOR | Gate 4b Pyright | reportUnusedImport | `test_baseline_advance.py` | zelfde unused imports als F401 |
 | C22 REFACTOR | Gate 1 Ruff Strict Lint | ARG001 unused function arguments | `test_scope_resolution.py` | 5× mock-callback `cmd`/`kw` → `_cmd`/`_kw` (fake_git_diff×3, fake_git_fail, fake_git_empty) |
+| Remediation C17/C18 REFACTOR | Gate 1 Ruff Strict Lint | ARG002 unused method arg `gate` | `qa_manager.py` + 4 testbestanden | `gate: QualityGate` param verwijderd uit `_get_skip_reason`; alle call-sites bijgewerkt |
+| Remediation C14 REFACTOR | Gate 1 Ruff Strict Lint | F841 dead variable `combined_output` | `qa_manager.py` | `combined_output = ...` regel verwijderd (wees na deleten json_field/text_regex branches) |
+| Remediation C22 addendum | Gate 2 Imports | PLC0415 inline import in testfunctie | `test_scope_resolution.py` | `import json as _json` → module-niveau `import json` |
+| Remediation batch REFACTOR | Gate 0 Ruff Format | 2 signaturen 3→1 regel | `test_qa_manager.py` | `test_get_skip_reason_no_files_returns_skip` + `_with_files_returns_none` collapsed |
+
+---
+
+---
+
+### [Remediation C17/C18 REFACTOR] ARG002 — ongebruikte methodeparameter `gate`
+
+**Gate:** Gate 1: Ruff Strict Lint (`ARG` ruleset)
+**File:** `mcp_server/managers/qa_manager.py`
+**Methode:** `_get_skip_reason`
+**Fout:**
+```
+ARG002 — Unused method argument: `gate`
+```
+**Context:** Tijdens de C17/C18-conformantiefix (verwijderen van `_is_pytest_gate`) was de `gate: QualityGate` parameter uit de body overbodig geworden omdat de methode alleen nog `gate_files` inspecteerde. ARG002 vuurde in de REFACTOR QG-check.
+**Fix:** `gate: QualityGate` volledig verwijderd uit methodesignatuur; alle call-sites bijgewerkt (prod code + 4 testbestanden: `test_qa_manager.py`, `test_skip_reason_unified.py`, `test_files_for_gate.py`, `test_scope_resolution.py`).
+**Patroon:** Na het verwijderen van gedrag uit een methode controleer altijd of de resterende parameters nog daadwerkelijk gebruikt worden. ARG002 vangt dit automatisch op in de QG.
+
+---
+
+### [Remediation C14 REFACTOR] F841 — dode variabele `combined_output`
+
+**Gate:** Gate 1: Ruff Strict Lint (`F` ruleset)
+**File:** `mcp_server/managers/qa_manager.py`
+**Methode:** `_execute_gate`
+**Fout:**
+```
+F841 — Local variable `combined_output` is assigned to but never used
+```
+**Context:** `combined_output = (proc.stdout or "") + (proc.stderr or "")` was opgebouwd voor de `json_field`- en `text_regex`-dispatch-branches. Na het verwijderen van die branches (C14-conformantiefix) bleef de toewijzing achter als dode code.
+**Fix:** De `combined_output`-regel volledig verwijderd.
+**Patroon:** Na het verwijderen van dispatch-branches controleer altijd of variabelen die uitsluitend door die branches werden gelezen nu als F841 verschijnen.
+
+---
+
+### [Remediation C22 REFACTOR addendum] PLC0415 — `import` binnen testfunctie
+
+**Gate:** Gate 2: Imports (`PLC0415`)
+**File:** `tests/mcp_server/unit/mcp_server/managers/test_scope_resolution.py`
+**Fout:**
+```
+PLC0415 — `import` should be at the top of the file
+```
+**Context:** De twee nieuwe C22-tests (`test_branch_scope_uses_parent_from_state_json` en `test_branch_scope_falls_back_to_main_without_state`) gebruikten `import json as _json` binnenin de testfunctie om een `state.json`-fixture te serialiseren. Gate 2 (select=`PLC0415`) vuurde hierop.
+**Fix:** `import json as _json` verplaatst naar module-niveau als `import json`.
+**Patroon:** Inline imports in testfuncties zijn verleidelijk voor tijdelijke fixtures, maar worden geweigerd door Gate 2. Altijd op module-niveau importeren, ook in tests.
+
+---
+
+### [Remediation batch REFACTOR] Ruff Format — 2 methode-signaturen in `test_qa_manager.py` gesplitst
+
+**Gate:** Gate 0: Ruff Format
+**File:** `tests/mcp_server/unit/mcp_server/managers/test_qa_manager.py`
+**Fout:**
+```diff
+-    def test_get_skip_reason_no_files_returns_skip(
+-        self, manager: QAManager
+-    ) -> None:
++    def test_get_skip_reason_no_files_returns_skip(self, manager: QAManager) -> None:
+-    def test_get_skip_reason_with_files_returns_none(
+-        self, manager: QAManager
+-    ) -> None:
++    def test_get_skip_reason_with_files_returns_none(self, manager: QAManager) -> None:
+```
+**Context:** Beide methoden in `TestSkipReasonLogic` waren tijdens de C17/C18-fix op 3 regels geschreven. De gecombineerde signatuur past comfortabel binnen 100 tekens (73 resp. 76 chars). Ruff Format weigert de gesplitste variant.
+**Fix:** Beide signaturen samengevoegd op één regel.
+**Patroon:** Zie ook C8/C9/C19 — bij `self` + één fixture-argument past de signatuur bijna altijd op één regel. Schrijf dit direct zo.
 
 ---
 

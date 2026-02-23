@@ -1004,75 +1004,20 @@ class TestResponseSchemaV2:
 
 
 class TestSkipReasonLogic:
-    """Test consolidated skip reason logic (Cycle 4)."""
+    """Test consolidated skip reason logic (C17/C18 — no pytest-specific behaviour)."""
 
     @pytest.fixture
     def manager(self) -> QAManager:
         return QAManager()
 
-    @pytest.fixture
-    def pytest_gate(self) -> QualityGate:
-        return QualityGate.model_validate(
-            {
-                "name": "Gate 5: Tests",
-                "description": "Unit tests",
-                "execution": {
-                    "command": ["pytest", "tests/"],
-                    "timeout_seconds": 300,
-                    "working_dir": None,
-                },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
-                "capabilities": {
-                    "file_types": [".py"],
-                    "supports_autofix": False,
-                },
-            }
-        )
-
-    @pytest.fixture
-    def static_gate(self) -> QualityGate:
-        return QualityGate.model_validate(
-            {
-                "name": "Gate 1: Formatting",
-                "description": "Lint",
-                "execution": {
-                    "command": ["python", "-m", "ruff", "check"],
-                    "timeout_seconds": 60,
-                    "working_dir": None,
-                },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
-                "capabilities": {
-                    "file_types": [".py"],
-                    "supports_autofix": False,
-                },
-            }
-        )
-
-    def test_get_skip_reason_file_specific_pytest_gate(
-        self, manager: QAManager, pytest_gate: QualityGate
-    ) -> None:
-        reason = manager._get_skip_reason(pytest_gate, [], is_file_specific_mode=True)
-        assert reason == "Skipped (file-specific mode - tests run project-wide)"
-
-    def test_get_skip_reason_no_matching_files_for_static_gate(
-        self, manager: QAManager, static_gate: QualityGate
-    ) -> None:
-        reason = manager._get_skip_reason(static_gate, [], is_file_specific_mode=False)
+    def test_get_skip_reason_no_files_returns_skip(self, manager: QAManager) -> None:
+        """Empty file list → always skip, regardless of how the caller acquired the list."""
+        reason = manager._get_skip_reason([])
         assert reason == "Skipped (no matching files)"
 
-    def test_get_skip_reason_file_specific_no_matching_files(
-        self, manager: QAManager, static_gate: QualityGate
-    ) -> None:
-        """File-specific mode with genuinely no matching files."""
-        reason = manager._get_skip_reason(static_gate, [], is_file_specific_mode=True)
-        assert reason == "Skipped (no matching files)"
-
-    def test_get_skip_reason_project_level_pytest_not_skipped(
-        self, manager: QAManager, pytest_gate: QualityGate
-    ) -> None:
-        reason = manager._get_skip_reason(pytest_gate, [], is_file_specific_mode=False)
+    def test_get_skip_reason_with_files_returns_none(self, manager: QAManager) -> None:
+        """Non-empty file list → gate should run, no skip reason."""
+        reason = manager._get_skip_reason(["mcp_server/foo.py"])
         assert reason is None
 
 
@@ -1519,171 +1464,6 @@ class TestExtractJsonFields:
         )
         fields = manager._extract_json_fields("not-json", gate)
         assert fields == {}
-
-
-class TestJsonFieldSuccessCriteria:
-    """Test json_field strategy applies max_errors / require_no_issues (Gap 2b)."""
-
-    @pytest.fixture
-    def manager(self) -> QAManager:
-        return QAManager()
-
-    def _make_json_field_gate(
-        self,
-        max_errors: int | None = None,
-        require_no_issues: bool = False,
-    ) -> QualityGate:
-        """Create a json_field gate with specified success criteria."""
-        return QualityGate.model_validate(
-            {
-                "name": "JsonFieldCriteria",
-                "description": "Criteria test",
-                "execution": {"command": ["pyright"], "timeout_seconds": 60},
-                "parsing": {
-                    "strategy": "json_field",
-                    "diagnostics_path": "/generalDiagnostics",
-                    "fields": {"error_count": "/summary/errorCount"},
-                },
-                "success": {
-                    "mode": "json_field",
-                    "max_errors": max_errors,
-                    "require_no_issues": require_no_issues,
-                },
-                "capabilities": {
-                    "file_types": [".py"],
-                    "supports_autofix": False,
-                },
-            }
-        )
-
-    def test_max_errors_zero_passes_with_no_issues(self, manager: QAManager) -> None:
-        """Test max_errors=0 passes when there are no diagnostics."""
-        gate = self._make_json_field_gate(max_errors=0)
-        output = json.dumps({"generalDiagnostics": []})
-
-        with patch("subprocess.run") as mock_run:
-            mock_proc = MagicMock()
-            mock_proc.returncode = 0
-            mock_proc.stdout = output
-            mock_proc.stderr = ""
-            mock_run.return_value = mock_proc
-
-            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
-            assert result["passed"] is True
-
-    def test_max_errors_zero_fails_with_issues(self, manager: QAManager) -> None:
-        """json_field gate fails on non-zero exit code (issue parsing via capabilities)."""
-        gate = self._make_json_field_gate(max_errors=0)
-        output = json.dumps(
-            {
-                "generalDiagnostics": [
-                    {
-                        "message": "error1",
-                        "range": {"start": {"line": 1, "character": 0}},
-                    }
-                ]
-            }
-        )
-
-        with patch("subprocess.run") as mock_run:
-            mock_proc = MagicMock()
-            mock_proc.returncode = 1
-            mock_proc.stdout = output
-            mock_proc.stderr = ""
-            mock_run.return_value = mock_proc
-
-            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
-            assert result["passed"] is False
-            assert "Fail" in result["score"]
-
-    def test_require_no_issues_true_passes_with_zero_exit(self, manager: QAManager) -> None:
-        """Test json_field gate passes with exit code 0 (issue parsing moved to capabilities)."""
-        gate = self._make_json_field_gate(require_no_issues=True)
-        output = json.dumps(
-            {
-                "generalDiagnostics": [
-                    {
-                        "message": "warning",
-                        "range": {"start": {"line": 1, "character": 0}},
-                    }
-                ]
-            }
-        )
-
-        with patch("subprocess.run") as mock_run:
-            mock_proc = MagicMock()
-            mock_proc.returncode = 0
-            mock_proc.stdout = output
-            mock_proc.stderr = ""
-            mock_run.return_value = mock_proc
-
-            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
-            # json_field: exit-code-only; issue parsing via capabilities.parsing_strategy
-            assert result["passed"] is True
-
-    def test_require_no_issues_false_passes_even_with_issues(self, manager: QAManager) -> None:
-        """Test require_no_issues=False passes regardless of issues."""
-        gate = self._make_json_field_gate(require_no_issues=False)
-        output = json.dumps(
-            {
-                "generalDiagnostics": [
-                    {
-                        "message": "info",
-                        "range": {"start": {"line": 1, "character": 0}},
-                    }
-                ]
-            }
-        )
-
-        with patch("subprocess.run") as mock_run:
-            mock_proc = MagicMock()
-            mock_proc.returncode = 0
-            mock_proc.stdout = output
-            mock_proc.stderr = ""
-            mock_run.return_value = mock_proc
-
-            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
-            assert result["passed"] is True
-
-    def test_json_field_attaches_fields_data(self, manager: QAManager) -> None:
-        """Test json_field result includes 'fields' when fields config present."""
-        gate = QualityGate.model_validate(
-            {
-                "name": "FieldsAttach",
-                "description": "Fields attach test",
-                "execution": {"command": ["pyright"], "timeout_seconds": 60},
-                "parsing": {
-                    "strategy": "json_field",
-                    "diagnostics_path": "/generalDiagnostics",
-                    "fields": {"error_count": "/summary/errorCount"},
-                },
-                "success": {
-                    "mode": "json_field",
-                    "max_errors": 0,
-                },
-                "capabilities": {
-                    "file_types": [".py"],
-                    "supports_autofix": False,
-                },
-            }
-        )
-        output = json.dumps(
-            {
-                "generalDiagnostics": [],
-                "summary": {"errorCount": 0},
-            }
-        )
-
-        with patch("subprocess.run") as mock_run:
-            mock_proc = MagicMock()
-            mock_proc.returncode = 0
-            mock_proc.stdout = output
-            mock_proc.stderr = ""
-            mock_run.return_value = mock_proc
-
-            result = manager._execute_gate(gate, ["f.py"], gate_number=1)
-            assert "fields" in result
-            assert result["fields"]["error_count"] == 0
 
 
 class TestToolResultJsonData:

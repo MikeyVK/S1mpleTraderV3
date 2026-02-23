@@ -7,6 +7,7 @@ C22: Resolve scope=branch using git diff parent..HEAD.
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -37,10 +38,10 @@ def _project_scope_config(include_globs: list[str]) -> MagicMock:
 
 
 class TestScopeResolutionBranch:
-    """C22: _resolve_scope('branch') returns Python files from git diff HEAD~1..HEAD."""
+    """C22: _resolve_scope('branch') returns Python files from git diff <parent>..HEAD."""
 
     def test_branch_scope_returns_changed_py_files(self, tmp_path: Path) -> None:
-        """Changed .py files from git diff HEAD~1..HEAD are returned as sorted list."""
+        """Changed .py files from git diff <parent>..HEAD are returned as sorted list."""
         manager = QAManager(workspace_root=tmp_path)
 
         diff_output = "mcp_server/foo.py\nmcp_server/bar.py\n"
@@ -52,7 +53,6 @@ class TestScopeResolutionBranch:
             return result
 
         with patch("subprocess.run", side_effect=fake_git_diff):
-            # RED: _resolve_scope("branch") currently returns [] without calling git
             result = manager._resolve_scope("branch")
 
         assert "mcp_server/bar.py" in result
@@ -123,6 +123,47 @@ class TestScopeResolutionBranch:
             result = manager._resolve_scope("branch")
 
         assert result == []
+
+    def test_branch_scope_uses_parent_from_state_json(self, tmp_path: Path) -> None:
+        """When state.json contains workflow.parent_branch, that branch is used as diff base."""
+        state = {"workflow": {"parent_branch": "feature/parent-branch"}}
+        state_path = tmp_path / ".st3" / "state.json"
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(state))
+
+        manager = QAManager(workspace_root=tmp_path)
+        captured_cmd: list[list[str]] = []
+
+        def fake_git(_cmd: list[str], **_kw: object) -> MagicMock:
+            captured_cmd.append(_cmd)
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 0
+            result.stdout = "mcp_server/foo.py\n"
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git):
+            manager._resolve_scope("branch")
+
+        assert captured_cmd, "subprocess.run was not called"
+        assert "feature/parent-branch..HEAD" in captured_cmd[0]
+
+    def test_branch_scope_falls_back_to_main_without_state(self, tmp_path: Path) -> None:
+        """When state.json is absent, git diff falls back to main..HEAD."""
+        manager = QAManager(workspace_root=tmp_path)
+        captured_cmd: list[list[str]] = []
+
+        def fake_git(_cmd: list[str], **_kw: object) -> MagicMock:
+            captured_cmd.append(_cmd)
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 0
+            result.stdout = ""
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git):
+            manager._resolve_scope("branch")
+
+        assert captured_cmd, "subprocess.run was not called"
+        assert "main..HEAD" in captured_cmd[0]
 
 
 class TestScopeResolutionProject:

@@ -71,9 +71,7 @@ class QAManager:
             - Each gate filters files by its configured `capabilities.file_types`.
             - Some gates (e.g., pytest) are repo-scoped and ignore file lists.
         """
-        # Determine execution mode
-        is_file_specific_mode = bool(files)
-        mode = "file-specific" if is_file_specific_mode else "project-level"
+        mode = "file-specific" if files else "project-level"
 
         # Initialize v2.0 response schema
         results: dict[str, Any] = {
@@ -91,12 +89,7 @@ class QAManager:
             "overall_pass": True,  # Backward compatibility
         }
 
-        # Determine execution mode:
-        # files=[] → project-level (all static gates skip; no files to process)
-        # files=[...] → file-specific (gates filter by file_types via _files_for_gate)
-        is_file_specific_mode = bool(files)
-
-        # Validate file existence (file-specific mode only)
+        # Validate file existence
         missing_files = [f for f in files if not Path(f).exists()]
         if missing_files:
             self._update_summary_and_append_gate(
@@ -158,7 +151,7 @@ class QAManager:
                 continue
 
             gate_files = self._files_for_gate(gate, python_files)
-            skip_reason = self._get_skip_reason(gate, gate_files, is_file_specific_mode)
+            skip_reason = self._get_skip_reason(gate_files)
             if skip_reason is not None:
                 self._update_summary_and_append_gate(
                     results,
@@ -319,15 +312,25 @@ class QAManager:
         return []
 
     def _resolve_branch_scope(self) -> list[str]:
-        """Return Python files changed since parent commit via git diff HEAD~1..HEAD.
+        """Return Python files changed since the parent branch via git diff.
+
+        The parent branch is read from ``workflow.parent_branch`` in
+        ``.st3/state.json``.  Falls back to ``"main"`` when the key is absent
+        or the state file cannot be loaded.
 
         Returns:
             Sorted list of ``.py`` file paths (relative POSIX). Empty list on error
             or when the diff is empty.
         """
+        # Resolve parent reference: state → "main" fallback.
+        parent = "main"
+        if self.workspace_root is not None:
+            state = self._load_state_json(self.workspace_root / ".st3" / "state.json")
+            parent = state.get("workflow", {}).get("parent_branch") or "main"
+
         try:
             result = subprocess.run(
-                ["git", "diff", "--name-only", "HEAD~1..HEAD"],
+                ["git", "diff", "--name-only", f"{parent}..HEAD"],
                 capture_output=True,
                 text=True,
                 check=False,
@@ -409,15 +412,7 @@ class QAManager:
         return [*cmd, *files]
 
     def _files_for_gate(self, gate: QualityGate, python_files: list[str]) -> list[str]:
-        """Determine which files should be passed to a gate.
-
-        Some gates are repo-scoped (e.g., pytest) and do not accept/need file args.
-        """
-
-        # Repo-scoped gate: pytest. Gate config already contains target paths.
-        if self._is_pytest_gate(gate):
-            return []
-
+        """Determine which files should be passed to a gate based on file_types capability."""
         eligible = [
             f
             for f in python_files
@@ -429,33 +424,14 @@ class QAManager:
 
         return eligible
 
-    def _get_skip_reason(
-        self, gate: QualityGate, gate_files: list[str], is_file_specific_mode: bool
-    ) -> str | None:
-        """Return skip reason for a gate, if any.
+    def _get_skip_reason(self, gate_files: list[str]) -> str | None:
+        """Return skip reason for a gate, or None if it should run.
 
-        In file-specific mode, pytest gates are always skipped (tests run project-wide).
-        In all modes, a gate with no files to process is skipped.
+        A gate is skipped when no files match its configured file_types.
         """
-        if is_file_specific_mode and self._is_pytest_gate(gate):
-            return "Skipped (file-specific mode - tests run project-wide)"
-
-        is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
-        if not gate_files and not is_repo_scoped_pytest_gate:
+        if not gate_files:
             return "Skipped (no matching files)"
-
         return None
-
-    def _is_pytest_gate(self, gate: QualityGate) -> bool:
-        cmd = gate.execution.command
-        if not cmd:
-            return False
-
-        if cmd[0] == "pytest":
-            return True
-        if len(cmd) >= 3 and cmd[0] == "python" and cmd[1] == "-m" and cmd[2] == "pytest":
-            return True
-        return len(cmd) >= 3 and cmd[0] == sys.executable and cmd[1] == "-m" and cmd[2] == "pytest"
 
     def _command_for_hints(self, gate: QualityGate, files: list[str]) -> str:
         parts = [*gate.execution.command, *files]
@@ -695,8 +671,6 @@ class QAManager:
                 "environment": self._collect_environment_metadata(cmd),
             }
 
-            combined_output = (proc.stdout or "") + (proc.stderr or "")
-
             if gate.capabilities.parsing_strategy == "json_violations":
                 raw: list[dict[str, Any]] | dict[str, Any] = json.loads(proc.stdout or "[]")
                 violations = self._parse_json_violations(
@@ -761,44 +735,6 @@ class QAManager:
                             "details": output_capture["details"],
                         }
                     ]
-
-            elif gate.parsing.strategy == "json_field":
-                # Issue parsing is now handled via capabilities.parsing_strategy.
-                # This branch only extracts additional fields (e.g. error_count) from JSON.
-                parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
-                fields_data = self._extract_json_fields(parser_input, gate)
-                ok_codes = set(gate.success.exit_codes_ok)
-                if proc.returncode in ok_codes:
-                    result["passed"] = True
-                    result["score"] = "Pass"
-                    result["issues"] = []
-                else:
-                    result["passed"] = False
-                    result["score"] = f"Fail (exit={proc.returncode})"
-                    result["issues"] = [
-                        {"message": f"Gate failed with exit code {proc.returncode}"}
-                    ]
-                if fields_data:
-                    result["fields"] = fields_data
-
-            elif gate.parsing.strategy == "text_regex":
-                if proc.returncode in set(gate.success.exit_codes_ok):
-                    result["passed"] = True
-                    result["issues"] = []
-                    result["score"] = "Pass"
-                else:
-                    result["passed"] = False
-                    output_capture = self._build_output_capture(
-                        proc.stdout or "", proc.stderr or ""
-                    )
-                    result["output"] = output_capture
-                    result["issues"] = [
-                        {
-                            "message": f"Gate failed with exit code {proc.returncode}",
-                            "details": output_capture["details"],
-                        }
-                    ]
-                    result["score"] = f"Fail (exit={proc.returncode})"
 
             else:
                 result["passed"] = False

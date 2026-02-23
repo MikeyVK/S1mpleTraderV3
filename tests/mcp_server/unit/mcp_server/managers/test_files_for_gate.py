@@ -130,11 +130,11 @@ class TestFilesForGateOrdering:
 
 
 class TestFilesForGatePytestGate:
-    """Repo-scoped gates (pytest) must always receive an empty file list."""
+    """After C17: _files_for_gate is purely capability-driven; no tool-name special cases."""
 
-    def test_pytest_gate_returns_empty(self, manager: QAManager) -> None:
-        """Pytest gate always returns empty list regardless of input files."""
+    def test_gate_filters_by_file_types_regardless_of_command(self, manager: QAManager) -> None:
+        """A gate with file_types=['.py'] receives .py files; tool command is irrelevant."""
         gate = _pytest_gate()
         files = ["tests/test_foo.py", "tests/test_bar.py"]
         result = manager._files_for_gate(gate, files)
-        assert result == []
+        assert result == ["tests/test_foo.py", "tests/test_bar.py"]
