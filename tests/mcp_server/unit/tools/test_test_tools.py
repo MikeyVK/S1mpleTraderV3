@@ -434,3 +434,54 @@ def test_parse_pytest_output_traceback_contains_assertion_error() -> None:
     traceback = result["failures"][0]["traceback"]
     assert "AssertionError" in traceback
     assert "assert 1 == 2" in traceback
+
+
+# ---------------------------------------------------------------------------
+# C29 RED: invert run_tests content order — text first, json second
+# Must fail until GREEN inverts the order in test_tools.py
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_tests_content0_is_text_summary(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
+    """C29 contract: content[0] must be the text summary line (not json)."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
+
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
+
+    assert result.content[0]["type"] == "text", (
+        f"Expected content[0] type='text', got '{result.content[0]['type']}'"
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_tests_content1_is_json_payload(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
+    """C29 contract: content[1] must be the json payload (not text)."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
+
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
+
+    assert result.content[1]["type"] == "json", (
+        f"Expected content[1] type='json', got '{result.content[1]['type']}'"
+    )
+    assert "summary" in result.content[1]["json"]
+
+
+@pytest.mark.asyncio
+async def test_run_tests_content0_text_contains_summary_line(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
+    """C29 contract: content[0].text is the human-readable summary line."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
+
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
+
+    assert isinstance(result.content[0].get("text", None), str)
+    assert len(result.content[0]["text"]) > 0
