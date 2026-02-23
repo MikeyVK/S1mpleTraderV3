@@ -129,6 +129,7 @@ return _make_gate(          # ✅
 | C23 REFACTOR | Gate 3 Line Length | E501 (101>100) | `test_auto_scope_resolution.py` | string literal in assert opgesplitst via impliciete concatenatie |
 | C24 REFACTOR | Gate 0 Ruff Format | methode-signatuur 3→1 regel | `test_auto_scope_resolution.py` | `test_auto_scope_no_baseline_sha_falls_back_to_project_scope(self, tmp_path)` collapsed |
 | C24 REFACTOR | Gate 0 Ruff Format + Gate 1 W292 | trailing newline verwijderd | `test_auto_scope_resolution.py` | `safe_edit_file` verwijderde te veel newlines; één `\n` teruggeplaatst |
+| C25 REFACTOR | Gate 0 Ruff Format | kwargs op 1 regel met trailing comma → multi-line | `test_summary_line_formatter.py` | `_make_results(passed=0, failed=1, skipped=0, total_violations=2,` → 4 aparte regels |
 
 ---
 
@@ -253,6 +254,28 @@ PLC0415 — `import` should be at the top of the file
 **Fix 1:** Signatuur samengevoegd (95 tekens — past comfortabel op één regel).
 **Fix 2:** Één `\n` teruggeplaatst aan het einde van het bestand.
 **Patroon:** Bij `safe_edit_file` met search/replace op de laatste regel van een bestand: controleer altijd of de verplichte trailing newline behouden blijft. De tool schrijft exact wat er in `replace` staat.
+
+---
+
+### [C25 REFACTOR] Ruff Format — kwargs op één regel met trailing comma
+
+**Gate:** Gate 0: Ruff Format
+**File:** `tests/mcp_server/unit/mcp_server/managers/test_summary_line_formatter.py`
+**Fout:**
+```diff
+-        results = _make_results(
+-            passed=0, failed=1, skipped=0, total_violations=2,
++        results = _make_results(
++            passed=0,
++            failed=1,
++            skipped=0,
++            total_violations=2,
+             failed_gate_names=["Gate 1: Ruff Strict Lint"],
+         )
+```
+**Context:** Een reeks kwargs op één regel met een trailing comma in een multi-line aanroep triggert ruff-format om elke kwarg op een eigen regel te zetten. Zelfde mechanisme als C13 voor dict/list-literals.
+**Fix:** Elke kwarg op een aparte regel gezet.
+**Patroon:** Bij een function call die al over meerdere regels loopt met een trailing comma: schrijf elke kwarg direct op een eigen regel. Eén regel met meerdere kwargs wordt altijd uitgevouwen door ruff.
 
 ---
 
