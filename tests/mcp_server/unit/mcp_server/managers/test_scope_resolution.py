@@ -7,6 +7,7 @@ C22: Resolve scope=branch using git diff parent..HEAD.
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -33,6 +34,95 @@ def _project_scope_config(include_globs: list[str]) -> MagicMock:
     cfg.artifact_logging.output_dir = "temp/qa_logs"
     cfg.artifact_logging.max_files = 10
     return cfg
+
+
+class TestScopeResolutionBranch:
+    """C22: _resolve_scope('branch') returns Python files from git diff HEAD~1..HEAD."""
+
+    def test_branch_scope_returns_changed_py_files(self, tmp_path: Path) -> None:
+        """Changed .py files from git diff HEAD~1..HEAD are returned as sorted list."""
+        manager = QAManager(workspace_root=tmp_path)
+
+        diff_output = "mcp_server/foo.py\nmcp_server/bar.py\n"
+
+        def fake_git_diff(cmd: list[str], **kw: object) -> MagicMock:
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 0
+            result.stdout = diff_output
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git_diff):
+            # RED: _resolve_scope("branch") currently returns [] without calling git
+            result = manager._resolve_scope("branch")
+
+        assert "mcp_server/bar.py" in result
+        assert "mcp_server/foo.py" in result
+
+    def test_branch_scope_sorted(self, tmp_path: Path) -> None:
+        """Result list is sorted after git diff."""
+        manager = QAManager(workspace_root=tmp_path)
+
+        diff_output = "z_file.py\na_file.py\nm_file.py\n"
+
+        def fake_git_diff(cmd: list[str], **kw: object) -> MagicMock:
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 0
+            result.stdout = diff_output
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git_diff):
+            result = manager._resolve_scope("branch")
+
+        assert result == sorted(result)
+
+    def test_branch_scope_excludes_non_py_files(self, tmp_path: Path) -> None:
+        """Non-Python files are excluded from the result."""
+        manager = QAManager(workspace_root=tmp_path)
+
+        diff_output = "mcp_server/logic.py\ndocs/README.md\n.st3/state.json\n"
+
+        def fake_git_diff(cmd: list[str], **kw: object) -> MagicMock:
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 0
+            result.stdout = diff_output
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git_diff):
+            result = manager._resolve_scope("branch")
+
+        assert "docs/README.md" not in result
+        assert ".st3/state.json" not in result
+        assert "mcp_server/logic.py" in result
+
+    def test_branch_scope_git_error_returns_empty(self, tmp_path: Path) -> None:
+        """When git diff fails (non-zero exit), scope=branch returns [] gracefully."""
+        manager = QAManager(workspace_root=tmp_path)
+
+        def fake_git_fail(cmd: list[str], **kw: object) -> MagicMock:
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 128
+            result.stdout = ""
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git_fail):
+            result = manager._resolve_scope("branch")
+
+        assert result == []
+
+    def test_branch_scope_empty_diff_returns_empty(self, tmp_path: Path) -> None:
+        """When git diff output is empty, scope=branch returns []."""
+        manager = QAManager(workspace_root=tmp_path)
+
+        def fake_git_empty(cmd: list[str], **kw: object) -> MagicMock:
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 0
+            result.stdout = ""
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git_empty):
+            result = manager._resolve_scope("branch")
+
+        assert result == []
 
 
 class TestScopeResolutionProject:
