@@ -109,9 +109,7 @@ class TestAutoScopeHappyPath:
         with patch("subprocess.run", return_value=_fake_diff(["shared.py"])):
             result = manager._resolve_scope("auto")
 
-        assert result.count("shared.py") == 1, (
-            f"Duplicate entry in result: {result!r}"
-        )
+        assert result.count("shared.py") == 1, f"Duplicate entry in result: {result!r}"
 
     def test_auto_scope_uses_baseline_sha_not_parent_branch(self, tmp_path: Path) -> None:
         """Git diff uses baseline_sha..HEAD, not workflow.parent_branch..HEAD."""
@@ -137,7 +135,8 @@ class TestAutoScopeHappyPath:
             f"Expected 'deadbeef..HEAD' in git diff args, got: {captured[0]}"
         )
         assert "main..HEAD" not in captured[0], (
-            "scope=auto must NOT use workflow.parent_branch — it must use quality_gates.baseline_sha"
+            "scope=auto must NOT use workflow.parent_branch"
+            " — it must use quality_gates.baseline_sha"
         )
 
     def test_auto_scope_excludes_non_py_files_from_diff(self, tmp_path: Path) -> None:
