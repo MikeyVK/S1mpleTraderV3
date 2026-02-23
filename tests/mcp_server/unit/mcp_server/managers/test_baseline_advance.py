@@ -143,3 +143,90 @@ class TestBaselineAdvanceOnAllPass:
             mock_advance.assert_called_once()
         else:
             mock_advance.assert_not_called()
+
+
+class TestFailureAccumulation:
+    """C20: failed_files is the union of old persisted failures and newly failed files."""
+
+    def test_accumulate_uses_set_union(self, tmp_path: Path) -> None:
+        """New failures are merged with existing failed_files (not overwritten)."""
+        state_file = _state_with_quality_gates(
+            tmp_path,
+            baseline_sha="sha_preserved",
+            failed_files=["mcp_server/old_fail.py"],
+        )
+
+        manager = QAManager(workspace_root=tmp_path)
+        # RED: _accumulate_failed_files_on_failure does not exist yet → AttributeError
+        manager._accumulate_failed_files_on_failure(["mcp_server/new_fail.py"])
+
+        state = json.loads(state_file.read_text())
+        assert set(state["quality_gates"]["failed_files"]) == {
+            "mcp_server/old_fail.py",
+            "mcp_server/new_fail.py",
+        }
+
+    def test_accumulate_sorted_deterministic(self, tmp_path: Path) -> None:
+        """failed_files list is deterministically sorted after union."""
+        state_file = _state_with_quality_gates(
+            tmp_path,
+            baseline_sha="sha_preserved",
+            failed_files=["mcp_server/z_last.py", "mcp_server/a_first.py"],
+        )
+
+        manager = QAManager(workspace_root=tmp_path)
+        manager._accumulate_failed_files_on_failure(["mcp_server/m_middle.py"])
+
+        state = json.loads(state_file.read_text())
+        failed = state["quality_gates"]["failed_files"]
+        assert failed == sorted(failed)
+
+    def test_accumulate_no_duplicates(self, tmp_path: Path) -> None:
+        """File already in failed_files is not duplicated after re-failure."""
+        state_file = _state_with_quality_gates(
+            tmp_path,
+            baseline_sha="sha",
+            failed_files=["mcp_server/common.py"],
+        )
+
+        manager = QAManager(workspace_root=tmp_path)
+        manager._accumulate_failed_files_on_failure(["mcp_server/common.py"])
+
+        state = json.loads(state_file.read_text())
+        assert state["quality_gates"]["failed_files"].count("mcp_server/common.py") == 1
+
+    def test_accumulate_baseline_sha_unchanged(self, tmp_path: Path) -> None:
+        """baseline_sha must not change when accumulating failures."""
+        original_sha = "keep_this_sha"
+        state_file = _state_with_quality_gates(
+            tmp_path,
+            baseline_sha=original_sha,
+            failed_files=[],
+        )
+
+        manager = QAManager(workspace_root=tmp_path)
+        manager._accumulate_failed_files_on_failure(["mcp_server/failing.py"])
+
+        state = json.loads(state_file.read_text())
+        assert state["quality_gates"]["baseline_sha"] == original_sha
+
+    def test_run_quality_gates_calls_accumulate_on_failure(self, tmp_path: Path) -> None:
+        """run_quality_gates calls _accumulate_failed_files_on_failure when overall_pass=False."""
+        manager = QAManager(workspace_root=tmp_path)
+
+        with (
+            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc,
+            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
+        ):
+            cfg = MagicMock()
+            cfg.active_gates = []  # triggers config-error gate → overall_pass=False
+            cfg.artifact_logging.enabled = False
+            cfg.artifact_logging.output_dir = "temp/qa_logs"
+            cfg.artifact_logging.max_files = 10
+            mock_cfg.return_value = cfg
+
+            result = manager.run_quality_gates(files=["mcp_server/managers/qa_manager.py"])
+
+        # active_gates=[] produces overall_pass=False, so accumulate should be called
+        assert not result["overall_pass"]
+        mock_acc.assert_called_once_with(["mcp_server/managers/qa_manager.py"])
