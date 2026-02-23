@@ -372,7 +372,7 @@ class QAManager:
         quality_gates: dict[str, Any] = state.get("quality_gates", {})
         baseline_sha: str | None = quality_gates.get("baseline_sha") or None
         if not baseline_sha:
-            return []
+            return self._resolve_project_scope()
 
         diff_files = set(self._git_diff_py_files(baseline_sha))
         failed_files = set(quality_gates.get("failed_files", []))
