@@ -721,7 +721,7 @@ class TestParsingStrategyMigration:
         )
 
     def test_gate1_formatting_has_json_violations_capability(self) -> None:
-        """gate1_formatting must declare json_violations strategy in capabilities (ruff outputs JSON)."""
+        """gate1_formatting must declare json_violations strategy in capabilities."""
         config = QualityConfig.load(Path(".st3/quality.yaml"))
         gate = config.gates["gate1_formatting"]
         assert gate.capabilities.parsing_strategy == "json_violations", (
