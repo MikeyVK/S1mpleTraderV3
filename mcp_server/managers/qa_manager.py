@@ -309,7 +309,33 @@ class QAManager:
             return self._resolve_project_scope()
         if scope == "branch":
             return self._resolve_branch_scope()
+        if scope == "auto":
+            return self._resolve_auto_scope()
         return []
+
+    def _git_diff_py_files(self, base_ref: str) -> list[str]:
+        """Run ``git diff --name-only <base_ref>..HEAD`` and return ``.py`` files.
+
+        Args:
+            base_ref: The git ref to diff against (e.g. a branch name or commit SHA).
+
+        Returns:
+            Sorted list of ``.py`` paths from the diff output. Empty on error or
+            when the diff contains no Python files.
+        """
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", f"{base_ref}..HEAD"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                return []
+            lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            return sorted(line for line in lines if line.endswith(".py"))
+        except OSError:
+            return []
 
     def _resolve_branch_scope(self) -> list[str]:
         """Return Python files changed since the parent branch via git diff.
@@ -322,26 +348,36 @@ class QAManager:
             Sorted list of ``.py`` file paths (relative POSIX). Empty list on error
             or when the diff is empty.
         """
-        # Resolve parent reference: state → "main" fallback.
         parent = "main"
         if self.workspace_root is not None:
             state = self._load_state_json(self.workspace_root / ".st3" / "state.json")
             parent = state.get("workflow", {}).get("parent_branch") or "main"
+        return self._git_diff_py_files(parent)
 
-        try:
-            result = subprocess.run(
-                ["git", "diff", "--name-only", f"{parent}..HEAD"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if result.returncode != 0:
-                return []
+    def _resolve_auto_scope(self) -> list[str]:
+        """Return union of git diff (``baseline_sha..HEAD``) and persisted ``failed_files``.
 
-            lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-            return sorted(line for line in lines if line.endswith(".py"))
-        except OSError:
+        Reads ``quality_gates.baseline_sha`` and ``quality_gates.failed_files``
+        from ``.st3/state.json``.
+
+        Returns:
+            Sorted, deduplicated list of ``.py`` paths. Returns ``[]`` when
+            workspace_root is absent or no ``baseline_sha`` is recorded (C24
+            handles the no-baseline fallback).
+        """
+        if self.workspace_root is None:
             return []
+
+        state = self._load_state_json(self.workspace_root / ".st3" / "state.json")
+        quality_gates: dict[str, Any] = state.get("quality_gates", {})
+        baseline_sha: str | None = quality_gates.get("baseline_sha") or None
+        if not baseline_sha:
+            return []
+
+        diff_files = set(self._git_diff_py_files(baseline_sha))
+        failed_files = set(quality_gates.get("failed_files", []))
+        union = diff_files | failed_files
+        return sorted(union)
 
     def _resolve_project_scope(self) -> list[str]:
         """Expand project_scope.include_globs against workspace_root.
