@@ -117,6 +117,9 @@ return _make_gate(          # ✅
 | C13 REFACTOR | Gate 0 Ruff Format | dict/list trailing-comma arg → expand | `test_execute_gate_dispatch.py` | `_make_gate(\n    {...}\n)`, `json.dumps(\n    [...]\n)` |
 | C14 REFACTOR | Gate 3 Line Length | E501 docstring te lang (105→101→91 chars) | `test_qa_manager.py` | docstring verkort op regel 1647 |
 | C18 REFACTOR | Gate 1 Ruff Strict Lint | SIM300 Yoda condition | `test_qa_manager.py` | `"literal" == var` → `var == "literal"` op regel 1253 |
+| C19 REFACTOR | Gate 0 Ruff Format | 2 method signaturen 3→1 regel | `test_baseline_advance.py` | `def test_...creates_state_file_if_absent(self, tmp_path)` + `calls_advance` collapsed |
+| C19 REFACTOR | Gate 1 Ruff Strict Lint | F401 unused imports | `test_baseline_advance.py` | `import subprocess` + `import pytest` verwijderd (resterend na refactor) |
+| C19 REFACTOR | Gate 4b Pyright | reportUnusedImport | `test_baseline_advance.py` | zelfde unused imports als F401 |
 
 ---
 

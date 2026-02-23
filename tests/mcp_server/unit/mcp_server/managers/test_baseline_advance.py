@@ -8,11 +8,8 @@ C20: Union newly failed files with persisted failed_files set.
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from mcp_server.managers.qa_manager import QAManager
 
@@ -100,9 +97,7 @@ class TestBaselineAdvanceOnAllPass:
         assert state["branch"] == "refactor/251-test"
         assert state["issue_number"] == 251
 
-    def test_advance_baseline_creates_state_file_if_absent(
-        self, tmp_path: Path
-    ) -> None:
+    def test_advance_baseline_creates_state_file_if_absent(self, tmp_path: Path) -> None:
         """When state.json is absent, _advance_baseline_on_all_pass creates it."""
         st3_dir = tmp_path / ".st3"
         st3_dir.mkdir()
@@ -120,9 +115,7 @@ class TestBaselineAdvanceOnAllPass:
         assert state["quality_gates"]["baseline_sha"] == fake_sha
         assert state["quality_gates"]["failed_files"] == []
 
-    def test_run_quality_gates_calls_advance_on_all_pass(
-        self, tmp_path: Path
-    ) -> None:
+    def test_run_quality_gates_calls_advance_on_all_pass(self, tmp_path: Path) -> None:
         """run_quality_gates invokes _advance_baseline_on_all_pass when overall_pass=True."""
         manager = QAManager(workspace_root=tmp_path)
 
