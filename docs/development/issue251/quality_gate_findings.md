@@ -133,6 +133,9 @@ return _make_gate(          # ✅
 | C26 REFACTOR | Gate 0 Ruff Format + Gate 3 E501 | frozenset set-literal op 1 regel (101>100) | `test_compact_payload_builder.py` | `frozenset({"a", "b", ... 8 items})` → multi-line met trailing comma |
 | C27 REFACTOR | Gate 0 Ruff Format | blank line ontbreekt na module-docstring; 3-regel kwargs collapsed | `test_tool_result_contract.py` | Lege regel voor `from __future__` toegevoegd; kwargs naar 1 regel |
 | C27 REFACTOR | Gate 3 E501 | docstring 102>100 in testmethode | `test_quality_tools.py` | Docstring ingekort naar ≤100 tekens |
+| C28 REFACTOR | Gate 1 Ruff Strict Lint | B017 blind exception `pytest.raises(Exception)` (×6) | `test_quality_tools.py` | Vervangen door `pytest.raises(ValidationError)`; `from pydantic import ValidationError` toegevoegd |
+| C28 REFACTOR | Gate 0 Ruff Format | `raise ValueError(...)` 3-regels → 1 regel (≤100 chars) | `quality_tools.py` | ValueError-aanroep collapsed op één regel |
+| C28 REFACTOR | Gate 0 Ruff Format | `summary`-dict in mock op 1 regel → multi-line (trailing comma) | `test_quality_tools.py` | Dict uitgevouwen naar 7 regels met trailing comma |
 
 ---
 
