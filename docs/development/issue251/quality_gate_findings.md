@@ -120,6 +120,7 @@ return _make_gate(          # ✅
 | C19 REFACTOR | Gate 0 Ruff Format | 2 method signaturen 3→1 regel | `test_baseline_advance.py` | `def test_...creates_state_file_if_absent(self, tmp_path)` + `calls_advance` collapsed |
 | C19 REFACTOR | Gate 1 Ruff Strict Lint | F401 unused imports | `test_baseline_advance.py` | `import subprocess` + `import pytest` verwijderd (resterend na refactor) |
 | C19 REFACTOR | Gate 4b Pyright | reportUnusedImport | `test_baseline_advance.py` | zelfde unused imports als F401 |
+| C22 REFACTOR | Gate 1 Ruff Strict Lint | ARG001 unused function arguments | `test_scope_resolution.py` | 5× mock-callback `cmd`/`kw` → `_cmd`/`_kw` (fake_git_diff×3, fake_git_fail, fake_git_empty) |
 
 ---
 
