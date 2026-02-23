@@ -298,6 +298,48 @@ class QAManager:
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
+    # ------------------------------------------------------------------
+    # Scope resolution
+    # ------------------------------------------------------------------
+
+    def _resolve_scope(self, scope: str) -> list[str]:
+        """Resolve scope keyword to a sorted, deduplicated list of relative file paths.
+
+        Args:
+            scope: One of ``"project"``, ``"branch"``, or ``"auto"``.
+
+        Returns:
+            Sorted list of relative paths (POSIX separators) for the given scope.
+            Returns ``[]`` gracefully when workspace_root is absent or config is missing.
+        """
+        if scope == "project":
+            return self._resolve_project_scope()
+        return []
+
+    def _resolve_project_scope(self) -> list[str]:
+        """Expand project_scope.include_globs against workspace_root.
+
+        Returns:
+            Sorted list of unique relative POSIX paths. Empty list when
+            workspace_root is None, include_globs is empty, or nothing matches.
+        """
+        if self.workspace_root is None:
+            return []
+
+        quality_config = QualityConfig.load()
+        project_scope = quality_config.project_scope
+        if project_scope is None or not project_scope.include_globs:
+            return []
+
+        matched: set[str] = set()
+        for glob_pattern in project_scope.include_globs:
+            for abs_path in self.workspace_root.glob(glob_pattern):
+                if abs_path.is_file():
+                    rel = abs_path.relative_to(self.workspace_root)
+                    matched.add(rel.as_posix())
+
+        return sorted(matched)
+
     def check_health(self) -> bool:
         """Check if QA tools are available."""
 
