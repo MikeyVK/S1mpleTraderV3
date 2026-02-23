@@ -90,37 +90,26 @@ class QAManager:
         }
 
         # Determine execution mode:
-        # files=[] (empty) → project-level test validation (pytest gates only: Gate 5-6)
-        # files=[...] (populated) → file-specific validation
-        #                            (static gates only: Gates 0-4, skip pytest)
+        # files=[] → project-level (all static gates skip; no files to process)
+        # files=[...] → file-specific (gates filter by file_types via _files_for_gate)
         is_file_specific_mode = bool(files)
 
-        if is_file_specific_mode:
-            # File-specific mode: validate file existence
-            missing_files = [f for f in files if not Path(f).exists()]
-            if missing_files:
-                self._update_summary_and_append_gate(
-                    results,
-                    {
-                        "gate_number": 0,
-                        "name": "File Validation",
-                        "passed": False,
-                        "score": "N/A",
-                        "issues": [{"message": f"File not found: {f}"} for f in missing_files],
-                    },
-                )
-                return results
-
-            python_files = list(files)
-        else:
-            # Project-level test validation mode:
-            # - python_files stays empty (no file discovery)
-            # - File-based static gates (Gates 0-4) will skip: "Skipped (no matching files)"
-            # - Pytest gates (Gate 5-6) proceed with their configured targets (e.g., tests/)
-            python_files = []
-        # In file-specific mode, early return if no valid files
-        if is_file_specific_mode and not python_files:
+        # Validate file existence (file-specific mode only)
+        missing_files = [f for f in files if not Path(f).exists()]
+        if missing_files:
+            self._update_summary_and_append_gate(
+                results,
+                {
+                    "gate_number": 0,
+                    "name": "File Validation",
+                    "passed": False,
+                    "score": "N/A",
+                    "issues": [{"message": f"File not found: {f}"} for f in missing_files],
+                },
+            )
             return results
+
+        python_files = list(files)
 
         quality_config = QualityConfig.load()
         # Apply artifact logging config (config-first with safe defaults)
@@ -293,18 +282,16 @@ class QAManager:
     def _get_skip_reason(
         self, gate: QualityGate, gate_files: list[str], is_file_specific_mode: bool
     ) -> str | None:
-        """Return standardized, mode-aware skip reason for a gate, if any.
+        """Return skip reason for a gate, if any.
 
-        Skip reasons are explicit about WHY the gate was skipped to avoid
-        confusion between intentional mode-based skips and actual errors.
+        In file-specific mode, pytest gates are always skipped (tests run project-wide).
+        In all modes, a gate with no files to process is skipped.
         """
         if is_file_specific_mode and self._is_pytest_gate(gate):
             return "Skipped (file-specific mode - tests run project-wide)"
 
         is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
         if not gate_files and not is_repo_scoped_pytest_gate:
-            if not is_file_specific_mode:
-                return "Skipped (project-level mode - static analysis unavailable)"
             return "Skipped (no matching files)"
 
         return None

@@ -1060,7 +1060,7 @@ class TestSkipReasonLogic:
         self, manager: QAManager, static_gate: QualityGate
     ) -> None:
         reason = manager._get_skip_reason(static_gate, [], is_file_specific_mode=False)
-        assert reason == "Skipped (project-level mode - static analysis unavailable)"
+        assert reason == "Skipped (no matching files)"
 
     def test_get_skip_reason_file_specific_no_matching_files(
         self, manager: QAManager, static_gate: QualityGate
@@ -1250,7 +1250,7 @@ class TestGateSchemaEnrichment:
                 assert "id" in gate, f"Skipped gate '{gate['name']}' missing 'id'"
                 assert gate["status"] == "skipped"
                 assert gate["skip_reason"] is not None
-                assert "project-level mode" in gate["skip_reason"]
+                assert "Skipped (no matching files)" == gate["skip_reason"]
 
 
 class TestSummaryTotals:
