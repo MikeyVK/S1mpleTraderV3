@@ -173,28 +173,38 @@ For every scenario row, capture:
 
 ## Validation Results (to fill live)
 
-**Date:**  
-**Tester:**  
-**Commit:**  
-**Server Session:**  
+**Date:** 2026-02-23  
+**Tester:** GitHub Copilot (automated session)  
+**Commit:** `da4a5c17` (HEAD at time of execution)  
+**Server Session:** proxy restart after each fix; final clean run from `da4a5c17`
 
 | Scenario | Status (PASS/FAIL/BLOCKED) | Evidence Ref | Notes |
 |----------|-----------------------------|--------------|-------|
-| A1-pass | | | |
-| A1-fail | | | |
-| A2 | | | |
-| B1-pass | | | |
-| B2-fail | | | |
-| B3 | | | |
-| P1-pass | | | |
-| P2-fail | | | |
-| F1 | | | |
-| F2 | | | |
-| F3 | | | |
-| F4 | | | |
-| F5 | | | |
-| F6 | | | |
-| F7 | | | |
+| A1-pass | PASS | baseline=HEAD diff empty → 6/6 skipped, `⚠️ 0/0 active (6 skipped)` | Behavior correct. **Finding F-1:** ⚠️ used for expected clean state (should be ✅). **Finding F-3:** `skipped=true`+`passed=true` on all gate entries is contradictory |
+| A1-fail | PASS | baseline=49bca199, diff=violations.py → 12 violations: Gate1 (9), Gate3 (1), Gate4b (2) | All violations structured with `file/line/col/rule`. No blob. Gate4:Types skipped (no matching files). **Finding F-4:** Gate 4:Types always skipped, no `skip_reason` in compact output |
+| A2 | PASS | no baseline → project fallback → 1516 violations across 405 files | Fallback path confirmed. **Finding F-5:** response 502KB, exceeded MCP inline limit, written to disk — unusable in chat for large codebases |
+| B1-pass | NOT RUN | | Pending |
+| B2-fail | NOT RUN | | Pending |
+| B3 | NOT RUN | | Pending |
+| P1-pass | NOT RUN | | Pending |
+| P2-fail | PASS | scope=project → 1516 violations; gate3 includes `rule=E501` | Violations structured. **Finding F-2:** compact payload omits `overall_pass` and `duration_ms` — LLM must iterate all gates to determine outcome |
+| F1 | NOT RUN | | Pending |
+| F2 | NOT RUN | | Pending |
+| F3 | NOT RUN | | Pending |
+| F4 | NOT RUN | | Pending |
+| F5 | NOT RUN | | Pending |
+| F6 | NOT RUN | | Pending |
+| F7 | NOT RUN | | Pending |
+
+### Validation Findings (cross-scenario)
+
+| ID | Severity | Description | Scope |
+|----|----------|-------------|-------|
+| F-1 | Medium | `⚠️` emitted for scope=auto with empty diff — correct behavior but wrong signal; should be `✅ Nothing to check (no changed files)` | UX / `_format_summary_line` |
+| F-2 | Medium | Compact payload missing `overall_pass` and `duration_ms`; consumer must iterate all gate entries to determine pass/fail | Contract / `_build_compact_result` |
+| F-3 | Low | `skipped=true` + `passed=true` simultaneously on gate entries is semantically contradictory; skipped means not evaluated, not passed | Contract / `_build_compact_result` |
+| F-4 | Low | Gate 4: Types always skipped with no `skip_reason` surfaced in compact output; cause unclear (file_types filter?) | Observability |
+| F-5 | High | scope=auto fallback to project (A2) and scope=project (P2) produce 502KB responses — exceeds MCP inline transport, written to disk, not usable in chat | Scalability / response size |
 
 ---
 
