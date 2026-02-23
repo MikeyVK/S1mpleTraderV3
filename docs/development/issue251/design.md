@@ -1,10 +1,10 @@
 <!-- docs\development\issue251\design.md -->
-<!-- template=design version=5827e841 created=2026-02-22T20:54Z updated= -->
+<!-- template=design version=5827e841 created=2026-02-22T20:54Z updated=2026-02-23T00:00Z -->
 # run_quality_gates Refactor — Scope-Driven Architecture, Config-Driven Parsing, ViolationDTO
 
 **Status:** DRAFT  
-**Version:** 1.1  
-**Last Updated:** 2026-02-22
+**Version:** 1.2  
+**Last Updated:** 2026-02-23
 
 ---
 
@@ -22,9 +22,9 @@ CI/CD pipeline, non-Python gates, pyproject.toml migration, frontend, `QUALITY_G
 
 ## Prerequisites
 
-1. `research.md` v1.6 complete — all 15 findings documented
-2. `planning.md` v1.2 complete — 32 TDD cycles defined with exit criteria
-3. All 7 design decisions locked (no backward compatibility)
+1. `research.md` v1.9 complete — all 15 findings documented, `scope="files"` migration beslissing vastgelegd
+2. `planning.md` v1.3 complete — 32 TDD cycles defined with exit criteria, C28 herschreven
+3. All 7 design decisions locked; `scope="files"` migrates legacy bare-files API — geen aparte shim
 
 ---
 
@@ -43,7 +43,7 @@ CI/CD pipeline, non-Python gates, pyproject.toml migration, frontend, `QUALITY_G
 
 **Functional:**
 - [ ] Remove Gate 5 (pytest) and Gate 6 (coverage) from active quality gates — test execution belongs exclusively to `run_tests`
-- [ ] Replace `files: list[str]` API with `scope: Literal["auto", "branch", "project"] = "auto"`
+- [ ] Migrate `files: list[str]` bare parameter to `scope: Literal["auto", "branch", "project", "files"] = "auto"` with optional companion `files: list[str] | None` (required iff `scope="files"`, forbidden otherwise — enforced via `model_validator`)
 - [ ] Introduce `ViolationDTO` as the uniform violation contract returned by every gate parser
 - [ ] Introduce `JsonViolationsParsing` and `TextViolationsParsing` as the only two parsing strategy types; eliminate all tool-name-based dispatcher logic
 - [ ] Implement baseline state machine: `baseline_sha` + `failed_files` persisted in `state.json` under `quality_gates` section
@@ -51,20 +51,20 @@ CI/CD pipeline, non-Python gates, pyproject.toml migration, frontend, `QUALITY_G
 - [ ] `scope=auto` with no baseline falls back to `scope=project`
 - [ ] `scope=branch` uses `git diff parent..HEAD`
 - [ ] `scope=project` globs from `quality.yaml` `project_scope.include_globs`
+- [ ] `scope=files` passes caller-supplied `files` list verbatim to `run_quality_gates`; no git or glob resolution
 - [ ] `ToolResult` must contain exactly two content items in fixed order: item 0 text summary, item 1 JSON payload
 - [ ] `run_tests` content order must be inverted to match the same contract (separate cycle)
 
 **Non-Functional:**
 - [ ] Zero tool-specific methods in `QAManager` after refactor — all dispatch driven by `parsing_strategy` config field
-- [ ] No backward compatibility: `files` parameter is removed without shim or deprecation warning
+- [ ] Bare `files` parameter is migrated to `scope="files"` — no shim or deprecation warning; old plain-`files` call rejected by `model_validator`
 - [ ] Existing passing tests must remain green after all deletion cycles
 - [ ] `state.json` `quality_gates` section must be isolated per-branch and must not overwrite unrelated keys
 - [ ] Git subprocess calls must be guarded against errors and empty output
 
 ### 1.3. Constraints
 
-- No backward compatibility for removed `files` API
-- No tool-name comparisons may remain in `QAManager` parser dispatch after refactor
+- Bare `files` API is migrated to `scope="files"`; no tool-name comparisons may remain in `QAManager` parser dispatch after refactor
 - Git subprocess calls must not block without a timeout guard
 - `state.json` writes must be isolated to the `quality_gates` key — no other keys may be mutated
 
@@ -115,7 +115,7 @@ Introduce two parsing strategy types in Pydantic: `json_violations` and `text_vi
 | # | Decision | Rationale |
 |---|----------|-----------|
 | 1 | Gate 5/6 removed from `active_gates` entirely | Pytest belongs in `run_tests`; quality gates are for static analysis only |
-| 2 | `files` → `scope` enum, no backward compat | Declarative scope is the correct abstraction; migration shim would perpetuate the mode bifurcation |
+| 2 | `files` migrated to `scope="files"` + conditional companion field | Declarative scope is the correct abstraction; explicit file lists remain available as `scope="files"` — no shim needed |
 | 3 | Global baseline (all-green advances SHA) | Branch-level baseline minimizes re-scan scope without requiring per-file timestamps |
 | 4 | Re-run = `diff(baseline..HEAD)` ∪ `failed_files` | Guarantees no regressions slip through while keeping scan surface minimal |
 | 5 | `summary_line` as first content item | Callers get actionable status without parsing JSON |
@@ -284,6 +284,7 @@ No `if gate.name == ...` or `if gate.id == ...` comparisons anywhere in dispatch
 | `"auto"` (baseline present) | `set(git diff --name-only baseline_sha..HEAD)` ∪ `set(failed_files)` |
 | `"auto"` (no baseline) | Fallback to `"project"` |
 | `"auto"` (empty union) | Return `[]` immediately — nothing to check |
+| `"files"` | Return caller-supplied `files` list verbatim — no git or glob resolution |
 
 ---
 
@@ -361,3 +362,4 @@ No `stdout`, `stderr`, or `raw_output` fields in payload.
 |---------|------|--------|---------|
 | 1.0 | 2026-02-22 | Agent | Initial design — 8 interface contracts, 2 design options, decision rationale |
 | 1.1 | 2026-02-22 | Agent | Consistency fixes: state.json shape corrected to flat top-level quality_gates; field_map direction clarified to DTO field → source key |
+| 1.2 | 2026-02-23 | Agent | Scope API herzien: `scope="files"` als vierde waarde; conditioneel `files: list[str] \| None` veld; §1.2 requirements, §1.3 constraints, beslissing 2 en §4.6 scope-tabel bijgewerkt (research v1.9 / planning v1.3) |
