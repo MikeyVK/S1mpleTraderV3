@@ -205,8 +205,22 @@ class TestQualityToolsIntegration:
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "overall_pass": True,
-            "summary": {"passed": 1, "failed": 0, "skipped": 0, "total_violations": 0, "auto_fixable": 0},
-            "gates": [{"name": "Linting", "passed": True, "status": "passed", "score": "10/10", "issues": []}],
+            "summary": {
+                "passed": 1,
+                "failed": 0,
+                "skipped": 0,
+                "total_violations": 0,
+                "auto_fixable": 0,
+            },
+            "gates": [
+                {
+                    "name": "Linting",
+                    "passed": True,
+                    "status": "passed",
+                    "score": "10/10",
+                    "issues": [],
+                }
+            ],
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)

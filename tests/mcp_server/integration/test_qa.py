@@ -46,7 +46,9 @@ async def test_quality_tool_output_format() -> None:
     manager = QAManager()
     tool = RunQualityGatesTool(manager=manager)
 
-    result = await tool.execute(RunQualityGatesInput(scope="files", files=["backend/core/enums.py"]))
+    result = await tool.execute(
+        RunQualityGatesInput(scope="files", files=["backend/core/enums.py"])
+    )
 
     # Text summary first (content[0]), JSON payload second (content[1])
     assert result.content[0]["type"] == "text"
