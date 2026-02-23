@@ -205,17 +205,18 @@ class TestQualityToolsIntegration:
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "overall_pass": True,
-            "gates": [{"name": "Linting", "passed": True, "score": "10/10"}],
+            "summary": {"passed": 1, "failed": 0, "skipped": 0, "total_violations": 0, "auto_fixable": 0},
+            "gates": [{"name": "Linting", "passed": True, "status": "passed", "score": "10/10", "issues": []}],
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(files=["test.py"]))
+        result = await tool.execute(RunQualityGatesInput(scope="files", files=["test.py"]))
 
-        # Content[0] is native JSON, content[1] is text fallback
-        assert result.content[0]["type"] == "json"
-        data = result.content[0]["json"]
-        assert data["overall_pass"] is True
-        assert "text_output" in data
+        # Content[0] is text summary, content[1] is compact JSON payload
+        assert result.content[0]["type"] == "text"
+        data = result.content[1]["json"]
+        assert "gates" in data
+        assert data["gates"][0]["passed"] is True
 
     @pytest.mark.asyncio
     async def test_validation_tool_flow(self) -> None:

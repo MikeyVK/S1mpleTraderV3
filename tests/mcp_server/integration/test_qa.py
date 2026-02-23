@@ -46,29 +46,25 @@ async def test_quality_tool_output_format() -> None:
     manager = QAManager()
     tool = RunQualityGatesTool(manager=manager)
 
-    result = await tool.execute(RunQualityGatesInput(files=["backend/core/enums.py"]))
+    result = await tool.execute(RunQualityGatesInput(scope="files", files=["backend/core/enums.py"]))
 
-    # Output must be native JSON object (schema-first)
-    assert result.content[0]["type"] == "json"
-    data = result.content[0]["json"]
+    # Text summary first (content[0]), JSON payload second (content[1])
+    assert result.content[0]["type"] == "text"
+    assert isinstance(result.content[0]["text"], str)
+
+    data = result.content[1]["json"]
     assert isinstance(data, dict)
 
-    # Text fallback for legacy clients
-    assert result.content[1]["type"] == "text"
-    assert isinstance(result.content[1]["text"], str)
+    # JSON payload is compact (content[1]) — only contains gates summary
+    assert result.content[1]["type"] == "json"
 
-    assert "version" in data
-    assert "mode" in data
-    assert data["mode"] == "file-specific"
-    assert "summary" in data
     assert "gates" in data
-    assert "text_output" in data
-    assert "overall_pass" in data
-    assert "total_violations" in data["summary"]
-    assert "auto_fixable" in data["summary"]
-    assert "Quality Gates Results" in data["text_output"]
+    assert len(data["gates"]) >= 6, f"Expected at least 6 gates, got {len(data['gates'])}"
     for gate in data["gates"]:
-        assert "status" in gate, f"Gate '{gate.get('name')}' missing 'status'"
+        assert "id" in gate, f"Gate missing 'id': {gate}"
+        assert "passed" in gate, f"Gate missing 'passed': {gate}"
+        assert "skipped" in gate, f"Gate missing 'skipped': {gate}"
+        assert "violations" in gate, f"Gate missing 'violations': {gate}"
 
 
 def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
