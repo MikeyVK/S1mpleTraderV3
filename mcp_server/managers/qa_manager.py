@@ -188,6 +188,8 @@ class QAManager:
         # Persist baseline state: advance SHA on all-pass, accumulate failed_files on failure.
         if results["overall_pass"]:
             self._advance_baseline_on_all_pass()
+        else:
+            self._accumulate_failed_files_on_failure(files)
 
         return results
 
@@ -243,6 +245,26 @@ class QAManager:
             "baseline_sha": head_sha,
             "failed_files": [],
         }
+        self._save_state_json(state_path, state_data)
+
+    def _accumulate_failed_files_on_failure(self, newly_failed: list[str]) -> None:
+        """Union newly-failed files with persisted failed_files; leave baseline_sha unchanged.
+
+        Only executed when workspace_root is set and at least one gate failed.
+        Ensures deterministic sort and no duplicates in the persisted list.
+        """
+        if self.workspace_root is None:
+            return
+
+        state_path = self.workspace_root / ".st3" / "state.json"
+        state_data = self._load_state_json(state_path)
+
+        quality_gates: dict[str, Any] = state_data.get("quality_gates", {})
+        existing = set(quality_gates.get("failed_files", []))
+        merged = sorted(existing | set(newly_failed))
+
+        quality_gates["failed_files"] = merged
+        state_data["quality_gates"] = quality_gates
         self._save_state_json(state_path, state_data)
 
     def _get_head_sha(self) -> str | None:

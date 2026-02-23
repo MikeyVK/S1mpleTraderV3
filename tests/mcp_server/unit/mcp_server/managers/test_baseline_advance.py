@@ -219,7 +219,10 @@ class TestFailureAccumulation:
             patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
         ):
             cfg = MagicMock()
-            cfg.active_gates = []  # triggers config-error gate → overall_pass=False
+            # Use an unknown gate (not in catalog) → overall_pass=False via normal code path.
+            # active_gates=[] would trigger early-return before the state-update block.
+            cfg.active_gates = ["unknown_gate_not_in_catalog"]
+            cfg.gates = {}  # empty catalog → gate not found → passed=False → overall_pass=False
             cfg.artifact_logging.enabled = False
             cfg.artifact_logging.output_dir = "temp/qa_logs"
             cfg.artifact_logging.max_files = 10
@@ -227,6 +230,6 @@ class TestFailureAccumulation:
 
             result = manager.run_quality_gates(files=["mcp_server/managers/qa_manager.py"])
 
-        # active_gates=[] produces overall_pass=False, so accumulate should be called
+        # unknown gate sets overall_pass=False → accumulate should be called
         assert not result["overall_pass"]
         mock_acc.assert_called_once_with(["mcp_server/managers/qa_manager.py"])
