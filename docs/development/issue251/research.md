@@ -1,10 +1,10 @@
 <!-- docs\development\issue251\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-22T21:45Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-23T00:00Z -->
 # Issue #251 Research: Refactor run_quality_gates — venv pytest, structured output, smart scope
 
 **Status:** COMPLETE  
-**Version:** 1.6  
-**Last Updated:** 2026-02-22
+**Version:** 1.9  
+**Last Updated:** 2026-02-23
 
 ---
 
@@ -185,6 +185,8 @@ The new `run_quality_gates` output model should follow this exact pattern — th
 
 **Residual question:** Should `scope="project"` discover all Python files internally, or should the caller still pass them? **Answer:** Internal discovery — `QAManager._discover_project_files()` globs `backend/**/*.py` + `mcp_server/**/*.py` + `tests/**/*.py`. The caller passes `scope` enum, not file paths.
 
+**Revised decision (2026-02-23):** The original design removed `files` entirely. On reflection, there is a legitimate use case for caller-supplied explicit file lists — e.g., tool-assisted refactor targeting a precise subset. The revised design retains this as `scope="files"`, with `files: list[str]` as an optional field on `RunQualityGatesInput` that is **required when and only when `scope="files"`** (enforced via Pydantic `model_validator`). All other scope values (`auto`, `branch`, `project`) must not supply `files`.
+
 ---
 
 ## Investigation 5: Architecture — Output model (F5) and ViolationDTO contract (F14 intro)
@@ -360,8 +362,9 @@ pymarkdownlnt supports `--log-format jsonl` output. Each line is `{file, line_nu
 | `auto` | default | `git diff <baseline_sha>..HEAD --name-only *.py` ∪ `state.quality_gates.failed_files` |
 | `branch` | explicit / first run (no baseline) | `git diff <parent_branch>..HEAD --name-only *.py` |
 | `project` | explicit / pre-PR | All `.py` files in `mcp_server/`, `tests/mcp_server/` |
+| `files` | explicit, with required `files: list[str]` | Caller-supplied list verbatim — no git or glob resolution |
 
-> **No backward compatibility:** the `files=[...]` parameter is removed entirely. Callers that currently pass explicit file lists must switch to `scope="auto"` (see Open Questions #2).
+> **Backward compatibility (revised 2026-02-23):** The `files=[...]` parameter is **not removed** but **migrated** to `scope="files"`. Callers that need explicit file control pass `scope="files"` together with a non-empty `files` list. The old positional-files API (no `scope` param) is no longer accepted. The `files` field is **optional** on `RunQualityGatesInput` and is validated as **required** when `scope="files"` and **forbidden** for all other scopes (enforced via `model_validator`).
 
 **Git commands required:**
 
@@ -965,7 +968,7 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | F1 | System pytest used for Gate 5/6 | Bug | Remove Gate 5/6 from active_gates |
 | F2 | Gate 0 ruff format diff silently truncated | Bug | `text_violations` strategy extracts file-level FORMAT violations; diff → artifact log |
 | F3 | Double JSON in MCP response | Bug | `ToolResult.content[]` with `text` first, `json` second |
-| F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` enum — no backward compat |
+| F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` enum (`auto`/`branch`/`project`/`files`); `files` list optional, required only when `scope="files"` |
 | F5 | No summary_line as first MCP content item | Architecture | `summary_line` as `{"type": "text"}` first in ToolResult |
 | F6 | Scope manually provided by agent | Architecture | git-diff auto scope with baseline state machine in state.json |
 | F7 | No failure-narrowing on re-run | Architecture | `failed_files ∪ changed_since_last_run` |
@@ -983,7 +986,7 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 ## Open Questions
 
 1. ~~`scope="project"` discovery paths~~ — **RESOLVED:** Discovery paths are config-driven via `project_scope` in `quality.yaml` (see Investigation 10). Per-gate exclusions via `gate.scope` still apply.
-2. ~~Backward compatibility~~ — **RESOLVED by user: No backward compatibility.** The `files` parameter is removed. New API uses `scope` enum exclusively.
+2. ~~Backward compatibility~~ — **REVISED (2026-02-23):** Explicit file lists are retained as `scope="files"` with a companion `files: list[str]` field, required when and only when `scope="files"`. The old bare-`files`-parameter API is removed. Model enforced with Pydantic `model_validator`.
 3. ~~`run_tests` summary_line~~ — **RESOLVED:** Add as a separate TDD cycle in planning phase.
 4. **Documentation phase obligation (carry to planning):** `QUALITY_GATES.md` currently describes Gate 5 (tests) and Gate 6 (coverage) as part of the quality gates checklist. Removing them from `active_gates` is a config-only change in `quality.yaml`, but the doc still implies a single tool runs all 7 gates. In the documentation phase, `QUALITY_GATES.md` must be updated to clarify: the conceptual 7-gate checklist still applies for a PR, but execution is now split — `run_quality_gates` runs Gates 0–4b (static analysis), `run_tests` runs Gates 5–6 (tests and coverage).
 
@@ -1023,3 +1026,4 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | 1.6 | 2026-02-22 | Agent | Fix backward compat inconsistency (Inv. 6 table vs Open Questions); explicit Gate 0 `message` with `{file}` interpolation; `{fieldname}` interpolation in `TextViolationsParsing.defaults`; QUALITY_GATES.md doc-phase obligation in Open Questions |
 | 1.7 | 2026-02-22 | Agent | Align no-baseline fallback with design: `scope="project"` (was `scope="branch"`); update edge-case text and state machine diagram |
 | 1.8 | 2026-02-22 | Agent | Harmonize ViolationDTO field names: `column`→`col`, `code`→`rule` throughout schema definitions, JSON examples, and field_map YAML |
+| 1.9 | 2026-02-23 | Agent | Revisie scope API: `files` niet verwijderd maar gemigreerd naar `scope="files"` met optioneel `files: list[str]` veld (required bij `scope="files"`, verboden anders); Inv. 4 residual question, Inv. 6 tabel + backward compat note, F4 en Open Question #2 bijgewerkt |
