@@ -407,7 +407,8 @@ class QAManager:
     # Output formatting
     # ------------------------------------------------------------------
 
-    def _format_summary_line(self, results: dict[str, Any]) -> str:
+    @staticmethod
+    def _format_summary_line(results: dict[str, Any]) -> str:
         """Return a concise one-line status string for the given gate results.
 
         Format (design.md §4.8):
@@ -443,7 +444,8 @@ class QAManager:
 
         return f"✅ Quality gates: {passed}/{total_active} passed ({total_violations} violations)"
 
-    def _build_compact_result(self, results: dict[str, Any]) -> dict[str, Any]:
+    @staticmethod
+    def _build_compact_result(results: dict[str, Any]) -> dict[str, Any]:
         """Return a compact gate payload with violations only — no debug fields.
 
         Design contract (design.md §4.9):

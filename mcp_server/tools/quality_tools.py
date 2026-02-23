@@ -43,30 +43,27 @@ class RunQualityGatesTool(BaseTool):
         return self.args_model.model_json_schema()
 
     async def execute(self, params: RunQualityGatesInput) -> ToolResult:
-        """Execute quality gates and return schema-first JSON response.
+        """Execute quality gates and return contract-compliant response.
 
-        Returns structured JSON as primary output with a derived text_output field.
-        Consumers should parse the JSON structure (gates[], summary) for programmatic use.
-        The text_output field provides a human-readable rendering for display purposes.
+        Returns exactly two content items (design.md §4.8, planning.md C27):
+        1. ``{"type": "text", "text": <summary_line>}`` — one-line human-readable status
+        2. ``{"type": "json", "json": <compact_payload>}`` — structured gate results
+
+        Args:
+            params: Tool input parameters.
+
+        Returns:
+            ToolResult with content[0]=text summary, content[1]=compact JSON payload.
         """
-        files = params.files
-        # Project-level test validation mode (files=[]):
-        # - Runs pytest gates only (Gate 5: tests, Gate 6: coverage >= 90%)
-        # - Skips file-based static gates (Gates 0-4: Ruff, Mypy) - no file list provided
-        # - Use case: CI/CD test/coverage enforcement before merge
-        #
-        # File-specific validation mode (files=[...]):
-        # - Runs file-based static gates (Gates 0-4: Ruff, Mypy)
-        # - Skips pytest gates (Gate 5-6) - tests run at project-level
-        # - Use case: IDE save hooks, pre-commit validation on changed files
-
-        result = self.manager.run_quality_gates(files)
-
-        # Build derived text rendering and attach to response
-        text_output = self._render_text_output(result)
-        result["text_output"] = text_output
-
-        return ToolResult.json_data(result)
+        result = self.manager.run_quality_gates(params.files)
+        summary_line = QAManager._format_summary_line(result)
+        compact_payload = QAManager._build_compact_result(result)
+        return ToolResult(
+            content=[
+                {"type": "text", "text": summary_line},
+                {"type": "json", "json": compact_payload},
+            ]
+        )
 
     @staticmethod
     def _render_text_output(result: dict[str, Any]) -> str:

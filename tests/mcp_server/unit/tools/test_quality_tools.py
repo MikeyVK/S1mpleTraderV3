@@ -14,13 +14,18 @@ from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGates
 from mcp_server.tools.tool_result import ToolResult
 
 
-def _extract_json(result: ToolResult) -> dict[str, Any]:
-    """Extract structured JSON from ToolResult (content[0] type=json)."""
-    json_item = result.content[0]
-    assert json_item["type"] == "json", (
-        f"Expected content[0] type='json', got '{json_item['type']}'"
-    )
-    return json_item["json"]
+def _summary_text(result: ToolResult) -> str:
+    """Extract summary text from content[0] (type='text')."""
+    item = result.content[0]
+    assert item["type"] == "text", f"Expected content[0] type='text', got '{item['type']}'"
+    return item["text"]
+
+
+def _compact_payload(result: ToolResult) -> dict[str, Any]:
+    """Extract compact JSON payload from content[1] (type='json')."""
+    item = result.content[1]
+    assert item["type"] == "json", f"Expected content[1] type='json', got '{item['type']}'"
+    return item["json"]
 
 
 class TestRunQualityGatesTool:
@@ -28,7 +33,7 @@ class TestRunQualityGatesTool:
 
     @pytest.mark.asyncio
     async def test_no_files_triggers_project_level(self) -> None:
-        """Test files=[] triggers project-level mode (not error)."""
+        """Test files=[] is forwarded to manager and summary text is returned."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "version": "2.0",
@@ -55,21 +60,28 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=[]))
 
-        data = _extract_json(result)
-        assert data["mode"] == "project-level"
-        assert "text_output" in data
+        text = _summary_text(result)
+        assert "Quality gates" in text
         mock_manager.run_quality_gates.assert_called_once_with([])
 
     @pytest.mark.asyncio
     async def test_quality_gates_passed(self) -> None:
-        """Test clean quality pass returns JSON with text_output."""
+        """Test clean quality pass returns ✅ summary line."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
+            "summary": {
+                "passed": 1,
+                "failed": 0,
+                "skipped": 0,
+                "total_violations": 0,
+                "auto_fixable": 0,
+            },
             "overall_pass": True,
             "gates": [
                 {
                     "name": "pylint",
                     "passed": True,
+                    "status": "passed",
                     "score": 10.0,
                     "issues": [],
                 }
@@ -79,16 +91,21 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        data = _extract_json(result)
-        assert data["overall_pass"] is True
-        assert "text_output" in data
-        assert "✅ pylint" in data["text_output"]
+        text = _summary_text(result)
+        assert "✅" in text
 
     @pytest.mark.asyncio
     async def test_quality_gates_failed_with_issues(self) -> None:
-        """Test failed quality gates with issues in JSON output."""
+        """Test failed quality gates returns ❌ summary line."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
+            "summary": {
+                "passed": 0,
+                "failed": 1,
+                "skipped": 0,
+                "total_violations": 1,
+                "auto_fixable": 0,
+            },
             "overall_pass": False,
             "gates": [
                 {
@@ -112,17 +129,21 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        data = _extract_json(result)
-        assert data["overall_pass"] is False
-        assert "❌ pylint" in data["text_output"]
-        assert "foo.py:10:4" in data["text_output"]
-        assert "[C0111] Missing docstring" in data["text_output"]
+        text = _summary_text(result)
+        assert "❌" in text
 
     @pytest.mark.asyncio
     async def test_quality_gates_failed_prints_hints(self) -> None:
-        """Test gate hints are surfaced in text_output."""
+        """Test gate with hints — summary line is still returned."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
+            "summary": {
+                "passed": 0,
+                "failed": 1,
+                "skipped": 0,
+                "total_violations": 1,
+                "auto_fixable": 0,
+            },
             "overall_pass": False,
             "gates": [
                 {
@@ -139,15 +160,22 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        data = _extract_json(result)
-        assert "Hints:" in data["text_output"]
-        assert "Re-run:" in data["text_output"]
+        text = _summary_text(result)
+        assert "❌" in text
+        assert "Quality gates" in text
 
     @pytest.mark.asyncio
     async def test_quality_gates_issues_missing_fields(self) -> None:
-        """Test issue formatting robustness with empty issues."""
+        """Test result with empty issues dict — summary line is returned without crash."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
+            "summary": {
+                "passed": 0,
+                "failed": 1,
+                "skipped": 0,
+                "total_violations": 0,
+                "auto_fixable": 0,
+            },
             "overall_pass": False,
             "gates": [
                 {
@@ -163,13 +191,12 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        data = _extract_json(result)
-        assert "unknown:?:?" in data["text_output"]
-        assert "Unknown issue" in data["text_output"]
+        text = _summary_text(result)
+        assert "Quality gates" in text
 
     @pytest.mark.asyncio
     async def test_response_is_native_json_object(self) -> None:
-        """Test tool returns native JSON object, not JSON-in-text (P0-AC1)."""
+        """Test tool returns compact native JSON (content[1]=json), text summary (content[0]=text)."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "version": "2.0",
@@ -199,27 +226,15 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
 
-        # Content[0] is native JSON object (not merely serialized text)
-        assert result.content[0]["type"] == "json"
-        data = result.content[0]["json"]
+        # content[0] is text summary
+        assert result.content[0]["type"] == "text"
+        assert isinstance(result.content[0]["text"], str)
+
+        # content[1] is compact JSON payload
+        assert result.content[1]["type"] == "json"
+        data = result.content[1]["json"]
         assert isinstance(data, dict)
-
-        # Content[1] is text fallback for legacy clients
-        assert result.content[1]["type"] == "text"
-        assert isinstance(result.content[1]["text"], str)
-
-        # Structured fields present in JSON
-        assert data["version"] == "2.0"
-        assert data["mode"] == "file-specific"
-        assert "summary" in data
         assert "gates" in data
-        assert "text_output" in data
-
-        # Gate has enriched schema
-        gate = data["gates"][0]
-        assert "id" in gate
-        assert "status" in gate
-        assert "skip_reason" in gate
 
     def test_schema(self) -> None:
         """Test tool schema has files property."""
