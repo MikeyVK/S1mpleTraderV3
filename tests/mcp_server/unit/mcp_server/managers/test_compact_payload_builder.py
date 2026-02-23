@@ -126,7 +126,16 @@ class TestBuildCompactResultNoDebugFields:
     """Debug fields must not appear in compact payload."""
 
     _FORBIDDEN: frozenset[str] = frozenset(
-        {"stdout", "stderr", "raw_output", "command", "duration_ms", "hints", "skip_reason", "score"}
+        {
+            "stdout",
+            "stderr",
+            "raw_output",
+            "command",
+            "duration_ms",
+            "hints",
+            "skip_reason",
+            "score",
+        }
     )
 
     def test_gate_has_no_debug_fields(self) -> None:
