@@ -1660,10 +1660,10 @@
             "deliverables": [
               {
                 "id": "D29.1",
-                "description": "C28: RunQualityGatesTool signature: scope replaces files"
+                "description": "C28: Migrate files API to scope=\"files\" \u2014 add scope=\"files\" as 4th Literal value with conditional files: list[str] | None companion field; model_validator enforces both constraints"
               }
             ],
-            "exit_criteria": "scope API accepted; files API rejected; tool schema updated"
+            "exit_criteria": "All four scope values (auto, branch, project, files) accepted; scope=\"files\" with non-empty files routes list verbatim to run_quality_gates; scope=\"files\" without files (or empty) raises ValidationError; scope \u2208 {auto,branch,project} with files supplied raises ValidationError; old bare-files API (no scope param) rejected"
           },
           {
             "cycle_number": 30,
