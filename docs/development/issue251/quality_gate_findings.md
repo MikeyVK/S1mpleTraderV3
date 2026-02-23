@@ -130,6 +130,7 @@ return _make_gate(          # ✅
 | C24 REFACTOR | Gate 0 Ruff Format | methode-signatuur 3→1 regel | `test_auto_scope_resolution.py` | `test_auto_scope_no_baseline_sha_falls_back_to_project_scope(self, tmp_path)` collapsed |
 | C24 REFACTOR | Gate 0 Ruff Format + Gate 1 W292 | trailing newline verwijderd | `test_auto_scope_resolution.py` | `safe_edit_file` verwijderde te veel newlines; één `\n` teruggeplaatst |
 | C25 REFACTOR | Gate 0 Ruff Format | kwargs op 1 regel met trailing comma → multi-line | `test_summary_line_formatter.py` | `_make_results(passed=0, failed=1, skipped=0, total_violations=2,` → 4 aparte regels |
+| C26 REFACTOR | Gate 0 Ruff Format + Gate 3 E501 | frozenset set-literal op 1 regel (101>100) | `test_compact_payload_builder.py` | `frozenset({"a", "b", ... 8 items})` → multi-line met trailing comma |
 
 ---
 
@@ -276,6 +277,33 @@ PLC0415 — `import` should be at the top of the file
 **Context:** Een reeks kwargs op één regel met een trailing comma in een multi-line aanroep triggert ruff-format om elke kwarg op een eigen regel te zetten. Zelfde mechanisme als C13 voor dict/list-literals.
 **Fix:** Elke kwarg op een aparte regel gezet.
 **Patroon:** Bij een function call die al over meerdere regels loopt met een trailing comma: schrijf elke kwarg direct op een eigen regel. Eén regel met meerdere kwargs wordt altijd uitgevouwen door ruff.
+
+---
+
+### [C26 REFACTOR] Ruff Format + E501 — frozenset set-literal op één regel (101 chars)
+
+**Gate:** Gate 0: Ruff Format + Gate 3: Line Length (E501)
+**File:** `tests/mcp_server/unit/mcp_server/managers/test_compact_payload_builder.py`
+**Fout:**
+```diff
+-    _FORBIDDEN: frozenset[str] = frozenset(
+-        {"stdout", "stderr", "raw_output", "command", "duration_ms", "hints", "skip_reason", "score"}
++    _FORBIDDEN: frozenset[str] = frozenset(
++        {
++            "stdout",
++            "stderr",
++            "raw_output",
++            "command",
++            "duration_ms",
++            "hints",
++            "skip_reason",
++            "score",
++        }
+     )
+```
+**Context:** De set-literal met 8 string-elementen op één regel was 101 tekens (> 100). Gate 3 vuurde op E501; Gate 0 vuurde omdat ruff dezelfde set-literal ook multi-line wilde schrijven (trailing-comma patroon).
+**Fix:** Elk set-element op een eigen regel gezet met trailing comma.
+**Patroon:** Set-literals, dict-literals en lijst-literals met meer dan ~4 korte elementen: schrijf direct multi-line als de gecombineerde regel > 100 chars is. Trailing-comma is verplicht voor consistentie.
 
 ---
 
