@@ -241,3 +241,102 @@ class TestRunQualityGatesTool:
         tool = RunQualityGatesTool(manager=MagicMock())
         schema = tool.input_schema
         assert "files" in schema["properties"]
+
+
+class TestRunQualityGatesInputC28:
+    """C28: scope="files" as 4th Literal value with conditional files companion field.
+
+    RED tests — all must fail until C28 GREEN is implemented.
+    """
+
+    # --- Validator: files REQUIRED when scope="files" ---
+
+    def test_scope_files_without_files_raises(self) -> None:
+        """scope='files' with no files field raises ValidationError (files required)."""
+        with pytest.raises(Exception):  # ValidationError
+            RunQualityGatesInput(scope="files")
+
+    def test_scope_files_with_empty_list_raises(self) -> None:
+        """scope='files' with empty list raises ValidationError (empty not allowed)."""
+        with pytest.raises(Exception):  # ValidationError
+            RunQualityGatesInput(scope="files", files=[])
+
+    def test_scope_files_with_files_is_valid(self) -> None:
+        """scope='files' with non-empty files is valid."""
+        params = RunQualityGatesInput(scope="files", files=["a.py", "b.py"])
+        assert params.scope == "files"
+        assert params.files == ["a.py", "b.py"]
+
+    # --- Validator: files FORBIDDEN when scope != "files" ---
+
+    def test_scope_auto_with_files_raises(self) -> None:
+        """scope='auto' with files supplied raises ValidationError (files forbidden)."""
+        with pytest.raises(Exception):  # ValidationError
+            RunQualityGatesInput(scope="auto", files=["a.py"])
+
+    def test_scope_branch_with_files_raises(self) -> None:
+        """scope='branch' with files supplied raises ValidationError (files forbidden)."""
+        with pytest.raises(Exception):  # ValidationError
+            RunQualityGatesInput(scope="branch", files=["a.py"])
+
+    def test_scope_project_with_files_raises(self) -> None:
+        """scope='project' with files supplied raises ValidationError (files forbidden)."""
+        with pytest.raises(Exception):  # ValidationError
+            RunQualityGatesInput(scope="project", files=["a.py"])
+
+    # --- Valid non-files scopes ---
+
+    def test_scope_auto_without_files_is_valid(self) -> None:
+        """scope='auto' with no files is valid."""
+        params = RunQualityGatesInput(scope="auto")
+        assert params.scope == "auto"
+        assert params.files is None
+
+    def test_scope_branch_without_files_is_valid(self) -> None:
+        """scope='branch' with no files is valid."""
+        params = RunQualityGatesInput(scope="branch")
+        assert params.scope == "branch"
+
+    def test_scope_project_without_files_is_valid(self) -> None:
+        """scope='project' with no files is valid."""
+        params = RunQualityGatesInput(scope="project")
+        assert params.scope == "project"
+
+    # --- Default scope ---
+
+    def test_default_scope_is_auto(self) -> None:
+        """Default scope is 'auto' when no scope is provided."""
+        params = RunQualityGatesInput()
+        assert params.scope == "auto"
+
+    # --- Old bare-files API rejected ---
+
+    def test_bare_files_api_without_scope_rejected(self) -> None:
+        """Bare files=[] without scope raises ValidationError (old API no longer valid)."""
+        with pytest.raises(Exception):  # ValidationError — files without scope="files" forbidden
+            RunQualityGatesInput(files=[])
+
+    # --- Schema reflects new API ---
+
+    def test_schema_has_scope_not_bare_files(self) -> None:
+        """Input schema exposes 'scope' field."""
+        tool = RunQualityGatesTool(manager=MagicMock())
+        schema = tool.input_schema
+        assert "scope" in schema["properties"]
+
+    # --- execute() routes scope="files" correctly ---
+
+    @pytest.mark.asyncio
+    async def test_execute_scope_files_passes_list_to_manager(self) -> None:
+        """execute(scope='files', files=[...]) passes the list verbatim to run_quality_gates."""
+        mock_manager = MagicMock()
+        mock_manager.run_quality_gates.return_value = {
+            "summary": {"passed": 1, "failed": 0, "skipped": 0, "total_violations": 0, "auto_fixable": 0},
+            "overall_pass": True,
+            "gates": [],
+        }
+        tool = RunQualityGatesTool(manager=mock_manager)
+        result = await tool.execute(RunQualityGatesInput(scope="files", files=["src/foo.py"]))
+
+        mock_manager.run_quality_gates.assert_called_once_with(["src/foo.py"])
+        assert result.content[0]["type"] == "text"
