@@ -125,6 +125,10 @@ return _make_gate(          # ✅
 | Remediation C14 REFACTOR | Gate 1 Ruff Strict Lint | F841 dead variable `combined_output` | `qa_manager.py` | `combined_output = ...` regel verwijderd (wees na deleten json_field/text_regex branches) |
 | Remediation C22 addendum | Gate 2 Imports | PLC0415 inline import in testfunctie | `test_scope_resolution.py` | `import json as _json` → module-niveau `import json` |
 | Remediation batch REFACTOR | Gate 0 Ruff Format | 2 signaturen 3→1 regel | `test_qa_manager.py` | `test_get_skip_reason_no_files_returns_skip` + `_with_files_returns_none` collapsed |
+| C23 REFACTOR | Gate 0 Ruff Format | multi-line assert met `()` → 1 regel | `test_auto_scope_resolution.py` | `assert x, (\n    f"..."\n)` → `assert x, f"..."` |
+| C23 REFACTOR | Gate 3 Line Length | E501 (101>100) | `test_auto_scope_resolution.py` | string literal in assert opgesplitst via impliciete concatenatie |
+| C24 REFACTOR | Gate 0 Ruff Format | methode-signatuur 3→1 regel | `test_auto_scope_resolution.py` | `test_auto_scope_no_baseline_sha_falls_back_to_project_scope(self, tmp_path)` collapsed |
+| C24 REFACTOR | Gate 0 Ruff Format + Gate 1 W292 | trailing newline verwijderd | `test_auto_scope_resolution.py` | `safe_edit_file` verwijderde te veel newlines; één `\n` teruggeplaatst |
 
 ---
 
@@ -192,6 +196,63 @@ PLC0415 — `import` should be at the top of the file
 **Context:** Beide methoden in `TestSkipReasonLogic` waren tijdens de C17/C18-fix op 3 regels geschreven. De gecombineerde signatuur past comfortabel binnen 100 tekens (73 resp. 76 chars). Ruff Format weigert de gesplitste variant.
 **Fix:** Beide signaturen samengevoegd op één regel.
 **Patroon:** Zie ook C8/C9/C19 — bij `self` + één fixture-argument past de signatuur bijna altijd op één regel. Schrijf dit direct zo.
+
+---
+
+### [C23 REFACTOR] Ruff Format — multi-line assert met onnodige haakjes
+
+**Gate:** Gate 0: Ruff Format
+**File:** `tests/mcp_server/unit/mcp_server/managers/test_auto_scope_resolution.py`
+**Fout:**
+```diff
+-        assert result.count("shared.py") == 1, (
+-            f"Duplicate entry in result: {result!r}"
+-        )
++        assert result.count("shared.py") == 1, f"Duplicate entry in result: {result!r}"
+```
+**Context:** Assert-boodschappen met impliciete haakjes over 3 regels worden door ruff-format gereduceerd naar 1 regel als de gecombineerde regel ≤ 100 tekens is.
+**Fix:** Haakjes verwijderd; assert-boodschap op dezelfde regel als de assert.
+**Patroon:** Dezelfde als bij methode-signaturen: schrijf korte assert-berichten direct op één regel. Haakjes zijn alleen gerechtvaardigd als de gecombineerde regel > 100 tekens is.
+
+---
+
+### [C23 REFACTOR] Gate 3 E501 — assert-boodschap te lang via impliciete string-concatenatie
+
+**Gate:** Gate 3: Line Length (E501)
+**File:** `tests/mcp_server/unit/mcp_server/managers/test_auto_scope_resolution.py`
+**Fout:** Regel 140: 101 tekens (> 100)
+```python
+# Te lang (101 chars):
+        assert "main..HEAD" not in captured[0], (
+            "scope=auto must NOT use workflow.parent_branch — it must use quality_gates.baseline_sha"
+        )
+```
+**Fix:** String literal opgesplitst via impliciete Python-concatenatie:
+```python
+        assert "main..HEAD" not in captured[0], (
+            "scope=auto must NOT use workflow.parent_branch"
+            " — it must use quality_gates.baseline_sha"
+        )
+```
+**Patroon:** Lange string-literals in assert-berichten splitsen met impliciete concatenatie (twee string-literals naast elkaar in `()`). Geen backslash-continuation nodig.
+
+---
+
+### [C24 REFACTOR] Ruff Format — methode-signatuur 3→1 regel en W292 trailing newline
+
+**Gate:** Gate 0: Ruff Format + Gate 1: W292
+**File:** `tests/mcp_server/unit/mcp_server/managers/test_auto_scope_resolution.py`
+**Fout 1 — signatuur:**
+```diff
+-    def test_auto_scope_no_baseline_sha_falls_back_to_project_scope(
+-        self, tmp_path: Path
+-    ) -> None:
++    def test_auto_scope_no_baseline_sha_falls_back_to_project_scope(self, tmp_path: Path) -> None:
+```
+**Fout 2 — W292:** Na het handmatig verwijderen van een dubbele trailing newline verdween ook de verplichte afsluitende newline (`\\ No newline at end of file`). Ruff W292 vuurde hierop.
+**Fix 1:** Signatuur samengevoegd (95 tekens — past comfortabel op één regel).
+**Fix 2:** Één `\n` teruggeplaatst aan het einde van het bestand.
+**Patroon:** Bij `safe_edit_file` met search/replace op de laatste regel van een bestand: controleer altijd of de verplichte trailing newline behouden blijft. De tool schrijft exact wat er in `replace` staat.
 
 ---
 
