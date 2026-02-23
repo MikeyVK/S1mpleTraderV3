@@ -183,18 +183,18 @@ For every scenario row, capture:
 | A1-pass | PASS | baseline=HEAD diff empty → 6/6 skipped, `⚠️ 0/0 active (6 skipped)` | Behavior correct. **Finding F-1:** ⚠️ used for expected clean state (should be ✅). **Finding F-3:** `skipped=true`+`passed=true` on all gate entries is contradictory |
 | A1-fail | PASS | baseline=49bca199, diff=violations.py → 12 violations: Gate1 (9), Gate3 (1), Gate4b (2) | All violations structured with `file/line/col/rule`. No blob. Gate4:Types skipped (no matching files). **Finding F-4:** Gate 4:Types always skipped, no `skip_reason` in compact output |
 | A2 | PASS | no baseline → project fallback → 1516 violations across 405 files | Fallback path confirmed. **Finding F-5:** response 502KB, exceeded MCP inline limit, written to disk — unusable in chat for large codebases |
-| B1-pass | NOT RUN | | Pending |
-| B2-fail | NOT RUN | | Pending |
-| B3 | NOT RUN | | Pending |
-| P1-pass | NOT RUN | | Pending |
+| B1-pass | BLOCKED | scope=branch → 15 violations in production files | Branch has real violations: `qa_manager.py` F821 dead code (lines 321-344, unreachable block after `return []`) + `server.py` I001 import order. **Finding F-6, F-7 — NO-GO bugs in production code.** B1-pass unachievable without fixing these |
+| B2-fail | PARTIAL | scope=branch → violations structured in Gate1/Gate3/Gate4b | Violations ARE structured (no blob). However plan expected `gate4_types` issues; Gate4:Types is ALWAYS skipped. Re-confirms **Finding F-4.** **Finding F-8:** `_resolve_branch_scope` reads `state["workflow"]["parent_branch"]` but state.json stores it at top level — key mismatch, parent_branch config never used, always falls back to "main" |
+| B3 | IMPLICIT | Fallback to "main" is the only behavior that executes | B3 condition is permanently active due to **Finding F-8** (key path bug). Cannot test fallback separately from normal operation |
+| P1-pass | BLOCKED | scope=project → 1516 violations; project not clean | Blocked by same production violations as B1-pass. P1-pass unachievable in current branch state |
 | P2-fail | PASS | scope=project → 1516 violations; gate3 includes `rule=E501` | Violations structured. **Finding F-2:** compact payload omits `overall_pass` and `duration_ms` — LLM must iterate all gates to determine outcome |
-| F1 | NOT RUN | | Pending |
-| F2 | NOT RUN | | Pending |
-| F3 | NOT RUN | | Pending |
-| F4 | NOT RUN | | Pending |
-| F5 | NOT RUN | | Pending |
-| F6 | NOT RUN | | Pending |
-| F7 | NOT RUN | | Pending |
+| F1 | PASS (alt file) | scope=files, files=["backend/__init__.py"] → 5/5 passed (1 skipped) | Plan pre-condition wrong: `script.py` is not clean (B018/F821/W292). **Finding F-11:** test plan uses dirty file as "clean" reference. Confirmed with `backend/__init__.py`. ⚠️ again for clean result (F-1) |
+| F2 | PASS | scope=files, files=["violations.py"] → 12 violations in Gate1/Gate3/Gate4b | Violations fully structured. **Finding F-10:** plan expected gate0 violations; Gate0 passes (ruff format doesn't flag this fixture). Gate1/Gate3/Gate4b correctly report structured issues |
+| F3 | PASS | scope=files, files=["backend/__init__.py","mcp_server/__init__.py"] → 5/5 passed | Both files clean. ⚠️ for clean result (F-1 confirmed again) |
+| F4 | PASS | scope=files, mixed files → violations only from violations.py | File isolation correct — backend/__init__.py contributes zero violations |
+| F5 | FAIL | scope=files, files=["backend/"] → 6/6 skipped, no error | **Finding F-9:** directory paths silently skipped (not `.py` extension); no validation error, no warning. Indistinguishable from "all files passed" |
+| F6 | FAIL | scope=files, files=["backend/","mcp_server/"] → 6/6 skipped | Same as F5. Multiple directory paths silently silenced. **Finding F-9** confirmed |
+| F7 | PASS | scope=files (no files) → Pydantic ValidationError pre-execution | Input validation fires correctly, no gate runs, clear error message |
 
 ### Validation Findings (cross-scenario)
 
@@ -203,8 +203,14 @@ For every scenario row, capture:
 | F-1 | Medium | `⚠️` emitted for scope=auto with empty diff — correct behavior but wrong signal; should be `✅ Nothing to check (no changed files)` | UX / `_format_summary_line` |
 | F-2 | Medium | Compact payload missing `overall_pass` and `duration_ms`; consumer must iterate all gate entries to determine pass/fail | Contract / `_build_compact_result` |
 | F-3 | Low | `skipped=true` + `passed=true` simultaneously on gate entries is semantically contradictory; skipped means not evaluated, not passed | Contract / `_build_compact_result` |
-| F-4 | Low | Gate 4: Types always skipped with no `skip_reason` surfaced in compact output; cause unclear (file_types filter?) | Observability |
+| F-4 | Low | Gate 4: Types (mypy) always skipped with no `skip_reason` surfaced in compact output; cause unclear (file_types filter?) | Observability |
 | F-5 | High | scope=auto fallback to project (A2) and scope=project (P2) produce 502KB responses — exceeds MCP inline transport, written to disk, not usable in chat | Scalability / response size |
+| F-6 | **Critical** | Dead code in `_resolve_scope` (qa_manager.py lines 321–344): unreachable block after `return []` with invalid `base_ref` reference (F821). Introduced during cleanup session. Production code ships with own lint violation | Code quality / cleanup regression |
+| F-7 | **Critical** | `server.py` line 3: import order violation (I001). Production file introduced by fix commit fails its own quality gate | Code quality / fix regression |
+| F-8 | High | `_resolve_branch_scope` reads `state.get("workflow", {}).get("parent_branch")` but state.json stores `parent_branch` at top level — key mismatch means configured parent_branch is never read; always defaults to `"main"` | Bug / scope resolution |
+| F-9 | High | Directory paths in `scope="files"` silently accepted and skipped — no validation error, no warning; result is indistinguishable from "all files clean" | Correctness / silent failure |
+| F-10 | Low | Test plan error: fixture was expected to trigger Gate0 (ruff format) but Gate0 passes; violations are in Gate1/Gate3/Gate4b only | Test plan / fixture design |
+| F-11 | Low | Test plan error: `script.py` used as "clean" reference file but contains real violations (B018, F821, W292) | Test plan / pre-condition error |
 
 ---
 
