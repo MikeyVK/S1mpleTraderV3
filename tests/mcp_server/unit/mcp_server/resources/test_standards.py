@@ -46,10 +46,11 @@ async def test_standards_resource_reads_active_gates_from_quality_yaml() -> None
     assert "quality_gates" in data, "Missing quality_gates section"
     assert "active_gates" in data["quality_gates"], "Missing active_gates field"
 
-    # Should have the 8 configured gates from quality.yaml (updated for Issue #131)
+    # Should have the 6 configured gates from quality.yaml
+    # (gate5_tests and gate6_coverage removed in C0 per F1: Remove pytest/coverage)
     active_gates = data["quality_gates"]["active_gates"]
     assert isinstance(active_gates, list), "active_gates should be a list"
-    assert len(active_gates) == 8, f"Expected 8 active gates, got {len(active_gates)}"
+    assert len(active_gates) == 6, f"Expected 6 active gates, got {len(active_gates)}"
 
     # Verify expected gate names from quality.yaml
     expected_gates = [
@@ -59,7 +60,5 @@ async def test_standards_resource_reads_active_gates_from_quality_yaml() -> None
         "gate3_line_length",
         "gate4_types",
         "gate4_pyright",
-        "gate5_tests",
-        "gate6_coverage",
     ]
     assert active_gates == expected_gates, f"Expected {expected_gates}, got {active_gates}"
