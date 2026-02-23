@@ -194,7 +194,7 @@ For every scenario row, capture:
 | F4 | PASS | scope=files, mixed files → violations only from violations.py | File isolation correct — backend/__init__.py contributes zero violations |
 | F5 | FAIL | scope=files, files=["backend/"] → 6/6 skipped, no error | **Finding F-9:** directory paths silently skipped (not `.py` extension); no validation error, no warning. Indistinguishable from "all files passed" |
 | F6 | FAIL | scope=files, files=["backend/","mcp_server/"] → 6/6 skipped | Same as F5. Multiple directory paths silently silenced. **Finding F-9** confirmed |
-| F7 | PASS | scope=files (no files) → Pydantic ValidationError pre-execution | Input validation fires correctly, no gate runs, clear error message |
+| F7 | PASS | scope=files (no files) → Pydantic ValidationError pre-execution | Input validation fires correctly, no gate runs, clear error message. **Finding F-12:** ValidationError also logged server-side as structured WARNING with `call_id`, `tool_name`, `model`, `arguments` — good observability but double-reported (server log + chat response) |
 
 ### Validation Findings (cross-scenario)
 
@@ -211,6 +211,7 @@ For every scenario row, capture:
 | F-9 | High | Directory paths in `scope="files"` silently accepted and skipped — no validation error, no warning; result is indistinguishable from "all files clean" | Correctness / silent failure |
 | F-10 | Low | Test plan error: fixture was expected to trigger Gate0 (ruff format) but Gate0 passes; violations are in Gate1/Gate3/Gate4b only | Test plan / fixture design |
 | F-11 | Low | Test plan error: `script.py` used as "clean" reference file but contains real violations (B018, F821, W292) | Test plan / pre-condition error |
+| F-12 | Info | ValidationError (F7) also emitted as structured server-side WARNING log with `call_id`, `tool_name`, `model`, `arguments` — useful observability; double-reporting is by design (log + chat client) | Observability / server logging |
 
 ---
 
