@@ -700,3 +700,42 @@ class TestProducesJsonRemoved:
         caps = CapabilitiesMetadata(file_types=[".py"], supports_autofix=False)
         assert caps.file_types == [".py"]
         assert caps.supports_autofix is False
+
+
+class TestParsingStrategyMigration:
+    """C31: quality.yaml parsing-strategy migration — no compatibility shim.
+
+    After migration:
+    - gate4_pyright uses parsing.strategy="exit_code" (not json_field shim)
+    - gate1_formatting capabilities.parsing_strategy=="json_violations"
+    - gate0_ruff_format capabilities.parsing_strategy=="text_violations"
+    """
+
+    def test_gate4_pyright_no_json_field_shim(self) -> None:
+        """gate4_pyright must use exit_code parsing strategy, not the old json_field shim."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        gate = config.gates["gate4_pyright"]
+        assert gate.parsing.strategy == "exit_code", (
+            f"gate4_pyright should use exit_code (violations via capabilities), "
+            f"got '{gate.parsing.strategy}'"
+        )
+
+    def test_gate1_formatting_has_json_violations_capability(self) -> None:
+        """gate1_formatting must declare json_violations strategy in capabilities (ruff outputs JSON)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        gate = config.gates["gate1_formatting"]
+        assert gate.capabilities.parsing_strategy == "json_violations", (
+            "gate1_formatting must declare parsing_strategy='json_violations' in capabilities"
+        )
+        assert gate.capabilities.json_violations is not None
+        assert "file" in gate.capabilities.json_violations.field_map
+
+    def test_gate0_ruff_format_has_text_violations_capability(self) -> None:
+        """gate0_ruff_format must declare text_violations strategy in capabilities (diff output)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        gate = config.gates["gate0_ruff_format"]
+        assert gate.capabilities.parsing_strategy == "text_violations", (
+            "gate0_ruff_format must declare parsing_strategy='text_violations' in capabilities"
+        )
+        assert gate.capabilities.text_violations is not None
+        assert gate.capabilities.text_violations.pattern != ""
