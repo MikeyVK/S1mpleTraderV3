@@ -265,6 +265,7 @@ class QAManager:
         try:
             result = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 check=False,
