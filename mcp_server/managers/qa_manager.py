@@ -403,6 +403,46 @@ class QAManager:
 
         return sorted(matched)
 
+    # ------------------------------------------------------------------
+    # Output formatting
+    # ------------------------------------------------------------------
+
+    def _format_summary_line(self, results: dict[str, Any]) -> str:
+        """Return a concise one-line status string for the given gate results.
+
+        Format (design.md §4.8):
+        - Pass:      ``"✅ Quality gates: N/N passed (0 violations)"``
+        - Fail:      ``"❌ Quality gates: N/M passed — V violations in gate_id[, ...]"``
+        - Skip+pass: ``"⚠️ Quality gates: N/N active (S skipped)"``
+
+        Args:
+            results: The dict returned by ``run_quality_gates``.
+
+        Returns:
+            A single-line string suitable for ``content[0].text`` in a ToolResult.
+        """
+        summary = results["summary"]
+        passed: int = summary["passed"]
+        failed: int = summary["failed"]
+        skipped: int = summary["skipped"]
+        total_violations: int = summary["total_violations"]
+        total_active = passed + failed
+
+        if failed > 0:
+            failed_names = [
+                g["name"] for g in results.get("gates", []) if g.get("status") == "failed"
+            ]
+            gate_list = ", ".join(failed_names)
+            return (
+                f"❌ Quality gates: {passed}/{total_active} passed"
+                f" — {total_violations} violations in {gate_list}"
+            )
+
+        if skipped > 0:
+            return f"⚠️ Quality gates: {passed}/{total_active} active ({skipped} skipped)"
+
+        return f"✅ Quality gates: {passed}/{total_active} passed ({total_violations} violations)"
+
     def check_health(self) -> bool:
         """Check if QA tools are available."""
 
