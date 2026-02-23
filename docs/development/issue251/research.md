@@ -1,9 +1,9 @@
 <!-- docs\development\issue251\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-23T02:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-23T00:02Z -->
 # Issue #251 Research: Refactor run_quality_gates — venv pytest, structured output, smart scope
 
 **Status:** COMPLETE  
-**Version:** 2.1  
+**Version:** 2.0  
 **Last Updated:** 2026-02-23
 
 ---
@@ -989,7 +989,6 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | F13 | project_scope globs wrong in earlier draft | Config error | Correct: `mcp_server/**/*.py`, `tests/mcp_server/**/*.py` |
 | F14 | Gate 4 mypy violations unstructured/truncated | Architecture | `text_violations` strategy with mypy regex pattern + `defaults` in quality.yaml |
 | F15 | `produces_json` implicit coupling + `text_regex` dead config + `json_field` no ViolationDTO | Architecture | New `json_violations` + `text_violations` strategies; remove `_parse_ruff_json` + `_parse_json_field_issues`; zero tool-specific methods in QAManager |
-| F16 | `pytest.raises(Exception)` in C28 RED tests triggers ruff B017 (blind exception) | Lint (B017) | Replace with `pytest.raises(ValidationError)`; import `pydantic.ValidationError` in test module |
 
 ---
 
@@ -1038,4 +1037,3 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | 1.8 | 2026-02-22 | Agent | Harmonize ViolationDTO field names: `column`→`col`, `code`→`rule` throughout schema definitions, JSON examples, and field_map YAML |
 | 1.9 | 2026-02-23 | Agent | Revisie scope API: `files` niet verwijderd maar gemigreerd naar `scope="files"` met optioneel `files: list[str]` veld (required bij `scope="files"`, verboden anders); Inv. 4 residual question, Inv. 6 tabel + backward compat note, F4 en Open Question #2 bijgewerkt |
 | 2.0 | 2026-02-23 | Agent | Expliciete twee-regel validator invariant tabel toegevoegd in Inv. 6; F4 findings aangescherpt met beide `ValidationError`-gevallen; aligns met design v1.3 §4.6a |
-| 2.1 | 2026-02-23 | Agent | F16 toegevoegd: `pytest.raises(Exception)` (B017) → `pytest.raises(ValidationError)` ontdekt tijdens C28 REFACTOR quality gate run |
