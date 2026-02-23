@@ -2,65 +2,85 @@
 <!-- template=generic_doc version=43c84181 created=2026-02-23 updated=2026-02-23 -->
 # Live Validation Plan — Issue #251 run_quality_gates refactor
 
-**Status:** DRAFT  
-**Version:** 1.1  
+**Status:** READY FOR EXECUTION  
+**Version:** 1.2  
 **Last Updated:** 2026-02-23
 
 ---
 
 ## Purpose
 
-Validate the refactored `run_quality_gates` tool in practice by calling it with real files.  
-Confirms that structured violation output, scope resolution, and uniform `parsing_strategy`
-coverage work end-to-end across all 6 active gates and all 4 scope modes.
+Validate the refactored `run_quality_gates` tool end-to-end through real MCP calls.
+This plan verifies, in one runbook, that:
+1. scope resolution is deterministic for all 4 scope modes;
+2. active gates return structured violations (not fallback blobs);
+3. response contract (`content[0]=text`, `content[1]=json`) is stable.
 
 ## Scope
 
-**In Scope:**  
-Live MCP tool calls across all scope variants: `auto` (default), `files`, `branch`, `project`.  
-Each scope includes at least one PASS and one FAIL scenario.  
-`files` scope covers single-file, multi-file, single-dir, and multi-dir combinations.
+**In Scope:**
+- Live MCP tool calls for `auto` (default), `branch`, `project`, `files`
+- At least one PASS and one FAIL case per scope
+- `files` scope variants: single file, multiple files, single dir, multiple dirs
+- Response schema and violation-shape validation for all active gates (0,1,2,3,4,4b)
 
-**Out of Scope:**  
-Unit test coverage (TDD cycles C0–C31). Performance benchmarks. Inactive gates (gate5/gate6).
+**Out of Scope:**
+- Unit/integration suite quality (already covered in TDD C0–C31)
+- Performance/benchmarking
+- Inactive gates (gate5/gate6)
 
 ## Prerequisites
 
-1. Branch `refactor/251-refactor-run-quality-gates`, commit `89e53559` or later
-2. MCP server running (`start_mcp_server.ps1`)
-3. `quality.yaml`: all 6 active gates have `parsing_strategy` declared
-4. Baseline: 2037 tests passing
+1. Branch: `refactor/251-refactor-run-quality-gates`
+2. Commit: `89e53559` or later
+3. MCP server started with `start_mcp_server.ps1`
+4. `.st3/quality.yaml`: all active gates define `capabilities.parsing_strategy`
+5. Workspace is clean enough to isolate scenario outcomes (prefer one scenario at a time)
+6. Baseline context known:
+   - `.st3/state.json` has/has-not `quality_gates.baseline_sha` depending on scenario
+   - `.st3/state.json` has/has-not `workflow.parent_branch` depending on scenario
 
 ---
 
-## Summary
+## Summary of Refactor Behavior (what must hold true)
 
-The refactor replaced exit-code-only gate execution with a config-driven parsing pipeline.
-All 4 scope modes now resolve deterministically to a `list[str]` of `.py` paths passed to each gate.
-This plan verifies every scope mode resolves correctly **and** that gates produce structured
-`ViolationDTO` output — not truncated blobs.
-
----
-
-## Key Changes
-
-- `ExitCodeParsing` / `ParsingConfig` removed — replaced by `capabilities.parsing_strategy` in `quality.yaml`
-- `gate2_imports` and `gate3_line_length`: `json_violations` (ruff `--output-format=json`)
-- `gate4_types` (mypy): `text_violations` with named-group regex
-- `gate4_pyright`: `json_violations` via `generalDiagnostics` path
-- `scope=files` arm in `_resolve_scope` — no more `ValueError`
-- `_get_skip_reason` inlined and removed
+- Gate parsing is config-driven via `capabilities.parsing_strategy`.
+- `scope` always resolves to `list[str]` before gate execution.
+- `scope="files"` is explicit, validated input: no implicit fallback.
+- Violations are surfaced as structured entries in `gates[].issues[]`.
+- Exit-code fallback blobs (`"Gate failed with exit code ..."`) are not expected for active gates.
 
 ---
 
 ## Scope Behavior Reference
 
-| Scope | What the tool actually does | Files passed to gates |
-|-------|-----------------------------|-----------------------|
-| `auto` *(default)* | Reads `quality_gates.baseline_sha` from `.st3/state.json`. Runs `git diff <baseline_sha>..HEAD --name-only`, keeps `.py` files. Takes union with `quality_gates.failed_files` from state. **Fallback:** if no `baseline_sha` in state, falls back to `project` scope. | `diff_files ∪ failed_files` (or full project glob) |
-| `branch` | Reads `workflow.parent_branch` from `.st3/state.json` (fallback: `"main"`). Runs `git diff <parent_branch>..HEAD --name-only`, keeps `.py` files. | `.py` files changed since parent branch |
-| `project` | Expands `project_scope.include_globs` from `quality.yaml` against workspace root using `Path.glob`. Sorted, deduplicated. | All matched `.py` files in workspace |
-| `files` | Returns the caller-supplied list **verbatim** — no git, no glob expansion. Empty list or missing `files` raises `ValidationError` at input level. | Exactly the paths supplied (no expansion) |
+| Scope | Resolution behavior | Files passed to gates |
+|-------|---------------------|-----------------------|
+| `auto` *(default)* | Uses `quality_gates.baseline_sha` from `.st3/state.json`; resolves `git diff <baseline_sha>..HEAD` `.py` + union with `quality_gates.failed_files`; if no baseline -> fallback to `project` | `diff_files ∪ failed_files` or project glob result |
+| `branch` | Uses `workflow.parent_branch` from state; fallback `"main"`; resolves `.py` changes from `git diff <parent>..HEAD` | changed `.py` files |
+| `project` | Expands `project_scope.include_globs` from `.st3/quality.yaml`; dedupe + sort | matched project files |
+| `files` | Uses caller-supplied list verbatim; no git/glob expansion; missing/empty `files` rejected by validation | exactly provided paths |
+
+---
+
+## Execution Protocol (strict order)
+
+1. Capture test metadata (`date`, `tester`, `commit`, server session info).
+2. Run response-shape smoke check (`run_quality_gates()` default) and confirm content ordering.
+3. Execute scenarios in this order: `A*` -> `B*` -> `P*` -> `F*`.
+4. After each scenario, store one evidence block (request, response summary, gate evidence, verdict).
+5. If scenario outcome is ambiguous, rerun once; if still ambiguous, mark **BLOCKED** with reason.
+
+---
+
+## Evidence Format (required per scenario)
+
+For every scenario row, capture:
+- **Request:** exact MCP call payload
+- **Summary:** `overall_pass`, summary line text, passed/failed/skipped counts
+- **Gate proof:** affected gate id + minimal issue sample (`file`, `line`, `rule`, `message`, `fixable` if available)
+- **Fallback check:** confirm no active gate returns `Gate failed with exit code`
+- **Verdict:** PASS / FAIL / BLOCKED with 1-line rationale
 
 ---
 
@@ -68,36 +88,37 @@ This plan verifies every scope mode resolves correctly **and** that gates produc
 
 ### scope=auto
 
-- [ ] A1-pass: `baseline_sha` present, only clean files in diff → `overall_pass=true`
-- [ ] A1-fail: `baseline_sha` present, diff includes a file with ruff violations → gate1 issues populated
-- [ ] A2: no `baseline_sha` in state → falls back to project scope, all project files checked
+- [ ] A1-pass: `baseline_sha` present, diff clean -> `overall_pass=true`
+- [ ] A1-fail: `baseline_sha` present, diff has violation -> relevant gate `issues[]` populated
+- [ ] A2: no `baseline_sha` -> fallback to `project` behavior
 
 ### scope=branch
 
-- [ ] B1-pass: diff against parent branch contains only clean `.py` files → `overall_pass=true`
-- [ ] B2-fail: diff includes a file with type errors → gate4_types issues populated
-- [ ] B3: no `parent_branch` in state → defaults to `"main"`, tool runs without error
+- [ ] B1-pass: parent diff clean -> `overall_pass=true`
+- [ ] B2-fail: parent diff has type error -> `gate4_types` structured issues
+- [ ] B3: no `parent_branch` -> fallback to `main`, run succeeds
 
 ### scope=project
 
-- [ ] P1-pass: all matched project files are clean → `overall_pass=true`, 6 gate entries
-- [ ] P2-fail: project contains a file with line-length violations → gate3 issues show `rule=E501`
+- [ ] P1-pass: project clean -> `overall_pass=true`, 6 gate entries
+- [ ] P2-fail: E501 present -> `gate3` issues include `rule=E501`
 
 ### scope=files
 
-- [ ] F1: single clean file → `overall_pass=true`, issues=[]
-- [ ] F2: single failing file (ruff format) → gate0 issues non-empty, `file/rule/message` populated
-- [ ] F3: multiple files, all clean → `overall_pass=true`
-- [ ] F4: multiple files, one failing (lint) → only the failing file appears in gate1 issues
-- [ ] F5: single directory path → tool accepts it, gates receive the dir path verbatim; observe behavior
-- [ ] F6: multiple directory paths → same as F5, both dirs forwarded to all gates
-- [ ] F7: `files` not provided with `scope="files"` → `ValidationError` at input level (never reaches gates)
+- [ ] F1: single clean file -> `overall_pass=true`
+- [ ] F2: single format-failing file -> `gate0` issues non-empty (`rule=FORMAT`)
+- [ ] F3: multiple clean files -> `overall_pass=true`
+- [ ] F4: multiple files one lint-fail -> failing file only in gate1 issues
+- [ ] F5: single directory path -> accepted and forwarded verbatim
+- [ ] F6: multiple directory paths -> both forwarded verbatim
+- [ ] F7: missing `files` with `scope="files"` -> validation error pre-execution
 
-### Response shape (all scopes)
+### response shape & contract (all scopes)
 
-- [ ] `content[0]` type=`text` (summary line)
-- [ ] `content[1]` type=`json` (full payload with `gates` list)
-- [ ] F12 guard: no `_get_skip_reason` reference anywhere in response
+- [ ] `content[0]` is `type="text"` summary
+- [ ] `content[1]` is `type="json"` payload with `gates`
+- [ ] each gate entry has stable minimal shape: `id`, `passed`, `skipped`, `violations`
+- [ ] no `_get_skip_reason` reference in user-visible response artifacts
 
 ---
 
@@ -105,93 +126,100 @@ This plan verifies every scope mode resolves correctly **and** that gates produc
 
 ### scope=auto (default)
 
-| # | Scenario | Call | Behavior | Expected | Result |
-|---|----------|------|----------|----------|--------|
-| A1-pass | Baseline present, diff is clean | `run_quality_gates()` | diffs `<baseline_sha>..HEAD`, finds only clean files | `overall_pass=true`, all gates pass or skip | |
-| A1-fail | Baseline present, diff has violation | `run_quality_gates()` *(with a dirty .py in diff)* | same diff, dirty file included | gate for that violation type shows issues | |
-| A2 | No baseline_sha in state | `run_quality_gates()` *(state has no baseline_sha)* | falls back to project scope; expands include_globs | behaves identically to `scope="project"` | |
+| # | Scenario | Call | Expected |
+|---|----------|------|----------|
+| A1-pass | Baseline present, diff clean | `run_quality_gates()` | pass or skip-only outcomes; no structured failures |
+| A1-fail | Baseline present, diff dirty | `run_quality_gates()` | failing gate has structured issue entries |
+| A2 | No baseline in state | `run_quality_gates()` | behavior equivalent to `scope="project"` |
 
 ### scope=branch
 
-| # | Scenario | Call | Behavior | Expected | Result |
-|---|----------|------|----------|----------|--------|
-| B1-pass | Parent branch in state, diff is clean | `run_quality_gates(scope="branch")` | `git diff <parent>..HEAD`, clean `.py` files only | `overall_pass=true` | |
-| B2-fail | Diff contains type-error file | `run_quality_gates(scope="branch")` *(with mypy-failing file in diff)* | same diff, includes bad file | gate4_types issues: `file/line/severity/rule` populated | |
-| B3 | No parent_branch in state | `run_quality_gates(scope="branch")` *(state has no parent_branch)* | defaults to `"main"`, `git diff main..HEAD` | runs without error, result depends on diff vs main | |
+| # | Scenario | Call | Expected |
+|---|----------|------|----------|
+| B1-pass | Parent diff clean | `run_quality_gates(scope="branch")` | `overall_pass=true` |
+| B2-fail | Parent diff has type errors | `run_quality_gates(scope="branch")` | `gate4_types` issues include `file/line/severity/rule` |
+| B3 | No parent in state | `run_quality_gates(scope="branch")` | defaults to `main`, executes without crash |
 
 ### scope=project
 
-| # | Scenario | Call | Behavior | Expected | Result |
-|---|----------|------|----------|----------|--------|
-| P1-pass | Workspace files all clean | `run_quality_gates(scope="project")` | expands `include_globs` from `quality.yaml`, runs all 6 gates | `overall_pass=true`, 6 gate entries | |
-| P2-fail | Workspace has E501 file | `run_quality_gates(scope="project")` *(with long-line file present)* | same expansion, gate3 hits the file | gate3 issues: `rule=E501`, `line`, `col` populated | |
+| # | Scenario | Call | Expected |
+|---|----------|------|----------|
+| P1-pass | Project clean | `run_quality_gates(scope="project")` | 6 gate results; pass/skip only |
+| P2-fail | Long line present | `run_quality_gates(scope="project")` | `gate3` includes `E501` violation entries |
 
 ### scope=files — single/multiple files
 
-| # | Scenario | Call | Behavior | Expected | Result |
-|---|----------|------|----------|----------|--------|
-| F1 | Single clean file | `run_quality_gates(scope="files", files=["script.py"])` | passes `["script.py"]` verbatim to all gates | `overall_pass=true`, issues=[] for all gates | |
-| F2 | Single file with format violation | `run_quality_gates(scope="files", files=["<dirty_fmt.py>"])` | verbatim path, ruff format runs on it | gate0 issues non-empty, `file/rule=FORMAT/message` | |
-| F3 | Multiple files, all clean | `run_quality_gates(scope="files", files=["script.py", "backend/__init__.py"])` | both paths forwarded to all gates | `overall_pass=true` | |
-| F4 | Multiple files, one fails lint | `run_quality_gates(scope="files", files=["script.py", "<lint_fail.py>"])` | both paths forwarded; only failing file triggers violation | gate1 issues reference only `<lint_fail.py>`, not `script.py` | |
+| # | Scenario | Call | Expected |
+|---|----------|------|----------|
+| F1 | One clean file | `run_quality_gates(scope="files", files=["script.py"])` | pass/skip only |
+| F2 | One format-fail file | `run_quality_gates(scope="files", files=["<dirty_fmt.py>"])` | `gate0` structured violations, not blob |
+| F3 | Multiple clean files | `run_quality_gates(scope="files", files=["script.py", "backend/__init__.py"])` | pass/skip only |
+| F4 | Mixed files (one lint fail) | `run_quality_gates(scope="files", files=["script.py", "<lint_fail.py>"])` | lint issue references failing file only |
 
 ### scope=files — directories
 
-| # | Scenario | Call | Behavior | Expected | Result |
-|---|----------|------|----------|----------|--------|
-| F5 | Single directory | `run_quality_gates(scope="files", files=["backend/"])` | `"backend/"` passed verbatim to gates (no Python glob expansion in `_resolve_scope`) | observe: do gates accept dir path? does ruff recurse into it? | |
-| F6 | Multiple directories | `run_quality_gates(scope="files", files=["backend/", "mcp_server/"])` | both dir paths forwarded verbatim | same as F5, two dirs; note any skip_reason or error per gate | |
+| # | Scenario | Call | Expected |
+|---|----------|------|----------|
+| F5 | Single dir | `run_quality_gates(scope="files", files=["backend/"])` | accepted; path forwarded verbatim |
+| F6 | Multiple dirs | `run_quality_gates(scope="files", files=["backend/", "mcp_server/"])` | both forwarded; behavior documented |
 
 ### scope=files — validation errors
 
-| # | Scenario | Call | Behavior | Expected | Result |
-|---|----------|------|----------|----------|--------|
-| F7 | `scope="files"` with no `files` | `run_quality_gates(scope="files")` | pydantic validator rejects before reaching gates | `ValidationError`: files required when scope=files | |
+| # | Scenario | Call | Expected |
+|---|----------|------|----------|
+| F7 | Missing files field | `run_quality_gates(scope="files")` | input validation error (no gate run) |
 
 ---
 
-## Validation Results
-
-_To be filled in during live validation session._
+## Validation Results (to fill live)
 
 **Date:**  
 **Tester:**  
 **Commit:**  
+**Server Session:**  
 
-| # | Status | Notes |
-|---|--------|-------|
-| A1-pass | | |
-| A1-fail | | |
-| A2 | | |
-| B1-pass | | |
-| B2-fail | | |
-| B3 | | |
-| P1-pass | | |
-| P2-fail | | |
-| F1 | | |
-| F2 | | |
-| F3 | | |
-| F4 | | |
-| F5 | | |
-| F6 | | |
-| F7 | | |
+| Scenario | Status (PASS/FAIL/BLOCKED) | Evidence Ref | Notes |
+|----------|-----------------------------|--------------|-------|
+| A1-pass | | | |
+| A1-fail | | | |
+| A2 | | | |
+| B1-pass | | | |
+| B2-fail | | | |
+| B3 | | | |
+| P1-pass | | | |
+| P2-fail | | | |
+| F1 | | | |
+| F2 | | | |
+| F3 | | | |
+| F4 | | | |
+| F5 | | | |
+| F6 | | | |
+| F7 | | | |
 
 ---
 
 ## Go / No-Go Criteria
 
-**GO** (ready for PR) when:
-- All pass/fail scenarios match expected outcomes
-- `scope=files` with directories (F5/F6): behavior is documented even if gates skip or recurse
-- No gate returns unstructured `Gate failed exit=1` blob
-- `summary_line` present as first content item across all scopes
-- F12 guard confirmed: no `_get_skip_reason` in response
+**GO** when all below are true:
+- All scenarios complete with expected behavior or justified skips
+- No active gate emits unstructured `Gate failed with exit code` as primary failure signal
+- `scope=auto` fallback to project proven in A2
+- `scope=files` validation contract proven in F7
+- Response ordering and compact gate shape stable in all sampled scopes
 
-**NO-GO** if:
-- Any active gate returns unstructured blob for violations
-- `scope=auto` fallback to project silently broken (A2 fails)
-- `scope=files` verbatim pass-through raises `ValueError` instead of working
-- Pyright/mypy violations show as single-issue blob instead of per-violation list
+**NO-GO** if any of the following occurs:
+- Active gate failure is only blob-based/unstructured
+- `scope=auto` fallback path is broken or inconsistent
+- `scope=files` yields runtime `ValueError` instead of input validation
+- Mypy/Pyright failures collapse to one generic issue without per-violation fields
+
+---
+
+## Risk Notes / Common False Positives
+
+- Empty-file-set scenarios can produce skips; this is not automatically a failure.
+- `files` with directory paths depends on tool recursion behavior (ruff/mypy/pyright); document observed behavior explicitly.
+- Local env drift (tool version mismatch) can change violation counts; compare structure first, counts second.
 
 ---
 

@@ -328,6 +328,7 @@ class QAManager:
         try:
             result = subprocess.run(
                 ["git", "diff", "--name-only", f"{base_ref}..HEAD"],
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 check=False,
@@ -394,6 +395,7 @@ class QAManager:
         try:
             result = subprocess.run(
                 ["git", "diff", "--name-only", f"{base_ref}..HEAD"],
+                stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
                 check=False,

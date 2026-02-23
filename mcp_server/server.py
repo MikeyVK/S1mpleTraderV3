@@ -84,6 +84,7 @@ from mcp_server.tools.project_tools import (
     SavePlanningDeliverablesTool,
     UpdatePlanningDeliverablesTool,
 )
+from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.safe_edit_tool import SafeEditTool
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
@@ -150,7 +151,7 @@ class MCPServer:
             GitDiffTool(),
             GetParentBranchTool(),
             # Quality tools
-            RunQualityGatesTool(),
+            RunQualityGatesTool(manager=QAManager(workspace_root=Path(settings.server.workspace_root))),
             ValidationTool(),
             ValidateDTOTool(),
             SafeEditTool(),
