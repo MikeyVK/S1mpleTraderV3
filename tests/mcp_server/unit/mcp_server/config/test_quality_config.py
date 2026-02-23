@@ -608,6 +608,20 @@ class TestActiveGatesContract:
         }
         assert expected.issubset(set(config.active_gates))
 
+    def test_gate5_tests_not_in_gates_catalog(self) -> None:
+        """gate5_tests must be removed from gates catalog entirely (C30 cleanup)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        assert "gate5_tests" not in config.gates, (
+            "gate5_tests gate must be fully removed from quality.yaml gates section"
+        )
+
+    def test_gate6_coverage_not_in_gates_catalog(self) -> None:
+        """gate6_coverage must be removed from gates catalog entirely (C30 cleanup)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        assert "gate6_coverage" not in config.gates, (
+            "gate6_coverage gate must be fully removed from quality.yaml gates section"
+        )
+
 
 class TestProjectScopeField:
     """Tests for project_scope field on QualityConfig (Issue #251 C3).
