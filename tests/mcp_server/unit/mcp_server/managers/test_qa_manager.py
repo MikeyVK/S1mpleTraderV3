@@ -542,6 +542,18 @@ class TestRuffGateExecution:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
+                    "parsing_strategy": "json_violations",
+                    "json_violations": {
+                        "violations_path": None,
+                        "field_map": {
+                            "file": "filename",
+                            "line": "location/row",
+                            "col": "location/column",
+                            "rule": "code",
+                            "message": "message",
+                        },
+                        "fixable_when": "fix/applicability",
+                    },
                 },
             }
         )
@@ -570,6 +582,18 @@ class TestRuffGateExecution:
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
+                    "parsing_strategy": "json_violations",
+                    "json_violations": {
+                        "violations_path": None,
+                        "field_map": {
+                            "file": "filename",
+                            "line": "location/row",
+                            "col": "location/column",
+                            "rule": "code",
+                            "message": "message",
+                        },
+                        "fixable_when": "fix/applicability",
+                    },
                 },
             }
         )
@@ -666,10 +690,18 @@ class TestRuffGateExecution:
         self, manager: QAManager, gate3_line_length: QualityGate
     ) -> None:
         """Test hints are attached for known gate IDs (agent guidance)."""
+        violation = {
+            "filename": "test.py",
+            "location": {"row": 1, "column": 101},
+            "end_location": {"row": 1, "column": 120},
+            "code": "E501",
+            "message": "Line too long (120 > 100 characters)",
+            "fix": None,
+        }
         with patch("subprocess.run") as mock_run:
             mock_proc = MagicMock()
             mock_proc.returncode = 1
-            mock_proc.stdout = "test.py:1:1: E501 line too long"
+            mock_proc.stdout = json.dumps([violation])
             mock_proc.stderr = ""
             mock_run.return_value = mock_proc
 

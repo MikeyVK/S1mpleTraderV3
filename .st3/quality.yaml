@@ -1,8 +1,8 @@
-version: "1.0"
+version: "1.1"
 
-# Active quality gates for CI/CD enforcement
-# Updated for Issue #131: Ruff replaces Pylint for gates 1-3
-# Gate 6 added: Coverage enforcement (branch >= 90%)
+# Quality gates configuration for Issue #251
+# Scope: static analysis gates only (0-4b)
+# Tests/coverage are executed via run_tests, not via run_quality_gates
 active_gates:
   - gate0_ruff_format
   - gate1_formatting
@@ -22,7 +22,6 @@ project_scope:
     - "tests/mcp_server/**/*.py"
 
 gates:
-  # Gate 0: Formatter (Ruff)
   gate0_ruff_format:
     name: "Gate 0: Ruff Format"
     description: "Code formatting (ruff format --check)"
@@ -43,7 +42,6 @@ gates:
           rule: "FORMAT"
           message: "File requires formatting"
 
-  # Gate 1: Strict Lint (Ruff, stricter than IDE)
   gate1_formatting:
     name: "Gate 1: Ruff Strict Lint"
     description: "Strict linting (stricter than VS Code/IDE baseline)"
@@ -79,7 +77,6 @@ gates:
           message: "message"
         fixable_when: "fix/applicability"
 
-  # Gate 2: Import Placement (Ruff replaces Pylint)
   gate2_imports:
     name: "Gate 2: Imports"
     description: "Import placement (no imports outside top-level)"
@@ -102,8 +99,17 @@ gates:
     capabilities:
       file_types: [".py"]
       supports_autofix: false
+      parsing_strategy: "json_violations"
+      json_violations:
+        violations_path: null
+        field_map:
+          file: "filename"
+          line: "location/row"
+          col: "location/column"
+          rule: "code"
+          message: "message"
+        fixable_when: "fix/applicability"
 
-  # Gate 3: Line Length (Ruff replaces Pylint)
   gate3_line_length:
     name: "Gate 3: Line Length"
     description: "Line length (max 100 characters)"
@@ -127,8 +133,17 @@ gates:
     capabilities:
       file_types: [".py"]
       supports_autofix: false
+      parsing_strategy: "json_violations"
+      json_violations:
+        violations_path: null
+        field_map:
+          file: "filename"
+          line: "location/row"
+          col: "location/column"
+          rule: "code"
+          message: "message"
+        fixable_when: "fix/applicability"
 
-  # Gate 4: Type Checking (Mypy strict for DTOs only)
   gate4_types:
     name: "Gate 4: Types"
     description: "Type checking (strict mode for DTOs)"
@@ -141,12 +156,17 @@ gates:
     capabilities:
       file_types: [".py"]
       supports_autofix: false
+      parsing_strategy: "text_violations"
+      text_violations:
+        pattern: '^(?P<file>[^:]+):(?P<line>\d+): (?P<severity>error|warning|note): (?P<message>.+?)(?:\s+\[(?P<rule>[^\]]+)\])?$'
+        severity_default: "error"
+        defaults: {}
     scope:
       include_globs:
         - "backend/dtos/**/*.py"
       exclude_globs:
         - "tests/**/*.py"
-  # Gate 4b: Type Checking (Pyright)
+
   gate4_pyright:
     name: "Gate 4b: Pyright"
     description: "Type checking (Pyright strict; warnings fail)"
@@ -185,76 +205,3 @@ gates:
           rule: "rule"
           severity: "severity"
         line_offset: 1
-
-  # === LEGACY GATES (Deprecated - kept for reference) ===
-
-  ruff:
-    name: "Ruff"
-    description: "Fast linter"
-    execution:
-      command: ["ruff", "check"]
-      timeout_seconds: 60
-      working_dir: null
-    success:
-      exit_codes_ok: [0]
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: true
-
-  black:
-    name: "Black"
-    description: "Python formatting (check mode)"
-    execution:
-      command: ["black", "--check", "."]
-      timeout_seconds: 60
-      working_dir: null
-    success:
-      exit_codes_ok: [0]
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: true
-
-  mypy:
-    name: "Type Checking"
-    description: "Static type checking"
-    execution:
-      command: ["python", "-m", "mypy", "--strict", "--no-error-summary"]
-      timeout_seconds: 60
-      working_dir: null
-    success:
-      exit_codes_ok: [0]
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: false
-    scope:
-      include_globs:
-        - "backend/**/*.py"
-        - "mcp_server/**/*.py"
-      exclude_globs:
-        - "tests/**/*.py"
-
-  pytest:
-    name: "Pytest"
-    description: "Unit tests"
-    execution:
-      command: ["pytest", "tests/"]
-      timeout_seconds: 300
-      working_dir: null
-    success:
-      exit_codes_ok: [0]
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: false
-
-  bandit:
-    name: "Bandit"
-    description: "Python security linting"
-    execution:
-      command: ["bandit", "-r", "."]
-      timeout_seconds: 120
-      working_dir: null
-    success:
-      exit_codes_ok: [0]
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: false

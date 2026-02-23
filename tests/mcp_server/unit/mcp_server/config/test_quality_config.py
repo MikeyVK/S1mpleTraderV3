@@ -582,12 +582,15 @@ class TestProducesJsonRemoved:
 
 
 class TestParsingStrategyMigration:
-    """C31: quality.yaml parsing-strategy migration — no compatibility shim.
+    """C31/F2: quality.yaml parsing-strategy migration — all active gates covered.
 
-    After migration:
-    - gate4_pyright uses capabilities.parsing_strategy='json_violations' (no legacy parsing field)
-    - gate1_formatting capabilities.parsing_strategy=="json_violations"
-    - gate0_ruff_format capabilities.parsing_strategy=="text_violations"
+    After full migration, every active gate declares a parsing_strategy:
+    - gate0_ruff_format: text_violations (diff output)
+    - gate1_formatting: json_violations (ruff JSON)
+    - gate2_imports: json_violations (ruff JSON)
+    - gate3_line_length: json_violations (ruff JSON)
+    - gate4_types: text_violations (mypy text output)
+    - gate4_pyright: json_violations (pyright JSON)
     """
 
     def test_gate4_pyright_uses_json_violations_capability(self) -> None:
@@ -619,3 +622,42 @@ class TestParsingStrategyMigration:
         )
         assert gate.capabilities.text_violations is not None
         assert gate.capabilities.text_violations.pattern != ""
+
+    def test_gate2_imports_has_json_violations_capability(self) -> None:
+        """gate2_imports must declare json_violations in capabilities (F2: uniform coverage)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        gate = config.gates["gate2_imports"]
+        assert gate.capabilities.parsing_strategy == "json_violations", (
+            f"gate2_imports should use json_violations, got '{gate.capabilities.parsing_strategy}'"
+        )
+        assert gate.capabilities.json_violations is not None
+        assert "file" in gate.capabilities.json_violations.field_map
+
+    def test_gate3_line_length_has_json_violations_capability(self) -> None:
+        """gate3_line_length must declare json_violations in capabilities (F2: uniform coverage)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        gate = config.gates["gate3_line_length"]
+        assert gate.capabilities.parsing_strategy == "json_violations", (
+            f"gate3_line_length should use json_violations, "
+            f"got '{gate.capabilities.parsing_strategy}'"
+        )
+        assert gate.capabilities.json_violations is not None
+
+    def test_gate4_types_has_text_violations_capability(self) -> None:
+        """gate4_types must declare text_violations in capabilities (mypy text output)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        gate = config.gates["gate4_types"]
+        assert gate.capabilities.parsing_strategy == "text_violations", (
+            f"gate4_types should use text_violations, got '{gate.capabilities.parsing_strategy}'"
+        )
+        assert gate.capabilities.text_violations is not None
+        assert gate.capabilities.text_violations.pattern != ""
+
+    def test_all_active_gates_have_parsing_strategy(self) -> None:
+        """Every active gate must have a non-None parsing_strategy (F2: full coverage)."""
+        config = QualityConfig.load(Path(".st3/quality.yaml"))
+        for gate_id in config.active_gates:
+            gate = config.gates[gate_id]
+            assert gate.capabilities.parsing_strategy is not None, (
+                f"{gate_id} has no parsing_strategy declared; all active gates must have one"
+            )
