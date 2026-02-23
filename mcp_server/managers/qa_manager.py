@@ -52,12 +52,14 @@ class QAManager:
     QA_LOG_ENABLED = True
     QA_LOG_MAX_FILES = DEFAULT_ARTIFACT_LOG_MAX_FILES
 
-    def __init__(self) -> None:
+    def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize QA Manager with default runtime configuration."""
         # Runtime configuration (lowercase for instance mutability)
         self.qa_log_dir = self.QA_LOG_DIR
         self.qa_log_enabled = self.QA_LOG_ENABLED
         self.qa_log_max_files = self.QA_LOG_MAX_FILES
+        # Optional workspace root: used for baseline state persistence in .st3/state.json
+        self.workspace_root = workspace_root
 
     def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
         """Run configured quality gates on specified files.
@@ -183,6 +185,10 @@ class QAManager:
         timings["total"] = sum(timings.values())
         results["timings"] = timings
 
+        # Persist baseline state: advance SHA on all-pass, accumulate failed_files on failure.
+        if results["overall_pass"]:
+            self._advance_baseline_on_all_pass()
+
         return results
 
     def _update_summary_and_append_gate(
@@ -213,6 +219,62 @@ class QAManager:
             issues = gate_result.get("issues", [])
             results["summary"]["total_violations"] += len(issues)
             results["summary"]["auto_fixable"] += sum(1 for issue in issues if issue.get("fixable"))
+
+    # ------------------------------------------------------------------
+    # Baseline state management
+    # ------------------------------------------------------------------
+
+    def _advance_baseline_on_all_pass(self) -> None:
+        """Persist current HEAD as baseline_sha and reset failed_files on all-pass run.
+
+        Only executed when workspace_root is set. Reads/writes .st3/state.json in-place,
+        touching only the quality_gates sub-key to avoid overwriting workflow phase data.
+        """
+        if self.workspace_root is None:
+            return
+
+        head_sha = self._get_head_sha()
+        if head_sha is None:
+            return
+
+        state_path = self.workspace_root / ".st3" / "state.json"
+        state_data = self._load_state_json(state_path)
+        state_data["quality_gates"] = {
+            "baseline_sha": head_sha,
+            "failed_files": [],
+        }
+        self._save_state_json(state_path, state_data)
+
+    def _get_head_sha(self) -> str | None:
+        """Return the current git HEAD commit SHA, or None on error."""
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except OSError:
+            pass
+        return None
+
+    @staticmethod
+    def _load_state_json(state_path: Path) -> dict[str, Any]:
+        """Read state.json from disk, returning empty dict when absent or malformed."""
+        if not state_path.exists():
+            return {}
+        try:
+            return dict(json.loads(state_path.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    @staticmethod
+    def _save_state_json(state_path: Path, data: dict[str, Any]) -> None:
+        """Atomically write data to state.json (creates parent dirs if needed)."""
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     def check_health(self) -> bool:
         """Check if QA tools are available."""
