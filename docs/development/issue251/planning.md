@@ -1,10 +1,10 @@
 <!-- docs\development\issue251\planning.md -->
-<!-- template=planning version=130ac5ea created=2026-02-22T20:21Z updated=2026-02-22T21:05Z -->
+<!-- template=planning version=130ac5ea created=2026-02-22T20:21Z updated=2026-02-23T00:00Z -->
 # Issue #251: Refactor run_quality_gates — Scope-Driven Architecture, Config-Driven Parsing, ViolationDTO
 
 **Status:** DRAFT  
-**Version:** 1.2  
-**Last Updated:** 2026-02-22
+**Version:** 1.3  
+**Last Updated:** 2026-02-23
 
 ---
 
@@ -34,7 +34,7 @@ Define a design-ready, atomic TDD plan for Issue #251 that fully aligns with res
 
 1. Research document complete: [research.md](research.md) v1.6
 2. Current workflow phase is `planning`
-3. Design decisions are locked (no backward compatibility for removed API)
+3. Design decisions are locked (`scope="files"` migrates legacy files API; no bare `files` parameter)
 
 ---
 
@@ -42,7 +42,7 @@ Define a design-ready, atomic TDD plan for Issue #251 that fully aligns with res
 
 This plan refactors `run_quality_gates` into a scope-driven and config-driven architecture:
 - Remove Gate 5/6 (pytest/coverage) from quality gates and keep tests in `run_tests`
-- Replace `files` API with `scope: auto|branch|project`
+- Migrate `files` API to `scope="files"` with conditional companion field; add `auto|branch|project` as auto-resolved scopes
 - Replace tool-specific parsing with strategy-based `json_violations` and `text_violations`
 - Standardize violations through `ViolationDTO`
 - Introduce baseline state machine (`baseline_sha`, `failed_files`) for `auto` scope
@@ -500,17 +500,17 @@ Use whatever concrete types the existing ToolResult/content pattern requires; th
 
 ### Cluster F — Tool API and Follow-up
 
-### Cycle 28: Replace files API with scope API in RunQualityGatesTool
+### Cycle 28: Migrate files API to scope="files" in RunQualityGatesTool
 
-**Goal:** Public tool signature becomes `scope: Literal["auto", "branch", "project"] = "auto"`.
+**Goal:** Public tool signature gains `scope: Literal["auto", "branch", "project", "files"] = "auto"` and an optional `files: list[str] | None` field. A model validator enforces that `files` is required when `scope="files"` and forbidden otherwise.
 
-**RED:** Old files-based API tests fail.
+**RED:** Tests assert that `scope="files"` without `files` raises `ValidationError`, that `scope="auto"` with `files` raises `ValidationError`, and that `execute(scope="files", files=[...])` routes through `_resolve_scope`.
 
-**GREEN:** Update tool signature and internal call flow.
+**GREEN:** Add `scope="files"` to the Literal, add the `files` field, implement the model validator, add the `files` dispatch arm in `_resolve_scope`, update `execute()` to pass `files` through.
 
-**REFACTOR:** Update tool schema/docs used by MCP routing.
+**REFACTOR:** Update tool description to document the four scope values and the conditionality of `files`.
 
-**Exit Criteria:** Scope API works; files API no longer accepted.
+**Exit Criteria:** All four scope values are accepted; `files` field enforces its constraints; old bare-`files` API is rejected; `scope="files"` routes resolved files to `run_quality_gates` unchanged.
 
 ---
 
@@ -572,7 +572,7 @@ Use whatever concrete types the existing ToolResult/content pattern requires; th
 Design is ready for implementation only when all criteria are true:
 
 1. **Scope Contract Finalized**
-   - Public API is `scope` only (`auto|branch|project`), no `files` parameter.
+   - Public API is `scope: auto|branch|project|files`; `files: list[str] | None` is optional, required iff `scope="files"`, forbidden otherwise.
    - Scope resolution semantics are fixed for baseline-present and baseline-missing scenarios.
 
 2. **Violation Contract Finalized**
@@ -600,7 +600,7 @@ Design is ready for implementation only when all criteria are true:
 | F1 | Remove pytest/coverage from quality gates | C0, C30 |
 | F2 | Parse format violations via text strategy with actionable message | C5, C6, C11, C12, C31 |
 | F3 | Exactly two content items; summary then json | C25, C26, C27 |
-| F4 | Remove files mode; use scope-driven flow | C18, C28 |
+| F4 | Migrate files mode to `scope="files"`; use scope-driven flow for all modes | C18, C28 |
 | F5 | Add deterministic summary_line first | C25, C27, C29 |
 | F6 | Scope selected by explicit enum | C21, C22, C23, C24, C28 |
 | F7 | Re-run narrowed by baseline diff ∪ failed_files | C19, C20, C23, C24 |
@@ -655,3 +655,4 @@ Design is ready for implementation only when all criteria are true:
 | 1.0 | 2026-02-22 | Agent | Initial planning draft |
 | 1.1 | 2026-02-22 | Agent | English rewrite; dependency order fixed; oversized cycles split; ToolResult contract normalized; Design Exit Criteria + Traceability Matrix added |
 | 1.2 | 2026-02-22 | Agent | Add C0 (quality.yaml pre-flight); neutral C27 contract; C29 contract-change annotation; TDD Execution Rules; dependency graph + milestones + traceability updated |
+| 1.3 | 2026-02-23 | Agent | C28 herschreven: `scope="files"` als vierde waarde; conditioneel `files` veld met model validator; Summary, Prerequisites, Design Exit Criteria, Traceability F4 bijgewerkt (research v1.9) |
