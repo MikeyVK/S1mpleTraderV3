@@ -314,7 +314,31 @@ class QAManager:
         """
         if scope == "project":
             return self._resolve_project_scope()
+        if scope == "branch":
+            return self._resolve_branch_scope()
         return []
+
+    def _resolve_branch_scope(self) -> list[str]:
+        """Return Python files changed since parent commit via git diff HEAD~1..HEAD.
+
+        Returns:
+            Sorted list of ``.py`` file paths (relative POSIX). Empty list on error
+            or when the diff is empty.
+        """
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", "HEAD~1..HEAD"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                return []
+
+            lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            return sorted(line for line in lines if line.endswith(".py"))
+        except OSError:
+            return []
 
     def _resolve_project_scope(self) -> list[str]:
         """Expand project_scope.include_globs against workspace_root.
