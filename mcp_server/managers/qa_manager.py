@@ -300,11 +300,23 @@ class QAManager:
 
         Args:
             scope: One of ``"project"``, ``"branch"``, or ``"auto"``.
+                ``"files"`` is intentionally not handled here — it is dispatched
+                by the caller (``RunQualityGatesTool.execute``) before invoking
+                this method.
 
         Returns:
             Sorted list of relative paths (POSIX separators) for the given scope.
             Returns ``[]`` gracefully when workspace_root is absent or config is missing.
+
+        Raises:
+            ValueError: When ``scope="files"`` is passed, which must be dispatched
+                by the caller before calling this method.
         """
+        if scope == "files":
+            raise ValueError(
+                "scope='files' must be dispatched by the caller; "
+                "pass explicit files directly to run_quality_gates()"
+            )
         if scope == "project":
             return self._resolve_project_scope()
         if scope == "branch":
@@ -487,13 +499,6 @@ class QAManager:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            subprocess.run(
-                [sys.executable, "-m", "pytest", "--version"],
-                check=False,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-
             return True
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
@@ -1075,33 +1080,3 @@ class QAManager:
                 )
             )
         return result
-
-    def _extract_json_fields(self, output: str, gate: QualityGate) -> dict[str, object]:
-        """Extract named fields from JSON output using configured pointers.
-
-        Uses the ``fields`` mapping from ``JsonFieldParsing`` config to resolve
-        each named field via its JSON Pointer path.
-
-        Args:
-            output: Raw JSON string from tool output.
-            gate: Gate config; only ``json_field`` parsing has ``fields``.
-
-        Returns:
-            Dict of field_name → resolved_value. Empty if parsing fails or
-            no ``fields`` configured.
-        """
-        fields_config: dict[str, str] = getattr(gate.parsing, "fields", {})
-        if not fields_config:
-            return {}
-
-        try:
-            data = json.loads(output)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            return {}
-
-        extracted: dict[str, object] = {}
-        for field_name, pointer in fields_config.items():
-            value = self._resolve_json_pointer(data, pointer)
-            if value is not None:
-                extracted[field_name] = value
-        return extracted

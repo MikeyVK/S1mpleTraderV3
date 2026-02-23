@@ -3,9 +3,8 @@
 Scope:
 - YAML loading (valid YAML, missing file, invalid YAML)
 - Schema validation (required fields, forbidden extra fields)
-- Strategy validation (parsing strategy discriminated union)
-- Success validation (`success.mode` must match `parsing.strategy`)
-- JSON Pointer validation (RFC 6901-style basic constraints)
+- Strategy validation (only exit_code strategy accepted)
+- Success validation (`success.mode` must be 'exit_code')
 - Active gates (config-driven gate selection)
 
 Quality Requirements:
@@ -32,72 +31,31 @@ from mcp_server.config.quality_config import (
 
 @pytest.fixture(name="quality_yaml_path")
 def fixture_quality_yaml_path(tmp_path: Path) -> Path:
-    """Create a valid quality.yaml fixture."""
+    """Create a valid quality.yaml fixture with exit_code gates only."""
     config_data = {
         "version": "1.0",
         "gates": {
-            "pylint": {
-                "name": "Pylint",
-                "description": "Python linting",
+            "linter": {
+                "name": "Linter",
+                "description": "Static analysis",
                 "execution": {
-                    "command": ["python", "-m", "pylint"],
+                    "command": ["tool", "check"],
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {
-                    "strategy": "text_regex",
-                    "patterns": [
-                        {
-                            "name": "rating",
-                            "regex": "Your code has been rated at ([\\d.]+)/10",
-                            "flags": ["MULTILINE"],
-                            "group": 1,
-                            "required": True,
-                        }
-                    ],
-                },
-                "success": {
-                    "mode": "text_regex",
-                    "min_score": 10.0,
-                    "require_no_issues": True,
-                },
+                "parsing": {"strategy": "exit_code"},
+                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
                 },
             },
-            "pyright": {
-                "name": "Pyright",
-                "description": "Type checking",
+            "formatter": {
+                "name": "Formatter",
+                "description": "Code formatter",
                 "execution": {
-                    "command": ["pyright", "--outputjson"],
-                    "timeout_seconds": 120,
-                    "working_dir": None,
-                },
-                "parsing": {
-                    "strategy": "json_field",
-                    "fields": {
-                        "diagnostics": "/generalDiagnostics",
-                        "error_count": "/summary/errorCount",
-                    },
-                    "diagnostics_path": "/generalDiagnostics",
-                },
-                "success": {
-                    "mode": "json_field",
-                    "max_errors": 0,
-                    "require_no_issues": True,
-                },
-                "capabilities": {
-                    "file_types": [".py"],
-                    "supports_autofix": False,
-                },
-            },
-            "ruff": {
-                "name": "Ruff",
-                "description": "Fast linter",
-                "execution": {
-                    "command": ["ruff", "check"],
-                    "timeout_seconds": 60,
+                    "command": ["fmt", "--check"],
+                    "timeout_seconds": 30,
                     "working_dir": None,
                 },
                 "parsing": {"strategy": "exit_code"},
@@ -133,7 +91,7 @@ class TestQualityConfigLoading:
         config = QualityConfig.load(quality_yaml_path)
         assert isinstance(config, QualityConfig)
         assert config.version == "1.0"
-        assert set(config.gates) == {"pylint", "pyright", "ruff"}
+        assert set(config.gates) == {"linter", "formatter"}
 
     def test_load_missing_file(self, tmp_path: Path) -> None:
         """Raises FileNotFoundError for missing file."""
@@ -182,7 +140,7 @@ class TestQualityConfigValidation:
         assert "extra" in error_text or "forbidden" in error_text
 
     def test_success_mode_must_match_parsing_strategy(self) -> None:
-        """Reject success.mode != parsing.strategy."""
+        """Reject success.mode values other than 'exit_code' (only valid mode)."""
         with pytest.raises(ValidationError):
             QualityConfig.model_validate(
                 {
@@ -207,69 +165,6 @@ class TestQualityConfigValidation:
                 }
             )
 
-    def test_json_pointer_must_start_with_slash(self) -> None:
-        """Reject JSON fields that are not JSON Pointers."""
-        with pytest.raises(ValidationError):
-            QualityConfig.model_validate(
-                {
-                    "version": "1.0",
-                    "gates": {
-                        "pyright": {
-                            "name": "Pyright",
-                            "description": "",
-                            "execution": {
-                                "command": ["pyright", "--outputjson"],
-                                "timeout_seconds": 1,
-                                "working_dir": None,
-                            },
-                            "parsing": {
-                                "strategy": "json_field",
-                                "fields": {"diagnostics": "generalDiagnostics"},
-                            },
-                            "success": {"mode": "json_field", "max_errors": 0},
-                            "capabilities": {
-                                "file_types": [".py"],
-                                "supports_autofix": False,
-                            },
-                        }
-                    },
-                }
-            )
-
-    def test_regex_flags_are_validated(self) -> None:
-        """Reject unsupported regex flags."""
-        with pytest.raises(ValidationError):
-            QualityConfig.model_validate(
-                {
-                    "version": "1.0",
-                    "gates": {
-                        "pylint": {
-                            "name": "Pylint",
-                            "description": "",
-                            "execution": {
-                                "command": ["python", "-m", "pylint"],
-                                "timeout_seconds": 1,
-                                "working_dir": None,
-                            },
-                            "parsing": {
-                                "strategy": "text_regex",
-                                "patterns": [
-                                    {
-                                        "name": "rating",
-                                        "regex": "x",
-                                        "flags": ["NOT_A_FLAG"],
-                                    }
-                                ],
-                            },
-                            "success": {"mode": "text_regex", "min_score": 0.0},
-                            "capabilities": {
-                                "file_types": [".py"],
-                                "supports_autofix": False,
-                            },
-                        }
-                    },
-                }
-            )
 
 
 class TestActiveGatesField:

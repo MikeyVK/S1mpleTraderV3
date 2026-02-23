@@ -21,3 +21,10 @@ class TestLegacyParsersRemoved:
             "_parse_json_field_issues still exists; issue parsing now routes via "
             "capabilities.parsing_strategy in _execute_gate"
         )
+
+    def test_extract_json_fields_is_removed(self) -> None:
+        """_extract_json_fields must no longer exist on QAManager."""
+        assert not hasattr(QAManager, "_extract_json_fields"), (
+            "_extract_json_fields still exists; json_field parsing strategy "
+            "has been removed — use capabilities.parsing_strategy instead"
+        )

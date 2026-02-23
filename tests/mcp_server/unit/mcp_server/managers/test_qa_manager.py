@@ -49,7 +49,7 @@ class TestQAManager:
         with patch("subprocess.run") as mock_run:
             mock_run.return_value.returncode = 0
             assert manager.check_health() is True
-            assert mock_run.call_count == 4  # ruff, mypy, pyright, pytest
+            assert mock_run.call_count == 3  # ruff, mypy, pyright
 
     @pytest.mark.asyncio
     async def test_check_health_fail(self, manager: QAManager) -> None:
@@ -1385,85 +1385,6 @@ class TestDurationAndCommandMetadata:
             # Timeout happens inside subprocess.run, so no command dict
             assert "command" not in result or result.get("command") is not None
 
-
-class TestExtractJsonFields:
-    """Test _extract_json_fields for field pointer extraction (Gap 2a)."""
-
-    @pytest.fixture
-    def manager(self) -> QAManager:
-        return QAManager()
-
-    def test_extracts_fields_via_pointers(self, manager: QAManager) -> None:
-        """Test _extract_json_fields resolves field pointers from JSON output."""
-        gate = QualityGate.model_validate(
-            {
-                "name": "FieldsGate",
-                "description": "Fields extraction",
-                "execution": {"command": ["tool"], "timeout_seconds": 60},
-                "parsing": {
-                    "strategy": "json_field",
-                    "diagnostics_path": "/generalDiagnostics",
-                    "fields": {
-                        "diagnostics": "/generalDiagnostics",
-                        "error_count": "/summary/errorCount",
-                    },
-                },
-                "success": {"mode": "json_field", "max_errors": 0},
-                "capabilities": {
-                    "file_types": [".py"],
-                    "supports_autofix": False,
-                },
-            }
-        )
-        json_output = json.dumps(
-            {
-                "generalDiagnostics": [{"message": "err1"}],
-                "summary": {"errorCount": 3},
-            }
-        )
-        fields = manager._extract_json_fields(json_output, gate)
-        assert fields["diagnostics"] == [{"message": "err1"}]
-        assert fields["error_count"] == 3
-
-    def test_empty_fields_config_returns_empty(self, manager: QAManager) -> None:
-        """Test _extract_json_fields returns {} when gate has no fields configured."""
-        gate = QualityGate.model_validate(
-            {
-                "name": "NoFieldsGate",
-                "description": "No fields",
-                "execution": {"command": ["tool"], "timeout_seconds": 60},
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
-                "capabilities": {
-                    "file_types": [".py"],
-                    "supports_autofix": False,
-                },
-            }
-        )
-        fields = manager._extract_json_fields("{}", gate)
-        assert fields == {}
-
-    def test_invalid_json_returns_empty(self, manager: QAManager) -> None:
-        """Test _extract_json_fields handles invalid JSON gracefully."""
-        gate = QualityGate.model_validate(
-            {
-                "name": "BadJsonGate",
-                "description": "Bad JSON",
-                "execution": {"command": ["tool"], "timeout_seconds": 60},
-                "parsing": {
-                    "strategy": "json_field",
-                    "diagnostics_path": "/generalDiagnostics",
-                    "fields": {"x": "/foo"},
-                },
-                "success": {"mode": "json_field"},
-                "capabilities": {
-                    "file_types": [".py"],
-                    "supports_autofix": False,
-                },
-            }
-        )
-        fields = manager._extract_json_fields("not-json", gate)
-        assert fields == {}
 
 
 class TestToolResultJsonData:

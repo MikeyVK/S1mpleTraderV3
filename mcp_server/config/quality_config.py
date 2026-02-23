@@ -15,12 +15,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Annotated, Literal, TypeAlias
+from typing import Literal, TypeAlias
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
-RegexFlag = Literal["IGNORECASE", "MULTILINE", "DOTALL"]
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 @dataclass
@@ -133,69 +131,6 @@ class ExecutionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class RegexPattern(BaseModel):
-    """Regex extraction pattern used by text-based parsers."""
-
-    name: str = Field(..., min_length=1)
-    regex: str = Field(..., min_length=1)
-    flags: list[RegexFlag] = Field(default_factory=list)
-    group: int | str | None = Field(default=None)
-    required: bool = Field(default=True)
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class TextRegexParsing(BaseModel):
-    """Parse plain text output using regex patterns."""
-
-    strategy: Literal["text_regex"]
-    patterns: list[RegexPattern] = Field(..., min_length=1)
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-def _validate_json_pointer(pointer: str) -> str:
-    """Validate a JSON Pointer string (RFC 6901).
-
-    Minimal v1 validation per design doc: allow exactly '/', or strings that start
-    with '/'. (Array segments are allowed; executor semantics are out of scope.)
-    """
-    if pointer == "/":
-        return pointer
-    if not pointer.startswith("/"):
-        raise ValueError("Invalid JSON Pointer. Must start with '/' (RFC 6901)")
-    if not pointer.strip():
-        raise ValueError("Invalid JSON Pointer. Must be non-empty")
-    return pointer
-
-
-class JsonFieldParsing(BaseModel):
-    """Parse JSON output and extract fields via JSON Pointer paths (RFC 6901)."""
-
-    strategy: Literal["json_field"]
-    fields: dict[str, str] = Field(..., min_length=1)
-    diagnostics_path: str | None = Field(default=None)
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    @field_validator("fields")
-    @classmethod
-    def validate_fields_pointers(cls, value: dict[str, str]) -> dict[str, str]:
-        """Validate JSON pointers for each named field extraction."""
-        for key, pointer in value.items():
-            if not key.strip():
-                raise ValueError("JSON field key must be non-empty")
-            _validate_json_pointer(pointer)
-        return value
-
-    @field_validator("diagnostics_path")
-    @classmethod
-    def validate_diagnostics_pointer(cls, value: str | None) -> str | None:
-        """Validate the optional diagnostics path JSON pointer."""
-        if value is None:
-            return None
-        return _validate_json_pointer(value)
-
 
 class ExitCodeParsing(BaseModel):
     """No parsing; rely on exit code only."""
@@ -205,20 +140,13 @@ class ExitCodeParsing(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-ParsingConfig: TypeAlias = Annotated[
-    TextRegexParsing | JsonFieldParsing | ExitCodeParsing,
-    Field(discriminator="strategy"),
-]
+ParsingConfig: TypeAlias = ExitCodeParsing
 
 
 class SuccessCriteria(BaseModel):
-    """Defines pass/fail criteria for a tool.
+    """Defines pass/fail criteria for a tool."""
 
-    A2: This model keeps an explicit `mode`, but it must match the parsing strategy
-    for a given gate (validated in QualityGate).
-    """
-
-    mode: Literal["text_regex", "json_field", "exit_code"]
+    mode: Literal["exit_code"]
 
     exit_codes_ok: list[int] = Field(default_factory=lambda: [0])
     max_errors: int | None = Field(default=None)
@@ -310,16 +238,6 @@ class QualityGate(BaseModel):
     scope: GateScope | None = Field(default=None)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-
-    @model_validator(mode="after")
-    def validate_success_matches_strategy(self) -> QualityGate:
-        """Enforce A2: success.mode must match parsing.strategy."""
-        if self.success.mode != self.parsing.strategy:
-            raise ValueError(
-                "success.mode must match parsing.strategy "
-                f"({self.success.mode} != {self.parsing.strategy})"
-            )
-        return self
 
 
 class ArtifactLoggingConfig(BaseModel):
