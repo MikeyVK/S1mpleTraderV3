@@ -580,12 +580,6 @@ class QAManager:
                 "prefer narrowing or tiny, code-specific ignores."
             )
 
-        elif gate_id == "gate5_tests":
-            hints.append(
-                "Re-run pytest and fix the first failing test; reduce scope by "
-                "running the failing test file only."
-            )
-
         return hints
 
     def _truncate_output_text(self, text: str) -> tuple[str, bool]:

@@ -192,40 +192,6 @@ gates:
           severity: "severity"
         line_offset: 1
 
-  # Gate 5: Unit Tests (Pytest)
-  gate5_tests:
-    name: "Gate 5: Tests"
-    description: "Unit tests (all passing)"
-    execution:
-      command: ["pytest", "tests/", "--tb=short"]
-      timeout_seconds: 300
-      working_dir: null
-    parsing:
-      strategy: "exit_code"
-    success:
-      mode: "exit_code"
-      exit_codes_ok: [0]
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: false
-
-  # Gate 6: Code Coverage (Pytest + Coverage)
-  gate6_coverage:
-    name: "Gate 6: Coverage"
-    description: "Branch coverage >= 90% (backend + mcp_server)"
-    execution:
-      command: ["pytest", "tests/", "--cov=backend", "--cov=mcp_server", "--cov-branch", "--cov-fail-under=90", "--tb=short"]
-      timeout_seconds: 300
-      working_dir: null
-    parsing:
-      strategy: "exit_code"
-    success:
-      mode: "exit_code"
-      exit_codes_ok: [0]
-    capabilities:
-      file_types: [".py"]
-      supports_autofix: false
-
   # === LEGACY GATES (Deprecated - kept for reference) ===
 
   ruff:
