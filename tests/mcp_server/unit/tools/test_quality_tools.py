@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 # Third-party
 import pytest
+from pydantic import ValidationError
 
 # Module under test
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
@@ -255,12 +256,12 @@ class TestRunQualityGatesInputC28:
 
     def test_scope_files_without_files_raises(self) -> None:
         """scope='files' with no files field raises ValidationError (files required)."""
-        with pytest.raises(Exception):  # ValidationError
+        with pytest.raises(ValidationError):
             RunQualityGatesInput(scope="files")
 
     def test_scope_files_with_empty_list_raises(self) -> None:
         """scope='files' with empty list raises ValidationError (empty not allowed)."""
-        with pytest.raises(Exception):  # ValidationError
+        with pytest.raises(ValidationError):
             RunQualityGatesInput(scope="files", files=[])
 
     def test_scope_files_with_files_is_valid(self) -> None:
@@ -273,17 +274,17 @@ class TestRunQualityGatesInputC28:
 
     def test_scope_auto_with_files_raises(self) -> None:
         """scope='auto' with files supplied raises ValidationError (files forbidden)."""
-        with pytest.raises(Exception):  # ValidationError
+        with pytest.raises(ValidationError):
             RunQualityGatesInput(scope="auto", files=["a.py"])
 
     def test_scope_branch_with_files_raises(self) -> None:
         """scope='branch' with files supplied raises ValidationError (files forbidden)."""
-        with pytest.raises(Exception):  # ValidationError
+        with pytest.raises(ValidationError):
             RunQualityGatesInput(scope="branch", files=["a.py"])
 
     def test_scope_project_with_files_raises(self) -> None:
         """scope='project' with files supplied raises ValidationError (files forbidden)."""
-        with pytest.raises(Exception):  # ValidationError
+        with pytest.raises(ValidationError):
             RunQualityGatesInput(scope="project", files=["a.py"])
 
     # --- Valid non-files scopes ---
@@ -315,7 +316,7 @@ class TestRunQualityGatesInputC28:
 
     def test_bare_files_api_without_scope_rejected(self) -> None:
         """Bare files=[] without scope raises ValidationError (old API no longer valid)."""
-        with pytest.raises(Exception):  # ValidationError — files without scope="files" forbidden
+        with pytest.raises(ValidationError):
             RunQualityGatesInput(files=[])
 
     # --- Schema reflects new API ---
@@ -333,7 +334,13 @@ class TestRunQualityGatesInputC28:
         """execute(scope='files', files=[...]) passes the list verbatim to run_quality_gates."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
-            "summary": {"passed": 1, "failed": 0, "skipped": 0, "total_violations": 0, "auto_fixable": 0},
+            "summary": {
+                "passed": 1,
+                "failed": 0,
+                "skipped": 0,
+                "total_violations": 0,
+                "auto_fixable": 0,
+            },
             "overall_pass": True,
             "gates": [],
         }

@@ -345,6 +345,20 @@ Docstring `"""Test tool returns compact native JSON (content[1]=json), text summ
 
 ---
 
+### [C28 REFACTOR] B017 — `pytest.raises(Exception)` blinde exception-vangst
+
+**Gate:** Gate 1: Ruff Strict Lint (`B` ruleset — flake8-bugbear)
+**File:** `tests/mcp_server/unit/tools/test_quality_tools.py`
+**Fout:**
+```
+B017 — Do not assert blind exception: `Exception` (×6)
+```
+**Context:** De C28 RED-tests gebruikten `pytest.raises(Exception)` als tijdelijke placeholder voor `ValidationError`. Ruff B017 blokkeert dit omdat blind `Exception` vangen te breed is — de test slaagt ook als een onverwachte exceptie optreedt, wat false confidence geeft.
+**Fix:** Alle 6 occurrences vervangen door `pytest.raises(ValidationError)` met bijbehorende import `from pydantic import ValidationError`.
+**Patroon:** Bij het schrijven van RED-tests voor Pydantic model validators: gebruik direct `pytest.raises(ValidationError)` — nooit `Exception`. Dit maakt de test preciezer én vermijdt B017 al in de RED-fase.
+
+---
+
 ## Open vragen / aanbevelingen
 
 1. **ANN401 policy:** Wanneer is `-> Any` acceptabel en wanneer moeten we een nauwkeuriger type kiezen? Documenteer richtlijn in TYPE_CHECKING_PLAYBOOK.

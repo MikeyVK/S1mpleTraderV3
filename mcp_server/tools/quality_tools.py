@@ -40,9 +40,7 @@ class RunQualityGatesInput(BaseModel):
         """
         if self.scope == "files":
             if not self.files:
-                raise ValueError(
-                    "files must be a non-empty list when scope='files'"
-                )
+                raise ValueError("files must be a non-empty list when scope='files'")
         else:
             if self.files is not None:
                 raise ValueError(
@@ -89,7 +87,8 @@ class RunQualityGatesTool(BaseTool):
             ToolResult with content[0]=text summary, content[1]=compact JSON payload.
         """
         if params.scope == "files":
-            resolved_files = params.files  # type: ignore[assignment]  # validator ensures non-None
+            assert params.files is not None  # enforced by model_validator
+            resolved_files = params.files
         else:
             resolved_files = self.manager._resolve_scope(params.scope)
 
