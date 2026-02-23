@@ -104,7 +104,10 @@ class TestFormatSummaryLineFail:
         """Failed result must not contain ✅."""
         manager = QAManager(workspace_root=None)
         results = _make_results(
-            passed=0, failed=1, skipped=0, total_violations=2,
+            passed=0,
+            failed=1,
+            skipped=0,
+            total_violations=2,
             failed_gate_names=["Gate 1: Ruff Strict Lint"],
         )
 
