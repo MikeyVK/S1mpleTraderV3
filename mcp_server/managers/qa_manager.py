@@ -60,34 +60,6 @@ class QAManager:
         self.qa_log_enabled = self.QA_LOG_ENABLED
         self.qa_log_max_files = self.QA_LOG_MAX_FILES
 
-    def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
-        """Filter Python files and generate pre-gate issues for non-Python files.
-
-        Returns:
-            (python_files, pre_gate_issues)
-        """
-
-        python_files = [f for f in files if str(f).endswith(".py")]
-        non_python_files = [f for f in files if f not in python_files]
-
-        issues: list[dict[str, Any]] = []
-        if not python_files:
-            issues.append(
-                {
-                    "message": "No Python (.py) files provided; quality gates support .py only",
-                }
-            )
-
-        for file_path in non_python_files:
-            issues.append(
-                {
-                    "file": file_path,
-                    "message": "Skipped non-Python file (quality gates support .py only)",
-                }
-            )
-
-        return python_files, issues
-
     def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
         """Run configured quality gates on specified files.
 
@@ -95,7 +67,7 @@ class QAManager:
 
         Notes:
             - Gate catalog and active gates are defined in `.st3/quality.yaml`.
-            - Only `.py` files are eligible for file-scoped gates.
+            - Each gate filters files by its configured `capabilities.file_types`.
             - Some gates (e.g., pytest) are repo-scoped and ignore file lists.
         """
         # Determine execution mode
@@ -140,22 +112,7 @@ class QAManager:
                 )
                 return results
 
-            python_files, pre_gate_issues = self._filter_files(files)
-
-            if pre_gate_issues or not python_files:
-                self._update_summary_and_append_gate(
-                    results,
-                    {
-                        "gate_number": 0,
-                        "name": "File Filtering",
-                        "passed": bool(python_files),
-                        "score": "N/A",
-                        "issues": pre_gate_issues,
-                    },
-                )
-
-            if not python_files:
-                return results
+            python_files = list(files)
         else:
             # Project-level test validation mode:
             # - python_files stays empty (no file discovery)
