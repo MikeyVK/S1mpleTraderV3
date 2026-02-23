@@ -131,6 +131,8 @@ return _make_gate(          # ✅
 | C24 REFACTOR | Gate 0 Ruff Format + Gate 1 W292 | trailing newline verwijderd | `test_auto_scope_resolution.py` | `safe_edit_file` verwijderde te veel newlines; één `\n` teruggeplaatst |
 | C25 REFACTOR | Gate 0 Ruff Format | kwargs op 1 regel met trailing comma → multi-line | `test_summary_line_formatter.py` | `_make_results(passed=0, failed=1, skipped=0, total_violations=2,` → 4 aparte regels |
 | C26 REFACTOR | Gate 0 Ruff Format + Gate 3 E501 | frozenset set-literal op 1 regel (101>100) | `test_compact_payload_builder.py` | `frozenset({"a", "b", ... 8 items})` → multi-line met trailing comma |
+| C27 REFACTOR | Gate 0 Ruff Format | blank line ontbreekt na module-docstring; 3-regel kwargs collapsed | `test_tool_result_contract.py` | Lege regel voor `from __future__` toegevoegd; kwargs naar 1 regel |
+| C27 REFACTOR | Gate 3 E501 | docstring 102>100 in testmethode | `test_quality_tools.py` | Docstring ingekort naar ≤100 tekens |
 
 ---
 
@@ -304,6 +306,42 @@ PLC0415 — `import` should be at the top of the file
 **Context:** De set-literal met 8 string-elementen op één regel was 101 tekens (> 100). Gate 3 vuurde op E501; Gate 0 vuurde omdat ruff dezelfde set-literal ook multi-line wilde schrijven (trailing-comma patroon).
 **Fix:** Elk set-element op een eigen regel gezet met trailing comma.
 **Patroon:** Set-literals, dict-literals en lijst-literals met meer dan ~4 korte elementen: schrijf direct multi-line als de gecombineerde regel > 100 chars is. Trailing-comma is verplicht voor consistentie.
+
+---
+
+### [C27 REFACTOR] Ruff Format — blank line na module-docstring + kwargs collapse + E501 docstring
+
+**Gate:** Gate 0: Ruff Format + Gate 3: Line Length (E501)
+**Files:**
+- `tests/mcp_server/unit/tools/test_tool_result_contract.py` (Gate 0, twee fixes)
+- `tests/mcp_server/unit/tools/test_quality_tools.py` (Gate 3)
+
+**Fout 1 — missing blank line after module docstring:**
+```diff
+-"""
+-from __future__ import annotations
++"""
++
++from __future__ import annotations
+```
+Ruff wil altijd een lege regel tussen de module-docstring en de eerste import.
+
+**Fout 2 — 3-regel kwargs collapsed (Gate 0):**
+```diff
+-        mock_manager.run_quality_gates.return_value = _make_qg_result(
+-            passed=1, failed=0, skipped=0
+-        )
++        mock_manager.run_quality_gates.return_value = _make_qg_result(passed=1, failed=0, skipped=0)
+```
+Drie kwargs zonder trailing comma en < 100 tekens → ruff collapsed naar één regel.
+
+**Fout 3 — E501 docstring 102>100 chars:**
+Docstring `"""Test tool returns compact native JSON (content[1]=json), text summary (content[0]=text)."""` was 102 chars. Ingekort naar kortere omschrijving.
+
+**Patronen:**
+- Module-docstrings altijd gevolgd door een lege regel voor de eerste import.
+- Kwargs zonder trailing comma op meerdere regels: ruff collapsed als ze op 1 regel passen (< 100 chars).
+- Testmethode-docstrings: controleer op lengte; gebruik kortere omschrijving als de volledige tekst > 100 chars is.
 
 ---
 
