@@ -1,9 +1,9 @@
 <!-- docs\development\issue251\design.md -->
-<!-- template=design version=5827e841 created=2026-02-22T20:54Z updated=2026-02-23T00:00Z -->
+<!-- template=design version=5827e841 created=2026-02-22T20:54Z updated=2026-02-23T00:01Z -->
 # run_quality_gates Refactor — Scope-Driven Architecture, Config-Driven Parsing, ViolationDTO
 
 **Status:** DRAFT  
-**Version:** 1.2  
+**Version:** 1.3  
 **Last Updated:** 2026-02-23
 
 ---
@@ -288,6 +288,21 @@ No `if gate.name == ...` or `if gate.id == ...` comparisons anywhere in dispatch
 
 ---
 
+### 4.6a. RunQualityGatesInput Validator Contract
+
+**Location:** `mcp_server/tools/quality_tools.py` — `model_validator(mode="after")`
+
+The `files` field is conditionally required. Two invariants are enforced before `execute()` is ever reached:
+
+| Rule | Trigger | Result |
+|------|---------|--------|
+| `files` required | `scope == "files"` and `files` is `None` or `[]` | `ValidationError` |
+| `files` forbidden | `scope != "files"` and `files` is not `None` | `ValidationError` |
+
+**Consequence:** Any call with `scope ∈ {"auto", "branch", "project"}` that includes a `files` argument is rejected at model validation. There is no silent ignore or fallback.
+
+---
+
 ### 4.7. Baseline State Machine Contract
 
 **Location:** `.st3/state.json` — top-level key `quality_gates` alongside existing branch metadata
@@ -363,3 +378,4 @@ No `stdout`, `stderr`, or `raw_output` fields in payload.
 | 1.0 | 2026-02-22 | Agent | Initial design — 8 interface contracts, 2 design options, decision rationale |
 | 1.1 | 2026-02-22 | Agent | Consistency fixes: state.json shape corrected to flat top-level quality_gates; field_map direction clarified to DTO field → source key |
 | 1.2 | 2026-02-23 | Agent | Scope API herzien: `scope="files"` als vierde waarde; conditioneel `files: list[str] \| None` veld; §1.2 requirements, §1.3 constraints, beslissing 2 en §4.6 scope-tabel bijgewerkt (research v1.9 / planning v1.3) |
+| 1.3 | 2026-02-23 | Agent | §4.6a toegevoegd: expliciete twee-regel validator contract tabel voor `RunQualityGatesInput`; `files` forbidden bij scope≠"files" nu eenduidig vastgelegd |

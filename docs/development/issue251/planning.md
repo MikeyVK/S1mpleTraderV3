@@ -1,9 +1,9 @@
 <!-- docs\development\issue251\planning.md -->
-<!-- template=planning version=130ac5ea created=2026-02-22T20:21Z updated=2026-02-23T00:00Z -->
+<!-- template=planning version=130ac5ea created=2026-02-22T20:21Z updated=2026-02-23T01:30Z -->
 # Issue #251: Refactor run_quality_gates — Scope-Driven Architecture, Config-Driven Parsing, ViolationDTO
 
 **Status:** DRAFT  
-**Version:** 1.3  
+**Version:** 1.4  
 **Last Updated:** 2026-02-23
 
 ---
@@ -510,7 +510,7 @@ Use whatever concrete types the existing ToolResult/content pattern requires; th
 
 **REFACTOR:** Update tool description to document the four scope values and the conditionality of `files`.
 
-**Exit Criteria:** All four scope values are accepted; `files` field enforces its constraints; old bare-`files` API is rejected; `scope="files"` routes resolved files to `run_quality_gates` unchanged.
+**Exit Criteria:** All four scope values (`auto`, `branch`, `project`, `files`) are accepted; `scope="files"` with a non-empty `files` list routes that list verbatim to `run_quality_gates`; `scope="files"` without `files` (or empty list) raises `ValidationError`; `scope ∈ {"auto","branch","project"}` with `files` supplied raises `ValidationError`; old bare-`files` API (no `scope` parameter) is rejected.
 
 ---
 
@@ -656,3 +656,4 @@ Design is ready for implementation only when all criteria are true:
 | 1.1 | 2026-02-22 | Agent | English rewrite; dependency order fixed; oversized cycles split; ToolResult contract normalized; Design Exit Criteria + Traceability Matrix added |
 | 1.2 | 2026-02-22 | Agent | Add C0 (quality.yaml pre-flight); neutral C27 contract; C29 contract-change annotation; TDD Execution Rules; dependency graph + milestones + traceability updated |
 | 1.3 | 2026-02-23 | Agent | C28 herschreven: `scope="files"` als vierde waarde; conditioneel `files` veld met model validator; Summary, Prerequisites, Design Exit Criteria, Traceability F4 bijgewerkt (research v1.9) |
+| 1.4 | 2026-02-23 | Agent | C28 exit criteria expliciet: beide ValidationError-gevallen uitgeschreven (scope="files" zonder files, scope≠files met files) |

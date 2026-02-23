@@ -1,9 +1,9 @@
 <!-- docs\development\issue251\research.md -->
-<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-23T00:00Z -->
+<!-- template=research version=8b7bb3ab created=2026-02-22T17:36Z updated=2026-02-23T00:02Z -->
 # Issue #251 Research: Refactor run_quality_gates — venv pytest, structured output, smart scope
 
 **Status:** COMPLETE  
-**Version:** 1.9  
+**Version:** 2.0  
 **Last Updated:** 2026-02-23
 
 ---
@@ -365,6 +365,15 @@ pymarkdownlnt supports `--log-format jsonl` output. Each line is `{file, line_nu
 | `files` | explicit, with required `files: list[str]` | Caller-supplied list verbatim — no git or glob resolution |
 
 > **Backward compatibility (revised 2026-02-23):** The `files=[...]` parameter is **not removed** but **migrated** to `scope="files"`. Callers that need explicit file control pass `scope="files"` together with a non-empty `files` list. The old positional-files API (no `scope` param) is no longer accepted. The `files` field is **optional** on `RunQualityGatesInput` and is validated as **required** when `scope="files"` and **forbidden** for all other scopes (enforced via `model_validator`).
+
+**Validator invariants** (`model_validator(mode="after")` op `RunQualityGatesInput`):
+
+| Rule | Trigger | Result |
+|------|---------|--------|
+| `files` required | `scope == "files"` and `files` is `None` or `[]` | `ValidationError` |
+| `files` forbidden | `scope != "files"` and `files` is not `None` | `ValidationError` |
+
+Any call with `scope ∈ {"auto", "branch", "project"}` that supplies `files` is rejected before `execute()` is reached — no silent ignore or fallback.
 
 **Git commands required:**
 
@@ -968,7 +977,7 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | F1 | System pytest used for Gate 5/6 | Bug | Remove Gate 5/6 from active_gates |
 | F2 | Gate 0 ruff format diff silently truncated | Bug | `text_violations` strategy extracts file-level FORMAT violations; diff → artifact log |
 | F3 | Double JSON in MCP response | Bug | `ToolResult.content[]` with `text` first, `json` second |
-| F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` enum (`auto`/`branch`/`project`/`files`); `files` list optional, required only when `scope="files"` |
+| F4 | Mode bifurcation (files=[] vs files=[...]) | Architecture | Replace with `scope` enum (`auto`/`branch`/`project`/`files`); `files` list required when `scope="files"` (`ValidationError` otherwise), forbidden when `scope≠"files"` (`ValidationError` if supplied) |
 | F5 | No summary_line as first MCP content item | Architecture | `summary_line` as `{"type": "text"}` first in ToolResult |
 | F6 | Scope manually provided by agent | Architecture | git-diff auto scope with baseline state machine in state.json |
 | F7 | No failure-narrowing on re-run | Architecture | `failed_files ∪ changed_since_last_run` |
@@ -1027,3 +1036,4 @@ If future tools need `!=` or `in` expressions, `fixable_when` can be extended. N
 | 1.7 | 2026-02-22 | Agent | Align no-baseline fallback with design: `scope="project"` (was `scope="branch"`); update edge-case text and state machine diagram |
 | 1.8 | 2026-02-22 | Agent | Harmonize ViolationDTO field names: `column`→`col`, `code`→`rule` throughout schema definitions, JSON examples, and field_map YAML |
 | 1.9 | 2026-02-23 | Agent | Revisie scope API: `files` niet verwijderd maar gemigreerd naar `scope="files"` met optioneel `files: list[str]` veld (required bij `scope="files"`, verboden anders); Inv. 4 residual question, Inv. 6 tabel + backward compat note, F4 en Open Question #2 bijgewerkt |
+| 2.0 | 2026-02-23 | Agent | Expliciete twee-regel validator invariant tabel toegevoegd in Inv. 6; F4 findings aangescherpt met beide `ValidationError`-gevallen; aligns met design v1.3 §4.6a |
