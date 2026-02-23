@@ -45,7 +45,7 @@ class TestScopeResolutionBranch:
 
         diff_output = "mcp_server/foo.py\nmcp_server/bar.py\n"
 
-        def fake_git_diff(cmd: list[str], **kw: object) -> MagicMock:
+        def fake_git_diff(_cmd: list[str], **_kw: object) -> MagicMock:
             result = MagicMock(spec=subprocess.CompletedProcess)
             result.returncode = 0
             result.stdout = diff_output
@@ -64,7 +64,7 @@ class TestScopeResolutionBranch:
 
         diff_output = "z_file.py\na_file.py\nm_file.py\n"
 
-        def fake_git_diff(cmd: list[str], **kw: object) -> MagicMock:
+        def fake_git_diff(_cmd: list[str], **_kw: object) -> MagicMock:
             result = MagicMock(spec=subprocess.CompletedProcess)
             result.returncode = 0
             result.stdout = diff_output
@@ -81,7 +81,7 @@ class TestScopeResolutionBranch:
 
         diff_output = "mcp_server/logic.py\ndocs/README.md\n.st3/state.json\n"
 
-        def fake_git_diff(cmd: list[str], **kw: object) -> MagicMock:
+        def fake_git_diff(_cmd: list[str], **_kw: object) -> MagicMock:
             result = MagicMock(spec=subprocess.CompletedProcess)
             result.returncode = 0
             result.stdout = diff_output
@@ -98,7 +98,7 @@ class TestScopeResolutionBranch:
         """When git diff fails (non-zero exit), scope=branch returns [] gracefully."""
         manager = QAManager(workspace_root=tmp_path)
 
-        def fake_git_fail(cmd: list[str], **kw: object) -> MagicMock:
+        def fake_git_fail(_cmd: list[str], **_kw: object) -> MagicMock:
             result = MagicMock(spec=subprocess.CompletedProcess)
             result.returncode = 128
             result.stdout = ""
@@ -113,7 +113,7 @@ class TestScopeResolutionBranch:
         """When git diff output is empty, scope=branch returns []."""
         manager = QAManager(workspace_root=tmp_path)
 
-        def fake_git_empty(cmd: list[str], **kw: object) -> MagicMock:
+        def fake_git_empty(_cmd: list[str], **_kw: object) -> MagicMock:
             result = MagicMock(spec=subprocess.CompletedProcess)
             result.returncode = 0
             result.stdout = ""
