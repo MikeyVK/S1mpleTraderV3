@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import platform
@@ -269,23 +268,6 @@ class QAManager:
             cmd[0] = _venv_script_path(_pyright_script_name())
 
         return [*cmd, *files]
-
-    def _supports_pytest_json_report(self) -> bool:
-        """Detect whether pytest-json-report plugin is installed."""
-        return importlib.util.find_spec("pytest_jsonreport") is not None
-
-    def _maybe_enable_pytest_json_report(self, gate: QualityGate, command: list[str]) -> list[str]:
-        """Add pytest JSON report flags when plugin support is available."""
-        if not self._is_pytest_gate(gate):
-            return command
-
-        if not self._supports_pytest_json_report():
-            return command
-
-        if "--json-report" in command:
-            return command
-
-        return [*command, "--json-report"]
 
     def _files_for_gate(self, gate: QualityGate, python_files: list[str]) -> list[str]:
         """Determine which files should be passed to a gate.
@@ -555,8 +537,6 @@ class QAManager:
         cmd: list[str] = []
         try:
             cmd = self._resolve_command(gate.execution.command, files)
-            cmd = self._maybe_enable_pytest_json_report(gate, cmd)
-
             start_time = time.monotonic()
             proc = subprocess.run(
                 cmd,
