@@ -196,7 +196,7 @@ class TestRunQualityGatesTool:
 
     @pytest.mark.asyncio
     async def test_response_is_native_json_object(self) -> None:
-        """Test tool returns compact native JSON (content[1]=json), text summary (content[0]=text)."""
+        """Tool returns text summary at content[0], compact JSON at content[1]."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = {
             "version": "2.0",

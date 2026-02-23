@@ -7,6 +7,7 @@ Contract (planning.md Cycle 27):
   content[1] = {"type": "json", "json": <compact_payload>} — structured gate results
   len(content) == 2 — exactly two items, no more
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -95,9 +96,7 @@ class TestToolResultContentContract:
     async def test_text_item_contains_summary_line(self) -> None:
         """content[0].text must be the one-line summary from _format_summary_line."""
         mock_manager = MagicMock()
-        mock_manager.run_quality_gates.return_value = _make_qg_result(
-            passed=1, failed=0, skipped=0
-        )
+        mock_manager.run_quality_gates.return_value = _make_qg_result(passed=1, failed=0, skipped=0)
         tool = RunQualityGatesTool(manager=mock_manager)
 
         result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
