@@ -33,8 +33,9 @@ class TestRunQualityGatesTool:
 
     @pytest.mark.asyncio
     async def test_no_files_triggers_project_level(self) -> None:
-        """Test files=[] is forwarded to manager and summary text is returned."""
+        """Test scope='project' resolves to empty list and is forwarded to manager."""
         mock_manager = MagicMock()
+        mock_manager._resolve_scope.return_value = []
         mock_manager.run_quality_gates.return_value = {
             "version": "2.0",
             "mode": "project-level",
@@ -58,10 +59,11 @@ class TestRunQualityGatesTool:
             "overall_pass": True,
         }
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(files=[]))
+        result = await tool.execute(RunQualityGatesInput(scope="project"))
 
         text = _summary_text(result)
         assert "Quality gates" in text
+        mock_manager._resolve_scope.assert_called_once_with("project")
         mock_manager.run_quality_gates.assert_called_once_with([])
 
     @pytest.mark.asyncio
@@ -89,7 +91,7 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
+        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
 
         text = _summary_text(result)
         assert "✅" in text
@@ -127,7 +129,7 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
+        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
 
         text = _summary_text(result)
         assert "❌" in text
@@ -158,7 +160,7 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
+        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
 
         text = _summary_text(result)
         assert "❌" in text
@@ -189,7 +191,7 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
+        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
 
         text = _summary_text(result)
         assert "Quality gates" in text
@@ -224,7 +226,7 @@ class TestRunQualityGatesTool:
         }
 
         tool = RunQualityGatesTool(manager=mock_manager)
-        result = await tool.execute(RunQualityGatesInput(files=["foo.py"]))
+        result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
 
         # content[0] is text summary
         assert result.content[0]["type"] == "text"

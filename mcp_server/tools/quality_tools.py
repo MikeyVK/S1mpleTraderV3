@@ -1,8 +1,8 @@
 """Quality tools."""
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.base import BaseTool
@@ -12,14 +12,44 @@ from mcp_server.tools.tool_result import ToolResult
 class RunQualityGatesInput(BaseModel):
     """Input for RunQualityGatesTool."""
 
-    files: list[str] = Field(
-        default=[],
+    scope: Literal["auto", "branch", "project", "files"] = Field(
+        default="auto",
         description=(
-            "List of files to check. Empty list [] = project-level test validation "
-            "(pytest/coverage only, Gates 5-6). Populated list = file-specific validation "
-            "(static analysis Gates 0-4, skip pytest)."
+            "Scope of the quality gate run. "
+            "'auto' = union of changed files and previously failed files; "
+            "'branch' = files changed on this branch vs parent; "
+            "'project' = all files matching project_scope.include_globs; "
+            "'files' = explicit list supplied via the 'files' field."
         ),
     )
+    files: list[str] | None = Field(
+        default=None,
+        description=(
+            "Explicit list of files to check. "
+            "Required (and non-empty) when scope='files'. "
+            "Must be omitted (or null) for all other scope values."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _validate_files_scope_contract(self) -> "RunQualityGatesInput":
+        """Enforce the two-rule validator contract (design.md §4.6a).
+
+        Rule 1 – files required:  scope='files' and files is None or []  → ValidationError
+        Rule 2 – files forbidden: scope != 'files' and files is not None → ValidationError
+        """
+        if self.scope == "files":
+            if not self.files:
+                raise ValueError(
+                    "files must be a non-empty list when scope='files'"
+                )
+        else:
+            if self.files is not None:
+                raise ValueError(
+                    f"files must be omitted when scope='{self.scope}' "
+                    "(only allowed with scope='files')"
+                )
+        return self
 
 
 class RunQualityGatesTool(BaseTool):
@@ -27,8 +57,11 @@ class RunQualityGatesTool(BaseTool):
 
     name = "run_quality_gates"
     description = (
-        "Run quality gates. Use files=[] for project-level test validation (pytest/coverage), "
-        "files=[...] for file-specific validation (static analysis on specified files)."
+        "Run quality gates. "
+        "scope='auto' (default): union of changed + previously failed files; "
+        "scope='branch': files changed on this branch; "
+        "scope='project': all project files; "
+        "scope='files': explicit file list supplied via the 'files' field."
     )
     args_model = RunQualityGatesInput
 
@@ -55,7 +88,12 @@ class RunQualityGatesTool(BaseTool):
         Returns:
             ToolResult with content[0]=text summary, content[1]=compact JSON payload.
         """
-        result = self.manager.run_quality_gates(params.files)
+        if params.scope == "files":
+            resolved_files = params.files  # type: ignore[assignment]  # validator ensures non-None
+        else:
+            resolved_files = self.manager._resolve_scope(params.scope)
+
+        result = self.manager.run_quality_gates(resolved_files)
         summary_line = QAManager._format_summary_line(result)
         compact_payload = QAManager._build_compact_result(result)
         return ToolResult(
