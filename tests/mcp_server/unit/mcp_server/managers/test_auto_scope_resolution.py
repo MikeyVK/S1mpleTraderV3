@@ -3,6 +3,8 @@
 C23: Resolve scope=auto happy path — baseline present.
 
 Union of git diff --name-only baseline_sha..HEAD and persisted failed_files.
+
+C24: Resolve scope=auto edge cases — no baseline fallback and empty union.
 """
 # pyright: reportPrivateUsage=false
 
@@ -154,3 +156,99 @@ class TestAutoScopeHappyPath:
         assert "docs/README.md" not in result
         assert ".st3/state.json" not in result
         assert "mcp_server/logic.py" in result
+
+
+class TestAutoScopeEdgeCases:
+    """C24: scope=auto edge cases — no baseline fallback and empty union."""
+
+    def test_auto_scope_no_baseline_sha_falls_back_to_project_scope(
+        self, tmp_path: Path
+    ) -> None:
+        """When quality_gates has no baseline_sha, scope=auto delegates to project scope."""
+        # State exists but quality_gates key is absent — no baseline recorded yet.
+        state = {"branch": "refactor/251", "workflow": {"parent_branch": "main"}}
+        state_path = tmp_path / ".st3" / "state.json"
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+
+        # Create a project file that project scope would return.
+        project_file = tmp_path / "mcp_server" / "logic.py"
+        project_file.parent.mkdir(parents=True, exist_ok=True)
+        project_file.write_text("# stub\n")
+
+        manager = QAManager(workspace_root=tmp_path)
+
+        mock_cfg = MagicMock()
+        mock_cfg.active_gates = []
+        mock_cfg.artifact_logging.enabled = False
+        mock_cfg.artifact_logging.output_dir = "temp/qa_logs"
+        mock_cfg.artifact_logging.max_files = 10
+        project_scope = MagicMock()
+        project_scope.include_globs = ["mcp_server/*.py"]
+        mock_cfg.project_scope = project_scope
+
+        with patch("mcp_server.managers.qa_manager.QualityConfig.load", return_value=mock_cfg):
+            result = manager._resolve_scope("auto")
+
+        assert result != [], (
+            "scope=auto with no baseline must fallback to project scope, not return []."
+        )
+        assert any("logic.py" in f for f in result), (
+            f"Expected project-scope file 'logic.py' in result, got: {result!r}"
+        )
+
+    def test_auto_scope_empty_quality_gates_key_falls_back_to_project_scope(
+        self, tmp_path: Path
+    ) -> None:
+        """When quality_gates key is present but baseline_sha is empty, fallback to project."""
+        state = {
+            "branch": "refactor/251",
+            "quality_gates": {"baseline_sha": "", "failed_files": []},
+        }
+        state_path = tmp_path / ".st3" / "state.json"
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+
+        project_file = tmp_path / "mcp_server" / "service.py"
+        project_file.parent.mkdir(parents=True, exist_ok=True)
+        project_file.write_text("# stub\n")
+
+        manager = QAManager(workspace_root=tmp_path)
+
+        mock_cfg = MagicMock()
+        mock_cfg.active_gates = []
+        mock_cfg.artifact_logging.enabled = False
+        mock_cfg.artifact_logging.output_dir = "temp/qa_logs"
+        mock_cfg.artifact_logging.max_files = 10
+        project_scope = MagicMock()
+        project_scope.include_globs = ["mcp_server/*.py"]
+        mock_cfg.project_scope = project_scope
+
+        with patch("mcp_server.managers.qa_manager.QualityConfig.load", return_value=mock_cfg):
+            result = manager._resolve_scope("auto")
+
+        assert result != [], (
+            "scope=auto with empty baseline_sha must fallback to project scope, not return []."
+        )
+        assert any("service.py" in f for f in result), (
+            f"Expected project-scope file 'service.py' in result, got: {result!r}"
+        )
+
+    def test_auto_scope_empty_union_returns_empty_list(self, tmp_path: Path) -> None:
+        """Baseline present, diff empty, failed_files empty → scope=auto returns []."""
+        _write_state(tmp_path, baseline_sha="abc123", failed_files=[])
+        manager = QAManager(workspace_root=tmp_path)
+
+        with patch("subprocess.run", return_value=_fake_diff([])):
+            result = manager._resolve_scope("auto")
+
+        assert result == [], (
+            f"scope=auto with empty diff and empty failed_files must return [], got: {result!r}"
+        )
+
+    def test_auto_scope_no_workspace_root_returns_empty(self) -> None:
+        """When workspace_root is None, scope=auto returns [] gracefully."""
+        manager = QAManager(workspace_root=None)
+        result = manager._resolve_scope("auto")
+        assert result == [], f"Expected [] when workspace_root is None, got: {result!r}"
+
