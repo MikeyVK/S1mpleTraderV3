@@ -1250,7 +1250,7 @@ class TestGateSchemaEnrichment:
                 assert "id" in gate, f"Skipped gate '{gate['name']}' missing 'id'"
                 assert gate["status"] == "skipped"
                 assert gate["skip_reason"] is not None
-                assert "Skipped (no matching files)" == gate["skip_reason"]
+                assert gate["skip_reason"] == "Skipped (no matching files)"
 
 
 class TestSummaryTotals:
