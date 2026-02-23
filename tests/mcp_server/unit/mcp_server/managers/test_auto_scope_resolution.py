@@ -161,9 +161,7 @@ class TestAutoScopeHappyPath:
 class TestAutoScopeEdgeCases:
     """C24: scope=auto edge cases — no baseline fallback and empty union."""
 
-    def test_auto_scope_no_baseline_sha_falls_back_to_project_scope(
-        self, tmp_path: Path
-    ) -> None:
+    def test_auto_scope_no_baseline_sha_falls_back_to_project_scope(self, tmp_path: Path) -> None:
         """When quality_gates has no baseline_sha, scope=auto delegates to project scope."""
         # State exists but quality_gates key is absent — no baseline recorded yet.
         state = {"branch": "refactor/251", "workflow": {"parent_branch": "main"}}
@@ -251,4 +249,3 @@ class TestAutoScopeEdgeCases:
         manager = QAManager(workspace_root=None)
         result = manager._resolve_scope("auto")
         assert result == [], f"Expected [] when workspace_root is None, got: {result!r}"
-
