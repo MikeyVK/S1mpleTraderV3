@@ -38,6 +38,13 @@ gates:
     capabilities:
       file_types: [".py"]
       supports_autofix: true
+      parsing_strategy: "text_violations"
+      text_violations:
+        pattern: "^--- a/(?P<file>.+)$"
+        severity_default: "error"
+        defaults:
+          rule: "FORMAT"
+          message: "File requires formatting"
 
   # Gate 1: Strict Lint (Ruff, stricter than IDE)
   gate1_formatting:
@@ -67,6 +74,16 @@ gates:
     capabilities:
       file_types: [".py"]
       supports_autofix: true
+      parsing_strategy: "json_violations"
+      json_violations:
+        violations_path: null
+        field_map:
+          file: "filename"
+          line: "location/row"
+          col: "location/column"
+          rule: "code"
+          message: "message"
+        fixable_when: "fix/applicability"
 
   # Gate 2: Import Placement (Ruff replaces Pylint)
   gate2_imports:
@@ -168,15 +185,10 @@ gates:
       timeout_seconds: 120
       working_dir: null
     parsing:
-      strategy: "json_field"
-      fields:
-        diagnostics: "/generalDiagnostics"
-        error_count: "/summary/errorCount"
-      diagnostics_path: "/generalDiagnostics"
+      strategy: "exit_code"
     success:
-      mode: "json_field"
-      max_errors: 0
-      require_no_issues: true
+      mode: "exit_code"
+      exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
       supports_autofix: false
