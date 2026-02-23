@@ -30,10 +30,7 @@ gates:
       command: ["python", "-m", "ruff", "format", "--check", "--diff", "--isolated", "--line-length=100"]
       timeout_seconds: 60
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -66,10 +63,7 @@ gates:
         ]
       timeout_seconds: 60
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -103,10 +97,7 @@ gates:
         ]
       timeout_seconds: 60
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -131,10 +122,7 @@ gates:
         ]
       timeout_seconds: 60
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -148,10 +136,7 @@ gates:
       command: ["python", "-m", "mypy", "--strict", "--no-error-summary"]
       timeout_seconds: 60
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -184,10 +169,7 @@ gates:
         ]
       timeout_seconds: 120
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -213,10 +195,7 @@ gates:
       command: ["ruff", "check"]
       timeout_seconds: 60
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -229,10 +208,7 @@ gates:
       command: ["black", "--check", "."]
       timeout_seconds: 60
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -245,10 +221,7 @@ gates:
       command: ["python", "-m", "mypy", "--strict", "--no-error-summary"]
       timeout_seconds: 60
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -267,10 +240,7 @@ gates:
       command: ["pytest", "tests/"]
       timeout_seconds: 300
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]
@@ -283,10 +253,7 @@ gates:
       command: ["bandit", "-r", "."]
       timeout_seconds: 120
       working_dir: null
-    parsing:
-      strategy: "exit_code"
     success:
-      mode: "exit_code"
       exit_codes_ok: [0]
     capabilities:
       file_types: [".py"]

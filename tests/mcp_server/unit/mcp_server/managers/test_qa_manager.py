@@ -25,7 +25,6 @@ import yaml  # type: ignore[import-untyped]
 from mcp_server.config.quality_config import (
     CapabilitiesMetadata,
     ExecutionConfig,
-    ExitCodeParsing,
     QualityGate,
     SuccessCriteria,
 )
@@ -290,8 +289,7 @@ class TestExecuteGate:
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -416,8 +414,7 @@ class TestArtifactLogging:
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -521,8 +518,7 @@ class TestRuffGateExecution:
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": True,
@@ -542,8 +538,7 @@ class TestRuffGateExecution:
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -571,8 +566,7 @@ class TestRuffGateExecution:
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -715,8 +709,7 @@ class TestConfigDrivenExecution:
                         "timeout_seconds": 60,
                         "working_dir": None,
                     },
-                    "parsing": {"strategy": "exit_code"},
-                    "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                    "success": {"exit_codes_ok": [0]},
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": True,
@@ -737,8 +730,7 @@ class TestConfigDrivenExecution:
                         "timeout_seconds": 60,
                         "working_dir": None,
                     },
-                    "parsing": {"strategy": "exit_code"},
-                    "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                    "success": {"exit_codes_ok": [0]},
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": False,
@@ -752,8 +744,7 @@ class TestConfigDrivenExecution:
                         "timeout_seconds": 60,
                         "working_dir": None,
                     },
-                    "parsing": {"strategy": "exit_code"},
-                    "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                    "success": {"exit_codes_ok": [0]},
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": False,
@@ -867,15 +858,14 @@ class TestStrategyBasedParsing:
         return QAManager()
 
     def test_execute_gate_respects_parsing_strategy_not_tool_name(self, manager: QAManager) -> None:
-        """Test parsing uses gate.parsing.strategy, not tool name detection (WP2)."""
+        """Test parsing uses capabilities.parsing_strategy, not tool name detection (WP2)."""
         # Gate with 'pylint' in name but exit_code strategy
         gate = QualityGate.model_validate(
             {
                 "name": "Pylint-Like Tool",
                 "description": "Tool with exit_code strategy",
                 "execution": {"command": ["tool"], "timeout_seconds": 60, "working_dir": None},
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -1004,21 +994,13 @@ class TestResponseSchemaV2:
 
 
 class TestSkipReasonLogic:
-    """Test consolidated skip reason logic (C17/C18 — no pytest-specific behaviour)."""
+    """Guard: _get_skip_reason was inlined and removed in C31 (Issue #251)."""
 
-    @pytest.fixture
-    def manager(self) -> QAManager:
-        return QAManager()
-
-    def test_get_skip_reason_no_files_returns_skip(self, manager: QAManager) -> None:
-        """Empty file list → always skip, regardless of how the caller acquired the list."""
-        reason = manager._get_skip_reason([])
-        assert reason == "Skipped (no matching files)"
-
-    def test_get_skip_reason_with_files_returns_none(self, manager: QAManager) -> None:
-        """Non-empty file list → gate should run, no skip reason."""
-        reason = manager._get_skip_reason(["mcp_server/foo.py"])
-        assert reason is None
+    def test_get_skip_reason_is_removed(self) -> None:
+        """_get_skip_reason must no longer exist on QAManager (inlined in C31)."""
+        assert not hasattr(QAManager, "_get_skip_reason"), (
+            "_get_skip_reason still exists; it was inlined in C31 and must be deleted"
+        )
 
 
 class TestRuffJsonParsing:
@@ -1060,8 +1042,7 @@ class TestRuffJsonParsing:
                 command=["ruff", "check", "--output-format=json"],
                 timeout_seconds=60,
             ),
-            parsing=ExitCodeParsing(strategy="exit_code"),
-            success=SuccessCriteria(mode="exit_code", exit_codes_ok=[0]),
+            success=SuccessCriteria(exit_codes_ok=[0]),
             capabilities=CapabilitiesMetadata(
                 file_types=[".py"],
                 supports_autofix=True,
@@ -1091,8 +1072,7 @@ class TestRuffJsonParsing:
                 command=["ruff", "check", "--output-format=json"],
                 timeout_seconds=60,
             ),
-            parsing=ExitCodeParsing(strategy="exit_code"),
-            success=SuccessCriteria(mode="exit_code", exit_codes_ok=[0]),
+            success=SuccessCriteria(exit_codes_ok=[0]),
             capabilities=CapabilitiesMetadata(
                 file_types=[".py"],
                 supports_autofix=True,
@@ -1128,8 +1108,7 @@ class TestGateSchemaEnrichment:
                 "name": "Test Gate",
                 "description": "Test",
                 "execution": {"command": ["echo", "ok"], "timeout_seconds": 60},
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -1156,8 +1135,7 @@ class TestGateSchemaEnrichment:
                 "name": "Failing Gate",
                 "description": "Test",
                 "execution": {"command": ["false"], "timeout_seconds": 60},
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -1297,8 +1275,7 @@ class TestDurationAndCommandMetadata:
                     "command": ["echo", "ok"],
                     "timeout_seconds": 10,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -1328,8 +1305,7 @@ class TestDurationAndCommandMetadata:
                     "command": ["python", "-m", "ruff", "check"],
                     "timeout_seconds": 60,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -1367,8 +1343,7 @@ class TestDurationAndCommandMetadata:
                 "name": "TimeoutGate",
                 "description": "Timeout",
                 "execution": {"command": ["slow_cmd"], "timeout_seconds": 1},
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -1501,8 +1476,7 @@ class TestTruncationFullLogPath:
                 "name": "TruncGate",
                 "description": "Truncation test",
                 "execution": {"command": ["tool"], "timeout_seconds": 60},
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -1536,8 +1510,7 @@ class TestTruncationFullLogPath:
                 "name": "ShortGate",
                 "description": "Short output",
                 "execution": {"command": ["tool"], "timeout_seconds": 60},
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,

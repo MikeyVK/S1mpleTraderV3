@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Literal, TypeAlias
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -131,22 +131,12 @@ class ExecutionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-
-class ExitCodeParsing(BaseModel):
-    """No parsing; rely on exit code only."""
-
-    strategy: Literal["exit_code"]
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-ParsingConfig: TypeAlias = ExitCodeParsing
-
-
 class SuccessCriteria(BaseModel):
-    """Defines pass/fail criteria for a tool."""
+    """Defines pass/fail criteria for a tool.
 
-    mode: Literal["exit_code"]
+    Gates pass/fail purely on exit code (exit_codes_ok) or violation count
+    (json_violations / text_violations strategy via capabilities.parsing_strategy).
+    """
 
     exit_codes_ok: list[int] = Field(default_factory=lambda: [0])
     max_errors: int | None = Field(default=None)
@@ -232,7 +222,6 @@ class QualityGate(BaseModel):
     name: str = Field(..., min_length=1)
     description: str = Field(default="")
     execution: ExecutionConfig
-    parsing: ParsingConfig
     success: SuccessCriteria
     capabilities: CapabilitiesMetadata
     scope: GateScope | None = Field(default=None)

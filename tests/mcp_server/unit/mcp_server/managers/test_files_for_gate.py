@@ -5,7 +5,6 @@ import pytest
 from mcp_server.config.quality_config import (
     CapabilitiesMetadata,
     ExecutionConfig,
-    ExitCodeParsing,
     QualityGate,
     SuccessCriteria,
 )
@@ -16,15 +15,13 @@ from mcp_server.managers.qa_manager import QAManager
 # ---------------------------------------------------------------------------
 
 _EXEC = ExecutionConfig(command=["ruff", "check"], timeout_seconds=10)
-_PARSING = ExitCodeParsing(strategy="exit_code")
-_SUCCESS = SuccessCriteria(mode="exit_code", exit_codes_ok=[0])
+_SUCCESS = SuccessCriteria(exit_codes_ok=[0])
 
 
 def _make_gate(file_types: list[str]) -> QualityGate:
     return QualityGate(
         name="test-gate",
         execution=_EXEC,
-        parsing=_PARSING,
         success=_SUCCESS,
         capabilities=CapabilitiesMetadata(
             file_types=file_types,
@@ -38,7 +35,6 @@ def _pytest_gate() -> QualityGate:
     return QualityGate(
         name="pytest-gate",
         execution=ExecutionConfig(command=["python", "-m", "pytest"], timeout_seconds=60),
-        parsing=_PARSING,
         success=_SUCCESS,
         capabilities=CapabilitiesMetadata(
             file_types=[".py"],

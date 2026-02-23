@@ -43,8 +43,7 @@ def fixture_quality_yaml_path(tmp_path: Path) -> Path:
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,
@@ -58,8 +57,7 @@ def fixture_quality_yaml_path(tmp_path: Path) -> Path:
                     "timeout_seconds": 30,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": True,
@@ -126,8 +124,7 @@ class TestQualityConfigValidation:
                         "timeout_seconds": 1,
                         "working_dir": None,
                     },
-                    "parsing": {"strategy": "exit_code"},
-                    "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                    "success": {"exit_codes_ok": [0]},
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": False,
@@ -154,7 +151,6 @@ class TestQualityConfigValidation:
                                 "timeout_seconds": 1,
                                 "working_dir": None,
                             },
-                            "parsing": {"strategy": "exit_code"},
                             "success": {"mode": "text_regex", "exit_codes_ok": [0]},
                             "capabilities": {
                                 "file_types": [".py"],
@@ -184,8 +180,7 @@ class TestActiveGatesField:
                             "timeout_seconds": 1,
                             "working_dir": None,
                         },
-                        "parsing": {"strategy": "exit_code"},
-                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "success": {"exit_codes_ok": [0]},
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": True,
@@ -211,8 +206,7 @@ class TestActiveGatesField:
                             "timeout_seconds": 1,
                             "working_dir": None,
                         },
-                        "parsing": {"strategy": "exit_code"},
-                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "success": {"exit_codes_ok": [0]},
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": False,
@@ -226,8 +220,7 @@ class TestActiveGatesField:
                             "timeout_seconds": 1,
                             "working_dir": None,
                         },
-                        "parsing": {"strategy": "exit_code"},
-                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "success": {"exit_codes_ok": [0]},
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": False,
@@ -253,8 +246,7 @@ class TestActiveGatesField:
                             "timeout_seconds": 1,
                             "working_dir": None,
                         },
-                        "parsing": {"strategy": "exit_code"},
-                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "success": {"exit_codes_ok": [0]},
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": True,
@@ -280,8 +272,7 @@ class TestActiveGatesField:
                             "timeout_seconds": 1,
                             "working_dir": None,
                         },
-                        "parsing": {"strategy": "exit_code"},
-                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "success": {"exit_codes_ok": [0]},
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": False,
@@ -295,8 +286,7 @@ class TestActiveGatesField:
                             "timeout_seconds": 1,
                             "working_dir": None,
                         },
-                        "parsing": {"strategy": "exit_code"},
-                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "success": {"exit_codes_ok": [0]},
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": False,
@@ -322,8 +312,7 @@ class TestActiveGatesField:
                         "timeout_seconds": 60,
                         "working_dir": None,
                     },
-                    "parsing": {"strategy": "exit_code"},
-                    "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                    "success": {"exit_codes_ok": [0]},
                     "capabilities": {
                         "file_types": [".py"],
                         "supports_autofix": True,
@@ -360,8 +349,7 @@ class TestArtifactLoggingConfig:
                             "timeout_seconds": 1,
                             "working_dir": None,
                         },
-                        "parsing": {"strategy": "exit_code"},
-                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "success": {"exit_codes_ok": [0]},
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": True,
@@ -393,8 +381,7 @@ class TestArtifactLoggingConfig:
                             "timeout_seconds": 1,
                             "working_dir": None,
                         },
-                        "parsing": {"strategy": "exit_code"},
-                        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                        "success": {"exit_codes_ok": [0]},
                         "capabilities": {
                             "file_types": [".py"],
                             "supports_autofix": True,
@@ -461,14 +448,12 @@ class TestArtifactLoggingConfig:
         assert "gate3_line_length" in config.active_gates
 
     def test_ruff_gates_use_exit_code_strategy(self) -> None:
-        """All Ruff gates use exit_code parsing strategy."""
+        """All Ruff gates pass/fail on exit code (no parsing_strategy declared)."""
         quality_yaml = Path(".st3/quality.yaml")
         config = QualityConfig.load(quality_yaml)
 
         for gate_name in ["gate1_formatting", "gate2_imports", "gate3_line_length"]:
             gate = config.gates[gate_name]
-            assert gate.parsing.strategy == "exit_code"
-            assert gate.success.mode == "exit_code"
             assert gate.success.exit_codes_ok == [0]
 
 
@@ -533,8 +518,7 @@ class TestProjectScopeField:
             "timeout_seconds": 60,
             "working_dir": None,
         },
-        "parsing": {"strategy": "exit_code"},
-        "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+        "success": {"exit_codes_ok": [0]},
         "capabilities": {
             "file_types": [".py"],
             "supports_autofix": True,
@@ -601,19 +585,20 @@ class TestParsingStrategyMigration:
     """C31: quality.yaml parsing-strategy migration — no compatibility shim.
 
     After migration:
-    - gate4_pyright uses parsing.strategy="exit_code" (not json_field shim)
+    - gate4_pyright uses capabilities.parsing_strategy='json_violations' (no legacy parsing field)
     - gate1_formatting capabilities.parsing_strategy=="json_violations"
     - gate0_ruff_format capabilities.parsing_strategy=="text_violations"
     """
 
-    def test_gate4_pyright_no_json_field_shim(self) -> None:
-        """gate4_pyright must use exit_code parsing strategy, not the old json_field shim."""
+    def test_gate4_pyright_uses_json_violations_capability(self) -> None:
+        """gate4_pyright must declare json_violations in capabilities (no legacy parsing shim)."""
         config = QualityConfig.load(Path(".st3/quality.yaml"))
         gate = config.gates["gate4_pyright"]
-        assert gate.parsing.strategy == "exit_code", (
-            f"gate4_pyright should use exit_code (violations via capabilities), "
-            f"got '{gate.parsing.strategy}'"
+        assert gate.capabilities.parsing_strategy == "json_violations", (
+            f"gate4_pyright should use capabilities.parsing_strategy='json_violations', "
+            f"got '{gate.capabilities.parsing_strategy}'"
         )
+        assert gate.capabilities.json_violations is not None
 
     def test_gate1_formatting_has_json_violations_capability(self) -> None:
         """gate1_formatting must declare json_violations strategy in capabilities."""

@@ -1,35 +1,17 @@
 from __future__ import annotations
 
-import pytest
-
 from mcp_server.managers.qa_manager import QAManager
 
 
-@pytest.fixture()
-def manager() -> QAManager:
-    return QAManager()
-
-
-# ---------------------------------------------------------------------------
-# Tests: unified skip reason (C17/C18 — remove mode bifurcation)
-# ---------------------------------------------------------------------------
-
-
 class TestSkipReasonUnified:
-    """_get_skip_reason returns 'Skipped (no matching files)' when files list is empty.
+    """Guard: _get_skip_reason was inlined and removed in C31 (Issue #251).
 
-    After C17/C18, mode-specific logic and is_file_specific_mode parameter are removed.
-    The skip decision is purely capability-driven: no files → skip.
+    The skip decision is now inlined: `skip_reason = "Skipped (no matching files)" if not gate_files else None`
+    No separate method exists.
     """
 
-    def test_no_files_returns_skip_reason(self, manager: QAManager) -> None:
-        """Empty gate_files → 'Skipped (no matching files)' always."""
-        reason = manager._get_skip_reason([])
-        assert reason == "Skipped (no matching files)", (
-            f"Expected unified skip reason, got: {reason!r}"
+    def test_get_skip_reason_is_removed(self) -> None:
+        """_get_skip_reason must no longer exist on QAManager (inlined in C31)."""
+        assert not hasattr(QAManager, "_get_skip_reason"), (
+            "_get_skip_reason still exists; it was inlined in C31 and must be deleted"
         )
-
-    def test_with_files_returns_none(self, manager: QAManager) -> None:
-        """Non-empty gate_files → None (gate should run)."""
-        reason = manager._get_skip_reason(["mcp_server/foo.py"])
-        assert reason is None

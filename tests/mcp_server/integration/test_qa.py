@@ -92,8 +92,7 @@ def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": True,
@@ -108,8 +107,7 @@ def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
                     "timeout_seconds": 60,
                     "working_dir": None,
                 },
-                "parsing": {"strategy": "exit_code"},
-                "success": {"mode": "exit_code", "exit_codes_ok": [0]},
+                "success": {"exit_codes_ok": [0]},
                 "capabilities": {
                     "file_types": [".py"],
                     "supports_autofix": False,

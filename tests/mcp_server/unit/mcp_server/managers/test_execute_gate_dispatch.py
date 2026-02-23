@@ -9,7 +9,6 @@ import pytest
 from mcp_server.config.quality_config import (
     CapabilitiesMetadata,
     ExecutionConfig,
-    ExitCodeParsing,
     JsonViolationsParsing,
     QualityGate,
     SuccessCriteria,
@@ -22,8 +21,7 @@ from mcp_server.managers.qa_manager import QAManager
 # ---------------------------------------------------------------------------
 
 _EXEC = ExecutionConfig(command=["python", "-c", "pass"], timeout_seconds=10)
-_EXIT_CODE_PARSING = ExitCodeParsing(strategy="exit_code")
-_EXIT_CODE_SUCCESS = SuccessCriteria(mode="exit_code", exit_codes_ok=[0])
+_EXIT_CODE_SUCCESS = SuccessCriteria(exit_codes_ok=[0])
 _BASE_CAPS = {"file_types": [".py"], "supports_autofix": False}
 _JSON_PARSING = JsonViolationsParsing(
     field_map={"file": "filename", "message": "message", "rule": "code"},
@@ -37,7 +35,6 @@ def _make_gate(caps: dict) -> QualityGate:
     return QualityGate(
         name="test-gate",
         execution=_EXEC,
-        parsing=_EXIT_CODE_PARSING,
         success=_EXIT_CODE_SUCCESS,
         capabilities=CapabilitiesMetadata(**caps),
     )

@@ -64,7 +64,7 @@ class TestRunQualityGatesTool:
 
         text = _summary_text(result)
         assert "Quality gates" in text
-        mock_manager._resolve_scope.assert_called_once_with("project")
+        mock_manager._resolve_scope.assert_called_once_with("project", files=None)
         mock_manager.run_quality_gates.assert_called_once_with([])
 
     @pytest.mark.asyncio
@@ -333,6 +333,7 @@ class TestRunQualityGatesInputC28:
     async def test_execute_scope_files_passes_list_to_manager(self) -> None:
         """execute(scope='files', files=[...]) passes the list verbatim to run_quality_gates."""
         mock_manager = MagicMock()
+        mock_manager._resolve_scope.return_value = ["src/foo.py"]
         mock_manager.run_quality_gates.return_value = {
             "summary": {
                 "passed": 1,

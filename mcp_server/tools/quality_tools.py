@@ -86,11 +86,7 @@ class RunQualityGatesTool(BaseTool):
         Returns:
             ToolResult with content[0]=text summary, content[1]=compact JSON payload.
         """
-        if params.scope == "files":
-            assert params.files is not None  # enforced by model_validator
-            resolved_files = params.files
-        else:
-            resolved_files = self.manager._resolve_scope(params.scope)
+        resolved_files = self.manager._resolve_scope(params.scope, files=params.files)
 
         result = self.manager.run_quality_gates(resolved_files)
         summary_line = QAManager._format_summary_line(result)

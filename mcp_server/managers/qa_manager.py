@@ -151,7 +151,7 @@ class QAManager:
                 continue
 
             gate_files = self._files_for_gate(gate, python_files)
-            skip_reason = self._get_skip_reason(gate_files)
+            skip_reason = "Skipped (no matching files)" if not gate_files else None
             if skip_reason is not None:
                 self._update_summary_and_append_gate(
                     results,
@@ -295,28 +295,20 @@ class QAManager:
     # Scope resolution
     # ------------------------------------------------------------------
 
-    def _resolve_scope(self, scope: str) -> list[str]:
+    def _resolve_scope(self, scope: str, files: list[str] | None = None) -> list[str]:
         """Resolve scope keyword to a sorted, deduplicated list of relative file paths.
 
         Args:
-            scope: One of ``"project"``, ``"branch"``, or ``"auto"``.
-                ``"files"`` is intentionally not handled here — it is dispatched
-                by the caller (``RunQualityGatesTool.execute``) before invoking
-                this method.
+            scope: One of ``"project"``, ``"branch"``, ``"auto"``, or ``"files"``.
+            files: Required when ``scope="files"``; the caller-supplied explicit
+                file list, returned verbatim without git or glob resolution.
 
         Returns:
             Sorted list of relative paths (POSIX separators) for the given scope.
             Returns ``[]`` gracefully when workspace_root is absent or config is missing.
-
-        Raises:
-            ValueError: When ``scope="files"`` is passed, which must be dispatched
-                by the caller before calling this method.
         """
         if scope == "files":
-            raise ValueError(
-                "scope='files' must be dispatched by the caller; "
-                "pass explicit files directly to run_quality_gates()"
-            )
+            return list(files) if files else []
         if scope == "project":
             return self._resolve_project_scope()
         if scope == "branch":
@@ -324,8 +316,6 @@ class QAManager:
         if scope == "auto":
             return self._resolve_auto_scope()
         return []
-
-    def _git_diff_py_files(self, base_ref: str) -> list[str]:
         """Run ``git diff --name-only <base_ref>..HEAD`` and return ``.py`` files.
 
         Args:
@@ -390,6 +380,30 @@ class QAManager:
         failed_files = set(quality_gates.get("failed_files", []))
         union = diff_files | failed_files
         return sorted(union)
+
+    def _git_diff_py_files(self, base_ref: str) -> list[str]:
+        """Run ``git diff --name-only <base_ref>..HEAD`` and return ``.py`` files.
+
+        Args:
+            base_ref: The git ref to diff against (e.g. a branch name or commit SHA).
+
+        Returns:
+            Sorted list of ``.py`` paths from the diff output. Empty on error or
+            when the diff contains no Python files.
+        """
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", f"{base_ref}..HEAD"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                return []
+            lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            return sorted(line for line in lines if line.endswith(".py"))
+        except FileNotFoundError:
+            return []
 
     def _resolve_project_scope(self) -> list[str]:
         """Expand project_scope.include_globs against workspace_root.
@@ -530,15 +544,6 @@ class QAManager:
             eligible = gate.scope.filter_files(eligible)
 
         return eligible
-
-    def _get_skip_reason(self, gate_files: list[str]) -> str | None:
-        """Return skip reason for a gate, or None if it should run.
-
-        A gate is skipped when no files match its configured file_types.
-        """
-        if not gate_files:
-            return "Skipped (no matching files)"
-        return None
 
     def _command_for_hints(self, gate: QualityGate, files: list[str]) -> str:
         parts = [*gate.execution.command, *files]
@@ -816,7 +821,7 @@ class QAManager:
                     "Pass" if result["passed"] else f"Fail ({len(text_violations)} violations)"
                 )
 
-            elif gate.parsing.strategy == "exit_code":
+            else:  # no parsing_strategy → pass/fail on exit code
                 ok_codes = set(gate.success.exit_codes_ok)
 
                 if proc.returncode in ok_codes:
@@ -836,14 +841,6 @@ class QAManager:
                             "details": output_capture["details"],
                         }
                     ]
-
-            else:
-                result["passed"] = False
-                result["score"] = "N/A"
-                result["issues"] = [
-                    {"message": f"Unsupported parsing strategy: {gate.parsing.strategy}"}
-                ]
-
         except subprocess.TimeoutExpired:
             result["passed"] = False
             result["score"] = "Timeout"

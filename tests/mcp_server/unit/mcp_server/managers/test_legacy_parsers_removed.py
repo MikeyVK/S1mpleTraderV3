@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mcp_server.config.quality_config as quality_config_module
 from mcp_server.managers.qa_manager import QAManager
 
 
@@ -28,3 +29,17 @@ class TestLegacyParsersRemoved:
             "_extract_json_fields still exists; json_field parsing strategy "
             "has been removed — use capabilities.parsing_strategy instead"
         )
+
+    def test_get_skip_reason_is_removed(self) -> None:
+        """_get_skip_reason must no longer exist on QAManager (inlined in C31)."""
+        assert not hasattr(QAManager, "_get_skip_reason"), (
+            "_get_skip_reason still exists; it was inlined in C31 and must be deleted"
+        )
+
+    def test_exit_code_parsing_is_removed(self) -> None:
+        """ExitCodeParsing must no longer exist in quality_config (removed in C31)."""
+        assert not hasattr(quality_config_module, "ExitCodeParsing"), (
+            "ExitCodeParsing still exists; only JsonViolationsParsing and "
+            "TextViolationsParsing are the two valid parsing strategy types"
+        )
+
