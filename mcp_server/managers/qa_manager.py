@@ -443,6 +443,30 @@ class QAManager:
 
         return f"✅ Quality gates: {passed}/{total_active} passed ({total_violations} violations)"
 
+    def _build_compact_result(self, results: dict[str, Any]) -> dict[str, Any]:
+        """Return a compact gate payload with violations only — no debug fields.
+
+        Design contract (design.md §4.9):
+        ``{"gates": [{"id": str, "passed": bool, "skipped": bool, "violations": list}]}``
+
+        Args:
+            results: The dict returned by ``run_quality_gates``.
+
+        Returns:
+            Compact payload suitable for ``content[1].json`` in a ToolResult.
+        """
+        compact_gates = []
+        for gate in results.get("gates", []):
+            compact_gates.append(
+                {
+                    "id": str(gate.get("name", gate.get("id", ""))),
+                    "passed": bool(gate.get("passed", False)),
+                    "skipped": gate.get("status") == "skipped",
+                    "violations": gate.get("issues", []),
+                }
+            )
+        return {"gates": compact_gates}
+
     def check_health(self) -> bool:
         """Check if QA tools are available."""
 
