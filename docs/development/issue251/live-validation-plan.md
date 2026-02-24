@@ -128,6 +128,7 @@ For every scenario row, capture:
 - [ ] X3b: subsequent `scope="auto"` run includes persisted `failed_files` even when diff is empty
 - [ ] X3c: all-pass run advances `baseline_sha` to `HEAD` and resets `failed_files=[]`
 - [ ] X4: response-contract check is explicitly captured for each scope (`auto|branch|project|files`)
+- [ ] X5: mixed rerun scope proves failure-narrowing set logic (`changed_since_baseline ∪ failed_files`) and excludes unchanged previously-passing files
 
 ---
 
@@ -188,6 +189,7 @@ For every scenario row, capture:
 | X3b | Auto union includes persisted failed set | `run_quality_gates(scope="auto")` with empty diff but non-empty `failed_files` | run still evaluates persisted failed file(s) |
 | X3c | Baseline advance/reset on all-pass | `run_quality_gates(scope="auto")` after clean fix pass | `.st3/state.json`: `baseline_sha=HEAD`, `failed_files=[]` |
 | X4 | Contract evidence per scope | `run_quality_gates(...)` for each scope | each scope evidence logs `content[0]` text and `content[1]` json contract explicitly |
+| X5 | Mixed rerun set (core narrowing behavior) | `run_quality_gates(scope="auto")` with setup: one persisted failed file + one newly changed file + one unchanged previously-pass file | evaluated set equals `{persisted_failed ∪ newly_changed}` and explicitly excludes unchanged previously-pass file
 
 ---
 
@@ -221,6 +223,7 @@ For every scenario row, capture:
 | X3b | PASS | Pre: `baseline_sha=52442aa` (HEAD), `failed_files=["mcp_server/managers/qa_manager.py"]`. Run: `scope=auto` → diff empty (no commits past HEAD). `qa_manager.py` evaluated via persisted `failed_files` → Gate 1 F821 found. | auto union includes persisted `failed_files` even when diff is empty. State machine correct. |
 | X3c | PASS | Pre: `baseline_sha=233571ae`, `failed_files=[]`. Run: `scope=files`, `files=["backend/__init__.py"]` → all gates pass/skip, `overall_pass=True` → `_advance_baseline_on_all_pass` fires. Post: `state.json` `baseline_sha=52442aa` (HEAD), `failed_files=[]`. | all-pass run correctly advances `baseline_sha` to HEAD and resets `failed_files=[]`. |
 | X4 | PASS | All 4 scopes confirmed: `content[0]`=text summary (e.g. `❌ Quality gates: 4/5 passed — 1 violations in Gate 1: Ruff Strict Lint`), `content[1]`=`{gates:[{id, passed, skipped, violations:[...]}, ...]}`. Consistent across `auto` (X3a), `branch` (B-series), `project` (A2), `files` (X2/X3c). | Response contract stable. text-first/json-second order (C29 fix) confirmed for all scopes. |
+| X5 | NOT RUN (required rerun) | mixed rerun narrowing case pending | Must prove set logic: include `failed_files` + newly changed files, exclude unchanged previously-pass files (research failure-narrowing contract). |
 
 ### Validation Findings (cross-scenario)
 
@@ -253,6 +256,7 @@ For every scenario row, capture:
 - X1 and X2 are executed with real failing fixtures (Gate 0 + Gate 4 Types)
 - X3a/X3b/X3c baseline state-machine behavior is proven with state.json evidence
 - X4 explicit response-contract evidence is captured for all four scopes
+- X5 mixed rerun narrowing behavior is proven (`failed_files ∪ changed_since_baseline`, unchanged previously-pass excluded)
 
 **NO-GO** if any of the following occurs:
 - Active gate failure is only blob-based/unstructured
