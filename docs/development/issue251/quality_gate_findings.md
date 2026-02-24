@@ -362,6 +362,60 @@ B017 — Do not assert blind exception: `Exception` (×6)
 
 ---
 
+## Preventie-framework ("voorkomen > genezen")
+
+### 1) Auto-fix matrix (op basis van huidige findings + gates)
+
+| Regel/code | Primair gate | Auto-fixbaar | Aanpak |
+|---|---|---|---|
+| Ruff Format diffs (signatures, kwargs/layout, blank line, trailing comma layouts) | Gate 0 | Ja (hoog) | `python -m ruff format <files>` |
+| W292 (no newline at end of file) | Gate 0/1 | Ja (hoog) | Meestal direct via `ruff format` |
+| F401 unused import | Gate 1 | Vaak ja | `python -m ruff check --fix <files>` |
+| F841 dead variable | Gate 1 | Vaak ja | `python -m ruff check --fix <files>` |
+| SIM300 (Yoda condition) | Gate 1 | Vaak ja | `python -m ruff check --fix <files>` |
+| I001 import-sortering (algemeen) | Gate 1/2 | Ja (hoog) | `python -m ruff check --fix <files>` |
+| ARG001/ARG002 (unused args) | Gate 1 | Meestal nee | Handmatig: `_arg` of parameter verwijderen |
+| B017 (`pytest.raises(Exception)`) | Gate 1 | Nee | Handmatig naar concrete exception (`ValidationError`) |
+| B023 (closure in loop) | Gate 1 | Nee | Handmatig extracten naar helper/static method |
+| PLC0415 (inline import) | Gate 2 | Nee | Handmatig verplaatsen naar module-top |
+| E501 (line length) | Gate 3 | Vaak nee | Handmatig splitsen/structureren |
+| ANN401 (`-> Any`) | Gate 1 | Nee | Handmatig typekeuze of gerichte `# noqa: ANN401` |
+| Mypy/Pyright typefouten | Gate 4/4b | Nee | Handmatige type-correcties |
+
+**Praktijkregel:** gebruik altijd de daadwerkelijke violation-`fixable` vlag uit gate-output als bron van waarheid; bovenstaande tabel is prioritering, geen absolute garantie.
+
+### 2) Hint-momenten (waar in workflow tonen)
+
+| Moment | Trigger | Hint-set |
+|---|---|---|
+| Pre-edit (RED/GREEN start) | Nieuw bestand of grote refactor | "houd signaturen kort", "geen inline imports", "geen `raises(Exception)`" |
+| Pre-commit (snelle lokale check) | Voor commit in TDD-cycle | `ruff format` + `ruff check --fix` + her-run gates |
+| Gate-failure (tool output) | `run_quality_gates` failed gate | Bestaande gate-specifieke hints + rule-specifieke workaround-link |
+| Post-failure rerun | `scope=auto` met `failed_files` | Toon expliciet: alleen changed+failed subset, inclusief rerun command |
+
+**Aanvulling op huidige implementatie:**
+- Houd `_gate_hints` als basis, maar voeg rule-specifieke "quick-fix" hints toe op basis van codes in `issues` (bijv. `B017`, `PLC0415`, `E501`, `ANN401`).
+- Prioriteer hints met volgorde: auto-fix eerst, daarna handmatige workaround.
+
+### 3) Workaround-catalogus (safe patterns)
+
+| Probleem | Vermijd | Gebruik |
+|---|---|---|
+| B017 | `pytest.raises(Exception)` | `pytest.raises(ValidationError)` of specifieke exception |
+| PLC0415 | `import ...` in test/body | Imports bovenin module |
+| B023 | inner helper in loop met closure | helper buiten loop of `@staticmethod` |
+| E501 | lange assert/docstring 1 regel | impliciete string-concatenatie / opsplitsen |
+| ARG001/ARG002 | ongebruikte args zonder prefix | `_arg` of signature cleanup |
+| ANN401 | blind `-> Any` zonder context | nauwkeuriger type; anders gerichte `noqa` met motivatie |
+| Ruff format churn | handmatige stijl-afwijkingen | direct `ruff format` volgen (één bron van waarheid) |
+
+### 4) Invoeringsvolgorde (laag risico -> hoog effect)
+
+1. **Stap A (nu):** standaard pre-commit alias/documentatie: `ruff format` + `ruff check --fix`.
+2. **Stap B:** rule-to-hint mapping toevoegen voor top-recurring handmatige issues (`B017`, `PLC0415`, `E501`, `ANN401`).
+3. **Stap C:** in quality output onderscheid tonen: "auto-fixbaar" vs "handmatig" per issue.
+4. **Stap D:** periodieke review: als `ANN401` structureel terugkomt, beleid expliciet aanscherpen in playbook/config.
+
 ## Open vragen / aanbevelingen
 
 1. **ANN401 policy:** Wanneer is `-> Any` acceptabel en wanneer moeten we een nauwkeuriger type kiezen? Documenteer richtlijn in TYPE_CHECKING_PLAYBOOK.
