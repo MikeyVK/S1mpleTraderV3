@@ -173,37 +173,93 @@ parent = state.get("parent_branch") or "main"
 
 ### F-9 — Directory paths in `scope="files"` silently skipped with no error
 
-**File:** `mcp_server/managers/qa_manager.py` → `_files_for_gate` / input processing  
-**Root cause:** The file list is forwarded verbatim to gates. Gates filter by `.py` extension
-(via `capabilities.file_types`). A path like `"backend/"` has no extension → filtered out
-→ zero files evaluated → all gates skip → result is `⚠️ 5/5 active (1 skipped)`,
-indistinguishable from a clean run. No validation step rejects non-`.py` paths.
+**File:** `mcp_server/managers/qa_manager.py` → `_resolve_scope` (lines 311–312)  
+**Root cause:** `_resolve_scope(scope="files")` returns the caller-supplied list **verbatim**:
+```python
+if scope == "files":
+    return list(files) if files else []
+```
+This list then enters `_files_for_gate`, which filters by `.py` extension. A string like
+`"backend/"` has no `.py` extension → filtered to zero files → gate skips → response looks
+like a clean run. Silent data loss at the earliest processing step.
 
-**Impact on consumers:** An agent or user passing `files=["backend/"]` receives a false
-"all passed" signal. This is a correctness bug — silent data loss at the input layer.
+**Investigation note — is there an existing expansion routine to reuse?**  
+`run_tests` uses `params.path.split()` and passes raw strings directly to pytest.
+`pytest` itself handles directory traversal natively — there is **no path expansion utility
+in this codebase**. Nothing to extract. The utility must be created.
 
-**Fix options:**
+**Intended behaviour:** `scope="files"` should behave consistently with how `run_tests`
+accepts its `path` parameter: a caller can supply files, directories, or a mix. The tool
+itself resolves the final set of checkable files — the caller should not have to pre-expand.
 
-1. **Pydantic validation** (preferred): in the `RunQualityGatesInput` model, add a
-   `@field_validator("files")` that rejects any path not ending in `.py` (or not being an
-   existing file). Produces a structured `ValidationError` pre-execution, consistent with
-   how missing `files` on `scope="files"` is already handled (F7 scenario: PASS).
+**Fix — new utility `resolve_input_paths` in `mcp_server/utils/`:**
 
-2. **Runtime warning**: in `_files_for_gate`, if the input list is non-empty but `eligible`
-   is empty after filtering, emit a structured warning in the gate result rather than silently
-   skipping.
+This is an SRP concern: `QAManager` should not own path-expansion logic. A dedicated
+utility owns it, `_resolve_scope` delegates:
 
-Option 1 is preferred because it fails fast before any gate runs and is consistent with
-existing input validation behaviour. Option 2 is a fallback if changing the Pydantic model
-causes downstream test churn.
+```python
+# mcp_server/utils/path_resolver.py
+def resolve_input_paths(
+    paths: list[str],
+    workspace_root: Path,
+) -> tuple[list[Path], list[str]]:
+    """Expand a mixed list of file and directory paths to a flat, deduplicated file list.
+
+    Args:
+        paths: Caller-supplied paths (files, directories, or a mix). Relative paths
+               are resolved against workspace_root.
+        workspace_root: Absolute path to the project root.
+
+    Returns:
+        (resolved_files, warnings) where warnings lists any paths that do not exist.
+        Gates then apply their own filter_files() to the resolved list.
+    """
+    resolved: set[Path] = set()
+    warnings: list[str] = []
+    for raw in paths:
+        p = (workspace_root / raw).resolve()
+        if p.is_dir():
+            resolved.update(p.rglob("*"))
+        elif p.is_file():
+            resolved.add(p)
+        else:
+            warnings.append(f"Path not found: {raw}")
+    return sorted(resolved), warnings
+```
+
+`_resolve_scope(scope="files")` becomes:
+```python
+if scope == "files":
+    expanded, warnings = resolve_input_paths(files or [], self.workspace_root)
+    # Warnings surfaced in gate result — not a hard error (partial run still useful)
+    relative = [str(p.relative_to(self.workspace_root).as_posix()) for p in expanded]
+    return sorted(set(relative))
+```
+
+Gates receive the same flat `.py` file list they always have. `filter_files()` in each gate
+continues to apply gate-scoped include/exclude patterns — unchanged.
+
+**Why not Pydantic validation to reject non-`.py` paths?**  
+A Pydantic validator that rejects directory input forces the caller to pre-expand —
+that is the tool's responsibility, not the caller's. Rejection would be the wrong contract:
+`files=["backend/dtos/"]` is legitimate and expected input.
+
+**Non-existent path handling:** Structured warning in the response (not a hard error).
+A partial run with warnings is more useful than a complete failure when one of several paths
+is wrong. The warning is visible in the compact result's gate entries.
 
 **Acceptance criterion:**
-- `run_quality_gates(scope="files", files=["backend/"])` returns a ValidationError or a
-  structured warning — **never** a clean-gates-passed result.
-- `run_quality_gates(scope="files", files=["backend/__init__.py"])` continues to work.
+- `scope="files", files=["backend/dtos/"]` evaluates all `.py` files under `backend/dtos/`.
+- `scope="files", files=["backend/dtos/causality.py", "tests/unit/"]` evaluates the single
+  file plus all `.py` files under `tests/unit/`.
+- `scope="files", files=["nonexistent/"]` emits a structured warning in the result,
+  does not silently return a clean-gates-passed result.
+- All existing `scope="files", files=["some/file.py"]` behaviour is unchanged.
+- `resolve_input_paths` lives in `mcp_server/utils/` and is tested independently of QAManager.
 
-**Affected files:** `mcp_server/tools/quality_tools.py` (Pydantic model) or
-`mcp_server/managers/qa_manager.py` (runtime warning path)
+**Affected files:**
+- `mcp_server/utils/path_resolver.py` ← new file
+- `mcp_server/managers/qa_manager.py` → `_resolve_scope` (delegate to new utility)
 
 ---
 
@@ -212,8 +268,9 @@ causes downstream test churn.
 **Proposed cycle C33:** Fix `_resolve_branch_scope` key path (F-8).
 Small targeted fix with unit tests.
 
-**Proposed cycle C34:** Validate `files` list rejects non-`.py` paths (F-9).
-Pydantic validator + unit + integration tests.
+**Proposed cycle C34:** Create `resolve_input_paths` utility; wire into `_resolve_scope(scope="files")` (F-9).
+New utility in `mcp_server/utils/path_resolver.py` + unit tests for the utility + integration
+test for the mixed files/dirs scenario. `_files_for_gate` and `filter_files` are untouched.
 
 ---
 
