@@ -36,7 +36,7 @@ gates:
       supports_autofix: true
       parsing_strategy: "text_violations"
       text_violations:
-        pattern: "^--- a/(?P<file>.+)$"
+        pattern: "^--- (?P<file>.+)$"
         severity_default: "error"
         defaults:
           rule: "FORMAT"

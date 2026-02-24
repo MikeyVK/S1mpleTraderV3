@@ -122,13 +122,13 @@ For every scenario row, capture:
 
 ### closure coverage (must-run additions)
 
-- [ ] X1: dedicated Gate 0 FAIL scenario produces structured `FORMAT` violations (not Gate1/3/4b substitution)
-- [ ] X2: dedicated Gate 4 Types FAIL scenario yields structured mypy issues in `gate4_types`
-- [ ] X3a: fail-run persists/accumulates `quality_gates.failed_files` in `.st3/state.json`
-- [ ] X3b: subsequent `scope="auto"` run includes persisted `failed_files` even when diff is empty
-- [ ] X3c: all-pass run advances `baseline_sha` to `HEAD` and resets `failed_files=[]`
-- [ ] X4: response-contract check is explicitly captured for each scope (`auto|branch|project|files`)
-- [ ] X5: mixed rerun scope proves failure-narrowing set logic (`changed_since_baseline ∪ failed_files`) and excludes unchanged previously-passing files
+- [x] X1: dedicated Gate 0 FAIL scenario produces structured `FORMAT` violations (not Gate1/3/4b substitution)
+- [x] X2: dedicated Gate 4 Types FAIL scenario yields structured mypy issues in `gate4_types`
+- [x] X3a: fail-run persists/accumulates `quality_gates.failed_files` in `.st3/state.json`
+- [x] X3b: subsequent `scope="auto"` run includes persisted `failed_files` even when diff is empty
+- [x] X3c: all-pass run advances `baseline_sha` to `HEAD` and resets `failed_files=[]`
+- [x] X4: response-contract check is explicitly captured for each scope (`auto|branch|project|files`)
+- [x] X5: mixed rerun scope proves failure-narrowing set logic (`changed_since_baseline ∪ failed_files`) and excludes unchanged previously-passing files
 
 ---
 
@@ -195,10 +195,10 @@ For every scenario row, capture:
 
 ## Validation Results (to fill live)
 
-**Date:** 2026-02-23 (session 1) / 2026-02-24 (session 2 — X scenarios)
+**Date:** 2026-02-23 (session 1) / 2026-02-24 (session 2 — X1-X4) / 2026-02-24 (session 3 — X1/X2/X5 fully proven after fixes)
 **Tester:** GitHub Copilot (automated session)  
-**Commit:** `da4a5c17` (session 1 HEAD) / `52442aa4` (session 2 HEAD)  
-**Server Session:** proxy restart after each fix; final clean run from `52442aa4`
+**Commit:** `da4a5c17` (session 1) / `52442aa4` (session 2) / `15318372` (session 3 base)  
+**Server Session:** proxy restart after each fix; session 3 includes two server restarts (F-13 fix + F-4 fix)
 
 | Scenario | Status (PASS/FAIL/BLOCKED) | Evidence Ref | Notes |
 |----------|-----------------------------|--------------|-------|
@@ -217,13 +217,13 @@ For every scenario row, capture:
 | F5 | FAIL | scope=files, files=["backend/"] → 6/6 skipped, no error | **Finding F-9:** directory paths silently skipped (not `.py` extension); no validation error, no warning. Indistinguishable from "all files passed" |
 | F6 | FAIL | scope=files, files=["backend/","mcp_server/"] → 6/6 skipped | Same as F5. Multiple directory paths silently silenced. **Finding F-9** confirmed |
 | F7 | PASS | scope=files (no files) → Pydantic ValidationError pre-execution | Input validation fires correctly, no gate runs, clear error message. **Finding F-12:** ValidationError also logged server-side as structured WARNING with `call_id`, `tool_name`, `model`, `arguments` — good observability but double-reported (server log + chat response) |
-| X1 | FAIL | `tests/mcp_server/validation_fixtures/gate0_format_violation.py` (single-quoted strings) — `ruff format --check --diff` reports `1 file would be reformatted` in terminal; tool reports `Gate 0: passed=true, violations=[]` | **Finding F-13 (Critical):** Gate 0 violation parser pattern `^--- a/(?P<file>.+)$` never matches ruff format `--diff` output (`--- tests\...` without `a/` prefix). Gate 0 is permanently non-functional as a fail detector. |
-| X2 | PARTIAL | `backend/dtos/validation_fixture_gate4.py` (unannotated function + type mismatch): Gate 1 → 3 violations (ANN001×2, ANN201); Gate 4b → 1 violation (`reportAssignmentType` str→int at line 17). Gate 4: Types = SKIPPED. | Gate 4 (mypy --strict) skipped even for `backend/dtos/` file — consistent with prior F-4 finding. Gate 4b (Pyright) works correctly. Gate 0 silently passes (F-13 confirmed again). |
+| X1 | PASS (after fix) | `tests/mcp_server/validation_fixtures/gate0_format_violation.py` → Gate 0: `passed=false`, `violations=[{file, rule: "FORMAT", message: "File requires formatting", severity: "error"}]` | **F-13 fixed:** pattern changed from `^--- a/(?P<file>.+)$` to `^--- (?P<file>.+)$` in `.st3/quality.yaml`. Ruff format diff uses `--- <path>` without `a/` prefix on Windows. Gate 0 now correctly detects format violations. |
+| X2 | PASS (after fix) | `backend/dtos/validation_fixture_gate4.py` → Gate 4: Types `passed=false`, violations: `{rule: "no-untyped-def", line: 9, severity: "error"}` + `{rule: "assignment", line: 17, severity: "error"}`. Gate 4b also `passed=false`. | **F-4 root cause fixed:** `PurePosixPath.match("backend/dtos/**/*.py")` returns `False` (suffix-match semantics, `**` mishandled for non-trailing position). Fixed by switching to `PurePosixPath.full_match()` (Python 3.12+) in `filter_files()` in `mcp_server/config/quality_config.py`. |
 | X3a | PASS | Pre: `baseline_sha=233571ae`, `failed_files=[]`. Run: `scope=auto` → diff returns `qa_manager.py` → Gate 1 F821 violation. Post: `state.json` `failed_files=["mcp_server/managers/qa_manager.py"]`, `baseline_sha` unchanged (233571ae). | fail-run correctly accumulates `failed_files` and leaves `baseline_sha` unchanged. |
 | X3b | PASS | Pre: `baseline_sha=52442aa` (HEAD), `failed_files=["mcp_server/managers/qa_manager.py"]`. Run: `scope=auto` → diff empty (no commits past HEAD). `qa_manager.py` evaluated via persisted `failed_files` → Gate 1 F821 found. | auto union includes persisted `failed_files` even when diff is empty. State machine correct. |
 | X3c | PASS | Pre: `baseline_sha=233571ae`, `failed_files=[]`. Run: `scope=files`, `files=["backend/__init__.py"]` → all gates pass/skip, `overall_pass=True` → `_advance_baseline_on_all_pass` fires. Post: `state.json` `baseline_sha=52442aa` (HEAD), `failed_files=[]`. | all-pass run correctly advances `baseline_sha` to HEAD and resets `failed_files=[]`. |
 | X4 | PASS | All 4 scopes confirmed: `content[0]`=text summary (e.g. `❌ Quality gates: 4/5 passed — 1 violations in Gate 1: Ruff Strict Lint`), `content[1]`=`{gates:[{id, passed, skipped, violations:[...]}, ...]}`. Consistent across `auto` (X3a), `branch` (B-series), `project` (A2), `files` (X2/X3c). | Response contract stable. text-first/json-second order (C29 fix) confirmed for all scopes. |
-| X5 | NOT RUN (required rerun) | mixed rerun narrowing case pending | Must prove set logic: include `failed_files` + newly changed files, exclude unchanged previously-pass files (research failure-narrowing contract). |
+| X5 | PASS | Pre: `baseline_sha=233571ae`, `failed_files=["tests/.../violations.py"]`. Diff=`{qa_manager.py, validation_fixture_gate4.py, gate0_format_violation.py}`. Union={4 files}. `mcp_server/server.py` (known I001 violation) excluded. Run: violations only from `qa_manager.py` (F821), `violations.py` (I001/F401/ANN/ARG/E501/FORMAT), `validation_fixture_gate4.py` (ANN/no-untyped-def/assignment), `gate0_format_violation.py` (FORMAT). No I001 from `server.py` anywhere. | Narrowing set logic correct: `{diff_files ∪ failed_files}` evaluated; `server.py` absent from all gate results confirms unchanged previously-passing files are excluded. |
 
 ### Validation Findings (cross-scenario)
 
@@ -232,7 +232,7 @@ For every scenario row, capture:
 | F-1 | Medium | `⚠️` emitted for scope=auto with empty diff — correct behavior but wrong signal; should be `✅ Nothing to check (no changed files)` | UX / `_format_summary_line` |
 | F-2 | Medium | Compact payload missing `overall_pass` and `duration_ms`; consumer must iterate all gate entries to determine pass/fail | Contract / `_build_compact_result` |
 | F-3 | Low | `skipped=true` + `passed=true` simultaneously on gate entries is semantically contradictory; skipped means not evaluated, not passed | Contract / `_build_compact_result` |
-| F-4 | Low | Gate 4: Types (mypy) always skipped with no `skip_reason` surfaced in compact output; cause unclear (file_types filter?) | Observability |
+| F-4 | Low ~~→ Fixed~~ | Gate 4: Types (mypy) always skipped. **Root cause (session 2):** `PurePosixPath.match("backend/dtos/**/*.py")` returns `False` — `.match()` does suffix-matching and does not correctly handle `**` in non-trailing position. Fixed by switching to `PurePosixPath.full_match()` (Python 3.12+) in `filter_files()` (`mcp_server/config/quality_config.py`). Gate 4 now runs correctly for `backend/dtos/**/*.py` files. | Observability / `filter_files()` / `quality_config.py` |
 | F-5 | High | scope=auto fallback to project (A2) and scope=project (P2) produce 502KB responses — exceeds MCP inline transport, written to disk, not usable in chat | Scalability / response size |
 | F-6 | **Critical** | Dead code in `_resolve_scope` (qa_manager.py lines 321–344): unreachable block after `return []` with invalid `base_ref` reference (F821). Introduced during cleanup session. Production code ships with own lint violation | Code quality / cleanup regression |
 | F-7 | **Critical** | `server.py` line 3: import order violation (I001). Production file introduced by fix commit fails its own quality gate | Code quality / fix regression |
@@ -241,7 +241,7 @@ For every scenario row, capture:
 | F-10 | Low | Test plan error: fixture was expected to trigger Gate0 (ruff format) but Gate0 passes; violations are in Gate1/Gate3/Gate4b only | Test plan / fixture design |
 | F-11 | Low | Test plan error: `script.py` used as "clean" reference file but contains real violations (B018, F821, W292) | Test plan / pre-condition error |
 | F-12 | Info | ValidationError (F7) also emitted as structured server-side WARNING log with `call_id`, `tool_name`, `model`, `arguments` — useful observability; double-reporting is by design (log + chat client) | Observability / server logging |
-| F-13 | **Critical** | Gate 0 violation parser pattern `^--- a/(?P<file>.+)$` never matches ruff format `--diff` output which uses `--- <filepath>` (no `a/` prefix). Gate 0 always reports `passed=true, violations=[]` regardless of actual formatting violations. Verified: terminal `ruff format --check --diff` flags the fixture (`1 file would be reformatted`) but gate reports clean. Gate 0 is permanently non-functional as a fail detector. | Bug / Gate 0 parser / `_parse_format_output` |
+| F-13 | **Critical** ~~→ Fixed~~ | Gate 0 violation parser pattern `^--- a/(?P<file>.+)$` never matched ruff format `--diff` output which uses `--- <filepath>` (no `a/` prefix). Gate 0 always reported `passed=true, violations=[]`. **Fixed (session 2):** pattern changed to `^--- (?P<file>.+)$` in `.st3/quality.yaml`. Gate 0 now correctly detects and reports structured format violations. | Bug / Gate 0 parser / `quality.yaml` |
 
 ---
 

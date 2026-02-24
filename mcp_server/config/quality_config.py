@@ -181,13 +181,13 @@ class GateScope(BaseModel):
 
             # Include matching
             if include_patterns and not any(
-                PurePosixPath(posix_path).match(pattern) for pattern in include_patterns
+                PurePosixPath(posix_path).full_match(pattern) for pattern in include_patterns
             ):
                 continue  # Skip if not in include list
 
             # Exclude matching
             if exclude_patterns and any(
-                PurePosixPath(posix_path).match(pattern) for pattern in exclude_patterns
+                PurePosixPath(posix_path).full_match(pattern) for pattern in exclude_patterns
             ):
                 continue  # Skip if in exclude list
             filtered.append(file_path)
