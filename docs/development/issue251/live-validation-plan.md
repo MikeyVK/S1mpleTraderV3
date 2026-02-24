@@ -120,6 +120,15 @@ For every scenario row, capture:
 - [ ] each gate entry has stable minimal shape: `id`, `passed`, `skipped`, `violations`
 - [ ] no `_get_skip_reason` reference in user-visible response artifacts
 
+### closure coverage (must-run additions)
+
+- [ ] X1: dedicated Gate 0 FAIL scenario produces structured `FORMAT` violations (not Gate1/3/4b substitution)
+- [ ] X2: dedicated Gate 4 Types FAIL scenario yields structured mypy issues in `gate4_types`
+- [ ] X3a: fail-run persists/accumulates `quality_gates.failed_files` in `.st3/state.json`
+- [ ] X3b: subsequent `scope="auto"` run includes persisted `failed_files` even when diff is empty
+- [ ] X3c: all-pass run advances `baseline_sha` to `HEAD` and resets `failed_files=[]`
+- [ ] X4: response-contract check is explicitly captured for each scope (`auto|branch|project|files`)
+
 ---
 
 ## Test Scenarios
@@ -169,6 +178,17 @@ For every scenario row, capture:
 |---|----------|------|----------|
 | F7 | Missing files field | `run_quality_gates(scope="files")` | input validation error (no gate run) |
 
+### closure scenarios — omissions fixed
+
+| # | Scenario | Call | Expected |
+|---|----------|------|----------|
+| X1 | Gate 0 dedicated FAIL | `run_quality_gates(scope="files", files=["<gate0_fixture.py>"])` | `gate0` contains structured `FORMAT` violations (`file`,`message`,`rule`) |
+| X2 | Gate 4 Types dedicated FAIL | `run_quality_gates(scope="files", files=["<gate4_types_fixture.py>"])` | `gate4_types` contains structured mypy issues (`file`,`line`,`rule`,`message`) |
+| X3a | Baseline state accumulation on fail | `run_quality_gates(scope="auto")` after introducing known failing diff | `.st3/state.json` updates `quality_gates.failed_files` with failing file(s) |
+| X3b | Auto union includes persisted failed set | `run_quality_gates(scope="auto")` with empty diff but non-empty `failed_files` | run still evaluates persisted failed file(s) |
+| X3c | Baseline advance/reset on all-pass | `run_quality_gates(scope="auto")` after clean fix pass | `.st3/state.json`: `baseline_sha=HEAD`, `failed_files=[]` |
+| X4 | Contract evidence per scope | `run_quality_gates(...)` for each scope | each scope evidence logs `content[0]` text and `content[1]` json contract explicitly |
+
 ---
 
 ## Validation Results (to fill live)
@@ -195,6 +215,12 @@ For every scenario row, capture:
 | F5 | FAIL | scope=files, files=["backend/"] → 6/6 skipped, no error | **Finding F-9:** directory paths silently skipped (not `.py` extension); no validation error, no warning. Indistinguishable from "all files passed" |
 | F6 | FAIL | scope=files, files=["backend/","mcp_server/"] → 6/6 skipped | Same as F5. Multiple directory paths silently silenced. **Finding F-9** confirmed |
 | F7 | PASS | scope=files (no files) → Pydantic ValidationError pre-execution | Input validation fires correctly, no gate runs, clear error message. **Finding F-12:** ValidationError also logged server-side as structured WARNING with `call_id`, `tool_name`, `model`, `arguments` — good observability but double-reported (server log + chat response) |
+| X1 | NOT RUN (required rerun) | dedicated Gate 0 fixture pending | Must prove real `gate0` fail path with structured `FORMAT` violations |
+| X2 | NOT RUN (required rerun) | dedicated Gate 4 Types fixture pending | Must prove live `gate4_types` fail path with structured mypy issues |
+| X3a | NOT RUN (required rerun) | baseline fail-state transition pending | Must verify `failed_files` accumulation in `.st3/state.json` |
+| X3b | NOT RUN (required rerun) | baseline union replay pending | Must verify `scope="auto"` includes persisted `failed_files` on empty diff |
+| X3c | NOT RUN (required rerun) | baseline advance/reset pending | Must verify all-pass sets `baseline_sha=HEAD` and clears `failed_files` |
+| X4 | NOT RUN (required rerun) | explicit per-scope contract evidence pending | Must capture `content[0]=text` and `content[1]=json` for each scope |
 
 ### Validation Findings (cross-scenario)
 
@@ -223,6 +249,9 @@ For every scenario row, capture:
 - `scope=auto` fallback to project proven in A2
 - `scope=files` validation contract proven in F7
 - Response ordering and compact gate shape stable in all sampled scopes
+- X1 and X2 are executed with real failing fixtures (Gate 0 + Gate 4 Types)
+- X3a/X3b/X3c baseline state-machine behavior is proven with state.json evidence
+- X4 explicit response-contract evidence is captured for all four scopes
 
 **NO-GO** if any of the following occurs:
 - Active gate failure is only blob-based/unstructured
