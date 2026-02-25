@@ -1,8 +1,8 @@
 <!-- c:\temp\st3\docs\development\issue251\research_v2.md -->
 <!-- template=research version=8b7bb3ab created=2026-02-24T17:07Z updated= -->
-# Post-Validation Rerun Research — Findings F-1..F-18
+# Post-Validation Rerun Research — Findings F-1..F-19
 
-**Status:** DRAFT  
+**Status:** READY FOR PLANNING  
 **Version:** 1.0  
 **Last Updated:** 2026-02-24
 
@@ -15,7 +15,7 @@ Provide a structured basis for the planning phase to define new TDD cycles that 
 ## Scope
 
 **In Scope:**
-Findings F-1 through F-18 from docs/development/issue251/live-validation-plan.md. Code in mcp_server/managers/qa_manager.py, mcp_server/config/quality_config.py, mcp_server/server.py, .st3/quality.yaml. Response contract fields: overall_pass, duration_ms, passed, skipped, fixable, file paths, message content.
+Findings F-1 through F-19 from docs/development/issue251/live-validation-plan.md. Code in mcp_server/managers/qa_manager.py, mcp_server/config/quality_config.py, mcp_server/server.py, .st3/quality.yaml. Response contract fields: overall_pass, duration_ms, passed, skipped, fixable, file paths, message content.
 
 **Out of Scope:**
 TDD cycles C0–C31 (already completed). Gate 5/6 (pytest/coverage) — already removed. Performance optimisation. New gate types. Documentation phase obligations.
@@ -23,7 +23,7 @@ TDD cycles C0–C31 (already completed). Gate 5/6 (pytest/coverage) — already 
 ## Prerequisites
 
 Read these first:
-1. docs/development/issue251/live-validation-plan.md — all 18 findings with evidence
+1. docs/development/issue251/live-validation-plan.md — all 19 findings with evidence
 2. docs/development/issue251/research.md — original F1–F15 findings and architecture decisions
 3. mcp_server/managers/qa_manager.py — current production code
 4. mcp_server/config/quality_config.py — filter_files, GateScope, CapabilitiesMetadata
@@ -33,11 +33,11 @@ Read these first:
 
 ## Problem Statement
 
-Live validation of the refactored run_quality_gates tool (issue #251, cycles C0–C31) produced 18 cross-scenario findings. Two bugs were fixed in-session (F-4, F-13). The remaining 16 findings span code quality regressions in production files (F-6, F-7), scope resolution bugs (F-8, F-9), response contract gaps visible to both agents and human users (F-2, F-3, F-14, F-15, F-16, F-17, F-18), and observability/UX issues (F-1, F-18). B1-pass and P1-pass remain blocked. A targeted set of additional TDD cycles is required before the branch can reach GO status.
+Live validation of the refactored run_quality_gates tool (issue #251, cycles C0–C31) produced 19 cross-scenario findings. Two bugs were fixed in-session (F-4, F-13). The remaining 17 findings span code quality regressions in production files (F-6, F-7), scope resolution bugs (F-8, F-9), response contract gaps visible to both agents and human users (F-2, F-3, F-14, F-15, F-17), and observability/UX issues (F-1, F-16, F-18, F-19). B1-pass and P1-pass remain blocked. A targeted set of additional TDD cycles is required before the branch can reach GO status.
 
 ## Research Goals
 
-- Group all 18 validation findings by root cause and impact cluster
+- Group all 19 validation findings by root cause and impact cluster
 - Distinguish already-fixed findings (F-4, F-13) from open ones
 - For each open finding: identify the exact file/function/config to change and the minimal fix
 - Determine which findings affect agent consumers vs human users vs both
@@ -54,7 +54,7 @@ Issue #251 refactored run_quality_gates across 31 TDD cycles. The refactor intro
 
 ## Findings
 
-> All finding references (F-1..F-18) trace back to the evidence table in
+> All finding references (F-1..F-19) trace back to the evidence table in
 > [live-validation-plan.md](live-validation-plan.md).
 > Original research findings (F1–F15, no dash) are in [research.md](research.md) and relate to
 > the C0–C31 TDD cycles only.
@@ -66,7 +66,7 @@ Issue #251 refactored run_quality_gates across 31 TDD cycles. The refactor intro
 | A — Code quality regressions | F-6, F-7 | Open | ✅ YES |
 | B — Scope resolution bugs | F-8, F-9 | Open | F-8: B1-pass/P1-pass blocked; F-9: silent-fail risk |
 | C — Response contract (agent-facing) | F-2, F-3, F-14, F-15, F-17 | Open | Partially — F-2 blocks reliable pass-detection |
-| D — Response clarity & UX | F-1, F-16, F-18 | Open | No, medium priority |
+| D — Response clarity & UX | F-1, F-16, F-18, F-19 | Open | No, medium priority |
 | E — Fixed in-session | F-4, F-13 | **Fixed** | N/A |
 | F — Non-actionable observations | F-5, F-10, F-11, F-12 | Noted | No |
 
@@ -478,12 +478,12 @@ update `field_map` in quality.yaml (F-17 Part A). Document Gate 4 + 4b intended 
 
 ---
 
-## Investigation D: Response Clarity & UX (F-1, F-16, F-18)
+## Investigation D: Response Clarity & UX (F-1, F-16, F-18, F-19)
 
-**Findings:** [F-1](live-validation-plan.md) · [F-16](live-validation-plan.md) · [F-18](live-validation-plan.md)  
-**Severity:** F-1 Medium · F-16 Low · F-18 Low  
+**Findings:** [F-1](live-validation-plan.md) · [F-16](live-validation-plan.md) · [F-18](live-validation-plan.md) · [F-19](live-validation-plan.md)  
+**Severity:** F-1 Medium · F-16 Low · F-18 Low · F-19 Medium  
 **Audience:** Primarily **human users** reading `content[0]` text or displaying violations
-in a chat UI. Agents are less affected but multi-line messages (F-18) can break log parsers.
+in a chat UI. Agents are also impacted by missing scope-resolution context in one-line summaries.
 
 ---
 
@@ -501,6 +501,21 @@ emit `✅ Nothing to check (no changed files)` instead of the warning signal.
 **Acceptance criterion:** A1-pass scenario emits a `✅` summary line, not `⚠️`.
 
 **Affected files:** `mcp_server/managers/qa_manager.py` → `_format_summary_line`
+
+---
+
+### F-19 — Summary line lacks effective scope-resolution context
+
+**File:** `mcp_server/managers/qa_manager.py` → `_format_summary_line` / tool result summary in `content[0]`  
+**Root cause:** The one-line summary currently reports only gate outcomes (`passed/failed/skipped`, violations, failed gate names). It does not expose scope-resolution context, so callers cannot see whether requested scope resolved to baseline diff, fallback-to-project, or parent-branch diff, nor how many files were actually evaluated.
+
+**Consumer impact (agent + human):** In short validate-fix-revalidate loops, `content[0]` is not self-explanatory for scope-driven runs (`auto`, `branch`). Consumers must inspect deeper payload/state to infer what was actually checked.
+
+**Fix:** Include concise effective-scope context in the summary line for scope-driven runs (at minimum: resolved basis and evaluated file count), while keeping the line compact and backwards-readable.
+
+**Acceptance criterion:** For `scope="auto"` and `scope="branch"`, summary line communicates both gate result and resolved scope context in one line; no ambiguity about fallback/resolution path.
+
+**Affected files:** `mcp_server/managers/qa_manager.py` and `mcp_server/tools/quality_tools.py` (summary-context handoff)
 
 ---
 
@@ -556,8 +571,8 @@ the secondary type annotation information that Pyright includes.
 
 ### Proposed cycle
 
-**Proposed cycle C39:** Fix summary line signal (F-1) + sanitise Pyright messages (F-18).
-Both are small, single-function changes. F-16 requires no code change — close as
+**Proposed cycle C39:** Fix summary line signal/context (F-1, F-19) + sanitise Pyright messages (F-18).
+All are small, localised output-contract changes. F-16 requires no code change — close as
 "by design, fixable: true (F-14) is the mitigation".
 
 ---
@@ -627,12 +642,12 @@ client sees only the structured error; the log is server-internal.
 |-------|-----------|-------------|--------------|----------|
 | C32 | F-6, F-7 | Remove dead code block + fix import order | `qa_manager.py`, `server.py` | **Critical** (unblocks B1/P1) |
 | C33 | F-8 | Fix `_resolve_branch_scope` key path for `parent_branch` | `qa_manager.py` | High |
-| C34 | F-9 | Reject non-`.py` paths in `scope="files"` (Pydantic validator) | `quality_tools.py` | High |
+| C34 | F-9 | Resolve mixed file/dir inputs via `resolve_input_paths`; surface warnings for missing paths | `qa_manager.py`, `mcp_server/utils/path_resolver.py` | High |
 | C35 | F-2, F-3 | Add `overall_pass` + `duration_ms` to compact result; add `status` enum to gate entries | `qa_manager.py` | Medium |
 | C36 | F-15 | Normalise all violation `file` paths to relative POSIX | `qa_manager.py` | Medium |
 | C37 | F-14 | Propagate `supports_autofix` → per-violation `fixable` for text_violations gates | `quality.yaml`, `qa_manager.py` | Medium |
 | C38 | F-17 | Fix Gate 4b `severity: null` (Pyright field name); document Gate 4 + 4b relationship | `quality.yaml` | Low |
-| C39 | F-1, F-18 | Fix `⚠️` signal for clean state; sanitise Pyright multi-line messages | `qa_manager.py` | Low |
+| C39 | F-1, F-18, F-19 | Fix summary signal/context for clean and scope-driven runs; sanitise Pyright multi-line messages | `qa_manager.py`, `quality_tools.py` | Low |
 
 **F-16** closed as by-design (null line/col is inherent to ruff format diff; mitigation via
 F-14 `fixable: true`).  
@@ -676,13 +691,12 @@ flag. This keeps the behaviour config-driven (consistent with the `json_violatio
 
 ---
 
-> ❓ Is F-9 (silent dir skip) best fixed with Pydantic validation on the files list, or in _files_for_gate before gate execution?
+> ❓ Is F-9 (silent dir skip) best fixed via input rejection, or via path resolution in `_resolve_scope` before gate execution?
 
-**Pydantic validation** on the input model is strongly preferred. It produces a
-`ValidationError` before any gate runs, is consistent with how `files=None` on
-`scope="files"` is already handled, and provides a clear error message to the caller. The
-runtime warning fallback (option 2) is acceptable only if test churn from changing the
-Pydantic model proves excessive.
+**Path resolution in `_resolve_scope`** is preferred. It preserves the intended `scope="files"`
+contract (mixed files/directories accepted), prevents silent skips, and keeps gate filtering
+(`_files_for_gate` / `filter_files`) unchanged. Missing paths should emit structured warnings
+instead of causing full-run failure.
 
 ## Open Questions
 
@@ -690,11 +704,11 @@ Pydantic model proves excessive.
 - ❓ Should F-15 (path normalisation) be normalised at parse time in _parse_text_violations/_parse_json_violations, or at serialisation time in _build_compact_result?
 - ❓ Does F-17 (Gate 4b severity: null) indicate a Pyright JSON schema change, or a field_map misconfiguration in quality.yaml?
 - ❓ Should F-14 (fixable propagation from gate to violation) be a quality.yaml config change (add fixable_when to text_violations) or a code change in the text_violations parser?
-- ❓ Is F-9 (silent dir skip) best fixed with Pydantic validation on the files list, or in _files_for_gate before gate execution?
+- ❓ Is F-9 (silent dir skip) best fixed via input rejection, or via path resolution in `_resolve_scope` before gate execution?
 
 
 ## Related Documentation
-- **[docs/development/issue251/live-validation-plan.md — F-1..F-18 findings table][related-1]**
+- **[docs/development/issue251/live-validation-plan.md — F-1..F-19 findings table][related-1]**
 - **[docs/development/issue251/research.md — original investigations I1–I15, findings F1–F15][related-2]**
 - **[mcp_server/config/quality_config.py — GateScope.filter_files()][related-3]**
 - **[mcp_server/managers/qa_manager.py — _resolve_branch_scope, _build_compact_result, _format_summary_line, dead code lines 321-344][related-4]**
@@ -703,7 +717,7 @@ Pydantic model proves excessive.
 
 <!-- Link definitions -->
 
-[related-1]: docs/development/issue251/live-validation-plan.md — F-1..F-18 findings table
+[related-1]: docs/development/issue251/live-validation-plan.md — F-1..F-19 findings table
 [related-2]: docs/development/issue251/research.md — original investigations I1–I15, findings F1–F15
 [related-3]: mcp_server/config/quality_config.py — GateScope.filter_files()
 [related-4]: mcp_server/managers/qa_manager.py — _resolve_branch_scope, _build_compact_result, _format_summary_line, dead code lines 321-344
