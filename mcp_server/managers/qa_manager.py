@@ -321,7 +321,7 @@ class QAManager:
     def _resolve_branch_scope(self) -> list[str]:
         """Return Python files changed since the parent branch via git diff.
 
-        The parent branch is read from ``workflow.parent_branch`` in
+        The parent branch is read from the top-level ``parent_branch`` key in
         ``.st3/state.json``.  Falls back to ``"main"`` when the key is absent
         or the state file cannot be loaded.
 
@@ -332,7 +332,7 @@ class QAManager:
         parent = "main"
         if self.workspace_root is not None:
             state = self._load_state_json(self.workspace_root / ".st3" / "state.json")
-            parent = state.get("workflow", {}).get("parent_branch") or "main"
+            parent = state.get("parent_branch") or "main"
         return self._git_diff_py_files(parent)
 
     def _resolve_auto_scope(self) -> list[str]:

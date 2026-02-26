@@ -125,8 +125,8 @@ class TestScopeResolutionBranch:
         assert result == []
 
     def test_branch_scope_uses_parent_from_state_json(self, tmp_path: Path) -> None:
-        """When state.json contains workflow.parent_branch, that branch is used as diff base."""
-        state = {"workflow": {"parent_branch": "feature/parent-branch"}}
+        """When state.json contains top-level parent_branch, that branch is used as diff base."""
+        state = {"parent_branch": "feature/parent-branch"}
         state_path = tmp_path / ".st3" / "state.json"
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(json.dumps(state))
@@ -146,6 +146,31 @@ class TestScopeResolutionBranch:
 
         assert captured_cmd, "subprocess.run was not called"
         assert "feature/parent-branch..HEAD" in captured_cmd[0]
+
+    def test_branch_scope_reads_top_level_parent_branch(self, tmp_path: Path) -> None:
+        """parent_branch lives at top level in state.json, not nested under workflow."""
+        state = {"parent_branch": "epic/76-quality-gates"}
+        state_path = tmp_path / ".st3" / "state.json"
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(state))
+
+        manager = QAManager(workspace_root=tmp_path)
+        captured_cmd: list[list[str]] = []
+
+        def fake_git(_cmd: list[str], **_kw: object) -> MagicMock:
+            captured_cmd.append(_cmd)
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 0
+            result.stdout = "mcp_server/bar.py\n"
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git):
+            manager._resolve_scope("branch")
+
+        assert captured_cmd, "subprocess.run was not called"
+        assert "epic/76-quality-gates..HEAD" in captured_cmd[0], (
+            f"Expected epic/76-quality-gates..HEAD in git cmd, got: {captured_cmd[0]}"
+        )
 
     def test_branch_scope_falls_back_to_main_without_state(self, tmp_path: Path) -> None:
         """When state.json is absent, git diff falls back to main..HEAD."""
