@@ -780,12 +780,12 @@ This addendum extends the original C0–C31 plan with the post-validation findin
 
 **RED:** Add failing checks for:
 - clean empty-diff summary showing warning icon
-- missing effective scope context on `auto`/`branch`
+- missing effective scope context across scope inputs (`auto`,`branch`,`project`,`files`)
 - pyright messages containing `\n`/`\u00a0`
 
 **GREEN:**
 - Emit ✅ for expected clean empty-diff state.
-- Include compact effective scope-resolution context in summary line for `auto`/`branch`.
+- Include compact effective scope-resolution context in summary line for all scope inputs (`auto`,`branch`,`project`,`files`).
 - Sanitize pyright message text to single-line, space-normalized output.
 
 **REFACTOR:** Keep summary human-readable and stable for existing consumers.

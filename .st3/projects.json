@@ -1790,14 +1790,14 @@
             "deliverables": [
               {
                 "id": "D40.1",
-                "description": "C39: Fix summary line signal/context for clean and scope-driven runs: emit \u2705 for empty-diff clean state (F-1) and include effective scope-resolution context for auto/branch (F-19)"
+                "description": "C39: Fix summary line signal/context for clean and all scope inputs: emit \u2705 for empty-diff clean state (F-1) and include effective scope-resolution context for auto/branch/project/files (F-19)"
               },
               {
                 "id": "D40.2",
                 "description": "C39: Sanitise Pyright multi-line messages in _normalize_violation: replace \\n with ' \u2014 ' and \\u00a0 with space (F-18)"
               }
             ],
-            "exit_criteria": "A1-pass scenario emits \u2705 summary line, not \u26a0\ufe0f; for scope=auto and scope=branch summary line includes effective scope-resolution context (basis + evaluated file count); Gate 4b violation messages contain no \\n or \\u00a0; all other gate messages unaffected"
+            "exit_criteria": "A1-pass scenario emits \u2705 summary line, not \u26a0\ufe0f; for scope=auto, scope=branch, scope=project, and scope=files summary line includes effective scope-resolution context (basis + evaluated file count); Gate 4b violation messages contain no \\n or \\u00a0; all other gate messages unaffected"
           }
         ]
       }
