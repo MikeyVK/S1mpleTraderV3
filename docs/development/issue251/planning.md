@@ -642,9 +642,169 @@ Design is ready for implementation only when all criteria are true:
 
 ---
 
+## Addendum A — Post-Validation Plan (C32–C39)
+
+**Source:** [research_v2.md](research_v2.md) + planning_deliverables in [.st3/projects.json](../../../.st3/projects.json)
+
+This addendum extends the original C0–C31 plan with the post-validation findings F-1..F-19 discovered during the live rerun. The focus is targeted hardening and contract cleanup; no architectural pivot is introduced.
+
+### Addendum Scope
+
+**In Scope:**
+- Fix blockers and contract gaps identified in findings F-1..F-19
+- Extend `run_quality_gates` behaviour where existing contracts are incomplete or ambiguous
+- Add minimal tests for new behaviour in scope resolution and response contract
+
+**Out of Scope:**
+- Replanning or rewriting C0–C31
+- New gate categories
+- Large response transport redesign (F-5 remains out of scope)
+
+---
+
+### Cycle C32 — Cleanup blockers (F-6, F-7)
+
+**Goal:** Remove production-code regressions that currently fail branch validation.
+
+**RED:** Reproduce F821 in `qa_manager.py` and I001 in `server.py` from branch scope run.
+
+**GREEN:**
+- Delete unreachable dead block in `_resolve_scope` referencing undefined `base_ref`.
+- Fix import ordering in `server.py`.
+
+**REFACTOR:** Keep changes surgical; no behavioural scope changes.
+
+**Exit Criteria:** `ruff check` reports no F821 for `qa_manager.py`; `ruff check --select=I001` passes for `server.py`; branch run no longer reports F821/I001.
+
+---
+
+### Cycle C33 — Branch parent resolution fix (F-8)
+
+**Goal:** Make `scope="branch"` honor configured `parent_branch` from state.
+
+**RED:** Add failing unit test where state has top-level `parent_branch` and current logic still falls back to `main`.
+
+**GREEN:** Read `parent_branch` from top-level state key in `_resolve_branch_scope`.
+
+**REFACTOR:** Keep fallback to `main` for absent key and unreadable state.
+
+**Exit Criteria:** Tests prove both explicit parent and fallback path.
+
+---
+
+### Cycle C34 — Mixed file/dir input resolution (F-9)
+
+**Goal:** Accept single/multiple files and single/multiple directories for `scope="files"` without silent skips.
+
+**RED:** Add failing tests for:
+- `files=["backend/dtos/"]`
+- `files=["backend/dtos/causality.py", "tests/unit/"]`
+- non-existent input path warning behaviour
+
+**GREEN:**
+- Add utility `mcp_server/utils/path_resolver.py` with `resolve_input_paths(paths, workspace_root)`.
+- Expand directories to concrete files, preserve direct files, dedupe, and surface warnings for missing paths.
+- Wire utility into `_resolve_scope(scope="files")`.
+
+**REFACTOR:** Keep `_files_for_gate` and gate-level `filter_files()` unchanged (single responsibility).
+
+**Exit Criteria:** Mixed file/dir input resolves correctly; missing paths no longer look like clean pass.
+
+---
+
+### Cycle C35 — Compact payload completion (F-2, F-3)
+
+**Goal:** Make compact JSON self-sufficient for agents.
+
+**RED:** Add contract tests for missing `overall_pass`/`duration_ms` and contradictory skipped semantics.
+
+**GREEN:**
+- Add top-level `overall_pass` and `duration_ms`.
+- Add gate `status` enum (`passed|failed|skipped`) and align `passed` semantics for skipped gates.
+
+**REFACTOR:** Preserve backwards readability where possible while making status unambiguous.
+
+**Exit Criteria:** PASS/FAIL/all-skipped contracts are deterministic via top-level and per-gate fields.
+
+---
+
+### Cycle C36 — File path normalization (F-15)
+
+**Goal:** Normalize violation file paths across all gates.
+
+**RED:** Add integration test demonstrating mismatched path formats across gate outputs for same file.
+
+**GREEN:** Normalize to workspace-relative POSIX path form in shared normalization flow.
+
+**REFACTOR:** Keep parser-specific field maps untouched; normalize at common point.
+
+**Exit Criteria:** Same file appears with one canonical path format in compact payload.
+
+---
+
+### Cycle C37 — Autofix propagation for text parser (F-14)
+
+**Goal:** Correct `fixable` semantics for text_violations gates that support autofix.
+
+**RED:** Add failing test showing Gate 0 violation still reports `fixable=false` with `supports_autofix=true`.
+
+**GREEN:**
+- Add/enable `fixable_when: "gate"` path for text parser.
+- Update Gate 0 config accordingly.
+
+**REFACTOR:** Keep behaviour config-driven and symmetric with JSON parser strategy.
+
+**Exit Criteria:** Gate 0 violations correctly expose `fixable=true` when gate supports autofix.
+
+---
+
+### Cycle C38 — Pyright severity mapping + intent doc (F-17)
+
+**Goal:** Remove `severity: null` in Gate 4b and document Gate 4 + 4b relation.
+
+**RED:** Reproduce `severity=null` from current pyright output sample.
+
+**GREEN:**
+- Update `field_map` to actual pyright severity field.
+- Add short comment in quality config clarifying mypy/pyright dual-gate intent.
+
+**REFACTOR:** Keep duplicate-report behaviour explicit instead of implicit.
+
+**Exit Criteria:** Gate 4b emits non-null severity where pyright provides one.
+
+---
+
+### Cycle C39 — Summary-line clarity + message sanitation (F-1, F-18, F-19)
+
+**Goal:** Improve one-line status reliability for quick rerun loops.
+
+**RED:** Add failing checks for:
+- clean empty-diff summary showing warning icon
+- missing effective scope context on `auto`/`branch`
+- pyright messages containing `\n`/`\u00a0`
+
+**GREEN:**
+- Emit ✅ for expected clean empty-diff state.
+- Include compact effective scope-resolution context in summary line for `auto`/`branch`.
+- Sanitize pyright message text to single-line, space-normalized output.
+
+**REFACTOR:** Keep summary human-readable and stable for existing consumers.
+
+**Exit Criteria:** Summary line communicates both result and resolved scope context; messages are single-line clean.
+
+---
+
+### Addendum Milestone
+
+- **M6 (Post-Validation Hardening Ready):** C32–C39 complete, all open actionable findings from research_v2 resolved or explicitly closed-by-design.
+
+---
+
 ## Related Documentation
 
 - [research.md](research.md)
+- [research_v2.md](research_v2.md)
+- [.st3/projects.json](../../../.st3/projects.json)
 
 ---
 
@@ -657,3 +817,4 @@ Design is ready for implementation only when all criteria are true:
 | 1.2 | 2026-02-22 | Agent | Add C0 (quality.yaml pre-flight); neutral C27 contract; C29 contract-change annotation; TDD Execution Rules; dependency graph + milestones + traceability updated |
 | 1.3 | 2026-02-23 | Agent | C28 herschreven: `scope="files"` als vierde waarde; conditioneel `files` veld met model validator; Summary, Prerequisites, Design Exit Criteria, Traceability F4 bijgewerkt (research v1.9) |
 | 1.4 | 2026-02-23 | Agent | C28 exit criteria expliciet: beide ValidationError-gevallen uitgeschreven (scope="files" zonder files, scope≠files met files) |
+| 1.5 | 2026-02-26 | Agent | Addendum A toegevoegd voor post-validation cycles C32–C39 op basis van research_v2 + planning_deliverables; human-traceable uitvoering buiten projects.json |

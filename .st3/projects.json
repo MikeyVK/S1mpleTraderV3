@@ -1373,7 +1373,7 @@
     "created_at": "2026-02-22T17:05:14.107952+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 32,
+        "total": 40,
         "cycles": [
           {
             "cycle_number": 1,
@@ -1694,6 +1694,110 @@
               }
             ],
             "exit_criteria": "Live quality.yaml validates against new models with no compatibility shim"
+          },
+          {
+            "cycle_number": 33,
+            "deliverables": [
+              {
+                "id": "D33.1",
+                "description": "C32: Remove dead code block (F-6: unreachable block with F821 base_ref) from qa_manager.py lines 321-344"
+              },
+              {
+                "id": "D33.2",
+                "description": "C32: Fix import order violation (F-7: I001) in server.py"
+              }
+            ],
+            "exit_criteria": "ruff check mcp_server/managers/qa_manager.py reports zero F821 violations; ruff check --select=I001 mcp_server/server.py exits 0; scope=branch run emits no F821/I001 from production files; B1-pass and P1-pass unblocked"
+          },
+          {
+            "cycle_number": 34,
+            "deliverables": [
+              {
+                "id": "D34.1",
+                "description": "C33: Fix _resolve_branch_scope to read parent_branch from top-level state.json key instead of state['workflow']['parent_branch'] (F-8)"
+              }
+            ],
+            "exit_criteria": "Unit test: state.json with parent_branch='epic/76-quality-gates' causes _git_diff_py_files to be called with 'epic/76-quality-gates'; unit test: absent parent_branch falls back to 'main'; B3 scenario tests a genuinely distinct code path"
+          },
+          {
+            "cycle_number": 35,
+            "deliverables": [
+              {
+                "id": "D35.1",
+                "description": "C34: Create mcp_server/utils/path_resolver.py with resolve_input_paths(paths, workspace_root) \u2192 (list[Path], warnings); expands directories via rglob, passes files through, warns on non-existent paths (F-9)"
+              },
+              {
+                "id": "D35.2",
+                "description": "C34: Wire resolve_input_paths into _resolve_scope(scope='files') in qa_manager.py; _files_for_gate and filter_files unchanged"
+              }
+            ],
+            "exit_criteria": "scope='files', files=['backend/dtos/'] evaluates all .py files under backend/dtos/; scope='files', files=['backend/dtos/causality.py', 'tests/unit/'] evaluates both; non-existent path emits structured warning, never a clean-pass result; resolve_input_paths unit-tested independently of QAManager; existing single-file behaviour unchanged"
+          },
+          {
+            "cycle_number": 36,
+            "deliverables": [
+              {
+                "id": "D36.1",
+                "description": "C35: Add overall_pass: bool and duration_ms: int as top-level fields in _build_compact_result (F-2)"
+              },
+              {
+                "id": "D36.2",
+                "description": "C35: Add status enum ('passed'|'failed'|'skipped') to gate entries; skipped gates set passed: null to fix skipped+passed=true contradiction (F-3)"
+              }
+            ],
+            "exit_criteria": "content[1]['overall_pass'] exists and matches inferred outcome; content[1]['duration_ms'] present; skipped gate entry has status='skipped' and passed is not asserted as True; contract tests for PASS, FAIL, all-skipped runs pass"
+          },
+          {
+            "cycle_number": 37,
+            "deliverables": [
+              {
+                "id": "D37.1",
+                "description": "C36: Normalise all violation file paths to workspace-relative POSIX in _normalize_violation; resolve absolute paths against workspace_root, convert OS separators to forward slashes (F-15)"
+              }
+            ],
+            "exit_criteria": "All violation file fields in a single response use the same format (relative POSIX); integration test comparing Gate 0 + Gate 1 violations for the same file asserts identical file values; no absolute paths in compact payload"
+          },
+          {
+            "cycle_number": 38,
+            "deliverables": [
+              {
+                "id": "D38.1",
+                "description": "C37: Add fixable_when: 'gate' support to text_violations parser; when gate supports_autofix=true, per-violation fixable=True (F-14)"
+              },
+              {
+                "id": "D38.2",
+                "description": "C37: Update .st3/quality.yaml gate0_ruff_format text_violations config to include fixable_when: 'gate'"
+              }
+            ],
+            "exit_criteria": "Gate 0 FORMAT violation has fixable=true when gate config has supports_autofix=true; fixable=false when supports_autofix=false; json_violations fixable_when behaviour unchanged"
+          },
+          {
+            "cycle_number": 39,
+            "deliverables": [
+              {
+                "id": "D39.1",
+                "description": "C38: Investigate Pyright JSON severity field name; fix field_map in .st3/quality.yaml gate4_pyright so severity is not null (F-17 Part A)"
+              },
+              {
+                "id": "D39.2",
+                "description": "C38: Document intended Gate 4 + Gate 4b complementary relationship in quality.yaml comments (F-17 Part B)"
+              }
+            ],
+            "exit_criteria": "Gate 4b violations have severity='error' or 'warning', not null, when Pyright reports that severity; quality.yaml comment clarifies Gate 4 vs 4b intent"
+          },
+          {
+            "cycle_number": 40,
+            "deliverables": [
+              {
+                "id": "D40.1",
+                "description": "C39: Fix summary line signal/context for clean and scope-driven runs: emit \u2705 for empty-diff clean state (F-1) and include effective scope-resolution context for auto/branch (F-19)"
+              },
+              {
+                "id": "D40.2",
+                "description": "C39: Sanitise Pyright multi-line messages in _normalize_violation: replace \\n with ' \u2014 ' and \\u00a0 with space (F-18)"
+              }
+            ],
+            "exit_criteria": "A1-pass scenario emits \u2705 summary line, not \u26a0\ufe0f; for scope=auto and scope=branch summary line includes effective scope-resolution context (basis + evaluated file count); Gate 4b violation messages contain no \\n or \\u00a0; all other gate messages unaffected"
           }
         ]
       }
