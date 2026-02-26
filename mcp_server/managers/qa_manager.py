@@ -317,29 +317,6 @@ class QAManager:
         if scope == "auto":
             return self._resolve_auto_scope()
         return []
-        """Run ``git diff --name-only <base_ref>..HEAD`` and return ``.py`` files.
-
-        Args:
-            base_ref: The git ref to diff against (e.g. a branch name or commit SHA).
-
-        Returns:
-            Sorted list of ``.py`` paths from the diff output. Empty on error or
-            when the diff contains no Python files.
-        """
-        try:
-            result = subprocess.run(
-                ["git", "diff", "--name-only", f"{base_ref}..HEAD"],
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if result.returncode != 0:
-                return []
-            lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
-            return sorted(line for line in lines if line.endswith(".py"))
-        except OSError:
-            return []
 
     def _resolve_branch_scope(self) -> list[str]:
         """Return Python files changed since the parent branch via git diff.

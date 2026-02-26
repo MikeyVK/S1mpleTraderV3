@@ -26,6 +26,7 @@ from mcp_server.config.label_startup import validate_label_config_on_startup
 from mcp_server.config.settings import settings
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.managers.artifact_manager import ArtifactManager
+from mcp_server.managers.qa_manager import QAManager
 from mcp_server.resources.github import GitHubIssuesResource
 
 # Resources
@@ -84,7 +85,6 @@ from mcp_server.tools.project_tools import (
     SavePlanningDeliverablesTool,
     UpdatePlanningDeliverablesTool,
 )
-from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.quality_tools import RunQualityGatesTool
 from mcp_server.tools.safe_edit_tool import SafeEditTool
 from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
