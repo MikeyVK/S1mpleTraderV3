@@ -426,16 +426,29 @@ class QAManager:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _format_summary_line(results: dict[str, Any]) -> str:
+    def _format_summary_line(
+        results: dict[str, Any],
+        scope: str | None = None,
+        file_count: int | None = None,
+    ) -> str:
         """Return a concise one-line status string for the given gate results.
 
-        Format (design.md §4.8):
-        - Pass:      ``"✅ Quality gates: N/N passed (0 violations)"``
-        - Fail:      ``"❌ Quality gates: N/M passed — V violations in gate_id[, ...]"``
-        - Skip+pass: ``"⚠️ Quality gates: N/N active (S skipped)"``
+        Format (design.md §4.8, C39 additions):
+        - All-skipped:  ``"✅ Nothing to check (no changed files)[scope_part] — Nms"``
+        - Pass:         ``"✅ Quality gates: N/N passed (V violations)[scope_part] — Nms"``
+        - Fail:         ``"❌ Quality gates: N/M passed — V violations in
+          gate_id[scope_part] — Nms"``
+        - Skip+pass:    ``"⚠️ Quality gates: N/N active (S skipped)[scope_part] — Nms"``
+
+        C39 additions (F-1, F-19, duration_ms):
+        - F-1: all gates skipped → ✅ "Nothing to check" instead of ⚠️.
+        - F-19: optional ``scope`` and ``file_count`` appended as ``[scope · N files]``.
+        - duration_ms appended as `` — Nms`` suffix (taken from ``results["timings"]["total"]``).
 
         Args:
             results: The dict returned by ``run_quality_gates``.
+            scope: Optional scope keyword (``"auto"``, ``"branch"``, ``"project"``, ``"files"``).
+            file_count: Number of files resolved for this scope run.
 
         Returns:
             A single-line string suitable for ``content[0].text`` in a ToolResult.
@@ -447,6 +460,20 @@ class QAManager:
         total_violations: int = summary["total_violations"]
         total_active = passed + failed
 
+        duration_ms: int = int(results.get("timings", {}).get("total", 0))
+        duration_part = f" — {duration_ms}ms"
+
+        scope_part = ""
+        if scope is not None:
+            if file_count is not None:
+                scope_part = f" [{scope} · {file_count} files]"
+            else:
+                scope_part = f" [{scope}]"
+
+        # F-1: all gates skipped = clean empty-diff state — no attention needed
+        if passed == 0 and failed == 0 and skipped > 0:
+            return f"✅ Nothing to check (no changed files){scope_part}{duration_part}"
+
         if failed > 0:
             failed_names = [
                 g["name"] for g in results.get("gates", []) if g.get("status") == "failed"
@@ -454,13 +481,19 @@ class QAManager:
             gate_list = ", ".join(failed_names)
             return (
                 f"❌ Quality gates: {passed}/{total_active} passed"
-                f" — {total_violations} violations in {gate_list}"
+                f" — {total_violations} violations in {gate_list}{scope_part}{duration_part}"
             )
 
         if skipped > 0:
-            return f"⚠️ Quality gates: {passed}/{total_active} active ({skipped} skipped)"
+            return (
+                f"⚠️ Quality gates: {passed}/{total_active} active"
+                f" ({skipped} skipped){scope_part}{duration_part}"
+            )
 
-        return f"✅ Quality gates: {passed}/{total_active} passed ({total_violations} violations)"
+        return (
+            f"✅ Quality gates: {passed}/{total_active} passed"
+            f" ({total_violations} violations){scope_part}{duration_part}"
+        )
 
     def _normalize_file_path(self, path: str | None) -> str | None:
         """Normalize a violation file path to workspace-relative POSIX form (C36 / F-15).
@@ -536,7 +569,6 @@ class QAManager:
             )
         return {
             "overall_pass": bool(results.get("overall_pass", True)),
-            "duration_ms": int(results.get("timings", {}).get("total", 0)),
             "gates": compact_gates,
         }
 
@@ -1119,10 +1151,14 @@ class QAManager:
             raw_line = resolve(item, fmap["line"]) if "line" in fmap else None
             line = (raw_line + parsing.line_offset) if isinstance(raw_line, int) else raw_line
             fixable_val = resolve(item, fixable_key) if fixable_key else None
+            raw_msg = resolve(item, fmap["message"]) if "message" in fmap else None
+            # F-18: sanitize Pyright-style multi-line messages (\\n, \\u00a0) to single line
+            if isinstance(raw_msg, str):
+                raw_msg = raw_msg.replace("\u00a0", " ").replace("\n", " — ").strip()
             result.append(
                 ViolationDTO(
                     file=resolve(item, fmap["file"]) if "file" in fmap else None,
-                    message=resolve(item, fmap["message"]) if "message" in fmap else None,
+                    message=raw_msg,
                     line=line,
                     col=resolve(item, fmap["col"]) if "col" in fmap else None,
                     rule=resolve(item, fmap["rule"]) if "rule" in fmap else None,

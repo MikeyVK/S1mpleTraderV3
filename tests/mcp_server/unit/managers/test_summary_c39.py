@@ -8,13 +8,13 @@ F-19: Summary line lacks any scope-resolution context (scope name, file count).
 duration_ms: Summary line missing; present in compact JSON root (should be reversed).
 F-18: Gate 4b (Pyright) messages verbatim — contain \\n and \\u00a0 from pyright JSON.
 """
+
 from __future__ import annotations
 
 import pytest
 
 from mcp_server.config.quality_config import JsonViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -80,25 +80,19 @@ class TestAllSkippedSummarySignal:
         """When every gate is skipped, summary must start with ✅."""
         results = _make_summary_results(passed=0, failed=0, skipped=5)
         line = manager._format_summary_line(results)
-        assert line.startswith("✅"), (
-            f"All-skipped state must emit ✅ (clean state), got: {line!r}"
-        )
+        assert line.startswith("✅"), f"All-skipped state must emit ✅ (clean state), got: {line!r}"
 
     def test_all_skipped_does_not_emit_warning(self, manager: QAManager) -> None:
         """When every gate is skipped, ⚠️ must NOT appear."""
         results = _make_summary_results(passed=0, failed=0, skipped=5)
         line = manager._format_summary_line(results)
-        assert "⚠️" not in line, (
-            f"⚠️ must not appear for all-skipped clean state, got: {line!r}"
-        )
+        assert "⚠️" not in line, f"⚠️ must not appear for all-skipped clean state, got: {line!r}"
 
     def test_partial_skip_still_emits_warning(self, manager: QAManager) -> None:
         """Some active gates passed + some skipped → still ⚠️ (not all-skipped)."""
         results = _make_summary_results(passed=3, failed=0, skipped=2)
         line = manager._format_summary_line(results)
-        assert "⚠️" in line, (
-            f"Partial-skip state (some passed) must still emit ⚠️, got: {line!r}"
-        )
+        assert "⚠️" in line, f"Partial-skip state (some passed) must still emit ⚠️, got: {line!r}"
 
 
 # ---------------------------------------------------------------------------
@@ -147,13 +141,9 @@ class TestDurationMs:
 
     def test_summary_line_contains_duration_ms(self, manager: QAManager) -> None:
         """Summary line must include duration_ms (e.g. '— 1234ms')."""
-        results = _make_summary_results(
-            passed=5, failed=0, skipped=0, duration_total_ms=1234
-        )
+        results = _make_summary_results(passed=5, failed=0, skipped=0, duration_total_ms=1234)
         line = manager._format_summary_line(results)
-        assert "1234ms" in line, (
-            f"Expected '1234ms' in summary line, got: {line!r}"
-        )
+        assert "1234ms" in line, f"Expected '1234ms' in summary line, got: {line!r}"
 
     def test_compact_root_has_no_duration_ms(self, manager: QAManager) -> None:
         """Compact JSON payload root must NOT contain 'duration_ms' key."""

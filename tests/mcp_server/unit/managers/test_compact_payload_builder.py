@@ -157,13 +157,16 @@ class TestBuildCompactResultNoDebugFields:
             assert key not in gate_keys, f"Forbidden key '{key}' found in compact gate"
 
     def test_compact_root_has_only_gates_key(self) -> None:
-        """Compact payload root must contain exactly: 'gates', 'overall_pass', 'duration_ms'."""
+        """Compact payload root must contain exactly: 'gates' and 'overall_pass'.
+
+        C39: 'duration_ms' was removed from compact root and moved to the summary line.
+        """
         manager = QAManager(workspace_root=None)
         results = _make_results([_make_gate()])
 
         compact = manager._build_compact_result(results)
 
-        assert set(compact.keys()) == {"gates", "overall_pass", "duration_ms"}, (
+        assert set(compact.keys()) == {"gates", "overall_pass"}, (
             f"Unexpected root keys: {set(compact.keys())}"
         )
 
@@ -193,11 +196,14 @@ class TestBuildCompactResultMultiGate:
 
         assert compact["gates"] == []
         assert compact["overall_pass"] is True
-        assert isinstance(compact["duration_ms"], int)
 
 
 class TestCompactPayloadF2TopLevelFields:
-    """F-2: overall_pass and duration_ms must be present at the compact payload root."""
+    """F-2: overall_pass must be present at the compact payload root.
+
+    C39: duration_ms has been moved from 'compact JSON root' to the summary line text.
+    These tests verify overall_pass and the absence of duration_ms from the root.
+    """
 
     def test_overall_pass_true_when_no_failures(self) -> None:
         """overall_pass is True when all gates passed."""
@@ -229,25 +235,26 @@ class TestCompactPayloadF2TopLevelFields:
 
         assert compact["overall_pass"] is True
 
-    def test_duration_ms_present_and_int(self) -> None:
-        """duration_ms is present in compact root and is an integer."""
+    def test_duration_ms_absent_from_compact_root(self) -> None:
+        """C39: duration_ms must NOT be present in compact root (moved to summary line)."""
         manager = QAManager(workspace_root=None)
         results = _make_results([_make_gate()])
 
         compact = manager._build_compact_result(results)
 
-        assert "duration_ms" in compact, "duration_ms must be present in compact root"
-        assert isinstance(compact["duration_ms"], int)
+        assert "duration_ms" not in compact, (
+            "duration_ms must not be in compact root (C39: moved to summary line)"
+        )
 
-    def test_duration_ms_matches_timings_total(self) -> None:
-        """duration_ms in compact equals timings['total'] from full results."""
+    def test_timings_total_not_leaked_to_compact_root(self) -> None:
+        """timings.total must not appear as duration_ms in compact root regardless of value."""
         manager = QAManager(workspace_root=None)
         results = _make_results([_make_gate()])
         results["timings"] = {"total": 299}
 
         compact = manager._build_compact_result(results)
 
-        assert compact["duration_ms"] == 299
+        assert "duration_ms" not in compact
 
 
 class TestCompactPayloadF3GateStatusEnum:
