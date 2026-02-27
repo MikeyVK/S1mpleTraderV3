@@ -528,21 +528,24 @@ class QAManager:
     def _build_compact_result(self, results: dict[str, Any]) -> dict[str, Any]:
         """Return a compact gate payload with violations only — no debug fields.
 
-        Design contract (design.md §4.9 / C26 + C35):
+        Design contract (design.md §4.9 / C26 + C35 + C39):
         ``{
             "overall_pass": bool,
-            "duration_ms": int,
             "gates": [{"id": str, "passed": bool, "skipped": bool,
                         "status": str, "violations": list}]
         }``
 
         C35 additions (F-2, F-3):
-        - ``overall_pass`` and ``duration_ms`` added at root level.
+        - ``overall_pass`` added at root level.
         - Per-gate ``status`` enum (``"passed"|"failed"|"skipped"``) added.
 
         C36 addition (F-15):
         - Each violation ``file`` field is normalized via
           :meth:`_normalize_file_path` to workspace-relative POSIX form.
+
+        C39 change (duration_ms contract):
+        - ``duration_ms`` removed from compact JSON root; it is now included
+          in the summary line text via :meth:`_format_summary_line`.
 
         Args:
             results: The dict returned by ``run_quality_gates``.

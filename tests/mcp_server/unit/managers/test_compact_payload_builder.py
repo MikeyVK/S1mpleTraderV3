@@ -1,16 +1,18 @@
 # tests/mcp_server/unit/mcp_server/managers/test_compact_payload_builder.py
 """
-C26 + C35: _build_compact_result returns compact gate payload with violations only.
+C26 + C35 + C39: _build_compact_result returns compact gate payload with violations only.
 
 C26 design contract (design.md §4.9 / planning.md Cycle 26):
-  Schema: {"overall_pass": bool, "duration_ms": int,
+  Schema: {"overall_pass": bool,
            "gates": [{"id": str, "passed": bool, "skipped": bool,
                       "status": str, "violations": list}]}
 
 C35 additions (F-2, F-3):
-  - Top-level `overall_pass` and `duration_ms` (F-2)
-  - Per-gate `status` enum ("passed"|"failed"|"skipped") (F-3)
+  - Top-level `overall_pass` (F-2); per-gate `status` enum (F-3)
   No debug fields: stdout, stderr, raw_output, command, hints, skip_reason, score
+
+C39 change (duration_ms contract):
+  - `duration_ms` removed from compact JSON root; moved to summary line text.
 """
 # pyright: reportPrivateUsage=false
 
