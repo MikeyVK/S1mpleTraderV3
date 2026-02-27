@@ -466,8 +466,17 @@ class QAManager:
     def _build_compact_result(results: dict[str, Any]) -> dict[str, Any]:
         """Return a compact gate payload with violations only — no debug fields.
 
-        Design contract (design.md §4.9):
-        ``{"gates": [{"id": str, "passed": bool, "skipped": bool, "violations": list}]}``
+        Design contract (design.md §4.9 / C26 + C35):
+        ``{
+            "overall_pass": bool,
+            "duration_ms": int,
+            "gates": [{"id": str, "passed": bool, "skipped": bool,
+                        "status": str, "violations": list}]
+        }``
+
+        C35 additions (F-2, F-3):
+        - ``overall_pass`` and ``duration_ms`` added at root level.
+        - Per-gate ``status`` enum (``"passed"|"failed"|"skipped"``) added.
 
         Args:
             results: The dict returned by ``run_quality_gates``.
@@ -477,15 +486,21 @@ class QAManager:
         """
         compact_gates = []
         for gate in results.get("gates", []):
+            gate_status: str = gate.get("status") or ("passed" if gate.get("passed") else "failed")
             compact_gates.append(
                 {
                     "id": str(gate.get("name", gate.get("id", ""))),
                     "passed": bool(gate.get("passed", False)),
-                    "skipped": gate.get("status") == "skipped",
+                    "skipped": gate_status == "skipped",
+                    "status": gate_status,
                     "violations": gate.get("issues", []),
                 }
             )
-        return {"gates": compact_gates}
+        return {
+            "overall_pass": bool(results.get("overall_pass", True)),
+            "duration_ms": int(results.get("timings", {}).get("total", 0)),
+            "gates": compact_gates,
+        }
 
     def check_health(self) -> bool:
         """Check if QA tools are available."""
