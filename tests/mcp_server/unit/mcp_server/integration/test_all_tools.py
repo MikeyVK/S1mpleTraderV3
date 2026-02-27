@@ -222,6 +222,20 @@ class TestQualityToolsIntegration:
                 }
             ],
         }
+        # C36: _build_compact_result is now an instance method; configure return value.
+        mock_manager._build_compact_result.return_value = {
+            "overall_pass": True,
+            "duration_ms": 0,
+            "gates": [
+                {
+                    "id": "Linting",
+                    "passed": True,
+                    "skipped": False,
+                    "status": "passed",
+                    "violations": [],
+                }
+            ],
+        }
 
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(scope="files", files=["test.py"]))

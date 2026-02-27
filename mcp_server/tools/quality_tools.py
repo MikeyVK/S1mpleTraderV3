@@ -90,7 +90,7 @@ class RunQualityGatesTool(BaseTool):
 
         result = self.manager.run_quality_gates(resolved_files)
         summary_line = QAManager._format_summary_line(result)
-        compact_payload = QAManager._build_compact_result(result)
+        compact_payload = self.manager._build_compact_result(result)
         return ToolResult(
             content=[
                 {"type": "text", "text": summary_line},

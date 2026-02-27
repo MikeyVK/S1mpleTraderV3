@@ -462,8 +462,37 @@ class QAManager:
 
         return f"✅ Quality gates: {passed}/{total_active} passed ({total_violations} violations)"
 
-    @staticmethod
-    def _build_compact_result(results: dict[str, Any]) -> dict[str, Any]:
+    def _normalize_file_path(self, path: str | None) -> str | None:
+        """Normalize a violation file path to workspace-relative POSIX form (C36 / F-15).
+
+        Rules:
+        - ``None`` → ``None``
+        - Absolute path with ``workspace_root`` set → relative POSIX via
+          :meth:`pathlib.PurePath.relative_to`; falls back to POSIX absolute
+          when the path escapes the workspace root.
+        - Absolute path without ``workspace_root`` → POSIX absolute (forward slashes).
+        - Relative path (any OS separators) → forward-slash form only.
+
+        Args:
+            path: Raw file path string from a gate violation.
+
+        Returns:
+            Canonical workspace-relative POSIX string, or ``None`` when input is ``None``.
+        """
+        if path is None:
+            return None
+        p = Path(path)
+        if p.is_absolute():
+            if self.workspace_root is not None:
+                try:
+                    return p.relative_to(self.workspace_root).as_posix()
+                except ValueError:
+                    return p.as_posix()
+            return p.as_posix()
+        # Relative path: just normalize OS separators to POSIX forward slashes.
+        return str(path).replace("\\", "/")
+
+    def _build_compact_result(self, results: dict[str, Any]) -> dict[str, Any]:
         """Return a compact gate payload with violations only — no debug fields.
 
         Design contract (design.md §4.9 / C26 + C35):
@@ -478,6 +507,10 @@ class QAManager:
         - ``overall_pass`` and ``duration_ms`` added at root level.
         - Per-gate ``status`` enum (``"passed"|"failed"|"skipped"``) added.
 
+        C36 addition (F-15):
+        - Each violation ``file`` field is normalized via
+          :meth:`_normalize_file_path` to workspace-relative POSIX form.
+
         Args:
             results: The dict returned by ``run_quality_gates``.
 
@@ -487,13 +520,18 @@ class QAManager:
         compact_gates = []
         for gate in results.get("gates", []):
             gate_status: str = gate.get("status") or ("passed" if gate.get("passed") else "failed")
+            raw_violations: list[dict[str, Any]] = gate.get("issues", [])
+            normalized_violations = [
+                {**v, "file": self._normalize_file_path(v.get("file"))} if "file" in v else v
+                for v in raw_violations
+            ]
             compact_gates.append(
                 {
                     "id": str(gate.get("name", gate.get("id", ""))),
                     "passed": bool(gate.get("passed", False)),
                     "skipped": gate_status == "skipped",
                     "status": gate_status,
-                    "violations": gate.get("issues", []),
+                    "violations": normalized_violations,
                 }
             )
         return {

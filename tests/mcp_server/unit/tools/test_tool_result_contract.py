@@ -112,6 +112,22 @@ class TestToolResultContentContract:
         """content[1].json must have compact schema: {'gates': [...]}."""
         mock_manager = MagicMock()
         mock_manager.run_quality_gates.return_value = _make_qg_result()
+        # C36: _build_compact_result is now an instance method; configure mock
+        # return value so this test verifies the tool-response contract, not
+        # the internals of _build_compact_result.
+        mock_manager._build_compact_result.return_value = {
+            "overall_pass": True,
+            "duration_ms": 0,
+            "gates": [
+                {
+                    "id": "Gate 0: Ruff Format",
+                    "passed": True,
+                    "skipped": False,
+                    "status": "passed",
+                    "violations": [],
+                }
+            ],
+        }
         tool = RunQualityGatesTool(manager=mock_manager)
 
         result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))

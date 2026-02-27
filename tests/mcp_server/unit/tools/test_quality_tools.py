@@ -225,6 +225,23 @@ class TestRunQualityGatesTool:
             ],
             "overall_pass": True,
         }
+        # C36: _build_compact_result is now an instance method (not static).
+        # The MagicMock would return a MagicMock by default; configure it to
+        # return a realistic compact payload so the tool-response contract test
+        # exercises what it is designed to test.
+        mock_manager._build_compact_result.return_value = {
+            "overall_pass": True,
+            "duration_ms": 0,
+            "gates": [
+                {
+                    "id": "Gate 0: Ruff Format",
+                    "passed": True,
+                    "skipped": False,
+                    "status": "passed",
+                    "violations": [],
+                }
+            ],
+        }
 
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(scope="files", files=["foo.py"]))
