@@ -273,35 +273,41 @@ For every scenario row, capture:
 
 ## Validation Results (to fill live)
 
-**Date:** _____
-**Tester:** _____
-**Commit:** _____
-**Server Session:** _____
+**Date:** 2026-01-27
+**Tester:** Copilot (automated validation run)
+**Commit start:** 708adc5 (HEAD at start) → **F-20 fix committed as 8dfe6fa**
+**Server Session:** after VS Code restart with latest MCP server
 
 | Scenario | Status | Evidence Ref | Notes |
 |----------|--------|--------------|-------|
-| A1-pass | | | |
-| A1-fail | | | |
-| A2 | | | |
-| B1-pass | | | |
-| B2-fail | | | |
-| B3 | | | |
-| P1-pass | | | |
-| P2-fail | | | |
-| F1 | | | |
-| F2 | | | |
-| F3 | | | |
-| F4 | | | |
-| F5 | | | |
-| F6 | | | |
-| F7 | | | |
-| X1 | | | |
-| X2 | | | |
-| X3a | | | |
-| X3b | | | |
-| X3c | | | |
-| X4 | | | |
-| X5 | | | |
+| A1-pass | ✅ PASS | `✅ Nothing to check (no changed files) [auto · 0 files] — 0ms`; `overall_pass=true`; root keys `{overall_pass,gates}` | F-1 fix confirmed |
+| A1-fail | ✅ PASS (via X3a) | X3a demonstrates fail-run with 99 files, violations detected | Structurally equivalent |
+| A2 | ✅ PASS | `❌ ... [auto · 408 files] — 9986ms`; fallback to project; `overall_pass=false`; no `duration_ms` in root | |
+| B1-pass | ⚠️ BLOCKED | Branch diff includes violation fixtures; clean-diff B1 merged with B2-fail | Violation fixtures in diff; see also F-20 fix |
+| B2-fail | ✅ PASS | `❌ 0/6 passed — 1898 violations [branch · 313 files]`; Gate 4b `severity="error"`; POSIX paths; no `duration_ms` | F-17/F-20 confirmed |
+| B3 | ✅ PASS | Same result as B2-fail but with `parent_branch` absent → defaults to main | No crash |
+| P1-pass | ⚠️ N/A | Project has archive + fixture violations; scope=project itself works correctly | Aspirational — not achievable with current workspace state |
+| P2-fail | ✅ PASS (via P scan) | `❌ 0/5 passed — 1602 violations [project · 408 files]`; Gate 0–4b all fire | |
+| F1 | ✅ PASS | `⚠️ 5/5 active (1 skipped) [files · 2 files] — 2569ms`; `overall_pass=true` | |
+| F2 | ✅ PASS | `gate0`: `rule=FORMAT`, `fixable=true`, `line=null`, `severity="error"`, POSIX path | |
+| F3 | ✅ PASS | `⚠️ 5/5 active (1 skipped) [files · 2 files]`; `overall_pass=true` | |
+| F4 | ✅ PASS | All 13 violations reference only `violations.py`; `backend/__init__.py` contributes 0 | |
+| F5 | ✅ PASS | `backend/` expanded to 54 files; gates run; not all-skipped | |
+| F6 | ✅ PASS | `backend/` + `mcp_server/config/` combined to 72 files | |
+| F7 | ✅ PASS | Pydantic ValidationError: `files must be a non-empty list when scope='files'` | Pre-gate error, no gate run |
+| X1 | ✅ PASS | Gate 0 dedicated: `passed=false`, 1 violation: `rule=FORMAT`, `fixable=true`, `line=null`, `severity="error"` | |
+| X2 | ✅ PASS | Gate 4: `no-untyped-def`+`assignment` with `severity="error"`; Gate 4b: `reportAssignmentType`, `severity="error"`, single-line message (F-18 `\u2014`) | |
+| X3a | ✅ PASS | After fail-run: `baseline_sha=52442aa` unchanged; `failed_files` count=99 | State machine correct |
+| X3b | ✅ PASS | Clean diff (baseline=HEAD) + 99 persisted failed_files → evaluates 99 files → same 353 violations | Union logic correct |
+| X3c | ✅ PASS | All-pass run: `baseline_sha` advanced to HEAD; `failed_files=[]` | |
+| X4 | ✅ PASS | All 4 scopes captured: root always `{overall_pass,gates}`; summary always `[scope · N files] — Nms` | Verified across auto/branch/project/files runs |
+| X5 | ✅ PASS | Evaluated = {A,B,C}=3 files; D (`backend/__init__.py`) absent from all gate results; 6 violations only from A | Narrowing confirmed |
+
+### Session Findings
+
+| ID | Finding | Fix Applied | Commit |
+|----|---------|------------|--------|
+| F-20 | `_git_diff_py_files` used `--name-only` without `--diff-filter=d`; deleted files (status D vs parent) appeared in scope → "File not found" in File Validation | Added `--diff-filter=d` to git diff command | `8dfe6fa` |
 
 ---
 
