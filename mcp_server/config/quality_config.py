@@ -89,6 +89,13 @@ class TextViolationsParsing(BaseModel):
         default_factory=dict,
         description="Static default values for ViolationDTO fields not captured by the pattern.",
     )
+    fixable_when: str | None = Field(
+        default=None,
+        description=(
+            "When set to 'gate', violations are marked fixable=True iff the gate's "
+            "supports_autofix=True. Mirrors the json_violations fixable_when field."
+        ),
+    )
 
     @model_validator(mode="after")
     def _validate_defaults_placeholders(self) -> TextViolationsParsing:

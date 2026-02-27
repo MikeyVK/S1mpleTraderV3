@@ -847,7 +847,9 @@ class QAManager:
 
             elif gate.capabilities.parsing_strategy == "text_violations":
                 text_violations = self._parse_text_violations(
-                    proc.stdout or "", gate.capabilities.text_violations
+                    proc.stdout or "",
+                    gate.capabilities.text_violations,
+                    gate.capabilities.supports_autofix,
                 )
                 result["issues"] = [
                     {
@@ -941,6 +943,7 @@ class QAManager:
         self,
         output: str,
         parsing: TextViolationsParsing,
+        supports_autofix: bool = False,
     ) -> list[ViolationDTO]:
         """Parse line-based tool output into ViolationDTOs using a named-group regex.
 
@@ -957,14 +960,20 @@ class QAManager:
         Default values may contain ``{placeholder}`` references to other
         captured group names; those are resolved via ``str.format_map``.
 
+        ``parsing.fixable_when == "gate"`` propagates the gate-level
+        ``supports_autofix`` flag into every violation. Without this field
+        (or when *supports_autofix* is False), violations are not fixable.
+
         Args:
             output: Raw stdout/stderr from a quality gate tool.
             parsing: Pattern and defaults for text-based parsing.
+            supports_autofix: Whether the gate supports automatic fixing.
 
         Returns:
             List of ViolationDTO instances, one per matching line.
         """
         pattern = re.compile(parsing.pattern)
+        gate_fixable = parsing.fixable_when == "gate" and supports_autofix
         result: list[ViolationDTO] = []
         for raw_line in output.splitlines():
             m = pattern.search(raw_line)
@@ -985,7 +994,7 @@ class QAManager:
                     line=int(raw_line_num) if raw_line_num is not None else None,
                     col=int(raw_col_num) if raw_col_num is not None else None,
                     rule=self._resolve_text_field("rule", groups, safe_groups, parsing.defaults),
-                    fixable=False,
+                    fixable=gate_fixable,
                     severity=self._resolve_text_field(
                         "severity", groups, safe_groups, parsing.defaults
                     )

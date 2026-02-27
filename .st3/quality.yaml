@@ -38,6 +38,7 @@ gates:
       text_violations:
         pattern: "^--- (?P<file>.+)$"
         severity_default: "error"
+        fixable_when: "gate"
         defaults:
           rule: "FORMAT"
           message: "File requires formatting"
