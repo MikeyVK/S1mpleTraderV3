@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import platform
 import re
@@ -21,6 +22,9 @@ from mcp_server.config.quality_config import (
     TextViolationsParsing,
     ViolationDTO,
 )
+from mcp_server.utils.path_resolver import resolve_input_paths
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_ARTIFACT_LOG_MAX_FILES = 200
 MAX_OUTPUT_LINES = 50
@@ -302,14 +306,22 @@ class QAManager:
         Args:
             scope: One of ``"project"``, ``"branch"``, ``"auto"``, or ``"files"``.
             files: Required when ``scope="files"``; the caller-supplied explicit
-                file list, returned verbatim without git or glob resolution.
+                file or directory list. Directories are expanded to ``.py`` files;
+                missing paths surface a warning and are excluded.
 
         Returns:
             Sorted list of relative paths (POSIX separators) for the given scope.
             Returns ``[]`` gracefully when workspace_root is absent or config is missing.
         """
         if scope == "files":
-            return list(files) if files else []
+            if not files:
+                return []
+            if self.workspace_root is None:
+                return sorted(set(files))
+            resolved, warnings = resolve_input_paths(files, self.workspace_root)
+            for w in warnings:
+                logger.warning(w)
+            return resolved
         if scope == "project":
             return self._resolve_project_scope()
         if scope == "branch":
