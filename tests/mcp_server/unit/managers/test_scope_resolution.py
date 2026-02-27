@@ -172,6 +172,32 @@ class TestScopeResolutionBranch:
             f"Expected epic/76-quality-gates..HEAD in git cmd, got: {captured_cmd[0]}"
         )
 
+    def test_branch_scope_git_cmd_includes_diff_filter_d(self, tmp_path: Path) -> None:
+        """F-20: git diff command MUST include --diff-filter=d to exclude deleted files.
+
+        When a file is deleted on the branch vs the parent (status D in git diff),
+        it no longer exists at HEAD.  Without --diff-filter=d the stale path would
+        reach File Validation and produce spurious 'File not found' errors.
+        """
+        manager = QAManager(workspace_root=tmp_path)
+        captured_cmd: list[list[str]] = []
+
+        def fake_git(_cmd: list[str], **_kw: object) -> MagicMock:
+            captured_cmd.append(_cmd)
+            result = MagicMock(spec=subprocess.CompletedProcess)
+            result.returncode = 0
+            result.stdout = ""
+            return result
+
+        with patch("subprocess.run", side_effect=fake_git):
+            manager._resolve_scope("branch")
+
+        assert captured_cmd, "subprocess.run was not called"
+        git_cmd = captured_cmd[0]
+        assert "--diff-filter=d" in git_cmd, (
+            f"F-20 regression: --diff-filter=d missing from git diff command: {git_cmd}"
+        )
+
     def test_branch_scope_falls_back_to_main_without_state(self, tmp_path: Path) -> None:
         """When state.json is absent, git diff falls back to main..HEAD."""
         manager = QAManager(workspace_root=tmp_path)

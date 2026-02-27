@@ -384,7 +384,7 @@ class QAManager:
         """
         try:
             result = subprocess.run(
-                ["git", "diff", "--name-only", f"{base_ref}..HEAD"],
+                ["git", "diff", "--name-only", "--diff-filter=d", f"{base_ref}..HEAD"],
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
