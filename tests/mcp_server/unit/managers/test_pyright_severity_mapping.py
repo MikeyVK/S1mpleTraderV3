@@ -8,11 +8,12 @@ on every violation.
 Root cause: ``_parse_json_violations`` unconditionally sets ``severity=None``
 instead of reading ``fmap["severity"]`` via ``_resolve_field_path``.
 """
+
 from __future__ import annotations
 
 import pytest
 
-from mcp_server.config.quality_config import JsonViolationsParsing, ViolationDTO
+from mcp_server.config.quality_config import JsonViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
 
 # ---------------------------------------------------------------------------

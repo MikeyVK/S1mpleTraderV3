@@ -145,6 +145,11 @@ gates:
           message: "message"
         fixable_when: "fix/applicability"
 
+  # Gate 4 (mypy) and Gate 4b (Pyright) are COMPLEMENTARY, not redundant.
+  # They run independently and may both fire on the same line; agents must NOT
+  # deduplicate violations across these two gates.  Each tool covers different
+  # edge cases: mypy excels at broad typing patterns, Pyright catches stricter
+  # narrowing / reportAssignment* rules.  Keep both active for full coverage.
   gate4_types:
     name: "Gate 4: Types"
     description: "Type checking (strict mode for DTOs)"

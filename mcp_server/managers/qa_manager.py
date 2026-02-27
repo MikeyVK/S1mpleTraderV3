@@ -1127,7 +1127,7 @@ class QAManager:
                     col=resolve(item, fmap["col"]) if "col" in fmap else None,
                     rule=resolve(item, fmap["rule"]) if "rule" in fmap else None,
                     fixable=bool(fixable_val),
-                    severity=None,
+                    severity=resolve(item, fmap["severity"]) if "severity" in fmap else None,
                 )
             )
         return result
