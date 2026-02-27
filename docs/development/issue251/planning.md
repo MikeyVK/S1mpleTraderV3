@@ -732,13 +732,16 @@ This addendum extends the original C0–C31 plan with the post-validation findin
 
 **Goal:** Normalize violation file paths across all gates.
 
-**RED:** Add integration test demonstrating mismatched path formats across gate outputs for same file.
+**RED:** Add failing test for `_normalize_file_path` covering absolute, relative, and None input.
 
-**GREEN:** Normalize to workspace-relative POSIX path form in shared normalization flow.
+**GREEN:** Normalize to workspace-relative POSIX path form in shared normalization flow; wire into `_build_compact_result`.
 
-**REFACTOR:** Keep parser-specific field maps untouched; normalize at common point.
+**REFACTOR:**
+- Keep parser-specific field maps untouched; normalize at common point.
+- Place new test file in `tests/mcp_server/unit/managers/` (correct location).
+- Move all misplaced qa_manager test files from `tests/mcp_server/unit/mcp_server/managers/` to `tests/mcp_server/unit/managers/` and verify the full suite still passes.
 
-**Exit Criteria:** Same file appears with one canonical path format in compact payload.
+**Exit Criteria:** Same file appears with one canonical path format in compact payload; no qa_manager test files remain under `tests/mcp_server/unit/mcp_server/`.
 
 ---
 
@@ -782,15 +785,18 @@ This addendum extends the original C0–C31 plan with the post-validation findin
 - clean empty-diff summary showing warning icon
 - missing effective scope context across scope inputs (`auto`,`branch`,`project`,`files`)
 - pyright messages containing `\n`/`\u00a0`
+- `duration_ms` absent from summary line and present in compact JSON payload root
 
 **GREEN:**
 - Emit ✅ for expected clean empty-diff state.
 - Include compact effective scope-resolution context in summary line for all scope inputs (`auto`,`branch`,`project`,`files`).
 - Sanitize pyright message text to single-line, space-normalized output.
+- Append `duration_ms` to the summary line (e.g. `✅ Quality gates: 4/4 passed (0 violations) — 1234ms`).
+- Remove `duration_ms` from the compact JSON payload root (`_build_compact_result`).
 
 **REFACTOR:** Keep summary human-readable and stable for existing consumers.
 
-**Exit Criteria:** Summary line communicates both result and resolved scope context; messages are single-line clean.
+**Exit Criteria:** Summary line includes `duration_ms`; compact JSON payload root no longer contains `duration_ms`; messages are single-line clean.
 
 ---
 
