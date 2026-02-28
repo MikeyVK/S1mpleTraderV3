@@ -3,7 +3,7 @@
 # Issue #251 Research v3: Scope stability blockers for run_quality_gates
 
 **Status:** READY FOR PLANNING  
-**Version:** 1.1  
+**Version:** 1.3  
 **Last Updated:** 2026-02-28
 
 ---
@@ -31,9 +31,8 @@ Provide a precise, execution-ready baseline of the **currently open** issues tha
 
 Read these first:
 1. [live-validation-plan-v2.md](live-validation-plan-v2.md)
-2. [planning.md](planning.md)
-3. [research_scope_aware_rerun_optimization.md](research_scope_aware_rerun_optimization.md) (relocation note to issue #255)
-4. [../issue255/research_scope_aware_rerun_optimization.md](../issue255/research_scope_aware_rerun_optimization.md) (architecture context only)
+2. [research_scope_aware_rerun_optimization.md](research_scope_aware_rerun_optimization.md) (relocation note to issue #255)
+3. [../issue255/research_scope_aware_rerun_optimization.md](../issue255/research_scope_aware_rerun_optimization.md) (architecture context only)
 
 ---
 
@@ -52,7 +51,7 @@ As a result, users can observe false cleanup of failure state, incorrect rerun c
 ## Related Documentation
 
 - [live-validation-plan-v2.md](live-validation-plan-v2.md)
-- [planning.md](planning.md)
+- [planning_v3.md](planning_v3.md)
 - [quality_gate_findings.md](quality_gate_findings.md)
 - [../issue255/research_scope_aware_rerun_optimization.md](../issue255/research_scope_aware_rerun_optimization.md)
 
@@ -67,7 +66,7 @@ As a result, users can observe false cleanup of failure state, incorrect rerun c
 | A — State mutation safety | F-21 | Open | ✅ Yes |
 | B — Scope context coupling | S-1 | Open | ✅ Yes |
 | C — Failed-files semantics | S-2 | Open | ✅ Yes |
-| D — Scope-switch isolation | S-3 | Open | ✅ Yes |
+| D — Scope-switch invariants coverage | S-3 (depends on F-21) | Open | ✅ Yes |
 
 ---
 
@@ -158,15 +157,15 @@ Failure accumulation/update logic in `mcp_server/managers/qa_manager.py` is not 
 
 ---
 
-## Investigation D: Scope-switch Isolation Risk (S-3)
+## Investigation D: Scope-switch Invariants Coverage Gap (S-3)
 
-**Finding:** S-3 (open model limitation in current flow)  
+**Finding:** S-3 (test coverage gap; same root cause family as F-21)  
 **Severity:** High  
-**Blocks stable daily use:** Yes
+**Blocks stable daily use:** Yes (until F-21 semantics are protected and validated)
 
 ### Symptom
 
-Current state model for auto baseline can be affected by non-auto runs, creating practical cross-scope contamination risk.
+Scope-switch behavior can regress silently unless invariant scenarios are tested explicitly. This is not a separate core defect from F-21; it is the coverage gap that leaves F-21-like regressions undetected.
 
 ### Repro path (scope switch matrix)
 
@@ -178,11 +177,12 @@ Current state model for auto baseline can be affected by non-auto runs, creating
 
 ### Root cause (code area)
 
-Single local state artifacts (`.st3/state.json`) with insufficient scope-isolation guarantees in current mutation path.
+Coverage deficiency for switch-path invariants around the same mutation-path defect family described in F-21 (primarily `mcp_server/managers/qa_manager.py`, with flow coupling from `mcp_server/tools/quality_tools.py`).
 
 ### Required stabilization direction (minimal)
 
-- Enforce operational isolation rule: non-auto scopes cannot mutate auto baseline lifecycle fields.
+- Treat S-3 as dependent validation work for F-21/S-1/S-2 fixes.
+- Add explicit invariant tests for switch paths (`auto↔files`, `branch↔files`, `project→auto`).
 - Keep broad context-fingerprint redesign in issue #255; only apply minimal guardrails here.
 
 ---
@@ -220,3 +220,5 @@ This sequence intentionally avoids broad refactor and preserves the issue251 bou
 |---------|------|--------|---------|
 | 1.0 | 2026-02-28 | Agent | Initial scaffold draft |
 | 1.1 | 2026-02-28 | Agent | Added open blocker analysis, scope-switch investigations, and minimal stabilization acceptance criteria for issue #251 |
+| 1.2 | 2026-02-28 | Agent | Corrected v3 references and reclassified S-3 as coverage gap dependent on F-21 |
+| 1.3 | 2026-02-28 | Agent | Removed planning document as research prerequisite to restore research-first document order |
