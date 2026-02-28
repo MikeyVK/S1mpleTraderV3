@@ -1373,7 +1373,7 @@
     "created_at": "2026-02-22T17:05:14.107952+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 40,
+        "total": 45,
         "cycles": [
           {
             "cycle_number": 1,
@@ -1798,6 +1798,105 @@
               }
             ],
             "exit_criteria": "A1-pass scenario emits \u2705 summary line, not \u26a0\ufe0f; for scope=auto, scope=branch, scope=project, and scope=files summary line includes effective scope-resolution context (basis + evaluated file count); Gate 4b violation messages contain no \\n or \\u00a0; all other gate messages unaffected"
+          },
+          {
+            "cycle_number": 41,
+            "deliverables": [
+              {
+                "id": "D41.1",
+                "description": "C1: Enforce auto-only baseline mutation guard for run_quality_gates state lifecycle fields.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Cycle 1: Scope-guard baseline mutation (F-21)"
+                }
+              }
+            ],
+            "exit_criteria": "Non-auto scopes do not mutate baseline_sha or clear/override auto failed_files."
+          },
+          {
+            "cycle_number": 42,
+            "deliverables": [
+              {
+                "id": "D42.1",
+                "description": "C2: Constrain failed_files persistence to actual failing subset in auto scope.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Cycle 2: Tighten failed_files semantics (S-2)"
+                }
+              }
+            ],
+            "exit_criteria": "Auto mixed-result runs persist only failing subset; full evaluated set is not persisted by default."
+          },
+          {
+            "cycle_number": 43,
+            "deliverables": [
+              {
+                "id": "D43.1",
+                "description": "C3: Propagate one explicit effective scope value through tool-to-manager mutation policy.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Cycle 3: Enforce explicit effective-scope propagation (S-1)"
+                }
+              }
+            ],
+            "exit_criteria": "Scope used for target resolution is the same scope governing state mutation decisions."
+          },
+          {
+            "cycle_number": 44,
+            "deliverables": [
+              {
+                "id": "D44.1",
+                "description": "C4: Add switch-path invariant tests for auto\u2194files, branch\u2194files, project\u2192auto.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Cycle 4: Add scope-switch invariants test set (S-3)"
+                }
+              }
+            ],
+            "exit_criteria": "All scope-switch invariants pass with cycles 41\u201343 fully green."
+          },
+          {
+            "cycle_number": 45,
+            "deliverables": [
+              {
+                "id": "D45.1",
+                "description": "C5: Run acceptance validation closure (non-TDD cycle) across all four scopes and switch paths.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Acceptance validation closure (non-TDD cycle)"
+                }
+              }
+            ],
+            "exit_criteria": "Live validation confirms issue251 stabilization acceptance criteria from research_v3."
+          }
+        ]
+      },
+      "validation": {
+        "deliverables": [
+          {
+            "id": "V1",
+            "description": "Validation plan baseline is available for focused live closure scenarios.",
+            "validates": {
+              "type": "file_exists",
+              "file": "docs/development/issue251/live-validation-plan-v2.md"
+            }
+          }
+        ]
+      },
+      "design": {
+        "deliverables": [
+          {
+            "id": "DG1",
+            "description": "Design v3 approved as minimal contract baseline for planning_v3 cycles.",
+            "validates": {
+              "type": "file_exists",
+              "file": "docs/development/issue251/design_v3.md"
+            }
           }
         ]
       }

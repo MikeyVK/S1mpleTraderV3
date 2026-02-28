@@ -3,14 +3,17 @@
 # pyright: reportCallIssue=false, reportAttributeAccessIssue=false
 
 # Standard library
+from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 # Third-party
 import pytest
 from pydantic import ValidationError
 
 # Module under test
+from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -65,7 +68,10 @@ class TestRunQualityGatesTool:
         text = _summary_text(result)
         assert "Quality gates" in text
         mock_manager._resolve_scope.assert_called_once_with("project", files=None)
-        mock_manager.run_quality_gates.assert_called_once_with([])
+        mock_manager.run_quality_gates.assert_called_once_with(
+            [],
+            effective_scope="project",
+        )
 
     @pytest.mark.asyncio
     async def test_quality_gates_passed(self) -> None:
@@ -365,5 +371,97 @@ class TestRunQualityGatesInputC28:
         tool = RunQualityGatesTool(manager=mock_manager)
         result = await tool.execute(RunQualityGatesInput(scope="files", files=["src/foo.py"]))
 
-        mock_manager.run_quality_gates.assert_called_once_with(["src/foo.py"])
+        mock_manager.run_quality_gates.assert_called_once_with(
+            ["src/foo.py"],
+            effective_scope="files",
+        )
         assert result.content[0]["type"] == "text"
+
+
+class TestRunQualityGatesScopeGuardC41:
+    """Cycle 41 RED: non-auto scopes must not mutate auto baseline lifecycle state."""
+
+    @staticmethod
+    def _stub_quality_config() -> SimpleNamespace:
+        """Return minimal config stub sufficient for QAManager.run_quality_gates()."""
+        gate = SimpleNamespace(
+            name="Gate 1: Stub",
+            scope=None,
+            capabilities=SimpleNamespace(file_types=[".py"]),
+        )
+        return SimpleNamespace(
+            active_gates=["gate1_stub"],
+            gates={"gate1_stub": gate},
+            artifact_logging=SimpleNamespace(
+                enabled=False,
+                output_dir="temp/qa_logs",
+                max_files=10,
+            ),
+        )
+
+    @pytest.mark.asyncio
+    async def test_scope_files_pass_run_does_not_advance_baseline(self) -> None:
+        """RED: scope='files' pass run must not call baseline advance path."""
+        manager = QAManager(workspace_root=Path.cwd())
+        tool = RunQualityGatesTool(manager=manager)
+
+        with (
+            patch.object(manager, "_resolve_scope", return_value=["backend/__init__.py"]),
+            patch(
+                "mcp_server.managers.qa_manager.QualityConfig.load",
+                return_value=self._stub_quality_config(),
+            ),
+            patch.object(
+                manager,
+                "_execute_gate",
+                return_value={
+                    "gate_number": 1,
+                    "name": "Gate 1: Stub",
+                    "passed": True,
+                    "status": "passed",
+                    "score": "Pass",
+                    "issues": [],
+                    "duration_ms": 0,
+                },
+            ),
+            patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
+            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_accumulate,
+        ):
+            await tool.execute(RunQualityGatesInput(scope="files", files=["backend/__init__.py"]))
+
+        mock_advance.assert_not_called()
+        mock_accumulate.assert_not_called()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("scope", ["branch", "project"])
+    async def test_non_auto_pass_runs_do_not_reset_auto_failed_state(self, scope: str) -> None:
+        """RED: scope='branch'/'project' pass runs must not hit auto baseline mutation path."""
+        manager = QAManager(workspace_root=Path.cwd())
+        tool = RunQualityGatesTool(manager=manager)
+
+        with (
+            patch.object(manager, "_resolve_scope", return_value=["backend/__init__.py"]),
+            patch(
+                "mcp_server.managers.qa_manager.QualityConfig.load",
+                return_value=self._stub_quality_config(),
+            ),
+            patch.object(
+                manager,
+                "_execute_gate",
+                return_value={
+                    "gate_number": 1,
+                    "name": "Gate 1: Stub",
+                    "passed": True,
+                    "status": "passed",
+                    "score": "Pass",
+                    "issues": [],
+                    "duration_ms": 0,
+                },
+            ),
+            patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
+            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_accumulate,
+        ):
+            await tool.execute(RunQualityGatesInput(scope=scope))
+
+        mock_advance.assert_not_called()
+        mock_accumulate.assert_not_called()

@@ -88,7 +88,10 @@ class RunQualityGatesTool(BaseTool):
         """
         resolved_files = self.manager._resolve_scope(params.scope, files=params.files)
 
-        result = self.manager.run_quality_gates(resolved_files)
+        result = self.manager.run_quality_gates(
+            resolved_files,
+            effective_scope=params.scope,
+        )
         summary_line = QAManager._format_summary_line(
             result, scope=params.scope, file_count=len(resolved_files)
         )

@@ -65,7 +65,11 @@ class QAManager:
         # Optional workspace root: used for baseline state persistence in .st3/state.json
         self.workspace_root = workspace_root
 
-    def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
+    def run_quality_gates(
+        self,
+        files: list[str],
+        effective_scope: str = "auto",
+    ) -> dict[str, Any]:
         """Run configured quality gates on specified files.
 
         Returns v2.0 JSON schema with version, mode, summary, and gates.
@@ -182,11 +186,12 @@ class QAManager:
         timings["total"] = sum(timings.values())
         results["timings"] = timings
 
-        # Persist baseline state: advance SHA on all-pass, accumulate failed_files on failure.
-        if results["overall_pass"]:
-            self._advance_baseline_on_all_pass()
-        else:
-            self._accumulate_failed_files_on_failure(files)
+        # Persist baseline state only for auto-scope lifecycle runs.
+        if self._is_auto_lifecycle_scope(effective_scope):
+            if results["overall_pass"]:
+                self._advance_baseline_on_all_pass()
+            else:
+                self._accumulate_failed_files_on_failure(files)
 
         return results
 
@@ -218,6 +223,11 @@ class QAManager:
             issues = gate_result.get("issues", [])
             results["summary"]["total_violations"] += len(issues)
             results["summary"]["auto_fixable"] += sum(1 for issue in issues if issue.get("fixable"))
+
+    @staticmethod
+    def _is_auto_lifecycle_scope(scope: str) -> bool:
+        """Return True when baseline lifecycle mutation is allowed for this scope."""
+        return scope.strip().lower() == "auto"
 
     # ------------------------------------------------------------------
     # Baseline state management
