@@ -53,6 +53,11 @@ class RunQualityGatesInput(BaseModel):
 class RunQualityGatesTool(BaseTool):
     """Tool to run quality gates."""
 
+    @staticmethod
+    def _effective_scope(params: RunQualityGatesInput) -> str:
+        """Return authoritative scope value for the current tool execution."""
+        return params.scope
+
     name = "run_quality_gates"
     description = (
         "Run quality gates. "
@@ -86,14 +91,17 @@ class RunQualityGatesTool(BaseTool):
         Returns:
             ToolResult with content[0]=text summary, content[1]=compact JSON payload.
         """
-        resolved_files = self.manager._resolve_scope(params.scope, files=params.files)
+        effective_scope = self._effective_scope(params)
+        resolved_files = self.manager._resolve_scope(effective_scope, files=params.files)
 
         result = self.manager.run_quality_gates(
             resolved_files,
-            effective_scope=params.scope,
+            effective_scope=effective_scope,
         )
         summary_line = QAManager._format_summary_line(
-            result, scope=params.scope, file_count=len(resolved_files)
+            result,
+            scope=effective_scope,
+            file_count=len(resolved_files),
         )
         compact_payload = self.manager._build_compact_result(result)
         return ToolResult(
