@@ -356,6 +356,13 @@ For every scenario row, capture:
 
 ---
 
+## Follow-up Addendum (2026-03-01)
+
+Blocked scenarios from this plan were re-run end-to-end and closed in:
+- `docs/development/issue251/live-validation-blocked-scenarios-20260301.md`
+
+---
+
 ## Related Documentation
 
 - [live-validation-plan.md](live-validation-plan.md) — v1 (session 1–3 results + all findings)
