@@ -2,9 +2,9 @@
 <!-- based on live-validation-plan.md v1.2 — updated for C32–C39 post-fix state -->
 # Live Validation Plan v2 — Issue #251 run_quality_gates refactor
 
-**Status:** READY FOR EXECUTION
+**Status:** COMPLETED (SEE 2026-03-01 ADDENDUM)
 **Version:** 2.0
-**Last Updated:** 2026-02-27
+**Last Updated:** 2026-03-01
 **Based on:** live-validation-plan.md v1.2 (session 1–3, 2026-02-23/24)
 
 ---
@@ -308,7 +308,7 @@ For every scenario row, capture:
 | ID | Finding | Fix Applied | Commit |
 |----|---------|------------|--------|
 | F-20 | `_git_diff_py_files` used `--name-only` without `--diff-filter=d`; deleted files (status D vs parent) appeared in scope → "File not found" in File Validation | Added `--diff-filter=d` to git diff command | `8dfe6fa` |
-| F-21 | **Baseline state machine fires unconditionally regardless of scope.** `_advance_baseline_on_all_pass()` / `_accumulate_failed_files_on_failure()` is called after every run, including `scope=files`, `branch`, and `project`. A single passing `scope=files` run on `backend/__init__.py` (1 clean file) triggered `_advance_baseline_on_all_pass()`, which wiped the entire 54-file `failed_files` list and advanced `baseline_sha` to HEAD — without any of the 53 other failing files having been fixed. **Root cause:** lines 186-189 in `qa_manager.py` — no guard on `scope`. **Expected behaviour:** baseline mutations must only occur when `scope="auto"`, because that is the only scope that evaluates the complete "current state" of the workspace. `files`/`branch`/`project` are scoped sub-runs and their outcome does not represent a global pass. | Open — needs TDD fix (F-21) | — |
+| F-21 | **Baseline state machine scope guard missing (historical finding).** Non-auto runs could mutate baseline lifecycle fields prior to stabilization cycles. | Fixed in issue251 TDD cycles (C41–C44); validated in addendum 2026-03-01 | See `live-validation-blocked-scenarios-20260301.md` |
 
 ---
 

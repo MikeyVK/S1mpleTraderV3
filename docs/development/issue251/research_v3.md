@@ -2,7 +2,7 @@
 <!-- template=research version=8b7bb3ab created=2026-02-28T13:45Z updated=2026-02-28 -->
 # Issue #251 Research v3: Scope stability blockers for run_quality_gates
 
-**Status:** READY FOR PLANNING  
+**Status:** COMPLETED (HISTORICAL RECORD)  
 **Version:** 1.3  
 **Last Updated:** 2026-02-28
 

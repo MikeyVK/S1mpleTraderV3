@@ -2,7 +2,7 @@
 <!-- template=planning version=130ac5ea created=2026-02-28T13:51Z updated=2026-02-28 -->
 # Issue #251 Planning v3: minimal stabilization for multi-scope reliability
 
-**Status:** READY FOR TDD  
+**Status:** COMPLETED (HISTORICAL RECORD)  
 **Version:** 1.2  
 **Last Updated:** 2026-02-28
 

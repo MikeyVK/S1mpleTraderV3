@@ -109,24 +109,23 @@ Organize issues into release milestones.
 
 **ISO 8601 Format:** `2025-12-31T00:00:00Z` or `2025-12-31T00:00:00+00:00`
 
-### 6. Quality & Testing Tools (6 tools)
+### 6. Quality & Testing Tools (5 tools)
 
-Run quality gates (Ruff, Pyright), tests, and validate code.
+Run quality gates, tests, and code validation.
 
 | Tool | Purpose | Parameters | Returns |
 |------|---------|------------|---------|
-| **RunQualityGatesTool** | Run config-driven quality gates | `files` (list of paths; empty = project-level) | v2.0 JSON: summary, gates[], timings, command metadata |
-| **ValidateDocTool** | Check doc structure | `file_path` | Validation results (headings, links, etc.) |
-| **ValidationTool** | Generic code validation | `file_path` | Issues found |
+| **RunQualityGatesTool** | Run config-driven quality gates | `scope` (`auto`/`branch`/`project`/`files`), `files` (required + non-empty only when `scope="files"`) | `content[0]=text` summary line, `content[1]=json` compact payload `{overall_pass,gates}` |
+| **ValidationTool** | Generic code validation | `scope` (all/dtos/workers/platform) | Validation report |
 | **ValidateDTOTool** | Validate DTO schema | `file_path` | DTO structure validation |
 | **RunTestsTool** | Run pytest | `path` (space-sep, mutually exclusive with `scope`), `scope` (`"full"`), `markers`, `last_failed_only`, `timeout` | JSON: `summary`, `summary_line`, `failures[]` with traceback |
 | **HealthCheckTool** | Server health status | None | OK/ERROR |
 
 **Quality Gates Standard (`.st3/quality.yaml`):**
-- **Gates 0–3:** Ruff format, strict lint, imports, line length (all with `--isolated`)
-- **Gates 4/4b:** Mypy strict (DTOs only) + Pyright (all files, warnings fail)
-- **Gate 5:** All tests passing
-- **Gate 6:** Branch coverage ≥ 90%
+- **Gates 0–3:** Ruff format, strict lint, imports, line length
+- **Gate 4:** Mypy-based type gate
+- **Gate 4b:** Pyright type gate
+- Test execution belongs to `run_tests` (not `run_quality_gates`).
 
 ### 7. Discovery & Navigation Tools (2 tools)
 
@@ -263,7 +262,7 @@ File: `.vscode/mcp.json`
 2. (Make code changes in IDE)
 3. git_status
 4. git_commit message="Implement caching logic" phase=green
-5. run_quality_gates files=["mcp_server/tools/cache.py"]
+5. run_quality_gates scope="files" files=["mcp_server/tools/cache.py"]
 6. run_tests path=tests/unit
 7. git_push set_upstream=true
 8. create_pr title="Add caching mechanism" body="Implements Redis caching for..." head=feature/add-caching base=main
@@ -313,18 +312,18 @@ Labels are assembled automatically from the required and optional fields. Do not
 ### TDD Workflow Integration
 
 ```
-RED Phase:    git_commit "Add failing test" phase=red
-GREEN Phase:  git_commit "Implement feature" phase=green
-REFACTOR:     git_commit "Clean up code" phase=refactor
-DOCS:         git_commit "Update documentation" phase=docs
+RED Phase:    git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="Add failing test")
+GREEN Phase:  git_add_or_commit(workflow_phase="tdd", sub_phase="green", message="Implement feature")
+REFACTOR:     git_add_or_commit(workflow_phase="tdd", sub_phase="refactor", message="Clean up code")
+DOCS:         git_add_or_commit(workflow_phase="documentation", message="Update documentation")
 ```
 
 ### Quality Gates Before Push
 
 ```
-1. run_quality_gates files=[modified files]
+1. run_quality_gates scope="files" files=[modified files]
 2. run_tests path=tests/
-3. Ensure: All quality gates pass (Gates 0-6)
+3. Ensure: All active quality gates pass (Gates 0–4b)
 4. git_push
 ```
 
