@@ -203,13 +203,7 @@ class QAManager:
         results["gates"].append(gate_result)
 
         # Use status field if present, else infer from passed/score (backward compat)
-        status = gate_result.get("status")
-        if status is None:
-            if gate_result.get("passed"):
-                score = gate_result.get("score", "")
-                status = "skipped" if isinstance(score, str) and "Skipped" in score else "passed"
-            else:
-                status = "failed"
+        status = self._resolve_gate_status(gate_result)
 
         if status == "skipped":
             results["summary"]["skipped"] += 1
@@ -224,6 +218,20 @@ class QAManager:
             issues = gate_result.get("issues", [])
             results["summary"]["total_violations"] += len(issues)
             results["summary"]["auto_fixable"] += sum(1 for issue in issues if issue.get("fixable"))
+
+    @staticmethod
+    def _resolve_gate_status(gate_result: dict[str, Any]) -> str:
+        """Resolve canonical gate status (passed/failed/skipped) from gate payload."""
+        status = gate_result.get("status")
+        if isinstance(status, str):
+            return status
+
+        if gate_result.get("passed"):
+            score = gate_result.get("score", "")
+            if isinstance(score, str) and "Skipped" in score:
+                return "skipped"
+            return "passed"
+        return "failed"
 
     @staticmethod
     def _is_auto_lifecycle_scope(scope: str) -> bool:
@@ -244,9 +252,7 @@ class QAManager:
         failed_files: set[str] = set()
 
         for gate in results.get("gates", []):
-            status = gate.get("status")
-            if status is None:
-                status = "passed" if gate.get("passed") else "failed"
+            status = QAManager._resolve_gate_status(gate)
             if status != "failed":
                 continue
 
