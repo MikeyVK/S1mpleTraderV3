@@ -1,7 +1,7 @@
 # tests/mcp_server/unit/mcp_server/managers/test_scope_resolution.py
 """
 C21: Resolve scope=project from project_scope globs (expand globs against workspace root).
-C22: Resolve scope=branch using git diff parent..HEAD.
+C22: Resolve scope=branch using git diff parent...HEAD (merge-base semantics).
 """
 # pyright: reportPrivateUsage=false
 
@@ -38,10 +38,10 @@ def _project_scope_config(include_globs: list[str]) -> MagicMock:
 
 
 class TestScopeResolutionBranch:
-    """C22: _resolve_scope('branch') returns Python files from git diff <parent>..HEAD."""
+    """C22: _resolve_scope('branch') returns Python files from git diff <parent>...HEAD."""
 
     def test_branch_scope_returns_changed_py_files(self, tmp_path: Path) -> None:
-        """Changed .py files from git diff <parent>..HEAD are returned as sorted list."""
+        """Changed .py files from git diff <parent>...HEAD are returned as sorted list."""
         manager = QAManager(workspace_root=tmp_path)
 
         diff_output = "mcp_server/foo.py\nmcp_server/bar.py\n"
@@ -145,7 +145,7 @@ class TestScopeResolutionBranch:
             manager._resolve_scope("branch")
 
         assert captured_cmd, "subprocess.run was not called"
-        assert "feature/parent-branch..HEAD" in captured_cmd[0]
+        assert "feature/parent-branch...HEAD" in captured_cmd[0]
 
     def test_branch_scope_reads_top_level_parent_branch(self, tmp_path: Path) -> None:
         """parent_branch lives at top level in state.json, not nested under workflow."""
@@ -168,8 +168,8 @@ class TestScopeResolutionBranch:
             manager._resolve_scope("branch")
 
         assert captured_cmd, "subprocess.run was not called"
-        assert "epic/76-quality-gates..HEAD" in captured_cmd[0], (
-            f"Expected epic/76-quality-gates..HEAD in git cmd, got: {captured_cmd[0]}"
+        assert "epic/76-quality-gates...HEAD" in captured_cmd[0], (
+            f"Expected epic/76-quality-gates...HEAD in git cmd, got: {captured_cmd[0]}"
         )
 
     def test_branch_scope_git_cmd_includes_diff_filter_d(self, tmp_path: Path) -> None:
@@ -199,7 +199,7 @@ class TestScopeResolutionBranch:
         )
 
     def test_branch_scope_falls_back_to_main_without_state(self, tmp_path: Path) -> None:
-        """When state.json is absent, git diff falls back to main..HEAD."""
+        """When state.json is absent, git diff falls back to main...HEAD."""
         manager = QAManager(workspace_root=tmp_path)
         captured_cmd: list[list[str]] = []
 
@@ -214,7 +214,7 @@ class TestScopeResolutionBranch:
             manager._resolve_scope("branch")
 
         assert captured_cmd, "subprocess.run was not called"
-        assert "main..HEAD" in captured_cmd[0]
+        assert "main...HEAD" in captured_cmd[0]
 
 
 class TestScopeResolutionProject:

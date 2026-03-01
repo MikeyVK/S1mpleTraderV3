@@ -378,11 +378,13 @@ class QAManager:
         return []
 
     def _resolve_branch_scope(self) -> list[str]:
-        """Return Python files changed since the parent branch via git diff.
+        """Return Python files changed on this branch since merge-base with parent.
 
-        The parent branch is read from the top-level ``parent_branch`` key in
-        ``.st3/state.json``.  Falls back to ``"main"`` when the key is absent
-        or the state file cannot be loaded.
+        The parent branch is read from top-level ``parent_branch`` in
+        ``.st3/state.json`` and falls back to ``"main"``.
+
+        Uses merge-base semantics (``parent...HEAD``) to isolate branch-introduced
+        changes and avoid noise from parent tip drift.
 
         Returns:
             Sorted list of ``.py`` file paths (relative POSIX). Empty list on error
@@ -392,7 +394,7 @@ class QAManager:
         if self.workspace_root is not None:
             state = self._load_state_json(self.workspace_root / ".st3" / "state.json")
             parent = state.get("parent_branch") or "main"
-        return self._git_diff_py_files(parent)
+        return self._git_diff_py_files(parent, use_merge_base=True)
 
     def _resolve_auto_scope(self) -> list[str]:
         """Return union of git diff (``baseline_sha..HEAD``) and persisted ``failed_files``.
@@ -419,19 +421,22 @@ class QAManager:
         union = diff_files | failed_files
         return sorted(union)
 
-    def _git_diff_py_files(self, base_ref: str) -> list[str]:
-        """Run ``git diff --name-only <base_ref>..HEAD`` and return ``.py`` files.
+    def _git_diff_py_files(self, base_ref: str, *, use_merge_base: bool = False) -> list[str]:
+        """Run git diff and return changed ``.py`` files.
 
         Args:
-            base_ref: The git ref to diff against (e.g. a branch name or commit SHA).
+            base_ref: The git ref to diff against (branch name or commit SHA).
+            use_merge_base: When True, use ``base_ref...HEAD`` (merge-base semantics).
+                When False, use ``base_ref..HEAD`` (tip-to-tip semantics).
 
         Returns:
-            Sorted list of ``.py`` paths from the diff output. Empty on error or
+            Sorted list of ``.py`` paths from diff output. Empty on error or
             when the diff contains no Python files.
         """
+        diff_ref = f"{base_ref}...HEAD" if use_merge_base else f"{base_ref}..HEAD"
         try:
             result = subprocess.run(
-                ["git", "diff", "--name-only", "--diff-filter=d", f"{base_ref}..HEAD"],
+                ["git", "diff", "--name-only", "--diff-filter=d", diff_ref],
                 stdin=subprocess.DEVNULL,
                 capture_output=True,
                 text=True,
