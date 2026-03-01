@@ -564,3 +564,80 @@ class TestRunQualityGatesFailedSubsetC42:
         assert mock_accumulate.call_count == 1
         accumulated = mock_accumulate.call_args.args[0]
         assert accumulated != resolved_files
+
+
+class TestEffectiveScopePropagationC43:
+    """Cycle 43: effective scope is explicit and consistent through tool → manager."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("scope", "files_arg", "resolved"),
+        [
+            ("auto", None, ["a.py"]),
+            ("branch", None, ["b.py"]),
+            ("project", None, ["c.py"]),
+            ("files", ["src/x.py"], ["src/x.py"]),
+        ],
+    )
+    async def test_execute_passes_effective_scope_to_manager(
+        self,
+        scope: str,
+        files_arg: list[str] | None,
+        resolved: list[str],
+    ) -> None:
+        mock_manager = MagicMock()
+        mock_manager._resolve_scope.return_value = resolved
+        mock_manager.run_quality_gates.return_value = {
+            "summary": {
+                "passed": 1,
+                "failed": 0,
+                "skipped": 0,
+                "total_violations": 0,
+                "auto_fixable": 0,
+            },
+            "overall_pass": True,
+            "gates": [],
+        }
+        tool = RunQualityGatesTool(manager=mock_manager)
+
+        params = RunQualityGatesInput(scope=scope, files=files_arg)
+        await tool.execute(params)
+
+        mock_manager._resolve_scope.assert_called_once_with(scope, files=files_arg)
+        mock_manager.run_quality_gates.assert_called_once_with(
+            resolved,
+            effective_scope=scope,
+        )
+
+
+class TestScopeSwitchInvariantsC43:
+    """Cycle 43: explicit scope propagation remains stable across call sequences."""
+
+    @pytest.mark.asyncio
+    async def test_auto_files_auto_sequence_preserves_scope_intent(self) -> None:
+        mock_manager = MagicMock()
+        mock_manager._resolve_scope.side_effect = [
+            ["changed_auto.py"],
+            ["target_file.py"],
+            ["changed_auto_2.py"],
+        ]
+        mock_manager.run_quality_gates.return_value = {
+            "summary": {
+                "passed": 1,
+                "failed": 0,
+                "skipped": 0,
+                "total_violations": 0,
+                "auto_fixable": 0,
+            },
+            "overall_pass": True,
+            "gates": [],
+        }
+        tool = RunQualityGatesTool(manager=mock_manager)
+
+        await tool.execute(RunQualityGatesInput(scope="auto"))
+        await tool.execute(RunQualityGatesInput(scope="files", files=["target_file.py"]))
+        await tool.execute(RunQualityGatesInput(scope="auto"))
+
+        assert mock_manager.run_quality_gates.call_args_list[0].kwargs["effective_scope"] == "auto"
+        assert mock_manager.run_quality_gates.call_args_list[1].kwargs["effective_scope"] == "files"
+        assert mock_manager.run_quality_gates.call_args_list[2].kwargs["effective_scope"] == "auto"
