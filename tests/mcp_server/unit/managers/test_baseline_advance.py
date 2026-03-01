@@ -119,30 +119,44 @@ class TestBaselineAdvanceOnAllPass:
         """run_quality_gates invokes _advance_baseline_on_all_pass when overall_pass=True."""
         manager = QAManager(workspace_root=tmp_path)
 
-        # Give a trivially all-pass config (empty active_gates list) but bypass
-        # the early-exit ConfigError: we set overall_pass=True directly via patch.
+        test_file = tmp_path / "ok.py"
+        test_file.write_text("print('ok')\n", encoding="utf-8")
+
         with (
+            patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
+            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc,
+            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
             patch.object(
                 manager,
-                "_advance_baseline_on_all_pass",
-            ) as mock_advance,
-            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
+                "_execute_gate",
+                return_value={
+                    "gate_number": 1,
+                    "name": "Gate 1: Stub",
+                    "passed": True,
+                    "status": "passed",
+                    "score": "Pass",
+                    "issues": [],
+                    "duration_ms": 0,
+                },
+            ),
         ):
             cfg = MagicMock()
-            cfg.active_gates = []
+            cfg.active_gates = ["gate1_stub"]
+            gate = MagicMock()
+            gate.name = "Gate 1: Stub"
+            gate.scope = None
+            gate.capabilities.file_types = [".py"]
+            cfg.gates = {"gate1_stub": gate}
             cfg.artifact_logging.enabled = False
             cfg.artifact_logging.output_dir = "temp/qa_logs"
             cfg.artifact_logging.max_files = 10
             mock_cfg.return_value = cfg
 
-            result = manager.run_quality_gates(files=[])
+            result = manager.run_quality_gates(files=[str(test_file)])
 
-        # overall_pass is False when active_gates == [] (config error gate fires)
-        # so _advance_baseline_on_all_pass should NOT have been called
-        if result["overall_pass"]:
-            mock_advance.assert_called_once()
-        else:
-            mock_advance.assert_not_called()
+        assert result["overall_pass"] is True
+        mock_advance.assert_called_once()
+        mock_acc.assert_not_called()
 
 
 class TestFailureAccumulation:
@@ -233,3 +247,60 @@ class TestFailureAccumulation:
         # unknown gate sets overall_pass=False → accumulate should be called
         assert not result["overall_pass"]
         mock_acc.assert_called_once_with(["mcp_server/managers/qa_manager.py"])
+
+
+class TestScopeLifecycleGuard:
+    """Cycle 41 refactor coverage: explicit scope-guard behavior."""
+
+    def test_files_scope_failure_does_not_accumulate_failed_files(self, tmp_path: Path) -> None:
+        """Failing scope='files' run must not mutate auto failed_files lifecycle state."""
+        manager = QAManager(workspace_root=tmp_path)
+
+        test_file = tmp_path / "failing.py"
+        test_file.write_text("print('x')\n", encoding="utf-8")
+
+        with (
+            patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
+            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc,
+            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
+            patch.object(
+                manager,
+                "_execute_gate",
+                return_value={
+                    "gate_number": 1,
+                    "name": "Gate 1: Stub",
+                    "passed": False,
+                    "status": "failed",
+                    "score": "Fail",
+                    "issues": [{"file": str(test_file), "message": "boom"}],
+                    "duration_ms": 0,
+                },
+            ),
+        ):
+            cfg = MagicMock()
+            cfg.active_gates = ["gate1_stub"]
+            gate = MagicMock()
+            gate.name = "Gate 1: Stub"
+            gate.scope = None
+            gate.capabilities.file_types = [".py"]
+            cfg.gates = {"gate1_stub": gate}
+            cfg.artifact_logging.enabled = False
+            cfg.artifact_logging.output_dir = "temp/qa_logs"
+            cfg.artifact_logging.max_files = 10
+            mock_cfg.return_value = cfg
+
+            result = manager.run_quality_gates(
+                files=[str(test_file)],
+                effective_scope="files",
+            )
+
+        assert result["overall_pass"] is False
+        mock_advance.assert_not_called()
+        mock_acc.assert_not_called()
+
+    def test_is_auto_lifecycle_scope_normalized_variants(self) -> None:
+        """_is_auto_lifecycle_scope accepts case/whitespace variants for auto."""
+        assert QAManager._is_auto_lifecycle_scope("auto") is True
+        assert QAManager._is_auto_lifecycle_scope("AUTO") is True
+        assert QAManager._is_auto_lifecycle_scope(" Auto ") is True
+        assert QAManager._is_auto_lifecycle_scope("files") is False
