@@ -304,3 +304,95 @@ class TestScopeLifecycleGuard:
         assert QAManager._is_auto_lifecycle_scope("AUTO") is True
         assert QAManager._is_auto_lifecycle_scope(" Auto ") is True
         assert QAManager._is_auto_lifecycle_scope("files") is False
+
+
+class TestFailedSubsetExtractionC42:
+    """Cycle 42 hardening: subset extraction edge-case coverage."""
+
+    def test_collect_failed_files_fallback_to_evaluated_set_when_no_file_fields(self) -> None:
+        """When failed issues have no file key, fallback to full evaluated set."""
+        results = {
+            "gates": [
+                {
+                    "name": "Gate 1",
+                    "passed": False,
+                    "status": "failed",
+                    "issues": [{"message": "compilation error"}],
+                }
+            ]
+        }
+        evaluated = ["a.py", "b.py"]
+
+        collected = QAManager._collect_failed_files_from_results(results, evaluated)
+        assert collected == ["a.py", "b.py"]
+
+    def test_collect_failed_files_ignores_issues_outside_evaluated_set(self) -> None:
+        """Issue files not in evaluated set are excluded from failed subset."""
+        results = {
+            "gates": [
+                {
+                    "name": "Gate 1",
+                    "passed": False,
+                    "status": "failed",
+                    "issues": [
+                        {"file": "a.py", "message": "local fail"},
+                        {"file": "external/lib.py", "message": "external fail"},
+                    ],
+                }
+            ]
+        }
+        evaluated = ["a.py", "b.py"]
+
+        collected = QAManager._collect_failed_files_from_results(results, evaluated)
+        assert collected == ["a.py"]
+
+    def test_collect_failed_files_unions_multiple_failed_gates(self) -> None:
+        """Failed subset includes union of file hits across multiple failed gates."""
+        results = {
+            "gates": [
+                {
+                    "name": "Gate 1",
+                    "passed": False,
+                    "status": "failed",
+                    "issues": [{"file": "a.py", "message": "lint"}],
+                },
+                {
+                    "name": "Gate 2",
+                    "passed": False,
+                    "status": "failed",
+                    "issues": [{"file": "b.py", "message": "types"}],
+                },
+            ]
+        }
+        evaluated = ["a.py", "b.py", "c.py"]
+
+        collected = QAManager._collect_failed_files_from_results(results, evaluated)
+        assert collected == ["a.py", "b.py"]
+
+
+class TestGateStatusStamping:
+    """Refactor hardening: resolved gate status is stamped back into gate result."""
+
+    def test_update_summary_stamps_resolved_status(self) -> None:
+        manager = QAManager()
+        results = {
+            "summary": {
+                "passed": 0,
+                "failed": 0,
+                "skipped": 0,
+                "total_violations": 0,
+                "auto_fixable": 0,
+            },
+            "gates": [],
+            "overall_pass": True,
+        }
+        gate_result = {
+            "name": "Gate X",
+            "passed": False,
+            "score": "Fail",
+            "issues": [{"file": "a.py", "message": "boom"}],
+        }
+
+        manager._update_summary_and_append_gate(results, gate_result)
+
+        assert gate_result["status"] == "failed"

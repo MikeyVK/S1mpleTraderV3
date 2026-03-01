@@ -204,6 +204,7 @@ class QAManager:
 
         # Use status field if present, else infer from passed/score (backward compat)
         status = self._resolve_gate_status(gate_result)
+        gate_result["status"] = status
 
         if status == "skipped":
             results["summary"]["skipped"] += 1
