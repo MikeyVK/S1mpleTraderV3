@@ -38,6 +38,21 @@ def _state_with_quality_gates(
     return state_file
 
 
+def _stub_single_gate_config(mock_cfg: MagicMock) -> None:
+    """Configure one active generic gate for run_quality_gates tests."""
+    cfg = MagicMock()
+    cfg.active_gates = ["gate1_stub"]
+    gate = MagicMock()
+    gate.name = "Gate 1: Stub"
+    gate.scope = None
+    gate.capabilities.file_types = [".py"]
+    cfg.gates = {"gate1_stub": gate}
+    cfg.artifact_logging.enabled = False
+    cfg.artifact_logging.output_dir = "temp/qa_logs"
+    cfg.artifact_logging.max_files = 10
+    mock_cfg.return_value = cfg
+
+
 class TestBaselineAdvanceOnAllPass:
     """C19: Baseline advances to HEAD when every gate passes."""
 
@@ -368,6 +383,220 @@ class TestFailedSubsetExtractionC42:
 
         collected = QAManager._collect_failed_files_from_results(results, evaluated)
         assert collected == ["a.py", "b.py"]
+
+
+class TestScopeSwitchInvariantsC44:
+    """Cycle 44: scope-switch invariants across lifecycle and non-lifecycle runs."""
+
+    def test_auto_files_auto_preserves_then_resets_auto_lifecycle(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Invariant: auto→files→auto preserves candidates on files run.
+
+        Final auto-pass then resets lifecycle state.
+        """
+        auto_fail = tmp_path / "auto_fail.py"
+        files_pass = tmp_path / "files_pass.py"
+        auto_pass = tmp_path / "auto_pass.py"
+        auto_fail.write_text("print('auto fail')\n", encoding="utf-8")
+        files_pass.write_text("print('files pass')\n", encoding="utf-8")
+        auto_pass.write_text("print('auto pass')\n", encoding="utf-8")
+
+        state_file = _state_with_quality_gates(
+            tmp_path,
+            baseline_sha="baseline_old",
+            failed_files=["seed.py"],
+        )
+        manager = QAManager(workspace_root=tmp_path)
+
+        with (
+            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
+            patch.object(manager, "_get_head_sha", return_value="baseline_new"),
+            patch.object(
+                manager,
+                "_execute_gate",
+                side_effect=[
+                    {
+                        "gate_number": 1,
+                        "name": "Gate 1: Stub",
+                        "passed": False,
+                        "status": "failed",
+                        "score": "Fail",
+                        "issues": [{"file": str(auto_fail), "message": "boom"}],
+                        "duration_ms": 0,
+                    },
+                    {
+                        "gate_number": 1,
+                        "name": "Gate 1: Stub",
+                        "passed": True,
+                        "status": "passed",
+                        "score": "Pass",
+                        "issues": [],
+                        "duration_ms": 0,
+                    },
+                    {
+                        "gate_number": 1,
+                        "name": "Gate 1: Stub",
+                        "passed": True,
+                        "status": "passed",
+                        "score": "Pass",
+                        "issues": [],
+                        "duration_ms": 0,
+                    },
+                ],
+            ),
+        ):
+            _stub_single_gate_config(mock_cfg)
+
+            fail_result = manager.run_quality_gates([str(auto_fail)], effective_scope="auto")
+            mid_state = json.loads(state_file.read_text())
+
+            files_result = manager.run_quality_gates([str(files_pass)], effective_scope="files")
+            state_after_files = json.loads(state_file.read_text())
+
+            pass_result = manager.run_quality_gates([str(auto_pass)], effective_scope="auto")
+            final_state = json.loads(state_file.read_text())
+
+        assert fail_result["overall_pass"] is False
+        assert files_result["overall_pass"] is True
+        assert pass_result["overall_pass"] is True
+
+        assert mid_state["quality_gates"]["baseline_sha"] == "baseline_old"
+        assert set(mid_state["quality_gates"]["failed_files"]) == {"seed.py", str(auto_fail)}
+
+        assert state_after_files["quality_gates"]["baseline_sha"] == "baseline_old"
+        assert set(state_after_files["quality_gates"]["failed_files"]) == {
+            "seed.py",
+            str(auto_fail),
+        }
+
+        assert final_state["quality_gates"]["baseline_sha"] == "baseline_new"
+        assert final_state["quality_gates"]["failed_files"] == []
+
+    def test_branch_files_branch_has_no_auto_lifecycle_side_effects(self, tmp_path: Path) -> None:
+        """Invariant: branch→files→branch must not touch auto baseline lifecycle fields."""
+        branch_fail = tmp_path / "branch_fail.py"
+        files_pass = tmp_path / "files_pass.py"
+        branch_pass = tmp_path / "branch_pass.py"
+        branch_fail.write_text("print('branch fail')\n", encoding="utf-8")
+        files_pass.write_text("print('files pass')\n", encoding="utf-8")
+        branch_pass.write_text("print('branch pass')\n", encoding="utf-8")
+
+        state_file = _state_with_quality_gates(
+            tmp_path,
+            baseline_sha="keep_baseline",
+            failed_files=["seed.py"],
+        )
+        manager = QAManager(workspace_root=tmp_path)
+
+        with (
+            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
+            patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
+            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_acc,
+            patch.object(
+                manager,
+                "_execute_gate",
+                side_effect=[
+                    {
+                        "gate_number": 1,
+                        "name": "Gate 1: Stub",
+                        "passed": False,
+                        "status": "failed",
+                        "score": "Fail",
+                        "issues": [{"file": str(branch_fail), "message": "boom"}],
+                        "duration_ms": 0,
+                    },
+                    {
+                        "gate_number": 1,
+                        "name": "Gate 1: Stub",
+                        "passed": True,
+                        "status": "passed",
+                        "score": "Pass",
+                        "issues": [],
+                        "duration_ms": 0,
+                    },
+                    {
+                        "gate_number": 1,
+                        "name": "Gate 1: Stub",
+                        "passed": True,
+                        "status": "passed",
+                        "score": "Pass",
+                        "issues": [],
+                        "duration_ms": 0,
+                    },
+                ],
+            ),
+        ):
+            _stub_single_gate_config(mock_cfg)
+
+            manager.run_quality_gates([str(branch_fail)], effective_scope="branch")
+            manager.run_quality_gates([str(files_pass)], effective_scope="files")
+            manager.run_quality_gates([str(branch_pass)], effective_scope="branch")
+
+        state = json.loads(state_file.read_text())
+        assert state["quality_gates"]["baseline_sha"] == "keep_baseline"
+        assert state["quality_gates"]["failed_files"] == ["seed.py"]
+        mock_advance.assert_not_called()
+        mock_acc.assert_not_called()
+
+    def test_project_then_auto_failure_keeps_baseline_and_updates_failed_subset(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Invariant: project→auto preserves auto assumptions and updates only via auto policy."""
+        project_pass = tmp_path / "project_pass.py"
+        auto_fail = tmp_path / "auto_fail.py"
+        project_pass.write_text("print('project pass')\n", encoding="utf-8")
+        auto_fail.write_text("print('auto fail')\n", encoding="utf-8")
+
+        state_file = _state_with_quality_gates(
+            tmp_path,
+            baseline_sha="baseline_old",
+            failed_files=["seed.py"],
+        )
+        manager = QAManager(workspace_root=tmp_path)
+
+        with (
+            patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg,
+            patch.object(
+                manager,
+                "_execute_gate",
+                side_effect=[
+                    {
+                        "gate_number": 1,
+                        "name": "Gate 1: Stub",
+                        "passed": True,
+                        "status": "passed",
+                        "score": "Pass",
+                        "issues": [],
+                        "duration_ms": 0,
+                    },
+                    {
+                        "gate_number": 1,
+                        "name": "Gate 1: Stub",
+                        "passed": False,
+                        "status": "failed",
+                        "score": "Fail",
+                        "issues": [{"file": str(auto_fail), "message": "boom"}],
+                        "duration_ms": 0,
+                    },
+                ],
+            ),
+        ):
+            _stub_single_gate_config(mock_cfg)
+
+            manager.run_quality_gates([str(project_pass)], effective_scope="project")
+            state_after_project = json.loads(state_file.read_text())
+
+            manager.run_quality_gates([str(auto_fail)], effective_scope="auto")
+            final_state = json.loads(state_file.read_text())
+
+        assert state_after_project["quality_gates"]["baseline_sha"] == "baseline_old"
+        assert state_after_project["quality_gates"]["failed_files"] == ["seed.py"]
+
+        assert final_state["quality_gates"]["baseline_sha"] == "baseline_old"
+        assert set(final_state["quality_gates"]["failed_files"]) == {"seed.py", str(auto_fail)}
 
 
 class TestGateStatusStamping:
