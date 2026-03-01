@@ -191,7 +191,8 @@ class QAManager:
             if results["overall_pass"]:
                 self._advance_baseline_on_all_pass()
             else:
-                self._accumulate_failed_files_on_failure(files)
+                failed_subset = self._collect_failed_files_from_results(results, files)
+                self._accumulate_failed_files_on_failure(failed_subset)
 
         return results
 
@@ -228,6 +229,35 @@ class QAManager:
     def _is_auto_lifecycle_scope(scope: str) -> bool:
         """Return True when baseline lifecycle mutation is allowed for this scope."""
         return scope.strip().lower() == "auto"
+
+    @staticmethod
+    def _collect_failed_files_from_results(
+        results: dict[str, Any], evaluated_files: list[str]
+    ) -> list[str]:
+        """Extract failing-file subset from gate results; fallback to evaluated set.
+
+        Prefers explicit issue-level ``file`` references from failed gates.
+        If no file-level references are present, conservatively falls back to
+        the evaluated set to avoid dropping failure signal.
+        """
+        evaluated_set = set(evaluated_files)
+        failed_files: set[str] = set()
+
+        for gate in results.get("gates", []):
+            status = gate.get("status")
+            if status is None:
+                status = "passed" if gate.get("passed") else "failed"
+            if status != "failed":
+                continue
+
+            for issue in gate.get("issues", []):
+                file_path = issue.get("file")
+                if isinstance(file_path, str) and file_path in evaluated_set:
+                    failed_files.add(file_path)
+
+        if failed_files:
+            return sorted(failed_files)
+        return sorted(evaluated_set)
 
     # ------------------------------------------------------------------
     # Baseline state management

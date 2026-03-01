@@ -465,3 +465,102 @@ class TestRunQualityGatesScopeGuardC41:
 
         mock_advance.assert_not_called()
         mock_accumulate.assert_not_called()
+
+
+class TestRunQualityGatesFailedSubsetC42:
+    """Cycle 42 RED: auto scope should persist only failing-file subset."""
+
+    @staticmethod
+    def _stub_quality_config() -> SimpleNamespace:
+        gate = SimpleNamespace(
+            name="Gate 1: Stub",
+            scope=None,
+            capabilities=SimpleNamespace(file_types=[".py"]),
+        )
+        return SimpleNamespace(
+            active_gates=["gate1_stub"],
+            gates={"gate1_stub": gate},
+            artifact_logging=SimpleNamespace(
+                enabled=False,
+                output_dir="temp/qa_logs",
+                max_files=10,
+            ),
+        )
+
+    @pytest.mark.asyncio
+    async def test_auto_mixed_result_accumulates_only_failing_subset(self) -> None:
+        """RED: only failing file(s) should be sent to failed_files accumulator."""
+        manager = QAManager(workspace_root=Path.cwd())
+        tool = RunQualityGatesTool(manager=manager)
+        resolved_files = ["a.py", "b.py"]
+
+        with (
+            patch.object(manager, "_resolve_scope", return_value=resolved_files),
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "mcp_server.managers.qa_manager.QualityConfig.load",
+                return_value=self._stub_quality_config(),
+            ),
+            patch.object(
+                manager,
+                "_execute_gate",
+                return_value={
+                    "gate_number": 1,
+                    "name": "Gate 1: Stub",
+                    "passed": False,
+                    "status": "failed",
+                    "score": "Fail",
+                    "issues": [
+                        {
+                            "file": "a.py",
+                            "line": 1,
+                            "col": 1,
+                            "rule": "X",
+                            "message": "boom",
+                        }
+                    ],
+                    "duration_ms": 0,
+                },
+            ),
+            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_accumulate,
+            patch.object(manager, "_advance_baseline_on_all_pass") as mock_advance,
+        ):
+            await tool.execute(RunQualityGatesInput(scope="auto"))
+
+        mock_advance.assert_not_called()
+        mock_accumulate.assert_called_once_with(["a.py"])
+
+    @pytest.mark.asyncio
+    async def test_auto_mixed_result_must_not_accumulate_full_resolved_set(self) -> None:
+        """RED: accumulator input must not equal full evaluated set when only subset fails."""
+        manager = QAManager(workspace_root=Path.cwd())
+        tool = RunQualityGatesTool(manager=manager)
+        resolved_files = ["a.py", "b.py"]
+
+        with (
+            patch.object(manager, "_resolve_scope", return_value=resolved_files),
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "mcp_server.managers.qa_manager.QualityConfig.load",
+                return_value=self._stub_quality_config(),
+            ),
+            patch.object(
+                manager,
+                "_execute_gate",
+                return_value={
+                    "gate_number": 1,
+                    "name": "Gate 1: Stub",
+                    "passed": False,
+                    "status": "failed",
+                    "score": "Fail",
+                    "issues": [{"file": "a.py", "message": "boom"}],
+                    "duration_ms": 0,
+                },
+            ),
+            patch.object(manager, "_accumulate_failed_files_on_failure") as mock_accumulate,
+        ):
+            await tool.execute(RunQualityGatesInput(scope="auto"))
+
+        assert mock_accumulate.call_count == 1
+        accumulated = mock_accumulate.call_args.args[0]
+        assert accumulated != resolved_files
