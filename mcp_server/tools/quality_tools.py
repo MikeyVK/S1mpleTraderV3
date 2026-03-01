@@ -53,11 +53,6 @@ class RunQualityGatesInput(BaseModel):
 class RunQualityGatesTool(BaseTool):
     """Tool to run quality gates."""
 
-    @staticmethod
-    def _effective_scope(params: RunQualityGatesInput) -> str:
-        """Return authoritative scope value for the current tool execution."""
-        return params.scope
-
     name = "run_quality_gates"
     description = (
         "Run quality gates. "
@@ -67,6 +62,11 @@ class RunQualityGatesTool(BaseTool):
         "scope='files': explicit file list supplied via the 'files' field."
     )
     args_model = RunQualityGatesInput
+
+    @staticmethod
+    def _effective_scope(params: RunQualityGatesInput) -> str:
+        """Return authoritative scope value for the current tool execution."""
+        return params.scope
 
     def __init__(self, manager: QAManager | None = None) -> None:
         self.manager = manager or QAManager()

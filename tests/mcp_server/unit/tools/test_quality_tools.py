@@ -587,7 +587,7 @@ class TestEffectiveScopePropagationC43:
     ) -> None:
         mock_manager = MagicMock()
         mock_manager._resolve_scope.return_value = resolved
-        mock_manager.run_quality_gates.return_value = {
+        manager_result = {
             "summary": {
                 "passed": 1,
                 "failed": 0,
@@ -598,15 +598,22 @@ class TestEffectiveScopePropagationC43:
             "overall_pass": True,
             "gates": [],
         }
+        mock_manager.run_quality_gates.return_value = manager_result
         tool = RunQualityGatesTool(manager=mock_manager)
 
         params = RunQualityGatesInput(scope=scope, files=files_arg)
-        await tool.execute(params)
+        with patch.object(QAManager, "_format_summary_line", return_value="ok") as mock_summary:
+            await tool.execute(params)
 
         mock_manager._resolve_scope.assert_called_once_with(scope, files=files_arg)
         mock_manager.run_quality_gates.assert_called_once_with(
             resolved,
             effective_scope=scope,
+        )
+        mock_summary.assert_called_once_with(
+            manager_result,
+            scope=scope,
+            file_count=len(resolved),
         )
 
 
