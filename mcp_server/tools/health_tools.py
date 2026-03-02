@@ -22,5 +22,5 @@ class HealthCheckTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: HealthCheckInput) -> ToolResult:
+    async def execute(self, _params: HealthCheckInput) -> ToolResult:
         return ToolResult.text("OK")

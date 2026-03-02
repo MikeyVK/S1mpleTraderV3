@@ -6,7 +6,8 @@ from mcp_server.managers.qa_manager import QAManager
 class TestSkipReasonUnified:
     """Guard: _get_skip_reason was inlined and removed in C31 (Issue #251).
 
-    The skip decision is now inlined: `skip_reason = "Skipped (no matching files)" if not gate_files else None`
+    The skip decision is now inlined:
+    `skip_reason = "Skipped (no matching files)" if not gate_files else None`
     No separate method exists.
     """
 

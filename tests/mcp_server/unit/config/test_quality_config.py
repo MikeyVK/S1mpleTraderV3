@@ -162,7 +162,6 @@ class TestQualityConfigValidation:
             )
 
 
-
 class TestActiveGatesField:
     """Test active_gates field for config-driven execution (Issue #131)."""
 

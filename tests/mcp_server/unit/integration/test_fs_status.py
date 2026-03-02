@@ -1,5 +1,6 @@
 """Tests for filesystem and status components."""
 
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -9,7 +10,7 @@ from mcp_server.core.exceptions import ValidationError
 from mcp_server.resources.status import StatusResource
 
 
-def test_fs_adapter_read_write(tmp_path) -> None:
+def test_fs_adapter_read_write(tmp_path: Path) -> None:
     """Test filesystem adapter can write and read files correctly."""
     adapter = FilesystemAdapter(root_path=str(tmp_path))
 
@@ -18,7 +19,7 @@ def test_fs_adapter_read_write(tmp_path) -> None:
     assert adapter.read_file("test.txt") == "content"
 
 
-def test_fs_adapter_security(tmp_path) -> None:
+def test_fs_adapter_security(tmp_path: Path) -> None:
     """Test filesystem adapter prevents path traversal attacks."""
     adapter = FilesystemAdapter(root_path=str(tmp_path))
 

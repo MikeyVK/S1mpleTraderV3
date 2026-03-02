@@ -22,9 +22,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from mcp_server.config.workflows import workflow_config
+
 # Project modules
 from mcp_server.core.phase_detection import ScopeDecoder
-from mcp_server.config.workflows import workflow_config
 from mcp_server.managers.git_manager import GitManager
 
 # Per-phase keys recognised in planning_deliverables (C8/GAP-15)

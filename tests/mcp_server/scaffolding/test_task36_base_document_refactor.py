@@ -5,9 +5,9 @@ Tests that tier1_base_document has all required composable blocks for tier3 patt
 TDD Phase: RED → GREEN
 """
 
-import pytest
 from pathlib import Path
 
+import pytest
 
 TEMPLATES_DIR = Path(__file__).parents[3] / "mcp_server" / "scaffolding" / "templates"
 TIER1_BASE_DOC = TEMPLATES_DIR / "tier1_base_document.jinja2"

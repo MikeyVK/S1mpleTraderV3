@@ -7,6 +7,7 @@ Allows non-sequential phase transitions with skip_reason and approval.
 Issue #229 Cycle 10: GAP-17 — blocking gates must appear BEFORE ✅ in response.
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -327,8 +328,6 @@ phases:
         if with_gate_key:
             # Inject planning_deliverables so gate would have PASSED
             projects_path = tmp_path / ".st3" / "projects.json"
-            import json
-
             data = json.loads(projects_path.read_text())
             data["42"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
             projects_path.write_text(json.dumps(data, indent=2))

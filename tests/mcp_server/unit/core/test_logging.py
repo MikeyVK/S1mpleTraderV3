@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 from pathlib import Path
@@ -14,10 +15,8 @@ from mcp_server.core.logging import StructuredFormatter, get_logger, setup_loggi
 def _reset_mcp_server_logger() -> None:
     logger = logging.getLogger("mcp_server")
     for handler in list(logger.handlers):
-        try:
+        with contextlib.suppress(OSError):
             handler.close()
-        except OSError:
-            pass
     logger.handlers.clear()
 
 

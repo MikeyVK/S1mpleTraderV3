@@ -26,7 +26,7 @@ class BaseScaffolder:
         """
         self.renderer = renderer
 
-    def validate(self, **kwargs: Any) -> bool:
+    def validate(self, **kwargs: Any) -> bool:  # noqa: ANN401
         """Validate scaffolding arguments.
 
         Args:
@@ -43,8 +43,8 @@ class BaseScaffolder:
 class ComponentScaffolder(Protocol):
     """Protocol for component scaffolders."""
 
-    def validate(self, **kwargs: Any) -> bool:
+    def validate(self, **kwargs: Any) -> bool:  # noqa: ANN401
         """Validate scaffolding arguments."""
 
-    def scaffold(self, name: str, **kwargs: Any) -> str:
+    def scaffold(self, name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Scaffold a component."""

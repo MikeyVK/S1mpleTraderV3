@@ -8,7 +8,8 @@ SCOPE (Cycle 6 - Doc Artifact V2):
 3 tests per artifact type (15 total):
   1. context_validates_minimal  - schema creates with required fields only; fails if schema absent
   2. v2_routing_confirmed       - _enrich_context_v2 IS called; fails while not in registry
-  3. v2_rejects_invalid_context - empty context raises ValidationError; fails while V1 fallback active
+  3. v2_rejects_invalid_context - empty context raises ValidationError;
+     fails while V1 fallback active
 
 Note on parity definition (aligned with Cycle 5 docstring):
   Parity = smoke: both pipelines produce valid markdown with metadata header.

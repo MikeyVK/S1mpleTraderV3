@@ -12,7 +12,7 @@ class TestGitCheckoutStateSync:
     """Test suite for git_checkout tool PhaseStateEngine state synchronization."""
 
     @pytest.mark.asyncio
-    async def test_checkout_syncs_state_and_returns_phase(self):
+    async def test_checkout_syncs_state_and_returns_phase(self) -> None:
         """Test that git_checkout syncs state and returns current phase info."""
         # Setup
         mock_manager = Mock()
@@ -49,7 +49,7 @@ class TestGitCheckoutStateSync:
             assert "tdd" in str(result)
 
     @pytest.mark.asyncio
-    async def test_checkout_handles_state_sync_failure_gracefully(self):
+    async def test_checkout_handles_state_sync_failure_gracefully(self) -> None:
         """Test that git_checkout handles state sync failures gracefully."""
         # Setup
         mock_manager = Mock()
@@ -80,7 +80,7 @@ class TestGitCheckoutStateSync:
             assert "feature/456-test" in str(result)
 
     @pytest.mark.asyncio
-    async def test_checkout_handles_unknown_phase(self):
+    async def test_checkout_handles_unknown_phase(self) -> None:
         """Test that git_checkout handles unknown/missing phase gracefully."""
         # Setup
         mock_manager = Mock()

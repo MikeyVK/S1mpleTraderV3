@@ -26,7 +26,7 @@ class TestToolErrorHandlingIntegration:
             name = "test_tool"
             description = "Test tool"
 
-            async def execute(self, params: Any) -> ToolResult:
+            async def execute(self, params: Any) -> ToolResult:  # noqa: ANN401, ARG002
                 raise ValueError("Invalid parameter")
 
         tool = TestTool()
@@ -46,7 +46,7 @@ class TestToolErrorHandlingIntegration:
             name = "test_tool"
             description = "Test tool"
 
-            async def execute(self, params: Any) -> ToolResult:
+            async def execute(self, params: Any) -> ToolResult:  # noqa: ANN401, ARG002
                 return ToolResult.text("Success!")
 
         tool = TestTool()
@@ -66,7 +66,7 @@ class TestToolErrorHandlingIntegration:
             name = "tool1"
             description = "Tool 1"
 
-            async def execute(self, params: Any) -> ToolResult:
+            async def execute(self, params: Any) -> ToolResult:  # noqa: ANN401, ARG002
                 raise ValueError("Tool1 error")
 
         class Tool2(BaseTool):
@@ -75,7 +75,7 @@ class TestToolErrorHandlingIntegration:
             name = "tool2"
             description = "Tool 2"
 
-            async def execute(self, params: Any) -> ToolResult:
+            async def execute(self, params: Any) -> ToolResult:  # noqa: ANN401, ARG002
                 raise FileNotFoundError("Tool2 error")
 
         tool1 = Tool1()

@@ -39,7 +39,7 @@ def _get_restart_marker_path() -> Path:
 def _create_audit_props(
     reason: str,
     event_type: str,
-    **extra_props: Any
+    **extra_props: Any  # noqa: ANN401
 ) -> dict[str, Any]:
     """Create structured props for audit logging.
 

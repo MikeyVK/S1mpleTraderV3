@@ -4,7 +4,7 @@ import pytest
 
 
 @pytest.fixture
-def mock_env_vars(monkeypatch):
+def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
     """Fixture that sets mock environment variables for testing."""
     monkeypatch.setenv("MCP_SERVER_NAME", "test-server")
     monkeypatch.setenv("MCP_LOG_LEVEL", "DEBUG")

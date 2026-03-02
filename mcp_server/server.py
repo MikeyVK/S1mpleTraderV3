@@ -151,7 +151,9 @@ class MCPServer:
             GitDiffTool(),
             GetParentBranchTool(),
             # Quality tools
-            RunQualityGatesTool(manager=QAManager(workspace_root=Path(settings.server.workspace_root))),
+            RunQualityGatesTool(
+                manager=QAManager(workspace_root=Path(settings.server.workspace_root))
+            ),
             ValidationTool(),
             ValidateDTOTool(),
             SafeEditTool(),

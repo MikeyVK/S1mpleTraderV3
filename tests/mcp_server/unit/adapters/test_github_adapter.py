@@ -1,5 +1,6 @@
 """Unit tests for GitHubAdapter."""
 
+from collections.abc import Iterator
 from datetime import date
 from unittest.mock import MagicMock, patch
 
@@ -11,13 +12,13 @@ from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 
 
 @pytest.fixture
-def mock_github_client():
+def mock_github_client() -> Iterator[MagicMock]:
     with patch("mcp_server.adapters.github_adapter.Github") as mock:
         yield mock
 
 
 @pytest.fixture
-def mock_settings():
+def mock_settings() -> Iterator[MagicMock]:
     with patch("mcp_server.adapters.github_adapter.settings") as mock:
         mock.github.token = "test-token"
         mock.github.owner = "test-owner"
@@ -26,19 +27,19 @@ def mock_settings():
 
 
 @pytest.fixture
-def adapter(mock_github_client, mock_settings):
+def adapter(mock_github_client: MagicMock, mock_settings: MagicMock) -> GitHubAdapter:  # noqa: ARG001
     """Return an adapter with mocked client and settings."""
     return GitHubAdapter()
 
 
-def test_init_no_token():
+def test_init_no_token() -> None:
     with patch("mcp_server.adapters.github_adapter.settings") as mock_settings:
         mock_settings.github.token = None
         with pytest.raises(MCPSystemError, match="GitHub token not configured"):
             GitHubAdapter()
 
 
-def test_repo_property(adapter, mock_github_client):
+def test_repo_property(adapter: GitHubAdapter, mock_github_client: MagicMock) -> None:  # noqa: ARG001
     mock_repo = MagicMock()
     adapter.client.get_repo.return_value = mock_repo
 
@@ -46,13 +47,13 @@ def test_repo_property(adapter, mock_github_client):
     adapter.client.get_repo.assert_called_once_with("test-owner/test-repo")
 
 
-def test_repo_property_error(adapter):
+def test_repo_property_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.side_effect = GithubException(404, "Not Found")
     with pytest.raises(MCPSystemError, match="Failed to access repository"):
         _ = adapter.repo
 
 
-def test_get_issue(adapter):
+def test_get_issue(adapter: GitHubAdapter) -> None:
     mock_issue = MagicMock()
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
 
@@ -60,13 +61,13 @@ def test_get_issue(adapter):
     adapter.repo.get_issue.assert_called_once_with(1)
 
 
-def test_get_issue_not_found(adapter):
+def test_get_issue_not_found(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_issue.side_effect = GithubException(404, "Not Found")
     with pytest.raises(ExecutionError, match="Issue #1 not found"):
         adapter.get_issue(1)
 
 
-def test_create_issue(adapter):
+def test_create_issue(adapter: GitHubAdapter) -> None:
     mock_issue = MagicMock()
     adapter.client.get_repo.return_value.create_issue.return_value = mock_issue
 
@@ -78,7 +79,7 @@ def test_create_issue(adapter):
     )
 
 
-def test_update_issue(adapter):
+def test_update_issue(adapter: GitHubAdapter) -> None:
     mock_issue = MagicMock()
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
 
@@ -87,7 +88,7 @@ def test_update_issue(adapter):
     mock_issue.edit.assert_called_once_with(title="New Title", state="closed")
 
 
-def test_list_issues(adapter):
+def test_list_issues(adapter: GitHubAdapter) -> None:
     mock_issues = [MagicMock(), MagicMock()]
     adapter.client.get_repo.return_value.get_issues.return_value = mock_issues
 
@@ -95,7 +96,7 @@ def test_list_issues(adapter):
     adapter.repo.get_issues.assert_called_once_with(state="closed")
 
 
-def test_create_pr(adapter):
+def test_create_pr(adapter: GitHubAdapter) -> None:
     mock_pr = MagicMock()
     adapter.client.get_repo.return_value.create_pull.return_value = mock_pr
 
@@ -107,7 +108,7 @@ def test_create_pr(adapter):
     )
 
 
-def test_create_label(adapter):
+def test_create_label(adapter: GitHubAdapter) -> None:
     mock_label = MagicMock()
     adapter.client.get_repo.return_value.create_label.return_value = mock_label
 
@@ -118,7 +119,7 @@ def test_create_label(adapter):
     )
 
 
-def test_create_label_exists(adapter):
+def test_create_label_exists(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.create_label.side_effect = GithubException(
         422, "Validation Failed"
     )
@@ -126,7 +127,7 @@ def test_create_label_exists(adapter):
         adapter.create_label("bug", "ff0000")
 
 
-def test_create_milestone(adapter):
+def test_create_milestone(adapter: GitHubAdapter) -> None:
     mock_milestone = MagicMock()
     adapter.client.get_repo.return_value.create_milestone.return_value = mock_milestone
 
@@ -139,12 +140,12 @@ def test_create_milestone(adapter):
     assert call_kwargs["due_on"] == date(2025, 12, 31)
 
 
-def test_create_milestone_invalid_date(adapter):
+def test_create_milestone_invalid_date(adapter: GitHubAdapter) -> None:
     with pytest.raises(ExecutionError, match="Invalid due_on format"):
         adapter.create_milestone("v1", due_on="invalid-date")
 
 
-def test_merge_pr_success(adapter):
+def test_merge_pr_success(adapter: GitHubAdapter) -> None:
     mock_pr = MagicMock()
     mock_merge_status = MagicMock()
     mock_merge_status.merged = True
@@ -161,7 +162,7 @@ def test_merge_pr_success(adapter):
     mock_pr.merge.assert_called_once_with(commit_message="Merge commit", merge_method="squash")
 
 
-def test_merge_pr_failed(adapter):
+def test_merge_pr_failed(adapter: GitHubAdapter) -> None:
     mock_pr = MagicMock()
     mock_merge_status = MagicMock()
     mock_merge_status.merged = False
@@ -174,7 +175,7 @@ def test_merge_pr_failed(adapter):
         adapter.merge_pr(1)
 
 
-def test_close_issue(adapter):
+def test_close_issue(adapter: GitHubAdapter) -> None:
     mock_issue = MagicMock()
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
 
@@ -184,14 +185,14 @@ def test_close_issue(adapter):
     mock_issue.edit.assert_called_once_with(state="closed")
 
 
-def test_list_labels(adapter):
+def test_list_labels(adapter: GitHubAdapter) -> None:
     mock_labels = [MagicMock(), MagicMock()]
     adapter.client.get_repo.return_value.get_labels.return_value = mock_labels
 
     assert adapter.list_labels() == mock_labels
 
 
-def test_delete_label(adapter):
+def test_delete_label(adapter: GitHubAdapter) -> None:
     mock_label = MagicMock()
     adapter.client.get_repo.return_value.get_label.return_value = mock_label
 
@@ -201,7 +202,7 @@ def test_delete_label(adapter):
     mock_label.delete.assert_called_once()
 
 
-def test_remove_labels(adapter):
+def test_remove_labels(adapter: GitHubAdapter) -> None:
     mock_issue = MagicMock()
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
 
@@ -212,7 +213,7 @@ def test_remove_labels(adapter):
     mock_issue.remove_from_labels.assert_any_call("wontfix")
 
 
-def test_list_milestones(adapter):
+def test_list_milestones(adapter: GitHubAdapter) -> None:
     mock_milestones = [MagicMock()]
     adapter.client.get_repo.return_value.get_milestones.return_value = mock_milestones
 
@@ -220,7 +221,7 @@ def test_list_milestones(adapter):
     adapter.repo.get_milestones.assert_called_once_with(state="open")
 
 
-def test_close_milestone(adapter):
+def test_close_milestone(adapter: GitHubAdapter) -> None:
     mock_milestone = MagicMock()
     mock_milestone.title = "v1"
     adapter.client.get_repo.return_value.get_milestone.return_value = mock_milestone
@@ -231,7 +232,7 @@ def test_close_milestone(adapter):
     mock_milestone.edit.assert_called_once_with(title="v1", state="closed")
 
 
-def test_list_prs(adapter):
+def test_list_prs(adapter: GitHubAdapter) -> None:
     mock_prs = [MagicMock()]
     adapter.client.get_repo.return_value.get_pulls.return_value = mock_prs
 
@@ -240,7 +241,7 @@ def test_list_prs(adapter):
     assert adapter.repo.get_pulls.call_args[1]["base"] == "main"
 
 
-def test_list_prs_filter_head(adapter):
+def test_list_prs_filter_head(adapter: GitHubAdapter) -> None:
     mock_prs = [MagicMock()]
     adapter.client.get_repo.return_value.get_pulls.return_value = mock_prs
 
@@ -249,13 +250,13 @@ def test_list_prs_filter_head(adapter):
     assert adapter.repo.get_pulls.call_args[1]["head"] == "feature"
 
 
-def test_list_prs_error(adapter):
+def test_list_prs_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_pulls.side_effect = GithubException(500, "Error")
     with pytest.raises(ExecutionError, match="Failed to list pull requests"):
         adapter.list_prs()
 
 
-def test_create_issue_with_labels_assignees_milestone(adapter):
+def test_create_issue_with_labels_assignees_milestone(adapter: GitHubAdapter) -> None:
     mock_issue = MagicMock()
     mock_milestone = MagicMock()
     adapter.client.get_repo.return_value.create_issue.return_value = mock_issue
@@ -270,7 +271,7 @@ def test_create_issue_with_labels_assignees_milestone(adapter):
     assert kwargs["milestone"] == mock_milestone
 
 
-def test_create_issue_milestone_not_found(adapter):
+def test_create_issue_milestone_not_found(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_milestone.side_effect = GithubException(
         404, "Not Found"
     )
@@ -278,13 +279,13 @@ def test_create_issue_milestone_not_found(adapter):
         adapter.create_issue("Title", "Body", milestone_number=1)
 
 
-def test_create_issue_error(adapter):
+def test_create_issue_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.create_issue.side_effect = GithubException(500, "Error")
     with pytest.raises(ExecutionError, match="Failed to create issue"):
         adapter.create_issue("Title", "Body")
 
 
-def test_update_issue_all_fields(adapter):
+def test_update_issue_all_fields(adapter: GitHubAdapter) -> None:
     mock_issue = MagicMock()
     mock_milestone = MagicMock()
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
@@ -302,7 +303,7 @@ def test_update_issue_all_fields(adapter):
     assert kwargs["assignees"] == ["U"]
 
 
-def test_update_issue_milestone_error(adapter):
+def test_update_issue_milestone_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_issue.return_value = MagicMock()
     adapter.client.get_repo.return_value.get_milestone.side_effect = GithubException(
         404, "Not Found"
@@ -311,13 +312,13 @@ def test_update_issue_milestone_error(adapter):
         adapter.update_issue(10, milestone_number=1)
 
 
-def test_update_issue_error(adapter):
+def test_update_issue_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_issue.side_effect = GithubException(500, "Error")
     with pytest.raises(MCPSystemError, match="GitHub API error"):
         adapter.update_issue(1)
 
 
-def test_list_issues_with_labels(adapter):
+def test_list_issues_with_labels(adapter: GitHubAdapter) -> None:
     mock_issues = [MagicMock()]
     adapter.client.get_repo.return_value.get_issues.return_value = mock_issues
     adapter.list_issues(labels=["bug"])
@@ -325,55 +326,55 @@ def test_list_issues_with_labels(adapter):
     assert adapter.repo.get_issues.call_args[1]["labels"] == ["bug"]
 
 
-def test_create_pr_error(adapter):
+def test_create_pr_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.create_pull.side_effect = GithubException(500, "Error")
     with pytest.raises(ExecutionError, match="Failed to create PR"):
         adapter.create_pr("T", "B", "H")
 
 
-def test_add_labels_error(adapter):
+def test_add_labels_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_issue.side_effect = GithubException(500, "Error")
     with pytest.raises(MCPSystemError, match="GitHub API error"):
         adapter.add_labels(1, ["bug"])
 
 
-def test_close_issue_error(adapter):
+def test_close_issue_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_issue.side_effect = GithubException(500, "Error")
     with pytest.raises(MCPSystemError, match="GitHub API error"):
         adapter.close_issue(1)
 
 
-def test_list_labels_error(adapter):
+def test_list_labels_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_labels.side_effect = GithubException(500, "Error")
     with pytest.raises(MCPSystemError, match="Failed to list labels"):
         adapter.list_labels()
 
 
-def test_create_label_error(adapter):
+def test_create_label_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.create_label.side_effect = GithubException(500, "Error")
     with pytest.raises(ExecutionError, match="Failed to create label"):
         adapter.create_label("L", "C")
 
 
-def test_delete_label_not_found(adapter):
+def test_delete_label_not_found(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_label.side_effect = GithubException(404, "Not Found")
     with pytest.raises(ExecutionError, match="Label 'bug' not found"):
         adapter.delete_label("bug")
 
 
-def test_delete_label_error(adapter):
+def test_delete_label_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_label.side_effect = GithubException(500, "Error")
     with pytest.raises(ExecutionError, match="Failed to delete label"):
         adapter.delete_label("bug")
 
 
-def test_remove_labels_error(adapter):
+def test_remove_labels_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_issue.side_effect = GithubException(500, "Error")
     with pytest.raises(MCPSystemError, match="GitHub API error"):
         adapter.remove_labels(1, ["L"])
 
 
-def test_remove_labels_ignore_missing(adapter):
+def test_remove_labels_ignore_missing(adapter: GitHubAdapter) -> None:
     mock_issue = MagicMock()
     mock_issue.remove_from_labels.side_effect = GithubException(404, "Not Found")
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
@@ -382,13 +383,13 @@ def test_remove_labels_ignore_missing(adapter):
     adapter.remove_labels(1, ["missing"])
 
 
-def test_list_milestones_error(adapter):
+def test_list_milestones_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_milestones.side_effect = GithubException(500, "Error")
     with pytest.raises(ExecutionError, match="Failed to list milestones"):
         adapter.list_milestones()
 
 
-def test_create_milestone_error(adapter):
+def test_create_milestone_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.create_milestone.side_effect = GithubException(
         500, "Error"
     )
@@ -396,7 +397,7 @@ def test_create_milestone_error(adapter):
         adapter.create_milestone("T")
 
 
-def test_close_milestone_not_found(adapter):
+def test_close_milestone_not_found(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_milestone.side_effect = GithubException(
         404, "Not Found"
     )
@@ -404,19 +405,19 @@ def test_close_milestone_not_found(adapter):
         adapter.close_milestone(1)
 
 
-def test_close_milestone_error(adapter):
+def test_close_milestone_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_milestone.side_effect = GithubException(500, "Error")
     with pytest.raises(ExecutionError, match="Failed to close milestone"):
         adapter.close_milestone(1)
 
 
-def test_merge_pr_not_found(adapter):
+def test_merge_pr_not_found(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_pull.side_effect = GithubException(404, "Not Found")
     with pytest.raises(ExecutionError, match="Pull request #1 not found"):
         adapter.merge_pr(1)
 
 
-def test_merge_pr_error(adapter):
+def test_merge_pr_error(adapter: GitHubAdapter) -> None:
     adapter.client.get_repo.return_value.get_pull.side_effect = GithubException(500, "Error")
     with pytest.raises(ExecutionError, match="Failed to merge PR"):
         adapter.merge_pr(1)

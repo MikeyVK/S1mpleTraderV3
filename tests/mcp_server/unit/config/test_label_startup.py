@@ -9,6 +9,8 @@ Tests early detection of configuration issues at server startup.
 
 # Standard library
 import logging
+from collections.abc import Iterator
+from pathlib import Path
 
 # Third-party
 import pytest
@@ -19,7 +21,7 @@ from mcp_server.config.label_startup import validate_label_config_on_startup
 
 
 @pytest.fixture(autouse=True)
-def reset_labelconfig_singleton():
+def reset_labelconfig_singleton() -> Iterator[None]:
     """Reset LabelConfig singleton before each test for isolation."""
     LabelConfig.reset()
     yield
@@ -29,7 +31,9 @@ def reset_labelconfig_singleton():
 class TestStartupValidation:
     """Tests for validate_label_config_on_startup."""
 
-    def test_startup_validation_success(self, tmp_path, caplog):
+    def test_startup_validation_success(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Valid config logs info message."""
         yaml_content = """version: "1.0"
 labels:
@@ -44,7 +48,9 @@ labels:
 
         assert "Loaded labels.yaml: 1 labels" in caplog.text
 
-    def test_startup_validation_file_not_found(self, tmp_path, caplog):
+    def test_startup_validation_file_not_found(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Missing file logs warning."""
         nonexistent = str(tmp_path / "nonexistent.yaml")
 
@@ -54,7 +60,9 @@ labels:
         assert "not found" in caplog.text
         assert "WARNING" in caplog.text
 
-    def test_startup_validation_invalid_yaml(self, tmp_path, caplog):
+    def test_startup_validation_invalid_yaml(
+        self, tmp_path: Path, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """Syntax error logs error."""
         yaml_file = tmp_path / "labels.yaml"
         yaml_file.write_text("invalid: yaml: syntax:")
@@ -64,7 +72,7 @@ labels:
 
         assert "ERROR" in caplog.text
 
-    def test_startup_validation_non_blocking(self):
+    def test_startup_validation_non_blocking(self) -> None:
         """Function returns even on error (non-blocking)."""
         # Should not raise, just log
         validate_label_config_on_startup()

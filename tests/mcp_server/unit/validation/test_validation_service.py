@@ -22,6 +22,7 @@ from unittest.mock import patch
 import pytest
 
 from mcp_server.validation.base import BaseValidator, ValidationIssue, ValidationResult
+from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 
 # Module under test
 from mcp_server.validation.validation_service import ValidationService
@@ -30,11 +31,11 @@ from mcp_server.validation.validation_service import ValidationService
 class MockValidator(BaseValidator):
     """Mock validator for testing."""
 
-    def __init__(self, passed: bool = True, issues: list[ValidationIssue] | None = None):
+    def __init__(self, passed: bool = True, issues: list[ValidationIssue] | None = None) -> None:
         self.passed = passed
         self.issues = issues or []
 
-    async def validate(self, path: str, content: str | None = None) -> ValidationResult:
+    async def validate(self, path: str, content: str | None = None) -> ValidationResult:  # noqa: ARG002
         """Mock validation."""
         return ValidationResult(
             passed=self.passed, score=10.0 if self.passed else 0.0, issues=self.issues
@@ -132,7 +133,6 @@ class TestValidationService:
         self, service: ValidationService
     ) -> None:
         """Test that template validators are filtered for test files."""
-        from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 
         # Create mock validators
         python_validator = MockValidator()
@@ -159,7 +159,6 @@ class TestValidationService:
         self, service: ValidationService
     ) -> None:
         """Test that template validators are filtered for test_ prefix files."""
-        from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 
         template_validator = LayeredTemplateValidator("tool", service.template_analyzer)
 
@@ -177,7 +176,6 @@ class TestValidationService:
         self, service: ValidationService
     ) -> None:
         """Test that base template validator is added as fallback for Python."""
-        from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 
         python_validator = MockValidator()
 
@@ -198,7 +196,6 @@ class TestValidationService:
         self, service: ValidationService
     ) -> None:
         """Test that base fallback is not added if LayeredTemplateValidator exists."""
-        from mcp_server.validation.layered_template_validator import LayeredTemplateValidator
 
         template_validator = LayeredTemplateValidator("worker", service.template_analyzer)
 

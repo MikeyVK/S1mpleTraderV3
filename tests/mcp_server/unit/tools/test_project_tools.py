@@ -8,7 +8,8 @@ Issue #79: Tests for parent_branch in InitializeProjectTool.
 Issue #229 Cycle 4: SavePlanningDeliverablesTool (D4.1/D4.2/D4.3/GAP-04/GAP-06).
 Issue #229 Cycle 5: UpdatePlanningDeliverablesTool (D5.1/D5.2/D5.3/GAP-09).
 Issue #229 Cycle 7: Per-phase deliverables schema in save_planning_deliverables (D7.1).
-Issue #229 Cycle 8: update_planning_deliverables per-phase merge + exit_criteria (D8.1/D8.2/D8.3/GAP-12/GAP-15).
+Issue #229 Cycle 8: update_planning_deliverables per-phase merge + exit_criteria
+  (D8.1/D8.2/D8.3/GAP-12/GAP-15).
 """
 
 import json
@@ -693,7 +694,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
     async def test_update_planning_deliverables_merges_documentation_key(
         self, tmp_path: Path
     ) -> None:
-        """update_planning_deliverables with documentation key updates projects.json. (D8.1/GAP-15)"""
+        """update_planning_deliverables with documentation key updates projects.json.
+        (D8.1/GAP-15)"""
         issue_number = 229
         manager = ProjectManager(workspace_root=tmp_path)
         manager.initialize_project(
@@ -796,7 +798,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
     async def test_update_planning_deliverables_tdd_cycles_backward_compat(
         self, initialized: tuple[Path, int]
     ) -> None:
-        """tdd_cycles merge behaviour unchanged after per-phase support added. (D8.1 backward compat)"""
+        """tdd_cycles merge behaviour unchanged after per-phase support added.
+        (D8.1 backward compat)"""
         workspace_root, issue_number = initialized
         tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
 

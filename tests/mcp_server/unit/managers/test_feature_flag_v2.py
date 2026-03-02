@@ -16,6 +16,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
+from typing import Any
 from unittest.mock import Mock
 
 # Third-party
@@ -24,6 +25,7 @@ import pytest
 # Project modules
 from mcp_server.core.exceptions import ValidationError
 from mcp_server.managers.artifact_manager import ArtifactManager
+from mcp_server.schemas.base import BaseContext
 from mcp_server.schemas.contexts.dto import DTOContext
 from mcp_server.schemas.render_contexts.dto import DTORenderContext
 
@@ -50,7 +52,7 @@ class TestFeatureFlagV2Routing:
         original_v1 = manager._enrich_context
         v1_called = False
 
-        def spy_v1(*args, **kwargs):
+        def spy_v1(*args: Any, **kwargs: Any) -> object:  # noqa: ANN401
             nonlocal v1_called
             v1_called = True
             return original_v1(*args, **kwargs)
@@ -61,7 +63,7 @@ class TestFeatureFlagV2Routing:
         manager.scaffolder.scaffold = Mock(return_value=Mock(content="# test"))
 
         # Mock async validate method
-        async def mock_validate(*args, **kwargs):
+        async def mock_validate(*_args: Any, **_kwargs: Any) -> tuple[bool, str]:  # noqa: ANN401
             return (True, "")
 
         manager.validation_service.validate = mock_validate
@@ -89,7 +91,7 @@ class TestFeatureFlagV2Routing:
         original_v2 = manager._enrich_context_v2
         v2_called = False
 
-        def spy_v2(*args, **kwargs):
+        def spy_v2(*args: Any, **kwargs: Any) -> object:  # noqa: ANN401
             nonlocal v2_called
             v2_called = True
             return original_v2(*args, **kwargs)
@@ -99,7 +101,7 @@ class TestFeatureFlagV2Routing:
         # Mock scaffolder and validation
         manager.scaffolder.scaffold = Mock(return_value=Mock(content="# test"))
 
-        async def mock_validate(*args, **kwargs):
+        async def mock_validate(*_args: Any, **_kwargs: Any) -> tuple[bool, str]:  # noqa: ANN401
             return (True, "")
 
         manager.validation_service.validate = mock_validate
@@ -126,7 +128,7 @@ class TestFeatureFlagV2Routing:
         # Mock scaffolder and validation
         manager.scaffolder.scaffold = Mock(return_value=Mock(content="# test"))
 
-        async def mock_validate(*args, **kwargs):
+        async def mock_validate(*_args: Any, **_kwargs: Any) -> tuple[bool, str]:  # noqa: ANN401
             return (True, "")
 
         manager.validation_service.validate = mock_validate
@@ -176,13 +178,13 @@ class TestFeatureFlagV2Routing:
         # Mock scaffolder to capture enriched context
         captured_context = {}
 
-        def capture_scaffold(artifact_type, **kwargs):
+        def capture_scaffold(_artifact_type: str, **kwargs: Any) -> Mock:  # noqa: ANN401
             captured_context.update(kwargs)
             return Mock(content="# test")
 
         manager.scaffolder.scaffold = capture_scaffold
 
-        async def mock_validate(*args, **kwargs):
+        async def mock_validate(*_args: Any, **_kwargs: Any) -> tuple[bool, str]:  # noqa: ANN401
             return (True, "")
 
         manager.validation_service.validate = mock_validate
@@ -308,7 +310,6 @@ class TestSchemaTypedEnrichment:
         REQUIREMENT (Cycle 4): Clear error message if class not in globals().
         """
         # Arrange: Create a fake Context class not in globals()
-        from mcp_server.schemas.base import BaseContext
 
         class FakeContext(BaseContext):
             """Fake context not exported in mcp_server.schemas.__init__."""

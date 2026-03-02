@@ -10,8 +10,8 @@ from the filesystem via JinjaRenderer.
 
 from unittest.mock import Mock
 
-from jinja2.exceptions import TemplateNotFound
 import pytest
+from jinja2.exceptions import TemplateNotFound
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder

@@ -42,4 +42,3 @@ class TestLegacyParsersRemoved:
             "ExitCodeParsing still exists; only JsonViolationsParsing and "
             "TextViolationsParsing are the two valid parsing strategy types"
         )
-

@@ -195,7 +195,9 @@ class TestInitializeProjectToolMode1:
 
     @pytest.mark.asyncio
     async def test_error_handling_state_creation_failure(
-        self, tool: InitializeProjectTool, workspace_root: Path
+        self,
+        tool: InitializeProjectTool,
+        workspace_root: Path,  # noqa: ARG002
     ) -> None:
         """Test error handling when state.json creation fails."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:

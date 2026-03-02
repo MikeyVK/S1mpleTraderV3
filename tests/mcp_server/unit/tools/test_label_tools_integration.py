@@ -8,6 +8,7 @@ Tests validation hooks in CreateLabelTool, AddLabelsTool, and DetectLabelDriftTo
 """
 
 # Standard library
+from pathlib import Path
 from unittest.mock import Mock
 
 # Third-party
@@ -39,7 +40,7 @@ class TestCreateLabelToolValidation:
     """Tests for CreateLabelTool validation hooks."""
 
     @pytest.mark.asyncio
-    async def test_create_label_validates_name_pattern(self, tmp_path):
+    async def test_create_label_validates_name_pattern(self, tmp_path: Path) -> None:
         """CreateLabelTool rejects invalid label name pattern."""
         yaml_content = """version: "1.0"
 labels:
@@ -59,7 +60,7 @@ labels:
         assert "does not match required pattern" in result.content[0]["text"]
 
     @pytest.mark.asyncio
-    async def test_create_label_rejects_hash_prefix(self, tmp_path):
+    async def test_create_label_rejects_hash_prefix(self, tmp_path: Path) -> None:
         """CreateLabelTool rejects color with # prefix."""
         yaml_content = """version: "1.0"
 labels:
@@ -81,7 +82,7 @@ labels:
         assert "FF0000" in result_text
 
     @pytest.mark.asyncio
-    async def test_create_label_valid_succeeds(self, tmp_path):
+    async def test_create_label_valid_succeeds(self, tmp_path: Path) -> None:
         """CreateLabelTool creates label with valid name and color."""
         yaml_content = """version: "1.0"
 labels:
@@ -105,7 +106,7 @@ labels:
         mock_manager.create_label.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_create_label_freeform_exception_allowed(self, tmp_path):
+    async def test_create_label_freeform_exception_allowed(self, tmp_path: Path) -> None:
         """CreateLabelTool allows freeform exceptions like 'good first issue'."""
         yaml_content = """version: "1.0"
 freeform_exceptions:
@@ -136,7 +137,7 @@ class TestAddLabelsToolValidation:
     """Tests for AddLabelsTool validation hooks."""
 
     @pytest.mark.asyncio
-    async def test_add_labels_validates_existence(self, tmp_path):
+    async def test_add_labels_validates_existence(self, tmp_path: Path) -> None:
         """AddLabelsTool rejects undefined labels (strict enforcement)."""
         yaml_content = """version: "1.0"
 labels:
@@ -158,7 +159,7 @@ labels:
         assert "undefined-label" in result_text
 
     @pytest.mark.asyncio
-    async def test_add_labels_all_valid_succeeds(self, tmp_path):
+    async def test_add_labels_all_valid_succeeds(self, tmp_path: Path) -> None:
         """AddLabelsTool adds all labels when all are valid."""
         yaml_content = """version: "1.0"
 labels:
@@ -182,7 +183,7 @@ labels:
         mock_manager.add_labels.assert_called_once_with(1, ["type:feature", "priority:high"])
 
     @pytest.mark.asyncio
-    async def test_add_labels_partial_invalid_rejects_all(self, tmp_path):
+    async def test_add_labels_partial_invalid_rejects_all(self, tmp_path: Path) -> None:
         """AddLabelsTool rejects entire operation if ANY label is undefined."""
         yaml_content = """version: "1.0"
 labels:
@@ -204,7 +205,7 @@ labels:
         mock_manager.add_labels.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_add_labels_freeform_allowed(self, tmp_path):
+    async def test_add_labels_freeform_allowed(self, tmp_path: Path) -> None:
         """AddLabelsTool accepts freeform exceptions."""
         yaml_content = """version: "1.0"
 freeform_exceptions:
@@ -233,7 +234,7 @@ class TestDetectLabelDriftTool:
     """Tests for DetectLabelDriftTool (read-only drift detection)."""
 
     @pytest.mark.asyncio
-    async def test_drift_detection_github_has_extra_labels(self, tmp_path):
+    async def test_drift_detection_github_has_extra_labels(self, tmp_path: Path) -> None:
         """DetectLabelDriftTool detects labels in GitHub not in YAML."""
         yaml_content = """version: "1.0"
 labels:
@@ -264,7 +265,7 @@ labels:
         assert "custom-label" in result_text
 
     @pytest.mark.asyncio
-    async def test_drift_detection_yaml_has_extra_labels(self, tmp_path):
+    async def test_drift_detection_yaml_has_extra_labels(self, tmp_path: Path) -> None:
         """DetectLabelDriftTool detects labels in YAML not in GitHub."""
         yaml_content = """version: "1.0"
 labels:
@@ -294,7 +295,7 @@ labels:
         assert "type:new" in result_text
 
     @pytest.mark.asyncio
-    async def test_drift_detection_color_mismatch(self, tmp_path):
+    async def test_drift_detection_color_mismatch(self, tmp_path: Path) -> None:
         """DetectLabelDriftTool detects color differences."""
         yaml_content = """version: "1.0"
 labels:
@@ -309,7 +310,7 @@ labels:
 
         # Create mock label with attributes (not Mock object)
         class MockLabel:
-            def __init__(self, name, color, description):
+            def __init__(self, name: str, color: str, description: str) -> None:
                 self.name = name
                 self.color = color
                 self.description = description
@@ -330,7 +331,7 @@ labels:
         assert "FF0000" in result_text
 
     @pytest.mark.asyncio
-    async def test_drift_detection_description_mismatch(self, tmp_path):
+    async def test_drift_detection_description_mismatch(self, tmp_path: Path) -> None:
         """DetectLabelDriftTool detects description differences."""
         yaml_content = """version: "1.0"
 labels:
@@ -364,7 +365,7 @@ labels:
         assert "Description mismatches" in result_text
 
     @pytest.mark.asyncio
-    async def test_drift_detection_no_drift(self, tmp_path):
+    async def test_drift_detection_no_drift(self, tmp_path: Path) -> None:
         """DetectLabelDriftTool reports no drift when aligned."""
         yaml_content = """version: "1.0"
 labels:
@@ -392,7 +393,7 @@ labels:
         assert "aligned" in result_text.lower()
 
     @pytest.mark.asyncio
-    async def test_drift_detection_returns_structured_report(self, tmp_path):
+    async def test_drift_detection_returns_structured_report(self, tmp_path: Path) -> None:
         """DetectLabelDriftTool returns structured drift report."""
         yaml_content = """version: "1.0"
 labels:
@@ -424,7 +425,7 @@ labels:
         assert "github-only" in result_text
 
     @pytest.mark.asyncio
-    async def test_drift_detection_handles_github_api_error(self, tmp_path):
+    async def test_drift_detection_handles_github_api_error(self, tmp_path: Path) -> None:
         """DetectLabelDriftTool handles GitHub API errors gracefully."""
         yaml_content = """version: "1.0"
 labels:

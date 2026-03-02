@@ -1,4 +1,5 @@
 """GitHub adapter for the MCP server."""
+import contextlib
 from datetime import datetime
 from typing import Any
 
@@ -237,10 +238,8 @@ class GitHubAdapter:
         try:
             issue = self.get_issue(issue_number)
             for label_name in labels:
-                try:
+                with contextlib.suppress(GithubException):
                     issue.remove_from_labels(label_name)
-                except GithubException:
-                    pass  # Label might not be on issue, ignore
         except GithubException as e:
             raise ExecutionError(f"Failed to remove labels: {e}") from e
 

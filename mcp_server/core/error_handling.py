@@ -32,7 +32,7 @@ def tool_error_handler(func: Callable[..., Awaitable[T]]) -> Callable[..., Await
     """Catch expected tool exceptions and return structured errors."""
 
     @functools.wraps(func)
-    async def wrapper(*args: Any, **kwargs: Any) -> T:
+    async def wrapper(*args: Any, **kwargs: Any) -> T:  # noqa: ANN401
         try:
             result: T = await func(*args, **kwargs)
         except (

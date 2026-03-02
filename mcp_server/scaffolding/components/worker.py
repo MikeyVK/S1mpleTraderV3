@@ -7,7 +7,7 @@ from mcp_server.scaffolding.base import BaseScaffolder
 class WorkerScaffolder(BaseScaffolder):
     """Scaffolds Worker components."""
 
-    def scaffold(self, name: str, **kwargs: Any) -> str:
+    def scaffold(self, name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Scaffold a Worker.
 
         Args:

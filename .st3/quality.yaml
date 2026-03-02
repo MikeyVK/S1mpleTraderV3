@@ -42,6 +42,9 @@ gates:
         defaults:
           rule: "FORMAT"
           message: "File requires formatting"
+    scope:
+      exclude_globs:
+        - "tests/mcp_server/validation_fixtures/**/*.py"
 
   gate1_formatting:
     name: "Gate 1: Ruff Strict Lint"
@@ -77,6 +80,10 @@ gates:
           rule: "code"
           message: "message"
         fixable_when: "fix/applicability"
+    scope:
+      exclude_globs:
+        - "tests/mcp_server/validation_fixtures/**/*.py"
+        - "backend/dtos/validation_fixture_gate4.py"
 
   gate2_imports:
     name: "Gate 2: Imports"
@@ -110,6 +117,9 @@ gates:
           rule: "code"
           message: "message"
         fixable_when: "fix/applicability"
+    scope:
+      exclude_globs:
+        - "tests/mcp_server/validation_fixtures/**/*.py"
 
   gate3_line_length:
     name: "Gate 3: Line Length"
@@ -144,6 +154,9 @@ gates:
           rule: "code"
           message: "message"
         fixable_when: "fix/applicability"
+    scope:
+      exclude_globs:
+        - "tests/mcp_server/validation_fixtures/**/*.py"
 
   # Gate 4 (mypy) and Gate 4b (Pyright) are COMPLEMENTARY, not redundant.
   # They run independently and may both fire on the same line; agents must NOT
@@ -172,6 +185,7 @@ gates:
         - "backend/dtos/**/*.py"
       exclude_globs:
         - "tests/**/*.py"
+        - "backend/dtos/validation_fixture_gate4.py"
 
   gate4_pyright:
     name: "Gate 4b: Pyright"
@@ -211,3 +225,7 @@ gates:
           rule: "rule"
           severity: "severity"
         line_offset: 1
+    scope:
+      exclude_globs:
+        - "tests/mcp_server/validation_fixtures/**/*.py"
+        - "backend/dtos/validation_fixture_gate4.py"

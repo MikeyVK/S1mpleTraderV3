@@ -84,24 +84,24 @@ class TestTier3PatternPythonDi:
         """Rendered macros contain expected DI tokens."""
         template = jinja_env.get_template("tier3_pattern_python_di.jinja2")
 
-        imports_rendered = getattr(template.module, "pattern_di_imports")()
+        imports_rendered = template.module.pattern_di_imports()
 
-        require_dep_rendered = getattr(template.module, "pattern_di_require_dependency")(
+        require_dep_rendered = template.module.pattern_di_require_dependency(
             dep_name="strategy_cache",
             worker_name_attr="_name",
             details="required for Platform-within-Strategy worker",
         )
-        require_cap_rendered = getattr(template.module, "pattern_di_require_capability")(
+        require_cap_rendered = template.module.pattern_di_require_capability(
             cap_key="dto_types",
             worker_name_attr="_name",
             details="capability required for DTO type resolution",
         )
 
-        set_dep_rendered = getattr(template.module, "pattern_di_set_dependency")(
+        set_dep_rendered = template.module.pattern_di_set_dependency(
             attr_name="_cache",
             dep_name="strategy_cache",
         )
-        set_cap_rendered = getattr(template.module, "pattern_di_set_capability")(
+        set_cap_rendered = template.module.pattern_di_set_capability(
             attr_name="_dto_types",
             cap_key="dto_types",
         )

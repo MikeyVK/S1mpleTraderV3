@@ -70,7 +70,7 @@ class ValidationError(MCPError):
         self,
         message: str,
         hints: list[str] | None = None,
-        schema: Any = None
+        schema: object | None = None
     ) -> None:
         """Initialize the validation error.
 

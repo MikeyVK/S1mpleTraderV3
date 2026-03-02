@@ -1393,7 +1393,6 @@ class TestDurationAndCommandMetadata:
             assert "command" not in result or result.get("command") is not None
 
 
-
 class TestToolResultJsonData:
     """Test ToolResult.json_data() returns native JSON + text fallback (Gap 3)."""
 

@@ -72,7 +72,7 @@ class TestServerToolRegistration:
             description = "Dummy tool"
             args_model = None
 
-            async def execute(self, params: Any) -> ToolResult:
+            async def execute(self, params: Any) -> ToolResult:  # noqa: ANN401
                 """Return a simple success result."""
                 del params
                 return ToolResult.text("ok")

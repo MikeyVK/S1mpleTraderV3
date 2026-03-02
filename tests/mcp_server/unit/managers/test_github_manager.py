@@ -12,7 +12,7 @@ Tests according to TDD principles with comprehensive coverage.
 
 # Standard library
 import typing  # noqa: F401
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 # Third-party
@@ -58,8 +58,8 @@ class TestGitHubManager:
         mock_assignee.login = "user1"
         mock_issue.assignees = [mock_assignee]
 
-        mock_issue.created_at = datetime(2023, 1, 1)
-        mock_issue.updated_at = datetime(2023, 1, 2)
+        mock_issue.created_at = datetime(2023, 1, 1, tzinfo=UTC)
+        mock_issue.updated_at = datetime(2023, 1, 2, tzinfo=UTC)
 
         mock_adapter.list_issues.return_value = [mock_issue]
 
@@ -69,7 +69,7 @@ class TestGitHubManager:
         assert data["issues"][0]["number"] == 1
         assert data["issues"][0]["labels"] == ["bug"]
         assert data["issues"][0]["assignees"] == ["user1"]
-        assert data["issues"][0]["created_at"] == "2023-01-01T00:00:00"
+        assert data["issues"][0]["created_at"] == "2023-01-01T00:00:00+00:00"
         mock_adapter.list_issues.assert_called_with(state="open")
 
     def test_create_issue(self, manager: GitHubManager, mock_adapter: MagicMock) -> None:
@@ -183,6 +183,6 @@ class TestGitHubManager:
             pr_number=1, commit_message="Merged", merge_method="merge"
         )
 
-    def _satisfy_typing_policy(self) -> typing.Any:
+    def _satisfy_typing_policy(self) -> typing.Any:  # noqa: ANN401
         """Use typing to satisfy template policy requirements."""
         return None

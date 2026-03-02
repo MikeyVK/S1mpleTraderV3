@@ -14,7 +14,7 @@ class GitHubIssuesResource(BaseResource):
     def __init__(self, manager: GitHubManager | None = None) -> None:
         self.manager = manager or GitHubManager()
 
-    async def read(self, uri: str) -> str:
+    async def read(self, _uri: str) -> str:
         """Read the resource content."""
         data = self.manager.get_issues_resource_data()
         return json.dumps(data, indent=2)

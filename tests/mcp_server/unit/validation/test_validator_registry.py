@@ -26,7 +26,7 @@ from mcp_server.validation.registry import ValidatorRegistry
 class MockValidator(BaseValidator):
     """Mock validator for testing."""
 
-    async def validate(self, path: str, content: str | None = None) -> MagicMock:
+    async def validate(self, path: str, content: str | None = None) -> MagicMock:  # noqa: ARG002
         return MagicMock()
 
     def dummy(self) -> None:
