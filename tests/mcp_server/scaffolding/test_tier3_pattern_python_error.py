@@ -79,13 +79,13 @@ class TestTier3PatternPythonError:
         """Rendered macros contain expected tokens."""
         template = jinja_env.get_template("tier3_pattern_python_error.jinja2")
 
-        imports_rendered = getattr(template.module, "pattern_error_imports")()
-        raise_rendered = getattr(template.module, "pattern_error_raise")(
+        imports_rendered = template.module.pattern_error_imports()
+        raise_rendered = template.module.pattern_error_raise(
             exc_class="WorkerInitializationError",
             worker_name_attr="_name",
             message="initialization failed",
         )
-        wrap_rendered = getattr(template.module, "pattern_error_wrap")(
+        wrap_rendered = template.module.pattern_error_wrap(
             exc_class="WorkerInitializationError",
             worker_name_attr="_name",
             message="initialization failed",

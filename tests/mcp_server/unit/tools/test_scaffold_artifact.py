@@ -37,7 +37,7 @@ class TestScaffoldArtifactTool:
     def test_input_schema_has_required_fields(self):
         """Input schema should require artifact_type and name."""
         # Pydantic model validation
-        with pytest.raises(Exception):  # Missing required fields
+        with pytest.raises(Exception):  # noqa: B017 — Missing required fields; pydantic.ValidationError
             ScaffoldArtifactInput()  # type: ignore[call-arg]
 
         # Valid input

@@ -13,9 +13,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-
 TEMPLATE_ROOT = (
     Path(__file__).parent.parent.parent.parent / "mcp_server" / "scaffolding" / "templates"
 )

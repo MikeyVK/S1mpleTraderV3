@@ -206,8 +206,8 @@ class RunTestsTool(BaseTool):
             summary_line = parsed.get("summary_line") or fallback
             return ToolResult(
                 content=[
-                    {"type": "json", "json": parsed},
                     {"type": "text", "text": summary_line},
+                    {"type": "json", "json": parsed},
                 ]
             )
 

@@ -23,8 +23,8 @@ async def test_run_tests_tool() -> None:
 
         result = await tool.execute(RunTestsInput(path="tests/unit"))
 
-        assert result.content[0]["type"] == "json"
-        assert result.content[0]["json"]["summary"]["passed"] == 2
+        assert result.content[0]["type"] == "text"
+        assert result.content[1]["json"]["summary"]["passed"] == 2
         mock_run.assert_called_once()
 
         call_args = mock_run.call_args[0]

@@ -37,7 +37,7 @@ class JinjaRenderer:
             )
         return self._env
 
-    def get_template(self, template_name: str) -> Any:
+    def get_template(self, template_name: str) -> Any:  # noqa: ANN401
         """Load a template by name.
 
         Args:
@@ -57,7 +57,7 @@ class JinjaRenderer:
                 recovery=["Check template directory structure"]
             ) from e
 
-    def render(self, template_name: str, **kwargs: Any) -> str:
+    def render(self, template_name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Render a template with variables.
 
         Args:

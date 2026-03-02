@@ -26,6 +26,7 @@ from mcp_server.config.label_startup import validate_label_config_on_startup
 from mcp_server.config.settings import settings
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.managers.artifact_manager import ArtifactManager
+from mcp_server.managers.qa_manager import QAManager
 from mcp_server.resources.github import GitHubIssuesResource
 
 # Resources
@@ -150,7 +151,9 @@ class MCPServer:
             GitDiffTool(),
             GetParentBranchTool(),
             # Quality tools
-            RunQualityGatesTool(),
+            RunQualityGatesTool(
+                manager=QAManager(workspace_root=Path(settings.server.workspace_root))
+            ),
             ValidationTool(),
             ValidateDTOTool(),
             SafeEditTool(),

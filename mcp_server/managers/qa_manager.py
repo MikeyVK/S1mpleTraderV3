@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import importlib.util
 import json
+import logging
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -14,7 +15,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
-from mcp_server.config.quality_config import QualityConfig, QualityGate
+from mcp_server.config.quality_config import (
+    JsonViolationsParsing,
+    QualityConfig,
+    QualityGate,
+    TextViolationsParsing,
+    ViolationDTO,
+)
+from mcp_server.utils.path_resolver import resolve_input_paths
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_ARTIFACT_LOG_MAX_FILES = 200
 MAX_OUTPUT_LINES = 50
@@ -46,54 +56,30 @@ class QAManager:
     QA_LOG_ENABLED = True
     QA_LOG_MAX_FILES = DEFAULT_ARTIFACT_LOG_MAX_FILES
 
-    def __init__(self) -> None:
+    def __init__(self, workspace_root: Path | None = None) -> None:
         """Initialize QA Manager with default runtime configuration."""
         # Runtime configuration (lowercase for instance mutability)
         self.qa_log_dir = self.QA_LOG_DIR
         self.qa_log_enabled = self.QA_LOG_ENABLED
         self.qa_log_max_files = self.QA_LOG_MAX_FILES
+        # Optional workspace root: used for baseline state persistence in .st3/state.json
+        self.workspace_root = workspace_root
 
-    def _filter_files(self, files: list[str]) -> tuple[list[str], list[dict[str, Any]]]:
-        """Filter Python files and generate pre-gate issues for non-Python files.
-
-        Returns:
-            (python_files, pre_gate_issues)
-        """
-
-        python_files = [f for f in files if str(f).endswith(".py")]
-        non_python_files = [f for f in files if f not in python_files]
-
-        issues: list[dict[str, Any]] = []
-        if not python_files:
-            issues.append(
-                {
-                    "message": "No Python (.py) files provided; quality gates support .py only",
-                }
-            )
-
-        for file_path in non_python_files:
-            issues.append(
-                {
-                    "file": file_path,
-                    "message": "Skipped non-Python file (quality gates support .py only)",
-                }
-            )
-
-        return python_files, issues
-
-    def run_quality_gates(self, files: list[str]) -> dict[str, Any]:
+    def run_quality_gates(
+        self,
+        files: list[str],
+        effective_scope: str = "auto",
+    ) -> dict[str, Any]:
         """Run configured quality gates on specified files.
 
         Returns v2.0 JSON schema with version, mode, summary, and gates.
 
         Notes:
             - Gate catalog and active gates are defined in `.st3/quality.yaml`.
-            - Only `.py` files are eligible for file-scoped gates.
+            - Each gate filters files by its configured `capabilities.file_types`.
             - Some gates (e.g., pytest) are repo-scoped and ignore file lists.
         """
-        # Determine execution mode
-        is_file_specific_mode = bool(files)
-        mode = "file-specific" if is_file_specific_mode else "project-level"
+        mode = "file-specific" if files else "project-level"
 
         # Initialize v2.0 response schema
         results: dict[str, Any] = {
@@ -111,53 +97,22 @@ class QAManager:
             "overall_pass": True,  # Backward compatibility
         }
 
-        # Determine execution mode:
-        # files=[] (empty) → project-level test validation (pytest gates only: Gate 5-6)
-        # files=[...] (populated) → file-specific validation
-        #                            (static gates only: Gates 0-4, skip pytest)
-        is_file_specific_mode = bool(files)
-
-        if is_file_specific_mode:
-            # File-specific mode: validate file existence
-            missing_files = [f for f in files if not Path(f).exists()]
-            if missing_files:
-                self._update_summary_and_append_gate(
-                    results,
-                    {
-                        "gate_number": 0,
-                        "name": "File Validation",
-                        "passed": False,
-                        "score": "N/A",
-                        "issues": [{"message": f"File not found: {f}"} for f in missing_files],
-                    },
-                )
-                return results
-
-            python_files, pre_gate_issues = self._filter_files(files)
-
-            if pre_gate_issues or not python_files:
-                self._update_summary_and_append_gate(
-                    results,
-                    {
-                        "gate_number": 0,
-                        "name": "File Filtering",
-                        "passed": bool(python_files),
-                        "score": "N/A",
-                        "issues": pre_gate_issues,
-                    },
-                )
-
-            if not python_files:
-                return results
-        else:
-            # Project-level test validation mode:
-            # - python_files stays empty (no file discovery)
-            # - File-based static gates (Gates 0-4) will skip: "Skipped (no matching files)"
-            # - Pytest gates (Gate 5-6) proceed with their configured targets (e.g., tests/)
-            python_files = []
-        # In file-specific mode, early return if no valid files
-        if is_file_specific_mode and not python_files:
+        # Validate file existence
+        missing_files = [f for f in files if not Path(f).exists()]
+        if missing_files:
+            self._update_summary_and_append_gate(
+                results,
+                {
+                    "gate_number": 0,
+                    "name": "File Validation",
+                    "passed": False,
+                    "score": "N/A",
+                    "issues": [{"message": f"File not found: {f}"} for f in missing_files],
+                },
+            )
             return results
+
+        python_files = list(files)
 
         quality_config = QualityConfig.load()
         # Apply artifact logging config (config-first with safe defaults)
@@ -204,7 +159,7 @@ class QAManager:
                 continue
 
             gate_files = self._files_for_gate(gate, python_files)
-            skip_reason = self._get_skip_reason(gate, gate_files, is_file_specific_mode)
+            skip_reason = "Skipped (no matching files)" if not gate_files else None
             if skip_reason is not None:
                 self._update_summary_and_append_gate(
                     results,
@@ -231,6 +186,14 @@ class QAManager:
         timings["total"] = sum(timings.values())
         results["timings"] = timings
 
+        # Persist baseline state only for auto-scope lifecycle runs.
+        if self._is_auto_lifecycle_scope(effective_scope):
+            if results["overall_pass"]:
+                self._advance_baseline_on_all_pass()
+            else:
+                failed_subset = self._collect_failed_files_from_results(results, files)
+                self._accumulate_failed_files_on_failure(failed_subset)
+
         return results
 
     def _update_summary_and_append_gate(
@@ -240,13 +203,8 @@ class QAManager:
         results["gates"].append(gate_result)
 
         # Use status field if present, else infer from passed/score (backward compat)
-        status = gate_result.get("status")
-        if status is None:
-            if gate_result.get("passed"):
-                score = gate_result.get("score", "")
-                status = "skipped" if isinstance(score, str) and "Skipped" in score else "passed"
-            else:
-                status = "failed"
+        status = self._resolve_gate_status(gate_result)
+        gate_result["status"] = status
 
         if status == "skipped":
             results["summary"]["skipped"] += 1
@@ -261,6 +219,413 @@ class QAManager:
             issues = gate_result.get("issues", [])
             results["summary"]["total_violations"] += len(issues)
             results["summary"]["auto_fixable"] += sum(1 for issue in issues if issue.get("fixable"))
+
+    @staticmethod
+    def _resolve_gate_status(gate_result: dict[str, Any]) -> str:
+        """Resolve canonical gate status (passed/failed/skipped) from gate payload."""
+        status = gate_result.get("status")
+        if isinstance(status, str):
+            return status
+
+        if gate_result.get("passed"):
+            score = gate_result.get("score", "")
+            if isinstance(score, str) and "Skipped" in score:
+                return "skipped"
+            return "passed"
+        return "failed"
+
+    @staticmethod
+    def _is_auto_lifecycle_scope(scope: str) -> bool:
+        """Return True when baseline lifecycle mutation is allowed for this scope."""
+        return scope.strip().lower() == "auto"
+
+    @staticmethod
+    def _collect_failed_files_from_results(
+        results: dict[str, Any], evaluated_files: list[str]
+    ) -> list[str]:
+        """Extract failing-file subset from gate results; fallback to evaluated set.
+
+        Prefers explicit issue-level ``file`` references from failed gates.
+        If no file-level references are present, conservatively falls back to
+        the evaluated set to avoid dropping failure signal.
+        """
+        evaluated_set = set(evaluated_files)
+        failed_files: set[str] = set()
+
+        for gate in results.get("gates", []):
+            status = QAManager._resolve_gate_status(gate)
+            if status != "failed":
+                continue
+
+            for issue in gate.get("issues", []):
+                file_path = issue.get("file")
+                if isinstance(file_path, str) and file_path in evaluated_set:
+                    failed_files.add(file_path)
+
+        if failed_files:
+            return sorted(failed_files)
+        return sorted(evaluated_set)
+
+    # ------------------------------------------------------------------
+    # Baseline state management
+    # ------------------------------------------------------------------
+
+    def _advance_baseline_on_all_pass(self) -> None:
+        """Persist current HEAD as baseline_sha and reset failed_files on all-pass run.
+
+        Only executed when workspace_root is set. Reads/writes .st3/state.json in-place,
+        touching only the quality_gates sub-key to avoid overwriting workflow phase data.
+        """
+        if self.workspace_root is None:
+            return
+
+        head_sha = self._get_head_sha()
+        if head_sha is None:
+            return
+
+        state_path = self.workspace_root / ".st3" / "state.json"
+        state_data = self._load_state_json(state_path)
+        state_data["quality_gates"] = {
+            "baseline_sha": head_sha,
+            "failed_files": [],
+        }
+        self._save_state_json(state_path, state_data)
+
+    def _accumulate_failed_files_on_failure(self, newly_failed: list[str]) -> None:
+        """Union newly-failed files with persisted failed_files; leave baseline_sha unchanged.
+
+        Only executed when workspace_root is set and at least one gate failed.
+        Ensures deterministic sort and no duplicates in the persisted list.
+        """
+        if self.workspace_root is None:
+            return
+
+        state_path = self.workspace_root / ".st3" / "state.json"
+        state_data = self._load_state_json(state_path)
+
+        quality_gates: dict[str, Any] = state_data.get("quality_gates", {})
+        existing = set(quality_gates.get("failed_files", []))
+        merged = sorted(existing | set(newly_failed))
+
+        quality_gates["failed_files"] = merged
+        state_data["quality_gates"] = quality_gates
+        self._save_state_json(state_path, state_data)
+
+    def _get_head_sha(self) -> str | None:
+        """Return the current git HEAD commit SHA, or None on error."""
+        try:
+            result = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except OSError:
+            pass
+        return None
+
+    @staticmethod
+    def _load_state_json(state_path: Path) -> dict[str, Any]:
+        """Read state.json from disk, returning empty dict when absent or malformed."""
+        if not state_path.exists():
+            return {}
+        try:
+            return dict(json.loads(state_path.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, OSError):
+            return {}
+
+    @staticmethod
+    def _save_state_json(state_path: Path, data: dict[str, Any]) -> None:
+        """Atomically write data to state.json (creates parent dirs if needed)."""
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+    # ------------------------------------------------------------------
+    # Scope resolution
+    # ------------------------------------------------------------------
+
+    def _resolve_scope(self, scope: str, files: list[str] | None = None) -> list[str]:
+        """Resolve scope keyword to a sorted, deduplicated list of relative file paths.
+
+        Args:
+            scope: One of ``"project"``, ``"branch"``, ``"auto"``, or ``"files"``.
+            files: Required when ``scope="files"``; the caller-supplied explicit
+                file or directory list. Directories are expanded to ``.py`` files;
+                missing paths surface a warning and are excluded.
+
+        Returns:
+            Sorted list of relative paths (POSIX separators) for the given scope.
+            Returns ``[]`` gracefully when workspace_root is absent or config is missing.
+        """
+        if scope == "files":
+            if not files:
+                return []
+            if self.workspace_root is None:
+                return sorted(set(files))
+            resolved, warnings = resolve_input_paths(files, self.workspace_root)
+            for w in warnings:
+                logger.warning(w)
+            return resolved
+        if scope == "project":
+            return self._resolve_project_scope()
+        if scope == "branch":
+            return self._resolve_branch_scope()
+        if scope == "auto":
+            return self._resolve_auto_scope()
+        return []
+
+    def _resolve_branch_scope(self) -> list[str]:
+        """Return Python files changed on this branch since merge-base with parent.
+
+        The parent branch is read from top-level ``parent_branch`` in
+        ``.st3/state.json`` and falls back to ``"main"``.
+
+        Uses merge-base semantics (``parent...HEAD``) to isolate branch-introduced
+        changes and avoid noise from parent tip drift.
+
+        Returns:
+            Sorted list of ``.py`` file paths (relative POSIX). Empty list on error
+            or when the diff is empty.
+        """
+        parent = "main"
+        if self.workspace_root is not None:
+            state = self._load_state_json(self.workspace_root / ".st3" / "state.json")
+            parent = state.get("parent_branch") or "main"
+        return self._git_diff_py_files(parent, use_merge_base=True)
+
+    def _resolve_auto_scope(self) -> list[str]:
+        """Return union of git diff (``baseline_sha..HEAD``) and persisted ``failed_files``.
+
+        Reads ``quality_gates.baseline_sha`` and ``quality_gates.failed_files``
+        from ``.st3/state.json``.
+
+        Returns:
+            Sorted, deduplicated list of ``.py`` paths. Returns ``[]`` when
+            workspace_root is absent or no ``baseline_sha`` is recorded (C24
+            handles the no-baseline fallback).
+        """
+        if self.workspace_root is None:
+            return []
+
+        state = self._load_state_json(self.workspace_root / ".st3" / "state.json")
+        quality_gates: dict[str, Any] = state.get("quality_gates", {})
+        baseline_sha: str | None = quality_gates.get("baseline_sha") or None
+        if not baseline_sha:
+            return self._resolve_project_scope()
+
+        diff_files = set(self._git_diff_py_files(baseline_sha))
+        failed_files = set(quality_gates.get("failed_files", []))
+        union = diff_files | failed_files
+        return sorted(union)
+
+    def _git_diff_py_files(self, base_ref: str, *, use_merge_base: bool = False) -> list[str]:
+        """Run git diff and return changed ``.py`` files.
+
+        Args:
+            base_ref: The git ref to diff against (branch name or commit SHA).
+            use_merge_base: When True, use ``base_ref...HEAD`` (merge-base semantics).
+                When False, use ``base_ref..HEAD`` (tip-to-tip semantics).
+
+        Returns:
+            Sorted list of ``.py`` paths from diff output. Empty on error or
+            when the diff contains no Python files.
+        """
+        diff_ref = f"{base_ref}...HEAD" if use_merge_base else f"{base_ref}..HEAD"
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only", "--diff-filter=d", diff_ref],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode != 0:
+                return []
+            lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            return sorted(line for line in lines if line.endswith(".py"))
+        except FileNotFoundError:
+            return []
+
+    def _resolve_project_scope(self) -> list[str]:
+        """Expand project_scope.include_globs against workspace_root.
+
+        Returns:
+            Sorted list of unique relative POSIX paths. Empty list when
+            workspace_root is None, include_globs is empty, or nothing matches.
+        """
+        if self.workspace_root is None:
+            return []
+
+        quality_config = QualityConfig.load()
+        project_scope = quality_config.project_scope
+        if project_scope is None or not project_scope.include_globs:
+            return []
+
+        matched: set[str] = set()
+        for glob_pattern in project_scope.include_globs:
+            for abs_path in self.workspace_root.glob(glob_pattern):
+                if abs_path.is_file():
+                    rel = abs_path.relative_to(self.workspace_root)
+                    matched.add(rel.as_posix())
+
+        return sorted(matched)
+
+    # ------------------------------------------------------------------
+    # Output formatting
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _format_summary_line(
+        results: dict[str, Any],
+        scope: str | None = None,
+        file_count: int | None = None,
+    ) -> str:
+        """Return a concise one-line status string for the given gate results.
+
+        Format (design.md §4.8, C39 additions):
+        - All-skipped:  ``"✅ Nothing to check (no changed files)[scope_part] — Nms"``
+        - Pass:         ``"✅ Quality gates: N/N passed (V violations)[scope_part] — Nms"``
+        - Fail:         ``"❌ Quality gates: N/M passed — V violations in
+          gate_id[scope_part] — Nms"``
+        - Skip+pass:    ``"⚠️ Quality gates: N/N active (S skipped)[scope_part] — Nms"``
+
+        C39 additions (F-1, F-19, duration_ms):
+        - F-1: all gates skipped → ✅ "Nothing to check" instead of ⚠️.
+        - F-19: optional ``scope`` and ``file_count`` appended as ``[scope · N files]``.
+        - duration_ms appended as `` — Nms`` suffix (taken from ``results["timings"]["total"]``).
+
+        Args:
+            results: The dict returned by ``run_quality_gates``.
+            scope: Optional scope keyword (``"auto"``, ``"branch"``, ``"project"``, ``"files"``).
+            file_count: Number of files resolved for this scope run.
+
+        Returns:
+            A single-line string suitable for ``content[0].text`` in a ToolResult.
+        """
+        summary = results["summary"]
+        passed: int = summary["passed"]
+        failed: int = summary["failed"]
+        skipped: int = summary["skipped"]
+        total_violations: int = summary["total_violations"]
+        total_active = passed + failed
+
+        duration_ms: int = int(results.get("timings", {}).get("total", 0))
+        duration_part = f" — {duration_ms}ms"
+
+        scope_part = ""
+        if scope is not None:
+            if file_count is not None:
+                scope_part = f" [{scope} · {file_count} files]"
+            else:
+                scope_part = f" [{scope}]"
+
+        # F-1: all gates skipped = clean empty-diff state — no attention needed
+        if passed == 0 and failed == 0 and skipped > 0:
+            return f"✅ Nothing to check (no changed files){scope_part}{duration_part}"
+
+        if failed > 0:
+            failed_names = [
+                g["name"] for g in results.get("gates", []) if g.get("status") == "failed"
+            ]
+            gate_list = ", ".join(failed_names)
+            return (
+                f"❌ Quality gates: {passed}/{total_active} passed"
+                f" — {total_violations} violations in {gate_list}{scope_part}{duration_part}"
+            )
+
+        if skipped > 0:
+            return (
+                f"⚠️ Quality gates: {passed}/{total_active} active"
+                f" ({skipped} skipped){scope_part}{duration_part}"
+            )
+
+        return (
+            f"✅ Quality gates: {passed}/{total_active} passed"
+            f" ({total_violations} violations){scope_part}{duration_part}"
+        )
+
+    def _normalize_file_path(self, path: str | None) -> str | None:
+        """Normalize a violation file path to workspace-relative POSIX form (C36 / F-15).
+
+        Rules:
+        - ``None`` → ``None``
+        - Absolute path with ``workspace_root`` set → relative POSIX via
+          :meth:`pathlib.PurePath.relative_to`; falls back to POSIX absolute
+          when the path escapes the workspace root.
+        - Absolute path without ``workspace_root`` → POSIX absolute (forward slashes).
+        - Relative path (any OS separators) → forward-slash form only.
+
+        Args:
+            path: Raw file path string from a gate violation.
+
+        Returns:
+            Canonical workspace-relative POSIX string, or ``None`` when input is ``None``.
+        """
+        if path is None:
+            return None
+        p = Path(path)
+        if p.is_absolute():
+            if self.workspace_root is not None:
+                try:
+                    return p.relative_to(self.workspace_root).as_posix()
+                except ValueError:
+                    return p.as_posix()
+            return p.as_posix()
+        # Relative path: just normalize OS separators to POSIX forward slashes.
+        return str(path).replace("\\", "/")
+
+    def _build_compact_result(self, results: dict[str, Any]) -> dict[str, Any]:
+        """Return a compact gate payload with violations only — no debug fields.
+
+        Design contract (design.md §4.9 / C26 + C35 + C39):
+        ``{
+            "overall_pass": bool,
+            "gates": [{"id": str, "passed": bool, "skipped": bool,
+                        "status": str, "violations": list}]
+        }``
+
+        C35 additions (F-2, F-3):
+        - ``overall_pass`` added at root level.
+        - Per-gate ``status`` enum (``"passed"|"failed"|"skipped"``) added.
+
+        C36 addition (F-15):
+        - Each violation ``file`` field is normalized via
+          :meth:`_normalize_file_path` to workspace-relative POSIX form.
+
+        C39 change (duration_ms contract):
+        - ``duration_ms`` removed from compact JSON root; it is now included
+          in the summary line text via :meth:`_format_summary_line`.
+
+        Args:
+            results: The dict returned by ``run_quality_gates``.
+
+        Returns:
+            Compact payload suitable for ``content[1].json`` in a ToolResult.
+        """
+        compact_gates = []
+        for gate in results.get("gates", []):
+            gate_status: str = gate.get("status") or ("passed" if gate.get("passed") else "failed")
+            raw_violations: list[dict[str, Any]] = gate.get("issues", [])
+            normalized_violations = [
+                {**v, "file": self._normalize_file_path(v.get("file"))} if "file" in v else v
+                for v in raw_violations
+            ]
+            compact_gates.append(
+                {
+                    "id": str(gate.get("name", gate.get("id", ""))),
+                    "passed": bool(gate.get("passed", False)),
+                    "skipped": gate_status == "skipped",
+                    "status": gate_status,
+                    "violations": normalized_violations,
+                }
+            )
+        return {
+            "overall_pass": bool(results.get("overall_pass", True)),
+            "gates": compact_gates,
+        }
 
     def check_health(self) -> bool:
         """Check if QA tools are available."""
@@ -280,13 +645,6 @@ class QAManager:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-            subprocess.run(
-                [sys.executable, "-m", "pytest", "--version"],
-                check=False,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-
             return True
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
@@ -306,33 +664,8 @@ class QAManager:
 
         return [*cmd, *files]
 
-    def _supports_pytest_json_report(self) -> bool:
-        """Detect whether pytest-json-report plugin is installed."""
-        return importlib.util.find_spec("pytest_jsonreport") is not None
-
-    def _maybe_enable_pytest_json_report(self, gate: QualityGate, command: list[str]) -> list[str]:
-        """Add pytest JSON report flags when plugin support is available."""
-        if not self._is_pytest_gate(gate):
-            return command
-
-        if not self._supports_pytest_json_report():
-            return command
-
-        if "--json-report" in command:
-            return command
-
-        return [*command, "--json-report"]
-
     def _files_for_gate(self, gate: QualityGate, python_files: list[str]) -> list[str]:
-        """Determine which files should be passed to a gate.
-
-        Some gates are repo-scoped (e.g., pytest) and do not accept/need file args.
-        """
-
-        # Repo-scoped gate: pytest. Gate config already contains target paths.
-        if self._is_pytest_gate(gate):
-            return []
-
+        """Determine which files should be passed to a gate based on file_types capability."""
         eligible = [
             f
             for f in python_files
@@ -343,36 +676,6 @@ class QAManager:
             eligible = gate.scope.filter_files(eligible)
 
         return eligible
-
-    def _get_skip_reason(
-        self, gate: QualityGate, gate_files: list[str], is_file_specific_mode: bool
-    ) -> str | None:
-        """Return standardized, mode-aware skip reason for a gate, if any.
-
-        Skip reasons are explicit about WHY the gate was skipped to avoid
-        confusion between intentional mode-based skips and actual errors.
-        """
-        if is_file_specific_mode and self._is_pytest_gate(gate):
-            return "Skipped (file-specific mode - tests run project-wide)"
-
-        is_repo_scoped_pytest_gate = not is_file_specific_mode and self._is_pytest_gate(gate)
-        if not gate_files and not is_repo_scoped_pytest_gate:
-            if not is_file_specific_mode:
-                return "Skipped (project-level mode - static analysis unavailable)"
-            return "Skipped (no matching files)"
-
-        return None
-
-    def _is_pytest_gate(self, gate: QualityGate) -> bool:
-        cmd = gate.execution.command
-        if not cmd:
-            return False
-
-        if cmd[0] == "pytest":
-            return True
-        if len(cmd) >= 3 and cmd[0] == "python" and cmd[1] == "-m" and cmd[2] == "pytest":
-            return True
-        return len(cmd) >= 3 and cmd[0] == sys.executable and cmd[1] == "-m" and cmd[2] == "pytest"
 
     def _command_for_hints(self, gate: QualityGate, files: list[str]) -> str:
         parts = [*gate.execution.command, *files]
@@ -417,12 +720,6 @@ class QAManager:
             hints.append(
                 "This gate is scoped (DTOs only). If you hit false positives, "
                 "prefer narrowing or tiny, code-specific ignores."
-            )
-
-        elif gate_id == "gate5_tests":
-            hints.append(
-                "Re-run pytest and fix the first failing test; reduce scope by "
-                "running the failing test file only."
             )
 
         return hints
@@ -591,8 +888,6 @@ class QAManager:
         cmd: list[str] = []
         try:
             cmd = self._resolve_command(gate.execution.command, files)
-            cmd = self._maybe_enable_pytest_json_report(gate, cmd)
-
             start_time = time.monotonic()
             proc = subprocess.run(
                 cmd,
@@ -614,90 +909,62 @@ class QAManager:
                 "environment": self._collect_environment_metadata(cmd),
             }
 
-            combined_output = (proc.stdout or "") + (proc.stderr or "")
+            if gate.capabilities.parsing_strategy == "json_violations":
+                raw: list[dict[str, Any]] | dict[str, Any] = json.loads(proc.stdout or "[]")
+                violations = self._parse_json_violations(
+                    self._extract_violations_array(raw, gate.capabilities.json_violations),
+                    gate.capabilities.json_violations,
+                )
+                result["issues"] = [
+                    {
+                        "message": v.message,
+                        "file": v.file,
+                        "line": v.line,
+                        "col": v.col,
+                        "rule": v.rule,
+                        "severity": v.severity,
+                        "fixable": v.fixable,
+                    }
+                    for v in violations
+                ]
+                result["passed"] = len(violations) == 0
+                result["score"] = (
+                    "Pass" if result["passed"] else f"Fail ({len(violations)} violations)"
+                )
 
-            if gate.parsing.strategy == "exit_code":
+            elif gate.capabilities.parsing_strategy == "text_violations":
+                text_violations = self._parse_text_violations(
+                    proc.stdout or "",
+                    gate.capabilities.text_violations,
+                    gate.capabilities.supports_autofix,
+                )
+                result["issues"] = [
+                    {
+                        "message": v.message,
+                        "file": v.file,
+                        "line": v.line,
+                        "col": v.col,
+                        "rule": v.rule,
+                        "severity": v.severity,
+                        "fixable": v.fixable,
+                    }
+                    for v in text_violations
+                ]
+                result["passed"] = len(text_violations) == 0
+                result["score"] = (
+                    "Pass" if result["passed"] else f"Fail ({len(text_violations)} violations)"
+                )
+
+            else:  # no parsing_strategy → pass/fail on exit code
                 ok_codes = set(gate.success.exit_codes_ok)
 
-                if gate.capabilities.produces_json:
-                    parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
-                    parsed_issues = self._parse_ruff_json(parser_input)
-                    if parsed_issues:
-                        result["passed"] = False
-                        fixable_count = sum(1 for issue in parsed_issues if issue.get("fixable"))
-                        result["score"] = (
-                            f"{len(parsed_issues)} violations, {fixable_count} auto-fixable"
-                        )
-                        result["issues"] = parsed_issues
-                        result["output"] = self._build_output_capture(
-                            proc.stdout or "", proc.stderr or ""
-                        )
-                    elif proc.returncode in ok_codes:
-                        result["score"] = "Pass"
-                        result["passed"] = True
-                        result["issues"] = []
-                    else:
-                        result["passed"] = False
-                        result["score"] = f"Fail (exit={proc.returncode})"
-                        output_capture = self._build_output_capture(
-                            proc.stdout or "", proc.stderr or ""
-                        )
-                        result["output"] = output_capture
-                        result["issues"] = [
-                            {
-                                "message": f"Gate failed with exit code {proc.returncode}",
-                                "details": output_capture["details"],
-                            }
-                        ]
-                else:
-                    if proc.returncode in ok_codes:
-                        result["passed"] = True
-                        result["score"] = "Pass"
-                        result["issues"] = []
-                    else:
-                        result["passed"] = False
-                        result["score"] = f"Fail (exit={proc.returncode})"
-                        output_capture = self._build_output_capture(
-                            proc.stdout or "", proc.stderr or ""
-                        )
-                        result["output"] = output_capture
-                        result["issues"] = [
-                            {
-                                "message": f"Gate failed with exit code {proc.returncode}",
-                                "details": output_capture["details"],
-                            }
-                        ]
-
-            elif gate.parsing.strategy == "json_field":
-                # Prefer stdout for JSON parsing (more reliable than combined)
-                parser_input = proc.stdout if (proc.stdout or "").strip() else combined_output
-                diagnostics_path = getattr(gate.parsing, "diagnostics_path", None)
-                issues = self._parse_json_field_issues(parser_input, diagnostics_path)
-
-                # Extract additional fields from JSON via configured pointers
-                fields_data = self._extract_json_fields(parser_input, gate)
-
-                # Apply success criteria (max_errors / require_no_issues)
-                issue_count = len(issues)
-                if gate.success.max_errors is not None:
-                    result["passed"] = issue_count <= gate.success.max_errors
-                elif gate.success.require_no_issues:
-                    result["passed"] = issue_count == 0
-                else:
+                if proc.returncode in ok_codes:
                     result["passed"] = True
-
-                result["issues"] = issues
-                result["score"] = "Pass" if result["passed"] else f"Fail ({issue_count} errors)"
-                if fields_data:
-                    result["fields"] = fields_data
-
-            elif gate.parsing.strategy == "text_regex":
-                if proc.returncode in set(gate.success.exit_codes_ok):
-                    result["passed"] = True
-                    result["issues"] = []
                     result["score"] = "Pass"
+                    result["issues"] = []
                 else:
                     result["passed"] = False
+                    result["score"] = f"Fail (exit={proc.returncode})"
                     output_capture = self._build_output_capture(
                         proc.stdout or "", proc.stderr or ""
                     )
@@ -708,15 +975,6 @@ class QAManager:
                             "details": output_capture["details"],
                         }
                     ]
-                    result["score"] = f"Fail (exit={proc.returncode})"
-
-            else:
-                result["passed"] = False
-                result["score"] = "N/A"
-                result["issues"] = [
-                    {"message": f"Unsupported parsing strategy: {gate.parsing.strategy}"}
-                ]
-
         except subprocess.TimeoutExpired:
             result["passed"] = False
             result["score"] = "Timeout"
@@ -768,153 +1026,199 @@ class QAManager:
                 return None
         return current
 
-    def _parse_json_field_issues(
-        self, output: str, diagnostics_path: str | None = None
+    def _parse_text_violations(
+        self,
+        output: str,
+        parsing: TextViolationsParsing,
+        supports_autofix: bool = False,
+    ) -> list[ViolationDTO]:
+        """Parse line-based tool output into ViolationDTOs using a named-group regex.
+
+        Each line of *output* is matched against ``parsing.pattern``.  Lines
+        that do not match are silently skipped.  Named groups in the pattern
+        map directly to ViolationDTO fields:
+        ``file``, ``line``, ``col``, ``rule``, ``message``, ``severity``.
+
+        ``line`` and ``col`` groups are converted to ``int`` when present.
+        The ``severity`` group falls back to ``parsing.severity_default`` when
+        absent from the pattern or not captured on a given line.
+
+        When a group is absent or None, ``parsing.defaults`` is consulted.
+        Default values may contain ``{placeholder}`` references to other
+        captured group names; those are resolved via ``str.format_map``.
+
+        ``parsing.fixable_when == "gate"`` propagates the gate-level
+        ``supports_autofix`` flag into every violation. Without this field
+        (or when *supports_autofix* is False), violations are not fixable.
+
+        Args:
+            output: Raw stdout/stderr from a quality gate tool.
+            parsing: Pattern and defaults for text-based parsing.
+            supports_autofix: Whether the gate supports automatic fixing.
+
+        Returns:
+            List of ViolationDTO instances, one per matching line.
+        """
+        pattern = re.compile(parsing.pattern)
+        gate_fixable = parsing.fixable_when == "gate" and supports_autofix
+        result: list[ViolationDTO] = []
+        for raw_line in output.splitlines():
+            m = pattern.search(raw_line)
+            if m is None:
+                continue
+            groups = m.groupdict()
+            # Safe mapping for interpolation: replace None with "" so format_map works
+            safe_groups = {k: (v or "") for k, v in groups.items()}
+
+            raw_line_num = self._resolve_text_field("line", groups, safe_groups, parsing.defaults)
+            raw_col_num = self._resolve_text_field("col", groups, safe_groups, parsing.defaults)
+            result.append(
+                ViolationDTO(
+                    file=self._resolve_text_field("file", groups, safe_groups, parsing.defaults),
+                    message=self._resolve_text_field(
+                        "message", groups, safe_groups, parsing.defaults
+                    ),
+                    line=int(raw_line_num) if raw_line_num is not None else None,
+                    col=int(raw_col_num) if raw_col_num is not None else None,
+                    rule=self._resolve_text_field("rule", groups, safe_groups, parsing.defaults),
+                    fixable=gate_fixable,
+                    severity=self._resolve_text_field(
+                        "severity", groups, safe_groups, parsing.defaults
+                    )
+                    or parsing.severity_default,
+                )
+            )
+        return result
+
+    @staticmethod
+    def _resolve_text_field(
+        field: str,
+        groups: dict[str, str | None],
+        safe_groups: dict[str, str],
+        defaults: dict[str, str],
+    ) -> str | None:
+        """Return captured group value or an interpolated default for *field*.
+
+        Priority: captured group value (non-None) → defaults[field] with
+        {placeholder} interpolation via safe_groups → None.
+        """
+        val = groups.get(field)
+        if val is not None:
+            return val
+        template = defaults.get(field)
+        if template is None:
+            return None
+        try:
+            return template.format_map(safe_groups) or None
+        except KeyError:
+            return None
+
+    def _extract_violations_array(
+        self,
+        payload: list[dict[str, Any]] | dict[str, Any],
+        parsing: JsonViolationsParsing,
     ) -> list[dict[str, Any]]:
-        """Best-effort JSON diagnostic parsing.
+        """Extract the violations array from *payload* using ``parsing.violations_path``.
 
-        This is primarily intended for pyright-like tools that emit JSON diagnostics.
-
-        Args:
-            output: Raw JSON string from tool stdout/stderr.
-            diagnostics_path: Optional JSON Pointer (RFC 6901) to diagnostics array.
-                Falls back to 'generalDiagnostics' when not provided.
-        """
-
-        try:
-            data = json.loads(output)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            # If output isn't JSON, surface as plain issue.
-            text = output.strip()
-            return [{"message": text}] if text else []
-
-        if diagnostics_path:
-            diagnostics = self._resolve_json_pointer(data, diagnostics_path)
-        else:
-            diagnostics = data.get("generalDiagnostics")
-        if not isinstance(diagnostics, list):
-            return []
-
-        issues: list[dict[str, Any]] = []
-        for diag in diagnostics:
-            if not isinstance(diag, dict):
-                continue
-
-            issue: dict[str, Any] = {
-                "message": str(diag.get("message", "Unknown issue")),
-            }
-
-            file_path = diag.get("file")
-            if isinstance(file_path, str):
-                issue["file"] = file_path
-
-            rng = diag.get("range") or {}
-            start = (rng.get("start") or {}) if isinstance(rng, dict) else {}
-
-            line = start.get("line")
-            char = start.get("character")
-            if isinstance(line, int):
-                issue["line"] = line + 1
-            if isinstance(char, int):
-                issue["column"] = char + 1
-
-            rule = diag.get("rule")
-            if rule is not None:
-                issue["code"] = str(rule)
-
-            sev = diag.get("severity")
-            if sev is not None:
-                issue["severity"] = str(sev)
-
-            issues.append(issue)
-
-        return issues
-
-    def _extract_json_fields(self, output: str, gate: QualityGate) -> dict[str, object]:
-        """Extract named fields from JSON output using configured pointers.
-
-        Uses the ``fields`` mapping from ``JsonFieldParsing`` config to resolve
-        each named field via its JSON Pointer path.
+        When ``violations_path`` is ``None`` the payload itself must be a list
+        and is returned as-is.  When the path is given it is treated as a
+        dot-separated key sequence that is used to descend into the dict.
+        Returns an empty list when any step in the path is missing or the
+        resolved value is not a list.
 
         Args:
-            output: Raw JSON string from tool output.
-            gate: Gate config; only ``json_field`` parsing has ``fields``.
+            payload: Root JSON value – either a list (root-array tools) or a
+                dict (tools that wrap diagnostics under a key).
+            parsing: Provides ``violations_path``.
 
         Returns:
-            Dict of field_name → resolved_value. Empty if parsing fails or
-            no ``fields`` configured.
+            The extracted list of violation dicts, or ``[]`` on any miss.
         """
-        fields_config: dict[str, str] = getattr(gate.parsing, "fields", {})
-        if not fields_config:
-            return {}
+        if parsing.violations_path is None:
+            return payload if isinstance(payload, list) else []
 
-        try:
-            data = json.loads(output)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            return {}
+        current: Any = payload
+        for segment in parsing.violations_path.split("."):
+            if not isinstance(current, dict):
+                return []
+            current = current.get(segment)
+            if current is None:
+                return []
 
-        extracted: dict[str, object] = {}
-        for field_name, pointer in fields_config.items():
-            value = self._resolve_json_pointer(data, pointer)
-            if value is not None:
-                extracted[field_name] = value
-        return extracted
+        return current if isinstance(current, list) else []
 
-    def _parse_ruff_json(self, output: str) -> list[dict[str, Any]]:
-        """Parse Ruff JSON output into structured violation issues.
+    @staticmethod
+    def _resolve_field_path(item: dict[str, Any], path: str) -> Any:  # noqa: ANN401
+        """Resolve a field value from *item* using a flat or nested *path*.
 
-        Ruff's --output-format=json produces an array of violation objects.
-        Each violation has:
-        - code: Rule code (e.g., "E501", "F401")
-        - message: Description of the violation
-        - location: {row: int, column: int}
-        - filename: Path to the file
-        - fix: Optional fix object with {applicability: "safe" | "unsafe" | "display"}
+        A path without ``/`` is a flat key lookup: ``item.get(path)``.
+        A path with ``/`` is a nested lookup: each segment descends one level
+        into the dict.  Returns ``None`` if any intermediate key is absent or
+        the value is not a dict.
 
         Args:
-            output: JSON string from Ruff command stdout
+            item: The JSON object to extract from.
+            path: Dot-free path where ``/`` separates nesting levels.
 
         Returns:
-            List of structured issue dicts with fields: file, line, column, code, message, fixable
+            The resolved value, or ``None`` if the path cannot be traversed.
         """
-        try:
-            violations = json.loads(output)
-        except (json.JSONDecodeError, TypeError, ValueError):
-            # Not valid JSON, return empty (caller handles exit code as failure)
-            return []
+        if "/" not in path:
+            return item.get(path)
+        current: Any = item
+        for segment in path.split("/"):
+            if not isinstance(current, dict):
+                return None
+            current = current.get(segment)
+        return current
 
-        if not isinstance(violations, list):
-            return []
+    def _parse_json_violations(
+        self,
+        payload: list[dict[str, Any]],
+        parsing: JsonViolationsParsing,
+    ) -> list[ViolationDTO]:
+        """Map a root-array JSON payload to a list of ViolationDTOs.
 
-        issues: list[dict[str, Any]] = []
-        for violation in violations:
-            if not isinstance(violation, dict):
-                continue
+        Each item in *payload* is a flat dict or nested object.
+        The ``parsing.field_map`` maps ViolationDTO field names to the
+        corresponding key path in the item.  A path containing ``/`` is
+        resolved as a nested lookup; plain keys use flat ``dict.get`` access.
+        Missing keys result in ``None`` for optional fields.
 
-            issue: dict[str, Any] = {
-                "code": violation.get("code", "UNKNOWN"),
-                "message": violation.get("message", "No message"),
-            }
+        ``parsing.line_offset`` is added to the extracted line number (useful
+        for tools that report 0-based lines).
 
-            # Extract location
-            location = violation.get("location", {})
-            if isinstance(location, dict):
-                issue["line"] = location.get("row")
-                issue["column"] = location.get("column")
+        ``parsing.fixable_when`` overrides ``field_map["fixable"]``: when set,
+        the named source key is used for the truthy fixable check.
 
-            # Extract filename
-            filename = violation.get("filename")
-            if filename:
-                issue["file"] = str(filename)
+        Args:
+            payload: List of parsed JSON objects (root-array format).
+            parsing: Describes how to extract fields from each item.
 
-            # Determine fixability
-            fix = violation.get("fix")
-            if fix is not None and isinstance(fix, dict):
-                applicability = fix.get("applicability")
-                issue["fixable"] = applicability == "safe"
-            else:
-                issue["fixable"] = False
-
-            issues.append(issue)
-
-        return issues
+        Returns:
+            List of ViolationDTO instances.
+        """
+        result: list[ViolationDTO] = []
+        resolve = self._resolve_field_path
+        fixable_key = parsing.fixable_when or parsing.field_map.get("fixable")
+        for item in payload:
+            fmap = parsing.field_map
+            raw_line = resolve(item, fmap["line"]) if "line" in fmap else None
+            line = (raw_line + parsing.line_offset) if isinstance(raw_line, int) else raw_line
+            fixable_val = resolve(item, fixable_key) if fixable_key else None
+            raw_msg = resolve(item, fmap["message"]) if "message" in fmap else None
+            # F-18: sanitize Pyright-style multi-line messages (\\n, \\u00a0) to single line
+            if isinstance(raw_msg, str):
+                raw_msg = raw_msg.replace("\u00a0", " ").replace("\n", " — ").strip()
+            result.append(
+                ViolationDTO(
+                    file=resolve(item, fmap["file"]) if "file" in fmap else None,
+                    message=raw_msg,
+                    line=line,
+                    col=resolve(item, fmap["col"]) if "col" in fmap else None,
+                    rule=resolve(item, fmap["rule"]) if "rule" in fmap else None,
+                    fixable=bool(fixable_val),
+                    severity=resolve(item, fmap["severity"]) if "severity" in fmap else None,
+                )
+            )
+        return result

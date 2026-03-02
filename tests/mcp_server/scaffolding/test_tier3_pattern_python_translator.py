@@ -83,22 +83,16 @@ class TestTier3PatternPythonTranslator:
         """Rendered macros contain expected translator tokens."""
         template = jinja_env.get_template("tier3_pattern_python_translator.jinja2")
 
-        imports_rendered = getattr(template.module, "pattern_translator_imports")()
-        get_rendered = getattr(template.module, "pattern_translator_get")(
+        imports_rendered = template.module.pattern_translator_imports()
+        get_rendered = template.module.pattern_translator_get(
             key_expr="key",
             default_expr="key",
         )
-        get_param_name_rendered = getattr(
-            template.module,
-            "pattern_translator_get_param_name",
-        )(
+        get_param_name_rendered = template.module.pattern_translator_get_param_name(
             param_path_expr="param_path",
             default_expr="param_path",
         )
-        guideline_rendered = getattr(
-            template.module,
-            "pattern_translator_key_guideline",
-        )()
+        guideline_rendered = template.module.pattern_translator_key_guideline()
 
         assert "Translator" in imports_rendered
 

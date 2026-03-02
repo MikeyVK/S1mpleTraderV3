@@ -12,13 +12,109 @@ Quality Requirements:
 
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
-from typing import Annotated, Literal, TypeAlias
+from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-RegexFlag = Literal["IGNORECASE", "MULTILINE", "DOTALL"]
+
+@dataclass
+class ViolationDTO:
+    """Uniform violation contract returned by every gate parser.
+
+    ``file`` and ``message`` are always present.  All other fields
+    are optional and default to ``None`` / ``False`` / ``"error"``
+    so callers can construct minimal stubs for file-level violations.
+    """
+
+    file: str
+    message: str
+    line: int | None = None
+    col: int | None = None
+    rule: str | None = None
+    fixable: bool = False
+    severity: str = "error"
+
+
+class JsonViolationsParsing(BaseModel):
+    """JSON parsing strategy: extracts violations from structured tool output.
+
+    Used for gates that emit a JSON array of violation objects (ruff check,
+    pyright). ``field_map`` maps ViolationDTO field names to source JSON keys
+    (optionally as ``/``-separated paths for nested access).
+    """
+
+    field_map: dict[str, str] = Field(
+        ...,
+        min_length=1,
+        description="ViolationDTO field → source JSON key mapping.",
+    )
+    violations_path: str | None = Field(
+        default=None,
+        description="Dot-separated path to the violations array (None = root).",
+    )
+    line_offset: int = Field(
+        default=0,
+        description="Added to the mapped line value to normalize 0-based indices.",
+    )
+    fixable_when: str | None = Field(
+        default=None,
+        description="Source JSON key; sets fixable=True when the extracted value is truthy.",
+    )
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class TextViolationsParsing(BaseModel):
+    """Text parsing strategy: extracts violations from line-based tool output.
+
+    Used for gates that emit violations as plain text (mypy, pylint, bandit).
+    ``pattern`` is a regex with named groups that map to ViolationDTO fields
+    (e.g. ``file``, ``line``, ``col``, ``message``, ``rule``, ``severity``).
+    ``defaults`` supplies static values for fields absent from the pattern.
+    """
+
+    pattern: str = Field(
+        ...,
+        description="Regex with named groups mapping to ViolationDTO fields.",
+    )
+    severity_default: str = Field(
+        default="error",
+        description="Severity used when the pattern has no 'severity' group.",
+    )
+    defaults: dict[str, str] = Field(
+        default_factory=dict,
+        description="Static default values for ViolationDTO fields not captured by the pattern.",
+    )
+    fixable_when: str | None = Field(
+        default=None,
+        description=(
+            "When set to 'gate', violations are marked fixable=True iff the gate's "
+            "supports_autofix=True. Mirrors the json_violations fixable_when field."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _validate_defaults_placeholders(self) -> TextViolationsParsing:
+        """Ensure every {placeholder} in defaults refers to a named group in pattern."""
+        named_groups = set(re.findall(r"\(\?P<(\w+)>", self.pattern))
+        unknown: list[str] = []
+        for value in self.defaults.values():
+            for token in re.findall(r"\{(\w+)\}", value):
+                if token not in named_groups:
+                    unknown.append(token)
+        if unknown:
+            raise ValueError(
+                f"defaults references placeholder(s) not in pattern named groups: "
+                f"{', '.join(sorted(set(unknown)))}. "
+                f"Known groups: {sorted(named_groups) or '(none)'}."
+            )
+        return self
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 class ExecutionConfig(BaseModel):
@@ -42,92 +138,12 @@ class ExecutionConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-class RegexPattern(BaseModel):
-    """Regex extraction pattern used by text-based parsers."""
-
-    name: str = Field(..., min_length=1)
-    regex: str = Field(..., min_length=1)
-    flags: list[RegexFlag] = Field(default_factory=list)
-    group: int | str | None = Field(default=None)
-    required: bool = Field(default=True)
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-class TextRegexParsing(BaseModel):
-    """Parse plain text output using regex patterns."""
-
-    strategy: Literal["text_regex"]
-    patterns: list[RegexPattern] = Field(..., min_length=1)
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-def _validate_json_pointer(pointer: str) -> str:
-    """Validate a JSON Pointer string (RFC 6901).
-
-    Minimal v1 validation per design doc: allow exactly '/', or strings that start
-    with '/'. (Array segments are allowed; executor semantics are out of scope.)
-    """
-    if pointer == "/":
-        return pointer
-    if not pointer.startswith("/"):
-        raise ValueError("Invalid JSON Pointer. Must start with '/' (RFC 6901)")
-    if not pointer.strip():
-        raise ValueError("Invalid JSON Pointer. Must be non-empty")
-    return pointer
-
-
-class JsonFieldParsing(BaseModel):
-    """Parse JSON output and extract fields via JSON Pointer paths (RFC 6901)."""
-
-    strategy: Literal["json_field"]
-    fields: dict[str, str] = Field(..., min_length=1)
-    diagnostics_path: str | None = Field(default=None)
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    @field_validator("fields")
-    @classmethod
-    def validate_fields_pointers(cls, value: dict[str, str]) -> dict[str, str]:
-        """Validate JSON pointers for each named field extraction."""
-        for key, pointer in value.items():
-            if not key.strip():
-                raise ValueError("JSON field key must be non-empty")
-            _validate_json_pointer(pointer)
-        return value
-
-    @field_validator("diagnostics_path")
-    @classmethod
-    def validate_diagnostics_pointer(cls, value: str | None) -> str | None:
-        """Validate the optional diagnostics path JSON pointer."""
-        if value is None:
-            return None
-        return _validate_json_pointer(value)
-
-
-class ExitCodeParsing(BaseModel):
-    """No parsing; rely on exit code only."""
-
-    strategy: Literal["exit_code"]
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-
-ParsingConfig: TypeAlias = Annotated[
-    TextRegexParsing | JsonFieldParsing | ExitCodeParsing,
-    Field(discriminator="strategy"),
-]
-
-
 class SuccessCriteria(BaseModel):
     """Defines pass/fail criteria for a tool.
 
-    A2: This model keeps an explicit `mode`, but it must match the parsing strategy
-    for a given gate (validated in QualityGate).
+    Gates pass/fail purely on exit code (exit_codes_ok) or violation count
+    (json_violations / text_violations strategy via capabilities.parsing_strategy).
     """
-
-    mode: Literal["text_regex", "json_field", "exit_code"]
 
     exit_codes_ok: list[int] = Field(default_factory=lambda: [0])
     max_errors: int | None = Field(default=None)
@@ -172,13 +188,13 @@ class GateScope(BaseModel):
 
             # Include matching
             if include_patterns and not any(
-                PurePosixPath(posix_path).match(pattern) for pattern in include_patterns
+                PurePosixPath(posix_path).full_match(pattern) for pattern in include_patterns
             ):
                 continue  # Skip if not in include list
 
             # Exclude matching
             if exclude_patterns and any(
-                PurePosixPath(posix_path).match(pattern) for pattern in exclude_patterns
+                PurePosixPath(posix_path).full_match(pattern) for pattern in exclude_patterns
             ):
                 continue  # Skip if in exclude list
             filtered.append(file_path)
@@ -191,7 +207,18 @@ class CapabilitiesMetadata(BaseModel):
 
     file_types: list[str] = Field(..., min_length=1)
     supports_autofix: bool
-    produces_json: bool
+    parsing_strategy: Literal["json_violations", "text_violations"] | None = Field(
+        default=None,
+        description="New-style violation-parsing strategy (json_violations or text_violations).",
+    )
+    json_violations: JsonViolationsParsing | None = Field(
+        default=None,
+        description="Config for json_violations parsing strategy.",
+    )
+    text_violations: TextViolationsParsing | None = Field(
+        default=None,
+        description="Config for text_violations parsing strategy.",
+    )
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -202,22 +229,11 @@ class QualityGate(BaseModel):
     name: str = Field(..., min_length=1)
     description: str = Field(default="")
     execution: ExecutionConfig
-    parsing: ParsingConfig
     success: SuccessCriteria
     capabilities: CapabilitiesMetadata
     scope: GateScope | None = Field(default=None)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-
-    @model_validator(mode="after")
-    def validate_success_matches_strategy(self) -> QualityGate:
-        """Enforce A2: success.mode must match parsing.strategy."""
-        if self.success.mode != self.parsing.strategy:
-            raise ValueError(
-                "success.mode must match parsing.strategy "
-                f"({self.success.mode} != {self.parsing.strategy})"
-            )
-        return self
 
 
 class ArtifactLoggingConfig(BaseModel):
@@ -238,6 +254,10 @@ class QualityConfig(BaseModel):
         default_factory=list, description="List of active gate names to execute from gates catalog"
     )
     artifact_logging: ArtifactLoggingConfig = Field(default_factory=ArtifactLoggingConfig)
+    project_scope: GateScope | None = Field(
+        default=None,
+        description="Glob patterns for project-level scope (scope=project scanning).",
+    )
     gates: dict[str, QualityGate] = Field(..., min_length=1)
 
     model_config = ConfigDict(extra="forbid", frozen=True)
