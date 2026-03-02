@@ -28,12 +28,12 @@ def reset_config_singletons() -> object:
     WorkflowConfig, MilestoneConfig, ContributorConfig) and the *_instance*
     pattern used by LabelConfig.
     """
+    from mcp_server.config.contributor_config import ContributorConfig
     from mcp_server.config.issue_config import IssueConfig
+    from mcp_server.config.label_config import LabelConfig
+    from mcp_server.config.milestone_config import MilestoneConfig
     from mcp_server.config.scope_config import ScopeConfig
     from mcp_server.config.workflow_config import WorkflowConfig
-    from mcp_server.config.milestone_config import MilestoneConfig
-    from mcp_server.config.contributor_config import ContributorConfig
-    from mcp_server.config.label_config import LabelConfig
 
     def _reset_all() -> None:
         IssueConfig.singleton_instance = None

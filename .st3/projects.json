@@ -1356,5 +1356,550 @@
         ]
       }
     }
+  },
+  "251": {
+    "issue_title": "Refactor run_quality_gates: fix venv pytest + structured output aligned with run_tests",
+    "workflow_name": "refactor",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "tdd",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-02-22T17:05:14.107952+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 45,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "C0: Remove gate5_tests and gate6_coverage from active_gates in .st3/quality.yaml"
+              }
+            ],
+            "exit_criteria": "Config contract test passes; active_gates contains no pytest or coverage entries; QualityConfig.model_validate raises no warnings"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "C1: ViolationDTO dataclass added to quality_config.py with 7 fields"
+              }
+            ],
+            "exit_criteria": "Unit test passes for required and optional field construction; no type errors"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": "C2: JsonViolationsParsing Pydantic model added to quality_config.py"
+              }
+            ],
+            "exit_criteria": "Validation tests pass for ruff and pyright schema variants"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "D4.1",
+                "description": "C3: project_scope: GateScope | None added to QualityConfig"
+              }
+            ],
+            "exit_criteria": "Config model validation passes with and without project_scope"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "D5.1",
+                "description": "C4: produces_json field removed from CapabilitiesMetadata and all usages"
+              }
+            ],
+            "exit_criteria": "Zero produces_json references in codebase"
+          },
+          {
+            "cycle_number": 6,
+            "deliverables": [
+              {
+                "id": "D6.1",
+                "description": "C5: TextViolationsParsing Pydantic model added to quality_config.py"
+              }
+            ],
+            "exit_criteria": "Validation tests for model construction pass"
+          },
+          {
+            "cycle_number": 7,
+            "deliverables": [
+              {
+                "id": "D7.1",
+                "description": "C6: Model validator added to TextViolationsParsing enforcing {field} placeholder references"
+              }
+            ],
+            "exit_criteria": "Unknown placeholder raises ValidationError with actionable message"
+          },
+          {
+            "cycle_number": 8,
+            "deliverables": [
+              {
+                "id": "D8.1",
+                "description": "C7: _parse_json_violations happy path for root-array JSON"
+              }
+            ],
+            "exit_criteria": "Ruff-like sample converts to expected ViolationDTO list"
+          },
+          {
+            "cycle_number": 9,
+            "deliverables": [
+              {
+                "id": "D9.1",
+                "description": "C8: Dotted-path extraction helper for nested dict fields"
+              }
+            ],
+            "exit_criteria": "Nested pyright fields resolve correctly; missing path returns None"
+          },
+          {
+            "cycle_number": 10,
+            "deliverables": [
+              {
+                "id": "D10.1",
+                "description": "C9: violations_path extraction resolves nested array before field mapping"
+              }
+            ],
+            "exit_criteria": "Pyright-like payload produces ViolationDTO list from nested array"
+          },
+          {
+            "cycle_number": 11,
+            "deliverables": [
+              {
+                "id": "D11.1",
+                "description": "C10: line_offset normalization and fixable_when boolean applied in JSON parser"
+              }
+            ],
+            "exit_criteria": "Parser returns expected normalized line and correct fixable flag"
+          },
+          {
+            "cycle_number": 12,
+            "deliverables": [
+              {
+                "id": "D12.1",
+                "description": "C11: _parse_text_violations using regex named groups"
+              }
+            ],
+            "exit_criteria": "Mypy-style line parses into one ViolationDTO"
+          },
+          {
+            "cycle_number": 13,
+            "deliverables": [
+              {
+                "id": "D13.1",
+                "description": "C12: defaults interpolation with {field} substitution applied in text parser"
+              }
+            ],
+            "exit_criteria": "Ruff-format line yields configured default message with interpolated file path"
+          },
+          {
+            "cycle_number": 14,
+            "deliverables": [
+              {
+                "id": "D14.1",
+                "description": "C13: execute_gate dispatch switched to match/case on parsing_strategy"
+              }
+            ],
+            "exit_criteria": "execute_gate parses via strategy without any gate-name checks"
+          },
+          {
+            "cycle_number": 15,
+            "deliverables": [
+              {
+                "id": "D15.1",
+                "description": "C14: _parse_ruff_json, _parse_json_field_issues and obsolete parser branches deleted"
+              }
+            ],
+            "exit_criteria": "Zero references to removed parser methods; regression suite green"
+          },
+          {
+            "cycle_number": 16,
+            "deliverables": [
+              {
+                "id": "D16.1",
+                "description": "C15: _files_for_gate filtering by gate.capabilities.file_types"
+              }
+            ],
+            "exit_criteria": "Filtering respects each gate's configured file types"
+          },
+          {
+            "cycle_number": 17,
+            "deliverables": [
+              {
+                "id": "D17.1",
+                "description": "C16: _filter_files removed"
+              }
+            ],
+            "exit_criteria": "_filter_files no longer exists; all call sites updated"
+          },
+          {
+            "cycle_number": 18,
+            "deliverables": [
+              {
+                "id": "D18.1",
+                "description": "C17: Dead pytest-specific helper methods deleted from qa_manager.py"
+              }
+            ],
+            "exit_criteria": "No pytest helper methods remain; regression suite green"
+          },
+          {
+            "cycle_number": 19,
+            "deliverables": [
+              {
+                "id": "D19.1",
+                "description": "C18: is_file_specific_mode bifurcation block removed"
+              }
+            ],
+            "exit_criteria": "Single execution path remains for all scopes"
+          },
+          {
+            "cycle_number": 20,
+            "deliverables": [
+              {
+                "id": "D20.1",
+                "description": "C19: Baseline advance on all-pass: baseline_sha=HEAD, failed_files=[] persisted to state.json"
+              }
+            ],
+            "exit_criteria": "State contains new baseline SHA and empty failed_files after all-pass run"
+          },
+          {
+            "cycle_number": 21,
+            "deliverables": [
+              {
+                "id": "D21.1",
+                "description": "C20: Failure accumulation: failed_files union persisted to state.json; baseline_sha unchanged"
+              }
+            ],
+            "exit_criteria": "failed_files equals union of old and new failures"
+          },
+          {
+            "cycle_number": 22,
+            "deliverables": [
+              {
+                "id": "D22.1",
+                "description": "C21: _resolve_scope('project') expands project_scope.include_globs against workspace root"
+              }
+            ],
+            "exit_criteria": "scope=project returns expected Python file set"
+          },
+          {
+            "cycle_number": 23,
+            "deliverables": [
+              {
+                "id": "D23.1",
+                "description": "C22: _resolve_scope('branch') collects changed files via git diff parent..HEAD"
+              }
+            ],
+            "exit_criteria": "scope=branch returns changed files from diff output"
+          },
+          {
+            "cycle_number": 24,
+            "deliverables": [
+              {
+                "id": "D24.1",
+                "description": "C23: _resolve_scope('auto') happy path: union of diff files and failed_files"
+              }
+            ],
+            "exit_criteria": "scope=auto returns exact union set when baseline present"
+          },
+          {
+            "cycle_number": 25,
+            "deliverables": [
+              {
+                "id": "D25.1",
+                "description": "C24: _resolve_scope('auto') edge cases: no-baseline fallback and empty-change early return"
+              }
+            ],
+            "exit_criteria": "No-baseline falls back to project scope; empty set returns early"
+          },
+          {
+            "cycle_number": 26,
+            "deliverables": [
+              {
+                "id": "D26.1",
+                "description": "C25: _format_summary_line formatter for pass/fail/skip outcomes"
+              }
+            ],
+            "exit_criteria": "Formatter tests pass for all three scenarios"
+          },
+          {
+            "cycle_number": 27,
+            "deliverables": [
+              {
+                "id": "D27.1",
+                "description": "C26: Compact JSON payload builder with per-gate violations list, no debug fields"
+              }
+            ],
+            "exit_criteria": "Payload contains only agreed schema fields; no stdout/stderr/raw_output"
+          },
+          {
+            "cycle_number": 28,
+            "deliverables": [
+              {
+                "id": "D28.1",
+                "description": "C27: ToolResult content contract normalized: item 0 text, item 1 json, exactly two items"
+              }
+            ],
+            "exit_criteria": "Tool response always has exactly two items; content[0] is text; content[1] is json"
+          },
+          {
+            "cycle_number": 29,
+            "deliverables": [
+              {
+                "id": "D29.1",
+                "description": "C28: Migrate files API to scope=\"files\" \u2014 add scope=\"files\" as 4th Literal value with conditional files: list[str] | None companion field; model_validator enforces both constraints"
+              }
+            ],
+            "exit_criteria": "All four scope values (auto, branch, project, files) accepted; scope=\"files\" with non-empty files routes list verbatim to run_quality_gates; scope=\"files\" without files (or empty) raises ValidationError; scope \u2208 {auto,branch,project} with files supplied raises ValidationError; old bare-files API (no scope param) rejected"
+          },
+          {
+            "cycle_number": 30,
+            "deliverables": [
+              {
+                "id": "D30.1",
+                "description": "C29: run_tests content order inverted: text summary first, json payload second (contract change)"
+              }
+            ],
+            "exit_criteria": "content[0] is summary text; content[1] is json payload; existing callers updated"
+          },
+          {
+            "cycle_number": 31,
+            "deliverables": [
+              {
+                "id": "D31.1",
+                "description": "C30: quality.yaml gate activation updated: gate5/6 removed, project_scope added"
+              }
+            ],
+            "exit_criteria": "Config validation passes; active gates match design; no gate5/gate6 references"
+          },
+          {
+            "cycle_number": 32,
+            "deliverables": [
+              {
+                "id": "D32.1",
+                "description": "C31: quality.yaml parsing strategy migrated: json_violations and text_violations replace old blocks"
+              }
+            ],
+            "exit_criteria": "Live quality.yaml validates against new models with no compatibility shim"
+          },
+          {
+            "cycle_number": 33,
+            "deliverables": [
+              {
+                "id": "D33.1",
+                "description": "C32: Remove dead code block (F-6: unreachable block with F821 base_ref) from qa_manager.py lines 321-344"
+              },
+              {
+                "id": "D33.2",
+                "description": "C32: Fix import order violation (F-7: I001) in server.py"
+              }
+            ],
+            "exit_criteria": "ruff check mcp_server/managers/qa_manager.py reports zero F821 violations; ruff check --select=I001 mcp_server/server.py exits 0; scope=branch run emits no F821/I001 from production files; B1-pass and P1-pass unblocked"
+          },
+          {
+            "cycle_number": 34,
+            "deliverables": [
+              {
+                "id": "D34.1",
+                "description": "C33: Fix _resolve_branch_scope to read parent_branch from top-level state.json key instead of state['workflow']['parent_branch'] (F-8)"
+              }
+            ],
+            "exit_criteria": "Unit test: state.json with parent_branch='epic/76-quality-gates' causes _git_diff_py_files to be called with 'epic/76-quality-gates'; unit test: absent parent_branch falls back to 'main'; B3 scenario tests a genuinely distinct code path"
+          },
+          {
+            "cycle_number": 35,
+            "deliverables": [
+              {
+                "id": "D35.1",
+                "description": "C34: Create mcp_server/utils/path_resolver.py with resolve_input_paths(paths, workspace_root) \u2192 (list[Path], warnings); expands directories via rglob, passes files through, warns on non-existent paths (F-9)"
+              },
+              {
+                "id": "D35.2",
+                "description": "C34: Wire resolve_input_paths into _resolve_scope(scope='files') in qa_manager.py; _files_for_gate and filter_files unchanged"
+              }
+            ],
+            "exit_criteria": "scope='files', files=['backend/dtos/'] evaluates all .py files under backend/dtos/; scope='files', files=['backend/dtos/causality.py', 'tests/unit/'] evaluates both; non-existent path emits structured warning, never a clean-pass result; resolve_input_paths unit-tested independently of QAManager; existing single-file behaviour unchanged"
+          },
+          {
+            "cycle_number": 36,
+            "deliverables": [
+              {
+                "id": "D36.1",
+                "description": "C35: Add overall_pass: bool and duration_ms: int as top-level fields in _build_compact_result (F-2)"
+              },
+              {
+                "id": "D36.2",
+                "description": "C35: Add status enum ('passed'|'failed'|'skipped') to gate entries; skipped gates set passed: null to fix skipped+passed=true contradiction (F-3)"
+              }
+            ],
+            "exit_criteria": "content[1]['overall_pass'] exists and matches inferred outcome; content[1]['duration_ms'] present; skipped gate entry has status='skipped' and passed is not asserted as True; contract tests for PASS, FAIL, all-skipped runs pass"
+          },
+          {
+            "cycle_number": 37,
+            "deliverables": [
+              {
+                "id": "D37.1",
+                "description": "C36: Normalise all violation file paths to workspace-relative POSIX in _normalize_violation; resolve absolute paths against workspace_root, convert OS separators to forward slashes (F-15)"
+              }
+            ],
+            "exit_criteria": "All violation file fields in a single response use the same format (relative POSIX); integration test comparing Gate 0 + Gate 1 violations for the same file asserts identical file values; no absolute paths in compact payload"
+          },
+          {
+            "cycle_number": 38,
+            "deliverables": [
+              {
+                "id": "D38.1",
+                "description": "C37: Add fixable_when: 'gate' support to text_violations parser; when gate supports_autofix=true, per-violation fixable=True (F-14)"
+              },
+              {
+                "id": "D38.2",
+                "description": "C37: Update .st3/quality.yaml gate0_ruff_format text_violations config to include fixable_when: 'gate'"
+              }
+            ],
+            "exit_criteria": "Gate 0 FORMAT violation has fixable=true when gate config has supports_autofix=true; fixable=false when supports_autofix=false; json_violations fixable_when behaviour unchanged"
+          },
+          {
+            "cycle_number": 39,
+            "deliverables": [
+              {
+                "id": "D39.1",
+                "description": "C38: Investigate Pyright JSON severity field name; fix field_map in .st3/quality.yaml gate4_pyright so severity is not null (F-17 Part A)"
+              },
+              {
+                "id": "D39.2",
+                "description": "C38: Document intended Gate 4 + Gate 4b complementary relationship in quality.yaml comments (F-17 Part B)"
+              }
+            ],
+            "exit_criteria": "Gate 4b violations have severity='error' or 'warning', not null, when Pyright reports that severity; quality.yaml comment clarifies Gate 4 vs 4b intent"
+          },
+          {
+            "cycle_number": 40,
+            "deliverables": [
+              {
+                "id": "D40.1",
+                "description": "C39: Fix summary line signal/context for clean and all scope inputs: emit \u2705 for empty-diff clean state (F-1) and include effective scope-resolution context for auto/branch/project/files (F-19)"
+              },
+              {
+                "id": "D40.2",
+                "description": "C39: Sanitise Pyright multi-line messages in _normalize_violation: replace \\n with ' \u2014 ' and \\u00a0 with space (F-18)"
+              }
+            ],
+            "exit_criteria": "A1-pass scenario emits \u2705 summary line, not \u26a0\ufe0f; for scope=auto, scope=branch, scope=project, and scope=files summary line includes effective scope-resolution context (basis + evaluated file count); Gate 4b violation messages contain no \\n or \\u00a0; all other gate messages unaffected"
+          },
+          {
+            "cycle_number": 41,
+            "deliverables": [
+              {
+                "id": "D41.1",
+                "description": "C1: Enforce auto-only baseline mutation guard for run_quality_gates state lifecycle fields.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Cycle 1: Scope-guard baseline mutation (F-21)"
+                }
+              }
+            ],
+            "exit_criteria": "Non-auto scopes do not mutate baseline_sha or clear/override auto failed_files."
+          },
+          {
+            "cycle_number": 42,
+            "deliverables": [
+              {
+                "id": "D42.1",
+                "description": "C2: Constrain failed_files persistence to actual failing subset in auto scope.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Cycle 2: Tighten failed_files semantics (S-2)"
+                }
+              }
+            ],
+            "exit_criteria": "Auto mixed-result runs persist only failing subset; full evaluated set is not persisted by default."
+          },
+          {
+            "cycle_number": 43,
+            "deliverables": [
+              {
+                "id": "D43.1",
+                "description": "C3: Propagate one explicit effective scope value through tool-to-manager mutation policy.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Cycle 3: Enforce explicit effective-scope propagation (S-1)"
+                }
+              }
+            ],
+            "exit_criteria": "Scope used for target resolution is the same scope governing state mutation decisions."
+          },
+          {
+            "cycle_number": 44,
+            "deliverables": [
+              {
+                "id": "D44.1",
+                "description": "C4: Add switch-path invariant tests for auto\u2194files, branch\u2194files, project\u2192auto.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Cycle 4: Add scope-switch invariants test set (S-3)"
+                }
+              }
+            ],
+            "exit_criteria": "All scope-switch invariants pass with cycles 41\u201343 fully green."
+          },
+          {
+            "cycle_number": 45,
+            "deliverables": [
+              {
+                "id": "D45.1",
+                "description": "C5: Run acceptance validation closure (non-TDD cycle) across all four scopes and switch paths.",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "docs/development/issue251/planning_v3.md",
+                  "text": "Acceptance validation closure (non-TDD cycle)"
+                }
+              }
+            ],
+            "exit_criteria": "Live validation confirms issue251 stabilization acceptance criteria from research_v3."
+          }
+        ]
+      },
+      "validation": {
+        "deliverables": [
+          {
+            "id": "V1",
+            "description": "Validation plan baseline is available for focused live closure scenarios.",
+            "validates": {
+              "type": "file_exists",
+              "file": "docs/development/issue251/live-validation-plan-v2.md"
+            }
+          }
+        ]
+      },
+      "design": {
+        "deliverables": [
+          {
+            "id": "DG1",
+            "description": "Design v3 approved as minimal contract baseline for planning_v3 cycles.",
+            "validates": {
+              "type": "file_exists",
+              "file": "docs/development/issue251/design_v3.md"
+            }
+          }
+        ]
+      }
+    }
   }
 }

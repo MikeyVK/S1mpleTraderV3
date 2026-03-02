@@ -23,7 +23,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from mcp_server.adapters.filesystem import FilesystemAdapter
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
@@ -304,12 +304,15 @@ class ArtifactManager:
 
         # Instantiate RenderContext with lifecycle fields + user context fields
         # This validates all fields via Pydantic
-        return render_context_class(
-            **context.model_dump(),
-            template_id=artifact_type,
-            scaffold_created=scaffold_created,
-            version_hash="00000000",  # Placeholder - will be set by scaffold_artifact
-            output_path=output_path_value,
+        return cast(
+            BaseRenderContext,
+            render_context_class(
+                **context.model_dump(),
+                template_id=artifact_type,
+                scaffold_created=scaffold_created,
+                version_hash="00000000",  # Placeholder - will be set by scaffold_artifact
+                output_path=output_path_value,
+            ),
         )
 
     def _extract_tier_chain(self, template_file: str) -> list[tuple[str, str]]:

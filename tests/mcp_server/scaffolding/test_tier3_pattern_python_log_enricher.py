@@ -88,35 +88,35 @@ class TestTier3PatternPythonLogEnricher:
         """Rendered macros contain expected LogEnricher usage tokens."""
         template = jinja_env.get_template("tier3_pattern_python_log_enricher.jinja2")
 
-        imports_rendered = getattr(template.module, "pattern_log_enricher_imports")()
-        set_rendered = getattr(template.module, "pattern_log_enricher_set_logger")(
+        imports_rendered = template.module.pattern_log_enricher_imports()
+        set_rendered = template.module.pattern_log_enricher_set_logger(
             attr_name="logger",
         )
-        child_rendered = getattr(template.module, "pattern_log_enricher_child")(
+        child_rendered = template.module.pattern_log_enricher_child(
             indent_delta=1,
         )
 
-        setup_rendered = getattr(template.module, "pattern_log_enricher_setup")(
+        setup_rendered = template.module.pattern_log_enricher_setup(
             message_key="log.setup.example",
             values="worker_name=worker_name",
         )
-        match_rendered = getattr(template.module, "pattern_log_enricher_match")(
+        match_rendered = template.module.pattern_log_enricher_match(
             message_key="log.match.example",
             values="symbol=symbol",
         )
-        filter_rendered = getattr(template.module, "pattern_log_enricher_filter")(
+        filter_rendered = template.module.pattern_log_enricher_filter(
             message_key="log.filter.example",
             values="count=count",
         )
-        policy_rendered = getattr(template.module, "pattern_log_enricher_policy")(
+        policy_rendered = template.module.pattern_log_enricher_policy(
             message_key="log.policy.example",
             values="rule=rule",
         )
-        result_rendered = getattr(template.module, "pattern_log_enricher_result")(
+        result_rendered = template.module.pattern_log_enricher_result(
             message_key="log.result.example",
             values="ok=ok",
         )
-        trade_rendered = getattr(template.module, "pattern_log_enricher_trade")(
+        trade_rendered = template.module.pattern_log_enricher_trade(
             message_key="log.trade.example",
             values="trade_id=trade_id",
         )

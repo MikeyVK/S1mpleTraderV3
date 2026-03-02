@@ -79,16 +79,13 @@ class TestTier3PatternPythonTypedId:
         """Rendered macros contain expected typed-id tokens."""
         template = jinja_env.get_template("tier3_pattern_python_typed_id.jinja2")
 
-        imports_rendered = getattr(template.module, "pattern_typed_id_imports")(
+        imports_rendered = template.module.pattern_typed_id_imports(
             function_name="generate_trade_plan_id",
         )
-        default_factory_rendered = getattr(
-            template.module,
-            "pattern_typed_id_default_factory",
-        )(
+        default_factory_rendered = template.module.pattern_typed_id_default_factory(
             function_name="generate_trade_plan_id",
         )
-        gen_rendered = getattr(template.module, "pattern_typed_id_generate")(
+        gen_rendered = template.module.pattern_typed_id_generate(
             function_name="generate_trade_plan_id",
         )
 

@@ -5,11 +5,11 @@ from typing import Any
 
 import yaml
 
-from mcp_server.core.scope_encoder import ScopeEncoder
 from mcp_server.adapters.git_adapter import GitAdapter
 from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.core.logging import get_logger
+from mcp_server.core.scope_encoder import ScopeEncoder
 
 
 class GitManager:

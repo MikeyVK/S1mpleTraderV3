@@ -79,9 +79,9 @@ class TestTier3PatternPythonLogging:
         """Rendered macros contain expected logging tokens."""
         template = jinja_env.get_template("tier3_pattern_python_logging.jinja2")
 
-        imports_rendered = getattr(template.module, "pattern_logging_imports")()
-        logger_rendered = getattr(template.module, "pattern_logging_get_logger")()
-        call_rendered = getattr(template.module, "pattern_logging_call")(
+        imports_rendered = template.module.pattern_logging_imports()
+        logger_rendered = template.module.pattern_logging_get_logger()
+        call_rendered = template.module.pattern_logging_call(
             level="info",
             message_key="worker.start",
         )

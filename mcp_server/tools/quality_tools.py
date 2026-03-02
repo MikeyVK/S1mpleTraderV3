@@ -1,8 +1,8 @@
 """Quality tools."""
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.base import BaseTool
@@ -12,14 +12,42 @@ from mcp_server.tools.tool_result import ToolResult
 class RunQualityGatesInput(BaseModel):
     """Input for RunQualityGatesTool."""
 
-    files: list[str] = Field(
-        default=[],
+    scope: Literal["auto", "branch", "project", "files"] = Field(
+        default="auto",
         description=(
-            "List of files to check. Empty list [] = project-level test validation "
-            "(pytest/coverage only, Gates 5-6). Populated list = file-specific validation "
-            "(static analysis Gates 0-4, skip pytest)."
+            "Scope of the quality gate run. "
+            "'auto' = union of changed files and previously failed files; "
+            "'branch' = files changed on this branch vs parent; "
+            "'project' = all files matching project_scope.include_globs; "
+            "'files' = explicit list supplied via the 'files' field."
         ),
     )
+    files: list[str] | None = Field(
+        default=None,
+        description=(
+            "Explicit list of files to check. "
+            "Required (and non-empty) when scope='files'. "
+            "Must be omitted (or null) for all other scope values."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _validate_files_scope_contract(self) -> "RunQualityGatesInput":
+        """Enforce the two-rule validator contract (design.md §4.6a).
+
+        Rule 1 – files required:  scope='files' and files is None or []  → ValidationError
+        Rule 2 – files forbidden: scope != 'files' and files is not None → ValidationError
+        """
+        if self.scope == "files":
+            if not self.files:
+                raise ValueError("files must be a non-empty list when scope='files'")
+        else:
+            if self.files is not None:
+                raise ValueError(
+                    f"files must be omitted when scope='{self.scope}' "
+                    "(only allowed with scope='files')"
+                )
+        return self
 
 
 class RunQualityGatesTool(BaseTool):
@@ -27,10 +55,18 @@ class RunQualityGatesTool(BaseTool):
 
     name = "run_quality_gates"
     description = (
-        "Run quality gates. Use files=[] for project-level test validation (pytest/coverage), "
-        "files=[...] for file-specific validation (static analysis on specified files)."
+        "Run quality gates. "
+        "scope='auto' (default): union of changed + previously failed files; "
+        "scope='branch': files changed on this branch; "
+        "scope='project': all project files; "
+        "scope='files': explicit file list supplied via the 'files' field."
     )
     args_model = RunQualityGatesInput
+
+    @staticmethod
+    def _effective_scope(params: RunQualityGatesInput) -> str:
+        """Return authoritative scope value for the current tool execution."""
+        return params.scope
 
     def __init__(self, manager: QAManager | None = None) -> None:
         self.manager = manager or QAManager()
@@ -43,30 +79,37 @@ class RunQualityGatesTool(BaseTool):
         return self.args_model.model_json_schema()
 
     async def execute(self, params: RunQualityGatesInput) -> ToolResult:
-        """Execute quality gates and return schema-first JSON response.
+        """Execute quality gates and return contract-compliant response.
 
-        Returns structured JSON as primary output with a derived text_output field.
-        Consumers should parse the JSON structure (gates[], summary) for programmatic use.
-        The text_output field provides a human-readable rendering for display purposes.
+        Returns exactly two content items (design.md §4.8, planning.md C27):
+        1. ``{"type": "text", "text": <summary_line>}`` — one-line human-readable status
+        2. ``{"type": "json", "json": <compact_payload>}`` — structured gate results
+
+        Args:
+            params: Tool input parameters.
+
+        Returns:
+            ToolResult with content[0]=text summary, content[1]=compact JSON payload.
         """
-        files = params.files
-        # Project-level test validation mode (files=[]):
-        # - Runs pytest gates only (Gate 5: tests, Gate 6: coverage >= 90%)
-        # - Skips file-based static gates (Gates 0-4: Ruff, Mypy) - no file list provided
-        # - Use case: CI/CD test/coverage enforcement before merge
-        #
-        # File-specific validation mode (files=[...]):
-        # - Runs file-based static gates (Gates 0-4: Ruff, Mypy)
-        # - Skips pytest gates (Gate 5-6) - tests run at project-level
-        # - Use case: IDE save hooks, pre-commit validation on changed files
+        effective_scope = self._effective_scope(params)
+        resolved_files = self.manager._resolve_scope(effective_scope, files=params.files)
 
-        result = self.manager.run_quality_gates(files)
-
-        # Build derived text rendering and attach to response
-        text_output = self._render_text_output(result)
-        result["text_output"] = text_output
-
-        return ToolResult.json_data(result)
+        result = self.manager.run_quality_gates(
+            resolved_files,
+            effective_scope=effective_scope,
+        )
+        summary_line = QAManager._format_summary_line(
+            result,
+            scope=effective_scope,
+            file_count=len(resolved_files),
+        )
+        compact_payload = self.manager._build_compact_result(result)
+        return ToolResult(
+            content=[
+                {"type": "text", "text": summary_line},
+                {"type": "json", "json": compact_payload},
+            ]
+        )
 
     @staticmethod
     def _render_text_output(result: dict[str, Any]) -> str:

@@ -56,8 +56,8 @@ async def test_run_tests_success(
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
 
-    assert result.content[0]["type"] == "json"
-    assert result.content[0]["json"]["summary"]["passed"] == 1
+    assert result.content[0]["type"] == "text"
+    assert result.content[1]["json"]["summary"]["passed"] == 1
 
     # Verify call args
     call_args = mock_run_pytest_sync.call_args
@@ -80,8 +80,8 @@ async def test_run_tests_failure(
 
     result = await tool.execute(RunTestsInput(path="tests/foo.py"))
 
-    assert result.content[0]["type"] == "json"
-    assert result.content[0]["json"]["summary"]["failed"] == 1
+    assert result.content[0]["type"] == "text"
+    assert result.content[1]["json"]["summary"]["failed"] == 1
 
 
 @pytest.mark.asyncio
@@ -152,37 +152,37 @@ def test_parse_pytest_output_red() -> None:
 async def test_run_tests_json_response_on_success(
     mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
 ) -> None:
-    """Successful run: content[0] is JSON with summary.failed==0, content[1] is text fallback."""
+    """Successful run: content[0] is text summary, content[1] is JSON with summary.failed==0."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
 
-    assert result.content[0]["type"] == "json"
-    assert result.content[0]["json"]["summary"]["failed"] == 0
-    assert result.content[0]["json"].get("failures", []) == []
-    assert result.content[1]["type"] == "text"
+    assert result.content[0]["type"] == "text"
+    assert result.content[1]["json"]["summary"]["failed"] == 0
+    assert result.content[1]["json"].get("failures", []) == []
+    assert result.content[1]["type"] == "json"
 
 
 @pytest.mark.asyncio
 async def test_run_tests_json_response_on_failure(
     mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
 ) -> None:
-    """Failed run: content[0] is JSON with failures list, content[1] is text fallback."""
+    """Failed run: content[0] is text summary, content[1] is JSON with failures list."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
 
-    assert result.content[0]["type"] == "json"
-    data = result.content[0]["json"]
+    assert result.content[0]["type"] == "text"
+    data = result.content[1]["json"]
     assert data["summary"]["failed"] == 2
     assert len(data["failures"]) == 2
     f = data["failures"][0]
     assert "test_id" in f
     assert "short_reason" in f
     assert "location" in f
-    assert result.content[1]["type"] == "text"
+    assert result.content[1]["type"] == "json"
 
 
 def test_run_tests_input_has_no_verbose_field() -> None:
@@ -382,15 +382,15 @@ def test_parse_pytest_output_summary_line_on_failure() -> None:
 async def test_run_tests_text_content_is_summary_line(
     mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
 ) -> None:
-    """content[1]['text'] must be the summary_line, not json.dumps of the full response."""
+    """content[0]['text'] must be the summary_line, not json.dumps of the full response."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
 
-    text = result.content[1]["text"]
+    text = result.content[0]["text"]
     # Must be summary line, not a JSON blob
-    assert not text.startswith("{"), f"content[1]['text'] should be summary_line not JSON: {text!r}"
+    assert not text.startswith("{"), f"content[0]['text'] should be summary_line not JSON: {text!r}"
     assert "passed" in text
 
 
@@ -398,14 +398,14 @@ async def test_run_tests_text_content_is_summary_line(
 async def test_run_tests_text_content_is_summary_line_on_failure(
     mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
 ) -> None:
-    """content[1]['text'] must be the summary_line even when tests fail."""
+    """content[0]['text'] must be the summary_line even when tests fail."""
     tool = RunTestsTool()
     mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
 
     result = await tool.execute(RunTestsInput(path="tests/unit"))
 
-    text = result.content[1]["text"]
-    assert not text.startswith("{"), f"content[1]['text'] should be summary_line not JSON: {text!r}"
+    text = result.content[0]["text"]
+    assert not text.startswith("{"), f"content[0]['text'] should be summary_line not JSON: {text!r}"
     assert "failed" in text
 
 
@@ -434,3 +434,54 @@ def test_parse_pytest_output_traceback_contains_assertion_error() -> None:
     traceback = result["failures"][0]["traceback"]
     assert "AssertionError" in traceback
     assert "assert 1 == 2" in traceback
+
+
+# ---------------------------------------------------------------------------
+# C29 RED: invert run_tests content order — text first, json second
+# Must fail until GREEN inverts the order in test_tools.py
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_tests_content0_is_text_summary(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
+    """C29 contract: content[0] must be the text summary line (not json)."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
+
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
+
+    assert result.content[0]["type"] == "text", (
+        f"Expected content[0] type='text', got '{result.content[0]['type']}'"
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_tests_content1_is_json_payload(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
+    """C29 contract: content[1] must be the json payload (not text)."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_RED, "", 1)
+
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
+
+    assert result.content[1]["type"] == "json", (
+        f"Expected content[1] type='json', got '{result.content[1]['type']}'"
+    )
+    assert "summary" in result.content[1]["json"]
+
+
+@pytest.mark.asyncio
+async def test_run_tests_content0_text_contains_summary_line(
+    mock_run_pytest_sync: MagicMock, _mock_settings: MagicMock
+) -> None:
+    """C29 contract: content[0].text is the human-readable summary line."""
+    tool = RunTestsTool()
+    mock_run_pytest_sync.return_value = (_PYTEST_STDOUT_GREEN, "", 0)
+
+    result = await tool.execute(RunTestsInput(path="tests/unit"))
+
+    assert isinstance(result.content[0].get("text", None), str)
+    assert len(result.content[0]["text"]) > 0

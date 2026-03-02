@@ -3,7 +3,7 @@
 import copy
 import json
 import unicodedata
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import jinja2
 from pydantic import BaseModel, Field, field_validator
@@ -66,7 +66,7 @@ def _resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
     schema = copy.deepcopy(schema)
     defs: dict[str, Any] = schema.pop("$defs", {})
 
-    def _resolve(node: Any) -> Any:  # type: ignore[return]  # noqa: ANN401
+    def _resolve(node: Any) -> Any:  # noqa: ANN401
         if isinstance(node, dict):
             if "$ref" in node:
                 ref_path: str = node["$ref"]  # e.g. "#/$defs/IssueBody"
@@ -82,7 +82,7 @@ def _resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
             return [_resolve(item) for item in node]
         return node
 
-    return _resolve(schema)  # type: ignore[return-value]
+    return cast(dict[str, Any], _resolve(schema))
 
 
 class IssueBody(BaseModel):
@@ -357,11 +357,20 @@ class CreateIssueTool(BaseTool):
             body_safe = normalize_unicode(self._render_body(params.body, title=params.title))
             labels = self._assemble_labels(params)
 
+            # Resolve milestone title → number (GitHub API requires int)
+            milestone_number: int | None = None
+            if params.milestone is not None:
+                cfg = MilestoneConfig.from_file()
+                milestone_number = next(
+                    (m.number for m in cfg.milestones if m.title == params.milestone),
+                    None,
+                )
+
             issue = self.manager.create_issue(
                 title=title_safe,
                 body=body_safe,
                 labels=labels,
-                milestone=params.milestone,
+                milestone=milestone_number,
                 assignees=params.assignees,
             )
             return ToolResult.text(f"Created issue #{issue['number']}: {issue['title']}")

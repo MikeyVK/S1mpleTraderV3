@@ -132,7 +132,10 @@ force_phase_transition(
 
 3. **REFACTOR Phase:**
    - Clean up code
-   - Run quality gates: `run_quality_gates(files=[...])`
+   - Run quality gates with explicit scope contract:
+     - `run_quality_gates(scope="files", files=["path/to/changed_file.py"])`
+     - `run_quality_gates(scope="branch")` for branch-wide check
+     - `run_quality_gates(scope="auto")` for baseline-aware rerun set
    - Commit: `git_add_or_commit(workflow_phase="tdd", sub_phase="refactor", message="refactor X")`
 
 4. **Test Execution:**
@@ -309,7 +312,7 @@ scaffold_artifact(
 | Action | ✅ USE THIS | ❌ NEVER USE |
 |--------|-------------|------------|
 | Run tests | `run_tests(path, markers, last_failed_only, scope, timeout)` | `run_in_terminal("pytest")` |
-| Quality gates | `run_quality_gates(files)` | `run_in_terminal("ruff/mypy/pylint")` |
+| Quality gates | `run_quality_gates(scope, files?)` | `run_in_terminal("ruff/mypy/pylint")` |
 | Validate template | `validate_template(path, template_type)` | Manual validation |
 | Validate architecture | `validate_architecture(scope)` | Manual review |
 

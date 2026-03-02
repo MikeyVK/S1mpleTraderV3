@@ -29,7 +29,7 @@ class ListLabelsTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: ListLabelsInput) -> ToolResult:
+    async def execute(self, _params: ListLabelsInput) -> ToolResult:
         labels = self.manager.list_labels()
 
         if not labels:
@@ -203,7 +203,7 @@ class DetectLabelDriftTool(BaseTool):
     def input_schema(self) -> dict[str, Any]:
         return self.args_model.model_json_schema()
 
-    async def execute(self, params: DetectLabelDriftInput) -> ToolResult:
+    async def execute(self, _params: DetectLabelDriftInput) -> ToolResult:
         """Detect label drift between YAML and GitHub."""
         try:
             label_config = LabelConfig.load()

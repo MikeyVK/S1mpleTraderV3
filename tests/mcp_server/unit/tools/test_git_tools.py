@@ -40,7 +40,7 @@ def mock_git_manager():
 @pytest.mark.asyncio
 async def test_create_branch_tool_requires_base_branch(mock_git_manager):
     """Test that base_branch parameter is required."""
-    with pytest.raises(Exception):  # Pydantic validation error
+    with pytest.raises(Exception):  # noqa: B017 — Pydantic validation error; exact type varies by version
         CreateBranchInput(name="test-branch", branch_type="feature")
 
 

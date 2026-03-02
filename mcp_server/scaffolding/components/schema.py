@@ -7,7 +7,7 @@ from mcp_server.scaffolding.base import BaseScaffolder
 class SchemaScaffolder(BaseScaffolder):
     """Scaffolds Pydantic Schemas."""
 
-    def scaffold(self, name: str, **kwargs: Any) -> str:
+    def scaffold(self, name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Scaffold a Schema.
 
         Args:

@@ -148,7 +148,7 @@ class TestArtifactDefinitionValidation:
         with open(invalid_file, "w", encoding="utf-8") as f:
             yaml.safe_dump(invalid_data, f)
 
-        with pytest.raises(Exception):  # Pydantic validation error
+        with pytest.raises(ConfigError):  # Pydantic validation error wrapped by from_file
             ArtifactRegistryConfig.from_file(invalid_file)
 
     def test_type_id_must_be_lowercase(self) -> None:

@@ -19,10 +19,7 @@ class MCPError(Exception):
     """Base class for all MCP server exceptions."""
 
     def __init__(
-        self,
-        message: str,
-        code: str = "ERR_INTERNAL",
-        hints: list[str] | None = None
+        self, message: str, code: str = "ERR_INTERNAL", hints: list[str] | None = None
     ) -> None:
         """Initialize the MCP error."""
         self.message = message
@@ -42,10 +39,7 @@ class ConfigError(MCPError):
     """Configuration loading or validation error."""
 
     def __init__(
-        self,
-        message: str,
-        file_path: str | None = None,
-        hints: list[str] | None = None
+        self, message: str, file_path: str | None = None, hints: list[str] | None = None
     ) -> None:
         """Initialize the configuration error.
 
@@ -70,7 +64,7 @@ class ValidationError(MCPError):
         self,
         message: str,
         hints: list[str] | None = None,
-        schema: Any = None
+        schema: Any = None,  # noqa: ANN401  # Core layer; TemplateSchema would violate layer deps
     ) -> None:
         """Initialize the validation error.
 
@@ -104,10 +98,7 @@ class ValidationError(MCPError):
             data["schema"] = self.schema.to_dict()
 
         if self.missing or self.provided:
-            data["validation"] = {
-                "missing": self.missing,
-                "provided": self.provided
-            }
+            data["validation"] = {"missing": self.missing, "provided": self.provided}
 
         return data
 
@@ -120,10 +111,7 @@ class MetadataParseError(ValidationError):
     """
 
     def __init__(
-        self,
-        message: str,
-        file_path: str | None = None,
-        hints: list[str] | None = None
+        self, message: str, file_path: str | None = None, hints: list[str] | None = None
     ) -> None:
         """Initialize the metadata parse error.
 

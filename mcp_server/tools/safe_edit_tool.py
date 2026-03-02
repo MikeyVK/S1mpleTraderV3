@@ -139,7 +139,7 @@ class SafeEditInput(BaseModel):
 
     @field_validator("search_flags", mode="before")
     @classmethod
-    def _coerce_flags(cls, value: Any) -> int:
+    def _coerce_flags(cls, value: Any) -> int:  # noqa: ANN401
         if value is None:
             return 0
         return int(value)
@@ -439,9 +439,14 @@ class SafeEditTool(BaseTool):
 
             new_lines = edit.new_content.splitlines(keepends=True)
 
-            if new_lines and lines and not new_lines[-1].endswith(("\n", "\r\n")):
-                if end_idx <= len(lines) and any(lines[start_idx:end_idx]):
-                    new_lines[-1] = new_lines[-1] + "\n"
+            if (
+                new_lines
+                and lines
+                and not new_lines[-1].endswith(("\n", "\r\n"))
+                and end_idx <= len(lines)
+                and any(lines[start_idx:end_idx])
+            ):
+                new_lines[-1] = new_lines[-1] + "\n"
 
             lines[start_idx:end_idx] = new_lines
 

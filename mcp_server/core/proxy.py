@@ -129,7 +129,7 @@ class MCPProxy:
 
         self._server_started = threading.Event()
 
-    def audit_log(self, message: str, level: str = "INFO", **extra: Any) -> None:
+    def audit_log(self, message: str, level: str = "INFO", **extra: Any) -> None:  # noqa: ANN401
         """Write structured log entry to mcp_audit.log.
 
         Args:
@@ -158,7 +158,7 @@ class MCPProxy:
         except OSError as e:
             print(f"[PROXY ERROR] Audit log failed: {e}", file=sys.stderr, flush=True)
 
-    def log(self, message: str, level: str = "INFO", **extra: Any) -> None:
+    def log(self, message: str, level: str = "INFO", **extra: Any) -> None:  # noqa: ANN401
         """Log to both stderr (VS Code Output) and audit log.
 
         Args:

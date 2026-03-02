@@ -12,9 +12,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-
 TEMPLATE_ROOT = (
     Path(__file__).parent.parent.parent.parent
     / "mcp_server"
@@ -41,8 +38,8 @@ def test_research_md_imports_seven_patterns() -> None:
     ]
 
     for pattern in required_patterns:
-        assert 'import "{}.jinja2"'.format(pattern) in content, (
-            "research.md missing import: {}".format(pattern)
+        assert f'import "{pattern}.jinja2"' in content, (
+            f"research.md missing import: {pattern}"
         )
 
 
@@ -61,8 +58,8 @@ def test_planning_md_imports_six_patterns() -> None:
     ]
 
     for pattern in required_patterns:
-        assert 'import "{}.jinja2"'.format(pattern) in content, (
-            "planning.md missing import: {}".format(pattern)
+        assert f'import "{pattern}.jinja2"' in content, (
+            f"planning.md missing import: {pattern}"
         )
 
 
@@ -82,6 +79,6 @@ def test_design_md_imports_seven_patterns() -> None:
     ]
 
     for pattern in required_patterns:
-        assert 'import "{}.jinja2"'.format(pattern) in content, (
-            "design.md missing import: {}".format(pattern)
+        assert f'import "{pattern}.jinja2"' in content, (
+            f"design.md missing import: {pattern}"
         )

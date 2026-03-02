@@ -7,7 +7,7 @@ from mcp_server.scaffolding.base import BaseScaffolder
 class ServiceScaffolder(BaseScaffolder):
     """Scaffolds Services."""
 
-    def scaffold(self, name: str, **kwargs: Any) -> str:
+    def scaffold(self, name: str, **kwargs: Any) -> str:  # noqa: ANN401
         """Scaffold a Service.
 
         Args:

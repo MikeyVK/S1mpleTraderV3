@@ -162,11 +162,10 @@ def _classify_variables(
                 optional_vars.add(var_name)
 
         # Variables with |default(...) filter are optional
-        if isinstance(node, nodes.Filter) and node.name == "default":
-            if isinstance(node.node, nodes.Name):
-                var_name = node.node.name
-                if var_name in variables:
-                    optional_vars.add(var_name)
+        if isinstance(node, nodes.Filter) and node.name == "default" and isinstance(node.node, nodes.Name):
+            var_name = node.node.name
+            if var_name in variables:
+                optional_vars.add(var_name)
 
     # Remaining variables are required (conservative)
     required_vars = variables - optional_vars

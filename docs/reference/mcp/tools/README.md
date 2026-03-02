@@ -1,10 +1,10 @@
 <!-- docs/reference/mcp/tools/README.md -->
-<!-- template=reference version=064954ea created=2026-02-08T12:00:00+01:00 updated=2026-02-08 -->
+<!-- template=reference version=064954ea created=2026-02-08T12:00:00+01:00 updated=2026-03-01 -->
 # MCP Tools Reference — Navigation Index
 
 **Status:** DEFINITIVE  
-**Version:** 2.0  
-**Last Updated:** 2026-02-08  
+**Version:** 2.1  
+**Last Updated:** 2026-03-01  
 
 **Source:** [mcp_server/server.py](../../../../mcp_server/server.py)  
 **Tests:** [tests/mcp_server/](../../../../tests/mcp_server/)  
@@ -157,7 +157,7 @@ Automated quality gates, test execution, and architectural validation.
 
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
-| `run_quality_gates` | Run config-driven quality gates (Ruff, Pyright) | `files` |
+| `run_quality_gates` | Run config-driven quality gates | `scope` (`auto`/`branch`/`project`/`files`), `files` (required only with `scope="files"`) |
 | `run_tests` | Run pytest — structured JSON output with traceback per failure | `path` (space-sep), `scope` (`"full"`), `markers`, `last_failed_only`, `timeout` |
 | `validate_architecture` | Validate code against patterns | `scope` (all/dtos/workers/platform) |
 | `validate_dto` | Validate DTO definition | `file_path` |
@@ -208,17 +208,17 @@ Documentation search, work context aggregation, and server administration.
 
 ```
 1. scaffold_artifact(artifact_type="dto", name="MyFeature", context={...})
-2. git_add_or_commit(phase="red", message="Add failing test for MyFeature")
+2. git_add_or_commit(workflow_phase="tdd", sub_phase="red", message="Add failing test for MyFeature")
 3. safe_edit_file(path="...", line_edits=[...])  # Implement
 4. run_tests(path="tests/test_my_feature.py")
-5. git_add_or_commit(phase="green", message="Implement MyFeature logic")
-6. run_quality_gates(files=["backend/dtos/my_feature.py"])
+5. git_add_or_commit(workflow_phase="tdd", sub_phase="green", message="Implement MyFeature logic")
+6. run_quality_gates(scope="files", files=["backend/dtos/my_feature.py"])
 ```
 
 ### Completing and Merging Work
 
 ```
-1. transition_phase(branch="feature/123-my-feature", to_phase="merge-prep")
+1. transition_phase(branch="feature/123-my-feature", to_phase="integration")
 2. git_push(set_upstream=True)
 3. create_pr(title="...", body="...", head="feature/123-my-feature", base="main")
 4. merge_pr(pr_number=42, merge_method="squash")

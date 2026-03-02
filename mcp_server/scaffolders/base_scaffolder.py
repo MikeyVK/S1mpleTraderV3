@@ -17,9 +17,10 @@ class BaseScaffolder(ABC):
 
     def __init__(self) -> None:
         """Initialize scaffolder."""
+        pass
 
     @abstractmethod
-    def validate(self, artifact_type: str, **kwargs: Any) -> bool:
+    def validate(self, artifact_type: str, **kwargs: Any) -> bool:  # noqa: ANN401
         """Validate scaffolding arguments before execution.
 
         Args:
@@ -34,7 +35,7 @@ class BaseScaffolder(ABC):
         """
 
     @abstractmethod
-    def scaffold(self, artifact_type: str, **kwargs: Any) -> Any:
+    def scaffold(self, artifact_type: str, **kwargs: Any) -> Any:  # noqa: ANN401
         """Execute scaffolding operation.
 
         Args:

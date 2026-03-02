@@ -22,7 +22,7 @@ class BaseTool(ABC):
     description: str
     args_model: type[BaseModel] | None = None
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:
+    def __init_subclass__(cls, **kwargs: Any) -> None:  # noqa: ANN401
         """Automatically wrap execute() with error handler on subclass creation."""
 
         super().__init_subclass__(**kwargs)
@@ -35,7 +35,7 @@ class BaseTool(ABC):
         cls.execute = tool_error_handler(original_execute)  # type: ignore[assignment]
 
     @abstractmethod
-    async def execute(self, params: Any) -> ToolResult:
+    async def execute(self, params: Any) -> ToolResult:  # noqa: ANN401
         """Execute the tool.
 
         Args:

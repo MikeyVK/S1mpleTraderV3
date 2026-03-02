@@ -1,6 +1,6 @@
 """Unit tests for issue_tools.py."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -49,18 +49,28 @@ async def test_create_issue_tool_forwards_milestone(mock_github_manager: MagicMo
     issue_mock = {"number": 7, "url": "http://github.com/issues/7", "title": "Milestone Issue"}
     mock_github_manager.create_issue.return_value = issue_mock
 
-    params = CreateIssueInput(
-        issue_type="feature",
-        title="Milestone Issue",
-        priority="medium",
-        scope="mcp-server",
-        body=IssueBody(problem="Needs milestone"),
-        milestone="v2.0",
-    )
-    await tool.execute(params)
+    # Build a MilestoneEntry stub and a config stub
+    milestone_entry = MagicMock()
+    milestone_entry.title = "v2.0"
+    milestone_entry.number = 2
+    mock_cfg = MagicMock()
+    mock_cfg.milestones = [milestone_entry]
+    mock_cfg.validate_milestone.return_value = True
+
+    with patch("mcp_server.tools.issue_tools.MilestoneConfig") as mock_cls:
+        mock_cls.from_file.return_value = mock_cfg
+        params = CreateIssueInput(
+            issue_type="feature",
+            title="Milestone Issue",
+            priority="medium",
+            scope="mcp-server",
+            body=IssueBody(problem="Needs milestone"),
+            milestone="v2.0",
+        )
+        await tool.execute(params)
 
     call_kwargs = mock_github_manager.create_issue.call_args.kwargs
-    assert call_kwargs["milestone"] == "v2.0"
+    assert call_kwargs["milestone"] == 2
 
 
 @pytest.mark.asyncio

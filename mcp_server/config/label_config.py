@@ -287,7 +287,7 @@ class LabelConfig(BaseModel):
         """Get all labels in a category."""
         return self._labels_by_category.get(category, [])
 
-    def sync_to_github(self, github_adapter: Any, dry_run: bool = False) -> dict[str, list[str]]:
+    def sync_to_github(self, github_adapter: Any, dry_run: bool = False) -> dict[str, list[str]]:  # noqa: ANN401
         """Sync labels to GitHub repository."""
         result: dict[str, list[str]] = {"created": [], "updated": [], "skipped": [], "errors": []}
 
