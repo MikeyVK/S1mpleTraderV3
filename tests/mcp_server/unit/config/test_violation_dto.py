@@ -57,6 +57,6 @@ class TestViolationDTODefaults:
         dto = ViolationDTO(file="f.py", message="m")
         assert dto.fixable is False
 
-    def test_severity_defaults_to_error(self) -> None:
+    def test_severity_defaults_to_none(self) -> None:
         dto = ViolationDTO(file="f.py", message="m")
-        assert dto.severity == "error"
+        assert dto.severity is None

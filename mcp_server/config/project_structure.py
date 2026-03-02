@@ -6,7 +6,7 @@ Cross-references: artifacts.yaml (validates allowed_artifact_types)
 """
 
 from pathlib import Path
-from typing import ClassVar, Optional, cast
+from typing import ClassVar, Optional
 
 import yaml
 from pydantic import BaseModel, Field
@@ -77,17 +77,13 @@ class ProjectStructureConfig(BaseModel):
         # Load YAML
         path = Path(config_path)
         if not path.exists():
-            raise ConfigError(
-                f"Config file not found: {config_path}", file_path=config_path
-            )
+            raise ConfigError(f"Config file not found: {config_path}", file_path=config_path)
 
         try:
             with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
-            raise ConfigError(
-                f"Invalid YAML in {config_path}: {e}", file_path=config_path
-            ) from e
+            raise ConfigError(f"Invalid YAML in {config_path}: {e}", file_path=config_path) from e
 
         # Validate structure
         if "directories" not in data:
@@ -125,7 +121,7 @@ class ProjectStructureConfig(BaseModel):
         artifact_config = ArtifactRegistryConfig.from_file()
         valid_types = set(artifact_config.list_type_ids())
 
-        directories = cast(dict[str, DirectoryPolicy], self.directories)
+        directories = self.directories
         for dir_path, policy in directories.items():
             invalid_types = set(policy.allowed_artifact_types) - valid_types
             if invalid_types:
@@ -146,13 +142,12 @@ class ProjectStructureConfig(BaseModel):
         Raises:
             ConfigError: If directory references unknown parent
         """
-        directories = cast(dict[str, DirectoryPolicy], self.directories)
+        directories = self.directories
         for dir_path, policy in directories.items():
             parent = policy.parent
             if parent is not None and directories.get(parent) is None:
                 raise ConfigError(
-                    f"Directory '{dir_path}' references unknown parent: "
-                    f"'{parent}'",
+                    f"Directory '{dir_path}' references unknown parent: '{parent}'",
                     file_path=".st3/project_structure.yaml",
                 )
 
@@ -170,7 +165,7 @@ class ProjectStructureConfig(BaseModel):
         Returns:
             DirectoryPolicy if found, None otherwise
         """
-        directories = cast(dict[str, DirectoryPolicy], self.directories)
+        directories = self.directories
         return directories.get(path)
 
     def get_all_directories(self) -> list[str]:
@@ -179,5 +174,5 @@ class ProjectStructureConfig(BaseModel):
         Returns:
             Sorted list of directory paths
         """
-        directories = cast(dict[str, DirectoryPolicy], self.directories)
+        directories = self.directories
         return sorted(directories.keys())

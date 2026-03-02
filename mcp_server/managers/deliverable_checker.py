@@ -52,7 +52,7 @@ class DeliverableChecker:
     # Public API
     # ------------------------------------------------------------------
 
-    def check(self, deliverable_id: str, validates: dict) -> None:
+    def check(self, deliverable_id: str, validates: dict[str, Any]) -> None:
         """Validate one deliverable spec.
 
         Args:
@@ -94,7 +94,7 @@ class DeliverableChecker:
         """
         return self._workspace_root / Path(relative_file)
 
-    def _check_file_exists(self, deliverable_id: str, spec: dict) -> None:
+    def _check_file_exists(self, deliverable_id: str, spec: dict[str, Any]) -> None:
         """Raise if file at spec['file'] does not exist.
 
         Args:
@@ -111,7 +111,7 @@ class DeliverableChecker:
                 f"(resolved: {path})"
             )
 
-    def _check_file_glob(self, deliverable_id: str, spec: dict) -> None:
+    def _check_file_glob(self, deliverable_id: str, spec: dict[str, Any]) -> None:
         """Raise if no files match spec['pattern'] inside spec['dir'].
 
         Args:
@@ -131,7 +131,7 @@ class DeliverableChecker:
                 f"in '{spec['dir']}' (resolved: {base})"
             )
 
-    def _check_contains_text(self, deliverable_id: str, spec: dict) -> None:
+    def _check_contains_text(self, deliverable_id: str, spec: dict[str, Any]) -> None:
         """Raise if file at spec['file'] does not contain spec['text'].
 
         Args:
@@ -154,7 +154,7 @@ class DeliverableChecker:
                 f"'{expected}' not found in '{spec['file']}'"
             )
 
-    def _check_absent_text(self, deliverable_id: str, spec: dict) -> None:
+    def _check_absent_text(self, deliverable_id: str, spec: dict[str, Any]) -> None:
         """Raise if file at spec['file'] CONTAINS spec['text'].
 
         Args:
@@ -177,7 +177,7 @@ class DeliverableChecker:
                 f"'{forbidden}' found in '{spec['file']}' (must be absent)"
             )
 
-    def _check_key_path(self, deliverable_id: str, spec: dict) -> None:
+    def _check_key_path(self, deliverable_id: str, spec: dict[str, Any]) -> None:
         """Raise if dot-notation path spec['path'] is missing from JSON/YAML.
 
         Args:

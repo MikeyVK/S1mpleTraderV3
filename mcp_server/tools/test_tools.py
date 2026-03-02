@@ -161,10 +161,6 @@ class RunTestsTool(BaseTool):
     # Default timeout in seconds (5 minutes for large test suites)
     DEFAULT_TIMEOUT = 300
 
-    @property
-    def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()  # type: ignore[union-attr]
-
     def _build_cmd(self, params: RunTestsInput) -> list[str]:
         """Build the pytest command from input parameters."""
         cmd = [sys.executable, "-m", "pytest"]

@@ -20,6 +20,7 @@ Quality Requirements:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -42,13 +43,13 @@ class WorkphasesConfig:
             yaml.YAMLError: If the file is not valid YAML.
         """
         with path.open(encoding="utf-8") as fh:
-            self._data: dict = yaml.safe_load(fh) or {}
+            self._data: dict[str, Any] = yaml.safe_load(fh) or {}
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def get_exit_requires(self, phase: str) -> list[dict]:
+    def get_exit_requires(self, phase: str) -> list[dict[str, Any]]:
         """Return the exit_requires list for *phase*, or [] if absent.
 
         Args:
@@ -59,7 +60,7 @@ class WorkphasesConfig:
         """
         return self._get_phase_field(phase, "exit_requires")
 
-    def get_entry_expects(self, phase: str) -> list[dict]:
+    def get_entry_expects(self, phase: str) -> list[dict[str, Any]]:
         """Return the entry_expects list for *phase*, or [] if absent.
 
         Args:
@@ -74,7 +75,7 @@ class WorkphasesConfig:
     # Private helpers
     # ------------------------------------------------------------------
 
-    def _get_phase_field(self, phase: str, field: str) -> list[dict]:
+    def _get_phase_field(self, phase: str, field: str) -> list[dict[str, Any]]:
         """Return *field* from the *phase* block, or [] when absent.
 
         Args:
@@ -84,7 +85,7 @@ class WorkphasesConfig:
         Returns:
             Parsed list of dicts; empty list for absent/null values.
         """
-        phases: dict = self._data.get("phases", {})
-        phase_block: dict = phases.get(phase, {})
+        phases: dict[str, Any] = self._data.get("phases", {})
+        phase_block: dict[str, Any] = phases.get(phase, {})
         result = phase_block.get(field, [])
         return result if isinstance(result, list) else []

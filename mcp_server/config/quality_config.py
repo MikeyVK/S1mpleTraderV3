@@ -12,9 +12,10 @@ Quality Requirements:
 
 from __future__ import annotations
 
+import fnmatch
 import re
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Literal
 
 import yaml
@@ -26,7 +27,7 @@ class ViolationDTO:
     """Uniform violation contract returned by every gate parser.
 
     ``file`` and ``message`` are always present.  All other fields
-    are optional and default to ``None`` / ``False`` / ``"error"``
+    are optional and default to ``None`` / ``False`` / ``None``
     so callers can construct minimal stubs for file-level violations.
     """
 
@@ -36,7 +37,7 @@ class ViolationDTO:
     col: int | None = None
     rule: str | None = None
     fixable: bool = False
-    severity: str = "error"
+    severity: str | None = None
 
 
 class JsonViolationsParsing(BaseModel):
@@ -188,13 +189,13 @@ class GateScope(BaseModel):
 
             # Include matching
             if include_patterns and not any(
-                PurePosixPath(posix_path).full_match(pattern) for pattern in include_patterns
+                fnmatch.fnmatch(posix_path, pattern) for pattern in include_patterns
             ):
                 continue  # Skip if not in include list
 
             # Exclude matching
             if exclude_patterns and any(
-                PurePosixPath(posix_path).full_match(pattern) for pattern in exclude_patterns
+                fnmatch.fnmatch(posix_path, pattern) for pattern in exclude_patterns
             ):
                 continue  # Skip if in exclude list
             filtered.append(file_path)

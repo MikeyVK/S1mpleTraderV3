@@ -6,7 +6,7 @@ Pattern: Singleton with ClassVar (matches GitConfig pattern)
 """
 
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import Any, ClassVar, Optional
 
 import yaml
 from pydantic import BaseModel
@@ -83,7 +83,7 @@ class WorkflowConfig(BaseModel):
         raw = yaml.safe_load(resolved.read_text(encoding="utf-8"))
 
         # workflows.yaml stores entries as dicts — normalise each into WorkflowEntry
-        workflows_raw: dict = raw.get("workflows", {})
+        workflows_raw: dict[str, Any] = raw.get("workflows", {})
         workflows = {k: WorkflowEntry(**v) for k, v in workflows_raw.items()}
 
         instance = cls.model_validate(

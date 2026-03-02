@@ -13,7 +13,7 @@ import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from mcp_server.config.quality_config import (
     JsonViolationsParsing,
@@ -137,7 +137,7 @@ class QAManager:
             )
             return results
 
-        gate_catalog = cast(dict[str, QualityGate], quality_config.gates)
+        gate_catalog = quality_config.gates
 
         for idx, gate_id in enumerate(quality_config.active_gates, start=1):
             gate = gate_catalog.get(gate_id)
@@ -910,6 +910,9 @@ class QAManager:
             }
 
             if gate.capabilities.parsing_strategy == "json_violations":
+                assert gate.capabilities.json_violations is not None, (
+                    "json_violations capabilities required when parsing_strategy='json_violations'"
+                )
                 raw: list[dict[str, Any]] | dict[str, Any] = json.loads(proc.stdout or "[]")
                 violations = self._parse_json_violations(
                     self._extract_violations_array(raw, gate.capabilities.json_violations),
@@ -933,6 +936,9 @@ class QAManager:
                 )
 
             elif gate.capabilities.parsing_strategy == "text_violations":
+                assert gate.capabilities.text_violations is not None, (
+                    "text_violations capabilities required when parsing_strategy='text_violations'"
+                )
                 text_violations = self._parse_text_violations(
                     proc.stdout or "",
                     gate.capabilities.text_violations,
@@ -1074,10 +1080,14 @@ class QAManager:
             raw_col_num = self._resolve_text_field("col", groups, safe_groups, parsing.defaults)
             result.append(
                 ViolationDTO(
-                    file=self._resolve_text_field("file", groups, safe_groups, parsing.defaults),
+                    file=(
+                        self._resolve_text_field("file", groups, safe_groups, parsing.defaults)
+                        or ""
+                    ),
                     message=self._resolve_text_field(
                         "message", groups, safe_groups, parsing.defaults
-                    ),
+                    )
+                    or "",
                     line=int(raw_line_num) if raw_line_num is not None else None,
                     col=int(raw_col_num) if raw_col_num is not None else None,
                     rule=self._resolve_text_field("rule", groups, safe_groups, parsing.defaults),
@@ -1212,13 +1222,13 @@ class QAManager:
                 raw_msg = raw_msg.replace("\u00a0", " ").replace("\n", " — ").strip()
             result.append(
                 ViolationDTO(
-                    file=resolve(item, fmap["file"]) if "file" in fmap else None,
-                    message=raw_msg,
+                    file=(resolve(item, fmap["file"]) or "") if "file" in fmap else "",
+                    message=raw_msg or "",
                     line=line,
                     col=resolve(item, fmap["col"]) if "col" in fmap else None,
                     rule=resolve(item, fmap["rule"]) if "rule" in fmap else None,
                     fixable=bool(fixable_val),
-                    severity=resolve(item, fmap["severity"]) if "severity" in fmap else None,
+                    severity=(resolve(item, fmap["severity"]) if "severity" in fmap else None),
                 )
             )
         return result
