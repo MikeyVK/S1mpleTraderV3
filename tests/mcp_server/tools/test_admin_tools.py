@@ -4,12 +4,11 @@ import json
 import os
 import time
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
 
 
-def test_restart_marker_written_with_correct_schema(monkeypatch):
+def test_restart_marker_written_with_correct_schema(tmp_path, monkeypatch):
     """RED: Test that restart_server writes marker file with correct schema.
 
     Verifies:
@@ -20,6 +19,10 @@ def test_restart_marker_written_with_correct_schema(monkeypatch):
     import asyncio
 
     from mcp_server.tools.admin_tools import RestartServerInput, RestartServerTool
+
+    # Isolate marker file per worker (avoids xdist race condition)
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr("mcp_server.tools.admin_tools._get_restart_marker_path", lambda: marker_path)
 
     # Mock sys.exit to capture exit code
     exit_calls = []
@@ -33,9 +36,6 @@ def test_restart_marker_written_with_correct_schema(monkeypatch):
 
     monkeypatch.setattr("sys.exit", mock_exit)
     monkeypatch.setattr("asyncio.sleep", mock_sleep)
-
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.unlink(missing_ok=True)  # Clean state
 
     # Execute via async wrapper to let background task run
     tool = RestartServerTool()
@@ -79,11 +79,10 @@ def test_restart_marker_written_with_correct_schema(monkeypatch):
     assert marker_data["pid"] == os.getpid()
     assert marker_data["timestamp"] > 0
 
-    # Cleanup
-    marker_path.unlink(missing_ok=True)
+    # Cleanup handled by tmp_path fixture
 
 
-def test_restart_events_logged_to_audit_trail(monkeypatch):
+def test_restart_events_logged_to_audit_trail(tmp_path, monkeypatch):
     """RED: Test that restart functionality works and exits with code 42.
 
     Verifies:
@@ -94,6 +93,10 @@ def test_restart_events_logged_to_audit_trail(monkeypatch):
     import asyncio
 
     from mcp_server.tools.admin_tools import RestartServerInput, RestartServerTool
+
+    # Isolate marker file per worker (avoids xdist race condition)
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr("mcp_server.tools.admin_tools._get_restart_marker_path", lambda: marker_path)
 
     # Mock sys.exit to capture exit code
     exit_calls = []
@@ -107,9 +110,6 @@ def test_restart_events_logged_to_audit_trail(monkeypatch):
 
     monkeypatch.setattr("sys.exit", mock_exit)
     monkeypatch.setattr("asyncio.sleep", mock_sleep)
-
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.unlink(missing_ok=True)  # Clean state
 
     # Execute via async wrapper to let background task run
     tool = RestartServerTool()
@@ -135,11 +135,10 @@ def test_restart_events_logged_to_audit_trail(monkeypatch):
     # Verify marker file was written
     assert marker_path.exists(), "Restart marker file not created"
 
-    # Cleanup
-    marker_path.unlink(missing_ok=True)
+    # Cleanup handled by tmp_path fixture
 
 
-def test_verify_server_restarted_with_valid_marker():
+def test_verify_server_restarted_with_valid_marker(tmp_path, monkeypatch):
     """RED: Test verify_server_restarted with valid marker.
 
     Verifies:
@@ -149,10 +148,12 @@ def test_verify_server_restarted_with_valid_marker():
     """
     from mcp_server.tools.admin_tools import verify_server_restarted
 
+    # Isolate marker file per worker (avoids xdist race condition)
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr("mcp_server.tools.admin_tools._get_restart_marker_path", lambda: marker_path)
+
     # Create marker from "past"
     past_time = time.time() - 10  # 10 seconds ago
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.parent.mkdir(exist_ok=True)
     marker_data = {
         "timestamp": past_time + 5,  # 5 seconds ago (after past_time)
         "pid": 99999,  # Different PID
@@ -171,11 +172,10 @@ def test_verify_server_restarted_with_valid_marker():
     assert "current_pid" in result
     assert "time_since_restart" in result
 
-    # Cleanup
-    marker_path.unlink(missing_ok=True)
+    # Cleanup handled by tmp_path fixture
 
 
-def test_verify_server_restarted_no_marker():
+def test_verify_server_restarted_no_marker(tmp_path, monkeypatch):
     """RED: Test verify_server_restarted with missing marker.
 
     Verifies:
@@ -184,8 +184,10 @@ def test_verify_server_restarted_no_marker():
     """
     from mcp_server.tools.admin_tools import verify_server_restarted
 
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.unlink(missing_ok=True)  # Ensure no marker
+    # Isolate marker file per worker (avoids xdist race condition)
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr("mcp_server.tools.admin_tools._get_restart_marker_path", lambda: marker_path)
+    # marker_path intentionally absent — tmp_path is empty
 
     result = verify_server_restarted(since_timestamp=time.time())
 
@@ -194,7 +196,7 @@ def test_verify_server_restarted_no_marker():
     assert "not found" in result["error"].lower()
 
 
-def test_verify_server_restarted_old_marker():
+def test_verify_server_restarted_old_marker(tmp_path, monkeypatch):
     """RED: Test verify_server_restarted with outdated marker.
 
     Verifies:
@@ -202,10 +204,12 @@ def test_verify_server_restarted_old_marker():
     """
     from mcp_server.tools.admin_tools import verify_server_restarted
 
+    # Isolate marker file per worker (avoids xdist race condition)
+    marker_path = tmp_path / ".restart_marker"
+    monkeypatch.setattr("mcp_server.tools.admin_tools._get_restart_marker_path", lambda: marker_path)
+
     # Create marker from way in the past
     old_time = time.time() - 100  # 100 seconds ago
-    marker_path = Path(".st3/.restart_marker")
-    marker_path.parent.mkdir(exist_ok=True)
     marker_data = {
         "timestamp": old_time,
         "pid": 99999,
@@ -220,8 +224,7 @@ def test_verify_server_restarted_old_marker():
 
     assert result["restarted"] is False
 
-    # Cleanup
-    marker_path.unlink(missing_ok=True)
+    # Cleanup handled by tmp_path fixture
 
 
 def test_restart_uses_sys_exit_42_not_os_execv(tmp_path, monkeypatch):

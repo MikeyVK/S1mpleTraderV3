@@ -167,7 +167,7 @@ class RunTestsTool(BaseTool):
         if params.path is not None:
             cmd.extend(params.path.split())
         # scope="full" → no path args: pytest runs entire configured suite
-        cmd.append("--tb=short")
+        cmd.append("--tb=long")
         if params.last_failed_only:
             cmd.append("--lf")
         if params.markers:
@@ -200,6 +200,9 @@ class RunTestsTool(BaseTool):
             s = parsed["summary"]
             fallback = f"{s.get('passed', 0)} passed, {s.get('failed', 0)} failed"
             summary_line = parsed.get("summary_line") or fallback
+            parsed["raw_output"] = stdout
+            if stderr:
+                parsed["stderr"] = stderr
             return ToolResult(
                 content=[
                     {"type": "text", "text": summary_line},
