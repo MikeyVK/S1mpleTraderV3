@@ -200,10 +200,6 @@ class RunTestsTool(BaseTool):
             s = parsed["summary"]
             fallback = f"{s.get('passed', 0)} passed, {s.get('failed', 0)} failed"
             summary_line = parsed.get("summary_line") or fallback
-            if s.get("failed", 0) > 0:
-                parsed["raw_output"] = stdout
-                if stderr:
-                    parsed["stderr"] = stderr
             return ToolResult(
                 content=[
                     {"type": "text", "text": summary_line},
