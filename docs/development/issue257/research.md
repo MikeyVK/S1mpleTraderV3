@@ -44,19 +44,85 @@ Analysis of the phase state machine (issue #253 prep session, 2026-03-03). The c
 
 ## Findings
 
-1. Transition ordering: purely config (workflows.yaml list). Swapping two entries is sufficient for ordering enforcement.
-2. Exit hooks: fired by phase name, not position. They survive a swap intact.
-3. planning_deliverables.design sub-key: declared in project_manager._known_phase_keys and _phase_entry_keys; validated in on_exit_planning_phase() loop and on_exit_design_phase(). After the reorder, design no longer needs to be a sub-key of planning_deliverables — it has its own phase.
-4. research.md exit gate: currently only checks file existence via file_glob. Adding a required '## Expected Results' section (with measurable KPIs) would create a semantic bridge from research to design.
-5. design exit gate: currently absent. A file_glob gate on a design document would create a hard gate before planning can start.
+1. **Transition ordering** — purely config-driven (`workflows.yaml` list). Swapping two entries is sufficient for ordering enforcement. `WorkflowConfig.validate_transition()` uses `phases.index()` — no hardcoded phase names.
+
+2. **Exit hooks** — fired by phase name, not position. The `if from_phase == "planning":` chain in `transition()` survives a swap intact semantically. However, see finding #6 for the structural problem.
+
+3. **`planning_deliverables.design` sub-key** — declared in `project_manager._known_phase_keys` and `_phase_entry_keys`; validated in `on_exit_planning_phase()` loop and `on_exit_design_phase()`. After the reorder, design no longer needs to be a sub-key of planning_deliverables. `on_exit_design_phase()` can be simplified: it currently reads `planning_deliverables.design` which is the backwards dependency we are removing.
+
+4. **research.md exit gate** — currently only checks file existence via `file_glob`. Adding a heading-presence check for `## Expected Results` would create a semantic bridge from research to design. Machine-verifiable via regex on the file content.
+
+5. **design exit gate** — currently absent. A `file_glob` gate on a design document (e.g., `docs/development/issue{issue_number}/design.md`) would create a hard gate before planning can start.
+
+6. **OCP violation in `transition()`** — the `if from_phase == "planning": ... if from_phase == "research": ...` if-chain is closed to extension: adding a new phase requires modifying this method. Correct pattern: registry dict `{phase_name: hook_callable}` populated at class level.
+
+7. **SRP violation: God Class** — `PhaseStateEngine` (869 lines) has at least 5 distinct responsibilities: (a) state persistence (atomic write), (b) transition validation + hook dispatch, (c) exit/entry hook implementations (~150 lines, 6 methods), (d) state reconstruction from git (Mode 2), (e) TDD cycle lifecycle management. Per CODE_STYLE anti-patterns: "God classes — classes with too many responsibilities".
+
+8. **DIP violation** — `DeliverableChecker` is directly instantiated in 4 hook methods (`checker = DeliverableChecker(workspace_root=self.workspace_root)`), coupling the hook logic to a concrete class. Should be injected or provided via factory.
+
+9. **Duplication** — `on_exit_validation_phase()`, `on_exit_documentation_phase()`, and `on_exit_design_phase()` are structurally identical: read `planning_deliverables.<phase>.deliverables`, iterate, call `checker.check()`. After removing the `design` sub-key, validation and documentation remain as candidates for a shared `_run_phase_deliverable_gate(phase_key)` helper.
+
+10. **f-string logging** — `logger.info(f"...")` used throughout. CODE_STYLE and Python logging best practices require `logger.info("msg %s", var)` for lazy evaluation.
 
 ## Open Questions
 
-- ❓ Should research.md enforce '## Expected Results' via heading-presence check or via a separate expected_results.yaml file?
-- ❓ What is the minimal schema for expected_results that makes KPIs machine-verifiable in the validation phase?
-- ❓ Should on_exit_design_phase() gain a new hard gate (file_glob on design doc), or is the existing optional deliverables check sufficient?
-- ❓ What happens to existing branches that have planning_deliverables.design already saved? Migration strategy needed?
-- ❓ Should the 'refactor' workflow (which has no design phase) remain unchanged, or also gain an expected_results gate on research?
+- ✅ Should research.md enforce `## Expected Results` via heading-presence check or via a separate `expected_results.yaml` file? → **Heading-presence check in the existing research.md file** (regex on file content). A separate YAML file is over-engineering for now; KPI schema can be formalized in a future issue if machine-verifiability in the validation phase becomes a requirement.
+- ✅ Should `on_exit_design_phase()` gain a new hard gate (file_glob on design doc), or is the existing optional deliverables check sufficient? → **file_glob gate** on `docs/development/issue{issue_number}/design.md`. The optional deliverables check from `planning_deliverables.design` is being removed entirely.
+- ❓ What is the minimal schema for expected_results that makes KPIs machine-verifiable in the validation phase? → Deferred to future issue. For now: heading presence only.
+- ❓ What happens to existing branches that have `planning_deliverables.design` already saved? Are there any such branches? → Needs investigation. Likely none in practice (no current active branches); forward-only: new branches get new schema.
+- ❓ Should the `refactor` workflow (which has no design phase) remain unchanged, or also gain an expected_results gate on research? → **Unchanged for now**. The `refactor` workflow is intentionally design-free; adding an expected_results gate would be a separate improvement.
+
+---
+
+## Expected Results
+
+> Measurable outcomes that define "done" for this issue. Used as input for design and validation.
+
+### KPI 1 — Phase order correct in all workflows
+- `feature` workflow phases list: `design` appears before `planning` (index of `design` < index of `planning`)
+- `bug` workflow phases list: same constraint
+- `refactor` workflow: unchanged (no design phase)
+- `hotfix` workflow: unchanged (no design phase)
+- **Verification:** `grep -A10 "feature:" .st3/workflows.yaml` shows `design` before `planning`
+
+### KPI 2 — workphases.yaml gates correctly configured
+- `research.exit_requires`: contains a `heading_present` check for `## Expected Results` in the research file
+- `design.exit_requires`: contains a `file_glob` check for `docs/development/issue{issue_number}/design.md`
+- `planning.exit_requires`: unchanged — still requires `planning_deliverables`
+- **Verification:** `WorkphasesConfig.get_exit_requires("research")` returns entry with type `heading_present`
+
+### KPI 3 — `planning_deliverables.design` sub-key removed
+- `ProjectManager._known_phase_keys` does **not** contain `"design"`
+- `ProjectManager._phase_entry_keys` does **not** contain `"design"`
+- `on_exit_planning_phase()` loop iterates only `("validation", "documentation")`
+- `on_exit_design_phase()` no longer reads `planning_deliverables.design`; uses file_glob gate instead
+- **Verification:** passing any `planning_deliverables` dict with a `"design"` key raises `ValueError: Unknown key 'design'`
+
+### KPI 4 — OCP: exit hook dispatch uses registry, not if-chain
+- `transition()` method contains no `if from_phase == "..."` comparisons
+- A `_exit_hooks: dict[str, Callable]` registry (or equivalent) maps phase names to hook callables
+- Adding a new phase exit hook requires only adding one entry to the registry (no method modification)
+- **Verification:** `grep "if from_phase" mcp_server/managers/phase_state_engine.py` returns 0 matches
+
+### KPI 5 — DIP: `DeliverableChecker` not directly instantiated in hook methods
+- `DeliverableChecker` instantiated once (constructor injection or lazy property), not 4× in hook bodies
+- **Verification:** `grep "DeliverableChecker(workspace" mcp_server/managers/phase_state_engine.py` returns ≤1 match
+
+### KPI 6 — Duplication eliminated: shared deliverable gate helper
+- `on_exit_validation_phase()` and `on_exit_documentation_phase()` delegate to a shared private method
+- No copy-paste of the `plan.get(...).get("deliverables", [])` + checker loop
+- **Verification:** the two methods each contain ≤3 lines of own logic
+
+### KPI 7 — f-string logging eliminated
+- No `logger.info(f"...")` or `logger.warning(f"...")` in `phase_state_engine.py`
+- **Verification:** `grep "logger\.\w*(f\"" mcp_server/managers/phase_state_engine.py` returns 0 matches
+
+### KPI 8 — No regression
+- All tests passing: `pytest` exits with code 0
+- Minimum 2107 tests collected (no tests deleted)
+
+
+---
 
 
 ## Related Documentation
