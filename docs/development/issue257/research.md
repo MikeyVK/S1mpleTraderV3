@@ -64,13 +64,23 @@ Analysis of the phase state machine (issue #253 prep session, 2026-03-03). The c
 
 10. **f-string logging** — `logger.info(f"...")` used throughout. CODE_STYLE and Python logging best practices require `logger.info("msg %s", var)` for lazy evaluation.
 
+11. **Issue boundary — scope of #257 vs. follow-up issues:**
+
+    | Scope | Issue | Epic |
+    |---|---|---|
+    | PSE OCP registry + `heading_present` gate (unconditional `## Expected Results` on all research-bearing workflows) + phase reorder + design gate + planning_deliverables.design removal + SRP/DIP/DRY/logging fixes | **#257** (this issue) | — |
+    | `sections.yaml` SSOT + `workflows.yaml phase_contracts` + `WorkflowConfig`/`WorkphasesConfig` models + PSE `content_contract` gate handler — full per-workflow content enforcement | **#258** | Epic #49 |
+    | `ArtifactManager` sections injection from workflow contract + `research.md.jinja2` (and other phase doc templates) refactored to iterate injected sections list — workflow-aware scaffold generation | **#259** | Epic #73 |
+
+    **Rationale:** #257 delivers the OCP registry infrastructure that makes `content_contract` a pluggable gate type — without it, #258 cannot land. #259 depends on `sections.yaml` from #258. The boundary is strict: no `sections.yaml`, no `phase_contracts`, no template changes in this issue.
+
 ## Open Questions
 
 - ✅ Should research.md enforce `## Expected Results` via heading-presence check or via a separate `expected_results.yaml` file? → **Heading-presence check in the existing research.md file** (regex on file content). A separate YAML file is over-engineering for now; KPI schema can be formalized in a future issue if machine-verifiability in the validation phase becomes a requirement.
 - ✅ Should `on_exit_design_phase()` gain a new hard gate (file_glob on design doc), or is the existing optional deliverables check sufficient? → **file_glob gate** on `docs/development/issue{issue_number}/design.md`. The optional deliverables check from `planning_deliverables.design` is being removed entirely.
 - ❓ What is the minimal schema for expected_results that makes KPIs machine-verifiable in the validation phase? → Deferred to future issue. For now: heading presence only.
 - ❓ What happens to existing branches that have `planning_deliverables.design` already saved? Are there any such branches? → Needs investigation. Likely none in practice (no current active branches); forward-only: new branches get new schema.
-- ❓ Should the `refactor` workflow (which has no design phase) remain unchanged, or also gain an expected_results gate on research? → **Unchanged for now**. The `refactor` workflow is intentionally design-free; adding an expected_results gate would be a separate improvement.
+- ❓ Should the `refactor` workflow (which has no design phase) remain unchanged, or also gain an expected_results gate on research? → **Gets the gate unconditionally.** All workflows with a research phase (feature, bug, refactor, epic) require `## Expected Results`. The absence of a design phase makes this gate *more* important for refactor, not less — it is the only structured bridge from research to planning. `hotfix` and `docs` have no research phase — the gate is never triggered for them.
 
 ---
 
@@ -127,18 +137,24 @@ Analysis of the phase state machine (issue #253 prep session, 2026-03-03). The c
 
 ## Related Documentation
 - **[docs/development/issue253/research.md][related-1]**
-- **[mcp_server/managers/phase_state_engine.py][related-2]**
-- **[mcp_server/managers/project_manager.py][related-3]**
-- **[.st3/workflows.yaml][related-4]**
-- **[.st3/workphases.yaml][related-5]**
+- **[docs/development/issue257/research_sections_config_architecture.md][related-2]**
+- **[mcp_server/managers/phase_state_engine.py][related-3]**
+- **[mcp_server/managers/project_manager.py][related-4]**
+- **[.st3/workflows.yaml][related-5]**
+- **[.st3/workphases.yaml][related-6]**
+- **[GitHub Issue #258 — sections.yaml + phase_contracts + PSE content_contract gate (Epic #49)][related-7]**
+- **[GitHub Issue #259 — ArtifactManager sections injection + workflow-aware template rendering (Epic #73)][related-8]**
 
 <!-- Link definitions -->
 
 [related-1]: docs/development/issue253/research.md
-[related-2]: mcp_server/managers/phase_state_engine.py
-[related-3]: mcp_server/managers/project_manager.py
-[related-4]: .st3/workflows.yaml
-[related-5]: .st3/workphases.yaml
+[related-2]: docs/development/issue257/research_sections_config_architecture.md
+[related-3]: mcp_server/managers/phase_state_engine.py
+[related-4]: mcp_server/managers/project_manager.py
+[related-5]: .st3/workflows.yaml
+[related-6]: .st3/workphases.yaml
+[related-7]: https://github.com/MikeyVK/S1mpleTraderV3/issues/258
+[related-8]: https://github.com/MikeyVK/S1mpleTraderV3/issues/259
 
 ---
 

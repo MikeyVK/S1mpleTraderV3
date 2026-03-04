@@ -127,8 +127,8 @@ At scaffold time: load state.json → workflow type → workflows.yaml phase_con
 
 **F8 — Issue boundary:**
 Issue #257: PSE OCP registry (gate type extensibility infrastructure) + heading_present gate as first concrete type (## Expected Results on research, unconditional). No sections.yaml, no phase_contracts.
-New issue under epic #49: sections.yaml config file + WorkflowConfig.phase_contracts model + WorkphasesConfig content_contract gate type + PSE content_contract handler. Full enforcement.
-New issue under epic #73: ArtifactManager sections injection from workflow contract + research.md.jinja2 refactor to iterate sections list. Template/scaffold integration.
+Issue **#258** (Epic #49): `sections.yaml` config file + `WorkflowConfig.phase_contracts` model + `WorkphasesConfig content_contract` gate type + PSE `content_contract` handler. Full per-workflow enforcement. Depends on #257 (OCP registry).
+Issue **#259** (Epic #73): `ArtifactManager` sections injection from workflow contract + `research.md.jinja2` (and other phase doc templates) refactored to iterate injected sections list. Workflow-aware scaffold generation. Depends on #258 (`sections.yaml` must exist).
 
 ## Open Questions
 
@@ -147,6 +147,8 @@ New issue under epic #73: ArtifactManager sections injection from workflow contr
 - **[mcp_server/managers/artifact_manager.py][related-6]**
 - **[mcp_server/schemas/contexts/research.py][related-7]**
 - **[mcp_server/scaffolding/templates/concrete/research.md.jinja2][related-8]**
+- **[GitHub Issue #258 — sections.yaml + phase_contracts + PSE content_contract gate (Epic #49)][related-9]**
+- **[GitHub Issue #259 — ArtifactManager sections injection + workflow-aware template rendering (Epic #73)][related-10]**
 
 <!-- Link definitions -->
 
@@ -158,6 +160,8 @@ New issue under epic #73: ArtifactManager sections injection from workflow contr
 [related-6]: mcp_server/managers/artifact_manager.py
 [related-7]: mcp_server/schemas/contexts/research.py
 [related-8]: mcp_server/scaffolding/templates/concrete/research.md.jinja2
+[related-9]: https://github.com/MikeyVK/S1mpleTraderV3/issues/258
+[related-10]: https://github.com/MikeyVK/S1mpleTraderV3/issues/259
 
 ---
 
