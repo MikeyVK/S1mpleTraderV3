@@ -653,15 +653,23 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **A1.** Wat is de minimale set verplichte sleutels per fase-entry? Zijn `subphases`, `commit_type_map` en `cycle_based` altijd aanwezig, of optioneel? Hoe valideert de loader ontbrekende velden?
 
+> **✅ Beslissing (11-03-2026):** Optioneel met defaults: `subphases: []`, `commit_type_map: {}`, `cycle_based: false`. De loader vult ontbrekende velden aan met deze defaults zonder error.
+
 **A2.** Hoe worden meervoudige check-types per deliverable gemodelleerd? (`file_exists` + `contains_text` op hetzelfde bestand — één `validates`-spec of geneste lijst?)
 
 **A3.** Is `cycle_based` een boolean, of een object dat ook `max_cycles` en `cycle_deliverable_schema` bevat? Als max open is, mist de resolver een rangecheck.
+
+> **✅ Beslissing (11-03-2026):** `cycle_based` is een boolean. `max_cycles` is een planning-artefact dat in `deliverables.json` opgeslagen wordt, niet in config. Geen rangecheck op config-niveau.
 
 **A4.** Hoe wordt `commit_type_map` geladen door `ScopeEncoder`? Laadt `ScopeEncoder` zelf `phase_deliverables.yaml`, of krijgt hij de map geïnjecteerd? (DIP-risico als hij zelf laadt)
 
 **A5.** De huidige `workphases.yaml` heeft `exit_requires` per fase. Wordt dat bestand samengevoegd met `phase_deliverables.yaml`, of blijven ze bestaan als twee afzonderlijke verantwoordelijkheden? (Overlap-risico: twee configs die hetzelfde beschrijven)
 
+> **✅ Beslissing (11-03-2026):** Twee bestanden, twee verantwoordelijkheden. `workphases.yaml` = puur fase-metadata (display_name, description, subphases whitelist). `phase_contracts.yaml` (hernoemd van `phase_deliverables.yaml`) = workflow×fase contracten (exit_requires, commit_type_map, cycle_based per workflow per fase). Geen overlap.
+
 **A6.** Hoe worden issue-specifieke additieve deliverables (`deliverables.json`) samengevoegd met de config-laag? Volgorde: config eerst, issue-additief daarna — maar wat als een issue-additief een config-entry wil *overschrijven*? Is dat toegestaan?
+
+> **✅ Beslissing (11-03-2026):** Issue-specifiek mag config overschrijven. `PhaseContractResolver` merge-volgorde: config = default, `deliverables.json` = override. Additieve én overschrijvende overrides toegestaan.
 
 ---
 
@@ -695,6 +703,8 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **D1.** Exacte signatuur: `resolve(workflow_name: str, phase: str, issue_number: int, cycle_number: int | None) -> list[CheckSpec]`? Of wordt `cycle_number` impliciet uit `state.json` gelezen via `StateRepository`?
 
+> **✅ Beslissing (11-03-2026):** DIP — `cycle_number` als expliciete parameter (zelfde patroon als J1). Signatuur: `resolve(workflow_name: str, phase: str, cycle_number: int | None) -> list[CheckSpec]`. Tool-laag leest `cycle_number` uit `StateRepository` en geeft het expliciet door. `PhaseContractResolver` heeft geen dependency op `StateRepository`.
+
 **D2.** Wat is `CheckSpec`? Een TypedDict, dataclass, of Pydantic model? Welke velden zijn verplicht, welke optioneel? Dit bepaalt de interface met `DeliverableChecker`.
 
 **D3.** Mag een fase géén deliverables hebben (lege lijst teruggeven)? Of is een lege resolver-output een configuratiefout die een warning/error verdient?
@@ -708,6 +718,8 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 ### E — `StateRepository` interface (F15, F20)
 
 **E1.** Moet `StateRepository` een abstracte base class zijn (voor testability/mocking), of een concrete klasse die direct geïnjecteerd wordt?
+
+> **✅ Beslissing (11-03-2026):** ABC (`abc.ABC` + `@abstractmethod`). Productie: `FileStateRepository(StateRepository)`. Tests: `InMemoryStateRepository(StateRepository)`. Injectie via constructor. Python gooit `TypeError` bij instantiatie van subklasse die niet alle abstracte methoden implementeert — dat is de vangst.
 
 **E2.** Levert `StateRepository.read_state()` een getypte dataclass terug (`BranchState`) of een plain `dict`? Typed is beter voor Pyright strict, maar vereist migratie-aandacht bij schema-uitbreidingen.
 
@@ -743,6 +755,8 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **H1.** Worden bestaande `state.json` bestanden met `current_tdd_cycle` automatisch gemigreerd, of wordt backward-compat leescode toegevoegd? Hoeveel actieve branches zijn er per vandaag die geraakt worden?
 
+> **✅ Beslissing (11-03-2026):** Handmatige fix indien nodig. Consistent met BC-2. Geen automatische migratie bij opstart, geen backward-compat leescode.
+
 **H2.** Wordt `tdd` als fase-naam volledig verwijderd, of blijft hij als alias in `workphases.yaml` voor backward-compat? Als alias: hoe lang, en wie beheert de deprecation?
 
 **H3.** Labels in GitHub (`phase:tdd`, `phase:red`, `phase:green`, `phase:refactor`) zijn extern en niet zomaar hernoembaar. Worden die labels behouden naast de nieuwe (`phase:implementation`, `phase:red` blijft als sub-label), of is er een label-migratie nodig?
@@ -772,6 +786,8 @@ Het hernoemen van `tdd` naar `implementation` en het verplaatsen van de `commit_
 | **A — Tool-laag** | `GitCommitTool.execute()` leest `phase_deliverables.yaml` + `workflow_name` uit `state.json`, bepaalt `commit_type`, geeft het als expliciete override door aan `commit_with_scope()` | `GitManager` blijft puur; commit_type altijd expliciet | Tool-laag heeft config-kennis; `workflow_name` moet beschikbaar zijn in state |
 | **B — Manager-laag** | `commit_with_scope()` krijgt `workflow_name` als extra parameter en resolveert via `PhaseDeliverableResolver` | Enkelvoudig resolverpad; manager kent zijn eigen context | `GitManager` koppelt aan `PhaseDeliverableResolver`; API-uitbreiding |
 | **C — ScopeEncoder** | `ScopeEncoder` krijgt `phase_deliverables_path` + `workflow_name` en levert ook `commit_type` terug | Één class weet alles over de commit | ScopeEncoder krijgt een tweede verantwoordelijkheid (validatie + type-lookup) |
+
+> **✅ Beslissing (11-03-2026):** Optie A — tool-laag is composition root. `GitManager.commit_with_scope()` ontvangt `commit_type` als expliciete parameter. `PhaseContractResolver` zit in de tool-laag. `GitManager` blijft puur en heeft geen dependency op `PhaseContractResolver`.
 
 **J2.** Hoe weet de tool-laag de `workflow_name`? Na F13 (`projects.json` abolishment) staat `workflow_name` in `state.json`. Bij auto-detectie van `workflow_phase` leest `execute()` al uit `state.json` via `PhaseStateEngine.get_current_phase()`. Mag diezelfde aanroep ook `workflow_name` retourneren, of vereist dat een aparte `StateRepository.read_state()` aanroep?
 
@@ -807,7 +823,11 @@ De flag-day aanpak (F24) raakt een significant deel van de testsuite. De volgend
 
 **K2.** Wordt de testsuite voor de geraakte bestanden volledig herschreven in de TDD-fase van dit issue (RED first), of worden bestaande tests als basis genomen en incrementeel bijgewerkt? Aanbeveling: RED-first voor de herschreven scenarios (transition_tools, project_tools, initialize_project, cross_machine); incrementele update voor de scope/phase string aanpassingen.
 
+> **✅ Beslissing (11-03-2026):** Akkoord met aanbeveling. RED-first voor herschreven scenarios (transition_tools, project_tools, initialize_project, cross_machine); incrementele update voor scope/phase string aanpassingen.
+
 **K3.** Worden de tests gegroepeerd per TDD-cycle in planning, of per bestand? Aanbeveling: per architectuurlaag, niet per bestand — zodat de TDD-cycles overeenkomen met de implementatievolgorde in de KPI-handover-matrix.
+
+> **✅ Beslissing (11-03-2026):** Akkoord met aanbeveling. Tests gegroepeerd per architectuurlaag, niet per bestand. TDD-cycles corresponderen met de implementatievolgorde in de KPI-handover-matrix.
 
 ---
 
