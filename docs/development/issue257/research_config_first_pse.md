@@ -446,6 +446,166 @@ Alle bestanden die geraakt worden door F1–F22 zijn hieronder per file gescand 
 
 ---
 
+## Expected Results
+
+> Meetbare uitkomsten die "done" definiëren voor dit issue. Gebruikt als input voor design (interfaces), planning (TDD-cycle indeling) en validatie (verificatiescripts).
+>
+> **Leeswijzer:** Elke KPI heeft een verificatiemethode die onafhankelijk van de gekozen implementatie geldig is. KPIs gemarkeerd met *[design-input]* kunnen pas volledig gespecificeerd worden na design, maar de uitkomst zelf is al vastgesteld.
+
+---
+
+### KPI 1 — Fasevolgorde correct in alle workflows
+
+- `feature`-workflow: `design` verschijnt vóór `planning`, `planning` vóór `implementation` in de fasenlijst
+- `bug`-workflow: zelfde volgorde
+- `refactor`-workflow: geen `design`-fase; `planning` vóór `implementation`
+- `epic`-workflow: zelfde als `feature`
+- `hotfix`- en `docs`-workflow: ongewijzigd
+- **Verificatie:** `grep -A15 "feature:" .st3/workflows.yaml` toont `design` voor `planning` voor `implementation`
+- **Owner:** config-wijziging; geen design-input vereist
+
+### KPI 2 — `.st3/` mapstructuur gesplitst in config/ en registries/
+
+- `.st3/config/` bestaat en bevat alle YAML-configs (workflows.yaml, workphases.yaml, git.yaml, etc.)
+- `.st3/registries/` bestaat en bevat alle runtime-bestanden (state.json, deliverables.json, template_registry.json)
+- Geen YAML-configs meer in `.st3/` root; geen JSON-registers meer in `.st3/` root
+- **Verificatie:** `Get-ChildItem .st3\ -File` retourneert 0 bestanden (alleen submappen)
+- **Owner:** config-wijziging + consumer path-updates; geen design-input vereist
+
+### KPI 3 — `phase_deliverables.yaml` bestaat en drijft fase-gates
+
+- `.st3/config/phase_deliverables.yaml` bestaat
+- Bevat minimaal de `feature`- en `bug`-workflows met `research`, `design`, en `implementation`-entries
+- PSE exit-hooks lezen gate-specs uitsluitend uit dit bestand — geen hardcoded deliverable-logica meer in PSE-broncode
+- **Verificatie:** `grep "planning_deliverables" mcp_server/managers/phase_state_engine.py` retourneert 0 matches
+- **Owner:** *[design-input]* — schema-structuur bepaald in design (open vraag A1, A5)
+
+### KPI 4 — `deliverables.json` register vervangt `planning_deliverables` in `projects.json`
+
+- `.st3/registries/deliverables.json` bestaat na eerste `save_planning_deliverables` aanroep
+- `tdd_plan` (cyclusindeling) opgeslagen onder `deliverables.json[issue_number]`
+- `current_cycle` en `cycle_history` opgeslagen in `state.json`, niet in `deliverables.json`
+- **Verificatie:** `save_planning_deliverables` schrijft naar `deliverables.json`; `state.json` bevat `current_cycle`
+- **Owner:** *[design-input]* — JSON-schema bepaald in design (open vraag B1, B2)
+
+### KPI 5 — `projects.json` afgeschaft
+
+- `.st3/registries/projects.json` bestaat niet meer
+- `workflow_name`, `parent_branch`, `required_phases` staan in `state.json`
+- Mode 2-reconstructie (`_reconstruct_branch_state`) gebruikt git-branchnaam + `state.json` (geen `projects.json`)
+- **Verificatie:** `Test-Path .st3\registries\projects.json` retourneert `False` na migratie
+- **Owner:** *[design-input]* — migratiestrategie bepaald in design (open vraag C1, C4)
+
+### KPI 6 — `PhaseDeliverableResolver` bestaat als geïsoleerde SRP-class
+
+- Nieuwe class `PhaseDeliverableResolver` in `mcp_server/managers/`
+- Invoer: `workflow_name`, `phase`, `issue_number` → uitvoer: `list[CheckSpec]`
+- Doet geen filesystem-checks; combineert uitsluitend config-laag + registry-laag
+- PSE exit-hooks aanroepen de resolver en delegeren checks aan `DeliverableChecker`
+- **Verificatie:** `PhaseDeliverableResolver` heeft geen `import pathlib` of `glob`-aanroepen in zijn broncode
+- **Owner:** *[design-input]* — interface exact bepaald in design (open vraag D1, D2)
+
+### KPI 7 — `StateRepository` bestaat als geïsoleerde SRP-class
+
+- Nieuwe class `StateRepository` in `mcp_server/managers/`
+- Atomisch schrijven (temp-file + rename) geëxtraheerd uit PSE en ProjectManager
+- PSE, ProjectManager, `ScopeDecoder`, en `build_phase_guard` in `git_tools.py` lezen/schrijven `state.json` uitsluitend via `StateRepository`
+- **Verificatie:** `grep -r "state\.json" mcp_server/ --include="*.py" -l` toont alleen `state_repository.py` als directe opener
+- **Owner:** *[design-input]* — interface (abstract/concreet, typed return) bepaald in design (open vraag E1, E2)
+
+### KPI 8 — PSE OCP: geen if-chain op fasenamen in `transition()`
+
+- `transition()` bevat geen `if from_phase ==` vergelijkingen
+- Een `_exit_hooks: dict[str, Callable]` registry (of equivalent) mapt fasenamen op hook-callables
+- Een nieuwe fase toevoegen vereist uitsluitend een entry in de registry, geen wijziging van `transition()`
+- **Verificatie:** `grep "if from_phase" mcp_server/managers/phase_state_engine.py` retourneert 0 matches
+
+### KPI 9 — PSE DIP: `DeliverableChecker` maximaal één keer geïnstantieerd per PSE-instantie
+
+- `DeliverableChecker(workspace_root=...)` komt maximaal 1× voor in `phase_state_engine.py` (constructor-injectie of lazy property)
+- **Verificatie:** `grep -c "DeliverableChecker(" mcp_server/managers/phase_state_engine.py` retourneert `≤ 1`
+
+### KPI 10 — PSE DRY: geen gedupliceerde hook-bodies
+
+- `on_exit_validation_phase`, `on_exit_documentation_phase`, `on_exit_design_phase` bestaan niet meer als drie aparte methoden met identieke structuur
+- Vervangen door één generieke `_run_exit_gate(phase_name)` of equivalent dat via de OCP-registry wordt aangeroepen
+- **Verificatie:** `grep -c "def on_exit_.*_phase" mcp_server/managers/phase_state_engine.py` retourneert `≤ 2`
+
+### KPI 11 — f-string logging vervangen door parameterized logging in PSE
+
+- Geen `logger.info(f"...")` of `logger.warning(f"...")` aanroepen in `phase_state_engine.py`
+- **Verificatie:** `grep "logger\.\(info\|warning\|error\)(f\"" mcp_server/managers/phase_state_engine.py` retourneert 0 matches
+
+### KPI 12 — Fase `tdd` hernoemd naar `implementation` door de gehele stack
+
+- `.st3/config/workflows.yaml`: geen `tdd`-entry meer in fasenlijsten
+- `.st3/config/workphases.yaml`: fase heet `implementation`, subphases per workflow in `phase_deliverables.yaml`
+- `state.json`: sleutels `current_cycle`, `last_cycle`, `cycle_history` (geen `*_tdd_*`)
+- `phase_state_engine.py`: geen `on_enter_tdd_phase`, `on_exit_tdd_phase`, `current_tdd_cycle`-referenties
+- `git_tools.py`: geen `"tdd"` string-literals in `build_phase_guard` of `GitCommitTool.execute()`
+- **Verificatie:** `grep -r '"tdd"' mcp_server/ --include="*.py"` retourneert 0 matches; `grep "tdd" .st3/config/workflows.yaml` retourneert 0 matches
+
+### KPI 13 — `commit_type_map` config-driven via `phase_deliverables.yaml`
+
+- `git_manager.py` bevat geen `if sub_phase == "red": commit_type = "test"` if-chain
+- `commit_type` wordt bepaald door de config-laag op basis van `workflow_name` + `sub_phase`
+- **Verificatie:** `grep "sub_phase == " mcp_server/managers/git_manager.py` retourneert 0 matches
+- **Owner:** *[design-input]* — resolutie-laag (tool/manager/encoder) bepaald in design (open vraag J1)
+
+### KPI 14 — `branch_name_pattern` dwingt issue-nummer af in `create_branch`
+
+- `.st3/config/git.yaml`: `branch_name_pattern: "^[0-9]+-[a-z][a-z0-9-]*$"`
+- `create_branch(name="my-feature", branch_type="feature")` gooit `ValidationError` zonder issue-nummer prefix
+- `create_branch(name="257-config-first-pse", branch_type="feature")` slaagt
+- **Verificatie:** unit test op `GitManager.create_branch` met naam zonder cijfer-prefix faalt met `ValidationError`
+
+### KPI 15 — `branch_types` SSOT: PSE extractie-regex bouwt vanuit `GitConfig`
+
+- `git.yaml` bevat `branch_types: [feature, fix, bug, hotfix, refactor, docs, epic]`
+- `_extract_issue_from_branch()` in PSE bevat geen hardcoded alternation-regex met type-namen
+- PSE bouwt de regex dynamisch vanuit `GitConfig.branch_types`
+- **Verificatie:** `grep "feature.*fix.*bug" mcp_server/managers/phase_state_engine.py` retourneert 0 matches
+
+### KPI 16 — `WorkflowConfig` geconsolideerd: één class, één bestand
+
+- `mcp_server/config/workflow_config.py` bestaat niet meer
+- `mcp_server/config/workflows.py` bevat één `WorkflowConfig` class met de gecombineerde API (`get_workflow`, `validate_transition`, `get_first_phase`, `has_workflow`)
+- `issue_tools.py` importeert uit `workflows.py`, niet uit `workflow_config.py`
+- **Verificatie:** `Test-Path mcp_server/config/workflow_config.py` retourneert `False`
+
+### KPI 17 — Geen regressie: volledige testsuite slaagt
+
+- Alle bestaande tests slagen na de refactoring
+- Tests die `"tdd"` als literal bevatten zijn bijgewerkt naar `"implementation"` of worden verwijderd als ze backward-compat dekten
+- Quality gates (ruff, mypy, pylint) slagen op branch-scope
+- **Verificatie:** `run_tests(path="tests/")` retourneert 0 failures, 0 errors
+
+---
+
+### Handover-matrix richting design en planning
+
+| KPI | Owner fase | Design-input vereist? | Planning-input |
+|---|---|---|---|
+| KPI 1 (fasevolgorde) | config-wijziging | Nee | Cycle: workflows.yaml aanpassen |
+| KPI 2 (.st3 structuur) | config + consumer-updates | Nee | Cycle: pad-migratie per consumer |
+| KPI 3 (phase_deliverables.yaml) | design → planning | Schema (A1, A5) | Cycle: YAML schrijven + PSE koppelen |
+| KPI 4 (deliverables.json) | design → planning | Schema (B1, B2) | Cycle: PM refactor |
+| KPI 5 (projects.json abolishment) | design → planning | Migratiestrategie (C1, C4) | Cycle: state.json verrijking |
+| KPI 6 (PhaseDeliverableResolver) | design → planning | Interface (D1, D2) | Cycle: class implementeren + tests |
+| KPI 7 (StateRepository) | design → planning | Interface (E1, E2) | Cycle: class implementeren + consumers migreren |
+| KPI 8 (OCP registry) | planning | Nee | Cycle: PSE refactor |
+| KPI 9 (DIP checker) | planning | Nee | Cycle: PSE refactor |
+| KPI 10 (DRY hooks) | planning | Nee | Cycle: PSE refactor |
+| KPI 11 (f-string logging) | planning | Nee | Cycle: PSE refactor (samen met KPI 8–10) |
+| KPI 12 (tdd → implementation) | design → planning | State-migratie (H1), legacy-pad (J3) | Cycle: rename door gehele stack |
+| KPI 13 (commit_type_map) | design → planning | Resolutie-laag (J1, J2) | Cycle: git_manager + git_tools refactor |
+| KPI 14 (branch_name_pattern) | planning | Nee | Cycle: git.yaml + GitManager validatie |
+| KPI 15 (branch_types SSOT) | planning | Nee | Cycle: samen met KPI 14 |
+| KPI 16 (WorkflowConfig consolidatie) | planning | Nee | Cycle: consolidatie + consumers updaten |
+| KPI 17 (geen regressie) | planning → tdd/implementation | Nee | Laatste cycle: regressiecheck |
+
+---
+
 ## Open Questions
 
 Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegroepeerd per domein. Onbeantwoorde vragen vertalen direct naar risico's in de implementatie.
