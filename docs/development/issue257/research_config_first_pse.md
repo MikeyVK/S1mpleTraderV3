@@ -291,9 +291,46 @@ Na F21 staat de `commit_type_map` (`red → test`, `green → feat`, etc.) per w
 - `GitCommitTool`, `GitCheckoutTool`, en `GetParentBranchTool` instantiëren `ProjectManager` en `PhaseStateEngine` inline in `execute()` — geen injectie, testbaarheid geblokkeerd.
 - `build_phase_guard()` leest `state.json` direct van schijf via `json.loads(state_file.read_text(...))`. Na `StateRepository`-extractie (F15) bypast dit de contractuele interface.
 
+### F23 — `workflow_phase` parameter kan vereenvoudigd worden naar `phase` na verwijdering deprecated pad *(nieuw)*
+
+De parameter `workflow_phase` in `GitCommitInput` en `commit_with_scope()` heette zo om te onderscheiden van de deprecated `phase`-parameter (die een TDD-subphase betekende: `red`, `green`, `refactor`). Zodra de deprecated `phase`-parameter volledig verwijderd is, bestaat de ambiguïteit niet meer.
+
+**Beslissing (vastgesteld in research):** deprecated `phase`-parameter wordt volledig verwijderd (geen backward-compat mapping). `workflow_phase` wordt hernoemd naar `phase`. `sub_phase` blijft ongewijzigd. Resulterende API: `git_add_or_commit(phase="implementation", sub_phase="red", message="...")`.
+
+**Impact:**
+- `GitCommitInput`: veld `workflow_phase` → `phase`; veld `phase` (deprecated) verwijderd inclusief `validate_phase()` validator en `model_validator`
+- `GitCommitTool.execute()`: alle `workflow_phase`-referenties → `phase`; legacy-pad volledig verwijderd
+- `git_manager.commit_with_scope()`: parameter `workflow_phase` → `phase`
+- `GitCommitTool.description`: `"test(P_TDD_SP_RED): message"` → `"test(P_IMPLEMENTATION_SP_RED): message"`
+- Alle tests die `workflow_phase=` gebruiken worden bijgewerkt
+
+### F24 — Backward compatibility: flag-day aanpak, geen migratiecode *(nieuw, beslissingen vastgesteld)*
+
+De refactoring raakt vijf backward compatibility dimensies. Alle beslissingen zijn bewust genomen — geen migratiecode die later opgeruimd moet worden.
+
+| # | Dimensie | Beslissing | Rationale |
+|---|---|---|---|
+| BC-1 | Historische `P_TDD_SP_*` scope strings in git-log | Accepteren — niet meer decodeerbaar via ScopeDecoder | Commits zijn historisch en niet actief; ScopeDecoder valt terug op state.json |
+| BC-2 | `current_tdd_cycle` / `last_tdd_cycle` / `tdd_cycle_history` in bestaande `state.json` bestanden | Geen migratiecode; handmatige fix indien nodig | Geen actieve branches van betekenis; fix is triviaal |
+| BC-3 | `.st3/` padlocaties (alle consumers) | Flag-day: alle paden tegelijk migreren naar `.st3/config/` en `.st3/registries/` | Geen fallback-loader; directorynaam configurabel maken is apart issue #260 |
+| BC-4 | `projects.json` abolishment | Accepteren: bestaande `projects.json` entries vervallen; tests worden herschreven | Geen backward-compat leeslaag; cross-machine scenario wordt opnieuw gedefinieerd op `state.json + git` |
+| BC-5 | Deprecated `phase`-parameter in `git_add_or_commit` | Volledig verwijderen (geen mapping naar `"implementation"`) | Parameter staat al als `DEPRECATED`; callers gebruiken al `workflow_phase` (wordt `phase`) |
+
+**Teststrategie bij flag-day:**
+- Tests die `projects.json`-structuren aanmaken worden volledig herschreven op `deliverables.json` + `state.json`
+- Tests die `"tdd"` als fase gebruiken worden bijgewerkt naar `"implementation"`
+- Tests die `P_TDD_SP_*` scope-strings asserteren worden bijgewerkt naar `P_IMPLEMENTATION_SP_*`
+- Tests die `current_tdd_cycle` in state asserteren worden bijgewerkt naar `current_cycle`
+- `test_issue39_cross_machine.py`: scenario volledig herschreven op `state.json + git` zonder `projects.json`
+- `GitConfig.tdd_phases` en `GitConfig.tdd_phase_map` (DEPRECATED velden in `git_config.py`, GC-3) worden verwijderd
+
+### F25 — `.st3` directorynaam is projectspecifiek, niet configureerbaar *(nieuw, gedefereerd naar #260)*
+
+De naam `.st3` is hardcoded als string-literal door de gehele MCP server codebase en is ontstaan tijdens de ontwikkeling van SimpleTraderV3. Dit maakt de server niet distribueerbaar als zelfstandig pakket. Aanpak: configureerbaar via startup-config met fallback naar `.MyMCP`. **Gedefereerd naar issue #260** — blokkeert #257 niet. In #257 migreren we de interne structuur maar behouden we voorlopig de `.st3`-naam.
+
 ## Per-File Schendingsscan
 
-Alle bestanden die geraakt worden door F1–F22 zijn hieronder per file gescand op SOLID, DRY, SRP en Config-First schendingen. Elke tabel toont: schending, principe, ernst (🔴 blokkerend / 🟠 significant / 🟡 minor), en de gekoppelde finding.
+Alle bestanden die geraakt worden door F1–F25 zijn hieronder per file gescand op SOLID, DRY, SRP en Config-First schendingen. Elke tabel toont: schending, principe, ernst (🔴 blokkerend / 🟠 significant / 🟡 minor), en de gekoppelde finding.
 
 ---
 
@@ -744,6 +781,33 @@ Het hernoemen van `tdd` naar `implementation` en het verplaatsen van de `commit_
 Keuze beïnvloedt of we backward-compat tests behouden of verwijderen.
 
 **J4.** Wat is de foutmelding als `commit_type_map` voor een workflow geen entry heeft voor de opgegeven `sub_phase`? Gooit de resolver een `ConfigurationError` (mis-configuratie) of een `ValueError` (gebruikersfout)? Wie vangt dit op  — `GitManager`, tool-laag of `PhaseDeliverableResolver`?
+
+---
+
+### K — Testsuite scope en aanpak (F23, F24)
+
+De flag-day aanpak (F24) raakt een significant deel van de testsuite. De volgende testbestanden vereisen herschrijving of verwijdering — geen backward-compat patches.
+
+**K1.** Geraakte testbestanden geïdentificeerd in research:
+
+| Bestand | Reden | Aanpak |
+|---|---|---|
+| `tests/mcp_server/core/test_scope_encoder.py` | `phase="tdd"`, `P_TDD_SP_*` assertions | Bijwerken naar `"implementation"` + `P_IMPLEMENTATION_SP_*` |
+| `tests/mcp_server/core/test_phase_detection.py` | `workflow_phase == "tdd"`, `P_TDD_SP_RED` in fixtures | Bijwerken naar `"implementation"` |
+| `tests/mcp_server/managers/test_git_manager_config.py` | `P_TDD_SP_RED`, `P_TDD_SP_GREEN` assertions | Bijwerken scope strings |
+| `tests/mcp_server/unit/tools/test_transition_tools.py` | `planning_deliverables`, `current_tdd_cycle`, `tdd_cycle_history`, `initial_phase="tdd"` | Volledig herschrijven op `deliverables.json` + `current_cycle` |
+| `tests/mcp_server/unit/tools/test_project_tools.py` | Alle `projects.json` read-asserts (8+ testcases) | Herschrijven op `deliverables.json` |
+| `tests/mcp_server/unit/tools/test_initialize_project_tool.py` | `projects.json` aanmaak- en structuurtests | Herschrijven: `deliverables.json` + verrijkte `state.json` |
+| `tests/mcp_server/unit/managers/test_phase_state_engine.py` | `projects.json`-injectie in fixtures | Herschrijven fixtures |
+| `tests/mcp_server/unit/managers/test_phase_state_engine_recovery.py` | `projects.json` als bron voor reconstructie | Herschrijven op `state.json + git` |
+| `tests/mcp_server/integration/test_issue39_cross_machine.py` | `projects.json` commit naar git, volledige flow | Scenario herschrijven op nieuwe architectuur |
+| `tests/mcp_server/unit/tools/test_force_phase_transition_tool.py` | `projects.json` path assertions | Bijwerken |
+| `tests/mcp_server/integration/test_workflow_cycle_e2e.py` | `"tdd"` fase in e2e-flow, `workflow_phase="tdd"` commits | Bijwerken naar `"implementation"` |
+| `tests/mcp_server/conftest.py` | `from mcp_server.config.workflow_config import WorkflowConfig` | Bijwerken na consolidatie (F19/KPI 16) |
+
+**K2.** Wordt de testsuite voor de geraakte bestanden volledig herschreven in de TDD-fase van dit issue (RED first), of worden bestaande tests als basis genomen en incrementeel bijgewerkt? Aanbeveling: RED-first voor de herschreven scenarios (transition_tools, project_tools, initialize_project, cross_machine); incrementele update voor de scope/phase string aanpassingen.
+
+**K3.** Worden de tests gegroepeerd per TDD-cycle in planning, of per bestand? Aanbeveling: per architectuurlaag, niet per bestand — zodat de TDD-cycles overeenkomen met de implementatievolgorde in de KPI-handover-matrix.
 
 ---
 
