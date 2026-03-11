@@ -28,6 +28,7 @@ from typing import Any, cast
 from mcp_server.adapters.filesystem import FilesystemAdapter
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.settings import settings
+from mcp_server.config.template_config import get_template_root
 from mcp_server.core.directory_policy_resolver import DirectoryPolicyResolver
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
@@ -333,8 +334,7 @@ class ArtifactManager:
         """
         try:
             # Get templates root
-            parent = Path(__file__).parent.parent
-            template_root = parent / "scaffolding" / "templates"
+            template_root = get_template_root()
 
             # Initialize analyzer
             analyzer = TemplateAnalyzer(template_root=template_root)
@@ -391,7 +391,7 @@ class ArtifactManager:
         tier_versions: dict[str, tuple[str, str]] = {}
 
         try:
-            template_root = Path(__file__).parent.parent / "scaffolding" / "templates"
+            template_root = get_template_root()
             analyzer = TemplateAnalyzer(template_root=template_root)
 
             template_path = template_root / template_file
@@ -676,7 +676,7 @@ class ArtifactManager:
                 # 4. Check if v2 template exists (e.g., dto_v2.py.jinja2)
                 # If not, use v1 template (backward compatibility)
                 v2_template_file = template_file.replace(".py.jinja2", "_v2.py.jinja2")
-                template_root = Path(__file__).parent.parent / "scaffolding" / "templates"
+                template_root = get_template_root()
                 v2_template_path = template_root / v2_template_file
                 v2_template_exists = v2_template_path.exists()
 

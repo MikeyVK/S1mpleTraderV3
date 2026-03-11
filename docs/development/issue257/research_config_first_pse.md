@@ -273,9 +273,27 @@ Dit maakt ook **design cycles** mogelijk: als een workflow in de design-fase ite
 
 **Impact:** fase `tdd` wordt hernoemd naar `implementation` in `workflows.yaml`, `workphases.yaml`, en alle PSE hook-methoden. State-sleutels worden gemigreerd. `ScopeEncoder`, `GitManager.commit_with_scope()`, en PSE TDD-specifieke methoden worden vervangen door generieke varianten.
 
+### F22 — `git_tools.py` bevat hardcodings geraakt door F21 en bredere SOLID-schendingen *(nieuw)*
+
+Nu `git_tools.py` in scope is geraakt door F21 (fase-hernoem + `commit_type_map`), is het bestand breed gescand op SOLID, DRY, SRP en Config-First schendingen.
+
+**Config-First / DRY (direct F21-gevolg):**
+- `build_phase_guard()` bevat `if workflow_phase == "tdd"` als cycle-guard trigger. De vraag "is deze fase cycle-based?" is een config-vraag (`phase_deliverables.yaml::cycle_based`), geen hardcoded string-vergelijking.
+- `build_phase_guard()` leest `data.get("current_tdd_cycle")` direct uit state.json. Na F20/F13 wijzigt deze sleutel naar `current_cycle`.
+- `GitCommitTool.execute()` bevat `if effective_phase == "tdd"` als trigger voor cycle-nummer-verplichting. Na F21 is het resultaat altijd `False` — de beveiliging verdwijnt stil zonder fout.
+- De legacy path `mapped_workflow_phase = "tdd"` in `execute()` breekt volledig na het fase-hernoemen.
+
+**Nieuw ontwerpprobleem — `commit_type_map` beschikbaarheid (GT-5):**
+Na F21 staat de `commit_type_map` (`red → test`, `green → feat`, etc.) per workflow in `phase_deliverables.yaml`. De huidige tool-laag resolveert `commit_type` niet zelf — dat doet de hardcoded if-chain in `git_manager.py`. Na het verwijderen van die if-chain heeft de tool-laag géén `workflow_name` beschikbaar om de juiste map op te zoeken. Wie resolveert de `commit_type_map` na de refactoring, en op welke laag? Zie open vraag J.
+
+**SRP / DIP:**
+- `GitCommitTool.execute()` heeft 5 aaneengegroeide verantwoordelijkheden: (a) auto-detectie `workflow_phase`, (b) cycle-enforcement, (c) phase-guard, (d) legacy-normalisatie, (e) commit-aanroep.
+- `GitCommitTool`, `GitCheckoutTool`, en `GetParentBranchTool` instantiëren `ProjectManager` en `PhaseStateEngine` inline in `execute()` — geen injectie, testbaarheid geblokkeerd.
+- `build_phase_guard()` leest `state.json` direct van schijf via `json.loads(state_file.read_text(...))`. Na `StateRepository`-extractie (F15) bypast dit de contractuele interface.
+
 ## Per-File Schendingsscan
 
-Alle bestanden die geraakt worden door F1–F19 zijn hieronder per file gescand op SOLID, DRY, SRP en Config-First schendingen. Elke tabel toont: schending, principe, ernst (🔴 blokkerend / 🟠 significant / 🟡 minor), en de gekoppelde finding.
+Alle bestanden die geraakt worden door F1–F22 zijn hieronder per file gescand op SOLID, DRY, SRP en Config-First schendingen. Elke tabel toont: schending, principe, ernst (🔴 blokkerend / 🟠 significant / 🟡 minor), en de gekoppelde finding.
 
 ---
 
@@ -395,19 +413,36 @@ Alle bestanden die geraakt worden door F1–F19 zijn hieronder per file gescand 
 
 ---
 
+### `mcp_server/tools/git_tools.py`
+
+| # | Schending | Principe | Ernst | Finding |
+|---|---|---|---|---|
+| GT-1 | `build_phase_guard()` bevat `if workflow_phase == "tdd"` als cycle-guard trigger. Na F21 is `"tdd"` niet meer geldig — de guard valt stil zonder fout. De vraag "is deze fase cycle-based?" is een config-vraag (`phase_deliverables.yaml::cycle_based`), geen hardcoded string-vergelijking | Config-First + DRY | 🔴 | F21 + F22 |
+| GT-2 | `build_phase_guard()` leest `data.get("current_tdd_cycle")` hardcoded uit state.json. Na F20 wijzigt de sleutelnaam naar `current_cycle`. Tevens directe schijflezing die `StateRepository` bypast (F15) | DRY + DIP | 🔴 | F20 + F22 |
+| GT-3 | `GitCommitTool.execute()` bevat `if effective_phase == "tdd"` als trigger voor cycle-nummer-verplichting. Na F21 altijd `False` — de invariant verdwijnt stil zonder testfalen of compileerfout | Config-First + DRY | 🔴 | F21 + F22 |
+| GT-4 | Legacy path in `execute()`: `mapped_workflow_phase = "tdd"` breekt volledig na fase-hernoem. Geen compilatiefout, wel runtime-fout op de eerste legacy commit na de refactoring | DRY | 🔴 | F21 + F22 |
+| GT-5 | `commit_type_map` beschikbaarheidsprobleem: tool-laag heeft géén `workflow_name` bij de commit-aanroep. Na verwijdering van de hardcoded if-chain in `git_manager.py` (GM-1) weet geen enkele laag meer welk type bij `red` hoort voor een bug-workflow vs. een feature-workflow. Expliciete ontwerpkeuze vereist. Zie open vraag J | Config-First + SRP | 🔴 | F21 + F22 |
+| GT-6 | `GitCommitTool.execute()` heeft 5 aaneengegroeide verantwoordelijkheden: (a) auto-detectie `workflow_phase` uit state.json, (b) cycle-enforcer, (c) phase-guard aanroep, (d) legacy-normalisatie, (e) commit-aanroep via manager. Elke verantwoordelijkheid is apart testbaar als private helper | SRP | 🟠 | F22 |
+| GT-7 | `GitCommitTool`, `GitCheckoutTool`, en `GetParentBranchTool` instantiëren `ProjectManager` en `PhaseStateEngine` inline in `execute()`. Koppeling aan concrete klassen blokkeert unit-testbaarheid | DIP | 🟠 | F22 |
+| GT-8 | `build_phase_guard()` is een module-level functie die `state.json` direct leest via `json.loads(state_file.read_text(...))`. Na `StateRepository`-extractie (F15) bypast dit de contractuele interface — dezelfde schending als PD-1 | DIP | 🟠 | F15 + F22 |
+| GT-9 | `GitCommitInput.workflow_phase` description bevat hardcoded fase-opsomming `"research\|planning\|design\|tdd\|..."`. Divergeert stil van `workphases.yaml` na fase-hernoem | Config-First + DRY | 🟡 | F22 |
+| GT-10 | `GitCommitInput.validate_phase()` valideerde deprecated `GitConfig.tdd_phases`. Dit veld is al `DEPRECATED` in `git_config.py` (GC-3) maar wordt hier nog als validator gebruikt | DRY | 🟡 | F22 |
+
+---
+
 ### Overzicht: Schendingen per principe
 
 | Principe | Betrokken bestanden | Kritiek (🔴) | Significant (🟠) | Minor (🟡) |
 |---|---|---|---|---|
-| **SRP** | PSE, PM, GM, PD | PSE-1, PM-1 | PSE-10, PSE-11, PM-5, PM-7 | PD-4 |
+| **SRP** | PSE, PM, GM, GT, PD | PSE-1, PM-1 | PSE-10, PSE-11, PM-5, PM-7, GT-6 | PD-4 |
 | **OCP** | PSE | PSE-2, PSE-7 | — | — |
-| **DIP** | PSE, PM, GM, WF, WFC, SE, PD | PSE-3, PSE-4, PM-2, GM-3, WF-2, WFC-1, SE-1, PD-1 | WF-1, SE-2 | WFC-2, GC-4 |
-| **DRY** | PSE, PM, GM, WF, WFC, WPC, GC, SE, PD | PSE-3 (3×), PSE-6, GM-1, GM-2, WF-2, WFC-1, GC-2, PD-2 | PSE-5, PM-6, GM-3, WPC-1, WPC-2 | PSE-8, DC-2, GC-3 |
-| **Config-First** | PSE, PM, GM, WF, WFC, GC, SE, PD | PSE-6, PSE-7, PM-3, GM-1, GM-4, GM-5, GC-1, GC-2, SE-1, PD-1 | PSE-9, PM-4 | WF-3, WFC-2, GC-4, PD-3 |
+| **DIP** | PSE, PM, GM, WF, WFC, SE, GT, PD | PSE-3, PSE-4, PM-2, GM-3, WF-2, WFC-1, SE-1, PD-1 | WF-1, SE-2, GT-7, GT-8 | WFC-2, GC-4 |
+| **DRY** | PSE, PM, GM, WF, WFC, WPC, GC, SE, GT, PD | PSE-3 (3×), PSE-6, GM-1, GM-2, WF-2, WFC-1, GC-2, PD-2, GT-2, GT-4 | PSE-5, PM-6, GM-3, WPC-1, WPC-2 | PSE-8, DC-2, GC-3, GT-10 |
+| **Config-First** | PSE, PM, GM, WF, WFC, GC, SE, GT, PD | PSE-6, PSE-7, PM-3, GM-1, GM-4, GM-5, GC-1, GC-2, SE-1, PD-1, GT-1, GT-3, GT-5 | PSE-9, PM-4 | WF-3, WFC-2, GC-4, PD-3, GT-9 |
 
-**Totaal kritieke schendingen (🔴): 22**  
-**Totaal significante schendingen (🟠): 14**  
-**Totaal minor schendingen (🟡): 8**
+**Totaal kritieke schendingen (🔴): 27** *(+5 t.o.v. vorige versie)*  
+**Totaal significante schendingen (🟠): 18** *(+4 t.o.v. vorige versie)*  
+**Totaal minor schendingen (🟡): 10** *(+2 t.o.v. vorige versie)*
 
 ---
 
@@ -529,6 +564,28 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 ---
 
+### J — `commit_type_map` beschikbaarheid in de tool-laag (F21, F22, GT-5)
+
+Het hernoemen van `tdd` naar `implementation` en het verplaatsen van de `commit_type_map` naar `phase_deliverables.yaml` creëert een architectureel hiaat: op geen enkele laag is meer duidelijk wie verantwoordelijk is voor het opzoeken van `commit_type = "test"` bij `sub_phase = "red"` voor een feature-workflow versus `commit_type = "test"` bij `sub_phase = "reproduce"` voor een bug-workflow.
+
+**J1.** Welke laag resolveert de `commit_type_map` na de refactoring? Drie opties:
+
+| Optie | Beschrijving | Voordeel | Nadeel |
+|---|---|---|---|
+| **A — Tool-laag** | `GitCommitTool.execute()` leest `phase_deliverables.yaml` + `workflow_name` uit `state.json`, bepaalt `commit_type`, geeft het als expliciete override door aan `commit_with_scope()` | `GitManager` blijft puur; commit_type altijd expliciet | Tool-laag heeft config-kennis; `workflow_name` moet beschikbaar zijn in state |
+| **B — Manager-laag** | `commit_with_scope()` krijgt `workflow_name` als extra parameter en resolveert via `PhaseDeliverableResolver` | Enkelvoudig resolverpad; manager kent zijn eigen context | `GitManager` koppelt aan `PhaseDeliverableResolver`; API-uitbreiding |
+| **C — ScopeEncoder** | `ScopeEncoder` krijgt `phase_deliverables_path` + `workflow_name` en levert ook `commit_type` terug | Één class weet alles over de commit | ScopeEncoder krijgt een tweede verantwoordelijkheid (validatie + type-lookup) |
+
+**J2.** Hoe weet de tool-laag de `workflow_name`? Na F13 (`projects.json` abolishment) staat `workflow_name` in `state.json`. Bij auto-detectie van `workflow_phase` leest `execute()` al uit `state.json` via `PhaseStateEngine.get_current_phase()`. Mag diezelfde aanroep ook `workflow_name` retourneren, of vereist dat een aparte `StateRepository.read_state()` aanroep?
+
+**J3.** Backward-compatibel legacy `phase`-pad: na F21 bestaat `"tdd"` niet meer als fase. `mapped_workflow_phase = "tdd"` in de legacy path breekt onmiddellijk. Twee keuzes:
+- **(a) Verwijderen:** legacy `phase`-parameter volledig droppen. Breaking change, maar alle gebruik is expliciet `DEPRECATED`.
+- **(b) Migreren:** legacy path mapt naar `"implementation"`, `sub_phase` ongewijzigd (`red`, `green`, `refactor` zijn immers subphases van de feature-implementatie-werkwijze).
+Keuze beïnvloedt of we backward-compat tests behouden of verwijderen.
+
+**J4.** Wat is de foutmelding als `commit_type_map` voor een workflow geen entry heeft voor de opgegeven `sub_phase`? Gooit de resolver een `ConfigurationError` (mis-configuratie) of een `ValueError` (gebruikersfout)? Wie vangt dit op  — `GitManager`, tool-laag of `PhaseDeliverableResolver`?
+
+---
 
 ## Related Documentation
 - **[docs/development/issue257/research.md][related-1]**
@@ -538,6 +595,7 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 - **[mcp_server/managers/deliverable_checker.py][related-5]**
 - **[mcp_server/managers/git_manager.py][related-6]**
 - **[mcp_server/config/git_config.py][related-7]**
+- **[mcp_server/tools/git_tools.py][related-11]**
 - **[.st3/workflows.yaml][related-8]**
 - **[.st3/workphases.yaml][related-9]**
 - **[.st3/git.yaml][related-10]**
@@ -554,6 +612,7 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 [related-8]: .st3/workflows.yaml
 [related-9]: .st3/workphases.yaml
 [related-10]: .st3/git.yaml
+[related-11]: mcp_server/tools/git_tools.py
 
 ---
 
