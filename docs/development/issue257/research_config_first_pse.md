@@ -210,6 +210,69 @@ Principe: per `.st3/`-bestand hoort één reader-class als enige directe consume
 | `sections.yaml` + `phase_contracts` + `content_contract` gate type | **#258** | Epic #49 |
 | `ArtifactManager` template-integratie + workflow-aware rendering | **#259** | Epic #73 |
 
+### F20 — `tdd_plan` is een planning artifact, niet execution state — split ontbreekt *(nieuw)*
+
+`planning_deliverables` in `projects.json` mixt twee fundamenteel verschillende dingen:
+
+| Onderdeel | Aard | Na planning immutable? |
+|---|---|---|
+| `tdd_cycles.total`, `cycles[].exit_criteria`, `cycles[].deliverables` | Planning artifact — besloten bij planning exit | ✅ Ja |
+| `current_tdd_cycle`, `last_tdd_cycle`, `tdd_cycle_history` | Execution state — bijgehouden tijdens TDD | ❌ Nee, mutabel |
+
+De **planning artifact** hoort in `deliverables.json` onder een geneste `tdd_plan`-sleutel. De **execution state** (`current_cycle`, `cycle_history`) hoort in `state.json` — beheerd door `StateRepository`.
+
+`PhaseDeliverableResolver` leest bij TDD-gate-check de cyclusnummering uit `deliverables.json` en de huidige positie uit `state.json` (via `StateRepository` interface), zodat hij de juiste cycle-slice kan selecteren zonder zelf state te schrijven.
+
+De vraag of `tdd_plan` na `save_planning_deliverables` nog muteerbaar is (via een apart `update_tdd_plan` endpoint) is een expliciete ontwerpbeslissing: immutabel maakt de invariant sterk; muteerbaar heeft praktische waarde als cycles herontworpen moeten worden.
+
+### F21 — `tdd` is een hardcoded werkwijze-aanname, niet een generieke implementatiefase *(nieuw)*
+
+De huidige architectuur bakt de aanname `implementatie = TDD` op zes lagen in:
+
+| Laag | Hardcoding |
+|---|---|
+| `workflows.yaml` | Fase heet letterlijk `tdd` |
+| `workphases.yaml` | Subphases hardcoded `red / green / refactor` |
+| `state.json` | Sleutels `current_tdd_cycle`, `last_tdd_cycle`, `tdd_cycle_history` |
+| `PSE` | `on_enter_tdd_phase`, `on_exit_tdd_phase`, `_validate_cycle_number_range` |
+| `git_manager.py` GM-1 | `if sub_phase == "red": commit_type = "test"` etc. |
+| `ScopeEncoder / PSE` | TDD-labels `{"red", "green", "refactor"}` hardcoded |
+
+Dit is fout voor drie van de vier primaire workflows:
+- **feature** → TDD cycles (red/green/refactor) ✅
+- **bug** → reproduce → fix → verify (geen cycle-structuur, andere subphases)
+- **refactor** → strangler-fig iteraties, geen red/green semantiek
+- **docs** → heeft überhaupt geen implementatie-fase in deze zin
+
+**Correcte opzet:** de fase heet `implementation` in `workflows.yaml`. De *werkwijze* (subphases, cycle_based, commit_type_map) wordt per workflow geconfigureerd in `phase_deliverables.yaml`:
+
+```yaml
+contracts:
+  feature:
+    implementation:
+      subphases: [red, green, refactor]
+      cycle_based: true
+      commit_type_map: { red: test, green: feat, refactor: refactor }
+
+  bug:
+    implementation:
+      subphases: [reproduce, fix, verify]
+      cycle_based: false
+      commit_type_map: { reproduce: test, fix: fix, verify: test }
+
+  refactor:
+    implementation:
+      subphases: [identify, extract, verify]
+      cycle_based: true
+      commit_type_map: { identify: chore, extract: refactor, verify: test }
+```
+
+Dit maakt ook **design cycles** mogelijk: als een workflow in de design-fase iteratieve verfijning vereist, kan `cycle_based: true` ook daar worden geconfigureerd. Dezelfde resolver-logica herbruikt voor elke fase.
+
+`state.json` gebruikt dan generieke sleutels (`current_cycle`, `cycle_history`) in plaats van `current_tdd_cycle`. `ScopeEncoder` leest de geldige subphases en commit_type_map uit `phase_deliverables.yaml` i.p.v. hardcoded sets.
+
+**Impact:** fase `tdd` wordt hernoemd naar `implementation` in `workflows.yaml`, `workphases.yaml`, en alle PSE hook-methoden. State-sleutels worden gemigreerd. `ScopeEncoder`, `GitManager.commit_with_scope()`, en PSE TDD-specifieke methoden worden vervangen door generieke varianten.
+
 ## Per-File Schendingsscan
 
 Alle bestanden die geraakt worden door F1–F19 zijn hieronder per file gescand op SOLID, DRY, SRP en Config-First schendingen. Elke tabel toont: schending, principe, ernst (🔴 blokkerend / 🟠 significant / 🟡 minor), en de gekoppelde finding.
@@ -350,11 +413,121 @@ Alle bestanden die geraakt worden door F1–F19 zijn hieronder per file gescand 
 
 ## Open Questions
 
-- ❓ Wat is het exacte schema van deliverables.json per issue-entry? (phase → lijst van check-specs, of plat per deliverable-id?)
-- ❓ Hoe verhoudt deliverables.json zich tot tdd_cycle deliverables die nu in projects.json.planning_deliverables.tdd_cycles staan — verhuizen die ook naar deliverables.json?
-- ❓ Wat is de cleanup-strategie voor state.json bij afgesloten issues — archiveren of verwijderen?
-- ❓ Welke velden van projects.json gaan naar state.json en welke worden puur uit GitHub API gereconstrueerd bij Mode 2?
-- ❓ Moet StateRepository een aparte class worden of een mixin/utility op PSE?
+Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegroepeerd per domein. Onbeantwoorde vragen vertalen direct naar risico's in de implementatie.
+
+---
+
+### A — `phase_deliverables.yaml` schema (F1, F2, F6, F12, F21)
+
+**A1.** Wat is de minimale set verplichte sleutels per fase-entry? Zijn `subphases`, `commit_type_map` en `cycle_based` altijd aanwezig, of optioneel? Hoe valideert de loader ontbrekende velden?
+
+**A2.** Hoe worden meervoudige check-types per deliverable gemodelleerd? (`file_exists` + `contains_text` op hetzelfde bestand — één `validates`-spec of geneste lijst?)
+
+**A3.** Is `cycle_based` een boolean, of een object dat ook `max_cycles` en `cycle_deliverable_schema` bevat? Als max open is, mist de resolver een rangecheck.
+
+**A4.** Hoe wordt `commit_type_map` geladen door `ScopeEncoder`? Laadt `ScopeEncoder` zelf `phase_deliverables.yaml`, of krijgt hij de map geïnjecteerd? (DIP-risico als hij zelf laadt)
+
+**A5.** De huidige `workphases.yaml` heeft `exit_requires` per fase. Wordt dat bestand samengevoegd met `phase_deliverables.yaml`, of blijven ze bestaan als twee afzonderlijke verantwoordelijkheden? (Overlap-risico: twee configs die hetzelfde beschrijven)
+
+**A6.** Hoe worden issue-specifieke additieve deliverables (`deliverables.json`) samengevoegd met de config-laag? Volgorde: config eerst, issue-additief daarna — maar wat als een issue-additief een config-entry wil *overschrijven*? Is dat toegestaan?
+
+---
+
+### B — `deliverables.json` schema en lifecycle (F12, F13, F20)
+
+**B1.** Wat is de exacte JSON-structuur? Per issue: `{ "257": { "phases": { "design": [...], "implementation": { "tdd_plan": {...} } } } }` of platter? Keuze beïnvloedt de `PhaseDeliverableResolver` lookup-logica direct.
+
+**B2.** Is `tdd_plan` na `save_planning_deliverables` immutable of muteerbaar via een apart `update_tdd_plan` endpoint? Als immutable: hoe gaan we om met het praktische geval dat een team halverwege TDD een extra cycle wil toevoegen?
+
+**B3.** Wie schrijft naar `deliverables.json`? Alleen `save_planning_deliverables` en `update_planning_deliverables`? Of ook andere tools? De schrijver moet eenduidig zijn (1-writer principe analoog aan 1-reader).
+
+**B4.** Wat is de lifecycle van een `deliverables.json` entry? Wordt hij gearchiveerd bij PR-merge, of simpelweg leeg gelaten? Wat gebeurt er als een issue opnieuw wordt geopend?
+
+**B5.** Cycle-state (`current_cycle`, `cycle_history`) gaat naar `state.json`. Maar `state.json` bevat nu één issue tegelijk (single-branch). Als een ontwikkelaar van branch wisselt, gaat de cycle-state verloren. Moet cycle-state per issue opgeslagen worden (in `deliverables.json` of apart), of is het altijd gekoppeld aan de actieve branch?
+
+---
+
+### C — `projects.json` abolishment en `state.json` verrijking (F13, F15, F20)
+
+**C1.** Welke velden van `projects.json` gaan naar `state.json`, en welke worden bij Mode 2 opgebouwd uit git + GitHub API? Kandidaten: `issue_title` (GitHub API), `workflow_name` (branch-prefix → git.yaml lookup), `parent_branch` (git log). Is er een veld dat niet reconstructeerbaar is?
+
+**C2.** `state.json` bevat nu één branch tegelijk. Bij abolishment van `projects.json` is er géén andere bron meer voor issues die niet de actieve branch zijn. Is dat acceptabel, of moet `state.json` een multi-branch register worden?
+
+**C3.** `Mode 2 reconstructie` in PSE `_reconstruct_branch_state()` leest nu uit `projects.json`. Na abolishment leest hij uit git + GitHub API. Wat is de fallback als GitHub API onbereikbaar is (offline scenario)? Faalt hard, of graceful degradation naar `unknown`?
+
+**C4.** Wat wordt de migratiepad voor bestaande 40+ entries in `projects.json`? One-time migration script, of backward-compat leeslaag tijdens transitieperiode?
+
+---
+
+### D — `PhaseDeliverableResolver` interface (F3, F6, F12, F14, F20, F21)
+
+**D1.** Exacte signatuur: `resolve(workflow_name: str, phase: str, issue_number: int, cycle_number: int | None) -> list[CheckSpec]`? Of wordt `cycle_number` impliciet uit `state.json` gelezen via `StateRepository`?
+
+**D2.** Wat is `CheckSpec`? Een TypedDict, dataclass, of Pydantic model? Welke velden zijn verplicht, welke optioneel? Dit bepaalt de interface met `DeliverableChecker`.
+
+**D3.** Mag een fase géén deliverables hebben (lege lijst teruggeven)? Of is een lege resolver-output een configuratiefout die een warning/error verdient?
+
+**D4.** Foutafhandeling: als `phase_deliverables.yaml` een fase niet definieert voor de gevraagde workflow, gooit de resolver een `ValueError` of een `ConfigurationError`? Wie vangt dat op — PSE of de caller van PSE?
+
+**D5.** Heeft `PhaseDeliverableResolver` kennis van de huidige cycle (via `StateRepository`), of krijgt de caller altijd een cycle-nummer mee? Als de resolver state leest, is hij geen pure functie meer — trade-off testbaarheid vs. API-eenvoud.
+
+---
+
+### E — `StateRepository` interface (F15, F20)
+
+**E1.** Moet `StateRepository` een abstracte base class zijn (voor testability/mocking), of een concrete klasse die direct geïnjecteerd wordt?
+
+**E2.** Levert `StateRepository.read_state()` een getypte dataclass terug (`BranchState`) of een plain `dict`? Typed is beter voor Pyright strict, maar vereist migratie-aandacht bij schema-uitbreidingen.
+
+**E3.** Atomic write is nu geïmplementeerd als temp-file + rename in PSE. Verhuist die logica 1-op-1 naar `StateRepository`, of is er een betere primitieve voor Windows (bijv. `filelock` library)?
+
+**E4.** `ScopeDecoder` moet na de refactoring `state.json` lezen via `StateRepository`. Maar `ScopeDecoder` zit in `mcp_server/core/` en `StateRepository` zit (vermoedelijk) in `mcp_server/managers/`. Is die afhankelijkheidsrichting acceptabel, of moet er een interface in `core/` komen?
+
+---
+
+### F — PSE OCP hook-registry (F2, F6, F7, F21)
+
+**F1.** Wat is de registry-structuur? `dict[str, Callable]` waarbij key de fase-naam is? Of een lijst van `HookSpec(phase: str, hook: Callable)` objecten? Wat als een fase twee hooks heeft (enter + exit)?
+
+**F2.** Wie registreert hooks? Worden ze geconfigureerd in `phase_deliverables.yaml` (config-driven), of registreren modules zichzelf bij startup (plugin-patroon)?
+
+**F3.** Blijft de PSE verantwoordelijk voor het aanroepen van hooks, of delegeert hij naar een `HookRunner`? Als PSE de runner blijft, lost het alleen het OCP-probleem op maar niet het SRP-probleem volledig.
+
+**F4.** Hoe worden hooks getest in isolatie? Als hooks geconfigureerd zijn als Python callables, zijn ze niet serialiseerbaar. Als ze geregistreerd zijn via naam (string → callable), is er een registry-lookup nodig bij test-setup.
+
+---
+
+### G — Consumer consolidatie (F19, WF-2, WFC-1, WPC-1)
+
+**G1.** `workflow_config.py` heeft `get_first_phase()` en `has_workflow()` die `workflows.py::WorkflowConfig` niet heeft. Worden deze methoden toegevoegd aan de gecombineerde klasse, of zijn de consumers die ze gebruiken (`issue_tools.py`) herschrijfbaar om de bestaande API te gebruiken?
+
+**G2.** Na consolidatie: wordt de module-level singleton `workflow_config = WorkflowConfig.load()` in `workflows.py` behouden, of wordt het singleton-patroon gemigreerd naar `ClassVar` (zoals in `workflow_config.py` en `git_config.py`)?
+
+**G3.** `ScopeEncoder` en `ScopeDecoder` lezen `workphases.yaml` elk direct. Na F21 lezen ze ook `phase_deliverables.yaml` (voor subphase-validatie en commit_type_map). Hoe wordt de afhankelijkheid geïnjecteerd zonder dat beide klassen een lange constructor-parameter-lijst krijgen? Config facade/context object?
+
+---
+
+### H — Naamgeving en migratie `tdd` → `implementation` (F21)
+
+**H1.** Worden bestaande `state.json` bestanden met `current_tdd_cycle` automatisch gemigreerd, of wordt backward-compat leescode toegevoegd? Hoeveel actieve branches zijn er per vandaag die geraakt worden?
+
+**H2.** Wordt `tdd` als fase-naam volledig verwijderd, of blijft hij als alias in `workphases.yaml` voor backward-compat? Als alias: hoe lang, en wie beheert de deprecation?
+
+**H3.** Labels in GitHub (`phase:tdd`, `phase:red`, `phase:green`, `phase:refactor`) zijn extern en niet zomaar hernoembaar. Worden die labels behouden naast de nieuwe (`phase:implementation`, `phase:red` blijft als sub-label), of is er een label-migratie nodig?
+
+**H4.** `docs`-workflow heeft geen implementatiefase in de huidige config. Na F21 heeft ook `docs` een `implementation`-fase — of juist expliciet niet? Hoe modelleert `phase_deliverables.yaml` een workflow zonder implementatie (lege fase, of fase ontbreekt in config)?
+
+---
+
+### I — `branch_name_pattern` en `branch_types` (F16, F17)
+
+**I1.** `branch_name_pattern: "^[0-9]+-[a-z][a-z0-9-]*$"` valideert alleen het naam-gedeelte na het slash. Is dat correct? Of moet het patroon de volledige naam inclusief type-prefix valideren, en zo ja, wie genereert dan het gecombineerde patroon?
+
+**I2.** Bij toevoeging van `bug` en `hotfix` aan `branch_types`: hebben die types bestaande beschermde branches of merge-strategieën die hiervan afhangen (bijv. in `operation_policies.yaml`)?
+
+**I3.** `_extract_issue_from_branch()` in PSE wordt vervangen door een lookup via `GitConfig.branch_types`. Maar die methode gebruikt `re.match` met een hardcoded pattern. Wordt de regex dynamisch gebouwd vanuit `GitConfig.build_branch_type_regex()` (die methode bestaat al), of is er een directere aanpak?
+
+---
 
 
 ## Related Documentation
