@@ -1,0 +1,27 @@
+workflows:
+  feature:
+    planning:
+      checks:
+        - id: planning-doc
+          type: file_exists
+          required: true
+          file: docs/development/issue257/planning.md
+    implementation:
+      cycle_based: true
+      subphases: [red, green, refactor]
+      commit_type_map:
+        red: test
+        green: feat
+        refactor: chore
+      checks:
+        - id: design-doc
+          type: file_exists
+          required: true
+          file: docs/development/issue257/design.md
+  docs:
+    documentation:
+      checks:
+        - id: docs-readme
+          type: file_exists
+          required: true
+          file: docs/mcp_server/README.md
