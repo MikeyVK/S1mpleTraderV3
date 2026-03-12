@@ -17,6 +17,8 @@ import pytest
 from pydantic import ValidationError
 
 from mcp_server.core.interfaces import IStateReader, IStateRepository
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import (
     BranchState,
     FileStateRepository,
@@ -123,6 +125,32 @@ class TestInMemoryStateRepository:
         loaded = repository.load("feature/257-reorder-workflow-phases")
 
         assert loaded == state
+
+    def test_phase_state_engine_uses_injected_repository(self, tmp_path: Path) -> None:
+        """PSE should persist through the injected repository instead of direct file writes."""
+        project_manager = ProjectManager(workspace_root=tmp_path)
+        project_manager.initialize_project(
+            issue_number=257,
+            issue_title="Repository injection",
+            workflow_name="feature",
+        )
+        repository = InMemoryStateRepository()
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_repository=repository,
+        )
+
+        engine.initialize_branch(
+            branch="feature/257-reorder-workflow-phases",
+            issue_number=257,
+            initial_phase="implementation",
+            parent_branch="main",
+        )
+
+        loaded = repository.load("feature/257-reorder-workflow-phases")
+        assert loaded.current_phase == "implementation"
+        assert not (tmp_path / ".st3" / "state.json").exists()
 
 
 class TestAtomicJsonWriter:

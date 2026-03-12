@@ -26,14 +26,18 @@ import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 # Project modules
+from pydantic import ValidationError
+
 from mcp_server.config.git_config import GitConfig
 from mcp_server.config.workflows import workflow_config
 from mcp_server.config.workphases_config import WorkphasesConfig
+from mcp_server.core.interfaces import IStateRepository
 from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
 from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.managers.state_repository import BranchState, FileStateRepository
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +74,7 @@ class PhaseStateEngine:
         workspace_root: Path | str,
         project_manager: ProjectManager,
         git_config: GitConfig | None = None,
+        state_repository: IStateRepository | None = None,
     ) -> None:
         """Initialize PhaseStateEngine.
 
@@ -81,6 +86,7 @@ class PhaseStateEngine:
         self.state_file = self.workspace_root / ".st3" / "state.json"
         self.project_manager = project_manager
         self._git_config = git_config or GitConfig.from_file()
+        self._state_repository = state_repository or FileStateRepository(state_file=self.state_file)
 
     def initialize_branch(
         self, branch: str, issue_number: int, initial_phase: str, parent_branch: str | None = None
@@ -322,21 +328,16 @@ class PhaseStateEngine:
         Raises:
             ValueError: If auto-recovery fails (invalid branch, missing project)
         """
-        # Check if state.json exists, is not empty, and matches requested branch
-        if self.state_file.exists():
-            content = self.state_file.read_text(encoding="utf-8").strip()
-            if content:
-                try:
-                    state = cast(dict[str, Any], json.loads(content))
-                    if state.get("branch") == branch:
-                        return state
-                except json.JSONDecodeError:
-                    logger.warning("Invalid JSON in state.json, reconstructing")
+        try:
+            loaded_state = self._state_repository.load(branch)
+            if loaded_state.branch == branch:
+                return loaded_state.model_dump(mode="json")
+        except (FileNotFoundError, OSError, json.JSONDecodeError, ValidationError):
+            logger.warning("Invalid or missing state.json, reconstructing", exc_info=True)
 
-        # State doesn't exist/empty/invalid or is for different branch - reconstruct
-        state = self._reconstruct_branch_state(branch)
-        self._save_state(branch, state)
-        return state
+        reconstructed_state = self._reconstruct_branch_state(branch)
+        self._save_state(branch, reconstructed_state)
+        return reconstructed_state
 
     def _validate_cycle_number_range(self, cycle_number: int, issue_number: int) -> None:
         """Validate cycle_number is within valid range [1..total].
@@ -384,31 +385,16 @@ class PhaseStateEngine:
         """Save branch state to state.json.
 
         Overwrites state.json with only the current branch state.
-        Uses atomic write (temp file + rename) to avoid file locking issues
-        on Windows (Issue #85).
+        Delegates persistence to the configured repository.
 
         Args:
             branch: Branch name
             state: State dict to save
         """
-        # Ensure .st3 directory exists
-        self.state_file.parent.mkdir(parents=True, exist_ok=True)
-
-        state["branch"] = branch
-
-        # Atomic write: write to temp file then rename (avoids locking issues)
-        content = json.dumps(state, indent=2)
-        temp_file = self.state_file.parent / ".state.tmp"
-        try:
-            temp_file.write_text(content, encoding="utf-8")
-            # On Windows, need to remove target first if it exists
-            if self.state_file.exists():
-                self.state_file.unlink()
-            temp_file.rename(self.state_file)
-        except OSError:
-            # Fallback: direct write if atomic fails
-            temp_file.unlink(missing_ok=True)
-            self.state_file.write_text(content, encoding="utf-8")
+        payload = dict(state)
+        payload["branch"] = branch
+        validated_state = BranchState.model_validate(payload)
+        self._state_repository.save(validated_state)
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
         """Convert TransitionRecord to dict for JSON serialization.
@@ -457,7 +443,10 @@ class PhaseStateEngine:
         # Step 1: Extract issue number from branch
         issue_number = self._git_config.extract_issue_number(branch)
         if issue_number is None:
-            msg = f"Cannot extract issue number from branch '{branch}'. Expected format: <type>/<number>-<title>"
+            msg = (
+                f"Cannot extract issue number from branch '{branch}'. "
+                "Expected format: <type>/<number>-<title>"
+            )
             raise ValueError(msg)
 
         # Step 2: Get project plan (SSOT for workflow)
