@@ -2,14 +2,11 @@
 
 ## Overview
 
-All code in S1mpleTrader V3 follows **strict PEP 8 compliance** with additional project-specific conventions for consistency and maintainability.
+> **⚠️ Lees eerst:** [ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md) — het bindende architecturele contract. De stijlregels in dit document zijn *vorm*; de architectuurprincipes zijn *wet*.
 
-## General Principles
+Alle code in S1mpleTrader V3 volgt **automatisch** de vormregels via scaffolding (ruff, Pydantic-templates). Dit document beschrijft de residuele handmatige conventies voor niet-gegenereerde bestanden.
 
-- **PEP 8 Compliant** - All Python code follows strict PEP 8
-- **Full Type Hinting** - Mandatory for all functions and methods
-- **English Only** - All comments, docstrings, variable names in English
-- **Google Style Docstrings** - For all public functions and classes
+**PEP 8 compliance** wordt afgedwongen door `ruff` in de quality gates — het is geen cognitieve belasting voor de developer. Architecturale correctheid (SOLID, DRY, Config-First, Fail-Fast) is de primaire kwaliteitsmaatstaf.
 
 ## File Headers
 

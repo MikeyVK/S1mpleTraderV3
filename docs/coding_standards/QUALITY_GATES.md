@@ -2,7 +2,9 @@
 
 ## Overview
 
-All code in S1mpleTrader V3 must pass **7 mandatory quality gates** before merging to main. Each gate must **pass** (exit code 0) to ensure code quality and consistency.
+> **⚠️ Lees eerst:** [ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md) — tooling-gates toetsen *vorm*, architectuurprincipes toetsen *correctheid*. Code kan alle gates groen halen en toch worden REJECTED op architecturele gronden.
+
+All code in S1mpleTrader V3 must pass **8 mandatory quality gates** before merging to main. Each gate must **pass** (exit code 0) to ensure code quality and consistency.
 
 ## Configuration Doctrine: IDE vs CI
 
@@ -40,6 +42,7 @@ Every DTO implementation must pass all gates for **both** the DTO file and its t
 - [ ] Gate 4: Type Checking (DTOs only)
 - [ ] Gate 5: Tests Passing
 - [ ] Gate 6: Code Coverage (>= 90%)
+- [ ] Gate 7: Architectural Review (see ARCHITECTURE_PRINCIPLES.md)
 
 ### Gate 0: Ruff Format
 
@@ -203,6 +206,29 @@ pytest tests/ --cov=backend --cov=mcp_server --cov=new_package --cov-branch --co
 
 ## Post-Implementation Workflow
 
+### Gate 7: Architectural Review
+
+**Purpose:** Ensure code conforms to the architectural principles in [ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md). This gate is a **human/agent review**, not a tooling check.
+
+**Checklist — run through these questions for every PR:**
+
+| Vraag | Verwacht antwoord |
+|---|---|
+| Heeft elke nieuwe klasse precies één verantwoordelijkheid? | Ja — anders split |
+| Zijn er if-chains op fase-namen, action-types of workflow-namen? | Nee — OCP-schending |
+| Staat businesskennis (fase-namen, commit-type-maps, branch-types) in YAML config? | Ja — Config-First |
+| Worden dependencies via constructor geïnjecteerd? | Ja — DIP |
+| Zijn read-only consumers beperkt tot `IStateReader`? | Ja — ISP |
+| Retourneert `get_state()` / `get_current_phase()` zonder `save()` aan te roepen? | Ja — CQS |
+| Is `BranchState` en elk ander value object `frozen=True`? | Ja — CQS afdwinging |
+| Zijn singletons via `ClassVar` + lazy init (geen module-level side effects)? | Ja — Fail-Fast |
+| Bevat de loader startup-validatie voor inconsistente config-combinaties? | Ja — Fail-Fast |
+| Is er een nieuwe hardcoded regex met branch-types/fase-namen? | Nee — gebruik `GitConfig`/`WorkflowConfig` |
+| Zijn migratie-lagen geschreven voor gedepreceerde parameters? | Nee — YAGNI |
+| Behoort een nieuwe methode bij de klasse van haar domein? | Ja — Cohesion |
+
+**Bij twijfel:** raadpleeg de beslissingen in [docs/development/issue257/research_config_first_pse.md](../development/issue257/research_config_first_pse.md) voor redenering en trade-offs.
+
 Complete workflow for a new DTO:
 
 ```powershell
@@ -354,6 +380,7 @@ def _artifact_manager(
 
 **REJECT if any of these conditions:**
 
+*Tooling (geautomatiseerd):*
 - ❌ Any quality gate fails (non-zero exit code)
 - ❌ Failing tests
 - ❌ Missing type hints
@@ -361,6 +388,15 @@ def _artifact_manager(
 - ❌ Code without tests (for new features)
 - ❌ Lines > 100 characters
 - ❌ Import grouping violations (see [CODE_STYLE.md](CODE_STYLE.md))
+
+*Architectuur (Gate 7 — human/agent review):*
+- ❌ Hardcoded fase-/workflow-/branch-type-namen in productiecode (Config-First)
+- ❌ Dependency geïnstantieerd binnen `execute()` of andere methoden (DIP)
+- ❌ Read-only consumer geïnjecteerd met `IStateRepository` in plaats van `IStateReader` (ISP)
+- ❌ Query-methode roept `save()` aan of muteert state (CQS)
+- ❌ Module-level `Config.load()` of `StateRepository()` — import-time side effects
+- ❌ God Class met meerdere ongerelateerde verantwoordelijkheden (SRP)
+- ❌ If-chain op type/fase/action — gebruik registry of config-dispatch (OCP)
 
 **ACCEPT only when:**
 - ✅ All quality gates pass (exit code 0)
@@ -371,6 +407,7 @@ def _artifact_manager(
 - ✅ Imports at top-level
 - ✅ Max line length 100 chars
 - ✅ Import grouping correct
+- ✅ Gate 7 architectural review checklist passes
 
 ## VS Code Settings (Recommended)
 

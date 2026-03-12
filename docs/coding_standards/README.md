@@ -6,15 +6,17 @@ This directory contains the comprehensive coding standards for S1mpleTrader V3. 
 
 ## Quick Links
 
-📖 **Start Here:** [TDD_WORKFLOW.md](TDD_WORKFLOW.md) - Understand the development cycle
+**⚖️ Architectuurcontract — lees dit EERST:**
 
-🎯 **Daily Use:** [QUALITY_GATES.md](QUALITY_GATES.md) - Pre-merge checklist
+🏛️ **[ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md)** — Bindende architectuurprincipes (SOLID, Config-First, Fail-Fast, CQS, ISP, LoD). Dit is de `primaire` referentie. Code die deze principes schendt wordt REJECTED, ongeacht of tooling-gates groen zijn.
 
-🌳 **Git Strategy:** [GIT_WORKFLOW.md](GIT_WORKFLOW.md) - Branching and commits
+---
 
-✨ **Style Guide:** [CODE_STYLE.md](CODE_STYLE.md) - Code formatting rules
+📋 **Pre-merge checklist:** [QUALITY_GATES.md](QUALITY_GATES.md) — 8 verplichte gates (incl. Gate 7 architectural review)
 
-🧩 **Type Checking:** [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) - Standardized fixes for typing issues
+✨ **Opmaak en stijl:** [CODE_STYLE.md](CODE_STYLE.md) — Code formatting (PEP 8 wordt door tooling afgedwongen)
+
+🧩 **Type checking:** [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) — Gestandaardiseerde aanpak voor typing-issues
 
 ## Documentation Structure
 
