@@ -1,47 +1,102 @@
-# Design: Config-First PSE Architecture
+<!-- docs\development\issue257\design.md -->
+<!-- template=design version=5827e841 created=2026-03-12T12:06Z updated= -->
+# Config-First PSE Architecture
 
-**Status:** In Progress — design phase active
-**Issue:** #257
-**Branch:** feature/257-reorder-workflow-phases
-**Last updated:** 2026-03-12
+**Status:** DRAFT  
+**Version:** 1.0  
+**Last Updated:** 2026-03-12
 
 ---
 
 ## Purpose
 
-This document records the formal design decisions for issue #257 — the Config-First PSE architecture. It is extracted from the research document (`research_config_first_pse.md`) which serves as source reference and decision backlog.
+Define the design decisions for refactoring the Phase State Engine (PSE) to a Config-First architecture: business rules extracted to YAML config, PSE reduced to a pure state machine, and supporting infrastructure (StateRepository, EnforcementRunner, PhaseContractResolver) introduced as SRP components.
 
-> **Rule:** New design rounds happen here. The research document is frozen as source + backlog.
+## Scope
+
+**In Scope:**
+phase_contracts.yaml (per-workflow x phase gate contract, renamed from phase_deliverables.yaml); enforcement.yaml (phase- and tool-level enforcement rules, renamed from lifecycle.yaml); deliverables.json (issue-specific additive register for TDD/cycle planning); AtomicJsonWriter (shared utility for all atomic JSON writes); PhaseContractResolver (SRP class composing config + registry into list[CheckSpec]); StateRepository (SRP class for atomic state read/write, extracted from PSE); EnforcementRunner (replaces HookRunner, handles phase and tool enforcement events); IStateReader + IStateRepository (ISP-split Protocols in core/interfaces/); PSE refactor: StateRepository injection, get_state(branch) -> BranchState, legacy phase param removal; GitConfig.extract_issue_number(branch) -> int | None; tdd -> implementation phase rename (flag-day, full removal); projects.json abolishment
+
+**Out of Scope:**
+SHA-256 tamper detection for deliverables.json (issue #261); multi-project support; performance and caching optimizations; backward-compatible migration layer for renamed phases
+
+## Prerequisites
+
+Read these first:
+1. Research complete: research_config_first_pse.md frozen as source + decision backlog
+2. Issue #257 active on branch feature/257-reorder-workflow-phases
+---
+
+## 1. Context & Requirements
+
+### 1.1. Problem Statement
+
+The Phase State Engine (PSE) accumulates business logic directly in Python: phase gate contracts, branch policy enforcement, lifecycle hooks, and commit-type resolution are all hardcoded. This causes: (1) config changes requiring code changes (OCP violation), (2) PSE doing state management + business validation + hook orchestration (SRP violation), (3) tools reaching into StateRepository directly instead of through PSE (Law of Demeter violation), (4) no startup validation of config consistency (missing Fail-Fast).
+
+### 1.2. Requirements
+
+**Functional:**
+- [ ] phase_contracts.yaml loader validates config at startup: ConfigError if cycle_based=true and commit_type_map is empty
+- [ ] Enforcement rules in enforcement.yaml apply to both phase transitions and tool calls via EnforcementRunner
+- [ ] State reads return frozen BranchState; save() is never called by query methods (CQS)
+- [ ] PhaseContractResolver.resolve(workflow_name, phase, cycle_number) returns list[CheckSpec] with no StateRepository dependency
+- [ ] All JSON writes are atomic via shared AtomicJsonWriter (temp-file + rename)
+- [ ] state.json removed from .gitignore: git-tracked per branch, never silently lost
+- [ ] GitConfig provides extract_issue_number(branch) -> int | None for all branch-name parsing
+- [ ] Phase rename: tdd -> implementation, flag-day, no alias, no migration layer
+- [ ] projects.json abolished: single-branch state.json as source of truth per branch
+- [ ] Branch policies modeled as enforcement rules in enforcement.yaml (check_branch_policy action)
+
+**Non-Functional:**
+- [ ] Fail-fast: all invalid config combinations raise ConfigError at server startup, not at runtime
+- [ ] Testability: InMemoryStateRepository for unit tests; EnforcementRunner independently testable from PSE
+- [ ] Type safety: BranchState frozen=True enforces CQS at type system level (Pyright-strict)
+- [ ] ISP: IStateReader (load-only) for read-only consumers; IStateRepository (load+save) for writers
+- [ ] DIP: all dependencies injected via constructor; no module-level singletons with import-time side effects
+- [ ] Explicit over Implicit: PSE emits explicit warning when state.json has uncommitted changes on initialize_branch()
+
+### 1.3. Constraints
+
+- Flag-day breaking changes are acceptable (BC approach per F24 in research)
+- No migration layer for renamed phases or abolished config files
+- SHA-256 tamper detection is deferred to issue #261
+---
+
+## 2. Design Options
+---
+
+## 3. Chosen Design
+
+**Decision:** Adopt Config-First architecture: extract business rules to YAML (phase_contracts.yaml, enforcement.yaml); reduce PSE to pure state machine via StateRepository extraction; introduce PhaseContractResolver (SRP), EnforcementRunner (SRP), and ISP-split interfaces (IStateReader / IStateRepository). All decisions follow SOLID, Config-First, Fail-Fast, CQS, and Explicit-over-Implicit principles.
+
+**Rationale:** The existing PSE is a God Class: it does state I/O, phase validation, hook orchestration, and branch-name parsing simultaneously. Config-First makes the system observable (YAML is readable), testable (swap FileStateRepository for InMemoryStateRepository), and extensible without code changes (new workflows/gates/actions via YAML). Fail-fast startup validation catches config errors before any tool call, eliminating a class of hard-to-debug runtime failures.
+
+### 3.1. Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| **A** — `phase_contracts.yaml`: required vs. recommended gates, Fail-Fast validation | `cycle_based=true` + empty `commit_type_map` = `ConfigError` at startup. Two-file split: `workphases.yaml` = metadata, `phase_contracts.yaml` = contracts. |
+| **B** — `deliverables.json`: nested structure, completed-cycle guard, AtomicJsonWriter, `state.json` git-tracked | Nested JSON per issue number. Completed cycles read-only (`ValidationError` on update). Single `AtomicJsonWriter` for all JSON writes. `state.json` committed after every `transition_phase`. |
+| **C** — `projects.json` abolished, flag-day | GitHub issues + local git branches are single source of truth. Multi-branch register adds complexity without benefit. |
+| **D** — `PhaseContractResolver`: explicit `cycle_number` parameter, `CheckSpec` Pydantic, empty list valid | DIP: resolver has no dependency on `StateRepository`. Tool layer reads `cycle_number` from `PSE.get_state()`. Empty list is valid (e.g. `docs` workflow has no `implementation` phase). |
+| **E** — `StateRepository`: ABC + File/Memory impls, `BranchState(frozen=True)`, ISP split | CQS enforced by type system. `IStateReader` for read-only consumers; `IStateRepository` for writers. Interfaces in `core/interfaces/`. |
+| **F** — `enforcement.yaml`: explicit `event_source/timing/actions`, plugin registration, `EnforcementRunner` + `BaseTool.enforcement_event` class var (Option C) | Explicit avoids implicit key-encoding. Plugin fail-fast at startup (unregistered type = `ConfigError`). Option C keeps tools declarative and runner injected at dispatch level. |
+| **G** — `WorkflowConfig` consolidated in `workflows.py`, `ClassVar` + lazy init, `PhaseConfigContext` facade | Eliminates duplicate module; `ClassVar` replaces module-level singleton to avoid import-time side effects. |
+| **H** — `tdd` → `implementation` rename, flag-day, no alias; GitHub labels unchanged | Clean break consistent with BC approach. Label migration for external system is not cost-effective. |
+| **I** — `branch_name_pattern` validates name-part only; branch policies as enforcement rules; `GitConfig.extract_issue_number()` | Combined pattern built dynamically via `build_branch_type_regex()` + name pattern. Cohesion: issue number extraction belongs to `GitConfig`. |
+| **J** — Tool layer is composition root; `PSE.get_state(branch)` → `BranchState`; legacy `phase` param dropped | Law of Demeter: tool talks to PSE, not `StateRepository` directly. `frozen=True` confirms CQS. Flag-day removal: all callers already use `workflow_phase`. |
 
 ---
 
-## Scope (quick reference)
-
-**New components:**
-- `phase_contracts.yaml` — per-workflow×phase enforcement contract (renamed from `phase_deliverables.yaml`)
-- `enforcement.yaml` — phase- and tool-level enforcement rules (renamed from `lifecycle.yaml`)
-- `deliverables.json` — issue-specific additief register for TDD/cycle planning
-- `AtomicJsonWriter` — shared utility for all atomic JSON writes
-- `PhaseContractResolver` — SRP class combining config-layer + registry-layer into `list[CheckSpec]`
-- `StateRepository` — SRP class for atomic state read/write (extracted from PSE)
-- `EnforcementRunner` — replaces HookRunner, handles phase + tool enforcement events
-- `IStateReader` + `IStateRepository` — ISP-split Protocols in `core/interfaces/`
-
-**Key renames:** `tdd` → `implementation` (phase), `lifecycle.yaml` → `enforcement.yaml`, `HookRunner` → `EnforcementRunner`, `phase_deliverables.yaml` → `phase_contracts.yaml`, `PhaseDeliverableResolver` → `PhaseContractResolver`, `current_tdd_cycle` → `current_cycle`
-
-**Removed:** `projects.json`, `_extract_issue_from_branch()` in PSE, deprecated `phase` parameter in `git_add_or_commit`
-
----
-
-## Design Decisions
+## 4. Detailed Design Decisions
 
 ### A — `phase_contracts.yaml` Schema
 
 #### A1 — Field defaults and startup validation
 
-**Decision:** Fields are optional with defaults: `subphases: []`, `commit_type_map: {}`, `cycle_based: false`. The loader fills in missing fields with these defaults.
+**Decision:** Fields are optional with defaults: `subphases: []`, `commit_type_map: {}`, `cycle_based: false`. The loader fills missing fields with these defaults.
 
-**Fail-Fast constraint:** The loader validates at startup: `cycle_based: true` + `commit_type_map: {}` = `ConfigError`. A cycle-based phase without a commit_type_map causes a silent failure on the first commit. The error is detected at server startup, not at runtime.
+**Fail-Fast constraint:** `cycle_based: true` + `commit_type_map: {}` = `ConfigError` at server startup. A cycle-based phase without a commit_type_map causes a silent failure on the first commit — detected at startup, not at runtime.
 
 #### A3 — `cycle_based` is a boolean
 
@@ -51,13 +106,13 @@ This document records the formal design decisions for issue #257 — the Config-
 
 **Decision:** `workphases.yaml` = pure phase metadata (display_name, description, subphase whitelist). `phase_contracts.yaml` = per-workflow×phase contracts (exit_requires, commit_type_map, cycle_based). No overlap.
 
-#### A6 — Required vs. recommended gate distinction + tamper detection
+#### A6 — Required vs. recommended gate distinction
 
 **Decision:** Issue-specific gates may *extend* (`recommended`) but may **not** override `required` config gates. Merge order in `PhaseContractResolver`:
-- `required` gates in `phase_contracts.yaml`: immutable contract, never overridable by issue-specific entries
+- `required` gates in `phase_contracts.yaml`: immutable contract, never overridable
 - `recommended` gates: extendable and overridable via `deliverables.json`, but only via authorized tools (`save_planning_deliverables`, `update_planning_deliverables`)
 
-The `required`/`recommended` distinction is a field on each gate-spec in `phase_contracts.yaml`. Tamper detection for `deliverables.json` (SHA-256 sidecar) is issue #261 — outside scope of this issue.
+The `required`/`recommended` distinction is a field on each gate-spec in `phase_contracts.yaml`. Tamper detection for `deliverables.json` (SHA-256 sidecar) is out of scope — issue #261.
 
 ---
 
@@ -65,7 +120,7 @@ The `required`/`recommended` distinction is a field on each gate-spec in `phase_
 
 #### B1 — JSON structure
 
-**Decision:** Nested: `{ "257": { "phases": { "design": [...], "implementation": {...} }, "created_at": "...", "workflow_name": "feature" } }`. Nested structure allows issue-level metadata alongside phase entries.
+**Decision:** Nested: `{ "<issue_nr>": { "phases": { "design": [...], "implementation": {...} }, "created_at": "...", "workflow_name": "feature" } }`. Nested structure allows issue-level metadata alongside phase entries.
 
 #### B2 — Mutability and completed-cycle guard
 
@@ -81,13 +136,13 @@ The `required`/`recommended` distinction is a field on each gate-spec in `phase_
 
 **Decision:** Delete on PR merge. Config over code: cleanup is a `post_merge` lifecycle action in `enforcement.yaml`, not hardcoded in Python. Git history is the ultimate source of truth after merge.
 
-#### B5 — state.json git-tracked per branch + startup guard
+#### B5 — `state.json` git-tracked per branch + startup guard
 
-**Decision:** `state.json` removed from `.gitignore` so it is tracked per branch in git. After branch switch, `state.json` of that branch is available via git checkout.
+**Decision:** `state.json` removed from `.gitignore` so it is tracked per branch in git.
 
 **Enforcement:** A `post`-enforcement rule on `transition_phase` triggers `commit_state_files` action, ensuring uncommitted `state.json` is never silently lost.
 
-**Startup guard:** PSE checks at `initialize_branch()` whether `state.json` has uncommitted local changes not from a known tool call. If so: explicit warning to the agent (Explicit over Implicit). Not blocked, not silently ignored.
+**Startup guard:** PSE checks at `initialize_branch()` whether `state.json` has uncommitted local changes not from a known tool call. If so: explicit warning to the agent. Not blocked, not silently ignored. (Explicit over Implicit)
 
 ---
 
@@ -101,7 +156,7 @@ Mode 2 reconstruction graceful degradation: `workflow_name: "unknown"` if GitHub
 
 #### C4 — Flag-day
 
-**Decision:** Flag-day. `projects.json` is deleted. Existing entries are not migrated. Consistent with BC approach (see F24 in research).
+**Decision:** Flag-day. `projects.json` is deleted. Existing entries are not migrated.
 
 ---
 
@@ -113,7 +168,7 @@ Mode 2 reconstruction graceful degradation: `workflow_name: "unknown"` if GitHub
 
 #### D2 — CheckSpec is a Pydantic model
 
-**Decision:** Pydantic model. Already in the stack (`pydantic>=2.5.0`). Gives runtime validation when loading `phase_contracts.yaml` entries and a type-safe interface with `DeliverableChecker`.
+**Decision:** Pydantic model. Already in the stack. Gives runtime validation when loading `phase_contracts.yaml` entries and a type-safe interface with `DeliverableChecker`.
 
 #### D3 — Empty list is normal
 
@@ -139,19 +194,19 @@ Mode 2 reconstruction graceful degradation: `workflow_name: "unknown"` if GitHub
 
 #### E3 — AtomicJsonWriter utility
 
-**Decision:** Temp-file + rename moves to shared `AtomicJsonWriter` utility (see B3). No new dependency on `filelock`. Existing approach proven on Windows (Issue #85).
+**Decision:** Temp-file + rename moves to shared `AtomicJsonWriter` utility (see B3). No new dependency on `filelock`. Existing approach proven on Windows.
 
 #### E4 — ISP split: IStateReader + IStateRepository
 
 **Decision:** `IStateReader` (Protocol): `load()` only — for read-only consumers (ScopeDecoder, PhaseContractResolver). `IStateRepository(IStateReader)` (Protocol): `load()` + `save()` — for writing consumers (PSE, EnforcementRunner).
 
-`FileStateRepository` implements both via structural subtyping. Interfaces live in `mcp_server/core/interfaces/`.
+`FileStateRepository` implements both via structural subtyping. Interfaces live in `core/interfaces/`.
 
 ---
 
-### F — PSE OCP Hook Registry → enforcement.yaml
+### F — PSE OCP Hook Registry → `enforcement.yaml`
 
-#### F1 — enforcement.yaml explicit structure
+#### F1 — `enforcement.yaml` explicit structure
 
 **Decision:** YAML in `.st3/enforcement.yaml`. Enforcement works on two levels: phase events and tool-call events. Explicit field structure — no implicit key-encoding:
 
@@ -211,11 +266,11 @@ At dispatch: `runner.run(tool.enforcement_event, timing="pre"|"post", context)`.
 
 **Decision:** Trivially testable via constructor injection of a fake `EnforcementRegistry` with no-op action-handlers. `EnforcementRunner` is independently testable from PSE and server-dispatcher. Each action-helper is independently testable with its own unit tests.
 
-#### F5 — force_transition uses same hooks with exception catching
+#### F5 — `force_transition` uses same hooks with exception catching
 
 **Decision (Option C):** `force_transition()` calls the same hooks as `transition()`. Exceptions (`DeliverableCheckError`, `ConfigError`) are caught by PSE and returned as active warnings in the ToolResult — not blocked, not silently ignored.
 
-The blocking/warn distinction is a transition-mechanism property, not a hook property. Tool separation (`transition` vs `force_transition`) is the enforcement mechanism for requiring human approval.
+The blocking/warn distinction is a transition-mechanism property, not a hook property.
 
 ---
 
@@ -243,7 +298,7 @@ The blocking/warn distinction is a transition-mechanism property, not a hook pro
 
 #### H3 — GitHub labels unchanged
 
-**Decision:** GitHub labels (`phase:tdd`, `phase:red`, etc.) retained as-is. External system, label migration is overkill. `phase:red`, `phase:green`, `phase:refactor` remain valid as sub-labels of `implementation`.
+**Decision:** GitHub labels (`phase:tdd`, `phase:red`, etc.) retained as-is. External system; label migration is overkill. `phase:red`, `phase:green`, `phase:refactor` remain valid as sub-labels of `implementation`.
 
 #### H4 — `docs` workflow has no implementation phase
 
@@ -251,7 +306,7 @@ The blocking/warn distinction is a transition-mechanism property, not a hook pro
 
 ---
 
-### I — branch_name_pattern and branch_types
+### I — `branch_name_pattern` and `branch_types`
 
 #### I1 — Name-only pattern + fail-fast combined validation
 
@@ -263,19 +318,19 @@ Combined pattern: `^{build_branch_type_regex()}/{branch_name_pattern.lstrip('^')
 
 **Decision:** Branch policies (`base_restrictions`, `merge_targets`) modeled as enforcement rules in `enforcement.yaml` with `event_source: tool, tool: create_branch, timing: pre`. No separate branch policies config file.
 
-#### I3 — GitConfig.extract_issue_number() (Option B)
+#### I3 — `GitConfig.extract_issue_number()` (Option B)
 
 **Decision:** `GitConfig.extract_issue_number(branch: str) -> int | None` as its own method on `GitConfig`. Extraction of an issue number from a branch name is a question about git conventions — the domain of `GitConfig`. PSE `_extract_issue_from_branch()` is deleted. PSE gets `GitConfig` as injectable dependency.
 
 ---
 
-### J — commit_type_map Availability in Tool Layer
+### J — `commit_type_map` Availability in Tool Layer
 
 #### J1 — Tool layer resolves (Option A)
 
 **Decision:** Option A — tool layer is composition root. `GitManager.commit_with_scope()` receives `commit_type` as explicit parameter. `PhaseContractResolver` sits in the tool layer. `GitManager` remains pure and has no dependency on `PhaseContractResolver`.
 
-#### J2 — PSE.get_state(branch) → BranchState (Option B)
+#### J2 — `PSE.get_state(branch)` → `BranchState` (Option B)
 
 **Decision:** `PSE.get_state(branch: str) -> BranchState` as public method. PSE delegates internally to `StateRepository` for I/O (DIP). Tool layer talks to PSE as single point of contact (Law of Demeter). `get_current_phase()` becomes a convenience wrapper over `get_state()`.
 
@@ -283,7 +338,7 @@ Combined pattern: `^{build_branch_type_regex()}/{branch_name_pattern.lstrip('^')
 
 #### J3 — Legacy `phase` parameter dropped (Option a)
 
-**Decision:** Legacy `phase` parameter fully dropped. Breaking change, all callers already use `workflow_phase` (renamed to `phase` per F23 in research). Backward-compat tests deleted.
+**Decision:** Legacy `phase` parameter fully dropped. Breaking change; all callers already use `workflow_phase`. Backward-compat tests deleted.
 
 #### J4 — ConfigError from PhaseContractResolver
 
@@ -291,7 +346,7 @@ Combined pattern: `^{build_branch_type_regex()}/{branch_name_pattern.lstrip('^')
 
 ---
 
-## Interface Specifications
+## 5. Interface Specifications
 
 ### BranchState (Pydantic, frozen)
 
@@ -313,7 +368,7 @@ class BranchState(BaseModel):
     created_at: str | None = None
 ```
 
-### IStateReader / IStateRepository (Protocols in core/interfaces/)
+### IStateReader / IStateRepository (Protocols in `core/interfaces/`)
 
 ```python
 class IStateReader(Protocol):
@@ -329,7 +384,7 @@ class IStateRepository(IStateReader, Protocol):
 class CheckSpec(BaseModel):
     id: str
     type: str                    # "file_glob", "heading_present", etc.
-    required: bool = True        # required vs. recommended
+    required: bool = True        # True = required gate, False = recommended
     file: str | None = None
     heading: str | None = None
     # ... type-specific fields
@@ -337,13 +392,13 @@ class CheckSpec(BaseModel):
 
 ---
 
-## Architecture Diagram (Component Boundaries)
+## 6. Architecture Diagram (Component Boundaries)
 
 ```
                    Tool Layer (composition root)
 ┌─────────────────────────────────────────────────────┐
-│  TransitionPhaseTool                                 │
-│  GitCommitTool  enforcement_event = "transition_..." │
+│  TransitionPhaseTool  enforcement_event = "..."      │
+│  GitCommitTool                                       │
 │  CreateBranchTool                                    │
 └───────┬──────────────────────┬──────────────────────┘
         │ PSE.get_state()       │ PhaseContractResolver.resolve()
@@ -354,27 +409,28 @@ class CheckSpec(BaseModel):
   └────┬─────┘          └──────────────────────┘
        │ IStateRepository        ▲
        ▼                    IStateReader
-  ┌──────────────────┐
-  │ FileStateRepository │  ← AtomicJsonWriter
-  └──────────────────┘
+  ┌──────────────────────┐
+  │ FileStateRepository  │  ← AtomicJsonWriter
+  └──────────────────────┘
 
-  EnforcementRunner  ← enforcement.yaml (YAML-driven rules)
-  (injected at dispatch level, not per tool)
+  EnforcementRunner (injected at server dispatch level)
+  ├── BaseTool.enforcement_event → "transition_phase" | "create_branch" | ...
+  └── EnforcementRegistry → action handlers (check_deliverable, commit_state_files, ...)
 ```
+- **[research_config_first_pse.md — Research: Config-First PSE Architecture (frozen, source of truth)][related-1]**
+- **[../../coding_standards/ARCHITECTURE_PRINCIPLES.md — Architecture Principles (binding contract)][related-2]**
+- **[../../coding_standards/QUALITY_GATES.md — Quality Gates (Gate 7: architectural review)][related-3]**
 
----
+<!-- Link definitions -->
 
-## Related Documentation
-
-- **Research + decision backlog:** [research_config_first_pse.md](research_config_first_pse.md)
-- **KPI definitions:** [research_config_first_pse.md — Expected Results section](research_config_first_pse.md)
-- **Issue:** #257
-- **Tamper detection (deliverables.json):** Issue #261
+[related-1]: research_config_first_pse.md — Research: Config-First PSE Architecture (frozen, source of truth)
+[related-2]: ../../coding_standards/ARCHITECTURE_PRINCIPLES.md — Architecture Principles (binding contract)
+[related-3]: ../../coding_standards/QUALITY_GATES.md — Quality Gates (Gate 7: architectural review)
 
 ---
 
 ## Version History
 
-| Date | Author | Change |
-|---|---|---|
-| 2026-03-12 | agent | Initial extraction from research document — all A–J decisions formalized |
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0 |  | Agent | Initial draft |
