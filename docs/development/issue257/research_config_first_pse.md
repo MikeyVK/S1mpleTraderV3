@@ -653,7 +653,9 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **A1.** Wat is de minimale set verplichte sleutels per fase-entry? Zijn `subphases`, `commit_type_map` en `cycle_based` altijd aanwezig, of optioneel? Hoe valideert de loader ontbrekende velden?
 
-> **✅ Beslissing (11-03-2026):** Optioneel met defaults: `subphases: []`, `commit_type_map: {}`, `cycle_based: false`. De loader vult ontbrekende velden aan met deze defaults zonder error.
+> **✅ Beslissing (11-03-2026, aangescherpt 12-03-2026):** Optioneel met defaults: `subphases: []`, `commit_type_map: {}`, `cycle_based: false`. De loader vult ontbrekende velden aan met deze defaults.
+>
+> **Aanscherping Fail-Fast (12-03-2026):** De loader valideert bij startup de combinatie: `cycle_based: true` + `commit_type_map: {}` is een `ConfigError`. Een fase die cycle-based is maar geen commit_type_map heeft, levert een stille failure bij de eerste commit. Fail-fast: de fout wordt gedetecteerd bij server-opstart, niet bij runtime van een gebruikersactie.
 
 **A2.** Hoe worden meervoudige check-types per deliverable gemodelleerd? (`file_exists` + `contains_text` op hetzelfde bestand — één `validates`-spec of geneste lijst?)
 
@@ -669,7 +671,12 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **A6.** Hoe worden issue-specifieke additieve deliverables (`deliverables.json`) samengevoegd met de config-laag? Volgorde: config eerst, issue-additief daarna — maar wat als een issue-additief een config-entry wil *overschrijven*? Is dat toegestaan?
 
-> **✅ Beslissing (11-03-2026):** Issue-specifiek mag config overschrijven. `PhaseContractResolver` merge-volgorde: config = default, `deliverables.json` = override. Additieve én overschrijvende overrides toegestaan.
+> **✅ Beslissing (11-03-2026, aangescherpt 12-03-2026):** Issue-specifiek mag config *uitbreiden* (`recommended` gates), maar mag `required` gates **niet** overschrijven. Merge-volgorde in `PhaseContractResolver`:
+>
+> - `required` gates in `phase_contracts.yaml`: onveranderlijk contract, nooit overridable door issue-specifieke entries
+> - `recommended` gates in `phase_contracts.yaml`: uitbreidbaar en overridable via `deliverables.json`, maar alleen via geautoriseerde tools (`save_planning_deliverables`, `update_planning_deliverables`)
+>
+> Het onderscheid `required`/`recommended` wordt als veld opgenomen op elke gate-spec in `phase_contracts.yaml`. Tamper-detectie op `deliverables.json` (SHA-256 sidecar) is uitgewerkt in issue #261 — buiten scope van dit issue.
 
 ---
 
@@ -682,6 +689,8 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 **B2.** Is `tdd_plan` na `save_planning_deliverables` immutable of muteerbaar via een apart `update_tdd_plan` endpoint? Als immutable: hoe gaan we om met het praktische geval dat een team halverwege TDD een extra cycle wil toevoegen?
 
 > **✅ Beslissing (12-03-2026):** Mutable. `save_planning_deliverables` maakt aan, `update_planning_deliverables` wijzigt. Praktische noodzaak: extra cycle toevoegen halverwege implementatie moet mogelijk zijn.
+>
+> **Guard (12-03-2026):** `update_planning_deliverables` bevat een guard op afgesloten cycles: een cycle die in `cycle_history` staat (status: completed) is read-only. Poging tot wijziging gooit een `ValidationError`. Openstaande cycles zijn muteerbaar. Sluit aan op de `required`/`recommended` gate-beslissing in A6: ook cycle-data is gelaagd vertrouwen.
 
 **B3.** Wie schrijft naar `deliverables.json`? Alleen `save_planning_deliverables` en `update_planning_deliverables`? Of ook andere tools? De schrijver moet eenduidig zijn (1-writer principe analoog aan 1-reader).
 
@@ -694,6 +703,10 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 **B5.** Cycle-state (`current_cycle`, `cycle_history`) gaat naar `state.json`. Maar `state.json` bevat nu één issue tegelijk (single-branch). Als een ontwikkelaar van branch wisselt, gaat de cycle-state verloren. Moet cycle-state per issue opgeslagen worden (in `deliverables.json` of apart), of is het altijd gekoppeld aan de actieve branch?
 
 > **✅ Beslissing (12-03-2026):** Probleem vervalt als `state.json` git-tracked is per branch. Nieuwe deliverable van dit issue: `state.json` verwijderen uit `.gitignore` zodat het per branch in git wordt bijgehouden. Bij branch-wissel is `state.json` van die branch beschikbaar via git checkout.
+>
+> **Aanscherping enforcement (12-03-2026):** Door het hernoemen van `lifecycle.yaml` naar `enforcement.yaml` (zie F1-aanscherping) vervalt de dubbele verantwoordelijkheid. Enforcement werkt op twee niveaus — fase én tool — binnen één `enforcement.yaml`. Een `post`-enforcement-rule op `transition_phase` kan een `commit_state_files` action triggeren, waardoor uncommitted `state.json` nooit meer onopgemerkt blijft. Dit lost het bredere probleem op dat agent-beslissingen (commits) gemist kunnen worden: enforcement maakt het configureerbaar verplicht.
+>
+> **Startup guard:** PSE controleert bij `initialize_branch()` of `state.json` uncommitted lokale wijzigingen heeft die niet van een bekende tool-aanroep komen. Zo ja: expliciete waarschuwing terug naar de agent (Explicit over Implicit). Niet geblokkeerd maar niet stil genegeerd.
 
 ---
 
@@ -756,6 +769,11 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 **E4.** `ScopeDecoder` moet na de refactoring `state.json` lezen via `StateRepository`. Maar `ScopeDecoder` zit in `mcp_server/core/` en `StateRepository` zit (vermoedelijk) in `mcp_server/managers/`. Is die afhankelijkheidsrichting acceptabel, of moet er een interface in `core/` komen?
 
 > **✅ Beslissing (12-03-2026):** `IStateRepository` als `Protocol` in `mcp_server/core/` (structural subtyping). `FileStateRepository` in `managers/` implementeert het protocol zonder expliciete overerving. `ScopeDecoder` importeert alleen `IStateRepository` uit `core/` — geen dependency op `managers/`.
+>
+> **Aanscherping ISP (12-03-2026):** Split in twee Protocols in `mcp_server/core/`:
+> - `IStateReader` (Protocol): alleen `load(branch: str) -> BranchState` — voor read-only consumers (ScopeDecoder, PhaseContractResolver)
+> - `IStateRepository(IStateReader)` (Protocol): `load()` + `save(state: BranchState) -> None` — voor schrijvende consumers (PSE, HookRunner)
+> `FileStateRepository` implementeert beide via structural subtyping. Consumers krijgen de smalste interface die ze nodig hebben — ISP strict gehandhaafd.
 
 ---
 
@@ -763,34 +781,73 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **F1.** Wat is de registry-structuur? `dict[str, Callable]` waarbij key de fase-naam is? Of een lijst van `HookSpec(phase: str, hook: Callable)` objecten? Wat als een fase twee hooks heeft (enter + exit)?
 
-> **✅ Beslissing (12-03-2026):** YAML in `.st3/lifecycle.yaml` — niet Python dict-objecten. Event-keys zijn `"PHASE:enter"` / `"PHASE:exit"` / `"post_merge"` / `"post_checkout"`. Één event kan meerdere hook-entries hebben. Structuur:
+> **✅ Beslissing (12-03-2026, aangescherpt 12-03-2026):** YAML in `.st3/enforcement.yaml` (hernoemd van `lifecycle.yaml` — naam reflecteert de ware verantwoordelijkheid). Enforcement werkt op twee niveaus: fase-events en tool-call events. Expliciete veldstructuur — geen impliciete key-parsing:
+>
 > ```yaml
-> hooks:
->   planning:exit:
->     - action: check_deliverable
->       source: workphases
->   implementation:enter:
->     - action: state_mutation
->       operation: initialize_cycle
->   post_merge:
->     - action: delete_file
->       path: .st3/state.json
->     - action: delete_file
->       path: .st3/deliverables.json
+> enforcement:
+>   # Fase-level enforcement
+>   - event_source: phase
+>     phase: planning
+>     timing: exit
+>     actions:
+>       - type: check_deliverable
+>
+>   - event_source: phase
+>     phase: implementation
+>     timing: enter
+>     actions:
+>       - type: state_mutation
+>         operation: initialize_cycle
+>
+>   # Tool-level enforcement (nieuw)
+>   - event_source: tool
+>     tool: transition_phase
+>     timing: post
+>     actions:
+>       - type: commit_state_files
+>         paths: [".st3/state.json"]
+>         message: "chore: persist state after phase transition"
+>
+>   - event_source: tool
+>     tool: create_branch
+>     timing: pre
+>     actions:
+>       - type: check_branch_policy
+>         policy: base_restriction
+>
+>   # Post-merge cleanup
+>   - event_source: merge
+>     timing: post
+>     actions:
+>       - type: delete_file
+>         path: .st3/state.json
+>       - type: delete_file
+>         path: .st3/registries/deliverables.json
 > ```
-> Geïdentificeerde actietypes: `check_deliverable`, `state_mutation`, `delete_file`.
+>
+> `event_source`, `timing` en de identifier zijn elk een afzonderlijk gevalideerd Pydantic-veld — geen string-parsing. Branch policies (I2-beslissing) zijn enforcement-rules met `event_source: tool, tool: create_branch` — geen aparte config-sectie nodig. Geïdentificeerde actietypes: `check_deliverable`, `state_mutation`, `delete_file`, `commit_state_files`, `check_branch_policy`.
 
 **F2.** Wie registreert hooks? Worden ze geconfigureerd in `phase_deliverables.yaml` (config-driven), of registreren modules zichzelf bij startup (plugin-patroon)?
 
-> **✅ Beslissing (12-03-2026):** Plugin-patroon (module-registratie bij startup) + fail fast. Bij server startup registreert elke module zijn action-handler. De `lifecycle.yaml` loader valideert bij opstart dat elke `action`-naam een geregistreerde handler heeft — `ConfigError` als dat niet zo is. Fail fast voorkomt stille fouten bij runtime. Config-driven (YAML) bepaalt *welke* hooks actief zijn; plugin-registratie bepaalt de Python-implementatie.
+> **✅ Beslissing (12-03-2026):** Plugin-patroon (module-registratie bij startup) + fail fast. Bij server startup registreert elke module zijn action-handler. De `enforcement.yaml` loader valideert bij opstart dat elke `type`-naam een geregistreerde handler heeft — `ConfigError` als dat niet zo is. Fail fast voorkomt stille fouten bij runtime. Config-driven (YAML) bepaalt *welke* enforcement-rules actief zijn; plugin-registratie bepaalt de Python-implementatie.
 
 **F3.** Blijft de PSE verantwoordelijk voor het aanroepen van hooks, of delegeert hij naar een `HookRunner`? Als PSE de runner blijft, lost het alleen het OCP-probleem op maar niet het SRP-probleem volledig.
 
-> **✅ Beslissing (12-03-2026):** `HookRunner` als aparte service, geïnjecteerd in PSE. PSE's verantwoordelijkheid: state-overgangen valideren en opslaan. `HookRunner` orchestreert hooks zonder zelf worker-logica te bevatten — hij delegeert aan SRP-helpers per actietype (`DeliverableCheckAction`, `StateMutationAction`, `FileDeleteAction`). PSE roept alleen `self._hook_runner.run(event, context)` aan.
+> **✅ Beslissing (12-03-2026, aangescherpt 12-03-2026):** `EnforcementRunner` als aparte service (hernoemd van `HookRunner`). PSE's verantwoordelijkheid: state-overgangen valideren en opslaan. `EnforcementRunner` orchestreert enforcement-rules zonder zelf worker-logica te bevatten — hij delegeert aan SRP-helpers per actietype (`DeliverableCheckAction`, `StateMutationAction`, `FileDeleteAction`, `CommitStateFilesAction`, `CheckBranchPolicyAction`).
+>
+> **Tool-level enforcement — Optie C (12-03-2026):** `BaseTool` declareert `enforcement_event: str | None = None` als **class-variabele** (geen constructor-parameter). `EnforcementRunner` wordt geïnjecteerd op server-dispatching niveau — niet in elke tool. Elke tool declareert zijn eigen event declaratief:
+> ```python
+> class TransitionPhaseTool(BaseTool):
+>     name = "transition_phase"
+>     enforcement_event = "transition_phase"  # declaratief, zichtbaar in class
+> ```
+> Bij dispatch: `runner.run(tool.enforcement_event, timing="pre"|"post", context)`. Tools zijn niet bewust van de runner (geen constructor-koppeling), maar zijn wel declaratief over hun eigen enforcement-event (code vertelt het verhaal). Hernoeming van een tool dwingt `enforcement_event` update af — zichtbaar bij code review.
+>
+> PSE roept `self._enforcement_runner.run(event_source="phase", phase=..., timing=..., context)` aan. Server-dispatcher roept `runner.run(event_source="tool", tool=tool.enforcement_event, timing=..., context)` aan.
 
 **F4.** Hoe worden hooks getest in isolatie? Als hooks geconfigureerd zijn als Python callables, zijn ze niet serialiseerbaar. Als ze geregistreerd zijn via naam (string → callable), is er een registry-lookup nodig bij test-setup.
 
-> **✅ Beslissing (12-03-2026):** Triviaal via constructor-injectie van een fake `HookRegistry` met no-op action-handlers. `HookRunner` zelf is onafhankelijk van PSE testbaar. Elke action-helper (`DeliverableCheckAction`, etc.) is onafhankelijk testbaar met eigen unit tests.
+> **✅ Beslissing (12-03-2026):** Triviaal via constructor-injectie van een fake `EnforcementRegistry` met no-op action-handlers. `EnforcementRunner` zelf is onafhankelijk van PSE en server-dispatcher testbaar. Elke action-helper (`DeliverableCheckAction`, etc.) is onafhankelijk testbaar met eigen unit tests. `BaseTool.enforcement_event` is een class-variabele — geen extra constructor-parameter bij tests.
 
 **F5 — Aanvulling (12-03-2026): `transition` vs `force_transition` hook-afhandeling**
 
@@ -870,9 +927,19 @@ Onderzochte opties voor het blocking/warn onderscheid:
 
 > **✅ Beslissing (12-03-2026, besproken 12-03-2026):** Geen `operation_policies.yaml` met beschermde branches of merge-strategieën afhankelijk van branch-types aanwezig. Toevoeging van `bug`/`hotfix` aan `branch_types` is puur additief — geen cascade-effecten.
 >
-> **Branch policies discussie (12-03-2026):** Branch policies zijn config-gedreven regels op twee niveaus: GitHub-level (branch protection rules) en tool-level (lokale enforcement in MCP-tools). Tool-level policies zijn relevant voor dit issue: `base_restrictions` (bv. `hotfix` mag alleen van `main` aangemaakt worden) is een directe integriteitsgarantie voor de branch-als-werkplek semantiek van I1. Als een `hotfix` per ongeluk van een `feature`-branch wordt aangemaakt, is de parentage-context fout en produceert Mode 2 reconstructie verkeerde state.
->
-> **Nader te beslissen:** Voeg `branch_policies` (minimaal `base_restrictions` + `merge_targets` per type) toe aan `git.yaml` als F25 in dit issue, of als apart opvolgend issue? Scope-impact klein want `git.yaml` wordt al aangeraakt.
+> **Branch policies als enforcement-rules (12-03-2026):** Branch policies (`base_restrictions`, `merge_targets`) worden gemodelleerd als enforcement-rules in `enforcement.yaml` met `event_source: tool, tool: create_branch, timing: pre`. Geen aparte `branch_policies`-sectie of apart config-bestand nodig. Voorbeeld:
+> ```yaml
+> - event_source: tool
+>   tool: create_branch
+>   timing: pre
+>   actions:
+>     - type: check_branch_policy
+>       policy: base_restriction
+>       rules:
+>         hotfix: [main]
+>         feature: [main, "epic/*"]
+> ```
+> `CheckBranchPolicyAction` leest de `rules` uit de enforcement-entry en valideert de `base_branch`-parameter van `create_branch`. Integriteitsgarantie voor de branch-als-werkplek semantiek van I1.
 
 **I3.** `_extract_issue_from_branch()` in PSE wordt vervangen door een lookup via `GitConfig.branch_types`. Maar die methode gebruikt `re.match` met een hardcoded pattern. Wordt de regex dynamisch gebouwd vanuit `GitConfig.build_branch_type_regex()` (die methode bestaat al), of is er een directere aanpak?
 
@@ -903,6 +970,8 @@ Het hernoemen van `tdd` naar `implementation` en het verplaatsen van de `commit_
 > **✅ Beslissing (12-03-2026, besproken 12-03-2026):** **Optie B — `PSE.get_state(branch) -> BranchState` als publieke methode op PSE.**
 >
 > PSE is verantwoordelijk voor phase state management — `get_state()` retourneert de volledige `BranchState` (incl. `workflow_name`, `current_phase`, `current_cycle`, etc.) is een logisch onderdeel van die verantwoordelijkheid. PSE delegeert intern aan `StateRepository` voor I/O (DIP ✅). Tool-laag praat met PSE als enkelvoudig aanspreekpunt (Law of Demeter: tool hoeft `StateRepository` niet te kennen). `get_current_phase()` wordt een convenience-wrapper bovenop `get_state()` die enkel `current_phase` retourneert.
+>
+> **CQS afdwingen in code (12-03-2026):** `BranchState` wordt gedeclareerd als `model_config = ConfigDict(frozen=True)`. Elk stuk code dat probeert een `BranchState`-instance te muteren krijgt een `ValidationError` van Pydantic — geen runtime-surprise, het type-systeem dwingt af. `PSE.get_state()` en `get_current_phase()` zijn daarmee gegarandeerd pure queries: ze kunnen nooit state muteren door de immutabiliteit van hun return-type. Het onderscheid command/query is architectureel geborgd, niet slechts gedocumenteerd.
 
 **J3.** Backward-compatibel legacy `phase`-pad: na F21 bestaat `"tdd"` niet meer als fase. `mapped_workflow_phase = "tdd"` in de legacy path breekt onmiddellijk. Twee keuzes:
 - **(a) Verwijderen:** legacy `phase`-parameter volledig droppen. Breaking change, maar alle gebruik is expliciet `DEPRECATED`.
