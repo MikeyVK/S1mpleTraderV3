@@ -1,7 +1,7 @@
 workflows:
   feature:
     planning:
-      checks:
+      exit_requires:
         - id: planning-doc
           type: file_exists
           required: true
@@ -12,15 +12,15 @@ workflows:
       commit_type_map:
         red: test
         green: feat
-        refactor: chore
-      checks:
+        refactor: refactor
+      exit_requires:
         - id: design-doc
           type: file_exists
           required: true
           file: docs/development/issue257/design.md
   docs:
     documentation:
-      checks:
+      exit_requires:
         - id: docs-readme
           type: file_exists
           required: true

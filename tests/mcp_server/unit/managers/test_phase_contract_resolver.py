@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,7 @@ from mcp_server.managers.phase_contract_resolver import (
 
 @pytest.fixture
 def workspace_root(tmp_path: Path) -> Path:
-    """Create a minimal workspace with workphases and phase contract config."""
+    """Create a minimal workspace with workphases, phase contracts, and deliverables."""
     st3_dir = tmp_path / ".st3"
     config_dir = st3_dir / "config"
     config_dir.mkdir(parents=True)
@@ -42,7 +43,7 @@ phases:
 workflows:
   feature:
     planning:
-      checks:
+      exit_requires:
         - id: planning-doc
           type: heading_present
           required: true
@@ -54,21 +55,26 @@ workflows:
       commit_type_map:
         red: test
         green: feat
-        refactor: chore
-      checks:
+        refactor: refactor
+      exit_requires:
+        - id: required-design-doc
+          type: file_exists
+          required: true
+          file: docs/development/issue257/design.md
         - id: design-doc
           type: file_exists
           required: false
-          file: docs/development/issue257/design.md
-      cycle_checks:
+          file: docs/development/issue257/design-original.md
+      cycle_exit_requires:
         "1":
           - id: c1-red-test
             type: file_glob
             required: true
-            file: tests/mcp_server/unit/managers/test_phase_contract_resolver.py
+            dir: tests/mcp_server/unit/managers
+            pattern: test_phase_contract_resolver.py
   docs:
     documentation:
-      checks:
+      exit_requires:
         - id: docs-readme
           type: file_exists
           required: true
@@ -77,6 +83,50 @@ workflows:
         + "\n",
         encoding="utf-8",
     )
+
+    deliverables = {
+        "257": {
+            "planning_deliverables": {
+                "tdd_cycles": {
+                    "total": 1,
+                    "cycles": [
+                        {
+                            "cycle_number": 1,
+                            "deliverables": [
+                                {
+                                    "id": "design-doc",
+                                    "description": "Override recommended config gate",
+                                    "validates": {
+                                        "type": "file_exists",
+                                        "file": "docs/development/issue257/design-override.md",
+                                    },
+                                },
+                                {
+                                    "id": "required-design-doc",
+                                    "description": "Attempt to override required config gate",
+                                    "validates": {
+                                        "type": "file_exists",
+                                        "file": "docs/development/issue257/should-not-win.md",
+                                    },
+                                },
+                                {
+                                    "id": "issue-extra",
+                                    "description": "Add new issue-specific recommended gate",
+                                    "validates": {
+                                        "type": "contains_text",
+                                        "file": "docs/development/issue257/design.md",
+                                        "text": "PhaseContractResolver",
+                                    },
+                                },
+                            ],
+                            "exit_criteria": "Cycle 1 contract checks are valid",
+                        }
+                    ],
+                }
+            }
+        }
+    }
+    (st3_dir / "deliverables.json").write_text(json.dumps(deliverables, indent=2), encoding="utf-8")
 
     return tmp_path
 
@@ -136,42 +186,73 @@ workflows:
         assert planning_phase.subphases == []
         assert planning_phase.commit_type_map == {}
         assert planning_phase.cycle_based is False
-        assert planning_phase.checks == []
-        assert planning_phase.cycle_checks == {}
+        assert planning_phase.exit_requires == []
+        assert planning_phase.cycle_exit_requires == {}
 
-    def test_context_loads_workphases_and_phase_contracts(self, workspace_root: Path) -> None:
-        """Facade should expose both config sources through one injectable object."""
-        context = PhaseConfigContext.from_workspace(workspace_root)
+    def test_context_loads_workphases_phase_contracts_and_issue_deliverables(
+        self, workspace_root: Path
+    ) -> None:
+        """Facade should expose both config sources and optional issue deliverables."""
+        context = PhaseConfigContext.from_workspace(workspace_root, issue_number=257)
 
         assert context.workphases.get_entry_expects("implementation") == []
         assert "feature" in context.phase_contracts.workflows
         assert "implementation" in context.phase_contracts.workflows["feature"]
+        assert context.planning_deliverables is not None
+
+    def test_context_uses_refactor_commit_mapping_in_fixture(self, workspace_root: Path) -> None:
+        """Implementation refactor subphase should keep the existing refactor commit type."""
+        context = PhaseConfigContext.from_workspace(workspace_root)
+
+        assert (
+            context.phase_contracts.workflows["feature"]["implementation"].commit_type_map[
+                "refactor"
+            ]
+            == "refactor"
+        )
 
 
 class TestPhaseContractResolver:
     """Tests for config-backed phase resolution."""
 
-    def test_resolve_returns_check_specs_for_known_cycle(self, workspace_root: Path) -> None:
-        """Resolver should combine phase checks with cycle-specific checks."""
-        resolver = PhaseContractResolver(PhaseConfigContext.from_workspace(workspace_root))
+    def test_resolve_merges_issue_specific_checks_without_overriding_required_gates(
+        self, workspace_root: Path
+    ) -> None:
+        """Required config gates stay immutable while recommended gates can be overridden."""
+        resolver = PhaseContractResolver(
+            PhaseConfigContext.from_workspace(workspace_root, issue_number=257)
+        )
 
         checks = resolver.resolve("feature", "implementation", cycle_number=1)
 
-        assert [check.id for check in checks] == ["design-doc", "c1-red-test"]
+        assert [check.id for check in checks] == [
+            "required-design-doc",
+            "c1-red-test",
+            "design-doc",
+            "issue-extra",
+        ]
         assert all(isinstance(check, CheckSpec) for check in checks)
-        assert checks[0].required is False
-        assert checks[1].required is True
+        check_by_id = {check.id: check for check in checks}
+        assert check_by_id["required-design-doc"].file == "docs/development/issue257/design.md"
+        assert check_by_id["required-design-doc"].required is True
+        assert check_by_id["design-doc"].file == "docs/development/issue257/design-override.md"
+        assert check_by_id["design-doc"].required is False
+        assert check_by_id["issue-extra"].type == "contains_text"
+        assert check_by_id["issue-extra"].required is False
 
-    def test_resolve_returns_empty_list_for_unknown_phase(self, workspace_root: Path) -> None:
-        """Unknown phases should be treated as not applicable, not exceptional."""
-        resolver = PhaseContractResolver(PhaseConfigContext.from_workspace(workspace_root))
-
-        assert resolver.resolve("feature", "unknown-phase", cycle_number=None) == []
-
-    def test_resolve_returns_empty_list_for_non_applicable_workflow_phase(
+    def test_resolve_returns_empty_list_for_non_applicable_docs_implementation(
         self, workspace_root: Path
     ) -> None:
-        """Workflows without a given phase should resolve to an empty list."""
+        """Docs workflow has no implementation contract and should resolve cleanly to []."""
         resolver = PhaseContractResolver(PhaseConfigContext.from_workspace(workspace_root))
 
-        assert resolver.resolve("docs", "implementation", cycle_number=None) == []
+        assert resolver.resolve("docs", "implementation", None) == []
+
+    def test_resolve_returns_empty_list_for_unknown_workflow_and_phase(
+        self, workspace_root: Path
+    ) -> None:
+        """Unknown workflow/phase combinations should not raise and should return []."""
+        resolver = PhaseContractResolver(PhaseConfigContext.from_workspace(workspace_root))
+
+        assert resolver.resolve("unknown-workflow", "implementation", None) == []
+        assert resolver.resolve("feature", "unknown-phase", None) == []
