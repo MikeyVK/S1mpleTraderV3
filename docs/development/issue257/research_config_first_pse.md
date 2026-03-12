@@ -792,6 +792,24 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 > **✅ Beslissing (12-03-2026):** Triviaal via constructor-injectie van een fake `HookRegistry` met no-op action-handlers. `HookRunner` zelf is onafhankelijk van PSE testbaar. Elke action-helper (`DeliverableCheckAction`, etc.) is onafhankelijk testbaar met eigen unit tests.
 
+**F5 — Aanvulling (12-03-2026): `transition` vs `force_transition` hook-afhandeling**
+
+Code-analyse toont een implementatiegat: `transition()` roept de volledige `on_exit_*` methoden aan (DeliverableChecker, file_glob, etc.), `force_transition()` doet een vereenvoudigde key-presence check via `wp_config.get_exit_requires()` zonder DeliverableChecker. Ze delen de check-logica **niet** — een DRY-schending die dit issue oplost.
+
+Onderzochte opties voor het blocking/warn onderscheid:
+
+| Optie | Beschrijving | Config-first | DRY | SRP |
+|---|---|---|---|---|
+| **A — RunMode parameter** | PSE geeft `RunMode.BLOCKING`/`WARN` mee aan HookRunner | ❌ hardcoded in Python | ✅ | ⚠️ |
+| **B — `blocking` vlag in lifecycle.yaml** | YAML bepaalt per event of het blokkeert | ✅ | ❌ actions gedupliceerd | ✅ |
+| **C — PSE vangt exceptions op bij force** | Force transition roept zelfde hooks aan, vangt exceptions als warnings | ✅ | ✅ | ✅ |
+
+> **✅ Beslissing (12-03-2026): Optie C.** `force_transition()` roept dezelfde hooks aan als `transition()`. Exceptions (`DeliverableCheckError`, `ConfigError`) worden door PSE gevangen en als actieve warnings teruggegeven in de ToolResult — niet geblokkeerd, niet stil genegeerd. PSE orchestreert transitie-gedrag; dat is zijn verantwoordelijkheid.
+>
+> Het blocking/warn onderscheid is geen hook-eigenschap maar een transitie-mechanisme-eigenschap. "Of een geforceerde transitie blokkeert" is geen configurabele keuze — fail-fast zegt: codeer dat niet als config.
+>
+> **Architecturele rechtsvaardiging voor tool-scheiding:** `transition` en `force_transition` zijn bewust aparte tools. `transition` kan in een agentic flow auto-accepted worden. `force_transition` vereist altijd expliciete human-approval. Het samenvoegen tot één generieke tool met een `force`-parameter zou dit onderscheid tenietdoen en de agent in staat stellen om stilletjes gates te omzeilen. De tool-scheiding is de enforce-mechanisme, niet alleen een UX-keuze.
+
 ---
 
 ### G — Consumer consolidatie (F19, WF-2, WFC-1, WPC-1)
