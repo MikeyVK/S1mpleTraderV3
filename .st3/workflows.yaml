@@ -10,48 +10,48 @@ workflows:
   # Feature Development (full workflow)
   feature:
     name: feature
-    description: "Full development workflow with all phases (research → design → TDD → validation → docs)"
+    description: "Full development workflow with all phases (research → planning → design → implementation → validation → docs)"
     default_execution_mode: interactive
     phases:
       - research
       - planning
       - design
-      - tdd
+      - implementation
       - validation
       - documentation
 
   # Bug Fix (with lightweight design phase for uniformity)
   bug:
     name: bug
-    description: "Bug fix workflow (research → planning → design → TDD → validation → docs)"
+    description: "Bug fix workflow (research → planning → design → implementation → validation → docs)"
     default_execution_mode: interactive
     phases:
       - research
       - planning
       - design
-      - tdd
+      - implementation
       - validation
       - documentation
 
   # Hotfix (minimal workflow)
   hotfix:
     name: hotfix
-    description: "Emergency fix workflow (TDD → validation → docs only)"
+    description: "Emergency fix workflow (implementation → validation → docs only)"
     default_execution_mode: autonomous
     phases:
-      - tdd
+      - implementation
       - validation
       - documentation
 
   # Refactor (no design phase by default)
   refactor:
     name: refactor
-    description: "Code refactoring workflow (research → planning → TDD → validation → docs)"
+    description: "Code refactoring workflow (research → planning → implementation → validation → docs)"
     default_execution_mode: interactive
     phases:
       - research
       - planning
-      - tdd
+      - implementation
       - validation
       - documentation
 

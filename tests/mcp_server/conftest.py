@@ -33,7 +33,7 @@ def reset_config_singletons() -> object:
     from mcp_server.config.label_config import LabelConfig
     from mcp_server.config.milestone_config import MilestoneConfig
     from mcp_server.config.scope_config import ScopeConfig
-    from mcp_server.config.workflow_config import WorkflowConfig
+    from mcp_server.config.workflows import WorkflowConfig
 
     def _reset_all() -> None:
         IssueConfig.singleton_instance = None

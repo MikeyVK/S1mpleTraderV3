@@ -2,8 +2,8 @@
 
 Tests scope encoding for git commits in format:
 - Phase only: P_RESEARCH
-- Phase + subphase: P_TDD_SP_RED
-- Phase + cycle + subphase: P_TDD_SP_C1_RED
+- Phase + subphase: P_IMPLEMENTATION_SP_RED
+- Phase + cycle + subphase: P_IMPLEMENTATION_SP_C1_RED
 
 Validation:
 - Phase must exist in workphases.yaml
@@ -22,7 +22,8 @@ from mcp_server.core.scope_encoder import ScopeEncoder
 def workphases_yaml(tmp_path: Path) -> Path:
     """Create test workphases.yaml with all 7 phases."""
     config_path = tmp_path / "workphases.yaml"
-    config_path.write_text("""
+    config_path.write_text(
+        """
 phases:
   research:
     display_name: "🔍 Research"
@@ -39,8 +40,8 @@ phases:
     commit_type: "docs"
     subphases: ["contracts", "flows", "schemas"]
 
-  tdd:
-    display_name: "🔴🟢🔵 TDD"
+  implementation:
+    display_name: "🔴🟢🔵 Implementation"
     commit_type: "test"
     subphases: ["red", "green", "refactor"]
 
@@ -60,7 +61,9 @@ phases:
     subphases: ["delegation", "sync", "review"]
 
 version: "1.0"
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     return config_path
 
 
@@ -76,21 +79,23 @@ class TestScopeEncoderBasicGeneration:
     def test_phase_with_subphase(self, workphases_yaml: Path) -> None:
         """Generate scope for phase with subphase."""
         encoder = ScopeEncoder(workphases_yaml)
-        scope = encoder.generate_scope(phase="tdd", sub_phase="red")
-        assert scope == "P_TDD_SP_RED"
+        scope = encoder.generate_scope(phase="implementation", sub_phase="red")
+        assert scope == "P_IMPLEMENTATION_SP_RED"
 
     def test_phase_with_cycle_and_subphase(self, workphases_yaml: Path) -> None:
         """Generate scope with cycle number in TDD format."""
         encoder = ScopeEncoder(workphases_yaml)
-        scope = encoder.generate_scope(phase="tdd", sub_phase="red", cycle_number=1)
-        assert scope == "P_TDD_SP_C1_RED"
+        scope = encoder.generate_scope(phase="implementation", sub_phase="red", cycle_number=1)
+        assert scope == "P_IMPLEMENTATION_SP_C1_RED"
 
     def test_all_tdd_subphases_valid(self, workphases_yaml: Path) -> None:
         """All configured TDD subphases should generate valid scopes."""
         encoder = ScopeEncoder(workphases_yaml)
-        assert encoder.generate_scope("tdd", "red") == "P_TDD_SP_RED"
-        assert encoder.generate_scope("tdd", "green") == "P_TDD_SP_GREEN"
-        assert encoder.generate_scope("tdd", "refactor") == "P_TDD_SP_REFACTOR"
+        assert encoder.generate_scope("implementation", "red") == "P_IMPLEMENTATION_SP_RED"
+        assert encoder.generate_scope("implementation", "green") == "P_IMPLEMENTATION_SP_GREEN"
+        assert (
+            encoder.generate_scope("implementation", "refactor") == "P_IMPLEMENTATION_SP_REFACTOR"
+        )
 
     def test_coordination_phase_valid(self, workphases_yaml: Path) -> None:
         """Coordination phase (NEW) should generate valid scope."""
@@ -113,7 +118,7 @@ class TestScopeEncoderValidation:
         assert "Unknown workflow phase: 'invalid_phase'" in error_msg
         assert "Valid phases:" in error_msg
         assert "research" in error_msg
-        assert "tdd" in error_msg
+        assert "implementation" in error_msg
         assert "coordination" in error_msg
         assert "Example:" in error_msg
         assert "Recovery:" in error_msg
@@ -123,11 +128,11 @@ class TestScopeEncoderValidation:
         encoder = ScopeEncoder(workphases_yaml)
 
         with pytest.raises(ValueError) as exc_info:
-            encoder.generate_scope(phase="tdd", sub_phase="invalid")
+            encoder.generate_scope(phase="implementation", sub_phase="invalid")
 
         error_msg = str(exc_info.value)
-        assert "Invalid sub_phase 'invalid' for workflow phase 'tdd'" in error_msg
-        assert "Valid subphases for tdd:" in error_msg
+        assert "Invalid sub_phase 'invalid' for workflow phase 'implementation'" in error_msg
+        assert "Valid subphases for implementation:" in error_msg
         assert "red" in error_msg
         assert "green" in error_msg
         assert "refactor" in error_msg
@@ -151,8 +156,8 @@ class TestScopeEncoderValidation:
     def test_missing_subphase_when_optional_is_ok(self, workphases_yaml: Path) -> None:
         """Not providing subphase when subphases exist should be OK (optional)."""
         encoder = ScopeEncoder(workphases_yaml)
-        scope = encoder.generate_scope(phase="tdd")  # No sub_phase
-        assert scope == "P_TDD"  # Phase-level commit OK
+        scope = encoder.generate_scope(phase="implementation")  # No sub_phase
+        assert scope == "P_IMPLEMENTATION"  # Phase-level commit OK
 
 
 class TestScopeEncoderEdgeCases:
@@ -164,18 +169,18 @@ class TestScopeEncoderEdgeCases:
         encoder = ScopeEncoder(missing_path)
 
         with pytest.raises(FileNotFoundError):
-            encoder.generate_scope(phase="tdd")
+            encoder.generate_scope(phase="implementation")
 
     def test_case_insensitive_phase_names(self, workphases_yaml: Path) -> None:
         """Phase names should be case-insensitive (normalized to uppercase in scope)."""
         encoder = ScopeEncoder(workphases_yaml)
-        scope1 = encoder.generate_scope(phase="tdd")
-        scope2 = encoder.generate_scope(phase="TDD")
-        scope3 = encoder.generate_scope(phase="Tdd")
-        assert scope1 == scope2 == scope3 == "P_TDD"
+        scope1 = encoder.generate_scope(phase="implementation")
+        scope2 = encoder.generate_scope(phase="IMPLEMENTATION")
+        scope3 = encoder.generate_scope(phase="Implementation")
+        assert scope1 == scope2 == scope3 == "P_IMPLEMENTATION"
 
     def test_cycle_number_without_subphase_ignored(self, workphases_yaml: Path) -> None:
         """Cycle number without subphase should be ignored (only for TDD subphases)."""
         encoder = ScopeEncoder(workphases_yaml)
-        scope = encoder.generate_scope(phase="tdd", cycle_number=1)
-        assert scope == "P_TDD"  # Cycle ignored without sub_phase
+        scope = encoder.generate_scope(phase="implementation", cycle_number=1)
+        assert scope == "P_IMPLEMENTATION"  # Cycle ignored without sub_phase

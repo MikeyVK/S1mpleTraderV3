@@ -2,7 +2,7 @@
 
 Issue #79: Tests for parent_branch in state management.
 - initialize_branch with parent_branch
-- Auto-recovery includes parent_branch from projects.json
+- Auto-recovery includes parent_branch from deliverables.json
 """
 
 from pathlib import Path
@@ -89,7 +89,7 @@ class TestPhaseStateEngineParentBranch:
     ) -> None:
         """Test initializing branch inherits parent_branch from project.
 
-        Issue #79: If parent_branch not provided, inherit from projects.json.
+        Issue #79: If parent_branch not provided, inherit from deliverables.json.
         """
         # Setup - create project with parent
         project_manager.initialize_project(
@@ -103,7 +103,7 @@ class TestPhaseStateEngineParentBranch:
         result = engine.initialize_branch(
             branch="bug/80-test",
             issue_number=80,
-            initial_phase="tdd",
+            initial_phase="implementation",
             # No parent_branch - should inherit from project
         )
 
@@ -143,7 +143,7 @@ class TestPhaseStateEngineParentBranch:
     def test_reconstruct_branch_state_includes_parent_branch(
         self, engine: PhaseStateEngine, project_manager: ProjectManager, workspace_root: Path
     ) -> None:
-        """Test auto-recovery reconstructs parent_branch from projects.json.
+        """Test auto-recovery reconstructs parent_branch from deliverables.json.
 
         Issue #79: Cross-machine scenario - state.json missing after git pull.
         """
@@ -155,7 +155,7 @@ class TestPhaseStateEngineParentBranch:
             options=ProjectInitOptions(parent_branch="epic/76-qa"),
         )
 
-        # Simulate cross-machine: delete state.json but keep projects.json
+        # Simulate cross-machine: delete state.json but keep deliverables.json
         state_file = workspace_root / ".st3" / "state.json"
         if state_file.exists():
             state_file.unlink()
@@ -163,7 +163,7 @@ class TestPhaseStateEngineParentBranch:
         # Execute - get_state triggers auto-recovery
         state = engine.get_state("feature/82-test-reconstruction")
 
-        # Verify - parent_branch reconstructed from projects.json
+        # Verify - parent_branch reconstructed from deliverables.json
         assert state["parent_branch"] == "epic/76-qa"
         assert state["reconstructed"] is True
         assert state["workflow_name"] == "feature"

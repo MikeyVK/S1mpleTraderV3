@@ -232,6 +232,22 @@ class GitConfig(BaseModel):
         """
         return f"(?:{'|'.join(self.branch_types)})"
 
+    def extract_issue_number(self, branch: str) -> int | None:
+        """Extract issue number from a branch name.
+
+        Args:
+            branch: Branch name in the form "<type>/<number>-<title>".
+
+        Returns:
+            Parsed issue number, or None when the branch name does not match
+            the configured branch-type pattern.
+        """
+        pattern = rf"^(?:{self.build_branch_type_regex()[3:-1]})/(\d+)-"
+        match = re.match(pattern, branch)
+        if match is None:
+            return None
+        return int(match.group(1))
+
     @classmethod
     def from_file(cls, path: str = ".st3/git.yaml") -> "GitConfig":
         """Load config from YAML file (singleton pattern).

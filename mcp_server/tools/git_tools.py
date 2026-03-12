@@ -44,7 +44,7 @@ def build_phase_guard(workspace_root: Path) -> Callable[[str, str, int | None], 
             )
             raise CommitPhaseMismatchError(msg)
 
-        if workflow_phase == "tdd" and cycle_number is not None:
+        if workflow_phase == "implementation" and cycle_number is not None:
             current_cycle = data.get("current_tdd_cycle")
             if current_cycle is not None and cycle_number != current_cycle:
                 msg = (
@@ -295,13 +295,13 @@ class GitCommitTool(BaseTool):
         # Must check BEFORE the legacy path maps phase -> tdd to avoid bypass (Cycle 7)
         effective_phase = workflow_phase
         if effective_phase is None and params.phase is not None and params.phase != "docs":
-            effective_phase = "tdd"  # legacy phases "red"/"green"/"refactor" all map to tdd
+            effective_phase = "implementation"  # legacy phases "red"/"green"/"refactor" all map to implementation
 
-        if effective_phase == "tdd" and params.cycle_number is None:
+        if effective_phase == "implementation" and params.cycle_number is None:
             raise ValueError(
                 "cycle_number is required for TDD phase commits. "
                 "All TDD work belongs to a specific cycle. "
-                "Use: git_add_or_commit(workflow_phase='tdd', cycle_number=N, ...)"
+                "Use: git_add_or_commit(workflow_phase='implementation', cycle_number=N, ...)"
             )
 
         # Phase guard: validate workflow_phase + cycle_number against state.json (GAP-07)
@@ -326,7 +326,7 @@ class GitCommitTool(BaseTool):
                 mapped_workflow_phase = "documentation"
                 mapped_sub_phase = None
             else:
-                mapped_workflow_phase = "tdd"
+                mapped_workflow_phase = "implementation"
                 mapped_sub_phase = legacy_phase
 
             commit_hash = self.manager.commit_with_scope(

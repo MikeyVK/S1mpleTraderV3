@@ -1,6 +1,6 @@
 """Tests for InitializeProjectTool with atomic state initialization.
 
-Issue #39: Mode 1 - Atomic initialization of projects.json + state.json.
+Issue #39: Mode 1 - Atomic initialization of deliverables.json + state.json.
 
 Tests verify:
 1. Both files created atomically
@@ -37,9 +37,9 @@ class TestInitializeProjectToolMode1:
     async def test_atomic_creation_both_files(
         self, tool: InitializeProjectTool, workspace_root: Path
     ) -> None:
-        """Test that both projects.json AND state.json are created atomically.
+        """Test that both deliverables.json AND state.json are created atomically.
 
-        Issue #39 Gap 1: InitializeProjectTool only created projects.json.
+        Issue #39 Gap 1: InitializeProjectTool only created deliverables.json.
         After fix: Must create both files in single operation.
         """
         # Mock git to return branch name on tool's git_manager instance
@@ -55,15 +55,15 @@ class TestInitializeProjectToolMode1:
             # Verify success
             assert not result.is_error
 
-            # Verify projects.json created
-            projects_file = workspace_root / ".st3" / "projects.json"
-            assert projects_file.exists(), "projects.json must be created"
+            # Verify deliverables.json created
+            projects_file = workspace_root / ".st3" / "deliverables.json"
+            assert projects_file.exists(), "deliverables.json must be created"
 
             # Verify state.json created
             state_file = workspace_root / ".st3" / "state.json"
             assert state_file.exists(), "state.json must be created (Issue #39 fix)"
 
-            # Verify projects.json structure
+            # Verify deliverables.json structure
             projects = json.loads(projects_file.read_text())
             assert "39" in projects
             assert projects["39"]["workflow_name"] == "bug"
@@ -218,7 +218,7 @@ class TestInitializeProjectToolMode1:
     async def test_no_breaking_changes_to_projects_json(
         self, tool: InitializeProjectTool, workspace_root: Path
     ) -> None:
-        """Test that projects.json format has core expected fields."""
+        """Test that deliverables.json format has core expected fields."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
             mock_git.return_value = "fix/39-test"
 
@@ -229,8 +229,8 @@ class TestInitializeProjectToolMode1:
 
             assert not result.is_error
 
-            # Verify projects.json has core required fields
-            projects_file = workspace_root / ".st3" / "projects.json"
+            # Verify deliverables.json has core required fields
+            projects_file = workspace_root / ".st3" / "deliverables.json"
             projects = json.loads(projects_file.read_text())
             project = projects["39"]
 
@@ -244,7 +244,7 @@ class TestInitializeProjectToolMode1:
     async def test_state_json_not_in_projects_json(
         self, tool: InitializeProjectTool, workspace_root: Path
     ) -> None:
-        """Test that state.json is separate file, not embedded in projects.json."""
+        """Test that state.json is separate file, not embedded in deliverables.json."""
         with patch.object(tool.git_manager, "get_current_branch") as mock_git:
             mock_git.return_value = "fix/39-test"
 
@@ -256,13 +256,13 @@ class TestInitializeProjectToolMode1:
             assert not result.is_error
 
             # Verify separation
-            projects_file = workspace_root / ".st3" / "projects.json"
+            projects_file = workspace_root / ".st3" / "deliverables.json"
             state_file = workspace_root / ".st3" / "state.json"
 
             assert projects_file.exists()
             assert state_file.exists()
 
-            # state.json should NOT be mentioned in projects.json
+            # state.json should NOT be mentioned in deliverables.json
             projects_content = projects_file.read_text()
             assert "state.json" not in projects_content
             # State field, not policy field

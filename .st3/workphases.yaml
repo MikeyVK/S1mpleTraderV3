@@ -39,9 +39,9 @@ phases:
       - "flows"        # Data flow diagrams
       - "schemas"      # Data structure definitions
 
-  tdd:
-    display_name: "TDD"
-    description: "Test-Driven Development cycle (red → green → refactor)"
+  implementation:
+    display_name: "Implementation"
+    description: "Implementation cycle (red → green → refactor)"
     commit_type_hint: null  # Varies by sub_phase (test/feat/refactor)
     subphases:
       - "red"          # Write failing test

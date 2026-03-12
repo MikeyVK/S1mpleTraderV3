@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, cast
 
 # Project modules
+from mcp_server.config.git_config import GitConfig
 from mcp_server.config.workflows import workflow_config
 from mcp_server.config.workphases_config import WorkphasesConfig
 from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
@@ -64,7 +65,12 @@ class PhaseStateEngine:
     Supports standard sequential and forced non-sequential transitions.
     """
 
-    def __init__(self, workspace_root: Path | str, project_manager: ProjectManager) -> None:
+    def __init__(
+        self,
+        workspace_root: Path | str,
+        project_manager: ProjectManager,
+        git_config: GitConfig | None = None,
+    ) -> None:
         """Initialize PhaseStateEngine.
 
         Args:
@@ -74,6 +80,7 @@ class PhaseStateEngine:
         self.workspace_root = Path(workspace_root)
         self.state_file = self.workspace_root / ".st3" / "state.json"
         self.project_manager = project_manager
+        self._git_config = git_config or GitConfig.from_file()
 
     def initialize_branch(
         self, branch: str, issue_number: int, initial_phase: str, parent_branch: str | None = None
@@ -179,9 +186,9 @@ class PhaseStateEngine:
             issue_number_documentation: int = state["issue_number"]
             self.on_exit_documentation_phase(branch, issue_number_documentation)
 
-        # TDD exit hook: called when leaving TDD phase (Issue #146)
-        if from_phase == "tdd":
-            self.on_exit_tdd_phase(branch)
+        # Implementation exit hook: called when leaving implementation phase (Issue #146)
+        if from_phase == "implementation":
+            self.on_exit_implementation_phase(branch)
             # Reload state after hook (hook may have modified state)
             state = self.get_state(branch)
 
@@ -199,10 +206,10 @@ class PhaseStateEngine:
         state["transitions"].append(self._transition_to_dict(transition))
         self._save_state(branch, state)
 
-        # TDD entry hook: called when entering TDD phase (Issue #146)
-        if to_phase == "tdd":
+        # Implementation entry hook: called when entering implementation phase (Issue #146)
+        if to_phase == "implementation":
             issue_number: int = state["issue_number"]
-            self.on_enter_tdd_phase(branch, issue_number)
+            self.on_enter_implementation_phase(branch, issue_number)
 
         return {"success": True, "from_phase": from_phase, "to_phase": to_phase}
 
@@ -229,8 +236,8 @@ class PhaseStateEngine:
         # Warn about skipped gates (GAP-03)
         # Distinguish blocking gates (key absent) from passing gates (key present) (C10/GAP-17).
         workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
-        skipped_gates: list[str] = []  # blocking: key absent from projects.json
-        passing_gates: list[str] = []  # passing: key present in projects.json
+        skipped_gates: list[str] = []  # blocking: key absent from deliverables.json
+        passing_gates: list[str] = []  # passing: key present in deliverables.json
         if workphases_path.exists():
             issue_number: int = state["issue_number"]
             plan = self.project_manager.get_project_plan(issue_number)
@@ -303,7 +310,7 @@ class PhaseStateEngine:
     def get_state(self, branch: str) -> dict[str, Any]:
         """Get full state for branch with auto-recovery.
 
-        Mode 2 Enhancement: Automatically reconstructs state from projects.json
+        Mode 2 Enhancement: Automatically reconstructs state from deliverables.json
         + git commits when state.json is missing/empty or branch doesn't match current.
 
         Args:
@@ -426,21 +433,21 @@ class PhaseStateEngine:
     # -------------------------------------------------------------------------
 
     def _reconstruct_branch_state(self, branch: str) -> dict[str, Any]:
-        """Reconstruct branch state from projects.json + git commits.
+        """Reconstruct branch state from deliverables.json + git commits.
 
         Mode 2: Cross-machine scenario - state.json missing after git pull.
         Automatically reconstructs state using:
         1. Issue number from branch name
-        2. Workflow definition from projects.json
+        2. Workflow definition from deliverables.json
         3. Current phase from phase:label commits
-        4. Parent branch from projects.json (Issue #79)
+        4. Parent branch from deliverables.json (Issue #79)
 
         Args:
             branch: Branch name (e.g., 'fix/39-test')
 
         Returns:
             Reconstructed state dict with reconstructed=True flag,
-            includes parent_branch from projects.json
+            includes parent_branch from deliverables.json
 
         Raises:
             ValueError: If branch format invalid or project not found
@@ -448,7 +455,10 @@ class PhaseStateEngine:
         logger.info("Reconstructing state for branch '%s'...", branch)
 
         # Step 1: Extract issue number from branch
-        issue_number = self._extract_issue_from_branch(branch)
+        issue_number = self._git_config.extract_issue_number(branch)
+        if issue_number is None:
+            msg = f"Cannot extract issue number from branch '{branch}'. Expected format: <type>/<number>-<title>"
+            raise ValueError(msg)
 
         # Step 2: Get project plan (SSOT for workflow)
         project = self.project_manager.get_project_plan(issue_number)
@@ -469,7 +479,7 @@ class PhaseStateEngine:
             "issue_number": issue_number,
             "workflow_name": project["workflow_name"],
             "current_phase": current_phase,
-            "parent_branch": parent_branch,  # Reconstructed from projects.json
+            "parent_branch": parent_branch,  # Reconstructed from deliverables.json
             "transitions": [],  # Cannot reconstruct history
             "created_at": datetime.now(UTC).isoformat(),
             "reconstructed": True,  # Audit flag
@@ -488,29 +498,6 @@ class PhaseStateEngine:
         )
 
         return state
-
-    def _extract_issue_from_branch(self, branch: str) -> int:
-        """Extract issue number from branch name.
-
-        Supports formats: feature/N-title, fix/N-title, etc.
-
-        Args:
-            branch: Branch name
-
-        Returns:
-            Issue number
-
-        Raises:
-            ValueError: If branch format invalid
-        """
-        # Match: (feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-(.+)
-        match = re.match(r"^(?:feature|fix|bug|docs|refactor|hotfix|epic)/(\d+)-", branch)
-        if not match:
-            msg = f"Cannot extract issue number from branch '{branch}'. "
-            msg += "Expected format: <type>/<number>-<title>"
-            raise ValueError(msg)
-
-        return int(match.group(1))
 
     def _infer_phase_from_git(self, branch: str, workflow_phases: list[str]) -> str:
         """Infer current phase from git commit messages.
@@ -582,7 +569,7 @@ class PhaseStateEngine:
         """Detect phase from phase:label patterns in commits.
 
         Labels.yaml SSOT: Only phase:label format supported (no backwards compat).
-        Handles TDD granularity: phase:red/green/refactor → 'tdd' in workflow.
+        Handles implementation granularity: phase:red/green/refactor → 'implementation' in workflow.
 
         Args:
             commits: List of commit messages (most recent first)
@@ -591,8 +578,8 @@ class PhaseStateEngine:
         Returns:
             Detected phase or None if no valid labels found
         """
-        # TDD labels that map to 'tdd' phase
-        tdd_labels = {"red", "green", "refactor"}
+        # Implementation labels that map to 'implementation' phase
+        implementation_labels = {"red", "green", "refactor"}
 
         for commit in commits:
             # Search for phase:label pattern (case-insensitive)
@@ -602,10 +589,10 @@ class PhaseStateEngine:
 
             detected_label = match.group(1)
 
-            # Handle TDD granularity
-            if detected_label in tdd_labels:
-                if "tdd" in workflow_phases:
-                    return "tdd"
+            # Handle implementation granularity
+            if detected_label in implementation_labels:
+                if "implementation" in workflow_phases:
+                    return "implementation"
                 continue
 
             # Direct phase match
@@ -614,8 +601,8 @@ class PhaseStateEngine:
 
         return None
 
-    def on_enter_tdd_phase(self, branch: str, issue_number: int) -> None:
-        """Hook called when entering TDD phase.
+    def on_enter_implementation_phase(self, branch: str, issue_number: int) -> None:
+        """Hook called when entering implementation phase.
 
         Auto-initializes TDD cycle 1 in branch state. Planning deliverables
         are validated at planning exit (on_exit_planning_phase) — not here.
@@ -637,13 +624,13 @@ class PhaseStateEngine:
             # Save state
             self._save_state(branch, state)
 
-        logger.info(f"Entered TDD phase for issue {issue_number} on branch {branch}")
+        logger.info(f"Entered implementation phase for issue {issue_number} on branch {branch}")
 
     def on_exit_planning_phase(self, branch: str, issue_number: int) -> None:
         """Hook called when exiting planning phase — hard gate (Issue #229, Option B).
 
         Reads exit_requires from workphases.yaml via WorkphasesConfig, checks that
-        each required key exists in projects.json, and runs DeliverableChecker.check()
+        each required key exists in deliverables.json, and runs DeliverableChecker.check()
         on any ``validates`` entries declared directly under the key value.
 
         Args:
@@ -713,7 +700,7 @@ class PhaseStateEngine:
 
         Raises:
             DeliverableCheckError: If a file_glob gate finds no matching files.
-            ValueError: If a key-type gate key is absent from projects.json.
+            ValueError: If a key-type gate key is absent from deliverables.json.
         """
         workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
         if not workphases_path.exists():
@@ -842,8 +829,8 @@ class PhaseStateEngine:
 
         logger.info(f"Documentation exit gate passed for branch {branch} (issue {issue_number})")
 
-    def on_exit_tdd_phase(self, branch: str) -> None:
-        """Hook called when exiting TDD phase.
+    def on_exit_implementation_phase(self, branch: str) -> None:
+        """Hook called when exiting implementation phase.
 
         Preserves last_tdd_cycle and clears current_tdd_cycle.
         Logs warning if not all cycles completed.

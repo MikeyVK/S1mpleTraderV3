@@ -4,7 +4,7 @@ Issue #50: Tests migrated from PHASE_TEMPLATES to workflows.yaml.
 - Workflow selection from workflows.yaml
 - Execution mode handling (interactive/autonomous)
 - Custom phases with skip_reason
-- Project plan storage in .st3/projects.json
+- Project plan storage in .st3/deliverables.json
 """
 
 import json
@@ -56,7 +56,14 @@ class TestProjectManagerWorkflows:
         """Test feature workflow from workflows.yaml."""
         workflow = workflow_config.get_workflow("feature")
         assert len(workflow.phases) == 6
-        expected = ["research", "planning", "design", "tdd", "validation", "documentation"]
+        expected = [
+            "research",
+            "planning",
+            "design",
+            "implementation",
+            "validation",
+            "documentation",
+        ]
         assert workflow.phases == expected
         assert workflow.default_execution_mode == "interactive"
 
@@ -64,7 +71,7 @@ class TestProjectManagerWorkflows:
         """Test hotfix workflow from workflows.yaml."""
         workflow = workflow_config.get_workflow("hotfix")
         assert len(workflow.phases) == 3
-        assert workflow.phases == ["tdd", "validation", "documentation"]
+        assert workflow.phases == ["implementation", "validation", "documentation"]
         assert workflow.default_execution_mode == "autonomous"
 
     def test_initialize_project_with_feature_workflow(
@@ -80,8 +87,8 @@ class TestProjectManagerWorkflows:
         assert result["execution_mode"] == "interactive"
         assert len(result["required_phases"]) == 6
 
-        # Check projects.json structure
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Check deliverables.json structure
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         assert projects_file.exists()
 
         projects = json.loads(projects_file.read_text())
@@ -104,8 +111,8 @@ class TestProjectManagerWorkflows:
         assert result["execution_mode"] == "autonomous"
         assert len(result["required_phases"]) == 3
 
-        # Check projects.json
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Check deliverables.json
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         projects = json.loads(projects_file.read_text())
         assert projects["99"]["execution_mode"] == "autonomous"
 
@@ -122,8 +129,8 @@ class TestProjectManagerWorkflows:
 
         assert result["execution_mode"] == "autonomous"
 
-        # Check projects.json
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Check deliverables.json
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         projects = json.loads(projects_file.read_text())
         assert projects["77"]["execution_mode"] == "autonomous"
 
@@ -131,7 +138,14 @@ class TestProjectManagerWorkflows:
         self, manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test initialize_project with custom phases."""
-        custom_phases = ("research", "planning", "design", "tdd", "validation", "documentation")
+        custom_phases = (
+            "research",
+            "planning",
+            "design",
+            "implementation",
+            "validation",
+            "documentation",
+        )
 
         result = manager.initialize_project(
             issue_number=50,
@@ -147,8 +161,8 @@ class TestProjectManagerWorkflows:
         assert result["required_phases"] == custom_phases
         assert result["skip_reason"] == "Adding design phase for complex refactor"
 
-        # Check projects.json
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Check deliverables.json
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         projects = json.loads(projects_file.read_text())
         project = projects["50"]
         assert tuple(project["required_phases"]) == custom_phases
@@ -188,7 +202,7 @@ class TestProjectManagerWorkflows:
                 issue_number=777,
                 issue_title="Test",
                 workflow_name="feature",
-                options=ProjectInitOptions(custom_phases=("research", "tdd")),
+                options=ProjectInitOptions(custom_phases=("research", "implementation")),
             )
 
         error_msg = str(exc_info.value)
@@ -226,7 +240,7 @@ class TestProjectManagerWorkflows:
         # Verify parent_branch in returned result
         assert result["parent_branch"] == "epic/76-quality-gates-tooling"
 
-        # Verify persisted to projects.json
+        # Verify persisted to deliverables.json
         plan = manager.get_project_plan(issue_number=79)
         assert plan is not None
         assert plan["parent_branch"] == "epic/76-quality-gates-tooling"
@@ -271,8 +285,8 @@ phases:
     display_name: "Research"
     commit_type_hint: "docs"
     subphases: []
-  tdd:
-    display_name: "TDD"
+  implementation:
+    display_name: "Implementation"
     commit_type_hint: null
     subphases: ["red", "green", "refactor"]
   documentation:
@@ -352,7 +366,7 @@ class TestPlanningDeliverablesSchema:
         return ProjectManager(workspace_root=workspace_root)
 
     def test_planning_deliverables_stored_in_projects_json(self, manager: ProjectManager) -> None:
-        """Test that planning_deliverables are persisted to projects.json.
+        """Test that planning_deliverables are persisted to deliverables.json.
 
         RED: This test WILL FAIL - planning_deliverables schema not implemented yet.
         """

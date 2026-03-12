@@ -179,7 +179,7 @@ class TestDeliverableChecker:
 
         Issue #229 C1.
         """
-        json_file = tmp_path / ".st3" / "projects.json"
+        json_file = tmp_path / ".st3" / "deliverables.json"
         json_file.parent.mkdir(parents=True)
         json_file.write_text(
             json.dumps({"229": {"planning_deliverables": {"tdd_cycles": {"total": 2}}}})
@@ -190,7 +190,7 @@ class TestDeliverableChecker:
             "D1.3",
             {
                 "type": "key_path",
-                "file": ".st3/projects.json",
+                "file": ".st3/deliverables.json",
                 "path": "229.planning_deliverables",
             },
         )
@@ -202,7 +202,7 @@ class TestDeliverableChecker:
 
         Issue #229 C1.
         """
-        json_file = tmp_path / ".st3" / "projects.json"
+        json_file = tmp_path / ".st3" / "deliverables.json"
         json_file.parent.mkdir(parents=True)
         json_file.write_text(json.dumps({"229": {}}))
 
@@ -211,7 +211,7 @@ class TestDeliverableChecker:
                 "D1.4",
                 {
                     "type": "key_path",
-                    "file": ".st3/projects.json",
+                    "file": ".st3/deliverables.json",
                     "path": "229.planning_deliverables",
                 },
             )

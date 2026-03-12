@@ -1,6 +1,6 @@
 """DeliverableChecker — structural validation of issue deliverables (Issue #229).
 
-Validates deliverable specs declared in projects.json ``validates`` entries.
+Validates deliverable specs declared in deliverables.json ``validates`` entries.
 Supported check types:
 
     file_exists     File must be present at relative *file* path.
@@ -33,7 +33,7 @@ class DeliverableCheckError(ValueError):
 
 
 class DeliverableChecker:
-    """Runs structural checks on deliverable specs from projects.json.
+    """Runs structural checks on deliverable specs from deliverables.json.
 
     Attributes:
         _workspace_root: Absolute root path; all file paths resolved from here.

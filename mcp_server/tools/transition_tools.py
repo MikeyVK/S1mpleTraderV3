@@ -65,10 +65,10 @@ class TransitionCycleTool(BaseTool):
             current_cycle = state.get("current_tdd_cycle")
 
             # Validation 1: Check TDD phase
-            if current_phase != "tdd":
+            if current_phase != "implementation":
                 return ToolResult.error(
-                    f"Not in TDD phase (current: {current_phase}). "
-                    "Cycle transitions only allowed during TDD phase."
+                    f"Not in implementation phase (current: {current_phase}). "
+                    "Cycle transitions only allowed during implementation phase."
                 )
 
             # Validation 2: Check planning deliverables exist
@@ -237,10 +237,10 @@ class ForceCycleTransitionTool(BaseTool):
             current_cycle = state.get("current_tdd_cycle")
 
             # Validation 3: Check TDD phase
-            if current_phase != "tdd":
+            if current_phase != "implementation":
                 return ToolResult.error(
-                    f"Not in TDD phase (current: {current_phase}). "
-                    "Cycle transitions only allowed during TDD phase."
+                    f"Not in implementation phase (current: {current_phase}). "
+                    "Cycle transitions only allowed during implementation phase."
                 )
 
             # Validation 4: Check planning deliverables exist

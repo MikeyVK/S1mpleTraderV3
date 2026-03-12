@@ -1,7 +1,7 @@
 """Project management tools for MCP server.
 
 Phase 0.5: Project initialization with workflow selection.
-Issue #39: Atomic initialization of projects.json + state.json.
+Issue #39: Atomic initialization of deliverables.json + state.json.
 Issue #79: Parent branch tracking with auto-detection.
 Issue #229 Cycle 4: SavePlanningDeliverablesTool with Layer 2 validates schema validation.
 """
@@ -59,7 +59,7 @@ class InitializeProjectTool(BaseTool):
     """Tool for initializing projects with atomic state management.
 
     Phase 0.5: Human selects workflow_name → generates project phase plan.
-    Issue #39 Mode 1: Atomic initialization of projects.json + state.json.
+    Issue #39 Mode 1: Atomic initialization of deliverables.json + state.json.
     """
 
     name = "initialize_project"
@@ -179,7 +179,7 @@ class InitializeProjectTool(BaseTool):
     async def execute(self, params: InitializeProjectInput) -> ToolResult:
         """Execute project initialization with atomic state creation.
 
-        Issue #39: Creates both projects.json AND state.json atomically.
+        Issue #39: Creates both deliverables.json AND state.json atomically.
         Issue #79: Auto-detects parent_branch if not provided.
 
         Args:
@@ -218,7 +218,7 @@ class InitializeProjectTool(BaseTool):
                 if parent_branch:
                     logger.info("Auto-detected parent_branch: %s for %s", parent_branch, branch)
 
-            # Step 2: Create projects.json (workflow definition)
+            # Step 2: Create deliverables.json (workflow definition)
             options = None
             if params.custom_phases or params.skip_reason or parent_branch:
                 options = ProjectInitOptions(
@@ -272,7 +272,7 @@ class InitializeProjectTool(BaseTool):
                 "required_phases": result["required_phases"],
                 "execution_mode": result["execution_mode"],
                 "files_created": [
-                    ".st3/projects.json (workflow definition)",
+                    ".st3/deliverables.json (workflow definition)",
                     ".st3/state.json (branch state)",
                 ],
             }
@@ -389,7 +389,7 @@ class SavePlanningDeliverablesInput(BaseModel):
 
 
 class SavePlanningDeliverablesTool(BaseTool):
-    """Tool to persist planning deliverables for an issue to projects.json.
+    """Tool to persist planning deliverables for an issue to deliverables.json.
 
     Issue #229 Cycle 4 — GAP-04 + GAP-06:
     - Layer 1: MCP JSON Schema (Pydantic, automatic)
@@ -398,7 +398,7 @@ class SavePlanningDeliverablesTool(BaseTool):
 
     name = "save_planning_deliverables"
     description = (
-        "Save TDD cycle planning deliverables for an issue to projects.json. "
+        "Save TDD cycle planning deliverables for an issue to deliverables.json. "
         "Validates each 'validates' entry schema before persisting."
     )
     args_model = SavePlanningDeliverablesInput
@@ -475,7 +475,7 @@ class UpdatePlanningDeliverablesInput(BaseModel):
 
 
 class UpdatePlanningDeliverablesTool(BaseTool):
-    """Tool to merge-update planning deliverables for an issue in projects.json.
+    """Tool to merge-update planning deliverables for an issue in deliverables.json.
 
     Issue #229 Cycle 5 — GAP-09:
     - Requires save_planning_deliverables to have been called first (write-once guard preserved).
@@ -487,7 +487,7 @@ class UpdatePlanningDeliverablesTool(BaseTool):
 
     name = "update_planning_deliverables"
     description = (
-        "Merge-update TDD cycle planning deliverables for an issue in projects.json. "
+        "Merge-update TDD cycle planning deliverables for an issue in deliverables.json. "
         "Must be preceded by save_planning_deliverables. "
         "New cycles are appended; deliverables within existing cycles are merged by id."
     )

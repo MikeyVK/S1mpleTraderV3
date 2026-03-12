@@ -34,7 +34,7 @@ class TestOperationPoliciesConfig:
         assert scaffold.operation_id == "scaffold"
         assert scaffold.description == "Create new component from template"
         assert "design" in scaffold.allowed_phases
-        assert "tdd" in scaffold.allowed_phases
+        assert "implementation" in scaffold.allowed_phases
 
         # Verify create_file policy
         create_file = config.operations["create_file"]
@@ -71,7 +71,6 @@ class TestOperationPoliciesConfig:
         config = OperationPoliciesConfig.from_file()
         with pytest.raises(ValueError, match="Unknown operation"):
             config.get_operation_policy("invalid_op")
-
     def test_get_available_operations(self):
         """Test get_available_operations returns sorted list."""
         config = OperationPoliciesConfig.from_file()
@@ -83,7 +82,7 @@ class TestOperationPoliciesConfig:
         config = OperationPoliciesConfig.from_file()
         scaffold = config.get_operation_policy("scaffold")
         assert scaffold.is_allowed_in_phase("design") is True
-        assert scaffold.is_allowed_in_phase("tdd") is True
+        assert scaffold.is_allowed_in_phase("implementation") is True
         assert scaffold.is_allowed_in_phase("refactor") is False
 
     def test_is_allowed_in_phase_empty(self):

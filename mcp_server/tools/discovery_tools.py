@@ -137,7 +137,7 @@ class GetWorkContextTool(BaseTool):
             context["recent_commits"] = []
 
         # Issue #146 Cycle 3: TDD Cycle Info (conditional visibility)
-        if context.get("workflow_phase") == "tdd" and issue_number:
+        if context.get("workflow_phase") == "implementation" and issue_number:
             try:
                 workspace_root = Path(settings.server.workspace_root)
                 project_manager = ProjectManager(workspace_root=workspace_root)
@@ -284,7 +284,7 @@ class GetWorkContextTool(BaseTool):
             "research": "🔍",
             "planning": "📋",
             "design": "🎨",
-            "tdd": "🧪",
+            "implementation": "🧪",
             "validation": "✅",
             "documentation": "📝",
             "coordination": "🤝",

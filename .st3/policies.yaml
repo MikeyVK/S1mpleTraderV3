@@ -8,7 +8,7 @@ operations:
     description: "Create new component from template"
     allowed_phases:
       - design
-      - tdd
+      - implementation
     # Phases where scaffolding is permitted
     # Empty list means: all phases allowed
     

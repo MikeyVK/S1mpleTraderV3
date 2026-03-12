@@ -17,7 +17,7 @@ Quality Requirements:
 # pyright: reportAttributeAccessIssue=false
 
 from pathlib import Path
-from typing import Literal
+from typing import ClassVar, Literal
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -78,6 +78,8 @@ class WorkflowConfig(BaseModel):
         workflows: Workflow definitions by name
     """
 
+    singleton_instance: ClassVar["WorkflowConfig" | None] = None
+
     version: str = Field(..., description="Config schema version (e.g., '1.0')")
     workflows: dict[str, WorkflowTemplate] = Field(
         ...,
@@ -134,6 +136,26 @@ class WorkflowConfig(BaseModel):
                 f"Hint: Add workflow definition to .st3/workflows.yaml"
             )
         return workflows_dict[name]
+
+    def get_first_phase(self, workflow_name: str) -> str:
+        """Return the first phase for the given workflow name."""
+        return self.get_workflow(workflow_name).phases[0]
+
+    def has_workflow(self, workflow_name: str) -> bool:
+        """Return True if a workflow with the given name is defined."""
+        return workflow_name in self.workflows
+
+    @classmethod
+    def from_file(cls, path: str = ".st3/workflows.yaml") -> "WorkflowConfig":
+        """Load configuration using a singleton-compatible API."""
+        if cls.singleton_instance is None:
+            cls.singleton_instance = cls.load(Path(path))
+        return cls.singleton_instance
+
+    @classmethod
+    def reset_instance(cls) -> None:
+        """Reset cached singleton state for tests."""
+        cls.singleton_instance = None
 
     def validate_transition(
         self,

@@ -88,7 +88,7 @@ class TestTransitionCycleTool:
         state_engine.initialize_branch(
             branch="feature/146-tdd-cycle-tracking",
             issue_number=issue_number,
-            initial_phase="tdd",
+            initial_phase="implementation",
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         state["current_tdd_cycle"] = 1
@@ -234,7 +234,7 @@ class TestTransitionCycleTool:
         # Assert blocked
         assert result.is_error, "Expected transition to be blocked outside TDD phase"
         text = result.content[0]["text"]
-        assert "tdd phase" in text.lower()
+        assert "implementation phase" in text.lower()
 
 
 class TestForceCycleTransitionTool:
@@ -305,7 +305,7 @@ class TestForceCycleTransitionTool:
         # Transition to TDD phase and set cycle to 2
         branch = "feature/146-tdd-cycle-tracking"
         state = state_engine.get_state(branch)
-        state["current_phase"] = "tdd"
+        state["current_phase"] = "implementation"
         state["current_tdd_cycle"] = 2
         state["last_tdd_cycle"] = 1
         state["tdd_cycle_history"] = []
@@ -550,7 +550,7 @@ class TestForceCycleTransitionSkippedDeliverables:
 
         # Set state: TDD phase, cycle 2
         state = state_engine.get_state(branch)
-        state["current_phase"] = "tdd"
+        state["current_phase"] = "implementation"
         state["current_tdd_cycle"] = 2
         state["last_tdd_cycle"] = 1
         state["tdd_cycle_history"] = []
@@ -701,10 +701,10 @@ class TestForceCycleAuditSchema:
         state_engine.initialize_branch(
             branch=branch,
             issue_number=issue_number,
-            initial_phase="tdd",
+            initial_phase="implementation",
         )
         state = state_engine.get_state(branch)
-        state["current_phase"] = "tdd"
+        state["current_phase"] = "implementation"
         state["current_tdd_cycle"] = 2
         state["last_tdd_cycle"] = 1
         state["tdd_cycle_history"] = []
@@ -899,10 +899,10 @@ class TestTransitionCycleHistory:
         state_engine.initialize_branch(
             branch=branch,
             issue_number=issue_number,
-            initial_phase="tdd",
+            initial_phase="implementation",
         )
         state = state_engine.get_state(branch)
-        state["current_phase"] = "tdd"
+        state["current_phase"] = "implementation"
         state["current_tdd_cycle"] = 1
         state["last_tdd_cycle"] = None
         state["tdd_cycle_history"] = []
@@ -1031,7 +1031,7 @@ class TestTransitionCycleExitCriteria:
         if bypass_validation:
             # Write planning deliverables directly to bypass schema validation
             # Used to simulate corrupt/external state for testing robustness
-            projects_file = workspace_root / ".st3" / "projects.json"
+            projects_file = workspace_root / ".st3" / "deliverables.json"
             with projects_file.open() as f:
                 projects = json.load(f)
 
@@ -1053,10 +1053,10 @@ class TestTransitionCycleExitCriteria:
         state_engine.initialize_branch(
             branch=branch,
             issue_number=issue_number,
-            initial_phase="tdd",
+            initial_phase="implementation",
         )
         state = state_engine.get_state(branch)
-        state["current_phase"] = "tdd"
+        state["current_phase"] = "implementation"
         state["current_tdd_cycle"] = current_cycle
         state["last_tdd_cycle"] = None
         state["tdd_cycle_history"] = []
@@ -1270,7 +1270,7 @@ class TestForceCycleTransitionResponseFormat:
         )
 
         state = se.get_state(branch)
-        state["current_phase"] = "tdd"
+        state["current_phase"] = "implementation"
         state["current_tdd_cycle"] = 2
         state["last_tdd_cycle"] = 1
         state["tdd_cycle_history"] = []

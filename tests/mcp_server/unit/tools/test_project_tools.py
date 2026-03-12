@@ -232,7 +232,7 @@ class TestSavePlanningDeliverablesTool:
     async def test_save_planning_deliverables_tool_persists_to_projects_json(
         self, initialized: tuple[Path, int]
     ) -> None:
-        """Happy path: valid payload is written to projects.json. (D4.1)"""
+        """Happy path: valid payload is written to deliverables.json. (D4.1)"""
         workspace_root, issue_number = initialized
         tool_with_root = SavePlanningDeliverablesTool(workspace_root=workspace_root)
 
@@ -406,7 +406,7 @@ class TestUpdatePlanningDeliverablesTool:
 
         assert not result.is_error
         manager = ProjectManager(workspace_root=workspace_root)
-        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
+        data = json.loads(manager.deliverables_file.read_text())[str(issue_number)]
         cycles = data["planning_deliverables"]["tdd_cycles"]["cycles"]
         assert len(cycles) == 2  # original C1 + new C2
         assert cycles[1]["cycle_number"] == 2
@@ -441,7 +441,7 @@ class TestUpdatePlanningDeliverablesTool:
 
         assert not result.is_error
         manager = ProjectManager(workspace_root=workspace_root)
-        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
+        data = json.loads(manager.deliverables_file.read_text())[str(issue_number)]
         cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
         ids = [d["id"] for d in cycle1["deliverables"]]
         assert "D1.1" in ids  # original preserved
@@ -477,7 +477,7 @@ class TestUpdatePlanningDeliverablesTool:
 
         assert not result.is_error
         manager = ProjectManager(workspace_root=workspace_root)
-        data = json.loads(manager.projects_file.read_text())[str(issue_number)]
+        data = json.loads(manager.deliverables_file.read_text())[str(issue_number)]
         cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
         d1_1 = next(d for d in cycle1["deliverables"] if d["id"] == "D1.1")
         assert d1_1["description"] == "updated description"
@@ -565,7 +565,7 @@ class TestPlanningDeliverablesPhaseSchema:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         assert "design" in data["planning_deliverables"]
@@ -625,7 +625,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
     async def test_update_planning_deliverables_merges_design_key(
         self, initialized: tuple[Path, int]
     ) -> None:
-        """update_planning_deliverables with design key updates projects.json. (D8.1/GAP-15)"""
+        """update_planning_deliverables with design key updates deliverables.json. (D8.1/GAP-15)"""
         workspace_root, issue_number = initialized
         tool = UpdatePlanningDeliverablesTool(workspace_root=workspace_root)
 
@@ -641,7 +641,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         design_ids = [d["id"] for d in data["planning_deliverables"]["design"]["deliverables"]]
@@ -650,7 +650,8 @@ class TestUpdatePlanningDeliverablesPerPhase:
 
     @pytest.mark.asyncio()
     async def test_update_planning_deliverables_merges_validation_key(self, tmp_path: Path) -> None:
-        """update_planning_deliverables with validation key updates projects.json. (D8.1/GAP-15)"""
+        """update_planning_deliverables with validation key updates deliverables.json.
+        (D8.1/GAP-15)"""
         issue_number = 229
         manager = ProjectManager(workspace_root=tmp_path)
         manager.initialize_project(
@@ -685,7 +686,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((tmp_path / ".st3" / "projects.json").read_text())[str(issue_number)]
+        data = json.loads((tmp_path / ".st3" / "deliverables.json").read_text())[str(issue_number)]
         val_ids = [d["id"] for d in data["planning_deliverables"]["validation"]["deliverables"]]
         assert "Val1" in val_ids
         assert "Val2" in val_ids
@@ -694,7 +695,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
     async def test_update_planning_deliverables_merges_documentation_key(
         self, tmp_path: Path
     ) -> None:
-        """update_planning_deliverables with documentation key updates projects.json.
+        """update_planning_deliverables with documentation key updates deliverables.json.
         (D8.1/GAP-15)"""
         issue_number = 229
         manager = ProjectManager(workspace_root=tmp_path)
@@ -726,7 +727,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((tmp_path / ".st3" / "projects.json").read_text())[str(issue_number)]
+        data = json.loads((tmp_path / ".st3" / "deliverables.json").read_text())[str(issue_number)]
         doc_ids = [d["id"] for d in data["planning_deliverables"]["documentation"]["deliverables"]]
         assert "Doc1" in doc_ids
         assert "Doc2" in doc_ids
@@ -754,7 +755,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         deliverables = data["planning_deliverables"]["design"]["deliverables"]
@@ -788,7 +789,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         cycle1 = data["planning_deliverables"]["tdd_cycles"]["cycles"][0]
@@ -821,7 +822,7 @@ class TestUpdatePlanningDeliverablesPerPhase:
         )
 
         assert not result.is_error
-        data = json.loads((workspace_root / ".st3" / "projects.json").read_text())[
+        data = json.loads((workspace_root / ".st3" / "deliverables.json").read_text())[
             str(issue_number)
         ]
         cycles = data["planning_deliverables"]["tdd_cycles"]["cycles"]

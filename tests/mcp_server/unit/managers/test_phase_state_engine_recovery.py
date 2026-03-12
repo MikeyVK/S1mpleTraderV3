@@ -5,7 +5,7 @@ Issue #39: Mode 2 - Auto-recovery of missing state.json from git commits.
 Tests verify:
 1. Missing state.json triggers reconstruction
 2. Phase inferred from phase:label commits
-3. State reconstructed from projects.json + git
+3. State reconstructed from deliverables.json + git
 4. Transparent recovery (no user intervention)
 5. Reconstructed flag set for audit
 6. Safe fallback to first phase
@@ -107,10 +107,10 @@ class TestPhaseStateEngineMode2:
             assert state["current_phase"] == "validation"
 
     @pytest.mark.asyncio
-    async def test_tdd_phases_map_to_tdd(
+    async def test_tdd_phases_map_to_implementation(
         self, state_engine: PhaseStateEngine, workspace_root: Path
     ) -> None:
-        """Test that phase:red/green/refactor map to 'tdd' in workflow."""
+        """Test that phase:red/green/refactor map to 'implementation' in workflow."""
         state_file = workspace_root / ".st3" / "state.json"
         if state_file.exists():
             state_file.unlink()
@@ -124,10 +124,10 @@ class TestPhaseStateEngineMode2:
 
             state = state_engine.get_state("fix/39-test")
 
-            # phase:green should map to 'tdd' in bug workflow
+            # phase:green should map to 'implementation' in bug workflow
             bug_workflow = workflow_config.get_workflow("bug")
-            assert "tdd" in bug_workflow.phases
-            assert state["current_phase"] == "tdd"
+            assert "implementation" in bug_workflow.phases
+            assert state["current_phase"] == "implementation"
 
     @pytest.mark.asyncio
     async def test_fallback_to_first_phase_no_commits(
@@ -192,13 +192,13 @@ class TestPhaseStateEngineMode2:
     async def test_missing_projects_json_raises_error(
         self, state_engine: PhaseStateEngine, workspace_root: Path
     ) -> None:
-        """Test that missing projects.json raises clear error."""
+        """Test that missing deliverables.json raises clear error."""
         state_file = workspace_root / ".st3" / "state.json"
         if state_file.exists():
             state_file.unlink()
 
-        # Delete projects.json to simulate error case
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Delete deliverables.json to simulate error case
+        projects_file = workspace_root / ".st3" / "deliverables.json"
         if projects_file.exists():
             projects_file.unlink()
 

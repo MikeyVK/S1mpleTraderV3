@@ -100,7 +100,7 @@ class GitManager:
         """Commit changes with workflow phase scope.
 
         Args:
-            workflow_phase: Workflow phase (research, planning, design, tdd, ...).
+            workflow_phase: Workflow phase (research, planning, design, implementation, ...).
             message: Commit message (without type/scope prefix).
             sub_phase: Optional subphase (red, green, refactor, c1, ...).
             cycle_number: Optional cycle number (1, 2, 3, ...).
@@ -116,10 +116,10 @@ class GitManager:
             ValidationError: Empty files list.
 
         Example:
-            >>> manager.commit_with_scope("tdd", "add tests", sub_phase="red")
+            >>> manager.commit_with_scope("implementation", "add tests", sub_phase="red")
             # Generates: "test(P_TDD_SP_RED): add tests"
 
-            >>> manager.commit_with_scope("tdd", "add tests", sub_phase="red", commit_type="fix")
+            >>> manager.commit_with_scope("implementation", "add tests", sub_phase="red", commit_type="fix")
             # Generates: "fix(P_TDD_SP_RED): add tests" (override)
         """
         if files is not None and not files:
@@ -148,7 +148,7 @@ class GitManager:
 
             # Handle TDD phase (commit_type_hint is null, varies by subphase)
             if commit_type is None:
-                if workflow_phase.lower() == "tdd":
+                if workflow_phase.lower() == "implementation":
                     if sub_phase == "red":
                         commit_type = "test"
                     elif sub_phase == "green":

@@ -97,6 +97,22 @@ class TestGitConfig:
         with pytest.raises(KeyError):
             config.get_prefix("invalid")
 
+    def test_extract_issue_number_returns_int_for_supported_branch_names(self):
+        """extract_issue_number() should parse the numeric issue id from branch names."""
+        config = GitConfig.from_file(".st3/git.yaml")
+
+        assert config.extract_issue_number("feature/42-test-branch") == 42
+        assert config.extract_issue_number("fix/7-hot-patch") == 7
+        assert config.extract_issue_number("docs/120-refresh-readme") == 120
+
+    def test_extract_issue_number_returns_none_for_invalid_branch_names(self):
+        """extract_issue_number() should degrade gracefully when no issue id is present."""
+        config = GitConfig.from_file(".st3/git.yaml")
+
+        assert config.extract_issue_number("main") is None
+        assert config.extract_issue_number("feature/no-number") is None
+        assert config.extract_issue_number("unknown/42-test") is None
+
     def test_is_protected(self):
         """Test is_protected() helper (Convention #4)."""
         config = GitConfig.from_file(".st3/git.yaml")

@@ -1,0 +1,364 @@
+{
+  "257": {
+    "issue_number": 257,
+    "issue_title": "Reorder workflow phases: research → design → planning → tdd",
+    "workflow_name": "feature",
+    "execution_mode": "interactive",
+    "required_phases": [
+      "research",
+      "planning",
+      "design",
+      "implementation",
+      "validation",
+      "documentation"
+    ],
+    "skip_reason": null,
+    "parent_branch": "main",
+    "created_at": "2026-03-03T14:20:50.753090+00:00",
+    "planning_deliverables": {
+      "tdd_cycles": {
+        "total": 6,
+        "cycles": [
+          {
+            "cycle_number": 1,
+            "deliverables": [
+              {
+                "id": "D1.1",
+                "description": "tdd → implementation: present in .st3/workflows.yaml (H rename)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/workflows.yaml",
+                  "text": "- implementation"
+                }
+              },
+              {
+                "id": "D1.2",
+                "description": "- tdd absent from .st3/workflows.yaml (H flag-day, no alias)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".st3/workflows.yaml",
+                  "text": "- tdd"
+                }
+              },
+              {
+                "id": "D1.3",
+                "description": "GitConfig.extract_issue_number() implemented (I3 — cohesion in GitConfig)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/config/git_config.py",
+                  "text": "extract_issue_number"
+                }
+              },
+              {
+                "id": "D1.4",
+                "description": "_extract_issue_from_branch removed from PSE (replaced by D1.3)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "_extract_issue_from_branch"
+                }
+              },
+              {
+                "id": "D1.5",
+                "description": "projects.json references removed from PSE source (C abolishment)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "projects.json"
+                }
+              }
+            ],
+            "exit_criteria": "Full test suite green; absent: '- tdd' in .st3/workflows.yaml; absent: '_extract_issue_from_branch' in PSE; absent: 'projects.json' in PSE; present: 'extract_issue_number' in git_config.py"
+          },
+          {
+            "cycle_number": 2,
+            "deliverables": [
+              {
+                "id": "D2.1",
+                "description": "state_repository.py created with BranchState + FileStateRepository + InMemoryStateRepository (E)",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/managers/state_repository.py"
+                }
+              },
+              {
+                "id": "D2.2",
+                "description": "BranchState frozen=True — CQS enforced at type-system level (E)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/state_repository.py",
+                  "text": "frozen=True"
+                }
+              },
+              {
+                "id": "D2.3",
+                "description": "InMemoryStateRepository present for test isolation (E4)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/state_repository.py",
+                  "text": "InMemoryStateRepository"
+                }
+              },
+              {
+                "id": "D2.4",
+                "description": "AtomicJsonWriter implemented for crash-safe writes (B3)",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/utils/atomic_json_writer.py"
+                }
+              },
+              {
+                "id": "D2.5",
+                "description": "IStateReader / IStateRepository Protocols created in core/interfaces/ (ISP split, E)",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/core/interfaces/__init__.py"
+                }
+              },
+              {
+                "id": "D2.6",
+                "description": "PSE constructor receives IStateRepository — no direct file I/O in PSE (DIP, E)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "IStateRepository"
+                }
+              }
+            ],
+            "exit_criteria": "PSE unit tests use InMemoryStateRepository (zero filesystem dependency in unit tests); Pyright --strict passes on core/interfaces/, state_repository.py, phase_state_engine.py; full test suite green"
+          },
+          {
+            "cycle_number": 3,
+            "deliverables": [
+              {
+                "id": "D3.1",
+                "description": "phase_contracts.yaml config file created in .st3/config/ (A — Config-First split)",
+                "validates": {
+                  "type": "file_exists",
+                  "file": ".st3/config/phase_contracts.yaml"
+                }
+              },
+              {
+                "id": "D3.2",
+                "description": "PhaseContractResolver implemented — SRP, no StateRepository dependency (D)",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/managers/phase_contract_resolver.py"
+                }
+              },
+              {
+                "id": "D3.3",
+                "description": "CheckSpec Pydantic model defined in phase_contract_resolver.py (D2)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_contract_resolver.py",
+                  "text": "class CheckSpec"
+                }
+              },
+              {
+                "id": "D3.4",
+                "description": "Fail-Fast ConfigError raised for invalid phase_contracts.yaml (A1)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_contract_resolver.py",
+                  "text": "ConfigError"
+                }
+              },
+              {
+                "id": "D3.5",
+                "description": "PhaseConfigContext facade — single injection point for tool layer (D5, G)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_contract_resolver.py",
+                  "text": "PhaseConfigContext"
+                }
+              }
+            ],
+            "exit_criteria": "Fail-Fast test passes: invalid phase_contracts.yaml raises ConfigError before first tool call; PhaseContractResolver.resolve() returns [] for unknown phase without exception; Pyright --strict passes on PhaseContractResolver, CheckSpec, PhaseConfigContext; full test suite green"
+          },
+          {
+            "cycle_number": 4,
+            "deliverables": [
+              {
+                "id": "D4.1",
+                "description": "PSE.get_state(branch) → BranchState added — composition root (J1)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "def get_state"
+                }
+              },
+              {
+                "id": "D4.2",
+                "description": "GitManager.commit_with_scope() with explicit commit_type param (J3)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/git_manager.py",
+                  "text": "commit_with_scope"
+                }
+              },
+              {
+                "id": "D4.3",
+                "description": "Legacy phase= backward-compat path removed from git_tools.py (J4 flag-day)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "LEGACY backward-compatible path"
+                }
+              },
+              {
+                "id": "D4.4",
+                "description": "tdd literal guard removed from git_tools.py (workflow_phase == 'tdd' check gone after H)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/git_tools.py",
+                  "text": "workflow_phase == \"tdd\""
+                }
+              }
+            ],
+            "exit_criteria": "grep finds zero 'phase=' kwargs in mcp_server/tools/; backward-compat tests deleted; Pyright --strict passes on all tool files and PSE public API; full test suite green"
+          },
+          {
+            "cycle_number": 5,
+            "deliverables": [
+              {
+                "id": "D5.1",
+                "description": "enforcement.yaml config file created in .st3/config/ (F — enforcement rules)",
+                "validates": {
+                  "type": "file_exists",
+                  "file": ".st3/config/enforcement.yaml"
+                }
+              },
+              {
+                "id": "D5.2",
+                "description": "EnforcementRunner service implemented — SRP, no PSE dependency (F)",
+                "validates": {
+                  "type": "file_exists",
+                  "file": "mcp_server/managers/enforcement_runner.py"
+                }
+              },
+              {
+                "id": "D5.3",
+                "description": "BaseTool.enforcement_event class variable added — declarative hook registration (F, Option C)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/base.py",
+                  "text": "enforcement_event"
+                }
+              },
+              {
+                "id": "D5.4",
+                "description": "EnforcementRegistry referenced in enforcement_runner.py — plugin fail-fast at startup (F2)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/enforcement_runner.py",
+                  "text": "EnforcementRegistry"
+                }
+              }
+            ],
+            "exit_criteria": "End-to-end test: transition_phase triggers post-hook → state.json committed automatically; end-to-end test: create_branch with invalid base raises ToolResult error (not unhandled exception); EnforcementRunner unit tests have zero dependency on FileStateRepository or PSE; Pyright --strict passes on EnforcementRunner, EnforcementRegistry, BaseTool; full test suite green"
+          },
+          {
+            "cycle_number": 6,
+            "deliverables": [
+              {
+                "id": "D6.1",
+                "description": "project_manager.py writes to deliverables.json — projects.json abolished (B, C)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "deliverables.json"
+                }
+              },
+              {
+                "id": "D6.2",
+                "description": "projects_file attribute removed from ProjectManager (replaced by deliverables_file)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "projects_file"
+                }
+              },
+              {
+                "id": "D6.3",
+                "description": "AtomicJsonWriter used in project_manager.py for deliverables.json writes (B3)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "AtomicJsonWriter"
+                }
+              },
+              {
+                "id": "D6.4",
+                "description": "state.json removed from .gitignore — git-tracked per branch (B5)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": ".gitignore",
+                  "text": ".st3/state.json"
+                }
+              },
+              {
+                "id": "D6.5",
+                "description": "PSE.initialize_branch() emits explicit warning for uncommitted state changes (B5, Explicit-over-Implicit)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/managers/phase_state_engine.py",
+                  "text": "initialize_branch"
+                }
+              }
+            ],
+            "exit_criteria": "Completed-cycle guard raises ValidationError with cycle id; AtomicJsonWriter used for all deliverables.json writes (grep: no direct open() calls in project_manager.py for deliverables); integration test: full transition_phase flow commits state.json automatically; Pyright --strict passes on save/update tools and project_manager.py; full test suite green; KPIs 1–20 in research_config_first_pse.md all verifiable"
+          }
+        ]
+      },
+      "design": {
+        "deliverables": [
+          {
+            "id": "DD.1",
+            "description": "design.md status is APPROVED (scaffold workflow gate)",
+            "validates": {
+              "type": "contains_text",
+              "file": "docs/development/issue257/design.md",
+              "text": "Status:** APPROVED"
+            }
+          },
+          {
+            "id": "DD.2",
+            "description": "design.md contains Key Design Decisions table for A–J",
+            "validates": {
+              "type": "contains_text",
+              "file": "docs/development/issue257/design.md",
+              "text": "### 3.1. Key Design Decisions"
+            }
+          }
+        ]
+      },
+      "validation": {
+        "deliverables": [
+          {
+            "id": "DV.1",
+            "description": "KPI section present in research_config_first_pse.md — 20 KPIs verifiable after Cycle 6",
+            "validates": {
+              "type": "contains_text",
+              "file": "docs/development/issue257/research_config_first_pse.md",
+              "text": "## KPI"
+            }
+          }
+        ]
+      },
+      "documentation": {
+        "deliverables": [
+          {
+            "id": "DDOC.1",
+            "description": "planning.md SCAFFOLD header present — template-tracked artifact",
+            "validates": {
+              "type": "contains_text",
+              "file": "docs/development/issue257/planning.md",
+              "text": "<!-- template=planning"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

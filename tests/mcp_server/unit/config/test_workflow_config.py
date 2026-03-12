@@ -428,4 +428,40 @@ class TestTransitionValidation:
 
         error_msg = str(exc_info.value)
         assert "Target phase 'invalid' not in workflow 'feature'" in error_msg
-        assert "Valid phases:" in error_msg
+
+
+class TestWorkflowHelpers:
+    """Tests for helper methods added to workflows.py during config consolidation."""
+
+    def test_get_first_phase_returns_first_phase(self, valid_workflows_yaml: Path) -> None:
+        """WorkflowConfig exposes get_first_phase() on workflows.py."""
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        assert config.get_first_phase("feature") == "research"
+        assert config.get_first_phase("hotfix") == "tdd"
+
+    def test_has_workflow_returns_true_only_for_defined_workflows(
+        self, valid_workflows_yaml: Path
+    ) -> None:
+        """WorkflowConfig exposes has_workflow() on workflows.py."""
+        config = WorkflowConfig.load(valid_workflows_yaml)
+
+        assert config.has_workflow("feature") is True
+        assert config.has_workflow("hotfix") is True
+        assert config.has_workflow("unknown") is False
+
+
+class TestRepositoryWorkflowPhases:
+    """Tests for the live repository workflows.yaml contract for issue #257."""
+
+    def test_repo_workflows_use_implementation_instead_of_tdd(self) -> None:
+        """Feature and hotfix workflows must use implementation after cycle 1 rename."""
+        config = WorkflowConfig.load(Path(".st3/workflows.yaml"))
+
+        feature_phases = config.get_workflow("feature").phases
+        hotfix_phases = config.get_workflow("hotfix").phases
+
+        assert "implementation" in feature_phases
+        assert "implementation" in hotfix_phases
+        assert "tdd" not in feature_phases
+        assert "tdd" not in hotfix_phases

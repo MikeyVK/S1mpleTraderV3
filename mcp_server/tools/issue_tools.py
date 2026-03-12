@@ -15,7 +15,7 @@ from mcp_server.config.label_config import LabelConfig
 from mcp_server.config.milestone_config import MilestoneConfig
 from mcp_server.config.scope_config import ScopeConfig
 from mcp_server.config.template_config import get_template_root
-from mcp_server.config.workflow_config import WorkflowConfig
+from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.managers.github_manager import GitHubManager
 from mcp_server.scaffolding.renderer import JinjaRenderer
