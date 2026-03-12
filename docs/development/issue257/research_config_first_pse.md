@@ -677,13 +677,23 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **B1.** Wat is de exacte JSON-structuur? Per issue: `{ "257": { "phases": { "design": [...], "implementation": { "tdd_plan": {...} } } } }` of platter? Keuze beïnvloedt de `PhaseDeliverableResolver` lookup-logica direct.
 
+> **✅ Beslissing (12-03-2026):** Genest: `{ "257": { "phases": { "design": [...], "implementation": {...} }, "created_at": "...", "workflow_name": "feature" } }`. Geneste structuur biedt ruimte voor issue-level metadata naast fase-entries, wat flat niet biedt zonder pollutie.
+
 **B2.** Is `tdd_plan` na `save_planning_deliverables` immutable of muteerbaar via een apart `update_tdd_plan` endpoint? Als immutable: hoe gaan we om met het praktische geval dat een team halverwege TDD een extra cycle wil toevoegen?
+
+> **✅ Beslissing (12-03-2026):** Mutable. `save_planning_deliverables` maakt aan, `update_planning_deliverables` wijzigt. Praktische noodzaak: extra cycle toevoegen halverwege implementatie moet mogelijk zijn.
 
 **B3.** Wie schrijft naar `deliverables.json`? Alleen `save_planning_deliverables` en `update_planning_deliverables`? Of ook andere tools? De schrijver moet eenduidig zijn (1-writer principe analoog aan 1-reader).
 
+> **✅ Beslissing (12-03-2026):** 1-writer principe: alleen `save_planning_deliverables` en `update_planning_deliverables`. Schrijven en wijzigen zijn gescheiden (SRP). Gedeelde private `AtomicJsonWriter` utility voor alle JSON-writes (inclusief `state.json`), zodat atomisch schrijven op één plek geïmplementeerd is.
+
 **B4.** Wat is de lifecycle van een `deliverables.json` entry? Wordt hij gearchiveerd bij PR-merge, of simpelweg leeg gelaten? Wat gebeurt er als een issue opnieuw wordt geopend?
 
+> **✅ Beslissing (12-03-2026):** Optie C — verwijderen bij PR merge. Config over code: cleanup is een `post_merge` lifecycle hook in `lifecycle.yaml`, niet hardcoded in Python. Git-history is de ultimate source of truth na merge. Cleanup-logica is een nieuwe deliverable van dit issue.
+
 **B5.** Cycle-state (`current_cycle`, `cycle_history`) gaat naar `state.json`. Maar `state.json` bevat nu één issue tegelijk (single-branch). Als een ontwikkelaar van branch wisselt, gaat de cycle-state verloren. Moet cycle-state per issue opgeslagen worden (in `deliverables.json` of apart), of is het altijd gekoppeld aan de actieve branch?
+
+> **✅ Beslissing (12-03-2026):** Probleem vervalt als `state.json` git-tracked is per branch. Nieuwe deliverable van dit issue: `state.json` verwijderen uit `.gitignore` zodat het per branch in git wordt bijgehouden. Bij branch-wissel is `state.json` van die branch beschikbaar via git checkout.
 
 ---
 
@@ -693,9 +703,15 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **C2.** `state.json` bevat nu één branch tegelijk. Bij abolishment van `projects.json` is er géén andere bron meer voor issues die niet de actieve branch zijn. Is dat acceptabel, of moet `state.json` een multi-branch register worden?
 
+> **✅ Beslissing (12-03-2026):** Single-branch blijft. GitHub issues + lokale git branches zijn single source of truth. `projects.json` als multi-branch register wordt geabolished.
+
 **C3.** `Mode 2 reconstructie` in PSE `_reconstruct_branch_state()` leest nu uit `projects.json`. Na abolishment leest hij uit git + GitHub API. Wat is de fallback als GitHub API onbereikbaar is (offline scenario)? Faalt hard, of graceful degradation naar `unknown`?
 
+> **✅ Beslissing (12-03-2026):** Graceful degradation: `workflow_name: "unknown"` als GitHub API onbereikbaar is. Offline scenario niet prioriteit (MCP is een tool voor agentic coding, geen lokale LLM).
+
 **C4.** Wat wordt de migratiepad voor bestaande 40+ entries in `projects.json`? One-time migration script, of backward-compat leeslaag tijdens transitieperiode?
+
+> **✅ Beslissing (12-03-2026):** Flag-day. `projects.json` wordt verwijderd. Bestaande entries worden niet gemigreerd — niet meer relevant na abolishment. Consistent met BC-aanpak.
 
 ---
 
@@ -707,11 +723,19 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **D2.** Wat is `CheckSpec`? Een TypedDict, dataclass, of Pydantic model? Welke velden zijn verplicht, welke optioneel? Dit bepaalt de interface met `DeliverableChecker`.
 
+> **✅ Beslissing (12-03-2026):** Pydantic model. Pydantic zit al in de stack (`pydantic>=2.5.0`). Geeft runtime-validatie bij laden van `phase_contracts.yaml`-entries en type-safe interface met `DeliverableChecker`.
+
 **D3.** Mag een fase géén deliverables hebben (lege lijst teruggeven)? Of is een lege resolver-output een configuratiefout die een warning/error verdient?
+
+> **✅ Beslissing (12-03-2026):** Lege lijst is normaal en geen fout. Voorbeeld: `docs`-workflow heeft geen `implementation`-fase in `phase_contracts.yaml` — resolver geeft `[]` terug zonder error.
 
 **D4.** Foutafhandeling: als `phase_deliverables.yaml` een fase niet definieert voor de gevraagde workflow, gooit de resolver een `ValueError` of een `ConfigurationError`? Wie vangt dat op — PSE of de caller van PSE?
 
+> **✅ Beslissing (12-03-2026):** `ConfigError` met `file_path=".st3/config/phase_contracts.yaml"`. `ConfigError` is subklasse van `MCPError` en wordt gevangen door `@tool_error_handler` op de tool-laag, die het converteert naar `ToolResult.error()`. Geen try/except nodig in PSE of manager.
+
 **D5.** Heeft `PhaseDeliverableResolver` kennis van de huidige cycle (via `StateRepository`), of krijgt de caller altijd een cycle-nummer mee? Als de resolver state leest, is hij geen pure functie meer — trade-off testbaarheid vs. API-eenvoud.
+
+> **✅ Beslissing (12-03-2026):** Zie D1 — expliciet via parameter. `PhaseContractResolver` heeft geen dependency op `StateRepository`.
 
 ---
 
@@ -723,9 +747,15 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **E2.** Levert `StateRepository.read_state()` een getypte dataclass terug (`BranchState`) of een plain `dict`? Typed is beter voor Pyright strict, maar vereist migratie-aandacht bij schema-uitbreidingen.
 
+> **✅ Beslissing (12-03-2026):** Getypte Pydantic model `BranchState`. Consistent met D2 (CheckSpec is ook Pydantic). Pyright strict-compatibel, runtime-validatie bij lezen van `state.json`.
+
 **E3.** Atomic write is nu geïmplementeerd als temp-file + rename in PSE. Verhuist die logica 1-op-1 naar `StateRepository`, of is er een betere primitieve voor Windows (bijv. `filelock` library)?
 
+> **✅ Beslissing (12-03-2026):** Temp-file + rename verhuist naar gedeelde `AtomicJsonWriter` utility (zie B3). Geen nieuwe dependency op `filelock`. Bestaande aanpak werkt aantoonbaar op Windows (Issue #85).
+
 **E4.** `ScopeDecoder` moet na de refactoring `state.json` lezen via `StateRepository`. Maar `ScopeDecoder` zit in `mcp_server/core/` en `StateRepository` zit (vermoedelijk) in `mcp_server/managers/`. Is die afhankelijkheidsrichting acceptabel, of moet er een interface in `core/` komen?
+
+> **✅ Beslissing (12-03-2026):** `IStateRepository` als `Protocol` in `mcp_server/core/` (structural subtyping). `FileStateRepository` in `managers/` implementeert het protocol zonder expliciete overerving. `ScopeDecoder` importeert alleen `IStateRepository` uit `core/` — geen dependency op `managers/`.
 
 ---
 
@@ -733,11 +763,34 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **F1.** Wat is de registry-structuur? `dict[str, Callable]` waarbij key de fase-naam is? Of een lijst van `HookSpec(phase: str, hook: Callable)` objecten? Wat als een fase twee hooks heeft (enter + exit)?
 
+> **✅ Beslissing (12-03-2026):** YAML in `.st3/lifecycle.yaml` — niet Python dict-objecten. Event-keys zijn `"PHASE:enter"` / `"PHASE:exit"` / `"post_merge"` / `"post_checkout"`. Één event kan meerdere hook-entries hebben. Structuur:
+> ```yaml
+> hooks:
+>   planning:exit:
+>     - action: check_deliverable
+>       source: workphases
+>   implementation:enter:
+>     - action: state_mutation
+>       operation: initialize_cycle
+>   post_merge:
+>     - action: delete_file
+>       path: .st3/state.json
+>     - action: delete_file
+>       path: .st3/deliverables.json
+> ```
+> Geïdentificeerde actietypes: `check_deliverable`, `state_mutation`, `delete_file`.
+
 **F2.** Wie registreert hooks? Worden ze geconfigureerd in `phase_deliverables.yaml` (config-driven), of registreren modules zichzelf bij startup (plugin-patroon)?
+
+> **✅ Beslissing (12-03-2026):** Plugin-patroon (module-registratie bij startup) + fail fast. Bij server startup registreert elke module zijn action-handler. De `lifecycle.yaml` loader valideert bij opstart dat elke `action`-naam een geregistreerde handler heeft — `ConfigError` als dat niet zo is. Fail fast voorkomt stille fouten bij runtime. Config-driven (YAML) bepaalt *welke* hooks actief zijn; plugin-registratie bepaalt de Python-implementatie.
 
 **F3.** Blijft de PSE verantwoordelijk voor het aanroepen van hooks, of delegeert hij naar een `HookRunner`? Als PSE de runner blijft, lost het alleen het OCP-probleem op maar niet het SRP-probleem volledig.
 
+> **✅ Beslissing (12-03-2026):** `HookRunner` als aparte service, geïnjecteerd in PSE. PSE's verantwoordelijkheid: state-overgangen valideren en opslaan. `HookRunner` orchestreert hooks zonder zelf worker-logica te bevatten — hij delegeert aan SRP-helpers per actietype (`DeliverableCheckAction`, `StateMutationAction`, `FileDeleteAction`). PSE roept alleen `self._hook_runner.run(event, context)` aan.
+
 **F4.** Hoe worden hooks getest in isolatie? Als hooks geconfigureerd zijn als Python callables, zijn ze niet serialiseerbaar. Als ze geregistreerd zijn via naam (string → callable), is er een registry-lookup nodig bij test-setup.
+
+> **✅ Beslissing (12-03-2026):** Triviaal via constructor-injectie van een fake `HookRegistry` met no-op action-handlers. `HookRunner` zelf is onafhankelijk van PSE testbaar. Elke action-helper (`DeliverableCheckAction`, etc.) is onafhankelijk testbaar met eigen unit tests.
 
 ---
 
@@ -749,6 +802,8 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **G3.** `ScopeEncoder` en `ScopeDecoder` lezen `workphases.yaml` elk direct. Na F21 lezen ze ook `phase_deliverables.yaml` (voor subphase-validatie en commit_type_map). Hoe wordt de afhankelijkheid geïnjecteerd zonder dat beide klassen een lange constructor-parameter-lijst krijgen? Config facade/context object?
 
+> **✅ Beslissing (12-03-2026):** `PhaseConfigContext` facade (dataclass met `workphases: WorkphasesConfig` + `phase_contracts: PhaseContractsConfig`). Geïnjecteerd via constructor. Uitbreidbaar zonder API-breuk. Tests injecteren één mock-object. Consistent met het principe dat config-kennis geïsoleerd blijft.
+
 ---
 
 ### H — Naamgeving en migratie `tdd` → `implementation` (F21)
@@ -759,9 +814,15 @@ Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegr
 
 **H2.** Wordt `tdd` als fase-naam volledig verwijderd, of blijft hij als alias in `workphases.yaml` voor backward-compat? Als alias: hoe lang, en wie beheert de deprecation?
 
+> **✅ Beslissing (12-03-2026):** Volledig verwijderd. Consistent met flag-day BC-aanpak. Geen alias, geen deprecation-periode.
+
 **H3.** Labels in GitHub (`phase:tdd`, `phase:red`, `phase:green`, `phase:refactor`) zijn extern en niet zomaar hernoembaar. Worden die labels behouden naast de nieuwe (`phase:implementation`, `phase:red` blijft als sub-label), of is er een label-migratie nodig?
 
+> **✅ Beslissing (12-03-2026):** GitHub labels behouden zoals ze zijn. Extern systeem, label-migratie is overkill. `phase:red`, `phase:green`, `phase:refactor` blijven geldig als sub-labels van `implementation`. Historische commits met `phase:tdd` zijn acceptabel (BC-1).
+
 **H4.** `docs`-workflow heeft geen implementatiefase in de huidige config. Na F21 heeft ook `docs` een `implementation`-fase — of juist expliciet niet? Hoe modelleert `phase_deliverables.yaml` een workflow zonder implementatie (lege fase, of fase ontbreekt in config)?
+
+> **✅ Beslissing (12-03-2026):** Fase ontbreekt in `phase_contracts.yaml` voor de `docs`-workflow (niet aanwezig = niet van toepassing). Resolver geeft `[]` terug (D3). Een lege entry aanmaken zou impliceren dat `docs` *weet* van implementatie maar niets vereist — conceptueel onjuist.
 
 ---
 
