@@ -24,15 +24,15 @@ sections.yaml + content_contract gate type (issue #258 / Epic #49), ArtifactMana
 
 ## Problem Statement
 
-The current PhaseStateEngine, ProjectManager en .st3 directory hebben een aantal fundamentele architecturele problemen: (1) .st3/ mixt configs (statisch, YAML) en registries (runtime, JSON) zonder scheiding; (2) deliverable-contracten per werkfase zijn niet configureerbaar per workflow — er is geen phase_deliverables.yaml; (3) projects.json is een groeiend register zonder cleanup dat DRY-schendingen introduceert t.o.v. state.json; (4) de PSE bevat hardcoded phase-namen, hardcoded if-chains (OCP-schending), directe DeliverableChecker-instantiaties (DIP-schending) en gedupliceerde hook bodies (DRY-schending); (5) branch-naam conventie (issue-nummer verplicht) wordt niet machine-afgedwongen door create_branch, wat Mode 2 reconstructie breekbaar maakt; (6) branch_types in git.yaml en PSE extractie-regex zijn twee aparte definities van dezelfde waarheid (DRY).
+The current PhaseStateEngine, ProjectManager en .st3 directory hebben een aantal fundamentele architecturele problemen: (1) .st3/ mixt configs (statisch, YAML) en registries (runtime, JSON) zonder scheiding; (2) deliverable-contracten per werkfase zijn niet configureerbaar per workflow — er is geen `phase_contracts.yaml`; (3) projects.json is een groeiend register zonder cleanup dat DRY-schendingen introduceert t.o.v. state.json; (4) de PSE bevat hardcoded phase-namen, hardcoded if-chains (OCP-schending), directe DeliverableChecker-instantiaties (DIP-schending) en gedupliceerde hook bodies (DRY-schending); (5) branch-naam conventie (issue-nummer verplicht) wordt niet machine-afgedwongen door create_branch, wat Mode 2 reconstructie breekbaar maakt; (6) branch_types in git.yaml en PSE extractie-regex zijn twee aparte definities van dezelfde waarheid (DRY).
 
 ## Research Goals
 
 - Scheiden van .st3/ in config/ (YAML, statisch, versioned) en registries/ (JSON, runtime)
-- Ontwerpen van phase_deliverables.yaml als Config-First workflow×phase deliverable-contract
+- Ontwerpen van `phase_contracts.yaml` als Config-First workflow×phase deliverable-contract
 - Ontwerpen van deliverables.json als issue-specifiek additief register (Optie A: config is leidend, issue-specifiek is aanvullend)
 - Afschaffen van projects.json: issue-metadata velden verhuizen naar state.json; Mode 2 leunt volledig op git + GitHub API
-- Ontwerpen van PhaseDeliverableResolver (SRP): combineert config-laag + registry-laag tot check-spec lijst zonder zelf checks uit te voeren
+- Ontwerpen van `PhaseContractResolver` (SRP): combineert config-laag + registry-laag tot check-spec lijst zonder zelf checks uit te voeren
 - Refactoren van PSE naar volledig config-driven: OCP hook-registry, DIP DeliverableChecker injection, SRP extractie, geen hardcoded phase-namen
 - Valideren en hardmaken van branch-naam conventie: issue-nummer afdwingen in create_branch via git.yaml branch_name_pattern
 - Unificeren van branch_types definitie: git.yaml is SSOT, PSE extractie-regex leest uit config
@@ -533,13 +533,13 @@ Alle bestanden die geraakt worden door F1–F25 zijn hieronder per file gescand 
 - **Verificatie:** `Test-Path .st3\registries\projects.json` retourneert `False` na migratie
 - **Owner:** *[design-input]* — migratiestrategie bepaald in design (open vraag C1, C4)
 
-### KPI 6 — `PhaseDeliverableResolver` bestaat als geïsoleerde SRP-class
+### KPI 6 — `PhaseContractResolver` bestaat als geïsoleerde SRP-class
 
-- Nieuwe class `PhaseDeliverableResolver` in `mcp_server/managers/`
+- Nieuwe class `PhaseContractResolver` in `mcp_server/managers/`
 - Invoer: `workflow_name`, `phase`, `issue_number` → uitvoer: `list[CheckSpec]`
 - Doet geen filesystem-checks; combineert uitsluitend config-laag + registry-laag
 - PSE exit-hooks aanroepen de resolver en delegeren checks aan `DeliverableChecker`
-- **Verificatie:** `PhaseDeliverableResolver` heeft geen `import pathlib` of `glob`-aanroepen in zijn broncode
+- **Verificatie:** `PhaseContractResolver` heeft geen `import pathlib` of `glob`-aanroepen in zijn broncode
 - **Owner:** *[design-input]* — interface exact bepaald in design (open vraag D1, D2)
 
 ### KPI 7 — `StateRepository` bestaat als geïsoleerde SRP-class

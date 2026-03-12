@@ -2,7 +2,7 @@
 <!-- template=design version=5827e841 created=2026-03-12T12:06Z updated= -->
 # Config-First PSE Architecture
 
-**Status:** DRAFT  
+**Status:** APPROVED  
 **Version:** 1.0  
 **Last Updated:** 2026-03-12
 
@@ -134,7 +134,7 @@ The `required`/`recommended` distinction is a field on each gate-spec in `phase_
 
 #### B4 — Post-merge cleanup via enforcement
 
-**Decision:** Delete on PR merge. Config over code: cleanup is a `post_merge` lifecycle action in `enforcement.yaml`, not hardcoded in Python. Git history is the ultimate source of truth after merge.
+**Decision:** Delete on PR merge. Config over code: cleanup is a `post_merge` enforcement action in `enforcement.yaml`, not hardcoded in Python. Git history is the ultimate source of truth after merge.
 
 #### B5 — `state.json` git-tracked per branch + startup guard
 
@@ -394,28 +394,44 @@ class CheckSpec(BaseModel):
 
 ## 6. Architecture Diagram (Component Boundaries)
 
-```
-                   Tool Layer (composition root)
-┌─────────────────────────────────────────────────────┐
-│  TransitionPhaseTool  enforcement_event = "..."      │
-│  GitCommitTool                                       │
-│  CreateBranchTool                                    │
-└───────┬──────────────────────┬──────────────────────┘
-        │ PSE.get_state()       │ PhaseContractResolver.resolve()
-        ▼                       ▼
-  ┌──────────┐          ┌──────────────────────┐
-  │   PSE    │          │  PhaseContractResolver│
-  │          │          │  (config + registry)  │
-  └────┬─────┘          └──────────────────────┘
-       │ IStateRepository        ▲
-       ▼                    IStateReader
-  ┌──────────────────────┐
-  │ FileStateRepository  │  ← AtomicJsonWriter
-  └──────────────────────┘
+```mermaid
+graph TD
+    subgraph ToolLayer["Tool Layer (composition root)"]
+        TT[TransitionPhaseTool<br/>enforcement_event = 'transition_phase']
+        GT[GitCommitTool]
+        CT[CreateBranchTool<br/>enforcement_event = 'create_branch']
+    end
 
-  EnforcementRunner (injected at server dispatch level)
-  ├── BaseTool.enforcement_event → "transition_phase" | "create_branch" | ...
-  └── EnforcementRegistry → action handlers (check_deliverable, commit_state_files, ...)
+    subgraph Services["Services"]
+        PSE[PSE<br/>state machine]
+        PCR[PhaseContractResolver<br/>config + registry]
+        ER[EnforcementRunner<br/>injected at dispatch level]
+    end
+
+    subgraph Storage["Storage"]
+        FSR[FileStateRepository]
+        AJW[AtomicJsonWriter]
+    end
+
+    subgraph Config["Config (.st3/)"]
+        PC[phase_contracts.yaml]
+        ENF[enforcement.yaml]
+    end
+
+    TT -->|PSE.get_state| PSE
+    TT -->|PCR.resolve| PCR
+    GT -->|PSE.get_state| PSE
+    CT -->|PSE.get_state| PSE
+
+    PSE -->|IStateRepository| FSR
+    PCR -->|IStateReader| FSR
+    FSR --> AJW
+
+    ER -->|reads rules| ENF
+    PCR -->|reads contracts| PC
+
+    TT -.->|enforcement_event| ER
+    CT -.->|enforcement_event| ER
 ```
 - **[research_config_first_pse.md — Research: Config-First PSE Architecture (frozen, source of truth)][related-1]**
 - **[../../coding_standards/ARCHITECTURE_PRINCIPLES.md — Architecture Principles (binding contract)][related-2]**
