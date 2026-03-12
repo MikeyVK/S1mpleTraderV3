@@ -1,10 +1,10 @@
 <!-- docs\development\issue257\research_config_first_pse.md -->
-<!-- template=research version=8b7bb3ab created=2026-03-11T13:44Z updated= -->
-# Config-First PSE architecture: phase_deliverables.yaml, deliverables register, .st3 structural refactor, projects.json abolishment
+<!-- template=research version=8b7bb3ab created=2026-03-11T13:44Z updated=2026-03-12T00:00Z -->
+# Config-First PSE architecture: phase_contracts.yaml, enforcement.yaml, deliverables register, .st3 structural refactor, projects.json abolishment
 
-**Status:** DRAFT  
+**Status:** FROZEN — research complete, design decisions resolved. No further design rounds in this file.
 **Version:** 1.0  
-**Last Updated:** 2026-03-11
+**Last Updated:** 2026-03-12
 
 ---
 
@@ -15,10 +15,10 @@ Grondige architecturele refactoring van de PSE-infrastructuur zodat werkfase-del
 ## Scope
 
 **In Scope:**
-phase_deliverables.yaml (nieuw), deliverables.json register (nieuw), .st3/config/ + .st3/registries/ mapstructuur, projects.json abolishment + state.json verrijking, PhaseDeliverableResolver (nieuw), PSE OCP registry + DIP + SRP + DRY + logging refactor, StateRepository (atomische write extraheren), branch_name_pattern enforcement in git.yaml + create_branch, branch_types SSOT unificatie, fasevolgorde research→design→planning→tdd in workflows.yaml
+phase_contracts.yaml (hernoemd van phase_deliverables.yaml), enforcement.yaml (hernoemd van lifecycle.yaml — fase- én tool-level enforcement), deliverables.json register (nieuw), AtomicJsonWriter (nieuwe shared utility voor atomische JSON-writes), state.json git-tracked per branch (verwijderd uit .gitignore), post-merge cleanup via enforcement.yaml, .st3/config/ + .st3/registries/ mapstructuur, projects.json abolishment + state.json verrijking, PhaseDeliverableResolver (hernoemd: PhaseContractResolver), PSE OCP registry + DIP + SRP + DRY + logging refactor, StateRepository (atomische write extraheren), branch_name_pattern enforcement in git.yaml + create_branch, branch_types SSOT unificatie, fasevolgorde research→design→planning→implementation in workflows.yaml, commit_type_map config-driven via phase_contracts.yaml, EnforcementRunner (hernoemd van HookRunner)
 
 **Out of Scope:**
-sections.yaml + phase_contracts + content_contract gate type (issue #258 / Epic #49), ArtifactManager template-integratie workflow-aware sectie rendering (issue #259 / Epic #73), TDD subphase mechanics, MCP tool signatures (geen wijzigingen)
+sections.yaml + content_contract gate type (issue #258 / Epic #49), ArtifactManager template-integratie workflow-aware sectie rendering (issue #259 / Epic #73), MCP tool signatures (geen wijzigingen voor consumers buiten de ontwerpbeslissingen in J2/J3)
 
 ---
 
@@ -509,9 +509,9 @@ Alle bestanden die geraakt worden door F1–F25 zijn hieronder per file gescand 
 - **Verificatie:** `Get-ChildItem .st3\ -File` retourneert 0 bestanden (alleen submappen)
 - **Owner:** config-wijziging + consumer path-updates; geen design-input vereist
 
-### KPI 3 — `phase_deliverables.yaml` bestaat en drijft fase-gates
+### KPI 3 — `phase_contracts.yaml` bestaat en drijft fase-gates
 
-- `.st3/config/phase_deliverables.yaml` bestaat
+- `.st3/config/phase_contracts.yaml` bestaat
 - Bevat minimaal de `feature`- en `bug`-workflows met `research`, `design`, en `implementation`-entries
 - PSE exit-hooks lezen gate-specs uitsluitend uit dit bestand — geen hardcoded deliverable-logica meer in PSE-broncode
 - **Verificatie:** `grep "planning_deliverables" mcp_server/managers/phase_state_engine.py` retourneert 0 matches
@@ -576,13 +576,13 @@ Alle bestanden die geraakt worden door F1–F25 zijn hieronder per file gescand 
 ### KPI 12 — Fase `tdd` hernoemd naar `implementation` door de gehele stack
 
 - `.st3/config/workflows.yaml`: geen `tdd`-entry meer in fasenlijsten
-- `.st3/config/workphases.yaml`: fase heet `implementation`, subphases per workflow in `phase_deliverables.yaml`
+- `.st3/config/workphases.yaml`: fase heet `implementation`, subphase-werkwijzen per workflow geconfigureerd in `phase_contracts.yaml`
 - `state.json`: sleutels `current_cycle`, `last_cycle`, `cycle_history` (geen `*_tdd_*`)
 - `phase_state_engine.py`: geen `on_enter_tdd_phase`, `on_exit_tdd_phase`, `current_tdd_cycle`-referenties
 - `git_tools.py`: geen `"tdd"` string-literals in `build_phase_guard` of `GitCommitTool.execute()`
 - **Verificatie:** `grep -r '"tdd"' mcp_server/ --include="*.py"` retourneert 0 matches; `grep "tdd" .st3/config/workflows.yaml` retourneert 0 matches
 
-### KPI 13 — `commit_type_map` config-driven via `phase_deliverables.yaml`
+### KPI 13 — `commit_type_map` config-driven via `phase_contracts.yaml`
 
 - `git_manager.py` bevat geen `if sub_phase == "red": commit_type = "test"` if-chain
 - `commit_type` wordt bepaald door de config-laag op basis van `workflow_name` + `sub_phase`
@@ -617,6 +617,32 @@ Alle bestanden die geraakt worden door F1–F25 zijn hieronder per file gescand 
 - Quality gates (ruff, mypy, pylint) slagen op branch-scope
 - **Verificatie:** `run_tests(path="tests/")` retourneert 0 failures, 0 errors
 
+### KPI 18 — `enforcement.yaml` bestaat en drijft enforcement-rules
+
+- `.st3/config/enforcement.yaml` bestaat (hernoemd van `lifecycle.yaml`)
+- Bevat minimaal: fase-level enter/exit rules, tool-level `transition_phase` post-rule (commit_state_files), tool-level `create_branch` pre-rule (check_branch_policy), post-merge cleanup rules (delete state.json + deliverables.json)
+- `EnforcementRunner` laadt rules uitsluitend uit dit bestand — geen hardcoded if-chains in PSE of tools
+- Elke `type`-naam in enforcement.yaml heeft een geregistreerde action-handler (ConfigError bij opstart als niet)
+- **Verificatie:** `grep -r "lifecycle.yaml" mcp_server/` retourneert 0 matches; `Test-Path .st3/config/enforcement.yaml` retourneert `True`
+- **Owner:** *[design-input]* — schema en action-types bepaald in design (open vraag F1–F4)
+
+### KPI 19 — `state.json` is git-tracked per branch
+
+- `.gitignore` bevat geen entry voor `.st3/registries/state.json` of `.st3/state.json`
+- Na `transition_phase` triggert een `commit_state_files` enforcement-rule die `state.json` committed
+- Na `git checkout <andere-branch>` is de `state.json` van die branch correct beschikbaar
+- PSE controleert bij `initialize_branch()` op uncommitted lokale wijzigingen in `state.json` en geeft een expliciete waarschuwing terug als die er zijn
+- **Verificatie:** `grep "state.json" .gitignore` retourneert 0 matches; na transition_phase bevat `git log --oneline -1` een chore-commit met state.json
+- **Owner:** *[design-input]* — enforcement-rule bepaald in design (B5)
+
+### KPI 20 — `AtomicJsonWriter` bestaat als gedeelde utility
+
+- Nieuwe class `AtomicJsonWriter` in `mcp_server/utils/` (of vergelijkbare utils-locatie)
+- Alle JSON-writes van `state.json` en `deliverables.json` verlopen via `AtomicJsonWriter`
+- Geen directe `Path.write_text(json.dumps(...))` of temp-file-rename logica meer in `StateRepository` of `ProjectManager`
+- **Verificatie:** `grep -rn "\.write_text.*json\|tmp.*rename" mcp_server/managers/ --include="*.py"` retourneert 0 matches voor state/deliverables-schrijvers
+- **Owner:** *[design-input]* — interface bepaald in design (E3, B3)
+
 ---
 
 ### Handover-matrix richting design en planning
@@ -625,10 +651,10 @@ Alle bestanden die geraakt worden door F1–F25 zijn hieronder per file gescand 
 |---|---|---|---|
 | KPI 1 (fasevolgorde) | config-wijziging | Nee | Cycle: workflows.yaml aanpassen |
 | KPI 2 (.st3 structuur) | config + consumer-updates | Nee | Cycle: pad-migratie per consumer |
-| KPI 3 (phase_deliverables.yaml) | design → planning | Schema (A1, A5) | Cycle: YAML schrijven + PSE koppelen |
+| KPI 3 (phase_contracts.yaml) | design → planning | Schema (A1, A5) | Cycle: YAML schrijven + PSE koppelen |
 | KPI 4 (deliverables.json) | design → planning | Schema (B1, B2) | Cycle: PM refactor |
 | KPI 5 (projects.json abolishment) | design → planning | Migratiestrategie (C1, C4) | Cycle: state.json verrijking |
-| KPI 6 (PhaseDeliverableResolver) | design → planning | Interface (D1, D2) | Cycle: class implementeren + tests |
+| KPI 6 (PhaseContractResolver) | design → planning | Interface (D1, D2) | Cycle: class implementeren + tests |
 | KPI 7 (StateRepository) | design → planning | Interface (E1, E2) | Cycle: class implementeren + consumers migreren |
 | KPI 8 (OCP registry) | planning | Nee | Cycle: PSE refactor |
 | KPI 9 (DIP checker) | planning | Nee | Cycle: PSE refactor |
@@ -639,17 +665,20 @@ Alle bestanden die geraakt worden door F1–F25 zijn hieronder per file gescand 
 | KPI 14 (branch_name_pattern) | planning | Nee | Cycle: git.yaml + GitManager validatie |
 | KPI 15 (branch_types SSOT) | planning | Nee | Cycle: samen met KPI 14 |
 | KPI 16 (WorkflowConfig consolidatie) | planning | Nee | Cycle: consolidatie + consumers updaten |
-| KPI 17 (geen regressie) | planning → tdd/implementation | Nee | Laatste cycle: regressiecheck |
+| KPI 17 (geen regressie) | planning → implementation | Nee | Laatste cycle: regressiecheck |
+| KPI 18 (enforcement.yaml) | design → planning | Schema + action-types (F1–F4) | Cycle: EnforcementRunner + YAML schrijven |
+| KPI 19 (state.json git-tracked) | design → planning | Enforcement-rule (B5) | Cycle: .gitignore update + PSE startup-guard |
+| KPI 20 (AtomicJsonWriter) | planning | Interface (E3, B3) | Cycle: utility schrijven + consumers migreren |
 
 ---
 
-## Open Questions
+## Resolved Design Questions
 
-Kritische vragen die voor of tijdens de design-fase beantwoord moeten zijn, gegroepeerd per domein. Onbeantwoorde vragen vertalen direct naar risico's in de implementatie.
+Alle vragen hieronder zijn beantwoord. Dit is een beslislogboek — geen open vragenlijst meer. Nieuwe ontwerprondes horen in het design-document (`docs/development/issue257/design.md`), niet in dit bestand.
 
 ---
 
-### A — `phase_deliverables.yaml` schema (F1, F2, F6, F12, F21)
+### A — `phase_contracts.yaml` schema (F1, F2, F6, F12, F21)
 
 **A1.** Wat is de minimale set verplichte sleutels per fase-entry? Zijn `subphases`, `commit_type_map` en `cycle_based` altijd aanwezig, of optioneel? Hoe valideert de loader ontbrekende velden?
 

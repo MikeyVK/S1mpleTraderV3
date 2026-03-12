@@ -2,21 +2,21 @@
 
 ## Overview
 
-This directory contains the comprehensive coding standards for S1mpleTrader V3. All development must follow these guidelines to maintain code quality, consistency, and maintainability.
+This directory contains the comprehensive coding standards for the project. All development must follow these guidelines to maintain code quality, consistency, and maintainability.
 
 ## Quick Links
 
-**⚖️ Architectuurcontract — lees dit EERST:**
+**⚖️ Architecture contract — read this FIRST:**
 
-🏛️ **[ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md)** — Bindende architectuurprincipes (SOLID, Config-First, Fail-Fast, CQS, ISP, LoD). Dit is de `primaire` referentie. Code die deze principes schendt wordt REJECTED, ongeacht of tooling-gates groen zijn.
+🏛️ **[ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md)** — Binding architectural principles (SOLID, Config-First, Fail-Fast, CQS, ISP, Law of Demeter). This is the `primary` reference. Code that violates these principles is REJECTED, regardless of whether tooling gates pass.
 
 ---
 
-📋 **Pre-merge checklist:** [QUALITY_GATES.md](QUALITY_GATES.md) — 8 verplichte gates (incl. Gate 7 architectural review)
+📋 **Pre-merge checklist:** [QUALITY_GATES.md](QUALITY_GATES.md) — 8 mandatory gates (incl. Gate 7 architectural review)
 
-✨ **Opmaak en stijl:** [CODE_STYLE.md](CODE_STYLE.md) — Code formatting (PEP 8 wordt door tooling afgedwongen)
+✨ **Formatting and style:** [CODE_STYLE.md](CODE_STYLE.md) — Code formatting (PEP 8 enforced by tooling)
 
-🧩 **Type checking:** [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) — Gestandaardiseerde aanpak voor typing-issues
+🧩 **Type checking:** [TYPE_CHECKING_PLAYBOOK.md](TYPE_CHECKING_PLAYBOOK.md) — Standardized approach for typing issues
 
 ## Documentation Structure
 

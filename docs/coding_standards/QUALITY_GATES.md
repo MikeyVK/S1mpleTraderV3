@@ -2,9 +2,9 @@
 
 ## Overview
 
-> **⚠️ Lees eerst:** [ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md) — tooling-gates toetsen *vorm*, architectuurprincipes toetsen *correctheid*. Code kan alle gates groen halen en toch worden REJECTED op architecturele gronden.
+> **⚠️ Read first:** [ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md) — tooling gates validate *form*, architectural principles validate *correctness*. Code can pass all gates and still be REJECTED on architectural grounds.
 
-All code in S1mpleTrader V3 must pass **8 mandatory quality gates** before merging to main. Each gate must **pass** (exit code 0) to ensure code quality and consistency.
+All code must pass **8 mandatory quality gates** before merging to main. Each gate must **pass** (exit code 0) to ensure code quality and consistency.
 
 ## Configuration Doctrine: IDE vs CI
 
@@ -15,7 +15,7 @@ All code in S1mpleTrader V3 must pass **8 mandatory quality gates** before mergi
    - Balanced for developer productivity
    - May have pragmatic ignores for known false positives
 
-2. **`.st3/quality.yaml`** = **CI Authority** (Strict)
+2. **`ci-quality.yaml` (or equivalent CI config)** = **CI Authority** (Strict)
    - Used by quality gates in CI/CD pipelines
    - Stricter enforcement before merge
    - Ruff gates use `--isolated` flag to ignore IDE config
@@ -212,22 +212,22 @@ pytest tests/ --cov=backend --cov=mcp_server --cov=new_package --cov-branch --co
 
 **Checklist — run through these questions for every PR:**
 
-| Vraag | Verwacht antwoord |
+| Question | Expected answer |
 |---|---|
-| Heeft elke nieuwe klasse precies één verantwoordelijkheid? | Ja — anders split |
-| Zijn er if-chains op fase-namen, action-types of workflow-namen? | Nee — OCP-schending |
-| Staat businesskennis (fase-namen, commit-type-maps, branch-types) in YAML config? | Ja — Config-First |
-| Worden dependencies via constructor geïnjecteerd? | Ja — DIP |
-| Zijn read-only consumers beperkt tot `IStateReader`? | Ja — ISP |
-| Retourneert `get_state()` / `get_current_phase()` zonder `save()` aan te roepen? | Ja — CQS |
-| Is `BranchState` en elk ander value object `frozen=True`? | Ja — CQS afdwinging |
-| Zijn singletons via `ClassVar` + lazy init (geen module-level side effects)? | Ja — Fail-Fast |
-| Bevat de loader startup-validatie voor inconsistente config-combinaties? | Ja — Fail-Fast |
-| Is er een nieuwe hardcoded regex met branch-types/fase-namen? | Nee — gebruik `GitConfig`/`WorkflowConfig` |
-| Zijn migratie-lagen geschreven voor gedepreceerde parameters? | Nee — YAGNI |
-| Behoort een nieuwe methode bij de klasse van haar domein? | Ja — Cohesion |
+| Does each new class have exactly one responsibility? | Yes — otherwise split |
+| Are there if-chains on phase names, action types, or workflow names? | No — OCP violation |
+| Is business knowledge (phase names, commit-type maps, branch types) stored in config? | Yes — Config-First |
+| Are dependencies injected via constructor? | Yes — DIP |
+| Are read-only consumers limited to a narrow read interface? | Yes — ISP |
+| Do `get_state()` / `get_current_phase()` return without calling `save()`? | Yes — CQS |
+| Are value objects `frozen=True`? | Yes — CQS enforcement |
+| Are singletons implemented via `ClassVar` + lazy init (no module-level side effects)? | Yes — Fail-Fast |
+| Does the config loader validate inconsistent config combinations at startup? | Yes — Fail-Fast |
+| Is there a new hardcoded list or regex with branch types or phase names? | No — read from config |
+| Were migration layers written for deprecated parameters? | No — YAGNI |
+| Does each new method belong to the class of its domain? | Yes — Cohesion |
 
-**Bij twijfel:** raadpleeg de beslissingen in [docs/development/issue257/research_config_first_pse.md](../development/issue257/research_config_first_pse.md) voor redenering en trade-offs.
+**If in doubt:** consult [ARCHITECTURE_PRINCIPLES.md](ARCHITECTURE_PRINCIPLES.md) for the full principle definitions and prohibited patterns.
 
 Complete workflow for a new DTO:
 
@@ -380,7 +380,7 @@ def _artifact_manager(
 
 **REJECT if any of these conditions:**
 
-*Tooling (geautomatiseerd):*
+*Tooling (automated):*
 - ❌ Any quality gate fails (non-zero exit code)
 - ❌ Failing tests
 - ❌ Missing type hints
@@ -389,14 +389,14 @@ def _artifact_manager(
 - ❌ Lines > 100 characters
 - ❌ Import grouping violations (see [CODE_STYLE.md](CODE_STYLE.md))
 
-*Architectuur (Gate 7 — human/agent review):*
-- ❌ Hardcoded fase-/workflow-/branch-type-namen in productiecode (Config-First)
-- ❌ Dependency geïnstantieerd binnen `execute()` of andere methoden (DIP)
-- ❌ Read-only consumer geïnjecteerd met `IStateRepository` in plaats van `IStateReader` (ISP)
-- ❌ Query-methode roept `save()` aan of muteert state (CQS)
-- ❌ Module-level `Config.load()` of `StateRepository()` — import-time side effects
-- ❌ God Class met meerdere ongerelateerde verantwoordelijkheden (SRP)
-- ❌ If-chain op type/fase/action — gebruik registry of config-dispatch (OCP)
+*Architecture (Gate 7 — human/agent review):*
+- ❌ Hardcoded phase/workflow/branch-type names in production code (Config-First)
+- ❌ Dependency instantiated inside `execute()` or other methods (DIP)
+- ❌ Read-only consumer injected with write-capable interface (ISP)
+- ❌ Query method calls `save()` or mutates state (CQS)
+- ❌ Module-level `Config.load()` or similar — import-time side effects
+- ❌ God Class with multiple unrelated responsibilities (SRP)
+- ❌ If-chain on type/phase/action — use registry or config-driven dispatch (OCP)
 
 **ACCEPT only when:**
 - ✅ All quality gates pass (exit code 0)

@@ -1,16 +1,16 @@
-# Architecturele Principes — S1mpleTrader V3
+# Architectural Principles
 
-**Status:** Bindend contract voor alle implementatiewerk
-**Lezen bij:** Sessie-start — gerefereerd vanuit `.github/.copilot-instructions.md`
-**Laatste update:** 2026-03-12
+**Status:** Binding contract for all implementation work
+**Read when:** Start of every implementation session — referenced from `.github/.copilot-instructions.md`
+**Last updated:** 2026-03-12
 
 ---
 
-## 0. Primaat van dit document
+## 0. Primacy of This Document
 
-Deze principes zijn **wetten, geen suggesties**. Een code-wijziging die deze principes schendt wordt **REJECTED** bij code review, ook als alle tooling-gates groen zijn. Tooling-gates (ruff, mypy, coverage) toetsen *vorm*. Dit document toetst *architectuur*.
+These principles are **laws, not suggestions**. A code change that violates these principles is **REJECTED** during code review, even if all tooling gates pass. Tooling gates (ruff, mypy, coverage) validate *form*. This document validates *architecture*.
 
-> **Agents:** lees dit document bij elke implementatie-sessie. De vraag "mag ik dit zo schrijven?" wordt beantwoord door dit document, niet door of ruff klaagt.
+> **Agents:** read this document at the start of every implementation session. The question "may I write it this way?" is answered by this document, not by whether ruff complains.
 
 ---
 
@@ -18,272 +18,261 @@ Deze principes zijn **wetten, geen suggesties**. Een code-wijziging die deze pri
 
 ### 1.1 SRP — Single Responsibility Principle
 
-Een klasse heeft precies één reden om te wijzigen.
+A class has exactly one reason to change.
 
-**Bindende regels:**
-- Een klasse met meer dan één logische verantwoordelijkheid is een God Class. Split altijd.
-- Methoden die state persisteren, state lezen, én businesslogica uitvoeren behoren niet in dezelfde klasse.
-- Test of je de klasse in één zin kunt beschrijven zonder "en" — als dat niet lukt, is er een SRP-schending.
+**Binding rules:**
+- A class with more than one logical responsibility is a God Class. Always split.
+- Methods that persist state, read state, and execute business logic do not belong in the same class.
+- Test whether you can describe the class in one sentence without "and" — if not, there is an SRP violation.
 
-**Anti-patronen:**
+**Anti-patterns:**
 ```python
-# ❌ WRONG — PSE doet state-persistentie + transitie-validatie + hook-uitvoering + reconstructie
-class PhaseStateEngine:
-    def _save_state(self): ...      # state persistentie
-    def transition(self): ...       # validatie + hook-dispatch
-    def on_exit_planning(self): ... # hook-implementatie
-    def _reconstruct(self): ...     # git-reconstructie
+# ❌ WRONG — WorkEngine mixes state persistence + transition validation + hook dispatch + reconstruction
+class WorkEngine:
+    def _save_state(self): ...    # state persistence
+    def transition(self): ...     # validation + hook dispatch
+    def on_exit_phase(self): ...  # hook implementation
+    def _reconstruct(self): ...   # external-source reconstruction
 
-# ✅ CORRECT — elke klasse heeft één verantwoordelijkheid
-class StateRepository: ...         # state persistentie
-class PhaseStateEngine: ...        # transitie-validatie + dispatch
-class EnforcementRunner: ...       # enforcement-orchestratie
-class GitStateReconstructor: ...   # git-reconstructie
+# ✅ CORRECT — each class has one responsibility
+class StateRepository: ...        # state persistence
+class WorkEngine: ...             # transition validation + dispatch
+class EnforcementRunner: ...      # enforcement orchestration
+class StateReconstructor: ...     # external-source reconstruction
 ```
 
 ### 1.2 OCP — Open/Closed Principle
 
-Code is open voor uitbreiding, gesloten voor aanpassing.
+Code is open for extension, closed for modification.
 
-**Bindende regels:**
-- If-chains op fase-namen, workflow-namen of action-types zijn OCP-schendingen. Gebruik een registry of config-driven dispatch.
-- Een nieuwe fase of action-type toevoegen mag **nooit** een bestaande methode aanpassen. Het voegt alleen een nieuwe registratie of YAML-entry toe.
+**Binding rules:**
+- If-chains on phase names, workflow names, or action types are OCP violations. Use a registry or config-driven dispatch.
+- Adding a new phase or action type must **never** require modifying an existing method. It only adds a new registration or config entry.
 
-**Anti-patroon:**
+**Anti-pattern:**
 ```python
-# ❌ WRONG — elke nieuwe fase = aanpassing van deze methode
+# ❌ WRONG — every new phase requires modifying this method
 def transition(self, from_phase):
     if from_phase == "planning":
         self.on_exit_planning()
     elif from_phase == "research":
         self.on_exit_research()
-    # nieuwe fase vereist code-aanpassing hier
+    # new phase requires a code change here
 ```
 
-**Correct patroon:** `enforcement.yaml` + `EnforcementRunner` registry — zie `docs/development/issue257/`.
+**Correct pattern:** Config-driven dispatch — an enforcement config file registers actions per phase; the engine reads the registry instead of an if-chain.
 
 ### 1.3 LSP — Liskov Substitution Principle
 
-Subklassen moeten volledig uitwisselbaar zijn met hun basisklasse.
+Subclasses must be fully interchangeable with their base class.
 
-**Bindende regels:**
-- `FileStateRepository` en `InMemoryStateRepository` zijn uitwisselbaar op elke plek die `IStateRepository` accepteert.
-- Een subklasse mag de precondities van de basisklasse niet verzwaren en de postcondities niet verzwakken.
-- Tests die `InMemoryStateRepository` gebruiken moeten dezelfde contracten valideren als productietests met `FileStateRepository`.
+**Binding rules:**
+- `FileStateRepository` and `InMemoryStateRepository` are interchangeable in every place that accepts `IStateRepository`.
+- A subclass may not tighten preconditions of the base class or weaken postconditions.
+- Tests using `InMemoryStateRepository` must validate the same contracts as production tests with `FileStateRepository`.
 
 ### 1.4 ISP — Interface Segregation Principle
 
-Clients mogen niet gedwongen worden interfaces te implementeren die ze niet gebruiken.
+Clients must not be forced to implement interfaces they do not use.
 
-**Bindende regels:**
-- Een read-only consumer (bijv. `ScopeDecoder`) krijgt **nooit** een interface met write-methoden.
-- Splits interfaces op het smalste bruikbare contract:
+**Binding rules:**
+- A read-only consumer must **never** receive an interface with write methods.
+- Split interfaces at the narrowest usable contract:
   ```python
   # core/interfaces.py
   class IStateReader(Protocol):
-      def load(self, branch: str) -> BranchState: ...
+      def load(self, context: str) -> State: ...
 
   class IStateRepository(IStateReader, Protocol):
-      def save(self, state: BranchState) -> None: ...
+      def save(self, state: State) -> None: ...
   ```
-- `ScopeDecoder` → injecteert `IStateReader`
-- `PhaseStateEngine` → injecteert `IStateRepository`
+- Read-only consumers → inject `IStateReader`
+- Read-write consumers → inject `IStateRepository`
 
 ### 1.5 DIP — Dependency Inversion Principle
 
-High-level modules hangen niet af van low-level modules. Beiden hangen af van abstracties.
+High-level modules do not depend on low-level modules. Both depend on abstractions.
 
-**Bindende regels:**
-- Directe instantiatie (`SomeManager()`) in `execute()` van een tool is verboden. Alle dependencies via constructor-injectie.
-- Interfaces voor externe systemen (bestand, git, GitHub API) leven in `mcp_server/core/interfaces/` — nooit in `managers/`.
-- De concrete implementatie mag alleen op de composition root (tool-laag of server-startup) worden geïnstantieerd.
+**Binding rules:**
+- Direct instantiation (`SomeManager()`) inside `execute()` of a tool is forbidden. All dependencies via constructor injection.
+- Interfaces for external systems (file, git, external API) live in `core/interfaces/` — never in `managers/`.
+- The concrete implementation may only be instantiated at the composition root (tool layer or server startup).
 
-**Anti-patroon:**
+**Anti-pattern:**
 ```python
-# ❌ WRONG — tool instantieert direct
+# ❌ WRONG — tool instantiates directly
 async def execute(self, params):
-    pm = ProjectManager(workspace_root=Path.cwd())  # directe instantiatie
-    state_engine = PhaseStateEngine(workspace_root=Path.cwd(), project_manager=pm)
+    manager = SomeManager(workspace_root=Path.cwd())
+    engine = WorkEngine(workspace_root=Path.cwd(), manager=manager)
 
-# ✅ CORRECT — dependency geïnjecteerd via constructor
-class TransitionPhaseTool(BaseTool):
-    def __init__(self, pse: IPhaseStateEngine | None = None) -> None:
-        self._pse = pse or PhaseStateEngine.create_default()
+# ✅ CORRECT — dependency injected via constructor
+class WorkTool(BaseTool):
+    def __init__(self, engine: IWorkEngine | None = None) -> None:
+        self._engine = engine or WorkEngine.create_default()
 ```
 
 ---
 
 ## 2. DRY + SSOT — Don't Repeat Yourself + Single Source of Truth
 
-**Bindende regels:**
-- Elke fact van het systeem heeft precies **één definitieve locatie**. Alle andere locaties verwijzen of lezen.
-- `branch_types` in `git.yaml` = SSOT. Regex-alternation in PSE die dezelfde types opsomt = verbod.
-- `workflows.yaml` = SSOT voor fase-volgorde. Hardcoded fase-namen in Python = verbod.
-- `phase_contracts.yaml` = SSOT voor `commit_type_map`. Hardcoded `if sub_phase == "red": commit_type = "test"` = verbod.
-- Twee klassen die hetzelfde config-bestand lezen zonder gemeenschappelijke interface = DRY-schending (zie `WorkflowConfig`-probleem in issue #257).
+**Binding rules:**
+- Every fact in the system has exactly **one authoritative location**. All other locations reference or read from it.
+- Any config file defining a list of valid values (branch types, phase names, action types) is the SSOT. Duplicating that list as a regex alternation or hardcoded set elsewhere is a violation.
+- Two classes independently reading the same config file without a shared interface is a DRY violation.
 
 ---
 
 ## 3. Config-First
 
-Businesskennis die op meerdere plaatsen nodig is, wordt **altijd** in config vastgelegd, nooit hardcoded.
+Business knowledge needed in multiple places is **always** stored in config, never hardcoded.
 
-**Bindende regels:**
-- Fase-namen, workflow-namen, subphase-namen, commit-type-mappings, branch-types, deliverable-gates: **altijd in YAML**, nooit als string-literal in Python.
-- Een `if fase_naam == "implementation"` in productie-code is een Config-First schending.
-- De loader is verantwoordelijk voor fail-fast validatie van de config. Code die de config leest mag nooit vinnig de ontbrekende velden als "normaal" beschouwen.
-- **SSOT voor config**: één reader-class per config-bestand. Geen twee klassen die hetzelfde YAML-bestand onafhankelijk lezen.
+**Binding rules:**
+- Phase names, workflow names, subphase names, commit-type mappings, branch types, deliverable gates: **always in config** (e.g., YAML), never as string literals in Python.
+- An `if phase_name == "implementation"` in production code is a Config-First violation.
+- The config loader is responsible for fail-fast validation. Code that reads config must never silently treat missing fields as "normal".
+- **SSOT for config**: one reader class per config file. No two classes independently reading the same file.
 
-**Validatieregel bij `cycle_based`:**
-Config-loader gooit `ConfigError` als `cycle_based: true` gecombineerd is met `commit_type_map: {}` (lege map). Deze combinatie = onbruikbare config.
+**Combination validation rule:**
+Config loaders raise `ConfigError` for logically inconsistent combinations (e.g., a flag enabled while its required companion field is empty). These are detected at startup, not at runtime.
 
 ---
 
 ## 4. Fail-Fast
 
-Fouten worden zo vroeg mogelijk gedetecteerd, zo dicht mogelijk bij de oorzaak.
+Errors are detected as early as possible, as close to the source as possible.
 
-**Bindende regels:**
-- Configuratiefouten (ontbrekende velden, inconsistente waarden) worden gedetecteerd bij **server-opstart**, niet bij runtime van een gebruikersactie.
-- Een onbekende `action-type` in `enforcement.yaml` → `ConfigError` op startup. Nooit een `KeyError` bij uitvoering.
-- Ontbrekende YAML-bestanden → expliciet `FileNotFoundError` met pad, nooit `None` return.
-- Combinatievalidaties (bv. `cycle_based: true` + lege `commit_type_map`) worden in de Pydantic-loader gecheckt via `model_validator`, niet in de consumer.
+**Binding rules:**
+- Configuration errors (missing fields, inconsistent values) are detected at **startup**, not at runtime of a user action.
+- An unknown action type in an enforcement config → `ConfigError` on startup. Never a `KeyError` at execution time.
+- Missing config files → explicit `FileNotFoundError` with path, never `None` return.
+- Combination validations are checked in the Pydantic loader via `model_validator`, not in the consumer.
 
 ---
 
 ## 5. CQS — Command/Query Separation
 
-Methoden die state wijzigen (commands) en methoden die state lezen (queries) zijn strikt gescheiden.
+Methods that change state (commands) and methods that read state (queries) are strictly separated.
 
-**Bindende regels:**
-- Een methode retourneert **ofwel** een waarde (query) **óf** muteert state (command) — nooit beide.
-- Value objects die als query-resultaat teruggegeven worden, zijn **frozen**: `model_config = ConfigDict(frozen=True)`. Het type-systeem afdwingt dat queries niet muteren.
-- `BranchState` is frozen. Elke code die probeert een `BranchState` te muteren geeft een `ValidationError`.
-- `PSE.get_state()` en `PSE.get_current_phase()` zijn pure queries — ze roepen **nooit** `save()` aan.
+**Binding rules:**
+- A method returns **either** a value (query) **or** mutates state (command) — never both.
+- Value objects returned as query results are **frozen**: `model_config = ConfigDict(frozen=True)`. The type system enforces that queries cannot mutate.
+- `get_state()` and similar read methods are pure queries — they **never** call `save()`.
 
 ```python
-# ✅ Frozen value object als query-resultaat
-class BranchState(BaseModel):
+# ✅ Frozen value object as query result
+class WorkState(BaseModel):
     model_config = ConfigDict(frozen=True)
-    branch: str
+    context: str
     workflow_name: str
     current_phase: str
-    # ... alle velden immutabel
+    # ... all fields immutable
 ```
 
 ---
 
-## 6. ISP in de praktijk — Smalle interfaces
+## 6. ISP in Practice — Narrow Interfaces
 
-Zie ook 1.4. Concrete toepassing voor dit project:
+See also 1.4. Concrete application:
 
-| Consumer | Interface | Reden |
+| Consumer | Interface | Reason |
 |---|---|---|
-| `ScopeDecoder` | `IStateReader` | lees-only |
-| `PhaseContractResolver` | `IStateReader` | lees-only |
-| `PhaseStateEngine` | `IStateRepository` | schrijft én leest |
-| `HookRunner`/`EnforcementRunner` | `IStateRepository` | schrijft cycle-state |
+| Read-only consumer (e.g., decoder) | `IStateReader` | read-only |
+| Read-only consumer (e.g., resolver) | `IStateReader` | read-only |
+| State engine | `IStateRepository` | reads and writes |
+| Enforcement runner | `IStateRepository` | writes execution state |
 
-Alle `IStateReader` en `IStateRepository` interfaces leven in `mcp_server/core/interfaces/`. Nooit in `managers/`.
+All `IStateReader` and `IStateRepository` interfaces live in `core/interfaces/`. Never in `managers/`.
 
 ---
 
 ## 7. Law of Demeter
 
-Praat met directe vrienden, niet met hun vrienden.
+Talk to direct friends, not to their friends.
 
-**Bindende regel:**
-- `tool.pse.state_repo.load(branch)` = schending. Tool praat met PSE, PSE praat met StateRepository.
-- Tool-laag kent: `PSE`, `GitManager`, `WorkflowConfig`. Tool-laag kent **niet**: `StateRepository`, `AtomicJsonWriter`, `DeliverableChecker`.
-- Diepte van dependency-chain is maximaal 2 lagen vanuit de tool.
+**Binding rule:**
+- `tool.engine.state_repo.load(context)` is a violation. Tool talks to engine, engine talks to StateRepository.
+- Tool layer knows: the engine, config. Tool layer does **not** know: `StateRepository`, `AtomicWriter`, internal infrastructure classes.
+- Depth of dependency chain is at most 2 layers from the tool.
 
 ---
 
 ## 8. Explicit over Implicit
 
-Geen stille fallbacks, geen impliciete conventies die niet in code zichtbaar zijn.
+No silent fallbacks, no implicit conventions that are not visible in code.
 
-**Bindende regels:**
-- Geen `None` als fallback voor een configuratiewaarde die verplicht is → `ConfigError`.
-- Geen `workflow_name: "unknown"` zonder expliciete waarschuwing terug naar de caller.
-- Geen stille default die een fout verbergt. Liever een harde fout op het juiste moment dan een stille non-waarde die drie lagen later een `AttributeError` veroorzaakt.
-- Code die "verhaal vertelt": class-variabelen, type-annotaties en Pydantic-constraints zijn de primaire communicatiemiddelen. Comments suppleren, zij vertellen het verhaal niet.
+**Binding rules:**
+- No `None` as a fallback for a required configuration value → `ConfigError`.
+- No silent default that hides an error. Prefer a hard error at the right moment over a silent non-value that causes an `AttributeError` three layers later.
+- Code tells the story: class variables, type annotations, and Pydantic constraints are the primary communication tools. Comments supplement; they do not tell the story.
 
 ---
 
 ## 9. YAGNI — You Aren't Gonna Need It
 
-Schrijf geen code voor hypothetische toekomstige behoeften.
+Do not write code for hypothetical future needs.
 
-**Bindende regels:**
-- Geen migratiecode schrijven voor scenario's die nu niet bestaan.
-- Geen backward-compat laag voor gedepreceerde parameters langer dan één release-cyclus.
-- Geen abstractielaag voor een concern dat vandaag slechts één implementatie heeft (tenzij testbaarheid het vereist).
-- Geen configureerbare vlag voor gedrag dat altijd hetzelfde moet zijn.
-
----
-
-## 10. Cohesion — Methoden bij hun domein
-
-**Bindende regel:**
-- Een methode die uitsluitend kennis van domein X nodig heeft, hoort in de klasse die domein X modelleert.
-- Voorbeeld: `extract_issue_number(branch)` → hoort in `GitConfig`, niet in `PhaseStateEngine`. De methode antwoord een vraag over git-conventies.
-- Geef bij twijfel: "Is dit een vraag over X?" Als het antwoord ja is, hoort de methode bij X.
+**Binding rules:**
+- No migration code for scenarios that do not exist now.
+- No backward-compat layer for deprecated parameters longer than one release cycle.
+- No abstraction layer for a concern that today has only one implementation (unless testability requires it).
+- No configurable flag for behavior that should always be the same.
 
 ---
 
-## 11. Dependency Injection als default
+## 10. Cohesion — Methods Belong to Their Domain
 
-**Bindende regels:**
-- Constructor-injectie is de default. `execute()` instantieert nooit zelf een dependency.
-- Alle productie-dependencies zijn injecteerbaar. Tests injecteren een fake/in-memory variant.
-- Composition root: alleen de server-startup en de tool-laag mogen concrete implementaties instantiëren.
-- `BaseTool.__init__` accepteert optionele dependencies met `None`-default die via factory-method de concrete implementatie retourneren:
+**Binding rule:**
+- A method that exclusively needs domain X knowledge belongs in the class that models domain X.
+- Example: `extract_issue_number(branch)` belongs in a git-conventions config class, not in a state engine. The method answers a question about git conventions.
+- When in doubt: "Is this a question about X?" If yes, the method belongs with X.
+
+---
+
+## 11. Dependency Injection as Default
+
+**Binding rules:**
+- Constructor injection is the default. `execute()` never instantiates a dependency itself.
+- All production dependencies are injectable. Tests inject a fake/in-memory variant.
+- Composition root: only server startup and the tool layer may instantiate concrete implementations.
+- `BaseTool.__init__` accepts optional dependencies with `None` default, resolved via factory method:
   ```python
-  def __init__(self, pse: IPhaseStateEngine | None = None) -> None:
-      self._pse = pse or PhaseStateEngine.create_default()
+  def __init__(self, engine: IWorkEngine | None = None) -> None:
+      self._engine = engine or WorkEngine.create_default()
   ```
 
 ---
 
-## 12. Geen import-time side effects
+## 12. No Import-Time Side Effects
 
-**Bindende regel:**
-- Module-level code die bestanden leest, netwerkverzoeken doet, of singletons initialiseert = verbod.
-- `workflow_config = WorkflowConfig.load()` als module-level statement veroorzaakt FileNotFoundError bij import in tests. Gebruik `ClassVar` met lazy init.
-- Alle singletons gebruiken het `ClassVar` patroon: de instantie wordt aangemaakt bij de eerste aanroep van `.load()`, niet bij import.
+**Binding rule:**
+- Module-level code that reads files, makes network requests, or initializes singletons = forbidden.
+- A `config = AppConfig.load()` as a module-level statement causes `FileNotFoundError` on import in tests. Use `ClassVar` with lazy init.
+- All singletons use the `ClassVar` pattern: the instance is created at the first call to `.load()`, not at import.
 
 ---
 
 ## 13. Enforcement is Config-First
 
-**Bindende regel:**
-- Gedrag dat "bij fase X triggert" of "na tool Y uitvoert" wordt geconfigureerd in `enforcement.yaml`, niet hardcoded in Python.
-- Elke nieuwe enforcement-actie = één registratie in de `EnforcementRunner` action-registry + één entry in `enforcement.yaml`. Nooit een if-chain in PSE of een tool.
-- `BaseTool.enforcement_event: str | None = None` — elke tool declareert declaratief zijn eigen enforcement-event als class-variabele.
+**Binding rule:**
+- Behavior that "triggers at phase X" or "runs after tool Y" is configured in a YAML enforcement file, not hardcoded in Python.
+- Every new enforcement action = one registration in the enforcement runner's action registry + one entry in the enforcement config. Never an if-chain in the engine or a tool.
+- Tools declare their own enforcement event as a class variable: `enforcement_event: str | None = None`.
 
 ---
 
-## Snelreferentie — Verboden patronen
+## Quick Reference — Prohibited Patterns
 
-| Patroon | Schending | Alternatief |
+| Pattern | Violation | Alternative |
 |---|---|---|
-| `if phase_name == "tdd":` | Config-First, OCP | Config bepaalt, code dispatcht op type |
-| `WorkflowConfig()` in `execute()` | DIP, SRP | Constructor-injectie |
-| `if sub_phase == "red": commit_type = "test"` | DRY, Config-First | `commit_type_map` in `phase_contracts.yaml` |
-| Twee klassen lezen hetzelfde YAML | SSOT, DRY | Één reader-class, singleton |
-| `module_level_var = Config.load()` | Fail-Fast (import side effect) | ClassVar + lazy init |
-| `ScopeDecoder` injecteert `IStateRepository` | ISP | `ScopeDecoder` injecteert `IStateReader` |
-| `get_state()` roept `save()` aan | CQS | Query retourneert, command muteert |
-| `BranchState.current_phase = "..."` | CQS (frozen) | Maak nieuwe `BranchState` via PSE command |
-| `tool.pse.state_repo.load()` | Law of Demeter | `tool.pse.get_state(branch)` |
-| Hardcoded regex `r"^(?:feature\|fix\|..."` | DRY, Config-First | `git_config.build_branch_type_regex()` |
-| Lege `commit_type_map` bij `cycle_based: true` | Fail-Fast | `ConfigError` op startup |
-| Migratiecode voor gedepreceerde parameter | YAGNI | Flag-day: verwijder direct |
-
----
-
-## Gerelateerde beslissingen
-
-De patronen in dit document zijn ontleend aan het design-document voor issue #257:
-- [docs/development/issue257/research_config_first_pse.md](../development/issue257/research_config_first_pse.md) — volledige redenering en trade-offs per beslissing
+| `if phase_name == "implementation":` | Config-First, OCP | Config determines; code dispatches on type |
+| `SomeManager()` in `execute()` | DIP, SRP | Constructor injection |
+| `if sub_phase == "x": commit_type = "y"` | DRY, Config-First | `commit_type_map` in config file |
+| Two classes reading the same config file | SSOT, DRY | One reader class, singleton |
+| `module_var = Config.load()` at module level | Fail-Fast (import side effect) | ClassVar + lazy init |
+| Read-only consumer injected with write interface | ISP | Use narrower read-only interface |
+| `get_state()` calls `save()` | CQS | Query returns, command mutates |
+| Mutating a frozen value object | CQS | Create new instance via command method |
+| `tool.engine.state_repo.load()` | Law of Demeter | `tool.engine.get_state(context)` |
+| Hardcoded regex/list with type or phase names | DRY, Config-First | Build from config at startup |
+| Inconsistent config combination (flag on + map empty) | Fail-Fast | `ConfigError` on startup |
+| Migration code for deprecated parameter | YAGNI | Flag-day: remove directly |
