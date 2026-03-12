@@ -37,7 +37,7 @@ class PhaseContractPhase(BaseModel):
     cycle_checks: dict[int, list[CheckSpec]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def validate_cycle_based_commit_map(self) -> "PhaseContractPhase":
+    def validate_cycle_based_commit_map(self) -> PhaseContractPhase:
         """Reject cycle-based phases without commit type mapping."""
         if self.cycle_based and not self.commit_type_map:
             raise ValueError("cycle_based phases require a non-empty commit_type_map")
@@ -54,7 +54,7 @@ class PhaseContractsConfig(BaseModel):
         cls,
         file_path: Path | str,
         display_path: str = _PHASE_CONTRACTS_DISPLAY_PATH,
-    ) -> "PhaseContractsConfig":
+    ) -> PhaseContractsConfig:
         """Load and validate phase contracts from YAML."""
         path = Path(file_path)
         if not path.exists():
@@ -92,7 +92,7 @@ class PhaseConfigContext:
     phase_contracts: PhaseContractsConfig
 
     @classmethod
-    def from_workspace(cls, workspace_root: Path | str) -> "PhaseConfigContext":
+    def from_workspace(cls, workspace_root: Path | str) -> PhaseConfigContext:
         """Load both config sources from a workspace root."""
         root = Path(workspace_root)
         workphases = WorkphasesConfig(root / _WORKPHASES_DISPLAY_PATH)
@@ -109,9 +109,7 @@ class PhaseContractResolver:
     def __init__(self, config: PhaseConfigContext) -> None:
         self._config = config
 
-    def resolve(
-        self, workflow_name: str, phase: str, cycle_number: int | None
-    ) -> list[CheckSpec]:
+    def resolve(self, workflow_name: str, phase: str, cycle_number: int | None) -> list[CheckSpec]:
         """Resolve phase and cycle-specific checks for the requested workflow."""
         workflow_contracts = self._config.phase_contracts.workflows.get(workflow_name)
         if workflow_contracts is None:
