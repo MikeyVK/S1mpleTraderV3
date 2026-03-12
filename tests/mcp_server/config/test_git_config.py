@@ -8,17 +8,25 @@ from mcp_server.config.git_config import GitConfig
 class TestGitConfig:
     """Test GitConfig loading and validation."""
 
-    def teardown_method(self):
+    def teardown_method(self) -> None:
         """Reset singleton after each test."""
         GitConfig.reset_instance()
 
-    def test_load_git_yaml_success(self):
+    def test_load_git_yaml_success(self) -> None:
         """Test loading existing git.yaml file."""
         # GREEN: Now that GitConfig exists, test successful loading
         config = GitConfig.from_file(".st3/git.yaml")
 
         # Verify all conventions loaded correctly
-        assert config.branch_types == ["feature", "fix", "refactor", "docs", "epic"]
+        assert config.branch_types == [
+            "feature",
+            "bug",
+            "fix",
+            "refactor",
+            "docs",
+            "hotfix",
+            "epic",
+        ]
         assert config.tdd_phases == ["red", "green", "refactor", "docs"]
         assert config.commit_prefix_map == {
             "red": "test",
@@ -30,12 +38,12 @@ class TestGitConfig:
         assert config.branch_name_pattern == r"^[a-z0-9-]+$"
         assert config.default_base_branch == "main"
 
-    def test_git_yaml_not_found(self):
+    def test_git_yaml_not_found(self) -> None:
         """Test FileNotFoundError when git.yaml doesn't exist."""
         with pytest.raises(FileNotFoundError, match="Git config not found"):
             GitConfig.from_file(".st3/nonexistent.yaml")
 
-    def test_singleton_pattern(self):
+    def test_singleton_pattern(self) -> None:
         """Test singleton behavior - same instance returned."""
         config1 = GitConfig.from_file(".st3/git.yaml")
         config2 = GitConfig.from_file(".st3/git.yaml")
@@ -43,20 +51,21 @@ class TestGitConfig:
         assert config1 is config2  # Same object instance
 
     # REFACTOR: Test helper methods for GitManager integration
-    def test_has_branch_type(self):
+    def test_has_branch_type(self) -> None:
         """Test has_branch_type() helper (Convention #1)."""
         config = GitConfig.from_file(".st3/git.yaml")
 
         # Valid types
         assert config.has_branch_type("feature") is True
+        assert config.has_branch_type("bug") is True
         assert config.has_branch_type("fix") is True
+        assert config.has_branch_type("hotfix") is True
         assert config.has_branch_type("epic") is True
 
         # Invalid types
-        assert config.has_branch_type("hotfix") is False
         assert config.has_branch_type("FEATURE") is False  # Case-sensitive
 
-    def test_validate_branch_name(self):
+    def test_validate_branch_name(self) -> None:
         """Test validate_branch_name() helper (Convention #5)."""
         config = GitConfig.from_file(".st3/git.yaml")
 
@@ -70,7 +79,7 @@ class TestGitConfig:
         assert config.validate_branch_name("feature_123") is False  # Underscore
         assert config.validate_branch_name("feature/123") is False  # Slash
 
-    def test_has_phase(self):
+    def test_has_phase(self) -> None:
         """Test has_phase() helper (Convention #2)."""
         config = GitConfig.from_file(".st3/git.yaml")
 
@@ -83,7 +92,7 @@ class TestGitConfig:
         assert config.has_phase("test") is False
         assert config.has_phase("RED") is False  # Case-sensitive
 
-    def test_get_prefix(self):
+    def test_get_prefix(self) -> None:
         """Test get_prefix() helper (Convention #3)."""
         config = GitConfig.from_file(".st3/git.yaml")
 
@@ -97,7 +106,7 @@ class TestGitConfig:
         with pytest.raises(KeyError):
             config.get_prefix("invalid")
 
-    def test_extract_issue_number_returns_int_for_supported_branch_names(self):
+    def test_extract_issue_number_returns_int_for_supported_branch_names(self) -> None:
         """extract_issue_number() should parse the numeric issue id from branch names."""
         config = GitConfig.from_file(".st3/git.yaml")
 
@@ -105,7 +114,7 @@ class TestGitConfig:
         assert config.extract_issue_number("fix/7-hot-patch") == 7
         assert config.extract_issue_number("docs/120-refresh-readme") == 120
 
-    def test_extract_issue_number_returns_none_for_invalid_branch_names(self):
+    def test_extract_issue_number_returns_none_for_invalid_branch_names(self) -> None:
         """extract_issue_number() should degrade gracefully when no issue id is present."""
         config = GitConfig.from_file(".st3/git.yaml")
 
@@ -113,7 +122,7 @@ class TestGitConfig:
         assert config.extract_issue_number("feature/no-number") is None
         assert config.extract_issue_number("unknown/42-test") is None
 
-    def test_is_protected(self):
+    def test_is_protected(self) -> None:
         """Test is_protected() helper (Convention #4)."""
         config = GitConfig.from_file(".st3/git.yaml")
 

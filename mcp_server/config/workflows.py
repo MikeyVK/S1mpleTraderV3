@@ -14,10 +14,10 @@ Quality Requirements:
 - Mypy: strict mode passing
 - Coverage: 100% for all functions
 """
-# pyright: reportAttributeAccessIssue=false
 
+# pyright: reportAttributeAccessIssue=false
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Optional
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -35,18 +35,12 @@ class WorkflowTemplate(BaseModel):
 
     name: str = Field(..., description="Workflow name (e.g., 'feature')")
     phases: list[str] = Field(
-        ...,
-        min_length=1,
-        description="Ordered list of phases (strict sequential)"
+        ..., min_length=1, description="Ordered list of phases (strict sequential)"
     )
     default_execution_mode: Literal["interactive", "autonomous"] = Field(
-        default="interactive",
-        description="Default execution mode for this workflow"
+        default="interactive", description="Default execution mode for this workflow"
     )
-    description: str = Field(
-        default="",
-        description="Human-readable workflow description"
-    )
+    description: str = Field(default="", description="Human-readable workflow description")
 
     @model_validator(mode="after")
     def validate_phases(self) -> "WorkflowTemplate":
@@ -59,9 +53,7 @@ class WorkflowTemplate(BaseModel):
             ValueError: Duplicate phases or empty phase names detected
         """
         if len(self.phases) != len(set(self.phases)):
-            raise ValueError(
-                f"Duplicate phases in workflow '{self.name}': {self.phases}"
-            )
+            raise ValueError(f"Duplicate phases in workflow '{self.name}': {self.phases}")
         if not all(phase.strip() for phase in self.phases):
             raise ValueError(f"Empty phase names in workflow '{self.name}'")
         return self
@@ -78,13 +70,10 @@ class WorkflowConfig(BaseModel):
         workflows: Workflow definitions by name
     """
 
-    singleton_instance: ClassVar["WorkflowConfig" | None] = None
+    singleton_instance: ClassVar[Optional["WorkflowConfig"]] = None
 
     version: str = Field(..., description="Config schema version (e.g., '1.0')")
-    workflows: dict[str, WorkflowTemplate] = Field(
-        ...,
-        description="Workflow definitions by name"
-    )
+    workflows: dict[str, WorkflowTemplate] = Field(..., description="Workflow definitions by name")
 
     @classmethod
     def load(cls, path: Path | None = None) -> "WorkflowConfig":
@@ -158,10 +147,7 @@ class WorkflowConfig(BaseModel):
         cls.singleton_instance = None
 
     def validate_transition(
-        self,
-        workflow_name: str,
-        current_phase: str,
-        target_phase: str
+        self, workflow_name: str, current_phase: str, target_phase: str
     ) -> bool:
         """Validate phase transition (strict sequential).
 
@@ -196,9 +182,7 @@ class WorkflowConfig(BaseModel):
         # Strict sequential: target must be next phase
         if target_idx != current_idx + 1:
             next_phase = (
-                workflow.phases[current_idx + 1]
-                if current_idx + 1 < len(workflow.phases)
-                else None
+                workflow.phases[current_idx + 1] if current_idx + 1 < len(workflow.phases) else None
             )
             raise ValueError(
                 f"Invalid transition: {current_phase} → {target_phase}\n"

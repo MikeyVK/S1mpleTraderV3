@@ -36,9 +36,9 @@ class TestBranchState:
             branch="feature/257-reorder-workflow-phases",
             workflow_name="feature",
             current_phase="implementation",
-            current_tdd_cycle=2,
-            last_tdd_cycle=1,
-            tdd_cycle_history=[],
+            current_cycle=2,
+            last_cycle=1,
+            cycle_history=[],
             transitions=[],
         )
 
@@ -63,9 +63,9 @@ class TestFileStateRepository:
                     "parent_branch": "main",
                     "transitions": [],
                     "created_at": "2026-03-12T00:00:00+00:00",
-                    "current_tdd_cycle": 2,
-                    "last_tdd_cycle": 1,
-                    "tdd_cycle_history": [],
+                    "current_cycle": 2,
+                    "last_cycle": 1,
+                    "cycle_history": [],
                 }
             ),
             encoding="utf-8",
@@ -76,7 +76,7 @@ class TestFileStateRepository:
 
         assert isinstance(state, BranchState)
         assert state.current_phase == "implementation"
-        assert state.current_tdd_cycle == 2
+        assert state.current_cycle == 2
 
     def test_save_persists_branch_state(self, tmp_path: Path) -> None:
         """Saving BranchState should write state.json through the shared atomic writer."""
@@ -90,16 +90,16 @@ class TestFileStateRepository:
             parent_branch="main",
             transitions=[],
             created_at="2026-03-12T00:00:00+00:00",
-            current_tdd_cycle=2,
-            last_tdd_cycle=1,
-            tdd_cycle_history=[],
+            current_cycle=2,
+            last_cycle=1,
+            cycle_history=[],
         )
 
         repository.save(state)
 
         persisted = json.loads(state_file.read_text(encoding="utf-8"))
         assert persisted["current_phase"] == "implementation"
-        assert persisted["current_tdd_cycle"] == 2
+        assert persisted["current_cycle"] == 2
 
 
 class TestInMemoryStateRepository:
@@ -116,9 +116,9 @@ class TestInMemoryStateRepository:
             parent_branch="main",
             transitions=[],
             created_at="2026-03-12T00:00:00+00:00",
-            current_tdd_cycle=2,
-            last_tdd_cycle=1,
-            tdd_cycle_history=[],
+            current_cycle=2,
+            last_cycle=1,
+            cycle_history=[],
         )
 
         repository.save(state)

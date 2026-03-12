@@ -11,6 +11,7 @@ import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
+from mcp_server.managers.state_repository import FileStateRepository, InMemoryStateRepository
 
 
 class TestPhaseStateEngineParentBranch:
@@ -51,7 +52,11 @@ class TestPhaseStateEngineParentBranch:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
     def test_initialize_branch_with_explicit_parent_branch(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -141,7 +146,7 @@ class TestPhaseStateEngineParentBranch:
         assert state["parent_branch"] is None
 
     def test_reconstruct_branch_state_includes_parent_branch(
-        self, engine: PhaseStateEngine, project_manager: ProjectManager, workspace_root: Path
+        self, project_manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test auto-recovery reconstructs parent_branch from deliverables.json.
 
@@ -161,7 +166,12 @@ class TestPhaseStateEngineParentBranch:
             state_file.unlink()
 
         # Execute - get_state triggers auto-recovery
-        state = engine.get_state("feature/82-test-reconstruction")
+        recovery_engine = PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
+        )
+        state = recovery_engine.get_state("feature/82-test-reconstruction")
 
         # Verify - parent_branch reconstructed from deliverables.json
         assert state["parent_branch"] == "epic/76-qa"
@@ -169,7 +179,7 @@ class TestPhaseStateEngineParentBranch:
         assert state["workflow_name"] == "feature"
 
     def test_reconstruct_branch_state_with_none_parent_branch(
-        self, engine: PhaseStateEngine, project_manager: ProjectManager, workspace_root: Path
+        self, project_manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test auto-recovery handles missing parent_branch gracefully.
 
@@ -186,7 +196,12 @@ class TestPhaseStateEngineParentBranch:
             state_file.unlink()
 
         # Execute - get_state triggers auto-recovery
-        state = engine.get_state("bug/83-old-project")
+        recovery_engine = PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
+        )
+        state = recovery_engine.get_state("bug/83-old-project")
 
         # Verify - parent_branch is None (backward compat)
         assert state["parent_branch"] is None
@@ -235,14 +250,18 @@ class TestTddCycleTrackingFields:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
     def test_initialize_branch_creates_tdd_cycle_fields(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
     ) -> None:
         """Test initialize_branch creates tdd_cycle_* fields.
 
-        Issue #146: current_tdd_cycle, last_tdd_cycle, tdd_cycle_history must be initialized.
+        Issue #146: current_cycle, last_cycle, cycle_history must be initialized.
         """
         # Setup - create project
         project_manager.initialize_project(
@@ -259,17 +278,17 @@ class TestTddCycleTrackingFields:
 
         # Verify - state.json contains tdd_cycle_* fields
         state = engine.get_state("feature/146-tdd-cycle-tracking")
-        assert "current_tdd_cycle" in state
-        assert "last_tdd_cycle" in state
-        assert "tdd_cycle_history" in state
+        assert "current_cycle" in state
+        assert "last_cycle" in state
+        assert "cycle_history" in state
 
         # Verify - initial values
-        assert state["current_tdd_cycle"] is None
-        assert state["last_tdd_cycle"] is None
-        assert state["tdd_cycle_history"] == []
+        assert state["current_cycle"] is None
+        assert state["last_cycle"] is None
+        assert state["cycle_history"] == []
 
     def test_reconstruct_state_includes_tdd_cycle_fields(
-        self, engine: PhaseStateEngine, project_manager: ProjectManager, workspace_root: Path
+        self, project_manager: ProjectManager, workspace_root: Path
     ) -> None:
         """Test auto-recovery includes tdd_cycle_* fields.
 
@@ -286,20 +305,25 @@ class TestTddCycleTrackingFields:
             state_file.unlink()
 
         # Execute - get_state triggers auto-recovery
-        state = engine.get_state("feature/146-tdd-cycle-tracking")
+        recovery_engine = PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
+        )
+        state = recovery_engine.get_state("feature/146-tdd-cycle-tracking")
 
         # Verify - reconstructed flag
         assert state["reconstructed"] is True
 
         # Verify - tdd_cycle_* fields present
-        assert "current_tdd_cycle" in state
-        assert "last_tdd_cycle" in state
-        assert "tdd_cycle_history" in state
+        assert "current_cycle" in state
+        assert "last_cycle" in state
+        assert "cycle_history" in state
 
         # Verify - initial values (None/[])
-        assert state["current_tdd_cycle"] is None
-        assert state["last_tdd_cycle"] is None
-        assert state["tdd_cycle_history"] == []
+        assert state["current_cycle"] is None
+        assert state["last_cycle"] is None
+        assert state["cycle_history"] == []
 
 
 class TestCycleValidationLogic:
@@ -343,7 +367,11 @@ class TestCycleValidationLogic:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
     def test_validate_cycle_number_range_rejects_zero(
         self, engine: PhaseStateEngine, project_manager: ProjectManager

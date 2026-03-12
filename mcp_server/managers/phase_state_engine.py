@@ -117,21 +117,21 @@ class PhaseStateEngine:
         if parent_branch is None:
             parent_branch = project.get("parent_branch")
 
-        # Create initial state
-        state: dict[str, Any] = {
-            "branch": branch,
-            "issue_number": issue_number,
-            "workflow_name": project["workflow_name"],  # Cache for performance
-            "current_phase": initial_phase,
-            "parent_branch": parent_branch,  # Store parent_branch
-            "transitions": [],
-            "created_at": datetime.now(UTC).isoformat(),
-            # TDD cycle tracking fields (Issue #146)
-            "current_tdd_cycle": None,
-            "last_tdd_cycle": None,
-            "tdd_cycle_history": [],
-        }
-        # Save state
+        state = BranchState(
+            branch=branch,
+            issue_number=issue_number,
+            workflow_name=project["workflow_name"],
+            current_phase=initial_phase,
+            current_cycle=None,
+            last_cycle=None,
+            cycle_history=[],
+            required_phases=project.get("required_phases", []),
+            execution_mode=project.get("execution_mode", "normal"),
+            issue_title=project.get("issue_title"),
+            parent_branch=parent_branch,
+            created_at=datetime.now(UTC).isoformat(),
+            transitions=[],
+        )
         self._save_state(branch, state)
 
         return {
@@ -159,38 +159,32 @@ class PhaseStateEngine:
         Raises:
             ValueError: If transition invalid per workflow
         """
-        # Get current state
         state = self.get_state(branch)
-        from_phase: str = state["current_phase"]
-        workflow_name: str = state["workflow_name"]
+        from_phase = state.current_phase
+        workflow_name = state.workflow_name
 
         # Validate transition via workflow_config (strict sequential)
         workflow_config.validate_transition(workflow_name, from_phase, to_phase)
 
         # Planning exit hook: called when leaving planning phase (Issue #229)
+        issue_number = state.issue_number
+        if issue_number is None:
+            raise ValueError(f"Branch '{branch}' has no issue_number in state")
+
         if from_phase == "planning":
-            issue_number_exit: int = state["issue_number"]
-            self.on_exit_planning_phase(branch, issue_number_exit)
+            self.on_exit_planning_phase(branch, issue_number)
 
-        # Research exit hook: called when leaving research phase (Issue #229 C6)
         if from_phase == "research":
-            issue_number_exit = state["issue_number"]
-            self.on_exit_research_phase(branch, issue_number_exit)
+            self.on_exit_research_phase(branch, issue_number)
 
-        # Design exit hook: called when leaving design phase (Issue #229 C7)
         if from_phase == "design":
-            issue_number_design: int = state["issue_number"]
-            self.on_exit_design_phase(branch, issue_number_design)
+            self.on_exit_design_phase(branch, issue_number)
 
-        # Validation exit hook: called when leaving validation phase (Issue #229 C9)
         if from_phase == "validation":
-            issue_number_validation: int = state["issue_number"]
-            self.on_exit_validation_phase(branch, issue_number_validation)
+            self.on_exit_validation_phase(branch, issue_number)
 
-        # Documentation exit hook: called when leaving documentation phase (Issue #229 C9)
         if from_phase == "documentation":
-            issue_number_documentation: int = state["issue_number"]
-            self.on_exit_documentation_phase(branch, issue_number_documentation)
+            self.on_exit_documentation_phase(branch, issue_number)
 
         # Implementation exit hook: called when leaving implementation phase (Issue #146)
         if from_phase == "implementation":
@@ -207,14 +201,13 @@ class PhaseStateEngine:
             forced=False,
         )
 
-        # Update state
-        state["current_phase"] = to_phase
-        state["transitions"].append(self._transition_to_dict(transition))
-        self._save_state(branch, state)
+        updated_state = state.with_updates(
+            current_phase=to_phase,
+            transitions=[*state.transitions, self._transition_to_dict(transition)],
+        )
+        self._save_state(branch, updated_state)
 
-        # Implementation entry hook: called when entering implementation phase (Issue #146)
         if to_phase == "implementation":
-            issue_number: int = state["issue_number"]
             self.on_enter_implementation_phase(branch, issue_number)
 
         return {"success": True, "from_phase": from_phase, "to_phase": to_phase}
@@ -235,17 +228,19 @@ class PhaseStateEngine:
         Returns:
             dict with success, from_phase, to_phase, forced, skip_reason
         """
-        # Get current state (no validation)
         state = self.get_state(branch)
-        from_phase: str = state["current_phase"]
+        from_phase = state.current_phase
 
         # Warn about skipped gates (GAP-03)
         # Distinguish blocking gates (key absent) from passing gates (key present) (C10/GAP-17).
         workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
         skipped_gates: list[str] = []  # blocking: key absent from deliverables.json
         passing_gates: list[str] = []  # passing: key present in deliverables.json
+        issue_number = state.issue_number
+        if issue_number is None:
+            raise ValueError(f"Branch '{branch}' has no issue_number in state")
+
         if workphases_path.exists():
-            issue_number: int = state["issue_number"]
             plan = self.project_manager.get_project_plan(issue_number)
             wp_config = WorkphasesConfig(workphases_path)
             for entry in wp_config.get_exit_requires(from_phase):
@@ -285,10 +280,12 @@ class PhaseStateEngine:
             skip_reason=skip_reason,
         )
 
-        # Update state
-        state["current_phase"] = to_phase
-        state["transitions"].append(self._transition_to_dict(transition))
-        self._save_state(branch, state)
+        updated_state = state.with_updates(
+            current_phase=to_phase,
+            transitions=[*state.transitions, self._transition_to_dict(transition)],
+            skip_reason=skip_reason,
+        )
+        self._save_state(branch, updated_state)
 
         return {
             "success": True,
@@ -301,37 +298,15 @@ class PhaseStateEngine:
         }
 
     def get_current_phase(self, branch: str) -> str:
-        """Get current phase for branch.
+        """Get current phase for branch."""
+        return self.get_state(branch).current_phase
 
-        Args:
-            branch: Branch name
-
-        Returns:
-            Current phase name
-        """
-        state = self.get_state(branch)
-        current: str = state["current_phase"]
-        return current
-
-    def get_state(self, branch: str) -> dict[str, Any]:
-        """Get full state for branch with auto-recovery.
-
-        Mode 2 Enhancement: Automatically reconstructs state from deliverables.json
-        + git commits when state.json is missing/empty or branch doesn't match current.
-
-        Args:
-            branch: Branch name
-
-        Returns:
-            Branch state with workflow_name, current_phase, transitions
-
-        Raises:
-            ValueError: If auto-recovery fails (invalid branch, missing project)
-        """
+    def get_state(self, branch: str) -> BranchState:
+        """Get full state for branch with auto-recovery."""
         try:
             loaded_state = self._state_repository.load(branch)
             if loaded_state.branch == branch:
-                return loaded_state.model_dump(mode="json")
+                return loaded_state
         except (FileNotFoundError, OSError, json.JSONDecodeError, ValidationError):
             logger.warning("Invalid or missing state.json, reconstructing", exc_info=True)
 
@@ -381,19 +356,9 @@ class PhaseStateEngine:
             msg = f"Planning deliverables not found for issue {issue_number}"
             raise ValueError(msg)
 
-    def _save_state(self, branch: str, state: dict[str, Any]) -> None:
-        """Save branch state to state.json.
-
-        Overwrites state.json with only the current branch state.
-        Delegates persistence to the configured repository.
-
-        Args:
-            branch: Branch name
-            state: State dict to save
-        """
-        payload = dict(state)
-        payload["branch"] = branch
-        validated_state = BranchState.model_validate(payload)
+    def _save_state(self, branch: str, state: BranchState) -> None:
+        """Save branch state to state.json through the configured repository."""
+        validated_state = state if state.branch == branch else state.with_updates(branch=branch)
         self._state_repository.save(validated_state)
 
     def _transition_to_dict(self, transition: TransitionRecord) -> dict[str, Any]:
@@ -418,7 +383,7 @@ class PhaseStateEngine:
     # Mode 2: Auto-recovery methods (Issue #39)
     # -------------------------------------------------------------------------
 
-    def _reconstruct_branch_state(self, branch: str) -> dict[str, Any]:
+    def _reconstruct_branch_state(self, branch: str) -> BranchState:
         """Reconstruct branch state from deliverables.json + git commits.
 
         Mode 2: Cross-machine scenario - state.json missing after git pull.
@@ -462,21 +427,22 @@ class PhaseStateEngine:
         # Step 4: Extract parent_branch from project
         parent_branch = project.get("parent_branch")
 
-        # Step 5: Create reconstructed state
-        state: dict[str, Any] = {
-            "branch": branch,
-            "issue_number": issue_number,
-            "workflow_name": project["workflow_name"],
-            "current_phase": current_phase,
-            "parent_branch": parent_branch,  # Reconstructed from deliverables.json
-            "transitions": [],  # Cannot reconstruct history
-            "created_at": datetime.now(UTC).isoformat(),
-            "reconstructed": True,  # Audit flag
-            # TDD cycle tracking fields (Issue #146)
-            "current_tdd_cycle": None,
-            "last_tdd_cycle": None,
-            "tdd_cycle_history": [],
-        }
+        state = BranchState(
+            branch=branch,
+            issue_number=issue_number,
+            workflow_name=project["workflow_name"],
+            current_phase=current_phase,
+            current_cycle=None,
+            last_cycle=None,
+            cycle_history=[],
+            required_phases=project.get("required_phases", workflow_phases),
+            execution_mode=project.get("execution_mode", "normal"),
+            issue_title=project.get("issue_title"),
+            parent_branch=parent_branch,
+            created_at=datetime.now(UTC).isoformat(),
+            transitions=[],
+            reconstructed=True,
+        )
 
         logger.info(
             "Reconstructed state: issue=%s, phase=%s, workflow=%s, parent=%s",
@@ -600,18 +566,15 @@ class PhaseStateEngine:
             branch: Branch name
             issue_number: GitHub issue number
         """
-        # Get or create state
         state = self.get_state(branch)
 
-        # Auto-initialize cycle 1 if not already set
-        if state.get("current_tdd_cycle") is None:
-            state["current_tdd_cycle"] = 1
-            state["last_tdd_cycle"] = 0
-            if "tdd_cycle_history" not in state:
-                state["tdd_cycle_history"] = []
-
-            # Save state
-            self._save_state(branch, state)
+        if state.current_cycle is None:
+            updated_state = state.with_updates(
+                current_cycle=1,
+                last_cycle=0,
+                cycle_history=[*state.cycle_history],
+            )
+            self._save_state(branch, updated_state)
 
         logger.info(f"Entered implementation phase for issue {issue_number} on branch {branch}")
 
@@ -821,24 +784,16 @@ class PhaseStateEngine:
     def on_exit_implementation_phase(self, branch: str) -> None:
         """Hook called when exiting implementation phase.
 
-        Preserves last_tdd_cycle and clears current_tdd_cycle.
+        Preserves last_cycle and clears current_cycle.
         Logs warning if not all cycles completed.
 
         Args:
             branch: Branch name
         """
-        # Get current state
         state = self.get_state(branch)
-        current_cycle = state.get("current_tdd_cycle")
+        current_cycle = state.current_cycle
 
-        # Preserve last cycle
         if current_cycle is not None:
-            state["last_tdd_cycle"] = current_cycle
-            state["current_tdd_cycle"] = None
-
-            # Log warning if incomplete (optional validation)
-            # For now, we allow exit but log it
-            logger.info(f"Exited TDD phase at cycle {current_cycle} on branch {branch}")
-
-            # Save state
-            self._save_state(branch, state)
+            updated_state = state.with_updates(last_cycle=current_cycle, current_cycle=None)
+            logger.info(f"Exited implementation phase at cycle {current_cycle} on branch {branch}")
+            self._save_state(branch, updated_state)

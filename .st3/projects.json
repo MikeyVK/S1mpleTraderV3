@@ -2207,9 +2207,18 @@
                   "file": "mcp_server/managers/phase_state_engine.py",
                   "text": "initialize_branch"
                 }
+              },
+              {
+                "id": "D6.6",
+                "description": "state.json restored from temporary tdd compatibility back to implementation phase state before PR/merge work",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/state.json",
+                  "text": "\"current_phase\": \"implementation\""
+                }
               }
             ],
-            "exit_criteria": "Completed-cycle guard raises ValidationError with cycle id; AtomicJsonWriter used for all deliverables.json writes (grep: no direct open() calls in project_manager.py for deliverables); integration test: full transition_phase flow commits state.json automatically; Pyright --strict passes on save/update tools and project_manager.py; full test suite green; KPIs 1\u201320 in research_config_first_pse.md all verifiable"
+            "exit_criteria": "Completed-cycle guard raises ValidationError with cycle id; AtomicJsonWriter used for all deliverables.json writes (grep: no direct open() calls in project_manager.py for deliverables); integration test: full transition_phase flow commits state.json automatically; Pyright --strict passes on save/update tools and project_manager.py; full test suite green; .st3/state.json restored to implementation phase state before PR/merge work; KPIs 1\u201320 in research_config_first_pse.md all verifiable"
           }
         ]
       },

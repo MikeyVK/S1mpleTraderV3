@@ -184,6 +184,7 @@ Six implementation cycles that incrementally refactor the Phase State Engine to 
 - `state.json` not present in `.gitignore`; `git status` shows `state.json` as tracked after initialization
 - Post-merge enforcement rule `delete_file` removes `deliverables.json` and `state.json` after merge
 - `PSE.initialize_branch()` emits explicit warning (not exception) when `state.json` has uncommitted local changes
+- After the final cycle, `.st3/state.json` is restored from temporary `tdd` compatibility back to the new `implementation` phase state before PR/merge work begins
 
 **Success Criteria:**
 - Completed-cycle guard raises `ValidationError` with message identifying the cycle id
@@ -191,6 +192,7 @@ Six implementation cycles that incrementally refactor the Phase State Engine to 
 - Integration test: full `transition_phase` flow commits `state.json` automatically (from Cycle 5 hook)
 - Pyright `--strict` passes on `save_planning_deliverables` and `update_planning_deliverables` tools
 - Full test suite green
+- `.st3/state.json` is back on the new `implementation` phase state before PR/merge work starts
 - KPIs 1–20 in `research_config_first_pse.md` all verifiable
 
 **Stop/Go:** ✅ KPIs 1–20 all verifiable → open PR.
@@ -528,9 +530,18 @@ Six implementation cycles that incrementally refactor the Phase State Engine to 
                 "file": "mcp_server/managers/phase_state_engine.py",
                 "text": "initialize_branch"
               }
+            },
+            {
+              "id": "D6.6",
+              "description": "state.json restored from temporary tdd compatibility back to implementation phase state before PR/merge work",
+              "validates": {
+                "type": "contains_text",
+                "file": ".st3/state.json",
+                "text": "\"current_phase\": \"implementation\""
+              }
             }
           ],
-          "exit_criteria": "Completed-cycle guard raises ValidationError with cycle id; AtomicJsonWriter used for all deliverables.json writes (grep: no direct open() calls in project_manager.py for deliverables); integration test: full transition_phase flow commits state.json automatically; Pyright --strict passes on save/update tools and project_manager.py; full test suite green; KPIs 1–20 in research_config_first_pse.md all verifiable"
+          "exit_criteria": "Completed-cycle guard raises ValidationError with cycle id; AtomicJsonWriter used for all deliverables.json writes (grep: no direct open() calls in project_manager.py for deliverables); integration test: full transition_phase flow commits state.json automatically; Pyright --strict passes on save/update tools and project_manager.py; full test suite green; .st3/state.json restored to implementation phase state before PR/merge work; KPIs 1–20 in research_config_first_pse.md all verifiable"
         }
       ]
     },

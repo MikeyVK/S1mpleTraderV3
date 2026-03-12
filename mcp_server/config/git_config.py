@@ -26,7 +26,7 @@ class GitConfig(BaseModel):
 
     # Convention #1: Branch types
     branch_types: list[str] = Field(
-        default=["feature", "fix", "refactor", "docs", "epic"],
+        default=["feature", "bug", "fix", "refactor", "docs", "hotfix", "epic"],
         description="Allowed branch types for create_branch()",
         min_length=1,
     )
@@ -262,8 +262,8 @@ class GitConfig(BaseModel):
             FileNotFoundError: If git.yaml doesn't exist
             ValueError: If YAML invalid or validation fails
         """
-        # Return cached instance if exists
-        if cls.singleton_instance is not None:
+        # Only reuse the singleton for the default repo config path.
+        if path == ".st3/git.yaml" and cls.singleton_instance is not None:
             return cls.singleton_instance
 
         # Load YAML

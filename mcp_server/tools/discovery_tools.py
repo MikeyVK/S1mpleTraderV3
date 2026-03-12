@@ -145,9 +145,8 @@ class GetWorkContextTool(BaseTool):
                     workspace_root=workspace_root, project_manager=project_manager
                 )
 
-                # Get current TDD cycle from state
                 state = state_engine.get_state(branch)
-                current_cycle = state.get("current_tdd_cycle")
+                current_cycle = state.current_cycle
 
                 # Get planning deliverables
                 project_plan = project_manager.get_project_plan(issue_number)

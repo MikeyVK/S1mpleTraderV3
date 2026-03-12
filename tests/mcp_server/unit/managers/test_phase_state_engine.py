@@ -15,12 +15,13 @@ import yaml
 from mcp_server.managers.deliverable_checker import DeliverableCheckError
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.managers.state_repository import InMemoryStateRepository
 
 
 class TestTDDPhaseHooks:
     """Tests for TDD phase entry/exit hooks.
 
-    Issue #146 Cycle 4: on_enter_tdd_phase and on_exit_tdd_phase.
+    Issue #146 Cycle 4: on_enter_implementation_phase and on_exit_implementation_phase.
     """
 
     @pytest.fixture()
@@ -76,7 +77,9 @@ class TestTDDPhaseHooks:
 
         return workspace_root, issue_number
 
-    def test_on_enter_tdd_phase_initializes_cycle_1(self, setup_project: tuple[Path, int]) -> None:
+    def test_on_enter_implementation_phase_initializes_cycle_1(
+        self, setup_project: tuple[Path, int]
+    ) -> None:
         """Test that entering TDD phase auto-initializes cycle 1."""
         # Arrange
         workspace_root, issue_number = setup_project
@@ -84,7 +87,9 @@ class TestTDDPhaseHooks:
 
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
         )
 
         # Initialize branch in design phase
@@ -94,17 +99,17 @@ class TestTDDPhaseHooks:
 
         # Verify no TDD cycle yet
         state = state_engine.get_state(branch)
-        assert state.get("current_tdd_cycle") is None
+        assert state.get("current_cycle") is None
 
         # Act
-        state_engine.on_enter_tdd_phase(branch, issue_number)
+        state_engine.on_enter_implementation_phase(branch, issue_number)
 
         # Assert
         state = state_engine.get_state(branch)
-        assert state.get("current_tdd_cycle") == 1
-        assert state.get("last_tdd_cycle") == 0
+        assert state.get("current_cycle") == 1
+        assert state.get("last_cycle") == 0
 
-    def test_on_enter_tdd_phase_does_not_block_without_planning_deliverables(
+    def test_on_enter_implementation_phase_does_not_block_without_planning_deliverables(
         self, tmp_path: Path
     ) -> None:
         """Test that entering TDD phase does NOT block on missing planning deliverables.
@@ -119,7 +124,9 @@ class TestTDDPhaseHooks:
 
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
         )
 
         # Initialize project WITHOUT planning deliverables
@@ -134,38 +141,43 @@ class TestTDDPhaseHooks:
         )
 
         # Act & Assert — must NOT raise; gate lives at planning exit now
-        state_engine.on_enter_tdd_phase(branch, issue_number)
+        state_engine.on_enter_implementation_phase(branch, issue_number)
         state = state_engine.get_state(branch)
-        assert state.get("current_tdd_cycle") == 1
+        assert state.get("current_cycle") == 1
 
-    def test_on_exit_tdd_phase_preserves_last_cycle(self, setup_project: tuple[Path, int]) -> None:
-        """Test that exiting TDD phase preserves last_tdd_cycle."""
+    def test_on_exit_implementation_phase_preserves_last_cycle(
+        self, setup_project: tuple[Path, int]
+    ) -> None:
+        """Test that exiting TDD phase preserves last_cycle."""
         # Arrange
         workspace_root, issue_number = setup_project
         branch = "feature/146-tdd-cycle-tracking"
 
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
         )
 
         # Initialize in TDD phase at cycle 3
         state_engine.initialize_branch(
-            branch=branch, issue_number=issue_number, initial_phase="tdd"
+            branch=branch, issue_number=issue_number, initial_phase="implementation"
         )
         state = state_engine.get_state(branch)
-        state["current_tdd_cycle"] = 3
-        state_engine._save_state(branch, state)
+        state_engine._save_state(branch, state.with_updates(current_cycle=3))
 
         # Act
-        state_engine.on_exit_tdd_phase(branch)
+        state_engine.on_exit_implementation_phase(branch)
 
         # Assert
         state = state_engine.get_state(branch)
-        assert state.get("last_tdd_cycle") == 3
-        assert state.get("current_tdd_cycle") is None
+        assert state.get("last_cycle") == 3
+        assert state.get("current_cycle") is None
 
-    def test_on_exit_tdd_phase_validates_completion(self, setup_project: tuple[Path, int]) -> None:
+    def test_on_exit_implementation_phase_validates_completion(
+        self, setup_project: tuple[Path, int]
+    ) -> None:
         """Test that exiting TDD phase validates all cycles completed."""
         # Arrange
         workspace_root, issue_number = setup_project
@@ -173,25 +185,26 @@ class TestTDDPhaseHooks:
 
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
         )
 
         # Initialize in TDD phase at cycle 2 (not completed)
         state_engine.initialize_branch(
-            branch=branch, issue_number=issue_number, initial_phase="tdd"
+            branch=branch, issue_number=issue_number, initial_phase="implementation"
         )
         state = state_engine.get_state(branch)
-        state["current_tdd_cycle"] = 2
-        state_engine._save_state(branch, state)
+        state_engine._save_state(branch, state.with_updates(current_cycle=2))
 
         # Act
         # Design decision: Allow exit with warning (logs but doesn't block)
-        state_engine.on_exit_tdd_phase(branch)
+        state_engine.on_exit_implementation_phase(branch)
 
         # Assert
         state = state_engine.get_state(branch)
-        assert state.get("last_tdd_cycle") == 2
-        assert state.get("current_tdd_cycle") is None
+        assert state.get("last_cycle") == 2
+        assert state.get("current_cycle") is None
 
 
 class TestTransitionHooksWiring:
@@ -228,13 +241,15 @@ class TestTransitionHooksWiring:
         return workspace_root, issue_number
 
     def test_transition_to_tdd_calls_enter_hook(self, setup_project: tuple[Path, int]) -> None:
-        """Test that transition() to 'tdd' auto-calls on_enter_tdd_phase (Issue #146)."""
+        """Test that transition() to 'tdd' auto-calls on_enter_implementation_phase (Issue #146)."""
         workspace_root, issue_number = setup_project
         branch = "feature/999-hook-wiring"
 
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
         )
 
         # Initialize branch in design phase
@@ -244,47 +259,48 @@ class TestTransitionHooksWiring:
 
         # Verify no TDD cycle before transition
         state = state_engine.get_state(branch)
-        assert state.get("current_tdd_cycle") is None
+        assert state.get("current_cycle") is None
 
-        # Transition to TDD - should auto-call on_enter_tdd_phase
-        state_engine.transition(branch=branch, to_phase="tdd")
+        # Transition to TDD - should auto-call on_enter_implementation_phase
+        state_engine.transition(branch=branch, to_phase="implementation")
 
         # Assert: hook was triggered and cycle 1 was initialized
         state = state_engine.get_state(branch)
-        assert state.get("current_tdd_cycle") == 1, (
-            "on_enter_tdd_phase was not called by transition() - "
-            "current_tdd_cycle should be 1 after entering TDD phase"
+        assert state.get("current_cycle") == 1, (
+            "on_enter_implementation_phase was not called by transition() - "
+            "current_cycle should be 1 after entering TDD phase"
         )
 
     def test_transition_from_tdd_calls_exit_hook(self, setup_project: tuple[Path, int]) -> None:
-        """Test that transition() from 'tdd' auto-calls on_exit_tdd_phase (Issue #146)."""
+        """Test that transition() from 'tdd' auto-calls on_exit_implementation_phase."""
         workspace_root, issue_number = setup_project
         branch = "feature/999-hook-wiring"
 
         project_manager = ProjectManager(workspace_root=workspace_root)
         state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_repository=InMemoryStateRepository(),
         )
 
         # Initialize branch in TDD phase at cycle 2
         state_engine.initialize_branch(
-            branch=branch, issue_number=issue_number, initial_phase="tdd"
+            branch=branch, issue_number=issue_number, initial_phase="implementation"
         )
         state = state_engine.get_state(branch)
-        state["current_tdd_cycle"] = 2
-        state_engine._save_state(branch, state)
+        state_engine._save_state(branch, state.with_updates(current_cycle=2))
 
-        # Transition away from TDD - should auto-call on_exit_tdd_phase
+        # Transition away from TDD - should auto-call on_exit_implementation_phase
         state_engine.transition(branch=branch, to_phase="validation")
 
-        # Assert: hook was triggered and last_tdd_cycle was preserved
+        # Assert: hook was triggered and last_cycle was preserved
         state = state_engine.get_state(branch)
-        assert state.get("last_tdd_cycle") == 2, (
-            "on_exit_tdd_phase was not called by transition() - "
-            "last_tdd_cycle should be 2 after exiting TDD phase"
+        assert state.get("last_cycle") == 2, (
+            "on_exit_implementation_phase was not called by transition() - "
+            "last_cycle should be 2 after exiting TDD phase"
         )
-        assert state.get("current_tdd_cycle") is None, (
-            "current_tdd_cycle should be None after exiting TDD phase"
+        assert state.get("current_cycle") is None, (
+            "current_cycle should be None after exiting TDD phase"
         )
 
 
@@ -315,7 +331,11 @@ class TestResearchExitGate:
             issue_title="Research exit gate test",
             workflow_name="feature",
         )
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=manager,
+            state_repository=InMemoryStateRepository(),
+        )
         engine.initialize_branch(
             branch=f"feature/{issue_number}-test",
             issue_number=issue_number,
@@ -327,7 +347,11 @@ class TestResearchExitGate:
         self._workphases_yaml(tmp_path, research_exit_requires=None)
         self._setup_project(tmp_path, issue_number=300)
         manager = ProjectManager(workspace_root=tmp_path)
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         # Must not raise
         engine.on_exit_research_phase(branch="feature/300-test", issue_number=300)
@@ -352,7 +376,11 @@ class TestResearchExitGate:
         (doc_dir / "my-research-notes.md").write_text("# Research")
 
         manager = ProjectManager(workspace_root=tmp_path)
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         # Must not raise
         engine.on_exit_research_phase(branch="feature/301-test", issue_number=301)
@@ -373,7 +401,11 @@ class TestResearchExitGate:
 
         # No matching file created
         manager = ProjectManager(workspace_root=tmp_path)
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         with pytest.raises(DeliverableCheckError):
             engine.on_exit_research_phase(branch="feature/302-test", issue_number=302)
@@ -399,7 +431,11 @@ class TestResearchExitGate:
         (wrong_dir / "my-research.md").write_text("# Research")
 
         manager = ProjectManager(workspace_root=tmp_path)
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=manager,
+            state_repository=InMemoryStateRepository(),
+        )
 
         with pytest.raises(DeliverableCheckError):
             engine.on_exit_research_phase(branch="feature/303-test", issue_number=issue_number)
@@ -423,7 +459,11 @@ class TestResearchExitGate:
             issue_title="Transition wiring test",
             workflow_name="feature",
         )
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=manager,
+            state_repository=InMemoryStateRepository(),
+        )
         engine.initialize_branch(
             branch="feature/304-test",
             issue_number=issue_number,
@@ -454,7 +494,11 @@ class TestPerPhaseDeliverableGate:
             issue_title="Per-phase deliverable gate test",
             workflow_name="feature",
         )
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=manager,
+            state_repository=InMemoryStateRepository(),
+        )
         engine.initialize_branch(
             branch=f"feature/{issue_number}-test",
             issue_number=issue_number,
@@ -462,7 +506,7 @@ class TestPerPhaseDeliverableGate:
         )
         # Inject planning_deliverables into projects.json (gate reads from project plan)
         if deliverables_state is not None:
-            projects_path = tmp_path / ".st3" / "projects.json"
+            projects_path = tmp_path / ".st3" / "deliverables.json"
             projects_data: dict = json.loads(projects_path.read_text())
             projects_data[str(issue_number)]["planning_deliverables"] = deliverables_state
             projects_path.write_text(json.dumps(projects_data, indent=2))
@@ -540,7 +584,6 @@ class TestValidationAndDocumentationExitGates:
         deliverables_state: dict | None = None,
     ) -> PhaseStateEngine:
         """Build a PhaseStateEngine in the given phase with optional planning_deliverables."""
-        from mcp_server.managers.project_manager import ProjectManager
 
         manager = ProjectManager(workspace_root=tmp_path)
         manager.initialize_project(
@@ -548,14 +591,18 @@ class TestValidationAndDocumentationExitGates:
             issue_title="Validation/documentation gate test",
             workflow_name="feature",
         )
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=manager)
+        engine = PhaseStateEngine(
+            workspace_root=tmp_path,
+            project_manager=manager,
+            state_repository=InMemoryStateRepository(),
+        )
         engine.initialize_branch(
             branch=f"feature/{issue_number}-test",
             issue_number=issue_number,
             initial_phase=initial_phase,
         )
         if deliverables_state is not None:
-            projects_path = tmp_path / ".st3" / "projects.json"
+            projects_path = tmp_path / ".st3" / "deliverables.json"
             projects_data: dict = json.loads(projects_path.read_text())
             projects_data[str(issue_number)]["planning_deliverables"] = deliverables_state
             projects_path.write_text(json.dumps(projects_data, indent=2))

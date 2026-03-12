@@ -4,9 +4,11 @@
 # Convention #1: Branch types (create_branch validation)
 branch_types:
   - feature
+  - bug
   - fix
   - refactor
   - docs
+  - hotfix
   - epic
 
 # Convention #2: TDD phases (commit_tdd_phase validation)

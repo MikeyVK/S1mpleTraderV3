@@ -1,12 +1,12 @@
 """Tests for PhaseStateEngine gate relocation (Issue #229 Cycle 2).
 
 GAP-01: Planning exit is silent — add on_exit_planning_phase hard gate.
-GAP-02: planning_deliverables check in on_enter_tdd_phase is wrong layer —
+GAP-02: planning_deliverables check in on_enter_implementation_phase is wrong layer —
         remove it there; gate belongs at planning exit, not TDD entry.
 
 C2 Deliverables:
   D2.1: on_exit_planning_phase wired to WorkphasesConfig + DeliverableChecker (Option B).
-  D2.2: on_enter_tdd_phase no longer raises when planning_deliverables absent.
+  D2.2: on_enter_implementation_phase no longer raises when planning_deliverables absent.
 """
 
 from pathlib import Path
@@ -15,6 +15,7 @@ import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.managers.state_repository import InMemoryStateRepository
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -34,8 +35,8 @@ phases:
     exit_requires:
       - key: "planning_deliverables"
         description: "TDD cycle breakdown"
-  tdd:
-    display_name: "TDD"
+  implementation:
+    display_name: "Implementation"
     entry_expects:
       - key: "planning_deliverables"
         description: "Expected from planning"
@@ -55,7 +56,11 @@ def project_manager(workspace_root: Path) -> ProjectManager:
 @pytest.fixture
 def engine(workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
     """PhaseStateEngine bound to tmp workspace."""
-    return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+    return PhaseStateEngine(
+        workspace_root=workspace_root,
+        project_manager=project_manager,
+        state_repository=InMemoryStateRepository(),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -171,19 +176,19 @@ class TestOnExitPlanningPhase:
 
 
 # ---------------------------------------------------------------------------
-# C2 — on_enter_tdd_phase no longer checks planning_deliverables (GAP-02)
+# C2 — on_enter_implementation_phase no longer checks planning_deliverables (GAP-02)
 # ---------------------------------------------------------------------------
 
 
 class TestOnEnterTddPhaseGateRemoved:
-    """on_enter_tdd_phase must not check planning_deliverables (gate moved to exit)."""
+    """on_enter_implementation_phase must not check planning_deliverables (gate moved to exit)."""
 
-    def test_on_enter_tdd_phase_does_not_raise_when_planning_deliverables_absent(
+    def test_on_enter_implementation_phase_does_not_raise_when_planning_deliverables_absent(
         self,
         engine: PhaseStateEngine,
         project_manager: ProjectManager,
     ) -> None:
-        """on_enter_tdd_phase no longer raises when planning_deliverables absent.
+        """on_enter_implementation_phase no longer raises when planning_deliverables absent.
 
         Issue #229 C2 — GAP-02: planning gate moved to on_exit_planning_phase.
         TDD entry only initializes cycle state; it must not re-validate planning.
@@ -196,10 +201,10 @@ class TestOnEnterTddPhaseGateRemoved:
         engine.initialize_branch(
             branch="feature/229-test",
             issue_number=229,
-            initial_phase="tdd",
+            initial_phase="implementation",
         )
         # No planning_deliverables → must NOT raise after GAP-02 fix
-        engine.on_enter_tdd_phase(branch="feature/229-test", issue_number=229)
+        engine.on_enter_implementation_phase(branch="feature/229-test", issue_number=229)
 
     def test_transition_from_planning_calls_exit_planning_gate(
         self,

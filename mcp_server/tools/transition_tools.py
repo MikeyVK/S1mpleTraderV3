@@ -59,10 +59,9 @@ class TransitionCycleTool(BaseTool):
                 workspace_root=workspace_root, project_manager=project_manager
             )
 
-            # Get current state
             state = state_engine.get_state(branch)
-            current_phase = state.get("current_phase")
-            current_cycle = state.get("current_tdd_cycle")
+            current_phase = state.current_phase
+            current_cycle = state.current_cycle
 
             # Validation 1: Check TDD phase
             if current_phase != "implementation":
@@ -122,24 +121,18 @@ class TransitionCycleTool(BaseTool):
                             "Define exit_criteria in planning deliverables before transitioning."
                         )
 
-            # Execute transition
             from_cycle = current_cycle or 0
-            state["last_tdd_cycle"] = from_cycle
-            state["current_tdd_cycle"] = params.to_cycle
-
-            # Update history (if not exists, create empty list)
-            if "tdd_cycle_history" not in state:
-                state["tdd_cycle_history"] = []
-
             history_entry = {
                 "cycle_number": params.to_cycle,
                 "forced": False,
                 "entered": datetime.now(UTC).isoformat(),
             }
-            state["tdd_cycle_history"].append(history_entry)
-
-            # Save state
-            state_engine._save_state(branch, state)
+            updated_state = state.with_updates(
+                last_cycle=from_cycle,
+                current_cycle=params.to_cycle,
+                cycle_history=[*state.cycle_history, history_entry],
+            )
+            state_engine._save_state(branch, updated_state)
 
             # Get cycle name for message
             cycles = tdd_cycles.get("cycles", [])
@@ -231,10 +224,9 @@ class ForceCycleTransitionTool(BaseTool):
                 workspace_root=workspace_root, project_manager=project_manager
             )
 
-            # Get current state
             state = state_engine.get_state(branch)
-            current_phase = state.get("current_phase")
-            current_cycle = state.get("current_tdd_cycle")
+            current_phase = state.current_phase
+            current_cycle = state.current_cycle
 
             # Validation 3: Check TDD phase
             if current_phase != "implementation":
@@ -264,21 +256,13 @@ class ForceCycleTransitionTool(BaseTool):
                     f"Invalid cycle number {params.to_cycle}. Valid range: 1-{total_cycles}"
                 )
 
-            # Execute forced transition
             from_cycle = current_cycle or 0
-            state["last_tdd_cycle"] = from_cycle
-            state["current_tdd_cycle"] = params.to_cycle
 
-            # Get cycle name (needed for audit entry)
             cycles = tdd_cycles.get("cycles", [])
             cycle_details = next(
                 (c for c in cycles if c.get("cycle_number") == params.to_cycle), None
             )
             cycle_name = cycle_details.get("name") if cycle_details else "Unknown"
-
-            # Create audit trail entry (spec: cycle_number, forced, skipped_cycles)
-            if "tdd_cycle_history" not in state:
-                state["tdd_cycle_history"] = []
 
             skipped_cycles = list(
                 range(min(from_cycle, params.to_cycle) + 1, max(from_cycle, params.to_cycle))
@@ -292,10 +276,12 @@ class ForceCycleTransitionTool(BaseTool):
                 "human_approval": params.human_approval,
                 "skipped_cycles": skipped_cycles,
             }
-            state["tdd_cycle_history"].append(audit_entry)
-
-            # Save state
-            state_engine._save_state(branch, state)
+            updated_state = state.with_updates(
+                last_cycle=from_cycle,
+                current_cycle=params.to_cycle,
+                cycle_history=[*state.cycle_history, audit_entry],
+            )
+            state_engine._save_state(branch, updated_state)
 
             # Check deliverables in skipped cycles: split blocking vs validated (C10/GAP-17)
             checker = DeliverableChecker(workspace_root=workspace_root)

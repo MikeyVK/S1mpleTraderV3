@@ -45,11 +45,11 @@ def build_phase_guard(workspace_root: Path) -> Callable[[str, str, int | None], 
             raise CommitPhaseMismatchError(msg)
 
         if workflow_phase == "implementation" and cycle_number is not None:
-            current_cycle = data.get("current_tdd_cycle")
+            current_cycle = data.get("current_cycle", data.get("current_tdd_cycle"))
             if current_cycle is not None and cycle_number != current_cycle:
                 msg = (
                     f"Cycle mismatch: committing as cycle {cycle_number} "
-                    f"but state.json shows current_tdd_cycle={current_cycle}.\n"
+                    f"but state.json shows current_cycle={current_cycle}.\n"
                     f"Run first: transition_cycle(to_cycle={cycle_number})"
                 )
                 raise CommitPhaseMismatchError(msg)
@@ -295,7 +295,8 @@ class GitCommitTool(BaseTool):
         # Must check BEFORE the legacy path maps phase -> tdd to avoid bypass (Cycle 7)
         effective_phase = workflow_phase
         if effective_phase is None and params.phase is not None and params.phase != "docs":
-            effective_phase = "implementation"  # legacy phases "red"/"green"/"refactor" all map to implementation
+            # Legacy phases "red"/"green"/"refactor" all map to implementation.
+            effective_phase = "implementation"
 
         if effective_phase == "implementation" and params.cycle_number is None:
             raise ValueError(
@@ -406,7 +407,7 @@ class GitCheckoutTool(BaseTool):
             return ToolResult.error(str(exc))
 
         current_phase = "unknown"
-        state: dict[str, Any] = {}
+        parent_branch: str | None = None
         try:
             pm = project_manager.ProjectManager(workspace_root=workspace_root)
             engine = phase_state_engine.PhaseStateEngine(
@@ -414,14 +415,13 @@ class GitCheckoutTool(BaseTool):
                 project_manager=pm,
             )
             state = await anyio.to_thread.run_sync(engine.get_state, params.branch)
-            current_phase = state.get("current_phase") or "unknown"
+            current_phase = state.current_phase or "unknown"
+            parent_branch = state.parent_branch
         except (MCPError, ValueError, OSError) as exc:
             logger.warning(
                 "Phase state sync failed after checkout",
                 extra={"props": {"branch": params.branch, "error": str(exc)}},
             )
-
-        parent_branch = state.get("parent_branch") if "state" in locals() else None
 
         output = f"Switched to branch: {params.branch}\nCurrent phase: {current_phase}"
         if parent_branch:
