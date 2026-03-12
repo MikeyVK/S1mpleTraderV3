@@ -862,15 +862,25 @@ Onderzochte opties voor het blocking/warn onderscheid:
 
 **I1.** `branch_name_pattern: "^[0-9]+-[a-z][a-z0-9-]*$"` valideert alleen het naam-gedeelte na het slash. Is dat correct? Of moet het patroon de volledige naam inclusief type-prefix valideren, en zo ja, wie genereert dan het gecombineerde patroon?
 
-> **✅ Beslissing (12-03-2026):** Correct — `branch_name_pattern` valideert alleen het naam-gedeelte na de slash. `branch_types` valideert het type-prefix. Bewuste scheiding van verantwoordelijkheden: `GitConfig` combineert beide dynamisch via `build_branch_type_regex()` (methode bestaat al). Gecombineerd patroon voor volledige branch-validatie: `f"^{git_config.build_branch_type_regex()}/{branch_name_pattern.lstrip('^')}"`. Geen wijziging aan dit ontwerp nodig.
+> **✅ Beslissing (12-03-2026, besproken 12-03-2026):** Correct — screiding van verantwoordelijkheden. `branch_name_pattern` valideert het naam-gedeelte (na de slash); `branch_types` valideert het type-prefix. `GitConfig` combineert beide dynamisch via `build_branch_type_regex()`.
+>
+> **Aanvullende vereiste (besproken 12-03-2026):** De gecombineerde validatie `^{build_branch_type_regex()}/{branch_name_pattern.lstrip('^')}` is **non-negotiable** en moet **fail-fast** worden toegepast bij `create_branch()` — geen vrije interpretatie door agents of tools. Een branch en zijn naam is de enige en volledig deterministische workspace-identifier voor issue-verwerking. Externe tooling (Mode 2 state reconciliation, `_extract_issue_number`, PR-automatisering) leunt volledig op consistente branch-naam semantiek. Elke branch die buiten dit patroon valt is een integriteitsrisico voor state reconciliation. De validatie is **uitsluitend config-driven** (geen hardcoded strings in code), en het gecombineerde patroon wordt eenmalig opgebouwd uit `GitConfig` bij startup (fail-fast: ongeldige config = server start mislukt).
 
 **I2.** Bij toevoeging van `bug` en `hotfix` aan `branch_types`: hebben die types bestaande beschermde branches of merge-strategieën die hiervan afhangen (bijv. in `operation_policies.yaml`)?
 
-> **✅ Beslissing (12-03-2026):** Geen `operation_policies.yaml` met beschermde branches of merge-strategieën afhankelijk van branch-types. Toevoeging van `bug`/`hotfix` aan `branch_types` is een puur additieve config-wijziging in `git.yaml` — geen cascade-effecten.
+> **✅ Beslissing (12-03-2026, besproken 12-03-2026):** Geen `operation_policies.yaml` met beschermde branches of merge-strategieën afhankelijk van branch-types aanwezig. Toevoeging van `bug`/`hotfix` aan `branch_types` is puur additief — geen cascade-effecten.
+>
+> **Branch policies discussie (12-03-2026):** Branch policies zijn config-gedreven regels op twee niveaus: GitHub-level (branch protection rules) en tool-level (lokale enforcement in MCP-tools). Tool-level policies zijn relevant voor dit issue: `base_restrictions` (bv. `hotfix` mag alleen van `main` aangemaakt worden) is een directe integriteitsgarantie voor de branch-als-werkplek semantiek van I1. Als een `hotfix` per ongeluk van een `feature`-branch wordt aangemaakt, is de parentage-context fout en produceert Mode 2 reconstructie verkeerde state.
+>
+> **Nader te beslissen:** Voeg `branch_policies` (minimaal `base_restrictions` + `merge_targets` per type) toe aan `git.yaml` als F25 in dit issue, of als apart opvolgend issue? Scope-impact klein want `git.yaml` wordt al aangeraakt.
 
 **I3.** `_extract_issue_from_branch()` in PSE wordt vervangen door een lookup via `GitConfig.branch_types`. Maar die methode gebruikt `re.match` met een hardcoded pattern. Wordt de regex dynamisch gebouwd vanuit `GitConfig.build_branch_type_regex()` (die methode bestaat al), of is er een directere aanpak?
 
-> **✅ Beslissing (12-03-2026):** Dynamisch via `GitConfig.build_branch_type_regex()` (bestaat al). Hardcoded `re.match(r"^(?:feature|fix|bug|...)/(\d+)-", branch)` vervangen door `re.match(rf"^{git_config.build_branch_type_regex()}/(\d+)-", branch)`. DRY en Config-first: `branch_types` in `git.yaml` is de enige bron van waarheid voor welke types geldig zijn.
+> **✅ Beslissing (12-03-2026, besproken 12-03-2026):** **Optie B — `GitConfig.extract_issue_number(branch) -> int | None` als eigen methode op `GitConfig`.**
+>
+> De extractie van een issue-nummer uit een branchnaam is een vraag over *git-conventies* — het domein van `GitConfig`. Cohesie: `build_branch_type_regex()`, `branch_name_pattern` en `validate_branch_name()` zitten al op `GitConfig`; issue-extractie hoort daar ook. SRP: PSE hoeft niet te weten hoe een branchnaam is opgebouwd; PSE roept `git_config.extract_issue_number(branch)` aan en ontvangt een `int | None`. De methode combineert intern `build_branch_type_regex()` zodat de regex nooit hardcoded staat in PSE of andere consumers.
+>
+> **Resultaat:** `_extract_issue_from_branch()` in PSE vervalt. PSE krijgt `GitConfig` als dependency (injecteerbaar, Config-First). De hardcoded regex-alternation `(?:feature|fix|bug|...)` verdwijnt uit PSE volledig.
 
 ---
 
@@ -890,7 +900,9 @@ Het hernoemen van `tdd` naar `implementation` en het verplaatsen van de `commit_
 
 **J2.** Hoe weet de tool-laag de `workflow_name`? Na F13 (`projects.json` abolishment) staat `workflow_name` in `state.json`. Bij auto-detectie van `workflow_phase` leest `execute()` al uit `state.json` via `PhaseStateEngine.get_current_phase()`. Mag diezelfde aanroep ook `workflow_name` retourneren, of vereist dat een aparte `StateRepository.read_state()` aanroep?
 
-> **✅ Beslissing (12-03-2026):** `StateRepository.load(branch)` geeft de volledige `BranchState` terug inclusief `workflow_name` — één aanroep. `get_current_phase()` wordt een convenience-wrapper die intern `StateRepository.load()` aanroept en enkel `current_phase` retourneert. Tool-laag roept `StateRepository.load()` direct aan wanneer meer dan alleen de phase nodig is.
+> **✅ Beslissing (12-03-2026, besproken 12-03-2026):** **Optie B — `PSE.get_state(branch) -> BranchState` als publieke methode op PSE.**
+>
+> PSE is verantwoordelijk voor phase state management — `get_state()` retourneert de volledige `BranchState` (incl. `workflow_name`, `current_phase`, `current_cycle`, etc.) is een logisch onderdeel van die verantwoordelijkheid. PSE delegeert intern aan `StateRepository` voor I/O (DIP ✅). Tool-laag praat met PSE als enkelvoudig aanspreekpunt (Law of Demeter: tool hoeft `StateRepository` niet te kennen). `get_current_phase()` wordt een convenience-wrapper bovenop `get_state()` die enkel `current_phase` retourneert.
 
 **J3.** Backward-compatibel legacy `phase`-pad: na F21 bestaat `"tdd"` niet meer als fase. `mapped_workflow_phase = "tdd"` in de legacy path breekt onmiddellijk. Twee keuzes:
 - **(a) Verwijderen:** legacy `phase`-parameter volledig droppen. Breaking change, maar alle gebruik is expliciet `DEPRECATED`.
