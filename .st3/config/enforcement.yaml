@@ -1,0 +1,23 @@
+enforcement:
+  - event_source: tool
+    tool: create_branch
+    timing: pre
+    actions:
+      - type: check_branch_policy
+        policy: base_restriction
+        rules:
+          hotfix: [main]
+          epic: [main]
+          feature: [main, "epic/*"]
+          bug: [main, "epic/*"]
+          fix: [main, "epic/*"]
+          refactor: [main, "epic/*"]
+          docs: [main, "epic/*"]
+
+  - event_source: tool
+    tool: transition_phase
+    timing: post
+    actions:
+      - type: commit_state_files
+        paths: [".st3/state.json"]
+        message: "persist state after phase transition"
