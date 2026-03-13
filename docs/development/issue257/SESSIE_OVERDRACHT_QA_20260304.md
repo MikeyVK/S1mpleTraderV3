@@ -2,7 +2,7 @@
 <!-- template=planning version=130ac5ea created=2026-03-04T00:00Z updated= -->
 # Issue257 Sessieoverdracht QA (2026-03-04)
 
-**Status:** HISTORICAL  
+**Status:** DRAFT  
 **Version:** 1.0  
 **Last Updated:** 2026-03-04
 
@@ -10,8 +10,7 @@
 
 ## Purpose
 
-Historische QA-overdracht voor de implementatie-agent van issue #257, met nadruk op:
-Niet gebruiken als actuele issue-map; zie `SESSIE_OVERDRACHT_QA_20260312.md` voor de actuele status.
+Gerichte QA-overdracht voor de implementatie-agent van issue #257, met nadruk op:
 - inhoudelijke consistentie tussen research-documenten;
 - correcte toepassing van SOLID-principes in de geplande codewijzigingen;
 - strikte scope-afbakening tussen #257 en opvolgers #258/#259;
