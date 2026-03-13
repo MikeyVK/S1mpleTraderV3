@@ -4,18 +4,19 @@
 import logging
 from pathlib import Path
 from typing import Any, cast
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 
+from mcp_server.core.exceptions import ConfigError
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import InMemoryStateRepository
 from mcp_server.server import MCPServer
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.git_tools import CreateBranchTool
-from mcp_server.tools.phase_tools import TransitionPhaseTool
+from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPhaseTool
 from mcp_server.tools.tool_result import ToolResult
 
 
@@ -96,7 +97,6 @@ class TestServerToolRegistration:
             server.tools = [DummyTool()]
 
             handler = server.server.request_handlers[CallToolRequest]
-
             caplog.set_level(logging.DEBUG, logger="mcp_server.server")
 
             req = CallToolRequest(
@@ -247,3 +247,53 @@ class TestServerToolRegistration:
 
         assert "Successfully transitioned" in response.root.content[0].text
         mock_commit.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_call_tool_force_phase_post_enforcement_returns_warning(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        """Force phase transitions should warn on hook failures instead of blocking."""
+        with patch("mcp_server.server.settings") as mock_settings:
+            mock_settings.server.name = "test-server"
+            mock_settings.server.workspace_root = str(tmp_path)
+            mock_settings.github.token = None
+            mock_settings.github.owner = "test"
+            mock_settings.github.repo = "repo"
+
+            server = MCPServer()
+            server.tools = [ForcePhaseTransitionTool(workspace_root=tmp_path)]
+            handler = server.server.request_handlers[CallToolRequest]
+
+            with (
+                patch.object(server.enforcement_runner, "run") as mock_run,
+                patch.object(
+                    ForcePhaseTransitionTool,
+                    "execute",
+                    new=AsyncMock(return_value=ToolResult.text("✅ Forced phase transition")),
+                ),
+            ):
+
+                def side_effect(*_args: object, **kwargs: object) -> list[str]:
+                    if kwargs.get("event") == "transition_phase" and kwargs.get("timing") == "post":
+                        raise ConfigError("post hook failed")
+                    return []
+
+                mock_run.side_effect = side_effect
+                req = CallToolRequest(
+                    params=CallToolRequestParams(
+                        name="force_phase_transition",
+                        arguments={
+                            "branch": "feature/257-reorder-workflow-phases",
+                            "to_phase": "planning",
+                            "skip_reason": "Force test",
+                            "human_approval": "Approved",
+                        },
+                    )
+                )
+                response = await handler(req)
+
+        text = response.root.content[0].text
+        assert "⚠️" in text
+        assert "post hook failed" in text
+        assert "✅" in text

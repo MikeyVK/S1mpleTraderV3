@@ -1,4 +1,3 @@
-# mcp_server/tools/phase_tools.py
 """
 Phase transition tools - MCP tools for phase state management.
 
@@ -58,11 +57,8 @@ class ForcePhaseTransitionInput(BaseModel):
         return v.strip()
 
 
-class _BasePhaseTransitionTool(BaseTool):
-    """Base class for phase transition tools.
-
-    Provides common manager creation logic to avoid duplication.
-    """
+class _BaseTransitionTool(BaseTool):
+    """Base class for phase and cycle transition tools."""
 
     def __init__(self, workspace_root: Path | str) -> None:
         """Initialize tool.
@@ -73,17 +69,21 @@ class _BasePhaseTransitionTool(BaseTool):
         super().__init__()
         self.workspace_root = Path(workspace_root)
 
+    def _create_project_manager(self) -> ProjectManager:
+        """Create ProjectManager instance for the configured workspace."""
+        return ProjectManager(workspace_root=self.workspace_root)
+
     def _create_engine(self) -> PhaseStateEngine:
         """Create PhaseStateEngine instance.
 
         Returns:
             PhaseStateEngine instance with initialized managers
         """
-        project_manager = ProjectManager(workspace_root=self.workspace_root)
+        project_manager = self._create_project_manager()
         return PhaseStateEngine(workspace_root=self.workspace_root, project_manager=project_manager)
 
 
-class TransitionPhaseTool(_BasePhaseTransitionTool):
+class TransitionPhaseTool(_BaseTransitionTool):
     """MCP tool for standard sequential phase transitions.
 
     Validates transitions via PhaseStateEngine against workflow definitions.
@@ -126,7 +126,7 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
             return ToolResult.error(f"❌ Transition failed: {e}")
 
 
-class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
+class ForcePhaseTransitionTool(_BaseTransitionTool):
     """MCP tool for forced non-sequential phase transitions.
 
     Bypasses workflow validation. Requires skip_reason and human_approval.
@@ -136,6 +136,7 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
     name = "force_phase_transition"
     description = "Force non-sequential phase transition (skip/jump with reason)"
     args_model = ForcePhaseTransitionInput
+    enforcement_event = "transition_phase"
 
     async def execute(self, params: ForcePhaseTransitionInput) -> ToolResult:
         """Execute forced phase transition.
@@ -168,7 +169,6 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
 
             lines: list[str] = []
 
-            # Blocking gates BEFORE ✅ (C10/GAP-17)
             if blocking:
                 lines.append(
                     f"⚠️ ACTION REQUIRED: {len(blocking)} skipped gate(s) would have"
@@ -184,7 +184,6 @@ class ForcePhaseTransitionTool(_BasePhaseTransitionTool):
                 f"(forced=True, reason: {params.skip_reason})"
             )
 
-            # Passing gates AFTER ✅ (informational)
             if passing:
                 lines.append(f"ℹ️ Gates that would have passed: {', '.join(passing)}")
 

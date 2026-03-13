@@ -13,7 +13,7 @@ import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
-from mcp_server.tools.transition_tools import (
+from mcp_server.tools.cycle_tools import (
     ForceCycleTransitionInput,
     ForceCycleTransitionTool,
     TransitionCycleInput,
@@ -28,9 +28,9 @@ class TestTransitionCycleTool:
     """
 
     @pytest.fixture()
-    def tool(self) -> TransitionCycleTool:
+    def tool(self, tmp_path: Path) -> TransitionCycleTool:
         """Fixture to instantiate TransitionCycleTool."""
-        return TransitionCycleTool()
+        return TransitionCycleTool(workspace_root=tmp_path)
 
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
@@ -108,8 +108,8 @@ class TestTransitionCycleTool:
 
         # Mock git and settings
         with (
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -152,8 +152,8 @@ class TestTransitionCycleTool:
 
         #  Mock git
         with (
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -181,8 +181,8 @@ class TestTransitionCycleTool:
 
         # Mock git
         with (
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -220,8 +220,8 @@ class TestTransitionCycleTool:
 
         # Mock git
         with (
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -244,9 +244,9 @@ class TestForceCycleTransitionTool:
     """
 
     @pytest.fixture()
-    def tool(self) -> ForceCycleTransitionTool:
+    def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
         """Fixture to instantiate ForceCycleTransitionTool."""
-        return ForceCycleTransitionTool()
+        return ForceCycleTransitionTool(workspace_root=tmp_path)
 
     @pytest.fixture()
     def setup_forced_project(self, tmp_path: Path) -> tuple[Path, int]:
@@ -323,8 +323,8 @@ class TestForceCycleTransitionTool:
         workspace_root, _ = setup_forced_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -372,8 +372,8 @@ class TestForceCycleTransitionTool:
         workspace_root, _ = setup_forced_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -411,8 +411,8 @@ class TestForceCycleTransitionTool:
         workspace_root, _ = setup_forced_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -441,8 +441,8 @@ class TestForceCycleTransitionTool:
         workspace_root, _ = setup_forced_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -473,9 +473,9 @@ class TestForceCycleTransitionSkippedDeliverables:
     """
 
     @pytest.fixture()
-    def tool(self) -> ForceCycleTransitionTool:
+    def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
         """Fixture to instantiate ForceCycleTransitionTool."""
-        return ForceCycleTransitionTool()
+        return ForceCycleTransitionTool(workspace_root=tmp_path)
 
     def _setup_project_with_validates_deliverables(
         self, tmp_path: Path, cycle3_file_contains: str | None
@@ -502,7 +502,7 @@ class TestForceCycleTransitionSkippedDeliverables:
         )
 
         # Create the target file for the check (or not, to simulate failure)
-        target_file = workspace_root / "mcp_server" / "tools" / "transition_tools.py"
+        target_file = workspace_root / "mcp_server" / "tools" / "cycle_tools.py"
         target_file.parent.mkdir(parents=True, exist_ok=True)
         if cycle3_file_contains is not None:
             target_file.write_text(cycle3_file_contains)
@@ -528,10 +528,10 @@ class TestForceCycleTransitionSkippedDeliverables:
                         "deliverables": [
                             {
                                 "id": "D3.2",
-                                "description": "transition_tools.py contains warning text",
+                                "description": "cycle_tools.py contains warning text",
                                 "validates": {
                                     "type": "contains_text",
-                                    "file": "mcp_server/tools/transition_tools.py",
+                                    "file": "mcp_server/tools/cycle_tools.py",
                                     "text": "Unvalidated cycle deliverables",
                                 },
                             }
@@ -577,8 +577,8 @@ class TestForceCycleTransitionSkippedDeliverables:
         )
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
@@ -614,8 +614,8 @@ class TestForceCycleTransitionSkippedDeliverables:
         )
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
@@ -647,9 +647,9 @@ class TestForceCycleAuditSchema:
     """
 
     @pytest.fixture()
-    def tool(self) -> ForceCycleTransitionTool:
+    def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
         """Fixture to instantiate ForceCycleTransitionTool."""
-        return ForceCycleTransitionTool()
+        return ForceCycleTransitionTool(workspace_root=tmp_path)
 
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
@@ -729,8 +729,8 @@ class TestForceCycleAuditSchema:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -773,8 +773,8 @@ class TestForceCycleAuditSchema:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -814,8 +814,8 @@ class TestForceCycleAuditSchema:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -853,9 +853,9 @@ class TestTransitionCycleHistory:
     """
 
     @pytest.fixture()
-    def tool(self) -> TransitionCycleTool:
+    def tool(self, tmp_path: Path) -> TransitionCycleTool:
         """Fixture to instantiate TransitionCycleTool."""
-        return TransitionCycleTool()
+        return TransitionCycleTool(workspace_root=tmp_path)
 
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
@@ -929,8 +929,8 @@ class TestTransitionCycleHistory:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -966,8 +966,8 @@ class TestTransitionCycleHistory:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -1005,9 +1005,9 @@ class TestTransitionCycleExitCriteria:
     """
 
     @pytest.fixture()
-    def tool(self) -> TransitionCycleTool:
+    def tool(self, tmp_path: Path) -> TransitionCycleTool:
         """Fixture to instantiate TransitionCycleTool."""
-        return TransitionCycleTool()
+        return TransitionCycleTool(workspace_root=tmp_path)
 
     def _make_project(
         self,
@@ -1104,8 +1104,8 @@ class TestTransitionCycleExitCriteria:
         )
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -1146,8 +1146,8 @@ class TestTransitionCycleExitCriteria:
         )
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -1187,8 +1187,8 @@ class TestTransitionCycleExitCriteria:
         )
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -1214,9 +1214,9 @@ class TestForceCycleTransitionResponseFormat:
     """
 
     @pytest.fixture()
-    def tool(self) -> ForceCycleTransitionTool:
+    def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
         """Fixture to instantiate ForceCycleTransitionTool."""
-        return ForceCycleTransitionTool()
+        return ForceCycleTransitionTool(workspace_root=tmp_path)
 
     def _setup_for_cycle_transition(
         self, tmp_path: Path, *, cycle3_file_present: bool
@@ -1238,7 +1238,7 @@ class TestForceCycleTransitionResponseFormat:
         if cycle3_file_present:
             target_dir = workspace_root / "mcp_server" / "tools"
             target_dir.mkdir(parents=True, exist_ok=True)
-            (target_dir / "transition_tools.py").write_text("# validated content")
+            (target_dir / "cycle_tools.py").write_text("# validated content")
 
         planning_deliverables: dict = {
             "tdd_cycles": {
@@ -1259,11 +1259,11 @@ class TestForceCycleTransitionResponseFormat:
                         "deliverables": [
                             {
                                 "id": "D3.2",
-                                "description": "transition_tools.py exists",
+                                "description": "cycle_tools.py exists",
                                 "validates": {
                                     "type": "file_glob",
                                     "dir": "mcp_server/tools",
-                                    "pattern": "transition_tools.py",
+                                    "pattern": "cycle_tools.py",
                                 },
                             }
                         ],
@@ -1303,8 +1303,8 @@ class TestForceCycleTransitionResponseFormat:
         )
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
@@ -1341,8 +1341,8 @@ class TestForceCycleTransitionResponseFormat:
         )
 
         with (
-            patch("mcp_server.tools.transition_tools.settings") as mock_settings,
-            patch("mcp_server.tools.transition_tools.GitManager") as mock_git_class,
+            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
+            patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"

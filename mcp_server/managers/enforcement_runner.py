@@ -256,6 +256,12 @@ class EnforcementRunner:
         """Commit state files after a successful tool execution."""
         branch = context.get_param("branch")
         if not isinstance(branch, str) or not branch:
+            git_manager = GitManager()
+            if hasattr(git_manager, "get_current_branch"):
+                branch = git_manager.get_current_branch()
+            else:
+                branch = git_manager.adapter.get_current_branch()
+        if not isinstance(branch, str) or not branch:
             return None
 
         project_manager = ProjectManager(workspace_root=workspace_root)

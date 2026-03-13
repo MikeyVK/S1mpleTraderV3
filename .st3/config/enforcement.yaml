@@ -21,3 +21,11 @@ enforcement:
       - type: commit_state_files
         paths: [".st3/state.json"]
         message: "persist state after phase transition"
+
+  - event_source: tool
+    tool: transition_cycle
+    timing: post
+    actions:
+      - type: commit_state_files
+        paths: [".st3/state.json"]
+        message: "persist state after cycle transition"

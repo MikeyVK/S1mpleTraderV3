@@ -41,6 +41,7 @@ from mcp_server.scaffolding.template_registry import TemplateRegistry
 from mcp_server.tools.admin_tools import RestartServerTool
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.code_tools import CreateFileTool
+from mcp_server.tools.cycle_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.discovery_tools import GetWorkContextTool, SearchDocumentationTool
 from mcp_server.tools.git_analysis_tools import GitDiffTool, GitListBranchesTool
 from mcp_server.tools.git_fetch_tool import GitFetchTool
@@ -95,7 +96,6 @@ from mcp_server.tools.scaffold_artifact import ScaffoldArtifactTool
 from mcp_server.tools.template_validation_tool import TemplateValidationTool
 from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.tool_result import ToolResult
-from mcp_server.tools.transition_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
 # Initialize logging
@@ -182,8 +182,8 @@ class MCPServer:
             TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
             ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
             # TDD Cycle tools (Issue #146)
-            TransitionCycleTool(),
-            ForceCycleTransitionTool(),
+            TransitionCycleTool(workspace_root=Path(settings.server.workspace_root)),
+            ForceCycleTransitionTool(workspace_root=Path(settings.server.workspace_root)),
             # Scaffold tools (unified artifact scaffolding)
             ScaffoldArtifactTool(
                 manager=ArtifactManager(
@@ -371,7 +371,13 @@ class MCPServer:
         try:
             self.enforcement_runner.run(event=event, timing=timing, context=context)
         except Exception as exc:  # noqa: BLE001
-            return self._tool_result_from_exception(exc)
+            enforcement_result = self._tool_result_from_exception(exc)
+            if timing == "post" and result is not None and tool.name.startswith("force_"):
+                warning_text = enforcement_result.content[0]["text"]
+                original_text = result.content[0]["text"]
+                result.content[0]["text"] = f"⚠️ {warning_text}\n{original_text}"
+                return None
+            return enforcement_result
         return None
 
     def setup_handlers(self) -> None:
