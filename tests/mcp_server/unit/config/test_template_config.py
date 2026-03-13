@@ -1,3 +1,4 @@
+# ruff: noqa: ANN201
 """Comprehensive tests for template_config.py get_template_root() function.
 
 Tests cover:
@@ -11,6 +12,7 @@ Coverage goal: 100% of get_template_root() function.
 """
 
 import os
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -55,7 +57,7 @@ class TestGetTemplateRoot:
             # Verify no relative path markers
             assert ".." not in str(result), "Absolute path should not contain '..'"
 
-    def test_uses_template_root_env_var_when_set(self, tmp_path):
+    def test_uses_template_root_env_var_when_set(self, tmp_path: Path) -> None:
         """When TEMPLATE_ROOT env var is set, uses that path instead of default."""
         # Arrange: Create temp template directory
         custom_template_root = tmp_path / "custom_templates"
@@ -72,7 +74,9 @@ class TestGetTemplateRoot:
             assert result.is_absolute(), "TEMPLATE_ROOT path must be absolute"
             assert result.exists(), f"TEMPLATE_ROOT path must exist: {result}"
 
-    def test_resolves_relative_env_var_to_absolute(self, tmp_path, monkeypatch):
+    def test_resolves_relative_env_var_to_absolute(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """TEMPLATE_ROOT env var with relative path is resolved to absolute."""
         # Arrange: Create nested temp structure within current directory
         # Change to tmp_path to avoid cross-drive issues on Windows
@@ -98,26 +102,31 @@ class TestGetTemplateRoot:
         nonexistent_path = "/this/path/does/not/exist/anywhere"
 
         # Act & Assert
-        with patch.dict(os.environ, {"TEMPLATE_ROOT": nonexistent_path}):
-            with pytest.raises(FileNotFoundError, match="TEMPLATE_ROOT env var does not exist"):
-                get_template_root()
+        with (
+            patch.dict(os.environ, {"TEMPLATE_ROOT": nonexistent_path}),
+            pytest.raises(FileNotFoundError, match="TEMPLATE_ROOT env var does not exist"),
+        ):
+            get_template_root()
 
-    def test_raises_filenotfound_when_default_path_missing(self, tmp_path, monkeypatch):
-        """Fail-fast: Raises FileNotFoundError if default path doesn't exist."""
-        # Arrange: Change working directory to empty temp dir
-        # This simulates default path not existing
+    def test_uses_package_template_root_when_workspace_default_missing(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Without env var or workspace templates, falls back to bundled package templates."""
         monkeypatch.chdir(tmp_path)
 
-        # Ensure TEMPLATE_ROOT is not set
         with patch.dict(os.environ, {}, clear=False):
             if "TEMPLATE_ROOT" in os.environ:
                 del os.environ["TEMPLATE_ROOT"]
 
-            # Act & Assert
-            with pytest.raises(FileNotFoundError, match="Default template root does not exist"):
-                get_template_root()
+            result = get_template_root()
 
-    def test_resolves_symlinks_in_env_var_path(self, tmp_path):
+        assert result.is_absolute(), "Bundled template root must be absolute"
+        assert result.name == "templates"
+        assert result.exists(), f"Bundled template root must exist: {result}"
+        assert "mcp_server" in str(result)
+        assert "scaffolding" in str(result)
+
+    def test_resolves_symlinks_in_env_var_path(self, tmp_path: Path) -> None:
         """TEMPLATE_ROOT env var with symlink is resolved to real path."""
         # Arrange: Create real directory and symlink
         real_dir = tmp_path / "real_templates"
@@ -140,7 +149,7 @@ class TestGetTemplateRoot:
             assert result.is_absolute()
             # Note: resolve() behavior depends on system config
 
-    def test_env_var_takes_priority_over_default(self, tmp_path):
+    def test_env_var_takes_priority_over_default(self, tmp_path: Path) -> None:
         """TEMPLATE_ROOT env var has priority over default path."""
         # Arrange: Create custom template root
         custom_root = tmp_path / "priority_templates"

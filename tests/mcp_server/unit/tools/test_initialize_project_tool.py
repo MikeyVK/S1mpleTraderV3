@@ -81,7 +81,7 @@ class TestInitializeProjectToolMode1:
             assert state["transitions"] == []
             assert "created_at" in state
             # Not reconstructed, freshly created
-            assert "reconstructed" not in state
+            assert not state.get("reconstructed", False)
 
     @pytest.mark.asyncio
     async def test_branch_name_auto_detected(

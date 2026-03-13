@@ -33,8 +33,8 @@ phases:
     exit_requires:
       - key: "planning_deliverables"
         description: "TDD cycle breakdown"
-  tdd:
-    display_name: "TDD"
+  implementation:
+    display_name: "Implementation"
     entry_expects:
       - key: "planning_deliverables"
         description: "Expected from planning"
@@ -142,7 +142,7 @@ class TestForceTransitionSkippedGateWarning:
     ) -> None:
         """force_transition logs warning when to_phase has entry_expects (GAP-03).
 
-        Forcing research → tdd bypasses the tdd entry expects check.
+        Forcing research → implementation bypasses the implementation entry expects check.
         Warning must mention skipped_gates.
         """
         project_manager_with_gates.initialize_project(
@@ -159,7 +159,7 @@ class TestForceTransitionSkippedGateWarning:
         with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
             engine_with_gates.force_transition(
                 branch="feature/229-c3b",
-                to_phase="tdd",
+                to_phase="implementation",
                 skip_reason="test: skip entry expects",
                 human_approval="tester approved",
             )
@@ -200,15 +200,15 @@ class TestForceTransitionSkippedGateWarning:
 
 
 # ---------------------------------------------------------------------------
-# C3 bugfix: warning must be silent when deliverables ARE present in projects.json
+# C3 bugfix: warning must be silent when deliverables ARE present in deliverables.json
 # ---------------------------------------------------------------------------
 
 
 class TestForceTransitionNoWarningWhenDeliverablesPresent:
-    """Warning must NOT fire when the gated deliverable key exists in projects.json (GAP-03 bugfix).
+    """Warning must NOT fire when the gated deliverable key exists in deliverables.json.
 
     The original implementation warned based on config presence alone.
-    The correct behaviour: only warn when the key is actually absent from projects.json.
+    The correct behaviour: only warn when the key is actually absent from deliverables.json.
     """
 
     def _setup(
@@ -222,9 +222,9 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
             workflow_name="feature",
         )
         # Inject the key directly (bypasses schema validation — tests engine check logic only)
-        projects = json.loads(pm.projects_file.read_text(encoding="utf-8"))
+        projects = json.loads(pm.deliverables_file.read_text(encoding="utf-8"))
         projects["229"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
-        pm.projects_file.write_text(json.dumps(projects, indent=2))
+        pm.deliverables_file.write_text(json.dumps(projects, indent=2))
 
         engine = PhaseStateEngine(workspace_root=workspace_root, project_manager=pm)
         branch = "feature/229-bugfix"
@@ -236,7 +236,7 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
         workspace_root: Path,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """No skipped_gates warning when exit_requires key exists in projects.json.
+        """No skipped_gates warning when exit_requires key exists in deliverables.json.
 
         Scenario: planning → design forced, planning_deliverables IS saved.
         Expected: transition succeeds silently (no ⚠️).
@@ -258,9 +258,9 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
         workspace_root: Path,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """No skipped_gates warning when entry_expects key exists in projects.json.
+        """No skipped_gates warning when entry_expects key exists in deliverables.json.
 
-        Scenario: planning → tdd forced, planning_deliverables IS saved.
+        Scenario: planning → implementation forced, planning_deliverables IS saved.
         Expected: transition succeeds silently (no ⚠️).
         """
         _, engine, branch = self._setup(workspace_root, initial_phase="planning")
@@ -268,7 +268,7 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
         with caplog.at_level(logging.WARNING, logger="mcp_server.managers.phase_state_engine"):
             engine.force_transition(
                 branch=branch,
-                to_phase="tdd",
+                to_phase="implementation",
                 skip_reason="test: deliverables present, entry gate should be silent",
                 human_approval="tester approved",
             )

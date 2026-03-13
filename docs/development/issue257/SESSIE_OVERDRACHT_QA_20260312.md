@@ -3,7 +3,7 @@
 # Issue257 Sessieoverdracht QA (2026-03-12)
 
 **Status:** ACTIVE  
-**Version:** 1.2  
+**Version:** 1.4  
 **Last Updated:** 2026-03-13
 
 ---
@@ -52,6 +52,23 @@ Bevestigd:
 - A6 merge-semantiek is aanwezig: required config-gates blijven immutabel, issue-specifieke checks kunnen recommended gedrag uitbreiden of overschrijven
 - `commit_type_map` voor `implementation` gebruikt `red: test`, `green: feat`, `refactor: refactor`
 - gerichte resolver-tests en quality gates zijn groen
+
+### Cycle 4
+**Oordeel:** GO
+
+Full test suite (hercheck na fix): **2123 passed, 0 failed, 11 skipped, 2 xfailed** (2026-03-13). Suite volledig groen.
+
+Bevestigd (J1–J4):
+- **J1:** `build_commit_type_resolver(workspace_root)` bestaat als composition root in `git_tools.py`; `GitCommitTool.execute()` keert PSE.get_state() → PCR.resolve_commit_type() → GitManager.commit_with_scope() op; `GitManager` heeft geen PCR-dependency
+- **J2:** `PhaseStateEngine.get_state(branch) -> BranchState` is publieke methode (lijn 304); `get_current_phase()` is convenience-wrapper eromheen
+- **J3:** `GitCommitInput(model_config=ConfigDict(extra="forbid"))` — legacy `phase=` kwarg gooit `ValidationError`; geen enkele `phase=` kwarg meer in `mcp_server/tools/`; backward-compat tests voor `phase=` weigering zijn aanwezig en groen
+- **J4:** `PhaseContractResolver` gooit `ConfigError` met `file_path=".st3/config/phase_contracts.yaml"` wanneer config ontbreekt
+
+Pyright check (scope: `git_tools.py`, `phase_state_engine.py`, `git_manager.py`): **0 errors, 0 warnings** (exit 0)
+
+De 2 resterende testsuite-failures zijn **pre-existing** — niet veroorzaakt door Cycle 4:
+- `test_raises_filenotfound_when_default_path_missing`: test geschreven voor oudere versie van `get_template_root()` zonder package-fallback; bronbestand `template_config.py` aangeraakt in commit `2ee9228` (tier-templates GREEN, vóór PSE-refactor), testbestand aangeraakt in `0e78bfb` (ruff format); geen Cycle 4 commit raakte deze bestanden
+- `test_atomic_creation_both_files`: assertie-bug; test checkt `"reconstructed" not in state` (key aanwezigheid) terwijl `BranchState.model_dump(mode="json")` altijd `reconstructed=False` serialiseert; `BranchState.reconstructed` field toegevoegd in C2 (`68b767e`); test-bestand aangeraakt in `dbe8c15` (C1_REFACTOR); geen Cycle 4 commit raakte dit bestand
 
 ---
 
@@ -117,9 +134,17 @@ Aanbevolen actie:
 - migreer fixtures/tests/tooling naar alleen die contracttaal;
 - verwijder alias-ondersteuning zodra de toollaag en tests niet meer op de oude sleutels leunen.
 
----
+### 6. Afgerond op 2026-03-13: 2 pre-existing testfailures buiten Cycle 4 scope
 
-## Aanbevolen extra schuld-cycle
+**`test_uses_package_template_root_when_workspace_default_missing`** (`tests/mcp_server/unit/config/test_template_config.py`):
+- Oplossing: test herschreven naar het actuele contract van `get_template_root()`
+- Nieuw gedrag onder test: zonder `TEMPLATE_ROOT` en zonder workspace `.st3/templates` valt de code terug op bundled package templates
+
+**`test_atomic_creation_both_files`** (`tests/mcp_server/unit/tools/test_initialize_project_tool.py`):
+- Oplossing: assertie gecorrigeerd naar waardesemantiek
+- Nieuw gedrag onder test: `reconstructed` mag aanwezig zijn in `state.json`, maar moet `False` zijn voor verse initialisatie
+
+---
 
 ### Doel
 Na de functionele refactor een korte stabilisatie-/opschooncycle uitvoeren die alleen technische schuld en alignment opruimt.
@@ -169,6 +194,8 @@ Na de functionele refactor een korte stabilisatie-/opschooncycle uitvoeren die a
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.4 | 2026-03-13 | Copilot | Restschuld punt 6 opgelost: 2 pre-existing testfailures in testlaag gealigneerd met huidig gedrag |
+| 1.3 | 2026-03-13 | QA Agent | Cycle 4 GO-oordeel toegevoegd; 2 pre-existing test-failures gedocumenteerd als restschuld punt 6 |
 | 1.2 | 2026-03-13 | QA Agent | Verwijderde testschuld verwerkt; open restschuld teruggebracht tot compatibility-helpers, contract-convergentie en actuele issue-map |
 | 1.1 | 2026-03-12 | QA Agent | Cycle 3 QA-oordeel en niet-blockerende contract-aliasschuld toegevoegd |
 | 1.0 | 2026-03-12 | QA Agent | Nieuwe QA-log met restschuld na hercontrole van Cycle 1 en 2 |

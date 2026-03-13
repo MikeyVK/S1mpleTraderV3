@@ -91,7 +91,7 @@ class TestTransitionCycleTool:
             initial_phase="implementation",
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        state["current_tdd_cycle"] = 1
+        state = state.with_updates(current_cycle=1)
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
 
         return workspace_root, issue_number
@@ -147,7 +147,7 @@ class TestTransitionCycleTool:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        state["current_tdd_cycle"] = 2
+        state = state.with_updates(current_cycle=2)
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
 
         #  Mock git
@@ -215,7 +215,7 @@ class TestTransitionCycleTool:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        state["current_phase"] = "design"
+        state = state.with_updates(current_phase="design")
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
 
         # Mock git
@@ -302,13 +302,15 @@ class TestForceCycleTransitionTool:
             issue_number=issue_number, planning_deliverables=planning_deliverables
         )
 
-        # Transition to TDD phase and set cycle to 2
+        # Transition to implementation phase and set cycle to 2
         branch = "feature/146-tdd-cycle-tracking"
         state = state_engine.get_state(branch)
-        state["current_phase"] = "implementation"
-        state["current_tdd_cycle"] = 2
-        state["last_tdd_cycle"] = 1
-        state["tdd_cycle_history"] = []
+        state = state.with_updates(
+            current_phase="implementation",
+            current_cycle=2,
+            last_cycle=1,
+            cycle_history=[],
+        )
         state_engine._save_state(branch, state)
 
         return workspace_root, issue_number
@@ -350,11 +352,11 @@ class TestForceCycleTransitionTool:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        assert state["current_tdd_cycle"] == 1
-        assert state["last_tdd_cycle"] == 2
+        assert state.current_cycle == 1
+        assert state.last_cycle == 2
 
         # Verify audit trail
-        history = state.get("tdd_cycle_history", [])
+        history = state.cycle_history
         assert len(history) > 0, "Expected audit trail entry"
         last_entry = history[-1]
         assert last_entry.get("cycle_number") == 1
@@ -548,12 +550,14 @@ class TestForceCycleTransitionSkippedDeliverables:
             issue_number=issue_number, planning_deliverables=planning_deliverables
         )
 
-        # Set state: TDD phase, cycle 2
+        # Set state: implementation phase, cycle 2
         state = state_engine.get_state(branch)
-        state["current_phase"] = "implementation"
-        state["current_tdd_cycle"] = 2
-        state["last_tdd_cycle"] = 1
-        state["tdd_cycle_history"] = []
+        state = state.with_updates(
+            current_phase="implementation",
+            current_cycle=2,
+            last_cycle=1,
+            cycle_history=[],
+        )
         state_engine._save_state(branch, state)
 
         return workspace_root, issue_number
@@ -704,10 +708,12 @@ class TestForceCycleAuditSchema:
             initial_phase="implementation",
         )
         state = state_engine.get_state(branch)
-        state["current_phase"] = "implementation"
-        state["current_tdd_cycle"] = 2
-        state["last_tdd_cycle"] = 1
-        state["tdd_cycle_history"] = []
+        state = state.with_updates(
+            current_phase="implementation",
+            current_cycle=2,
+            last_cycle=1,
+            cycle_history=[],
+        )
         state_engine._save_state(branch, state)
 
         return workspace_root, issue_number
@@ -746,7 +752,7 @@ class TestForceCycleAuditSchema:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        history = state.get("tdd_cycle_history", [])
+        history = state.cycle_history
 
         assert len(history) > 0, "Expected audit entry in tdd_cycle_history"
         entry = history[-1]
@@ -788,7 +794,7 @@ class TestForceCycleAuditSchema:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        history = state.get("tdd_cycle_history", [])
+        history = state.cycle_history
 
         assert len(history) > 0
         entry = history[-1]
@@ -831,7 +837,7 @@ class TestForceCycleAuditSchema:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        history = state.get("tdd_cycle_history", [])
+        history = state.cycle_history
 
         assert len(history) > 0
         entry = history[-1]
@@ -902,10 +908,12 @@ class TestTransitionCycleHistory:
             initial_phase="implementation",
         )
         state = state_engine.get_state(branch)
-        state["current_phase"] = "implementation"
-        state["current_tdd_cycle"] = 1
-        state["last_tdd_cycle"] = None
-        state["tdd_cycle_history"] = []
+        state = state.with_updates(
+            current_phase="implementation",
+            current_cycle=1,
+            last_cycle=None,
+            cycle_history=[],
+        )
         state_engine._save_state(branch, state)
 
         return workspace_root, issue_number
@@ -938,7 +946,7 @@ class TestTransitionCycleHistory:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        history = state.get("tdd_cycle_history", [])
+        history = state.cycle_history
 
         assert len(history) == 1, f"Expected 1 history entry, got {len(history)}"
         entry = history[0]
@@ -977,13 +985,15 @@ class TestTransitionCycleHistory:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        history = state.get("tdd_cycle_history", [])
+        history = state.cycle_history
 
         assert len(history) == 2, f"Expected 2 history entries, got {len(history)}"
-        assert history[0]["cycle_number"] == 2
-        assert history[1]["cycle_number"] == 3
-        assert history[0]["forced"] is False
-        assert history[1]["forced"] is False
+        first_entry = history[0]
+        second_entry = history[1]
+        assert first_entry["cycle_number"] == 2
+        assert second_entry["cycle_number"] == 3
+        assert first_entry["forced"] is False
+        assert second_entry["forced"] is False
 
 
 class TestTransitionCycleExitCriteria:
@@ -1056,10 +1066,12 @@ class TestTransitionCycleExitCriteria:
             initial_phase="implementation",
         )
         state = state_engine.get_state(branch)
-        state["current_phase"] = "implementation"
-        state["current_tdd_cycle"] = current_cycle
-        state["last_tdd_cycle"] = None
-        state["tdd_cycle_history"] = []
+        state = state.with_updates(
+            current_phase="implementation",
+            current_cycle=current_cycle,
+            last_cycle=None,
+            cycle_history=[],
+        )
         state_engine._save_state(branch, state)
 
         return workspace_root
@@ -1270,10 +1282,12 @@ class TestForceCycleTransitionResponseFormat:
         )
 
         state = se.get_state(branch)
-        state["current_phase"] = "implementation"
-        state["current_tdd_cycle"] = 2
-        state["last_tdd_cycle"] = 1
-        state["tdd_cycle_history"] = []
+        state = state.with_updates(
+            current_phase="implementation",
+            current_cycle=2,
+            last_cycle=1,
+            cycle_history=[],
+        )
         se._save_state(branch, state)
 
         return workspace_root, issue_number, branch

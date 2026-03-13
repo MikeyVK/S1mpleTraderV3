@@ -95,10 +95,10 @@ class TestForcePhaseTransitionTool:
 
         # Verify state updated
         state = phase_engine.get_state(initialized_branch)
-        assert state["current_phase"] == feature_phases[2]  # design
+        assert state.current_phase == feature_phases[2]  # design
 
         # Verify transition marked as forced
-        transition = state["transitions"][0]
+        transition = state.transitions[0]
         assert transition["forced"] is True
         assert transition["skip_reason"] == "Planning already done in previous project"
 
@@ -327,7 +327,7 @@ phases:
 
         if with_gate_key:
             # Inject planning_deliverables so gate would have PASSED
-            projects_path = tmp_path / ".st3" / "projects.json"
+            projects_path = tmp_path / ".st3" / "deliverables.json"
             data = json.loads(projects_path.read_text())
             data["42"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
             projects_path.write_text(json.dumps(data, indent=2))

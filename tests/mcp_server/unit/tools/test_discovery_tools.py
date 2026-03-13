@@ -179,9 +179,9 @@ class TestGetWorkContextTool:
         with patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/42-dto"
-            # Commit with proper commit-scope format (P_TDD_SP_RED)
+            # Commit with proper commit-scope format (P_IMPLEMENTATION_SP_C1_RED)
             mock_git.get_recent_commits.return_value = [
-                "test(P_TDD_SP_RED): add failing test for DTO validation"
+                "test(P_IMPLEMENTATION_SP_C1_RED): add failing test for DTO validation"
             ]
             mock_git_class.return_value = mock_git
 
@@ -192,8 +192,8 @@ class TestGetWorkContextTool:
 
         assert not result.is_error
         text = result.content[0]["text"].lower()
-        # Should identify tdd phase with red sub-phase from commit-scope
-        assert "tdd" in text
+        # Should identify implementation phase with red sub-phase from commit-scope
+        assert "implementation" in text
         assert "red" in text or "🔴" in result.content[0]["text"]
         assert "commit-scope" in text  # Source should be commit-scope
 
@@ -204,7 +204,7 @@ class TestGetWorkContextTool:
             ("docs(P_RESEARCH): initial research", "research", "🔍"),
             ("chore(P_PLANNING): define tasks", "planning", "📋"),
             ("docs(P_DESIGN): architecture design", "design", "🎨"),
-            ("feat(P_TDD_SP_GREEN): implement feature", "tdd", "🧪"),
+            ("feat(P_IMPLEMENTATION_SP_C1_GREEN): implement feature", "implementation", "🧪"),
             ("test(P_VALIDATION_SP_E2E): e2e tests", "validation", "✅"),
             ("docs(P_DOCUMENTATION): update readme", "documentation", "📝"),
             ("chore(P_COORDINATION): sync with team", "coordination", "🤝"),
@@ -365,12 +365,14 @@ class TestGetWorkContextTddCycleInfo:
         }
         project_manager.save_planning_deliverables(146, planning_deliverables)
 
-        # Set TDD phase with current_tdd_cycle = 2
+        # Set implementation phase with current cycle = 2
         state_engine.initialize_branch(
-            branch="feature/146-tdd-cycle-tracking", issue_number=146, initial_phase="tdd"
+            branch="feature/146-tdd-cycle-tracking",
+            issue_number=146,
+            initial_phase="implementation",
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        state["current_tdd_cycle"] = 2
+        state = state.with_updates(current_cycle=2)
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
 
         # Mock Git and settings
@@ -381,23 +383,23 @@ class TestGetWorkContextTddCycleInfo:
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
-            # Provide TDD-scoped commit so ScopeDecoder has context
+            # Provide implementation-scoped commit so ScopeDecoder has context
             mock_git.get_recent_commits.return_value = [
-                "test(P_TDD_SP_GREEN): add cycle info display"
+                "test(P_IMPLEMENTATION_SP_C2_GREEN): add cycle info display"
             ]
             mock_git_class.return_value = mock_git
 
             mock_settings.github.token = None
             mock_settings.server.workspace_root = workspace_root
 
-            # ScopeDecoder returns TDD phase from commit scope
+            # ScopeDecoder returns implementation phase from commit scope
             mock_decoder = MagicMock()
             mock_decoder.detect_phase.return_value = {
-                "workflow_phase": "tdd",
+                "workflow_phase": "implementation",
                 "sub_phase": "green",
                 "source": "commit-scope",
                 "confidence": "high",
-                "raw_scope": "P_TDD_SP_GREEN",
+                "raw_scope": "P_IMPLEMENTATION_SP_C2_GREEN",
             }
             mock_decoder_class.return_value = mock_decoder
 
@@ -463,7 +465,9 @@ class TestGetWorkContextTddCycleInfo:
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
-            mock_git.get_recent_commits.return_value = []
+            mock_git.get_recent_commits.return_value = [
+                "test(P_IMPLEMENTATION_SP_C1_RED): graceful degradation path"
+            ]
             mock_git_class.return_value = mock_git
 
             mock_settings.github.token = None
@@ -511,9 +515,11 @@ class TestGetWorkContextTddCycleInfo:
         )
         # NOTE: Deliberately NOT calling save_planning_deliverables
 
-        # Set TDD phase
+        # Set implementation phase
         state_engine.initialize_branch(
-            branch="feature/146-tdd-cycle-tracking", issue_number=146, initial_phase="tdd"
+            branch="feature/146-tdd-cycle-tracking",
+            issue_number=146,
+            initial_phase="implementation",
         )
 
         # Mock Git
@@ -524,16 +530,18 @@ class TestGetWorkContextTddCycleInfo:
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
-            mock_git.get_recent_commits.return_value = []
+            mock_git.get_recent_commits.return_value = [
+                "test(P_IMPLEMENTATION_SP_C1_RED): graceful degradation path"
+            ]
             mock_git_class.return_value = mock_git
 
             mock_settings.github.token = None
             mock_settings.server.workspace_root = workspace_root
 
-            # ScopeDecoder returns TDD phase
+            # ScopeDecoder returns implementation phase
             mock_decoder = MagicMock()
             mock_decoder.detect_phase.return_value = {
-                "workflow_phase": "tdd",
+                "workflow_phase": "implementation",
                 "sub_phase": "red",
                 "source": "state.json",
                 "confidence": "high",
@@ -546,8 +554,8 @@ class TestGetWorkContextTddCycleInfo:
         # Assert - tool should NOT crash
         assert not result.is_error, f"Tool crashed: {result.content}"
         text = result.content[0]["text"]
-        # Should show TDD phase
-        assert "tdd" in text.lower() or "🔴" in text or "🟢" in text
+        # Should show implementation phase
+        assert "implementation" in text.lower() or "🔴" in text or "🟢" in text
 
 
 class TestTddCycleInfoStatusField:
@@ -597,11 +605,13 @@ class TestTddCycleInfoStatusField:
         project_manager.save_planning_deliverables(146, planning_deliverables)
 
         state_engine.initialize_branch(
-            branch="feature/146-tdd-cycle-tracking", issue_number=146, initial_phase="tdd"
+            branch="feature/146-tdd-cycle-tracking",
+            issue_number=146,
+            initial_phase="implementation",
         )
-        # Set current_tdd_cycle so tdd_cycle_info is populated
+        # Set current cycle so tdd_cycle_info is populated
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        state["current_tdd_cycle"] = 1
+        state = state.with_updates(current_cycle=1)
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
 
         with (
@@ -612,7 +622,9 @@ class TestTddCycleInfoStatusField:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             # Provide a non-empty commits list so ScopeDecoder is invoked (not short-circuited)
-            mock_git.get_recent_commits.return_value = ["test(P_TDD_SP_RED): add status field test"]
+            mock_git.get_recent_commits.return_value = [
+                "test(P_IMPLEMENTATION_SP_C1_RED): add status field test"
+            ]
             mock_git_class.return_value = mock_git
 
             mock_settings.github.token = None
@@ -620,7 +632,7 @@ class TestTddCycleInfoStatusField:
 
             mock_decoder = MagicMock()
             mock_decoder.detect_phase.return_value = {
-                "workflow_phase": "tdd",
+                "workflow_phase": "implementation",
                 "sub_phase": "red",
                 "source": "state.json",
                 "confidence": "high",

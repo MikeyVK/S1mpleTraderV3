@@ -139,11 +139,11 @@ class TestPhaseLabelAssembly:
         labels = tool._assemble_labels(make_params(issue_type="feature"))
         assert "phase:research" in labels
 
-    def test_hotfix_workflow_first_phase_is_tdd(self) -> None:
-        """hotfix → workflow:hotfix → first phase = tdd."""
+    def test_hotfix_workflow_first_phase_is_implementation(self) -> None:
+        """hotfix → workflow:hotfix → first phase = implementation."""
         tool = CreateIssueTool(manager=MagicMock())
         labels = tool._assemble_labels(make_params(issue_type="hotfix"))
-        assert "phase:tdd" in labels
+        assert "phase:implementation" in labels
 
     def test_docs_workflow_first_phase_is_planning(self) -> None:
         """docs → workflow:docs → first phase = planning."""

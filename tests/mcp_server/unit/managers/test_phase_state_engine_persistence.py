@@ -136,4 +136,6 @@ class TestPhaseStateEnginePersistence:
             disk_state = json.load(f)
 
         # Verify content matches
-        assert disk_state == returned_state, "Disk state should match returned state immediately"
+        assert disk_state == returned_state.model_dump(mode="json"), (
+            "Disk state should match returned state immediately"
+        )
