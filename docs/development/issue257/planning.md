@@ -186,16 +186,19 @@ Six implementation cycles that incrementally refactor the Phase State Engine to 
 - `ForceCycleTransitionTool`: `DeliverableCheckError` / `ConfigError` from enforcement hook returned as `ToolResult` warning, not raised (F5/F6.5)
 - `enforcement.yaml` contains `transition_cycle` post-hook with `commit_state_files` action on `.st3/state.json`
 - `server.py` instantiates `TransitionCycleTool(workspace_root=...)` and `ForceCycleTransitionTool(workspace_root=...)` at composition root
+- `cycle_tools.py` exists; `transition_tools.py` does not exist (F6.6 — file rename)
+- All imports of `TransitionCycleTool` / `ForceCycleTransitionTool` in `server.py` and test files reference `mcp_server.tools.cycle_tools` (F6.6)
 
 **Success Criteria:**
-- `grep` finds zero occurrences of `_extract_issue_number` in `transition_tools.py`
-- `grep` finds zero occurrences of `settings.server.workspace_root` inside `execute()` in `transition_tools.py`
+- `grep` finds zero occurrences of `_extract_issue_number` in `cycle_tools.py`
+- `grep` finds zero occurrences of `settings.server.workspace_root` inside `execute()` in `cycle_tools.py`
 - `grep` finds `enforcement_event = "transition_cycle"` in both tool classes
+- `transition_tools.py` does not exist; `cycle_tools.py` exists (F6.6)
 - E2E dispatch test for `transition_cycle` post-hook passes
-- Pyright `--strict` passes on `transition_tools.py`
+- Pyright `--strict` passes on `cycle_tools.py`
 - Full test suite green
 
-**Stop/Go:** ✅ Go to Cycle 6 only if grep checks, E2E dispatch test, and Pyright strict all pass.
+**Stop/Go:** ✅ Go to Cycle 6 only if grep checks, E2E dispatch test, Pyright strict, and file rename all pass.
 
 ---
 

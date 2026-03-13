@@ -2216,6 +2216,15 @@
                   "file": "mcp_server/server.py",
                   "text": "TransitionCycleTool(workspace_root="
                 }
+              },
+              {
+                "id": "D6.7",
+                "description": "transition_tools.py renamed to cycle_tools.py \u2014 parallel naming with phase_tools.py (F6.6); all imports in server.py and test files updated to mcp_server.tools.cycle_tools",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "class TransitionCycleTool"
+                }
               }
             ],
             "exit_criteria": "grep: no _extract_issue_number in transition_tools.py; grep: no settings.server.workspace_root inside execute() in transition_tools.py; grep: enforcement_event = 'transition_cycle' present in both tool classes; E2E dispatch test for transition_cycle post-hook passes; Pyright --strict passes on transition_tools.py; full test suite green"

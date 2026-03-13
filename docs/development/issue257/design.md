@@ -291,6 +291,8 @@ The blocking/warn distinction is a transition-mechanism property, not a hook pro
 
 **F6.5 — F5 applied to ForceCycleTransitionTool:** `ForceCycleTransitionTool` catches `DeliverableCheckError` and `ConfigError` from enforcement hooks and surfaces them as active warnings in the ToolResult, consistent with `ForcePhaseTransitionTool`.
 
+**F6.6 — File rename: `transition_tools.py` → `cycle_tools.py`:** The current naming is asymmetric and misleading. `phase_tools.py` houses phase-transition tools; `transition_tools.py` houses cycle-transition tools. The name `transition_tools` implies it covers *all* transitions, which it does not. Renaming to `cycle_tools.py` restores the parallel: `phase_tools.py` ↔ `cycle_tools.py`. All imports in `server.py` and test files are updated accordingly. The shared base `_BaseTransitionTool` is defined in `phase_tools.py` and imported from there into `cycle_tools.py`.
+
 ---
 
 ### G — Consumer Consolidation
