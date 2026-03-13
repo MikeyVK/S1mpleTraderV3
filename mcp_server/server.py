@@ -21,11 +21,14 @@ from mcp.types import (
 )
 from pydantic import AnyUrl, BaseModel, ValidationError
 
+from mcp_server.core.exceptions import MCPError
+
 # Config
 from mcp_server.config.label_startup import validate_label_config_on_startup
 from mcp_server.config.settings import settings
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.managers.artifact_manager import ArtifactManager
+from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.resources.github import GitHubIssuesResource
 
@@ -125,6 +128,7 @@ class MCPServer:
 
         self.template_registry = TemplateRegistry(registry_path=registry_path)
         lifecycle_logger.info("Template registry initialized")
+        self.enforcement_runner = EnforcementRunner.from_workspace(workspace_root)
 
         self.server = Server(server_name)
 
@@ -331,6 +335,45 @@ class MCPServer:
 
         return response_content
 
+    @staticmethod
+    def _tool_result_from_exception(exc: Exception) -> ToolResult:
+        """Convert one enforcement exception into ToolResult.error()."""
+        if isinstance(exc, MCPError):
+            return ToolResult.error(
+                message=exc.message,
+                error_code=exc.code,
+                hints=exc.hints if exc.hints else None,
+            )
+        if isinstance(exc, ValueError):
+            return ToolResult.error(f"Invalid input: {exc}")
+        if isinstance(exc, FileNotFoundError):
+            return ToolResult.error(f"Configuration error: {exc}")
+        return ToolResult.error(f"Unexpected error: {type(exc).__name__}: {exc}")
+
+    def _run_tool_enforcement(
+        self,
+        tool: BaseTool,
+        timing: str,
+        params: BaseModel | dict[str, Any],
+        result: ToolResult | None = None,
+    ) -> ToolResult | None:
+        """Execute pre/post enforcement for one tool when configured."""
+        event = getattr(tool, "enforcement_event", None)
+        if event is None:
+            return None
+
+        context = EnforcementContext(
+            workspace_root=Path(settings.server.workspace_root),
+            tool_name=tool.name,
+            params=params,
+            tool_result=result,
+        )
+        try:
+            self.enforcement_runner.run(event=event, timing=timing, context=context)
+        except Exception as exc:  # noqa: BLE001
+            return self._tool_result_from_exception(exc)
+        return None
+
     def setup_handlers(self) -> None:
         """Set up the MCP protocol handlers."""
 
@@ -388,8 +431,22 @@ class MCPServer:
                         if isinstance(validated, list):
                             return validated
 
+                        pre_result = self._run_tool_enforcement(tool, "pre", validated)
+                        if pre_result is not None:
+                            return self._convert_tool_result_to_content(pre_result)
+
                         # Execute tool
                         result = await tool.execute(validated)
+
+                        if not result.is_error:
+                            post_result = self._run_tool_enforcement(
+                                tool,
+                                "post",
+                                validated,
+                                result=result,
+                            )
+                            if post_result is not None:
+                                return self._convert_tool_result_to_content(post_result)
 
                         # Convert result to MCP content
                         response_content = self._convert_tool_result_to_content(result)

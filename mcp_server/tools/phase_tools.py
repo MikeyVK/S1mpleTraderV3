@@ -92,6 +92,7 @@ class TransitionPhaseTool(_BasePhaseTransitionTool):
     name = "transition_phase"
     description = "Transition branch to next phase (strict sequential)"
     args_model = TransitionPhaseInput
+    enforcement_event = "transition_phase"
 
     async def execute(self, params: TransitionPhaseInput) -> ToolResult:
         """Execute standard phase transition.

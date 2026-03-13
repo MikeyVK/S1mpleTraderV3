@@ -173,7 +173,7 @@ class TestServerToolRegistration:
             )
             response = await handler(req)
 
-        assert "cannot be created from base" in response[0].text
+        assert "cannot be created from base" in response.root.content[0].text
         manager.create_branch.assert_not_called()
 
     @pytest.mark.asyncio
@@ -242,5 +242,5 @@ class TestServerToolRegistration:
             )
             response = await handler(req)
 
-        assert "Successfully transitioned" in response[0].text
+        assert "Successfully transitioned" in response.root.content[0].text
         mock_commit.assert_called_once()

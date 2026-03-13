@@ -118,6 +118,7 @@ class CreateBranchTool(BaseTool):
     name = "create_branch"
     description = "Create a new branch from specified base branch"
     args_model = CreateBranchInput
+    enforcement_event = "create_branch"
 
     def __init__(self, manager: GitManager | None = None) -> None:
         self.manager = manager or GitManager()

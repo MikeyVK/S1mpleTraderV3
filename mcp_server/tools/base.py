@@ -21,6 +21,7 @@ class BaseTool(ABC):
     name: str
     description: str
     args_model: type[BaseModel] | None = None
+    enforcement_event: str | None = None
 
     def __init_subclass__(cls, **kwargs: Any) -> None:  # noqa: ANN401
         """Automatically wrap execute() with error handler on subclass creation."""
