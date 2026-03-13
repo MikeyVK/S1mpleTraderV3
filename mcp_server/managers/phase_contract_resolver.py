@@ -155,6 +155,29 @@ class PhaseContractResolver:
     def __init__(self, config: PhaseConfigContext) -> None:
         self._config = config
 
+    def resolve_commit_type(
+        self, workflow_name: str, phase: str, sub_phase: str | None
+    ) -> str | None:
+        """Resolve commit type from phase contracts for one workflow phase."""
+        workflow_contracts = self._config.phase_contracts.workflows.get(workflow_name)
+        if workflow_contracts is None:
+            return None
+
+        phase_contract = workflow_contracts.get(phase)
+        if phase_contract is None or sub_phase is None:
+            return None
+
+        if sub_phase not in phase_contract.commit_type_map:
+            raise ConfigError(
+                (
+                    f"Missing commit_type_map entry for sub_phase '{sub_phase}' "
+                    f"in workflow '{workflow_name}' phase '{phase}'"
+                ),
+                file_path=_PHASE_CONTRACTS_DISPLAY_PATH,
+            )
+
+        return phase_contract.commit_type_map[sub_phase]
+
     def resolve(self, workflow_name: str, phase: str, cycle_number: int | None) -> list[CheckSpec]:
         """Resolve phase and cycle-specific checks for the requested workflow.
 

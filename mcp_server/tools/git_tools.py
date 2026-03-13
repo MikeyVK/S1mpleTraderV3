@@ -7,13 +7,14 @@ from pathlib import Path
 from typing import Any
 
 import anyio
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
 from mcp_server.managers import phase_state_engine, project_manager
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, PhaseContractResolver
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -22,6 +23,31 @@ logger = get_logger("tools.git")
 
 class CommitPhaseMismatchError(MCPError):
     """Raised when the provided workflow_phase/cycle_number doesn't match state.json."""
+
+
+def build_commit_type_resolver(
+    workspace_root: Path,
+) -> Callable[[str, str, str | None], str | None]:
+    """Build a resolver that derives commit types from phase contracts."""
+
+    def resolve_commit_type(branch: str, workflow_phase: str, sub_phase: str | None) -> str | None:
+        pm = project_manager.ProjectManager(workspace_root=workspace_root)
+        state_engine = phase_state_engine.PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=pm,
+        )
+        state = state_engine.get_state(branch)
+        if state.issue_number is None:
+            return None
+
+        context = PhaseConfigContext.from_workspace(
+            workspace_root,
+            issue_number=state.issue_number,
+        )
+        resolver = PhaseContractResolver(context)
+        return resolver.resolve_commit_type(state.workflow_name, workflow_phase, sub_phase)
+
+    return resolve_commit_type
 
 
 def build_phase_guard(workspace_root: Path) -> Callable[[str, str, int | None], None]:
@@ -158,6 +184,8 @@ class GitStatusTool(BaseTool):
 class GitCommitInput(BaseModel):
     """Input for GitCommitTool."""
 
+    model_config = ConfigDict(extra="forbid")
+
     message: str = Field(..., description="Commit message (without type/scope prefix)")
     files: list[str] | None = Field(
         default=None,
@@ -193,27 +221,6 @@ class GitCommitInput(BaseModel):
         ),
     )
 
-    # DEPRECATED: Backward compatibility
-    phase: str | None = Field(
-        default=None,
-        description=(
-            "DEPRECATED: TDD phase (red=test, green=feat, refactor, docs). "
-            "Use workflow_phase + sub_phase instead."
-        ),
-    )
-
-    @field_validator("phase")
-    @classmethod
-    def validate_phase(cls, value: str | None) -> str | None:
-        """Validate phase against GitConfig (Convention #8). Only if provided."""
-        if value is None:
-            return None
-        git_config = GitConfig.from_file()
-        if not git_config.has_phase(value):
-            valid_phases = ", ".join(git_config.tdd_phases)
-            raise ValueError(f"Invalid phase '{value}'. Valid phases from git.yaml: {valid_phases}")
-        return value
-
     @field_validator("commit_type")
     @classmethod
     def validate_commit_type(cls, value: str | None) -> str | None:
@@ -232,24 +239,6 @@ class GitCommitInput(BaseModel):
 
         return value.lower()  # Normalize to lowercase
 
-    @model_validator(mode="after")
-    def validate_phase_or_workflow_phase(self) -> "GitCommitInput":
-        """Ensure phase and workflow_phase are not both specified.
-
-        Auto-detection: If neither is provided, workflow_phase will be auto-detected
-        from state.json in execute() method.
-        """
-        has_phase = self.phase is not None
-        has_workflow = self.workflow_phase is not None
-
-        if has_phase and has_workflow:
-            raise ValueError(
-                "Cannot specify both 'phase' (deprecated) and 'workflow_phase'. "
-                "Use workflow_phase only."
-            )
-
-        return self
-
 
 class GitCommitTool(BaseTool):
     """Tool to commit changes with workflow-scoped commit messages."""
@@ -262,83 +251,64 @@ class GitCommitTool(BaseTool):
         self,
         manager: GitManager | None = None,
         phase_guard: Callable[[str, str, int | None], None] | None = None,
+        commit_type_resolver: Callable[[str, str, str | None], str | None] | None = None,
     ) -> None:
         self.manager = manager or GitManager()
         self._phase_guard = phase_guard
+        self._commit_type_resolver = commit_type_resolver
 
     @property
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitCommitInput) -> ToolResult:
-        # Auto-detect workflow_phase from state.json if not provided
-        workflow_phase = params.workflow_phase
-        if workflow_phase is None and params.phase is None:
-            # Get current branch
+        try:
+            workflow_phase = params.workflow_phase
             current_branch = self.manager.adapter.get_current_branch()
 
-            # Read workflow_phase from state.json
-            workspace_root = Path.cwd()
-            pm = project_manager.ProjectManager(workspace_root=workspace_root)
-            state_engine = phase_state_engine.PhaseStateEngine(
-                workspace_root=workspace_root,
-                project_manager=pm,
-            )
-            workflow_phase = state_engine.get_current_phase(branch=current_branch)
+            if workflow_phase is None:
+                workspace_root = Path.cwd()
+                pm = project_manager.ProjectManager(workspace_root=workspace_root)
+                state_engine = phase_state_engine.PhaseStateEngine(
+                    workspace_root=workspace_root,
+                    project_manager=pm,
+                )
+                workflow_phase = state_engine.get_current_phase(branch=current_branch)
 
-            logger.info(
-                "Auto-detected workflow_phase from state.json",
-                extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
-            )
+                logger.info(
+                    "Auto-detected workflow_phase from state.json",
+                    extra={"props": {"branch": current_branch, "workflow_phase": workflow_phase}},
+                )
 
-        # Enforce cycle_number for TDD phase (Issue #146, planning.md Q3)
-        # Must check BEFORE the legacy path maps phase -> tdd to avoid bypass (Cycle 7)
-        effective_phase = workflow_phase
-        if effective_phase is None and params.phase is not None and params.phase != "docs":
-            # Legacy phases "red"/"green"/"refactor" all map to implementation.
-            effective_phase = "implementation"
+            if workflow_phase == "implementation" and params.cycle_number is None:
+                raise ValueError(
+                    "cycle_number is required for TDD phase commits. "
+                    "All TDD work belongs to a specific cycle. "
+                    "Use: git_add_or_commit(workflow_phase='implementation', cycle_number=N, ...)"
+                )
 
-        if effective_phase == "implementation" and params.cycle_number is None:
-            raise ValueError(
-                "cycle_number is required for TDD phase commits. "
-                "All TDD work belongs to a specific cycle. "
-                "Use: git_add_or_commit(workflow_phase='implementation', cycle_number=N, ...)"
-            )
+            if self._phase_guard is not None:
+                self._phase_guard(current_branch, workflow_phase, params.cycle_number)
 
-        # Phase guard: validate workflow_phase + cycle_number against state.json (GAP-07)
-        if self._phase_guard is not None and workflow_phase is not None:
-            current_branch = self.manager.adapter.get_current_branch()
-            self._phase_guard(current_branch, workflow_phase, params.cycle_number)
+            commit_type = params.commit_type
+            if commit_type is None and self._commit_type_resolver is not None:
+                commit_type = self._commit_type_resolver(
+                    current_branch,
+                    workflow_phase,
+                    params.sub_phase,
+                )
 
-        # NEW workflow-first path
-        if workflow_phase is not None:
             commit_hash = self.manager.commit_with_scope(
                 workflow_phase=workflow_phase,
                 message=params.message,
                 sub_phase=params.sub_phase,
                 cycle_number=params.cycle_number,
-                commit_type=params.commit_type,
+                commit_type=commit_type,
                 files=params.files,
             )
-        # LEGACY backward-compatible path (phase -> workflow mapping)
-        else:
-            legacy_phase = params.phase
-            if legacy_phase == "docs":
-                mapped_workflow_phase = "documentation"
-                mapped_sub_phase = None
-            else:
-                mapped_workflow_phase = "implementation"
-                mapped_sub_phase = legacy_phase
-
-            commit_hash = self.manager.commit_with_scope(
-                workflow_phase=mapped_workflow_phase,
-                message=params.message,
-                sub_phase=mapped_sub_phase,
-                cycle_number=params.cycle_number,
-                commit_type=params.commit_type,
-                files=params.files,
-            )
-        return ToolResult.text(f"Committed: {commit_hash}")
+            return ToolResult.text(f"Committed: {commit_hash}")
+        except Exception as exc:
+            return ToolResult.error(str(exc))
 
 
 class GitRestoreInput(BaseModel):
@@ -593,7 +563,7 @@ class GetParentBranchTool(BaseTool):
                 project_manager=pm,
             )
             state = await anyio.to_thread.run_sync(engine.get_state, branch)
-            parent = state.get("parent_branch")
+            parent = state.parent_branch
 
             if parent:
                 return ToolResult.text(f"Branch: {branch}\nParent branch: {parent}")

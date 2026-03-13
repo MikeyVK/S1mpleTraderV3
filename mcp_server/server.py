@@ -53,6 +53,7 @@ from mcp_server.tools.git_tools import (
     GitRestoreTool,
     GitStashTool,
     GitStatusTool,
+    build_commit_type_resolver,
     build_phase_guard,
 )
 from mcp_server.tools.health_tools import HealthCheckTool
@@ -138,7 +139,12 @@ class MCPServer:
             # Git tools
             CreateBranchTool(),
             GitStatusTool(),
-            GitCommitTool(phase_guard=build_phase_guard(Path(settings.server.workspace_root))),
+            GitCommitTool(
+                phase_guard=build_phase_guard(Path(settings.server.workspace_root)),
+                commit_type_resolver=build_commit_type_resolver(
+                    Path(settings.server.workspace_root)
+                ),
+            ),
             GitCheckoutTool(),
             GitFetchTool(),
             GitPullTool(),
