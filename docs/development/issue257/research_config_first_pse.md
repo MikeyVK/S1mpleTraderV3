@@ -1026,7 +1026,7 @@ De flag-day aanpak (F24) raakt een significant deel van de testsuite. De volgend
 | `tests/mcp_server/core/test_scope_encoder.py` | `phase="tdd"`, `P_TDD_SP_*` assertions | Bijwerken naar `"implementation"` + `P_IMPLEMENTATION_SP_*` |
 | `tests/mcp_server/core/test_phase_detection.py` | `workflow_phase == "tdd"`, `P_TDD_SP_RED` in fixtures | Bijwerken naar `"implementation"` |
 | `tests/mcp_server/managers/test_git_manager_config.py` | `P_TDD_SP_RED`, `P_TDD_SP_GREEN` assertions | Bijwerken scope strings |
-| `tests/mcp_server/unit/tools/test_transition_tools.py` | `planning_deliverables`, `current_tdd_cycle`, `tdd_cycle_history`, `initial_phase="tdd"` | Volledig herschrijven op `deliverables.json` + `current_cycle` |
+| `tests/mcp_server/unit/tools/test_cycle_tools_legacy.py` | `planning_deliverables`, `current_tdd_cycle`, `tdd_cycle_history`, `initial_phase="tdd"` | Volledig herschrijven op `deliverables.json` + `current_cycle` |
 | `tests/mcp_server/unit/tools/test_project_tools.py` | Alle `projects.json` read-asserts (8+ testcases) | Herschrijven op `deliverables.json` |
 | `tests/mcp_server/unit/tools/test_initialize_project_tool.py` | `projects.json` aanmaak- en structuurtests | Herschrijven: `deliverables.json` + verrijkte `state.json` |
 | `tests/mcp_server/unit/managers/test_phase_state_engine.py` | `projects.json`-injectie in fixtures | Herschrijven fixtures |

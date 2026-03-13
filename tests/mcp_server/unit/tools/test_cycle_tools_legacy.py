@@ -109,13 +109,10 @@ class TestTransitionCycleTool:
         # Mock git and settings
         with (
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(TransitionCycleInput(to_cycle=2))
 
@@ -153,13 +150,10 @@ class TestTransitionCycleTool:
         #  Mock git
         with (
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(TransitionCycleInput(to_cycle=1))
 
@@ -177,18 +171,15 @@ class TestTransitionCycleTool:
 
         Issue #146 Cycle 4: Sequential validation.
         """
-        workspace_root, _ = setup_project
+        _workspace_root, _ = setup_project
 
         # Mock git
         with (
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-
-            mock_settings.server.workspace_root = workspace_root
 
             # Try to jump from cycle 1 to 3 (skipping 2)
             result = await tool.execute(TransitionCycleInput(to_cycle=3))
@@ -221,13 +212,10 @@ class TestTransitionCycleTool:
         # Mock git
         with (
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(TransitionCycleInput(to_cycle=2))
 
@@ -323,14 +311,11 @@ class TestForceCycleTransitionTool:
         workspace_root, _ = setup_forced_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -372,14 +357,11 @@ class TestForceCycleTransitionTool:
         workspace_root, _ = setup_forced_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -408,17 +390,14 @@ class TestForceCycleTransitionTool:
         self, tool: ForceCycleTransitionTool, setup_forced_project: tuple[Path, int]
     ) -> None:
         """Test that forced transition blocks when skip_reason is empty."""
-        workspace_root, _ = setup_forced_project
+        _workspace_root, _ = setup_forced_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -438,17 +417,14 @@ class TestForceCycleTransitionTool:
         self, tool: ForceCycleTransitionTool, setup_forced_project: tuple[Path, int]
     ) -> None:
         """Test that forced transition blocks when human_approval is empty."""
-        workspace_root, _ = setup_forced_project
+        _workspace_root, _ = setup_forced_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -571,19 +547,17 @@ class TestForceCycleTransitionSkippedDeliverables:
         The transition still succeeds (forced = unconditional). Only the warning is added.
         Issue #229 D3.2 (GAP-08).
         """
-        workspace_root, _ = self._setup_project_with_validates_deliverables(
+        _workspace_root, _ = self._setup_project_with_validates_deliverables(
             tmp_path,
             cycle3_file_contains=None,  # File absent → check fails
         )
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -608,19 +582,17 @@ class TestForceCycleTransitionSkippedDeliverables:
 
         Issue #229 D3.2 (GAP-08).
         """
-        workspace_root, _ = self._setup_project_with_validates_deliverables(
+        _workspace_root, _ = self._setup_project_with_validates_deliverables(
             tmp_path,
             cycle3_file_contains="def warn():\n    msg = 'Unvalidated cycle deliverables'\n",
         )
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -729,13 +701,11 @@ class TestForceCycleAuditSchema:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -773,13 +743,11 @@ class TestForceCycleAuditSchema:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             await tool.execute(
                 ForceCycleTransitionInput(
@@ -814,13 +782,11 @@ class TestForceCycleAuditSchema:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -929,13 +895,11 @@ class TestTransitionCycleHistory:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(TransitionCycleInput(to_cycle=2))
 
@@ -966,13 +930,11 @@ class TestTransitionCycleHistory:
         workspace_root, _ = setup_project
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result1 = await tool.execute(TransitionCycleInput(to_cycle=2))
             assert not result1.is_error
@@ -1084,7 +1046,7 @@ class TestTransitionCycleExitCriteria:
 
         Issue #146 Cycle 6 D3: Design.md:287 - validate_exit_criteria before transition.
         """
-        workspace_root = self._make_project(
+        _workspace_root = self._make_project(
             tmp_path,
             bypass_validation=True,
             cycles=[
@@ -1104,13 +1066,11 @@ class TestTransitionCycleExitCriteria:
         )
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(TransitionCycleInput(to_cycle=2))
 
@@ -1126,7 +1086,7 @@ class TestTransitionCycleExitCriteria:
 
         Issue #146 Cycle 6 D3: exit_criteria key is mandatory.
         """
-        workspace_root = self._make_project(
+        _workspace_root = self._make_project(
             tmp_path,
             bypass_validation=True,
             cycles=[
@@ -1146,13 +1106,11 @@ class TestTransitionCycleExitCriteria:
         )
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(TransitionCycleInput(to_cycle=2))
 
@@ -1168,7 +1126,7 @@ class TestTransitionCycleExitCriteria:
 
         Issue #146 Cycle 6 D3: Normal path - exit criteria defined means transition allowed.
         """
-        workspace_root = self._make_project(
+        _workspace_root = self._make_project(
             tmp_path,
             cycles=[
                 {
@@ -1187,13 +1145,11 @@ class TestTransitionCycleExitCriteria:
         )
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(TransitionCycleInput(to_cycle=2))
 
@@ -1297,19 +1253,17 @@ class TestForceCycleTransitionResponseFormat:
         self, tool: ForceCycleTransitionTool, tmp_path: Path
     ) -> None:
         """Unvalidated (blocking) deliverables appear BEFORE ✅ in response (GAP-17/D10.4)."""
-        workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
+        _workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
             tmp_path,
             cycle3_file_present=False,  # file absent → deliverable FAILS → blocks
         )
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(
@@ -1335,19 +1289,17 @@ class TestForceCycleTransitionResponseFormat:
         self, tool: ForceCycleTransitionTool, tmp_path: Path
     ) -> None:
         """Validated (passing) deliverables listed informatively AFTER ✅ (GAP-17/D10.5)."""
-        workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
+        _workspace_root, issue_number, _branch = self._setup_for_cycle_transition(
             tmp_path,
             cycle3_file_present=True,  # file present → deliverable PASSES
         )
 
         with (
-            patch("mcp_server.tools.cycle_tools.settings") as mock_settings,
             patch("mcp_server.tools.cycle_tools.GitManager") as mock_git_class,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/229-phase-deliverables-enforcement"
             mock_git_class.return_value = mock_git
-            mock_settings.server.workspace_root = workspace_root
 
             result = await tool.execute(
                 ForceCycleTransitionInput(

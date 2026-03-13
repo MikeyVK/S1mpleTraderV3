@@ -83,7 +83,7 @@ Voorbeelden:
 - `tdd_cycle_history`
 
 Belangrijkste hotspot:
-- `tests/mcp_server/unit/tools/test_transition_tools.py`
+- `tests/mcp_server/unit/tools/test_cycle_tools_legacy.py`
 
 Risico:
 - verwarring tussen compatibility-laag en beoogde eindterminologie;
@@ -174,7 +174,7 @@ Na de functionele refactor een korte stabilisatie-/opschooncycle uitvoeren die a
 ## Concrete backlog voor implementatie-agent
 
 1. Maak een inventaris van alle resterende `current_tdd_cycle` / `last_tdd_cycle` / `tdd_cycle_history` referenties buiten compatibility-code.
-2. Migreer `tests/mcp_server/unit/tools/test_transition_tools.py` naar de nieuwe cycle-velden.
+2. Migreer `tests/mcp_server/unit/tools/test_cycle_tools_legacy.py` naar de nieuwe cycle-velden.
 3. Evalueer of `BranchState.get()`, `__getitem__`, `__contains__` en de oude cycle-properties nog noodzakelijk zijn na verdere testmigratie.
 4. Bepaal de definitieve publieke contractnamen in `phase_contracts` en migreer tests/fixtures/tooling weg van `checks` / `cycle_checks` zodra dat veilig kan.
 5. Verwijder de Cycle 3 alias-ondersteuning pas nadat die convergentie aantoonbaar is afgerond.

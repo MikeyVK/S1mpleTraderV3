@@ -13,7 +13,6 @@ from datetime import UTC, datetime
 from pydantic import BaseModel, Field
 
 from mcp_server.config.git_config import GitConfig
-from mcp_server.config.settings import settings
 from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.phase_tools import _BaseTransitionTool
@@ -24,7 +23,6 @@ __all__ = [
     "ForceCycleTransitionTool",
     "TransitionCycleInput",
     "TransitionCycleTool",
-    "settings",
 ]
 
 
@@ -142,7 +140,6 @@ class TransitionCycleTool(_BaseTransitionTool):
 
     def _get_current_branch(self) -> str:
         """Resolve the active branch from GitManager or its adapter."""
-        git_manager = GitManager()
         git_manager = GitManager()
         return git_manager.get_current_branch()
 
@@ -293,6 +290,5 @@ class ForceCycleTransitionTool(_BaseTransitionTool):
 
     def _get_current_branch(self) -> str:
         """Resolve the active branch from GitManager or its adapter."""
-        git_manager = GitManager()
         git_manager = GitManager()
         return git_manager.get_current_branch()
