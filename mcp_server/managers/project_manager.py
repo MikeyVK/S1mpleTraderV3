@@ -27,6 +27,7 @@ from mcp_server.config.workflows import workflow_config
 # Project modules
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.utils.atomic_json_writer import AtomicJsonWriter
 
 # Per-phase keys recognised in planning_deliverables (C8/GAP-15)
 _known_phase_keys: frozenset[str] = frozenset(
@@ -92,6 +93,7 @@ class ProjectManager:
         """
         self.workspace_root = Path(workspace_root)
         self.deliverables_file = self.workspace_root / ".st3" / "deliverables.json"
+        self.atomic_json_writer = AtomicJsonWriter()
 
     def initialize_project(
         self,
@@ -296,7 +298,7 @@ class ProjectManager:
         projects[str(issue_number)]["planning_deliverables"] = planning_deliverables
 
         # Write to file
-        self.deliverables_file.write_text(json.dumps(projects, indent=2))
+        self._write_deliverables(projects)
 
     def update_planning_deliverables(
         self, issue_number: int, planning_deliverables: dict[str, Any]
@@ -411,7 +413,7 @@ class ProjectManager:
                         existing_phase_delivs.append(incoming_deliv)
                         existing_phase_deliv_index[d_id] = len(existing_phase_delivs) - 1
 
-        self.deliverables_file.write_text(json.dumps(projects, indent=2))
+        self._write_deliverables(projects)
 
     def get_project_plan(self, issue_number: int) -> dict[str, Any] | None:
         """Get stored project plan with current phase detection.
@@ -469,6 +471,10 @@ class ProjectManager:
 
         return plan
 
+    def _write_deliverables(self, projects: dict[str, Any]) -> None:
+        """Persist deliverables.json via atomic replacement."""
+        self.atomic_json_writer.write_json(self.deliverables_file, projects)
+
     def _save_project_plan(self, plan: ProjectPlan) -> None:
         """Save project plan to deliverables.json.
 
@@ -493,4 +499,4 @@ class ProjectManager:
         }
 
         # Write to file
-        self.deliverables_file.write_text(json.dumps(projects, indent=2))
+        self._write_deliverables(projects)

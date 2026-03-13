@@ -694,3 +694,19 @@ class TestPlanningDeliverablesSchema:
                     }
                 },
             )
+
+
+class TestIssue257Cycle7Contracts:
+    """Contract tests for Issue #257 Cycle 7 deliverables."""
+
+    def test_project_manager_source_uses_atomic_json_writer(self) -> None:
+        """D7.3: project_manager.py should use AtomicJsonWriter for deliverables writes."""
+        source = Path("mcp_server/managers/project_manager.py").read_text(encoding="utf-8")
+
+        assert "AtomicJsonWriter" in source
+
+    def test_gitignore_does_not_ignore_state_json(self) -> None:
+        """D7.4: .st3/state.json must not remain ignored."""
+        gitignore = Path(".gitignore").read_text(encoding="utf-8")
+
+        assert ".st3/state.json" not in gitignore
