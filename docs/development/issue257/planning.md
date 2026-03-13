@@ -170,6 +170,35 @@ Six implementation cycles that incrementally refactor the Phase State Engine to 
 
 ---
 
+### Cycle 5.1: transition_tools refactor — shared base + enforcement hooks + DIP/DRY fixes (F6)
+
+**Design decisions:** F6.1–F6.5
+
+**Goal:** Bring `TransitionCycleTool` and `ForceCycleTransitionTool` in line with the C1–C5 refactoring. Three violations introduced before the refactoring are corrected in a single focused cycle: DIP (direct settings access in execute), DRY (private `_extract_issue_number()` instead of `GitConfig`), and F3 gap (`enforcement_event` missing → cycle state never auto-committed).
+
+**Tests:**
+- `TransitionCycleTool` and `ForceCycleTransitionTool` accept `workspace_root` as constructor parameter; no `settings` access inside `execute()` (DIP F6.2)
+- `GitConfig.extract_issue_number()` is called for branch parsing; `_extract_issue_number()` method is absent from `transition_tools.py` (I3/DRY F6.3)
+- Both tools inherit from `_BaseTransitionTool` (or equivalent shared base); `_create_engine()` is not duplicated (F6.1)
+- `TransitionCycleTool.enforcement_event == "transition_cycle"` (F6.4)
+- `ForceCycleTransitionTool.enforcement_event == "transition_cycle"` (F6.4)
+- Dispatch E2E test: `transition_cycle` triggers post-hook → `state.json` committed automatically (F6.4, analogous to `transition_phase` test in `test_server.py`)
+- `ForceCycleTransitionTool`: `DeliverableCheckError` / `ConfigError` from enforcement hook returned as `ToolResult` warning, not raised (F5/F6.5)
+- `enforcement.yaml` contains `transition_cycle` post-hook with `commit_state_files` action on `.st3/state.json`
+- `server.py` instantiates `TransitionCycleTool(workspace_root=...)` and `ForceCycleTransitionTool(workspace_root=...)` at composition root
+
+**Success Criteria:**
+- `grep` finds zero occurrences of `_extract_issue_number` in `transition_tools.py`
+- `grep` finds zero occurrences of `settings.server.workspace_root` inside `execute()` in `transition_tools.py`
+- `grep` finds `enforcement_event = "transition_cycle"` in both tool classes
+- E2E dispatch test for `transition_cycle` post-hook passes
+- Pyright `--strict` passes on `transition_tools.py`
+- Full test suite green
+
+**Stop/Go:** ✅ Go to Cycle 6 only if grep checks, E2E dispatch test, and Pyright strict all pass.
+
+---
+
 ### Cycle 6: deliverables.json tools + state.json git-tracked (B1 + B2 + B4 + B5)
 
 **Design decisions:** B1–B5

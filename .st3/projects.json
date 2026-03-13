@@ -1919,7 +1919,7 @@
     "created_at": "2026-03-03T14:20:50.753090+00:00",
     "planning_deliverables": {
       "tdd_cycles": {
-        "total": 6,
+        "total": 7,
         "cycles": [
           {
             "cycle_number": 1,
@@ -2165,6 +2165,66 @@
             "deliverables": [
               {
                 "id": "D6.1",
+                "description": "_BaseTransitionTool shared base class introduced (F6.1 \u2014 DRY, eliminates duplicated engine-construction)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "_BaseTransitionTool"
+                }
+              },
+              {
+                "id": "D6.2",
+                "description": "TransitionCycleTool uses constructor injection for workspace_root; no settings access in execute() (F6.2 \u2014 DIP)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "settings.server.workspace_root"
+                }
+              },
+              {
+                "id": "D6.3",
+                "description": "_extract_issue_number() removed from transition_tools.py; GitConfig.extract_issue_number() used instead (F6.3 \u2014 I3/DRY)",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "_extract_issue_number"
+                }
+              },
+              {
+                "id": "D6.4",
+                "description": "TransitionCycleTool.enforcement_event = 'transition_cycle' declared (F6.4 \u2014 F3 extension)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/tools/transition_tools.py",
+                  "text": "enforcement_event = \"transition_cycle\""
+                }
+              },
+              {
+                "id": "D6.5",
+                "description": "enforcement.yaml contains transition_cycle post-hook with commit_state_files action (F6.4)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": ".st3/config/enforcement.yaml",
+                  "text": "transition_cycle"
+                }
+              },
+              {
+                "id": "D6.6",
+                "description": "server.py instantiates TransitionCycleTool and ForceCycleTransitionTool with workspace_root parameter (F6.2 \u2014 composition root)",
+                "validates": {
+                  "type": "contains_text",
+                  "file": "mcp_server/server.py",
+                  "text": "TransitionCycleTool(workspace_root="
+                }
+              }
+            ],
+            "exit_criteria": "grep: no _extract_issue_number in transition_tools.py; grep: no settings.server.workspace_root inside execute() in transition_tools.py; grep: enforcement_event = 'transition_cycle' present in both tool classes; E2E dispatch test for transition_cycle post-hook passes; Pyright --strict passes on transition_tools.py; full test suite green"
+          },
+          {
+            "cycle_number": 7,
+            "deliverables": [
+              {
+                "id": "D7.1",
                 "description": "project_manager.py writes to deliverables.json \u2014 projects.json abolished (B, C)",
                 "validates": {
                   "type": "contains_text",
@@ -2173,7 +2233,7 @@
                 }
               },
               {
-                "id": "D6.2",
+                "id": "D7.2",
                 "description": "projects_file attribute removed from ProjectManager (replaced by deliverables_file)",
                 "validates": {
                   "type": "absent_text",
@@ -2182,7 +2242,7 @@
                 }
               },
               {
-                "id": "D6.3",
+                "id": "D7.3",
                 "description": "AtomicJsonWriter used in project_manager.py for deliverables.json writes (B3)",
                 "validates": {
                   "type": "contains_text",
@@ -2191,7 +2251,7 @@
                 }
               },
               {
-                "id": "D6.4",
+                "id": "D7.4",
                 "description": "state.json removed from .gitignore \u2014 git-tracked per branch (B5)",
                 "validates": {
                   "type": "absent_text",
@@ -2200,7 +2260,7 @@
                 }
               },
               {
-                "id": "D6.5",
+                "id": "D7.5",
                 "description": "PSE.initialize_branch() emits explicit warning for uncommitted state changes (B5, Explicit-over-Implicit)",
                 "validates": {
                   "type": "contains_text",
@@ -2209,7 +2269,7 @@
                 }
               },
               {
-                "id": "D6.6",
+                "id": "D7.6",
                 "description": "state.json restored from temporary tdd compatibility back to implementation phase state before PR/merge work",
                 "validates": {
                   "type": "contains_text",

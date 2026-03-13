@@ -272,6 +272,25 @@ At dispatch: `runner.run(tool.enforcement_event, timing="pre"|"post", context)`.
 
 The blocking/warn distinction is a transition-mechanism property, not a hook property.
 
+#### F6 — `TransitionCycleTool` / `ForceCycleTransitionTool` refactor: shared base, enforcement hooks, constructor injection, GitConfig
+
+**Problem:** `TransitionCycleTool` and `ForceCycleTransitionTool` in `transition_tools.py` were written before the C1–C5 refactoring. They have three architectural violations:
+1. `workspace_root = Path(settings.server.workspace_root)` called inside `execute()` (DIP violation — direct settings access instead of constructor injection).
+2. Private `_extract_issue_number()` method duplicated in the tool instead of delegating to `GitConfig.extract_issue_number()` (I3/DRY violation).
+3. No `enforcement_event` class variable — cycle state mutations bypass the enforcement layer entirely, meaning `state.json` is never auto-committed after a cycle transition (F3 gap).
+
+**Decision:**
+
+**F6.1 — Shared base class:** `_BasePhaseTransitionTool` in `phase_tools.py` is renamed to `_BaseTransitionTool` and moved to a shared location (or `transition_tools.py` imports it). Both `TransitionCycleTool` and `ForceCycleTransitionTool` inherit from it, reusing `__init__(workspace_root)` and `_create_engine()`. This eliminates the duplicated engine-construction logic.
+
+**F6.2 — Constructor injection:** `workspace_root` is injected via `__init__(workspace_root: Path | str)`, consistent with phase tools. `settings.server.workspace_root` is only accessed at the composition root in `server.py`.
+
+**F6.3 — GitConfig.extract_issue_number():** The private `_extract_issue_number()` method in `TransitionCycleTool` is removed. All callers use `GitConfig.extract_issue_number(branch)` instead — the SSOT established in Cycle 1 / decision I3.
+
+**F6.4 — enforcement_event on cycle tools (F3 extension):** Both tools declare `enforcement_event = "transition_cycle"`. The `enforcement.yaml` gets a `post` rule for `transition_cycle` with action `commit_state_files` on `.st3/state.json`, identical to the existing `transition_phase` rule. `ForceCycleTransitionTool` applies the F5 pattern: hook exceptions returned as `ToolResult` warnings, not raised.
+
+**F6.5 — F5 applied to ForceCycleTransitionTool:** `ForceCycleTransitionTool` catches `DeliverableCheckError` and `ConfigError` from enforcement hooks and surfaces them as active warnings in the ToolResult, consistent with `ForcePhaseTransitionTool`.
+
 ---
 
 ### G — Consumer Consolidation
