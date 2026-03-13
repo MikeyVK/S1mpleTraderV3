@@ -485,7 +485,11 @@ class ProjectManager:
         self.deliverables_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Load existing projects
-        projects = json.loads(self.deliverables_file.read_text()) if self.deliverables_file.exists() else {}
+        projects = (
+            json.loads(self.deliverables_file.read_text())
+            if self.deliverables_file.exists()
+            else {}
+        )
 
         # Store plan (convert tuple to list for JSON)
         projects[str(plan.issue_number)] = {

@@ -329,7 +329,10 @@ class PhaseStateEngine:
             )
             return bool(result.stdout.strip())
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            logger.warning("Unable to check state.json git status during initialize_branch: %s", exc)
+            logger.warning(
+                "Unable to check state.json git status during initialize_branch: %s",
+                exc,
+            )
             return False
 
     def get_state(self, branch: str) -> BranchState:
