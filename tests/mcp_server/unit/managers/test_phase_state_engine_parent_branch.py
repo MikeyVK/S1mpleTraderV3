@@ -208,6 +208,28 @@ class TestPhaseStateEngineParentBranch:
         assert state.reconstructed is True
         assert state.workflow_name == "bug"
 
+    def test_initialize_branch_returns_warning_for_uncommitted_state_changes(
+        self,
+        engine: PhaseStateEngine,
+        project_manager: ProjectManager,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """initialize_branch warns explicitly when tracked state.json has local changes."""
+        project_manager.initialize_project(
+            issue_number=84,
+            issue_title="Warn on dirty state",
+            workflow_name="feature",
+        )
+        monkeypatch.setattr(engine, "_has_uncommitted_state_changes", lambda: True)
+
+        result = engine.initialize_branch(
+            branch="feature/84-dirty-state",
+            issue_number=84,
+            initial_phase="research",
+        )
+
+        assert result["warnings"] == ["state.json has uncommitted local changes"]
+
 
 class TestTddCycleTrackingFields:
     """Test TDD cycle tracking fields in state management.

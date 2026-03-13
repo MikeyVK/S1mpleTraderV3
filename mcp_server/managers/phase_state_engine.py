@@ -117,6 +117,10 @@ class PhaseStateEngine:
         if parent_branch is None:
             parent_branch = project.get("parent_branch")
 
+        warnings: list[str] = []
+        if self._has_uncommitted_state_changes():
+            warnings.append("state.json has uncommitted local changes")
+
         state = BranchState(
             branch=branch,
             issue_number=issue_number,
@@ -139,6 +143,7 @@ class PhaseStateEngine:
             "branch": branch,
             "current_phase": initial_phase,
             "parent_branch": parent_branch,
+            "warnings": warnings,
         }
 
     def transition(
@@ -300,6 +305,32 @@ class PhaseStateEngine:
     def get_current_phase(self, branch: str) -> str:
         """Get current phase for branch."""
         return self.get_state(branch).current_phase
+
+    def _has_uncommitted_state_changes(self) -> bool:
+        """Check whether tracked state.json has local git changes."""
+        if not self.state_file.exists():
+            return False
+
+        try:
+            env = os.environ.copy()
+            env.setdefault("GIT_TERMINAL_PROMPT", "0")
+            env.setdefault("GIT_PAGER", "cat")
+            env.setdefault("PAGER", "cat")
+
+            result = subprocess.run(
+                ["git", "status", "--porcelain", "--", ".st3/state.json"],
+                cwd=self.workspace_root,
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                check=True,
+                timeout=2,
+                env=env,
+            )
+            return bool(result.stdout.strip())
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            logger.warning("Unable to check state.json git status during initialize_branch: %s", exc)
+            return False
 
     def get_state(self, branch: str) -> BranchState:
         """Get full state for branch with auto-recovery."""
