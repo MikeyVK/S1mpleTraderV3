@@ -1,0 +1,30 @@
+{
+  "branch": "feature/257-reorder-workflow-phases",
+  "issue_number": 257,
+  "workflow_name": "feature",
+  "current_phase": "implementation",
+  "current_cycle": 6,
+  "last_cycle": 5,
+  "cycle_history": [
+    {
+      "cycle_number": 6,
+      "forced": false,
+      "entered": "2026-03-13T13:36:16.688864+00:00"
+    }
+  ],
+  "required_phases": [
+    "research",
+    "planning",
+    "design",
+    "implementation",
+    "validation",
+    "documentation"
+  ],
+  "execution_mode": "interactive",
+  "skip_reason": null,
+  "issue_title": "Reorder workflow phases: research → design → planning → tdd",
+  "parent_branch": "main",
+  "created_at": "2026-03-13T10:08:37.028504+00:00",
+  "transitions": [],
+  "reconstructed": false
+}
