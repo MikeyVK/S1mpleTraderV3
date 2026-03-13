@@ -26,7 +26,9 @@ def _write_enforcement_file(tmp_path: Path, content: str) -> None:
 class TestEnforcementRunner:
     """Test suite for Cycle 5 enforcement loading and dispatch."""
 
-    def test_from_workspace_raises_config_error_for_unknown_action_type(self, tmp_path: Path) -> None:
+    def test_from_workspace_raises_config_error_for_unknown_action_type(
+        self, tmp_path: Path
+    ) -> None:
         """Unknown action types must fail fast at startup."""
         _write_enforcement_file(
             tmp_path,
@@ -43,7 +45,9 @@ class TestEnforcementRunner:
         with pytest.raises(ConfigError, match="unknown_action"):
             EnforcementRunner.from_workspace(tmp_path)
 
-    def test_run_dispatches_registered_handler_for_matching_tool_event(self, tmp_path: Path) -> None:
+    def test_run_dispatches_registered_handler_for_matching_tool_event(
+        self, tmp_path: Path
+    ) -> None:
         """Matching tool rules must dispatch their registered handlers."""
         config = EnforcementConfig(
             enforcement=[
@@ -51,7 +55,9 @@ class TestEnforcementRunner:
                     event_source="tool",
                     tool="transition_phase",
                     timing="post",
-                    actions=[EnforcementAction(type="commit_state_files", paths=[".st3/state.json"])],
+                    actions=[
+                        EnforcementAction(type="commit_state_files", paths=[".st3/state.json"])
+                    ],
                 )
             ]
         )
@@ -111,6 +117,9 @@ class TestEnforcementRunner:
                 context=EnforcementContext(
                     workspace_root=tmp_path,
                     tool_name="create_branch",
-                    params=SimpleNamespace(branch_type="feature", base_branch="release/1.0"),
+                    params=SimpleNamespace(
+                        branch_type="feature",
+                        base_branch="release/1.0",
+                    ),
                 ),
             )

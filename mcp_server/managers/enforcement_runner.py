@@ -8,18 +8,21 @@ Dispatch-level enforcement runner for tool events configured in
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Any, Callable
+from typing import cast
 
 import yaml
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    ValidationError as PydanticValidationError,
     model_validator,
+)
+from pydantic import (
+    ValidationError as PydanticValidationError,
 )
 
 from mcp_server.core.exceptions import ConfigError, ValidationError
@@ -29,8 +32,6 @@ from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.tool_result import ToolResult
 
 _ENFORCEMENT_DISPLAY_PATH = ".st3/config/enforcement.yaml"
-
-ActionHandler = Callable[["EnforcementAction", "EnforcementContext", Path], str | None]
 
 
 class EnforcementAction(BaseModel):
@@ -46,7 +47,7 @@ class EnforcementAction(BaseModel):
     message: str | None = None
 
     @model_validator(mode="after")
-    def validate_required_fields(self) -> "EnforcementAction":
+    def validate_required_fields(self) -> EnforcementAction:
         """Validate action-specific required fields."""
         if self.type == "check_branch_policy" and not self.rules:
             raise ValueError("check_branch_policy requires non-empty rules")
@@ -69,7 +70,7 @@ class EnforcementRule(BaseModel):
     actions: list[EnforcementAction] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_target(self) -> "EnforcementRule":
+    def validate_target(self) -> EnforcementRule:
         """Validate rule target fields."""
         if self.event_source == "tool" and not self.tool:
             raise ValueError("tool event_source requires tool")
@@ -86,7 +87,7 @@ class EnforcementConfig(BaseModel):
     enforcement: list[EnforcementRule] = Field(default_factory=list)
 
     @classmethod
-    def from_file(cls, file_path: Path) -> "EnforcementConfig":
+    def from_file(cls, file_path: Path) -> EnforcementConfig:
         """Load enforcement config from YAML.
 
         Missing config is treated as empty so existing workspaces remain usable.
@@ -111,6 +112,27 @@ class EnforcementConfig(BaseModel):
             ) from exc
 
 
+@dataclass(frozen=True)
+class EnforcementContext:
+    """Runtime context passed to action handlers."""
+
+    workspace_root: Path
+    tool_name: str
+    params: object
+    tool_result: ToolResult | None = None
+
+    def get_param(self, name: str) -> object | None:
+        """Read one parameter from Pydantic models, namespaces, or dicts."""
+        if hasattr(self.params, name):
+            return cast(object, getattr(self.params, name))
+        if isinstance(self.params, dict):
+            return self.params.get(name)
+        return None
+
+
+ActionHandler = Callable[[EnforcementAction, EnforcementContext, Path], str | None]
+
+
 class EnforcementRegistry:
     """Registry for named enforcement action handlers."""
 
@@ -128,24 +150,6 @@ class EnforcementRegistry:
     def get(self, action_type: str) -> ActionHandler:
         """Get one registered action handler."""
         return self._handlers[action_type]
-
-
-@dataclass(frozen=True)
-class EnforcementContext:
-    """Runtime context passed to action handlers."""
-
-    workspace_root: Path
-    tool_name: str
-    params: Any
-    tool_result: ToolResult | None = None
-
-    def get_param(self, name: str) -> Any:
-        """Read one parameter from Pydantic models, namespaces, or dicts."""
-        if hasattr(self.params, name):
-            return getattr(self.params, name)
-        if isinstance(self.params, dict):
-            return self.params.get(name)
-        return None
 
 
 class EnforcementRunner:
@@ -168,7 +172,7 @@ class EnforcementRunner:
         self._validate_registered_actions()
 
     @classmethod
-    def from_workspace(cls, workspace_root: Path | str) -> "EnforcementRunner":
+    def from_workspace(cls, workspace_root: Path | str) -> EnforcementRunner:
         """Create a runner from one workspace root."""
         root = Path(workspace_root)
         config = EnforcementConfig.from_file(root / _ENFORCEMENT_DISPLAY_PATH)
@@ -208,8 +212,14 @@ class EnforcementRunner:
     def _build_default_registry() -> EnforcementRegistry:
         """Build the default action registry."""
         registry = EnforcementRegistry()
-        registry.register("check_branch_policy", EnforcementRunner._handle_check_branch_policy)
-        registry.register("commit_state_files", EnforcementRunner._handle_commit_state_files)
+        registry.register(
+            "check_branch_policy",
+            EnforcementRunner._handle_check_branch_policy,
+        )
+        registry.register(
+            "commit_state_files",
+            EnforcementRunner._handle_commit_state_files,
+        )
         return registry
 
     @staticmethod
@@ -245,7 +255,7 @@ class EnforcementRunner:
     ) -> str | None:
         """Commit state files after a successful tool execution."""
         branch = context.get_param("branch")
-        if not branch:
+        if not isinstance(branch, str) or not branch:
             return None
 
         project_manager = ProjectManager(workspace_root=workspace_root)
@@ -253,7 +263,7 @@ class EnforcementRunner:
             workspace_root=workspace_root,
             project_manager=project_manager,
         )
-        state = state_engine.get_state(str(branch))
+        state = state_engine.get_state(branch)
         cycle_number = state.current_cycle if state.current_phase == "implementation" else None
         commit_hash = GitManager().commit_with_scope(
             workflow_phase=state.current_phase,

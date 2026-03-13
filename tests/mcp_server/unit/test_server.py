@@ -1,3 +1,4 @@
+# pyright: reportMissingImports=false
 """Tests for MCP Server tool registration and dispatch hooks."""
 
 import logging
@@ -80,7 +81,7 @@ class TestServerToolRegistration:
             description = "Dummy tool"
             args_model = None
 
-            async def execute(self, params: Any) -> ToolResult:
+            async def execute(self, params: object) -> ToolResult:
                 del params
                 return ToolResult.text("ok")
 
@@ -217,7 +218,9 @@ class TestServerToolRegistration:
 
         with (
             patch("mcp_server.server.settings") as mock_settings,
-            patch("mcp_server.managers.enforcement_runner.GitManager.commit_with_scope") as mock_commit,
+            patch(
+                "mcp_server.managers.enforcement_runner.GitManager.commit_with_scope"
+            ) as mock_commit,
         ):
             mock_settings.server.name = "test-server"
             mock_settings.server.workspace_root = str(tmp_path)
