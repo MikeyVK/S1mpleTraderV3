@@ -87,7 +87,7 @@ class TestPhaseStateEngineParentBranch:
 
         # Verify persisted to state.json
         state = engine.get_state("feature/79-test")
-        assert state["parent_branch"] == "epic/76-qa"
+        assert state.parent_branch == "epic/76-qa"
 
     def test_initialize_branch_inherits_parent_from_project(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -118,7 +118,7 @@ class TestPhaseStateEngineParentBranch:
 
         # Verify persisted to state.json
         state = engine.get_state("bug/80-test")
-        assert state["parent_branch"] == "epic/76-qa"
+        assert state.parent_branch == "epic/76-qa"
 
     def test_initialize_branch_with_none_parent_branch(
         self, engine: PhaseStateEngine, project_manager: ProjectManager
@@ -143,7 +143,7 @@ class TestPhaseStateEngineParentBranch:
 
         # Verify persisted to state.json
         state = engine.get_state("docs/81-test")
-        assert state["parent_branch"] is None
+        assert state.parent_branch is None
 
     def test_reconstruct_branch_state_includes_parent_branch(
         self, project_manager: ProjectManager, workspace_root: Path
@@ -174,9 +174,9 @@ class TestPhaseStateEngineParentBranch:
         state = recovery_engine.get_state("feature/82-test-reconstruction")
 
         # Verify - parent_branch reconstructed from deliverables.json
-        assert state["parent_branch"] == "epic/76-qa"
-        assert state["reconstructed"] is True
-        assert state["workflow_name"] == "feature"
+        assert state.parent_branch == "epic/76-qa"
+        assert state.reconstructed is True
+        assert state.workflow_name == "feature"
 
     def test_reconstruct_branch_state_with_none_parent_branch(
         self, project_manager: ProjectManager, workspace_root: Path
@@ -204,9 +204,9 @@ class TestPhaseStateEngineParentBranch:
         state = recovery_engine.get_state("bug/83-old-project")
 
         # Verify - parent_branch is None (backward compat)
-        assert state["parent_branch"] is None
-        assert state["reconstructed"] is True
-        assert state["workflow_name"] == "bug"
+        assert state.parent_branch is None
+        assert state.reconstructed is True
+        assert state.workflow_name == "bug"
 
 
 class TestTddCycleTrackingFields:
@@ -278,14 +278,14 @@ class TestTddCycleTrackingFields:
 
         # Verify - state.json contains tdd_cycle_* fields
         state = engine.get_state("feature/146-tdd-cycle-tracking")
-        assert "current_cycle" in state
-        assert "last_cycle" in state
-        assert "cycle_history" in state
+        assert hasattr(state, "current_cycle")
+        assert hasattr(state, "last_cycle")
+        assert hasattr(state, "cycle_history")
 
         # Verify - initial values
-        assert state["current_cycle"] is None
-        assert state["last_cycle"] is None
-        assert state["cycle_history"] == []
+        assert state.current_cycle is None
+        assert state.last_cycle is None
+        assert state.cycle_history == []
 
     def test_reconstruct_state_includes_tdd_cycle_fields(
         self, project_manager: ProjectManager, workspace_root: Path
@@ -313,17 +313,17 @@ class TestTddCycleTrackingFields:
         state = recovery_engine.get_state("feature/146-tdd-cycle-tracking")
 
         # Verify - reconstructed flag
-        assert state["reconstructed"] is True
+        assert state.reconstructed is True
 
         # Verify - tdd_cycle_* fields present
-        assert "current_cycle" in state
-        assert "last_cycle" in state
-        assert "cycle_history" in state
+        assert hasattr(state, "current_cycle")
+        assert hasattr(state, "last_cycle")
+        assert hasattr(state, "cycle_history")
 
         # Verify - initial values (None/[])
-        assert state["current_cycle"] is None
-        assert state["last_cycle"] is None
-        assert state["cycle_history"] == []
+        assert state.current_cycle is None
+        assert state.last_cycle is None
+        assert state.cycle_history == []
 
 
 class TestCycleValidationLogic:

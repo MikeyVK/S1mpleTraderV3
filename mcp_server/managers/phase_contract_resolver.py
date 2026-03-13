@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from mcp_server.config.workphases_config import WorkphasesConfig
 from mcp_server.core.exceptions import ConfigError
@@ -42,14 +42,8 @@ class PhaseContractPhase(BaseModel):
     subphases: list[str] = Field(default_factory=list)
     commit_type_map: dict[str, str] = Field(default_factory=dict)
     cycle_based: bool = False
-    exit_requires: list[CheckSpec] = Field(
-        default_factory=list,
-        validation_alias=AliasChoices("exit_requires", "checks"),
-    )
-    cycle_exit_requires: dict[int, list[CheckSpec]] = Field(
-        default_factory=dict,
-        validation_alias=AliasChoices("cycle_exit_requires", "cycle_checks"),
-    )
+    exit_requires: list[CheckSpec] = Field(default_factory=list)
+    cycle_exit_requires: dict[int, list[CheckSpec]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_cycle_based_commit_map(self) -> PhaseContractPhase:

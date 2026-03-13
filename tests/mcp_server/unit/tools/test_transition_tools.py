@@ -128,8 +128,8 @@ class TestTransitionCycleTool:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        assert state["current_tdd_cycle"] == 2, "Current cycle should be 2"
-        assert state["last_tdd_cycle"] == 1, "Last cycle should be preserved"
+        assert state.current_cycle == 2, "Current cycle should be 2"
+        assert state.last_cycle == 1, "Last cycle should be preserved"
 
     @pytest.mark.asyncio
     async def test_transition_blocks_backward_transition(
@@ -401,7 +401,7 @@ class TestForceCycleTransitionTool:
             workspace_root=workspace_root, project_manager=project_manager
         )
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
-        assert state["current_tdd_cycle"] == 4
+        assert state.current_cycle == 4
 
     @pytest.mark.asyncio()
     async def test_force_blocks_without_skip_reason(
@@ -754,7 +754,7 @@ class TestForceCycleAuditSchema:
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         history = state.cycle_history
 
-        assert len(history) > 0, "Expected audit entry in tdd_cycle_history"
+        assert len(history) > 0, "Expected audit entry in cycle_history"
         entry = history[-1]
 
         assert "cycle_number" in entry, "Audit entry must have cycle_number field"
@@ -849,7 +849,7 @@ class TestTransitionCycleHistory:
     """Tests for transition_cycle history entry (forced=False).
 
     Issue #146 Cycle 6 D2: Normal transition_cycle should write
-    {cycle_number, forced: False} to tdd_cycle_history. Design.md:291-297.
+    {cycle_number, forced: False} to cycle_history. Design.md:291-297.
     """
 
     @pytest.fixture()
@@ -959,7 +959,7 @@ class TestTransitionCycleHistory:
     async def test_multiple_transitions_accumulate_history(
         self, tool: TransitionCycleTool, setup_project: tuple[Path, int]
     ) -> None:
-        """Multiple normal transitions accumulate in tdd_cycle_history.
+        """Multiple normal transitions accumulate in cycle_history.
 
         Issue #146 Cycle 6 D2: History is cumulative.
         """
@@ -1001,7 +1001,7 @@ class TestTransitionCycleExitCriteria:
 
     Issue #146 Cycle 6 D3: transition_cycle must validate that the current cycle
     has a non-empty exit_criteria before allowing transition to next cycle.
-    Design.md:287 (validate_exit_criteria(current_tdd_cycle)).
+    Design.md:287 (validate_exit_criteria(current_cycle)).
     """
 
     @pytest.fixture()

@@ -72,13 +72,13 @@ class TestPhaseStateEngineMode2:
             state = state_engine.get_state("fix/39-test")
 
             # Verify state was reconstructed
-            assert state["branch"] == "fix/39-test"
-            assert state["issue_number"] == 39
-            assert state["workflow_name"] == "bug"
-            assert state["current_phase"] == "design"  # Most recent phase:label
-            assert state["transitions"] == []  # Cannot reconstruct history
-            assert "created_at" in state
-            assert state["reconstructed"] is True  # Audit flag
+            assert state.branch == "fix/39-test"
+            assert state.issue_number == 39
+            assert state.workflow_name == "bug"
+            assert state.current_phase == "design"  # Most recent phase:label
+            assert state.transitions == []  # Cannot reconstruct history
+            assert state.created_at
+            assert state.reconstructed is True  # Audit flag
 
             # Verify state.json was created
             assert state_file.exists()
@@ -104,7 +104,7 @@ class TestPhaseStateEngineMode2:
             state = state_engine.get_state("fix/39-test")
 
             # Should detect most recent phase
-            assert state["current_phase"] == "validation"
+            assert state.current_phase == "validation"
 
     @pytest.mark.asyncio
     async def test_tdd_phases_map_to_implementation(
@@ -127,7 +127,7 @@ class TestPhaseStateEngineMode2:
             # phase:green should map to 'implementation' in bug workflow
             bug_workflow = workflow_config.get_workflow("bug")
             assert "implementation" in bug_workflow.phases
-            assert state["current_phase"] == "implementation"
+            assert state.current_phase == "implementation"
 
     @pytest.mark.asyncio
     async def test_fallback_to_first_phase_no_commits(
@@ -150,8 +150,8 @@ class TestPhaseStateEngineMode2:
             # Should fallback to first phase of workflow
             bug_workflow = workflow_config.get_workflow("bug")
             expected_first_phase = bug_workflow.phases[0]
-            assert state["current_phase"] == expected_first_phase
-            assert state["reconstructed"] is True
+            assert state.current_phase == expected_first_phase
+            assert state.reconstructed is True
 
     @pytest.mark.asyncio
     async def test_transparent_recovery_no_user_intervention(
@@ -186,7 +186,7 @@ class TestPhaseStateEngineMode2:
             state = state_engine.get_state("fix/39-test-recovery")
 
             # Issue number parsed from branch
-            assert state["issue_number"] == 39
+            assert state.issue_number == 39
 
     @pytest.mark.asyncio
     async def test_missing_projects_json_raises_error(
@@ -242,8 +242,8 @@ class TestPhaseStateEngineMode2:
 
             bug_workflow = workflow_config.get_workflow("bug")
             expected_first_phase = bug_workflow.phases[0]
-            assert state["current_phase"] == expected_first_phase
-            assert state["reconstructed"] is True
+            assert state.current_phase == expected_first_phase
+            assert state.reconstructed is True
 
     @pytest.mark.asyncio
     async def test_reconstruction_idempotent(
@@ -259,14 +259,14 @@ class TestPhaseStateEngineMode2:
 
             # First call - reconstruction
             state1 = state_engine.get_state("fix/39-test")
-            assert state1["reconstructed"] is True
+            assert state1.reconstructed is True
 
             # Second call - should return same state (now saved)
             state2 = state_engine.get_state("fix/39-test")
 
             # Both calls should succeed
-            assert state1["current_phase"] == state2["current_phase"]
-            assert state1["issue_number"] == state2["issue_number"]
+            assert state1.current_phase == state2.current_phase
+            assert state1.issue_number == state2.issue_number
 
     @pytest.mark.asyncio
     async def test_workflow_phases_validated(
@@ -287,4 +287,4 @@ class TestPhaseStateEngineMode2:
             state = state_engine.get_state("fix/39-test")
 
             # Should use valid phase, ignore invalid
-            assert state["current_phase"] == "design"
+            assert state.current_phase == "design"

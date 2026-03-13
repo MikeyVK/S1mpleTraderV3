@@ -152,7 +152,7 @@ class TestPhaseStateEngineTransitions:
 
         # Get state (should include cached workflow_name)
         state = phase_engine.get_state(branch="hotfix/46-test")
-        assert state["workflow_name"] == "hotfix"
+        assert state.workflow_name == "hotfix"
 
     def test_phase_state_engine_transition_history_includes_forced_flag(
         self,
@@ -184,7 +184,7 @@ class TestPhaseStateEngineTransitions:
 
         # Check transition history
         state = phase_engine.get_state(branch="feature/47-test")
-        transitions = state["transitions"]
+        transitions = state.transitions
 
         # First transition (normal)
         assert transitions[0]["forced"] is False

@@ -99,15 +99,15 @@ class TestTDDPhaseHooks:
 
         # Verify no TDD cycle yet
         state = state_engine.get_state(branch)
-        assert state.get("current_cycle") is None
+        assert state.current_cycle is None
 
         # Act
         state_engine.on_enter_implementation_phase(branch, issue_number)
 
         # Assert
         state = state_engine.get_state(branch)
-        assert state.get("current_cycle") == 1
-        assert state.get("last_cycle") == 0
+        assert state.current_cycle == 1
+        assert state.last_cycle == 0
 
     def test_on_enter_implementation_phase_does_not_block_without_planning_deliverables(
         self, tmp_path: Path
@@ -143,7 +143,7 @@ class TestTDDPhaseHooks:
         # Act & Assert — must NOT raise; gate lives at planning exit now
         state_engine.on_enter_implementation_phase(branch, issue_number)
         state = state_engine.get_state(branch)
-        assert state.get("current_cycle") == 1
+        assert state.current_cycle == 1
 
     def test_on_exit_implementation_phase_preserves_last_cycle(
         self, setup_project: tuple[Path, int]
@@ -172,8 +172,8 @@ class TestTDDPhaseHooks:
 
         # Assert
         state = state_engine.get_state(branch)
-        assert state.get("last_cycle") == 3
-        assert state.get("current_cycle") is None
+        assert state.last_cycle == 3
+        assert state.current_cycle is None
 
     def test_on_exit_implementation_phase_validates_completion(
         self, setup_project: tuple[Path, int]
@@ -203,8 +203,8 @@ class TestTDDPhaseHooks:
 
         # Assert
         state = state_engine.get_state(branch)
-        assert state.get("last_cycle") == 2
-        assert state.get("current_cycle") is None
+        assert state.last_cycle == 2
+        assert state.current_cycle is None
 
 
 class TestTransitionHooksWiring:
@@ -259,14 +259,14 @@ class TestTransitionHooksWiring:
 
         # Verify no TDD cycle before transition
         state = state_engine.get_state(branch)
-        assert state.get("current_cycle") is None
+        assert state.current_cycle is None
 
         # Transition to TDD - should auto-call on_enter_implementation_phase
         state_engine.transition(branch=branch, to_phase="implementation")
 
         # Assert: hook was triggered and cycle 1 was initialized
         state = state_engine.get_state(branch)
-        assert state.get("current_cycle") == 1, (
+        assert state.current_cycle == 1, (
             "on_enter_implementation_phase was not called by transition() - "
             "current_cycle should be 1 after entering TDD phase"
         )
@@ -295,13 +295,11 @@ class TestTransitionHooksWiring:
 
         # Assert: hook was triggered and last_cycle was preserved
         state = state_engine.get_state(branch)
-        assert state.get("last_cycle") == 2, (
+        assert state.last_cycle == 2, (
             "on_exit_implementation_phase was not called by transition() - "
             "last_cycle should be 2 after exiting TDD phase"
         )
-        assert state.get("current_cycle") is None, (
-            "current_cycle should be None after exiting TDD phase"
-        )
+        assert state.current_cycle is None, "current_cycle should be None after exiting TDD phase"
 
 
 class TestResearchExitGate:

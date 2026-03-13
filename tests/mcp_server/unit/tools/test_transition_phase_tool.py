@@ -156,7 +156,7 @@ class TestTransitionPhaseTool:
 
         # Verify human approval recorded in state
         state = phase_engine.get_state(initialized_branch)
-        transition = state["transitions"][0]
+        transition = state.transitions[0]
         assert transition["human_approval"] == approval_message
 
     @pytest.mark.asyncio

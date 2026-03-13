@@ -71,7 +71,7 @@ def build_phase_guard(workspace_root: Path) -> Callable[[str, str, int | None], 
             raise CommitPhaseMismatchError(msg)
 
         if workflow_phase == "implementation" and cycle_number is not None:
-            current_cycle = data.get("current_cycle", data.get("current_tdd_cycle"))
+            current_cycle = data.get("current_cycle")
             if current_cycle is not None and cycle_number != current_cycle:
                 msg = (
                     f"Cycle mismatch: committing as cycle {cycle_number} "

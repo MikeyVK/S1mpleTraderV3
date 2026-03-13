@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from mcp_server.utils.atomic_json_writer import AtomicJsonWriter
 
@@ -22,18 +22,9 @@ class BranchState(BaseModel):
     issue_number: int | None = None
     workflow_name: str
     current_phase: str
-    current_cycle: int | None = Field(
-        default=None,
-        validation_alias=AliasChoices("current_cycle", "current_tdd_cycle"),
-    )
-    last_cycle: int | None = Field(
-        default=None,
-        validation_alias=AliasChoices("last_cycle", "last_tdd_cycle"),
-    )
-    cycle_history: list[dict[str, Any]] = Field(
-        default_factory=list,
-        validation_alias=AliasChoices("cycle_history", "tdd_cycle_history"),
-    )
+    current_cycle: int | None = None
+    last_cycle: int | None = None
+    cycle_history: list[dict[str, Any]] = Field(default_factory=list)
     required_phases: list[str] = Field(default_factory=list)
     execution_mode: str = "normal"
     skip_reason: str | None = None
@@ -46,33 +37,6 @@ class BranchState(BaseModel):
     def with_updates(self, **updates: object) -> BranchState:
         """Return a copy with updated fields."""
         return self.model_copy(update=updates)
-
-    def get(self, key: str, default: object = None) -> object:
-        """Temporary compatibility helper for legacy read access."""
-        return getattr(self, key, default)
-
-    def __getitem__(self, key: str) -> object:
-        """Temporary compatibility helper for legacy indexed access."""
-        return getattr(self, key)
-
-    def __contains__(self, key: object) -> bool:
-        """Support membership checks in older tests and callers."""
-        return isinstance(key, str) and hasattr(self, key)
-
-    @property
-    def current_tdd_cycle(self) -> int | None:
-        """Backward-compatible alias for older callers."""
-        return self.current_cycle
-
-    @property
-    def last_tdd_cycle(self) -> int | None:
-        """Backward-compatible alias for older callers."""
-        return self.last_cycle
-
-    @property
-    def tdd_cycle_history(self) -> list[dict[str, Any]]:
-        """Backward-compatible alias for older callers."""
-        return self.cycle_history
 
 
 class FileStateRepository:

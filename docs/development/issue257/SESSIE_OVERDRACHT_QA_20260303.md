@@ -2,7 +2,7 @@
 <!-- template=planning version=130ac5ea created=2026-03-03T21:41Z updated= -->
 # Issue257 Sessieoverdracht QA
 
-**Status:** DRAFT  
+**Status:** HISTORICAL  
 **Version:** 1.0  
 **Last Updated:** 2026-03-03
 
@@ -10,7 +10,8 @@
 
 ## Purpose
 
-QA sessieoverdracht voor issue257 met focus op workflow-volgorde wijziging en research/design/planning gate-contracten.
+Historisch QA-document voor issue257 met focus op workflow-volgorde wijziging en research/design/planning gate-contracten.
+Niet gebruiken als actuele issue-map; zie `SESSIE_OVERDRACHT_QA_20260312.md` voor de actuele status.
 
 ## Scope
 
