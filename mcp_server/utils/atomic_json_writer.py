@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -19,9 +20,9 @@ class AtomicJsonWriter:
         *,
         temp_name: str = ".tmp",
     ) -> None:
-        """Write JSON data to a temp file and rename it into place."""
+        """Write JSON data to a temp file and replace the target atomically."""
         path.parent.mkdir(parents=True, exist_ok=True)
         temp_path = path.parent / temp_name
         content = json.dumps(payload, indent=2)
         temp_path.write_text(content, encoding="utf-8")
-        temp_path.rename(path)
+        os.replace(temp_path, path)

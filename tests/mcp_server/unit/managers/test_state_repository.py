@@ -166,14 +166,12 @@ class TestAtomicJsonWriter:
 
         writer = AtomicJsonWriter()
 
-        original_rename = Path.rename
-
-        def failing_rename(self: Path, target_path: Path) -> Path:
-            if self.name == ".state.tmp":
+        def failing_replace(src: Path, _dst: Path) -> None:
+            if Path(src).name == ".state.tmp":
                 raise OSError("simulated rename failure")
-            return original_rename(self, target_path)
+            raise AssertionError("Unexpected replace target")
 
-        monkeypatch.setattr(Path, "rename", failing_rename)
+        monkeypatch.setattr("mcp_server.utils.atomic_json_writer.os.replace", failing_replace)
 
         with pytest.raises(OSError, match="simulated rename failure"):
             writer.write_json(target, {"current_phase": "implementation"}, temp_name=".state.tmp")

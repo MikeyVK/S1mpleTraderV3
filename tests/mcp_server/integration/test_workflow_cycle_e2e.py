@@ -1,7 +1,7 @@
 """End-to-end test for full workflow cycle (Issue #138 Cycle 3.6).
 
-Tests complete workflow cycle: research → planning → design → tdd → integration → documentation
-with commit-scope encoding and ScopeDecoder validation.
+Tests complete workflow cycle: research → planning → design → implementation → validation
+→ documentation with commit-scope encoding and ScopeDecoder validation.
 """
 
 import subprocess
@@ -61,15 +61,15 @@ def git_repo(tmp_path: Path) -> Path:
                 "commit_type_hint": "docs",
                 "subphases": [],
             },
-            "tdd": {
-                "display_name": "TDD",
-                "description": "TDD cycle",
+            "implementation": {
+                "display_name": "Implementation",
+                "description": "Implementation cycle",
                 "commit_type_hint": None,
                 "subphases": ["red", "green", "refactor"],
             },
-            "integration": {
-                "display_name": "Integration",
-                "description": "Integration phase",
+            "validation": {
+                "display_name": "Validation",
+                "description": "Validation phase",
                 "commit_type_hint": "test",
                 "subphases": [],
             },
@@ -92,7 +92,14 @@ def git_repo(tmp_path: Path) -> Path:
                 "name": "feature",
                 "description": "Feature workflow",
                 "default_execution_mode": "interactive",
-                "phases": ["research", "planning", "design", "tdd", "integration", "documentation"],
+                "phases": [
+                    "research",
+                    "planning",
+                    "design",
+                    "implementation",
+                    "validation",
+                    "documentation",
+                ],
             }
         },
     }
@@ -132,7 +139,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     2. Phase transitions through complete cycle
     3. Commit-scope encoding at each phase
     4. ScopeDecoder detection at each phase
-    5. TDD subcycle (red → green → refactor)
+    5. Implementation subcycle (red → green → refactor)
     """
     # GIVEN: Initialized project with feature workflow
     pm = ProjectManager(workspace_root=git_repo)
@@ -212,7 +219,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     assert result["workflow_phase"] == "design"
     assert result["source"] == "commit-scope"
 
-    # Save planning deliverables (required by on_enter_tdd_phase hook, Issue #146)
+    # Save planning deliverables (required by implementation-cycle hooks, Issue #146)
     pm.save_planning_deliverables(
         999,
         {
@@ -230,54 +237,60 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
         },
     )
 
-    # Transition to TDD
-    state_engine.transition(branch="feature/999-e2e-test", to_phase="tdd")
+    # Transition to IMPLEMENTATION
+    state_engine.transition(branch="feature/999-e2e-test", to_phase="implementation")
 
-    # Phase 4: TDD CYCLE (red → green → refactor)
+    # Phase 4: IMPLEMENTATION CYCLE (red → green → refactor)
 
-    # TDD: RED
+    # IMPLEMENTATION: RED
     test_file.write_text("red phase\n")
     git_manager.commit_with_scope(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="red",
+        cycle_number=1,
+        commit_type="test",
         message="add failing test",
         files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
     result = decoder.detect_phase(commit_message=commits[0], fallback_to_state=False)
-    assert result["workflow_phase"] == "tdd"
-    assert result["sub_phase"] == "red"
+    assert result["workflow_phase"] == "implementation"
+    assert result["sub_phase"] == "c1_red"
     assert result["source"] == "commit-scope"
 
-    # TDD: GREEN
+    # IMPLEMENTATION: GREEN
     test_file.write_text("green phase\n")
     git_manager.commit_with_scope(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="green",
+        cycle_number=1,
+        commit_type="feat",
         message="implement feature",
         files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
     result = decoder.detect_phase(commit_message=commits[0], fallback_to_state=False)
-    assert result["workflow_phase"] == "tdd"
-    assert result["sub_phase"] == "green"
+    assert result["workflow_phase"] == "implementation"
+    assert result["sub_phase"] == "c1_green"
     assert result["source"] == "commit-scope"
 
-    # TDD: REFACTOR
+    # IMPLEMENTATION: REFACTOR
     test_file.write_text("refactor phase\n")
     git_manager.commit_with_scope(
-        workflow_phase="tdd",
+        workflow_phase="implementation",
         sub_phase="refactor",
+        cycle_number=1,
+        commit_type="refactor",
         message="refactor code",
         files=[str(test_file)],
     )
 
     commits = git_manager.get_recent_commits(limit=1)
     result = decoder.detect_phase(commit_message=commits[0], fallback_to_state=False)
-    assert result["workflow_phase"] == "tdd"
-    assert result["sub_phase"] == "refactor"
+    assert result["workflow_phase"] == "implementation"
+    assert result["sub_phase"] == "c1_refactor"
     assert result["source"] == "commit-scope"
 
     # Transition to VALIDATION
@@ -315,7 +328,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     # THEN: Full cycle complete, all phases detected correctly from commit-scope
     # Final validation: verify state.json has correct current_phase
     final_state = state_engine.get_state(branch="feature/999-e2e-test")
-    assert final_state["current_phase"] == "documentation"
+    assert final_state.current_phase == "documentation"
 
     # Verify last commit scope detection
     commits = git_manager.get_recent_commits(limit=1)

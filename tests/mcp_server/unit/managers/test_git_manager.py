@@ -221,8 +221,8 @@ phases:
     display_name: "Research"
     commit_type_hint: "docs"
     subphases: []
-  tdd:
-    display_name: "TDD"
+  implementation:
+    display_name: "Implementation"
     commit_type_hint: null
     subphases: ["red", "green", "refactor"]
   coordination:
@@ -258,14 +258,15 @@ version: "1.0"
         mock_adapter.commit.return_value = "def456"
 
         result = manager.commit_with_scope(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="red",
             message="add failing test",
+            commit_type="test",
         )
 
         assert result == "def456"
         mock_adapter.commit.assert_called_once_with(
-            "test(P_TDD_SP_RED): add failing test", files=None
+            "test(P_IMPLEMENTATION_SP_RED): add failing test", files=None
         )
 
     def test_commit_with_scope_with_cycle_number(
@@ -275,15 +276,16 @@ version: "1.0"
         mock_adapter.commit.return_value = "ghi789"
 
         result = manager.commit_with_scope(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="green",
             cycle_number=1,
             message="implement feature",
+            commit_type="feat",
         )
 
         assert result == "ghi789"
         mock_adapter.commit.assert_called_once_with(
-            "feat(P_TDD_SP_C1_GREEN): implement feature", files=None
+            "feat(P_IMPLEMENTATION_SP_C1_GREEN): implement feature", files=None
         )
 
     def test_commit_with_scope_coordination_phase(
@@ -310,15 +312,16 @@ version: "1.0"
         mock_adapter.commit.return_value = "mno345"
 
         result = manager.commit_with_scope(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="refactor",
             message="clean up code",
             files=["src/app.py", "tests/test_app.py"],
+            commit_type="refactor",
         )
 
         assert result == "mno345"
         mock_adapter.commit.assert_called_once_with(
-            "refactor(P_TDD_SP_REFACTOR): clean up code",
+            "refactor(P_IMPLEMENTATION_SP_REFACTOR): clean up code",
             files=["src/app.py", "tests/test_app.py"],
         )
 
@@ -329,7 +332,7 @@ version: "1.0"
         mock_adapter.commit.return_value = "pqr678"
 
         result = manager.commit_with_scope(
-            workflow_phase="tdd",
+            workflow_phase="implementation",
             sub_phase="red",
             message="fix failing test",
             commit_type="fix",  # Override default 'test'
@@ -337,7 +340,7 @@ version: "1.0"
 
         assert result == "pqr678"
         mock_adapter.commit.assert_called_once_with(
-            "fix(P_TDD_SP_RED): fix failing test",
+            "fix(P_IMPLEMENTATION_SP_RED): fix failing test",
             files=None,
         )
 
@@ -353,7 +356,7 @@ version: "1.0"
         """Test that invalid subphase raises ValueError with actionable message."""
         with pytest.raises(ValueError, match="Invalid sub_phase"):
             manager.commit_with_scope(
-                workflow_phase="tdd",
+                workflow_phase="implementation",
                 sub_phase="invalid_subphase",
                 message="test",
             )
