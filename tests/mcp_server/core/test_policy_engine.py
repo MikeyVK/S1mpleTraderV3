@@ -2,6 +2,7 @@
 
 Tests Phase 4: Policy decision engine with config integration
 """
+# ruff: noqa: ANN201
 
 from mcp_server.config.artifact_registry_config import ArtifactRegistryConfig
 from mcp_server.config.operation_policies import OperationPoliciesConfig
@@ -18,13 +19,13 @@ class TestPolicyEngineConfigDriven:
         OperationPoliciesConfig.reset_instance()
         ProjectStructureConfig.reset_instance()
 
-    def test_scaffold_allowed_in_tdd_phase(self):
-        """Test scaffold operation allowed in tdd phase."""
+    def test_scaffold_allowed_in_implementation_phase(self):
+        """Test scaffold operation allowed in implementation phase."""
         engine = PolicyEngine()
         decision = engine.decide(
             operation="scaffold",
             path="backend/dtos/user_dto.py",
-            phase="tdd",
+            phase="implementation",
             context={"component_type": "dto"},
         )
         assert decision.allowed is True
@@ -44,7 +45,7 @@ class TestPolicyEngineConfigDriven:
         decision = engine.decide(
             operation="create_file",
             path="backend/services/user_service.py",
-            phase="tdd",
+            phase="implementation",
             context={},
         )
         assert decision.allowed is False
@@ -58,11 +59,11 @@ class TestPolicyEngineConfigDriven:
         )
         assert decision.allowed is True
 
-    def test_commit_requires_tdd_prefix(self):
-        """Test commit requires TDD phase prefix."""
+    def test_commit_requires_configured_prefix(self):
+        """Test commit requires a configured commit prefix."""
         engine = PolicyEngine()
         decision = engine.decide(
-            operation="commit", phase="tdd", context={"message": "add user dto"}
+            operation="commit", phase="implementation", context={"message": "add user dto"}
         )
         assert decision.allowed is False
         assert "prefix" in decision.reason.lower()
@@ -71,7 +72,9 @@ class TestPolicyEngineConfigDriven:
         """Test commit allowed with feat: prefix (green phase maps to feat:)."""
         engine = PolicyEngine()
         decision = engine.decide(
-            operation="commit", phase="tdd", context={"message": "feat: implement user dto"}
+            operation="commit",
+            phase="implementation",
+            context={"message": "feat: implement user dto"},
         )
         assert decision.allowed is True
 
@@ -81,7 +84,7 @@ class TestPolicyEngineConfigDriven:
         decision = engine.decide(
             operation="scaffold",
             path="backend/dtos/service.py",
-            phase="tdd",
+            phase="implementation",
             context={"component_type": "service"},  # Service not allowed in dtos/
         )
         assert decision.allowed is False
@@ -102,7 +105,7 @@ class TestPolicyEngineConfigDriven:
         engine.decide(
             operation="scaffold",
             path="backend/dtos/user_dto.py",
-            phase="tdd",
+            phase="implementation",
             context={"component_type": "dto"},
         )
         trail = engine.get_audit_trail()
@@ -116,7 +119,7 @@ class TestPolicyEngineConfigDriven:
         decision = engine.decide(
             operation="scaffold",
             path="backend/dtos/user_dto.py",
-            phase="tdd",
+            phase="implementation",
             context={"component_type": "dto"},
         )
         assert decision.directory_policy is not None
@@ -125,7 +128,11 @@ class TestPolicyEngineConfigDriven:
     def test_error_handling_denies_by_default(self):
         """Test errors result in denied decision (fail-safe)."""
         engine = PolicyEngine()
-        decision = engine.decide(operation="invalid_operation", phase="tdd", context={})
+        decision = engine.decide(
+            operation="invalid_operation",
+            phase="implementation",
+            context={},
+        )
         # Invalid operation should be denied or require approval
         # Config-driven engine should handle gracefully
         assert decision is not None

@@ -1,7 +1,7 @@
 """Integration tests for Issue #39: Cross-machine state recovery.
 
 Tests the complete flow:
-1. Machine A: Initialize project (Mode 1 - creates both files)
+1. Machine A: Initialize project (Mode 1 - creates deliverables.json + state.json)
 2. Machine A: Make commits with phase:label
 3. Machine A: Push to git
 4. Machine B: Pull code (state.json missing - not in git)
@@ -94,6 +94,7 @@ class TestIssue39CrossMachine:
 
         # Get first phase from workflow
         result = project_manager.get_project_plan(42)
+        assert result is not None
         first_phase = result["required_phases"][0]
 
         # Initialize state
@@ -101,18 +102,17 @@ class TestIssue39CrossMachine:
             branch="fix/42-cross-machine-test", issue_number=42, initial_phase=first_phase
         )
 
-        # Verify both files created
-        projects_file = workspace_root / ".st3" / "projects.json"
+        # Verify deliverables register and branch state were created
+        deliverables_file = workspace_root / ".st3" / "deliverables.json"
         state_file = workspace_root / ".st3" / "state.json"
 
-        assert projects_file.exists()
+        assert deliverables_file.exists()
         assert state_file.exists()
 
-        projects = json.loads(projects_file.read_text())
-        assert "42" in projects
+        deliverables = json.loads(deliverables_file.read_text())
+        assert "42" in deliverables
 
         state = json.loads(state_file.read_text())
-        # state.json stores a single state object for the current branch
         assert state["branch"] == "fix/42-cross-machine-test"
         assert state["current_phase"] == "research"
 
@@ -120,9 +120,9 @@ class TestIssue39CrossMachine:
         # MACHINE A: Make phase progression with phase:label commits
         # =====================================================================
 
-        # Commit projects.json to git (state.json NOT committed - in .gitignore)
+        # Commit deliverables.json to git (state.json NOT committed - in .gitignore)
         subprocess.run(
-            ["git", "add", ".st3/projects.json"],
+            ["git", "add", ".st3/deliverables.json"],
             cwd=workspace_root,
             check=True,
             capture_output=True,
@@ -163,8 +163,8 @@ class TestIssue39CrossMachine:
         state_file.unlink()
         assert not state_file.exists()
 
-        # projects.json still exists (version controlled)
-        assert projects_file.exists()
+        # deliverables.json still exists (version controlled)
+        assert deliverables_file.exists()
 
         # =====================================================================
         # MACHINE B: Tools work transparently (Mode 2 auto-recovery)
@@ -180,27 +180,26 @@ class TestIssue39CrossMachine:
         recovered_state = state_engine.get_state("fix/42-cross-machine-test")
 
         # Verify state was reconstructed correctly
-        assert recovered_state["branch"] == "fix/42-cross-machine-test"
-        assert recovered_state["issue_number"] == 42
-        assert recovered_state["workflow_name"] == "bug"
+        assert recovered_state.branch == "fix/42-cross-machine-test"
+        assert recovered_state.issue_number == 42
+        assert recovered_state.workflow_name == "bug"
 
-        # Phase should be detected as 'tdd' (most recent phase:red commit)
-        # phase:red maps to 'tdd' phase in bug workflow
-        assert recovered_state["current_phase"] == "tdd"
+        # phase:red now maps to the implementation phase in bug workflows
+        assert recovered_state.current_phase == "implementation"
 
         # Reconstructed flag set for audit
-        assert recovered_state["reconstructed"] is True
+        assert recovered_state.reconstructed is True
 
         # Transitions empty (cannot reconstruct history)
-        assert recovered_state["transitions"] == []
+        assert recovered_state.transitions == []
 
         # Verify state.json was recreated
         assert state_file.exists()
 
         # Subsequent calls should return cached state (idempotent)
         state_again = state_engine.get_state("fix/42-cross-machine-test")
-        assert state_again["current_phase"] == "tdd"
-        assert state_again["issue_number"] == 42
+        assert state_again.current_phase == "implementation"
+        assert state_again.issue_number == 42
 
     @pytest.mark.asyncio
     async def test_recovery_with_no_phase_commits(self, workspace_root: Path) -> None:
@@ -246,8 +245,8 @@ class TestIssue39CrossMachine:
         recovered_state = state_engine.get_state("fix/43-no-labels")
 
         # Should fallback to first phase of feature workflow
-        assert recovered_state["current_phase"] == "research"  # First phase
-        assert recovered_state["reconstructed"] is True
+        assert recovered_state.current_phase == "research"  # First phase
+        assert recovered_state.reconstructed is True
 
     @pytest.mark.asyncio
     async def test_recovery_respects_workflow_phases(self, workspace_root: Path) -> None:
@@ -275,7 +274,13 @@ class TestIssue39CrossMachine:
             capture_output=True,
         )
         subprocess.run(
-            ["git", "commit", "--allow-empty", "-m", "phase:tdd - Also not in docs workflow"],
+            [
+                "git",
+                "commit",
+                "--allow-empty",
+                "-m",
+                "phase:implementation - Also not in docs workflow",
+            ],
             cwd=workspace_root,
             check=True,
             capture_output=True,
@@ -305,11 +310,10 @@ class TestIssue39CrossMachine:
 
         recovered_state = state_engine.get_state("docs/44-documentation")
 
-        # Git log returns commits newest first
-        # Should iterate through: planning (valid but later), design (valid, found first)
-        # phase:planning is most recent VALID phase, should be detected
-        assert recovered_state["current_phase"] == "planning"
-        assert recovered_state["reconstructed"] is True
+        # Git log returns commits newest first.
+        # phase:planning is the most recent valid phase in the docs workflow.
+        assert recovered_state.current_phase == "planning"
+        assert recovered_state.reconstructed is True
 
     @pytest.mark.asyncio
     async def test_recovery_with_invalid_branch_name(self, workspace_root: Path) -> None:

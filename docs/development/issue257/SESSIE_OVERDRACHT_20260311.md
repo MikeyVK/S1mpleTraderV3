@@ -1,5 +1,7 @@
 # Sessie Overdracht — Issue #257 — 2026-03-11
 
+> Historisch document. Niet meer gebruiken als actuele issue-map; zie `SESSIE_OVERDRACHT_QA_20260312.md` voor de bijgewerkte status en backlog.
+
 **Branch:** `feature/257-reorder-workflow-phases`  
 **Issue:** #257 — Config-First PSE architecture  
 **Fase:** `research` (nog niet overgegaan naar design)  
@@ -90,7 +92,7 @@ Volledig detail in [research_config_first_pse.md — Per-File Schendingsscan](./
 
 ---
 
-## Wat de volgende sessie als eerste moet doen
+## Historische vervolgstappen van die sessie
 
 ### Stap 1 — Branch + issue hernoemen
 

@@ -1,4 +1,5 @@
 """Tests for GitManager (Issue #55 integration)."""
+# ruff: noqa: ANN201
 
 from unittest.mock import MagicMock
 
@@ -33,8 +34,8 @@ class TestGitManagerConfigIntegration:
         self.mock_adapter.create_branch.assert_called_once_with("feature/123-test", base="main")
 
         # Invalid type not in git.yaml
-        with pytest.raises(ValidationError, match="Invalid branch type: hotfix"):
-            self.manager.create_branch("123-test", "hotfix", "main")
+        with pytest.raises(ValidationError, match="Invalid branch type: invalid-type"):
+            self.manager.create_branch("123-test", "invalid-type", "main")
 
     # Cycle 3: Convention #5 - Branch name pattern
     def test_create_branch_uses_git_config_name_pattern(self):
@@ -52,15 +53,27 @@ class TestGitManagerConfigIntegration:
 
     # Cycle 4/5: Workflow commit mapping + validation
     def test_commit_with_scope_uses_workflow_and_subphase_validation(self):
-        """Test commit_with_scope validates workflow/subphase and maps types."""
+        """Test commit_with_scope validates workflow/subphase and uses explicit types."""
         self.mock_adapter.commit.return_value = "abc123"
 
-        self.manager.commit_with_scope("tdd", "failing test", sub_phase="red")
-        self.mock_adapter.commit.assert_called_with("test(P_TDD_SP_RED): failing test", files=None)
-
-        self.manager.commit_with_scope("tdd", "make it pass", sub_phase="green")
+        self.manager.commit_with_scope(
+            "implementation",
+            "failing test",
+            sub_phase="red",
+            commit_type="test",
+        )
         self.mock_adapter.commit.assert_called_with(
-            "feat(P_TDD_SP_GREEN): make it pass", files=None
+            "test(P_IMPLEMENTATION_SP_RED): failing test", files=None
+        )
+
+        self.manager.commit_with_scope(
+            "implementation",
+            "make it pass",
+            sub_phase="green",
+            commit_type="feat",
+        )
+        self.mock_adapter.commit.assert_called_with(
+            "feat(P_IMPLEMENTATION_SP_GREEN): make it pass", files=None
         )
 
         self.manager.commit_with_scope("documentation", "update README")
