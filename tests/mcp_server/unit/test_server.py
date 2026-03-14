@@ -2,6 +2,8 @@
 """Tests for MCP Server tool registration and dispatch hooks."""
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -288,3 +290,33 @@ class TestServerToolRegistration:
         assert "⚠️" in text
         assert "post hook failed" in text
         assert "✅" in text
+
+    @pytest.mark.asyncio
+    async def test_run_uses_injected_settings_without_extra_from_env(self) -> None:
+        """run() should reuse the injected settings object from the composition root."""
+
+        @asynccontextmanager
+        async def fake_stdio_server(
+            *_args: object, **_kwargs: object
+        ) -> AsyncIterator[tuple[MagicMock, MagicMock]]:
+            yield MagicMock(), MagicMock()
+
+        with (
+            patch("mcp_server.server.Settings") as mock_settings_cls,
+            patch("mcp_server.server.validate_label_config_on_startup"),
+        ):
+            _patch_server_settings(mock_settings_cls)
+            injected_settings = mock_settings_cls.from_env.return_value
+            server = MCPServer(settings=injected_settings)
+            mock_settings_cls.from_env.reset_mock()
+
+            with (
+                patch("mcp_server.server.TextIOWrapper", return_value=MagicMock()),
+                patch("mcp_server.server.stdio_server", side_effect=fake_stdio_server),
+                patch("mcp_server.server.anyio.wrap_file", return_value=MagicMock()),
+                patch.object(server.server, "run", new=AsyncMock()) as mock_run,
+            ):
+                await server.run()
+
+        mock_settings_cls.from_env.assert_not_called()
+        mock_run.assert_awaited_once()

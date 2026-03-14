@@ -108,6 +108,7 @@ class MCPServer:
     def __init__(self, settings: Settings | None = None) -> None:
         """Initialize the MCP server with resources and tools."""
         settings = settings or Settings.from_env()
+        self._settings = settings
         server_name = settings.server.name
 
         # Configure logging with values from settings
@@ -509,8 +510,7 @@ class MCPServer:
 
     async def run(self) -> None:
         """Run the MCP server."""
-        server_name = Settings.from_env().server.name
-
+        server_name = self._settings.server.name
         # Validate label configuration at startup
         validate_label_config_on_startup()
 
@@ -547,7 +547,8 @@ class MCPServer:
 
 def main(settings: Settings | None = None) -> None:
     """Entry point for the MCP server."""
-    server = MCPServer(settings=settings or Settings.from_env())
+    settings = settings or Settings.from_env()
+    server = MCPServer(settings=settings)
     asyncio.run(server.run())
 
 
