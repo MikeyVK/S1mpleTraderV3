@@ -1,6 +1,489 @@
 <!-- docs\development\issue257\planning.md -->
-<!-- template=planning version=130ac5ea created=2026-03-12T12:19Z updated= -->
-# Config-First PSE Architecture — Implementation Planning
+<!-- template=planning version=130ac5ea created=2026-03-14T00:00Z updated=2026-03-14 -->
+# Config Layer SRP Refactoring — Implementation Planning
+
+**Status:** READY  
+**Version:** 1.0  
+**Last Updated:** 2026-03-14
+
+---
+
+## Purpose
+
+Break down the research decisions from `research_config_layer_srp.md` v1.8 into six ordered,
+independently-testable implementation cycles. Each cycle has explicit stop/go criteria that must
+be satisfied before the next cycle begins. Ordered for risk reduction: highest-risk, most-
+entangled work first (C_SETTINGS, C_LOADER), then validation layer, cleanup, and finally the
+spec-builder optimisation layer.
+
+This planning supersedes the earlier `planning.md` (Config-First PSE Architecture, v1.0, 2026-03-12)
+which covered a different refactoring scope.
+
+## Scope
+
+**In Scope:**
+All cycles defined in the Priority Matrix of `research_config_layer_srp.md`:
+`C_SETTINGS`, `C_LOADER`, `C_VALIDATOR`, `C_GITCONFIG`, `C_CLEANUP`, `C_SPECBUILDERS`.
+
+`ARCHITECTURE_PRINCIPLES.md` §12 update (done in research v1.8).
+
+**Out of Scope:**
+Spec-builder DTO layer (`C_SPECBUILDERS`) — may be moved to a follow-up issue if scope is too
+large. `.st3/` directory rename / path centralization (separate issues). `LabelManager` sync-
+against-GitHub (separate cycle `C_LABELMGR`, out of scope here).
+
+## Prerequisites
+
+Before Cycle 1 starts:
+1. `research_config_layer_srp.md` v1.8 complete — all OQ resolved
+2. Branch `feature/257-reorder-workflow-phases` active, research phase → planning phase transition
+3. Full test suite green: `pytest tests/mcp_server/ --override-ini="addopts=" -q` → all pass
+4. `ARCHITECTURE_PRINCIPLES.md` §12 updated (done — commit `2d72deb`)
+
+---
+
+## Executable DoD Convention (RC-8)
+
+Every checklist item below follows this format:
+> **Criterion** — *verification command* → `expected output`
+
+Items marked ☐ are not yet done. Items marked ☑ are complete.
+A cycle DoD is not satisfied until every ☐ is ticked and the verification output is shown.
+
+---
+
+## Cycle 1 — C_SETTINGS
+
+**Goal:** Delete module-level singleton exports; `Settings` becomes a pure env-var reader
+called once at the composition root.
+
+**Why first:** F12 + F3. `settings = Settings.load()` fires on every import of 14 files.
+Until this is removed, every test that imports those 14 files boots on silent-default settings.
+C_LOADER cannot be clean until C_SETTINGS is clean.
+
+### RED phase
+
+Structural tests that must fail before any production code is changed:
+
+```python
+# tests/unit/config/test_c_settings_structural.py
+
+def test_settings_module_does_not_export_singleton():
+    """module-level `settings` export must not exist after C_SETTINGS."""
+    import mcp_server.config.settings as m
+    assert not hasattr(m, "settings"), \
+        "mcp_server.config.settings must not export a module-level 'settings' object"
+
+def test_settings_has_from_env_not_load():
+    """Settings must expose from_env(), not load()."""
+    from mcp_server.config.settings import Settings
+    assert hasattr(Settings, "from_env"), "Settings.from_env() must exist"
+    assert not hasattr(Settings, "load"), "Settings.load() must not exist after C_SETTINGS"
+
+def test_workflow_module_does_not_export_singleton():
+    """module-level `workflow_config` export must not exist after C_SETTINGS."""
+    import mcp_server.config.workflows as m
+    assert not hasattr(m, "workflow_config"), \
+        "mcp_server.config.workflows must not export a module-level 'workflow_config' object"
+
+def test_log_level_env_var_renamed():
+    """Settings must read LOG_LEVEL, not MCP_LOG_LEVEL."""
+    import inspect, mcp_server.config.settings as m
+    source = inspect.getsource(m)
+    assert "MCP_LOG_LEVEL" not in source, \
+        "settings.py must not reference MCP_LOG_LEVEL — rename to LOG_LEVEL complete"
+```
+
+### GREEN phase — production changes
+
+| ☐ | File | Change |
+|---|---|---|
+| ☐ | `mcp_server/config/settings.py` | Delete `settings = Settings.load()` line; replace `Settings.load()` with `Settings.from_env()`; rename `MCP_LOG_LEVEL` → `LOG_LEVEL` in `os.environ.get()` |
+| ☐ | `mcp_server/config/workflows.py` | Delete `workflow_config = WorkflowConfig.load()` line |
+| ☐ | `mcp_server/server.py` | Add `settings = Settings.from_env()` at composition root; pass `settings` as param to all consumers |
+| ☐ | `mcp_server/managers/artifact_manager.py` | Remove `from mcp_server.config.settings import settings`; accept `workspace_root: Path` param |
+| ☐ | `mcp_server/core/logging.py` | Remove singleton import; accept `log_level: str` param |
+| ☐ | `mcp_server/cli.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `mcp_server/tools/test_tools.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `mcp_server/adapters/filesystem.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `mcp_server/adapters/git_adapter.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `mcp_server/adapters/github_adapter.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `mcp_server/tools/discovery_tools.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `mcp_server/tools/code_tools.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `mcp_server/scaffolding/utils.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `.vscode/mcp.json` | Add env entries: `MCP_SERVER_NAME`, `LOG_LEVEL`, `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_PROJECT_NUMBER` |
+
+### GREEN phase — test changes
+
+| ☐ | File | Change |
+|---|---|---|
+| ☐ | `tests/mcp_server/unit/conftest.py` | Rename `setenv("MCP_LOG_LEVEL", ...)` → `setenv("LOG_LEVEL", ...)` |
+| ☐ | `tests/mcp_server/unit/config/test_settings.py` | Update: `Settings.load()` → `Settings.from_env()` with mocked env |
+| ☐ | `tests/unit/config/test_c_settings_structural.py` | New file — structural tests from RED phase above |
+| ☐ | All 3 test files that import `settings` singleton | Update to inject `Settings(...)` directly |
+
+### REFACTOR phase
+
+- ☐ Run quality gates: `run_quality_gates(scope="files", files=[all changed files])`
+- ☐ Verify no orphaned `import settings` remains
+
+### Stop/Go — C_SETTINGS
+
+- ☐ `Select-String "settings = Settings.load\(\)" mcp_server/` → **0 matches**
+- ☐ `Select-String "workflow_config = WorkflowConfig.load\(\)" mcp_server/` → **0 matches**
+- ☐ `Select-String "MCP_LOG_LEVEL" mcp_server/ tests/` → **0 matches**
+- ☐ `Select-String "from mcp_server.config.settings import settings" (Get-ChildItem -Recurse -Filter *.py).FullName` → **0 matches**
+- ☐ `pytest tests/mcp_server/ --override-ini="addopts=" -q` → **all pass, 0 errors**
+- ☐ `run_quality_gates(scope="branch")` → **all gates green**
+
+**Integration gate (RC-2):** All 14 files in DQ3 migration table have been updated. Tick each:
+`artifact_manager`, `core/logging`, `cli`, `test_tools`, `adapters/filesystem`, `adapters/git_adapter`,
+`adapters/github_adapter`, `tools/discovery_tools`, `tools/code_tools`, `server.py`,
+`scaffolding/utils`, 3 test files.
+
+---
+
+## Cycle 2 — C_LOADER
+
+**Goal:** Introduce `ConfigLoader`; move all 15 schemas to `config/schemas/`; delete `from_file()`,
+`load()`, `ClassVar _instance`, `reset_instance()` from every schema class. Update all 17 production
+consumer files and 15 non-Zone-1 test/fixture files.
+
+**Why second:** Hard break. Until C_LOADER is complete, every manager that calls `Config.from_file()`
+is a latent RC-2 gap. This cycle is the largest and riskiest — doing it fully in one cycle (D10: no
+deprecated delegates) makes incomplete work visible as broken imports.
+
+### RED phase
+
+Structural tests (written first, all RED):
+
+```python
+# tests/unit/config/test_c_loader_structural.py
+
+def test_no_from_file_on_any_config_schema():
+    """Every schema class must be a pure Pydantic model — no loader methods."""
+    import inspect
+    import mcp_server.config.schemas as schemas_module
+    for name, cls in inspect.getmembers(schemas_module, inspect.isclass):
+        for forbidden in ("from_file", "load", "reset_instance"):
+            assert not hasattr(cls, forbidden), (
+                f"{name}.{forbidden}() must not exist — ConfigLoader is the sole loader."
+            )
+
+def test_no_manager_imports_config_class():
+    """Managers must not import config classes directly."""
+    import inspect, pathlib
+    managers_dir = pathlib.Path("mcp_server/managers")
+    for py_file in managers_dir.glob("*.py"):
+        source = py_file.read_text()
+        assert "from mcp_server.config" not in source, (
+            f"{py_file.name} imports a config class — must receive via constructor injection."
+        )
+
+def test_no_tool_calls_from_file():
+    """Tools must not call Config.from_file() directly."""
+    import inspect, pathlib
+    tools_dir = pathlib.Path("mcp_server/tools")
+    for py_file in tools_dir.glob("*.py"):
+        source = py_file.read_text()
+        assert ".from_file(" not in source and ".load()" not in source, (
+            f"{py_file.name} calls from_file() or load() — must use manager."
+        )
+```
+
+### GREEN phase — new components
+
+| ☐ | File | Change |
+|---|---|---|
+| ☐ | `mcp_server/config/loader.py` (new) | `ConfigLoader(config_root: Path)` with `load_*()` methods for all 15 schemas |
+| ☐ | `mcp_server/config/schemas/` (new dir) | Move all 13 YAML-backed schema classes + `Settings` + `EnforcementConfig` (from `enforcement_runner.py`) + `PhaseContractsConfig` (from `phase_contract_resolver.py`) |
+
+### GREEN phase — schema deletions (15 schemas)
+
+| ☐ | Schema class | Delete |
+|---|---|---|
+| ☐ | `ArtifactRegistryConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `ContributorConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `GitConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `IssueConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `LabelConfig` | `load()`, `reset()`, `ClassVar _instance` |
+| ☐ | `MilestoneConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `OperationPoliciesConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `ProjectStructureConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `QualityConfig` | `load()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `ScaffoldMetadataConfig` | `from_file()`, `ClassVar _instance`, local `ConfigError` class |
+| ☐ | `ScopeConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `WorkflowConfig` | `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `WorkphasesConfig` | `from_file()`, `ClassVar _instance`, `reset_instance()` |
+| ☐ | `EnforcementConfig` | `from_file()` — move class to `config/schemas/` |
+| ☐ | `PhaseContractsConfig` | `from_file()` — move class to `config/schemas/` |
+
+### GREEN phase — production consumer updates (17 files, F16)
+
+| ☐ | File | Anti-pattern | Fix |
+|---|---|---|---|
+| ☐ | `tools/pr_tools.py` | Direct load | Remove `from_file()`; use `git_manager` |
+| ☐ | `tools/cycle_tools.py` | Direct load ×2 | Remove `from_file()`; use `git_manager` |
+| ☐ | `tools/git_tools.py` | Direct load ×2 | Remove `from_file()`; use `git_manager` |
+| ☐ | `tools/project_tools.py` | Direct load | Remove `from_file()`; use `project_manager` |
+| ☐ | `tools/label_tools.py` | Direct load ×3 | Remove `load()`; use `label_manager` |
+| ☐ | `tools/issue_tools.py` | `@field_validator` ×9 | Move to `GitHubManager.validate_issue_params()` (D15) |
+| ☐ | `managers/git_manager.py` | Constructor load | Receive `GitConfig` via DI |
+| ☐ | `managers/phase_state_engine.py` | Fallback `from_file()` | Make `git_config` mandatory param |
+| ☐ | `managers/artifact_manager.py` | Fallback `from_file()` | Make `registry` mandatory param |
+| ☐ | `managers/qa_manager.py` | Direct load ×2 | Receive `QualityConfig` via DI |
+| ☐ | `managers/phase_contract_resolver.py` | Direct load | Receive `PhaseContractsConfig` via DI |
+| ☐ | `managers/enforcement_runner.py` | Direct load | Receive `EnforcementConfig` via DI |
+| ☐ | `core/policy_engine.py` (constructor) | Direct load ×2 | Receive configs via DI |
+| ☐ | `core/policy_engine.py` (`reload()`) | `reset_instance()` + `from_file()` ×4 | Replace with `ConfigLoader(config_root).load_*()` |
+| ☐ | `core/directory_policy_resolver.py` | Fallback `from_file()` | Make `config` mandatory param |
+| ☐ | `scaffolding/metadata.py` | Direct load | Receive `ScaffoldMetadataConfig` via DI |
+| ☐ | `scaffolders/template_scaffolder.py` | Fallback `from_file()` | Make `registry` mandatory param |
+
+### GREEN phase — GitHubManager extension (D15)
+
+| ☐ | File | Change |
+|---|---|---|
+| ☐ | `managers/github_manager.py` | Add constructor params: `issue_config`, `milestone_config`, `contributor_config`, `label_config`, `scope_config`, `git_config`, `adapter` |
+| ☐ | `managers/github_manager.py` | Add `validate_issue_params()` method — move all 6 `@field_validator` bodies from `issue_tools.py` |
+| ☐ | `tools/issue_tools.py` | `@field_validator` methods that call `Config.from_file()` → removed; Pydantic DTO retains structural checks only |
+
+### GREEN phase — composition root wiring (server.py)
+
+| ☐ | Step | Change |
+|---|---|---|
+| ☐ | Step 1 | `ConfigLoader(config_root)` instantiated; all 15 `loader.load_*()` called |
+| ☐ | Step 2 | `ConfigValidator().validate_startup(...)` called (stub OK until C_VALIDATOR) |
+| ☐ | Step 3 | `Settings.from_env()` called |
+| ☐ | Step 4 | All managers instantiated with config objects via DI (see DQ1 sequence) |
+| ☐ | Step 5 | `GitHubManager(issue_config, milestone_config, contributor_config, label_config, scope_config, git_config, adapter)` |
+| ☐ | Step 6 | `PolicyEngine(policies_config, git_config)` |
+
+### GREEN phase — test/fixture updates (F16 non-Zone-1 + Zone 1 rewrites)
+
+**Non-Zone-1 test files (delete singleton calls):**
+
+| ☐ | File | Fix |
+|---|---|---|
+| ☐ | `tests/mcp_server/core/test_policy_engine_config.py` | Delete `GitConfig.reset_instance()` ×2 |
+| ☐ | `tests/mcp_server/core/test_policy_engine.py` | Delete `ArtifactRegistryConfig/OperationPoliciesConfig/ProjectStructureConfig.reset_instance()` ×3 |
+| ☐ | `tests/mcp_server/core/test_directory_policy_resolver.py` | Delete `ArtifactRegistryConfig/ProjectStructureConfig.reset_instance()` ×4 |
+| ☐ | `tests/mcp_server/managers/test_git_manager_config.py` | Delete `GitConfig.reset_instance()` ×2 |
+| ☐ | `tests/mcp_server/integration/test_validation_policy_e2e.py` | Replace `reset_instance()` + `from_file()` with `ConfigLoader(tmp_path)` |
+| ☐ | `tests/mcp_server/integration/test_v2_smoke_all_types.py` | Replace `reset_instance()` with `ConfigLoader(tmp_path)` |
+| ☐ | `tests/mcp_server/integration/test_template_missing_e2e.py` | Replace `reset_instance()` + `from_file()` with `ConfigLoader(tmp_path)` |
+| ☐ | `tests/mcp_server/integration/test_config_error_e2e.py` | Replace `reset_instance()` + `from_file()` with `ConfigLoader(tmp_path)` bad-YAML path |
+| ☐ | `tests/mcp_server/integration/test_concrete_templates.py` | Replace `ArtifactRegistryConfig.from_file()` ×9 with `ConfigLoader(tmp_path)` |
+| ☐ | `tests/mcp_server/tools/test_pr_tools_config.py` | Delete `GitConfig.reset_instance()` ×2; inject via manager |
+| ☐ | `tests/mcp_server/tools/test_git_tools_config.py` | Delete `GitConfig.reset_instance()` ×2; inject via manager |
+| ☐ | `tests/mcp_server/unit/tools/test_github_extras.py` | Delete `LabelConfig.reset()` ×1; inject `LabelConfig` via manager |
+| ☐ | `tests/mcp_server/unit/tools/test_label_tools_integration.py` | Delete `LabelConfig.reset()` ×15; inject via `LabelManager` |
+| ☐ | `tests/mcp_server/fixtures/artifact_test_harness.py` | Rewrite to accept `ConfigLoader`-produced config |
+| ☐ | `tests/mcp_server/fixtures/workflow_fixtures.py` | Replace `WorkflowConfig.load()` with `ConfigLoader(tmp_path).load_workflow_config()` |
+
+**Zone 1 tests (rewrite from `from_file()` pattern to `ConfigLoader` pattern):**
+
+| ☐ | File | Fix |
+|---|---|---|
+| ☐ | `tests/mcp_server/config/test_project_structure.py` | Rewrite all `from_file()` / `reset_instance()` as `ConfigLoader(tmp_path).load_*()` |
+| ☐ | `tests/mcp_server/config/test_operation_policies.py` | Same |
+| ☐ | `tests/mcp_server/config/test_git_config.py` | Same |
+| ☐ | `tests/mcp_server/config/test_component_registry.py` | Same |
+| ☐ | `tests/mcp_server/unit/config/test_artifact_registry_config.py` | Same |
+| ☐ | `tests/mcp_server/unit/config/test_contributor_config.py` | Same |
+| ☐ | `tests/mcp_server/unit/config/test_issue_config.py` | Same |
+| ☐ | `tests/mcp_server/unit/config/test_workflow_config.py` | Same |
+
+### REFACTOR phase
+
+- ☐ Run `run_quality_gates(scope="branch")` → all green
+- ☐ F13: verify local `ConfigError` in `scaffold_metadata_config.py` is deleted
+
+### Stop/Go — C_LOADER
+
+- ☐ `Select-String "\.from_file\(|\.load\(\)|reset_instance\(" (Get-ChildItem mcp_server -Recurse -Filter *.py).FullName` → **0 matches** (excluding docstring text)
+- ☐ `Select-String "from mcp_server\.config\." (Get-ChildItem mcp_server/managers -Recurse -Filter *.py).FullName` → **0 matches**
+- ☐ `Select-String "from mcp_server\.config\." (Get-ChildItem mcp_server/tools -Recurse -Filter *.py).FullName` → **0 schema class imports** (only `loader.py`, `validator.py`, `settings.py` imports permitted in tools if needed)
+- ☐ Structural test `test_no_from_file_on_any_config_schema()` → **PASS**
+- ☐ Structural test `test_no_manager_imports_config_class()` → **PASS**
+- ☐ Structural test `test_no_tool_calls_from_file()` → **PASS**
+- ☐ `pytest tests/mcp_server/ --override-ini="addopts=" -q` → **all pass, 0 errors**
+- ☐ `run_quality_gates(scope="branch")` → **all gates green**
+
+**Integration gate (RC-2):** Every file in the F16 production checklist (17 files) and F16 test
+checklist (15 files) above has been ticked. An entry is not done until it appears in `Select-String`
+output as 0 matches.
+
+---
+
+## Cycle 3 — C_VALIDATOR
+
+**Goal:** Introduce `ConfigValidator.validate_startup()`; delete `label_startup.py`.
+
+**Depends on:** C_LOADER.
+
+### RED phase
+
+```python
+# tests/unit/config/test_c_validator_structural.py
+
+def test_label_startup_deleted():
+    import importlib.util
+    spec = importlib.util.find_spec("mcp_server.config.label_startup")
+    assert spec is None, "label_startup.py must not exist after C_VALIDATOR"
+
+def test_config_validator_exists_with_validate_startup():
+    from mcp_server.config.validator import ConfigValidator
+    assert callable(getattr(ConfigValidator, "validate_startup", None))
+```
+
+### GREEN phase
+
+| ☐ | File | Change |
+|---|---|---|
+| ☐ | `mcp_server/config/validator.py` (new) | `ConfigValidator` with `validate_startup(policies, workflow, structure, artifact, phase_contracts, workphases)` |
+| ☐ | `mcp_server/server.py` | Replace stub with real `ConfigValidator().validate_startup(...)` call |
+| ☐ | `mcp_server/config/label_startup.py` | Delete file |
+| ☐ | All callers of `label_startup` | Remove import and call |
+
+### Stop/Go — C_VALIDATOR
+
+- ☐ `Test-Path mcp_server/config/label_startup.py` → **False**
+- ☐ `Select-String "label_startup" (Get-ChildItem mcp_server -Recurse -Filter *.py).FullName` → **0 matches**
+- ☐ `pytest tests/mcp_server/ --override-ini="addopts=" -q` → **all pass**
+- ☐ `run_quality_gates(scope="branch")` → **all green**
+
+---
+
+## Cycle 4 — C_GITCONFIG
+
+**Goal:** Remove Python defaults from `GitConfig` (domain convention fields become required);
+remove `output_dir` default from `ArtifactLoggingConfig`.
+
+**Depends on:** C_LOADER.
+
+### RED phase
+
+```python
+def test_git_config_has_no_field_defaults():
+    from mcp_server.config.schemas.git_config import GitConfig
+    fields_with_defaults = [
+        name for name, field in GitConfig.model_fields.items()
+        if field.default is not None or field.default_factory is not None
+    ]
+    # Only allowed defaults: none for domain convention fields
+    assert fields_with_defaults == [], (
+        f"GitConfig fields must not have defaults: {fields_with_defaults}"
+    )
+```
+
+### GREEN phase
+
+| ☐ | File | Change |
+|---|---|---|
+| ☐ | `mcp_server/config/schemas/git_config.py` | All domain convention fields: `Field(default=...)` → `Field(...)` (no default) |
+| ☐ | `mcp_server/config/schemas/quality_config.py` | `ArtifactLoggingConfig.output_dir`: remove `default="temp/qa_logs"` |
+
+### Stop/Go — C_GITCONFIG
+
+- ☐ `GitConfig` unit test with missing `git.yaml` → raises `ConfigError`
+- ☐ `pytest tests/mcp_server/ --override-ini="addopts=" -q` → **all pass**
+- ☐ `run_quality_gates(scope="branch")` → **all green**
+
+---
+
+## Cycle 5 — C_CLEANUP
+
+**Goal:** Move `template_config.py` to `utils/`; move `server.version` to
+`importlib.metadata`.
+
+**Depends on:** C_LOADER (for import-break coverage), C_SETTINGS (for `server.name` removal).
+
+### GREEN phase
+
+| ☐ | File | Change |
+|---|---|---|
+| ☐ | `mcp_server/utils/template_config.py` (new location) | Move `get_template_root()` from `config/template_config.py` |
+| ☐ | `mcp_server/config/template_config.py` | Delete |
+| ☐ | All importers of `config.template_config` | Update import path to `utils.template_config` |
+| ☐ | `mcp_server/config/schemas/settings.py` | Replace `version = "1.0.0"` with `importlib.metadata.version("mcp_server")` |
+
+### Stop/Go — C_CLEANUP
+
+- ☐ `Test-Path mcp_server/config/template_config.py` → **False**
+- ☐ `Select-String "from mcp_server.config.template_config" (Get-ChildItem mcp_server -Recurse -Filter *.py).FullName` → **0 matches**
+- ☐ `pytest tests/mcp_server/ --override-ini="addopts=" -q` → **all pass**
+- ☐ `run_quality_gates(scope="branch")` → **all green**
+
+---
+
+## Cycle 6 — C_SPECBUILDERS
+
+**Goal:** Introduce `GatePlanBuilder`, `ScaffoldSpecBuilder`, `WorkflowSpecBuilder` in
+`config/translators/`; create `mcp_server/dtos/specs/`; update `PhaseStateEngine` to accept
+`WorkflowInitSpec` (D14 P4 step).
+
+**Depends on:** C_LOADER, C_VALIDATOR.
+
+**Note:** This cycle may be moved to a follow-up issue if scope or test-suite complexity
+(Zone 3 isolation — F11) is better handled separately.
+
+### RED phase
+
+```python
+def test_spec_builder_classes_exist():
+    from mcp_server.config.translators.gate_plan_builder import GatePlanBuilder
+    from mcp_server.config.translators.scaffold_spec_builder import ScaffoldSpecBuilder
+    from mcp_server.config.translators.workflow_spec_builder import WorkflowSpecBuilder
+
+def test_spec_dto_classes_exist():
+    from mcp_server.dtos.specs.gate_execution_plan import GateExecutionPlan
+    from mcp_server.dtos.specs.scaffold_spec import ScaffoldSpec
+    from mcp_server.dtos.specs.workflow_init_spec import WorkflowInitSpec
+    from mcp_server.dtos.specs.file_scope import FileScope
+    from mcp_server.dtos.specs.project_init_options import ProjectInitOptions
+```
+
+### GREEN phase
+
+| ☐ | File | Change |
+|---|---|---|
+| ☐ | `mcp_server/config/translators/gate_plan_builder.py` | `GatePlanBuilder.build(config: QualityConfig, scope: FileScope) → GateExecutionPlan` |
+| ☐ | `mcp_server/config/translators/scaffold_spec_builder.py` | `ScaffoldSpecBuilder.build(registry: ArtifactRegistryConfig, context: dict) → ScaffoldSpec` |
+| ☐ | `mcp_server/config/translators/workflow_spec_builder.py` | `WorkflowSpecBuilder.build(config: WorkflowConfig, params: ProjectInitOptions) → WorkflowInitSpec` |
+| ☐ | `mcp_server/dtos/specs/` | Create `GateExecutionPlan`, `ScaffoldSpec`, `WorkflowInitSpec`, `FileScope`, `ProjectInitOptions` |
+| ☐ | `managers/qa_manager.py` | Accept `gate_plan_builder: GatePlanBuilder` via DI; internal `.run_quality_gates()` builds plan |
+| ☐ | `managers/artifact_manager.py` | Accept `scaffold_spec_builder: ScaffoldSpecBuilder` via DI |
+| ☐ | `managers/project_manager.py` | Accept `workflow_spec_builder: WorkflowSpecBuilder` via DI |
+| ☐ | `managers/phase_state_engine.py` | Update to accept `WorkflowInitSpec` (D14 P4) |
+
+### Stop/Go — C_SPECBUILDERS
+
+- ☐ Zone 2 spec-builder tests all pass with no YAML or filesystem access
+- ☐ Zone 3 test for `QAManager` uses injected `GateExecutionPlan`, no `QualityConfig.load` patch
+- ☐ `pytest tests/mcp_server/ --override-ini="addopts=" -q` → **all pass**
+- ☐ `run_quality_gates(scope="branch")` → **all green**
+
+---
+
+## Summary: DoD Gate Order
+
+```
+C_SETTINGS → C_LOADER → C_VALIDATOR → C_GITCONFIG → C_CLEANUP → C_SPECBUILDERS
+    P0            P0          P1            P2            P3            P4
+```
+
+No cycle may start until the previous cycle's Stop/Go gate is fully ticked with
+verification output shown.
+
+---
+
+## Related Documentation
+
+- **[research_config_layer_srp.md](research_config_layer_srp.md)** — v1.8, all findings and decisions
+- **[ARCHITECTURE_PRINCIPLES.md](../../coding_standards/ARCHITECTURE_PRINCIPLES.md)** — §12 updated
+- **[GAP_ANALYSE_ISSUE257.md](GAP_ANALYSE_ISSUE257.md)** — RC-1 through RC-8 root causes
+
 
 **Status:** DRAFT  
 **Version:** 1.0  

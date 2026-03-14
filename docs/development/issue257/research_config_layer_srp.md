@@ -969,7 +969,7 @@ the expected Zone 1 evolution, not a "break".
 |---|---|---|
 | C_SETTINGS (DQ3 table) | `from mcp_server.config.settings import settings` | 14 files |
 | C_LOADER production (this table) | `Config.from_file()` / `.load()` in non-`config/` production code | 17 files |
-| C_LOADER test (this table) | `reset_instance()` in non-Zone-1 tests | 8 test files |
+| C_LOADER test (this table) | `reset_instance()` in non-Zone-1 tests/fixtures | 15 test/fixture files (+ 5 Zone 1 rewrites) |
 
 ---
 
@@ -1219,7 +1219,7 @@ of the `WorkflowConfig` hard break. Its only consumer in the current codebase is
 
 **Note — C_LOADER blast radius is documented separately in F16.** The DQ3 table above covers
 only the C_SETTINGS blast radius (14 `settings` module-level consumers). The C_LOADER hard break
-affects an additional 17 production files and 8 test files where `from_file()`, `load()`, and
+affects an additional 17 production files and 15 test/fixture files where `from_file()`, `load()`, and
 `reset_instance()` are called outside `config/`. See F16 for the complete C_LOADER migration
 checklist.
 
@@ -1464,6 +1464,7 @@ without assigning the behaviour to a named method, losing discoverability.
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.9 | 2026-03-14 | Agent | F16 tel-inconsistentie opgelost: summary-tabel (r972) en DQ3-noot (r1222) gecorrigeerd van "8 test files" naar "15 test/fixture files (+ 5 Zone 1 rewrites)" — consistent met de uitgebreide non-Zone-1 tabel die in v1.8 is uitgebreid |
 | 1.8 | 2026-03-14 | Agent | QA-review corrections: (1) §12 conflict resolved — ARCHITECTURE_PRINCIPLES.md §12 updated to label ClassVar lazy-init as transitional-only; F12 section extended with explicit §12 relationship note; (2) F16 test inventory completed — 7 previously missing test/fixture files added (test_concrete_templates.py ×9, test_pr_tools_config, test_git_tools_config, test_github_extras, test_label_tools_integration ×15, artifact_test_harness, workflow_fixtures); Zone 1 "rewrite" table added; (3) Class/file precision fixes — PhaseContractConfig→PhaseContractsConfig in F14 table; enforcement_manager.py→enforcement_runner.py + phase_state_engine.py→phase_contract_resolver.py in D10/D11; (4) MCP_LOG_LEVEL→LOG_LEVEL migration documented in D13 migration note and DQ3 checklist note |
 | 1.7 | 2026-03-14 | Agent | Added F16 (complete C_LOADER blast radius: 17 production files + 8 test files across 6 layers, 3 anti-patterns catalogued with remediation strategy); added D15 (GitHubManager.validate_issue_params() as sole owner of domain validation — OQ6 resolved, option a); resolved OQ6 in Open Questions table; extended DQ3 with cross-reference to F16 C_LOADER checklist; updated Priority Matrix C_LOADER row with F16 consumer count; updated Priority Matrix OQ6 row to D15 reference |
 | 1.6 | 2026-03-14 | Agent | Resolved OQ1-OQ5: ContributorConfig→GitHubManager (used in field_validators), PolicyEngine as OperationPoliciesConfig consumer, GitHubManager as IssueConfig/MilestoneConfig target, FileScope + ProjectInitOptions as new INPUT DTOs in dtos/specs/; added OQ6 (@field_validator break); DQ1 composition root extended with PolicyEngine + GitHubManager; F14 table updated; F15 naming table extended; Priority Matrix: OQ6 as P0 C_LOADER item |
