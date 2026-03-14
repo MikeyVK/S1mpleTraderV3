@@ -192,7 +192,3 @@ class WorkflowConfig(BaseModel):
             )
 
         return True
-
-
-# Module-level singleton (loaded at import time)
-workflow_config = WorkflowConfig.load()

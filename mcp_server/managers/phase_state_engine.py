@@ -32,7 +32,7 @@ from typing import Any
 from pydantic import ValidationError
 
 from mcp_server.config.git_config import GitConfig
-from mcp_server.config.workflows import workflow_config
+from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.config.workphases_config import WorkphasesConfig
 from mcp_server.core.interfaces import IStateRepository
 from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
@@ -75,6 +75,7 @@ class PhaseStateEngine:
         project_manager: ProjectManager,
         git_config: GitConfig | None = None,
         state_repository: IStateRepository | None = None,
+        workflow_config: WorkflowConfig | None = None,
     ) -> None:
         """Initialize PhaseStateEngine.
 
@@ -85,6 +86,7 @@ class PhaseStateEngine:
         self.workspace_root = Path(workspace_root)
         self.state_file = self.workspace_root / ".st3" / "state.json"
         self.project_manager = project_manager
+        self._workflow_config = workflow_config or WorkflowConfig.load()
         self._git_config = git_config or GitConfig.from_file()
         self._state_repository = state_repository or FileStateRepository(state_file=self.state_file)
 
@@ -168,8 +170,8 @@ class PhaseStateEngine:
         from_phase = state.current_phase
         workflow_name = state.workflow_name
 
-        # Validate transition via workflow_config (strict sequential)
-        workflow_config.validate_transition(workflow_name, from_phase, to_phase)
+        # Validate transition via injected workflow config (strict sequential)
+        self._workflow_config.validate_transition(workflow_name, from_phase, to_phase)
 
         # Planning exit hook: called when leaving planning phase (Issue #229)
         issue_number = state.issue_number

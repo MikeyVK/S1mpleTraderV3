@@ -1,6 +1,7 @@
 """GitHub adapter for the MCP server."""
 
 import contextlib
+import os
 from datetime import datetime
 from typing import Any
 
@@ -11,25 +12,39 @@ from github.Milestone import Milestone
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 
-from mcp_server.config.settings import Settings
+from mcp_server.config.settings import GitHubSettings, Settings
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 
 
 class GitHubAdapter:
     """Adapter for interacting with the GitHub API."""
 
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         """Initialize the GitHub adapter."""
-        _settings = Settings.from_env()
-        if not _settings.github.token:  # pylint: disable=no-member
+        github_settings = (
+            settings.github
+            if settings is not None
+            else GitHubSettings(
+                owner=os.environ.get("GITHUB_OWNER", GitHubSettings().owner),
+                repo=os.environ.get("GITHUB_REPO", GitHubSettings().repo),
+                project_number=int(
+                    os.environ.get(
+                        "GITHUB_PROJECT_NUMBER",
+                        str(GitHubSettings().project_number),
+                    )
+                ),
+                token=os.environ.get("GITHUB_TOKEN"),
+            )
+        )
+        if not github_settings.token:  # pylint: disable=no-member
             raise MCPSystemError(
                 "GitHub token not configured",
                 fallback="Configure GITHUB_TOKEN environment variable",
             )
 
-        self.client = Github(_settings.github.token)  # pylint: disable=no-member
+        self.client = Github(github_settings.token)  # pylint: disable=no-member
         self._repo: Repository | None = None
-        self._repo_name = f"{_settings.github.owner}/{_settings.github.repo}"  # pylint: disable=no-member
+        self._repo_name = f"{github_settings.owner}/{github_settings.repo}"  # pylint: disable=no-member
 
     @property
     def repo(self) -> Repository:
@@ -148,25 +163,12 @@ class GitHubAdapter:
             raise ExecutionError(f"Failed to add labels: {e}") from e
 
     def close_issue(self, issue_number: int, comment: str | None = None) -> Issue:
-        """Close an issue with optional comment.
-
-        Args:
-            issue_number: The issue number to close.
-            comment: Optional comment to add before closing.
-
-        Returns:
-            The closed issue object.
-        """
+        """Close an issue with optional comment."""
         try:
             issue = self.get_issue(issue_number)
-
-            # Add comment if provided
             if comment:
                 issue.create_comment(comment)
-
-            # Close the issue
             issue.edit(state="closed")
-
             return issue
         except GithubException as e:
             raise ExecutionError(f"Failed to close issue: {e}") from e

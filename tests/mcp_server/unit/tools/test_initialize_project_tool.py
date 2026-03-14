@@ -16,8 +16,12 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.config.workflows import workflow_config
+from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.tools.project_tools import InitializeProjectInput, InitializeProjectTool
+
+
+def _load_workflow_config() -> WorkflowConfig:
+    return WorkflowConfig.load(Path(".st3/workflows.yaml"))
 
 
 class TestInitializeProjectToolMode1:
@@ -75,7 +79,7 @@ class TestInitializeProjectToolMode1:
             assert state["issue_number"] == 39
             assert state["workflow_name"] == "bug"
             # First phase from workflows.yaml (SSOT)
-            bug_workflow = workflow_config.get_workflow("bug")
+            bug_workflow = _load_workflow_config().get_workflow("bug")
             expected_first_phase = bug_workflow.phases[0]
             assert state["current_phase"] == expected_first_phase
             assert state["transitions"] == []
@@ -125,7 +129,7 @@ class TestInitializeProjectToolMode1:
             state = json.loads(state_file.read_text())
 
             # First phase from workflows.yaml (SSOT)
-            hotfix_workflow = workflow_config.get_workflow("hotfix")
+            hotfix_workflow = _load_workflow_config().get_workflow("hotfix")
             expected_first_phase = hotfix_workflow.phases[0]
             assert state["current_phase"] == expected_first_phase
 
@@ -141,7 +145,7 @@ class TestInitializeProjectToolMode1:
 
         for workflow_name in workflows_to_test:
             # Get expected first phase from workflows.yaml (SSOT)
-            workflow = workflow_config.get_workflow(workflow_name)
+            workflow = _load_workflow_config().get_workflow(workflow_name)
             expected_first_phase = workflow.phases[0]
 
             # Determine branch prefix from workflow name

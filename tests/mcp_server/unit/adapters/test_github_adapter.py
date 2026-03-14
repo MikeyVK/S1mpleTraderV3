@@ -8,6 +8,7 @@ import pytest
 from github import GithubException
 
 from mcp_server.adapters.github_adapter import GitHubAdapter
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 
 
@@ -18,25 +19,19 @@ def mock_github_client() -> Iterator[MagicMock]:
 
 
 @pytest.fixture
-def mock_settings() -> Iterator[MagicMock]:
-    with patch("mcp_server.adapters.github_adapter.Settings") as mock:
-        mock.from_env.return_value.github.token = "test-token"
-        mock.from_env.return_value.github.owner = "test-owner"
-        mock.from_env.return_value.github.repo = "test-repo"
-        yield mock
+def injected_settings() -> Settings:
+    return Settings(github={"token": "test-token", "owner": "test-owner", "repo": "test-repo"})
 
 
 @pytest.fixture
-def adapter(mock_github_client: MagicMock, mock_settings: MagicMock) -> GitHubAdapter:  # noqa: ARG001
-    """Return an adapter with mocked client and settings."""
-    return GitHubAdapter()
+def adapter(mock_github_client: MagicMock, injected_settings: Settings) -> GitHubAdapter:  # noqa: ARG001
+    """Return an adapter with mocked client and explicit settings."""
+    return GitHubAdapter(settings=injected_settings)
 
 
 def test_init_no_token() -> None:
-    with patch("mcp_server.adapters.github_adapter.Settings") as mock_settings_cls:
-        mock_settings_cls.from_env.return_value.github.token = None
-        with pytest.raises(MCPSystemError, match="GitHub token not configured"):
-            GitHubAdapter()
+    with pytest.raises(MCPSystemError, match="GitHub token not configured"):
+        GitHubAdapter(settings=Settings(github={"token": None}))
 
 
 def test_repo_property(adapter: GitHubAdapter, mock_github_client: MagicMock) -> None:  # noqa: ARG001
@@ -131,7 +126,6 @@ def test_create_milestone(adapter: GitHubAdapter) -> None:
     mock_milestone = MagicMock()
     adapter.client.get_repo.return_value.create_milestone.return_value = mock_milestone
 
-    # Test with valid date string
     result = adapter.create_milestone("v1", due_on="2025-12-31T00:00:00Z")
     assert result == mock_milestone
     adapter.repo.create_milestone.assert_called_once()
@@ -379,7 +373,6 @@ def test_remove_labels_ignore_missing(adapter: GitHubAdapter) -> None:
     mock_issue.remove_from_labels.side_effect = GithubException(404, "Not Found")
     adapter.client.get_repo.return_value.get_issue.return_value = mock_issue
 
-    # Should not raise
     adapter.remove_labels(1, ["missing"])
 
 

@@ -12,9 +12,13 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.config.workflows import workflow_config
+from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.managers import git_manager
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
+
+
+def _load_workflow_config() -> WorkflowConfig:
+    return WorkflowConfig.load(Path(".st3/workflows.yaml"))
 
 
 class TestProjectManagerWorkflows:
@@ -46,6 +50,7 @@ class TestProjectManagerWorkflows:
 
     def test_workflows_loaded_from_yaml(self) -> None:
         """Test that workflows are loaded from workflows.yaml."""
+        workflow_config = _load_workflow_config()
         assert "feature" in workflow_config.workflows
         assert "bug" in workflow_config.workflows
         assert "hotfix" in workflow_config.workflows
@@ -54,7 +59,7 @@ class TestProjectManagerWorkflows:
 
     def test_feature_workflow_has_6_phases(self) -> None:
         """Test feature workflow from workflows.yaml."""
-        workflow = workflow_config.get_workflow("feature")
+        workflow = _load_workflow_config().get_workflow("feature")
         assert len(workflow.phases) == 6
         expected = [
             "research",
@@ -69,7 +74,7 @@ class TestProjectManagerWorkflows:
 
     def test_hotfix_workflow_has_3_phases_autonomous(self) -> None:
         """Test hotfix workflow from workflows.yaml."""
-        workflow = workflow_config.get_workflow("hotfix")
+        workflow = _load_workflow_config().get_workflow("hotfix")
         assert len(workflow.phases) == 3
         assert workflow.phases == ["implementation", "validation", "documentation"]
         assert workflow.default_execution_mode == "autonomous"

@@ -7,15 +7,16 @@ from unittest.mock import patch
 
 import pytest
 
+from mcp_server.config.settings import Settings
 from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
 
 
 @pytest.mark.asyncio
-async def test_run_tests_tool() -> None:
+async def test_run_tests_tool(tmp_path: Path) -> None:
     """Test RunTestsTool executes pytest and returns JSON output."""
 
-    tool = RunTestsTool()
+    tool = RunTestsTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
 
     with patch("mcp_server.tools.test_tools._run_pytest_sync") as mock_run:
         mock_run.return_value = ("2 passed in 0.10s\n", "", 0)
@@ -35,12 +36,9 @@ async def test_run_tests_tool() -> None:
 @pytest.mark.asyncio
 async def test_create_file_tool(tmp_path: Path) -> None:
     """Test CreateFileTool creates file with correct content in subdirectory."""
-    with patch("mcp_server.tools.code_tools.Settings") as mock_settings_cls:
-        mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
+    tool = CreateFileTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
 
-        tool = CreateFileTool()
-
-        await tool.execute(CreateFileInput(path="new_dir/test.txt", content="hello world"))
+    await tool.execute(CreateFileInput(path="new_dir/test.txt", content="hello world"))
 
     file_path = tmp_path / "new_dir/test.txt"
     assert file_path.exists()
@@ -50,12 +48,9 @@ async def test_create_file_tool(tmp_path: Path) -> None:
 @pytest.mark.asyncio
 async def test_create_file_security_check(tmp_path: Path) -> None:
     """Test CreateFileTool rejects path traversal attempts."""
-    with patch("mcp_server.tools.code_tools.Settings") as mock_settings_cls:
-        mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
+    tool = CreateFileTool(settings=Settings(server={"workspace_root": str(tmp_path)}))
 
-        tool = CreateFileTool()
-
-        result = await tool.execute(CreateFileInput(path="../outside.txt", content="bad"))
+    result = await tool.execute(CreateFileInput(path="../outside.txt", content="bad"))
 
     assert result.is_error
     assert "Access denied" in result.content[0]["text"]

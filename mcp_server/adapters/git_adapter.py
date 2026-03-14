@@ -1,5 +1,6 @@
 """Git adapter for the MCP server."""
 
+from pathlib import Path
 from typing import Any
 
 from git import InvalidGitRepositoryError, Repo
@@ -12,9 +13,16 @@ from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 class GitAdapter:
     """Adapter for interacting with local Git repository."""
 
-    def __init__(self, repo_path: str | None = None) -> None:
+    def __init__(
+        self,
+        repo_path: str | None = None,
+        settings: Settings | None = None,
+    ) -> None:
         """Initialize the Git adapter."""
-        self.repo_path = repo_path or Settings.from_env().server.workspace_root
+        base_repo_path = repo_path or (
+            settings.server.workspace_root if settings else str(Path.cwd())
+        )
+        self.repo_path = base_repo_path
         self._repo: Repo | None = None
 
     @property
@@ -37,7 +45,6 @@ class GitAdapter:
         try:
             return self.repo.active_branch.name
         except TypeError:
-            # Detached head
             return "HEAD"
         except Exception as e:
             raise ExecutionError(f"Failed to get current branch: {e}") from e
@@ -68,7 +75,6 @@ class GitAdapter:
         """
         logger = core_logging.get_logger("git_adapter")
 
-        # Resolve base reference
         if base == "HEAD":
             base_ref = self.repo.head.commit
             resolved_base = f"HEAD ({base_ref.hexsha[:7]})"
@@ -124,65 +130,29 @@ class GitAdapter:
             commit = self.repo.index.commit(message)
             return commit.hexsha
         except Exception as e:
-            raise ExecutionError(f"Failed to commit: {e}") from e
+            raise ExecutionError(f"Failed to commit changes: {e}") from e
 
     def restore(self, files: list[str], source: str = "HEAD") -> None:
-        """Restore files to a given source ref (default: HEAD).
-
-        This restores both staged and working tree changes for the given files.
-
-        Args:
-            files: List of file paths to restore.
-            source: Git ref to restore from.
-        """
+        """Restore files to a given source ref (default: HEAD)."""
         try:
-            # Restore both index and working tree from the given source.
             self.repo.git.restore(f"--source={source}", "--staged", "--worktree", "--", *files)
         except Exception as e:
             raise ExecutionError(f"Failed to restore files: {e}") from e
 
     def checkout(self, branch_name: str) -> None:
-        """Checkout branch (local or remote-tracking).
-
-        Sequential fallback: checks local branches first (fast path), then
-        remote-tracking refs. Creates local tracking branch for remote-only.
-
-        Args:
-            branch_name: Branch name with or without 'origin/' prefix.
-                         Examples: "feature/x", "origin/feature/x"
-
-        Returns:
-            None: On successful checkout
-
-        Raises:
-            ExecutionError: In these scenarios:
-                - "Branch {name} does not exist (checked: local, origin)" (missing)
-                - "Failed to checkout {name}: {detail}" (unexpected git error)
-
-        Precondition:
-            Requires recent git_fetch() for up-to-date remote-tracking refs.
-            Does NOT auto-fetch (Decision Q3).
-
-        Performance:
-            Local branch: O(1), NO remote access (Decision D3 invariant)
-            Remote-only: O(n), n = count of remote refs
-        """
+        """Checkout branch (local or remote-tracking)."""
         try:
-            # Normalize input (Decision D2, Scenario S5)
             normalized_branch = branch_name.removeprefix("origin/")
 
-            # Fast path: local branch exists (Scenario S1, Decision D3)
             if normalized_branch in self.repo.heads:
                 self.repo.heads[normalized_branch].checkout()
-                return  # ← Early return, NO remote access
+                return
 
-            # Fallback: check remote-tracking refs (Scenario S2)
             try:
                 origin = self.repo.remote("origin")
             except ValueError as e:
-                raise ExecutionError("Origin remote not configured") from e  # Scenario S3
+                raise ExecutionError("Origin remote not configured") from e
 
-            # Search for remote-tracking ref
             remote_ref_name = f"origin/{normalized_branch}"
             remote_ref = next((ref for ref in origin.refs if ref.name == remote_ref_name), None)
 
@@ -190,9 +160,8 @@ class GitAdapter:
                 raise ExecutionError(
                     f"Branch {normalized_branch} does not exist (checked: local, origin). "
                     f"Hint: Run git_fetch to update remote branch information."
-                )  # Scenario S4
+                )
 
-            # Create local tracking branch (Scenario S2)
             local_branch = self.repo.create_head(normalized_branch, remote_ref)
             local_branch.set_tracking_branch(remote_ref)
             local_branch.checkout()
@@ -219,26 +188,8 @@ class GitAdapter:
             raise ExecutionError(f"Failed to push: {e}") from e
 
     def fetch(self, remote: str = "origin", prune: bool = False) -> str:
-        """Fetch updates from a remote.
-
-        Responsibilities:
-        - Perform a non-interactive fetch (disable pager/prompts) to avoid stdio hangs.
-
-        Usage example:
-        - adapter.fetch(remote="origin", prune=False)
-
-        Args:
-            remote: Remote name (default: origin).
-            prune: Whether to prune deleted remote-tracking branches.
-
-        Returns:
-            A short human-readable summary.
-
-        Raises:
-            ExecutionError: When remote is missing or fetch fails.
-        """
+        """Fetch updates from a remote."""
         try:
-            # Ensure non-interactive behavior even when Git spawns subprocesses.
             self.repo.git.update_environment(
                 GIT_TERMINAL_PROMPT="0",
                 GIT_PAGER="cat",
@@ -260,20 +211,8 @@ class GitAdapter:
             raise ExecutionError(f"Failed to fetch from remote '{remote}': {e}") from e
 
     def has_upstream(self) -> bool:
-        """Check whether the current branch has an upstream tracking branch.
-
-        Responsibilities:
-        - Provide a safe upstream presence check for GitManager preflight.
-
-        Usage example:
-        - adapter.has_upstream()
-
-        Returns:
-            True if the active branch has a tracking branch; False otherwise.
-        """
+        """Check whether the current branch has an upstream tracking branch."""
         try:
-            # Detached head raises TypeError in get_current_branch; active_branch access
-            # can raise in detached states.
             tracking = self.repo.active_branch.tracking_branch()
             return tracking is not None
         except TypeError:
@@ -282,24 +221,7 @@ class GitAdapter:
             raise ExecutionError(f"Failed to check upstream: {e}") from e
 
     def pull(self, remote: str = "origin", rebase: bool = False) -> str:
-        """Pull updates from a remote into the current branch.
-
-        Responsibilities:
-        - Perform a non-interactive pull (disable pager/prompts) to avoid stdio hangs.
-
-        Usage example:
-        - adapter.pull(remote="origin", rebase=False)
-
-        Args:
-            remote: Remote name (default: origin).
-            rebase: Use --rebase instead of merge.
-
-        Returns:
-            A short human-readable summary.
-
-        Raises:
-            ExecutionError: When remote is missing or pull fails.
-        """
+        """Pull updates from a remote into the current branch."""
         try:
             self.repo.git.update_environment(
                 GIT_TERMINAL_PROMPT="0",
@@ -307,7 +229,6 @@ class GitAdapter:
                 PAGER="cat",
             )
 
-            # Validate remote exists early for clearer errors.
             self.repo.remote(remote)
 
             args: list[str] = [remote]
@@ -354,12 +275,7 @@ class GitAdapter:
             raise ExecutionError(f"Failed to delete {branch_name}: {e}") from e
 
     def stash(self, message: str | None = None, include_untracked: bool = False) -> None:
-        """Stash current changes.
-
-        Args:
-            message: Optional message for the stash entry.
-            include_untracked: Include untracked files in the stash entry.
-        """
+        """Stash current changes."""
         try:
             args: list[str] = ["push"]
             if include_untracked:
@@ -378,11 +294,7 @@ class GitAdapter:
             raise ExecutionError(f"Failed to pop stash: {e}") from e
 
     def stash_list(self) -> list[str]:
-        """List all stash entries.
-
-        Returns:
-            List of stash entry descriptions.
-        """
+        """List all stash entries."""
         try:
             output = str(self.repo.git.stash("list"))
             if not output:
@@ -392,15 +304,7 @@ class GitAdapter:
             raise ExecutionError(f"Failed to list stashes: {e}") from e
 
     def list_branches(self, verbose: bool = False, remote: bool = False) -> list[str]:
-        """List branches with optional verbose info and remotes.
-
-        Args:
-            verbose: Include upstream/hash info (-vv)
-            remote: Include remote branches (-r)
-
-        Returns:
-            List of raw branch strings
-        """
+        """List branches with optional verbose info and remotes."""
         try:
             args = []
             if remote:
@@ -408,7 +312,6 @@ class GitAdapter:
             if verbose:
                 args.append("-vv")
 
-            # GitPython's repo.git.branch returns the raw string output
             output = str(self.repo.git.branch(*args))
             if not output:
                 return []
@@ -417,33 +320,14 @@ class GitAdapter:
             raise ExecutionError(f"Failed to list branches: {e}") from e
 
     def get_diff_stat(self, target: str, source: str = "HEAD") -> str:
-        """Get diff statistics between two references.
-
-        Args:
-            target: Target reference (e.g. main)
-            source: Source reference (default HEAD)
-
-        Returns:
-            Diff stat string
-        """
+        """Get diff statistics between two references."""
         try:
-            # git diff source...target --stat (triple dot for merge base comparison?)
-            # Usually strict comparison 'target...source' is better for
-            # "what is in source that is not in target"
-            # Command: git diff target...source --stat
             return str(self.repo.git.diff(f"{target}...{source}", "--stat"))
         except Exception as e:
             raise ExecutionError(f"Failed to get diff stat: {e}") from e
 
     def get_recent_commits(self, limit: int = 5) -> list[str]:
-        """Get recent commit messages.
-
-        Args:
-            limit: Maximum number of commits to return.
-
-        Returns:
-            List of commit messages (most recent first).
-        """
+        """Get recent commit messages."""
         try:
             commits = list(self.repo.iter_commits(max_count=limit))
             return [str(commit.message).split("\n", maxsplit=1)[0] for commit in commits]

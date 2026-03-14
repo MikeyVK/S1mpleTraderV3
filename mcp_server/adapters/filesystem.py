@@ -17,8 +17,13 @@ from mcp_server.core.exceptions import MCPSystemError, ValidationError
 class FilesystemAdapter:
     """Adapter for safe filesystem operations."""
 
-    def __init__(self, root_path: str | None = None) -> None:
-        self.root_path = Path(root_path or Settings.from_env().server.workspace_root).resolve()
+    def __init__(
+        self,
+        root_path: str | None = None,
+        settings: Settings | None = None,
+    ) -> None:
+        base_path = root_path or (settings.server.workspace_root if settings else ".")
+        self.root_path = Path(base_path).resolve()
 
     def resolve_path(self, path: str | Path) -> Path:
         """Resolve path relative to workspace root and validate safety.

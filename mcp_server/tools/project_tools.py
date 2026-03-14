@@ -78,10 +78,16 @@ class InitializeProjectTool(BaseTool):
         """
         super().__init__()
         self.workspace_root = Path(workspace_root)
-        self.manager = ProjectManager(workspace_root=workspace_root)
+        self.workflow_config = WorkflowConfig.load()
+        self.manager = ProjectManager(
+            workspace_root=workspace_root,
+            workflow_config=self.workflow_config,
+        )
         self.git_manager = GitManager()
         self.state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=self.manager
+            workspace_root=workspace_root,
+            project_manager=self.manager,
+            workflow_config=self.workflow_config,
         )
 
     @property
@@ -279,7 +285,7 @@ class InitializeProjectTool(BaseTool):
 
             # Add template info if not custom
             if params.workflow_name != "custom":
-                workflow = WorkflowConfig.load().get_workflow(params.workflow_name)
+                workflow = self.workflow_config.get_workflow(params.workflow_name)
                 success_message["description"] = workflow.description
 
             return ToolResult.text(json.dumps(success_message, indent=2))

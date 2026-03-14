@@ -16,9 +16,13 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.config.workflows import workflow_config
+from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+
+
+def _load_workflow_config() -> WorkflowConfig:
+    return WorkflowConfig.load(Path(".st3/workflows.yaml"))
 
 
 class TestPhaseStateEngineMode2:
@@ -125,7 +129,7 @@ class TestPhaseStateEngineMode2:
             state = state_engine.get_state("fix/39-test")
 
             # phase:green should map to 'implementation' in bug workflow
-            bug_workflow = workflow_config.get_workflow("bug")
+            bug_workflow = _load_workflow_config().get_workflow("bug")
             assert "implementation" in bug_workflow.phases
             assert state.current_phase == "implementation"
 
@@ -148,7 +152,7 @@ class TestPhaseStateEngineMode2:
             state = state_engine.get_state("fix/39-test")
 
             # Should fallback to first phase of workflow
-            bug_workflow = workflow_config.get_workflow("bug")
+            bug_workflow = _load_workflow_config().get_workflow("bug")
             expected_first_phase = bug_workflow.phases[0]
             assert state.current_phase == expected_first_phase
             assert state.reconstructed is True
@@ -240,7 +244,7 @@ class TestPhaseStateEngineMode2:
             # Should not crash, fallback to first phase
             state = state_engine.get_state("fix/39-test")
 
-            bug_workflow = workflow_config.get_workflow("bug")
+            bug_workflow = _load_workflow_config().get_workflow("bug")
             expected_first_phase = bug_workflow.phases[0]
             assert state.current_phase == expected_first_phase
             assert state.reconstructed is True

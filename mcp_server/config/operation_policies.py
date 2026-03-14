@@ -15,7 +15,7 @@ from typing import ClassVar
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
-from mcp_server.config.workflows import workflow_config
+from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.core.exceptions import ConfigError
 
 
@@ -25,9 +25,7 @@ class OperationPolicy(BaseModel):
     operation_id: str = Field(
         ..., description="Operation identifier (scaffold, create_file, commit)"
     )
-    description: str = Field(
-        ..., description="Human-readable description of operation"
-    )
+    description: str = Field(..., description="Human-readable description of operation")
     allowed_phases: list[str] = Field(
         default_factory=list,
         description="Phases where operation allowed (empty = all phases)",
@@ -39,9 +37,7 @@ class OperationPolicy(BaseModel):
         default_factory=list,
         description="File extensions allowed (empty = all extensions)",
     )
-    require_tdd_prefix: bool = Field(
-        False, description="Require TDD prefix in commit messages"
-    )
+    require_tdd_prefix: bool = Field(False, description="Require TDD prefix in commit messages")
     allowed_prefixes: list[str] = Field(
         default_factory=list, description="Valid TDD prefixes for commit messages"
     )
@@ -52,9 +48,7 @@ class OperationPolicy(BaseModel):
         """Validate extensions have leading dot."""
         for ext in v:
             if not ext.startswith("."):
-                raise ValueError(
-                    f"File extension must start with dot: '{ext}' should be '.{ext}'"
-                )
+                raise ValueError(f"File extension must start with dot: '{ext}' should be '.{ext}'")
         return v
 
     def is_allowed_in_phase(self, phase: str) -> bool:
@@ -123,13 +117,20 @@ class OperationPoliciesConfig(BaseModel):
     operations: dict[str, OperationPolicy] = Field(
         ..., description="Operation policy definitions keyed by operation_id"
     )
+    workflow_config: WorkflowConfig | None = Field(
+        default=None,
+        exclude=True,
+        description="Injected workflow config for phase cross-validation",
+    )
 
     # Singleton pattern (ClassVar prevents Pydantic v2 ModelPrivateAttr bug)
     singleton_instance: ClassVar[OperationPoliciesConfig | None] = None
 
     @classmethod
     def from_file(
-        cls, config_path: str = ".st3/policies.yaml"
+        cls,
+        config_path: str = ".st3/policies.yaml",
+        workflow_config: WorkflowConfig | None = None,
     ) -> OperationPoliciesConfig:
         """Load config from YAML file with cross-validation.
 
@@ -149,17 +150,13 @@ class OperationPoliciesConfig(BaseModel):
         # Load and parse YAML
         path = Path(config_path)
         if not path.exists():
-            raise ConfigError(
-                f"Config file not found: {config_path}", file_path=config_path
-            )
+            raise ConfigError(f"Config file not found: {config_path}", file_path=config_path)
 
         try:
             with open(path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
         except yaml.YAMLError as e:
-            raise ConfigError(
-                f"Invalid YAML in {config_path}: {e}", file_path=config_path
-            ) from e
+            raise ConfigError(f"Invalid YAML in {config_path}: {e}", file_path=config_path) from e
 
         # Validate structure
         if "operations" not in data:
@@ -180,7 +177,10 @@ class OperationPoliciesConfig(BaseModel):
                 ) from e
 
         # Create instance
-        instance = cls(operations=operations)
+        instance = cls(
+            operations=operations,
+            workflow_config=workflow_config or WorkflowConfig.load(),
+        )
 
         # Cross-validation: Check allowed_phases exist in workflows.yaml
         instance._validate_phases()
@@ -198,7 +198,12 @@ class OperationPoliciesConfig(BaseModel):
         # Collect all valid phases from all workflows
         valid_phases: set[str] = set()
         try:
-            for wf_template in workflow_config.workflows.values():  # pylint: disable=no-member
+            if self.workflow_config is None:
+                raise ConfigError(
+                    "Workflow config is required for phase cross-validation",
+                    file_path=".st3/workflows.yaml",
+                )
+            for wf_template in self.workflow_config.workflows.values():  # pylint: disable=no-member
                 valid_phases.update(wf_template.phases)
         except Exception as e:
             raise ConfigError(

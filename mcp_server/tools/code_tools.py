@@ -34,6 +34,17 @@ class CreateFileTool(BaseTool):
     )
     args_model = CreateFileInput
 
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        workspace_root: str | Path | None = None,
+    ) -> None:
+        super().__init__()
+        base_workspace = workspace_root or (
+            settings.server.workspace_root if settings else Path.cwd()
+        )
+        self._workspace_root = Path(base_workspace).resolve()
+
     @property
     def input_schema(self) -> dict[str, Any]:
         if self.args_model is None:
@@ -42,7 +53,6 @@ class CreateFileTool(BaseTool):
 
     async def execute(self, params: CreateFileInput) -> ToolResult:
         """Execute the tool."""
-        # Emit deprecation warning
         warnings.warn(
             "create_file is deprecated. Use scaffold_artifact instead.",
             DeprecationWarning,
@@ -51,16 +61,12 @@ class CreateFileTool(BaseTool):
 
         path = params.path
         content = params.content
-        # Security check: ensure path is within workspace
-        _workspace_root = Settings.from_env().server.workspace_root
-        full_path = Path(_workspace_root) / path
+        full_path = self._workspace_root / path
         try:
             full_path = full_path.resolve()
-            workspace = Path(_workspace_root).resolve()
-            if not str(full_path).startswith(str(workspace)):
+            if not str(full_path).startswith(str(self._workspace_root)):
                 raise ValidationError(f"Access denied: {path} is outside workspace")
 
-            # Create directories if needed
             full_path.parent.mkdir(parents=True, exist_ok=True)
 
             with open(full_path, "w", encoding="utf-8") as f:

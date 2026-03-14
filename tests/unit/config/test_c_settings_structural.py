@@ -7,6 +7,7 @@ These tests must all be GREEN after C_SETTINGS.1 completes.
 import inspect
 
 import mcp_server.config.settings as _settings_module
+import mcp_server.config.workflows as _workflows_module
 from mcp_server.config.settings import Settings
 
 
@@ -26,6 +27,17 @@ def test_settings_exposes_from_env_not_load() -> None:
     assert hasattr(Settings, "from_env"), "Settings.from_env() must exist."
     assert not hasattr(Settings, "load"), (
         "Settings.load() must be deleted — use Settings.from_env() instead."
+    )
+
+
+def test_workflows_module_does_not_export_singleton() -> None:
+    """Module-level 'workflow_config' must not exist — singleton deleted.
+
+    Ref: c_settings_2.workflow_singleton_deleted.
+    """
+    assert not hasattr(_workflows_module, "workflow_config"), (
+        "mcp_server.config.workflows must not export a module-level 'workflow_config' singleton. "
+        "Inject WorkflowConfig from the composition root or tool layer."
     )
 
 

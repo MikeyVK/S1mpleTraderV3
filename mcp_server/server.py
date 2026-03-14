@@ -175,8 +175,8 @@ class MCPServer:
             # Development tools
             HealthCheckTool(),
             RestartServerTool(),
-            RunTestsTool(),
-            CreateFileTool(),
+            RunTestsTool(settings=settings),
+            CreateFileTool(settings=settings),
             # Project tools (Phase 0.5)
             InitializeProjectTool(workspace_root=Path(settings.server.workspace_root)),
             GetProjectPlanTool(workspace_root=Path(settings.server.workspace_root)),
@@ -195,8 +195,8 @@ class MCPServer:
                 )
             ),
             # Discovery tools
-            SearchDocumentationTool(),
-            GetWorkContextTool(),
+            SearchDocumentationTool(settings=settings),
+            GetWorkContextTool(settings=settings),
         ]
 
         # GitHub-dependent resources and additional tools (only if token is configured)

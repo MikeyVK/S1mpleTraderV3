@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from mcp_server.config.workflows import workflow_config
+from mcp_server.config.workflows import WorkflowConfig
 
 # Project modules
 from mcp_server.core.phase_detection import ScopeDecoder
@@ -85,13 +85,19 @@ class ProjectManager:
     Uses workflows.yaml for workflow definitions and phase sequences.
     """
 
-    def __init__(self, workspace_root: Path | str) -> None:
+    def __init__(
+        self,
+        workspace_root: Path | str,
+        workflow_config: WorkflowConfig | None = None,
+    ) -> None:
         """Initialize ProjectManager.
 
         Args:
             workspace_root: Path to workspace root directory
+            workflow_config: Workflow configuration injected from composition root or tool layer
         """
         self.workspace_root = Path(workspace_root)
+        self.workflow_config = workflow_config or WorkflowConfig.load()
         self.deliverables_file = self.workspace_root / ".st3" / "deliverables.json"
         self.atomic_json_writer = AtomicJsonWriter()
 
@@ -125,9 +131,9 @@ class ProjectManager:
 
         # Validate workflow exists
         try:
-            workflow = workflow_config.get_workflow(workflow_name)
+            workflow = self.workflow_config.get_workflow(workflow_name)
         except ValueError as e:
-            # Re-raise with workflow_config error (includes available workflows)
+            # Re-raise with workflow config error (includes available workflows)
             raise ValueError(str(e)) from e
 
         # Determine execution mode (override or workflow default)
