@@ -1953,7 +1953,7 @@
               },
               {
                 "id": "c_settings_1.server_wiring_stub",
-                "description": "server.py calls Settings.from_env() at composition root; injects into core/logging.py + cli.py",
+                "description": "server.py calls Settings.from_env() at composition root; injects into core/logging.py; cli.py migrated from singleton import to local Settings.from_env() (full DI injection deferred to C_SETTINGS.2)",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/server.py",
@@ -1961,7 +1961,7 @@
                 }
               }
             ],
-            "exit_criteria": "test_c_settings_structural.py: 4 passed; Select-String 'settings = Settings.load()' -> 0; Select-String 'MCP_LOG_LEVEL' -> 0; full suite green"
+            "exit_criteria": "test_c_settings_structural.py: 3 passed; Select-String 'settings = Settings.load()' -> 0; Select-String 'MCP_LOG_LEVEL' -> 0; full suite green"
           },
           {
             "cycle_number": 2,

@@ -103,7 +103,7 @@ C_SETTINGS.1 → C_SETTINGS.2
 | `c_settings_1.from_env` | Settings.from_env() introduced | component | `Settings.from_env()` exists; `Settings.load()` deleted | `test_settings_exposes_from_env_not_load` passes | RC-4 highest risk first; P-2 no singleton |
 | `c_settings_1.singleton_deleted` | Module-level singleton removed | deletion | `settings = Settings.load()` line gone from `settings.py` | `test_settings_module_does_not_export_singleton` passes | P-1 no partial migration |
 | `c_settings_1.log_level_rename` | MCP_LOG_LEVEL → LOG_LEVEL | migration | `settings.py` + `conftest.py` use `LOG_LEVEL` | `Select-String "MCP_LOG_LEVEL" → 0 matches` | P-6 env-var rename |
-| `c_settings_1.server_wiring_stub` | server.py DI stub wired | wiring | `server.py` calls `Settings.from_env()`; injects into `core/logging.py` + `cli.py` | `test_c_settings_structural.py` all 4 pass | P-4 built-and-wired |
+| `c_settings_1.server_wiring_stub` | server.py DI stub wired | wiring | `server.py` calls `Settings.from_env()`; injects into `core/logging.py`; `cli.py` migrated from singleton to local `Settings.from_env()` (full DI injection deferred to C_SETTINGS.2) | `test_c_settings_structural.py` all 3 pass | P-4 built-and-wired |
 
 ### Integration Surface
 
@@ -112,7 +112,7 @@ C_SETTINGS.1 → C_SETTINGS.2
 | ☐ | `mcp_server/config/settings.py` | Delete `settings = Settings.load()`; rename method to `from_env()`; `MCP_LOG_LEVEL` → `LOG_LEVEL` |
 | ☐ | `mcp_server/server.py` | Add `settings = Settings.from_env()` at composition root; pass to `core/logging.py` and `cli.py` |
 | ☐ | `mcp_server/core/logging.py` | Remove singleton import; accept `log_level: str` param |
-| ☐ | `mcp_server/cli.py` | Remove singleton import; accept `settings: Settings` param |
+| ☐ | `mcp_server/cli.py` | Remove singleton import; call `Settings.from_env()` locally for `--version` (full DI injection via server.py deferred to C_SETTINGS.2) |
 | ☐ | `tests/mcp_server/unit/conftest.py` line 10 | `MCP_LOG_LEVEL` → `LOG_LEVEL` |
 | ☐ | `tests/unit/config/test_c_settings_structural.py` | **New file — RED phase structural tests (see below)** |
 
@@ -129,13 +129,10 @@ def test_settings_exposes_from_env_not_load():
     assert hasattr(Settings, "from_env")
     assert not hasattr(Settings, "load")
 
-def test_workflows_module_does_not_export_singleton():
-    import mcp_server.config.workflows as m
-    assert not hasattr(m, "workflow_config")
-
 def test_log_level_env_var_renamed():
     import inspect, mcp_server.config.settings as m
     assert "MCP_LOG_LEVEL" not in inspect.getsource(m)
+# Note: test_workflows_module_does_not_export_singleton belongs to C_SETTINGS.2 (workflow singleton scope)
 ```
 
 ### Test Zone Assignment
@@ -150,7 +147,7 @@ def test_log_level_env_var_renamed():
 ```powershell
 Select-String "settings = Settings.load\(\)" mcp_server/ -Recurse            # 0 matches
 Select-String "MCP_LOG_LEVEL" mcp_server/, tests/ -Recurse                    # 0 matches
-pytest tests/unit/config/test_c_settings_structural.py -v                     # 4 passed
+pytest tests/unit/config/test_c_settings_structural.py -v                     # 3 passed
 pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # all pass
 ```
 
