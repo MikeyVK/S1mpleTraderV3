@@ -3,8 +3,58 @@
 # Config Layer SRP Violations: Missing Loader, Validator and Schema Separation
 
 **Status:** COMPLETE
-**Version:** 1.4
+**Version:** 1.5
 **Last Updated:** 2026-03-14
+
+---
+
+## Table of Contents
+
+- [Purpose](#purpose)
+- [Scope](#scope)
+- [Prerequisites](#prerequisites)
+- [Problem Statement](#problem-statement)
+- [Research Goals](#research-goals)
+- [Background](#background)
+- [Findings](#findings)
+  - [F1 — No Central ConfigLoader](#f1--no-central-configloader-srp-violation)
+  - [F2 — No ConfigValidator](#f2--no-configvalidator-cross-config-validation-missing-at-startup)
+  - [F3 — mcp\_config.yaml Must Not Exist](#f3--mcp_configyaml-must-not-exist-mcpjson-is-the-mcp-standard-config-source)
+  - [F4 — Python Defaults Mirror YAML](#f4--python-defaults-mirror-yaml-exactly-dry-violation-dead-code)
+  - [F5 — Value Conflict in quality\_config.py](#f5--value-conflict-between-quality_configpy-and-qualityyaml)
+  - [F6 — Non-Schema Files in config/](#f6--non-schema-files-misplaced-in-config)
+  - [F7 — Config vs Constants Boundary](#f7--config-vs-constants-the-boundary)
+  - [F8 — label\_startup.py SRP Violation](#f8--label_startuppy-conflates-two-distinct-responsibilities-srp-violation)
+  - [F9 — Loader Responsibilities: Fail-Fast vs Graceful Degradation](#f9--loader-responsibilities-fail-fast-vs-graceful-degradation)
+  - [F10 — Spec-Builders (ConfigTranslator Role)](#f10--configtranslator-role-three-domain-specific-spec-builders)
+  - [F11 — Test Isolation: Three Zones](#f11--test-isolation-current-state-and-future-gain)
+  - [F12 — Module-Level Singletons](#f12--module-level-singletons-import-time-side-effect-architecture_principlesmd-12)
+  - [F13 — Two ConfigError Classes](#f13--two-configerror-classes-ssot-violation-architecture_principlesmd-2)
+  - [F14 — Config Coverage: Full Flow Mapping](#f14--config-coverage-full-flow-mapping)
+  - [F15 — Naming Conventions Audit](#f15--naming-conventions-audit-of-all-new-code-proposed-in-this-document)
+- [Decisions](#decisions)
+  - D1 mcp\_config.yaml abolished · D2 ConfigLoader path injection · D3 GitConfig fail-fast
+  - D4 ConfigValidator entrypoint · D5 label-sync to LabelManager · D6 template\_config to utils/
+  - D7 config/schemas/ in C\_LOADER · D8 three spec-builders · D9 ClassVar removal · D10 hard break
+  - D11 config/schemas/ formalised · D12 MCP\_SERVER\_NAME · D13 LOG\_LEVEL · D14 PSE two-step migration
+- [Priority Matrix for Next Cycles](#priority-matrix-for-next-cycles)
+- [Design Questions Resolved](#design-questions-resolved-in-research)
+  - [DQ1 — Composition Root](#dq1--composition-root-who-instantiates-what)
+  - [DQ2 — from\_file() Strategy](#dq2--from_file-strategy-hard-break--d10)
+  - [DQ3 — Module-Level Singletons](#dq3--module-level-singletons-what-replaces-them)
+  - [DQ4 — config/schemas/ Subdirectory](#dq4--configschemas-subdirectory-included-in-c_loader-answer-revised)
+  - [DQ5 — ClassVar Singleton Removal](#dq5--classvar-singleton-removal-c_loader--d9)
+- [Gap Prevention Protocol](#gap-prevention-protocol)
+  - [RC-1 Stop/Go as Hard Gate](#rc-1--stopgo-as-hard-gate-not-a-suggestion)
+  - [RC-2 Explicit Integration Points](#rc-2--explicit-integration-points-in-every-cycle-dod)
+  - [RC-3 Structural Test per RED Phase](#rc-3--minimum-one-structural-test-per-red-phase)
+  - [RC-4 Highest-Risk Work First](#rc-4--highest-risk-work-in-first-cycles)
+  - [RC-5 Migration Checklists](#rc-5--migration-checklists-as-tracked-artifacts)
+  - [RC-6/RC-7 — addressed via F11 + RC-3](#rc-5--migration-checklists-as-tracked-artifacts)
+  - [RC-8 Planning as Executable Specification](#rc-8--planning-as-executable-specification)
+- [Open Questions](#open-questions) (OQ1–OQ5)
+- [Related Documentation](#related-documentation)
+- [Version History](#version-history)
 
 ---
 
@@ -344,7 +394,7 @@ make them explicit at startup. The boundary:
 | Situation | Required behavior | Example |
 |---|---|---|
 | YAML file missing, field has no safe default | `ConfigError` at startup with file path | `git.yaml` absent → cannot validate branch types |
-| YAML file missing, field has a safe operational default | Log `WARNING` with value used, continue | `logging.level` → default `INFO`, warn |
+| YAML file missing, field has a safe operational default | Log `WARNING` with value used, continue | `logging.level` → default `INFO`, warn (see D13 for `LOG_LEVEL` specifically — env var, not YAML) |
 | YAML file present, required field absent | `ConfigError` with field name and file path | Pydantic `Field(...)` enforces this |
 | YAML file present, optional field absent | Use schema default, log `DEBUG` | Documented optional fields only |
 | Cross-config constraint violated | `ConfigError` in `ConfigValidator` | `allowed_phases` not in `workflows.yaml` |
@@ -748,12 +798,12 @@ every name needs an explicit decision so that PRs do not introduce accidental in
 | `EnforcementRunner` | `managers/` | Is a Runner, not a Manager | Keep in `managers/`; same cleanup issue |
 | `PhaseContractResolver` | `managers/` | Is a Resolver, not a Manager | Keep in `managers/`; same cleanup issue |
 
-**Open naming question (defer to planning):**
-- Are spec output DTOs (`GateExecutionPlan`, `ScaffoldSpec`, `WorkflowInitSpec`) better placed in
-  `mcp_server/dtos/specs/` or in `mcp_server/config/specs/`?  
-  **Preferred:** `mcp_server/dtos/specs/` because these types are consumed by managers, not owned
-  by the config layer. Placing them in `config/` would create an import dependency from
-  `managers/` → `config/dtos` which is architecturally odd.
+**Naming decision (resolved):** Spec output DTOs (`GateExecutionPlan`, `ScaffoldSpec`,
+`WorkflowInitSpec`) are placed in `mcp_server/dtos/specs/`. Rationale: these types are
+consumed by managers, not owned by the config layer. Placing them in `config/` would create
+an import dependency `managers/ → config/dtos` which inverts the intended direction. The
+`mcp_server/dtos/` folder mirrors the `backend/dtos/` pattern already established in the
+codebase.
 
 ---
 
@@ -800,6 +850,9 @@ break in C_SETTINGS + C_LOADER:
 
 1. Delete `settings = Settings.load()` and `workflow_config = WorkflowConfig.load()` module-level exports.
 2. Delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schema classes.
+   *(15 = 13 YAML-backed schemas + `EnforcementConfig` from `managers/enforcement_runner.py` +
+   `PhaseContractConfig` from `managers/phase_state_engine.py`. `Settings` is handled separately
+   in C_SETTINGS: `load()` is replaced by `from_env()`, not simply deleted.)*
 3. This breaks all 14+ importers immediately — that is intentional and desired.
 4. Add `ConfigLoader` with all methods. Add `Settings.from_env()`.
 5. Update every consumer in the same cycle. Every broken import is a tracked checklist item.
@@ -918,7 +971,7 @@ artifact_manager      = ArtifactManager(workspace_root, artifact_config, scaffol
 project_manager       = ProjectManager(workspace_root, workflow_config, workflow_spec_builder)
 git_manager           = GitManager(workspace_root, git_config, settings)
 label_manager         = LabelManager(workspace_root, label_config, settings)
-phase_state_engine    = PhaseStateEngine(workspace_root, workphases_config, state_repository)
+phase_state_engine    = PhaseStateEngine(workspace_root, workphases_config, state_repository)  # state_repository: adapter for .st3/state.json (e.g. JsonStateRepository)
 enforcement_runner    = EnforcementRunner(workspace_root, enforcement_config)
 phase_contract_resolver = PhaseContractResolver(phase_contracts, workphases_config)
 # ... remaining managers
@@ -993,6 +1046,9 @@ work and will be caught by a structural test:
 
 ```python
 # Structural test — required in C_LOADER RED phase
+# NOTE: This per-class variant is illustrative. The canonical implementation is
+# the inspect-based test defined in F14 (test_no_from_file_on_any_config_schema),
+# which covers all schema classes automatically via the schemas module namespace.
 def test_no_from_file_on_any_config_class() -> None:
     from mcp_server.config import quality_config, git_config, workflows  # etc.
     for cls in [quality_config.QualityConfig, git_config.GitConfig, ...]:
@@ -1071,6 +1127,11 @@ and tested in isolation.
 singleton, and every schema class that carries a `ClassVar`. Each item is a checkbox. A cycle is
 not done until every checkbox is ticked and a verification command confirms it.
 
+*Note: RC-6 (test coverage gaps at boundary layers) and RC-7 (spec-builder tests not separated
+from manager tests) from `GAP_ANALYSE_ISSUE257.md` are addressed structurally by the three-zone
+test architecture (F11) and the structural test requirement (RC-3 + F14) rather than as separate
+protocol items. They do not require standalone protocol entries here.*
+
 ### RC-8 — Planning as Executable Specification
 
 Every DoD item in `planning.md` follows the format:
@@ -1084,10 +1145,19 @@ planning document is consulted before every commit in a cycle — not once at th
 
 ## Open Questions
 
-*All open questions from the previous version of this document have been resolved:*
+**Resolved (previous versions):**
+- `from_file()` deprecated delegates vs immediate removal → D10 + DQ2: hard break, no deprecated delegates.
+- `config/schemas/` subdirectory timing → DQ4 revised: included in C_LOADER (not deferred to C_REORGANIZE).
 
-- **`config/schemas/` subdirectory** → DQ4: deferred to C_REORGANIZE.
-- **`from_file()` deprecated delegates vs immediate removal** → D10 + DQ2: hard break, no deprecated delegates.
+**Open — must resolve before C_LOADER planning:**
+
+| # | Question | Where raised | Impact if unresolved |
+|---|---|---|---|
+| OQ1 | **`ContributorConfig` consumer** — No manager owner identified in research. Who consumes `contributors.yaml` at runtime? | F14 | Cannot wire `ContributorConfig` into DQ1 composition root (Step 5) |
+| OQ2 | **`OperationPoliciesConfig` wiring** — Does it feed a new `PolicyChecker` class, or does it go directly into `PhaseStateEngine`'s enforcement logic? | F14 | Affects DQ1 composition root and C_LOADER scope |
+| OQ3 | **`MilestoneConfig` / `IssueConfig`** — Do `MilestoneManager` and `IssueManager` exist in `managers/` or are they planned? If planned, are they in scope for C_LOADER? | F14 | Affects Step 5 of DQ1; if absent, direct DI has no target |
+| OQ4 | **`FileScope` type** — Used in `GatePlanBuilder.build(config, scope: FileScope)` (F10). Is this a new DTO created in C_SPECBUILDERS, or an existing type? | F10 | Affects C_SPECBUILDERS scope; name and location not yet in F15 naming table |
+| OQ5 | **`ProjectInitOptions` type** — Used in `WorkflowSpecBuilder.build(config, params: ProjectInitOptions)` (F10). Same question as OQ4. | F10 | Affects C_SPECBUILDERS scope; name and location not yet in F15 naming table |
 
 ---
 
@@ -1116,6 +1186,7 @@ planning document is consulted before every commit in a cycle — not once at th
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.5 | 2026-03-14 | Agent | Added TOC; fixed Open Questions (removed wrong DQ4 "deferred" reference, added OQ1-OQ5 from F14/F10); clarified "15 schema classes" in D10; added state_repository note in DQ1; DQ5 structural test points to canonical F14 version; F15 spec DTO location marked as decided; RC-6/RC-7 note added; F9 LOG_LEVEL cross-reference to D13 |
 | 1.4 | 2026-03-14 | Agent | Added F14 (Config Coverage — full flow mapping, two routes, unresolved ContributorConfig owner); added F15 (Naming conventions — new folders, classes, env vars, spec DTO location); added D11-D14 (config/schemas/ formalised, MCP_SERVER_NAME, LOG_LEVEL, PSE two-step migration); expanded DQ1 startup sequence to include all 15 configs + PSE/EnforcementRunner/PhaseContractResolver; answers A-F from user review incorporated; Priority Matrix updated |
 | 1.3 | 2026-03-14 | Agent | Added DQ1–DQ5 (design questions resolved); D7 amended (all 13 schemas + 2 misplaced to config/schemas/ in C_LOADER, not deferred); DQ4 revised (no longer deferred); F7 table: server.name → MCP_SERVER_NAME, LOG_LEVEL row added; Problem Statement count corrected (16 total) |
 | 1.2 | 2026-03-14 | Agent | Added F10 (spec-builders: GatePlanBuilder, ScaffoldSpecBuilder, WorkflowSpecBuilder); F11 (test isolation 3-zone architecture); F12 (module-level singletons); F13 (two ConfigError classes); D8-D10 (no single ConfigTranslator, ClassVar singleton removal, hard-break strategy); Gap Prevention Protocol (RC-1 through RC-8) |
