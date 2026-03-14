@@ -3,7 +3,7 @@
 # Config Layer SRP Violations: Missing Loader, Validator and Schema Separation
 
 **Status:** COMPLETE
-**Version:** 1.6
+**Version:** 1.7
 **Last Updated:** 2026-03-14
 
 ---
@@ -32,6 +32,7 @@
   - [F13 — Two ConfigError Classes](#f13--two-configerror-classes-ssot-violation-architecture_principlesmd-2)
   - [F14 — Config Coverage: Full Flow Mapping](#f14--config-coverage-full-flow-mapping)
   - [F15 — Naming Conventions Audit](#f15--naming-conventions-audit-of-all-new-code-proposed-in-this-document)
+  - [F16 — Complete Blast Radius of C_LOADER Hard Break](#f16--complete-blast-radius-of-c_loader-hard-break)
 - [Decisions](#decisions)
   - D1 mcp\_config.yaml abolished · D2 ConfigLoader path injection · D3 GitConfig fail-fast
   - D4 ConfigValidator entrypoint · D5 label-sync to LabelManager · D6 template\_config to utils/
@@ -811,6 +812,139 @@ codebase.
 
 ---
 
+### F16 — Complete Blast Radius of C_LOADER Hard Break
+
+**Context:** DQ3 lists 14 `Settings` consumers for C_SETTINGS. D10 describes the C_LOADER hard
+break as affecting "all 14+ importers" — but the 14 refers exclusively to the `settings`
+module-level export. Deleting `from_file()`, `load()`, and `reset_instance()` from all 15 schema
+classes reaches a far larger set of call sites across 6 layers of the production codebase. The
+existing DQ3 migration checklist is the C_SETTINGS checklist only; C_LOADER has a separate,
+unlisted blast radius that must be tracked before planning begins.
+
+**Complete production call site inventory (non-`config/` files):**
+
+| Layer | File | Line(s) | Call |
+|---|---|---|---|
+| `tools/` | `pr_tools.py` | 15 | `GitConfig.from_file()` |
+| `tools/` | `cycle_tools.py` | 54, 188 | `GitConfig.from_file().extract_issue_number(branch)` ×2 |
+| `tools/` | `git_tools.py` | 106, 232 | `GitConfig.from_file()` ×2 |
+| `tools/` | `project_tools.py` | 282 | `WorkflowConfig.load()` |
+| `tools/` | `label_tools.py` | 69, 172, 209 | `LabelConfig.load()` ×3 |
+| `tools/` | `issue_tools.py` | 176, 185, 194, 203, 213, 223, 331, 332, 363 | `IssueConfig`, `GitConfig`, `LabelConfig`, `ScopeConfig`, `MilestoneConfig`, `ContributorConfig`, `WorkflowConfig` — 9 call sites, 7 distinct configs |
+| `managers/` | `git_manager.py` | 22 | `self._git_config = GitConfig.from_file()` |
+| `managers/` | `phase_state_engine.py` | 88 | `git_config or GitConfig.from_file()` (fallback) |
+| `managers/` | `artifact_manager.py` | 135 | `registry or ArtifactRegistryConfig.from_file()` (fallback) |
+| `managers/` | `qa_manager.py` | 117, 462 | `QualityConfig.load()` ×2 |
+| `managers/` | `phase_contract_resolver.py` | 117 | `PhaseContractsConfig.from_file(...)` |
+| `managers/` | `enforcement_runner.py` | 178 | `EnforcementConfig.from_file(...)` |
+| `core/` | `policy_engine.py` | 56, 60 | constructor: `OperationPoliciesConfig.from_file()`, `GitConfig.from_file()` |
+| `core/` | `policy_engine.py` | 234, 235, 237, 240 | `reload()`: `reset_instance()` ×2 + `from_file()` ×2 |
+| `core/` | `directory_policy_resolver.py` | 104 | `config or ProjectStructureConfig.from_file()` (fallback) |
+| `scaffolding/` | `metadata.py` | 50 | `ScaffoldMetadataConfig.from_file(config_path)` |
+| `scaffolders/` | `template_scaffolder.py` | 55 | `registry or ArtifactRegistryConfig.from_file()` (fallback) |
+
+**Total: 17 production files, ~32 call sites.**
+
+Three distinct anti-patterns drive different remediation strategies:
+
+#### Anti-pattern 1 — Fallback construction (5 files)
+
+```python
+self._git_config = git_config or GitConfig.from_file()           # phase_state_engine.py:88
+self.registry    = registry  or ArtifactRegistryConfig.from_file()  # artifact_manager.py:135
+self.registry    = registry  or ArtifactRegistryConfig.from_file()  # template_scaffolder.py:55
+self._config     = config    or ProjectStructureConfig.from_file()  # directory_policy_resolver.py:104
+```
+
+The `x or Config.from_file()` pattern is a DI escape hatch: the constructor accepts an optional
+config argument and silently falls back to loading from disk when omitted. After the C_LOADER hard
+break these fallbacks fail with `AttributeError`. Fix: remove the fallback entirely; make the
+injected config mandatory. The composition root (`server.py`) supplies all config objects
+unconditionally.
+
+#### Anti-pattern 2 — Direct tool-layer loading (6 tool files)
+
+`pr_tools.py`, `cycle_tools.py`, `git_tools.py`, `project_tools.py`, `label_tools.py`,
+`issue_tools.py` each call `Config.from_file()` directly in the tool execution body — bypassing
+the manager layer entirely. This is a DIP violation (§1.5): tools must receive managers; managers
+own config. After C_LOADER these calls break immediately. Fix: remove the config call from the
+tool; use the already-loaded config via the injected manager (e.g., `git_manager.git_config` or
+exposed via a manager method). `issue_tools.py` is the special case — its 9 call sites live inside
+`@field_validator` methods and move to `GitHubManager.validate_issue_params()` (→ D15).
+
+#### Anti-pattern 3 — `PolicyEngine.reload()` hot-reload pattern
+
+```python
+# core/policy_engine.py lines 234–240
+def reload(self) -> None:
+    OperationPoliciesConfig.reset_instance()
+    GitConfig.reset_instance()
+    self._operation_config = OperationPoliciesConfig.from_file(...)
+    self._git_config = GitConfig.from_file()
+```
+
+This manual hot-reload mechanism depends entirely on the singleton `reset_instance()` + re-load
+cycle. Deleting `reset_instance()` and `from_file()` removes the mechanism entirely. Replacement:
+`reload()` constructs a fresh `ConfigLoader(config_root)` and calls `load_operation_policies()`
+and `load_git_config()` to obtain new instances. `PolicyEngine` must store `config_root: Path`
+for this purpose, or receive a `ConfigLoader` reference at construction time.
+
+#### C_LOADER migration checklist (production files)
+
+The RC-5 migration checklist for C_LOADER must track all 17 production files above. The DQ3
+table covers only C_SETTINGS (14 `settings` consumers); this is the complementary C_LOADER table:
+
+| Consumer file | Anti-pattern | Fix |
+|---|---|---|
+| `tools/pr_tools.py` | Direct tool-layer load | Remove `from_file()`; use `git_manager.git_config` |
+| `tools/cycle_tools.py` | Direct tool-layer load (×2) | Remove `from_file()`; use `git_manager.git_config` |
+| `tools/git_tools.py` | Direct tool-layer load (×2) | Remove `from_file()`; use `git_manager.git_config` |
+| `tools/project_tools.py` | Direct tool-layer load | Remove `from_file()`; use `project_manager` |
+| `tools/label_tools.py` | Direct tool-layer load (×3) | Remove `from_file()`; use `label_manager.label_config` |
+| `tools/issue_tools.py` | Direct tool-layer load (×9, inside `@field_validator`) | Move all to `GitHubManager.validate_issue_params()` (→ D15) |
+| `managers/git_manager.py` | Direct load in constructor | Remove; receive `GitConfig` via DI |
+| `managers/phase_state_engine.py` | Fallback construction | Make `git_config` param mandatory |
+| `managers/artifact_manager.py` | Fallback construction | Make `registry` param mandatory |
+| `managers/qa_manager.py` | Direct load (×2) | Remove; receive `QualityConfig` via DI |
+| `managers/phase_contract_resolver.py` | Direct load | Remove; receive `PhaseContractsConfig` via DI |
+| `managers/enforcement_runner.py` | Direct load | Remove; receive `EnforcementConfig` via DI |
+| `core/policy_engine.py` (constructor) | Direct load (×2) | Remove; receive `OperationPoliciesConfig`, `GitConfig` via DI |
+| `core/policy_engine.py` (`reload()`) | `reset_instance()` + `from_file()` (×4) | Replace with `ConfigLoader(config_root).load_*()` |
+| `core/directory_policy_resolver.py` | Fallback construction | Make `config` param mandatory |
+| `scaffolding/metadata.py` | Direct load | Remove; receive `ScaffoldMetadataConfig` via DI |
+| `scaffolders/template_scaffolder.py` | Fallback construction | Make `registry` param mandatory |
+
+#### C_LOADER migration checklist (test files — non-Zone-1)
+
+`reset_instance()` calls in Zone 2 and Zone 3 tests must also be tracked. After C_LOADER the
+singleton is gone; `reset_instance()` no longer exists:
+
+| Test file | Zone | Call | Resolution |
+|---|---|---|---|
+| `tests/mcp_server/core/test_policy_engine_config.py` | Zone 3 | `GitConfig.reset_instance()` ×2 (setup/teardown) | Delete call; singleton gone |
+| `tests/mcp_server/core/test_policy_engine.py` | Zone 3 | `ArtifactRegistryConfig`, `OperationPoliciesConfig`, `ProjectStructureConfig.reset_instance()` ×3 | Delete calls; inject mocks |
+| `tests/mcp_server/core/test_directory_policy_resolver.py` | Zone 3 | `ArtifactRegistryConfig`, `ProjectStructureConfig.reset_instance()` ×4 | Delete calls; inject mocks |
+| `tests/mcp_server/managers/test_git_manager_config.py` | Zone 3 | `GitConfig.reset_instance()` ×2 | Delete calls; receive `GitConfig` directly |
+| `tests/mcp_server/integration/test_validation_policy_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` ×3 | Replace with `ConfigLoader(tmp_path)` |
+| `tests/mcp_server/integration/test_v2_smoke_all_types.py` | Integration | `ArtifactRegistryConfig.reset_instance()` ×2 | Replace with `ConfigLoader(tmp_path)` |
+| `tests/mcp_server/integration/test_template_missing_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` ×1 | Replace with `ConfigLoader(tmp_path)` |
+| `tests/mcp_server/integration/test_config_error_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` ×3 | Replace with `ConfigLoader(tmp_path)` directly — test passes bad YAML via `tmp_path` |
+
+Zone 1 config tests (`test_project_structure.py`, `test_operation_policies.py`, `test_git_config.py`,
+`test_component_registry.py`) will be rewritten as `ConfigLoader(tmp_path).load_*()` tests. Their
+`from_file()` and `reset_instance()` calls are replaced by the `ConfigLoader` pattern — this is
+the expected Zone 1 evolution, not a "break".
+
+**Updated blast radius summary for planning:**
+
+| Checklist | Scope | File count |
+|---|---|---|
+| C_SETTINGS (DQ3 table) | `from mcp_server.config.settings import settings` | 14 files |
+| C_LOADER production (this table) | `Config.from_file()` / `.load()` in non-`config/` production code | 17 files |
+| C_LOADER test (this table) | `reset_instance()` in non-Zone-1 tests | 8 test files |
+
+---
+
 ## Decisions
 
 **D1 — `mcp_config.yaml` is abolished.** `Settings` reads exclusively from env vars injected via
@@ -894,6 +1028,20 @@ No `ConfigError` raised on absence; the fallback is intentional and documented.
 `WorkflowInitSpec` instead. The Zone 3 test-isolation goal (F11) depends on P4. P0 is the
 minimum viable hard break; P4 is the quality-of-test improvement on top.
 
+**D15 — `GitHubManager.validate_issue_params()` owns all GitHub-domain input validation.**
+All `@field_validator` methods in `issue_tools.py` that call `Config.from_file()` move to
+`GitHubManager.validate_issue_params()`. The Pydantic DTO in `issue_tools.py` retains only
+structural validators (type coercion, non-null/non-empty checks). Domain validation — issue type
+against `IssueConfig`, milestone existence against `MilestoneConfig`, assignee validity against
+`ContributorConfig`, scope against `ScopeConfig`, title length against `GitConfig`, label
+membership against `LabelConfig` — is performed inside the manager method, using the config
+objects injected at construction (see DQ1:
+`GitHubManager(issue_config, milestone_config, contributor_config, label_config, scope_config, git_config, adapter)`).
+This is consistent with §1.1 SRP (DTO describes structure; manager validates domain) and §1.5 DIP
+(no `from_file()` inside validators after the C_LOADER hard break). No variation is permitted:
+all six config-dependent validators move to the manager; none may remain in the DTO as
+`@field_validator`. (→ OQ6 resolved)
+
 ---
 
 ## Priority Matrix for Next Cycles
@@ -902,10 +1050,10 @@ minimum viable hard break; P4 is the quality-of-test improvement on top.
 |---|---|---|---|
 | **P0** | F12 — delete `settings = Settings.load()` module-level; `Settings.from_env()` at composition root; update 14 consumers (D10 hard break step 1) | C_SETTINGS | — |
 | **P0** | F3 + D12 + D13 — `Settings` becomes pure env-var reader; add `MCP_SERVER_NAME`, `LOG_LEVEL`, `owner`, `repo`, `project_number` to `mcp.json`; delete `mcp_config.yaml` fallback code | C_SETTINGS | — |
-| **P0** | F1 + D9 + D10 + D11 — introduce `ConfigLoader(config_root)`; move all 15 schema classes to `config/schemas/`; delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schemas (hard break); update all consumers | C_LOADER | C_SETTINGS |
+| **P0** | F1 + D9 + D10 + D11 — introduce `ConfigLoader(config_root)`; move all 15 schema classes to `config/schemas/`; delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schemas (hard break); update all consumers — 17 production files + 8 non-Zone-1 test files (F16 blast radius) | C_LOADER | C_SETTINGS |
 | P0 | F13 — delete local `ConfigError` in `scaffold_metadata_config.py`; all config raise `core.exceptions.ConfigError` | C_LOADER | C_LOADER |
 | P0 | F14 — structural test `test_no_from_file_on_any_config_schema()` in `tests/unit/config/` | C_LOADER | C_LOADER |
-| P0 | OQ6 — resolve `@field_validator` pattern in `issue_tools.py` (3 configs call `from_file()` inside validators); decide approach before C_LOADER DoD | C_LOADER | C_LOADER |
+| P0 | OQ6 + D15 — `@field_validator` pattern resolved: all validators that call `Config.from_file()` move to `GitHubManager.validate_issue_params()`; DTO retains structural checks only; `GitHubManager` receives 6 config objects via DI | C_LOADER | C_LOADER |
 | P1 | F2, F8 — introduce `ConfigValidator.validate_startup()`; delete `label_startup.py` | C_VALIDATOR | C_LOADER |
 | P2 | F4 — remove Python defaults from `GitConfig`; make domain convention fields required | C_GITCONFIG | C_LOADER |
 | P2 | F5 — remove `output_dir` default from `ArtifactLoggingConfig` | C_GITCONFIG | C_LOADER |
@@ -1031,6 +1179,12 @@ Migration checklist for planning (all 14 consumers must be ticked before C_SETTI
 `workflow_config = WorkflowConfig.load()` in `workflows.py` is eliminated in C_LOADER as part
 of the `WorkflowConfig` hard break. Its only consumer in the current codebase is `server.py`
 (which will receive the loaded config from `ConfigLoader` after C_LOADER).
+
+**Note — C_LOADER blast radius is documented separately in F16.** The DQ3 table above covers
+only the C_SETTINGS blast radius (14 `settings` module-level consumers). The C_LOADER hard break
+affects an additional 17 production files and 8 test files where `from_file()`, `load()`, and
+`reset_instance()` are called outside `config/`. See F16 for the complete C_LOADER migration
+checklist.
 
 ### DQ4 — `config/schemas/` Subdirectory: Included in C_LOADER (Answer revised)
 
@@ -1165,7 +1319,9 @@ planning document is consulted before every commit in a cycle — not once at th
 | ~~OQ3~~ | ~~`MilestoneConfig` / `IssueConfig`~~ | F14 | **Resolved — see below** |
 | ~~OQ4~~ | ~~`FileScope` type~~ | F10 | **Resolved — see below** |
 | ~~OQ5~~ | ~~`ProjectInitOptions` type~~ | F10 | **Resolved — see below** |
-| OQ6 | **`@field_validator` pattern after C_LOADER hard break** — `issue_tools.py` calls `IssueConfig.from_file()`, `MilestoneConfig.from_file()`, `ContributorConfig.from_file()` inside Pydantic `@field_validator` methods. After C_LOADER deletes `from_file()`, these validators break. Options: (a) move validation logic to `GitHubManager.validate_issue_params()`; (b) pass configs as class variables injected before validation; (c) remove structural validation from Pydantic DTO, validate in manager instead. Must resolve before C_LOADER DoD is defined. | F14 | C_LOADER scope — affects how `issue_tools.py` is updated |
+| ~~OQ6~~ | ~~`@field_validator` pattern after C_LOADER hard break~~ | F14 | **Resolved — see below** |
+
+**All open questions resolved. C_LOADER planning may proceed.**
 
 **Resolved answers:**
 
@@ -1227,6 +1383,17 @@ class ProjectInitOptions(BaseModel):
 that it is a spec-builder INPUT — it is distinct from `WorkflowInitSpec`, which is the OUTPUT that
 managers consume.
 
+**OQ6 — `@field_validator` pattern after C_LOADER:** Option (a). All `@field_validator` methods
+in `issue_tools.py` that call `Config.from_file()` move to
+`GitHubManager.validate_issue_params()`. This method receives `IssueConfig`, `MilestoneConfig`,
+`ContributorConfig`, `LabelConfig`, `ScopeConfig`, and `GitConfig` via constructor injection (see
+DQ1, Step 5). The Pydantic DTO in `issue_tools.py` retains only structural validators (type
+coercion, non-null/non-empty checks). No variation is permitted: all config-dependent validators
+move to the manager method; none may remain in the DTO as `@field_validator` (→ D15). Options (b)
+and (c) were evaluated and rejected: (b) class-variable injection breaks Pydantic's stateless
+validator model and introduces test-setup coupling; (c) is functionally identical to (a) but
+without assigning the behaviour to a named method, losing discoverability.
+
 ---
 
 ## Related Documentation
@@ -1254,6 +1421,7 @@ managers consume.
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.7 | 2026-03-14 | Agent | Added F16 (complete C_LOADER blast radius: 17 production files + 8 test files across 6 layers, 3 anti-patterns catalogued with remediation strategy); added D15 (GitHubManager.validate_issue_params() as sole owner of domain validation — OQ6 resolved, option a); resolved OQ6 in Open Questions table; extended DQ3 with cross-reference to F16 C_LOADER checklist; updated Priority Matrix C_LOADER row with F16 consumer count; updated Priority Matrix OQ6 row to D15 reference |
 | 1.6 | 2026-03-14 | Agent | Resolved OQ1-OQ5: ContributorConfig→GitHubManager (used in field_validators), PolicyEngine as OperationPoliciesConfig consumer, GitHubManager as IssueConfig/MilestoneConfig target, FileScope + ProjectInitOptions as new INPUT DTOs in dtos/specs/; added OQ6 (@field_validator break); DQ1 composition root extended with PolicyEngine + GitHubManager; F14 table updated; F15 naming table extended; Priority Matrix: OQ6 as P0 C_LOADER item |
 | 1.5 | 2026-03-14 | Agent | Added TOC; fixed Open Questions (removed wrong DQ4 "deferred" reference, added OQ1-OQ5 from F14/F10); clarified "15 schema classes" in D10; added state_repository note in DQ1; DQ5 structural test points to canonical F14 version; F15 spec DTO location marked as decided; RC-6/RC-7 note added; F9 LOG_LEVEL cross-reference to D13 |
 | 1.4 | 2026-03-14 | Agent | Added F14 (Config Coverage — full flow mapping, two routes, unresolved ContributorConfig owner); added F15 (Naming conventions — new folders, classes, env vars, spec DTO location); added D11-D14 (config/schemas/ formalised, MCP_SERVER_NAME, LOG_LEVEL, PSE two-step migration); expanded DQ1 startup sequence to include all 15 configs + PSE/EnforcementRunner/PhaseContractResolver; answers A-F from user review incorporated; Priority Matrix updated |
