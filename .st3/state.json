@@ -2,16 +2,10 @@
   "branch": "feature/257-reorder-workflow-phases",
   "issue_number": 257,
   "workflow_name": "feature",
-  "current_phase": "research",
-  "current_cycle": 6,
-  "last_cycle": 5,
-  "cycle_history": [
-    {
-      "cycle_number": 6,
-      "forced": false,
-      "entered": "2026-03-13T13:36:16.688864+00:00"
-    }
-  ],
+  "current_phase": "planning",
+  "current_cycle": 0,
+  "last_cycle": 0,
+  "cycle_history": [],
   "required_phases": [
     "research",
     "planning",
@@ -33,6 +27,14 @@
       "human_approval": "Gebruiker akkoord, 2026-03-13",
       "forced": true,
       "skip_reason": "QA heeft 10/20 KPIs rood bevonden na Cycle 7. Gap-analyse toont structurele implementatiegaps in PSE-integratie, directory-structuur en phase_contracts.yaml. Terugkeer naar research om aanvullende vereisten en herstelplan te formaliseren voordat implementatie hervat."
+    },
+    {
+      "from_phase": "research",
+      "to_phase": "planning",
+      "timestamp": "2026-03-14T13:48:21.373059+00:00",
+      "human_approval": null,
+      "forced": false,
+      "skip_reason": null
     }
   ],
   "reconstructed": false
