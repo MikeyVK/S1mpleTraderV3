@@ -7,9 +7,17 @@
   - Reset config singletons between tests to prevent cross-test contamination
 """
 
+from collections.abc import Generator
+
 import pytest
 
-# Import fixtures from fixture modules
+from mcp_server.config.contributor_config import ContributorConfig
+from mcp_server.config.issue_config import IssueConfig
+from mcp_server.config.label_config import LabelConfig
+from mcp_server.config.milestone_config import MilestoneConfig
+from mcp_server.config.scope_config import ScopeConfig
+from mcp_server.config.workflows import WorkflowConfig
+
 pytest_plugins = [
     "tests.mcp_server.fixtures.artifact_test_harness",
     "tests.mcp_server.fixtures.workflow_fixtures",
@@ -17,7 +25,7 @@ pytest_plugins = [
 
 
 @pytest.fixture(autouse=True)
-def reset_config_singletons() -> object:
+def reset_config_singletons() -> Generator[None, None, None]:
     """Reset all config singletons before/after each test.
 
     Prevents cross-test contamination when config tests load custom YAML paths
@@ -28,12 +36,6 @@ def reset_config_singletons() -> object:
     WorkflowConfig, MilestoneConfig, ContributorConfig) and the *_instance*
     pattern used by LabelConfig.
     """
-    from mcp_server.config.contributor_config import ContributorConfig
-    from mcp_server.config.issue_config import IssueConfig
-    from mcp_server.config.label_config import LabelConfig
-    from mcp_server.config.milestone_config import MilestoneConfig
-    from mcp_server.config.scope_config import ScopeConfig
-    from mcp_server.config.workflows import WorkflowConfig
 
     def _reset_all() -> None:
         IssueConfig.singleton_instance = None
