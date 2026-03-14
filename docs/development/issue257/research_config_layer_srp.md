@@ -142,15 +142,42 @@ individual loader methods:
 - `project_structure.py` validates `allowed_artifact_types` against `artifacts.yaml` internally
 
 These checks are invisible as startup validation, produce no structured error report, and cannot be
-tested as a unified startup contract. Known cross-config constraints that must be centralized:
+tested as a unified startup contract.
+
+#### Four validation layers
+
+Not all consistency checks belong in a single `ConfigValidator`. The correct allocation:
+
+| Layer | Owner | Responsibility |
+|---|---|---|
+| 1 — Structural | Pydantic at `ConfigLoader.load_*()` | "Can this YAML fit this schema?" — type errors, required fields |
+| 2 — Intra-config semantic | Pydantic `model_validator` on schema class | "Are values within ONE file consistent?" |
+| 3 — Inter-config referential | `ConfigValidator` | "Do references from config A exist in config B?" |
+| 4 — Environment | Manager / `EnvironmentChecker` | "Does config match actual system state?" |
+
+Layer 1 and 2 fire synchronously on schema construction inside `ConfigLoader.load_*()`. Layer 3
+fires once at startup via `ConfigValidator.validate_startup()`. Layer 4 fires when a manager
+begins an operation that requires the environment to be ready (e.g. branch must exist in remote).
+
+**Layer 3 — `ConfigValidator` scope (inter-config referential integrity only):**
 
 | Constraint | Source file | Target file |
 |---|---|---|
 | `allowed_phases` must be subset of defined workflow phases | `policies.yaml` | `workflows.yaml` |
 | `allowed_artifact_types` must be subset of defined types | `project_structure.yaml` | `artifacts.yaml` |
-| enforcement rule `paths` must exist on filesystem | `enforcement.yaml` | filesystem |
-| `phase_contracts` phase names must be valid | `phase_contracts.yaml` | `workphases.yaml` |
-| `active_gates` keys must reference defined gates | `quality.yaml` `active_gates` | `quality.yaml` `gates` map |
+| `phase_contracts` phase names must exist in workflow phases | `phase_contracts.yaml` | `workphases.yaml` |
+
+**Placed in Layer 2 (`model_validator` on schema), NOT in `ConfigValidator`):**
+
+| Constraint | Reason |
+|---|---|
+| `active_gates` keys must exist in `gates` map | Both live in `quality.yaml` — single-file check |
+
+**Placed in Layer 4 (manager / `EnvironmentChecker`), NOT in `ConfigValidator`:**
+
+| Constraint | Reason |
+|---|---|
+| enforcement rule `paths` must exist on filesystem | Requires filesystem access; not a config-to-config reference |
 
 ---
 
@@ -328,6 +355,228 @@ a logged warning with a stated default. Individual schema classes never make thi
 
 ---
 
+### F11 — ConfigTranslator Role: Three Domain-Specific Spec-Builders
+
+`ConfigTranslator` is a concept in the backend reference pattern (see `docs/architecture/`) but it
+does not exist as a single class in the MCP server. The correct implementation is not a single
+god-class translator but three domain-specific spec-builders in `config/translators/`.
+
+#### Current SRP violations that motivate this
+
+`QAManager` currently loads `QualityConfig` internally AND determines which gates to execute based
+on that config — two distinct responsibilities. The same pattern appears in `ArtifactManager`
+(loads `ArtifactRegistryConfig` AND resolves template paths) and `ProjectManager` (imports
+`workflow_config` as a singleton AND translates it to a `ProjectPlan`).
+
+Each manager is a config reader and a config interpreter rolled into one. The spec-builder layer
+severs this coupling: managers receive a typed spec; they do not know how configs are structured.
+
+#### The three spec-builders
+
+```python
+# config/translators/gate_plan_builder.py
+class GatePlanBuilder:
+    """Translates QualityConfig + FileScope → GateExecutionPlan.
+
+    Knows: which gates are active, how scope maps to file sets, gate command assembly.
+    Does not know: how config was loaded, what workspace_root is.
+    """
+    def build(self, config: QualityConfig, scope: FileScope) -> GateExecutionPlan: ...
+
+
+# config/translators/scaffold_spec_builder.py
+class ScaffoldSpecBuilder:
+    """Translates ArtifactRegistryConfig + context dict → ScaffoldSpec.
+
+    Knows: template path resolution, context validation, output path determination.
+    Does not know: how config was loaded, Jinja2 rendering.
+    """
+    def build(self, registry: ArtifactRegistryConfig, context: dict) -> ScaffoldSpec: ...
+
+
+# config/translators/workflow_spec_builder.py
+class WorkflowSpecBuilder:
+    """Translates WorkflowConfig + ProjectInitOptions → WorkflowInitSpec.
+
+    Knows: phase ordering, required deliverables per phase, cycle mapping.
+    Does not know: how config was loaded, git operations, filesystem state.
+    """
+    def build(self, config: WorkflowConfig, params: ProjectInitOptions) -> WorkflowInitSpec: ...
+```
+
+#### Responsibility allocation
+
+| Component | Input type | Output type | Does NOT touch |
+|---|---|---|---|
+| `ConfigLoader` | `Path` (YAML file) | Pydantic config object | managers, specs |
+| `ConfigValidator` | Multiple config objects | `ValidationReport` | filesystem, managers |
+| `GatePlanBuilder` | `QualityConfig`, `FileScope` | `GateExecutionPlan` | filesystem, git |
+| `ScaffoldSpecBuilder` | `ArtifactRegistryConfig`, `dict` | `ScaffoldSpec` | Jinja2, filesystem |
+| `WorkflowSpecBuilder` | `WorkflowConfig`, `ProjectInitOptions` | `WorkflowInitSpec` | git, filesystem |
+| `QAManager` | `GateExecutionPlan` | `QualityResult` | config classes, YAML |
+| `ArtifactManager` | `ScaffoldSpec` | rendered file | config classes, YAML |
+| `ProjectManager` | `WorkflowInitSpec` | `ProjectState` | config classes, YAML |
+
+The chain `ConfigLoader → spec-builder → manager` means each layer has exactly one input type.
+No manager imports a config class. No config class knows a manager exists.
+
+---
+
+### F10 — Test Isolation: Current State and Future Gain
+
+#### Current test problems
+
+Without a `ConfigLoader` and without typed spec objects, tests throughout the suite are forced to
+own config knowledge they should not have. Three anti-patterns emerge:
+
+**Anti-pattern A — Tests construct `.st3/` on disk in manager tests**
+
+`test_phase_state_engine_c2.py` builds a full `.st3/workphases.yaml` in `tmp_path` for every
+test that exercises `PhaseStateEngine`. The YAML content — phase names, keys, descriptions —
+is repeated inline in the fixture. The test is not testing the schema; it is paying a YAML tax
+to reach the manager behavior it actually wants to verify.
+
+```python
+# Current: manager test pays YAML tax
+@pytest.fixture
+def workspace_root(tmp_path):
+    st3 = tmp_path / ".st3"
+    st3.mkdir()
+    (st3 / "workphases.yaml").write_text("""
+phases:
+  planning:
+    exit_requires:
+      - key: planning_deliverables
+  implementation:
+    entry_expects: ...
+""")
+    return tmp_path
+```
+
+This pattern appears in at least 8 test files:
+`test_phase_state_engine_c2.py`, `test_phase_state_engine_c3.py`, `test_deliverable_checker.py`,
+`test_git_manager.py`, `test_enforcement_runner.py`, `test_phase_contract_resolver.py`,
+`test_baseline_advance.py`, `test_scope_encoder.py` — each constructing their own `.st3/` subtree.
+
+**Anti-pattern B — Tests patch config class methods at the wrong seam**
+
+`test_baseline_advance.py` patches `QualityConfig.load` to inject a mock config into `QAManager`.
+The patch address (`mcp_server.managers.qa_manager.QualityConfig.load`) is an implementation
+detail of how `QAManager` internally acquires config — not a stable contract. If `QAManager` is
+refactored to accept config via constructor injection, every patch breaks.
+
+```python
+# Current: patching at the wrong abstraction level
+with patch("mcp_server.managers.qa_manager.QualityConfig.load") as mock_cfg:
+    mock_cfg.return_value = QualityConfig(...)
+    manager.run_quality_gates(["file.py"])
+```
+
+This pattern appears 6 times in `test_baseline_advance.py` alone.
+
+**Anti-pattern C — Config tests use the live `.st3/` directory**
+
+`test_component_registry.py` and `test_project_structure.py` call `ArtifactRegistryConfig.from_file()`
+and `ProjectStructureConfig.from_file()` against the real `.st3/artifacts.yaml` and
+`.st3/project_structure.yaml`. These are integration tests masquerading as unit tests. They pass
+only when the workspace has the correct `.st3/` directory at the CWD — they cannot run in CI
+isolation, are CWD-sensitive, and are order-sensitive.
+
+**Root symptom: `reset_instance()` hacks**
+
+`ArtifactRegistryConfig.reset_instance()` appears in `test_component_registry.py` and
+`artifact_test_harness.py`. This pattern exists exclusively because the singleton inside the
+schema class can leak state between tests. It is a symptom of the missing composition root.
+
+---
+
+#### Future test architecture: three zones
+
+The `ConfigLoader` / `ConfigValidator` / spec-builder layer creates a clean separation into three
+test zones. Only Zone 1 is permitted to touch YAML or the filesystem for config purposes.
+
+**Zone 1 — Config layer tests (only zone that touches YAML)**
+
+Tests for `ConfigLoader`, `ConfigValidator`, and each schema class in isolation. These are the
+only tests that construct YAML on disk or parse YAML strings. All other zones are forbidden.
+
+```python
+# Zone 1: ConfigLoader — only place that writes YAML in a test
+def test_loader_raises_on_missing_git_yaml(tmp_path):
+    loader = ConfigLoader(config_root=tmp_path / ".st3")
+    with pytest.raises(ConfigError, match="git.yaml"):
+        loader.load_git_config()
+
+def test_loader_loads_git_config(tmp_path):
+    (tmp_path / ".st3" / "git.yaml").write_text("branch_types: [feature, bug]")
+    loader = ConfigLoader(config_root=tmp_path / ".st3")
+    config = loader.load_git_config()
+    assert config.branch_types == ["feature", "bug"]
+```
+
+**Zone 2 — Spec-builder tests (no files, only Pydantic objects)**
+
+Tests for `GatePlanBuilder`, `ScaffoldSpecBuilder`, `WorkflowSpecBuilder`. Input is a Pydantic
+config object constructed directly in Python (no YAML, no `from_file()`). Output is a typed spec.
+Tests verify translation logic: which gates are active, how scope maps to files, how a workflow
+maps to ordered phases.
+
+```python
+# Zone 2: spec-builder — no YAML, no filesystem
+def test_gate_plan_builder_filters_inactive_gates():
+    config = QualityConfig(
+        version="1.0",
+        active_gates=["gate1"],
+        gates={"gate1": make_gate(), "gate2": make_gate()}
+    )
+    plan = GatePlanBuilder().build(config, scope=FileScope(files=["foo.py"]))
+    assert len(plan.gates) == 1
+    assert plan.gates[0].id == "gate1"
+```
+
+**Zone 3 — Manager tests (specs injected, no config knowledge)**
+
+Tests for `QAManager`, `ArtifactManager`, `PhaseStateEngine`, `ProjectManager`. Managers receive
+a typed spec via constructor injection. No YAML, no `from_file()`, no config class patches, no
+`.st3/` directory construction (except where the manager genuinely reads/writes runtime state
+such as `state.json`).
+
+```python
+# Zone 3: QAManager — spec injected, zero config knowledge in this test
+def test_qa_manager_executes_plan(tmp_path, mock_subprocess):
+    plan = GateExecutionPlan(
+        gates=[GateInstruction(id="gate1", command=["ruff", "check", "foo.py"])]
+    )
+    manager = QAManager(workspace_root=tmp_path)
+    result = manager.execute(plan)
+    assert result.overall_pass is True
+
+# Zone 3: PhaseStateEngine — WorkflowInitSpec replaces workphases.yaml fixture
+def test_phase_transition_requires_deliverable(tmp_path):
+    spec = WorkflowInitSpec(
+        workflow_name="feature",
+        phases=[PhaseSpec(name="planning", exit_requires=["planning_deliverables"])]
+    )
+    engine = PhaseStateEngine(workspace_root=tmp_path, plan=spec)
+    with pytest.raises(TransitionError):
+        engine.transition_to("implementation")
+```
+
+---
+
+#### Concrete gains
+
+| Current | Future |
+|---|---|
+| 8+ fixtures constructing `.st3/` subtrees in manager tests | 0 — managers receive specs |
+| 6 `patch("...QualityConfig.load")` calls in `test_baseline_advance.py` | 0 — `GateExecutionPlan` injected directly |
+| `test_component_registry.py` requires live `.st3/` at CWD | `ConfigLoader` test uses `tmp_path` |
+| `test_project_structure.py` calls `from_file()` against real workspace | Isolated Zone 1 test |
+| New YAML field breaks tests across 3 zones | New YAML field only touches Zone 1 |
+| `reset_instance()` hacks to prevent cross-test singleton pollution | Not needed — `ConfigLoader` instantiated per test |
+
+---
+
 ## Decisions
 
 **D1 — `mcp_config.yaml` is abolished.** `Settings` reads exclusively from env vars injected via
@@ -350,6 +599,11 @@ not a config validation. Must not be folded into `ConfigValidator`.
 
 **D7 — `EnforcementConfig` and the `phase_contracts` root schema move to `config/schemas/`.**
 
+**D8 — There is no single `ConfigTranslator` class.** The translation layer consists of three
+domain-specific spec-builders in `config/translators/`: `GatePlanBuilder`, `ScaffoldSpecBuilder`,
+`WorkflowSpecBuilder`. Each accepts Pydantic config objects and returns a typed spec. Managers
+receive specs via constructor injection and are prohibited from importing config classes.
+
 ---
 
 ## Priority Matrix for Next Cycles
@@ -364,6 +618,7 @@ not a config validation. Must not be folded into `ConfigValidator`.
 | P3 | F7 — move `server.version` to `importlib.metadata`; add remaining deployment vars to `mcp.json` | C_SETTINGS | C_SETTINGS |
 | P3 | F6 — move `template_config.py` to `utils/` | C_CLEANUP | C_LOADER |
 | P4 | F8 part B — label sync against GitHub to `LabelManager` | C_LABELMGR | C_VALIDATOR |
+| P4 | F11 — introduce `GatePlanBuilder`, `ScaffoldSpecBuilder`, `WorkflowSpecBuilder` in `config/translators/` | C_SPECBUILDERS | C_LOADER, C_VALIDATOR |
 | P4 | — move `EnforcementConfig` and phase_contracts schema to `config/schemas/` | C_CLEANUP | C_LOADER |
 
 ---
