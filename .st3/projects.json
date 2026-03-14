@@ -1953,7 +1953,7 @@
               },
               {
                 "id": "c_settings_1.server_wiring_stub",
-                "description": "server.py calls Settings.from_env() at composition root; injects into core/logging.py; cli.py migrated from singleton import to local Settings.from_env() (full DI injection deferred to C_SETTINGS.2)",
+                "description": "server.py calls Settings.from_env() at composition root; injects into core/logging.py + cli.py",
                 "validates": {
                   "type": "contains_text",
                   "file": "mcp_server/server.py",

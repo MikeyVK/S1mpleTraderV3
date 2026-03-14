@@ -105,9 +105,9 @@ lifecycle_logger = get_logger("server_lifecycle")
 class MCPServer:
     """Main MCP server class that handles resources and tools."""
 
-    def __init__(self) -> None:
+    def __init__(self, settings: Settings | None = None) -> None:
         """Initialize the MCP server with resources and tools."""
-        settings = Settings.from_env()
+        settings = settings or Settings.from_env()
         server_name = settings.server.name
 
         # Configure logging with values from settings
@@ -545,9 +545,9 @@ class MCPServer:
         lifecycle_logger.info("MCP server shutting down")
 
 
-def main() -> None:
+def main(settings: Settings | None = None) -> None:
     """Entry point for the MCP server."""
-    server = MCPServer()
+    server = MCPServer(settings=settings or Settings.from_env())
     asyncio.run(server.run())
 
 
