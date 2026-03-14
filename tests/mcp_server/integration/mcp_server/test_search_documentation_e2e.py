@@ -1,8 +1,10 @@
 """E2E tests for SearchDocumentationTool with production docs."""
 
+from pathlib import Path
+from unittest.mock import patch
+
 import pytest
 
-from mcp_server.config.settings import settings
 from mcp_server.tools.discovery_tools import SearchDocumentationInput, SearchDocumentationTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -11,7 +13,7 @@ class TestSearchDocumentationE2E:
     """End-to-end tests for SearchDocumentationTool using real filesystem."""
 
     @pytest.fixture
-    def sample_docs_dir(self, tmp_path):
+    def sample_docs_dir(self, tmp_path: Path) -> Path:
         """Create sample documentation structure for testing."""
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir()
@@ -43,13 +45,16 @@ class TestSearchDocumentationE2E:
         return docs_dir
 
     @pytest.mark.asyncio
-    async def test_tool_execute_with_real_docs(self, sample_docs_dir, monkeypatch):
+    async def test_tool_execute_with_real_docs(self, sample_docs_dir: Path) -> None:
         """Test tool.execute() with real filesystem docs (no mocks)."""
         # Point settings to our temp docs
-        monkeypatch.setattr(settings.server, "workspace_root", sample_docs_dir.parent)
+        with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+            mock_settings_cls.from_env.return_value.server.workspace_root = str(
+                sample_docs_dir.parent
+            )
 
-        tool = SearchDocumentationTool()
-        result = await tool.execute(SearchDocumentationInput(query="Python"))
+            tool = SearchDocumentationTool()
+            result = await tool.execute(SearchDocumentationInput(query="Python"))
 
         # Verify result structure
         assert isinstance(result, ToolResult)
@@ -65,14 +70,17 @@ class TestSearchDocumentationE2E:
         assert "architecture" in output.lower() or "development" in output.lower()
 
     @pytest.mark.asyncio
-    async def test_tool_execute_with_scope_filter(self, sample_docs_dir, monkeypatch):
+    async def test_tool_execute_with_scope_filter(self, sample_docs_dir: Path) -> None:
         """Test tool.execute() with scope filter."""
-        monkeypatch.setattr(settings.server, "workspace_root", sample_docs_dir.parent)
+        with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+            mock_settings_cls.from_env.return_value.server.workspace_root = str(
+                sample_docs_dir.parent
+            )
 
-        tool = SearchDocumentationTool()
-        result = await tool.execute(
-            SearchDocumentationInput(query="style", scope="coding_standards")
-        )
+            tool = SearchDocumentationTool()
+            result = await tool.execute(
+                SearchDocumentationInput(query="style", scope="coding_standards")
+            )
 
         assert not result.is_error
         output = result.content[0]["text"]
@@ -84,24 +92,30 @@ class TestSearchDocumentationE2E:
         assert "api.md" not in output
 
     @pytest.mark.asyncio
-    async def test_tool_execute_no_results(self, sample_docs_dir, monkeypatch):
+    async def test_tool_execute_no_results(self, sample_docs_dir: Path) -> None:
         """Test tool.execute() when no results found."""
-        monkeypatch.setattr(settings.server, "workspace_root", sample_docs_dir.parent)
+        with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+            mock_settings_cls.from_env.return_value.server.workspace_root = str(
+                sample_docs_dir.parent
+            )
 
-        tool = SearchDocumentationTool()
-        result = await tool.execute(SearchDocumentationInput(query="xyznonexistent"))
+            tool = SearchDocumentationTool()
+            result = await tool.execute(SearchDocumentationInput(query="xyznonexistent"))
 
         assert not result.is_error
         output = result.content[0]["text"]
         assert "No results found" in output
 
     @pytest.mark.asyncio
-    async def test_tool_execute_relevance_ranking(self, sample_docs_dir, monkeypatch):
+    async def test_tool_execute_relevance_ranking(self, sample_docs_dir: Path) -> None:
         """Test that results are ranked by relevance."""
-        monkeypatch.setattr(settings.server, "workspace_root", sample_docs_dir.parent)
+        with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+            mock_settings_cls.from_env.return_value.server.workspace_root = str(
+                sample_docs_dir.parent
+            )
 
-        tool = SearchDocumentationTool()
-        result = await tool.execute(SearchDocumentationInput(query="Python"))
+            tool = SearchDocumentationTool()
+            result = await tool.execute(SearchDocumentationInput(query="Python"))
 
         assert not result.is_error
         output = result.content[0]["text"]
@@ -113,13 +127,14 @@ class TestSearchDocumentationE2E:
         assert "Python Development Guide" in first_result or "python_guide.md" in first_result
 
     @pytest.mark.asyncio
-    async def test_tool_handles_missing_docs_dir(self, tmp_path, monkeypatch):
+    async def test_tool_handles_missing_docs_dir(self, tmp_path: Path) -> None:
         """Test tool gracefully handles missing docs directory."""
         # Point to directory without docs/ subdirectory
-        monkeypatch.setattr(settings.server, "workspace_root", tmp_path)
+        with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+            mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
 
-        tool = SearchDocumentationTool()
-        result = await tool.execute(SearchDocumentationInput(query="Python"))
+            tool = SearchDocumentationTool()
+            result = await tool.execute(SearchDocumentationInput(query="Python"))
 
         # Should return error (docs dir not found)
         assert result.is_error or "No results found" in result.content[0]["text"]

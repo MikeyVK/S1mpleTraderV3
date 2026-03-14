@@ -39,33 +39,28 @@ class Settings(BaseModel):
     github: GitHubSettings = GitHubSettings()
 
     @classmethod
-    def load(cls, config_path: str | None = None) -> "Settings":
-        """Load settings from a YAML file and environment variables."""
+    def from_env(cls) -> "Settings":
+        """Load settings from environment variables and optional YAML config file.
+
+        Reads YAML path from MCP_CONFIG_PATH env var (defaults to mcp_config.yaml).
+        Env vars LOG_LEVEL and GITHUB_TOKEN override YAML values.
+        """
         config_data: dict[str, Any] = {}
 
-        # Determine config path
-        if config_path:
-            path = Path(config_path)
-        else:
-            path = Path(os.environ.get("MCP_CONFIG_PATH", "mcp_config.yaml"))
+        path = Path(os.environ.get("MCP_CONFIG_PATH", "mcp_config.yaml"))
 
         if path.exists():
             with open(path, encoding="utf-8") as f:
                 config_data = yaml.safe_load(f) or {}
 
-        # Override with environment variables
         if env_token := os.environ.get("GITHUB_TOKEN"):
             if "github" not in config_data:
                 config_data["github"] = {}
             config_data["github"]["token"] = env_token
 
-        if env_log_level := os.environ.get("MCP_LOG_LEVEL"):
+        if env_log_level := os.environ.get("LOG_LEVEL"):
             if "logging" not in config_data:
                 config_data["logging"] = {}
             config_data["logging"]["level"] = env_log_level
 
         return cls(**config_data)
-
-
-# Global settings instance
-settings = Settings.load()

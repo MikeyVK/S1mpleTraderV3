@@ -2,7 +2,7 @@
 import re
 from pathlib import Path
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, ValidationError
 
 
@@ -33,8 +33,7 @@ def write_scaffold_file(path: str, content: str, overwrite: bool = False) -> Non
     Raises:
         ExecutionError: If file exists and overwrite=False
     """
-    full_path = Path(settings.server.workspace_root) / path
-
+    full_path = Path(Settings.from_env().server.workspace_root) / path
     if full_path.exists() and not overwrite:
         raise ExecutionError(
             f"File exists: {path}. Use overwrite=True to replace.",

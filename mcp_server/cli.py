@@ -2,7 +2,7 @@
 import argparse
 import sys
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.server import main as server_main
 
 
@@ -14,6 +14,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.version:
+        settings = Settings.from_env()
         # pylint: disable=no-member
         print(f"ST3 Workflow MCP Server v{settings.server.version}")
         sys.exit(0)

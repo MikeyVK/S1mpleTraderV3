@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, MCPError
 from mcp_server.core.phase_detection import PhaseDetectionResult, ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
@@ -46,7 +46,7 @@ class SearchDocumentationTool(BaseTool):
     async def execute(self, params: SearchDocumentationInput) -> ToolResult:
         """Execute documentation search using DocumentIndexer + SearchService."""
         # Build index from docs directory
-        docs_dir = Path(settings.server.workspace_root) / "docs"
+        docs_dir = Path(Settings.from_env().server.workspace_root) / "docs"
 
         if not docs_dir.exists():
             raise ExecutionError(
@@ -139,7 +139,7 @@ class GetWorkContextTool(BaseTool):
         # Issue #146 Cycle 3: TDD Cycle Info (conditional visibility)
         if context.get("workflow_phase") == "implementation" and issue_number:
             try:
-                workspace_root = Path(settings.server.workspace_root)
+                workspace_root = Path(Settings.from_env().server.workspace_root)
                 project_manager = ProjectManager(workspace_root=workspace_root)
                 state_engine = PhaseStateEngine(
                     workspace_root=workspace_root, project_manager=project_manager
@@ -177,7 +177,7 @@ class GetWorkContextTool(BaseTool):
                 pass  # Graceful degradation if cycle info unavailable
 
         # Get GitHub issue details if configured
-        if settings.github.token:
+        if Settings.from_env().github.token:
             try:
                 gh_manager = GitHubManager()
 

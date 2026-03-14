@@ -20,17 +20,28 @@ from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPha
 from mcp_server.tools.tool_result import ToolResult
 
 
+def _patch_server_settings(
+    mock: MagicMock,
+    workspace_root: str = ".",
+    token: str | None = None,
+) -> None:
+    """Configure a Settings class mock for server tests."""
+    mock.from_env.return_value.server.name = "test-server"
+    mock.from_env.return_value.server.workspace_root = workspace_root
+    mock.from_env.return_value.github.token = token
+    mock.from_env.return_value.github.owner = "test"
+    mock.from_env.return_value.github.repo = "repo"
+    mock.from_env.return_value.logging.level = "INFO"
+    mock.from_env.return_value.logging.audit_log = ".logs/mcp_audit.log"
+
+
 class TestServerToolRegistration:
     """Tests for server tool registration."""
 
     def test_github_tools_always_registered(self) -> None:
         """GitHub tools should always be registered, even without token."""
-        with patch("mcp_server.server.settings") as mock_settings:
-            mock_settings.server.name = "test-server"
-            mock_settings.server.workspace_root = "."
-            mock_settings.github.token = None
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            _patch_server_settings(mock_settings_cls)
 
             server = MCPServer()
             tool_names = [t.name for t in server.tools]
@@ -43,16 +54,12 @@ class TestServerToolRegistration:
     def test_github_tools_registered_with_token(self) -> None:
         """GitHub tools should be registered when token is configured."""
         with (
-            patch("mcp_server.server.settings") as mock_settings,
+            patch("mcp_server.server.Settings") as mock_settings_cls,
             patch("mcp_server.resources.github.GitHubManager") as mock_res_manager,
             patch("mcp_server.tools.pr_tools.GitHubManager") as mock_pr_manager,
             patch("mcp_server.tools.label_tools.GitHubManager") as mock_label_manager,
         ):
-            mock_settings.server.name = "test-server"
-            mock_settings.server.workspace_root = "."
-            mock_settings.github.token = "test-token"
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+            _patch_server_settings(mock_settings_cls, token="test-token")
 
             mock_res_manager.return_value = MagicMock()
             mock_pr_manager.return_value = MagicMock()
@@ -86,12 +93,8 @@ class TestServerToolRegistration:
                 del params
                 return ToolResult.text("ok")
 
-        with patch("mcp_server.server.settings") as mock_settings:
-            mock_settings.server.name = "test-server"
-            mock_settings.server.workspace_root = "."
-            mock_settings.github.token = None
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            _patch_server_settings(mock_settings_cls)
 
             server = MCPServer()
             server.tools = [DummyTool()]
@@ -150,12 +153,8 @@ class TestServerToolRegistration:
             encoding="utf-8",
         )
 
-        with patch("mcp_server.server.settings") as mock_settings:
-            mock_settings.server.name = "test-server"
-            mock_settings.server.workspace_root = str(tmp_path)
-            mock_settings.github.token = None
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            _patch_server_settings(mock_settings_cls, workspace_root=str(tmp_path))
 
             manager = MagicMock()
             server = MCPServer()
@@ -217,16 +216,12 @@ class TestServerToolRegistration:
         )
 
         with (
-            patch("mcp_server.server.settings") as mock_settings,
+            patch("mcp_server.server.Settings") as mock_settings_cls,
             patch(
                 "mcp_server.managers.enforcement_runner.GitManager.commit_with_scope"
             ) as mock_commit,
         ):
-            mock_settings.server.name = "test-server"
-            mock_settings.server.workspace_root = str(tmp_path)
-            mock_settings.github.token = None
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+            _patch_server_settings(mock_settings_cls, workspace_root=str(tmp_path))
             mock_commit.return_value = "abc1234"
 
             server = MCPServer()
@@ -254,12 +249,8 @@ class TestServerToolRegistration:
         tmp_path: Path,
     ) -> None:
         """Force phase transitions should warn on hook failures instead of blocking."""
-        with patch("mcp_server.server.settings") as mock_settings:
-            mock_settings.server.name = "test-server"
-            mock_settings.server.workspace_root = str(tmp_path)
-            mock_settings.github.token = None
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            _patch_server_settings(mock_settings_cls, workspace_root=str(tmp_path))
 
             server = MCPServer()
             server.tools = [ForcePhaseTransitionTool(workspace_root=tmp_path)]

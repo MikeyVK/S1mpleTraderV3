@@ -4,7 +4,7 @@ from typing import Any
 
 from git import InvalidGitRepositoryError, Repo
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core import logging as core_logging
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 
@@ -14,7 +14,7 @@ class GitAdapter:
 
     def __init__(self, repo_path: str | None = None) -> None:
         """Initialize the Git adapter."""
-        self.repo_path = repo_path or settings.server.workspace_root
+        self.repo_path = repo_path or Settings.from_env().server.workspace_root
         self._repo: Repo | None = None
 
     @property

@@ -4,6 +4,8 @@
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import pytest
+
 from mcp_server.config.settings import Settings
 
 
@@ -16,13 +18,13 @@ def test_default_settings() -> None:
 
 def test_load_from_env(mock_env_vars: MagicMock) -> None:  # noqa: ARG001
     """Test loading settings from environment variables."""
-    settings = Settings.load()
+    settings = Settings.from_env()
     assert settings.logging.level == "DEBUG"
     assert settings.github.token == "test-token"
 
 
-def test_load_from_yaml(tmp_path: Path) -> None:
-    """Test loading settings from a YAML file."""
+def test_load_from_yaml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test loading settings from a YAML file via MCP_CONFIG_PATH env var."""
     config_file = tmp_path / "test_config.yaml"
     config_file.write_text("""
 server:
@@ -30,7 +32,7 @@ server:
 logging:
   level: "WARNING"
 """)
-
-    settings = Settings.load(str(config_file))
+    monkeypatch.setenv("MCP_CONFIG_PATH", str(config_file))
+    settings = Settings.from_env()
     assert settings.server.name == "yaml-server"
     assert settings.logging.level == "WARNING"

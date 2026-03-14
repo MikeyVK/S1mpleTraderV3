@@ -6,7 +6,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-from pytest import MonkeyPatch
 
 from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 from mcp_server.tools.test_tools import RunTestsInput, RunTestsTool
@@ -34,14 +33,14 @@ async def test_run_tests_tool() -> None:
 
 
 @pytest.mark.asyncio
-async def test_create_file_tool(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+async def test_create_file_tool(tmp_path: Path) -> None:
     """Test CreateFileTool creates file with correct content in subdirectory."""
+    with patch("mcp_server.tools.code_tools.Settings") as mock_settings_cls:
+        mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
 
-    monkeypatch.setattr("mcp_server.config.settings.settings.server.workspace_root", str(tmp_path))
+        tool = CreateFileTool()
 
-    tool = CreateFileTool()
-
-    await tool.execute(CreateFileInput(path="new_dir/test.txt", content="hello world"))
+        await tool.execute(CreateFileInput(path="new_dir/test.txt", content="hello world"))
 
     file_path = tmp_path / "new_dir/test.txt"
     assert file_path.exists()
@@ -49,14 +48,14 @@ async def test_create_file_tool(tmp_path: Path, monkeypatch: MonkeyPatch) -> Non
 
 
 @pytest.mark.asyncio
-async def test_create_file_security_check(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+async def test_create_file_security_check(tmp_path: Path) -> None:
     """Test CreateFileTool rejects path traversal attempts."""
+    with patch("mcp_server.tools.code_tools.Settings") as mock_settings_cls:
+        mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
 
-    monkeypatch.setattr("mcp_server.config.settings.settings.server.workspace_root", str(tmp_path))
+        tool = CreateFileTool()
 
-    tool = CreateFileTool()
-
-    result = await tool.execute(CreateFileInput(path="../outside.txt", content="bad"))
+        result = await tool.execute(CreateFileInput(path="../outside.txt", content="bad"))
 
     assert result.is_error
     assert "Access denied" in result.content[0]["text"]

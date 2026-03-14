@@ -9,15 +9,14 @@
 """
 from pathlib import Path
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import MCPSystemError, ValidationError
-
 
 class FilesystemAdapter:
     """Adapter for safe filesystem operations."""
 
     def __init__(self, root_path: str | None = None) -> None:
-        self.root_path = Path(root_path or settings.server.workspace_root).resolve()
+        self.root_path = Path(root_path or Settings.from_env().server.workspace_root).resolve()
 
     def resolve_path(self, path: str | Path) -> Path:
         """Resolve path relative to workspace root and validate safety.

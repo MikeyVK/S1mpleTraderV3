@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, ValidationError
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
@@ -49,14 +49,12 @@ class CreateFileTool(BaseTool):
 
         path = params.path
         content = params.content
-
         # Security check: ensure path is within workspace
-        # pylint: disable=no-member
-        full_path = Path(settings.server.workspace_root) / path
+        _workspace_root = Settings.from_env().server.workspace_root
+        full_path = Path(_workspace_root) / path
         try:
             full_path = full_path.resolve()
-            workspace = Path(settings.server.workspace_root).resolve()
-
+            workspace = Path(_workspace_root).resolve()
             if not str(full_path).startswith(str(workspace)):
                 raise ValidationError(f"Access denied: {path} is outside workspace")
 

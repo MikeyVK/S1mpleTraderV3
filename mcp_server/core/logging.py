@@ -5,8 +5,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from mcp_server.config.settings import settings
-
 
 class StructuredFormatter(logging.Formatter):
     """JSON formatter for structured logging."""
@@ -29,10 +27,15 @@ class StructuredFormatter(logging.Formatter):
         return json.dumps(log_data)
 
 
-def setup_logging() -> None:
-    """Configure logging based on settings."""
+def setup_logging(log_level: str = "INFO", audit_log: str = ".logs/mcp_audit.log") -> None:
+    """Configure logging.
+
+    Args:
+        log_level: Log level string (DEBUG, INFO, WARNING, ERROR). Defaults to "INFO".
+        audit_log: Path to audit log file. Defaults to ".logs/mcp_audit.log".
+    """
     logger = logging.getLogger("mcp_server")
-    logger.setLevel(settings.logging.level)
+    logger.setLevel(log_level)
 
     # Console handler
     handler = logging.StreamHandler(sys.stderr)
@@ -40,8 +43,8 @@ def setup_logging() -> None:
     logger.addHandler(handler)
 
     # Audit log file handler if configured
-    if settings.logging.audit_log:
-        log_path = Path(settings.logging.audit_log)
+    if audit_log:
+        log_path = Path(audit_log)
         try:
             # Ensure the parent directory exists (common failure on fresh checkouts)
             log_path.parent.mkdir(parents=True, exist_ok=True)

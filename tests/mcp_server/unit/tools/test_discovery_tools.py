@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from mcp_server.config.settings import settings
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.discovery_tools import (
@@ -56,7 +55,8 @@ class TestSearchDocumentationTool:
             test_file = docs_dir / "test.md"
             test_file.write_text("# Test Document\nContains worker implementation info.")
 
-            with patch.object(settings.server, "workspace_root", tmpdir):
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.server.workspace_root = tmpdir
                 result = await tool.execute(SearchDocumentationInput(query="worker"))
 
             assert not result.is_error
@@ -72,7 +72,8 @@ class TestSearchDocumentationTool:
             test_file = docs_dir / "architecture" / "design.md"
             test_file.write_text("# Architecture Design")
 
-            with patch.object(settings.server, "workspace_root", tmpdir):
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.server.workspace_root = tmpdir
                 result = await tool.execute(
                     SearchDocumentationInput(query="design", scope="architecture")
                 )
@@ -89,7 +90,8 @@ class TestSearchDocumentationTool:
             test_file = docs_dir / "test.md"
             test_file.write_text("# Test")
 
-            with patch.object(settings.server, "workspace_root", tmpdir):
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.server.workspace_root = tmpdir
                 result = await tool.execute(SearchDocumentationInput(query="nonexistent123"))
 
             assert not result.is_error
@@ -127,8 +129,8 @@ class TestGetWorkContextTool:
             mock_git.get_recent_commits.return_value = []
             mock_git_class.return_value = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.github.token = None
 
                 result = await tool.execute(GetWorkContextInput())
 
@@ -144,8 +146,8 @@ class TestGetWorkContextTool:
             mock_git.get_recent_commits.return_value = []
             mock_git_class.return_value = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.github.token = None
 
                 result = await tool.execute(GetWorkContextInput())
 
@@ -163,8 +165,8 @@ class TestGetWorkContextTool:
             mock_git.get_recent_commits.return_value = []
             mock_git_class.return_value = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.github.token = None
 
                 result = await tool.execute(GetWorkContextInput())
 
@@ -185,8 +187,8 @@ class TestGetWorkContextTool:
             ]
             mock_git_class.return_value = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.github.token = None
 
                 result = await tool.execute(GetWorkContextInput())
 
@@ -214,8 +216,8 @@ class TestGetWorkContextTool:
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "main"
             mock_git_class.return_value = mock_git
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.github.token = None
 
                 for commit, expected_phase, expected_emoji in test_cases:
                     mock_git.get_recent_commits.return_value = [commit]
@@ -233,8 +235,8 @@ class TestGetWorkContextTool:
             mock_git.get_recent_commits.return_value = []
             mock_git_class.return_value = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = "test-token"
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.github.token = "test-token"
 
                 # Execute - GitHub code path will fail gracefully
                 result = await tool.execute(GetWorkContextInput())
@@ -261,8 +263,8 @@ class TestGetWorkContextTool:
                 mock_gh.get_issue.return_value = mock_issue
                 mock_gh_class.return_value = mock_gh
 
-                with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                    mock_settings.github.token = "test-token"
+                with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                    mock_settings_cls.from_env.return_value.github.token = "test-token"
 
                     result = await tool.execute(GetWorkContextInput())
 
@@ -281,8 +283,8 @@ class TestGetWorkContextTool:
             mock_git.get_recent_commits.return_value = ["chore: random commit"]
             mock_git_class.return_value = mock_git
 
-            with patch("mcp_server.tools.discovery_tools.settings") as mock_settings:
-                mock_settings.github.token = None
+            with patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls:
+                mock_settings_cls.from_env.return_value.github.token = None
 
                 # Mock ScopeDecoder to return unknown with error_message
                 with patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class:
@@ -379,7 +381,7 @@ class TestGetWorkContextTddCycleInfo:
         with (
             patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
             patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
-            patch("mcp_server.tools.discovery_tools.settings") as mock_settings,
+            patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -389,8 +391,8 @@ class TestGetWorkContextTddCycleInfo:
             ]
             mock_git_class.return_value = mock_git
 
-            mock_settings.github.token = None
-            mock_settings.server.workspace_root = workspace_root
+            mock_settings_cls.from_env.return_value.github.token = None
+            mock_settings_cls.from_env.return_value.server.workspace_root = workspace_root
 
             # ScopeDecoder returns implementation phase from commit scope
             mock_decoder = MagicMock()
@@ -461,7 +463,7 @@ class TestGetWorkContextTddCycleInfo:
         with (
             patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
             patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
-            patch("mcp_server.tools.discovery_tools.settings") as mock_settings,
+            patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -470,8 +472,8 @@ class TestGetWorkContextTddCycleInfo:
             ]
             mock_git_class.return_value = mock_git
 
-            mock_settings.github.token = None
-            mock_settings.server.workspace_root = workspace_root
+            mock_settings_cls.from_env.return_value.github.token = None
+            mock_settings_cls.from_env.return_value.server.workspace_root = workspace_root
 
             # ScopeDecoder returns DESIGN phase (NOT tdd)
             mock_decoder = MagicMock()
@@ -526,7 +528,7 @@ class TestGetWorkContextTddCycleInfo:
         with (
             patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
             patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
-            patch("mcp_server.tools.discovery_tools.settings") as mock_settings,
+            patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -535,8 +537,8 @@ class TestGetWorkContextTddCycleInfo:
             ]
             mock_git_class.return_value = mock_git
 
-            mock_settings.github.token = None
-            mock_settings.server.workspace_root = workspace_root
+            mock_settings_cls.from_env.return_value.github.token = None
+            mock_settings_cls.from_env.return_value.server.workspace_root = workspace_root
 
             # ScopeDecoder returns implementation phase
             mock_decoder = MagicMock()
@@ -617,7 +619,7 @@ class TestTddCycleInfoStatusField:
         with (
             patch("mcp_server.tools.discovery_tools.GitManager") as mock_git_class,
             patch("mcp_server.tools.discovery_tools.ScopeDecoder") as mock_decoder_class,
-            patch("mcp_server.tools.discovery_tools.settings") as mock_settings,
+            patch("mcp_server.tools.discovery_tools.Settings") as mock_settings_cls,
         ):
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = "feature/146-tdd-cycle-tracking"
@@ -627,8 +629,8 @@ class TestTddCycleInfoStatusField:
             ]
             mock_git_class.return_value = mock_git
 
-            mock_settings.github.token = None
-            mock_settings.server.workspace_root = workspace_root
+            mock_settings_cls.from_env.return_value.github.token = None
+            mock_settings_cls.from_env.return_value.server.workspace_root = workspace_root
 
             mock_decoder = MagicMock()
             mock_decoder.detect_phase.return_value = {

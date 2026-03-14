@@ -19,10 +19,10 @@ def mock_github_client() -> Iterator[MagicMock]:
 
 @pytest.fixture
 def mock_settings() -> Iterator[MagicMock]:
-    with patch("mcp_server.adapters.github_adapter.settings") as mock:
-        mock.github.token = "test-token"
-        mock.github.owner = "test-owner"
-        mock.github.repo = "test-repo"
+    with patch("mcp_server.adapters.github_adapter.Settings") as mock:
+        mock.from_env.return_value.github.token = "test-token"
+        mock.from_env.return_value.github.owner = "test-owner"
+        mock.from_env.return_value.github.repo = "test-repo"
         yield mock
 
 
@@ -33,8 +33,8 @@ def adapter(mock_github_client: MagicMock, mock_settings: MagicMock) -> GitHubAd
 
 
 def test_init_no_token() -> None:
-    with patch("mcp_server.adapters.github_adapter.settings") as mock_settings:
-        mock_settings.github.token = None
+    with patch("mcp_server.adapters.github_adapter.Settings") as mock_settings_cls:
+        mock_settings_cls.from_env.return_value.github.token = None
         with pytest.raises(MCPSystemError, match="GitHub token not configured"):
             GitHubAdapter()
 

@@ -24,7 +24,7 @@ from pydantic import AnyUrl, BaseModel, ValidationError
 
 # Config
 from mcp_server.config.label_startup import validate_label_config_on_startup
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.managers.artifact_manager import ArtifactManager
@@ -98,8 +98,7 @@ from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.tool_result import ToolResult
 from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
-# Initialize logging
-setup_logging()
+
 logger = get_logger("server")
 lifecycle_logger = get_logger("server_lifecycle")
 
@@ -109,7 +108,11 @@ class MCPServer:
 
     def __init__(self) -> None:
         """Initialize the MCP server with resources and tools."""
+        settings = Settings.from_env()
         server_name = settings.server.name
+
+        # Configure logging with values from settings
+        setup_logging(settings.logging.level, settings.logging.audit_log)
 
         # Log server startup
         lifecycle_logger.info("MCP server starting")
@@ -119,6 +122,7 @@ class MCPServer:
 
         # Initialize template registry (Issue #72 Task 1.6)
         workspace_root = Path(settings.server.workspace_root)
+        self._workspace_root = workspace_root
         registry_path = workspace_root / ".st3" / "template_registry.json"
 
         # Bootstrap registry file if missing
@@ -363,7 +367,7 @@ class MCPServer:
             return None
 
         context = EnforcementContext(
-            workspace_root=Path(settings.server.workspace_root),
+            workspace_root=self._workspace_root,
             tool_name=tool.name,
             params=params,
             tool_result=result,
@@ -506,7 +510,7 @@ class MCPServer:
 
     async def run(self) -> None:
         """Run the MCP server."""
-        server_name = settings.server.name
+        server_name = Settings.from_env().server.name
 
         # Validate label configuration at startup
         validate_label_config_on_startup()

@@ -6,9 +6,6 @@ import contextlib
 import json
 import logging
 from pathlib import Path
-
-import pytest
-
 from mcp_server.core.logging import StructuredFormatter, get_logger, setup_logging
 
 
@@ -56,17 +53,13 @@ def test_get_logger() -> None:
     assert logger.name == "mcp_server.test"
 
 
-def test_setup_logging_writes_audit_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_setup_logging_writes_audit_log(tmp_path: Path) -> None:
     """setup_logging writes audit log file when parent exists."""
     _reset_mcp_server_logger()
 
     log_file = tmp_path / "audit.log"
-    monkeypatch.setattr(
-        "mcp_server.config.settings.settings.logging.audit_log",
-        str(log_file),
-    )
 
-    setup_logging()
+    setup_logging(log_level="INFO", audit_log=str(log_file))
 
     logger = get_logger("test")
     logger.info("Test audit")
@@ -76,19 +69,14 @@ def test_setup_logging_writes_audit_log(tmp_path: Path, monkeypatch: pytest.Monk
     assert "Test audit" in log_file.read_text(encoding="utf-8")
 
 
-def test_setup_logging_creates_parent_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_setup_logging_creates_parent_dir(tmp_path: Path) -> None:
     """setup_logging creates missing parent directories for audit log."""
     _reset_mcp_server_logger()
 
     log_file = tmp_path / "nested" / "audit.log"
     assert not log_file.parent.exists()
 
-    monkeypatch.setattr(
-        "mcp_server.config.settings.settings.logging.audit_log",
-        str(log_file),
-    )
-
-    setup_logging()
+    setup_logging(log_level="INFO", audit_log=str(log_file))
 
     logger = get_logger("test")
     logger.info("Test nested audit")

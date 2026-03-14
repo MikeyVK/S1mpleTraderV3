@@ -40,8 +40,8 @@ def mock_run_pytest_sync() -> Generator[MagicMock, None, None]:
 @pytest.fixture
 def _mock_settings() -> Generator[MagicMock, None, None]:
     """Patch the settings module."""
-    with patch("mcp_server.tools.test_tools.settings") as mock:
-        mock.server.workspace_root = "/workspace"
+    with patch("mcp_server.tools.test_tools.Settings") as mock:
+        mock.from_env.return_value.server.workspace_root = "/workspace"
         yield mock
 
 

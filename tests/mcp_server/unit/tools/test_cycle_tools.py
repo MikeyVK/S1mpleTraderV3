@@ -97,7 +97,7 @@ class TestCycleTools:
         )
 
         with (
-            patch("mcp_server.server.settings") as mock_settings,
+            patch("mcp_server.server.Settings") as mock_settings_cls,
             patch(
                 "mcp_server.managers.enforcement_runner.GitManager.commit_with_scope"
             ) as mock_commit,
@@ -109,11 +109,13 @@ class TestCycleTools:
                 ),
             ),
         ):
-            mock_settings.server.name = "test-server"
-            mock_settings.server.workspace_root = str(tmp_path)
-            mock_settings.github.token = None
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+            mock_settings_cls.from_env.return_value.server.name = "test-server"
+            mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
+            mock_settings_cls.from_env.return_value.github.token = None
+            mock_settings_cls.from_env.return_value.github.owner = "test"
+            mock_settings_cls.from_env.return_value.github.repo = "repo"
+            mock_settings_cls.from_env.return_value.logging.level = "INFO"
+            mock_settings_cls.from_env.return_value.logging.audit_log = ".logs/mcp_audit.log"
             mock_commit.return_value = "abc1234"
             mock_git = MagicMock()
             mock_git.get_current_branch.return_value = branch
@@ -140,12 +142,14 @@ class TestCycleTools:
         tmp_path: Path,
     ) -> None:
         """Force cycle transitions should warn on hook failures instead of blocking."""
-        with patch("mcp_server.server.settings") as mock_settings:
-            mock_settings.server.name = "test-server"
-            mock_settings.server.workspace_root = str(tmp_path)
-            mock_settings.github.token = None
-            mock_settings.github.owner = "test"
-            mock_settings.github.repo = "repo"
+        with patch("mcp_server.server.Settings") as mock_settings_cls:
+            mock_settings_cls.from_env.return_value.server.name = "test-server"
+            mock_settings_cls.from_env.return_value.server.workspace_root = str(tmp_path)
+            mock_settings_cls.from_env.return_value.github.token = None
+            mock_settings_cls.from_env.return_value.github.owner = "test"
+            mock_settings_cls.from_env.return_value.github.repo = "repo"
+            mock_settings_cls.from_env.return_value.logging.level = "INFO"
+            mock_settings_cls.from_env.return_value.logging.audit_log = ".logs/mcp_audit.log"
 
             server = MCPServer()
             server.tools = [ForceCycleTransitionTool(workspace_root=tmp_path)]

@@ -9,8 +9,8 @@ from mcp_server.tools.code_tools import CreateFileInput, CreateFileTool
 
 @pytest.fixture
 def mock_settings():
-    with patch("mcp_server.tools.code_tools.settings") as mock:
-        mock.server.workspace_root = "/workspace"
+    with patch("mcp_server.tools.code_tools.Settings") as mock:
+        mock.from_env.return_value.server.workspace_root = "/workspace"
         yield mock
 
 
@@ -69,7 +69,7 @@ async def test_create_file_tool_deprecation_warning():
         with patch(
             "pathlib.Path.resolve", return_value=MagicMock(__str__=lambda x: "/workspace/test.txt")
         ):
-            with patch("mcp_server.tools.code_tools.settings"):
+            with patch("mcp_server.tools.code_tools.Settings"):
                 with pytest.warns(DeprecationWarning, match="create_file is deprecated"):
                     try:
                         await tool.execute(params)

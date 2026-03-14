@@ -10,7 +10,7 @@ from github.Milestone import Milestone
 from github.PullRequest import PullRequest
 from github.Repository import Repository
 
-from mcp_server.config.settings import settings
+from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import ExecutionError, MCPSystemError
 
 
@@ -19,22 +19,23 @@ class GitHubAdapter:
 
     def __init__(self) -> None:
         """Initialize the GitHub adapter."""
-        if not settings.github.token:  # pylint: disable=no-member
+        _settings = Settings.from_env()
+        if not _settings.github.token:  # pylint: disable=no-member
             raise MCPSystemError(
                 "GitHub token not configured",
                 fallback="Configure GITHUB_TOKEN environment variable"
             )
 
-        self.client = Github(settings.github.token)  # pylint: disable=no-member
+        self.client = Github(_settings.github.token)  # pylint: disable=no-member
         self._repo: Repository | None = None
+        self._repo_name = f"{_settings.github.owner}/{_settings.github.repo}"  # pylint: disable=no-member
 
     @property
     def repo(self) -> Repository:
         """Get the configured repository."""
         if not self._repo:
             try:
-                repo_name = f"{settings.github.owner}/{settings.github.repo}"  # pylint: disable=no-member
-                self._repo = self.client.get_repo(repo_name)
+                self._repo = self.client.get_repo(self._repo_name)
             except GithubException as e:
                 raise MCPSystemError(
                     f"Failed to access repository: {e}",
