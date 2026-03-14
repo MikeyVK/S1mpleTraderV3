@@ -3,7 +3,7 @@
 # Config Layer SRP Violations: Missing Loader, Validator and Schema Separation
 
 **Status:** COMPLETE
-**Version:** 1.3
+**Version:** 1.4
 **Last Updated:** 2026-03-14
 
 ---
@@ -40,14 +40,15 @@ Read these first:
 
 ## Problem Statement
 
-`mcp_server/config/` contains 15 config classes that each implement their own YAML loader, their
-own error handling, and their own hardcoded `.st3/` path. There is no central `ConfigLoader`, no
+`mcp_server/config/` contains 13 YAML-backed schema classes, one `Settings` class referencing a
+non-existent `mcp_config.yaml`, and 2 misplaced non-schema files (`template_config.py`,
+`label_startup.py`) — 16 files in total. There is no central `ConfigLoader`, no
 `ConfigValidator`, and the `Settings` class references a `mcp_config.yaml` that does not exist —
-and should not exist. Every class is simultaneously a Pydantic schema and a loader, a direct SRP
-violation. Python defaults silently mirror YAML values (DRY violation). There is an undetected
-value conflict in `quality_config.py`. Two non-schema files are misplaced in `config/`. Two
-YAML-backed Pydantic schemas live outside `config/` entirely. The current state is the inverse of
-the `ARCHITECTURE_PRINCIPLES` the project enforces on itself.
+and should not exist. Every schema class is simultaneously a Pydantic schema and a loader, a
+direct SRP violation. Python defaults silently mirror YAML values (DRY violation). There is an
+undetected value conflict in `quality_config.py`. Two non-schema files are misplaced in
+`config/`. Two YAML-backed Pydantic schemas live outside `config/` entirely. The current state
+is the inverse of the `ARCHITECTURE_PRINCIPLES` the project enforces on itself.
 
 ## Research Goals
 
@@ -303,12 +304,12 @@ codebase. A value is *deployment config* if it identifies the specific running i
 | `commit_types` | `GitConfig` field with Python default | Domain convention — fail-fast from YAML | Required field, no default |
 | `protected_branches` | `GitConfig` field with Python default | Domain convention — fail-fast from YAML | Required field, no default |
 | `branch_name_pattern` | `GitConfig` field with Python default | Domain convention — fail-fast from YAML | Required field, no default |
-| `server.name` (`"st3-workflow"`) | `ServerSettings` Python default | Deployment identity — comes from `mcp.json`key | env var `MCP_SERVER_NAME` |
+| `server.name` (`"st3-workflow"`) | `ServerSettings` Python default | Deployment identity — persistent source of confusion, must be explicit | env var `MCP_SERVER_NAME`; set `"MCP_SERVER_NAME": "st3-workflow"` in `mcp.json` |
 | `server.version` (`"1.0.0"`) | `ServerSettings` Python default | Build artifact — belongs in `pyproject.toml` | `importlib.metadata.version()` |
 | `github.owner` (`"MikeyVK"`) | `GitHubSettings` Python default | Deployment config — comes from `mcp.json` | env var `GITHUB_OWNER` |
 | `github.repo` (`"S1mpleTraderV3"`) | `GitHubSettings` Python default | Deployment config — comes from `mcp.json` | env var `GITHUB_REPO` |
 | `github.project_number` (`1`) | `GitHubSettings` Python default | Deployment config — comes from `mcp.json` | env var `GITHUB_PROJECT_NUMBER` |
-| `logging.level` (`"INFO"`) | `LogSettings` Python default | Operational parameter — graceful default `INFO` acceptable, but must log warning if absent | `mcp.json` env var, default `INFO` with warning |
+| `logging.level` (`"INFO"`) | `LogSettings` Python default | Operational parameter that affects config loading itself — must be known before startup; configured in `mcp.json` so always present in production; graceful fallback to `INFO` acceptable when run outside `mcp.json` | `mcp.json` env var `LOG_LEVEL`; set `"LOG_LEVEL": "INFO"` in `mcp.json`; no `ConfigError` if absent (operational default) |
 
 ---
 
@@ -355,7 +356,7 @@ a logged warning with a stated default. Individual schema classes never make thi
 
 ---
 
-### F11 — ConfigTranslator Role: Three Domain-Specific Spec-Builders
+### F10 — ConfigTranslator Role: Three Domain-Specific Spec-Builders
 
 `ConfigTranslator` is a concept in the backend reference pattern (see `docs/architecture/`) but it
 does not exist as a single class in the MCP server. The correct implementation is not a single
@@ -422,7 +423,7 @@ No manager imports a config class. No config class knows a manager exists.
 
 ---
 
-### F10 — Test Isolation: Current State and Future Gain
+### F11 — Test Isolation: Current State and Future Gain
 
 #### Current test problems
 
@@ -637,6 +638,125 @@ local copy is deleted in C_LOADER.
 
 ---
 
+### F14 — Config Coverage: Full Flow Mapping
+
+**Finding (raised during research review — question E):** It was unclear whether ALL 13 YAML-backed
+configs plus Settings + 2 misplaced classes flow completely through
+`ConfigLoader → validation → (optional spec-builder) → manager`, or whether some configs take a
+shortcut (e.g., direct `from_file()` call inside a manager).
+
+**Two valid routes after C_LOADER (both eliminate `from_file()` in managers):**
+
+| Route | Path | When to use |
+|---|---|---|
+| **Route 1 — via spec-builder** | `ConfigLoader → PydanticConfig → SpecBuilder → TypedSpec → Manager` | Config needs non-trivial translation into an executable spec with domain-specific fields |
+| **Route 2 — direct DI** | `ConfigLoader → PydanticConfig → Manager` | Config maps 1-to-1 to manager needs; no translation logic required |
+
+**Complete flow table (13 YAML-backed configs + Settings):**
+
+| Config class | YAML file | Route | Consumer | Notes |
+|---|---|---|---|---|
+| `QualityConfig` | `quality.yaml` | Route 1 | `GatePlanBuilder` → `GateExecutionPlan` → `QAManager` | Spec encodes gate ordering + thresholds |
+| `ArtifactRegistryConfig` | `artifacts.yaml` | Route 1 | `ScaffoldSpecBuilder` → `ScaffoldSpec` → `ArtifactManager` | Spec resolves template path + context schema |
+| `WorkflowConfig` | `workflows.yaml` | Route 1 (P4) | `WorkflowSpecBuilder` → `WorkflowInitSpec` → `ProjectManager` (+PSE) | P0: direct DI to `ProjectManager`; `WorkflowInitSpec` produced in C_SPECBUILDERS |
+| `WorkphasesConfig` | `workphases.yaml` | Route 2 (P0) → Route 1 (P4) | `PhaseStateEngine` directly (P0); `WorkflowSpecBuilder` input (P4) | P0 interim: PSE receives raw `WorkphasesConfig`. P4: folded into `WorkflowInitSpec` |
+| `GitConfig` | `git.yaml` | Route 2 | `GitManager`, `GitAdapter` | No translation needed |
+| `LabelConfig` | `labels.yaml` | Route 2 | `LabelManager` | No translation needed |
+| `MilestoneConfig` | `milestones.yaml` | Route 2 | `MilestoneManager` | TBD — verify manager existence in planning |
+| `IssueConfig` | `issues.yaml` | Route 2 | `IssueManager` | TBD — verify manager existence in planning |
+| `ContributorConfig` | `contributors.yaml` | Route 2 | **Unknown** — no clear manager owner identified in research | ⚠️ Must resolve in planning: who consumes this? |
+| `ScopeConfig` | `scopes.yaml` | Route 2 | `ScopeEncoder` | No translation needed |
+| `OperationPoliciesConfig` | `policies.yaml` | Route 2 | `PolicyChecker` / `PhaseStateEngine` | Depends on enforcement wiring |
+| `ProjectStructureConfig` | `project_structure.yaml` | Route 2 | `ProjectManager` | No translation needed |
+| `ScaffoldMetadataConfig` | `scaffold_metadata.yaml` | Route 2 | `ArtifactManager` | Moves to `config/schemas/` in C_LOADER (D7); local `ConfigError` deleted (F13) |
+| `EnforcementConfig` | `enforcement.yaml` | Route 2 | `EnforcementRunner` | No translation needed |
+| `PhaseContractConfig` | `phase_contracts.yaml` | Route 2 | `PhaseContractResolver` | No translation needed |
+| `Settings` | env vars via `mcp.json` | N/A | All managers via `server.py` composition root | `Settings.from_env()` called once; not via `ConfigLoader` |
+
+**Key invariant (enforced by structural test in C_LOADER RED phase):**
+
+```python
+# tests/unit/test_config_schemas.py — structural test (C_LOADER RED)
+def test_no_from_file_on_any_config_schema():
+    """Every schema class must be a pure Pydantic model without file-loading methods."""
+    import inspect
+    import mcp_server.config.schemas as schemas_module
+    for name, cls in inspect.getmembers(schemas_module, inspect.isclass):
+        for forbidden in ("from_file", "load", "reset_instance"):
+            assert not hasattr(cls, forbidden), (
+                f"{name}.{forbidden}() must not exist — ConfigLoader is the sole loader."
+            )
+```
+
+This test prevents future drift: any new schema class that adds `from_file()` will fail immediately.
+
+**Unresolved items for planning:**
+- `ContributorConfig`: no manager owner identified — must assign in C_LOADER planning.
+- `WorkflowConfig` + `WorkphasesConfig` (P4): confirm `WorkflowSpecBuilder` takes both as input
+  so `WorkflowInitSpec` carries all phase-exit requirements.
+- `OperationPoliciesConfig`: clarify whether it feeds `PolicyChecker` (new class?) or directly
+  into `PhaseStateEngine`'s enforcement logic — affects C_LOADER composition root.
+
+---
+
+### F15 — Naming Conventions: Audit of All New Code Proposed in This Document
+
+**Finding (raised during research review — question F):** New class names, folder names, and type
+aliases proposed across this document have not been compiled in one place. Before planning begins,
+every name needs an explicit decision so that PRs do not introduce accidental inconsistency.
+
+**New folder structure (proposed by this document):**
+
+| Folder | Status | Contains | Notes |
+|---|---|---|---|
+| `mcp_server/config/` | Exists (partial) | `loader.py`, `validator.py`, `schemas/`, `translators/` | `schemas/` + `translators/` are new subdirectories |
+| `mcp_server/config/schemas/` | New (C_LOADER) | 13 schema classes (`*_config.py`) + `Settings` | All moved from `config/` and two from `managers/`; D7 |
+| `mcp_server/config/translators/` | New (C_SPECBUILDERS) | `gate_plan_builder.py`, `scaffold_spec_builder.py`, `workflow_spec_builder.py` | Name "translators" mirrors backend reference; the classes inside are "builders" |
+| `mcp_server/dtos/` | New (C_SPECBUILDERS) | `specs/gate_execution_plan.py`, `specs/scaffold_spec.py`, `specs/workflow_init_spec.py` | Spec output types are Pydantic DTOs; mirrors `backend/dtos/` pattern |
+
+**New class names (decided):**
+
+| Class | Module | Pattern | Rationale |
+|---|---|---|---|
+| `ConfigLoader` | `config/loader.py` | Service | Loads all YAML-backed configs; single responsibility |
+| `ConfigValidator` | `config/validator.py` | Service | Cross-config validation at startup; single responsibility |
+| `GatePlanBuilder` | `config/translators/gate_plan_builder.py` | Builder | Stateless; translates `QualityConfig` → `GateExecutionPlan` |
+| `ScaffoldSpecBuilder` | `config/translators/scaffold_spec_builder.py` | Builder | Stateless; translates `ArtifactRegistryConfig` → `ScaffoldSpec` |
+| `WorkflowSpecBuilder` | `config/translators/workflow_spec_builder.py` | Builder | Stateless; translates `WorkflowConfig` + `WorkphasesConfig` → `WorkflowInitSpec` |
+| `GateExecutionPlan` | `dtos/specs/gate_execution_plan.py` | Pydantic model / DTO | Spec consumed by `QAManager` |
+| `ScaffoldSpec` | `dtos/specs/scaffold_spec.py` | Pydantic model / DTO | Spec consumed by `ArtifactManager` |
+| `WorkflowInitSpec` | `dtos/specs/workflow_init_spec.py` | Pydantic model / DTO | Spec consumed by `ProjectManager` and (P4) `PhaseStateEngine` |
+
+**Classmethod naming:**
+
+| Classmethod | Class | Rationale |
+|---|---|---|
+| `Settings.from_env()` | `Settings` | Follows Python convention (`from_dict`, `from_env`, `from_file`); consistent with upcoming deletion of `from_file()` on schema classes |
+
+**Environment variable naming:**
+
+| Env var | mcp.json key | `Settings` field | Notes |
+|---|---|---|---|
+| `MCP_SERVER_NAME` | `"MCP_SERVER_NAME": "st3-workflow"` | `settings.server_name` | Replaces hardcoded `server.name = "st3-workflow"` in Python; D12 |
+| `LOG_LEVEL` | `"LOG_LEVEL": "INFO"` | `settings.log_level` | Always present in mcp.json; D13 |
+
+**Existing code — no rename (too much blast radius):**
+
+| Current name | Lives in | Issue | Decision |
+|---|---|---|---|
+| `PhaseStateEngine` | `managers/` | Is an Engine, not a Manager | Keep in `managers/`; separate cleanup issue if folder is renamed |
+| `EnforcementRunner` | `managers/` | Is a Runner, not a Manager | Keep in `managers/`; same cleanup issue |
+| `PhaseContractResolver` | `managers/` | Is a Resolver, not a Manager | Keep in `managers/`; same cleanup issue |
+
+**Open naming question (defer to planning):**
+- Are spec output DTOs (`GateExecutionPlan`, `ScaffoldSpec`, `WorkflowInitSpec`) better placed in
+  `mcp_server/dtos/specs/` or in `mcp_server/config/specs/`?  
+  **Preferred:** `mcp_server/dtos/specs/` because these types are consumed by managers, not owned
+  by the config layer. Placing them in `config/` would create an import dependency from
+  `managers/` → `config/dtos` which is architecturally odd.
+
+---
+
 ## Decisions
 
 **D1 — `mcp_config.yaml` is abolished.** `Settings` reads exclusively from env vars injected via
@@ -657,7 +777,11 @@ not a config validation. Must not be folded into `ConfigValidator`.
 
 **D6 — `template_config.py` moves to `utils/`.** It is a path-resolution utility.
 
-**D7 — `EnforcementConfig` and the `phase_contracts` root schema move to `config/schemas/`.**
+**D7 — `EnforcementConfig` and the `phase_contracts` root schema move to `config/schemas/`.** All
+13 YAML-backed schema classes also move to a `config/schemas/` subdirectory in C_LOADER
+(previously deferred in DQ4 — overruled: hard break is the right time to move them since all
+consumer imports break anyway; doing it later creates a second round of blast radius for no
+functional gain).
 
 **D8 — There is no single `ConfigTranslator` class.** The translation layer consists of three
 domain-specific spec-builders in `config/translators/`: `GatePlanBuilder`, `ScaffoldSpecBuilder`,
@@ -687,6 +811,32 @@ silent fallback hides the incompleteness. A hard break makes partial completion 
 broken tests. There is no silent path to cover incomplete work. RC-2 cannot occur when the old
 wiring no longer compiles.
 
+**D11 — `config/schemas/` subdirectory in C_LOADER (formalizes DQ4 + D7).** All 13 YAML-backed
+schema classes and `Settings` move to `mcp_server/config/schemas/`. Two misplaced classes in
+`managers/` (`EnforcementConfig` from `enforcement_manager.py`, `PhaseContractConfig` from
+`phase_state_engine.py`) also move to `config/schemas/` in C_LOADER. This costs nothing extra:
+D10 hard break already forces all import updates.
+
+**D12 — `server.name` hardcoding replaced by env var `MCP_SERVER_NAME`.** `Settings.server.name`
+(currently hardcoded as `"st3-workflow"` in Python) is removed. `mcp.json` gains a new env entry:
+`"MCP_SERVER_NAME": "st3-workflow"`. The `Settings` object reads this field via `os.environ`.
+Rationale: naming is deployment identity — it belongs in `mcp.json` alongside `GITHUB_OWNER`,
+`GITHUB_REPO`, etc., not as a Python compile-time constant.
+
+**D13 — `LOG_LEVEL` managed in `mcp.json`.** `LOG_LEVEL` affects logging initialisation, which
+runs before `ConfigLoader` starts. It must be a known value before startup begins. `mcp.json`
+gains `"LOG_LEVEL": "INFO"` as an explicit env entry. `Settings.log_level` reads it at startup.
+When running outside `mcp.json` (e.g., bare CLI), a documented fallback of `"INFO"` is acceptable
+and should emit a startup notice — `LOG_LEVEL` is operational configuration, not security-critical.
+No `ConfigError` raised on absence; the fallback is intentional and documented.
+
+**D14 — `PhaseStateEngine` constructor injection (two-step migration).** In P0 (C_LOADER):
+`PhaseStateEngine(workspace_root, workphases_config, state_repository)` — receives raw
+`WorkphasesConfig` via DI. In P4 (C_SPECBUILDERS): `WorkflowSpecBuilder` produces
+`WorkflowInitSpec` from `WorkflowConfig + WorkphasesConfig`; PSE is then updated to accept
+`WorkflowInitSpec` instead. The Zone 3 test-isolation goal (F11) depends on P4. P0 is the
+minimum viable hard break; P4 is the quality-of-test improvement on top.
+
 ---
 
 ## Priority Matrix for Next Cycles
@@ -694,17 +844,19 @@ wiring no longer compiles.
 | Priority | Finding | Cycle label | Depends on |
 |---|---|---|---|
 | **P0** | F12 — delete `settings = Settings.load()` module-level; `Settings.from_env()` at composition root; update 14 consumers (D10 hard break step 1) | C_SETTINGS | — |
-| **P0** | F3 — `Settings` becomes pure env-var reader; add `owner`, `repo`, `project_number`, `log_level` to `mcp.json`; delete `mcp_config.yaml` fallback code | C_SETTINGS | — |
-| **P0** | F1 + D9 + D10 — introduce `ConfigLoader(config_root)`; delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schemas (hard break); update all consumers | C_LOADER | C_SETTINGS |
+| **P0** | F3 + D12 + D13 — `Settings` becomes pure env-var reader; add `MCP_SERVER_NAME`, `LOG_LEVEL`, `owner`, `repo`, `project_number` to `mcp.json`; delete `mcp_config.yaml` fallback code | C_SETTINGS | — |
+| **P0** | F1 + D9 + D10 + D11 — introduce `ConfigLoader(config_root)`; move all 15 schema classes to `config/schemas/`; delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schemas (hard break); update all consumers | C_LOADER | C_SETTINGS |
 | P0 | F13 — delete local `ConfigError` in `scaffold_metadata_config.py`; all config raise `core.exceptions.ConfigError` | C_LOADER | C_LOADER |
+| P0 | F14 — structural test `test_no_from_file_on_any_config_schema()` in `tests/unit/config/` | C_LOADER | C_LOADER |
 | P1 | F2, F8 — introduce `ConfigValidator.validate_startup()`; delete `label_startup.py` | C_VALIDATOR | C_LOADER |
 | P2 | F4 — remove Python defaults from `GitConfig`; make domain convention fields required | C_GITCONFIG | C_LOADER |
 | P2 | F5 — remove `output_dir` default from `ArtifactLoggingConfig` | C_GITCONFIG | C_LOADER |
-| P3 | F7 — move `server.version` to `importlib.metadata`; add remaining deployment vars to `mcp.json` | C_SETTINGS | C_SETTINGS |
+| P3 | F7 — move `server.version` to `importlib.metadata`; `MCP_SERVER_NAME` + `LOG_LEVEL` already in `mcp.json` (done in C_SETTINGS / D12 / D13) | C_CLEANUP | C_SETTINGS |
 | P3 | F6 — move `template_config.py` to `utils/`; delete from `config/` | C_CLEANUP | C_LOADER |
 | P4 | F8 part B — label sync against GitHub to `LabelManager` | C_LABELMGR | C_VALIDATOR |
-| P4 | F11 — introduce `GatePlanBuilder`, `ScaffoldSpecBuilder`, `WorkflowSpecBuilder` in `config/translators/` | C_SPECBUILDERS | C_LOADER, C_VALIDATOR |
-| P4 | F7 part B — move `EnforcementConfig` and phase_contracts schema to `config/schemas/` | C_CLEANUP | C_LOADER |
+| P4 | F10 + D14 — introduce `GatePlanBuilder`, `ScaffoldSpecBuilder`, `WorkflowSpecBuilder` in `config/translators/`; create `mcp_server/dtos/specs/`; update PSE to accept `WorkflowInitSpec` (D14) | C_SPECBUILDERS | C_LOADER, C_VALIDATOR |
+| P4 | F11 — Zone 3 test isolation complete (PSE receives `WorkflowInitSpec` — depends on C_SPECBUILDERS) | C_SPECBUILDERS | C_SPECBUILDERS |
+| P4 | F15 — Naming review: confirm all new class/folder names match decisions before any C_* cycle starts planning | Pre-planning | — |
 
 ---
 
@@ -726,14 +878,31 @@ config_root = Path(workspace_root) / ".st3"
 loader = ConfigLoader(config_root=config_root)
 
 # Step 1 — Load all configs (ConfigLoader raises ConfigError on any missing required file)
-git_config      = loader.load_git_config()
-workflow_config = loader.load_workflow_config()
-quality_config  = loader.load_quality_config()
-artifact_config = loader.load_artifact_registry_config()
-# ... all remaining configs
+git_config        = loader.load_git_config()
+workflow_config   = loader.load_workflow_config()
+workphases_config = loader.load_workphases_config()
+quality_config    = loader.load_quality_config()
+artifact_config   = loader.load_artifact_registry_config()
+label_config      = loader.load_label_config()
+issue_config      = loader.load_issue_config()
+milestone_config  = loader.load_milestone_config()
+contributor_config = loader.load_contributor_config()
+scope_config      = loader.load_scope_config()
+policies_config   = loader.load_operation_policies()
+structure_config  = loader.load_project_structure()
+scaffold_meta     = loader.load_scaffold_metadata_config()
+enforcement_config = loader.load_enforcement_config()
+phase_contracts   = loader.load_phase_contracts_config()
 
 # Step 2 — Cross-config validation (Layer 3, fires once at startup)
-ConfigValidator().validate_startup(git=git_config, workflow=workflow_config, ...)
+ConfigValidator().validate_startup(
+    policies=policies_config,
+    workflow=workflow_config,
+    structure=structure_config,
+    artifact=artifact_config,
+    phase_contracts=phase_contracts,
+    workphases=workphases_config,
+)
 
 # Step 3 — Settings from env vars (raises ConfigError on missing required vars)
 settings = Settings.from_env()
@@ -743,10 +912,16 @@ gate_plan_builder     = GatePlanBuilder()
 scaffold_spec_builder = ScaffoldSpecBuilder()
 workflow_spec_builder = WorkflowSpecBuilder()
 
-# Step 5 — Managers (config objects + spec-builders injected via constructor)
-qa_manager       = QAManager(workspace_root, quality_config, gate_plan_builder)
-artifact_manager = ArtifactManager(workspace_root, artifact_config, scaffold_spec_builder)
-project_manager  = ProjectManager(workspace_root, workflow_config, workflow_spec_builder)
+# Step 5 — Managers receive config objects + spec-builders (or raw config) via constructor
+qa_manager            = QAManager(workspace_root, quality_config, gate_plan_builder)
+artifact_manager      = ArtifactManager(workspace_root, artifact_config, scaffold_spec_builder)
+project_manager       = ProjectManager(workspace_root, workflow_config, workflow_spec_builder)
+git_manager           = GitManager(workspace_root, git_config, settings)
+label_manager         = LabelManager(workspace_root, label_config, settings)
+phase_state_engine    = PhaseStateEngine(workspace_root, workphases_config, state_repository)
+enforcement_runner    = EnforcementRunner(workspace_root, enforcement_config)
+phase_contract_resolver = PhaseContractResolver(phase_contracts, workphases_config)
+# ... remaining managers
 
 # Step 6 — Tools receive managers (already current pattern — no change here)
 ```
@@ -757,6 +932,10 @@ project_manager  = ProjectManager(workspace_root, workflow_config, workflow_spec
 - No config class imports any manager class.
 - Spec-builders are stateless: they hold no shared mutable state, constructed once, safe to inject.
 - The depth of the dependency chain from a tool is at most 2: `tool → manager`, `manager → spec-builder + config`. (Law of Demeter, ARCHITECTURE_PRINCIPLES.md §7.)
+- `PhaseStateEngine` receives `workphases_config: WorkphasesConfig` directly (P0). In P4
+  (C_SPECBUILDERS), `WorkflowSpecBuilder` will produce `WorkflowInitSpec` from `WorkflowConfig` +
+  `WorkphasesConfig`, and PSE will be updated to accept `WorkflowInitSpec`. This is a two-step
+  migration — direct DI is the valid P0 state.
 
 ### DQ2 — `from_file()` Strategy: Hard Break (→ D10)
 
@@ -793,12 +972,17 @@ Migration checklist for planning (all 14 consumers must be ticked before C_SETTI
 of the `WorkflowConfig` hard break. Its only consumer in the current codebase is `server.py`
 (which will receive the loaded config from `ConfigLoader` after C_LOADER).
 
-### DQ4 — `config/schemas/` Subdirectory: Deferred
+### DQ4 — `config/schemas/` Subdirectory: Included in C_LOADER (Answer revised)
 
-Moving all schema classes to a `config/schemas/` subdirectory changes every import path in the
-test suite. The value (mirrors backend reference architecture) does not justify the blast radius
-during this implementation run. **Decision: do not move now.** Deferred to a dedicated
-C_REORGANIZE cycle after all other changes are stable and green. This resolves the Open Question.
+~~Moving all schema classes to a `config/schemas/` subdirectory deferred to C_REORGANIZE.~~
+
+**Revised decision (D7):** `config/schemas/` is created in C_LOADER as part of the hard break.
+Since C_LOADER already breaks every import of every schema class (D10 hard break: deleting
+`from_file()`, `load()`, `ClassVar _instance`), consumer imports must be updated regardless.
+Moving schemas to `config/schemas/` at the same time adds zero additional blast radius — the
+imports are already broken and being updated. Doing it later would mean a second round of import
+updates for no functional gain. This is directly analogous to RC-5 (half-done migration looks
+done). Applies to all 13 YAML-backed schemas and the 2 schemas from `managers/`.
 
 ### DQ5 — `ClassVar` Singleton Removal: C_LOADER (→ D9)
 
@@ -932,5 +1116,8 @@ planning document is consulted before every commit in a cycle — not once at th
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.4 | 2026-03-14 | Agent | Added F14 (Config Coverage — full flow mapping, two routes, unresolved ContributorConfig owner); added F15 (Naming conventions — new folders, classes, env vars, spec DTO location); added D11-D14 (config/schemas/ formalised, MCP_SERVER_NAME, LOG_LEVEL, PSE two-step migration); expanded DQ1 startup sequence to include all 15 configs + PSE/EnforcementRunner/PhaseContractResolver; answers A-F from user review incorporated; Priority Matrix updated |
+| 1.3 | 2026-03-14 | Agent | Added DQ1–DQ5 (design questions resolved); D7 amended (all 13 schemas + 2 misplaced to config/schemas/ in C_LOADER, not deferred); DQ4 revised (no longer deferred); F7 table: server.name → MCP_SERVER_NAME, LOG_LEVEL row added; Problem Statement count corrected (16 total) |
+| 1.2 | 2026-03-14 | Agent | Added F10 (spec-builders: GatePlanBuilder, ScaffoldSpecBuilder, WorkflowSpecBuilder); F11 (test isolation 3-zone architecture); F12 (module-level singletons); F13 (two ConfigError classes); D8-D10 (no single ConfigTranslator, ClassVar singleton removal, hard-break strategy); Gap Prevention Protocol (RC-1 through RC-8) |
 | 1.1 | 2026-03-14 | Agent | Full rewrite in English; added F9 (loader responsibilities); resolved all open questions as decisions D1–D7; added mcp.json analysis (F3); label_startup.py SRP analysis (F8); complete priority matrix |
 | 1.0 | 2026-03-14 | Agent | Initial draft |
