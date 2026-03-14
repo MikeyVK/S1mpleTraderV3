@@ -3,7 +3,7 @@
 # Config Layer SRP Violations: Missing Loader, Validator and Schema Separation
 
 **Status:** COMPLETE
-**Version:** 1.5
+**Version:** 1.6
 **Last Updated:** 2026-03-14
 
 ---
@@ -712,11 +712,11 @@ shortcut (e.g., direct `from_file()` call inside a manager).
 | `WorkphasesConfig` | `workphases.yaml` | Route 2 (P0) → Route 1 (P4) | `PhaseStateEngine` directly (P0); `WorkflowSpecBuilder` input (P4) | P0 interim: PSE receives raw `WorkphasesConfig`. P4: folded into `WorkflowInitSpec` |
 | `GitConfig` | `git.yaml` | Route 2 | `GitManager`, `GitAdapter` | No translation needed |
 | `LabelConfig` | `labels.yaml` | Route 2 | `LabelManager` | No translation needed |
-| `MilestoneConfig` | `milestones.yaml` | Route 2 | `MilestoneManager` | TBD — verify manager existence in planning |
-| `IssueConfig` | `issues.yaml` | Route 2 | `IssueManager` | TBD — verify manager existence in planning |
-| `ContributorConfig` | `contributors.yaml` | Route 2 | **Unknown** — no clear manager owner identified in research | ⚠️ Must resolve in planning: who consumes this? |
+| `MilestoneConfig` | `milestones.yaml` | Route 2 | `GitHubManager` — currently consumed via `@field_validator` in `issue_tools.py`; moves to `GitHubManager` after OQ6 resolved | No standalone MilestoneManager exists |
+| `IssueConfig` | `issues.yaml` | Route 2 | `GitHubManager` — currently consumed via `@field_validator` in `issue_tools.py`; moves to `GitHubManager` after OQ6 resolved | No standalone IssueManager exists |
+| `ContributorConfig` | `contributors.yaml` | Route 2 | `GitHubManager` — used for assignee validation in `create_issue` (currently in `@field_validator` in `issue_tools.py`; moves to manager after OQ6 resolved) | OQ6 affects how validation moves |
 | `ScopeConfig` | `scopes.yaml` | Route 2 | `ScopeEncoder` | No translation needed |
-| `OperationPoliciesConfig` | `policies.yaml` | Route 2 | `PolicyChecker` / `PhaseStateEngine` | Depends on enforcement wiring |
+| `OperationPoliciesConfig` | `policies.yaml` | Route 2 | `PolicyEngine` (in `core/`, not `managers/`) | `PolicyEngine` already exists; receives via DI after C_LOADER |
 | `ProjectStructureConfig` | `project_structure.yaml` | Route 2 | `ProjectManager` | No translation needed |
 | `ScaffoldMetadataConfig` | `scaffold_metadata.yaml` | Route 2 | `ArtifactManager` | Moves to `config/schemas/` in C_LOADER (D7); local `ConfigError` deleted (F13) |
 | `EnforcementConfig` | `enforcement.yaml` | Route 2 | `EnforcementRunner` | No translation needed |
@@ -741,11 +741,13 @@ def test_no_from_file_on_any_config_schema():
 This test prevents future drift: any new schema class that adds `from_file()` will fail immediately.
 
 **Unresolved items for planning:**
-- `ContributorConfig`: no manager owner identified — must assign in C_LOADER planning.
+- `ContributorConfig`, `IssueConfig`, `MilestoneConfig`: all route to `GitHubManager`, but
+  the `@field_validator` pattern in `issue_tools.py` calls `from_file()` inside Pydantic validators.
+  C_LOADER hard break will break these. Must resolve OQ6 before C_LOADER DoD is finalized.
 - `WorkflowConfig` + `WorkphasesConfig` (P4): confirm `WorkflowSpecBuilder` takes both as input
   so `WorkflowInitSpec` carries all phase-exit requirements.
-- `OperationPoliciesConfig`: clarify whether it feeds `PolicyChecker` (new class?) or directly
-  into `PhaseStateEngine`'s enforcement logic — affects C_LOADER composition root.
+- `OperationPoliciesConfig`: routes to `PolicyEngine` in `core/` — composition root must include
+  `PolicyEngine` instantiation (not a manager, but still needs DI from `server.py`).
 
 ---
 
@@ -773,9 +775,11 @@ every name needs an explicit decision so that PRs do not introduce accidental in
 | `GatePlanBuilder` | `config/translators/gate_plan_builder.py` | Builder | Stateless; translates `QualityConfig` → `GateExecutionPlan` |
 | `ScaffoldSpecBuilder` | `config/translators/scaffold_spec_builder.py` | Builder | Stateless; translates `ArtifactRegistryConfig` → `ScaffoldSpec` |
 | `WorkflowSpecBuilder` | `config/translators/workflow_spec_builder.py` | Builder | Stateless; translates `WorkflowConfig` + `WorkphasesConfig` → `WorkflowInitSpec` |
-| `GateExecutionPlan` | `dtos/specs/gate_execution_plan.py` | Pydantic model / DTO | Spec consumed by `QAManager` |
-| `ScaffoldSpec` | `dtos/specs/scaffold_spec.py` | Pydantic model / DTO | Spec consumed by `ArtifactManager` |
-| `WorkflowInitSpec` | `dtos/specs/workflow_init_spec.py` | Pydantic model / DTO | Spec consumed by `ProjectManager` and (P4) `PhaseStateEngine` |
+| `GateExecutionPlan` | `dtos/specs/gate_execution_plan.py` | Pydantic model / DTO | Spec (OUTPUT) consumed by `QAManager` |
+| `ScaffoldSpec` | `dtos/specs/scaffold_spec.py` | Pydantic model / DTO | Spec (OUTPUT) consumed by `ArtifactManager` |
+| `WorkflowInitSpec` | `dtos/specs/workflow_init_spec.py` | Pydantic model / DTO | Spec (OUTPUT) consumed by `ProjectManager` and (P4) `PhaseStateEngine` |
+| `FileScope` | `dtos/specs/file_scope.py` | Pydantic model / DTO | Input (INPUT) to `GatePlanBuilder.build()` — wraps `files: list[str]` + `scope: str` |
+| `ProjectInitOptions` | `dtos/specs/project_init_options.py` | Pydantic model / DTO | Input (INPUT) to `WorkflowSpecBuilder.build()` — wraps `issue_number`, `workflow_name`, `branch` |
 
 **Classmethod naming:**
 
@@ -901,6 +905,7 @@ minimum viable hard break; P4 is the quality-of-test improvement on top.
 | **P0** | F1 + D9 + D10 + D11 — introduce `ConfigLoader(config_root)`; move all 15 schema classes to `config/schemas/`; delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schemas (hard break); update all consumers | C_LOADER | C_SETTINGS |
 | P0 | F13 — delete local `ConfigError` in `scaffold_metadata_config.py`; all config raise `core.exceptions.ConfigError` | C_LOADER | C_LOADER |
 | P0 | F14 — structural test `test_no_from_file_on_any_config_schema()` in `tests/unit/config/` | C_LOADER | C_LOADER |
+| P0 | OQ6 — resolve `@field_validator` pattern in `issue_tools.py` (3 configs call `from_file()` inside validators); decide approach before C_LOADER DoD | C_LOADER | C_LOADER |
 | P1 | F2, F8 — introduce `ConfigValidator.validate_startup()`; delete `label_startup.py` | C_VALIDATOR | C_LOADER |
 | P2 | F4 — remove Python defaults from `GitConfig`; make domain convention fields required | C_GITCONFIG | C_LOADER |
 | P2 | F5 — remove `output_dir` default from `ArtifactLoggingConfig` | C_GITCONFIG | C_LOADER |
@@ -974,7 +979,9 @@ label_manager         = LabelManager(workspace_root, label_config, settings)
 phase_state_engine    = PhaseStateEngine(workspace_root, workphases_config, state_repository)  # state_repository: adapter for .st3/state.json (e.g. JsonStateRepository)
 enforcement_runner    = EnforcementRunner(workspace_root, enforcement_config)
 phase_contract_resolver = PhaseContractResolver(phase_contracts, workphases_config)
-# ... remaining managers
+github_manager        = GitHubManager(issue_config, milestone_config, contributor_config, github_adapter)  # OQ3: configs moved from field_validators in issue_tools.py
+policy_engine         = PolicyEngine(policies_config, git_config)  # OQ2: lives in core/, not managers/
+# ... remaining managers (scope_encoder, deliverable_checker, etc.)
 
 # Step 6 — Tools receive managers (already current pattern — no change here)
 ```
@@ -1153,11 +1160,72 @@ planning document is consulted before every commit in a cycle — not once at th
 
 | # | Question | Where raised | Impact if unresolved |
 |---|---|---|---|
-| OQ1 | **`ContributorConfig` consumer** — No manager owner identified in research. Who consumes `contributors.yaml` at runtime? | F14 | Cannot wire `ContributorConfig` into DQ1 composition root (Step 5) |
-| OQ2 | **`OperationPoliciesConfig` wiring** — Does it feed a new `PolicyChecker` class, or does it go directly into `PhaseStateEngine`'s enforcement logic? | F14 | Affects DQ1 composition root and C_LOADER scope |
-| OQ3 | **`MilestoneConfig` / `IssueConfig`** — Do `MilestoneManager` and `IssueManager` exist in `managers/` or are they planned? If planned, are they in scope for C_LOADER? | F14 | Affects Step 5 of DQ1; if absent, direct DI has no target |
-| OQ4 | **`FileScope` type** — Used in `GatePlanBuilder.build(config, scope: FileScope)` (F10). Is this a new DTO created in C_SPECBUILDERS, or an existing type? | F10 | Affects C_SPECBUILDERS scope; name and location not yet in F15 naming table |
-| OQ5 | **`ProjectInitOptions` type** — Used in `WorkflowSpecBuilder.build(config, params: ProjectInitOptions)` (F10). Same question as OQ4. | F10 | Affects C_SPECBUILDERS scope; name and location not yet in F15 naming table |
+| ~~OQ1~~ | ~~`ContributorConfig` consumer~~ | F14 | **Resolved — see below** |
+| ~~OQ2~~ | ~~`OperationPoliciesConfig` wiring~~ | F14 | **Resolved — see below** |
+| ~~OQ3~~ | ~~`MilestoneConfig` / `IssueConfig`~~ | F14 | **Resolved — see below** |
+| ~~OQ4~~ | ~~`FileScope` type~~ | F10 | **Resolved — see below** |
+| ~~OQ5~~ | ~~`ProjectInitOptions` type~~ | F10 | **Resolved — see below** |
+| OQ6 | **`@field_validator` pattern after C_LOADER hard break** — `issue_tools.py` calls `IssueConfig.from_file()`, `MilestoneConfig.from_file()`, `ContributorConfig.from_file()` inside Pydantic `@field_validator` methods. After C_LOADER deletes `from_file()`, these validators break. Options: (a) move validation logic to `GitHubManager.validate_issue_params()`; (b) pass configs as class variables injected before validation; (c) remove structural validation from Pydantic DTO, validate in manager instead. Must resolve before C_LOADER DoD is defined. | F14 | C_LOADER scope — affects how `issue_tools.py` is updated |
+
+**Resolved answers:**
+
+**OQ1 — `ContributorConfig` consumer:** `ContributorConfig` IS actively used — `issue_tools.py`
+calls `ContributorConfig.from_file()` inside a `@field_validator("assignees")` to validate that
+every GitHub login in the `assignees` list is present in `contributors.yaml`. After C_LOADER:
+this config routes through `GitHubManager` (which already owns GitHub operations). The validator
+pattern itself is addressed by OQ6.
+
+**OQ2 — `OperationPoliciesConfig` wiring:** There is no new class needed. `PolicyEngine` in
+`mcp_server/core/policy_engine.py` is the existing consumer — it calls
+`OperationPoliciesConfig.from_file()` in its own constructor today. After C_LOADER:
+`PolicyEngine(operations_config, git_config)` receives both via DI from the composition root
+(`server.py`). `PolicyEngine` lives in `core/` (correct per §1.5 — policy engine is a core
+concern, not a manager). DQ1 composition root (Step 5) should list `PolicyEngine` alongside
+the managers. Update: "... remaining managers" placeholder now explicitly covers `PolicyEngine`.
+
+**OQ3 — `MilestoneConfig` / `IssueConfig` — no manager exists:** Neither `MilestoneManager`
+nor `IssueManager` exists in `managers/`. Both configs are consumed directly inside `@field_validator`
+methods in `issue_tools.py` — a DIP violation (§1.5: "Direct instantiation inside `execute()` is
+forbidden"). After C_LOADER: `IssueConfig`, `MilestoneConfig`, `ContributorConfig` are injected
+into `GitHubManager`, which already owns all GitHub operations (create_issue, list_issues,
+create_milestone, etc. via `GitHubAdapter`). No new `IssueManager` is needed; `GitHubManager`
+is extended to accept these configs. This also affects the DQ1 composition root: Step 5 must
+include `github_manager = GitHubManager(issue_config, milestone_config, contributor_config, adapter)`.
+
+**OQ4 — `FileScope` input DTO:** `GatePlanBuilder.build(config, scope: FileScope)` — `FileScope`
+is a new frozen Pydantic DTO (created in C_SPECBUILDERS) that wraps the parameters currently
+passed as raw arguments to `QAManager.run_quality_gates(files, effective_scope)`. After
+C_SPECBUILDERS this call becomes `qa_manager.execute(plan: GateExecutionPlan)` and the scope is
+baked into the plan at build time:
+
+```python
+# mcp_server/dtos/specs/file_scope.py
+class FileScope(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    files: list[str] = Field(default_factory=list)
+    scope: str = "auto"   # "auto" | "files" | "branch"
+```
+
+`FileScope` lives in `mcp_server/dtos/specs/` and is added to the F15 naming table.
+
+**OQ5 — `ProjectInitOptions` input DTO:** `WorkflowSpecBuilder.build(config, params: ProjectInitOptions)` —
+`ProjectInitOptions` is a new frozen Pydantic DTO (created in C_SPECBUILDERS) that wraps the
+parameters the `initialize_project` tool currently passes directly to `ProjectManager` as separate
+arguments (issue number, workflow name, active branch):
+
+```python
+# mcp_server/dtos/specs/project_init_options.py
+class ProjectInitOptions(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    issue_number: int
+    workflow_name: str
+    branch: str
+    parent_branch: str | None = None
+```
+
+`ProjectInitOptions` lives in `mcp_server/dtos/specs/` and is added to the F15 naming table. Note
+that it is a spec-builder INPUT — it is distinct from `WorkflowInitSpec`, which is the OUTPUT that
+managers consume.
 
 ---
 
@@ -1186,6 +1254,7 @@ planning document is consulted before every commit in a cycle — not once at th
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.6 | 2026-03-14 | Agent | Resolved OQ1-OQ5: ContributorConfig→GitHubManager (used in field_validators), PolicyEngine as OperationPoliciesConfig consumer, GitHubManager as IssueConfig/MilestoneConfig target, FileScope + ProjectInitOptions as new INPUT DTOs in dtos/specs/; added OQ6 (@field_validator break); DQ1 composition root extended with PolicyEngine + GitHubManager; F14 table updated; F15 naming table extended; Priority Matrix: OQ6 as P0 C_LOADER item |
 | 1.5 | 2026-03-14 | Agent | Added TOC; fixed Open Questions (removed wrong DQ4 "deferred" reference, added OQ1-OQ5 from F14/F10); clarified "15 schema classes" in D10; added state_repository note in DQ1; DQ5 structural test points to canonical F14 version; F15 spec DTO location marked as decided; RC-6/RC-7 note added; F9 LOG_LEVEL cross-reference to D13 |
 | 1.4 | 2026-03-14 | Agent | Added F14 (Config Coverage — full flow mapping, two routes, unresolved ContributorConfig owner); added F15 (Naming conventions — new folders, classes, env vars, spec DTO location); added D11-D14 (config/schemas/ formalised, MCP_SERVER_NAME, LOG_LEVEL, PSE two-step migration); expanded DQ1 startup sequence to include all 15 configs + PSE/EnforcementRunner/PhaseContractResolver; answers A-F from user review incorporated; Priority Matrix updated |
 | 1.3 | 2026-03-14 | Agent | Added DQ1–DQ5 (design questions resolved); D7 amended (all 13 schemas + 2 misplaced to config/schemas/ in C_LOADER, not deferred); DQ4 revised (no longer deferred); F7 table: server.name → MCP_SERVER_NAME, LOG_LEVEL row added; Problem Statement count corrected (16 total) |
