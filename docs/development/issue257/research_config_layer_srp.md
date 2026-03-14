@@ -2,8 +2,8 @@
 <!-- template=research version=8b7bb3ab created=2026-03-14T06:31Z updated=2026-03-14 -->
 # Config Layer SRP Violations: Missing Loader, Validator and Schema Separation
 
-**Status:** DRAFT
-**Version:** 1.1
+**Status:** COMPLETE
+**Version:** 1.3
 **Last Updated:** 2026-03-14
 
 ---
@@ -577,6 +577,66 @@ def test_phase_transition_requires_deliverable(tmp_path):
 
 ---
 
+### F12 — Module-Level Singletons: Import-Time Side Effect (ARCHITECTURE_PRINCIPLES.md §12)
+
+`ARCHITECTURE_PRINCIPLES.md` section 12 forbids module-level code that reads files or initializes
+singletons:
+
+> *"A `config = AppConfig.load()` as a module-level statement causes `FileNotFoundError` on import
+> in tests. Use `ClassVar` with lazy init."*
+
+Two config singletons are instantiated at module level:
+
+```python
+# mcp_server/config/settings.py — line 71
+settings = Settings.load()           # fires on every import
+
+# mcp_server/config/workflows.py — line 198
+workflow_config = WorkflowConfig.load()  # fires on every import
+```
+
+`from mcp_server.config.settings import settings` appears in **14 production files and tests**:
+`artifact_manager.py`, `core/logging.py`, `cli.py`, `test_tools.py`, `adapters/filesystem.py`,
+`adapters/git_adapter.py`, `adapters/github_adapter.py`, `tools/discovery_tools.py`,
+`tools/code_tools.py`, `server.py`, `scaffolding/utils.py`, and 3 test files.
+
+Every import of any of these 14 modules triggers `Settings.load()` — which reads `mcp_config.yaml`
+(does not exist) and falls back to hardcoded Python defaults, silently. This is the root cause of
+CWD-sensitive tests and `reset_instance()` hacks — not just the absence of `ConfigLoader`. Tests
+that import any of these 14 modules are always booting on silent-default `Settings`, regardless
+of what environment variables or mocks the test sets up.
+
+**Highest-risk item in this entire refactoring.** `Settings` is consumed at module-level by
+14 files. Removing the module-level export breaks all 14 immediately. This must be the first
+action in C_SETTINGS — not an afterthought to be cleaned up later.
+
+**Replacement:** `settings` and `workflow_config` as module-level exports are eliminated.
+`Settings.from_env()` is called once at the composition root (`server.py`). All 14 consumers
+receive `settings: Settings` as a constructor parameter, injected from the composition root.
+There is no module-level `settings` export after C_SETTINGS.
+
+---
+
+### F13 — Two `ConfigError` Classes: SSOT Violation (ARCHITECTURE_PRINCIPLES.md §2)
+
+Two independent `ConfigError` classes exist in the codebase:
+
+| File | Class | Base class | Structured fields |
+|---|---|---|---|
+| `mcp_server/core/exceptions.py` | `class ConfigError(MCPError)` | `MCPError` | `file_path`, `hints` |
+| `mcp_server/config/scaffold_metadata_config.py` | `class ConfigError(Exception)` | `Exception` | none |
+
+`ARCHITECTURE_PRINCIPLES.md` section 2 (DRY + SSOT): every fact has exactly one authoritative
+location. `core.exceptions.ConfigError` is the authoritative class. It inherits from `MCPError`,
+carries structured context (`file_path`, `hints`), and is already used by
+`operation_policies.py`, `project_structure.py`, and `artifact_registry_config.py`.
+
+The local copy in `scaffold_metadata_config.py` is a DRY violation established when that module
+was written in isolation. `ConfigLoader` must import exclusively from `core.exceptions`. The
+local copy is deleted in C_LOADER.
+
+---
+
 ## Decisions
 
 **D1 — `mcp_config.yaml` is abolished.** `Settings` reads exclusively from env vars injected via
@@ -604,32 +664,246 @@ domain-specific spec-builders in `config/translators/`: `GatePlanBuilder`, `Scaf
 `WorkflowSpecBuilder`. Each accepts Pydantic config objects and returns a typed spec. Managers
 receive specs via constructor injection and are prohibited from importing config classes.
 
+**D9 — `ClassVar` singleton pattern is removed from all schema classes.** Schema classes become
+pure Pydantic value objects. `ConfigLoader` owns instance lifecycle. `ClassVar _instance`,
+`from_file()`, `load()`, and `reset_instance()` are deleted from all schema classes in C_LOADER.
+There is no per-class lazy init, no singleton guard, no `_instance`. Instance lifecycle is the
+caller's responsibility — in production that is `ConfigLoader`, in tests that is `tmp_path`.
+
+**D10 — Hard Break: no deprecated delegates, no parallel migration paths.** The migration from
+`from_file()` / module-level singletons to `ConfigLoader` is executed as a single atomic hard
+break in C_SETTINGS + C_LOADER:
+
+1. Delete `settings = Settings.load()` and `workflow_config = WorkflowConfig.load()` module-level exports.
+2. Delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schema classes.
+3. This breaks all 14+ importers immediately — that is intentional and desired.
+4. Add `ConfigLoader` with all methods. Add `Settings.from_env()`.
+5. Update every consumer in the same cycle. Every broken import is a tracked checklist item.
+
+**Rationale:** Flag-day (gradual / soft) was evaluated and rejected based on the issue #257 cycle
+run. RC-2 proves that when the old wiring path remains available, agent implementations
+systematically build the new component correctly but skip the integration step — because the
+silent fallback hides the incompleteness. A hard break makes partial completion visible as
+broken tests. There is no silent path to cover incomplete work. RC-2 cannot occur when the old
+wiring no longer compiles.
+
 ---
 
 ## Priority Matrix for Next Cycles
 
 | Priority | Finding | Cycle label | Depends on |
 |---|---|---|---|
-| P0 | F3 — abolish `mcp_config.yaml`; extend `mcp.json`; `Settings` becomes pure env-var reader | C_SETTINGS | — |
-| P0 | F1 — introduce `ConfigLoader(config_root)`, one method per YAML | C_LOADER | C_SETTINGS |
+| **P0** | F12 — delete `settings = Settings.load()` module-level; `Settings.from_env()` at composition root; update 14 consumers (D10 hard break step 1) | C_SETTINGS | — |
+| **P0** | F3 — `Settings` becomes pure env-var reader; add `owner`, `repo`, `project_number`, `log_level` to `mcp.json`; delete `mcp_config.yaml` fallback code | C_SETTINGS | — |
+| **P0** | F1 + D9 + D10 — introduce `ConfigLoader(config_root)`; delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schemas (hard break); update all consumers | C_LOADER | C_SETTINGS |
+| P0 | F13 — delete local `ConfigError` in `scaffold_metadata_config.py`; all config raise `core.exceptions.ConfigError` | C_LOADER | C_LOADER |
 | P1 | F2, F8 — introduce `ConfigValidator.validate_startup()`; delete `label_startup.py` | C_VALIDATOR | C_LOADER |
 | P2 | F4 — remove Python defaults from `GitConfig`; make domain convention fields required | C_GITCONFIG | C_LOADER |
 | P2 | F5 — remove `output_dir` default from `ArtifactLoggingConfig` | C_GITCONFIG | C_LOADER |
 | P3 | F7 — move `server.version` to `importlib.metadata`; add remaining deployment vars to `mcp.json` | C_SETTINGS | C_SETTINGS |
-| P3 | F6 — move `template_config.py` to `utils/` | C_CLEANUP | C_LOADER |
+| P3 | F6 — move `template_config.py` to `utils/`; delete from `config/` | C_CLEANUP | C_LOADER |
 | P4 | F8 part B — label sync against GitHub to `LabelManager` | C_LABELMGR | C_VALIDATOR |
 | P4 | F11 — introduce `GatePlanBuilder`, `ScaffoldSpecBuilder`, `WorkflowSpecBuilder` in `config/translators/` | C_SPECBUILDERS | C_LOADER, C_VALIDATOR |
-| P4 | — move `EnforcementConfig` and phase_contracts schema to `config/schemas/` | C_CLEANUP | C_LOADER |
+| P4 | F7 part B — move `EnforcementConfig` and phase_contracts schema to `config/schemas/` | C_CLEANUP | C_LOADER |
+
+---
+
+## Design Questions Resolved in Research
+
+The following architectural questions were answered during research to prevent agents from making
+ad-hoc decisions during implementation. Unanswered design questions are the primary source of
+RC-2 gaps ("component built, not wired") — an agent that must invent the answer to "how does
+`ConfigLoader` reach `QAManager`?" will either guess wrong or silently leave the old path active.
+
+### DQ1 — Composition Root: Who Instantiates What?
+
+The composition root is `server.py`. It is the only location that instantiates concrete
+implementations. The startup sequence:
+
+```python
+# server.py — composition root (illustrative, not final API)
+config_root = Path(workspace_root) / ".st3"
+loader = ConfigLoader(config_root=config_root)
+
+# Step 1 — Load all configs (ConfigLoader raises ConfigError on any missing required file)
+git_config      = loader.load_git_config()
+workflow_config = loader.load_workflow_config()
+quality_config  = loader.load_quality_config()
+artifact_config = loader.load_artifact_registry_config()
+# ... all remaining configs
+
+# Step 2 — Cross-config validation (Layer 3, fires once at startup)
+ConfigValidator().validate_startup(git=git_config, workflow=workflow_config, ...)
+
+# Step 3 — Settings from env vars (raises ConfigError on missing required vars)
+settings = Settings.from_env()
+
+# Step 4 — Spec-builders (stateless, constructed once, no init args)
+gate_plan_builder     = GatePlanBuilder()
+scaffold_spec_builder = ScaffoldSpecBuilder()
+workflow_spec_builder = WorkflowSpecBuilder()
+
+# Step 5 — Managers (config objects + spec-builders injected via constructor)
+qa_manager       = QAManager(workspace_root, quality_config, gate_plan_builder)
+artifact_manager = ArtifactManager(workspace_root, artifact_config, scaffold_spec_builder)
+project_manager  = ProjectManager(workspace_root, workflow_config, workflow_spec_builder)
+
+# Step 6 — Tools receive managers (already current pattern — no change here)
+```
+
+**Invariants:**
+- Only `server.py` instantiates concrete implementations.
+- No manager imports any config class (`from mcp_server.config.*` is forbidden in `managers/`).
+- No config class imports any manager class.
+- Spec-builders are stateless: they hold no shared mutable state, constructed once, safe to inject.
+- The depth of the dependency chain from a tool is at most 2: `tool → manager`, `manager → spec-builder + config`. (Law of Demeter, ARCHITECTURE_PRINCIPLES.md §7.)
+
+### DQ2 — `from_file()` Strategy: Hard Break (→ D10)
+
+See D10. No deprecated delegates. All deletions and all consumer updates in the same two cycles
+(C_SETTINGS + C_LOADER). Partial completion is visible as broken tests. This is acceptable and
+intentional.
+
+### DQ3 — Module-Level Singletons: What Replaces Them?
+
+After C_SETTINGS, there is no `settings` module-level export. Consumers that currently
+`from mcp_server.config.settings import settings` receive `settings: Settings` as a constructor
+parameter, injected from `server.py`.
+
+Migration checklist for planning (all 14 consumers must be ticked before C_SETTINGS DoD):
+
+| Consumer file | Current usage | After C_SETTINGS |
+|---|---|---|
+| `managers/artifact_manager.py` | `settings.server.workspace_root` | `workspace_root: Path` param |
+| `core/logging.py` | `settings.logging.level` | `log_level: str` param |
+| `cli.py` | `settings.server.*` | `settings: Settings` param |
+| `tools/test_tools.py` | `settings.server.*` | `settings: Settings` param |
+| `adapters/filesystem.py` | `settings.server.*` | `settings: Settings` param |
+| `adapters/git_adapter.py` | `settings.github.*` | `settings: Settings` param |
+| `adapters/github_adapter.py` | `settings.github.*` | `settings: Settings` param |
+| `tools/discovery_tools.py` | `settings.*` | `settings: Settings` param |
+| `tools/code_tools.py` | `settings.*` | `settings: Settings` param |
+| `server.py` | `settings.*` | reads directly from `Settings.from_env()` |
+| `scaffolding/utils.py` | `settings.*` | `settings: Settings` param |
+| `tests/unit/tools/test_discovery_tools.py` | import | construct `Settings(...)` directly |
+| `tests/integration/.../test_search_documentation_e2e.py` | import | construct `Settings(...)` directly |
+| `tests/unit/config/test_settings.py` | `Settings` class | already imports class, not singleton |
+
+`workflow_config = WorkflowConfig.load()` in `workflows.py` is eliminated in C_LOADER as part
+of the `WorkflowConfig` hard break. Its only consumer in the current codebase is `server.py`
+(which will receive the loaded config from `ConfigLoader` after C_LOADER).
+
+### DQ4 — `config/schemas/` Subdirectory: Deferred
+
+Moving all schema classes to a `config/schemas/` subdirectory changes every import path in the
+test suite. The value (mirrors backend reference architecture) does not justify the blast radius
+during this implementation run. **Decision: do not move now.** Deferred to a dedicated
+C_REORGANIZE cycle after all other changes are stable and green. This resolves the Open Question.
+
+### DQ5 — `ClassVar` Singleton Removal: C_LOADER (→ D9)
+
+`ClassVar _instance`, `from_file()`, `load()`, and `reset_instance()` are deleted from all
+15 schema classes in C_LOADER — the same cycle as the hard break. They are companion structures
+to the patterns being deleted. Leaving any of them in place after C_LOADER constitutes incomplete
+work and will be caught by a structural test:
+
+```python
+# Structural test — required in C_LOADER RED phase
+def test_no_from_file_on_any_config_class() -> None:
+    from mcp_server.config import quality_config, git_config, workflows  # etc.
+    for cls in [quality_config.QualityConfig, git_config.GitConfig, ...]:
+        assert not hasattr(cls, "from_file"), f"{cls.__name__} still has from_file()"
+        assert not hasattr(cls, "load"), f"{cls.__name__} still has load()"
+        assert not hasattr(cls, "reset_instance"), f"{cls.__name__} still has reset_instance()"
+```
+
+---
+
+## Gap Prevention Protocol
+
+Root causes RC-1 through RC-8 from `GAP_ANALYSE_ISSUE257.md` are addressed by measures encoded
+as non-negotiable requirements in `planning.md`. This section is the reference for why those
+planning constraints exist.
+
+### RC-1 — Stop/Go as Hard Gate (not a suggestion)
+
+Every cycle in `planning.md` has a "Verification" block with exact commands and expected output.
+An agent may not start the next cycle until it has produced the output of every verification
+command as evidence. Format:
+
+```
+### Stop/Go — Cycle X
+- [ ] `Select-String "from_file" mcp_server/config/quality_config.py` → 0 matches
+- [ ] `python -m pytest tests/mcp_server/unit/config/ -q` → all pass
+Show output before starting Cycle X+1.
+```
+
+### RC-2 — Explicit Integration Points in Every Cycle DoD
+
+Every cycle DoD contains a mandatory "Integration" item:
+
+> *List every existing file that currently calls, imports, or depends on the component modified
+> in this cycle. Verify each one has been updated. An entry is not done until it has been
+> updated — not until the new component's own tests are green.*
+
+This targets the pattern where `PhaseContractResolver` was built and tested in isolation but
+never wired into `PhaseStateEngine`.
+
+For this implementation run, the equivalent risk is: `ConfigLoader` built and tested, but managers
+patching `QualityConfig.load` or constructing YAML on disk in tests remain untouched.
+
+### RC-3 — Minimum One Structural Test per RED Phase
+
+Every RED phase includes at least one structural test that verifies the absence of the old
+anti-pattern. Behavioral tests alone do not catch structural gaps.
+
+```python
+# Structural test: no manager imports a config class
+def test_qa_manager_does_not_import_config() -> None:
+    import inspect
+    import mcp_server.managers.qa_manager as m
+    source = inspect.getsource(m)
+    assert "from mcp_server.config" not in source
+
+# Structural test: no from_file() on schema class
+def test_quality_config_has_no_loader_methods() -> None:
+    from mcp_server.config.quality_config import QualityConfig
+    assert not hasattr(QualityConfig, "from_file")
+    assert not hasattr(QualityConfig, "load")
+    assert not hasattr(QualityConfig, "reset_instance")
+```
+
+### RC-4 — Highest-Risk Work in First Cycles
+
+C_SETTINGS (module-level singletons, 14 consumers) and C_LOADER (hard break, 15 schema classes)
+are **P0** — done first. The hardest, most-entangled work happens before any new components are
+built on top of it. This inverts the issue #257 pattern where `PhaseStateEngine` (highest risk,
+869 lines, most-tested class) was systematically deferred while smaller components were built
+and tested in isolation.
+
+### RC-5 — Migration Checklists as Tracked Artifacts
+
+`planning.md` contains explicit checklists of every consumer of `from_file()`, every module-level
+singleton, and every schema class that carries a `ClassVar`. Each item is a checkbox. A cycle is
+not done until every checkbox is ticked and a verification command confirms it.
+
+### RC-8 — Planning as Executable Specification
+
+Every DoD item in `planning.md` follows the format:
+
+`Criterion | Verification command | Expected output`
+
+Reading `planning.md` feels like reading a test specification, not a design document. The
+planning document is consulted before every commit in a cycle — not once at the start.
 
 ---
 
 ## Open Questions
 
-- ❓ Should `config/schemas/` subdirectory be adopted now (matching backend reference) or deferred?
-  Moving all schema classes into a subdirectory touches test imports across the entire test suite.
-- ❓ When `ConfigLoader` is introduced, should existing `from_file()` class methods be kept as
-  deprecated delegates or removed immediately? Keeping them allows phased migration; removing
-  them forces all consumers to update in the same cycle.
+*All open questions from the previous version of this document have been resolved:*
+
+- **`config/schemas/` subdirectory** → DQ4: deferred to C_REORGANIZE.
+- **`from_file()` deprecated delegates vs immediate removal** → D10 + DQ2: hard break, no deprecated delegates.
 
 ---
 
