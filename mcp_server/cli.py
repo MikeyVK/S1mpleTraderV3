@@ -1,4 +1,5 @@
 """Command line interface for the MCP server."""
+
 import argparse
 import sys
 

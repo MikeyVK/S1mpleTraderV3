@@ -98,7 +98,6 @@ from mcp_server.tools.test_tools import RunTestsTool
 from mcp_server.tools.tool_result import ToolResult
 from mcp_server.tools.validation_tools import ValidateDTOTool, ValidationTool
 
-
 logger = get_logger("server")
 lifecycle_logger = get_logger("server_lifecycle")
 

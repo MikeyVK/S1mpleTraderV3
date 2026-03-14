@@ -1,4 +1,5 @@
 """Structured logging for the MCP server."""
+
 import json
 import logging
 import sys

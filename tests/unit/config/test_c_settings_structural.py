@@ -11,7 +11,10 @@ from mcp_server.config.settings import Settings
 
 
 def test_settings_module_does_not_export_singleton() -> None:
-    """Module-level 'settings' attribute must not exist — singleton deleted (c_settings_1.singleton_deleted)."""
+    """Module-level 'settings' must not exist — singleton deleted.
+
+    Ref: c_settings_1.singleton_deleted.
+    """
     assert not hasattr(_settings_module, "settings"), (
         "mcp_server.config.settings must not export a module-level 'settings' singleton. "
         "Use Settings.from_env() at the composition root (server.py)."

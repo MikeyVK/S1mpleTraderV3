@@ -1,4 +1,5 @@
 """GitHub adapter for the MCP server."""
+
 import contextlib
 from datetime import datetime
 from typing import Any
@@ -23,7 +24,7 @@ class GitHubAdapter:
         if not _settings.github.token:  # pylint: disable=no-member
             raise MCPSystemError(
                 "GitHub token not configured",
-                fallback="Configure GITHUB_TOKEN environment variable"
+                fallback="Configure GITHUB_TOKEN environment variable",
             )
 
         self.client = Github(_settings.github.token)  # pylint: disable=no-member
@@ -38,8 +39,7 @@ class GitHubAdapter:
                 self._repo = self.client.get_repo(self._repo_name)
             except GithubException as e:
                 raise MCPSystemError(
-                    f"Failed to access repository: {e}",
-                    fallback="Check repository permissions"
+                    f"Failed to access repository: {e}", fallback="Check repository permissions"
                 ) from e
         return self._repo
 
@@ -50,8 +50,7 @@ class GitHubAdapter:
         except GithubException as e:
             if e.status == 404:
                 raise ExecutionError(
-                    f"Issue #{issue_number} not found",
-                    recovery=["Check issue number"]
+                    f"Issue #{issue_number} not found", recovery=["Check issue number"]
                 ) from e
             raise MCPSystemError(f"GitHub API error: {e}") from e
 
@@ -61,7 +60,7 @@ class GitHubAdapter:
         body: str,
         labels: list[str] | None = None,
         milestone_number: int | None = None,
-        assignees: list[str] | None = None
+        assignees: list[str] | None = None,
     ) -> Issue:
         """Create a new issue."""
         kwargs: dict[str, Any] = {
@@ -95,7 +94,7 @@ class GitHubAdapter:
         state: str | None = None,
         labels: list[str] | None = None,
         milestone_number: int | None = None,
-        assignees: list[str] | None = None
+        assignees: list[str] | None = None,
     ) -> Issue:
         """Update fields on an issue."""
         try:
@@ -114,9 +113,7 @@ class GitHubAdapter:
                 try:
                     kwargs["milestone"] = self.repo.get_milestone(milestone_number)
                 except GithubException as e:
-                    raise ExecutionError(
-                        f"Milestone {milestone_number} not found"
-                    ) from e
+                    raise ExecutionError(f"Milestone {milestone_number} not found") from e
             if assignees is not None:
                 kwargs["assignees"] = assignees
 
@@ -125,11 +122,7 @@ class GitHubAdapter:
         except GithubException as e:
             raise ExecutionError(f"Failed to update issue: {e}") from e
 
-    def list_issues(
-        self,
-        state: str = "open",
-        labels: list[str] | None = None
-    ) -> list[Issue]:
+    def list_issues(self, state: str = "open", labels: list[str] | None = None) -> list[Issue]:
         """List issues with filtering."""
         kwargs: dict[str, Any] = {"state": state}
         if labels:
@@ -138,22 +131,11 @@ class GitHubAdapter:
         return list(self.repo.get_issues(**kwargs))
 
     def create_pr(
-        self,
-        title: str,
-        body: str,
-        head: str,
-        base: str = "main",
-        draft: bool = False
+        self, title: str, body: str, head: str, base: str = "main", draft: bool = False
     ) -> PullRequest:
         """Create a new pull request."""
         try:
-            return self.repo.create_pull(
-                title=title,
-                body=body,
-                head=head,
-                base=base,
-                draft=draft
-            )
+            return self.repo.create_pull(title=title, body=body, head=head, base=base, draft=draft)
         except GithubException as e:
             raise ExecutionError(f"Failed to create PR: {e}") from e
 
@@ -165,11 +147,7 @@ class GitHubAdapter:
         except GithubException as e:
             raise ExecutionError(f"Failed to add labels: {e}") from e
 
-    def close_issue(
-        self,
-        issue_number: int,
-        comment: str | None = None
-    ) -> Issue:
+    def close_issue(self, issue_number: int, comment: str | None = None) -> Issue:
         """Close an issue with optional comment.
 
         Args:
@@ -200,24 +178,15 @@ class GitHubAdapter:
         except GithubException as e:
             raise MCPSystemError(f"Failed to list labels: {e}") from e
 
-    def create_label(
-        self,
-        name: str,
-        color: str,
-        description: str = ""
-    ) -> Label:
+    def create_label(self, name: str, color: str, description: str = "") -> Label:
         """Create a new label in the repository."""
         try:
-            return self.repo.create_label(
-                name=name,
-                color=color,
-                description=description
-            )
+            return self.repo.create_label(name=name, color=color, description=description)
         except GithubException as e:
             if e.status == 422:
                 raise ExecutionError(
                     f"Label '{name}' already exists",
-                    recovery=["Use a different name or delete existing label"]
+                    recovery=["Use a different name or delete existing label"],
                 ) from e
             raise ExecutionError(f"Failed to create label: {e}") from e
 
@@ -229,8 +198,7 @@ class GitHubAdapter:
         except GithubException as e:
             if e.status == 404:
                 raise ExecutionError(
-                    f"Label '{name}' not found",
-                    recovery=["Check label name"]
+                    f"Label '{name}' not found", recovery=["Check label name"]
                 ) from e
             raise ExecutionError(f"Failed to delete label: {e}") from e
 
@@ -252,10 +220,7 @@ class GitHubAdapter:
             raise ExecutionError(f"Failed to list milestones: {e}") from e
 
     def create_milestone(
-        self,
-        title: str,
-        description: str | None = None,
-        due_on: str | None = None
+        self, title: str, description: str | None = None, due_on: str | None = None
     ) -> Milestone:
         """Create a milestone."""
         parsed_due_on: datetime | None = None
@@ -287,16 +252,12 @@ class GitHubAdapter:
         except GithubException as e:
             if e.status == 404:
                 raise ExecutionError(
-                    f"Milestone {milestone_number} not found",
-                    recovery=["Check milestone number"]
+                    f"Milestone {milestone_number} not found", recovery=["Check milestone number"]
                 ) from e
             raise ExecutionError(f"Failed to close milestone: {e}") from e
 
     def list_prs(
-        self,
-        state: str = "open",
-        base: str | None = None,
-        head: str | None = None
+        self, state: str = "open", base: str | None = None, head: str | None = None
     ) -> list[PullRequest]:
         """List pull requests with optional filtering."""
         kwargs: dict[str, Any] = {"state": state}
@@ -311,10 +272,7 @@ class GitHubAdapter:
             raise ExecutionError(f"Failed to list pull requests: {e}") from e
 
     def merge_pr(
-        self,
-        pr_number: int,
-        commit_message: str | None = None,
-        merge_method: str = "merge"
+        self, pr_number: int, commit_message: str | None = None, merge_method: str = "merge"
     ) -> dict[str, Any]:
         """Merge a pull request."""
         try:
@@ -326,19 +284,14 @@ class GitHubAdapter:
         except GithubException as e:
             if e.status == 404:
                 raise ExecutionError(
-                    f"Pull request #{pr_number} not found",
-                    recovery=["Check PR number"]
+                    f"Pull request #{pr_number} not found", recovery=["Check PR number"]
                 ) from e
             raise ExecutionError(f"Failed to merge PR: {e}") from e
 
         if not result.merged:
             raise ExecutionError(
                 f"Merge failed: {result.message}",
-                recovery=["Resolve conflicts", "Verify merge permissions"]
+                recovery=["Resolve conflicts", "Verify merge permissions"],
             )
 
-        return {
-            "merged": result.merged,
-            "sha": result.sha,
-            "message": result.message
-        }
+        return {"merged": result.merged, "sha": result.sha, "message": result.message}

@@ -1,4 +1,5 @@
 """Configuration settings for the MCP server."""
+
 import os
 from pathlib import Path
 from typing import Any

@@ -7,10 +7,12 @@
     - Validate paths to prevent directory traversal attacks
     - Wrap filesystem errors in MCPSystemError
 """
+
 from pathlib import Path
 
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import MCPSystemError, ValidationError
+
 
 class FilesystemAdapter:
     """Adapter for safe filesystem operations."""
@@ -44,7 +46,6 @@ class FilesystemAdapter:
             raise MCPSystemError(f"File not found: {path}") from e
         except Exception as e:
             raise MCPSystemError(f"Failed to read file: {e}") from e
-
 
     def write_file(self, path: str, content: str) -> None:
         """Write file content."""

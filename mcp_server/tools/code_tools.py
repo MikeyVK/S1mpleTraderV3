@@ -1,4 +1,5 @@
 """Code manipulation tools."""
+
 import warnings
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ from mcp_server.tools.tool_result import ToolResult
 
 class CreateFileInput(BaseModel):
     """Input for CreateFileTool."""
+
     path: str = Field(..., description="Relative path to file")
     content: str = Field(..., description="File content")
 
@@ -44,7 +46,7 @@ class CreateFileTool(BaseTool):
         warnings.warn(
             "create_file is deprecated. Use scaffold_artifact instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
         path = params.path
