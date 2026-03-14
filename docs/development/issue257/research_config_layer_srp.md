@@ -3,7 +3,7 @@
 # Config Layer SRP Violations: Missing Loader, Validator and Schema Separation
 
 **Status:** COMPLETE
-**Version:** 1.7
+**Version:** 1.8
 **Last Updated:** 2026-03-14
 
 ---
@@ -667,6 +667,16 @@ action in C_SETTINGS — not an afterthought to be cleaned up later.
 receive `settings: Settings` as a constructor parameter, injected from the composition root.
 There is no module-level `settings` export after C_SETTINGS.
 
+**Relationship to `ARCHITECTURE_PRINCIPLES.md` §12 (updated in this issue):**
+§12 previously prescribed `ClassVar` lazy-init as the normative solution to the import-time
+side effect problem. That prescription was a temporary mitigation written before `ConfigLoader`
+existed. Issue #257 establishes `ConfigLoader` + constructor injection as the normative solution.
+§12 has been updated to reflect this: `ClassVar` lazy-init is now labelled as a permitted
+transitional pattern for legacy/pre-migration code only, not as a permanent architectural
+prescription. D9 (delete `ClassVar _instance`, `from_file()`, `load()`, `reset_instance()` from
+schema classes) is consistent with the updated §12 — it executes the migration that §12
+anticipated. There is no conflict between research and the coding standard.
+
 ---
 
 ### F13 — Two `ConfigError` Classes: SSOT Violation (ARCHITECTURE_PRINCIPLES.md §2)
@@ -721,7 +731,7 @@ shortcut (e.g., direct `from_file()` call inside a manager).
 | `ProjectStructureConfig` | `project_structure.yaml` | Route 2 | `ProjectManager` | No translation needed |
 | `ScaffoldMetadataConfig` | `scaffold_metadata.yaml` | Route 2 | `ArtifactManager` | Moves to `config/schemas/` in C_LOADER (D7); local `ConfigError` deleted (F13) |
 | `EnforcementConfig` | `enforcement.yaml` | Route 2 | `EnforcementRunner` | No translation needed |
-| `PhaseContractConfig` | `phase_contracts.yaml` | Route 2 | `PhaseContractResolver` | No translation needed |
+| `PhaseContractsConfig` | `phase_contracts.yaml` | Route 2 | `PhaseContractResolver` | No translation needed |
 | `Settings` | env vars via `mcp.json` | N/A | All managers via `server.py` composition root | `Settings.from_env()` called once; not via `ConfigLoader` |
 
 **Key invariant (enforced by structural test in C_LOADER RED phase):**
@@ -917,7 +927,8 @@ table covers only C_SETTINGS (14 `settings` consumers); this is the complementar
 #### C_LOADER migration checklist (test files — non-Zone-1)
 
 `reset_instance()` calls in Zone 2 and Zone 3 tests must also be tracked. After C_LOADER the
-singleton is gone; `reset_instance()` no longer exists:
+singleton is gone; `reset_instance()` no longer exists. Note that `LabelConfig` uses the method
+name `reset()` instead of `reset_instance()` — same pattern, same deletion.
 
 | Test file | Zone | Call | Resolution |
 |---|---|---|---|
@@ -925,10 +936,27 @@ singleton is gone; `reset_instance()` no longer exists:
 | `tests/mcp_server/core/test_policy_engine.py` | Zone 3 | `ArtifactRegistryConfig`, `OperationPoliciesConfig`, `ProjectStructureConfig.reset_instance()` ×3 | Delete calls; inject mocks |
 | `tests/mcp_server/core/test_directory_policy_resolver.py` | Zone 3 | `ArtifactRegistryConfig`, `ProjectStructureConfig.reset_instance()` ×4 | Delete calls; inject mocks |
 | `tests/mcp_server/managers/test_git_manager_config.py` | Zone 3 | `GitConfig.reset_instance()` ×2 | Delete calls; receive `GitConfig` directly |
-| `tests/mcp_server/integration/test_validation_policy_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` ×3 | Replace with `ConfigLoader(tmp_path)` |
+| `tests/mcp_server/integration/test_validation_policy_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` + `from_file()` ×3 | Replace with `ConfigLoader(tmp_path)` |
 | `tests/mcp_server/integration/test_v2_smoke_all_types.py` | Integration | `ArtifactRegistryConfig.reset_instance()` ×2 | Replace with `ConfigLoader(tmp_path)` |
-| `tests/mcp_server/integration/test_template_missing_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` ×1 | Replace with `ConfigLoader(tmp_path)` |
-| `tests/mcp_server/integration/test_config_error_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` ×3 | Replace with `ConfigLoader(tmp_path)` directly — test passes bad YAML via `tmp_path` |
+| `tests/mcp_server/integration/test_template_missing_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` + `from_file()` ×1 | Replace with `ConfigLoader(tmp_path)` |
+| `tests/mcp_server/integration/test_config_error_e2e.py` | Integration | `ArtifactRegistryConfig.reset_instance()` + `from_file()` ×3 | Pass bad YAML via `tmp_path`, use `ConfigLoader(tmp_path)` |
+| `tests/mcp_server/integration/test_concrete_templates.py` | Integration | `ArtifactRegistryConfig.from_file()` ×9 | Replace with `ConfigLoader(tmp_path)` pattern |
+| `tests/mcp_server/tools/test_pr_tools_config.py` | Zone 3 (tool layer) | `GitConfig.reset_instance()` ×2, `from_file()` ×1 | Delete singleton calls; inject `GitConfig` via `GitManager` |
+| `tests/mcp_server/tools/test_git_tools_config.py` | Zone 3 (tool layer) | `GitConfig.reset_instance()` ×2, `from_file()` ×1 | Delete singleton calls; inject `GitConfig` via `GitManager` |
+| `tests/mcp_server/unit/tools/test_github_extras.py` | Zone 3 (tool layer) | `LabelConfig.reset()` ×1 (in fixture), `LabelConfig.load()` ×1 | Delete singleton calls; inject `LabelConfig` via manager |
+| `tests/mcp_server/unit/tools/test_label_tools_integration.py` | Zone 3 (tool layer) | `LabelConfig.reset()` ×15, `LabelConfig.load()` ×15 | Delete singleton calls; inject `LabelConfig` via `LabelManager` |
+| `tests/mcp_server/fixtures/artifact_test_harness.py` | Fixture | `ArtifactRegistryConfig.reset_instance()` ×2, `from_file()` ×1 | Rewrite harness to accept `ConfigLoader`-produced config |
+| `tests/mcp_server/fixtures/workflow_fixtures.py` | Fixture | `WorkflowConfig.load()` ×1 | Replace with `ConfigLoader(tmp_path).load_workflow_config()` |
+
+**Additional Zone 1 tests to rewrite (these are correct Zone 1 usage, but the pattern changes):**
+
+| Test file | Current pattern | After C_LOADER |
+|---|---|---|
+| `tests/mcp_server/unit/config/test_artifact_registry_config.py` | `ArtifactRegistryConfig.from_file(path)`, `reset_instance()` | `ConfigLoader(tmp_path).load_artifact_registry_config()` |
+| `tests/mcp_server/unit/config/test_contributor_config.py` | `ContributorConfig.from_file(path)`, `reset_instance()` | `ConfigLoader(tmp_path).load_contributor_config()` |
+| `tests/mcp_server/unit/config/test_issue_config.py` | `IssueConfig.from_file(path)`, `reset_instance()` | `ConfigLoader(tmp_path).load_issue_config()` |
+| `tests/mcp_server/unit/config/test_workflow_config.py` | `WorkflowConfig.load()` | `ConfigLoader(tmp_path).load_workflow_config()` |
+| `tests/mcp_server/unit/config/test_settings.py` | `Settings.load()` | `Settings.from_env()` (env mocked in test) |
 
 Zone 1 config tests (`test_project_structure.py`, `test_operation_policies.py`, `test_git_config.py`,
 `test_component_registry.py`) will be rewritten as `ConfigLoader(tmp_path).load_*()` tests. Their
@@ -989,7 +1017,7 @@ break in C_SETTINGS + C_LOADER:
 1. Delete `settings = Settings.load()` and `workflow_config = WorkflowConfig.load()` module-level exports.
 2. Delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` from all 15 schema classes.
    *(15 = 13 YAML-backed schemas + `EnforcementConfig` from `managers/enforcement_runner.py` +
-   `PhaseContractConfig` from `managers/phase_state_engine.py`. `Settings` is handled separately
+   `PhaseContractsConfig` from `managers/phase_contract_resolver.py`. `Settings` is handled separately
    in C_SETTINGS: `load()` is replaced by `from_env()`, not simply deleted.)*
 3. This breaks all 14+ importers immediately — that is intentional and desired.
 4. Add `ConfigLoader` with all methods. Add `Settings.from_env()`.
@@ -1004,8 +1032,8 @@ wiring no longer compiles.
 
 **D11 — `config/schemas/` subdirectory in C_LOADER (formalizes DQ4 + D7).** All 13 YAML-backed
 schema classes and `Settings` move to `mcp_server/config/schemas/`. Two misplaced classes in
-`managers/` (`EnforcementConfig` from `enforcement_manager.py`, `PhaseContractConfig` from
-`phase_state_engine.py`) also move to `config/schemas/` in C_LOADER. This costs nothing extra:
+`managers/` (`EnforcementConfig` from `enforcement_runner.py`, `PhaseContractsConfig` from
+`phase_contract_resolver.py`) also move to `config/schemas/` in C_LOADER. This costs nothing extra:
 D10 hard break already forces all import updates.
 
 **D12 — `server.name` hardcoding replaced by env var `MCP_SERVER_NAME`.** `Settings.server.name`
@@ -1020,6 +1048,15 @@ gains `"LOG_LEVEL": "INFO"` as an explicit env entry. `Settings.log_level` reads
 When running outside `mcp.json` (e.g., bare CLI), a documented fallback of `"INFO"` is acceptable
 and should emit a startup notice — `LOG_LEVEL` is operational configuration, not security-critical.
 No `ConfigError` raised on absence; the fallback is intentional and documented.
+
+**Migration note (C_SETTINGS checklist item):** The current code reads `os.environ.get("MCP_LOG_LEVEL")`
+(in `settings.py` line 62) and the test fixture sets `MCP_LOG_LEVEL` (in
+`tests/mcp_server/unit/conftest.py` line 10). This is a flag-day rename to `LOG_LEVEL`.
+C_SETTINGS must include:
+- `settings.py`: change `os.environ.get("MCP_LOG_LEVEL")` → `os.environ.get("LOG_LEVEL")`
+- `tests/mcp_server/unit/conftest.py`: change `setenv("MCP_LOG_LEVEL", ...)` → `setenv("LOG_LEVEL", ...)`
+- `.vscode/mcp.json`: add `"LOG_LEVEL": "INFO"` to env
+- Verification: `Select-String "MCP_LOG_LEVEL" mcp_server/ tests/` → 0 matches
 
 **D14 — `PhaseStateEngine` constructor injection (two-step migration).** In P0 (C_LOADER):
 `PhaseStateEngine(workspace_root, workphases_config, state_repository)` — receives raw
@@ -1185,6 +1222,12 @@ only the C_SETTINGS blast radius (14 `settings` module-level consumers). The C_L
 affects an additional 17 production files and 8 test files where `from_file()`, `load()`, and
 `reset_instance()` are called outside `config/`. See F16 for the complete C_LOADER migration
 checklist.
+
+**Note — `MCP_LOG_LEVEL` rename (flag-day item within C_SETTINGS, see D13):** `settings.py`
+currently reads `os.environ.get("MCP_LOG_LEVEL")`, and `tests/mcp_server/unit/conftest.py` sets
+`MCP_LOG_LEVEL`. C_SETTINGS renames this to `LOG_LEVEL` everywhere simultaneously. This must be
+a tracked DoD checkbox in C_SETTINGS planning alongside the 14 consumer entries above. See D13
+migration note for the exact checklist.
 
 ### DQ4 — `config/schemas/` Subdirectory: Included in C_LOADER (Answer revised)
 
@@ -1421,6 +1464,7 @@ without assigning the behaviour to a named method, losing discoverability.
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.8 | 2026-03-14 | Agent | QA-review corrections: (1) §12 conflict resolved — ARCHITECTURE_PRINCIPLES.md §12 updated to label ClassVar lazy-init as transitional-only; F12 section extended with explicit §12 relationship note; (2) F16 test inventory completed — 7 previously missing test/fixture files added (test_concrete_templates.py ×9, test_pr_tools_config, test_git_tools_config, test_github_extras, test_label_tools_integration ×15, artifact_test_harness, workflow_fixtures); Zone 1 "rewrite" table added; (3) Class/file precision fixes — PhaseContractConfig→PhaseContractsConfig in F14 table; enforcement_manager.py→enforcement_runner.py + phase_state_engine.py→phase_contract_resolver.py in D10/D11; (4) MCP_LOG_LEVEL→LOG_LEVEL migration documented in D13 migration note and DQ3 checklist note |
 | 1.7 | 2026-03-14 | Agent | Added F16 (complete C_LOADER blast radius: 17 production files + 8 test files across 6 layers, 3 anti-patterns catalogued with remediation strategy); added D15 (GitHubManager.validate_issue_params() as sole owner of domain validation — OQ6 resolved, option a); resolved OQ6 in Open Questions table; extended DQ3 with cross-reference to F16 C_LOADER checklist; updated Priority Matrix C_LOADER row with F16 consumer count; updated Priority Matrix OQ6 row to D15 reference |
 | 1.6 | 2026-03-14 | Agent | Resolved OQ1-OQ5: ContributorConfig→GitHubManager (used in field_validators), PolicyEngine as OperationPoliciesConfig consumer, GitHubManager as IssueConfig/MilestoneConfig target, FileScope + ProjectInitOptions as new INPUT DTOs in dtos/specs/; added OQ6 (@field_validator break); DQ1 composition root extended with PolicyEngine + GitHubManager; F14 table updated; F15 naming table extended; Priority Matrix: OQ6 as P0 C_LOADER item |
 | 1.5 | 2026-03-14 | Agent | Added TOC; fixed Open Questions (removed wrong DQ4 "deferred" reference, added OQ1-OQ5 from F14/F10); clarified "15 schema classes" in D10; added state_repository note in DQ1; DQ5 structural test points to canonical F14 version; F15 spec DTO location marked as decided; RC-6/RC-7 note added; F9 LOG_LEVEL cross-reference to D13 |

@@ -246,8 +246,34 @@ Do not write code for hypothetical future needs.
 
 **Binding rule:**
 - Module-level code that reads files, makes network requests, or initializes singletons = forbidden.
-- A `config = AppConfig.load()` as a module-level statement causes `FileNotFoundError` on import in tests. Use `ClassVar` with lazy init.
-- All singletons use the `ClassVar` pattern: the instance is created at the first call to `.load()`, not at import.
+- A `config = AppConfig.load()` as a module-level statement causes `FileNotFoundError` on import in tests. **Forbidden.**
+
+**Transitional mitigation (legacy code only):**
+- The `ClassVar` lazy-init pattern (`_instance: ClassVar[...]`, `.load()` / `.from_file()` /
+  `.reset_instance()`) was prescribed as the workaround for pre-`ConfigLoader` code that could
+  not yet be refactored. It prevents import-time side effects by deferring the load to the first
+  caller.
+- **This pattern is no longer the normative solution for new code.** It is permitted only in
+  files that have not yet been migrated to `ConfigLoader` (i.e., are listed in the C_LOADER
+  migration checklist).
+
+**Normative solution (new code and post-C_LOADER code):**
+- Config classes are pure Pydantic value objects with no loader methods (`from_file`, `load`,
+  `reset_instance`, `ClassVar _instance`).
+- `ConfigLoader` (single instance, created at `server.py` composition root) owns all YAML
+  loading. It receives `config_root: Path` as a constructor parameter. It is the sole caller of
+  YAML parsing and schema construction.
+- All managers receive config objects via constructor injection from the composition root.
+- No schema class knows `ConfigLoader` exists; no schema class reads files.
+
+**Quick reference:**
+
+| Situation | Correct approach |
+|---|---|
+| New schema class | Pure Pydantic model; no `from_file()`, no `ClassVar` |
+| New consumer of a config | Accept config object via constructor injection |
+| Existing legacy schema pre-C_LOADER | `ClassVar` lazy-init permitted temporarily; must be in migration checklist |
+| Hot-reload / config refresh | `ConfigLoader(config_root)` constructs fresh instances; no `reset_instance()` |
 
 ---
 
@@ -268,7 +294,7 @@ Do not write code for hypothetical future needs.
 | `SomeManager()` in `execute()` | DIP, SRP | Constructor injection |
 | `if sub_phase == "x": commit_type = "y"` | DRY, Config-First | `commit_type_map` in config file |
 | Two classes reading the same config file | SSOT, DRY | One reader class, singleton |
-| `module_var = Config.load()` at module level | Fail-Fast (import side effect) | ClassVar + lazy init |
+| `module_var = Config.load()` at module level | Fail-Fast (import side effect) | Constructor injection via `ConfigLoader` (post-C_LOADER); `ClassVar` lazy-init only in legacy pre-migration code |
 | Read-only consumer injected with write interface | ISP | Use narrower read-only interface |
 | `get_state()` calls `save()` | CQS | Query returns, command mutates |
 | Mutating a frozen value object | CQS | Create new instance via command method |
