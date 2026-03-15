@@ -1,39 +1,32 @@
-"""Legacy compatibility wrapper for LabelConfig during C_LOADER migration."""
-
-from __future__ import annotations
+"""Pure LabelConfig schema for ConfigLoader-managed YAML loading."""
 
 import re
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, ClassVar
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, PrivateAttr, field_validator
-
-from mcp_server.config.loader import ConfigLoader
-from mcp_server.core.exceptions import ConfigError
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 
 
-@dataclass(frozen=True)
-class Label:
+class Label(BaseModel):
     """Immutable label definition from labels.yaml."""
 
     name: str
     color: str
     description: str = ""
 
-    def __post_init__(self) -> None:
-        if not re.match(r"^[0-9a-fA-F]{6}$", self.color):
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, color: str) -> str:
+        if not re.match(r"^[0-9a-fA-F]{6}$", color):
             raise ValueError(
-                f"Invalid color format '{self.color}'. "
-                f"Expected 6-character hex WITHOUT # prefix (e.g., 'ff0000')"
+                f"Invalid color format '{color}'. Expected 6-character hex WITHOUT # prefix"
             )
+        return color
 
     def to_github_dict(self) -> dict[str, str]:
         return {"name": self.name, "color": self.color, "description": self.description}
 
 
-@dataclass(frozen=True)
-class LabelPattern:
+class LabelPattern(BaseModel):
     """Dynamic label pattern definition."""
 
     pattern: str
@@ -46,82 +39,18 @@ class LabelPattern:
 
 
 class LabelConfig(BaseModel):
-    """Compatibility surface for pre-C_LOADER consumers."""
+    """Label configuration value object."""
 
-    version: str
-    labels: list[Label]
-    freeform_exceptions: list[str] = []
-    label_patterns: list[LabelPattern] = []
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    _instance: ClassVar[LabelConfig | None] = None
-    _loaded_path: ClassVar[Path | None] = None
-    _loaded_mtime: ClassVar[float | None] = None
+    version: str = Field(..., description="Schema version")
+    labels: list[Label] = Field(..., description="Label definitions")
+    freeform_exceptions: list[str] = Field(default_factory=list)
+    label_patterns: list[LabelPattern] = Field(default_factory=list)
 
     _labels_by_name: dict[str, Label] = PrivateAttr(default_factory=dict)
     _labels_by_category: dict[str, list[Label]] = PrivateAttr(default_factory=dict)
 
-    @field_validator("labels")
-    @classmethod
-    def validate_no_duplicates(cls, labels: list[Label]) -> list[Label]:
-        names = [label.name for label in labels]
-        duplicates = [name for name in names if names.count(name) > 1]
-        if duplicates:
-            raise ValueError(f"Duplicate label names: {set(duplicates)}")
-        return labels
-
-    @classmethod
-    def load(cls, config_path: Path | None = None) -> LabelConfig:
-        if config_path is None:
-            if cls._instance is not None:
-                return cls._instance
-            config_path = Path(".st3/labels.yaml")
-
-        if not config_path.exists():
-            raise FileNotFoundError(f"Label configuration not found: {config_path}")
-
-        current_mtime = config_path.stat().st_mtime
-        if (
-            cls._instance is not None
-            and cls._loaded_path == config_path
-            and cls._loaded_mtime == current_mtime
-        ):
-            return cls._instance
-
-        loader = ConfigLoader(config_root=config_path.parent)
-        try:
-            data, _ = loader._load_yaml("labels.yaml", config_path=config_path)
-        except ConfigError as exc:
-            if "Invalid YAML in" in str(exc):
-                raise ValueError(f"Invalid YAML syntax in {config_path}: {exc}") from exc
-            raise
-
-        if "labels" not in data:
-            raise ValueError("Missing required field: labels")
-
-        labels = [Label(**label_dict) for label_dict in data["labels"]]
-        patterns = [LabelPattern(**pattern_dict) for pattern_dict in data.get("label_patterns", [])]
-        instance = cls.model_validate(
-            {
-                "version": data.get("version"),
-                "labels": labels,
-                "freeform_exceptions": data.get("freeform_exceptions", []),
-                "label_patterns": patterns,
-            }
-        )
-        instance._build_caches()
-
-        cls._instance = instance
-        cls._loaded_path = config_path
-        cls._loaded_mtime = current_mtime
-        return instance
-
-    @classmethod
-    def reset(cls) -> None:
-        cls._instance = None
-        cls._loaded_path = None
-        cls._loaded_mtime = None
+    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+        self._build_caches()
 
     def _build_caches(self) -> None:
         self._labels_by_name = {label.name: label for label in self.labels}
@@ -149,10 +78,10 @@ class LabelConfig(BaseModel):
             return (
                 False,
                 f"Label '{name}' does not match required pattern. "
-                f"Expected format: 'category:value' where category is one of "
-                f"[type, priority, status, phase, scope, component, effort, parent] "
+                "Expected format: 'category:value' where category is one of "
+                "[type, priority, status, phase, scope, component, effort, parent] "
                 f"and value is lowercase alphanumeric with hyphens.{examples_str} "
-                f"Freeform labels must be in freeform_exceptions list.",
+                "Freeform labels must be in freeform_exceptions list.",
             )
 
         return (True, "")
@@ -172,7 +101,7 @@ class LabelConfig(BaseModel):
         try:
             existing = github_adapter.list_labels()
             existing_by_name = {label["name"]: label for label in existing}
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result["errors"].append(f"Failed to fetch labels: {exc}")
             return result
 
@@ -198,7 +127,7 @@ class LabelConfig(BaseModel):
                         result["updated"].append(label.name)
                     else:
                         result["skipped"].append(label.name)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result["errors"].append(f"{label.name}: {exc}")
 
         return result
@@ -208,3 +137,12 @@ class LabelConfig(BaseModel):
             yaml_label.color != github_label["color"]
             or yaml_label.description != github_label.get("description", "")
         )
+
+    @field_validator("labels")
+    @classmethod
+    def validate_no_duplicates(cls, labels: list[Label]) -> list[Label]:
+        names = [label.name for label in labels]
+        duplicates = [name for name in names if names.count(name) > 1]
+        if duplicates:
+            raise ValueError(f"Duplicate label names: {set(duplicates)}")
+        return labels

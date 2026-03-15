@@ -1,79 +1,39 @@
-"""Scope configuration model (Issue #149).
+"""Legacy compatibility wrapper for ScopeConfig during C_LOADER migration."""
 
-Purpose: Config-driven scope validation — flat list of valid scope names.
-Source: .st3/scopes.yaml
-Pattern: Singleton with ClassVar (matches GitConfig pattern)
-"""
+from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar
 
-import yaml
-from pydantic import BaseModel
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas.scope_config import ScopeConfig as _ScopeConfigSchema
 
 
-class ScopeConfig(BaseModel):
-    """Scope conventions configuration.
+class ScopeConfig(_ScopeConfigSchema):
+    """Compatibility surface for pre-C_LOADER consumers."""
 
-    Holds the list of valid scope names. Labels are derived by convention
-    as 'scope:{name}' — no explicit label field is needed here.
-    Loaded from .st3/scopes.yaml. Singleton per process.
-    """
-
-    singleton_instance: ClassVar[Optional["ScopeConfig"]] = None
-
-    version: str
-    scopes: list[str]
-
-    # ------------------------------------------------------------------
-    # Public helpers
-    # ------------------------------------------------------------------
-
-    def has_scope(self, name: str) -> bool:
-        """Return True if name is a valid scope (case-sensitive).
-
-        Args:
-            name: Scope name to validate.
-
-        Returns:
-            True if name is in the scopes list.
-        """
-        return name in self.scopes
-
-    # ------------------------------------------------------------------
-    # Singleton factory
-    # ------------------------------------------------------------------
+    singleton_instance: ClassVar[ScopeConfig | None] = None
+    _loaded_path: ClassVar[Path | None] = None
 
     @classmethod
-    def from_file(cls, path: str = ".st3/scopes.yaml") -> "ScopeConfig":
-        """Load config from YAML file (singleton pattern).
-
-        Args:
-            path: Path to scopes.yaml file.
-
-        Returns:
-            ScopeConfig singleton instance.
-
-        Raises:
-            FileNotFoundError: If scopes.yaml doesn't exist.
-            ValueError: If YAML is invalid or validation fails.
-        """
-        if cls.singleton_instance is not None:
+    def from_file(cls, path: str = ".st3/scopes.yaml") -> ScopeConfig:
+        config_path = Path(path)
+        if cls.singleton_instance is not None and cls._loaded_path == config_path:
             return cls.singleton_instance
 
-        config_path = Path(path)
         if not config_path.exists():
             raise FileNotFoundError(
                 f"Scope config not found: {path}. Create .st3/scopes.yaml with valid scope names."
             )
 
-        with open(config_path, encoding="utf-8") as fh:
-            data = yaml.safe_load(fh)
-
-        cls.singleton_instance = cls(**data)
-        return cls.singleton_instance
+        loader = ConfigLoader(config_root=config_path.parent)
+        loaded = loader.load_scope_config(config_path=config_path)
+        instance = cls.model_validate(loaded.model_dump())
+        cls.singleton_instance = instance
+        cls._loaded_path = config_path
+        return instance
 
     @classmethod
     def reset_instance(cls) -> None:
-        """Reset singleton (for testing only)."""
         cls.singleton_instance = None
+        cls._loaded_path = None

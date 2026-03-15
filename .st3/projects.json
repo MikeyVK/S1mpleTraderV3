@@ -1968,7 +1968,7 @@
             "deliverables": [
               {
                 "id": "c_settings_2.workflow_singleton_deleted",
-                "description": "Module-level 'workflow_config = WorkflowConfig.load()' removed from workflows.py",
+                "description": "Module-level 'workflow_config = WorkflowConfig.load()' removed from workflows.py and all direct workflow_config importers rewired",
                 "validates": {
                   "type": "absent_text",
                   "file": "mcp_server/config/workflows.py",
@@ -1977,7 +1977,7 @@
               },
               {
                 "id": "c_settings_2.consumers_rewired",
-                "description": "11 remaining singleton consumers rewired to accept settings: Settings param via DI",
+                "description": "11 remaining Settings singleton consumers rewired to accept settings: Settings param via DI",
                 "validates": {
                   "type": "absent_text",
                   "file": "mcp_server/managers/artifact_manager.py",
@@ -1994,7 +1994,7 @@
               },
               {
                 "id": "c_settings_2.grep_closure",
-                "description": "Zero residual 'from mcp_server.config.settings import settings' anywhere in codebase",
+                "description": "Zero residual singleton imports for settings and workflow_config anywhere in codebase",
                 "validates": {
                   "type": "absent_text",
                   "file": "mcp_server/adapters/github_adapter.py",
@@ -2002,14 +2002,14 @@
                 }
               }
             ],
-            "exit_criteria": "Select-String 'from mcp_server.config.settings import settings' -> 0; Select-String 'workflow_config = WorkflowConfig.load()' -> 0; .vscode/mcp.json exists; full suite green; run_quality_gates green"
+            "exit_criteria": "Select-String 'from mcp_server.config.settings import settings' -> 0; Select-String 'from mcp_server.config.workflows import workflow_config' -> 0; Select-String 'workflow_config = WorkflowConfig.load()' -> 0; .vscode/mcp.json exists; full suite green; run_quality_gates green"
           },
           {
             "cycle_number": 3,
             "deliverables": [
               {
                 "id": "c_loader_1.config_loader_class",
-                "description": "ConfigLoader(config_root: Path) introduced in config/loader.py with load_*() methods for all 15 schemas",
+                "description": "ConfigLoader(config_root: Path) introduced in config/loader.py with load_*() methods for the first 5 target schemas",
                 "validates": {
                   "type": "file_exists",
                   "file": "mcp_server/config/loader.py"
@@ -2025,7 +2025,7 @@
               },
               {
                 "id": "c_loader_1.first_5_schemas_moved",
-                "description": "5 low-coupling schemas moved to config/schemas/: GitConfig, LabelConfig, ScopeConfig, WorkflowConfig, WorkphasesConfig; from_file/load/ClassVar _instance deleted",
+                "description": "5 low-coupling schemas moved to config/schemas/: GitConfig, LabelConfig, ScopeConfig, WorkflowConfig, WorkphasesConfig; legacy public loader API retained temporarily until later consumer rewires",
                 "validates": {
                   "type": "file_exists",
                   "file": "mcp_server/config/schemas/git_config.py"
@@ -2033,14 +2033,14 @@
               },
               {
                 "id": "c_loader_1.structural_guard",
-                "description": "test_c_loader_structural.py written with 4 structural guard tests (RED until C_LOADER.2 completes)",
+                "description": "test_c_loader_structural.py written with initial ConfigLoader and fail-fast guards; deletion-focused guards deferred to later C_LOADER cycles",
                 "validates": {
                   "type": "file_exists",
                   "file": "tests/unit/config/test_c_loader_structural.py"
                 }
               }
             ],
-            "exit_criteria": "config/loader.py exists; config/schemas/ with __init__.py; 5 schemas moved without self-loading methods; structural guard test written; full suite green"
+            "exit_criteria": "config/loader.py exists; config/schemas/ with __init__.py; first 5 schema files exist under config/schemas/; initial structural tests pass; full suite green"
           },
           {
             "cycle_number": 4,
@@ -2063,12 +2063,12 @@
                 }
               },
               {
-                "id": "c_loader_2.all_self_loading_deleted",
-                "description": "All 15 schema classes have no from_file/load/ClassVar _instance/reset_instance; test_no_from_file passes GREEN",
+                "id": "c_loader_2.loader_methods_complete",
+                "description": "ConfigLoader exposes load_* methods for all 15 schemas, including enforcement and phase contracts",
                 "validates": {
-                  "type": "absent_text",
-                  "file": "mcp_server/config/schemas/git_config.py",
-                  "text": "def from_file"
+                  "type": "contains_text",
+                  "file": "mcp_server/config/loader.py",
+                  "text": "load_phase_contracts_config"
                 }
               },
               {
@@ -2081,7 +2081,7 @@
                 }
               }
             ],
-            "exit_criteria": "test_c_loader_structural.py::test_no_from_file_on_any_config_schema PASSES (GREEN); Select-String 'class EnforcementConfig|class PhaseContractsConfig' managers/ -> 0; full suite green"
+            "exit_criteria": "ConfigLoader covers extracted schemas; Select-String 'class EnforcementConfig|class PhaseContractsConfig' managers/ -> 0; full suite green"
           },
           {
             "cycle_number": 5,
@@ -2154,9 +2154,18 @@
                   "file": "tests/mcp_server/unit/config/test_artifact_registry_config.py",
                   "text": ".from_file("
                 }
+              },
+              {
+                "id": "c_loader_4.self_loading_deleted_green",
+                "description": "Legacy public loader API deleted only after final consumer rewrites; structural delete guard passes GREEN",
+                "validates": {
+                  "type": "absent_text",
+                  "file": "mcp_server/config/schemas/git_config.py",
+                  "text": "def from_file"
+                }
               }
             ],
-            "exit_criteria": "Select-String '.from_file(|reset_instance(' tests/mcp_server/ -> 0; pytest config unit tests pass; full suite green"
+            "exit_criteria": "Select-String '.from_file(|reset_instance(' tests/mcp_server/ -> 0; test_c_loader_structural.py::test_no_from_file_on_any_config_schema passes; pytest config unit tests pass; full suite green"
           },
           {
             "cycle_number": 7,

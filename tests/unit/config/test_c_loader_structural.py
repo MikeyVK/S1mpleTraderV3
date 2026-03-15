@@ -1,0 +1,358 @@
+"""Structural tests for C_LOADER schema migration cycles.
+
+Zone 1 only: schema/package introspection and ConfigLoader behavior.
+No manager/tool consumer rewiring is validated here.
+"""
+
+from __future__ import annotations
+
+import inspect
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+
+import mcp_server.config.schemas.scaffold_metadata_config as scaffold_schema
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas import (
+    ArtifactRegistryConfig,
+    ContributorConfig,
+    EnforcementConfig,
+    GitConfig,
+    IssueConfig,
+    LabelConfig,
+    MilestoneConfig,
+    OperationPoliciesConfig,
+    PhaseContractsConfig,
+    ProjectStructureConfig,
+    QualityConfig,
+    ScaffoldMetadataConfig,
+    ScopeConfig,
+    WorkflowConfig,
+    WorkphasesConfig,
+)
+from mcp_server.core.exceptions import ConfigError
+from mcp_server.managers import enforcement_runner, phase_contract_resolver
+
+
+@pytest.fixture
+def config_root(tmp_path: Path) -> Path:
+    """Create a minimal config root covering all 15 migrated schemas."""
+
+    def write_yaml(relative_path: str, data: dict[str, Any]) -> None:
+        target = tmp_path / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
+
+    write_yaml(
+        "git.yaml",
+        {
+            "branch_types": ["feature", "bug"],
+            "tdd_phases": ["red", "green", "refactor"],
+            "commit_prefix_map": {
+                "red": "test",
+                "green": "feat",
+                "refactor": "refactor",
+            },
+            "protected_branches": ["main"],
+            "branch_name_pattern": "^[a-z0-9-]+$",
+            "commit_types": ["feat", "fix", "test"],
+            "default_base_branch": "main",
+            "issue_title_max_length": 72,
+        },
+    )
+    write_yaml(
+        "labels.yaml",
+        {
+            "version": "1.0",
+            "labels": [
+                {
+                    "name": "type:feature",
+                    "color": "1D76DB",
+                    "description": "Feature",
+                }
+            ],
+            "freeform_exceptions": [],
+            "label_patterns": [],
+        },
+    )
+    write_yaml("scopes.yaml", {"version": "1.0", "scopes": ["architecture", "workflow"]})
+    write_yaml(
+        "workflows.yaml",
+        {
+            "version": "1.0",
+            "workflows": {
+                "feature": {
+                    "name": "feature",
+                    "phases": ["research", "planning", "implementation"],
+                    "default_execution_mode": "interactive",
+                    "description": "Feature workflow",
+                }
+            },
+        },
+    )
+    write_yaml(
+        "workphases.yaml",
+        {
+            "version": "1.0",
+            "phases": {
+                "implementation": {
+                    "display_name": "Implementation",
+                    "description": "Implementation phase",
+                    "commit_type_hint": None,
+                    "subphases": ["red", "green", "refactor"],
+                    "exit_requires": [],
+                    "entry_expects": [],
+                }
+            },
+        },
+    )
+    write_yaml(
+        "artifacts.yaml",
+        {
+            "version": "1.0",
+            "artifact_types": [
+                {
+                    "type": "code",
+                    "type_id": "dto",
+                    "name": "DTO",
+                    "description": "Data transfer object",
+                    "file_extension": ".py",
+                    "required_fields": ["name"],
+                    "optional_fields": [],
+                    "state_machine": {
+                        "states": ["CREATED"],
+                        "initial_state": "CREATED",
+                        "valid_transitions": [],
+                    },
+                }
+            ],
+        },
+    )
+    write_yaml(
+        "contributors.yaml",
+        {
+            "version": "1.0",
+            "contributors": [{"login": "alice", "name": "Alice Doe"}],
+        },
+    )
+    write_yaml(
+        "issues.yaml",
+        {
+            "version": "1.0",
+            "issue_types": [{"name": "feature", "workflow": "feature", "label": "type:feature"}],
+            "required_label_categories": ["type", "priority", "scope"],
+            "optional_label_inputs": {},
+        },
+    )
+    write_yaml(
+        "milestones.yaml",
+        {
+            "version": "1.0",
+            "milestones": [{"number": 1, "title": "v1.0", "state": "open"}],
+        },
+    )
+    write_yaml(
+        "policies.yaml",
+        {
+            "operations": {
+                "create_file": {
+                    "description": "Create file",
+                    "allowed_phases": ["planning"],
+                    "blocked_patterns": [],
+                    "allowed_extensions": [".py"],
+                    "require_tdd_prefix": False,
+                    "allowed_prefixes": [],
+                }
+            }
+        },
+    )
+    write_yaml(
+        "project_structure.yaml",
+        {
+            "directories": {
+                "src": {
+                    "parent": None,
+                    "description": "Source directory",
+                    "allowed_artifact_types": ["dto"],
+                    "allowed_extensions": [".py"],
+                    "require_scaffold_for": [],
+                }
+            }
+        },
+    )
+    write_yaml(
+        "quality.yaml",
+        {
+            "version": "1.0",
+            "active_gates": [],
+            "gates": {
+                "ruff": {
+                    "name": "Ruff",
+                    "description": "Lint",
+                    "execution": {
+                        "command": ["ruff", "check"],
+                        "timeout_seconds": 60,
+                        "working_dir": None,
+                    },
+                    "success": {"exit_codes_ok": [0]},
+                    "capabilities": {
+                        "file_types": [".py"],
+                        "supports_autofix": True,
+                    },
+                }
+            },
+        },
+    )
+    write_yaml(
+        "scaffold_metadata.yaml",
+        {
+            "version": "2.0",
+            "comment_patterns": [
+                {
+                    "syntax": "hash",
+                    "prefix": r"#\\s*",
+                    "filepath_line_regex": r"^#\\s*(.+\\.py)$",
+                    "metadata_line_regex": r"^#\\s*template=.+$",
+                    "extensions": [".py"],
+                }
+            ],
+            "metadata_fields": [
+                {
+                    "name": "template",
+                    "format_regex": r"^[a-z0-9_-]+$",
+                    "required": True,
+                }
+            ],
+        },
+    )
+    write_yaml("config/enforcement.yaml", {"enforcement": []})
+    write_yaml(
+        "config/phase_contracts.yaml",
+        {
+            "workflows": {
+                "feature": {
+                    "implementation": {
+                        "subphases": ["red", "green", "refactor"],
+                        "commit_type_map": {
+                            "red": "test",
+                            "green": "feat",
+                            "refactor": "refactor",
+                        },
+                        "cycle_based": True,
+                        "exit_requires": [],
+                        "cycle_exit_requires": {},
+                    }
+                }
+            }
+        },
+    )
+
+    return tmp_path
+
+
+def test_config_loader_exists() -> None:
+    """ConfigLoader must exist as the zone-1 composition entry for YAML loading."""
+    assert callable(ConfigLoader)
+
+
+def test_loader_raises_on_missing_git_yaml(tmp_path: Path) -> None:
+    """ConfigLoader must fail fast with ConfigError when git.yaml is absent."""
+    loader = ConfigLoader(config_root=tmp_path)
+
+    with pytest.raises(ConfigError, match="git.yaml"):
+        loader.load_git_config()
+
+
+def test_loader_exposes_all_fifteen_schema_methods() -> None:
+    """C_LOADER.2 requires explicit load_* coverage for all 15 schemas."""
+    for method_name in (
+        "load_git_config",
+        "load_label_config",
+        "load_scope_config",
+        "load_workflow_config",
+        "load_workphases_config",
+        "load_artifact_registry_config",
+        "load_contributor_config",
+        "load_issue_config",
+        "load_milestone_config",
+        "load_operation_policies_config",
+        "load_project_structure_config",
+        "load_quality_config",
+        "load_scaffold_metadata_config",
+        "load_enforcement_config",
+        "load_phase_contracts_config",
+    ):
+        assert hasattr(ConfigLoader, method_name), f"Missing ConfigLoader.{method_name}()"
+
+
+def test_loader_loads_all_fifteen_migrated_schema_instances(config_root: Path) -> None:
+    """ConfigLoader must construct all 15 migrated schema types."""
+    loader = ConfigLoader(config_root=config_root)
+
+    assert isinstance(loader.load_git_config(), GitConfig)
+    assert isinstance(loader.load_label_config(), LabelConfig)
+    assert isinstance(loader.load_scope_config(), ScopeConfig)
+    assert isinstance(loader.load_workflow_config(), WorkflowConfig)
+    assert isinstance(loader.load_workphases_config(), WorkphasesConfig)
+    assert isinstance(loader.load_artifact_registry_config(), ArtifactRegistryConfig)
+    assert isinstance(loader.load_contributor_config(), ContributorConfig)
+    assert isinstance(loader.load_issue_config(), IssueConfig)
+    assert isinstance(loader.load_milestone_config(), MilestoneConfig)
+    assert isinstance(loader.load_operation_policies_config(), OperationPoliciesConfig)
+    assert isinstance(loader.load_project_structure_config(), ProjectStructureConfig)
+    assert isinstance(loader.load_quality_config(), QualityConfig)
+    assert isinstance(loader.load_scaffold_metadata_config(), ScaffoldMetadataConfig)
+    assert isinstance(loader.load_enforcement_config(), EnforcementConfig)
+    assert isinstance(loader.load_phase_contracts_config(), PhaseContractsConfig)
+
+
+def test_all_fifteen_schema_classes_have_no_self_loading_methods() -> None:
+    """Pure schema classes must not contain self-loading or singleton state."""
+    for schema_cls in (
+        GitConfig,
+        LabelConfig,
+        ScopeConfig,
+        WorkflowConfig,
+        WorkphasesConfig,
+        ArtifactRegistryConfig,
+        ContributorConfig,
+        IssueConfig,
+        MilestoneConfig,
+        OperationPoliciesConfig,
+        ProjectStructureConfig,
+        QualityConfig,
+        ScaffoldMetadataConfig,
+        EnforcementConfig,
+        PhaseContractsConfig,
+    ):
+        for forbidden in ("from_file", "load", "reset_instance", "reset"):
+            assert not hasattr(schema_cls, forbidden), (
+                f"{schema_cls.__name__}.{forbidden}() must not exist in config.schemas. "
+                "ConfigLoader is the sole loader."
+            )
+        for forbidden_attr in (
+            "singleton_instance",
+            "_instance",
+            "_loaded_path",
+            "_loaded_mtime",
+        ):
+            assert forbidden_attr not in schema_cls.__dict__, (
+                f"{schema_cls.__name__}.{forbidden_attr} must not exist in config.schemas. "
+                "Singleton cache state belongs to legacy compatibility wrappers only."
+            )
+
+
+def test_extracted_schema_classes_no_longer_defined_in_manager_modules() -> None:
+    """C_LOADER.2 must extract misplaced YAML schemas out of managers/."""
+    enforcement_source = inspect.getsource(enforcement_runner)
+    resolver_source = inspect.getsource(phase_contract_resolver)
+
+    assert "class EnforcementConfig" not in enforcement_source
+    assert "class PhaseContractsConfig" not in resolver_source
+
+
+def test_schema_package_contains_no_local_config_error_class() -> None:
+    """Pure schema modules must reuse core.exceptions.ConfigError."""
+    assert "class ConfigError" not in inspect.getsource(scaffold_schema)

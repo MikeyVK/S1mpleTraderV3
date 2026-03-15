@@ -1,91 +1,25 @@
-"""WorkphasesConfig — reader for workphases.yaml exit_requires/entry_expects.
-
-Provides structured access to per-phase deliverable gate declarations
-defined in .st3/workphases.yaml (Issue #229).
-
-Schema extension (optional fields per phase):
-    exit_requires:
-      - key: "planning_deliverables"
-        description: "TDD cycle breakdown"
-    entry_expects:
-      - key: "planning_deliverables"
-        description: "Expected from planning phase"
-
-Quality Requirements:
-- Pyright: strict mode passing
-- Ruff: all configured rules passing
-- Coverage: 100% for this module
-"""
+"""Legacy compatibility wrapper for WorkphasesConfig during C_LOADER migration."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
-import yaml
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas.workphases import (
+    PhaseDefinition,
+)
+from mcp_server.config.schemas.workphases import (
+    WorkphasesConfig as _WorkphasesConfigSchema,
+)
+
+__all__ = ["PhaseDefinition", "WorkphasesConfig"]
 
 
-class WorkphasesConfig:
-    """Read-only accessor for workphases.yaml deliverable gate fields.
-
-    Attributes:
-        _data: Parsed YAML content as a dict.
-    """
+class WorkphasesConfig(_WorkphasesConfigSchema):
+    """Compatibility surface for pre-C_LOADER consumers."""
 
     def __init__(self, path: Path) -> None:
-        """Load workphases.yaml from *path*.
-
-        Args:
-            path: Absolute or relative path to the workphases.yaml file.
-
-        Raises:
-            FileNotFoundError: If *path* does not exist.
-            yaml.YAMLError: If the file is not valid YAML.
-        """
-        with path.open(encoding="utf-8") as fh:
-            self._data: dict[str, Any] = yaml.safe_load(fh) or {}
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
-    def get_exit_requires(self, phase: str) -> list[dict[str, Any]]:
-        """Return the exit_requires list for *phase*, or [] if absent.
-
-        Args:
-            phase: Phase name (e.g. "planning", "design").
-
-        Returns:
-            List of deliverable gate dicts, empty list when field absent.
-        """
-        return self._get_phase_field(phase, "exit_requires")
-
-    def get_entry_expects(self, phase: str) -> list[dict[str, Any]]:
-        """Return the entry_expects list for *phase*, or [] if absent.
-
-        Args:
-            phase: Phase name (e.g. "tdd", "integration").
-
-        Returns:
-            List of deliverable gate dicts, empty list when field absent.
-        """
-        return self._get_phase_field(phase, "entry_expects")
-
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
-    def _get_phase_field(self, phase: str, field: str) -> list[dict[str, Any]]:
-        """Return *field* from the *phase* block, or [] when absent.
-
-        Args:
-            phase: Phase name key in ``phases`` mapping.
-            field: YAML field name ("exit_requires" or "entry_expects").
-
-        Returns:
-            Parsed list of dicts; empty list for absent/null values.
-        """
-        phases: dict[str, Any] = self._data.get("phases", {})
-        phase_block: dict[str, Any] = phases.get(phase, {})
-        result = phase_block.get(field, [])
-        return result if isinstance(result, list) else []
+        config_path = Path(path)
+        loader = ConfigLoader(config_root=config_path.parent)
+        loaded = loader.load_workphases_config(config_path=config_path)
+        super().__init__(**loaded.model_dump())

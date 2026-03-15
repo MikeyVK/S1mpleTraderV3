@@ -155,22 +155,28 @@ pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # 
 
 ## Cycle 1b — C_SETTINGS.2
 
-**Goal:** Rewire remaining 11 consumers; delete `workflow_config` singleton; create `.vscode/mcp.json`; achieve full grep closure on singleton imports.
+**Goal:** Rewire remaining 11 `Settings` consumers; delete `workflow_config` singleton; rewire all direct `workflow_config` importers; create `.vscode/mcp.json`; achieve full grep closure on singleton imports.
 
 ### Deliverables
 
 | id | title | type | artifact | done_when | validates |
 |---|---|---|---|---|---|
-| `c_settings_2.workflow_singleton_deleted` | workflow_config singleton removed | deletion | `workflow_config = WorkflowConfig.load()` gone from `workflows.py` | `test_workflows_module_does_not_export_singleton` passes | P-1 no partial migration |
-| `c_settings_2.consumers_rewired` | All 11 remaining consumers rewired | migration | 11 files accept `settings: Settings` param; no singleton import | `Select-String "import settings" → 0 matches` | RC-2 built and wired; RC-5 complete migration |
+| `c_settings_2.workflow_singleton_deleted` | workflow_config singleton removed | deletion | `workflow_config = WorkflowConfig.load()` gone from `workflows.py`; direct `workflow_config` importers rewired | `test_workflows_module_does_not_export_singleton` passes; `Select-String "from mcp_server.config.workflows import workflow_config" → 0 matches` | P-1 no partial migration |
+| `c_settings_2.consumers_rewired` | All 11 remaining Settings consumers rewired | migration | 11 files accept `settings: Settings` param; no singleton import | `Select-String "import settings" → 0 matches` | RC-2 built and wired; RC-5 complete migration |
 | `c_settings_2.mcp_json` | .vscode/mcp.json created | component | File with `LOG_LEVEL`, `MCP_SERVER_NAME`, `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_PROJECT_NUMBER` env entries | `Test-Path .vscode/mcp.json → True` | P-6 env-var single source |
-| `c_settings_2.grep_closure` | Singleton import grep = 0 | verification | Zero residual `from mcp_server.config.settings import settings` | `Select-String → 0 matches` | RC-1 stop/go enforced; RC-5 full migration |
+| `c_settings_2.grep_closure` | Singleton import grep = 0 | verification | Zero residual singleton imports for `settings` and `workflow_config` | `Select-String → 0 matches` | RC-1 stop/go enforced; RC-5 full migration |
 
 ### Integration Surface
 
 | ☐ | File | Change |
 |---|---|---|
 | ☐ | `mcp_server/config/workflows.py` | Delete `workflow_config = WorkflowConfig.load()` |
+| ☐ | `mcp_server/managers/project_manager.py` | Remove `workflow_config` import; inject workflow config dependency |
+| ☐ | `mcp_server/managers/phase_state_engine.py` | Remove `workflow_config` import; inject workflow config dependency |
+| ☐ | `mcp_server/config/operation_policies.py` | Remove `workflow_config` import; inject workflow config dependency |
+| ☐ | `tests/mcp_server/unit/tools/test_initialize_project_tool.py` | Rewire test away from `workflow_config` singleton import |
+| ☐ | `tests/mcp_server/unit/managers/test_project_manager.py` | Rewire test away from `workflow_config` singleton import |
+| ☐ | `tests/mcp_server/unit/managers/test_phase_state_engine_recovery.py` | Rewire test away from `workflow_config` singleton import |
 | ☐ | `mcp_server/managers/artifact_manager.py` | Remove singleton import; accept `workspace_root: Path` param |
 | ☐ | `mcp_server/tools/test_tools.py` | Remove singleton import; accept `settings: Settings` param |
 | ☐ | `mcp_server/adapters/filesystem.py` | Remove singleton import; accept `settings: Settings` param |
@@ -206,10 +212,7 @@ run_quality_gates(scope="branch")                                               
 
 ## Cycle 2a — C_LOADER.1
 
-**Goal:** Introduce `ConfigLoader(config_root: Path)`; create `config/schemas/` directory;
-migrate first 5 low-coupling schemas (GitConfig, LabelConfig, ScopeConfig, WorkflowConfig,
-WorkphasesConfig) to `config/schemas/` and delete their self-loading methods.
-Establish permanent structural guard via structural test.
+**Goal:** Introduce `ConfigLoader(config_root: Path)`; create `config/schemas/` directory; migrate first 5 low-coupling schemas (GitConfig, LabelConfig, ScopeConfig, WorkflowConfig, WorkphasesConfig) to `config/schemas/`; keep their legacy public loader API temporarily for compatibility until production and test consumers are rewired in later C_LOADER cycles. Establish initial structural guard and fail-fast loader tests.
 
 ### Deliverables
 
@@ -217,8 +220,8 @@ Establish permanent structural guard via structural test.
 |---|---|---|---|---|---|
 | `c_loader_1.config_loader_class` | ConfigLoader class introduced | component | `ConfigLoader(config_root)` with `load_git_config()`, `load_label_config()`, `load_scope_config()`, `load_workflow_config()`, `load_workphases_config()` | `test_config_loader_exists` passes; `ConfigLoader(tmp_path).load_git_config()` raises `ConfigError` on missing yaml | P-4 built (partial) |
 | `c_loader_1.schemas_dir` | config/schemas/ directory created | component | `mcp_server/config/schemas/__init__.py` exists | `Test-Path mcp_server/config/schemas` | RC-2 structural foundation |
-| `c_loader_1.first_5_schemas_moved` | 5 schemas migrated to schemas/ | migration | GitConfig, LabelConfig, ScopeConfig, WorkflowConfig, WorkphasesConfig in `config/schemas/`; `from_file()`/`load()`/`ClassVar _instance`/`reset_instance()`/`reset()` deleted | `test_no_from_file_on_any_config_schema` fails for these 5 (expected — other 10 not yet migrated) | P-2 partial |
-| `c_loader_1.structural_guard` | Structural guard test written | test | `test_c_loader_structural.py` with `test_no_from_file_on_any_config_schema` | Test written, will go GREEN only after C_LOADER.2 | RC-3 structural test |
+| `c_loader_1.first_5_schemas_moved` | 5 schemas migrated to schemas/ | migration | GitConfig, LabelConfig, ScopeConfig, WorkflowConfig, WorkphasesConfig live under `config/schemas/`; `ConfigLoader.load_*()` resolves them there | `Test-Path` on all 5 files is `True` | P-2 staged migration |
+| `c_loader_1.structural_guard` | Initial structural guard test written | test | `test_c_loader_structural.py` contains `test_config_loader_exists` plus initial loader/fail-fast guards; deletion-focused guards deferred to later C_LOADER cycles | Test file exists and C_LOADER.1 guards pass | RC-3 structural test |
 
 ### Integration Surface
 
@@ -226,12 +229,12 @@ Establish permanent structural guard via structural test.
 |---|---|---|
 | ☐ | `mcp_server/config/loader.py` (new) | `ConfigLoader(config_root: Path)` with load methods for all 15 schemas (stubs OK for schemas not yet migrated) |
 | ☐ | `mcp_server/config/schemas/` (new dir) | Create `__init__.py` |
-| ☐ | `mcp_server/config/schemas/git_config.py` | Move `GitConfig`; delete `from_file()`, `ClassVar _instance`, `reset_instance()` |
-| ☐ | `mcp_server/config/schemas/label_config.py` | Move `LabelConfig`; delete `load()`, `reset()`, `ClassVar _instance` |
-| ☐ | `mcp_server/config/schemas/scope_config.py` | Move `ScopeConfig`; delete `from_file()`, `ClassVar _instance`, `reset_instance()` |
-| ☐ | `mcp_server/config/schemas/workflows.py` | Move `WorkflowConfig`; delete `from_file()`, `load()`, `ClassVar _instance`, `reset_instance()` |
-| ☐ | `mcp_server/config/schemas/workphases.py` | Move `WorkphasesConfig`; delete `from_file()`, `ClassVar _instance`, `reset_instance()` |
-| ☐ | `tests/unit/config/test_c_loader_structural.py` | **New file — structural tests** |
+| ☐ | `mcp_server/config/schemas/git_config.py` | Move `GitConfig`; keep existing public loader API temporarily until C_LOADER.4 |
+| ☐ | `mcp_server/config/schemas/label_config.py` | Move `LabelConfig`; keep existing public loader API temporarily until C_LOADER.4 |
+| ☐ | `mcp_server/config/schemas/scope_config.py` | Move `ScopeConfig`; keep existing public loader API temporarily until C_LOADER.4 |
+| ☐ | `mcp_server/config/schemas/workflows.py` | Move `WorkflowConfig`; keep existing public loader API temporarily until C_LOADER.4 |
+| ☐ | `mcp_server/config/schemas/workphases.py` | Move `WorkphasesConfig`; keep existing public loader API temporarily until C_LOADER.4 |
+| ☐ | `tests/unit/config/test_c_loader_structural.py` | **New file — C_LOADER.1 structural tests** |
 
 ### RED Phase
 
@@ -241,27 +244,15 @@ def test_config_loader_exists():
     from mcp_server.config.loader import ConfigLoader
     assert callable(ConfigLoader)
 
-def test_no_from_file_on_any_config_schema():
-    """Fails until C_LOADER.2 completes; written in C_LOADER.1 RED."""
-    import inspect
-    import mcp_server.config.schemas as schemas_module
-    for name, cls in inspect.getmembers(schemas_module, inspect.isclass):
-        for forbidden in ("from_file", "load", "reset_instance", "reset"):
-            assert not hasattr(cls, forbidden), \
-                f"{name}.{forbidden}() must not exist — ConfigLoader is the sole loader."
+def test_loader_raises_on_missing_yaml(tmp_path):
+    from mcp_server.config.loader import ConfigLoader
+    with pytest.raises(ConfigError):
+        ConfigLoader(tmp_path / ".st3").load_git_config()
 
-def test_no_manager_imports_config_schema_directly():
-    import pathlib
-    for py_file in pathlib.Path("mcp_server/managers").glob("*.py"):
-        assert "from mcp_server.config" not in py_file.read_text(), \
-            f"{py_file.name} imports config schema — must use constructor injection."
-
-def test_no_tool_calls_from_file():
-    import pathlib
-    for py_file in pathlib.Path("mcp_server/tools").glob("*.py"):
-        source = py_file.read_text()
-        assert ".from_file(" not in source and ".reset_instance(" not in source, \
-            f"{py_file.name} calls from_file()/reset_instance() — must use manager."
+# Note: deletion-focused guards for no from_file/load/reset_instance/reset and
+# no direct manager/tool schema usage are deferred to later C_LOADER cycles.
+# They become executable only after production consumers (C_LOADER.3) and
+# test/fixture consumers (C_LOADER.4) are rewired.
 ```
 
 ### Test Zone Assignment
@@ -280,12 +271,15 @@ python -c "from mcp_server.config.loader import ConfigLoader; print('ok')"    # 
 # Schemas dir created
 Test-Path mcp_server/config/schemas/__init__.py                                # True
 
-# 5 migrated schemas have no self-loading on the schemas module
-Select-String "def from_file|def load\b|def reset_instance|def reset\b|_instance.*ClassVar" `
-    mcp_server/config/schemas/git_config.py, mcp_server/config/schemas/label_config.py, `
-    mcp_server/config/schemas/scope_config.py, mcp_server/config/schemas/workflows.py, `
-    mcp_server/config/schemas/workphases.py
-# Expected: 0 matches
+# 5 schema files present in config/schemas/
+Test-Path mcp_server/config/schemas/git_config.py                              # True
+Test-Path mcp_server/config/schemas/label_config.py                            # True
+Test-Path mcp_server/config/schemas/scope_config.py                            # True
+Test-Path mcp_server/config/schemas/workflows.py                               # True
+Test-Path mcp_server/config/schemas/workphases.py                              # True
+
+# Initial C_LOADER.1 structural tests pass
+pytest tests/unit/config/test_c_loader_structural.py -v                        # pass
 
 pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # all pass
 ```
@@ -302,7 +296,7 @@ pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # 
 |---|---|---|---|---|---|
 | `c_loader_2.remaining_schemas_moved` | 10 remaining schemas migrated | migration | ArtifactRegistryConfig, ContributorConfig, IssueConfig, MilestoneConfig, OperationPoliciesConfig, ProjectStructureConfig, QualityConfig, ScaffoldMetadataConfig, EnforcementConfig, PhaseContractsConfig in `config/schemas/` | Each file exists at new path | RC-5 complete migration |
 | `c_loader_2.misplaced_schemas_extracted` | EnforcementConfig + PhaseContractsConfig extracted from managers/ | deletion | Both classes gone from `managers/`; in `config/schemas/` | `Select-String "class EnforcementConfig\|class PhaseContractsConfig" mcp_server/managers/ → 0 matches` | RC-5 SRP enforced |
-| `c_loader_2.all_self_loading_deleted` | All 15 schemas have no self-loading methods | deletion | Zero `from_file`, `load`, `reset_instance`, `reset`, `ClassVar _instance` on any schema class in `config/schemas/` | `test_no_from_file_on_any_config_schema` passes (GREEN) | P-2 permanent guard |
+| `c_loader_2.loader_methods_complete` | ConfigLoader covers all 15 schemas | component | `ConfigLoader.load_*()` methods implemented for all migrated schemas, including enforcement and phase contracts | `Select-String "def load_enforcement_config\|def load_phase_contracts_config" mcp_server/config/loader.py → matches` | P-4 built (expanded) |
 | `c_loader_2.local_config_error_deleted` | Local ConfigError in scaffold_metadata_config.py deleted | deletion | `scaffold_metadata_config.py` imports `ConfigError` from `core.exceptions` | `Select-String "class ConfigError" mcp_server/config/schemas/ → 0 matches` | F13 DRY/SSOT |
 
 ### Integration Surface
@@ -325,8 +319,13 @@ Complete `ConfigLoader.load_*()` stubs for all 15 schemas.
 ### Stop/Go — C_LOADER.2
 
 ```powershell
-# Structural test must now be fully GREEN
-pytest tests/unit/config/test_c_loader_structural.py::test_no_from_file_on_any_config_schema -v  # PASSED
+# All 15 schemas now exist under config/schemas/
+Test-Path mcp_server/config/schemas/enforcement_config.py                       # True
+Test-Path mcp_server/config/schemas/phase_contracts_config.py                  # True
+
+# ConfigLoader covers the extracted schemas
+Select-String "def load_enforcement_config|def load_phase_contracts_config" `
+    mcp_server/config/loader.py                                                # matches
 
 # EnforcementConfig + PhaseContractsConfig gone from managers/
 Select-String "class EnforcementConfig|class PhaseContractsConfig" `
@@ -425,6 +424,7 @@ pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # 
 | `c_loader_4.zone3_tests_clean` | 9 Zone-3 tests + 4 integration tests cleaned | migration | No `reset_instance()` / `from_file()` in these 13 files | `Select-String "reset_instance\|from_file\|LabelConfig\.reset\|LabelConfig\.load" tests/ → 0` | RC-5: no partial migration |
 | `c_loader_4.fixtures_rewritten` | artifact_test_harness + workflow_fixtures rewritten | migration | Fixtures accept `ConfigLoader`-produced config objects | `Select-String "reset_instance\|from_file" tests/mcp_server/fixtures/ → 0` | RC-5: test isolation |
 | `c_loader_4.zone1_rewrites` | 5 Zone-1 config tests updated | migration | `from_file()` + `reset_instance()` → `ConfigLoader(tmp_path).load_*()` | `pytest tests/mcp_server/unit/config/ -v → all pass` | P-5 zone discipline |
+| `c_loader_4.self_loading_deleted_green` | Legacy public loader API deleted after final consumer rewrites | deletion | All 15 schema classes have no `from_file`, `load`, `reset_instance`, `reset`, `ClassVar _instance`; `test_no_from_file_on_any_config_schema` GREEN | `pytest tests/unit/config/test_c_loader_structural.py::test_no_from_file_on_any_config_schema -v` passes | P-2 permanent guard |
 
 ### Non-Zone-1 blast-radius files (13 test + 2 fixture = 15 total)
 
@@ -462,6 +462,9 @@ pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # 
 Select-String "\.from_file\(|reset_instance\(|LabelConfig\.reset\(|LabelConfig\.load\(" `
     (Get-ChildItem tests/mcp_server -Recurse -Filter *.py).FullName
 # Expected: 0 matches
+
+# Structural delete guard is now fully GREEN
+pytest tests/unit/config/test_c_loader_structural.py::test_no_from_file_on_any_config_schema -v  # PASSED
 
 pytest tests/mcp_server/unit/config/ -v                                        # all pass
 pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # all pass

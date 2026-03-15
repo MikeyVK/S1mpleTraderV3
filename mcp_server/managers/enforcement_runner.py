@@ -14,17 +14,12 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import cast
 
-import yaml
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    model_validator,
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas.enforcement_config import (
+    EnforcementAction,
+    EnforcementConfig,
+    EnforcementRule,
 )
-from pydantic import (
-    ValidationError as PydanticValidationError,
-)
-
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
@@ -33,83 +28,13 @@ from mcp_server.tools.tool_result import ToolResult
 
 _ENFORCEMENT_DISPLAY_PATH = ".st3/config/enforcement.yaml"
 
-
-class EnforcementAction(BaseModel):
-    """One configured enforcement action."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    type: str
-    policy: str | None = None
-    rules: dict[str, list[str]] = Field(default_factory=dict)
-    paths: list[str] = Field(default_factory=list)
-    path: str | None = None
-    message: str | None = None
-
-    @model_validator(mode="after")
-    def validate_required_fields(self) -> EnforcementAction:
-        """Validate action-specific required fields."""
-        if self.type == "check_branch_policy" and not self.rules:
-            raise ValueError("check_branch_policy requires non-empty rules")
-        if self.type == "commit_state_files" and not self.paths:
-            raise ValueError("commit_state_files requires non-empty paths")
-        if self.type == "delete_file" and not self.path:
-            raise ValueError("delete_file requires path")
-        return self
-
-
-class EnforcementRule(BaseModel):
-    """One configured enforcement rule."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    event_source: str
-    timing: str
-    tool: str | None = None
-    phase: str | None = None
-    actions: list[EnforcementAction] = Field(default_factory=list)
-
-    @model_validator(mode="after")
-    def validate_target(self) -> EnforcementRule:
-        """Validate rule target fields."""
-        if self.event_source == "tool" and not self.tool:
-            raise ValueError("tool event_source requires tool")
-        if self.event_source == "phase" and not self.phase:
-            raise ValueError("phase event_source requires phase")
-        return self
-
-
-class EnforcementConfig(BaseModel):
-    """Typed root object for enforcement.yaml."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    enforcement: list[EnforcementRule] = Field(default_factory=list)
-
-    @classmethod
-    def from_file(cls, file_path: Path) -> EnforcementConfig:
-        """Load enforcement config from YAML.
-
-        Missing config is treated as empty so existing workspaces remain usable.
-        """
-        if not file_path.exists():
-            return cls()
-
-        try:
-            data = yaml.safe_load(file_path.read_text(encoding="utf-8")) or {}
-        except yaml.YAMLError as exc:
-            raise ConfigError(
-                f"Invalid YAML in {_ENFORCEMENT_DISPLAY_PATH}: {exc}",
-                file_path=_ENFORCEMENT_DISPLAY_PATH,
-            ) from exc
-
-        try:
-            return cls.model_validate(data)
-        except PydanticValidationError as exc:
-            raise ConfigError(
-                f"Config validation failed for {_ENFORCEMENT_DISPLAY_PATH}: {exc}",
-                file_path=_ENFORCEMENT_DISPLAY_PATH,
-            ) from exc
+__all__ = [
+    "EnforcementAction",
+    "EnforcementConfig",
+    "EnforcementContext",
+    "EnforcementRule",
+    "EnforcementRunner",
+]
 
 
 @dataclass(frozen=True)
@@ -175,7 +100,8 @@ class EnforcementRunner:
     def from_workspace(cls, workspace_root: Path | str) -> EnforcementRunner:
         """Create a runner from one workspace root."""
         root = Path(workspace_root)
-        config = EnforcementConfig.from_file(root / _ENFORCEMENT_DISPLAY_PATH)
+        loader = ConfigLoader(config_root=root / ".st3")
+        config = loader.load_enforcement_config()
         return cls(workspace_root=root, config=config)
 
     def run(self, event: str, timing: str, context: EnforcementContext) -> list[str]:

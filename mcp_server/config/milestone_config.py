@@ -1,73 +1,24 @@
-"""Milestone configuration model (Issue #149).
+"""Legacy compatibility wrapper for MilestoneConfig during C_LOADER migration."""
 
-Purpose: Config-driven milestone validation — permissive when list empty.
-Source: .st3/milestones.yaml
-Pattern: Singleton with ClassVar (matches GitConfig pattern)
-"""
+from __future__ import annotations
 
 from pathlib import Path
-from typing import ClassVar, Optional
+from typing import ClassVar
 
-import yaml
-from pydantic import BaseModel
+from mcp_server.config.loader import ConfigLoader
+from mcp_server.config.schemas.milestone_config import MilestoneConfig as _MilestoneConfigSchema
+from mcp_server.config.schemas.milestone_config import MilestoneEntry
 
-
-class MilestoneEntry(BaseModel):
-    """Single milestone entry from milestones.yaml."""
-
-    number: int
-    title: str
-    state: str = "open"
+__all__ = ["MilestoneConfig", "MilestoneEntry"]
 
 
-class MilestoneConfig(BaseModel):
-    """Milestone validation configuration.
+class MilestoneConfig(_MilestoneConfigSchema):
+    """Compatibility surface for pre-C_LOADER consumers."""
 
-    Validates milestone titles against known milestones.
-    Permissive (always passes) when milestones list is empty — this is
-    intentional: the file starts empty and is populated manually.
-    Loaded from .st3/milestones.yaml. Singleton per process.
-    """
-
-    singleton_instance: ClassVar[Optional["MilestoneConfig"]] = None
-
-    version: str
-    milestones: list[MilestoneEntry] = []
-
-    # ------------------------------------------------------------------
-    # Public helpers
-    # ------------------------------------------------------------------
-
-    def validate_milestone(self, title: str) -> bool:
-        """Return True if title is a known milestone, or if list is empty (permissive).
-
-        Args:
-            title: Milestone title to check.
-
-        Returns:
-            True when list is empty (permissive) or title matches a known milestone.
-        """
-        if not self.milestones:
-            return True
-        return any(m.title == title for m in self.milestones)
-
-    # ------------------------------------------------------------------
-    # Singleton factory
-    # ------------------------------------------------------------------
+    singleton_instance: ClassVar[MilestoneConfig | None] = None
 
     @classmethod
-    def from_file(cls, path: str = ".st3/milestones.yaml") -> "MilestoneConfig":
-        """Load config from YAML file (singleton pattern).
-
-        Args:
-            path: Path to milestones.yaml file.
-
-        Returns:
-            MilestoneConfig singleton instance.
-
-        Raises:
-            FileNotFoundError: If milestones.yaml doesn't exist.
-        """
+    def from_file(cls, path: str = ".st3/milestones.yaml") -> MilestoneConfig:
         if cls.singleton_instance is not None:
             return cls.singleton_instance
 
@@ -75,16 +26,16 @@ class MilestoneConfig(BaseModel):
         if not config_path.exists():
             raise FileNotFoundError(
                 f"Milestone config not found: {path}. "
-                f"Create .st3/milestones.yaml (empty list is valid)."
+                "Create .st3/milestones.yaml (empty list is valid)."
             )
 
-        with open(config_path, encoding="utf-8") as fh:
-            data = yaml.safe_load(fh)
+        loader = ConfigLoader(config_root=config_path.parent)
+        loaded = loader.load_milestone_config(config_path=config_path)
 
-        cls.singleton_instance = cls(**data)
-        return cls.singleton_instance
+        instance = cls.model_validate(loaded.model_dump())
+        cls.singleton_instance = instance
+        return instance
 
     @classmethod
     def reset_instance(cls) -> None:
-        """Reset singleton (for testing only)."""
         cls.singleton_instance = None
