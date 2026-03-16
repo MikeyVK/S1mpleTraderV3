@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
+from mcp_server.managers.project_manager import ProjectInitOptions
 from mcp_server.managers.state_repository import FileStateRepository, InMemoryStateRepository
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 class TestPhaseStateEngineParentBranch:
@@ -39,7 +39,7 @@ class TestPhaseStateEngineParentBranch:
         Returns:
             ProjectManager instance
         """
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def engine(self, workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
@@ -52,8 +52,8 @@ class TestPhaseStateEngineParentBranch:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(
-            workspace_root=workspace_root,
+        return make_phase_state_engine(
+            workspace_root,
             project_manager=project_manager,
             state_repository=InMemoryStateRepository(),
         )
@@ -166,8 +166,8 @@ class TestPhaseStateEngineParentBranch:
             state_file.unlink()
 
         # Execute - get_state triggers auto-recovery
-        recovery_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
+        recovery_engine = make_phase_state_engine(
+            workspace_root,
             project_manager=project_manager,
             state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
         )
@@ -196,8 +196,8 @@ class TestPhaseStateEngineParentBranch:
             state_file.unlink()
 
         # Execute - get_state triggers auto-recovery
-        recovery_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
+        recovery_engine = make_phase_state_engine(
+            workspace_root,
             project_manager=project_manager,
             state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
         )
@@ -259,7 +259,7 @@ class TestTddCycleTrackingFields:
         Returns:
             ProjectManager instance
         """
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def engine(self, workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
@@ -272,8 +272,8 @@ class TestTddCycleTrackingFields:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(
-            workspace_root=workspace_root,
+        return make_phase_state_engine(
+            workspace_root,
             project_manager=project_manager,
             state_repository=InMemoryStateRepository(),
         )
@@ -327,8 +327,8 @@ class TestTddCycleTrackingFields:
             state_file.unlink()
 
         # Execute - get_state triggers auto-recovery
-        recovery_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
+        recovery_engine = make_phase_state_engine(
+            workspace_root,
             project_manager=project_manager,
             state_repository=FileStateRepository(state_file=workspace_root / ".st3" / "state.json"),
         )
@@ -376,7 +376,7 @@ class TestCycleValidationLogic:
         Returns:
             ProjectManager instance
         """
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def engine(self, workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
@@ -389,8 +389,8 @@ class TestCycleValidationLogic:
         Returns:
             PhaseStateEngine instance
         """
-        return PhaseStateEngine(
-            workspace_root=workspace_root,
+        return make_phase_state_engine(
+            workspace_root,
             project_manager=project_manager,
             state_repository=InMemoryStateRepository(),
         )

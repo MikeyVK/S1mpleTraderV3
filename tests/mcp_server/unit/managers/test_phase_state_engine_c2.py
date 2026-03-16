@@ -15,6 +15,7 @@ import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 from mcp_server.managers.state_repository import InMemoryStateRepository
 
 # ---------------------------------------------------------------------------
@@ -50,14 +51,14 @@ phases:
 @pytest.fixture
 def project_manager(workspace_root: Path) -> ProjectManager:
     """ProjectManager bound to tmp workspace."""
-    return ProjectManager(workspace_root=workspace_root)
+    return make_project_manager(workspace_root)
 
 
 @pytest.fixture
 def engine(workspace_root: Path, project_manager: ProjectManager) -> PhaseStateEngine:
     """PhaseStateEngine bound to tmp workspace."""
-    return PhaseStateEngine(
-        workspace_root=workspace_root,
+    return make_phase_state_engine(
+        workspace_root,
         project_manager=project_manager,
         state_repository=InMemoryStateRepository(),
     )

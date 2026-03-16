@@ -12,8 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 class TestPhaseStateEngineTransitions:
@@ -27,14 +26,14 @@ class TestPhaseStateEngineTransitions:
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def phase_engine(
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(workspace_root, project_manager=project_manager)
 
     def test_phase_state_engine_transition_valid(
         self,

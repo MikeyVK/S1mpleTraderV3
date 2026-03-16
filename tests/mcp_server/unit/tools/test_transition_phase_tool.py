@@ -16,6 +16,7 @@ from mcp_server.tools.phase_tools import (
     TransitionPhaseInput,
     TransitionPhaseTool,
 )
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 class TestTransitionPhaseTool:
@@ -29,19 +30,25 @@ class TestTransitionPhaseTool:
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return make_project_manager(workspace_root)
 
     @pytest.fixture
     def phase_engine(
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(workspace_root, project_manager=project_manager)
 
     @pytest.fixture
     def tool(self, workspace_root: Path) -> TransitionPhaseTool:
         """Create TransitionPhaseTool instance."""
-        return TransitionPhaseTool(workspace_root=workspace_root)
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
+        return TransitionPhaseTool(
+            workspace_root=workspace_root,
+            project_manager=project_manager,
+            state_engine=state_engine,
+        )
 
     @pytest.fixture
     def initialized_branch(

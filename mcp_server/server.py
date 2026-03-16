@@ -23,12 +23,19 @@ from mcp.types import (
 from pydantic import AnyUrl, BaseModel, ValidationError
 
 # Config
+from mcp_server.config.compat_roots import find_compatible_config_root
 from mcp_server.config.label_startup import validate_label_config_on_startup
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.config.settings import Settings
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger, setup_logging
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.managers.enforcement_runner import EnforcementContext, EnforcementRunner
+from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.github_manager import GitHubManager
+from mcp_server.managers.phase_contract_resolver import PhaseConfigContext, PhaseContractResolver
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.resources.github import GitHubIssuesResource
 
@@ -132,7 +139,65 @@ class MCPServer:
 
         self.template_registry = TemplateRegistry(registry_path=registry_path)
         lifecycle_logger.info("Template registry initialized")
-        self.enforcement_runner = EnforcementRunner.from_workspace(workspace_root)
+
+        config_root = find_compatible_config_root(
+            workspace_root,
+            required_files=("git.yaml", "workflows.yaml", "workphases.yaml"),
+        )
+        if config_root is None:
+            raise FileNotFoundError("Could not locate a compatible .st3 config directory")
+        config_loader = ConfigLoader(config_root=config_root)
+        git_config = config_loader.load_git_config()
+        workflow_config = config_loader.load_workflow_config()
+        workphases_config = config_loader.load_workphases_config()
+        quality_config = config_loader.load_quality_config()
+        label_config = config_loader.load_label_config()
+        issue_config = config_loader.load_issue_config()
+        scope_config = config_loader.load_scope_config()
+        milestone_config = config_loader.load_milestone_config()
+        contributor_config = config_loader.load_contributor_config()
+        artifact_registry = config_loader.load_artifact_registry_config()
+        project_structure_config = config_loader.load_project_structure_config()
+        enforcement_config = config_loader.load_enforcement_config()
+        phase_contracts_config = config_loader.load_phase_contracts_config()
+
+        self.git_manager = GitManager(git_config=git_config)
+        self.project_manager = ProjectManager(
+            workspace_root=workspace_root,
+            workflow_config=workflow_config,
+            git_manager=self.git_manager,
+        )
+        self.phase_state_engine = PhaseStateEngine(
+            workspace_root=workspace_root,
+            project_manager=self.project_manager,
+            git_config=git_config,
+            workflow_config=workflow_config,
+            workphases_config=workphases_config,
+        )
+        self.qa_manager = QAManager(
+            workspace_root=workspace_root,
+            quality_config=quality_config,
+        )
+        self.github_manager = GitHubManager()
+        self.artifact_manager = ArtifactManager(
+            workspace_root=workspace_root,
+            template_registry=self.template_registry,
+            registry=artifact_registry,
+            project_structure_config=project_structure_config,
+        )
+        self.phase_contract_resolver = PhaseContractResolver(
+            PhaseConfigContext(
+                workphases=workphases_config,
+                phase_contracts=phase_contracts_config,
+            )
+        )
+        self.enforcement_runner = EnforcementRunner(
+            workspace_root=workspace_root,
+            config=enforcement_config,
+            git_manager=self.git_manager,
+            project_manager=self.project_manager,
+            state_engine=self.phase_state_engine,
+        )
 
         self.server = Server(server_name)
 
@@ -145,30 +210,31 @@ class MCPServer:
         # Core tools (always available)
         self.tools = [
             # Git tools
-            CreateBranchTool(),
-            GitStatusTool(),
+            CreateBranchTool(manager=self.git_manager),
+            GitStatusTool(manager=self.git_manager),
             GitCommitTool(
+                manager=self.git_manager,
                 phase_guard=build_phase_guard(Path(settings.server.workspace_root)),
                 commit_type_resolver=build_commit_type_resolver(
-                    Path(settings.server.workspace_root)
+                    self.phase_state_engine,
+                    self.phase_contract_resolver,
                 ),
+                state_engine=self.phase_state_engine,
             ),
-            GitCheckoutTool(),
-            GitFetchTool(),
-            GitPullTool(),
-            GitPushTool(),
-            GitMergeTool(),
-            GitDeleteBranchTool(),
-            GitStashTool(),
-            GitRestoreTool(),
-            GitListBranchesTool(),
-            GitDiffTool(),
-            GetParentBranchTool(),
+            GitCheckoutTool(manager=self.git_manager, state_engine=self.phase_state_engine),
+            GitFetchTool(manager=self.git_manager),
+            GitPullTool(manager=self.git_manager, state_engine=self.phase_state_engine),
+            GitPushTool(manager=self.git_manager),
+            GitMergeTool(manager=self.git_manager),
+            GitDeleteBranchTool(manager=self.git_manager),
+            GitStashTool(manager=self.git_manager),
+            GitRestoreTool(manager=self.git_manager),
+            GitListBranchesTool(manager=self.git_manager),
+            GitDiffTool(manager=self.git_manager),
+            GetParentBranchTool(manager=self.git_manager, state_engine=self.phase_state_engine),
             # Quality tools
-            RunQualityGatesTool(
-                manager=QAManager(workspace_root=Path(settings.server.workspace_root))
-            ),
-            ValidationTool(),
+            RunQualityGatesTool(manager=self.qa_manager),
+            ValidationTool(manager=self.qa_manager),
             ValidateDTOTool(),
             SafeEditTool(),
             TemplateValidationTool(),
@@ -178,25 +244,51 @@ class MCPServer:
             RunTestsTool(settings=settings),
             CreateFileTool(settings=settings),
             # Project tools (Phase 0.5)
-            InitializeProjectTool(workspace_root=Path(settings.server.workspace_root)),
-            GetProjectPlanTool(workspace_root=Path(settings.server.workspace_root)),
-            SavePlanningDeliverablesTool(workspace_root=Path(settings.server.workspace_root)),
-            UpdatePlanningDeliverablesTool(workspace_root=Path(settings.server.workspace_root)),
-            # Phase tools (Phase B)
-            TransitionPhaseTool(workspace_root=Path(settings.server.workspace_root)),
-            ForcePhaseTransitionTool(workspace_root=Path(settings.server.workspace_root)),
-            # TDD Cycle tools (Issue #146)
-            TransitionCycleTool(workspace_root=Path(settings.server.workspace_root)),
-            ForceCycleTransitionTool(workspace_root=Path(settings.server.workspace_root)),
-            # Scaffold tools (unified artifact scaffolding)
-            ScaffoldArtifactTool(
-                manager=ArtifactManager(
-                    workspace_root=workspace_root, template_registry=self.template_registry
-                )
+            InitializeProjectTool(
+                workspace_root=Path(settings.server.workspace_root),
+                workflow_config=workflow_config,
+                manager=self.project_manager,
+                git_manager=self.git_manager,
+                state_engine=self.phase_state_engine,
             ),
+            GetProjectPlanTool(manager=self.project_manager),
+            SavePlanningDeliverablesTool(manager=self.project_manager),
+            UpdatePlanningDeliverablesTool(manager=self.project_manager),
+            # Phase tools (Phase B)
+            TransitionPhaseTool(
+                workspace_root=Path(settings.server.workspace_root),
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+            ),
+            ForcePhaseTransitionTool(
+                workspace_root=Path(settings.server.workspace_root),
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+            ),
+            # TDD Cycle tools (Issue #146)
+            TransitionCycleTool(
+                workspace_root=Path(settings.server.workspace_root),
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+                git_manager=self.git_manager,
+            ),
+            ForceCycleTransitionTool(
+                workspace_root=Path(settings.server.workspace_root),
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+                git_manager=self.git_manager,
+            ),
+            # Scaffold tools (unified artifact scaffolding)
+            ScaffoldArtifactTool(manager=self.artifact_manager),
             # Discovery tools
             SearchDocumentationTool(settings=settings),
-            GetWorkContextTool(settings=settings),
+            GetWorkContextTool(
+                settings=settings,
+                git_manager=self.git_manager,
+                project_manager=self.project_manager,
+                state_engine=self.phase_state_engine,
+                github_manager=self.github_manager,
+            ),
         ]
 
         # GitHub-dependent resources and additional tools (only if token is configured)
@@ -206,20 +298,29 @@ class MCPServer:
             self.tools.extend(
                 [
                     # GitHub Issue tools
-                    CreateIssueTool(),
-                    ListIssuesTool(),
-                    GetIssueTool(),
-                    CloseIssueTool(),
-                    UpdateIssueTool(),
+                    CreateIssueTool(
+                        manager=self.github_manager,
+                        issue_config=issue_config,
+                        git_config=git_config,
+                        label_config=label_config,
+                        scope_config=scope_config,
+                        milestone_config=milestone_config,
+                        contributor_config=contributor_config,
+                        workflow_config=workflow_config,
+                    ),
+                    ListIssuesTool(manager=self.github_manager),
+                    GetIssueTool(manager=self.github_manager),
+                    CloseIssueTool(manager=self.github_manager),
+                    UpdateIssueTool(manager=self.github_manager),
                     # PR and Label tools (require token at init time)
-                    CreatePRTool(),
-                    ListPRsTool(),
-                    MergePRTool(),
-                    AddLabelsTool(),
-                    ListLabelsTool(),
-                    CreateLabelTool(),
-                    DeleteLabelTool(),
-                    RemoveLabelsTool(),
+                    CreatePRTool(manager=self.github_manager, git_config=git_config),
+                    ListPRsTool(manager=self.github_manager, git_config=git_config),
+                    MergePRTool(manager=self.github_manager, git_config=git_config),
+                    AddLabelsTool(manager=self.github_manager, label_config=label_config),
+                    ListLabelsTool(manager=self.github_manager, label_config=label_config),
+                    CreateLabelTool(manager=self.github_manager, label_config=label_config),
+                    DeleteLabelTool(manager=self.github_manager, label_config=label_config),
+                    RemoveLabelsTool(manager=self.github_manager, label_config=label_config),
                     ListMilestonesTool(),
                     CreateMilestoneTool(),
                     CloseMilestoneTool(),
@@ -230,11 +331,20 @@ class MCPServer:
             # Register issue tools without token so schemas are available; execution will error.
             self.tools.extend(
                 [
-                    CreateIssueTool(),
-                    ListIssuesTool(),
-                    GetIssueTool(),
-                    CloseIssueTool(),
-                    UpdateIssueTool(),
+                    CreateIssueTool(
+                        manager=self.github_manager,
+                        issue_config=issue_config,
+                        git_config=git_config,
+                        label_config=label_config,
+                        scope_config=scope_config,
+                        milestone_config=milestone_config,
+                        contributor_config=contributor_config,
+                        workflow_config=workflow_config,
+                    ),
+                    ListIssuesTool(manager=self.github_manager),
+                    GetIssueTool(manager=self.github_manager),
+                    CloseIssueTool(manager=self.github_manager),
+                    UpdateIssueTool(manager=self.github_manager),
                 ]
             )
             logger.info(

@@ -28,6 +28,7 @@ import pytest
 # Project modules
 from mcp_server.managers.artifact_manager import ArtifactManager
 from mcp_server.scaffolding.metadata import ScaffoldMetadataParser
+from tests.mcp_server.test_support import make_artifact_manager, make_metadata_parser
 
 
 class TestProvenanceE2E:
@@ -41,12 +42,12 @@ class TestProvenanceE2E:
     @pytest.fixture
     def manager(self, tmp_path: Path) -> ArtifactManager:
         """Create artifact manager with workspace root."""
-        return ArtifactManager(workspace_root=str(tmp_path))
+        return make_artifact_manager(tmp_path)
 
     @pytest.fixture
     def parser(self) -> ScaffoldMetadataParser:
         """Create metadata parser."""
-        return ScaffoldMetadataParser()
+        return make_metadata_parser()
 
     def _parse_scaffold_header(
         self, content: str, expected_extension: str, artifact_type: str

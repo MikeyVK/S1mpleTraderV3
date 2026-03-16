@@ -26,6 +26,7 @@ from pathlib import Path
 
 from mcp_server.config.quality_config import QualityConfig, TextViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -43,7 +44,7 @@ _GATE0_PATTERN = "^--- (?P<file>.+)$"
 
 
 def _make_manager() -> QAManager:
-    return QAManager(workspace_root=Path("D:/dev/SimpleTraderV3"))
+    return make_qa_manager(Path("D:/dev/SimpleTraderV3"))
 
 
 # ---------------------------------------------------------------------------

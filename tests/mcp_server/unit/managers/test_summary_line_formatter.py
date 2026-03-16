@@ -12,6 +12,7 @@ Design contract (design.md §4.8):
 from __future__ import annotations
 
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 
 def _make_results(
@@ -42,7 +43,7 @@ class TestFormatSummaryLinePass:
 
     def test_all_pass_produces_green_line(self) -> None:
         """All gates pass, 0 violations → ✅ line."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results(passed=5, failed=0, skipped=0, total_violations=0)
 
         line = manager._format_summary_line(results)
@@ -53,7 +54,7 @@ class TestFormatSummaryLinePass:
 
     def test_all_pass_single_gate(self) -> None:
         """Single gate passes — N/N is 1/1."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results(passed=1, failed=0, skipped=0, total_violations=0)
 
         line = manager._format_summary_line(results)
@@ -67,7 +68,7 @@ class TestFormatSummaryLineFail:
 
     def test_one_failure_produces_red_line(self) -> None:
         """One gate fails — ❌ with violation count and gate name."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results(
             passed=4,
             failed=1,
@@ -85,7 +86,7 @@ class TestFormatSummaryLineFail:
 
     def test_multiple_failures_lists_all_gate_names(self) -> None:
         """Multiple failures — all failed gate names appear in the line."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results(
             passed=3,
             failed=2,
@@ -102,7 +103,7 @@ class TestFormatSummaryLineFail:
 
     def test_fail_has_no_green_emoji(self) -> None:
         """Failed result must not contain ✅."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results(
             passed=0,
             failed=1,
@@ -122,7 +123,7 @@ class TestFormatSummaryLineSkip:
 
     def test_skips_with_all_active_passing_produces_warning(self) -> None:
         """Passed=N active, skipped=S, failed=0 → ⚠️ line."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results(passed=4, failed=0, skipped=1, total_violations=0)
 
         line = manager._format_summary_line(results)
@@ -132,7 +133,7 @@ class TestFormatSummaryLineSkip:
 
     def test_skips_with_active_passing_no_red_emoji(self) -> None:
         """No failed gates — ❌ must not appear when only skipped."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results(passed=3, failed=0, skipped=2, total_violations=0)
 
         line = manager._format_summary_line(results)
@@ -141,7 +142,7 @@ class TestFormatSummaryLineSkip:
 
     def test_fail_takes_precedence_over_skip(self) -> None:
         """When both failed and skipped, ❌ takes precedence over ⚠️."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results(
             passed=2,
             failed=1,

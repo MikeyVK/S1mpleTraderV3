@@ -8,14 +8,15 @@ Used by: MCP tools for operation validation
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
-from mcp_server.config.git_config import GitConfig
-from mcp_server.config.operation_policies import OperationPoliciesConfig
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.core.directory_policy_resolver import (
     DirectoryPolicyResolver,
     ResolvedDirectoryPolicy,
 )
+from mcp_server.schemas import GitConfig, OperationPoliciesConfig, ProjectStructureConfig
 
 
 @dataclass
@@ -41,23 +42,16 @@ class PolicyEngine:
 
     def __init__(
         self,
-        config_dir: str = ".st3",
-        git_config: GitConfig | None = None
+        config_root: Path | str,
+        operation_config: OperationPoliciesConfig,
+        git_config: GitConfig,
+        project_structure_config: ProjectStructureConfig,
     ) -> None:
-        """Initialize PolicyEngine with configs.
-
-        Args:
-            config_dir: Directory containing config files
-            git_config: Optional GitConfig (for testing), defaults to singleton
-        """
-        self._config_dir = config_dir
-
-        # Load configs (singleton pattern ensures single load)
-        self._operation_config = OperationPoliciesConfig.from_file(
-            f"{config_dir}/policies.yaml"
-        )
-        self._directory_resolver = DirectoryPolicyResolver()
-        self._git_config = git_config or GitConfig.from_file()
+        """Initialize PolicyEngine with injected configs and explicit reload root."""
+        self._config_root = Path(config_root)
+        self._operation_config = operation_config
+        self._directory_resolver = DirectoryPolicyResolver(project_structure_config)
+        self._git_config = git_config
 
         # Audit trail
         self._audit_trail: list[dict[str, Any]] = []
@@ -67,7 +61,7 @@ class PolicyEngine:
         operation: str,
         path: str | None = None,
         phase: str | None = None,
-        context: dict[str, Any] | None = None
+        context: dict[str, Any] | None = None,
     ) -> PolicyDecision:
         """Make policy decision for operation.
 
@@ -96,10 +90,10 @@ class PolicyEngine:
                 decision = PolicyDecision(
                     allowed=False,
                     reason=f"Operation '{operation}' not allowed in phase '{phase}'. "
-                           f"Allowed phases: {op_policy.allowed_phases or 'all'}",
+                    f"Allowed phases: {op_policy.allowed_phases or 'all'}",
                     operation=operation,
                     phase=phase,
-                    context=context
+                    context=context,
                 )
                 self._log_decision(decision)
                 return decision
@@ -111,19 +105,17 @@ class PolicyEngine:
 
                 # Check component type (if provided in context)
                 component_type = context.get("component_type")
-                if component_type and not dir_policy.allows_component_type(
-                    component_type
-                ):
+                if component_type and not dir_policy.allows_component_type(component_type):
                     decision = PolicyDecision(
                         allowed=False,
                         reason=f"Component type '{component_type}' not allowed in "
-                               f"'{dir_policy.path}'. Allowed types: "
-                               f"{dir_policy.allowed_component_types or 'all'}",
+                        f"'{dir_policy.path}'. Allowed types: "
+                        f"{dir_policy.allowed_component_types or 'all'}",
                         operation=operation,
                         path=path,
                         phase=phase,
                         directory_policy=dir_policy,
-                        context=context
+                        context=context,
                     )
                     self._log_decision(decision)
                     return decision
@@ -133,29 +125,27 @@ class PolicyEngine:
                     decision = PolicyDecision(
                         allowed=False,
                         reason=f"Path '{path}' matches blocked pattern. "
-                               "Must use scaffold operation instead.",
+                        "Must use scaffold operation instead.",
                         operation=operation,
                         path=path,
                         phase=phase,
                         directory_policy=dir_policy,
-                        context=context
+                        context=context,
                     )
                     self._log_decision(decision)
                     return decision
 
                 # Check allowed extensions (create_file operation)
-                if operation == "create_file" and not op_policy.is_extension_allowed(
-                    path
-                ):
+                if operation == "create_file" and not op_policy.is_extension_allowed(path):
                     decision = PolicyDecision(
                         allowed=False,
                         reason=f"File extension not allowed. "
-                               f"Allowed: {op_policy.allowed_extensions or 'all'}",
+                        f"Allowed: {op_policy.allowed_extensions or 'all'}",
                         operation=operation,
                         path=path,
                         phase=phase,
                         directory_policy=dir_policy,
-                        context=context
+                        context=context,
                     )
                     self._log_decision(decision)
                     return decision
@@ -170,10 +160,10 @@ class PolicyEngine:
                     decision = PolicyDecision(
                         allowed=False,
                         reason=f"Commit message must start with TDD prefix. "
-                               f"Valid: {valid_prefixes}",
+                        f"Valid: {valid_prefixes}",
                         operation=operation,
                         phase=phase,
-                        context=context
+                        context=context,
                     )
                     self._log_decision(decision)
                     return decision
@@ -182,12 +172,12 @@ class PolicyEngine:
             decision = PolicyDecision(
                 allowed=True,
                 reason=f"Operation '{operation}' allowed in phase '{phase or 'any'}'"
-                       + (f" for path '{path}'" if path else ""),
+                + (f" for path '{path}'" if path else ""),
                 operation=operation,
                 path=path,
                 phase=phase,
                 directory_policy=self._directory_resolver.resolve(path) if path else None,
-                context=context
+                context=context,
             )
             self._log_decision(decision)
             return decision
@@ -200,22 +190,24 @@ class PolicyEngine:
                 operation=operation,
                 path=path,
                 phase=phase,
-                context=context
+                context=context,
             )
             self._log_decision(decision)
             return decision
 
     def _log_decision(self, decision: PolicyDecision) -> None:
         """Log decision to audit trail."""
-        self._audit_trail.append({
-            "timestamp": decision.timestamp.isoformat(),
-            "operation": decision.operation,
-            "path": decision.path,
-            "phase": decision.phase,
-            "allowed": decision.allowed,
-            "reason": decision.reason,
-            "context": decision.context
-        })
+        self._audit_trail.append(
+            {
+                "timestamp": decision.timestamp.isoformat(),
+                "operation": decision.operation,
+                "path": decision.path,
+                "phase": decision.phase,
+                "allowed": decision.allowed,
+                "reason": decision.reason,
+                "context": decision.context,
+            }
+        )
 
     def get_audit_trail(self) -> list[dict[str, Any]]:
         """Get complete audit trail.
@@ -226,16 +218,8 @@ class PolicyEngine:
         return list(self._audit_trail)
 
     def reload_configs(self) -> None:
-        """Reload configs from disk (without restart).
-
-        Useful for testing and dynamic config updates.
-        """
-        # Reset singleton instances
-        OperationPoliciesConfig.reset_instance()
-        GitConfig.reset_instance()
-        # Reload
-        self._operation_config = OperationPoliciesConfig.from_file(
-            f"{self._config_dir}/policies.yaml"
-        )
-        self._git_config = GitConfig.from_file()
-        # DirectoryResolver loads ProjectStructureConfig internally
+        """Reload configs from disk (without restart)."""
+        loader = ConfigLoader(self._config_root)
+        self._operation_config = loader.load_operation_policies_config()
+        self._git_config = loader.load_git_config()
+        self._directory_resolver = DirectoryPolicyResolver(loader.load_project_structure_config())

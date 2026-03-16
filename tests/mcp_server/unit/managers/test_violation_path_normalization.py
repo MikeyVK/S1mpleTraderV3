@@ -19,6 +19,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -33,7 +34,7 @@ _REL_BACKSLASH = r"mcp_server\utils\path_resolver.py"
 
 
 def _make_manager(workspace_root: Path = _WORKSPACE) -> QAManager:
-    return QAManager(workspace_root=workspace_root)
+    return make_qa_manager(workspace_root)
 
 
 def _make_gate_result(name: str, issues: list[dict]) -> dict:
@@ -113,7 +114,7 @@ class TestNormalizeFilePath:
         The method must still convert OS separators to POSIX and leave the path
         unchanged in terms of relativity (best-effort).
         """
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
 
         result = manager._normalize_file_path(_REL_BACKSLASH)
 

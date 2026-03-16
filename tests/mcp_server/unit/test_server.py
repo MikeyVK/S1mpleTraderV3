@@ -2,6 +2,7 @@
 """Tests for MCP Server tool registration and dispatch hooks."""
 
 import logging
+import shutil
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,6 +12,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 
+from mcp_server.config.git_config import GitConfig
+from mcp_server.config.workflows import WorkflowConfig
+from mcp_server.config.workphases_config import WorkphasesConfig
 from mcp_server.core.exceptions import ConfigError
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
@@ -22,14 +26,20 @@ from mcp_server.tools.phase_tools import ForcePhaseTransitionTool, TransitionPha
 from mcp_server.tools.tool_result import ToolResult
 
 
+def _bootstrap_workspace_configs(workspace_root: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    shutil.copytree(repo_root / ".st3", workspace_root / ".st3", dirs_exist_ok=True)
+
+
 def _patch_server_settings(
     mock: MagicMock,
-    workspace_root: str = ".",
+    workspace_root: str | None = None,
     token: str | None = None,
 ) -> None:
     """Configure a Settings class mock for server tests."""
+    resolved_workspace_root = workspace_root or str(Path(__file__).resolve().parents[3])
     mock.from_env.return_value.server.name = "test-server"
-    mock.from_env.return_value.server.workspace_root = workspace_root
+    mock.from_env.return_value.server.workspace_root = resolved_workspace_root
     mock.from_env.return_value.github.token = token
     mock.from_env.return_value.github.owner = "test"
     mock.from_env.return_value.github.repo = "repo"
@@ -155,11 +165,14 @@ class TestServerToolRegistration:
             encoding="utf-8",
         )
 
+        _bootstrap_workspace_configs(tmp_path)
+
         with patch("mcp_server.server.Settings") as mock_settings_cls:
             _patch_server_settings(mock_settings_cls, workspace_root=str(tmp_path))
 
-            manager = MagicMock()
             server = MCPServer()
+            manager = MagicMock()
+            manager.git_config = server.git_manager.git_config
             server.tools = [CreateBranchTool(manager=manager)]
             handler = server.server.request_handlers[CallToolRequest]
 
@@ -200,7 +213,12 @@ class TestServerToolRegistration:
             encoding="utf-8",
         )
 
-        project_manager = ProjectManager(workspace_root=tmp_path)
+        _bootstrap_workspace_configs(tmp_path)
+
+        project_manager = ProjectManager(
+            workspace_root=tmp_path,
+            workflow_config=WorkflowConfig.load(Path(".st3/workflows.yaml")),
+        )
         project_manager.initialize_project(
             issue_number=257,
             issue_title="Cycle 5 enforcement",
@@ -209,6 +227,9 @@ class TestServerToolRegistration:
         state_engine = PhaseStateEngine(
             workspace_root=tmp_path,
             project_manager=project_manager,
+            git_config=GitConfig.from_file(tmp_path / ".st3" / "git.yaml"),
+            workflow_config=WorkflowConfig.load(tmp_path / ".st3" / "workflows.yaml"),
+            workphases_config=WorkphasesConfig(tmp_path / ".st3" / "workphases.yaml"),
             state_repository=InMemoryStateRepository(),
         )
         state_engine.initialize_branch(
@@ -216,6 +237,10 @@ class TestServerToolRegistration:
             issue_number=257,
             initial_phase="research",
         )
+
+        research_doc = tmp_path / "docs" / "development" / "issue257" / "cycle5-research.md"
+        research_doc.parent.mkdir(parents=True, exist_ok=True)
+        research_doc.write_text("# Research\n", encoding="utf-8")
 
         with (
             patch("mcp_server.server.Settings") as mock_settings_cls,
@@ -227,7 +252,13 @@ class TestServerToolRegistration:
             mock_commit.return_value = "abc1234"
 
             server = MCPServer()
-            server.tools = [TransitionPhaseTool(workspace_root=tmp_path)]
+            server.tools = [
+                TransitionPhaseTool(
+                    workspace_root=tmp_path,
+                    project_manager=server.project_manager,
+                    state_engine=server.phase_state_engine,
+                )
+            ]
             handler = server.server.request_handlers[CallToolRequest]
 
             req = CallToolRequest(
@@ -251,11 +282,19 @@ class TestServerToolRegistration:
         tmp_path: Path,
     ) -> None:
         """Force phase transitions should warn on hook failures instead of blocking."""
+        _bootstrap_workspace_configs(tmp_path)
+
         with patch("mcp_server.server.Settings") as mock_settings_cls:
             _patch_server_settings(mock_settings_cls, workspace_root=str(tmp_path))
 
             server = MCPServer()
-            server.tools = [ForcePhaseTransitionTool(workspace_root=tmp_path)]
+            server.tools = [
+                ForcePhaseTransitionTool(
+                    workspace_root=tmp_path,
+                    project_manager=server.project_manager,
+                    state_engine=server.phase_state_engine,
+                )
+            ]
             handler = server.server.request_handlers[CallToolRequest]
 
             with (

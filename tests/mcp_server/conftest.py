@@ -11,12 +11,9 @@ from collections.abc import Generator
 
 import pytest
 
-from mcp_server.config.contributor_config import ContributorConfig
-from mcp_server.config.issue_config import IssueConfig
-from mcp_server.config.label_config import LabelConfig
-from mcp_server.config.milestone_config import MilestoneConfig
-from mcp_server.config.scope_config import ScopeConfig
-from mcp_server.config.workflows import WorkflowConfig
+from mcp_server.tools.git_tools import CreateBranchInput
+from mcp_server.tools.issue_tools import CreateIssueInput
+from mcp_server.tools.pr_tools import CreatePRInput
 
 pytest_plugins = [
     "tests.mcp_server.fixtures.artifact_test_harness",
@@ -38,12 +35,14 @@ def reset_config_singletons() -> Generator[None, None, None]:
     """
 
     def _reset_all() -> None:
-        IssueConfig.singleton_instance = None
-        ScopeConfig.singleton_instance = None
-        WorkflowConfig.singleton_instance = None
-        MilestoneConfig.singleton_instance = None
-        ContributorConfig.singleton_instance = None
-        LabelConfig.reset()
+        CreateIssueInput._issue_config = None
+        CreateIssueInput._git_config = None
+        CreateIssueInput._label_config = None
+        CreateIssueInput._scope_config = None
+        CreateIssueInput._milestone_config = None
+        CreateIssueInput._contributor_config = None
+        CreateBranchInput._git_config = None
+        CreatePRInput._git_config = None
 
     _reset_all()
     yield

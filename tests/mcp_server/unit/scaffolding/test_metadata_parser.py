@@ -9,10 +9,8 @@ Following TDD: These tests are written BEFORE implementation (RED phase).
 
 import pytest
 
-from mcp_server.scaffolding.metadata import (
-    MetadataParseError,
-    ScaffoldMetadataParser,
-)
+from mcp_server.scaffolding.metadata import MetadataParseError
+from tests.mcp_server.test_support import make_metadata_parser
 
 
 class TestScaffoldMetadataParser:
@@ -25,7 +23,7 @@ class TestScaffoldMetadataParser:
             "# template=dto version=abc12345 created=2026-01-20T14:00Z updated=\n"
             "class UserDTO:\n    pass\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".py")
         assert metadata is not None
 
@@ -40,7 +38,7 @@ class TestScaffoldMetadataParser:
             "// template=interface version=def67890 created=2026-01-20T14:00Z updated=\n"
             "export interface User {\n    id: string;\n}\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".ts")
         assert metadata is not None
 
@@ -56,7 +54,7 @@ class TestScaffoldMetadataParser:
             "# Design Document\n\n"
             "Content here.\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".md")
         assert metadata is not None
 
@@ -72,7 +70,7 @@ class TestScaffoldMetadataParser:
             "    <body>{{ content }}</body>\n"
             "</html>\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".jinja2")
         assert metadata is not None
 
@@ -86,7 +84,7 @@ class TestScaffoldMetadataParser:
             "class UserDTO:\n"
             "    pass\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".py")
         assert metadata is not None
 
@@ -99,7 +97,7 @@ class TestScaffoldMetadataParser:
             "# template=commit_message version=a1b2c3d4 created=2026-01-20T14:00Z updated=\n"
             "feat: Add user authentication\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".txt")
         assert metadata is not None
 
@@ -111,14 +109,14 @@ class TestScaffoldMetadataParser:
 class User:
     pass
 """
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".py")
 
         assert metadata is None
 
     def test_parse_empty_file_returns_none(self):
         """RED: Empty files should return None."""
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse("", ".py")
 
         assert metadata is None
@@ -131,7 +129,7 @@ class User:
 class UserDTO:
     pass
 """
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".py")
 
         assert metadata is None
@@ -142,7 +140,7 @@ class UserDTO:
 # template=dto created=2026-01-20T14:00Z updated=
 # Missing: version
 """
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
 
         # Parser will fail because line 2 doesn't match expected pattern (no version=)
         metadata = parser.parse(content, ".py")
@@ -156,7 +154,7 @@ class UserDTO:
             "# template=Invalid_Template version=abc12345 created=2026-01-20T14:00Z updated=\n"
             "# template should be lowercase with hyphens/underscores only\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
 
         with pytest.raises(MetadataParseError, match="Invalid value.*template"):
             parser.parse(content, ".py")
@@ -167,7 +165,7 @@ class UserDTO:
 # template=dto version=abc12345 created=2026-01-20 14:00:00 updated=
 # Missing T and Z in timestamp
 """
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
 
         with pytest.raises(MetadataParseError, match="Invalid value.*created"):
             parser.parse(content, ".py")
@@ -177,7 +175,7 @@ class UserDTO:
         content = """# some_file.unknown
 # template=dto version=abc12345 created=2026-01-20T14:00Z updated=
 """
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".unknown")
 
         assert metadata is None
@@ -189,7 +187,7 @@ class UserDTO:
             "# This line doesn't match the expected pattern\n"
             "# Should return None\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
 
         # Line 2 doesn't match metadata pattern
         metadata = parser.parse(content, ".py")
@@ -201,7 +199,7 @@ class UserDTO:
             "#   test.py\n"
             "#   template=dto   version=abc12345   created=2026-01-20T14:00Z   updated=\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".py")
         assert metadata is not None
 
@@ -215,7 +213,7 @@ class UserDTO:
             "# Template=dto VERSION=abc12345 created=2026-01-20T14:00Z updated=\n"
             "# Uppercase fields should be treated as unknown\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
 
         # Uppercase fields are unknown/ignored - doesn't match pattern
         metadata = parser.parse(content, ".py")
@@ -227,7 +225,7 @@ class UserDTO:
             "# test.py\n"
             "# template=dto template=worker version=abc12345 created=2026-01-20T14:00Z updated=\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".py")
         assert metadata is not None
 
@@ -239,7 +237,7 @@ class UserDTO:
             "# test.py\n"
             "# template=dto version=abc12345 created=2026-01-20T14:00Z updated= unknown_field=ignored\n"
         )
-        parser = ScaffoldMetadataParser()
+        parser = make_metadata_parser()
         metadata = parser.parse(content, ".py")
         assert metadata is not None
 

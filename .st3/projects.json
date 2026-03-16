@@ -2088,7 +2088,7 @@
             "deliverables": [
               {
                 "id": "c_loader_3.tools_rewired",
-                "description": "6 tool files rewired: pr_tools, cycle_tools, git_tools, project_tools, label_tools; no .from_file( calls",
+                "description": "14 tool and validator entry-point files rewired: pr_tools, cycle_tools, git_tools, project_tools, label_tools, issue_tools, phase_tools, discovery_tools, git_pull_tool, git_fetch_tool, git_analysis_tools, quality_tools, validation_tools, scaffold_artifact; no direct config loads or fallback manager construction that depends on self-loading config",
                 "validates": {
                   "type": "absent_text",
                   "file": "mcp_server/tools/pr_tools.py",
@@ -2097,11 +2097,11 @@
               },
               {
                 "id": "c_loader_3.managers_rewired",
-                "description": "6 manager files rewired: git_manager, phase_state_engine, artifact_manager, qa_manager, phase_contract_resolver, enforcement_runner receive config via DI",
+                "description": "7 manager files rewired: git_manager, phase_state_engine, artifact_manager, qa_manager, phase_contract_resolver, enforcement_runner, project_manager receive config via DI; no direct config imports remain in managers/",
                 "validates": {
                   "type": "absent_text",
-                  "file": "mcp_server/managers/git_manager.py",
-                  "text": ".from_file("
+                  "file": "mcp_server/managers/project_manager.py",
+                  "text": "WorkflowConfig.load()"
                 }
               },
               {
@@ -2123,7 +2123,7 @@
                 }
               }
             ],
-            "exit_criteria": "Select-String '.from_file(|reset_instance(' mcp_server/tools,managers,core,scaffolding,scaffolders -> 0; full suite green"
+            "exit_criteria": "Select-String '.from_file(|reset_instance(|.reset(' mcp_server/tools,managers,core,scaffolding,scaffolders,validation -> 0; Select-String '.from_file(|reset_instance(|.reset(' mcp_server/server.py -> 0; Select-String 'from mcp_server\\.config' mcp_server/managers -> 0; full suite green"
           },
           {
             "cycle_number": 6,

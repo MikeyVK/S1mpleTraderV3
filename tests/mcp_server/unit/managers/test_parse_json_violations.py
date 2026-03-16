@@ -4,6 +4,7 @@ import pytest
 
 from mcp_server.config.quality_config import JsonViolationsParsing, ViolationDTO
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 
 class TestParseJsonViolationsRootArray:
@@ -23,7 +24,7 @@ class TestParseJsonViolationsRootArray:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     @pytest.fixture
     def flat_parsing(self) -> JsonViolationsParsing:

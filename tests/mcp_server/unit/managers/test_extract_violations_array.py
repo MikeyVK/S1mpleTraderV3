@@ -4,6 +4,7 @@ import pytest
 
 from mcp_server.config.quality_config import JsonViolationsParsing, ViolationDTO
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 _FLAT_MAP: dict[str, str] = {
     "file": "filename",
@@ -23,7 +24,7 @@ class TestExtractViolationsArray:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     # ------------------------------------------------------------------
     # violations_path=None  → root is the list

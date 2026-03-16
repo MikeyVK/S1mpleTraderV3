@@ -63,8 +63,8 @@ class GitFetchTool(BaseTool):
     description = "Fetch updates from a remote"
     args_model = GitFetchInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(self, manager: GitManager) -> None:
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:

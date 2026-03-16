@@ -51,9 +51,9 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
-        tool = CreateLabelTool(manager=Mock())
+        tool = CreateLabelTool(manager=Mock(), label_config=label_config)
         params = CreateLabelInput(name="invalid-name", color="FF0000")
 
         result = await tool.execute(params)
@@ -71,9 +71,9 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
-        tool = CreateLabelTool(manager=Mock())
+        tool = CreateLabelTool(manager=Mock(), label_config=label_config)
         params = CreateLabelInput(name="type:bug", color="#FF0000")
 
         result = await tool.execute(params)
@@ -93,12 +93,12 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
         mock_manager.create_label = Mock(return_value=_MockLabel(name="type:bug", color="FF0000"))
 
-        tool = CreateLabelTool(manager=mock_manager)
+        tool = CreateLabelTool(manager=mock_manager, label_config=label_config)
         params = CreateLabelInput(name="type:bug", color="FF0000")
 
         result = await tool.execute(params)
@@ -119,14 +119,14 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
         mock_manager.create_label = Mock(
             return_value=_MockLabel(name="good first issue", color="7057FF")
         )
 
-        tool = CreateLabelTool(manager=mock_manager)
+        tool = CreateLabelTool(manager=mock_manager, label_config=label_config)
         params = CreateLabelInput(name="good first issue", color="7057FF")
 
         result = await tool.execute(params)
@@ -148,9 +148,9 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
-        tool = AddLabelsTool(manager=Mock())
+        tool = AddLabelsTool(manager=Mock(), label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["undefined-label"])
 
         result = await tool.execute(params)
@@ -172,10 +172,10 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        tool = AddLabelsTool(manager=mock_manager)
+        tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["type:feature", "priority:high"])
 
         result = await tool.execute(params)
@@ -194,10 +194,10 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        tool = AddLabelsTool(manager=mock_manager)
+        tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["type:feature", "undefined"])
 
         result = await tool.execute(params)
@@ -220,10 +220,10 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
-        tool = AddLabelsTool(manager=mock_manager)
+        tool = AddLabelsTool(manager=mock_manager, label_config=label_config)
         params = AddLabelsInput(issue_number=1, labels=["good first issue"])
 
         result = await tool.execute(params)
@@ -245,7 +245,7 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
@@ -255,7 +255,7 @@ labels:
             ]
         )
 
-        tool = DetectLabelDriftTool(manager=mock_manager)
+        tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
         result = await tool.execute(params)
@@ -278,14 +278,14 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
             return_value=[_MockLabel(name="type:feature", color="1D76DB", description="")]
         )
 
-        tool = DetectLabelDriftTool(manager=mock_manager)
+        tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
         result = await tool.execute(params)
@@ -306,7 +306,7 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         # Create mock label with attributes (not Mock object)
         class MockLabel:
@@ -320,7 +320,7 @@ labels:
             return_value=[MockLabel(name="type:feature", color="FF0000", description="")]
         )
 
-        tool = DetectLabelDriftTool(manager=mock_manager)
+        tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
         result = await tool.execute(params)
@@ -343,7 +343,7 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
@@ -356,7 +356,7 @@ labels:
             ]
         )
 
-        tool = DetectLabelDriftTool(manager=mock_manager)
+        tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
         result = await tool.execute(params)
@@ -377,14 +377,14 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
             return_value=[_MockLabel(name="type:feature", color="1D76DB", description="Test")]
         )
 
-        tool = DetectLabelDriftTool(manager=mock_manager)
+        tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
         result = await tool.execute(params)
@@ -404,7 +404,7 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(
@@ -414,7 +414,7 @@ labels:
             ]
         )
 
-        tool = DetectLabelDriftTool(manager=mock_manager)
+        tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
         result = await tool.execute(params)
@@ -436,12 +436,12 @@ labels:
         yaml_file.write_text(yaml_content)
 
         LabelConfig.reset()
-        LabelConfig.load(yaml_file)
+        label_config = LabelConfig.load(yaml_file)
 
         mock_manager = Mock()
         mock_manager.list_labels = Mock(side_effect=Exception("API Error"))
 
-        tool = DetectLabelDriftTool(manager=mock_manager)
+        tool = DetectLabelDriftTool(manager=mock_manager, label_config=label_config)
         params = DetectLabelDriftInput()
 
         result = await tool.execute(params)

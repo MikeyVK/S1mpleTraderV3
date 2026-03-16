@@ -15,22 +15,19 @@ Tests for _render_body() SCAFFOLD header output (Issue #239 C3)
     - Rendered body uses HTML comment format (not Python # comment)
 """
 
-# Standard library
 import re
 from unittest.mock import MagicMock
 
-# Third-party
 import pytest
 
-# Project modules
 from mcp_server.tools.issue_tools import CreateIssueTool, IssueBody
+from tests.mcp_server.test_support import make_create_issue_tool
 
 
 @pytest.fixture(name="tool")
 def fixture_tool() -> CreateIssueTool:
     """CreateIssueTool with mocked GitHubManager (no real git/API calls)."""
-    mock_manager = MagicMock()
-    return CreateIssueTool(manager=mock_manager)
+    return make_create_issue_tool(MagicMock())
 
 
 @pytest.fixture(name="minimal_body")
@@ -48,11 +45,9 @@ class TestRenderBodyScaffoldHeader:
         """Rendered body contains compact SCAFFOLD header with template and version fields."""
         result = tool._render_body(minimal_body, title="Test Issue")
 
-        # Should have: <!-- template=issue version=XXXXXXXX -->
         assert "template=issue" in result, f"Expected 'template=issue' in:\n{result}"
         assert "version=" in result, f"Expected 'version=' in:\n{result}"
 
-        # Version hash should be 8 hex chars
         match = re.search(r"version=([0-9a-f]{8})\b", result)
         assert match is not None, f"Expected 8-char hex version hash in:\n{result}"
 
@@ -71,7 +66,6 @@ class TestRenderBodyScaffoldHeader:
         """Rendered body must NOT contain an empty HTML comment line (<!--  -->)."""
         result = tool._render_body(minimal_body, title="Test Issue")
 
-        # Empty filepath line would be: <!--  --> or <!-- -->
         assert "<!--  -->" not in result, f"Unexpected empty HTML comment in:\n{result}"
         assert "<!-- -->" not in result, f"Unexpected empty HTML comment in:\n{result}"
 
@@ -96,7 +90,6 @@ class TestRenderBodyScaffoldHeader:
         result = tool._render_body(minimal_body, title="Test Issue")
         lines = result.strip().split("\n")
 
-        # First line should be HTML comment, not Python comment
         first_line = lines[0]
         assert first_line.startswith("<!--"), f"Expected HTML comment header, got: {first_line!r}"
         assert not first_line.startswith("# "), (

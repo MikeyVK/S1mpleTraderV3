@@ -54,8 +54,9 @@ class TestGitToolsConfigIntegration:
             temp_path = temp_file.name
 
         try:
-            # Load custom config (needed to populate singleton)
-            _ = GitConfig.from_file(temp_path)
+            # Load custom config and inject it into the input validator
+            git_config = GitConfig.from_file(temp_path)
+            CreateBranchInput.configure(git_config)
 
             # "hotfix" should pass (in custom config)
             input_hotfix = CreateBranchInput(

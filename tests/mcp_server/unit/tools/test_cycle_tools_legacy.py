@@ -11,13 +11,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.cycle_tools import (
     ForceCycleTransitionInput,
     ForceCycleTransitionTool,
     TransitionCycleInput,
     TransitionCycleTool,
+)
+from tests.mcp_server.test_support import (
+    make_git_manager,
+    make_phase_state_engine,
+    make_project_manager,
 )
 
 
@@ -30,7 +33,13 @@ class TestTransitionCycleTool:
     @pytest.fixture()
     def tool(self, tmp_path: Path) -> TransitionCycleTool:
         """Fixture to instantiate TransitionCycleTool."""
-        return TransitionCycleTool(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
+        return TransitionCycleTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
+            git_manager=make_git_manager(tmp_path),
+        )
 
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
@@ -38,10 +47,8 @@ class TestTransitionCycleTool:
         workspace_root = tmp_path
         issue_number = 146
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         # Initialize project
         project_manager.initialize_project(
@@ -120,10 +127,8 @@ class TestTransitionCycleTool:
         assert not result.is_error, f"Expected success: {result.content}"
 
         # Check state updated
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         assert state.current_cycle == 2, "Current cycle should be 2"
         assert state.last_cycle == 1, "Last cycle should be preserved"
@@ -139,10 +144,8 @@ class TestTransitionCycleTool:
         workspace_root, _ = setup_project
 
         # Set current cycle to 2
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         state = state.with_updates(current_cycle=2)
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
@@ -201,10 +204,8 @@ class TestTransitionCycleTool:
         workspace_root, _ = setup_project
 
         # Change phase to design
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         state = state.with_updates(current_phase="design")
         state_engine._save_state("feature/146-tdd-cycle-tracking", state)
@@ -234,7 +235,13 @@ class TestForceCycleTransitionTool:
     @pytest.fixture()
     def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
         """Fixture to instantiate ForceCycleTransitionTool."""
-        return ForceCycleTransitionTool(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
+        return ForceCycleTransitionTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
+            git_manager=make_git_manager(tmp_path),
+        )
 
     @pytest.fixture()
     def setup_forced_project(self, tmp_path: Path) -> tuple[Path, int]:
@@ -242,10 +249,8 @@ class TestForceCycleTransitionTool:
         workspace_root = tmp_path
         issue_number = 146
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         # Initialize project
         project_manager.initialize_project(
@@ -332,10 +337,8 @@ class TestForceCycleTransitionTool:
         assert "1" in text
 
         # Verify state updated
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         assert state.current_cycle == 1
         assert state.last_cycle == 2
@@ -378,10 +381,8 @@ class TestForceCycleTransitionTool:
         assert "4" in text
 
         # Verify state
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         assert state.current_cycle == 4
 
@@ -451,7 +452,13 @@ class TestForceCycleTransitionSkippedDeliverables:
     @pytest.fixture()
     def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
         """Fixture to instantiate ForceCycleTransitionTool."""
-        return ForceCycleTransitionTool(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
+        return ForceCycleTransitionTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
+            git_manager=make_git_manager(tmp_path),
+        )
 
     def _setup_project_with_validates_deliverables(
         self, tmp_path: Path, cycle3_file_contains: str | None
@@ -466,10 +473,8 @@ class TestForceCycleTransitionSkippedDeliverables:
         issue_number = 229
         branch = "feature/229-phase-deliverables-enforcement"
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         project_manager.initialize_project(
             issue_number=issue_number,
@@ -621,7 +626,13 @@ class TestForceCycleAuditSchema:
     @pytest.fixture()
     def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
         """Fixture to instantiate ForceCycleTransitionTool."""
-        return ForceCycleTransitionTool(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
+        return ForceCycleTransitionTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
+            git_manager=make_git_manager(tmp_path),
+        )
 
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
@@ -629,10 +640,8 @@ class TestForceCycleAuditSchema:
         workspace_root = tmp_path
         issue_number = 146
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         project_manager.initialize_project(
             issue_number=issue_number,
@@ -717,10 +726,8 @@ class TestForceCycleAuditSchema:
 
         assert not result.is_error, f"Expected success: {result.content}"
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         history = state.cycle_history
 
@@ -757,10 +764,8 @@ class TestForceCycleAuditSchema:
                 )
             )
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         history = state.cycle_history
 
@@ -798,10 +803,8 @@ class TestForceCycleAuditSchema:
 
         assert not result.is_error
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         history = state.cycle_history
 
@@ -821,7 +824,13 @@ class TestTransitionCycleHistory:
     @pytest.fixture()
     def tool(self, tmp_path: Path) -> TransitionCycleTool:
         """Fixture to instantiate TransitionCycleTool."""
-        return TransitionCycleTool(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
+        return TransitionCycleTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
+            git_manager=make_git_manager(tmp_path),
+        )
 
     @pytest.fixture()
     def setup_project(self, tmp_path: Path) -> tuple[Path, int]:
@@ -829,10 +838,8 @@ class TestTransitionCycleHistory:
         workspace_root = tmp_path
         issue_number = 146
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         project_manager.initialize_project(
             issue_number=issue_number,
@@ -905,10 +912,8 @@ class TestTransitionCycleHistory:
 
         assert not result.is_error, f"Expected success: {result.content}"
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         history = state.cycle_history
 
@@ -942,10 +947,8 @@ class TestTransitionCycleHistory:
             result2 = await tool.execute(TransitionCycleInput(to_cycle=3))
             assert not result2.is_error
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
         state = state_engine.get_state("feature/146-tdd-cycle-tracking")
         history = state.cycle_history
 
@@ -969,7 +972,13 @@ class TestTransitionCycleExitCriteria:
     @pytest.fixture()
     def tool(self, tmp_path: Path) -> TransitionCycleTool:
         """Fixture to instantiate TransitionCycleTool."""
-        return TransitionCycleTool(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
+        return TransitionCycleTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
+            git_manager=make_git_manager(tmp_path),
+        )
 
     def _make_project(
         self,
@@ -989,10 +998,8 @@ class TestTransitionCycleExitCriteria:
         workspace_root = tmp_path
         issue_number = 146
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         project_manager.initialize_project(
             issue_number=issue_number,
@@ -1172,7 +1179,13 @@ class TestForceCycleTransitionResponseFormat:
     @pytest.fixture()
     def tool(self, tmp_path: Path) -> ForceCycleTransitionTool:
         """Fixture to instantiate ForceCycleTransitionTool."""
-        return ForceCycleTransitionTool(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
+        return ForceCycleTransitionTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=make_phase_state_engine(tmp_path, project_manager=project_manager),
+            git_manager=make_git_manager(tmp_path),
+        )
 
     def _setup_for_cycle_transition(
         self, tmp_path: Path, *, cycle3_file_present: bool
@@ -1182,8 +1195,8 @@ class TestForceCycleTransitionResponseFormat:
         issue_number = 229
         branch = "feature/229-phase-deliverables-enforcement"
 
-        pm = ProjectManager(workspace_root=workspace_root)
-        se = PhaseStateEngine(workspace_root=workspace_root, project_manager=pm)
+        pm = make_project_manager(workspace_root)
+        se = make_phase_state_engine(workspace_root, project_manager=pm)
 
         pm.initialize_project(
             issue_number=issue_number,

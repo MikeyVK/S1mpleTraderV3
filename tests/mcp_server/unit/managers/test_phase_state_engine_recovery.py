@@ -17,8 +17,7 @@ from unittest.mock import patch
 import pytest
 
 from mcp_server.config.workflows import WorkflowConfig
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 def _load_workflow_config() -> WorkflowConfig:
@@ -36,7 +35,7 @@ class TestPhaseStateEngineMode2:
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager and initialize a project."""
-        manager = ProjectManager(workspace_root=workspace_root)
+        manager = make_project_manager(workspace_root)
         # Initialize project for testing
         manager.initialize_project(
             issue_number=39, issue_title="Test auto-recovery", workflow_name="bug"
@@ -48,7 +47,7 @@ class TestPhaseStateEngineMode2:
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(workspace_root, project_manager=project_manager)
 
     @pytest.mark.asyncio
     async def test_missing_state_triggers_reconstruction(

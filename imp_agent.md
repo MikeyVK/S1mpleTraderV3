@@ -73,6 +73,23 @@ Especially avoid:
 - manager creation inside execute paths instead of injection
 - hardcoded workflow or phase knowledge that belongs in config
 - partial migrations that create fake progress
+## Test Refactor Within Cycle
+
+When a production refactor has blast radius into tests, the required test refactor is part of the same cycle rather than optional cleanup.
+
+This rule is not limited to constructor DI, composition-root wiring, or config access changes. It applies whenever the refactor leaves touched or logically affected tests coupled to patterns that violate [docs/coding_standards/ARCHITECTURE_PRINCIPLES.md](docs/coding_standards/ARCHITECTURE_PRINCIPLES.md), even if those tests can be made green with smaller patching.
+
+That means:
+- update affected tests in the same cycle when the refactor invalidates their setup, fixtures, helpers, builders, mocks, or architectural assumptions
+- refactor tests inside the blast radius toward the same architectural standards that are relevant in test code: explicit dependencies, no hidden singleton state, no import-time side effects, no silent fallback setup, no duplicated config knowledge, and no brittle cwd-dependent behavior
+- prefer shared builders, fixtures, and helper factories over repetitive ad hoc rewrites when multiple tests are expressing the same setup knowledge
+- remove reliance on `from_file()`, `load()`, `reset_instance()`, implicit cwd assumptions, hidden singleton state, and patch-heavy recovery patterns when those behaviors are being removed or made invalid by the production refactor
+- treat green tests as insufficient if the remaining test shape still gives false confidence, hides legacy coupling, or materially conflicts with the architecture contract
+- keep the test refactor bounded to the production blast radius and the minimum coherent architectural cleanup needed to make QA evidence trustworthy
+- do not claim a cycle is blocked merely because honest closure requires coherent test rewiring within that blast radius
+
+Use the maximum defensible test refactor within the current cycle when it reduces brittle coupling and makes QA evidence more truthful, but do not silently absorb unrelated later-cycle test debt outside the blast radius.
+
 
 ## Working Style
 

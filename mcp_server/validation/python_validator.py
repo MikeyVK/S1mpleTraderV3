@@ -1,4 +1,5 @@
 """Python validator implementation."""
+
 import ast
 import contextlib
 import os
@@ -13,7 +14,12 @@ from .base import BaseValidator, ValidationIssue, ValidationResult
 class PythonValidator(BaseValidator):
     """Validator for Python files using QAManager (Pylint/MyPy)."""
 
-    def __init__(self, syntax_only: bool = False) -> None:
+    def _require_qa_manager(self) -> QAManager:
+        if self.qa_manager is None:
+            raise ValueError("QAManager must be injected for full QA validation")
+        return self.qa_manager
+
+    def __init__(self, syntax_only: bool = False, qa_manager: QAManager | None = None) -> None:
         """
         Initialize Python validator.
 
@@ -22,8 +28,9 @@ class PythonValidator(BaseValidator):
                         If False, run full QA gates (for post-write validation).
         """
         self.syntax_only = syntax_only
-        if not syntax_only:
-            self.qa_manager = QAManager()
+        self.qa_manager: QAManager | None = qa_manager
+        if not syntax_only and self.qa_manager is None:
+            raise ValueError("QAManager must be injected for full QA validation")
 
     def __repr__(self) -> str:
         """Return string representation."""
@@ -42,7 +49,7 @@ class PythonValidator(BaseValidator):
         # Full QA mode with existing file (content=None, syntax_only=False)
         if content is None and not self.syntax_only:
             # Run quality gates directly on existing file
-            result = self.qa_manager.run_quality_gates([path])
+            result = self._require_qa_manager().run_quality_gates([path])
             return self._parse_result(result, original_path=path, scanned_path=path)
 
         # Read content if not provided (syntax_only mode requires content)
@@ -52,9 +59,7 @@ class PythonValidator(BaseValidator):
                     content = f.read()
             except OSError as e:
                 return ValidationResult(
-                    passed=False,
-                    score=0.0,
-                    issues=[ValidationIssue(f"Failed to read file: {e}")]
+                    passed=False, score=0.0, issues=[ValidationIssue(f"Failed to read file: {e}")]
                 )
 
         # Syntax-only mode for pre-write validation (fast, no config needed)
@@ -74,7 +79,7 @@ class PythonValidator(BaseValidator):
                 message=f"Python syntax error: {e.msg}",
                 line=e.lineno,
                 column=e.offset,
-                severity="error"
+                severity="error",
             )
             return ValidationResult(passed=False, score=0.0, issues=[issue])
 
@@ -95,7 +100,7 @@ class PythonValidator(BaseValidator):
             temp_file = temp_file_path
 
             # Run QA Manager
-            result = self.qa_manager.run_quality_gates([scan_path])
+            result = self._require_qa_manager().run_quality_gates([scan_path])
 
             return self._parse_result(result, original_path=path, scanned_path=scan_path)
 
@@ -114,9 +119,7 @@ class PythonValidator(BaseValidator):
         # Calculate score (average of gates or use linting score)
         # QAManager returns 'score' string like "10.00/10" for Linting
         score = 0.0
-        lint_gate = next(
-            (g for g in raw_result.get("gates", []) if g["name"] == "Linting"), None
-        )
+        lint_gate = next((g for g in raw_result.get("gates", []) if g["name"] == "Linting"), None)
         if lint_gate and "score" in lint_gate:
             try:
                 score_str = lint_gate["score"].split("/")[0]
@@ -132,19 +135,17 @@ class PythonValidator(BaseValidator):
                 if scanned_path in msg:
                     msg = msg.replace(scanned_path, os.path.basename(original_path))
 
-                issues.append(ValidationIssue(
-                    message=f"[{gate['name']}] {msg}",
-                    line=issue.get("line"),
-                    column=issue.get("column"),
-                    code=issue.get("code"),
-                    severity="error"  # Everything failure in QA gate is an error for now
-                ))
+                issues.append(
+                    ValidationIssue(
+                        message=f"[{gate['name']}] {msg}",
+                        line=issue.get("line"),
+                        column=issue.get("column"),
+                        code=issue.get("code"),
+                        severity="error",  # Everything failure in QA gate is an error for now
+                    )
+                )
 
-        return ValidationResult(
-            passed=passed,
-            score=score,
-            issues=issues
-        )
+        return ValidationResult(passed=passed, score=score, issues=issues)
 
 
 class PythonSyntaxValidator(PythonValidator):  # pylint: disable=too-few-public-methods

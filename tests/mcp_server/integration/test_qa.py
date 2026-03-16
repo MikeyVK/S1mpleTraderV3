@@ -19,20 +19,19 @@ Marked @pytest.mark.integration: skipped by default, run via:
 
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
-from mcp_server.config.quality_config import QualityConfig
-from mcp_server.managers.qa_manager import QAManager
+from mcp_server.schemas import QualityConfig
 from mcp_server.tools.quality_tools import RunQualityGatesInput, RunQualityGatesTool
+from tests.mcp_server.test_support import make_qa_manager
 
 pytestmark = pytest.mark.asyncio
 
 
 def test_qa_manager_run_gates_with_real_file() -> None:
     """QAManager runs quality gates on a real clean file."""
-    manager = QAManager()
+    manager = make_qa_manager()
     result = manager.run_quality_gates(["backend/core/enums.py"])
 
     assert len(result["gates"]) >= 6, f"Expected at least 6 gates, got {len(result['gates'])}"
@@ -43,7 +42,7 @@ def test_qa_manager_run_gates_with_real_file() -> None:
 @pytest.mark.asyncio
 async def test_quality_tool_output_format() -> None:
     """RunQualityGatesTool returns schema-first JSON with text_output."""
-    manager = QAManager()
+    manager = make_qa_manager()
     tool = RunQualityGatesTool(manager=manager)
 
     result = await tool.execute(
@@ -120,17 +119,13 @@ def test_switching_active_gates_changes_execution(tmp_path: Path) -> None:
     config_file = tmp_path / "quality.yaml"
     config_file.write_text(json.dumps(custom_config), encoding="utf-8")
 
-    def mock_load() -> QualityConfig:
-        return QualityConfig.model_validate(custom_config)
+    manager = make_qa_manager(quality_config=QualityConfig.model_validate(custom_config))
+    result = manager.run_quality_gates(["backend/core/enums.py"])
 
-    with patch.object(QualityConfig, "load", side_effect=mock_load):
-        manager = QAManager()
-        result = manager.run_quality_gates(["backend/core/enums.py"])
-
-        gate_names = [gate["name"] for gate in result["gates"]]
-        assert len(gate_names) == 2, f"Expected 2 gates, got {len(gate_names)}: {gate_names}"
-        assert "Gate 1: Formatting" in gate_names
-        assert "Gate 3: Line Length" in gate_names
-        assert not any("Gate 0:" in name for name in gate_names)
-        assert not any("Gate 2:" in name for name in gate_names)
-        assert not any("Gate 4:" in name for name in gate_names)
+    gate_names = [gate["name"] for gate in result["gates"]]
+    assert len(gate_names) == 2, f"Expected 2 gates, got {len(gate_names)}: {gate_names}"
+    assert "Gate 1: Formatting" in gate_names
+    assert "Gate 3: Line Length" in gate_names
+    assert not any("Gate 0:" in name for name in gate_names)
+    assert not any("Gate 2:" in name for name in gate_names)
+    assert not any("Gate 4:" in name for name in gate_names)

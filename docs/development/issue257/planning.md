@@ -342,40 +342,49 @@ pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # 
 
 ## Cycle 2c — C_LOADER.3
 
-**Goal:** Rewire all 17 production consumer files (tools/, managers/, core/, scaffolding/) to receive configs via constructor injection. No `from_file()` / `load()` / fallback construction remaining outside `config/`.
+**Goal:** Rewire all 26 production consumer and composition-root files (tools/, managers/, core/, scaffolding/, scaffolders/, validation/, and `server.py`) to receive configs via constructor injection. No `from_file()` / `load()` / fallback construction remaining outside `config/`.
 
 ### Deliverables
 
 | id | title | type | artifact | done_when | validates |
 |---|---|---|---|---|---|
-| `c_loader_3.tools_rewired` | 6 tool files rewired | migration | pr_tools, cycle_tools, git_tools, project_tools, label_tools: use manager; issue_tools: `@field_validator` config calls removed | `test_no_tool_calls_from_file` passes | P-2 tools clean |
-| `c_loader_3.managers_rewired` | 6 manager files rewired | migration | git_manager, phase_state_engine, artifact_manager, qa_manager, phase_contract_resolver, enforcement_runner: receive config via DI | `test_no_manager_imports_config_schema_directly` passes | P-2 managers clean |
-| `c_loader_3.core_rewired` | policy_engine + directory_policy_resolver rewired | migration | `PolicyEngine` constructor receives configs via DI; `reload()` uses `ConfigLoader(self._config_root).load_()`; `directory_policy_resolver` mandatory param | `Select-String "\.from_file\(|reset_instance" mcp_server/core/ → 0 matches` | RC-6 no prohibited internals |
-| `c_loader_3.scaffolding_rewired` | scaffolding/metadata.py + template_scaffolder.py rewired | migration | Both receive config via DI; no `from_file()` | `Select-String "\.from_file\(" mcp_server/scaffolding/, mcp_server/scaffolders/ → 0 matches` | P-2 scaffolding clean |
+| `c_loader_3.tools_rewired` | 14 tool and validator entry-point files rewired | migration | pr_tools, cycle_tools, git_tools, project_tools, label_tools, issue_tools, phase_tools, discovery_tools, git_pull_tool, git_fetch_tool, git_analysis_tools, quality_tools, validation_tools, scaffold_artifact remove direct config loads and mandatory-DI call-sites are updated | `test_no_tool_calls_from_file` passes | P-2 tools clean |
+| `c_loader_3.managers_rewired` | 7 manager files rewired | migration | git_manager, phase_state_engine, artifact_manager, qa_manager, phase_contract_resolver, enforcement_runner, project_manager receive config via DI; no direct config imports remain in managers/ | `test_no_manager_imports_config_schema_directly` passes | P-2 managers clean |
+| `c_loader_3.core_rewired` | policy_engine + directory_policy_resolver rewired | migration | `PolicyEngine` constructor receives configs via DI; `reload()` uses `ConfigLoader(self._config_root).load_()`; `directory_policy_resolver` mandatory param | `Select-String "\.from_file\(|reset_instance\(|\.reset\(" mcp_server/core/ → 0 matches` | RC-6 no prohibited internals |
+| `c_loader_3.scaffolding_rewired` | scaffolding and scaffolder entry points rewired | migration | `scaffolding/metadata.py` receives `ScaffoldMetadataConfig` via DI; `TemplateScaffolder` registry is mandatory; production call-sites are updated in the same cycle | `Select-String "\.from_file\(" mcp_server/scaffolding/, mcp_server/scaffolders/ → 0 matches` | P-2 scaffolding clean |
 
 ### Integration Surface
 
-**Tools (6 files):**
+**Tools and validator entry points (14 files):**
 
 | ☐ | File | Anti-pattern | Fix |
 |---|---|---|---|
 | ☐ | `tools/pr_tools.py` | `GitConfig.from_file()` | Remove; use `git_manager.git_config` |
 | ☐ | `tools/cycle_tools.py` ×2 | `GitConfig.from_file()` | Remove; use `git_manager.git_config` |
 | ☐ | `tools/git_tools.py` ×2 | `GitConfig.from_file()` | Remove; use `git_manager.git_config` |
-| ☐ | `tools/project_tools.py` | `WorkflowConfig.load()` | Remove; use `project_manager` |
+| ☐ | `tools/project_tools.py` | `WorkflowConfig.load()` and fallback manager construction | Remove; use injected `project_manager`, `git_manager`, and `state_engine` |
 | ☐ | `tools/label_tools.py` ×3 | `LabelConfig.load()` | Remove; use `label_manager.label_config` |
 | ☐ | `tools/issue_tools.py` ×9 | `@field_validator` w/ `Config.from_file()` | Remove config calls from validators (validation logic moves to C_LOADER.5 → GitHubManager) |
+| ☐ | `tools/phase_tools.py` | `PhaseStateEngine(...)` built with fallback-loading dependencies | Pass injected config-backed dependencies through `ProjectManager` / composition root |
+| ☐ | `tools/discovery_tools.py` | `GitManager()` and `PhaseStateEngine(...)` rely on self-loading config | Rewire to injected manager/config path |
+| ☐ | `tools/git_pull_tool.py` | `GitManager()` / `PhaseStateEngine(...)` fallback construction | Rewire to DI-only manager/state-engine construction |
+| ☐ | `tools/git_fetch_tool.py` | `GitManager()` fallback construction | Rewire to DI-only manager construction |
+| ☐ | `tools/git_analysis_tools.py` | `GitManager()` fallback construction | Rewire to DI-only manager construction |
+| ☐ | `tools/quality_tools.py` | `QAManager()` fallback construction | Inject `QAManager` backed by explicit `QualityConfig` |
+| ☐ | `tools/validation_tools.py` | `QAManager()` fallback construction | Inject `QAManager` backed by explicit `QualityConfig` |
+| ☐ | `tools/scaffold_artifact.py` | `ArtifactManager()` fallback construction | Inject `ArtifactManager` with explicit registry-backed dependencies |
 
-**Managers (6 files):**
+**Managers (7 files):**
 
 | ☐ | File | Fix |
 |---|---|---|
 | ☐ | `managers/git_manager.py` | Remove constructor load; receive `GitConfig` via DI |
 | ☐ | `managers/phase_state_engine.py` | Make `git_config` mandatory (no fallback) |
-| ☐ | `managers/artifact_manager.py` | Make `registry` mandatory (no fallback) |
-| ☐ | `managers/qa_manager.py` ×2 | Remove; receive `QualityConfig` via DI |
-| ☐ | `managers/phase_contract_resolver.py` | Remove; receive `PhaseContractsConfig` via DI |
-| ☐ | `managers/enforcement_runner.py` | Remove; receive `EnforcementConfig` via DI |
+| ☐ | `managers/artifact_manager.py` | Make `registry` mandatory (no fallback); remove direct config import path used only for fallback loading |
+| ☐ | `managers/qa_manager.py` ×2 | Remove self-loading path; receive `QualityConfig` via DI |
+| ☐ | `managers/phase_contract_resolver.py` | Remove config-loader path; receive `PhaseContractsConfig` and related config context via DI |
+| ☐ | `managers/enforcement_runner.py` | Remove config-loader path; receive `EnforcementConfig` via DI |
+| ☐ | `managers/project_manager.py` | Remove `WorkflowConfig.load()` fallback; receive `WorkflowConfig` via DI |
 
 **Core (2 files):**
 
@@ -385,23 +394,33 @@ pytest tests/mcp_server/ --override-ini="addopts=" --tb=short -q              # 
 | ☐ | `core/policy_engine.py` (`reload()` ×4) | Replace `reset_instance()` + `from_file()` with `ConfigLoader(self._config_root).load_*()` |
 | ☐ | `core/directory_policy_resolver.py` | Make `config` mandatory (no fallback) |
 
-**Scaffolding (2 files):**
+**Scaffolding and scaffolders (2 files):**
 
 | ☐ | File | Fix |
 |---|---|---|
 | ☐ | `scaffolding/metadata.py` | Receive `ScaffoldMetadataConfig` via DI |
 | ☐ | `scaffolders/template_scaffolder.py` | Make `registry` mandatory (no fallback) |
 
+**Composition Root (1 file):**
+
+| ☐ | File | Fix |
+|---|---|---|
+| ☐ | `server.py` | Pass required configs into `QAManager` and `ArtifactManager` so production startup does not rely on fallback self-loading |
+
 ### Test Zone Assignment
 
-All modified tests in this cycle are Zone 3 — they receive pre-built config objects.
+All modified tests in this cycle are Zone 3 — they receive pre-built config objects or injected managers.
+Tests updated in this cycle exist only because mandatory-DI rewiring changes constructor surfaces or production composition roots.
 No test in this cycle may write YAML to disk or call `Config.from_file()`.
 
 ### Stop/Go — C_LOADER.3
 
 ```powershell
 Select-String "\.from_file\(|reset_instance\(|\.reset\(" `
-    (Get-ChildItem mcp_server/tools, mcp_server/managers, mcp_server/core, mcp_server/scaffolding, mcp_server/scaffolders -Recurse -Filter *.py).FullName
+    (Get-ChildItem mcp_server/tools, mcp_server/managers, mcp_server/core, mcp_server/scaffolding, mcp_server/scaffolders, mcp_server/validation -Recurse -Filter *.py).FullName
+# Expected: 0 matches
+
+Select-String "\.from_file\(|reset_instance\(|\.reset\(" mcp_server/server.py
 # Expected: 0 matches
 
 Select-String "from mcp_server\.config" `

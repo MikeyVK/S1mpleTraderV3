@@ -13,8 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 class TestPhaseStateEnginePersistence:
@@ -28,7 +27,7 @@ class TestPhaseStateEnginePersistence:
     @pytest.fixture
     def project_manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager with two test projects."""
-        manager = ProjectManager(workspace_root=workspace_root)
+        manager = make_project_manager(workspace_root)
         # Create project 1
         manager.initialize_project(
             issue_number=1, issue_title="First feature", workflow_name="feature"
@@ -44,7 +43,7 @@ class TestPhaseStateEnginePersistence:
         self, workspace_root: Path, project_manager: ProjectManager
     ) -> PhaseStateEngine:
         """Create PhaseStateEngine instance."""
-        return PhaseStateEngine(workspace_root=workspace_root, project_manager=project_manager)
+        return make_phase_state_engine(workspace_root, project_manager=project_manager)
 
     def test_state_json_contains_single_branch_only(
         self, state_engine: PhaseStateEngine, workspace_root: Path

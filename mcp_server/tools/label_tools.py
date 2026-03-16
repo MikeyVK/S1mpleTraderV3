@@ -1,4 +1,5 @@
 """GitHub label tools."""
+
 import re
 from typing import Any
 
@@ -12,6 +13,7 @@ from mcp_server.tools.tool_result import ToolResult
 
 class ListLabelsInput(BaseModel):
     """Input for ListLabelsTool."""
+
     # No input fields needed currently, but model required for consistency
 
 
@@ -22,14 +24,16 @@ class ListLabelsTool(BaseTool):
     description = "List all labels in the repository"
     args_model = ListLabelsInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager, label_config: LabelConfig) -> None:
+        self.manager = manager
+        self._label_config = label_config
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
-    async def execute(self, _params: ListLabelsInput) -> ToolResult:
+    async def execute(self, params: ListLabelsInput) -> ToolResult:
+        del params
         labels = self.manager.list_labels()
 
         if not labels:
@@ -45,6 +49,7 @@ class ListLabelsTool(BaseTool):
 
 class CreateLabelInput(BaseModel):
     """Input for CreateLabelTool."""
+
     name: str = Field(..., description="Label name (e.g., 'type:feature')")
     color: str = Field(..., description="Color hex code without # (e.g., '0e8a16')")
     description: str | None = Field(default="", description="Label description")
@@ -57,31 +62,29 @@ class CreateLabelTool(BaseTool):
     description = "Create a new label in the repository"
     args_model = CreateLabelInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager, label_config: LabelConfig) -> None:
+        self.manager = manager
+        self._label_config = label_config
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: CreateLabelInput) -> ToolResult:
         # Load label config for validation
-        label_config = LabelConfig.load()
-
         # Validate label name pattern
-        is_valid, error_msg = label_config.validate_label_name(params.name)
+        is_valid, error_msg = self._label_config.validate_label_name(params.name)
         if not is_valid:
             return ToolResult.text(f"❌ {error_msg}")
 
         # Validate color format (no # prefix)
         if params.color.startswith("#"):
             return ToolResult.text(
-                f"❌ Color must not include # prefix. "
-                f"Use '{params.color[1:]}' instead."
+                f"❌ Color must not include # prefix. Use '{params.color[1:]}' instead."
             )
 
         # Validate hex format
-        if not re.match(r'^[0-9A-Fa-f]{6}$', params.color):
+        if not re.match(r"^[0-9A-Fa-f]{6}$", params.color):
             return ToolResult.text(
                 f"❌ Invalid color format '{params.color}'. "
                 f"Must be 6-character hex code (e.g., '1D76DB')."
@@ -89,15 +92,14 @@ class CreateLabelTool(BaseTool):
 
         # Create label
         label = self.manager.create_label(
-            name=params.name,
-            color=params.color,
-            description=params.description or ""
+            name=params.name, color=params.color, description=params.description or ""
         )
         return ToolResult.text(f"Created label: **{label.name}** (#{params.color})")
 
 
 class DeleteLabelInput(BaseModel):
     """Input for DeleteLabelTool."""
+
     name: str = Field(..., description="Label name to delete")
 
 
@@ -108,12 +110,13 @@ class DeleteLabelTool(BaseTool):
     description = "Delete a label from the repository"
     args_model = DeleteLabelInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager, label_config: LabelConfig) -> None:
+        self.manager = manager
+        self._label_config = label_config
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: DeleteLabelInput) -> ToolResult:
         self.manager.delete_label(params.name)
@@ -122,6 +125,7 @@ class DeleteLabelTool(BaseTool):
 
 class RemoveLabelsInput(BaseModel):
     """Input for RemoveLabelsTool."""
+
     issue_number: int = Field(..., description="Issue/PR number")
     labels: list[str] = Field(..., description="List of labels to remove")
 
@@ -133,12 +137,13 @@ class RemoveLabelsTool(BaseTool):
     description = "Remove labels from an issue or PR"
     args_model = RemoveLabelsInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager, label_config: LabelConfig) -> None:
+        self.manager = manager
+        self._label_config = label_config
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: RemoveLabelsInput) -> ToolResult:
         self.manager.remove_labels(params.issue_number, params.labels)
@@ -149,6 +154,7 @@ class RemoveLabelsTool(BaseTool):
 
 class AddLabelsInput(BaseModel):
     """Input for AddLabelsTool."""
+
     issue_number: int = Field(..., description="Issue/PR number")
     labels: list[str] = Field(..., description="List of labels to add")
 
@@ -160,23 +166,20 @@ class AddLabelsTool(BaseTool):
     description = "Add labels to an issue or PR"
     args_model = AddLabelsInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager, label_config: LabelConfig) -> None:
+        self.manager = manager
+        self._label_config = label_config
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: AddLabelsInput) -> ToolResult:
         # Load label config for validation
-        label_config = LabelConfig.load()
-
         # Validate all labels exist
-        undefined = [label for label in params.labels if not label_config.label_exists(label)]
+        undefined = [label for label in params.labels if not self._label_config.label_exists(label)]
         if undefined:
-            return ToolResult.text(
-                f"❌ Labels not defined in labels.yaml: {undefined}"
-            )
+            return ToolResult.text(f"❌ Labels not defined in labels.yaml: {undefined}")
 
         # Add labels
         self.manager.add_labels(params.issue_number, params.labels)
@@ -184,8 +187,10 @@ class AddLabelsTool(BaseTool):
             f"Added labels to #{params.issue_number}: {', '.join(params.labels)}"
         )
 
+
 class DetectLabelDriftInput(BaseModel):
     """Input for DetectLabelDriftTool."""
+
     # No input fields needed - read-only detection
 
 
@@ -196,23 +201,24 @@ class DetectLabelDriftTool(BaseTool):
     description = "Detect differences between labels.yaml and GitHub repository labels"
     args_model = DetectLabelDriftInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager, label_config: LabelConfig) -> None:
+        self.manager = manager
+        self._label_config = label_config
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
-    async def execute(self, _params: DetectLabelDriftInput) -> ToolResult:
+    async def execute(self, params: DetectLabelDriftInput) -> ToolResult:
         """Detect label drift between YAML and GitHub."""
+        del params
         try:
-            label_config = LabelConfig.load()
             github_labels = self.manager.list_labels()
         except Exception as e:  # pylint: disable=broad-exception-caught
             return ToolResult.text(f"❌ Error loading labels: {e}")
 
         # Build lookup dicts
-        yaml_by_name = {label.name: label for label in label_config.labels}
+        yaml_by_name = {label.name: label for label in self._label_config.labels}
         github_by_name = {label.name: label for label in github_labels}
 
         # Detect drift
@@ -227,20 +233,20 @@ class DetectLabelDriftTool(BaseTool):
             github_label = github_by_name[name]
 
             if yaml_label.color.lower() != github_label.color.lower():
-                color_mismatch.append({
-                    "name": name,
-                    "yaml_color": yaml_label.color,
-                    "github_color": github_label.color
-                })
+                color_mismatch.append(
+                    {
+                        "name": name,
+                        "yaml_color": yaml_label.color,
+                        "github_color": github_label.color,
+                    }
+                )
 
             yaml_desc = yaml_label.description or ""
             github_desc = github_label.description or ""
             if yaml_desc != github_desc:
-                desc_mismatch.append({
-                    "name": name,
-                    "yaml_desc": yaml_desc,
-                    "github_desc": github_desc
-                })
+                desc_mismatch.append(
+                    {"name": name, "yaml_desc": yaml_desc, "github_desc": github_desc}
+                )
 
         # Build report
         if not any([github_only, yaml_only, color_mismatch, desc_mismatch]):

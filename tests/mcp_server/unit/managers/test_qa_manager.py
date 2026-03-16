@@ -32,6 +32,7 @@ from mcp_server.config.quality_config import (
 # Module under test
 from mcp_server.managers.qa_manager import QAManager
 from mcp_server.tools.tool_result import ToolResult
+from tests.mcp_server.test_support import make_qa_manager
 
 
 class TestQAManager:
@@ -40,7 +41,7 @@ class TestQAManager:
     @pytest.fixture
     def manager(self) -> QAManager:
         """Fixture for QAManager."""
-        return QAManager()
+        return make_qa_manager()
 
     @pytest.mark.asyncio
     async def test_check_health_pass(self, manager: QAManager) -> None:
@@ -275,7 +276,7 @@ class TestExecuteGate:
     @pytest.fixture
     def manager(self) -> QAManager:
         """Fixture for QAManager."""
-        return QAManager()
+        return make_qa_manager()
 
     @pytest.fixture
     def mock_gate(self) -> QualityGate:
@@ -401,7 +402,7 @@ class TestArtifactLogging:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     @pytest.fixture
     def mock_gate(self) -> QualityGate:
@@ -497,7 +498,7 @@ class TestRuffGateExecution:
     @pytest.fixture
     def manager(self) -> QAManager:
         """Fixture for QAManager."""
-        return QAManager()
+        return make_qa_manager()
 
     @pytest.fixture
     def gate1_formatting(self) -> QualityGate:
@@ -724,7 +725,7 @@ class TestConfigDrivenExecution:
     @pytest.fixture
     def manager(self) -> QAManager:
         """Fixture for QAManager."""
-        return QAManager()
+        return make_qa_manager()
 
     @pytest.fixture
     def mock_quality_config_with_active_gates(self, tmp_path: Path) -> Path:
@@ -887,7 +888,7 @@ class TestStrategyBasedParsing:
     @pytest.fixture
     def manager(self) -> QAManager:
         """Fixture for QAManager."""
-        return QAManager()
+        return make_qa_manager()
 
     def test_execute_gate_respects_parsing_strategy_not_tool_name(self, manager: QAManager) -> None:
         """Test parsing uses capabilities.parsing_strategy, not tool name detection (WP2)."""
@@ -925,7 +926,7 @@ class TestResponseSchemaV2:
     @pytest.fixture
     def manager(self) -> QAManager:
         """Fixture for QAManager."""
-        return QAManager()
+        return make_qa_manager()
 
     def test_response_schema_v2_structure(self, manager: QAManager) -> None:
         """Test response includes v2.0 schema fields (version, mode, summary, gates[])."""
@@ -1041,7 +1042,7 @@ class TestRuffJsonParsing:
     @pytest.fixture
     def manager(self) -> QAManager:
         """Fixture for QAManager."""
-        return QAManager()
+        return make_qa_manager()
 
     def test_ruff_json_parsing_with_violations(self, manager: QAManager) -> None:
         """Test Ruff JSON output is parsed into structured issues."""
@@ -1131,7 +1132,7 @@ class TestGateSchemaEnrichment:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def test_executed_gate_has_id_status_skip_reason(self, manager: QAManager) -> None:
         """Test _execute_gate includes enriched schema fields."""
@@ -1213,7 +1214,7 @@ class TestSummaryTotals:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def test_summary_has_total_violations_and_auto_fixable(self, manager: QAManager) -> None:
         """Test summary includes violation counts."""
@@ -1275,7 +1276,7 @@ class TestJsonPointerResolution:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def test_resolve_json_pointer_nested(self, manager: QAManager) -> None:
         """Test _resolve_json_pointer handles nested paths."""
@@ -1295,7 +1296,7 @@ class TestDurationAndCommandMetadata:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def test_execute_gate_has_duration_ms(self, manager: QAManager) -> None:
         """Test _execute_gate result includes duration_ms (int >= 0)."""
@@ -1422,7 +1423,7 @@ class TestEnvironmentMetadata:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def test_returns_python_version_and_platform(self, manager: QAManager) -> None:
         """Test environment always includes python_version and platform."""
@@ -1498,7 +1499,7 @@ class TestTruncationFullLogPath:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def test_full_log_path_set_when_output_truncated(self, manager: QAManager) -> None:
         """Test output.full_log_path points to artifact when output is truncated."""

@@ -14,6 +14,7 @@ import pytest
 
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -68,29 +69,29 @@ phases:
 
 @pytest.fixture
 def project_manager_with_gates(workspace_root: Path) -> ProjectManager:
-    return ProjectManager(workspace_root=workspace_root)
+    return make_project_manager(workspace_root)
 
 
 @pytest.fixture
 def engine_with_gates(
     workspace_root: Path, project_manager_with_gates: ProjectManager
 ) -> PhaseStateEngine:
-    return PhaseStateEngine(
-        workspace_root=workspace_root, project_manager=project_manager_with_gates
+    return make_phase_state_engine(
+        workspace_root, project_manager=project_manager_with_gates
     )
 
 
 @pytest.fixture
 def project_manager_no_gates(workspace_root_no_gates: Path) -> ProjectManager:
-    return ProjectManager(workspace_root=workspace_root_no_gates)
+    return make_project_manager(workspace_root_no_gates)
 
 
 @pytest.fixture
 def engine_no_gates(
     workspace_root_no_gates: Path, project_manager_no_gates: ProjectManager
 ) -> PhaseStateEngine:
-    return PhaseStateEngine(
-        workspace_root=workspace_root_no_gates, project_manager=project_manager_no_gates
+    return make_phase_state_engine(
+        workspace_root_no_gates, project_manager=project_manager_no_gates
     )
 
 
@@ -215,7 +216,7 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
         self, workspace_root: Path, initial_phase: str
     ) -> tuple[ProjectManager, PhaseStateEngine, str]:
         """Initialize project + branch and inject planning_deliverables directly."""
-        pm = ProjectManager(workspace_root=workspace_root)
+        pm = make_project_manager(workspace_root)
         pm.initialize_project(
             issue_number=229,
             issue_title="Phase deliverables enforcement",
@@ -226,7 +227,7 @@ class TestForceTransitionNoWarningWhenDeliverablesPresent:
         projects["229"]["planning_deliverables"] = {"tdd_cycles": {"total": 1, "cycles": []}}
         pm.deliverables_file.write_text(json.dumps(projects, indent=2))
 
-        engine = PhaseStateEngine(workspace_root=workspace_root, project_manager=pm)
+        engine = make_phase_state_engine(workspace_root, project_manager=pm)
         branch = "feature/229-bugfix"
         engine.initialize_branch(branch=branch, issue_number=229, initial_phase=initial_phase)
         return pm, engine, branch

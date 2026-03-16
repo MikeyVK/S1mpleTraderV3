@@ -15,6 +15,7 @@ from mcp_server.managers.phase_contract_resolver import (
     PhaseConfigContext,
     PhaseContractResolver,
 )
+from tests.mcp_server.test_support import make_phase_config_context
 
 
 @pytest.fixture
@@ -156,7 +157,7 @@ workflows:
         )
 
         with pytest.raises(ConfigError, match="commit_type_map") as exc_info:
-            PhaseConfigContext.from_workspace(tmp_path)
+            make_phase_config_context(tmp_path)
 
         assert exc_info.value.file_path == ".st3/config/phase_contracts.yaml"
 
@@ -180,7 +181,7 @@ workflows:
             encoding="utf-8",
         )
 
-        context = PhaseConfigContext.from_workspace(tmp_path)
+        context = make_phase_config_context(tmp_path)
         planning_phase = context.phase_contracts.workflows["feature"]["planning"]
 
         assert planning_phase.subphases == []
@@ -193,7 +194,7 @@ workflows:
         self, workspace_root: Path
     ) -> None:
         """Facade should expose both config sources and optional issue deliverables."""
-        context = PhaseConfigContext.from_workspace(workspace_root, issue_number=257)
+        context = make_phase_config_context(workspace_root, issue_number=257)
 
         assert context.workphases.get_entry_expects("implementation") == []
         assert "feature" in context.phase_contracts.workflows
@@ -202,7 +203,7 @@ workflows:
 
     def test_context_uses_refactor_commit_mapping_in_fixture(self, workspace_root: Path) -> None:
         """Implementation refactor subphase should keep the existing refactor commit type."""
-        context = PhaseConfigContext.from_workspace(workspace_root)
+        context = make_phase_config_context(workspace_root)
 
         assert (
             context.phase_contracts.workflows["feature"]["implementation"].commit_type_map[
@@ -220,7 +221,7 @@ class TestPhaseContractResolver:
     ) -> None:
         """Required config gates stay immutable while recommended gates can be overridden."""
         resolver = PhaseContractResolver(
-            PhaseConfigContext.from_workspace(workspace_root, issue_number=257)
+            make_phase_config_context(workspace_root, issue_number=257)
         )
 
         checks = resolver.resolve("feature", "implementation", cycle_number=1)
@@ -244,7 +245,7 @@ class TestPhaseContractResolver:
         self, workspace_root: Path
     ) -> None:
         """Docs workflow has no implementation contract and should resolve cleanly to []."""
-        resolver = PhaseContractResolver(PhaseConfigContext.from_workspace(workspace_root))
+        resolver = PhaseContractResolver(make_phase_config_context(workspace_root))
 
         assert resolver.resolve("docs", "implementation", None) == []
 
@@ -252,7 +253,7 @@ class TestPhaseContractResolver:
         self, workspace_root: Path
     ) -> None:
         """Unknown workflow/phase combinations should not raise and should return []."""
-        resolver = PhaseContractResolver(PhaseConfigContext.from_workspace(workspace_root))
+        resolver = PhaseContractResolver(make_phase_config_context(workspace_root))
 
         assert resolver.resolve("unknown-workflow", "implementation", None) == []
         assert resolver.resolve("feature", "unknown-phase", None) == []

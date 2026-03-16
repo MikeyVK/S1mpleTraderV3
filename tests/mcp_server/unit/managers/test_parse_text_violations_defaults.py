@@ -4,6 +4,7 @@ import pytest
 
 from mcp_server.config.quality_config import TextViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 # Pattern without a 'rule' group, but with a 'code' group we can use for interpolation
 _PATTERN_NO_RULE = r"(?P<file>[^:]+):(?P<line>\d+): (?P<code>\w+) (?P<message>.+)"
@@ -22,7 +23,7 @@ class TestParseTextViolationsDefaults:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     # ------------------------------------------------------------------
     # Static defaults

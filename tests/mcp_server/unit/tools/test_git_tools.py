@@ -2,11 +2,12 @@
 # ruff: noqa: ANN001, ANN201, ARG001
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from pydantic import ValidationError
 
+from mcp_server.config.loader import ConfigLoader
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.git_tools import (
     CommitPhaseMismatchError,
@@ -37,7 +38,16 @@ from mcp_server.tools.tool_result import ToolResult
 @pytest.fixture
 def mock_git_manager() -> MagicMock:
     """Fixture for mocked GitManager."""
-    return MagicMock()
+    manager = MagicMock()
+    git_config = MagicMock()
+    git_config.branch_types = ["feature", "bug", "fix", "docs", "refactor", "epic"]
+    git_config.commit_types = ["feat", "fix", "docs", "chore", "test", "refactor"]
+    git_config.has_branch_type.side_effect = lambda value: value in git_config.branch_types
+    git_config.has_commit_type.side_effect = lambda value: value.lower() in git_config.commit_types
+    git_config.extract_issue_number.side_effect = lambda branch: 79 if "79" in branch else 999
+    manager.git_config = git_config
+    manager.adapter.get_current_branch.return_value = "feature/257-reorder-workflow-phases"
+    return manager
 
 
 @pytest.mark.asyncio
@@ -300,8 +310,9 @@ async def test_git_commit_tool_with_commit_type_override(mock_git_manager):
 
 
 @pytest.mark.asyncio
-async def test_git_commit_tool_with_invalid_commit_type():
+async def test_git_commit_tool_with_invalid_commit_type(mock_git_manager):
     """Test that invalid commit_type raises ValueError."""
+    GitCommitInput.configure(mock_git_manager.git_config)
     with pytest.raises(ValueError, match="Invalid commit_type 'invalid_type'"):
         GitCommitInput(
             workflow_phase="implementation",
@@ -354,7 +365,12 @@ async def test_git_commit_integration_workflow_phases():
     if not workphases_path.exists():
         pytest.skip("workphases.yaml not found - skipping integration test")
 
-    manager = GitManager(adapter=mock_adapter, workphases_path=workphases_path)
+    git_config = ConfigLoader(config_root=Path(".st3")).load_git_config()
+    manager = GitManager(
+        git_config=git_config,
+        adapter=mock_adapter,
+        workphases_path=workphases_path,
+    )
     resolver = MagicMock(
         side_effect=lambda _branch, workflow_phase, sub_phase: {
             ("implementation", "red"): "test",
@@ -403,8 +419,6 @@ async def test_git_commit_integration_workflow_phases():
 @pytest.mark.asyncio
 async def test_git_checkout_tool(mock_git_manager):
     """Test git checkout tool with PhaseStateEngine state sync."""
-    tool = GitCheckoutTool(manager=mock_git_manager)
-
     # Mock PhaseStateEngine to return state with phase info
     mock_engine = MagicMock()
     mock_state = MagicMock()
@@ -412,19 +426,14 @@ async def test_git_checkout_tool(mock_git_manager):
     mock_state.parent_branch = None
     mock_engine.get_state.return_value = mock_state
 
+    tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="main")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_git_manager.checkout.assert_called_once_with("main")
-        mock_engine.get_state.assert_called_once_with("main")
-        assert "Switched to branch: main" in result.content[0]["text"]
-        assert "implementation" in result.content[0]["text"]
+    mock_git_manager.checkout.assert_called_once_with("main")
+    mock_engine.get_state.assert_called_once_with("main")
+    assert "Switched to branch: main" in result.content[0]["text"]
+    assert "implementation" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
@@ -442,19 +451,14 @@ async def test_git_checkout_tool_displays_parent_branch(mock_git_manager):
     mock_state.parent_branch = "epic/76-quality-gates"
     mock_engine.get_state.return_value = mock_state
 
+    tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="feature/79-test")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_git_manager.checkout.assert_called_once_with("feature/79-test")
-        assert "Switched to branch: feature/79-test" in result.content[0]["text"]
-        assert "Current phase: design" in result.content[0]["text"]
-        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+    mock_git_manager.checkout.assert_called_once_with("feature/79-test")
+    assert "Switched to branch: feature/79-test" in result.content[0]["text"]
+    assert "Current phase: design" in result.content[0]["text"]
+    assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
@@ -472,20 +476,15 @@ async def test_git_checkout_tool_no_parent_branch(mock_git_manager):
     mock_state.parent_branch = None
     mock_engine.get_state.return_value = mock_state
 
+    tool = GitCheckoutTool(manager=mock_git_manager, state_engine=mock_engine)
     params = GitCheckoutInput(branch="main")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_git_manager.checkout.assert_called_once_with("main")
-        output = result.content[0]["text"]
-        assert "Switched to branch: main" in output
-        assert "Current phase: implementation" in output
-        assert "Parent branch:" not in output  # Should NOT appear
+    mock_git_manager.checkout.assert_called_once_with("main")
+    output = result.content[0]["text"]
+    assert "Switched to branch: main" in output
+    assert "Current phase: implementation" in output
+    assert "Parent branch:" not in output  # Should NOT appear
 
 
 @pytest.mark.asyncio
@@ -565,29 +564,21 @@ async def test_get_parent_branch_current_branch():
 
     Issue #79: Query parent_branch from PhaseStateEngine state.
     """
-    tool = GetParentBranchTool()
+    mock_git_manager = MagicMock()
+    mock_git_manager.get_current_branch.return_value = "feature/79-parent-branch-tracking"
 
-    # Mock PhaseStateEngine to return state with parent_branch
     mock_engine = MagicMock()
     mock_state = MagicMock()
     mock_state.current_phase = "implementation"
     mock_state.parent_branch = "epic/76-quality-gates"
     mock_engine.get_state.return_value = mock_state
 
-    params = GetParentBranchInput()  # No branch specified = current branch
+    tool = GetParentBranchTool(manager=mock_git_manager, state_engine=mock_engine)
+    params = GetParentBranchInput()
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-        patch("mcp_server.tools.git_tools.GitManager") as mock_git,
-    ):
-        mock_git.return_value.get_current_branch.return_value = "feature/79-parent-branch-tracking"
-
-        result = await tool.execute(params)
-
-        mock_engine.get_state.assert_called_once_with("feature/79-parent-branch-tracking")
-        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+    mock_engine.get_state.assert_called_once_with("feature/79-parent-branch-tracking")
+    assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
@@ -596,27 +587,19 @@ async def test_get_parent_branch_specified_branch():
 
     Issue #79: Query parent_branch for any branch, not just current.
     """
-    tool = GetParentBranchTool()
-
-    # Mock PhaseStateEngine to return state with parent_branch
     mock_engine = MagicMock()
     mock_state = MagicMock()
     mock_state.current_phase = "design"
     mock_state.parent_branch = "epic/76-quality-gates"
     mock_engine.get_state.return_value = mock_state
 
+    tool = GetParentBranchTool(manager=MagicMock(), state_engine=mock_engine)
     params = GetParentBranchInput(branch="feature/77-error-handling")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_engine.get_state.assert_called_once_with("feature/77-error-handling")
-        assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
-        assert "feature/77-error-handling" in result.content[0]["text"]
+    mock_engine.get_state.assert_called_once_with("feature/77-error-handling")
+    assert "Parent branch: epic/76-quality-gates" in result.content[0]["text"]
+    assert "feature/77-error-handling" in result.content[0]["text"]
 
 
 @pytest.mark.asyncio
@@ -625,28 +608,20 @@ async def test_get_parent_branch_not_set():
 
     Issue #79: Graceful handling when parent_branch is None.
     """
-    tool = GetParentBranchTool()
-
-    # Mock PhaseStateEngine to return state WITHOUT parent_branch
     mock_engine = MagicMock()
     mock_state = MagicMock()
     mock_state.current_phase = "implementation"
     mock_state.parent_branch = None
     mock_engine.get_state.return_value = mock_state
 
+    tool = GetParentBranchTool(manager=MagicMock(), state_engine=mock_engine)
     params = GetParentBranchInput(branch="main")
+    result = await tool.execute(params)
 
-    with (
-        patch("mcp_server.managers.phase_state_engine.PhaseStateEngine", return_value=mock_engine),
-        patch("mcp_server.managers.project_manager.ProjectManager"),
-        patch("pathlib.Path.cwd", return_value=MagicMock()),
-    ):
-        result = await tool.execute(params)
-
-        mock_engine.get_state.assert_called_once_with("main")
-        output = result.content[0]["text"]
-        assert "Parent branch: (not set)" in output
-        assert "main" in output
+    mock_engine.get_state.assert_called_once_with("main")
+    output = result.content[0]["text"]
+    assert "Parent branch: (not set)" in output
+    assert "main" in output
 
 
 # ===== Cycle Number Enforcement Tests (Issue #146 Cycle 5) =====

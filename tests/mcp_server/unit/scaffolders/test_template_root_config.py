@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.scaffolders.template_scaffolder import TemplateScaffolder
+from tests.mcp_server.test_support import make_template_scaffolder
 
 
 class TestTemplateRootConfiguration:
@@ -19,7 +19,7 @@ class TestTemplateRootConfiguration:
 
     def test_default_uses_tier_root(self):
         """When no config set, should use mcp_server/scaffolding/templates."""
-        scaffolder = TemplateScaffolder()
+        scaffolder = make_template_scaffolder()
 
         # Expected: mcp_server/scaffolding/templates (tier-root) - resolved
         expected_tier_root = Path("mcp_server/scaffolding/templates").resolve()
@@ -35,7 +35,7 @@ class TestTemplateRootConfiguration:
 
         with patch.dict(os.environ, {"TEMPLATE_ROOT": str(custom_path)}):
             with patch("pathlib.Path.exists", return_value=True):
-                scaffolder = TemplateScaffolder()
+                scaffolder = make_template_scaffolder()
 
                 # pylint: disable=protected-access
                 assert scaffolder._renderer.template_dir == custom_path
@@ -46,11 +46,11 @@ class TestTemplateRootConfiguration:
 
         with patch.dict(os.environ, {"TEMPLATE_ROOT": str(nonexistent_path)}):
             with pytest.raises(FileNotFoundError, match="Template root.*does not exist"):
-                TemplateScaffolder()
+                make_template_scaffolder()
 
     def test_no_fallback_to_legacy_templates_dir(self):
         """Should NEVER fall back to mcp_server/templates (legacy)."""
-        scaffolder = TemplateScaffolder()
+        scaffolder = make_template_scaffolder()
 
         # Legacy location should NOT be used
         legacy_path = Path("mcp_server/templates")
@@ -65,7 +65,7 @@ class TestTemplateRootConfiguration:
         # Import in test to avoid module-level import
         from mcp_server.validation.validation_service import ValidationService
 
-        scaffolder = TemplateScaffolder()
+        scaffolder = make_template_scaffolder()
         validation_service = ValidationService()
 
         # pylint: disable=protected-access

@@ -372,10 +372,15 @@
         "template_id": "tier2_base_python",
         "version": "1.2.0"
       }
+    },
+    "406c2d11": {
+      "artifact_type": "dto",
+      "created": "2026-03-15T14:44:33.917828+00:00",
+      "hash_algorithm": "SHA256"
     }
   },
   "current_versions": {
-    "dto": "0d83ee77",
+    "dto": "406c2d11",
     "generic": "f35abd82",
     "design": "5827e841",
     "research": "8b7bb3ab",
@@ -394,5 +399,5 @@
     "generic_doc": "43c84181"
   },
   "templates": {},
-  "last_updated": "2026-02-21T15:27:47.853477+00:00"
+  "last_updated": "2026-03-15T14:44:33.917844+00:00"
 }

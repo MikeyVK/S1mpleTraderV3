@@ -9,6 +9,7 @@ from mcp_server.config.quality_config import (
     SuccessCriteria,
 )
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -45,7 +46,7 @@ def _pytest_gate() -> QualityGate:
 
 @pytest.fixture()
 def manager() -> QAManager:
-    return QAManager()
+    return make_qa_manager()
 
 
 # ---------------------------------------------------------------------------

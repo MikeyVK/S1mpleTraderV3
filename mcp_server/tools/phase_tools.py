@@ -60,27 +60,29 @@ class ForcePhaseTransitionInput(BaseModel):
 class _BaseTransitionTool(BaseTool):
     """Base class for phase and cycle transition tools."""
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool.
-
-        Args:
-            workspace_root: Path to workspace root
-        """
+    def __init__(
+        self,
+        workspace_root: Path | str,
+        project_manager: ProjectManager | None = None,
+        state_engine: PhaseStateEngine | None = None,
+    ) -> None:
+        """Initialize tool with injected or legacy-created transition dependencies."""
         super().__init__()
         self.workspace_root = Path(workspace_root)
+        self._project_manager = project_manager
+        self._state_engine = state_engine
 
     def _create_project_manager(self) -> ProjectManager:
-        """Create ProjectManager instance for the configured workspace."""
-        return ProjectManager(workspace_root=self.workspace_root)
+        """Return the injected ProjectManager."""
+        if self._project_manager is None:
+            raise ValueError("ProjectManager must be injected for transition tools")
+        return self._project_manager
 
     def _create_engine(self) -> PhaseStateEngine:
-        """Create PhaseStateEngine instance.
-
-        Returns:
-            PhaseStateEngine instance with initialized managers
-        """
-        project_manager = self._create_project_manager()
-        return PhaseStateEngine(workspace_root=self.workspace_root, project_manager=project_manager)
+        """Return the injected PhaseStateEngine instance."""
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for transition tools")
+        return self._state_engine
 
 
 class TransitionPhaseTool(_BaseTransitionTool):

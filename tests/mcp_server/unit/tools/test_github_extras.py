@@ -1,4 +1,5 @@
 """Tests for PR and Label tools."""
+# ruff: noqa: ANN001, ANN201
 
 import asyncio
 from unittest.mock import Mock
@@ -16,6 +17,13 @@ from mcp_server.tools.pr_tools import (
     MergePRInput,
     MergePRTool,
 )
+
+
+@pytest.fixture
+def mock_git_config():
+    git_config = Mock()
+    git_config.default_base_branch = "main"
+    return git_config
 
 
 @pytest.fixture
@@ -38,12 +46,12 @@ labels:
     yaml_file.write_text(yaml_content)
 
     LabelConfig.reset()
-    LabelConfig.load(yaml_file)
-    yield
+    label_config = LabelConfig.load(yaml_file)
+    yield label_config
     LabelConfig.reset()
 
 
-def test_create_pr_tool(mock_adapter) -> None:
+def test_create_pr_tool(mock_adapter, mock_git_config) -> None:
     """Test CreatePRTool creates PR and returns correct response."""
     # Setup mock
     mock_pr = Mock()
@@ -53,7 +61,7 @@ def test_create_pr_tool(mock_adapter) -> None:
     mock_adapter.create_pr.return_value = mock_pr
 
     manager = GitHubManager(adapter=mock_adapter)
-    tool = CreatePRTool(manager=manager)
+    tool = CreatePRTool(manager=manager, git_config=mock_git_config)
 
     result = asyncio.run(
         tool.execute(CreatePRInput(title="New Feature", body="Description", head="feature/branch"))
@@ -68,7 +76,7 @@ def test_create_pr_tool(mock_adapter) -> None:
 def test_add_labels_tool(mock_adapter, test_label_config) -> None:
     """Test AddLabelsTool adds labels and returns confirmation."""
     manager = GitHubManager(adapter=mock_adapter)
-    tool = AddLabelsTool(manager=manager)
+    tool = AddLabelsTool(manager=manager, label_config=test_label_config)
 
     result = asyncio.run(
         tool.execute(AddLabelsInput(issue_number=456, labels=["bug", "high-priority"]))
@@ -78,7 +86,7 @@ def test_add_labels_tool(mock_adapter, test_label_config) -> None:
     mock_adapter.add_labels.assert_called_with(456, ["bug", "high-priority"])
 
 
-def test_list_prs_tool(mock_adapter) -> None:
+def test_list_prs_tool(mock_adapter, mock_git_config) -> None:
     """Test ListPRsTool lists pull requests with formatting."""
     mock_base = Mock()
     mock_base.ref = "main"
@@ -95,7 +103,7 @@ def test_list_prs_tool(mock_adapter) -> None:
     mock_adapter.list_prs.return_value = [mock_pr]
 
     manager = GitHubManager(adapter=mock_adapter)
-    tool = ListPRsTool(manager=manager)
+    tool = ListPRsTool(manager=manager, git_config=mock_git_config)
 
     result = asyncio.run(tool.execute(ListPRsInput()))
 
@@ -105,12 +113,12 @@ def test_list_prs_tool(mock_adapter) -> None:
     mock_adapter.list_prs.assert_called_with(state="open", base=None, head=None)
 
 
-def test_merge_pr_tool(mock_adapter) -> None:
+def test_merge_pr_tool(mock_adapter, mock_git_config) -> None:
     """Test MergePRTool merges PRs and returns confirmation."""
     mock_adapter.merge_pr.return_value = {"merged": True, "sha": "abc123", "message": "Merged"}
 
     manager = GitHubManager(adapter=mock_adapter)
-    tool = MergePRTool(manager=manager)
+    tool = MergePRTool(manager=manager, git_config=mock_git_config)
 
     result = asyncio.run(tool.execute(MergePRInput(pr_number=8, merge_method="squash")))
 

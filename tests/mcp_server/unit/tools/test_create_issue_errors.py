@@ -20,32 +20,28 @@ import pytest
 
 from mcp_server.core.exceptions import ExecutionError
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
+from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
 
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
+configure_create_issue_input()
 
 BODY = IssueBody(problem="Test error scenarios")
 
-VALID_PARAMS = CreateIssueInput(
-    issue_type="feature",
-    title="Error test issue",
-    priority="medium",
-    scope="mcp-server",
-    body=BODY,
-)
+
+def make_valid_params() -> CreateIssueInput:
+    return CreateIssueInput(
+        issue_type="feature",
+        title="Error test issue",
+        priority="medium",
+        scope="mcp-server",
+        body=BODY,
+    )
 
 
 def make_tool(manager: MagicMock | None = None) -> CreateIssueTool:
     """Return a CreateIssueTool with a mock manager."""
     mgr = manager or MagicMock()
     mgr.create_issue.return_value = {"number": 1, "title": "T", "url": ""}
-    return CreateIssueTool(manager=mgr)
-
-
-# ---------------------------------------------------------------------------
-# TestExecutionErrorHandling
-# ---------------------------------------------------------------------------
+    return make_create_issue_tool(mgr)
 
 
 class TestExecutionErrorHandling:
@@ -54,9 +50,9 @@ class TestExecutionErrorHandling:
         """ExecutionError from GitHubManager must produce ToolResult.error()."""
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("GitHub API rate limit exceeded")
-        tool = CreateIssueTool(manager=mock_manager)
+        tool = make_create_issue_tool(mock_manager)
 
-        result = await tool.execute(VALID_PARAMS)
+        result = await tool.execute(make_valid_params())
 
         assert result.is_error is True
 
@@ -64,9 +60,9 @@ class TestExecutionErrorHandling:
     async def test_execution_error_message_is_included(self) -> None:
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("GitHub API rate limit exceeded")
-        tool = CreateIssueTool(manager=mock_manager)
+        tool = make_create_issue_tool(mock_manager)
 
-        result = await tool.execute(VALID_PARAMS)
+        result = await tool.execute(make_valid_params())
 
         result_text = result.content[0]["text"]
         assert "rate limit" in result_text or "GitHub" in result_text
@@ -76,16 +72,10 @@ class TestExecutionErrorHandling:
         """execute() must not raise — it must return ToolResult.error()."""
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("Network error")
-        tool = CreateIssueTool(manager=mock_manager)
+        tool = make_create_issue_tool(mock_manager)
 
-        # Must not raise
-        result = await tool.execute(VALID_PARAMS)
+        result = await tool.execute(make_valid_params())
         assert result is not None
-
-
-# ---------------------------------------------------------------------------
-# TestRenderingErrorHandling
-# ---------------------------------------------------------------------------
 
 
 class TestRenderingErrorHandling:
@@ -98,7 +88,7 @@ class TestRenderingErrorHandling:
             "_render_body",
             side_effect=jinja2.TemplateError("Template not found"),
         ):
-            result = await tool.execute(VALID_PARAMS)
+            result = await tool.execute(make_valid_params())
 
         assert result.is_error is True
 
@@ -110,7 +100,7 @@ class TestRenderingErrorHandling:
             "_render_body",
             side_effect=jinja2.TemplateError("Bad template"),
         ):
-            result = await tool.execute(VALID_PARAMS)
+            result = await tool.execute(make_valid_params())
 
         assert result is not None
         assert result.is_error is True
@@ -124,7 +114,7 @@ class TestRenderingErrorHandling:
             "_render_body",
             side_effect=jinja2.TemplateNotFound("issue.md.jinja2"),
         ):
-            result = await tool.execute(VALID_PARAMS)
+            result = await tool.execute(make_valid_params())
 
         assert result.is_error is True
 
@@ -137,15 +127,10 @@ class TestRenderingErrorHandling:
             "_render_body",
             side_effect=jinja2.TemplateError("template missing"),
         ):
-            result = await tool.execute(VALID_PARAMS)
+            result = await tool.execute(make_valid_params())
 
         result_text = result.content[0]["text"]
         assert "rendering" in result_text or "template" in result_text.lower()
-
-
-# ---------------------------------------------------------------------------
-# TestAssembleLabelErrorHandling
-# ---------------------------------------------------------------------------
 
 
 class TestAssembleLabelErrorHandling:
@@ -158,7 +143,7 @@ class TestAssembleLabelErrorHandling:
             "_assemble_labels",
             side_effect=ValueError("Unknown workflow: 'invalid'"),
         ):
-            result = await tool.execute(VALID_PARAMS)
+            result = await tool.execute(make_valid_params())
 
         assert result.is_error is True
 
@@ -170,14 +155,9 @@ class TestAssembleLabelErrorHandling:
             "_assemble_labels",
             side_effect=ValueError("Unknown workflow"),
         ):
-            result = await tool.execute(VALID_PARAMS)
+            result = await tool.execute(make_valid_params())
 
         assert result is not None
-
-
-# ---------------------------------------------------------------------------
-# TestNoExceptionLeaks
-# ---------------------------------------------------------------------------
 
 
 class TestNoExceptionLeaks:
@@ -186,10 +166,10 @@ class TestNoExceptionLeaks:
         """No known error type should propagate out of execute()."""
         mock_manager = MagicMock()
         mock_manager.create_issue.side_effect = ExecutionError("fail")
-        tool = CreateIssueTool(manager=mock_manager)
+        tool = make_create_issue_tool(mock_manager)
 
         try:
-            await tool.execute(VALID_PARAMS)
+            await tool.execute(make_valid_params())
         except Exception as exc:  # noqa: BLE001
             pytest.fail(f"execute() raised unexpectedly: {exc!r}")
 
@@ -198,6 +178,6 @@ class TestNoExceptionLeaks:
         tool = make_tool()
         with patch.object(tool, "_render_body", side_effect=jinja2.TemplateError("fail")):
             try:
-                await tool.execute(VALID_PARAMS)
+                await tool.execute(make_valid_params())
             except Exception as exc:  # noqa: BLE001
                 pytest.fail(f"execute() raised unexpectedly: {exc!r}")

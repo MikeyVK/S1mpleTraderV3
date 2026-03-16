@@ -20,10 +20,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
+from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
 
-# ---------------------------------------------------------------------------
-# Shared minimal input factory
-# ---------------------------------------------------------------------------
+configure_create_issue_input()
 
 BODY = IssueBody(problem="Test problem")
 
@@ -41,178 +40,124 @@ def make_params(**overrides: object) -> CreateIssueInput:
     return CreateIssueInput(**base)
 
 
-# ---------------------------------------------------------------------------
-# TestTypeLabelAssembly
-# ---------------------------------------------------------------------------
+def make_tool(manager: MagicMock | None = None) -> CreateIssueTool:
+    return make_create_issue_tool(manager or MagicMock())
 
 
 class TestTypeLabelAssembly:
     def test_feature_produces_type_feature(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="feature"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="feature"))
         assert "type:feature" in labels
 
     def test_bug_produces_type_bug(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="bug"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="bug"))
         assert "type:bug" in labels
 
     def test_hotfix_produces_type_bug_not_type_hotfix(self) -> None:
         """hotfix maps to type:bug via IssueConfig.get_label(), not type:hotfix."""
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="hotfix"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="hotfix"))
         assert "type:bug" in labels
         assert "type:hotfix" not in labels
 
     def test_is_epic_overrides_type_to_type_epic(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="feature", is_epic=True))
+        labels = make_tool()._assemble_labels(make_params(issue_type="feature", is_epic=True))
         assert "type:epic" in labels
         assert "type:feature" not in labels
 
     def test_is_epic_overrides_any_issue_type(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="bug", is_epic=True))
+        labels = make_tool()._assemble_labels(make_params(issue_type="bug", is_epic=True))
         assert "type:epic" in labels
         assert "type:bug" not in labels
 
     def test_no_duplicate_type_labels(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="feature"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="feature"))
         type_labels = [lbl for lbl in labels if lbl.startswith("type:")]
         assert len(type_labels) == 1
 
 
-# ---------------------------------------------------------------------------
-# TestScopeLabelAssembly
-# ---------------------------------------------------------------------------
-
-
 class TestScopeLabelAssembly:
     def test_scope_mcp_server_produces_scope_mcp_server(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(scope="mcp-server"))
+        labels = make_tool()._assemble_labels(make_params(scope="mcp-server"))
         assert "scope:mcp-server" in labels
 
     def test_scope_tooling_produces_scope_tooling(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(scope="tooling"))
+        labels = make_tool()._assemble_labels(make_params(scope="tooling"))
         assert "scope:tooling" in labels
 
     def test_scope_platform_produces_scope_platform(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(scope="platform"))
+        labels = make_tool()._assemble_labels(make_params(scope="platform"))
         assert "scope:platform" in labels
-
-
-# ---------------------------------------------------------------------------
-# TestPriorityLabelAssembly
-# ---------------------------------------------------------------------------
 
 
 class TestPriorityLabelAssembly:
     def test_priority_medium_produces_priority_medium(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(priority="medium"))
+        labels = make_tool()._assemble_labels(make_params(priority="medium"))
         assert "priority:medium" in labels
 
     def test_priority_high_produces_priority_high(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(priority="high"))
+        labels = make_tool()._assemble_labels(make_params(priority="high"))
         assert "priority:high" in labels
 
     def test_priority_critical_produces_priority_critical(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(priority="critical"))
+        labels = make_tool()._assemble_labels(make_params(priority="critical"))
         assert "priority:critical" in labels
-
-
-# ---------------------------------------------------------------------------
-# TestPhaseLabelAssembly
-# ---------------------------------------------------------------------------
 
 
 class TestPhaseLabelAssembly:
     def test_feature_workflow_first_phase_is_research(self) -> None:
         """feature → workflow:feature → first phase = research."""
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="feature"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="feature"))
         assert "phase:research" in labels
 
     def test_hotfix_workflow_first_phase_is_implementation(self) -> None:
         """hotfix → workflow:hotfix → first phase = implementation."""
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="hotfix"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="hotfix"))
         assert "phase:implementation" in labels
 
     def test_docs_workflow_first_phase_is_planning(self) -> None:
         """docs → workflow:docs → first phase = planning."""
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="docs"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="docs"))
         assert "phase:planning" in labels
 
     def test_bug_workflow_first_phase_is_research(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="bug"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="bug"))
         assert "phase:research" in labels
 
     def test_no_duplicate_phase_labels(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(issue_type="feature"))
+        labels = make_tool()._assemble_labels(make_params(issue_type="feature"))
         phase_labels = [lbl for lbl in labels if lbl.startswith("phase:")]
         assert len(phase_labels) == 1
 
 
-# ---------------------------------------------------------------------------
-# TestParentLabelAssembly
-# ---------------------------------------------------------------------------
-
-
 class TestParentLabelAssembly:
     def test_parent_issue_produces_parent_n_label(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(parent_issue=91))
+        labels = make_tool()._assemble_labels(make_params(parent_issue=91))
         assert "parent:91" in labels
 
     def test_parent_issue_none_produces_no_parent_label(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(parent_issue=None))
+        labels = make_tool()._assemble_labels(make_params(parent_issue=None))
         assert not any(lbl.startswith("parent:") for lbl in labels)
 
     def test_parent_issue_different_value(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(parent_issue=149))
+        labels = make_tool()._assemble_labels(make_params(parent_issue=149))
         assert "parent:149" in labels
-
-
-# ---------------------------------------------------------------------------
-# TestFullLabelSet
-# ---------------------------------------------------------------------------
 
 
 class TestFullLabelSet:
     def test_minimal_input_produces_four_labels(self) -> None:
         """Minimal input → type + scope + priority + phase (no parent)."""
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params())
+        labels = make_tool()._assemble_labels(make_params())
         assert len(labels) == 4
 
     def test_with_parent_issue_produces_five_labels(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(make_params(parent_issue=10))
+        labels = make_tool()._assemble_labels(make_params(parent_issue=10))
         assert len(labels) == 5
 
     def test_full_label_set_no_duplicates(self) -> None:
-        tool = CreateIssueTool(manager=MagicMock())
-        labels = tool._assemble_labels(
+        labels = make_tool()._assemble_labels(
             make_params(issue_type="bug", priority="high", scope="platform", parent_issue=55)
         )
         assert len(labels) == len(set(labels))
-
-
-# ---------------------------------------------------------------------------
-# TestExecuteForwardsAssembledLabels
-# ---------------------------------------------------------------------------
 
 
 class TestExecuteForwardsAssembledLabels:
@@ -225,7 +170,7 @@ class TestExecuteForwardsAssembledLabels:
             "title": "Test",
             "url": "http://x",
         }
-        tool = CreateIssueTool(manager=mock_manager)
+        tool = make_tool(mock_manager)
 
         params = make_params(issue_type="feature", scope="mcp-server", priority="medium")
         await tool.execute(params)
@@ -240,7 +185,7 @@ class TestExecuteForwardsAssembledLabels:
     async def test_execute_labels_include_type_scope_priority_phase(self) -> None:
         mock_manager = MagicMock()
         mock_manager.create_issue.return_value = {"number": 2, "title": "T", "url": ""}
-        tool = CreateIssueTool(manager=mock_manager)
+        tool = make_tool(mock_manager)
 
         params = make_params(issue_type="feature", scope="tooling", priority="high")
         await tool.execute(params)

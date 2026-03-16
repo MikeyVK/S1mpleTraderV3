@@ -19,6 +19,7 @@ C39 change (duration_ms contract):
 from __future__ import annotations
 
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 
 def _make_gate(
@@ -74,7 +75,7 @@ class TestBuildCompactResultSchema:
 
     def test_passed_gate_has_only_required_keys(self) -> None:
         """Compact gate dict must have exactly: id, passed, skipped, status, violations."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate()])
 
         compact = manager._build_compact_result(results)
@@ -85,7 +86,7 @@ class TestBuildCompactResultSchema:
 
     def test_passed_gate_values(self) -> None:
         """Passed gate: passed=True, skipped=False, violations=[]."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate(passed=True, status="passed")])
 
         compact = manager._build_compact_result(results)
@@ -97,7 +98,7 @@ class TestBuildCompactResultSchema:
 
     def test_skipped_gate_has_skipped_true(self) -> None:
         """Skipped gate: passed=True, skipped=True."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         raw_gate = _make_gate(status="skipped")
         raw_gate["passed"] = True
         results = _make_results([raw_gate])
@@ -111,7 +112,7 @@ class TestBuildCompactResultSchema:
     def test_failed_gate_carries_violations(self) -> None:
         """Failed gate in compact output contains the violations list."""
         violations = [{"message": "E501 line too long", "file": "x.py", "line": 5}]
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         raw_gate = _make_gate(passed=False, status="failed", issues=violations)
         results = _make_results([raw_gate])
 
@@ -123,7 +124,7 @@ class TestBuildCompactResultSchema:
 
     def test_id_is_string(self) -> None:
         """The id field in compact gate must be a string."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate(name="Gate 0: Ruff Format")])
 
         compact = manager._build_compact_result(results)
@@ -149,7 +150,7 @@ class TestBuildCompactResultNoDebugFields:
 
     def test_gate_has_no_debug_fields(self) -> None:
         """command, duration_ms, score, skip_reason absent from compact gate."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate(include_debug=True)])
 
         compact = manager._build_compact_result(results)
@@ -163,7 +164,7 @@ class TestBuildCompactResultNoDebugFields:
 
         C39: 'duration_ms' was removed from compact root and moved to the summary line.
         """
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate()])
 
         compact = manager._build_compact_result(results)
@@ -178,7 +179,7 @@ class TestBuildCompactResultMultiGate:
 
     def test_two_gates_produce_two_compact_gates(self) -> None:
         """Two gates in input → two gates in compact output."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         gates = [
             _make_gate(name="Gate 0: Ruff Format"),
             _make_gate(name="Gate 1: Ruff Strict Lint"),
@@ -191,7 +192,7 @@ class TestBuildCompactResultMultiGate:
 
     def test_empty_gates_list_returns_empty(self) -> None:
         """Empty gates list in input → empty 'gates' list in compact output."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([])
 
         compact = manager._build_compact_result(results)
@@ -209,7 +210,7 @@ class TestCompactPayloadF2TopLevelFields:
 
     def test_overall_pass_true_when_no_failures(self) -> None:
         """overall_pass is True when all gates passed."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate(passed=True, status="passed")])
 
         compact = manager._build_compact_result(results)
@@ -219,7 +220,7 @@ class TestCompactPayloadF2TopLevelFields:
 
     def test_overall_pass_false_when_gate_failed(self) -> None:
         """overall_pass is False when at least one gate failed."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate(passed=False, status="failed")])
 
         compact = manager._build_compact_result(results)
@@ -228,7 +229,7 @@ class TestCompactPayloadF2TopLevelFields:
 
     def test_overall_pass_true_when_all_skipped(self) -> None:
         """overall_pass is True when all gates are skipped (no failures)."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         skipped_gate = _make_gate(status="skipped")
         skipped_gate["passed"] = True
         results = _make_results([skipped_gate])
@@ -239,7 +240,7 @@ class TestCompactPayloadF2TopLevelFields:
 
     def test_duration_ms_absent_from_compact_root(self) -> None:
         """C39: duration_ms must NOT be present in compact root (moved to summary line)."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate()])
 
         compact = manager._build_compact_result(results)
@@ -250,7 +251,7 @@ class TestCompactPayloadF2TopLevelFields:
 
     def test_timings_total_not_leaked_to_compact_root(self) -> None:
         """timings.total must not appear as duration_ms in compact root regardless of value."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate()])
         results["timings"] = {"total": 299}
 
@@ -264,7 +265,7 @@ class TestCompactPayloadF3GateStatusEnum:
 
     def test_passed_gate_has_status_passed(self) -> None:
         """A passing gate has status='passed'."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate(passed=True, status="passed")])
 
         compact = manager._build_compact_result(results)
@@ -273,7 +274,7 @@ class TestCompactPayloadF3GateStatusEnum:
 
     def test_failed_gate_has_status_failed(self) -> None:
         """A failing gate has status='failed'."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         results = _make_results([_make_gate(passed=False, status="failed")])
 
         compact = manager._build_compact_result(results)
@@ -282,7 +283,7 @@ class TestCompactPayloadF3GateStatusEnum:
 
     def test_skipped_gate_has_status_skipped(self) -> None:
         """A skipped gate has status='skipped'."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         skipped = _make_gate(status="skipped")
         skipped["passed"] = True
         results = _make_results([skipped])
@@ -294,7 +295,7 @@ class TestCompactPayloadF3GateStatusEnum:
     def test_status_values_are_valid_enum(self) -> None:
         """All status values in a multi-gate result are within the valid enum."""
         valid = {"passed", "failed", "skipped"}
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
         skipped = _make_gate(name="Gate 2: Imports", status="skipped")
         skipped["passed"] = True
         gates = [

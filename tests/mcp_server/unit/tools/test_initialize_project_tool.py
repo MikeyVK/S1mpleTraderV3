@@ -16,12 +16,18 @@ from unittest.mock import patch
 
 import pytest
 
-from mcp_server.config.workflows import WorkflowConfig
+from mcp_server.schemas import WorkflowConfig
 from mcp_server.tools.project_tools import InitializeProjectInput, InitializeProjectTool
+from tests.mcp_server.test_support import (
+    make_config_loader,
+    make_git_manager,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 
 def _load_workflow_config() -> WorkflowConfig:
-    return WorkflowConfig.load(Path(".st3/workflows.yaml"))
+    return make_config_loader().load_workflow_config()
 
 
 class TestInitializeProjectToolMode1:
@@ -35,7 +41,14 @@ class TestInitializeProjectToolMode1:
     @pytest.fixture
     def tool(self, workspace_root: Path) -> InitializeProjectTool:
         """Create InitializeProjectTool instance."""
-        return InitializeProjectTool(workspace_root=workspace_root)
+        manager = make_project_manager(workspace_root)
+        return InitializeProjectTool(
+            workspace_root=workspace_root,
+            workflow_config=make_config_loader(workspace_root).load_workflow_config(),
+            manager=manager,
+            git_manager=make_git_manager(workspace_root),
+            state_engine=make_phase_state_engine(workspace_root, project_manager=manager),
+        )
 
     @pytest.mark.asyncio
     async def test_atomic_creation_both_files(

@@ -19,10 +19,10 @@ from typing import Any
 import anyio
 from pydantic import BaseModel, Field
 
-from mcp_server.config.workflows import WorkflowConfig
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectInitOptions, ProjectManager
+from mcp_server.schemas import WorkflowConfig
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -70,25 +70,21 @@ class InitializeProjectTool(BaseTool):
     )
     args_model = InitializeProjectInput
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool with atomic state management.
-
-        Args:
-            workspace_root: Path to workspace root directory
-        """
+    def __init__(
+        self,
+        workspace_root: Path | str,
+        workflow_config: WorkflowConfig,
+        manager: ProjectManager,
+        git_manager: GitManager,
+        state_engine: PhaseStateEngine,
+    ) -> None:
+        """Initialize tool with injected project dependencies."""
         super().__init__()
         self.workspace_root = Path(workspace_root)
-        self.workflow_config = WorkflowConfig.load()
-        self.manager = ProjectManager(
-            workspace_root=workspace_root,
-            workflow_config=self.workflow_config,
-        )
-        self.git_manager = GitManager()
-        self.state_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=self.manager,
-            workflow_config=self.workflow_config,
-        )
+        self.manager = manager
+        self.workflow_config = workflow_config
+        self.git_manager = git_manager
+        self.state_engine = state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -307,14 +303,10 @@ class GetProjectPlanTool(BaseTool):
     description = "Get project phase plan for issue number"
     args_model = GetProjectPlanInput
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool.
-
-        Args:
-            workspace_root: Path to workspace root directory
-        """
+    def __init__(self, manager: ProjectManager) -> None:
+        """Initialize tool with injected ProjectManager."""
         super().__init__()
-        self.manager = ProjectManager(workspace_root=workspace_root)
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -409,14 +401,15 @@ class SavePlanningDeliverablesTool(BaseTool):
     )
     args_model = SavePlanningDeliverablesInput
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool.
-
-        Args:
-            workspace_root: Workspace root used to resolve project data.
-        """
+    def __init__(
+        self,
+        manager: ProjectManager,
+        workspace_root: Path | str | None = None,
+    ) -> None:
+        """Initialize tool with injected ProjectManager."""
         super().__init__()
-        self._manager = ProjectManager(workspace_root=workspace_root)
+        del workspace_root
+        self._manager = manager
 
     async def execute(self, params: SavePlanningDeliverablesInput) -> ToolResult:
         """Persist planning deliverables with Layer 2 schema validation.
@@ -499,14 +492,15 @@ class UpdatePlanningDeliverablesTool(BaseTool):
     )
     args_model = UpdatePlanningDeliverablesInput
 
-    def __init__(self, workspace_root: Path | str) -> None:
-        """Initialize tool.
-
-        Args:
-            workspace_root: Workspace root used to resolve project data.
-        """
+    def __init__(
+        self,
+        manager: ProjectManager,
+        workspace_root: Path | str | None = None,
+    ) -> None:
+        """Initialize tool with injected ProjectManager."""
         super().__init__()
-        self._manager = ProjectManager(workspace_root=workspace_root)
+        del workspace_root
+        self._manager = manager
 
     async def execute(self, params: UpdatePlanningDeliverablesInput) -> ToolResult:
         """Merge planning deliverables with Layer 2 schema validation.

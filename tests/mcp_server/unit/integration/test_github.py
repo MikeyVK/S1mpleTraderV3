@@ -6,7 +6,10 @@ from unittest.mock import Mock
 import pytest
 
 from mcp_server.managers.github_manager import GitHubManager
-from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
+from mcp_server.tools.issue_tools import CreateIssueInput, IssueBody
+from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
+
+configure_create_issue_input()
 
 
 @pytest.fixture
@@ -17,7 +20,6 @@ def mock_adapter() -> Mock:
 
 def test_manager_get_issues(mock_adapter: Mock) -> None:
     """Test GitHubManager returns correctly formatted issue data."""
-    # Setup mock
     mock_issue = Mock()
     mock_issue.number = 1
     mock_issue.title = "Test Issue"
@@ -38,7 +40,6 @@ def test_manager_get_issues(mock_adapter: Mock) -> None:
 
 def test_create_issue_tool(mock_adapter: Mock) -> None:
     """Test CreateIssueTool creates issue and returns correct response."""
-    # Setup mock
     mock_issue = Mock()
     mock_issue.number = 42
     mock_issue.html_url = "http://github.com/owner/repo/issues/42"
@@ -46,7 +47,7 @@ def test_create_issue_tool(mock_adapter: Mock) -> None:
     mock_adapter.create_issue.return_value = mock_issue
 
     manager = GitHubManager(adapter=mock_adapter)
-    tool = CreateIssueTool(manager=manager)
+    tool = make_create_issue_tool(manager)
 
     params = CreateIssueInput(
         issue_type="feature",

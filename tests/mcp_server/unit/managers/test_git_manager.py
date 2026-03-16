@@ -9,10 +9,18 @@ from unittest.mock import MagicMock
 # Third-party
 import pytest
 
+from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 
 # Module under test
 from mcp_server.managers.git_manager import GitManager
+
+
+@pytest.fixture
+def git_config() -> GitConfig:
+    """Fixture for project git config."""
+    GitConfig.reset_instance()
+    return GitConfig.from_file(".st3/git.yaml")
 
 
 class TestGitManagerValidation:
@@ -26,13 +34,14 @@ class TestGitManagerValidation:
         return adapter
 
     @pytest.fixture
-    def manager(self, mock_adapter: MagicMock) -> GitManager:
+    def manager(self, mock_adapter: MagicMock, git_config: GitConfig) -> GitManager:
         """Fixture for GitManager with mocked adapter."""
-        return GitManager(adapter=mock_adapter)
+        return GitManager(git_config=git_config, adapter=mock_adapter)
 
     def test_init_default(self) -> None:
         """Test initialization with default adapter."""
-        mgr = GitManager()
+        GitConfig.reset_instance()
+        mgr = GitManager(git_config=GitConfig.from_file(".st3/git.yaml"))
         assert mgr.adapter is not None
 
     def test_get_status(self, manager: GitManager, mock_adapter: MagicMock) -> None:
@@ -94,9 +103,9 @@ class TestGitManagerOperations:
         return adapter
 
     @pytest.fixture
-    def manager(self, mock_adapter: MagicMock) -> GitManager:
+    def manager(self, mock_adapter: MagicMock, git_config: GitConfig) -> GitManager:
         """Fixture for GitManager with mocked adapter."""
-        return GitManager(adapter=mock_adapter)
+        return GitManager(git_config=git_config, adapter=mock_adapter)
 
     def test_restore_success(self, manager: GitManager, mock_adapter: MagicMock) -> None:
         """Test restore operation."""
@@ -184,9 +193,9 @@ class TestGitManagerCreateBranch:
         return adapter
 
     @pytest.fixture
-    def manager(self, mock_adapter: MagicMock) -> GitManager:
+    def manager(self, mock_adapter: MagicMock, git_config: GitConfig) -> GitManager:
         """Fixture for GitManager with mocked adapter."""
-        return GitManager(adapter=mock_adapter)
+        return GitManager(git_config=git_config, adapter=mock_adapter)
 
     def test_create_branch_requires_base_branch_parameter(self, manager: GitManager) -> None:
         """RED: create_branch should require base_branch parameter (no default)."""
@@ -231,7 +240,7 @@ phases:
     subphases: ["delegation", "sync", "review"]
 version: "1.0"
 """)
-        mgr = GitManager(adapter=mock_adapter)
+        mgr = GitManager(git_config=git_config, adapter=mock_adapter)
         mgr._workphases_path = workphases_path
         return mgr
 

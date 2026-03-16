@@ -14,13 +14,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from mcp_server.tools.issue_tools import CreateIssueInput, CreateIssueTool, IssueBody
+from mcp_server.tools.issue_tools import CreateIssueInput, IssueBody
+from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
 
 pytestmark = pytest.mark.asyncio
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
+configure_create_issue_input()
 
 MINIMAL_BODY = IssueBody(problem="[e2e smoke] Integration test — safe to close automatically.")
 
@@ -38,24 +37,16 @@ def make_input(**overrides: object) -> CreateIssueInput:
     return CreateIssueInput(**defaults)
 
 
-# ---------------------------------------------------------------------------
-# Scenario 1: Minimal input — issue created, labels correct
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_minimal_input_creates_issue_with_correct_labels() -> None:
-    """Minimal input assembles correct label set — verified via mock GitHubManager.
-
-    Verifies label assembly logic (type, scope, priority, phase) without live API call.
-    """
+    """Minimal input assembles correct label set — verified via mock GitHubManager."""
     mock_manager = MagicMock()
     mock_manager.create_issue.return_value = {
         "number": 42,
         "title": "[e2e smoke] create_issue integration test",
     }
 
-    tool = CreateIssueTool(manager=mock_manager)
+    tool = make_create_issue_tool(mock_manager)
     params = make_input()
 
     result = await tool.execute(params)
@@ -72,24 +63,16 @@ async def test_minimal_input_creates_issue_with_correct_labels() -> None:
     assert "phase:research" in label_names, f"Missing phase:research in {label_names}"
 
 
-# ---------------------------------------------------------------------------
-# Scenario 2: All options — parent, is_epic, all labels applied
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.asyncio
 async def test_all_options_creates_issue_with_full_label_set() -> None:
-    """All options assemble complete label set — verified via mock GitHubManager.
-
-    Verifies type:epic, parent:N, scope, priority and phase labels are all present.
-    """
+    """All options assemble complete label set — verified via mock GitHubManager."""
     mock_manager = MagicMock()
     mock_manager.create_issue.return_value = {
         "number": 99,
         "title": "[e2e smoke] create_issue full-options test",
     }
 
-    tool = CreateIssueTool(manager=mock_manager)
+    tool = make_create_issue_tool(mock_manager)
     params = make_input(
         title="[e2e smoke] create_issue full-options test",
         issue_type="feature",
@@ -117,11 +100,6 @@ async def test_all_options_creates_issue_with_full_label_set() -> None:
     assert "phase:research" in label_names, f"Missing phase:research in {label_names}"
 
 
-# ---------------------------------------------------------------------------
-# Scenario 3: Invalid input — tool refuses before GitHub API call
-# ---------------------------------------------------------------------------
-
-
 def test_invalid_issue_type_is_refused_before_api_call() -> None:
     """Unknown issue_type must be rejected by Pydantic validation, no GitHub call."""
     with pytest.raises(Exception):  # noqa: B017
@@ -146,17 +124,7 @@ def test_title_too_long_is_refused_before_api_call() -> None:
         make_input(title="X" * 200)
 
 
-# ---------------------------------------------------------------------------
-# Scenario 4: Milestone validation — permissive when milestones.yaml is empty
-# ---------------------------------------------------------------------------
-
-
 def test_milestone_accepted_when_milestones_yaml_is_empty() -> None:
-    """Milestone validation is permissive when milestones.yaml has no entries.
-
-    This is documented in planning.md (Risk #2): milestones.yaml starts empty
-    and validation is a no-op until populated.
-    """
-    # Should NOT raise — empty milestones list means any value is accepted
+    """Milestone validation is permissive when milestones.yaml has no entries."""
     params = make_input(milestone="any-future-milestone")
     assert params.milestone == "any-future-milestone"

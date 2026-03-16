@@ -17,8 +17,7 @@ import pytest
 from pydantic import ValidationError
 
 from mcp_server.core.interfaces import IStateReader, IStateRepository
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 from mcp_server.managers.state_repository import (
     BranchState,
     FileStateRepository,
@@ -128,15 +127,15 @@ class TestInMemoryStateRepository:
 
     def test_phase_state_engine_uses_injected_repository(self, tmp_path: Path) -> None:
         """PSE should persist through the injected repository instead of direct file writes."""
-        project_manager = ProjectManager(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
         project_manager.initialize_project(
             issue_number=257,
             issue_title="Repository injection",
             workflow_name="feature",
         )
         repository = InMemoryStateRepository()
-        engine = PhaseStateEngine(
-            workspace_root=tmp_path,
+        engine = make_phase_state_engine(
+            tmp_path,
             project_manager=project_manager,
             state_repository=repository,
         )

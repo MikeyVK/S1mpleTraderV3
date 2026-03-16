@@ -14,16 +14,11 @@ from fnmatch import fnmatch
 from pathlib import Path
 from typing import cast
 
-from mcp_server.config.loader import ConfigLoader
-from mcp_server.config.schemas.enforcement_config import (
-    EnforcementAction,
-    EnforcementConfig,
-    EnforcementRule,
-)
 from mcp_server.core.exceptions import ConfigError, ValidationError
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.managers.phase_state_engine import PhaseStateEngine
 from mcp_server.managers.project_manager import ProjectManager
+from mcp_server.schemas import EnforcementAction, EnforcementConfig, EnforcementRule
 from mcp_server.tools.tool_result import ToolResult
 
 _ENFORCEMENT_DISPLAY_PATH = ".st3/config/enforcement.yaml"
@@ -84,10 +79,16 @@ class EnforcementRunner:
         self,
         workspace_root: Path,
         config: EnforcementConfig,
+        git_manager: GitManager,
+        project_manager: ProjectManager,
+        state_engine: PhaseStateEngine,
         registry: EnforcementRegistry | dict[str, ActionHandler] | None = None,
     ) -> None:
         self.workspace_root = Path(workspace_root)
         self._config = config
+        self._git_manager = git_manager
+        self._project_manager = project_manager
+        self._state_engine = state_engine
         if registry is None:
             self._registry = self._build_default_registry()
         elif isinstance(registry, EnforcementRegistry):
@@ -95,14 +96,6 @@ class EnforcementRunner:
         else:
             self._registry = EnforcementRegistry(registry)
         self._validate_registered_actions()
-
-    @classmethod
-    def from_workspace(cls, workspace_root: Path | str) -> EnforcementRunner:
-        """Create a runner from one workspace root."""
-        root = Path(workspace_root)
-        loader = ConfigLoader(config_root=root / ".st3")
-        config = loader.load_enforcement_config()
-        return cls(workspace_root=root, config=config)
 
     def run(self, event: str, timing: str, context: EnforcementContext) -> list[str]:
         """Execute matching actions for one event and timing pair."""
@@ -134,28 +127,27 @@ class EnforcementRunner:
                 file_path=_ENFORCEMENT_DISPLAY_PATH,
             )
 
-    @staticmethod
-    def _build_default_registry() -> EnforcementRegistry:
+    def _build_default_registry(self) -> EnforcementRegistry:
         """Build the default action registry."""
         registry = EnforcementRegistry()
         registry.register(
             "check_branch_policy",
-            EnforcementRunner._handle_check_branch_policy,
+            self._handle_check_branch_policy,
         )
         registry.register(
             "commit_state_files",
-            EnforcementRunner._handle_commit_state_files,
+            self._handle_commit_state_files,
         )
         return registry
 
-    @staticmethod
     def _handle_check_branch_policy(
+        self,
         action: EnforcementAction,
         context: EnforcementContext,
         workspace_root: Path,
     ) -> str | None:
         """Block invalid branch creation bases based on branch-type rules."""
-        del workspace_root
+        del self, workspace_root
         branch_type = context.get_param("branch_type")
         base_branch = context.get_param("base_branch")
         if not branch_type or not base_branch:
@@ -173,31 +165,26 @@ class EnforcementRunner:
             hints=[f"Allowed bases: {', '.join(allowed_patterns)}"],
         )
 
-    @staticmethod
     def _handle_commit_state_files(
+        self,
         action: EnforcementAction,
         context: EnforcementContext,
         workspace_root: Path,
     ) -> str | None:
         """Commit state files after a successful tool execution."""
+        del workspace_root
         branch = context.get_param("branch")
         if not isinstance(branch, str) or not branch:
-            git_manager = GitManager()
-            if hasattr(git_manager, "get_current_branch"):
-                branch = git_manager.get_current_branch()
+            if hasattr(self._git_manager, "get_current_branch"):
+                branch = self._git_manager.get_current_branch()
             else:
-                branch = git_manager.adapter.get_current_branch()
+                branch = self._git_manager.adapter.get_current_branch()
         if not isinstance(branch, str) or not branch:
             return None
 
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root,
-            project_manager=project_manager,
-        )
-        state = state_engine.get_state(branch)
+        state = self._state_engine.get_state(branch)
         cycle_number = state.current_cycle if state.current_phase == "implementation" else None
-        commit_hash = GitManager().commit_with_scope(
+        commit_hash = self._git_manager.commit_with_scope(
             workflow_phase=state.current_phase,
             message=action.message or "persist state after phase transition",
             cycle_number=cycle_number,

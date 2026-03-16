@@ -15,6 +15,7 @@ from mcp_server.config.quality_config import (
     TextViolationsParsing,
 )
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -87,7 +88,7 @@ class TestExecuteGateJsonViolationsDispatch:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def _gate(self) -> QualityGate:
         return _make_gate(
@@ -128,7 +129,7 @@ class TestExecuteGateTextViolationsDispatch:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def _gate(self) -> QualityGate:
         return _make_gate(

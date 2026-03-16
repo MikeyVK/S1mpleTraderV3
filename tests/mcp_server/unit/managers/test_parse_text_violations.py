@@ -4,6 +4,7 @@ import pytest
 
 from mcp_server.config.quality_config import TextViolationsParsing, ViolationDTO
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 # Pattern that captures file, line, col, rule, message (mypy-like)
 _MYPY_PATTERN = r"(?P<file>[^:]+):(?P<line>\d+):(?P<col>\d+): (?P<severity>\w+): (?P<message>.+)  \[(?P<rule>\w+)\]"  # noqa: E501
@@ -21,7 +22,7 @@ class TestParseTextViolations:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     # ------------------------------------------------------------------
     # Basic matching

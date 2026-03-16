@@ -7,10 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from mcp_server.config.loader import ConfigLoader
-from mcp_server.config.schemas.phase_contracts_config import CheckSpec, PhaseContractsConfig
-from mcp_server.config.schemas.workphases import WorkphasesConfig
 from mcp_server.core.exceptions import ConfigError
+from mcp_server.schemas import CheckSpec, PhaseContractsConfig, WorkphasesConfig
 
 _PHASE_CONTRACTS_DISPLAY_PATH = ".st3/config/phase_contracts.yaml"
 _WORKPHASES_DISPLAY_PATH = ".st3/workphases.yaml"
@@ -25,44 +23,6 @@ class PhaseConfigContext:
     phase_contracts: PhaseContractsConfig
     planning_deliverables: dict[str, Any] | None = None
 
-    @classmethod
-    def from_workspace(
-        cls,
-        workspace_root: Path | str,
-        issue_number: int | None = None,
-    ) -> PhaseConfigContext:
-        """Load config sources from a workspace root.
-
-        If issue_number is provided, include issue-specific planning deliverables
-        from deliverables.json so A6 merge semantics can be resolved in one place.
-        """
-        root = Path(workspace_root)
-        loader = ConfigLoader(config_root=root / ".st3")
-
-        try:
-            workphases = loader.load_workphases_config()
-        except ConfigError as exc:
-            raise ConfigError(
-                exc.message,
-                file_path=_WORKPHASES_DISPLAY_PATH,
-                hints=exc.hints,
-            ) from exc
-
-        try:
-            phase_contracts = loader.load_phase_contracts_config()
-        except ConfigError as exc:
-            raise ConfigError(
-                exc.message,
-                file_path=_PHASE_CONTRACTS_DISPLAY_PATH,
-                hints=exc.hints,
-            ) from exc
-
-        planning_deliverables = cls._load_planning_deliverables(root, issue_number)
-        return cls(
-            workphases=workphases,
-            phase_contracts=phase_contracts,
-            planning_deliverables=planning_deliverables,
-        )
 
     @staticmethod
     def _load_planning_deliverables(

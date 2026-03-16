@@ -13,6 +13,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 
 def _make_workspace(tmp_path: Path, files: list[str]) -> None:
@@ -42,7 +43,7 @@ class TestScopeResolutionBranch:
 
     def test_branch_scope_returns_changed_py_files(self, tmp_path: Path) -> None:
         """Changed .py files from git diff <parent>...HEAD are returned as sorted list."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         diff_output = "mcp_server/foo.py\nmcp_server/bar.py\n"
 
@@ -60,7 +61,7 @@ class TestScopeResolutionBranch:
 
     def test_branch_scope_sorted(self, tmp_path: Path) -> None:
         """Result list is sorted after git diff."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         diff_output = "z_file.py\na_file.py\nm_file.py\n"
 
@@ -77,7 +78,7 @@ class TestScopeResolutionBranch:
 
     def test_branch_scope_excludes_non_py_files(self, tmp_path: Path) -> None:
         """Non-Python files are excluded from the result."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         diff_output = "mcp_server/logic.py\ndocs/README.md\n.st3/state.json\n"
 
@@ -96,7 +97,7 @@ class TestScopeResolutionBranch:
 
     def test_branch_scope_git_error_returns_empty(self, tmp_path: Path) -> None:
         """When git diff fails (non-zero exit), scope=branch returns [] gracefully."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         def fake_git_fail(_cmd: list[str], **_kw: object) -> MagicMock:
             result = MagicMock(spec=subprocess.CompletedProcess)
@@ -111,7 +112,7 @@ class TestScopeResolutionBranch:
 
     def test_branch_scope_empty_diff_returns_empty(self, tmp_path: Path) -> None:
         """When git diff output is empty, scope=branch returns []."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
 
         def fake_git_empty(_cmd: list[str], **_kw: object) -> MagicMock:
             result = MagicMock(spec=subprocess.CompletedProcess)
@@ -131,7 +132,7 @@ class TestScopeResolutionBranch:
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(json.dumps(state))
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         captured_cmd: list[list[str]] = []
 
         def fake_git(_cmd: list[str], **_kw: object) -> MagicMock:
@@ -154,7 +155,7 @@ class TestScopeResolutionBranch:
         state_path.parent.mkdir(parents=True, exist_ok=True)
         state_path.write_text(json.dumps(state))
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         captured_cmd: list[list[str]] = []
 
         def fake_git(_cmd: list[str], **_kw: object) -> MagicMock:
@@ -179,7 +180,7 @@ class TestScopeResolutionBranch:
         it no longer exists at HEAD.  Without --diff-filter=d the stale path would
         reach File Validation and produce spurious 'File not found' errors.
         """
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         captured_cmd: list[list[str]] = []
 
         def fake_git(_cmd: list[str], **_kw: object) -> MagicMock:
@@ -200,7 +201,7 @@ class TestScopeResolutionBranch:
 
     def test_branch_scope_falls_back_to_main_without_state(self, tmp_path: Path) -> None:
         """When state.json is absent, git diff falls back to main...HEAD."""
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         captured_cmd: list[list[str]] = []
 
         def fake_git(_cmd: list[str], **_kw: object) -> MagicMock:
@@ -231,7 +232,7 @@ class TestScopeResolutionProject:
             ],
         )
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         cfg = _project_scope_config(include_globs=["mcp_server/*.py"])
 
         with patch(
@@ -250,7 +251,7 @@ class TestScopeResolutionProject:
             ["pkg/z_last.py", "pkg/a_first.py", "pkg/m_middle.py"],
         )
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         cfg = _project_scope_config(include_globs=["pkg/*.py"])
 
         with patch(
@@ -265,7 +266,7 @@ class TestScopeResolutionProject:
         """Overlapping globs do not produce duplicate paths."""
         _make_workspace(tmp_path, ["src/util.py"])
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         # Two overlapping globs both match src/util.py
         cfg = _project_scope_config(include_globs=["src/*.py", "src/util.py"])
 
@@ -281,7 +282,7 @@ class TestScopeResolutionProject:
         """When include_globs is empty, scope=project returns []."""
         _make_workspace(tmp_path, ["mcp_server/foo.py"])
 
-        manager = QAManager(workspace_root=tmp_path)
+        manager = make_qa_manager(tmp_path)
         cfg = _project_scope_config(include_globs=[])
 
         with patch(
@@ -294,7 +295,7 @@ class TestScopeResolutionProject:
 
     def test_project_scope_no_workspace_root_returns_empty(self) -> None:
         """When workspace_root is None, scope=project returns [] (graceful no-op)."""
-        manager = QAManager(workspace_root=None)
+        manager = make_qa_manager()
 
         with patch(
             "mcp_server.managers.qa_manager.QualityConfig.load",

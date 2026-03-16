@@ -17,6 +17,7 @@ import json
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
+from tests.mcp_server.test_support import make_phase_state_engine
 
 import pytest
 
@@ -50,7 +51,7 @@ class TestSaveStateNonBlocking:
         state_file = st3_dir / "state.json"
 
         project_manager = MagicMock(spec=ProjectManager)
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=project_manager)
+        engine = make_phase_state_engine(tmp_path, project_manager=project_manager)
 
         test_state = BranchState(
             branch="test/123-test",
@@ -86,7 +87,7 @@ class TestSaveStateNonBlocking:
         st3_dir.mkdir()
 
         project_manager = MagicMock(spec=ProjectManager)
-        engine = PhaseStateEngine(workspace_root=tmp_path, project_manager=project_manager)
+        engine = make_phase_state_engine(tmp_path, project_manager=project_manager)
 
         test_state = BranchState(
             branch="test/123-test",

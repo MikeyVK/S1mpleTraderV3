@@ -1,7 +1,6 @@
 """Tests for PolicyEngine (Issue #55 integration)."""
 
-from mcp_server.config.git_config import GitConfig
-from mcp_server.core.policy_engine import PolicyEngine
+from tests.mcp_server.test_support import make_policy_engine
 
 
 class TestPolicyEngineConfigIntegration:
@@ -9,12 +8,7 @@ class TestPolicyEngineConfigIntegration:
 
     def setup_method(self):
         """Setup test fixtures."""
-        GitConfig.reset_instance()
-        self.engine: PolicyEngine = PolicyEngine()
-
-    def teardown_method(self):
-        """Cleanup after tests."""
-        GitConfig.reset_instance()
+        self.engine = make_policy_engine()
 
     # Cycle 7: Convention #6 - Commit prefix validation
     def test_commit_uses_git_config_prefixes(self):

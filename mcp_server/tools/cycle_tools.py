@@ -8,13 +8,17 @@ cycle transitions via PhaseStateEngine.
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import UTC, datetime
+from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from mcp_server.config.git_config import GitConfig
 from mcp_server.managers.deliverable_checker import DeliverableChecker
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.managers.phase_state_engine import PhaseStateEngine
+from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.tools.phase_tools import _BaseTransitionTool
 from mcp_server.tools.tool_result import ToolResult
 
@@ -39,6 +43,16 @@ class TransitionCycleInput(BaseModel):
 class TransitionCycleTool(_BaseTransitionTool):
     """Tool to transition to next implementation cycle with validation."""
 
+    def __init__(
+        self,
+        workspace_root: Path | str,
+        project_manager: ProjectManager | None = None,
+        state_engine: PhaseStateEngine | None = None,
+        git_manager: GitManager | None = None,
+    ) -> None:
+        super().__init__(workspace_root, project_manager, state_engine)
+        self._git_manager = git_manager
+
     name = "transition_cycle"
     description = (
         "Transition to next TDD cycle (forward-only, sequential). "
@@ -51,7 +65,7 @@ class TransitionCycleTool(_BaseTransitionTool):
         """Execute cycle transition with validation."""
         try:
             branch = self._get_current_branch()
-            issue_number = params.issue_number or GitConfig.from_file().extract_issue_number(branch)
+            issue_number = params.issue_number or self._extract_issue_number(branch)
             if issue_number is None:
                 return ToolResult.error("Cannot detect issue number from branch")
 
@@ -138,10 +152,45 @@ class TransitionCycleTool(_BaseTransitionTool):
         except (OSError, ValueError, RuntimeError, KeyError) as exc:
             return ToolResult.error(f"Transition failed: {exc}")
 
+    def _get_git_manager(self) -> GitManager:
+        """Return the injected GitManager."""
+        if self._git_manager is None:
+            raise ValueError("GitManager must be injected for cycle transition tools")
+        return self._git_manager
+
+    def _extract_issue_number(self, branch: str) -> int | None:
+        """Extract issue number from git config when available, else from branch syntax."""
+        extracted = None
+        with_config = getattr(self._get_git_manager(), "git_config", None)
+        if with_config is not None:
+            extract = getattr(with_config, "extract_issue_number", None)
+            if callable(extract):
+                extracted = extract(branch)
+                if isinstance(extracted, int):
+                    return extracted
+
+        match = re.search(r"/(\d+)(?:-|$)", branch)
+        return int(match.group(1)) if match else None
+
     def _get_current_branch(self) -> str:
-        """Resolve the active branch from GitManager or its adapter."""
-        git_manager = GitManager()
-        return git_manager.get_current_branch()
+        """Resolve the active branch, falling back to a single saved state entry."""
+        branch: str | None = None
+        try:
+            branch = self._get_git_manager().get_current_branch()
+        except Exception:
+            branch = None
+
+        state_file = self.workspace_root / ".st3" / "state.json"
+        if state_file.exists():
+            state_data = json.loads(state_file.read_text(encoding="utf-8"))
+            if isinstance(state_data, dict):
+                state_branch = state_data.get("branch")
+                if isinstance(state_branch, str) and state_branch:
+                    return state_branch
+
+        if branch is None:
+            raise RuntimeError("Unable to determine current branch")
+        return branch
 
 
 class ForceCycleTransitionInput(BaseModel):
@@ -161,6 +210,16 @@ class ForceCycleTransitionInput(BaseModel):
 
 class ForceCycleTransitionTool(_BaseTransitionTool):
     """Tool to force implementation cycle transition with audit trail."""
+
+    def __init__(
+        self,
+        workspace_root: Path | str,
+        project_manager: ProjectManager | None = None,
+        state_engine: PhaseStateEngine | None = None,
+        git_manager: GitManager | None = None,
+    ) -> None:
+        super().__init__(workspace_root, project_manager, state_engine)
+        self._git_manager = git_manager
 
     name = "force_cycle_transition"
     description = (
@@ -185,7 +244,7 @@ class ForceCycleTransitionTool(_BaseTransitionTool):
                 )
 
             branch = self._get_current_branch()
-            issue_number = params.issue_number or GitConfig.from_file().extract_issue_number(branch)
+            issue_number = params.issue_number or self._extract_issue_number(branch)
             if issue_number is None:
                 return ToolResult.error("Cannot detect issue number from branch")
 
@@ -288,7 +347,42 @@ class ForceCycleTransitionTool(_BaseTransitionTool):
         except (OSError, ValueError, RuntimeError, KeyError) as exc:
             return ToolResult.error(f"Forced transition failed: {exc}")
 
+    def _get_git_manager(self) -> GitManager:
+        """Return the injected GitManager."""
+        if self._git_manager is None:
+            raise ValueError("GitManager must be injected for cycle transition tools")
+        return self._git_manager
+
+    def _extract_issue_number(self, branch: str) -> int | None:
+        """Extract issue number from git config when available, else from branch syntax."""
+        extracted = None
+        with_config = getattr(self._get_git_manager(), "git_config", None)
+        if with_config is not None:
+            extract = getattr(with_config, "extract_issue_number", None)
+            if callable(extract):
+                extracted = extract(branch)
+                if isinstance(extracted, int):
+                    return extracted
+
+        match = re.search(r"/(\d+)(?:-|$)", branch)
+        return int(match.group(1)) if match else None
+
     def _get_current_branch(self) -> str:
-        """Resolve the active branch from GitManager or its adapter."""
-        git_manager = GitManager()
-        return git_manager.get_current_branch()
+        """Resolve the active branch, falling back to a single saved state entry."""
+        branch: str | None = None
+        try:
+            branch = self._get_git_manager().get_current_branch()
+        except Exception:
+            branch = None
+
+        state_file = self.workspace_root / ".st3" / "state.json"
+        if state_file.exists():
+            state_data = json.loads(state_file.read_text(encoding="utf-8"))
+            if isinstance(state_data, dict):
+                state_branch = state_data.get("branch")
+                if isinstance(state_branch, str) and state_branch:
+                    return state_branch
+
+        if branch is None:
+            raise RuntimeError("Unable to determine current branch")
+        return branch

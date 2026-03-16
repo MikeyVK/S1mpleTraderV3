@@ -46,7 +46,10 @@ class TestProjectManagerWorkflows:
         Returns:
             ProjectManager instance
         """
-        return ProjectManager(workspace_root=workspace_root)
+        return ProjectManager(
+            workspace_root=workspace_root,
+            workflow_config=_load_workflow_config(),
+        )
 
     def test_workflows_loaded_from_yaml(self) -> None:
         """Test that workflows are loaded from workflows.yaml."""
@@ -306,7 +309,10 @@ phases:
     @pytest.fixture
     def manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return ProjectManager(
+            workspace_root=workspace_root,
+            workflow_config=_load_workflow_config(),
+        )
 
     def test_get_project_plan_includes_current_phase_from_commit_scope(
         self, manager: ProjectManager
@@ -368,7 +374,10 @@ class TestPlanningDeliverablesSchema:
     @pytest.fixture
     def manager(self, workspace_root: Path) -> ProjectManager:
         """Create ProjectManager instance."""
-        return ProjectManager(workspace_root=workspace_root)
+        return ProjectManager(
+            workspace_root=workspace_root,
+            workflow_config=_load_workflow_config(),
+        )
 
     def test_planning_deliverables_stored_in_projects_json(self, manager: ProjectManager) -> None:
         """Test that planning_deliverables are persisted to deliverables.json.

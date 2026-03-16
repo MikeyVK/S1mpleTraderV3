@@ -109,17 +109,27 @@ class GetWorkContextTool(BaseTool):
     )
     args_model = GetWorkContextInput
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        git_manager: GitManager,
+        project_manager: ProjectManager,
+        state_engine: PhaseStateEngine,
+        github_manager: GitHubManager | None = None,
+    ) -> None:
         super().__init__()
         self._settings = settings
+        self._git_manager = git_manager
+        self._project_manager = project_manager
+        self._state_engine = state_engine
+        self._github_manager = github_manager
 
     async def execute(self, params: GetWorkContextInput) -> ToolResult:
         """Execute work context aggregation."""
         context: dict[str, Any] = {}
 
         # Get Git context
-        git_manager = GitManager()
-        branch = git_manager.get_current_branch()
+        branch = self._git_manager.get_current_branch()
         context["current_branch"] = branch
 
         # Extract issue number from branch
@@ -128,7 +138,7 @@ class GetWorkContextTool(BaseTool):
 
         # Detect workflow phase deterministically from commit-scope + state.json
         try:
-            recent_commits = git_manager.get_recent_commits(limit=5)
+            recent_commits = self._git_manager.get_recent_commits(limit=5)
             phase_result = self._detect_workflow_phase(recent_commits)
             context["workflow_phase"] = phase_result["workflow_phase"]
             context["sub_phase"] = phase_result.get("sub_phase")
@@ -147,19 +157,11 @@ class GetWorkContextTool(BaseTool):
         # Issue #146 Cycle 3: TDD Cycle Info (conditional visibility)
         if context.get("workflow_phase") == "implementation" and issue_number:
             try:
-                workspace_root = Path(self._settings.server.workspace_root)
-                project_manager = ProjectManager(workspace_root=workspace_root)
-                state_engine = PhaseStateEngine(
-                    workspace_root=workspace_root,
-                    project_manager=project_manager,
-                    workflow_config=project_manager.workflow_config,
-                )
-
-                state = state_engine.get_state(branch)
+                state = self._state_engine.get_state(branch)
                 current_cycle = state.current_cycle
 
                 # Get planning deliverables
-                project_plan = project_manager.get_project_plan(issue_number)
+                project_plan = self._project_manager.get_project_plan(issue_number)
                 if project_plan is None:
                     raise ValueError("Project plan not found")
                 planning_deliverables = project_plan.get("planning_deliverables")
@@ -189,11 +191,14 @@ class GetWorkContextTool(BaseTool):
         # Get GitHub issue details if configured
         if self._settings.github.token:
             try:
-                gh_manager = GitHubManager()
+                if self._github_manager is None:
+                    raise RuntimeError(
+                        "GitHubManager must be injected when GitHub access is enabled"
+                    )
 
                 # Active Issue
                 if issue_number:
-                    issue = gh_manager.get_issue(issue_number)
+                    issue = self._github_manager.get_issue(issue_number)
                     if issue:
                         # GitHubManager.get_issue() returns PyGithub Issue object
                         context["active_issue"] = {
@@ -207,7 +212,7 @@ class GetWorkContextTool(BaseTool):
                 # Recently Closed Issues (Implemented to satisfy param)
                 if params.include_closed_recent:
                     # This effectively implements the logic for the formerly unused argument
-                    closed_issues = gh_manager.list_issues(state="closed")
+                    closed_issues = self._github_manager.list_issues(state="closed")
                     # Naively taking top 3 for brevity, assuming list_issues sorts by recent
                     context["recently_closed"] = [
                         f"#{i.number} {i.title}" for i in closed_issues[:3]

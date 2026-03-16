@@ -11,10 +11,10 @@ import pytest
 import yaml
 
 from mcp_server.adapters.git_adapter import GitAdapter
+from mcp_server.config.git_config import GitConfig
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 @pytest.fixture
@@ -142,7 +142,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     5. Implementation subcycle (red → green → refactor)
     """
     # GIVEN: Initialized project with feature workflow
-    pm = ProjectManager(workspace_root=git_repo)
+    pm = make_project_manager(git_repo)
     pm.initialize_project(
         issue_number=999,
         issue_title="End-to-end workflow test",
@@ -158,7 +158,7 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
     )
 
     # Initialize PhaseStateEngine
-    state_engine = PhaseStateEngine(workspace_root=git_repo, project_manager=pm)
+    state_engine = make_phase_state_engine(git_repo, project_manager=pm)
     state_engine.initialize_branch(
         branch="feature/999-e2e-test",
         issue_number=999,
@@ -168,7 +168,13 @@ def test_full_workflow_cycle_with_scope_detection(git_repo: Path) -> None:
 
     # Initialize GitManager with tmp_path and ScopeDecoder
     git_adapter = GitAdapter(repo_path=str(git_repo))
-    git_manager = GitManager(adapter=git_adapter)
+    GitConfig.reset_instance()
+    git_config = GitConfig.from_file(str(git_repo / ".st3" / "git.yaml"))
+    git_manager = GitManager(
+        git_config=git_config,
+        adapter=git_adapter,
+        workphases_path=git_repo / ".st3" / "workphases.yaml",
+    )
     decoder = ScopeDecoder()
 
     # Phase 1: RESEARCH

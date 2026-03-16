@@ -3,7 +3,7 @@
 import copy
 import json
 import unicodedata
-from typing import Any, Literal, cast
+from typing import Any, ClassVar, Literal, cast
 
 import jinja2
 from pydantic import BaseModel, Field, field_validator
@@ -143,6 +143,68 @@ class CreateIssueInput(BaseModel):
             " tooling, workflow, documentation"
         ),
     )
+
+    _issue_config: ClassVar[IssueConfig | None] = None
+    _git_config: ClassVar[GitConfig | None] = None
+    _label_config: ClassVar[LabelConfig | None] = None
+    _scope_config: ClassVar[ScopeConfig | None] = None
+    _milestone_config: ClassVar[MilestoneConfig | None] = None
+    _contributor_config: ClassVar[ContributorConfig | None] = None
+
+    @classmethod
+    def configure(
+        cls,
+        *,
+        issue_config: IssueConfig,
+        git_config: GitConfig,
+        label_config: LabelConfig,
+        scope_config: ScopeConfig,
+        milestone_config: MilestoneConfig,
+        contributor_config: ContributorConfig,
+    ) -> None:
+        cls._issue_config = issue_config
+        cls._git_config = git_config
+        cls._label_config = label_config
+        cls._scope_config = scope_config
+        cls._milestone_config = milestone_config
+        cls._contributor_config = contributor_config
+
+    @classmethod
+    def _require_issue_config(cls) -> IssueConfig:
+        if cls._issue_config is None:
+            raise ValueError("IssueConfig must be injected before issue input validation")
+        return cls._issue_config
+
+    @classmethod
+    def _require_git_config(cls) -> GitConfig:
+        if cls._git_config is None:
+            raise ValueError("GitConfig must be injected before issue input validation")
+        return cls._git_config
+
+    @classmethod
+    def _require_label_config(cls) -> LabelConfig:
+        if cls._label_config is None:
+            raise ValueError("LabelConfig must be injected before issue input validation")
+        return cls._label_config
+
+    @classmethod
+    def _require_scope_config(cls) -> ScopeConfig:
+        if cls._scope_config is None:
+            raise ValueError("ScopeConfig must be injected before issue input validation")
+        return cls._scope_config
+
+    @classmethod
+    def _require_milestone_config(cls) -> MilestoneConfig:
+        if cls._milestone_config is None:
+            raise ValueError("MilestoneConfig must be injected before issue input validation")
+        return cls._milestone_config
+
+    @classmethod
+    def _require_contributor_config(cls) -> ContributorConfig:
+        if cls._contributor_config is None:
+            raise ValueError("ContributorConfig must be injected before issue input validation")
+        return cls._contributor_config
+
     body: IssueBody = Field(..., description="Structured issue body (IssueBody)")
     is_epic: bool = Field(default=False, description="Mark this issue as an epic")
     parent_issue: int | None = Field(
@@ -173,7 +235,7 @@ class CreateIssueInput(BaseModel):
     @field_validator("issue_type")
     @classmethod
     def validate_issue_type(cls, v: str) -> str:
-        cfg = IssueConfig.from_file()
+        cfg = cls._require_issue_config()
         if not cfg.has_issue_type(v):
             valid = sorted(e.name for e in cfg.issue_types)
             raise ValueError(f"Unknown issue type: '{v}'. Valid values: {valid}")
@@ -182,7 +244,7 @@ class CreateIssueInput(BaseModel):
     @field_validator("title")
     @classmethod
     def validate_title_length(cls, v: str) -> str:
-        git_cfg = GitConfig.from_file()
+        git_cfg = cls._require_git_config()
         max_len = git_cfg.issue_title_max_length
         if len(v) > max_len:
             raise ValueError(f"Title too long: {len(v)} chars (max {max_len} from git.yaml)")
@@ -191,7 +253,7 @@ class CreateIssueInput(BaseModel):
     @field_validator("priority")
     @classmethod
     def validate_priority(cls, v: str) -> str:
-        cfg = LabelConfig.load()
+        cfg = cls._require_label_config()
         valid = {lbl.name.split(":", 1)[1] for lbl in cfg.get_labels_by_category("priority")}
         if v not in valid:
             raise ValueError(f"Unknown priority: '{v}'. Valid values: {sorted(valid)}")
@@ -200,7 +262,7 @@ class CreateIssueInput(BaseModel):
     @field_validator("scope")
     @classmethod
     def validate_scope(cls, v: str) -> str:
-        cfg = ScopeConfig.from_file()
+        cfg = cls._require_scope_config()
         if not cfg.has_scope(v):
             raise ValueError(f"Unknown scope: '{v}'. Valid values: {sorted(cfg.scopes)}")
         return v
@@ -210,7 +272,7 @@ class CreateIssueInput(BaseModel):
     def validate_milestone(cls, v: str | None) -> str | None:
         if v is None:
             return None
-        cfg = MilestoneConfig.from_file()
+        cfg = cls._require_milestone_config()
         if not cfg.validate_milestone(v):
             raise ValueError(f"Unknown milestone: '{v}'. Must match a title in milestones.yaml.")
         return v
@@ -220,7 +282,7 @@ class CreateIssueInput(BaseModel):
     def validate_assignee(cls, v: list[str] | None) -> list[str] | None:
         if v is None:
             return None
-        cfg = ContributorConfig.from_file()
+        cfg = cls._require_contributor_config()
         for login in v:
             if not cfg.validate_assignee(login):
                 raise ValueError(
@@ -268,8 +330,33 @@ class CreateIssueTool(BaseTool):
     description = "Create a new GitHub issue"
     args_model = CreateIssueInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(
+        self,
+        manager: GitHubManager,
+        issue_config: IssueConfig,
+        git_config: GitConfig,
+        label_config: LabelConfig,
+        scope_config: ScopeConfig,
+        milestone_config: MilestoneConfig,
+        contributor_config: ContributorConfig,
+        workflow_config: WorkflowConfig,
+    ) -> None:
+        self.manager = manager
+        self._issue_config = issue_config
+        self._git_config = git_config
+        self._label_config = label_config
+        self._scope_config = scope_config
+        self._milestone_config = milestone_config
+        self._contributor_config = contributor_config
+        self._workflow_config = workflow_config
+        CreateIssueInput.configure(
+            issue_config=issue_config,
+            git_config=git_config,
+            label_config=label_config,
+            scope_config=scope_config,
+            milestone_config=milestone_config,
+            contributor_config=contributor_config,
+        )
         self._renderer = JinjaRenderer(template_dir=get_template_root())
 
     @property
@@ -328,8 +415,8 @@ class CreateIssueTool(BaseTool):
           phase_label    = "phase:{first_phase}"              from workflows.yaml
           parent_label   = "parent:{n}"                      if parent_issue is not None
         """
-        issue_cfg = IssueConfig.from_file()
-        workflow_cfg = WorkflowConfig.from_file()
+        issue_cfg = self._issue_config
+        workflow_cfg = self._workflow_config
 
         # type label
         type_label = "type:epic" if params.is_epic else issue_cfg.get_label(params.issue_type)
@@ -360,9 +447,12 @@ class CreateIssueTool(BaseTool):
             # Resolve milestone title → number (GitHub API requires int)
             milestone_number: int | None = None
             if params.milestone is not None:
-                cfg = MilestoneConfig.from_file()
                 milestone_number = next(
-                    (m.number for m in cfg.milestones if m.title == params.milestone),
+                    (
+                        m.number
+                        for m in self._milestone_config.milestones
+                        if m.title == params.milestone
+                    ),
                     None,
                 )
 
@@ -398,8 +488,8 @@ class GetIssueTool(BaseTool):
     description = "Get detailed information about a specific GitHub issue"
     args_model = GetIssueInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager) -> None:
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -441,8 +531,8 @@ class ListIssuesTool(BaseTool):
     description = "List GitHub issues with optional filtering by state and labels"
     args_model = ListIssuesInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager) -> None:
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -484,8 +574,8 @@ class UpdateIssueTool(BaseTool):
     description = "Update title, body, state, labels, milestone, or assignees for an issue"
     args_model = UpdateIssueInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager) -> None:
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
@@ -521,8 +611,8 @@ class CloseIssueTool(BaseTool):
     description = "Close a GitHub issue with optional comment"
     args_model = CloseIssueInput
 
-    def __init__(self, manager: GitHubManager | None = None) -> None:
-        self.manager = manager or GitHubManager()
+    def __init__(self, manager: GitHubManager) -> None:
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:

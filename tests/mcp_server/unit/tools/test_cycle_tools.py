@@ -10,12 +10,15 @@ import pytest
 from mcp.types import CallToolRequest, CallToolRequestParams
 
 from mcp_server.core.exceptions import ConfigError
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import InMemoryStateRepository
 from mcp_server.server import MCPServer
 from mcp_server.tools.cycle_tools import ForceCycleTransitionTool, TransitionCycleTool
 from mcp_server.tools.tool_result import ToolResult
+from tests.mcp_server.test_support import (
+    make_git_manager,
+    make_phase_state_engine,
+    make_project_manager,
+)
 
 
 class TestCycleTools:
@@ -26,8 +29,21 @@ class TestCycleTools:
         tmp_path: Path,
     ) -> None:
         """Cycle tools should use constructor-injected workspace roots and hook metadata."""
-        transition_tool = TransitionCycleTool(workspace_root=tmp_path)
-        force_tool = ForceCycleTransitionTool(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
+        state_engine = make_phase_state_engine(tmp_path, project_manager=project_manager)
+        git_manager = make_git_manager(tmp_path)
+        transition_tool = TransitionCycleTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=state_engine,
+            git_manager=git_manager,
+        )
+        force_tool = ForceCycleTransitionTool(
+            workspace_root=tmp_path,
+            project_manager=project_manager,
+            state_engine=state_engine,
+            git_manager=git_manager,
+        )
 
         assert transition_tool.workspace_root == tmp_path
         assert force_tool.workspace_root == tmp_path
@@ -56,7 +72,7 @@ class TestCycleTools:
             encoding="utf-8",
         )
 
-        project_manager = ProjectManager(workspace_root=tmp_path)
+        project_manager = make_project_manager(tmp_path)
         project_manager.initialize_project(
             issue_number=257,
             issue_title="Cycle 5.1 enforcement",
@@ -84,8 +100,8 @@ class TestCycleTools:
                 }
             },
         )
-        state_engine = PhaseStateEngine(
-            workspace_root=tmp_path,
+        state_engine = make_phase_state_engine(
+            tmp_path,
             project_manager=project_manager,
             state_repository=InMemoryStateRepository(),
         )
@@ -122,7 +138,14 @@ class TestCycleTools:
             mock_git_class.return_value = mock_git
 
             server = MCPServer()
-            server.tools = [TransitionCycleTool(workspace_root=tmp_path)]
+            server.tools = [
+                TransitionCycleTool(
+                    workspace_root=tmp_path,
+                    project_manager=server.project_manager,
+                    state_engine=server.phase_state_engine,
+                    git_manager=server.git_manager,
+                )
+            ]
             handler = server.server.request_handlers[CallToolRequest]
 
             req = CallToolRequest(
@@ -152,7 +175,14 @@ class TestCycleTools:
             mock_settings_cls.from_env.return_value.logging.audit_log = ".logs/mcp_audit.log"
 
             server = MCPServer()
-            server.tools = [ForceCycleTransitionTool(workspace_root=tmp_path)]
+            server.tools = [
+                ForceCycleTransitionTool(
+                    workspace_root=tmp_path,
+                    project_manager=server.project_manager,
+                    state_engine=server.phase_state_engine,
+                    git_manager=server.git_manager,
+                )
+            ]
             handler = server.server.request_handlers[CallToolRequest]
 
             with (

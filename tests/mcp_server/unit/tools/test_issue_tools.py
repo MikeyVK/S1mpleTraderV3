@@ -1,6 +1,6 @@
 """Unit tests for issue_tools.py."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -8,7 +8,6 @@ from mcp_server.tools.issue_tools import (
     CloseIssueInput,
     CloseIssueTool,
     CreateIssueInput,
-    CreateIssueTool,
     GetIssueInput,
     GetIssueTool,
     IssueBody,
@@ -17,6 +16,9 @@ from mcp_server.tools.issue_tools import (
     UpdateIssueInput,
     UpdateIssueTool,
 )
+from tests.mcp_server.test_support import configure_create_issue_input, make_create_issue_tool
+
+configure_create_issue_input()
 
 
 @pytest.fixture
@@ -26,7 +28,7 @@ def mock_github_manager() -> MagicMock:
 
 @pytest.mark.asyncio
 async def test_create_issue_tool(mock_github_manager: MagicMock) -> None:
-    tool = CreateIssueTool(manager=mock_github_manager)
+    tool = make_create_issue_tool(mock_github_manager)
     issue_mock = {"number": 123, "url": "http://github.com/issues/123", "title": "New Issue"}
     mock_github_manager.create_issue.return_value = issue_mock
 
@@ -45,29 +47,29 @@ async def test_create_issue_tool(mock_github_manager: MagicMock) -> None:
 
 @pytest.mark.asyncio
 async def test_create_issue_tool_forwards_milestone(mock_github_manager: MagicMock) -> None:
-    tool = CreateIssueTool(manager=mock_github_manager)
     issue_mock = {"number": 7, "url": "http://github.com/issues/7", "title": "Milestone Issue"}
     mock_github_manager.create_issue.return_value = issue_mock
 
-    # Build a MilestoneEntry stub and a config stub
     milestone_entry = MagicMock()
     milestone_entry.title = "v2.0"
     milestone_entry.number = 2
-    mock_cfg = MagicMock()
-    mock_cfg.milestones = [milestone_entry]
-    mock_cfg.validate_milestone.return_value = True
+    milestone_config = MagicMock()
+    milestone_config.milestones = [milestone_entry]
+    milestone_config.validate_milestone.return_value = True
 
-    with patch("mcp_server.tools.issue_tools.MilestoneConfig") as mock_cls:
-        mock_cls.from_file.return_value = mock_cfg
-        params = CreateIssueInput(
-            issue_type="feature",
-            title="Milestone Issue",
-            priority="medium",
-            scope="mcp-server",
-            body=IssueBody(problem="Needs milestone"),
-            milestone="v2.0",
-        )
-        await tool.execute(params)
+    tool = make_create_issue_tool(mock_github_manager)
+    tool._milestone_config = milestone_config
+    CreateIssueInput._milestone_config = milestone_config
+
+    params = CreateIssueInput(
+        issue_type="feature",
+        title="Milestone Issue",
+        priority="medium",
+        scope="mcp-server",
+        body=IssueBody(problem="Needs milestone"),
+        milestone="v2.0",
+    )
+    await tool.execute(params)
 
     call_kwargs = mock_github_manager.create_issue.call_args.kwargs
     assert call_kwargs["milestone"] == 2
@@ -77,7 +79,7 @@ async def test_create_issue_tool_forwards_milestone(mock_github_manager: MagicMo
 async def test_create_issue_tool_milestone_none_when_not_set(
     mock_github_manager: MagicMock,
 ) -> None:
-    tool = CreateIssueTool(manager=mock_github_manager)
+    tool = make_create_issue_tool(mock_github_manager)
     mock_github_manager.create_issue.return_value = {"number": 8, "url": "", "title": "No ms"}
 
     params = CreateIssueInput(
@@ -124,7 +126,6 @@ async def test_list_issues_tool(mock_github_manager: MagicMock) -> None:
     params = ListIssuesInput(state="open", labels=["bug"])
     result = await tool.execute(params)
 
-    # Configure mock labels correctly for assert_called check
     mock_github_manager.list_issues.assert_called_with(state="open", labels=["bug"])
     assert "#1 Issue 1" in result.content[0]["text"]
 
@@ -158,7 +159,6 @@ async def test_close_issue_tool(mock_github_manager: MagicMock) -> None:
     tool = CloseIssueTool(manager=mock_github_manager)
     mock_github_manager.close_issue.return_value = MagicMock(number=5)
 
-    # Test with comment
     await tool.execute(CloseIssueInput(issue_number=5, comment="Done"))
 
     mock_github_manager.close_issue.assert_called_with(5, comment="Done")

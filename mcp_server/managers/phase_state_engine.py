@@ -31,13 +31,11 @@ from typing import Any
 # Project modules
 from pydantic import ValidationError
 
-from mcp_server.config.git_config import GitConfig
-from mcp_server.config.workflows import WorkflowConfig
-from mcp_server.config.workphases_config import WorkphasesConfig
 from mcp_server.core.interfaces import IStateRepository
 from mcp_server.managers.deliverable_checker import DeliverableChecker, DeliverableCheckError
 from mcp_server.managers.project_manager import ProjectManager
 from mcp_server.managers.state_repository import BranchState, FileStateRepository
+from mcp_server.schemas import GitConfig, WorkflowConfig, WorkphasesConfig
 
 logger = logging.getLogger(__name__)
 
@@ -73,21 +71,28 @@ class PhaseStateEngine:
         self,
         workspace_root: Path | str,
         project_manager: ProjectManager,
-        git_config: GitConfig | None = None,
+        git_config: GitConfig,
+        workflow_config: WorkflowConfig,
+        workphases_config: WorkphasesConfig,
         state_repository: IStateRepository | None = None,
-        workflow_config: WorkflowConfig | None = None,
     ) -> None:
-        """Initialize PhaseStateEngine.
-
-        Args:
-            workspace_root: Path to workspace root directory
-            project_manager: ProjectManager for workflow lookup
-        """
+        """Initialize PhaseStateEngine."""
         self.workspace_root = Path(workspace_root)
         self.state_file = self.workspace_root / ".st3" / "state.json"
         self.project_manager = project_manager
-        self._workflow_config = workflow_config or WorkflowConfig.load()
-        self._git_config = git_config or GitConfig.from_file()
+
+        workspace_workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
+        if not workspace_workphases_path.exists():
+            relaxed_payload = workphases_config.model_dump()
+            for phase_definition in relaxed_payload.get("phases", {}).values():
+                if isinstance(phase_definition, dict):
+                    phase_definition["exit_requires"] = []
+                    phase_definition["entry_expects"] = []
+            workphases_config = WorkphasesConfig.model_validate(relaxed_payload)
+
+        self._workflow_config = workflow_config
+        self._git_config = git_config
+        self._workphases_config = workphases_config
         self._state_repository = state_repository or FileStateRepository(state_file=self.state_file)
 
     def initialize_branch(
@@ -240,42 +245,39 @@ class PhaseStateEngine:
 
         # Warn about skipped gates (GAP-03)
         # Distinguish blocking gates (key absent) from passing gates (key present) (C10/GAP-17).
-        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
         skipped_gates: list[str] = []  # blocking: key absent from deliverables.json
         passing_gates: list[str] = []  # passing: key present in deliverables.json
         issue_number = state.issue_number
         if issue_number is None:
             raise ValueError(f"Branch '{branch}' has no issue_number in state")
 
-        if workphases_path.exists():
-            plan = self.project_manager.get_project_plan(issue_number)
-            wp_config = WorkphasesConfig(workphases_path)
-            for entry in wp_config.get_exit_requires(from_phase):
-                key = entry.get("key")
-                if not key:
-                    continue
-                gate_id = f"exit:{from_phase}:{key}"
-                if plan is None or key not in plan:
-                    skipped_gates.append(gate_id)
-                else:
-                    passing_gates.append(gate_id)
-            for entry in wp_config.get_entry_expects(to_phase):
-                key = entry.get("key")
-                if not key:
-                    continue
-                gate_id = f"entry:{to_phase}:{key}"
-                if plan is None or key not in plan:
-                    skipped_gates.append(gate_id)
-                else:
-                    passing_gates.append(gate_id)
-            if skipped_gates:
-                logger.warning(
-                    "force_transition skipped_gates=%s (from=%s, to=%s, skip_reason=%r)",
-                    skipped_gates,
-                    from_phase,
-                    to_phase,
-                    skip_reason,
-                )
+        plan = self.project_manager.get_project_plan(issue_number)
+        for entry in self._workphases_config.get_exit_requires(from_phase):
+            key = entry.get("key")
+            if not key:
+                continue
+            gate_id = f"exit:{from_phase}:{key}"
+            if plan is None or key not in plan:
+                skipped_gates.append(gate_id)
+            else:
+                passing_gates.append(gate_id)
+        for entry in self._workphases_config.get_entry_expects(to_phase):
+            key = entry.get("key")
+            if not key:
+                continue
+            gate_id = f"entry:{to_phase}:{key}"
+            if plan is None or key not in plan:
+                skipped_gates.append(gate_id)
+            else:
+                passing_gates.append(gate_id)
+        if skipped_gates:
+            logger.warning(
+                "force_transition skipped_gates=%s (from=%s, to=%s, skip_reason=%r)",
+                skipped_gates,
+                from_phase,
+                to_phase,
+                skip_reason,
+            )
 
         # Record forced transition (forced=True)
         transition = TransitionRecord(
@@ -629,9 +631,7 @@ class PhaseStateEngine:
             ValueError: If a required key is absent from the project plan
             DeliverableCheckError: If a validates entry fails structural checks
         """
-        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
-        wp_config = WorkphasesConfig(workphases_path)
-        exit_requires = wp_config.get_exit_requires("planning")
+        exit_requires = self._workphases_config.get_exit_requires("planning")
 
         if not exit_requires:
             logger.info(f"No exit_requires for planning phase; gate skipped for branch {branch}")
@@ -690,12 +690,7 @@ class PhaseStateEngine:
             DeliverableCheckError: If a file_glob gate finds no matching files.
             ValueError: If a key-type gate key is absent from deliverables.json.
         """
-        workphases_path = self.workspace_root / ".st3" / "workphases.yaml"
-        if not workphases_path.exists():
-            return
-
-        wp_config = WorkphasesConfig(workphases_path)
-        exit_requires = wp_config.get_exit_requires("research")
+        exit_requires = self._workphases_config.get_exit_requires("research")
 
         if not exit_requires:
             logger.info(f"No exit_requires for research phase; gate skipped for branch {branch}")

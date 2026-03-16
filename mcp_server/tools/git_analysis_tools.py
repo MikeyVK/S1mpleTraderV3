@@ -1,4 +1,5 @@
 """Git analysis tools for inspecting repository state."""
+
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -10,6 +11,7 @@ from mcp_server.tools.tool_result import ToolResult
 
 class GitListBranchesInput(BaseModel):
     """Input for GitListBranchesTool."""
+
     verbose: bool = Field(default=False, description="Include upstream/hash info (-vv)")
     remote: bool = Field(default=False, description="Include remote branches (-r)")
 
@@ -21,12 +23,12 @@ class GitListBranchesTool(BaseTool):
     description = "List git branches with optional verbose info and remotes"
     args_model = GitListBranchesInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(self, manager: GitManager) -> None:
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: GitListBranchesInput) -> ToolResult:
         branches = self.manager.list_branches(verbose=params.verbose, remote=params.remote)
@@ -37,6 +39,7 @@ class GitListBranchesTool(BaseTool):
 
 class GitDiffInput(BaseModel):
     """Input for GitDiffTool."""
+
     target_branch: str = Field(..., description="Target branch to compare against (e.g. main)")
     source_branch: str = Field(default="HEAD", description="Source branch (default: HEAD)")
 
@@ -48,12 +51,12 @@ class GitDiffTool(BaseTool):
     description = "Get diff statistics between two branches"
     args_model = GitDiffInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(self, manager: GitManager) -> None:
+        self.manager = manager
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        return self.args_model.model_json_schema()
+        return super().input_schema
 
     async def execute(self, params: GitDiffInput) -> ToolResult:
         stats = self.manager.compare_branches(params.target_branch, params.source_branch)

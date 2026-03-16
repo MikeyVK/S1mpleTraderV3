@@ -15,9 +15,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from mcp_server.config.quality_config import (
-    JsonViolationsParsing,
+from mcp_server.schemas import (
     QualityConfig,
+    JsonViolationsParsing,
     QualityGate,
     TextViolationsParsing,
     ViolationDTO,
@@ -51,19 +51,34 @@ def _pyright_script_name() -> str:
 class QAManager:
     """Manager for quality assurance and gates."""
 
+    _quality_config: QualityConfig | None
+
     # Default configuration (UPPERCASE constants for test mocking compatibility)
     QA_LOG_DIR = Path("temp/qa_logs")
     QA_LOG_ENABLED = True
+
+    def _require_quality_config(self) -> QualityConfig:
+        """Return the injected quality configuration."""
+        quality_config = self._quality_config
+        if quality_config is None:
+            raise ValueError("QualityConfig must be injected for quality-gate execution")
+        return quality_config
+
     QA_LOG_MAX_FILES = DEFAULT_ARTIFACT_LOG_MAX_FILES
 
-    def __init__(self, workspace_root: Path | None = None) -> None:
-        """Initialize QA Manager with default runtime configuration."""
+    def __init__(
+        self,
+        workspace_root: Path | None = None,
+        quality_config: QualityConfig | None = None,
+    ) -> None:
+        """Initialize QA Manager with injected quality configuration."""
         # Runtime configuration (lowercase for instance mutability)
         self.qa_log_dir = self.QA_LOG_DIR
         self.qa_log_enabled = self.QA_LOG_ENABLED
         self.qa_log_max_files = self.QA_LOG_MAX_FILES
         # Optional workspace root: used for baseline state persistence in .st3/state.json
         self.workspace_root = workspace_root
+        self._quality_config = quality_config
 
     def run_quality_gates(
         self,
@@ -114,7 +129,7 @@ class QAManager:
 
         python_files = list(files)
 
-        quality_config = QualityConfig.load()
+        quality_config = self._require_quality_config()
         # Apply artifact logging config (config-first with safe defaults)
         self.qa_log_enabled = quality_config.artifact_logging.enabled
         self.qa_log_dir = Path(quality_config.artifact_logging.output_dir)
@@ -459,7 +474,7 @@ class QAManager:
         if self.workspace_root is None:
             return []
 
-        quality_config = QualityConfig.load()
+        quality_config = self._require_quality_config()
         project_scope = quality_config.project_scope
         if project_scope is None or not project_scope.include_globs:
             return []

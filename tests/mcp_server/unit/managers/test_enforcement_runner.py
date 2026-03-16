@@ -4,6 +4,7 @@
 
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -23,27 +24,39 @@ def _write_enforcement_file(tmp_path: Path, content: str) -> None:
     (config_dir / "enforcement.yaml").write_text(content, encoding="utf-8")
 
 
+def _make_runner(
+    tmp_path: Path,
+    config: EnforcementConfig,
+    registry: dict[str, object] | None = None,
+) -> EnforcementRunner:
+    return EnforcementRunner(
+        workspace_root=tmp_path,
+        config=config,
+        git_manager=MagicMock(),
+        project_manager=MagicMock(),
+        state_engine=MagicMock(),
+        registry=registry,
+    )
+
+
 class TestEnforcementRunner:
     """Test suite for Cycle 5 enforcement loading and dispatch."""
 
-    def test_from_workspace_raises_config_error_for_unknown_action_type(
-        self, tmp_path: Path
-    ) -> None:
+    def test_constructor_raises_config_error_for_unknown_action_type(self, tmp_path: Path) -> None:
         """Unknown action types must fail fast at startup."""
-        _write_enforcement_file(
-            tmp_path,
-            """
-            enforcement:
-              - event_source: tool
-                tool: create_branch
-                timing: pre
-                actions:
-                  - type: unknown_action
-            """,
+        config = EnforcementConfig(
+            enforcement=[
+                EnforcementRule(
+                    event_source="tool",
+                    tool="create_branch",
+                    timing="pre",
+                    actions=[EnforcementAction(type="unknown_action")],
+                )
+            ]
         )
 
         with pytest.raises(ConfigError, match="unknown_action"):
-            EnforcementRunner.from_workspace(tmp_path)
+            _make_runner(tmp_path, config)
 
     def test_run_dispatches_registered_handler_for_matching_tool_event(
         self, tmp_path: Path
@@ -72,9 +85,9 @@ class TestEnforcementRunner:
             assert workspace_root == tmp_path
             return "handled"
 
-        runner = EnforcementRunner(
-            workspace_root=tmp_path,
-            config=config,
+        runner = _make_runner(
+            tmp_path,
+            config,
             registry={"commit_state_files": fake_handler},
         )
 
@@ -108,7 +121,7 @@ class TestEnforcementRunner:
                 )
             ]
         )
-        runner = EnforcementRunner(workspace_root=tmp_path, config=config)
+        runner = _make_runner(tmp_path, config)
 
         with pytest.raises(ValidationError, match="cannot be created from base"):
             runner.run(

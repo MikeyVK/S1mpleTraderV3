@@ -6,21 +6,29 @@ from typing import Any
 import yaml
 
 from mcp_server.adapters.git_adapter import GitAdapter
-from mcp_server.config.git_config import GitConfig
 from mcp_server.core.exceptions import PreflightError, ValidationError
 from mcp_server.core.logging import get_logger
 from mcp_server.core.scope_encoder import ScopeEncoder
+from mcp_server.schemas import GitConfig
 
 
 class GitManager:
     """Manager for Git operations and conventions."""
 
     def __init__(
-        self, adapter: GitAdapter | None = None, workphases_path: Path | None = None
+        self,
+        git_config: GitConfig,
+        adapter: GitAdapter | None = None,
+        workphases_path: Path | None = None,
     ) -> None:
         self.adapter = adapter or GitAdapter()
-        self._git_config = GitConfig.from_file()
+        self._git_config = git_config
         self._workphases_path = workphases_path or Path(".st3/workphases.yaml")
+
+    @property
+    def git_config(self) -> GitConfig:
+        """Expose injected git conventions config to consumers."""
+        return self._git_config
 
     def get_status(self) -> dict[str, Any]:
         """Get git status."""

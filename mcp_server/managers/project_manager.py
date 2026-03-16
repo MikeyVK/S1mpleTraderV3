@@ -22,11 +22,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from mcp_server.config.workflows import WorkflowConfig
-
 # Project modules
 from mcp_server.core.phase_detection import ScopeDecoder
 from mcp_server.managers.git_manager import GitManager
+from mcp_server.schemas import WorkflowConfig
 from mcp_server.utils.atomic_json_writer import AtomicJsonWriter
 
 # Per-phase keys recognised in planning_deliverables (C8/GAP-15)
@@ -88,16 +87,13 @@ class ProjectManager:
     def __init__(
         self,
         workspace_root: Path | str,
-        workflow_config: WorkflowConfig | None = None,
+        workflow_config: WorkflowConfig,
+        git_manager: GitManager | None = None,
     ) -> None:
-        """Initialize ProjectManager.
-
-        Args:
-            workspace_root: Path to workspace root directory
-            workflow_config: Workflow configuration injected from composition root or tool layer
-        """
+        """Initialize ProjectManager."""
         self.workspace_root = Path(workspace_root)
-        self.workflow_config = workflow_config or WorkflowConfig.load()
+        self.workflow_config = workflow_config
+        self._git_manager = git_manager
         self.deliverables_file = self.workspace_root / ".st3" / "deliverables.json"
         self.atomic_json_writer = AtomicJsonWriter()
 
@@ -445,12 +441,14 @@ class ProjectManager:
             return None
 
         # Detect current phase via ScopeDecoder (Issue #139)
-        git_manager = GitManager()
-        try:
-            recent_commits = git_manager.get_recent_commits(limit=1)
-        except Exception:
-            # If git fails (e.g., no repo), return unknown
+        if self._git_manager is None:
             recent_commits = []
+        else:
+            try:
+                recent_commits = self._git_manager.get_recent_commits(limit=1)
+            except Exception:
+                # If git fails (e.g., no repo), return unknown
+                recent_commits = []
 
         if not recent_commits:
             # No commits → unknown phase

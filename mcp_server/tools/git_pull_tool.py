@@ -16,7 +16,6 @@ Usage example:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import anyio
@@ -24,7 +23,7 @@ from pydantic import BaseModel, Field
 
 from mcp_server.core.exceptions import MCPError
 from mcp_server.core.logging import get_logger
-from mcp_server.managers import phase_state_engine, project_manager
+from mcp_server.managers import phase_state_engine
 from mcp_server.managers.git_manager import GitManager
 from mcp_server.tools.base import BaseTool
 from mcp_server.tools.tool_result import ToolResult
@@ -66,16 +65,24 @@ class GitPullTool(BaseTool):
     description = "Pull updates from a remote"
     args_model = GitPullInput
 
-    def __init__(self, manager: GitManager | None = None) -> None:
-        self.manager = manager or GitManager()
+    def __init__(
+        self,
+        manager: GitManager,
+        state_engine: phase_state_engine.PhaseStateEngine | None = None,
+    ) -> None:
+        self.manager = manager
+        self._state_engine = state_engine
+
+    def _get_state_engine(self) -> phase_state_engine.PhaseStateEngine:
+        if self._state_engine is None:
+            raise ValueError("PhaseStateEngine must be injected for git_pull")
+        return self._state_engine
 
     @property
     def input_schema(self) -> dict[str, Any]:
         return _input_schema(self.args_model)
 
     async def execute(self, params: GitPullInput) -> ToolResult:
-        workspace_root = Path.cwd()
-
         try:
             pull_result = await anyio.to_thread.run_sync(
                 lambda: self.manager.pull(remote=params.remote, rebase=params.rebase)
@@ -96,12 +103,7 @@ class GitPullTool(BaseTool):
         # Sync phase state after pull (commits may have changed).
         try:
             current_branch = self.manager.get_current_branch()
-            pm = project_manager.ProjectManager(workspace_root=workspace_root)
-            engine = phase_state_engine.PhaseStateEngine(
-                workspace_root=workspace_root,
-                project_manager=pm,
-            )
-            await anyio.to_thread.run_sync(engine.get_state, current_branch)
+            await anyio.to_thread.run_sync(self._get_state_engine().get_state, current_branch)
         except (MCPError, ValueError, OSError) as exc:
             logger.warning(
                 "Phase state sync failed after pull",

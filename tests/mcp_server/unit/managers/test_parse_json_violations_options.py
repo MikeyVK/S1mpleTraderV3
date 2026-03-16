@@ -4,6 +4,7 @@ import pytest
 
 from mcp_server.config.quality_config import JsonViolationsParsing
 from mcp_server.managers.qa_manager import QAManager
+from tests.mcp_server.test_support import make_qa_manager
 
 _BASE_MAP: dict[str, str] = {
     "file": "filename",
@@ -23,7 +24,7 @@ class TestLineOffset:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def test_zero_offset_is_no_op(self, manager: QAManager) -> None:
         """line_offset=0 (default) leaves the line value unchanged."""
@@ -67,7 +68,7 @@ class TestFixableWhen:
 
     @pytest.fixture
     def manager(self) -> QAManager:
-        return QAManager()
+        return make_qa_manager()
 
     def test_fixable_when_truthy_sets_fixable_true(self, manager: QAManager) -> None:
         """fixable=True when the fixable_when field is truthy."""

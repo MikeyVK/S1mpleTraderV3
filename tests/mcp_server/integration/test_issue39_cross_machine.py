@@ -17,8 +17,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from mcp_server.managers.phase_state_engine import PhaseStateEngine
-from mcp_server.managers.project_manager import ProjectManager
+from tests.mcp_server.test_support import make_phase_state_engine, make_project_manager
 
 
 class TestIssue39CrossMachine:
@@ -79,13 +78,12 @@ class TestIssue39CrossMachine:
         )
 
         # Initialize project (Mode 1 - atomic creation)
-        project_manager = ProjectManager(workspace_root=workspace_root)
+        # Initialize project (Mode 1 - atomic creation)
+        project_manager = make_project_manager(workspace_root)
         git_manager = MagicMock()
         git_manager.get_current_branch.return_value = "fix/42-cross-machine-test"
 
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         # Initialize project atomically (Mode 1)
         project_manager.initialize_project(
@@ -171,10 +169,9 @@ class TestIssue39CrossMachine:
         # =====================================================================
 
         # Create PhaseStateEngine (like tools would do)
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        # Create PhaseStateEngine (like tools would do)
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         # Get state - should trigger auto-recovery
         recovered_state = state_engine.get_state("fix/42-cross-machine-test")
@@ -213,7 +210,7 @@ class TestIssue39CrossMachine:
         )
 
         # Initialize project
-        project_manager = ProjectManager(workspace_root=workspace_root)
+        project_manager = make_project_manager(workspace_root)
         project_manager.initialize_project(
             issue_number=43, issue_title="No labels test", workflow_name="feature"
         )
@@ -238,9 +235,7 @@ class TestIssue39CrossMachine:
             state_file.unlink()
 
         # Auto-recovery should fallback to first phase
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         recovered_state = state_engine.get_state("fix/43-no-labels")
 
@@ -260,7 +255,7 @@ class TestIssue39CrossMachine:
         )
 
         # Initialize with docs workflow (only has: research, planning, design, documentation)
-        project_manager = ProjectManager(workspace_root=workspace_root)
+        project_manager = make_project_manager(workspace_root)
         project_manager.initialize_project(
             issue_number=44, issue_title="Docs test", workflow_name="docs"
         )
@@ -304,9 +299,7 @@ class TestIssue39CrossMachine:
             state_file.unlink()
 
         # Auto-recovery should ignore invalid phases
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
 
         recovered_state = state_engine.get_state("docs/44-documentation")
 
@@ -327,10 +320,9 @@ class TestIssue39CrossMachine:
         )
 
         # Try to recover - should fail with clear error
-        project_manager = ProjectManager(workspace_root=workspace_root)
-        state_engine = PhaseStateEngine(
-            workspace_root=workspace_root, project_manager=project_manager
-        )
+        project_manager = make_project_manager(workspace_root)
+        state_engine = make_phase_state_engine(workspace_root, project_manager=project_manager)
+
 
         with pytest.raises(ValueError, match="Cannot extract issue number"):
             state_engine.get_state("invalid-branch-name")
